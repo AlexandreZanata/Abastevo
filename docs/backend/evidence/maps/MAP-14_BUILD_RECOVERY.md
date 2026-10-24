@@ -105,3 +105,12 @@ open under MAP-14. No APK was installed, no emulator/phone was mutated, and no
 commit/push/merge/deployment took place in this recovery task. The earlier
 render/search/route evidence belongs to the earlier x86_64 probe, not this new
 arm64 candidate. MAP-15/16 still depend on real ENGINE_GATE acceptance.
+
+## Later update (2026-10-24)
+
+The arm64 build above remains the historical T03 recovery record. A separate
+`armeabi-v7a` candidate was subsequently built and merged with it:
+[multi-ABI evidence](MAP-14_MULTI_ABI.md) records both AAR/core hashes and the
+80,401,070-byte universal APK under the 80 MiB gate. Armv7 runtime and actual
+16 KB execution remain open. T07 technical audit is complete with legal
+sign-off pending; T06 remains partial for native cluster hit-test/final artwork.

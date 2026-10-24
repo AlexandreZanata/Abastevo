@@ -51,7 +51,11 @@
   Owner chose the physical phone/all-device direction; actual 16 KB runtime is
   DEFERRED and not proven. BLAST buffer warnings remain despite ~120 FPS
   rendering. ENGINE_GATE remains PARTIAL. The probe package was uninstalled and
-  its data removed.
+  its data removed. Multi-ABI release artifact PASS: armeabi-v7a AAR
+  34,517,731 bytes / core 10,499,236 bytes; merged with arm64; universal APK
+  80,401,070 bytes (76.68 MB), SHA `68898ea6…`, both cores 0x4000-aligned,
+  zipalign PASS and 80 MiB gate PASS (~3.32 MiB headroom). Armv7 runtime is not
+  executed; 16 KB runtime remains deferred.
   T06 PARTIAL: canonical UUID normalization/dedupe, fuel/charging flags,
   UNKNOWN/CITY_CENTROID/REVIEWED states, 60 m clustering, native
   Gas/ChargingStation/Information symbols and accessible Compose list (48 dp,
@@ -78,7 +82,9 @@
   proofs, `MapPoiCodecTest`, `MapDiscoveryResponseCodecTest`, `:data` unit and
   phone instrumentation, `:maps:engine` 12 JVM tests and 3 phone instrumentation
   tests, normal app debug build and engine debug build, plus
-  `:app:assembleMapProbe` with the release AAR and the physical-phone probe.
+  `:app:assembleMapProbe` with the release AAR, the physical-phone probe and
+  `:app:assembleRelease :app:verifyReleaseApkSize` with the merged
+  arm64/armv7 candidate.
   The Gradle UTP install was blocked by `INSTALL_FAILED_USER_RESTRICTED`; the
   self-instrumenting test APK was installed with `adb` and run with
   `am instrument`.
@@ -92,9 +98,9 @@
   remaining tasks, the existing native Ed25519 implementation direction and
   prior DATA_GATE/distribution review obligations. Next: T06 native cluster
   hit-test/final Abastevo artwork/native 48 dp target; T07 legal sign-off,
-  public source offer and per-asset review; then the armeabi-v7a release ABI
-  and the deferred 16 KB runtime obligation before ENGINE_GATE/MAP-17. No
-  further budget/linker owner decision.
+  public source offer and per-asset review; armv7 runtime and the deferred
+  16 KB runtime obligation before ENGINE_GATE/MAP-17. The multi-ABI artifact
+  is under the existing 80 MiB budget. No further budget/linker owner decision.
 - Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
   IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
   [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),

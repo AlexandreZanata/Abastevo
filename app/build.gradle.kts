@@ -190,7 +190,7 @@ private val maxReleaseApkBytes = 80L * 1024 * 1024
 
 tasks.register("verifyReleaseApkSize") {
     group = "verification"
-    description = "Builds release APK and fails when size exceeds the 80 MB MAP-14 budget (user-authorized; measured ~67 MB with the engine)"
+    description = "Builds release APK and fails when size exceeds the 80 MiB MAP-14 budget (user-authorized; measured ~76.68 MB with both ARM ABIs)"
     dependsOn("assembleRelease")
     doLast {
         val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
@@ -202,7 +202,7 @@ tasks.register("verifyReleaseApkSize") {
         logger.lifecycle("Release APK: ${apk.name} — ${"%.2f".format(sizeMb)} MB ($sizeBytes bytes)")
         if (sizeBytes > maxReleaseApkBytes) {
             throw GradleException(
-                "Release APK exceeds 15 MB limit: ${"%.2f".format(sizeMb)} MB",
+                "Release APK exceeds the 80 MiB limit: ${"%.2f".format(sizeMb)} MB",
             )
         }
     }

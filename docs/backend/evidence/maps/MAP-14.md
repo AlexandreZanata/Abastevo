@@ -1,7 +1,7 @@
 # MAP-14 — Extracted engine adapter and render proof
 
-Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / T08_16KB_RUNTIME_DEFERRED / T06_PARTIAL / T07_TECHNICAL_AUDIT_DONE_LEGAL_PENDING
-Validation: PARTIAL (arm64 phone runtime PASS; T06 overlay model/clustering/symbols/accessible list/safe generation PASS; T07 technical audit/SBOM/notices/endpoint decision PASS; native cluster hit-test/artwork, legal sign-off, 16 KB and ABI budgets pending)
+Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / MULTI_ABI_ARTIFACT_PASS / T08_16KB_RUNTIME_DEFERRED / T06_PARTIAL / T07_TECHNICAL_AUDIT_DONE_LEGAL_PENDING
+Validation: PARTIAL (arm64 phone runtime PASS; multi-ABI release artifact PASS; T06 overlay model/clustering/symbols/accessible list/safe generation PASS; T07 technical audit/SBOM/notices/endpoint decision PASS; armv7 runtime, native cluster hit-test/artwork, legal sign-off and 16 KB pending)
 Integration: NOT_INTEGRATED
 
 Tested tree: `codex/map-ev-implementation` at `721582b8` plus the uncommitted
@@ -117,8 +117,9 @@ final app-owned place-page/list surface still has to disambiguate that case.
   a dense OSM POI and final Abastevo artwork remain.
 - **T07:** technical audit, 215-component notices/SBOM, endpoint decision and
   patch/rollback record are complete; human legal sign-off remains.
-- **T08:** arm64 runtime PASS on the physical phone; actual 16 KB runtime is
-  deferred, and budgets/ABI coverage remain.
+- **T08:** arm64 runtime PASS on the physical phone; the release artifact now
+  carries both arm64-v8a and armeabi-v7a under the 80 MiB gate. Armv7 runtime
+  and actual 16 KB runtime remain.
 
 ## Limits
 
@@ -160,8 +161,8 @@ records remaining engineering tasks and the existing native Ed25519 direction.
   errors. The probe was uninstalled and its files removed. The blank result was
   later reproduced as a test-seeding fault (unreadable adb-created external
   map directory), not a renderer failure; see the arm64 runtime section below.
-- Remaining T08: actual 16 KB-page runtime, T06 overlay/accessibility work,
-  measured budgets and full ENGINE_GATE closure.
+- Remaining T08: actual 16 KB-page runtime, armv7 runtime, T06 native cluster
+  hit-test/final artwork and full ENGINE_GATE closure.
 
 Fresh static re-verification of the release APK:
 
@@ -176,6 +177,14 @@ LOAD segments: 0x4000 / 0x4000 / 0x4000
 
 This rebuild includes the overlay KML fix; the earlier 69,881,875-byte artifact
 `79a3117e…` is superseded for the current tree.
+
+Multi-ABI extension (2026-10-24): [MAP-14_MULTI_ABI](MAP-14_MULTI_ABI.md).
+The release now carries both `arm64-v8a` and `armeabi-v7a`:
+`app-release-unsigned.apk` **80,401,070 bytes (76.68 MB)**, SHA-256
+`68898ea6bec6baf3832f7676e3b8e5cfa27feb9b731d80d69d0a0fd6cc4546cc`, both
+cores with 0x4000 LOAD alignment, `zipalign` PASS and the 80 MiB gate PASS
+with ~3.32 MiB headroom. The armv7 runtime is not executed; 16 KB runtime
+remains deferred.
 
 ## T08 arm64 runtime on the physical phone — 2026-10-24
 
@@ -278,10 +287,10 @@ adb shell rm -rf /sdcard/Android/data/com.anpfuel.app.mapprobe
 Residual limits: the `BLASTBufferQueue ... Can't acquire next buffer` warnings
 still appear in logcat, although frames render and the screenshots are
 non-blank; this is recorded as a residual vendor/SurfaceFlinger warning, not a
-claim that its root cause is fixed. T07 transitive licenses/SBOM/notices,
-measured budgets, armeabi-v7a packaging and actual 16 KB runtime remain open.
-The release currently packages only the arm64 engine; supporting the whole
-device population requires the 32-bit release ABI and a size-budget check.
+claim that its root cause is fixed. T07 legal sign-off, T06 native cluster
+hit-test/final artwork, armv7 runtime, measured budgets and actual 16 KB
+runtime remain open. The release packages both arm64-v8a and armeabi-v7a
+cores; armv7 runtime is not proven.
 
 ## T06 overlay model, clustering and accessibility — 2026-10-24
 

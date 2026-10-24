@@ -34,6 +34,23 @@ JAVA_HOME=/data/dev/java/candidates/java/current \
     -PcomapsSdkDir=/tmp/abastevo-comaps-release-arm64 --offline --console=plain
 ```
 
+For the all-device release, build the second ABI and merge the two verified
+candidates (the merge script checks identical classes/manifest and writes
+`multi-build.json`):
+
+```sh
+JAVA_HOME=/data/dev/java/candidates/java/current \
+  bash scripts/maps/build-comaps-aar.sh \
+    --source /data/dev/src/comaps-4587b8ad \
+    --sdk /data/dev/android/sdk/Sdk \
+    --output /tmp/abastevo-comaps-release-armv7 --abi armeabi-v7a
+
+python3 scripts/maps/merge-comaps-aars.py \
+  --arm64 /tmp/abastevo-comaps-release-arm64 \
+  --armv7 /tmp/abastevo-comaps-release-armv7 \
+  --output /tmp/abastevo-comaps-release-multi
+```
+
 The output contains the actual `sdk-release.aar`, its verified unpacked
 contents, `build.json`, the source patch, runtime diff, submodule pins and build
 log. The verifier refuses debug/hybrid classes, incorrect minSdk/ABI,
@@ -83,7 +100,7 @@ human license/ODbL sign-off remains an owner obligation.
 
 - Clean-checkout double-build comparison and final per-asset font/symbol/style
   admission; a local incremental build does not prove reproducibility.
-- Other supported ABI acceptance, packaged APK/16 KB runtime checks, native
+- Armv7 runtime acceptance, packaged APK/16 KB runtime checks, native
   device/emulator behavior and the full lifecycle/selection matrix.
 - Overlay native cluster hit-test and final Abastevo artwork; MAP-15/16 are
   LOCAL_DONE but remain dependent on ENGINE_GATE.

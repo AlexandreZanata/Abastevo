@@ -94,7 +94,12 @@ and do not invent a tested commit SHA.
   earlier blank surface was an unreadable adb-created external map directory;
   internal `files/261004` data renders. Overlay KML declaration/escaping was
   fixed. Owner chose the physical-phone/all-device direction; actual 16 KB
-  runtime is DEFERRED and not proven. See [MAP-14 evidence](../backend/evidence/maps/MAP-14.md).
+  runtime is DEFERRED and not proven. The multi-ABI release artifact now carries
+  arm64-v8a and armeabi-v7a: APK 80,401,070 bytes (76.68 MB), SHA
+  `68898ea6…`, both cores 0x4000-aligned, zipalign/80 MiB gate PASS (~3.32 MiB
+  headroom); armv7 runtime is not executed. See
+  [MAP-14 evidence](../backend/evidence/maps/MAP-14.md) and
+  [multi-ABI evidence](../backend/evidence/maps/MAP-14_MULTI_ABI.md).
 - T06 PARTIAL: canonical UUID dedupe, fuel/charging, location quality, 60 m
   clustering, native Gas/ChargingStation/Information symbols and the 48 dp
   accessible Compose list are implemented. Safe generation swap retains the
@@ -110,6 +115,6 @@ and do not invent a tested commit SHA.
   derived-database/source-offer determination and patch rollback recorded.
   Human legal sign-off and the public source-offer URL remain.
 - Still open: T06 native cluster hit-test/final artwork/native 48 dp target,
-  T07 legal sign-off/public offer/per-asset review, armeabi-v7a release ABI,
-  deferred 16 KB runtime and full ENGINE_GATE evidence. MAP-15/16 are
-  LOCAL_DONE but remain gated by ENGINE_GATE.
+  T07 legal sign-off/public offer/per-asset review, armv7 runtime, deferred
+  16 KB runtime and full ENGINE_GATE evidence. MAP-15/16 are LOCAL_DONE but
+  remain gated by ENGINE_GATE.
