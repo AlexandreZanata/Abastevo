@@ -24,8 +24,8 @@ impossible.
   date only for states that keep paid access, known-capability labels, retained
   data notice, refresh, manage-subscription and honest restore-unavailable action.
 - `ui/premium/PremiumManagementScreen.kt`: subscription state, store guidance,
-  fixed Play subscription destination and post-store refresh. No cancellation or
-  renewal is simulated.
+  fixed Play subscription destination and post-store refresh through a
+  resume-scoped refresh flow. No cancellation or renewal is simulated.
 - `ui/premium/PremiumEntry.kt`: one gold/crown entry component, full in Profile
   and compact in Manage account.
 - Profile: Premium category immediately below the signed-in account card, shown
@@ -34,7 +34,8 @@ impossible.
   shortcut remains; account/key/backup/logout/delete actions preserved.
 - `PremiumViewModel` moved to `ui/premium`; generation and owner fencing preserved
   and strengthened so a refresh for a new owner clears the previous status before
-  the response.
+  the response. Both pages refresh once on initial resume and again on each
+  return to resumed, including after the store.
 - Fixed light/dark Premium palette in `ui/theme/PremiumColors.kt`, selected by the
   app theme via `LocalAnpDarkTheme`; dynamic colors still drive general surfaces.
 - Local crown vector, shared `ProfileActionRow`, 25 new strings in eight locales.
@@ -62,11 +63,11 @@ impossible.
   the new Premium files); debug APK produced (28,272,706 bytes).
 - Focused Premium/navigation/color tests PASS before the union.
 - `git diff --check` clean; secret-surface review found no credentials/PII added.
-- Debug APK SHA-256 `6d0224de61d7336c2addf2d8bc6dcd91cd348fd20ec8a042ece5e7bf3a4bfdd4`.
+- Debug APK SHA-256 `48f1558ef6f4c3d269ece1ffe2ebf47b1544bc4f9de9489b10a464f03e2e31a8`.
 - Device update: `adb install -r app/build/outputs/apk/debug/app-debug.apk` succeeded
   on 2311DRK48G; package `com.anpfuel.app.debug`, version `3.1.0-debug`,
-  lastUpdateTime `2026-10-24 08:15:04`. No data clear, settings change or UI
-  automation.
+  lastUpdateTime `2026-10-24 08:22:04`. firstInstallTime remained
+  `2026-10-05 16:00:02` (no data clear). No settings change or UI automation.
 
 ## Limits and manual review
 
