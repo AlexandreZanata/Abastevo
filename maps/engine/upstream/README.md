@@ -46,14 +46,47 @@ No patch to files under `.cxx`/`build.ninja`, debug-JAR/release-.so mixing,
 ignored linker failure, algorithm substitution or changed size gate is needed.
 The recorded user-approved APK budget remains 80 MiB.
 
+## Patch reapplication and rollback
+
+The builder accepts only the exact upstream pin. It applies the patch when the
+source is unpatched, accepts it when the reverse check succeeds, and refuses
+patch drift. To roll back the patch without touching unrelated source:
+
+```sh
+git -C /data/dev/src/comaps-4587b8ad apply --reverse --check \
+  /data/dev/worktrees/abastevo-map-ev/maps/engine/upstream/ndk-r28-lld.patch
+git -C /data/dev/src/comaps-4587b8ad apply --reverse \
+  /data/dev/worktrees/abastevo-map-ev/maps/engine/upstream/ndk-r28-lld.patch
+```
+
+A changed upstream SHA or ABI set invalidates the audit, notices, SBOM and T08
+runtime evidence; rebuild and re-audit from the new pin.
+
+## Notices, SBOM and endpoint audit
+
+```sh
+python3 scripts/maps/audit-comaps-release.py \
+  --source /data/dev/src/comaps-4587b8ad \
+  --candidate /tmp/abastevo-comaps-release-arm64 \
+  --out /tmp/abastevo-comaps-release-arm64/audit.json \
+  --notices-dir /tmp/abastevo-comaps-release-arm64/notices \
+  --sbom /tmp/abastevo-comaps-release-arm64/sbom.cdx.json
+```
+
+The audit covers 193 submodules and 22 vendored `3party` directories, resolves
+`glm` (MIT), `just_gtfs` (MIT upstream) and the source-header/vendored licenses,
+writes a CycloneDX 1.5 SBOM and a 219-license-file notice bundle, and classifies the
+native endpoint strings. It is a technical inventory, not a legal opinion; the
+human license/ODbL sign-off remains an owner obligation.
+
 ## Still required
 
-- Clean-checkout double-build comparison, complete source/resource admission
-  and SBOM/notices; a local incremental build does not prove reproducibility.
+- Clean-checkout double-build comparison and final per-asset font/symbol/style
+  admission; a local incremental build does not prove reproducibility.
 - Other supported ABI acceptance, packaged APK/16 KB runtime checks, native
   device/emulator behavior and the full lifecycle/selection matrix.
-- Overlay hit-test with canonical UUID, custom symbols/clustering and the
-  accessible equivalent; MAP-15/16 remain dependent on ENGINE_GATE.
+- Overlay native cluster hit-test and final Abastevo artwork; MAP-15/16 are
+  LOCAL_DONE but remain dependent on ENGINE_GATE.
 
 For Android Ed25519, the pinned core already compiles
 `libs/platform/crypto/ed25519_monocypher.cpp` and

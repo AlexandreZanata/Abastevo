@@ -32,9 +32,12 @@
   and cross-checks it against the prepared corpus. MAP-14 adapter now serializes
   concurrent init, cancels stale search/route work and removes listeners on
   release; manual rotation/relaunch/permission-denied browsing passed.
-  T07 draft: 193 pinned submodules clean, 191 with license/notice evidence;
-  `glm`/`just_gtfs` still need legal resolution; no secret hits but upstream
-  endpoints remain in the native binary. T08 static: release APK 69,898,847
+  T07 technical audit: 193 submodules + 22 vendored = 215 components; 204
+  license files + 11 resolved, 0 missing. 219-license-file notices bundle and
+  CycloneDX 1.5 SBOM; 30 endpoint hosts classified, 0 unclassified, no secret
+  hits; upstream service strings documented unused; ODbL derived-database and
+  source-offer determination recorded. Legal sign-off and public offer URL
+  remain. T08 static: release APK 69,898,847
   bytes (66.66 MiB), SHA `d8094048…`, zipalign/16 KB LOAD PASS; packaged arm64 core
   14,675,096 bytes, SHA `08342926…`, three 0x4000 LOAD segments. T08 arm64
   runtime PASS on the authorized physical phone (2311DRK48G, Android 16/API
@@ -88,10 +91,10 @@
   execution or full ENGINE_GATE acceptance. [Resume](MAP_EV_RESUME.md) records
   remaining tasks, the existing native Ed25519 implementation direction and
   prior DATA_GATE/distribution review obligations. Next: T06 native cluster
-  hit-test/final Abastevo artwork/native 48 dp target; T07 transitive
-  licenses/SBOM/notices; then the armeabi-v7a release ABI and the deferred
-  16 KB runtime obligation before ENGINE_GATE/MAP-17. No further budget/linker
-  owner decision.
+  hit-test/final Abastevo artwork/native 48 dp target; T07 legal sign-off,
+  public source offer and per-asset review; then the armeabi-v7a release ABI
+  and the deferred 16 KB runtime obligation before ENGINE_GATE/MAP-17. No
+  further budget/linker owner decision.
 - Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
   IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
   [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),

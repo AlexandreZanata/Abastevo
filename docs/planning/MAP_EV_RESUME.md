@@ -103,7 +103,13 @@ and do not invent a tested commit SHA.
   committed two generations (7/6/3 then 8/7/3 markers/unique/clusters) and
   removed the old file. Cluster tap at a dense OSM POI opened the OSM POI
   instead; final artwork and native marker 48 dp remain.
+- T07 technical audit COMPLETE / LEGAL_SIGNOFF_PENDING: 193 submodules + 22
+  vendored = 215 components, 204 license files + 11 resolved, 0 missing;
+  219-license-file notices bundle, CycloneDX 1.5 SBOM, 30 endpoint hosts classified
+  (0 unclassified), upstream service strings documented unused, ODbL
+  derived-database/source-offer determination and patch rollback recorded.
+  Human legal sign-off and the public source-offer URL remain.
 - Still open: T06 native cluster hit-test/final artwork/native 48 dp target,
-  T07 transitive license/SBOM/endpoint audit, armeabi-v7a release ABI,
+  T07 legal sign-off/public offer/per-asset review, armeabi-v7a release ABI,
   deferred 16 KB runtime and full ENGINE_GATE evidence. MAP-15/16 are
   LOCAL_DONE but remain gated by ENGINE_GATE.

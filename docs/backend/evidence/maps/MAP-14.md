@@ -1,7 +1,7 @@
 # MAP-14 — Extracted engine adapter and render proof
 
-Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / T08_16KB_RUNTIME_DEFERRED / T06_PARTIAL
-Validation: PARTIAL (arm64 phone runtime PASS; T06 overlay model/clustering/symbols/accessible list/safe generation PASS; native cluster hit-test/artwork, 16 KB, T07 and ABI budgets pending)
+Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / T08_16KB_RUNTIME_DEFERRED / T06_PARTIAL / T07_TECHNICAL_AUDIT_DONE_LEGAL_PENDING
+Validation: PARTIAL (arm64 phone runtime PASS; T06 overlay model/clustering/symbols/accessible list/safe generation PASS; T07 technical audit/SBOM/notices/endpoint decision PASS; native cluster hit-test/artwork, legal sign-off, 16 KB and ABI budgets pending)
 Integration: NOT_INTEGRATED
 
 Tested tree: `codex/map-ev-implementation` at `721582b8` plus the uncommitted
@@ -111,12 +111,14 @@ final app-owned place-page/list surface still has to disambiguate that case.
 - **T05:** proven in the Abastevo adapter: 29 offline search results and a
   1,575.15 m / 288 s car route between in-map checkpoints. Guidance UI and
   route cancellation remain open.
-- **T06:** UUID render and hit-test callback are proven; batch generation
-  replaces the prior category. Custom Abastevo pictograms, co-located symbol
-  disambiguation, clustering and the accessible list remain open.
-- **T07:** transitive/submodule license audit, SBOM/notices, patch reapplication,
-  no-secret/endpoint scan and ODbL derived-data decision.
-- **T08:** full evidence, budgets and ENGINE_GATE closure.
+- **T06:** overlay model, duplicate/type/location handling, 60 m clustering,
+  native Gas/ChargingStation/Information symbols, safe generation swap and the
+  48 dp accessible list are implemented and tested. Native cluster hit-test at
+  a dense OSM POI and final Abastevo artwork remain.
+- **T07:** technical audit, 215-component notices/SBOM, endpoint decision and
+  patch/rollback record are complete; human legal sign-off remains.
+- **T08:** arm64 runtime PASS on the physical phone; actual 16 KB runtime is
+  deferred, and budgets/ABI coverage remain.
 
 ## Limits
 
@@ -388,3 +390,45 @@ adb shell am start -n com.anpfuel.app.mapprobe/com.anpfuel.app.map.MapProbeActiv
 
 The probe and instrumentation packages were uninstalled and their data removed
 after the run.
+
+## T07 rights, SBOM and endpoint audit — 2026-10-24
+
+Status: **TECHNICAL_AUDIT_COMPLETE / LEGAL_SIGNOFF_PENDING**. This is a
+technical inventory, not a legal opinion and not an ENGINE_GATE closure.
+Full record: [MAP-14_T07_AUDIT](MAP-14_T07_AUDIT.md).
+
+- Source inventory: 193 pinned submodules (all clean) plus 22 vendored
+  `3party` directories = **215 components**. 204 have a license/notice file and
+  11 are resolved from an exact source header or a retained repository license;
+  **0 unresolved**.
+- Resolutions: `glm` MIT (dual Happy Bunny/MIT; MIT selected), `just_gtfs` MIT
+  (pinned tree predates `LICENSE.MIT`; upstream `b5b1df6` supplies it),
+  `monocypher` BSD-2-Clause, plus the 10 vendored source-header licenses
+  (`GL` MIT, `agg` `LicenseRef-AGG`, `ankerl` MIT, `kdtree++` Artistic-2.0,
+  `minizip` `Zlib AND Info-ZIP`, `opening_hours` MIT, `robust` public domain,
+  `skarupke` BSL-1.0, `stb_image` MIT, `vulkan_wrapper` Apache-2.0).
+- Notices/SBOM: a 219-license-file notice bundle (226 files total, 3.0 MB;
+  deterministic tar SHA-256
+  `c2d84594a4e32bc9f8d8909fc57c908fb8b579500d869a9f616764a491a401a8`) and a
+  CycloneDX 1.5 SBOM with 219 components. Durable artifacts are committed under
+  [map14-t07/](map14-t07/): `THIRD_PARTY_NOTICES.md`, `sbom.cdx.json`,
+  `audit.json` and `SOURCE_OFFER.md`.
+- Endpoint scan: 30 native URL hosts, **0 unclassified**; 10 upstream service
+  hosts are `UPSTREAM_SERVICE_UNUSED`, 12 OSM/data/schema and 8
+  social/reference. No secret-pattern hits. Decision `DOCUMENTED_UNUSED`: the
+  adapter configures no CoMaps account/key and does not invoke the upstream
+  download service; the T08 airplane-mode render/search/route proof shows no
+  required private service. The strings remain in the binary.
+- ODbL: the regional `.mwm` is a Derived Database under ODbL 1.0 with
+  `Map data © OpenStreetMap contributors`; the source/derived-data recipe and
+  package are retained, and the public offer URL remains a release obligation.
+  The Abastevo overlay is a separate database, not merged into the OSM data or
+  relicensed as ODbL.
+- Patch reapplication/rollback is recorded in
+  [maps/engine/upstream/README.md](../../../../maps/engine/upstream/README.md);
+  a changed SHA/ABI invalidates this audit and the T08 evidence.
+
+Remaining T07 work: human legal acceptance of the resolved licenses and ODbL
+determination, publication of the durable source/derived-data offer, and the
+final per-asset font/symbol/style admission review. No legal sign-off or public
+offer URL is claimed here.

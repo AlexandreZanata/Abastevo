@@ -1,0 +1,5672 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "abastevo-comaps-engine",
+      "version": "4587b8ad4d12c9f59982709fdaf03cc925948827"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "comaps/comaps",
+      "version": "4587b8ad4d12c9f59982709fdaf03cc925948827",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:notice",
+          "value": "LICENSE, NOTICE, copyright.html"
+        },
+        {
+          "name": "abastevo:patch",
+          "value": "maps/engine/upstream/ndk-r28-lld.patch"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/CMake-MetalShaderSupport",
+      "version": "84209c32e50966ee4dca66f7b7eebacd934c87fb",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/Vulkan-Headers",
+      "version": "f69f0433bae0b30598380ef0420b9d2d02dbac4d",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost",
+      "version": "ab7968a0bbcf574a7859240d1d8443f58ed6f6cf",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/accumulators",
+      "version": "9d9e5dae2202660f57e2dc91efb620aa001525b3",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/algorithm",
+      "version": "32c5a6327cfdca5d41ce0f1d8849b811886daa2f",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/align",
+      "version": "5ad7df63cd792fbdb801d600b93cad1a432f0151",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/any",
+      "version": "aee53090c04bd0a263480fae25fddddcef54ca82",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/array",
+      "version": "23f6b27c0d9916b9932baac898ae3009817a9153",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/asio",
+      "version": "e65367991cb5fbdb8a7cf218ae38f69ca9a0a9f5",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/assert",
+      "version": "447e0b3a331930f8708ade0e42683d12de9dfbc3",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/assign",
+      "version": "ababd47970e8a5fa1bebc8ccad526c4f25bd867a",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/atomic",
+      "version": "5bbcce0f6e855dc4009e2e6977c62e0520c39573",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/beast",
+      "version": "98b8be489fa7a74753a724d8d0772d90bcbed0fc",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/bimap",
+      "version": "6865e94cc56a33bb8b162bf8d62cfe620b06d2b6",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/bind",
+      "version": "9fbfdcb3577e9427815d4f8cc25b3a25d5b9696b",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/callable_traits",
+      "version": "2a56a3a2496cdb66496f844db55085dd992d5e49",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/charconv",
+      "version": "ecdca0865d4d8fcfbf8e5b48914f2b5711c418ad",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/chrono",
+      "version": "ee0d6d543a37d9b7243682549e9ae359eb89daa9",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/circular_buffer",
+      "version": "a08a5b55ee82e0c2487523471379ac53a23935dc",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/cobalt",
+      "version": "0b813affb41e0dd2a42c3c34033f4ae68431b3e9",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/compat",
+      "version": "bba8d5f1011afc61b9fbaf0e96417d72cb09f8ec",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/compatibility",
+      "version": "d0caac5c346f7e24b4f8ec1e55110119492b64bd",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/compute",
+      "version": "36350b7de849300bd3d72a05d8bf890ca405a014",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/concept_check",
+      "version": "37c9bddf0bdefaaae0ca5852c1a153d9fc43f278",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/config",
+      "version": "11385ec21012926e15a612e3bf9f9a71403c1e5b",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/container",
+      "version": "6e697d796897b32b471b4f0740dcaa03d8ee57cc",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/container_hash",
+      "version": "6d214eb776456bf17fbee20780a034a23438084f",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/context",
+      "version": "1bde50e400547e29336afe7ea0cd693d8c884fb6",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/contract",
+      "version": "eca93d24b5d3bb909ed64c12b5feb5296c5cc070",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/conversion",
+      "version": "9f285ef0c43c101e49b37bf5e6085e8d635887dc",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/convert",
+      "version": "1dd2ca23cb74991d420ea85b9b764f0ac76367c1",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/core",
+      "version": "083b41c17e34f1fc9b43ab796b40d0d8bece685c",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/coroutine",
+      "version": "1e1347c0b1910b9310ec1719edad8b0bf2fd03c8",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/coroutine2",
+      "version": "d7e1c1c4abcf8c1e90097279e485edea0b253a80",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/crc",
+      "version": "e3b1e56890a701ded5e66929579fb7fa62ac6bcc",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/date_time",
+      "version": "85e637cb325208c2af9af791c3a1948b4888c6cd",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/describe",
+      "version": "50719b212349f3d1268285c586331584d3dbfeb5",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/detail",
+      "version": "9c3a0022b25d3e483f9100cc363bc93a72fd900a",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/dll",
+      "version": "6c60dde50bf67138c90cc84938111866813feaff",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/dynamic_bitset",
+      "version": "8e20aa1462bf6dcadc338835df529a6d568431b1",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/endian",
+      "version": "c9b436e5dfce85e8ae365e5aabbb872dd35c29eb",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/exception",
+      "version": "b9170a02f102250b308c9f94ed6593c5f30eab39",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/fiber",
+      "version": "88b8304e78dfab4baee5d6beca09938d2826061a",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/filesystem",
+      "version": "a0c8edba38a4d31b449fcf7b7ada455977342596",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/flyweight",
+      "version": "e9f3a0a005eca8baa377f13423107b35985d9119",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/foreach",
+      "version": "cc2f75ae30492b9de69b3b692f5c59afcb7dea5e",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/format",
+      "version": "78ef371d2d90462671b90c3af407fae07820b193",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/function",
+      "version": "28b88d07bb4807445462c3f5dab0efde6f532d32",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/function_types",
+      "version": "895335874d67987ada0d8bf6ca1725e70642ed49",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/functional",
+      "version": "6a573e4b8333ee63ee62ce95558c3667348db233",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/fusion",
+      "version": "7d4c03fa032299f2d46149b7b3136c9fd43e4f81",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/geometry",
+      "version": "f82eb32da79641697583a43be9988d7517d8553c",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/gil",
+      "version": "8994c2ff8ed8b88e0ffef9658a4c603c4a001fad",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/graph",
+      "version": "a649be53bd90ab3365c6c0c44414c80907cfd8a1",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/graph_parallel",
+      "version": "5520a5617d2763c48a06a4ff277ad76e665c7cf3",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/hana",
+      "version": "e66cd6bc3fdba37b31440e013d026a10e26ca486",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/headers",
+      "version": "0456900fadde4b07c84760eadea4ccc9f948fe28",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/heap",
+      "version": "dc2f19f8815cbe0654df61bfc5f31ad8b06fc883",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/histogram",
+      "version": "a29729e6682652800b06dc8aded29bbeb4acea61",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/hof",
+      "version": "63ac019fca325038bfb4f56db17fbb281d2b5f49",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/icl",
+      "version": "2741c3a1b7b79f7326360c26c3e1588b385c9e53",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/integer",
+      "version": "dea8e3445dc3ca29201498260307138b9460a70c",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/interprocess",
+      "version": "8e4caa9fca8ff92b739b570f399f4407da0ecc2f",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/intrusive",
+      "version": "07ba0e376177409c396c109807c13b7181a98ebe",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/io",
+      "version": "342e4c6d10d586058818daa84201a2d301357a53",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/iostreams",
+      "version": "6be38c3449a64b15213c6a490d357c9a2ac2470b",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/iterator",
+      "version": "4f7219965a399051bb0d8088ea4ab3929b1ac3f2",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/json",
+      "version": "9f85ed6d62ff91c6dc4fc30e3a20e9049ec67585",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/lambda",
+      "version": "1555e9c7fff978d94359fc3f6312187e1e2647d5",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/lambda2",
+      "version": "a17ffc25d303635fcc44dfa97d3e3c4b04e9db5e",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/leaf",
+      "version": "ed8f9cd32f4fde695d497502f696f6f861b68559",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/lexical_cast",
+      "version": "02e5821ab32c45fad719829e9644e5d681c9ba0b",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/local_function",
+      "version": "258aeaa6c1a9618c02ca4e4af2890e70833035f0",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/locale",
+      "version": "5edb7eb4f4848546d3d285598374b5d37daae387",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/lockfree",
+      "version": "fdd4d0632dd0904f6e9c656c45397fe8ef985bc9",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/log",
+      "version": "2d932ddcb5b05a9b2cc0a9df2d8a6ff88883f2b3",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/logic",
+      "version": "145778490c2d332c1411df6a5274a4b53ec3e091",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/math",
+      "version": "434a017db4c7abc115d8a8ae08a446b70feb34f2",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/metaparse",
+      "version": "0ef448c1a7ce22b5de514f9cd504c323c28f4379",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/move",
+      "version": "7c01072629d83a7b54c99de70ef535d699ebd200",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/mp11",
+      "version": "863d8b8d2b20f2acd0b5870f23e553df9ce90e6c",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/mpi",
+      "version": "347595c77379ac5cbfc6e4474fe315398fef355e",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/mpl",
+      "version": "b440c45c2810acbddc917db057f2e5194da1a199",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/msm",
+      "version": "f607d5154df4a5cc7f5ae014f0796f0b21b8bfc4",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/multi_array",
+      "version": "0c5348bef71b890c4bd06eff1ee5ebda69e7b27a",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/multi_index",
+      "version": "d702a48363997f65fb717346f6694e0703902f8a",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/multiprecision",
+      "version": "51e01210078bae160ebc9fc4ede9281928d5b3c1",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/mysql",
+      "version": "6397d04ff55741a29ca2c93975e26226cf773a7d",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/nowide",
+      "version": "72429c3f48a1e70c08b5bd922ddebf7acddcbfb4",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/numeric/conversion",
+      "version": "50a1eae942effb0a9b90724323ef8f2a67e7984a",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/numeric/interval",
+      "version": "2eda7413ac16dd4158005446438daf8a7e435dd9",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/numeric/odeint",
+      "version": "1f4e47dfb395461a5c00d23b3728062f8290dfe6",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/numeric/ublas",
+      "version": "9208885085dbfa8ec82c4023ff7d72741785e27a",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/optional",
+      "version": "c60db27762ff9cc16529e069c3c15f2fa898f994",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/outcome",
+      "version": "1e3270d8106a59ac0b9c6e317fbfc836d2c66427",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/parameter",
+      "version": "c07f2b8d37ded87f6f9d5bac867550f6e61282c1",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/parameter_python",
+      "version": "1f7f9ce9930119f0dda7dcd5e1ec3b5ed7c6b091",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/pfr",
+      "version": "449bf360f7d7a945639710b0fbb670ffde70e772",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/phoenix",
+      "version": "8913607a3788cb82d48ed461ea59c919b7bad3df",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/poly_collection",
+      "version": "0b8bfc4cff012d0f23049fc5a0009ac4abadceb4",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/polygon",
+      "version": "8ba35b57c1436c4b36f7544aadd78c2b24acc7db",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/pool",
+      "version": "ec7da07ed13e0c61e50d945b574a12ae7ec83cf4",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/predef",
+      "version": "0fdfb49c3a6789e50169a44e88a07cc889001106",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/preprocessor",
+      "version": "c4ea7e40d365ba28faecef8917d5c3f1e0121bf9",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/process",
+      "version": "406cd3ecf36c19b94b4376241a4b3b43d1eae308",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/program_options",
+      "version": "27f927694547277f845ae855e80b96be252f826c",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/property_map",
+      "version": "e3a3c3655f4118fd15a02d8315f86a48db7390fd",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/property_map_parallel",
+      "version": "a2f90e9660e4e7e012c0b54a1338d8e69fb71906",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/property_tree",
+      "version": "8080ecd14f2d952a4bb7ae869fc0f54f54f5a31f",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/proto",
+      "version": "7f924934689b940f3a72212ab0f714ec6fd6e34b",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/ptr_container",
+      "version": "cf94735c87e073b33e54887a3d5e33598177ee1a",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/python",
+      "version": "47d5bc76f69e20625214381c930a2fad5765e2b3",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/qvm",
+      "version": "68f960dc43b52c0cce7b2e2c5f3d8c53ed3f454d",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/random",
+      "version": "09594050246adcf944be2b2c8dd2b9901083de79",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/range",
+      "version": "2bb6b636796f7b008196888613f51f5bb347c77d",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/ratio",
+      "version": "d5b33caa7d564be9be6d962b18659b7741d764ac",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/rational",
+      "version": "564623136417068916495e2b24737054d607347c",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/redis",
+      "version": "b6e1280075fa0f2c71af3c7b89ef2717aa922557",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/regex",
+      "version": "4cbcd3078e6ae10d05124379623a1bf03fcb9350",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/safe_numerics",
+      "version": "777e0be5ec763d0333a717c5e421a4f7c5e5bdc9",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/scope",
+      "version": "8321450aca6fc6a075225ba225036e585ce1716b",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/scope_exit",
+      "version": "60baaae454b2da887a31cf939e22015b6263c9e4",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/serialization",
+      "version": "a20c4d97c37e5f437c8ba78f296830edb79cff9e",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/signals2",
+      "version": "4d994bbed820882059c7842ba5e230a26d68f2f0",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/smart_ptr",
+      "version": "3ef8cfd02f9cb3e0486c26f35ed4c27c6f26bd5f",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/sort",
+      "version": "d12ad000fc63d9c21e299c9ef420ccf85cba8548",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/spirit",
+      "version": "43112c3f055fa109f20b8e8e6e50d0a016da742a",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/stacktrace",
+      "version": "351b03d5220510a1b6738cc378659b6d85c8a4da",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/statechart",
+      "version": "586445b824c5cf0e7e6ce4ff2df620fda5d0f0d7",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/static_assert",
+      "version": "ba72d3340f3dc6e773868107f35902292f84b07e",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/static_string",
+      "version": "ac84c4f40ec38f7a7237255738e3e5259aa4a1a8",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/stl_interfaces",
+      "version": "0f422d58cb392674bace893d237a6ddd121d8c31",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/system",
+      "version": "2fc720a1cbe51d588fecc4e0af9417bd769381d8",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/test",
+      "version": "822dc24718a33316bcef78b08f6bf57ae20d9335",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/thread",
+      "version": "aec18d337f41d8e3081ee65f5cf3b5090179ab0e",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/throw_exception",
+      "version": "7c8ec2114bc1f9ab2a8afbd629b96fbdd5901294",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/timer",
+      "version": "a701cafb6be0021cf8e154cab5fc5d680c863f06",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/tokenizer",
+      "version": "90106f155bd72b62aaca0d9ad826f4132030dba0",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/tti",
+      "version": "03734c54a51b6372ac3296d2fe5103b7360bcd3f",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/tuple",
+      "version": "b67941dd7d03536a854b96f001954792311ab515",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/type_erasure",
+      "version": "729f3e739abc65d36d46df470c5bab735599d042",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/type_index",
+      "version": "e37bc99e85e85bcac420ac1d4c1a8a5bca280d47",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/type_traits",
+      "version": "cc6fc3daa8e20c4a70b563d67ceb4c34d8c1c4d7",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/typeof",
+      "version": "4bc9de322cd44373435540d4e6c8f207892fc9a0",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/units",
+      "version": "45787015dd8c11653eb988260acf05c4af9d42e5",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/unordered",
+      "version": "5e6b9291deb55567d41416af1e77c2516dc1250f",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/url",
+      "version": "bbbef97a5b30cd6d11e0c0ad5994a70a136e35cb",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/utility",
+      "version": "e0ecf927643b13c63dfd9a38741315ea8b845135",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/uuid",
+      "version": "beeaab4758c2f48d0451c759a600b34116c20906",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/variant",
+      "version": "b33ff4f811a27d4dc4a4c8a840310523de4df4f8",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/variant2",
+      "version": "ff36c3aa1f82d1d9a55fd006dd47cf380fc517c0",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/vmd",
+      "version": "34cad2c1a574d445812c7c2432d3a5a5c843b412",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/wave",
+      "version": "c11757decf393f6f1cf46f3f70b0bf892cdda5ee",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/winapi",
+      "version": "39396bd78254053f3137510478e8f956bd2b83d4",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/xpressive",
+      "version": "4679fbd23f962bfa78d44acf5fa48f6f790642c0",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/libs/yap",
+      "version": "ae49bf2744586e6bd6c0cedff4500a58a4386860",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/more",
+      "version": "70ec2047cdc515fe2c6f026a589d5fa3b7414658",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/auto_index",
+      "version": "d8be00789cbe3aae8f247bcedbfa01f39c1a4343",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/bcp",
+      "version": "e0b9262f6ff4778973a29b601183f3f9367e69d2",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/boost_install",
+      "version": "5afffa2881dd84134f60c7473292aea4241a17b6",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/boostbook",
+      "version": "faacd1f26a714a5e2ec7d5c67ef81da371a1de50",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/boostdep",
+      "version": "8f9cb2ef559fbe760f6522ddb8f693c02b83c032",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/build",
+      "version": "efbf6ce59b4023f7adc9be2fc3875d371c7f52c6",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/check_build",
+      "version": "32ca50c8ccd35e0ff62301b53fddcc8945728c4a",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/cmake",
+      "version": "7276e8055d0faab429b11983eccddc68fee075f1",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/docca",
+      "version": "0ce4e198398dbb52f1de0029f4ed9b7d2bded273",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/inspect",
+      "version": "d18744cddbd4304f7b939131004571dbb301fa4f",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/litre",
+      "version": "564d4d8d30b7e03ac5e25d78e14d2c19fa321c83",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/boost/tools/quickbook",
+      "version": "12a390e624f26e2e3f615b10c9681ce5390b02b2",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "INHERITED:3party/boost"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/expat",
+      "version": "a0dc7d5efacbe2b744211289c276e2b9168bd4ae",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/fast_double_parser",
+      "version": "252029ddac664370bdda3f0761675785d92a1573",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/fast_double_parser/benchmarks/dependencies/abseil-cpp",
+      "version": "d936052d32a5b7ca08b0199a6724724aea432309",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/fast_double_parser/benchmarks/dependencies/double-conversion",
+      "version": "f4cb2384efa55dee0e6652f8674b05763441ab09",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/fast_obj",
+      "version": "42629f744269e004907a6fb4f16c6c7f69acc586",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/freetype/freetype",
+      "version": "97069edd163b66ce11e8152bee3055b2fa627e15",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/freetype/freetype/subprojects/dlg",
+      "version": "72dfcc858c040c54a6a0b88fcb7e70ee186d3167",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/gflags",
+      "version": "52e94563eba1968783864942fedf6e87e3c611f4",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/glaze",
+      "version": "5a58d7936ece70eeb64cc30aa82e9e83ae9c05bb",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/glfw",
+      "version": "21fea01161e0d6b70c0c5c1f52dc8e7a7df14a50",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/glm",
+      "version": "c834d06c2739f63e28e5665d4569dca9415e3891",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/googletest",
+      "version": "58d77fa8070e8cec2dc1ed015d66b454c8d78850",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/harfbuzz/harfbuzz",
+      "version": "788b469ad5e5f78611f665b6eb17afd0eb040f21",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/icu/icu",
+      "version": "7750081bda4b3bc1768ae03849ec70f67ea10625",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/imgui/imgui",
+      "version": "6982ce43f5b143c5dce5fab0ce07dd4867b705ae",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/jansson/jansson",
+      "version": "96d160df90016066d04d493d1d69639474ba4f20",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/just_gtfs",
+      "version": "7516753825500f90ac2de6f18c256d5abec1ff33",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_UPSTREAM"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_UPSTREAM"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/protobuf/protobuf",
+      "version": "9442c12e866b56369f1c53abea1261259c924a19",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/protobuf/protobuf/third_party/benchmark",
+      "version": "360e66c1c4777c99402cf8cd535aa510fee16573",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/pugixml/pugixml",
+      "version": "caade5a28aad86b92a4b5337a9dc70c4ba73c5eb",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/utfcpp",
+      "version": "6be08bbea14ffa0a5c594257fb6285a054395cd7",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/utfcpp/extern/ftest",
+      "version": "c4ad4af0946b73ce1a40cbc72205d15d196c7e06",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "tools/kothic",
+      "version": "3dd47d5941891ed2e0e554058edf214e9050e678",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "tools/osmctools",
+      "version": "45bb767d7939aaca39901d494c080fc4e7916ba7",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "submodule"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/GL",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_SOURCE_HEADER"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_SOURCE_HEADER"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/agg",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "id": "LicenseRef-AGG"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_SOURCE_HEADER"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_SOURCE_HEADER"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/ankerl",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_SOURCE_HEADER"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_SOURCE_HEADER"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/bsdiff-courgette",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/freetype",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/harfbuzz",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/icu",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/imgui",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/jansson",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/kdtree++",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "id": "Artistic-2.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_REPO_LICENSE"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_REPO_LICENSE"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/libtess2",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/minizip",
+      "version": "vendored",
+      "licenses": [
+        {
+          "expression": "Zlib AND Info-ZIP"
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_REPO_LICENSE"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_REPO_LICENSE"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/monocypher",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/open-location-code",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/opening_hours",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_SOURCE_HEADER"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_SOURCE_HEADER"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/protobuf",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/pugixml",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/robust",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "id": "LicenseRef-PublicDomain"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_SOURCE_HEADER"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_SOURCE_HEADER"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/skarupke",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSL-1.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_SOURCE_HEADER"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_SOURCE_HEADER"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/stb_image",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_SOURCE_HEADER"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_SOURCE_HEADER"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/succinct",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "name": "See THIRD_PARTY_NOTICES.md"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "PRESENT"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "OWN"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "3party/vulkan_wrapper",
+      "version": "vendored",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:kind",
+          "value": "vendored"
+        },
+        {
+          "name": "abastevo:license_status",
+          "value": "RESOLVED_SOURCE_HEADER"
+        },
+        {
+          "name": "abastevo:license_scope",
+          "value": "RESOLVED_SOURCE_HEADER"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "name": "sdk-release.aar",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "1fe196f928f94128f27898ace124c33fa788859bfe89111b19e1bb89848abed5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:bytes",
+          "value": "35160271"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "name": "classes.jar",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "074122f4de6c6c8c930bd5fae50be0626c527abb8498dae36f0176ce20ee3ca8"
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:bytes",
+          "value": "368848"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "name": "jni/arm64-v8a/liborganicmaps.so",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "08342926e3799d29851baf093e535c3ca107dd19e218eb69b3e1447e7d155ccb"
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:bytes",
+          "value": "14675096"
+        }
+      ]
+    }
+  ]
+}
