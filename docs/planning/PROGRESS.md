@@ -1,5 +1,14 @@
 # Current execution state
 
+- Final union after PR149 merge 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING,
+  merge `9c93892c`. Re-ran the union instead of reusing pre-merge counts:
+  domain675/application454/data549/app465 = 2,143 JVM (0 failures/errors, 2
+  pre-existing skips), lint/APK, Go race/vet/staticcheck(1.27.1)/sqlc, real
+  PostGIS integration (trust transient DB-startup failure passed isolated),
+  Rust177/fmt/clippy PASS; occurrence refresh + PR149 revision fencing both
+  preserved, gofmt drift fixed `f522a884`. Next: current-head checks and
+  guarded PR147 dev → main.
+
 - EV/Android batch map 2026-10-23 (authorized, sequential): MEX-16 (Premium
   status), EE-24 (EV sync/privacy), MEX-32/EE-26 (shared refresh), EE-22
   (community EV), EE-25/MEX-31 carried gaps (scenario execution/vehicle

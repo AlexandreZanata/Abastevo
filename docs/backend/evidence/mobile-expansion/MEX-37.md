@@ -39,3 +39,21 @@ executed code union is unchanged.
 - This is a bounded local union, not G18/G24 or release certification.
 
 Next: EE-30/MEX-38 operational handoff manifest.
+
+## Post-merge reacceptance (PR149)
+
+After merging PR149's audited company/Android/CI fixes into dev at
+`9c93892c`, the union was re-run rather than trusting the pre-merge
+evidence:
+
+- JVM: domain 675 + application 454 + data 549 + app 465 = **2,143
+  tests, 0 failures, 0 errors, 2 pre-existing skips** (2,141 executed).
+- Lint/app+data and debug APK PASS; Go race/vet/sqlc and the documented
+  Go 1.27.1 staticcheck PASS; real PostGIS integration rerun, with the
+  transient disposable-DB startup failure in `trust/adapters` passing
+  on the isolated rerun; Rust 177/fmt/clippy PASS.
+- CI `fast` failure was a real gofmt drift in three EV Go files; fixed
+  with the CI toolchain (`f522a884`) and included in the final head.
+- Conflict resolution kept both behaviors: the occurrence refresh
+  single-flight guard and PR149 revision/reopen fencing; the derived
+  append-only migration expectation; all PROGRESS history.
