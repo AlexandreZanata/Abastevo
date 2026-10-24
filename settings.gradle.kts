@@ -26,3 +26,6 @@ include(":app")
 include(":domain")
 include(":application")
 include(":data")
+if (providers.gradleProperty("comapsSdkDir").isPresent) {
+    include(":maps:engine")
+}

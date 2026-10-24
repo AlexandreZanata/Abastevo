@@ -88,6 +88,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -97,6 +98,17 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    if (providers.gradleProperty("comapsSdkDir").isPresent) {
+        sourceSets.getByName("debug") {
+            kotlin.srcDir("src/comapsProbe/kotlin")
+            manifest.srcFile("src/comapsProbe/AndroidManifest.xml")
+        }
+    }
+
+    androidResources {
+        noCompress += listOf("txt", "bin", "html", "png", "json", "mwm", "ttf", "sdf", "ui", "config", "csv", "spv", "obj")
     }
 
     packaging {
@@ -113,6 +125,10 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":application"))
     implementation(project(":data"))
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    if (providers.gradleProperty("comapsSdkDir").isPresent) {
+        implementation(project(":maps:engine"))
+    }
 
     implementation(platform(libs.compose.bom))
     implementation(libs.bundles.compose)
@@ -160,11 +176,11 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-private val maxReleaseApkBytes = 15L * 1024 * 1024
+private val maxReleaseApkBytes = 80L * 1024 * 1024
 
 tasks.register("verifyReleaseApkSize") {
     group = "verification"
-    description = "Builds release APK and fails when uncompressed size exceeds 15 MB (Phase 9.2.2)"
+    description = "Builds release APK and fails when size exceeds the 80 MB MAP-14 budget (user-authorized; measured ~67 MB with the engine)"
     dependsOn("assembleRelease")
     doLast {
         val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
