@@ -1,4 +1,4 @@
-package com.anpfuel.app.ui.account
+package com.anpfuel.app.ui.premium
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /** Honest Premium entry states; no local entitlement is ever inferred. */
-enum class PremiumNotice { OFFLINE, DENIED, ERROR, RESTORE_UNAVAILABLE }
+enum class PremiumNotice { OFFLINE, DENIED, ERROR, RESTORE_UNAVAILABLE, STORE_FAILED }
 
 data class PremiumUiState(
     val signedOut: Boolean = true,
@@ -38,23 +38,31 @@ class PremiumViewModel @Inject constructor(
     private val status: GetPremiumStatusUseCase,
     private val sessions: AuthSessionStore,
 ) : ViewModel() {
-    private val state = MutableStateFlow(PremiumUiState())
+    private val state = MutableStateFlow(PremiumUiState(signedOut = false, loading = true))
     val uiState = state.asStateFlow()
     private var generation = 0L
+    private var statusOwner: String? = null
 
     fun refresh() {
         val request = ++generation
         val owner = sessions.load()?.accountId
         if (owner == null) {
+            statusOwner = null
             state.value = PremiumUiState(signedOut = true)
             return
         }
-        state.value = state.value.copy(signedOut = false, loading = true, notice = null)
+        state.value = if (statusOwner == owner) {
+            state.value.copy(signedOut = false, loading = true, notice = null)
+        } else {
+            statusOwner = owner
+            PremiumUiState(signedOut = false, loading = true)
+        }
         viewModelScope.launch {
             try {
                 val snapshot = status.invoke()
                 if (request != generation) return@launch
                 if (sessions.load()?.accountId != owner || snapshot.accountId != owner) {
+                    statusOwner = null
                     state.value = PremiumUiState(signedOut = true)
                     return@launch
                 }
@@ -64,6 +72,7 @@ class PremiumViewModel @Inject constructor(
             } catch (error: Exception) {
                 if (request != generation) return@launch
                 if (sessions.load()?.accountId != owner) {
+                    statusOwner = null
                     state.value = PremiumUiState(signedOut = true)
                     return@launch
                 }
@@ -78,6 +87,10 @@ class PremiumViewModel @Inject constructor(
 
     fun restoreUnavailable() {
         state.value = state.value.copy(notice = PremiumNotice.RESTORE_UNAVAILABLE)
+    }
+
+    fun storeOpenFailed() {
+        state.value = state.value.copy(notice = PremiumNotice.STORE_FAILED)
     }
 
     private fun noticeFor(error: Exception): PremiumNotice = when (error) {

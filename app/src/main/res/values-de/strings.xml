@@ -1020,7 +1020,6 @@
     <string name="premium_status_pending">Prüfung ausstehend</string>
     <string name="premium_status_canceled">Gekündigt — bezahlter Zugang</string>
     <string name="premium_status_grace">Kulanzzeit</string>
-    <string name="premium_status_inactive">Kein aktives Premium</string>
     <string name="premium_status_expired">Premium abgelaufen</string>
     <string name="premium_status_revoked">Premium widerrufen</string>
     <string name="premium_status_unknown">Premium-Status unbekannt</string>
@@ -1060,4 +1059,29 @@
     <string name="ledger_sync_expense">Ausgaben</string>
     <string name="ledger_sync_charge">Ladevorgänge</string>
     <string name="ledger_sync_pull_item">%1$s · %2$s · Revision %3$d</string>
+    <string name="premium_entry_title">Premium-Tarif und Vorteile</string>
+    <string name="premium_entry_subtitle">Status, Abo und Verwaltung im Store</string>
+    <string name="premium_status_section_title">Tarifstatus</string>
+    <string name="premium_capabilities_title">Enthaltene Funktionen</string>
+    <string name="premium_no_capabilities">Für dieses Konto sind keine kostenpflichtigen Funktionen aufgeführt.</string>
+    <string name="premium_actions_section_title">Abo</string>
+    <string name="premium_refresh_status">Status aktualisieren</string>
+    <string name="premium_management_guidance">Kündigung, Verlängerung und Tarifwechsel werden im Store abgeschlossen.</string>
+    <string name="premium_management_refresh_hint">Aktualisieren Sie nach der Rückkehr aus dem Store den Status, um bestätigte Änderungen zu sehen.</string>
+    <string name="premium_manage_in_store">Im Store verwalten</string>
+    <string name="premium_store_failed">Der Store konnte nicht geöffnet werden. Erneut versuchen.</string>
+    <string name="premium_signed_out_title">Melden Sie sich an, um Premium zu sehen</string>
+    <string name="premium_signed_out_message">Der Premium-Status wird nur für das angemeldete Konto angezeigt.</string>
+    <string name="premium_loading">Premium-Status wird geprüft…</string>
+    <string name="premium_status_none">Kein Premium-Tarif</string>
+    <string name="premium_status_hold">Premium ausgesetzt</string>
+    <string name="premium_status_paused">Premium pausiert</string>
+    <string name="premium_capability_vehicles">Zusätzliche Fahrzeuge</string>
+    <string name="premium_capability_cloud_sync">Cloud-Synchronisierung</string>
+    <string name="premium_capability_cloud_backup">Cloud-Backup</string>
+    <string name="premium_capability_cloud_restore">Cloud-Wiederherstellung</string>
+    <string name="premium_capability_advanced_alerts">Erweiterte Hinweise</string>
+    <string name="premium_capability_professional_write">Professionelle Einträge</string>
+    <string name="premium_capability_professional_report">Professionelle Berichte</string>
+    <string name="action_dismiss">Schließen</string>
 </resources>

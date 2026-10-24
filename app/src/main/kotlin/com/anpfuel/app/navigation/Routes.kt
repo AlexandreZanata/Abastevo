@@ -6,6 +6,8 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val AUTH = "auth"
     const val ACCOUNT = "account"
+    const val PREMIUM = "premium"
+    const val PREMIUM_MANAGEMENT = "premium-management"
     const val LEDGER_SYNC = "ledger-sync"
     const val HOME = "home"
     const val EXPLORE = "home"

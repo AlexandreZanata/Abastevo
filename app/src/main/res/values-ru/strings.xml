@@ -1020,7 +1020,6 @@
     <string name="premium_status_pending">Проверка ожидается</string>
     <string name="premium_status_canceled">Отменено — оплаченный доступ</string>
     <string name="premium_status_grace">Льготный период</string>
-    <string name="premium_status_inactive">Нет активного Premium</string>
     <string name="premium_status_expired">Premium истёк</string>
     <string name="premium_status_revoked">Premium отозван</string>
     <string name="premium_status_unknown">Статус Premium неизвестен</string>
@@ -1060,4 +1059,29 @@
     <string name="ledger_sync_expense">Расходы</string>
     <string name="ledger_sync_charge">Зарядки</string>
     <string name="ledger_sync_pull_item">%1$s · %2$s · версия %3$d</string>
+    <string name="premium_entry_title">План Premium и возможности</string>
+    <string name="premium_entry_subtitle">Статус, подписка и управление в магазине</string>
+    <string name="premium_status_section_title">Статус плана</string>
+    <string name="premium_capabilities_title">Включённые возможности</string>
+    <string name="premium_no_capabilities">Для этой учётной записи платные возможности не указаны.</string>
+    <string name="premium_actions_section_title">Подписка</string>
+    <string name="premium_refresh_status">Обновить статус</string>
+    <string name="premium_management_guidance">Отмена, продление и смена плана выполняются в магазине.</string>
+    <string name="premium_management_refresh_hint">После возврата из магазина обновите статус, чтобы увидеть подтверждённые изменения.</string>
+    <string name="premium_manage_in_store">Управлять в магазине</string>
+    <string name="premium_store_failed">Не удалось открыть магазин. Повторите попытку.</string>
+    <string name="premium_signed_out_title">Войдите, чтобы увидеть Premium</string>
+    <string name="premium_signed_out_message">Статус Premium отображается только для учётной записи, в которой выполнен вход.</string>
+    <string name="premium_loading">Проверка статуса Premium…</string>
+    <string name="premium_status_none">Нет плана Premium</string>
+    <string name="premium_status_hold">Premium приостановлен</string>
+    <string name="premium_status_paused">Premium на паузе</string>
+    <string name="premium_capability_vehicles">Дополнительные автомобили</string>
+    <string name="premium_capability_cloud_sync">Облачная синхронизация</string>
+    <string name="premium_capability_cloud_backup">Облачная резервная копия</string>
+    <string name="premium_capability_cloud_restore">Восстановление из облака</string>
+    <string name="premium_capability_advanced_alerts">Расширенные оповещения</string>
+    <string name="premium_capability_professional_write">Профессиональные записи</string>
+    <string name="premium_capability_professional_report">Профессиональные отчёты</string>
+    <string name="action_dismiss">Закрыть</string>
 </resources>

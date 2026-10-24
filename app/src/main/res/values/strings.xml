@@ -1039,7 +1039,6 @@
     <string name="premium_status_pending">Verification pending</string>
     <string name="premium_status_canceled">Canceled — paid-through access</string>
     <string name="premium_status_grace">Grace period</string>
-    <string name="premium_status_inactive">No active Premium</string>
     <string name="premium_status_expired">Premium expired</string>
     <string name="premium_status_revoked">Premium revoked</string>
     <string name="premium_status_unknown">Premium status unknown</string>
@@ -1079,4 +1078,29 @@
     <string name="ledger_sync_expense">Expenses</string>
     <string name="ledger_sync_charge">Charging</string>
     <string name="ledger_sync_pull_item">%1$s · %2$s · revision %3$d</string>
+    <string name="premium_entry_title">Premium plan and benefits</string>
+    <string name="premium_entry_subtitle">Status, subscription and store management</string>
+    <string name="premium_status_section_title">Plan status</string>
+    <string name="premium_capabilities_title">Included capabilities</string>
+    <string name="premium_no_capabilities">No paid capabilities are listed for this account.</string>
+    <string name="premium_actions_section_title">Subscription</string>
+    <string name="premium_refresh_status">Refresh status</string>
+    <string name="premium_management_guidance">Cancellation, renewal and plan changes are completed in the store.</string>
+    <string name="premium_management_refresh_hint">After returning from the store, refresh the status to see verified changes.</string>
+    <string name="premium_manage_in_store">Manage in store</string>
+    <string name="premium_store_failed">Could not open the store. Try again.</string>
+    <string name="premium_signed_out_title">Sign in to see Premium</string>
+    <string name="premium_signed_out_message">Premium status is shown only for the signed-in account.</string>
+    <string name="premium_loading">Verifying Premium status…</string>
+    <string name="premium_status_none">No Premium plan</string>
+    <string name="premium_status_hold">Premium on hold</string>
+    <string name="premium_status_paused">Premium paused</string>
+    <string name="premium_capability_vehicles">Additional vehicles</string>
+    <string name="premium_capability_cloud_sync">Cloud sync</string>
+    <string name="premium_capability_cloud_backup">Cloud backup</string>
+    <string name="premium_capability_cloud_restore">Cloud restore</string>
+    <string name="premium_capability_advanced_alerts">Advanced alerts</string>
+    <string name="premium_capability_professional_write">Professional records</string>
+    <string name="premium_capability_professional_report">Professional reports</string>
+    <string name="action_dismiss">Dismiss</string>
 </resources>

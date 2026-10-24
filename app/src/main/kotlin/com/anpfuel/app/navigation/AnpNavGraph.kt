@@ -27,6 +27,8 @@ import com.anpfuel.app.ui.help.HelpScreen
 import com.anpfuel.app.ui.home.HomeScreen
 import com.anpfuel.app.ui.location.LocationPickerScreen
 import com.anpfuel.app.ui.onboarding.OnboardingScreen
+import com.anpfuel.app.ui.premium.PremiumManagementScreen
+import com.anpfuel.app.ui.premium.PremiumScreen
 import com.anpfuel.app.ui.privacy.PrivacyScreen
 import com.anpfuel.app.ui.profile.ProfileScreen
 import com.anpfuel.app.ui.settings.SettingsScreen
@@ -126,6 +128,9 @@ fun AnpNavGraph(
                 darkTheme = darkTheme,
                 onToggleTheme = onToggleTheme,
                 onNavigate = navController::navigate,
+                onOpenPremium = {
+                    navController.navigate(Routes.PREMIUM) { launchSingleTop = true }
+                },
             )
         }
         composable(Routes.GAMES) {
@@ -319,6 +324,24 @@ fun AnpNavGraph(
                 onNavigateToLedgerSync = { navController.navigate(Routes.LEDGER_SYNC) },
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToAuth = { navController.navigate(Routes.AUTH) },
+                onOpenPremium = {
+                    navController.navigate(Routes.PREMIUM) { launchSingleTop = true }
+                },
+            )
+        }
+        composable(Routes.PREMIUM) {
+            PremiumScreen(
+                onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
+                onManageSubscription = {
+                    navController.navigate(Routes.PREMIUM_MANAGEMENT) { launchSingleTop = true }
+                },
+            )
+        }
+        composable(Routes.PREMIUM_MANAGEMENT) {
+            PremiumManagementScreen(
+                onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
             )
         }
         composable(Routes.SETTINGS) {

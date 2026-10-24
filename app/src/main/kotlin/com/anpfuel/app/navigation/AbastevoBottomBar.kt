@@ -55,8 +55,11 @@ enum class NavigationTab(
     ;
 
     companion object {
-        fun fromRoute(route: String?): NavigationTab? =
-            if (route == Routes.STATION_PAGE) EXPLORE else entries.firstOrNull { it.route == route }
+        fun fromRoute(route: String?): NavigationTab? = when (route) {
+            Routes.STATION_PAGE -> EXPLORE
+            Routes.PREMIUM, Routes.PREMIUM_MANAGEMENT -> PROFILE
+            else -> entries.firstOrNull { it.route == route }
+        }
     }
 }
 

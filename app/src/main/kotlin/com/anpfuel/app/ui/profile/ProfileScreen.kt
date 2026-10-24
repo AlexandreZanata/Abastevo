@@ -61,13 +61,16 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.SkeletonButton
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
+import com.anpfuel.app.ui.premium.PremiumEntryCard
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
+import com.anpfuel.app.ui.theme.PremiumColors
 
 /**
  * P19-T04: Profile screen (Perfil).
  *
  * Implements the frozen IA Perfil hub (P19-T02 / B-BR-C05 / BUC-C01 / BUC-C03):
  * - Free account / guest exploration status and sign-in entry point
+ * - Premium area entry beside the signed-in account header
  * - Preserves all legacy expert tools under clearly named entries:
  *   - Vehicles (3 free vehicles, tank fill estimation) -> Routes.VEHICLES
  *   - ANP historical series -> Routes.HISTORY
@@ -82,6 +85,7 @@ fun ProfileScreen(
     darkTheme: Boolean,
     onToggleTheme: () -> Unit,
     onNavigate: (String) -> Unit,
+    onOpenPremium: () -> Unit,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = hiltViewModel(),
 ) {
@@ -238,6 +242,18 @@ fun ProfileScreen(
                             }
                         }
                     }
+                }
+            }
+
+            if (signedIn) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(R.string.premium_section_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = PremiumColors.current().accent,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    PremiumEntryCard(onClick = onOpenPremium)
                 }
             }
 

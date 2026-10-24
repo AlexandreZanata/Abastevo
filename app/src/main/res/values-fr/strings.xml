@@ -1020,7 +1020,6 @@
     <string name="premium_status_pending">Vérification en attente</string>
     <string name="premium_status_canceled">Résilié — accès payé</string>
     <string name="premium_status_grace">Période de grâce</string>
-    <string name="premium_status_inactive">Aucun Premium actif</string>
     <string name="premium_status_expired">Premium expiré</string>
     <string name="premium_status_revoked">Premium révoqué</string>
     <string name="premium_status_unknown">Statut Premium inconnu</string>
@@ -1060,4 +1059,29 @@
     <string name="ledger_sync_expense">Dépenses</string>
     <string name="ledger_sync_charge">Recharges</string>
     <string name="ledger_sync_pull_item">%1$s · %2$s · révision %3$d</string>
+    <string name="premium_entry_title">Offre Premium et avantages</string>
+    <string name="premium_entry_subtitle">Statut, abonnement et gestion dans la boutique</string>
+    <string name="premium_status_section_title">Statut de l’offre</string>
+    <string name="premium_capabilities_title">Fonctionnalités incluses</string>
+    <string name="premium_no_capabilities">Aucune fonctionnalité payante n’est répertoriée pour ce compte.</string>
+    <string name="premium_actions_section_title">Abonnement</string>
+    <string name="premium_refresh_status">Actualiser le statut</string>
+    <string name="premium_management_guidance">L’annulation, le renouvellement et les changements d’offre s’effectuent dans la boutique.</string>
+    <string name="premium_management_refresh_hint">Après votre retour depuis la boutique, actualisez le statut pour voir les changements vérifiés.</string>
+    <string name="premium_manage_in_store">Gérer dans la boutique</string>
+    <string name="premium_store_failed">Impossible d’ouvrir la boutique. Réessayez.</string>
+    <string name="premium_signed_out_title">Connectez-vous pour voir Premium</string>
+    <string name="premium_signed_out_message">Le statut Premium est affiché uniquement pour le compte connecté.</string>
+    <string name="premium_loading">Vérification du statut Premium…</string>
+    <string name="premium_status_none">Aucune offre Premium</string>
+    <string name="premium_status_hold">Premium en attente</string>
+    <string name="premium_status_paused">Premium en pause</string>
+    <string name="premium_capability_vehicles">Véhicules supplémentaires</string>
+    <string name="premium_capability_cloud_sync">Synchronisation cloud</string>
+    <string name="premium_capability_cloud_backup">Sauvegarde cloud</string>
+    <string name="premium_capability_cloud_restore">Restauration cloud</string>
+    <string name="premium_capability_advanced_alerts">Alertes avancées</string>
+    <string name="premium_capability_professional_write">Dossiers professionnels</string>
+    <string name="premium_capability_professional_report">Rapports professionnels</string>
+    <string name="action_dismiss">Fermer</string>
 </resources>
