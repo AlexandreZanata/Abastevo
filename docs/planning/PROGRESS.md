@@ -35,9 +35,16 @@
   T07 draft: 193 pinned submodules clean, 191 with license/notice evidence;
   `glm`/`just_gtfs` still need legal resolution; no secret hits but upstream
   endpoints remain in the native binary. T08 static: release APK 69,881,875
-  bytes, SHA `79a3117e…`, zipalign/16 KB LOAD PASS. Arm64 phone (4 KB pages)
-  loaded the library but rendered a blank SurfaceView with BLAST buffer errors;
-  actual 16 KB runtime and arm64 render remain unproven.
+  bytes, SHA `79a3117e…`, zipalign/16 KB LOAD PASS; packaged arm64 core
+  14,675,096 bytes, SHA `08342926…`, three 0x4000 LOAD segments. T08 is
+  BLOCKED_ON_16KB_RUNTIME: the only authorized phone (2311DRK48G, Android
+  16/API 36) reports PAGE_SIZE 4096, so it cannot prove actual 16 KB execution;
+  its arm64 SurfaceView also remains blank with BLAST buffer errors. An
+  unstarted x86_64 16 KB AVD exists and an arm64 16 KB image is available but
+  not installed; no emulator/AVD was started under the current adb-only rule.
+  ENGINE_GATE remains PARTIAL, not PASS. Decision required: authorize a 16 KB
+  runtime surface (existing x86_64 AVD, install arm64 16 KB image, or provide a
+  physical 16 KB device) or record a bounded waiver before MAP-17.
   MAP-15: Room v26 public map metadata, resumable `.part` download, Ed25519
   envelope/key rotation, SHA-256, reserve/disk failure, all-package activation,
   safe inactive cleanup and Hilt WorkManager worker. JVM data tests and a real
@@ -60,8 +67,9 @@
   (66.64 MiB), 80 MiB gate and APK/64-bit ELF alignment PASS. No new native
   execution or full ENGINE_GATE acceptance. [Resume](MAP_EV_RESUME.md) records
   remaining tasks, the existing native Ed25519 implementation direction and
-  prior DATA_GATE/distribution review obligations. Next: finish the bounded
-  outstanding work before MAP-15/16; no further budget/linker owner decision.
+  prior DATA_GATE/distribution review obligations. Next: owner decision on a
+  16 KB runtime surface; then complete T08, T06 and T07 before MAP-17. No
+  further budget/linker owner decision.
 - Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
   IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
   [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),

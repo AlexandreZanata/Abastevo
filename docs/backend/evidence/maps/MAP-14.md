@@ -1,7 +1,7 @@
 # MAP-14 — Extracted engine adapter and render proof
 
-Status: IN_PROGRESS / ENGINE_GATE_PARTIAL
-Validation: PARTIAL (release-build blocker resolved; prior render/search/route and overlay render proven; selection/lifecycle/audit pending)
+Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_BLOCKED_ON_16KB_RUNTIME
+Validation: PARTIAL (static packaging PASS; prior x86_64 render/search/route and overlay hit-test proven; arm64 render and actual 16 KB runtime blocked; selection/clustering/audit pending)
 Integration: NOT_INTEGRATED
 
 Tested tree: `codex/map-ev-implementation` at `721582b8` plus the uncommitted
@@ -159,3 +159,36 @@ records remaining engineering tasks and the existing native Ed25519 direction.
   actual 16 KB runtime (device page size is 4096) or arm64 render.
 - Remaining T08: a 16 KB-page runtime, real arm64 render/lifecycle, release
   runtime instrumentation and full ENGINE_GATE closure.
+
+## T08 runtime blocker — 2026-10-24
+
+Status: **T08 BLOCKED_ON_16KB_RUNTIME**. ENGINE_GATE is **not** passed.
+
+Rechecked on the authorized physical phone (model `2311DRK48G`, Android
+16/API 36, `arm64-v8a`, page size **4096**). A
+device or emulator with 16 KB pages is required for the runtime half of T08;
+the only connected device cannot provide that evidence. No emulator/AVD was
+started for this check.
+
+Fresh static re-verification of the existing release APK:
+
+```text
+app-release-unsigned.apk  69,881,875 bytes
+SHA-256 79a3117eed91aa5dffb455f0ccafacb2cc6e2223ab37d8af8511ffe50e98e678
+zipalign -c -P 16 4  PASS
+lib/arm64-v8a/liborganicmaps.so  14,675,096 bytes
+SHA-256 08342926e3799d29851baf093e535c3ca107dd19e218eb69b3e1447e7d155ccb
+LOAD segments: 0x4000 / 0x4000 / 0x4000
+```
+
+The static alignment is not a substitute for executing on a 16 KB kernel. The
+physical arm64 runtime also remains unproven: the prior probe loaded the arm64
+library and created a SurfaceView, but the surface stayed blank with
+`BLASTBufferQueue ... Can't acquire next buffer`; that is not render acceptance.
+
+A 16 KB x86_64 API-35 system image (`google_apis_ps16k`) and an unstarted
+`anpfuel-16k` AVD exist locally, but the current instruction requires adb on the
+physical phone and forbids starting an emulator/AVD by default. An arm64-v8a
+16 KB image is listed by `sdkmanager` as available but is not installed.
+Arm64 16 KB runtime therefore requires an explicit owner decision. No waiver,
+gate promotion or release claim is recorded here.
