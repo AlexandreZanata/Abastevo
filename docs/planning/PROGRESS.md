@@ -13,6 +13,14 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- EE-28 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `8ed7b1de`.
+  [Bounded measurements](../backend/evidence/ev-support/EE-28.md): real
+  `prepare_charging` 0.78 s cold / 0.66 s warm, 15.1 MiB max RSS, 3.33 MB
+  entities + 1.60 MB decisions, 3,387/3,387 accepted, byte-identical repeat;
+  real Rust→Go→PostGIS→13-page HTTP chain 1.28 s. Android device first-content/
+  scroll/cache and concurrent backend p95 remain OWED; prior MEX-06/OPT-A
+  measurements are cited, not re-run. No third-party load. Next EE-29/MEX-36.
+
 - MEX-33 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `c9c7d13a`.
   [Private E2E/free boundary](../backend/evidence/mobile-expansion/MEX-33.md):
   real PostGIS ledger/cloud journeys (two-device conflict/delete/replay,
