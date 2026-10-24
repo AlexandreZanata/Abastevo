@@ -13,6 +13,13 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- MEX-36 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `54e8a021`.
+  [Privacy/all-copy recovery](../backend/evidence/mobile-expansion/MEX-36.md):
+  real PostGIS erasure reuse/outage/retry, stale/double restore, delete-during-
+  activity restore, foreign-owner/free export paths and CSV formula refusal
+  PASS; secret/PII scan clean; EE-22 wire carries no GPS/route/home/photo.
+  Real S3/staging object receipts remain OWED.
+
 - EE-29 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `887d5a71`.
   [Retained/upgrade/privacy](../backend/evidence/ev-support/EE-29.md): full
   matrix 2,130 JVM (0 failures/errors, 2 pre-existing skips), lint/APK, Go
