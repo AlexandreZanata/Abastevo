@@ -1,0 +1,334 @@
+{
+  "version": 1,
+  "status": "SYNTHETIC_TEST_ONLY",
+  "catalog_version": "pay-catalog-v1",
+  "provenance": "Synthetic manually derived PAY-01 examples. No production price, customer or provider resource.",
+  "billing_timezone": "America/Sao_Paulo",
+  "currency": "BRL",
+  "synthetic_amount_centavos": 1234,
+  "production_amount_centavos": null,
+  "policy": {
+    "term": "P1M",
+    "grace_seconds": 0,
+    "max_future_periods": 1,
+    "exact_amount_required": true,
+    "automatic_scheduler": "asaas_provider_subscription"
+  },
+  "channels": {
+    "stripe_card": false,
+    "asaas_pix_manual": false,
+    "asaas_pix_automatic": false
+  },
+  "cases": [
+    {
+      "id": "initial-month-end-jan-31",
+      "kind": "period",
+      "settled_at": "2026-01-31T12:00:00Z",
+      "current_end": null,
+      "anchor_day": 31,
+      "expected": {
+        "start": "2026-01-31T12:00:00Z",
+        "end": "2026-02-28T12:00:00Z",
+        "reason": "initial"
+      }
+    },
+    {
+      "id": "leap-year-jan-31",
+      "kind": "period",
+      "settled_at": "2028-01-31T12:00:00Z",
+      "current_end": null,
+      "anchor_day": 31,
+      "expected": {
+        "start": "2028-01-31T12:00:00Z",
+        "end": "2028-02-29T12:00:00Z",
+        "reason": "initial"
+      }
+    },
+    {
+      "id": "early-renewal-month-end",
+      "kind": "period",
+      "settled_at": "2026-02-10T12:00:00Z",
+      "current_end": "2026-02-28T12:00:00Z",
+      "anchor_day": 31,
+      "expected": {
+        "start": "2026-02-28T12:00:00Z",
+        "end": "2026-03-31T12:00:00Z",
+        "reason": "early-renewal"
+      }
+    },
+    {
+      "id": "early-renewal-apr-30",
+      "kind": "period",
+      "settled_at": "2026-04-15T12:00:00Z",
+      "current_end": "2026-04-30T12:00:00Z",
+      "anchor_day": 31,
+      "expected": {
+        "start": "2026-04-30T12:00:00Z",
+        "end": "2026-05-31T12:00:00Z",
+        "reason": "early-renewal"
+      }
+    },
+    {
+      "id": "late-renewal-reset-anchor",
+      "kind": "period",
+      "settled_at": "2026-04-02T12:00:00Z",
+      "current_end": "2026-03-31T12:00:00Z",
+      "anchor_day": 31,
+      "expected": {
+        "start": "2026-04-02T12:00:00Z",
+        "end": "2026-05-02T12:00:00Z",
+        "reason": "late-renewal-reset-anchor"
+      }
+    },
+    {
+      "id": "late-payment-after-expiry",
+      "kind": "period",
+      "settled_at": "2026-06-05T12:00:00Z",
+      "current_end": "2026-05-31T12:00:00Z",
+      "anchor_day": 31,
+      "expected": {
+        "start": "2026-06-05T12:00:00Z",
+        "end": "2026-07-05T12:00:00Z",
+        "reason": "late-renewal-reset-anchor"
+      }
+    },
+    {
+      "id": "access-before-end",
+      "kind": "access",
+      "period_start": "2026-07-05T12:00:00Z",
+      "period_end": "2026-08-05T12:00:00Z",
+      "checked_at": "2026-08-05T11:59:59Z",
+      "expected": {
+        "access": true,
+        "reason": "paid-through"
+      }
+    },
+    {
+      "id": "access-at-end",
+      "kind": "access",
+      "period_start": "2026-07-05T12:00:00Z",
+      "period_end": "2026-08-05T12:00:00Z",
+      "checked_at": "2026-08-05T12:00:00Z",
+      "expected": {
+        "access": false,
+        "reason": "expired-zero-grace"
+      }
+    },
+    {
+      "id": "access-after-end",
+      "kind": "access",
+      "period_start": "2026-07-05T12:00:00Z",
+      "period_end": "2026-08-05T12:00:00Z",
+      "checked_at": "2026-08-06T12:00:00Z",
+      "expected": {
+        "access": false,
+        "reason": "expired-zero-grace"
+      }
+    },
+    {
+      "id": "partial-refund-keeps-access",
+      "kind": "refund",
+      "payment_amount_centavos": 1234,
+      "refunds_centavos": [500],
+      "confirmed_at": "2026-08-15T12:00:00Z",
+      "period_start": "2026-08-01T12:00:00Z",
+      "period_end": "2026-09-01T12:00:00Z",
+      "checked_at": "2026-08-20T12:00:00Z",
+      "expected": {
+        "access": true,
+        "refundable_remaining_centavos": 734,
+        "reason": "partial-refund-financial-only"
+      }
+    },
+    {
+      "id": "cumulative-full-refund-revokes",
+      "kind": "refund",
+      "payment_amount_centavos": 1234,
+      "refunds_centavos": [500, 734],
+      "confirmed_at": "2026-08-20T12:00:00Z",
+      "period_start": "2026-08-01T12:00:00Z",
+      "period_end": "2026-09-01T12:00:00Z",
+      "checked_at": "2026-08-21T12:00:00Z",
+      "expected": {
+        "access": false,
+        "refundable_remaining_centavos": 0,
+        "reason": "refund-full-revoked"
+      }
+    },
+    {
+      "id": "full-refund-future-period",
+      "kind": "refund",
+      "payment_amount_centavos": 1234,
+      "refunds_centavos": [1234],
+      "confirmed_at": "2026-08-20T12:00:00Z",
+      "period_start": "2026-09-01T12:00:00Z",
+      "period_end": "2026-10-01T12:00:00Z",
+      "checked_at": "2026-09-02T12:00:00Z",
+      "expected": {
+        "access": false,
+        "refundable_remaining_centavos": 0,
+        "reason": "refund-full-revoked"
+      }
+    },
+    {
+      "id": "pending-dispute-keeps-access",
+      "kind": "dispute",
+      "dispute_status": "PENDING",
+      "period_start": "2026-08-01T12:00:00Z",
+      "period_end": "2026-09-01T12:00:00Z",
+      "checked_at": "2026-08-20T12:00:00Z",
+      "expected": {
+        "access": true,
+        "reason": "dispute-pending"
+      }
+    },
+    {
+      "id": "confirmed-chargeback-revokes",
+      "kind": "dispute",
+      "dispute_status": "CONFIRMED",
+      "period_start": "2026-08-01T12:00:00Z",
+      "period_end": "2026-09-01T12:00:00Z",
+      "checked_at": "2026-08-20T12:00:00Z",
+      "expected": {
+        "access": false,
+        "reason": "chargeback-confirmed"
+      }
+    },
+    {
+      "id": "duplicate-manual-pix-excess",
+      "kind": "excess",
+      "same_order": true,
+      "settled_amounts_centavos": [1234, 1234],
+      "periods_already_funded": 0,
+      "expected": {
+        "periods_funded": 1,
+        "excess_centavos": 1234,
+        "access": true,
+        "reason": "excess-unapplied"
+      }
+    },
+    {
+      "id": "second-early-renewal-excess",
+      "kind": "excess",
+      "settled_amounts_centavos": [1234],
+      "periods_already_funded": 2,
+      "expected": {
+        "periods_funded": 0,
+        "excess_centavos": 1234,
+        "access": true,
+        "reason": "excess-unapplied"
+      }
+    },
+    {
+      "id": "underpayment-refused",
+      "kind": "amount",
+      "settled_amount_centavos": 1000,
+      "settled_currency": "BRL",
+      "expected": {
+        "periods_funded": 0,
+        "excess_centavos": 0,
+        "reason": "amount-mismatch"
+      }
+    },
+    {
+      "id": "overpayment-refused",
+      "kind": "amount",
+      "settled_amount_centavos": 2000,
+      "settled_currency": "BRL",
+      "expected": {
+        "periods_funded": 0,
+        "excess_centavos": 0,
+        "reason": "amount-mismatch"
+      }
+    },
+    {
+      "id": "switch-card-to-automatic-cancel-confirmed",
+      "kind": "switch",
+      "old_source": "stripe_card",
+      "new_source": "asaas_pix_automatic",
+      "old_cancellation": "CONFIRMED",
+      "current_end": "2026-09-01T12:00:00Z",
+      "requested_at": "2026-08-10T12:00:00Z",
+      "expected": {
+        "new_debit_allowed": true,
+        "first_debit_at": "2026-09-01T12:00:00Z",
+        "reason": "next-term"
+      }
+    },
+    {
+      "id": "switch-card-to-automatic-cancel-unknown",
+      "kind": "switch",
+      "old_source": "stripe_card",
+      "new_source": "asaas_pix_automatic",
+      "old_cancellation": "UNKNOWN",
+      "current_end": "2026-09-01T12:00:00Z",
+      "requested_at": "2026-08-10T12:00:00Z",
+      "expected": {
+        "new_debit_allowed": false,
+        "first_debit_at": null,
+        "reason": "old-cancellation-unknown"
+      }
+    },
+    {
+      "id": "switch-manual-to-card",
+      "kind": "switch",
+      "old_source": "asaas_pix_manual",
+      "new_source": "stripe_card",
+      "old_cancellation": "NOT_APPLICABLE",
+      "current_end": "2026-09-01T12:00:00Z",
+      "requested_at": "2026-08-10T12:00:00Z",
+      "expected": {
+        "new_debit_allowed": true,
+        "first_debit_at": "2026-09-01T12:00:00Z",
+        "reason": "next-term"
+      }
+    },
+    {
+      "id": "premium-production-price-unresolved",
+      "kind": "sale",
+      "offer": "premium.monthly",
+      "expected": {
+        "sale_enabled": false,
+        "reason": "price-unresolved"
+      }
+    },
+    {
+      "id": "enterprise-deliverable-not-implemented",
+      "kind": "sale",
+      "offer": "enterprise.regional_brief.v1",
+      "expected": {
+        "sale_enabled": false,
+        "reason": "deliverable-not-implemented"
+      }
+    },
+    {
+      "id": "trial-not-supported",
+      "kind": "sale",
+      "offer": "premium.monthly",
+      "requested_feature": "trial",
+      "expected": {
+        "sale_enabled": false,
+        "reason": "trial-not-supported"
+      }
+    },
+    {
+      "id": "annual-term-not-supported",
+      "kind": "sale",
+      "offer": "premium.monthly",
+      "requested_term": "P1Y",
+      "expected": {
+        "sale_enabled": false,
+        "reason": "term-not-supported"
+      }
+    },
+    {
+      "id": "android-purchase-ui-unverified",
+      "kind": "sale",
+      "channel": "android_play",
+      "expected": {
+        "sale_enabled": false,
+        "reason": "distribution-policy-unverified"
+      }
+    }
+  ]
+}

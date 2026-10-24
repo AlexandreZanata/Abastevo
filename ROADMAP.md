@@ -3718,9 +3718,10 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 
 ## Stripe and Asaas payments
 
-Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00 is
-LOCAL_DONE / INTEGRATION_PENDING; PAY-01–23 remain planned. Selected methods:
-Stripe cards, Asaas conventional Pix and Pix Automático, independently activated.
+Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00 and
+PAY-01 are LOCAL_DONE / INTEGRATION_PENDING; PAY-02–23 remain planned.
+Selected methods: Stripe cards, Asaas conventional Pix and Pix Automático,
+independently activated.
 Google Play is LATER. Reuse PRM subscription/account/jobs; no Stage D team/tenant
 expansion.
 
@@ -3730,12 +3731,14 @@ Canonical [plan](docs/planning/STRIPE_ASAAS_PAYMENT_PLAN.md),
 [rules/use cases](docs/product/STRIPE_ASAAS_PAYMENT_CONTRACT.md) and
 [agent prompt](docs/planning/STRIPE_ASAAS_PAYMENT_PROMPT.md).
 PAY-00 [baseline/ownership evidence](docs/backend/evidence/payments/PAY-00.md) and
-[versioned threat matrix](docs/backend/evidence/payments/PAY_THREAT_MATRIX.md)
-are local only. The checklist owns dependencies, steps, risk checks, shared-path
+[versioned threat matrix](docs/backend/evidence/payments/PAY_THREAT_MATRIX.md),
+and PAY-01 [offer/lifecycle policy](docs/product/STRIPE_ASAAS_OFFER_POLICY.md)
+with its [golden fixture](contracts/testdata/payments/offer-policy-v1.json), are
+local only. The checklist owns dependencies, steps, risk checks, shared-path
 coordination, evidence and commit topic.
 
 - **PAY-00:** Reconcile baseline and parallel ownership. LOCAL_DONE.
-- **PAY-01:** Freeze offers and lifecycle policy.
+- **PAY-01:** Freeze offers and lifecycle policy. LOCAL_DONE; production prices unresolved and all sales disabled.
 - **PAY-02:** Admit providers and maintained SDKs.
 - **PAY-03:** Build pure financial and access policy.
 - **PAY-04:** Persist financial intents and concurrency guards.

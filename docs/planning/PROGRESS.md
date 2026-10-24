@@ -1,5 +1,18 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-01 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-00 `5f66c0d1`. [Offer/lifecycle policy v1](../product/STRIPE_ASAAS_OFFER_POLICY.md)
+  freezes `premium.monthly` (one account, P1M anchor, zero grace, one future
+  period, exact amount), refund/dispute/excess/switching rules and the
+  provider-owned Pix Automático scheduler. Production prices remain UNRESOLVED
+  (`1234` centavos is synthetic only); Enterprise is non-sellable and all three
+  channels stay OFF. [26-case golden fixture](../../contracts/testdata/payments/offer-policy-v1.json)
+  and [PAY-01 evidence](../backend/evidence/payments/PAY-01.md): period/access/
+  refund/dispute/excess/switch/sale recomputation, diff, links and secret scan
+  PASS. Additive shared edit to `PREMIUM_PRODUCT_CONTRACT.md`; no provider/
+  runtime/migration or sale activation. Next: PAY-02 provider/SDK admission only
+  after maintainer authorization.
+
 - Stripe/Asaas payment PAY-00 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   exclusive `codex/payments-stripe-asaas`, base fetched `origin/dev` `721582b8`.
   Payment planning from `ee8d316b` replayed onto the reconciled head (five docs

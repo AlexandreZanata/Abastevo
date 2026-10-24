@@ -172,6 +172,9 @@ handling, price version, provider mappings, recurring consent text, grace and
 exit/retention, refund/partial allocation, duplicate/late payment handling and
 allowed channels. Missing prices/features do not block generic code using clearly
 synthetic fixtures; they do block real checkout and commercial readiness.
+PAY-01 is LOCAL_DONE: [offer and lifecycle policy v1](../product/STRIPE_ASAAS_OFFER_POLICY.md)
+freezes the technical envelope and golden fixture, leaves production prices/
+Enterprise/fiscal/legal inputs unresolved and keeps all three channels disabled.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
