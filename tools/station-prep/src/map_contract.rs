@@ -280,7 +280,7 @@ fn validate_assertion(a: &Assertion) -> Result<()> {
     }
     if !matches!(
         a.location.quality.as_str(),
-        "reviewed" | "unknown" | "city-centroid"
+        "reviewed" | "osm-mapped" | "unknown" | "city-centroid"
     ) {
         return invalid("unknown quality");
     }
@@ -303,6 +303,14 @@ fn validate_assertion(a: &Assertion) -> Result<()> {
             let point = a.location.display_point.as_deref();
             if a.location.latitude_deg.is_none() || !matches!(point, Some("station" | "entrance")) {
                 return invalid("reviewed geometry requires station/entrance display point");
+            }
+        }
+        "osm-mapped" => {
+            if !matches!(
+                a.location.display_point.as_deref(),
+                Some("osm_node" | "osm_centroid")
+            ) {
+                return invalid("osm geometry requires an osm display point");
             }
         }
         "unknown" => {
@@ -420,12 +428,20 @@ fn validate_assertion(a: &Assertion) -> Result<()> {
     if a.capabilities.live_status {
         return invalid("no admitted live feed");
     }
-    let pin = a.location.quality == "reviewed"
-        && a.location.latitude_deg.is_some()
-        && matches!(
-            a.location.display_point.as_deref(),
-            Some("station" | "entrance")
-        );
+    let pin = a.location.latitude_deg.is_some()
+        && (matches!(
+            (
+                a.location.quality.as_str(),
+                a.location.display_point.as_deref()
+            ),
+            ("reviewed", Some("station" | "entrance"))
+        ) || matches!(
+            (
+                a.location.quality.as_str(),
+                a.location.display_point.as_deref()
+            ),
+            ("osm-mapped", Some("osm_node" | "osm_centroid"))
+        ));
     if a.capabilities.pin_eligible != pin {
         return invalid("pin_eligible must match admitted geometry");
     }
@@ -557,7 +573,7 @@ mod tests {
     #[test]
     fn valid_corpus_preserves_ids_units_and_unknowns() {
         let corpus = parse_assertions(&fixture("poi-assertions-v1.json")).expect("valid");
-        assert_eq!(corpus.assertions.len(), 4);
+        assert_eq!(corpus.assertions.len(), 5);
         let anp = &corpus.assertions[0];
         assert_eq!(anp.prices[0].amount_milli_brl, 5890);
         assert_eq!(anp.prices[0].unit, "L");

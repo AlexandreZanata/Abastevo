@@ -25,6 +25,7 @@ pub mod ev_tariff;
 pub mod join;
 pub mod map_contract;
 pub mod municipality;
+pub mod osm_reference;
 pub mod output;
 pub mod pmqc;
 pub mod quality;

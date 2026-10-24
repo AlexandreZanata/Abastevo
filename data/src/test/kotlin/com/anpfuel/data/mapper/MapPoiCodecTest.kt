@@ -18,7 +18,7 @@ class MapPoiCodecTest {
     @Test
     fun `valid corpus preserves exact money identity and unknown charging facts`() {
         val corpus = MapPoiCodec.decodeCorpus(fixture("poi-assertions-v1.json"))
-        assertEquals(4, corpus.assertions.size)
+        assertEquals(5, corpus.assertions.size)
 
         val anp = corpus.assertions[0]
         assertEquals(5890L, anp.prices.single().amountMilliBrl)

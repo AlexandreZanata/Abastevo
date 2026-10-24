@@ -33,6 +33,7 @@ enum class MapService(val wire: String) {
 
 enum class MapLocationQuality(val wire: String) {
     REVIEWED("reviewed"),
+    OSM_MAPPED("osm-mapped"),
     UNKNOWN("unknown"),
     CITY_CENTROID("city-centroid"),
     ;
@@ -46,6 +47,8 @@ enum class MapLocationQuality(val wire: String) {
 enum class MapDisplayPoint(val wire: String) {
     STATION("station"),
     ENTRANCE("entrance"),
+    OSM_NODE("osm_node"),
+    OSM_CENTROID("osm_centroid"),
     CITY_CENTROID("city_centroid"),
     ;
 
@@ -149,6 +152,11 @@ data class MapLocation(
                     throw MapContractException("invalid-reviewed-location")
                 }
             }
+            MapLocationQuality.OSM_MAPPED -> {
+                if (latitudeDeg == null || displayPoint !in setOf(MapDisplayPoint.OSM_NODE, MapDisplayPoint.OSM_CENTROID)) {
+                    throw MapContractException("invalid-osm-location")
+                }
+            }
             MapLocationQuality.UNKNOWN -> {
                 if (latitudeDeg != null || displayPoint != null) throw MapContractException("fabricated-location")
             }
@@ -170,9 +178,11 @@ data class MapLocation(
     }
 
     val pinEligible: Boolean
-        get() = quality == MapLocationQuality.REVIEWED &&
-            latitudeDeg != null &&
-            displayPoint in setOf(MapDisplayPoint.STATION, MapDisplayPoint.ENTRANCE)
+        get() = latitudeDeg != null && when (quality) {
+            MapLocationQuality.REVIEWED -> displayPoint in setOf(MapDisplayPoint.STATION, MapDisplayPoint.ENTRANCE)
+            MapLocationQuality.OSM_MAPPED -> displayPoint in setOf(MapDisplayPoint.OSM_NODE, MapDisplayPoint.OSM_CENTROID)
+            else -> false
+        }
 
     val entranceKnown: Boolean
         get() = entranceLatitudeDeg != null && entranceLongitudeDeg != null

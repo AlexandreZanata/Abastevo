@@ -34,7 +34,7 @@ func TestValidAssertionCorpus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(corpus.Assertions); got != 4 {
+	if got := len(corpus.Assertions); got != 5 {
 		t.Fatalf("assertions %d", got)
 	}
 	anp := corpus.Assertions[0]

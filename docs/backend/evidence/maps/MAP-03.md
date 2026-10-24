@@ -36,7 +36,7 @@ Tested source: `codex/map-ev-implementation` after MAP-02. Date: 2026-10-24.
 - `contracts/map/native-map-manifest-v1.schema.json`
 - `contracts/map/prepared-envelope-v1.schema.json`
 - `contracts/testdata/map/poi-assertions-v1.json`
-  SHA-256 `bbec233539752e242f6e64ee42ee7923cf0db0825a0fb8a6e65a5cfe67ab2d68`
+  SHA-256 `1d666addc70356dd94db1cf8154f1dfa33c4cf93866a028bbe0264dc6075eac3`
 - `contracts/testdata/map/native-map-manifest-v1.json`
   SHA-256 `c490ebbeaf32b2d376d6bc081d2ac90296217ebad94235c28decb4491b87093c`
 - `contracts/testdata/map/prepared-overlay-v1.json`

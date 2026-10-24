@@ -49,9 +49,11 @@ account-scoped product and is never published.
 ### B-BR-MAP-01 — Identity and location
 
 - A station pin requires an admitted public geometry with a known quality.
-- `reviewed` coordinates may be shown as the station display point. `unknown`
-  and `city-centroid` geometry never become an exact pin; they remain reachable
-  through the accessible result list with an explicit location warning.
+- `reviewed` coordinates may be shown as the station/entrance display point.
+  `osm-mapped` node/centroid geometry may be shown as an explicitly approximate
+  OSM reference pin, visually and semantically distinct from a reviewed station.
+  `unknown` and `city-centroid` geometry never become an exact pin; they remain
+  reachable through the accessible result list with an explicit location warning.
 - Display point, entrance and road-snap are separate values. Navigation targets
   the admitted entrance/access when present; otherwise it warns that the last
   segment may be imprecise.

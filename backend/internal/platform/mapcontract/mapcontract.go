@@ -285,8 +285,9 @@ func validateAssertion(a *Assertion) error {
 	if a.Capabilities.LiveStatus {
 		return fail("capabilities.live_status", "no admitted live feed")
 	}
-	pinEligible := a.Location.Quality == "reviewed" && a.Location.LatitudeDeg != nil && a.Location.LongitudeDeg != nil &&
-		a.Location.DisplayPoint != nil && (*a.Location.DisplayPoint == "station" || *a.Location.DisplayPoint == "entrance")
+	pinEligible := a.Location.LatitudeDeg != nil && a.Location.LongitudeDeg != nil && a.Location.DisplayPoint != nil &&
+		((a.Location.Quality == "reviewed" && (*a.Location.DisplayPoint == "station" || *a.Location.DisplayPoint == "entrance")) ||
+			(a.Location.Quality == "osm-mapped" && (*a.Location.DisplayPoint == "osm_node" || *a.Location.DisplayPoint == "osm_centroid")))
 	if a.Capabilities.PinEligible != pinEligible {
 		return fail("capabilities.pin_eligible", "must match admitted geometry")
 	}
@@ -328,7 +329,7 @@ func validateIdentities(a *Assertion) error {
 }
 
 func validateLocation(a *Assertion) error {
-	if !oneOf(a.Location.Quality, "reviewed", "unknown", "city-centroid") {
+	if !oneOf(a.Location.Quality, "reviewed", "osm-mapped", "unknown", "city-centroid") {
 		return fail("location.quality", "unknown quality")
 	}
 	if (a.Location.LatitudeDeg == nil) != (a.Location.LongitudeDeg == nil) {
@@ -348,6 +349,11 @@ func validateLocation(a *Assertion) error {
 		if a.Location.LatitudeDeg == nil || a.Location.DisplayPoint == nil ||
 			(*a.Location.DisplayPoint != "station" && *a.Location.DisplayPoint != "entrance") {
 			return fail("location", "reviewed geometry requires station/entrance display point")
+		}
+	} else if a.Location.Quality == "osm-mapped" {
+		if a.Location.LatitudeDeg == nil || a.Location.DisplayPoint == nil ||
+			(*a.Location.DisplayPoint != "osm_node" && *a.Location.DisplayPoint != "osm_centroid") {
+			return fail("location", "osm geometry requires an osm display point")
 		}
 	} else if a.Location.Quality == "unknown" {
 		if a.Location.LatitudeDeg != nil || a.Location.DisplayPoint != nil {

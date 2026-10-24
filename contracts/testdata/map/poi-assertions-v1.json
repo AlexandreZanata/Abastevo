@@ -25,7 +25,10 @@
         "entrance_latitude_deg": "-15.7941",
         "entrance_longitude_deg": "-47.8825"
       },
-      "services": ["FUEL", "CHARGING"],
+      "services": [
+        "FUEL",
+        "CHARGING"
+      ],
       "prices": [
         {
           "source": "ANP",
@@ -79,7 +82,10 @@
         "entrance_latitude_deg": "-15.7941",
         "entrance_longitude_deg": "-47.8825"
       },
-      "services": ["FUEL", "CHARGING"],
+      "services": [
+        "FUEL",
+        "CHARGING"
+      ],
       "prices": [
         {
           "source": "COMMUNITY",
@@ -144,7 +150,9 @@
         "entrance_latitude_deg": null,
         "entrance_longitude_deg": null
       },
-      "services": ["CHARGING"],
+      "services": [
+        "CHARGING"
+      ],
       "prices": [],
       "charging": {
         "place_id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
@@ -198,7 +206,9 @@
         "entrance_latitude_deg": null,
         "entrance_longitude_deg": null
       },
-      "services": ["FUEL"],
+      "services": [
+        "FUEL"
+      ],
       "prices": [],
       "charging": null,
       "clocks": {
@@ -215,6 +225,51 @@
       "capabilities": {
         "price_known": false,
         "pin_eligible": false,
+        "entrance_known": false,
+        "live_status": false
+      }
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "source": "OSM",
+      "kind": "REFERENCE_POI",
+      "name": "Posto Mapeado OSM",
+      "identities": {
+        "station_uuid": null,
+        "cnpj": null,
+        "place_id": null,
+        "equipment_id": null,
+        "connector_id": null,
+        "osm_type": "node",
+        "osm_id": 555000111
+      },
+      "location": {
+        "latitude_deg": "-15.8050",
+        "longitude_deg": "-47.8900",
+        "quality": "osm-mapped",
+        "display_point": "osm_node",
+        "entrance_latitude_deg": null,
+        "entrance_longitude_deg": null
+      },
+      "services": [
+        "FUEL"
+      ],
+      "prices": [],
+      "charging": null,
+      "clocks": {
+        "observed_at": "2026-10-24T00:00:00Z",
+        "published_at": "2026-10-24T00:00:00Z",
+        "fetched_at": "2026-10-24T00:00:00Z"
+      },
+      "rights": {
+        "source": "OSM",
+        "license": "ADMITTED",
+        "attribution": "© OpenStreetMap contributors — ODbL 1.0",
+        "source_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "capabilities": {
+        "price_known": false,
+        "pin_eligible": true,
         "entrance_known": false,
         "live_status": false
       }
