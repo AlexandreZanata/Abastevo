@@ -1,5 +1,16 @@
 # Current execution state
 
+- Delivery integrated 2026-10-24: PR #147 merged to protected main as
+  `c82823cb` (head `3fa0bd08`, base `c3de5c03`); PR #149's five audited commits
+  are ancestors of main (`ebd777ef` etc.) and the PR is MERGED via the dev
+  reconciliation merge `9c93892c`. Current-head required checks
+  (Quick verification, fast, test, integration) all passed before the guarded
+  finish; local quick PASS. Wiki published once from `c82823cb` as `02e5391`
+  (dry run no conflicts, zero mutation before publish). `dev` retained and
+  synchronized to the merge; this entry is a docs-only post-merge note.
+  External obligations (Play/staging/operator/device/production) remain OWED;
+  no RELEASE_CERTIFIED or production-ready claim.
+
 - Final union after PR149 merge 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING,
   merge `9c93892c`. Re-ran the union instead of reusing pre-merge counts:
   domain675/application454/data549/app465 = 2,143 JVM (0 failures/errors, 2
