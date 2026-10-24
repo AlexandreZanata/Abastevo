@@ -248,7 +248,7 @@ private fun GamesSelector(
             }
         }
         val settingsContainer = MaterialTheme.colorScheme.surfaceContainerLow
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(
+        Card(shape = AnpContainerDefaults.containerShape(), colors = CardDefaults.cardColors(
             containerColor = settingsContainer), border = AnpContainerDefaults.borderStroke(settingsContainer)) {
             Column(Modifier.padding(16.dp)) {
                 Text(stringResource(R.string.games_settings), style = MaterialTheme.typography.titleMedium,
@@ -266,7 +266,7 @@ private fun GamesSelector(
 @Composable
 private fun GameCard(game: GameId, best: Int, loaded: Boolean, onChoose: () -> Unit, modifier: Modifier = Modifier) {
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
+    Card(modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape(),
         border = AnpContainerDefaults.borderStroke(containerColor),
         colors = CardDefaults.cardColors(containerColor = containerColor)) {
         Box(Modifier.fillMaxWidth().aspectRatio(2.65f)) {
@@ -312,7 +312,7 @@ private fun GameOverlay(
 ) {
     Box(Modifier.fillMaxSize().background(Color(0x990B1830)), contentAlignment = Alignment.Center) {
         Column(
-            Modifier.padding(16.dp).widthIn(max = 480.dp).fillMaxWidth().clip(RoundedCornerShape(24.dp))
+            Modifier.padding(16.dp).widthIn(max = 480.dp).fillMaxWidth().clip(AnpContainerDefaults.containerShape())
                 .background(MaterialTheme.colorScheme.surface).verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {

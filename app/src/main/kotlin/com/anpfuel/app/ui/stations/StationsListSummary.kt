@@ -29,7 +29,7 @@ internal fun StationsListSummary(
     val containerColor = MaterialTheme.colorScheme.surfaceContainer
     Surface(
         modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-        shape = MaterialTheme.shapes.large,
+        shape = AnpContainerDefaults.containerShape(),
         color = containerColor,
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {

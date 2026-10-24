@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.PaddingValues
@@ -130,7 +129,7 @@ private fun ContributionsHero(
     val containerColor = MaterialTheme.colorScheme.primaryContainer
     Card(
         modifier,
-        shape = RoundedCornerShape(24.dp),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
@@ -196,7 +195,7 @@ private fun ContributionLedgerRow(
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier,
-        shape = RoundedCornerShape(20.dp),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {

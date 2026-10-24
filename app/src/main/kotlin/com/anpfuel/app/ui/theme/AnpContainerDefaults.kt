@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
@@ -20,6 +21,10 @@ import androidx.compose.ui.unit.dp
 object AnpContainerDefaults {
 
     val BorderWidth = 1.dp
+
+    /** Standard content-container shape, matching the Perfil tools/account cards. */
+    @Composable
+    fun containerShape(): Shape = MaterialTheme.shapes.medium
 
     /**
      * Decorative card boundaries are intentionally below the 3:1 non-text

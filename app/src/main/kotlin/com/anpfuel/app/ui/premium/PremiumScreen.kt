@@ -66,7 +66,7 @@ fun PremiumScreen(
         onBack = onBack,
         onSignIn = onSignIn,
         onManageSubscription = onManageSubscription,
-        onRefresh = viewModel::refresh,
+        onRefresh = viewModel::forceRefresh,
         onRestoreUnavailable = viewModel::restoreUnavailable,
         onClearNotice = viewModel::clearNotice,
         modifier = modifier,
@@ -104,7 +104,12 @@ internal fun PremiumContent(
         ) {
             when {
                 state.loading && state.status == null -> {
-                    PremiumLoadingCard()
+                    PremiumSkeletonSections(
+                        state = state,
+                        onRefresh = onRefresh,
+                        onManageSubscription = onManageSubscription,
+                        onRestoreUnavailable = onRestoreUnavailable,
+                    )
                 }
                 state.signedOut -> {
                     PremiumSignedOutCard(onSignIn = onSignIn)
@@ -141,12 +146,38 @@ internal fun PremiumContent(
 }
 
 @Composable
+private fun PremiumSkeletonSections(
+    state: PremiumUiState,
+    onRefresh: () -> Unit,
+    onManageSubscription: () -> Unit,
+    onRestoreUnavailable: () -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.premium_loading),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    PremiumSectionTitle(stringResource(R.string.premium_status_section_title))
+    PremiumStatusSkeletonCard()
+    PremiumSectionTitle(stringResource(R.string.premium_capabilities_title))
+    PremiumCapabilitiesSkeletonCard()
+    PremiumSectionTitle(stringResource(R.string.premium_actions_section_title))
+    PremiumActionsCard(
+        state = state,
+        onRefresh = onRefresh,
+        onManageSubscription = onManageSubscription,
+        onRestoreUnavailable = onRestoreUnavailable,
+    )
+}
+
+@Composable
 private fun PremiumCapabilitiesCard(status: PremiumStatus, modifier: Modifier = Modifier) {
     val palette = PremiumColors.current()
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     val capabilities = premiumCapabilityLabels(status.capabilities)
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
@@ -191,6 +222,7 @@ private fun PremiumActionsCard(
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {

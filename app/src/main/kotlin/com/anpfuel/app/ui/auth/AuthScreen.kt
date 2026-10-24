@@ -199,7 +199,7 @@ fun AuthScreen(
             val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             Card(
                 modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
+                shape = AnpContainerDefaults.containerShape(),
                 colors = CardDefaults.cardColors(containerColor = containerColor),
                 border = AnpContainerDefaults.borderStroke(containerColor),
             ) {

@@ -103,7 +103,7 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
             }
             item {
                 val containerColor = MaterialTheme.colorScheme.primaryContainer
-                Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = containerColor),
+                Card(shape = AnpContainerDefaults.containerShape(), colors = CardDefaults.cardColors(containerColor = containerColor),
                     border = AnpContainerDefaults.borderStroke(containerColor)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -243,7 +243,7 @@ private fun feedSortIcon(sort: FeedSort) = when (sort) {
 @Composable
 private fun FeedMessage(title: String, description: String, action: @Composable () -> Unit) {
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = containerColor),
+    Card(Modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape(), colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
@@ -263,7 +263,7 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
         }.format(BigDecimal.valueOf(item.amountMilliBrl, 3))
     }
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

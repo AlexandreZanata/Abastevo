@@ -54,6 +54,8 @@ fun PremiumManagementScreen(
     val openStore = {
         if (runCatching { uriHandler.openUri(PremiumStatus.MANAGEMENT_URL) }.isFailure) {
             viewModel.storeOpenFailed()
+        } else {
+            viewModel.invalidateCache()
         }
     }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -67,7 +69,7 @@ fun PremiumManagementScreen(
         onBack = onBack,
         onSignIn = onSignIn,
         onOpenStore = openStore,
-        onRefresh = viewModel::refresh,
+        onRefresh = viewModel::forceRefresh,
         onClearNotice = viewModel::clearNotice,
         modifier = modifier,
     )
@@ -103,7 +105,11 @@ internal fun PremiumManagementContent(
         ) {
             when {
                 state.loading && state.status == null -> {
-                    PremiumLoadingCard()
+                    PremiumManagementSkeletonSections(
+                        state = state,
+                        onOpenStore = onOpenStore,
+                        onRefresh = onRefresh,
+                    )
                 }
                 state.signedOut -> {
                     PremiumSignedOutCard(onSignIn = onSignIn)
@@ -135,10 +141,32 @@ internal fun PremiumManagementContent(
 }
 
 @Composable
+private fun PremiumManagementSkeletonSections(
+    state: PremiumUiState,
+    onOpenStore: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.premium_loading),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    PremiumSectionTitle(stringResource(R.string.premium_status_section_title))
+    PremiumStatusSkeletonCard()
+    PremiumManagementGuidanceCard()
+    PremiumManagementActionsCard(
+        onOpenStore = onOpenStore,
+        onRefresh = onRefresh,
+        refreshEnabled = !state.loading,
+    )
+}
+
+@Composable
 private fun PremiumManagementGuidanceCard(modifier: Modifier = Modifier) {
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
@@ -170,6 +198,7 @@ private fun PremiumManagementActionsCard(
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
