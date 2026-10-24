@@ -322,6 +322,7 @@ sql:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000123_payment_intents.sql
+      - db/migrations/000124_payment_contracts.sql
     gen:
       go:
         package: payments

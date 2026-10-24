@@ -187,3 +187,30 @@ UPDATE payment_inbox
 SET state=sqlc.arg(state),attempts=attempts+1,processed_at=sqlc.arg(processed_at)::timestamptz,last_error=sqlc.arg(last_error)
 WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant) AND event_id=sqlc.arg(event_id)
   AND state='PENDING';
+
+-- name: UpsertPaymentContract :one
+INSERT INTO payment_contracts(
+ id,account_id,offer_id,source,environment,merchant,provider,remote_subscription_id,
+ remote_customer_id,provider_status,cancel_at_period_end,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),'stripe_card',
+ sqlc.arg(environment),sqlc.arg(merchant),'stripe',sqlc.arg(remote_subscription_id),
+ sqlc.arg(remote_customer_id),sqlc.arg(provider_status),sqlc.arg(cancel_at_period_end)::boolean,
+ sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_subscription_id) DO UPDATE SET
+ account_id=EXCLUDED.account_id,offer_id=EXCLUDED.offer_id,remote_customer_id=EXCLUDED.remote_customer_id,
+ provider_status=EXCLUDED.provider_status,cancel_at_period_end=EXCLUDED.cancel_at_period_end,
+ last_event_at=EXCLUDED.last_event_at,updated_at=clock_timestamp()
+WHERE payment_contracts.last_event_at <= EXCLUDED.last_event_at
+RETURNING *;
+
+-- name: GetPaymentContractForAccount :one
+SELECT * FROM payment_contracts
+WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id) AND source='stripe_card'
+ORDER BY updated_at DESC LIMIT 1;
+
+-- name: GetPaymentContractByRemote :one
+SELECT * FROM payment_contracts
+WHERE provider='stripe' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_subscription_id=sqlc.arg(remote_subscription_id);

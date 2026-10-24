@@ -16,6 +16,7 @@ import (
 type StripeProvider struct {
 	Client      *stripe.Client
 	Environment domain.Environment
+	Merchant    string
 	Now         func() time.Time
 }
 
@@ -155,6 +156,107 @@ func (p *StripeProvider) VerifySettlement(ctx context.Context, event app.InboxRe
 		ProviderStatus: string(invoice.Status), Amount: domain.BRL(invoice.AmountPaid),
 		SettledAt: settledAt,
 	}, nil
+}
+
+func (p *StripeProvider) VerifyLifecycle(ctx context.Context, event app.InboxRecord) (app.LifecycleFact, error) {
+	if p == nil || p.Client == nil || !validLifecycleEvent(event) {
+		return app.LifecycleFact{}, app.ErrIgnored
+	}
+	var subscriptionID string
+	switch event.EventType {
+	case "customer.subscription.updated", "customer.subscription.deleted":
+		if event.ResourceType != "subscription" {
+			return app.LifecycleFact{}, domain.ErrBinding
+		}
+		subscriptionID = event.ResourceID
+	case "invoice.payment_failed", "invoice.payment_action_required", "invoice.paid":
+		if event.ResourceType != "invoice" {
+			return app.LifecycleFact{}, domain.ErrBinding
+		}
+		invoice, err := p.Client.V1Invoices.Retrieve(ctx, event.ResourceID, nil)
+		if err != nil {
+			return app.LifecycleFact{}, stripeError(err)
+		}
+		if invoice.Parent == nil || invoice.Parent.SubscriptionDetails == nil ||
+			invoice.Parent.SubscriptionDetails.Subscription == nil {
+			return app.LifecycleFact{}, domain.ErrBinding
+		}
+		subscriptionID = invoice.Parent.SubscriptionDetails.Subscription.ID
+	case "checkout.session.completed":
+		if event.ResourceType != "checkout.session" {
+			return app.LifecycleFact{}, domain.ErrBinding
+		}
+		session, err := p.Client.V1CheckoutSessions.Retrieve(ctx, event.ResourceID, nil)
+		if err != nil {
+			return app.LifecycleFact{}, stripeError(err)
+		}
+		if session.Subscription == nil || session.Subscription.ID == "" {
+			return app.LifecycleFact{}, domain.ErrBinding
+		}
+		subscriptionID = session.Subscription.ID
+	default:
+		return app.LifecycleFact{}, app.ErrIgnored
+	}
+	return p.lifecycleFor(ctx, subscriptionID, event.Merchant, event.ReceivedAt)
+}
+
+func (p *StripeProvider) RetrieveLifecycle(ctx context.Context, remoteSubscriptionID string) (app.LifecycleFact, error) {
+	if p == nil || p.Client == nil || p.Merchant == "" {
+		return app.LifecycleFact{}, domain.ErrUnavailable
+	}
+	return p.lifecycleFor(ctx, remoteSubscriptionID, p.Merchant, time.Now().UTC())
+}
+
+func (p *StripeProvider) lifecycleFor(ctx context.Context, id, merchant string, at time.Time) (app.LifecycleFact, error) {
+	subscription, err := p.Client.V1Subscriptions.Retrieve(ctx, id, nil)
+	if err != nil {
+		return app.LifecycleFact{}, stripeError(err)
+	}
+	if subscription == nil || subscription.ID == "" || subscription.Customer == nil ||
+		subscription.Status == "" || subscription.Livemode != (p.Environment == domain.EnvironmentProduction) {
+		return app.LifecycleFact{}, domain.ErrBinding
+	}
+	accountID, offerID := subscription.Metadata["account_id"], subscription.Metadata["offer_id"]
+	if accountID == "" || offerID == "" {
+		return app.LifecycleFact{}, domain.ErrBinding
+	}
+	if at.IsZero() {
+		at = time.Now().UTC()
+	}
+	return app.LifecycleFact{
+		AccountID: accountID, OfferID: offerID, Environment: p.Environment, Merchant: merchant,
+		Provider: domain.ProviderStripe, RemoteSubscriptionID: subscription.ID,
+		RemoteCustomerID: subscription.Customer.ID, ProviderStatus: string(subscription.Status),
+		CancelAtPeriodEnd: subscription.CancelAtPeriodEnd, LastEventAt: at.UTC(),
+	}, nil
+}
+
+func (p *StripeProvider) CreatePortalSession(ctx context.Context, request app.PortalRequest) (string, error) {
+	if p == nil || p.Client == nil || request.CustomerID == "" || request.ReturnURL == "" || request.ConfigurationID == "" {
+		return "", domain.ErrUnavailable
+	}
+	session, err := p.Client.V1BillingPortalSessions.Create(ctx, &stripe.BillingPortalSessionCreateParams{
+		Customer: stripe.String(request.CustomerID), ReturnURL: stripe.String(request.ReturnURL),
+		Configuration: stripe.String(request.ConfigurationID),
+	})
+	if err != nil {
+		return "", stripeError(err)
+	}
+	if session == nil || session.URL == "" {
+		return "", domain.ErrBinding
+	}
+	return session.URL, nil
+}
+
+func validLifecycleEvent(event app.InboxRecord) bool {
+	switch event.EventType {
+	case "customer.subscription.updated", "customer.subscription.deleted",
+		"invoice.payment_failed", "invoice.payment_action_required", "invoice.paid",
+		"checkout.session.completed":
+		return true
+	default:
+		return false
+	}
 }
 
 func (p *StripeProvider) RetrieveCheckout(ctx context.Context, sessionID string) (app.CheckoutSession, error) {

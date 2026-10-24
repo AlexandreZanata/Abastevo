@@ -209,6 +209,7 @@ type Claim = app.Claim
 
 type SettlementInput = app.SettlementInput
 type SettlementOutcome = app.SettlementOutcome
+type ContractRecord = app.ContractRecord
 
 type InboxInput = app.InboxEvent
 type InboxResult = app.InboxResult
@@ -1006,6 +1007,103 @@ func enqueueSettlement(ctx context.Context, tx pgx.Tx, outcome SettlementOutcome
 		return domain.ErrUnavailable
 	}
 	return nil
+}
+
+func (s *Store) UpsertContract(ctx context.Context, contract app.ContractRecord) error {
+	if s == nil || s.Pool == nil {
+		return domain.ErrUnavailable
+	}
+	if !validText(contract.ID) || !validText(contract.AccountID) || !validText(contract.OfferID) ||
+		!validText(contract.Merchant) || !validText(contract.RemoteSubscriptionID) ||
+		!validText(contract.RemoteCustomerID) || !validText(contract.ProviderStatus) ||
+		contract.LastEventAt.IsZero() {
+		return domain.ErrInvalid
+	}
+	if contract.Source != domain.ChannelCard || contract.Provider != domain.ProviderStripe {
+		return domain.ErrInvalid
+	}
+	if err := contract.Environment.Validate(); err != nil {
+		return err
+	}
+	uid, err := toUUID(contract.ID)
+	if err != nil {
+		return domain.ErrInvalid
+	}
+	accountID, err := toUUID(contract.AccountID)
+	if err != nil {
+		return domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	_, err = qpay.New(s.Pool).UpsertPaymentContract(ctx, qpay.UpsertPaymentContractParams{
+		ID: uid, AccountID: accountID, OfferID: contract.OfferID,
+		Environment: string(contract.Environment), Merchant: contract.Merchant,
+		RemoteSubscriptionID: contract.RemoteSubscriptionID, RemoteCustomerID: contract.RemoteCustomerID,
+		ProviderStatus: contract.ProviderStatus, CancelAtPeriodEnd: contract.CancelAtPeriodEnd,
+		LastEventAt: stamp(contract.LastEventAt),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return dbError(err)
+	}
+	return nil
+}
+
+func (s *Store) ContractForAccount(ctx context.Context, accountID, offerID string) (app.ContractRecord, error) {
+	if s == nil || s.Pool == nil {
+		return app.ContractRecord{}, domain.ErrUnavailable
+	}
+	uid, err := toUUID(accountID)
+	if err != nil || !validText(offerID) {
+		return app.ContractRecord{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentContractForAccount(ctx, qpay.GetPaymentContractForAccountParams{AccountID: uid, OfferID: offerID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.ContractRecord{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return app.ContractRecord{}, dbError(err)
+	}
+	return contractRecord(row), nil
+}
+
+func (s *Store) ContractByRemote(ctx context.Context, environment domain.Environment, merchant, remoteID string) (app.ContractRecord, error) {
+	if s == nil || s.Pool == nil {
+		return app.ContractRecord{}, domain.ErrUnavailable
+	}
+	if err := environment.Validate(); err != nil {
+		return app.ContractRecord{}, err
+	}
+	if !validText(merchant) || !validText(remoteID) {
+		return app.ContractRecord{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentContractByRemote(ctx, qpay.GetPaymentContractByRemoteParams{
+		Environment: string(environment), Merchant: merchant, RemoteSubscriptionID: remoteID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.ContractRecord{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return app.ContractRecord{}, dbError(err)
+	}
+	return contractRecord(row), nil
+}
+
+func contractRecord(row qpay.PaymentContract) app.ContractRecord {
+	return app.ContractRecord{
+		ID: uuidText(row.ID), AccountID: uuidText(row.AccountID), OfferID: row.OfferID,
+		Source: domain.Channel(row.Source), Environment: domain.Environment(row.Environment),
+		Merchant: row.Merchant, Provider: domain.Provider(row.Provider),
+		RemoteSubscriptionID: row.RemoteSubscriptionID, RemoteCustomerID: row.RemoteCustomerID,
+		ProviderStatus: row.ProviderStatus, CancelAtPeriodEnd: row.CancelAtPeriodEnd,
+		LastEventAt: row.LastEventAt.Time,
+	}
 }
 
 func domainOrder(row qpay.PaymentOrder) (domain.Order, error) {

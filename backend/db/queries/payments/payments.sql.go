@@ -94,6 +94,73 @@ func (q *Queries) GetPaymentAttemptForUpdate(ctx context.Context, id pgtype.UUID
 	return i, err
 }
 
+const getPaymentContractByRemote = `-- name: GetPaymentContractByRemote :one
+SELECT id, account_id, offer_id, source, environment, merchant, provider, remote_subscription_id, remote_customer_id, provider_status, cancel_at_period_end, last_event_at, created_at, updated_at FROM payment_contracts
+WHERE provider='stripe' AND environment=$1 AND merchant=$2
+  AND remote_subscription_id=$3
+`
+
+type GetPaymentContractByRemoteParams struct {
+	Environment          string `json:"environment"`
+	Merchant             string `json:"merchant"`
+	RemoteSubscriptionID string `json:"remote_subscription_id"`
+}
+
+func (q *Queries) GetPaymentContractByRemote(ctx context.Context, arg GetPaymentContractByRemoteParams) (PaymentContract, error) {
+	row := q.db.QueryRow(ctx, getPaymentContractByRemote, arg.Environment, arg.Merchant, arg.RemoteSubscriptionID)
+	var i PaymentContract
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Source,
+		&i.Environment,
+		&i.Merchant,
+		&i.Provider,
+		&i.RemoteSubscriptionID,
+		&i.RemoteCustomerID,
+		&i.ProviderStatus,
+		&i.CancelAtPeriodEnd,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPaymentContractForAccount = `-- name: GetPaymentContractForAccount :one
+SELECT id, account_id, offer_id, source, environment, merchant, provider, remote_subscription_id, remote_customer_id, provider_status, cancel_at_period_end, last_event_at, created_at, updated_at FROM payment_contracts
+WHERE account_id=$1::uuid AND offer_id=$2 AND source='stripe_card'
+ORDER BY updated_at DESC LIMIT 1
+`
+
+type GetPaymentContractForAccountParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	OfferID   string      `json:"offer_id"`
+}
+
+func (q *Queries) GetPaymentContractForAccount(ctx context.Context, arg GetPaymentContractForAccountParams) (PaymentContract, error) {
+	row := q.db.QueryRow(ctx, getPaymentContractForAccount, arg.AccountID, arg.OfferID)
+	var i PaymentContract
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Source,
+		&i.Environment,
+		&i.Merchant,
+		&i.Provider,
+		&i.RemoteSubscriptionID,
+		&i.RemoteCustomerID,
+		&i.ProviderStatus,
+		&i.CancelAtPeriodEnd,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getPaymentCustomer = `-- name: GetPaymentCustomer :one
 SELECT account_id, provider, environment, merchant, remote_customer_id, created_at FROM payment_customers
 WHERE account_id=$1::uuid AND provider=$2 AND environment=$3 AND merchant=$4
@@ -1106,4 +1173,68 @@ func (q *Queries) TakeoverPaymentOperation(ctx context.Context, arg TakeoverPaym
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const upsertPaymentContract = `-- name: UpsertPaymentContract :one
+INSERT INTO payment_contracts(
+ id,account_id,offer_id,source,environment,merchant,provider,remote_subscription_id,
+ remote_customer_id,provider_status,cancel_at_period_end,last_event_at
+) VALUES(
+ $1::uuid,$2::uuid,$3,'stripe_card',
+ $4,$5,'stripe',$6,
+ $7,$8,$9::boolean,
+ $10::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_subscription_id) DO UPDATE SET
+ account_id=EXCLUDED.account_id,offer_id=EXCLUDED.offer_id,remote_customer_id=EXCLUDED.remote_customer_id,
+ provider_status=EXCLUDED.provider_status,cancel_at_period_end=EXCLUDED.cancel_at_period_end,
+ last_event_at=EXCLUDED.last_event_at,updated_at=clock_timestamp()
+WHERE payment_contracts.last_event_at <= EXCLUDED.last_event_at
+RETURNING id, account_id, offer_id, source, environment, merchant, provider, remote_subscription_id, remote_customer_id, provider_status, cancel_at_period_end, last_event_at, created_at, updated_at
+`
+
+type UpsertPaymentContractParams struct {
+	ID                   pgtype.UUID        `json:"id"`
+	AccountID            pgtype.UUID        `json:"account_id"`
+	OfferID              string             `json:"offer_id"`
+	Environment          string             `json:"environment"`
+	Merchant             string             `json:"merchant"`
+	RemoteSubscriptionID string             `json:"remote_subscription_id"`
+	RemoteCustomerID     string             `json:"remote_customer_id"`
+	ProviderStatus       string             `json:"provider_status"`
+	CancelAtPeriodEnd    bool               `json:"cancel_at_period_end"`
+	LastEventAt          pgtype.Timestamptz `json:"last_event_at"`
+}
+
+func (q *Queries) UpsertPaymentContract(ctx context.Context, arg UpsertPaymentContractParams) (PaymentContract, error) {
+	row := q.db.QueryRow(ctx, upsertPaymentContract,
+		arg.ID,
+		arg.AccountID,
+		arg.OfferID,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteSubscriptionID,
+		arg.RemoteCustomerID,
+		arg.ProviderStatus,
+		arg.CancelAtPeriodEnd,
+		arg.LastEventAt,
+	)
+	var i PaymentContract
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Source,
+		&i.Environment,
+		&i.Merchant,
+		&i.Provider,
+		&i.RemoteSubscriptionID,
+		&i.RemoteCustomerID,
+		&i.ProviderStatus,
+		&i.CancelAtPeriodEnd,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

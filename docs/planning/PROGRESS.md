@@ -1,5 +1,16 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-11 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-10 `2529e167`. Migration 000124 adds
+  provider subscription contracts separate from invoice grants; Stripe lifecycle
+  maps subscription updated/deleted, invoice failed/action-required/paid and
+  checkout completion, with last-event stale fencing and reconciliation. Portal
+  is owner-bound and requires approved configuration. SCA/past-due/cancel keep only
+  paid-through; invoice creation grants nothing. [PAY-11 evidence](../backend/evidence/payments/PAY-11.md):
+  adapter/PostGIS lifecycle/portal and full Play regression/race suites PASS. No
+  runtime/worker/portal route/sale. Next: PAY-12 Pix Automático only after
+  maintainer authorization.
+
 - Stripe/Asaas payment PAY-10 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-09 `8251aa19`. Canonical Stripe invoice
   and Asaas received-payment verifiers feed an idempotent settlement processor;

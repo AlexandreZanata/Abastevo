@@ -61,6 +61,23 @@ type PaymentAttempt struct {
 	CompletedAt pgtype.Timestamptz `json:"completed_at"`
 }
 
+type PaymentContract struct {
+	ID                   pgtype.UUID        `json:"id"`
+	AccountID            pgtype.UUID        `json:"account_id"`
+	OfferID              string             `json:"offer_id"`
+	Source               string             `json:"source"`
+	Environment          string             `json:"environment"`
+	Merchant             string             `json:"merchant"`
+	Provider             string             `json:"provider"`
+	RemoteSubscriptionID string             `json:"remote_subscription_id"`
+	RemoteCustomerID     string             `json:"remote_customer_id"`
+	ProviderStatus       string             `json:"provider_status"`
+	CancelAtPeriodEnd    bool               `json:"cancel_at_period_end"`
+	LastEventAt          pgtype.Timestamptz `json:"last_event_at"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
 type PaymentCustomer struct {
 	AccountID        pgtype.UUID        `json:"account_id"`
 	Provider         string             `json:"provider"`

@@ -29,6 +29,7 @@ func stripeTestProvider(t *testing.T, handler http.Handler) *StripeProvider {
 		URL:               stripe.String(server.URL),
 		EnableTelemetry:   stripe.Bool(false),
 		MaxNetworkRetries: stripe.Int64(0),
+		LeveledLogger:     &stripe.LeveledLogger{Level: stripe.LevelNull},
 	})))
 	return NewStripeProviderWithClient(client, domain.EnvironmentTest)
 }
@@ -369,5 +370,103 @@ func TestStripeVerifySettlementRefusals(t *testing.T) {
 		t.Fatal("ignored event called provider")
 	})).VerifySettlement(context.Background(), event); !errors.Is(err, app.ErrIgnored) {
 		t.Fatalf("ignored err = %v", err)
+	}
+}
+
+func stripeSubscription(id, status string) map[string]any {
+	return map[string]any{
+		"id": id, "object": "subscription", "status": status, "cancel_at_period_end": true,
+		"customer": map[string]any{"id": "cus_synthetic"},
+		"livemode": false,
+		"metadata": map[string]string{"account_id": "11111111-1111-4111-8111-111111111111", "offer_id": "premium.monthly"},
+	}
+}
+
+func TestStripeLifecycleAndPortal(t *testing.T) {
+	provider := stripeTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/v1/subscriptions/sub_1" && r.Method == http.MethodGet:
+			_ = json.NewEncoder(w).Encode(stripeSubscription("sub_1", "active"))
+		case r.URL.Path == "/v1/invoices/in_1" && r.Method == http.MethodGet:
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "in_1", "object": "invoice", "status": "open",
+				"parent": map[string]any{"subscription_details": map[string]any{
+					"subscription": map[string]any{"id": "sub_1"},
+				}},
+			})
+		case r.URL.Path == "/v1/checkout/sessions/cs_1" && r.Method == http.MethodGet:
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "cs_1", "object": "checkout.session", "subscription": map[string]any{"id": "sub_1"},
+			})
+		case r.URL.Path == "/v1/billing_portal/sessions" && r.Method == http.MethodPost:
+			if err := r.ParseForm(); err != nil {
+				t.Fatal(err)
+			}
+			if r.Form.Get("customer") != "cus_synthetic" || r.Form.Get("configuration") != "bpc_1" ||
+				r.Form.Get("return_url") != "https://app.example.invalid/billing/manage" {
+				t.Fatalf("portal form = %v", r.Form)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "bps_1", "url": "https://billing.example.invalid/session"})
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	provider.Merchant = "acct_synthetic"
+	event := app.InboxRecord{InboxEvent: app.InboxEvent{
+		Provider: domain.ProviderStripe, Environment: domain.EnvironmentTest,
+		Merchant: "acct_synthetic", EventID: "evt_sub", EventType: "customer.subscription.updated",
+		ResourceType: "subscription", ResourceID: "sub_1",
+	}, State: "PENDING", ReceivedAt: time.Now().UTC()}
+	fact, err := provider.VerifyLifecycle(context.Background(), event)
+	if err != nil || fact.RemoteSubscriptionID != "sub_1" || fact.ProviderStatus != "active" ||
+		!fact.CancelAtPeriodEnd || fact.AccountID != "11111111-1111-4111-8111-111111111111" {
+		t.Fatalf("fact=%+v err=%v", fact, err)
+	}
+	for _, eventType := range []string{"invoice.payment_action_required", "checkout.session.completed"} {
+		current := event
+		current.EventType = eventType
+		if eventType == "invoice.payment_action_required" {
+			current.ResourceType, current.ResourceID = "invoice", "in_1"
+		} else {
+			current.ResourceType, current.ResourceID = "checkout.session", "cs_1"
+		}
+		if _, err := provider.VerifyLifecycle(context.Background(), current); err != nil {
+			t.Fatalf("%s err=%v", eventType, err)
+		}
+	}
+	if _, err := provider.RetrieveLifecycle(context.Background(), "sub_1"); err != nil {
+		t.Fatal(err)
+	}
+	url, err := provider.CreatePortalSession(context.Background(), app.PortalRequest{
+		CustomerID: "cus_synthetic", ReturnURL: "https://app.example.invalid/billing/manage", ConfigurationID: "bpc_1",
+	})
+	if err != nil || url != "https://billing.example.invalid/session" {
+		t.Fatalf("url=%q err=%v", url, err)
+	}
+}
+
+func TestStripeLifecycleRefusals(t *testing.T) {
+	provider := stripeTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "sub_1", "object": "subscription", "status": "active", "customer": map[string]any{"id": "cus_1"},
+			"livemode": false, "metadata": map[string]string{},
+		})
+	}))
+	provider.Merchant = "acct_synthetic"
+	event := app.InboxRecord{InboxEvent: app.InboxEvent{
+		Provider: domain.ProviderStripe, Environment: domain.EnvironmentTest, Merchant: "acct_synthetic",
+		EventID: "evt", EventType: "customer.subscription.updated", ResourceType: "subscription", ResourceID: "sub_1",
+	}}
+	if _, err := provider.VerifyLifecycle(context.Background(), event); !errors.Is(err, domain.ErrBinding) {
+		t.Fatalf("missing metadata err=%v", err)
+	}
+	event.EventType = "invoice.created"
+	event.ResourceType = "invoice"
+	event.ResourceID = "in_1"
+	if _, err := provider.VerifyLifecycle(context.Background(), event); !errors.Is(err, app.ErrIgnored) {
+		t.Fatalf("invoice.created err=%v", err)
+	}
+	if _, err := provider.CreatePortalSession(context.Background(), app.PortalRequest{CustomerID: "cus_1"}); !errors.Is(err, domain.ErrUnavailable) {
+		t.Fatalf("portal missing config err=%v", err)
 	}
 }

@@ -205,6 +205,10 @@ PAY-10 is LOCAL_DONE: canonical Stripe/Asaas settlement verifiers, atomic
 settlement/grant/cycle/outbox processing, revocation/replay fences and web-grant
 subscription capability/status projection are implemented; no Play token or
 credential is required for web-funded access.
+PAY-11 is LOCAL_DONE: Stripe provider subscriptions are persisted separately from
+invoice-funded grants, lifecycle/SCA/past-due/cancel/reconcile and constrained
+owner portal are implemented; cancellation preserves only paid-through and
+invoice creation grants nothing.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
