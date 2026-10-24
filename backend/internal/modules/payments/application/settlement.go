@@ -1,0 +1,130 @@
+package application
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"time"
+
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
+)
+
+type SettlementService struct {
+	Store    SettlementStore
+	Catalog  domain.Catalog
+	Verifier SettlementVerifier
+}
+
+func (s *SettlementService) Process(ctx context.Context, event InboxRecord) error {
+	if s == nil || s.Store == nil || s.Verifier == nil {
+		return domain.ErrUnavailable
+	}
+	if event.State != "" && event.State != "PENDING" {
+		return nil
+	}
+	candidate, err := s.Verifier.Verify(ctx, event)
+	if err != nil {
+		if errors.Is(err, ErrIgnored) || errors.Is(err, ErrNotSettled) {
+			return s.Store.MarkInbox(ctx, event.InboxEvent, "PROCESSED", "")
+		}
+		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) {
+			return err
+		}
+		return s.conflict(ctx, event, err)
+	}
+	if candidate.Provider != event.Provider || candidate.Environment != event.Environment ||
+		candidate.Merchant != event.Merchant {
+		return s.conflict(ctx, event, domain.ErrBinding)
+	}
+	order, err := s.Store.GetOrder(ctx, candidate.OrderID)
+	if err != nil {
+		return s.conflict(ctx, event, err)
+	}
+	if order.AccountID == "" || order.Channel != candidate.Channel || !order.Amount.Equal(candidate.Amount) ||
+		order.CatalogVersion != s.Catalog.Version || order.OfferID == "" {
+		return s.conflict(ctx, event, domain.ErrBinding)
+	}
+	offer, ok := s.Catalog.Offers[order.OfferID]
+	if !ok || !offer.Price.Equal(candidate.Amount) || len(offer.Capabilities) == 0 ||
+		!sameStrings(offer.Capabilities, order.Capabilities) {
+		return s.conflict(ctx, event, domain.ErrBinding)
+	}
+	attempt, err := s.Store.AttemptForOrder(ctx, order.ID)
+	if err != nil {
+		return s.conflict(ctx, event, err)
+	}
+	switch attempt.State {
+	case "SUCCEEDED", "DISPATCHED", "UNKNOWN":
+	default:
+		return s.conflict(ctx, event, domain.ErrConflict)
+	}
+	if attempt.Provider != event.Provider || attempt.Environment != event.Environment || attempt.Merchant != event.Merchant {
+		return s.conflict(ctx, event, domain.ErrBinding)
+	}
+	customerID, found, err := s.Store.Customer(ctx, order.AccountID, event.Provider, event.Environment, event.Merchant)
+	if err != nil {
+		return err
+	}
+	if !found || customerID != candidate.CustomerID {
+		return s.conflict(ctx, event, domain.ErrBinding)
+	}
+	if candidate.SettledAt.IsZero() {
+		candidate.SettledAt = event.ReceivedAt
+	}
+	if candidate.SettledAt.IsZero() {
+		candidate.SettledAt = time.Now().UTC()
+	}
+	settlement := domain.Settlement{
+		ID:      settlementUUID(event.Provider, candidate.RemotePaymentID),
+		OrderID: order.ID, AttemptID: attempt.ID, AccountID: order.AccountID,
+		OfferID: order.OfferID, Channel: candidate.Channel, Provider: candidate.Provider,
+		Environment: candidate.Environment, MerchantID: event.Merchant,
+		RemotePaymentID: candidate.RemotePaymentID, ProviderStatus: candidate.ProviderStatus,
+		Amount: candidate.Amount, Status: domain.SettlementSettled,
+		Authority: domain.AuthorityProviderVerified, SettledAt: candidate.SettledAt,
+	}
+	if _, err := s.Store.RecordSettlement(ctx, SettlementInput{Offer: offer, Settlement: settlement}); err != nil {
+		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, domain.ErrStale) || errors.Is(err, ErrAmbiguous) {
+			return err
+		}
+		return s.conflict(ctx, event, err)
+	}
+	return s.Store.MarkInbox(ctx, event.InboxEvent, "PROCESSED", "")
+}
+
+func (s *SettlementService) ProcessPending(ctx context.Context, provider domain.Provider, environment domain.Environment, merchant string, limit int) (int, error) {
+	if s == nil || s.Store == nil {
+		return 0, domain.ErrUnavailable
+	}
+	events, err := s.Store.PendingInbox(ctx, provider, environment, merchant, limit)
+	if err != nil {
+		return 0, err
+	}
+	processed := 0
+	for _, event := range events {
+		if err := s.Process(ctx, event); err != nil {
+			return processed, err
+		}
+		processed++
+	}
+	return processed, nil
+}
+
+func (s *SettlementService) conflict(ctx context.Context, event InboxRecord, cause error) error {
+	_ = cause
+	if err := s.Store.MarkInbox(ctx, event.InboxEvent, "CONFLICT", "settlement-binding"); err != nil {
+		return err
+	}
+	return domain.ErrConflict
+}
+
+func settlementUUID(provider domain.Provider, remoteID string) string {
+	sum := sha256.Sum256([]byte("payment-settlement\x00" + string(provider) + "\x00" + remoteID))
+	raw := sum[:16]
+	raw[6] = raw[6]&0x0f | 0x40
+	raw[8] = raw[8]&0x3f | 0x80
+	encoded := hex.EncodeToString(raw)
+	return encoded[0:8] + "-" + encoded[8:12] + "-" + encoded[12:16] + "-" +
+		encoded[16:20] + "-" + encoded[20:32]
+}

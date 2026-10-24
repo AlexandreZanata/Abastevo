@@ -201,6 +201,10 @@ unknown/duplicate/conflicting events are safe and runtime wiring remains PAY-19.
 PAY-09 is LOCAL_DONE: Asaas webhooks use the separate constant-time token with
 rotation, TLS/bounds/account binding and durable inbox before HTTP 200; unknown/
 duplicate/conflicting delivery and DB retry are safe.
+PAY-10 is LOCAL_DONE: canonical Stripe/Asaas settlement verifiers, atomic
+settlement/grant/cycle/outbox processing, revocation/replay fences and web-grant
+subscription capability/status projection are implemented; no Play token or
+credential is required for web-funded access.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider

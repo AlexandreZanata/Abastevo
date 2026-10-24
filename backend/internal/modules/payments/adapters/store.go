@@ -81,22 +81,134 @@ func (s *Store) Customer(ctx context.Context, accountID string, provider domain.
 	return row.RemoteCustomerID, true, nil
 }
 
+func (s *Store) Inbox(ctx context.Context, provider domain.Provider, environment domain.Environment, merchant, eventID string) (app.InboxRecord, error) {
+	if s == nil || s.Pool == nil {
+		return app.InboxRecord{}, domain.ErrUnavailable
+	}
+	if err := provider.Validate(); err != nil {
+		return app.InboxRecord{}, err
+	}
+	if err := environment.Validate(); err != nil {
+		return app.InboxRecord{}, err
+	}
+	if !validText(merchant) || !validText(eventID) {
+		return app.InboxRecord{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentInbox(ctx, qpay.GetPaymentInboxParams{
+		Provider: string(provider), Environment: string(environment), Merchant: merchant, EventID: eventID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.InboxRecord{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return app.InboxRecord{}, dbError(err)
+	}
+	return inboxRecord(row), nil
+}
+
+func (s *Store) PendingInbox(ctx context.Context, provider domain.Provider, environment domain.Environment, merchant string, limit int) ([]app.InboxRecord, error) {
+	if s == nil || s.Pool == nil {
+		return nil, domain.ErrUnavailable
+	}
+	if err := provider.Validate(); err != nil {
+		return nil, err
+	}
+	if err := environment.Validate(); err != nil {
+		return nil, err
+	}
+	if !validText(merchant) || limit < 1 || limit > 100 {
+		return nil, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	rows, err := qpay.New(s.Pool).ListPendingPaymentInbox(ctx, qpay.ListPendingPaymentInboxParams{
+		Provider: string(provider), Environment: string(environment), Merchant: merchant, LimitCount: int32(limit),
+	})
+	if err != nil {
+		return nil, dbError(err)
+	}
+	records := make([]app.InboxRecord, 0, len(rows))
+	for _, row := range rows {
+		records = append(records, inboxRecord(row))
+	}
+	return records, nil
+}
+
+func (s *Store) AttemptForOrder(ctx context.Context, orderID string) (app.AttemptRecord, error) {
+	if s == nil || s.Pool == nil {
+		return app.AttemptRecord{}, domain.ErrUnavailable
+	}
+	uid, err := toUUID(orderID)
+	if err != nil {
+		return app.AttemptRecord{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentAttemptForOrder(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.AttemptRecord{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return app.AttemptRecord{}, dbError(err)
+	}
+	return app.AttemptRecord{
+		ID: uuidText(row.ID), OperationID: uuidText(row.OperationID),
+		Provider: domain.Provider(row.Provider), Environment: domain.Environment(row.Environment),
+		Merchant: row.Merchant, State: row.State, RemoteID: textValue(row.RemoteID),
+		Generation: row.Generation,
+	}, nil
+}
+
+func (s *Store) RevokeGrant(ctx context.Context, orderID string, now time.Time) error {
+	if s == nil || s.Pool == nil {
+		return domain.ErrUnavailable
+	}
+	uid, err := toUUID(orderID)
+	if err != nil || now.IsZero() {
+		return domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	q := qpay.New(s.Pool)
+	rows, err := q.RevokePaymentGrant(ctx, qpay.RevokePaymentGrantParams{RevokedAt: stamp(now), OrderID: uid})
+	if err != nil {
+		return dbError(err)
+	}
+	if rows == 1 {
+		return nil
+	}
+	grant, err := q.GetPaymentGrantByOrder(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrNotFound
+	}
+	if err != nil {
+		return dbError(err)
+	}
+	if grant.State == "REVOKED" {
+		return nil
+	}
+	return domain.ErrConflict
+}
+
+func inboxRecord(row qpay.PaymentInbox) app.InboxRecord {
+	return app.InboxRecord{
+		InboxEvent: app.InboxEvent{
+			Provider: domain.Provider(row.Provider), Environment: domain.Environment(row.Environment),
+			Merchant: row.Merchant, EventID: row.EventID, PayloadHash: row.PayloadHash,
+			EventType: row.EventType, ResourceType: row.ResourceType, ResourceID: row.ResourceID,
+		},
+		State: row.State, ReceivedAt: row.ReceivedAt.Time,
+	}
+}
+
 type CustomerMapping = app.CustomerMapping
 type ClaimAttemptInput = app.ClaimAttemptInput
 type Claim = app.Claim
 
-type SettlementInput struct {
-	Offer      domain.Offer
-	Settlement domain.Settlement
-}
-
-type SettlementOutcome struct {
-	SettlementID string
-	OrderID      string
-	GrantID      string
-	Excess       bool
-	Replay       bool
-}
+type SettlementInput = app.SettlementInput
+type SettlementOutcome = app.SettlementOutcome
 
 type InboxInput = app.InboxEvent
 type InboxResult = app.InboxResult
@@ -614,6 +726,24 @@ func (s *Store) RecordSettlement(ctx context.Context, input SettlementInput) (Se
 		}
 		if rows != 1 {
 			return SettlementOutcome{}, domain.ErrConflict
+		}
+		rows, err = q.InsertPaymentCycle(ctx, qpay.InsertPaymentCycleParams{
+			ID: mustUUID(grant.ID), AccountID: accountID, OfferID: orderRow.OfferID,
+			Source: string(grant.Source), PeriodStart: stamp(grant.Start), PeriodEnd: stamp(grant.End),
+			State: "SETTLED", SettlementID: mustUUID(settlement.ID),
+		})
+		if err != nil {
+			return SettlementOutcome{}, dbError(err)
+		}
+		if rows != 1 {
+			existing, getErr := q.GetPaymentCycleByKey(ctx, qpay.GetPaymentCycleByKeyParams{
+				AccountID: accountID, OfferID: orderRow.OfferID, PeriodStart: stamp(grant.Start),
+			})
+			if getErr != nil || existing.State != "SETTLED" ||
+				!sameUUID(existing.SettlementID, mustUUID(settlement.ID)) ||
+				!sameInstant(existing.PeriodEnd, grant.End) {
+				return SettlementOutcome{}, domain.ErrConflict
+			}
 		}
 		outcome.GrantID = grant.ID
 	}

@@ -3718,8 +3718,8 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 
 ## Stripe and Asaas payments
 
-Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–09 are
-LOCAL_DONE / INTEGRATION_PENDING; PAY-10–23 remain planned.
+Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–10 are
+LOCAL_DONE / INTEGRATION_PENDING; PAY-11–23 remain planned.
 Selected methods: Stripe cards, Asaas conventional Pix and Pix Automático,
 independently activated.
 Google Play is LATER. Reuse PRM subscription/account/jobs; no Stage D team/tenant
@@ -3748,7 +3748,9 @@ with [evidence](docs/backend/evidence/payments/PAY-07.md), and PAY-08
 [Stripe webhook inbox](backend/internal/modules/payments/adapters/http/stripe_webhook.go)
 with [evidence](docs/backend/evidence/payments/PAY-08.md), and PAY-09
 [Asaas webhook inbox](backend/internal/modules/payments/adapters/http/asaas_webhook.go)
-with [evidence](docs/backend/evidence/payments/PAY-09.md), are local only. The
+with [evidence](docs/backend/evidence/payments/PAY-09.md), and PAY-10
+[settlement/access projection](backend/internal/modules/payments/application/settlement.go)
+with [evidence](docs/backend/evidence/payments/PAY-10.md), are local only. The
 checklist owns dependencies, steps, risk checks, shared-path coordination,
 evidence and commit topic.
 
@@ -3774,7 +3776,9 @@ evidence and commit topic.
   mode/version/account binding, bounded durable inbox and adversarial tests pass.
 - **PAY-09:** Receive Asaas events durably. LOCAL_DONE; separate rotating token,
   TLS/bounds/account binding, durable inbox and backlog/duplicate tests pass.
-- **PAY-10:** Verify settlements and project existing access.
+- **PAY-10:** Verify settlements and project existing access. LOCAL_DONE;
+  canonical settlement, atomic grant/cycle/outbox, revocation/replay and web-
+  capability projection pass real PostGIS and Play-regression tests.
 - **PAY-11:** Complete Stripe recurring lifecycle.
 - **PAY-12:** Integrate Pix Automatic consent and authorization.
 - **PAY-13:** Complete Pix Automatic recurring cycles.

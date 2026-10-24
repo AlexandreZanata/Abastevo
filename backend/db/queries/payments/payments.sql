@@ -75,6 +75,11 @@ SELECT * FROM payment_attempts WHERE id=sqlc.arg(id)::uuid;
 -- name: GetPaymentAttemptForUpdate :one
 SELECT * FROM payment_attempts WHERE id=sqlc.arg(id)::uuid FOR UPDATE;
 
+-- name: GetPaymentAttemptForOrder :one
+SELECT * FROM payment_attempts
+WHERE order_id=sqlc.arg(order_id)::uuid
+ORDER BY created_at DESC,id DESC LIMIT 1;
+
 -- name: MarkPaymentAttemptDispatched :execrows
 UPDATE payment_attempts
 SET state='DISPATCHED',updated_at=clock_timestamp()
@@ -164,6 +169,18 @@ ON CONFLICT DO NOTHING;
 -- name: GetPaymentInbox :one
 SELECT * FROM payment_inbox
 WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant) AND event_id=sqlc.arg(event_id);
+
+-- name: ListPendingPaymentInbox :many
+SELECT * FROM payment_inbox
+WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment)
+  AND merchant=sqlc.arg(merchant) AND state='PENDING'
+ORDER BY received_at,event_id
+LIMIT sqlc.arg(limit_count)::int;
+
+-- name: RevokePaymentGrant :execrows
+UPDATE payment_grants
+SET state='REVOKED',revoked_at=sqlc.arg(revoked_at)::timestamptz
+WHERE order_id=sqlc.arg(order_id)::uuid AND state='ACTIVE';
 
 -- name: MarkPaymentInbox :execrows
 UPDATE payment_inbox

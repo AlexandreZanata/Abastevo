@@ -1,5 +1,17 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-10 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-09 `8251aa19`. Canonical Stripe invoice
+  and Asaas received-payment verifiers feed an idempotent settlement processor;
+  settlement/order/grant/cycle/outbox commit atomically and inbox processing is
+  durable. Revocation/replay, delayed/duplicate events, provider outage recovery,
+  wrong amount/currency/pending/manual invoice and concurrent receipt are tested.
+  Subscription capability/status now honors active web grants without Play
+  credentials; Play/free access regressions pass. [PAY-10 evidence](../backend/evidence/payments/PAY-10.md):
+  race PostGIS/payment/subscription suites, full backend, vet/staticcheck/
+  govulncheck/sqlc/security gates PASS. No runtime/worker/sale. Next: PAY-11
+  Stripe recurring lifecycle only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-09 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-08 `bb200890`. Asaas webhook handler
   uses a separate 32–255 char rotating token in constant time, optional TLS,

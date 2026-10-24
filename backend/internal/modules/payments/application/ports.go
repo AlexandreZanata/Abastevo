@@ -94,6 +94,47 @@ type InboxResult struct {
 	State   string
 }
 
+type InboxRecord struct {
+	InboxEvent
+	State      string
+	ReceivedAt time.Time
+}
+
+type AttemptRecord struct {
+	ID          string
+	OperationID string
+	Provider    domain.Provider
+	Environment domain.Environment
+	Merchant    string
+	State       string
+	RemoteID    string
+	Generation  int64
+}
+
+type SettlementInput struct {
+	Offer      domain.Offer
+	Settlement domain.Settlement
+}
+
+type SettlementOutcome struct {
+	SettlementID string
+	OrderID      string
+	GrantID      string
+	Excess       bool
+	Replay       bool
+}
+
+type SettlementStore interface {
+	Inbox(context.Context, domain.Provider, domain.Environment, string, string) (InboxRecord, error)
+	PendingInbox(context.Context, domain.Provider, domain.Environment, string, int) ([]InboxRecord, error)
+	GetOrder(context.Context, string) (domain.Order, error)
+	AttemptForOrder(context.Context, string) (AttemptRecord, error)
+	Customer(context.Context, string, domain.Provider, domain.Environment, string) (string, bool, error)
+	RecordSettlement(context.Context, SettlementInput) (SettlementOutcome, error)
+	MarkInbox(context.Context, InboxEvent, string, string) error
+	RevokeGrant(context.Context, string, time.Time) error
+}
+
 type InboxRecorder interface {
 	RecordInbox(context.Context, InboxEvent) (InboxResult, error)
 }

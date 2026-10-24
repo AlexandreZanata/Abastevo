@@ -146,6 +146,29 @@ func (p *AsaasProvider) FindPayment(ctx context.Context, externalReference strin
 	return app.PixPayment{}, false, complete, nil
 }
 
+func (p *AsaasProvider) VerifySettlement(ctx context.Context, event app.InboxRecord) (app.SettlementCandidate, error) {
+	if event.EventType != "PAYMENT_RECEIVED" || event.ResourceType != "payment" {
+		return app.SettlementCandidate{}, app.ErrIgnored
+	}
+	payment, err := p.RetrievePayment(ctx, event.ResourceID)
+	if err != nil {
+		return app.SettlementCandidate{}, err
+	}
+	if payment.Class != app.PixSettled || payment.ProviderStatus != "RECEIVED" {
+		return app.SettlementCandidate{}, app.ErrNotSettled
+	}
+	settledAt := event.ReceivedAt.UTC()
+	if settledAt.IsZero() {
+		settledAt = time.Now().UTC()
+	}
+	return app.SettlementCandidate{
+		OrderID: payment.ExternalReference, Provider: domain.ProviderAsaas,
+		Environment: p.Environment, Merchant: event.Merchant, Channel: domain.ChannelPixManual,
+		CustomerID: payment.CustomerID, RemotePaymentID: payment.ID,
+		ProviderStatus: payment.ProviderStatus, Amount: payment.Amount, SettledAt: settledAt,
+	}, nil
+}
+
 func (p *AsaasProvider) GetQR(ctx context.Context, paymentID string) (app.PixQR, error) {
 	if !validAsaasID(paymentID) {
 		return app.PixQR{}, domain.ErrInvalid

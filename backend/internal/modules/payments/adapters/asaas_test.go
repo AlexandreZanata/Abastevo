@@ -246,3 +246,39 @@ func TestAsaasServerErrorAmbiguous(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestAsaasVerifySettlementRequiresReceived(t *testing.T) {
+	event := app.InboxRecord{InboxEvent: app.InboxEvent{
+		Provider: domain.ProviderAsaas, Environment: domain.EnvironmentTest,
+		Merchant: "merchant_1", EventID: "evt_pay", EventType: "PAYMENT_RECEIVED",
+		ResourceType: "payment", ResourceID: "pay_1",
+	}, State: "PENDING", ReceivedAt: time.Now().UTC()}
+	provider := asaasTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v3/payments/pay_1" {
+			t.Fatalf("path=%s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "pay_1", "customer": "cus_synthetic", "status": "RECEIVED",
+			"externalReference": "order_1", "value": 12.34, "dueDate": "2026-10-24",
+		})
+	}))
+	candidate, err := provider.VerifySettlement(context.Background(), event)
+	if err != nil || candidate.OrderID != "order_1" || candidate.CustomerID != "cus_synthetic" ||
+		candidate.Provider != domain.ProviderAsaas || !candidate.Amount.Equal(domain.BRL(1234)) {
+		t.Fatalf("candidate=%+v err=%v", candidate, err)
+	}
+
+	provider = asaasTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "pay_1", "customer": "cus_synthetic", "status": "PENDING",
+			"externalReference": "order_1", "value": 12.34, "dueDate": "2026-10-24",
+		})
+	}))
+	if _, err := provider.VerifySettlement(context.Background(), event); !errors.Is(err, app.ErrNotSettled) {
+		t.Fatalf("pending err=%v", err)
+	}
+	event.EventType = "PAYMENT_CREATED"
+	if _, err := provider.VerifySettlement(context.Background(), event); !errors.Is(err, app.ErrIgnored) {
+		t.Fatalf("ignored err=%v", err)
+	}
+}

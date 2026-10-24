@@ -103,6 +103,60 @@ func (p *StripeProvider) CreateCheckout(ctx context.Context, request app.Checkou
 	return result, nil
 }
 
+func (p *StripeProvider) VerifySettlement(ctx context.Context, event app.InboxRecord) (app.SettlementCandidate, error) {
+	if event.EventType != "invoice.paid" || event.ResourceType != "invoice" {
+		return app.SettlementCandidate{}, app.ErrIgnored
+	}
+	invoice, err := p.Client.V1Invoices.Retrieve(ctx, event.ResourceID, nil)
+	if err != nil {
+		return app.SettlementCandidate{}, stripeError(err)
+	}
+	if invoice.Status != stripe.InvoiceStatusPaid {
+		return app.SettlementCandidate{}, app.ErrNotSettled
+	}
+	if string(invoice.Currency) != "brl" || invoice.AmountPaid <= 0 || invoice.AmountPaid != invoice.AmountDue ||
+		invoice.AmountPaidOffStripe != 0 || invoice.CollectionMethod != stripe.InvoiceCollectionMethodChargeAutomatically ||
+		invoice.Livemode != (p.Environment == domain.EnvironmentProduction) || invoice.Customer == nil {
+		return app.SettlementCandidate{}, domain.ErrBinding
+	}
+	switch invoice.BillingReason {
+	case stripe.InvoiceBillingReasonSubscriptionCreate, stripe.InvoiceBillingReasonSubscriptionCycle, stripe.InvoiceBillingReasonSubscriptionUpdate:
+	default:
+		return app.SettlementCandidate{}, domain.ErrBinding
+	}
+	metadata := map[string]string{}
+	if invoice.Parent != nil && invoice.Parent.SubscriptionDetails != nil {
+		if invoice.Parent.SubscriptionDetails.Metadata != nil {
+			for key, value := range invoice.Parent.SubscriptionDetails.Metadata {
+				metadata[key] = value
+			}
+		}
+		if invoice.Parent.SubscriptionDetails.Subscription != nil {
+			for key, value := range invoice.Parent.SubscriptionDetails.Subscription.Metadata {
+				metadata[key] = value
+			}
+		}
+	}
+	orderID, accountID := metadata["order_id"], metadata["account_id"]
+	if orderID == "" || accountID == "" || invoice.ID == "" {
+		return app.SettlementCandidate{}, domain.ErrBinding
+	}
+	settledAt := event.ReceivedAt.UTC()
+	if invoice.StatusTransitions != nil && invoice.StatusTransitions.PaidAt > 0 {
+		settledAt = time.Unix(invoice.StatusTransitions.PaidAt, 0).UTC()
+	}
+	if settledAt.IsZero() {
+		settledAt = time.Now().UTC()
+	}
+	return app.SettlementCandidate{
+		OrderID: orderID, Provider: domain.ProviderStripe, Environment: p.Environment,
+		Merchant: event.Merchant, Channel: domain.ChannelCard,
+		CustomerID: invoice.Customer.ID, RemotePaymentID: invoice.ID,
+		ProviderStatus: string(invoice.Status), Amount: domain.BRL(invoice.AmountPaid),
+		SettledAt: settledAt,
+	}, nil
+}
+
 func (p *StripeProvider) RetrieveCheckout(ctx context.Context, sessionID string) (app.CheckoutSession, error) {
 	if p == nil || p.Client == nil || sessionID == "" {
 		return app.CheckoutSession{}, domain.ErrUnavailable

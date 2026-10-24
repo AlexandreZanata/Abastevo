@@ -38,6 +38,35 @@ func (q *Queries) GetPaymentAttempt(ctx context.Context, id pgtype.UUID) (Paymen
 	return i, err
 }
 
+const getPaymentAttemptForOrder = `-- name: GetPaymentAttemptForOrder :one
+SELECT id, operation_id, order_id, attempt_no, generation, provider, environment, merchant, payload_hash, state, remote_id, lease_until, created_at, updated_at, completed_at FROM payment_attempts
+WHERE order_id=$1::uuid
+ORDER BY created_at DESC,id DESC LIMIT 1
+`
+
+func (q *Queries) GetPaymentAttemptForOrder(ctx context.Context, orderID pgtype.UUID) (PaymentAttempt, error) {
+	row := q.db.QueryRow(ctx, getPaymentAttemptForOrder, orderID)
+	var i PaymentAttempt
+	err := row.Scan(
+		&i.ID,
+		&i.OperationID,
+		&i.OrderID,
+		&i.AttemptNo,
+		&i.Generation,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.PayloadHash,
+		&i.State,
+		&i.RemoteID,
+		&i.LeaseUntil,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CompletedAt,
+	)
+	return i, err
+}
+
 const getPaymentAttemptForUpdate = `-- name: GetPaymentAttemptForUpdate :one
 SELECT id, operation_id, order_id, attempt_no, generation, provider, environment, merchant, payload_hash, state, remote_id, lease_until, created_at, updated_at, completed_at FROM payment_attempts WHERE id=$1::uuid FOR UPDATE
 `
@@ -806,6 +835,60 @@ func (q *Queries) ListPaymentGrantsForEntitlement(ctx context.Context, arg ListP
 	return items, nil
 }
 
+const listPendingPaymentInbox = `-- name: ListPendingPaymentInbox :many
+SELECT provider, environment, merchant, event_id, payload_hash, event_type, resource_type, resource_id, state, attempts, received_at, processed_at, last_error FROM payment_inbox
+WHERE provider=$1 AND environment=$2
+  AND merchant=$3 AND state='PENDING'
+ORDER BY received_at,event_id
+LIMIT $4::int
+`
+
+type ListPendingPaymentInboxParams struct {
+	Provider    string `json:"provider"`
+	Environment string `json:"environment"`
+	Merchant    string `json:"merchant"`
+	LimitCount  int32  `json:"limit_count"`
+}
+
+func (q *Queries) ListPendingPaymentInbox(ctx context.Context, arg ListPendingPaymentInboxParams) ([]PaymentInbox, error) {
+	rows, err := q.db.Query(ctx, listPendingPaymentInbox,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.LimitCount,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentInbox
+	for rows.Next() {
+		var i PaymentInbox
+		if err := rows.Scan(
+			&i.Provider,
+			&i.Environment,
+			&i.Merchant,
+			&i.EventID,
+			&i.PayloadHash,
+			&i.EventType,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.State,
+			&i.Attempts,
+			&i.ReceivedAt,
+			&i.ProcessedAt,
+			&i.LastError,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockPaymentKey = `-- name: LockPaymentKey :exec
 
 SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
@@ -969,6 +1052,25 @@ func (q *Queries) ResolvePaymentOperation(ctx context.Context, arg ResolvePaymen
 		arg.ID,
 		arg.Generation,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const revokePaymentGrant = `-- name: RevokePaymentGrant :execrows
+UPDATE payment_grants
+SET state='REVOKED',revoked_at=$1::timestamptz
+WHERE order_id=$2::uuid AND state='ACTIVE'
+`
+
+type RevokePaymentGrantParams struct {
+	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
+	OrderID   pgtype.UUID        `json:"order_id"`
+}
+
+func (q *Queries) RevokePaymentGrant(ctx context.Context, arg RevokePaymentGrantParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokePaymentGrant, arg.RevokedAt, arg.OrderID)
 	if err != nil {
 		return 0, err
 	}

@@ -288,3 +288,86 @@ func TestStripeEnsureCustomerRejectsForeignMetadata(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func stripeInvoice(invoiceID string, mutate func(map[string]any)) map[string]any {
+	body := map[string]any{
+		"id": invoiceID, "object": "invoice", "status": "paid", "currency": "brl",
+		"amount_due": 1234, "amount_paid": 1234, "amount_paid_off_stripe": 0,
+		"collection_method": "charge_automatically", "billing_reason": "subscription_cycle",
+		"customer":           map[string]any{"id": "cus_synthetic", "object": "customer"},
+		"livemode":           false,
+		"status_transitions": map[string]any{"paid_at": 1700000000},
+		"parent": map[string]any{
+			"type": "subscription_details",
+			"subscription_details": map[string]any{
+				"metadata":     map[string]string{"order_id": "66666666-6666-4666-8666-666666666666", "account_id": "11111111-1111-4111-8111-111111111111"},
+				"subscription": map[string]any{"id": "sub_synthetic", "metadata": map[string]string{}},
+			},
+		},
+	}
+	if mutate != nil {
+		mutate(body)
+	}
+	return body
+}
+
+func TestStripeVerifySettlementCanonicalInvoice(t *testing.T) {
+	event := app.InboxRecord{
+		InboxEvent: app.InboxEvent{
+			Provider: domain.ProviderStripe, Environment: domain.EnvironmentTest,
+			Merchant: "acct_synthetic", EventID: "evt_invoice", EventType: "invoice.paid",
+			ResourceType: "invoice", ResourceID: "in_1",
+		},
+		State: "PENDING", ReceivedAt: time.Now().UTC(),
+	}
+	provider := stripeTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/invoices/in_1" {
+			t.Fatalf("path = %s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(stripeInvoice("in_1", nil))
+	}))
+	candidate, err := provider.VerifySettlement(context.Background(), event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if candidate.OrderID != "66666666-6666-4666-8666-666666666666" || candidate.CustomerID != "cus_synthetic" ||
+		candidate.RemotePaymentID != "in_1" || !candidate.Amount.Equal(domain.BRL(1234)) ||
+		candidate.Channel != domain.ChannelCard || candidate.Provider != domain.ProviderStripe {
+		t.Fatalf("candidate = %+v", candidate)
+	}
+}
+
+func TestStripeVerifySettlementRefusals(t *testing.T) {
+	event := app.InboxRecord{InboxEvent: app.InboxEvent{
+		Provider: domain.ProviderStripe, Environment: domain.EnvironmentTest,
+		Merchant: "acct_synthetic", EventID: "evt_invoice", EventType: "invoice.paid",
+		ResourceType: "invoice", ResourceID: "in_1",
+	}}
+	for name, tc := range map[string]struct {
+		mutate func(map[string]any)
+		want   error
+	}{
+		"manual":         {func(b map[string]any) { b["amount_paid_off_stripe"] = 1 }, domain.ErrBinding},
+		"send-invoice":   {func(b map[string]any) { b["collection_method"] = "send_invoice" }, domain.ErrBinding},
+		"wrong-currency": {func(b map[string]any) { b["currency"] = "usd" }, domain.ErrBinding},
+		"partial":        {func(b map[string]any) { b["amount_paid"] = 1000 }, domain.ErrBinding},
+		"pending":        {func(b map[string]any) { b["status"] = "open" }, app.ErrNotSettled},
+		"manual-reason":  {func(b map[string]any) { b["billing_reason"] = "manual" }, domain.ErrBinding},
+		"missing-meta":   {func(b map[string]any) { b["parent"] = nil }, domain.ErrBinding},
+	} {
+		t.Run(name, func(t *testing.T) {
+			provider := stripeTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_ = json.NewEncoder(w).Encode(stripeInvoice("in_1", tc.mutate))
+			}))
+			if _, err := provider.VerifySettlement(context.Background(), event); !errors.Is(err, tc.want) {
+				t.Fatalf("err = %v want %v", err, tc.want)
+			}
+		})
+	}
+	event.EventType = "checkout.session.completed"
+	if _, err := stripeTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("ignored event called provider")
+	})).VerifySettlement(context.Background(), event); !errors.Is(err, app.ErrIgnored) {
+		t.Fatalf("ignored err = %v", err)
+	}
+}
