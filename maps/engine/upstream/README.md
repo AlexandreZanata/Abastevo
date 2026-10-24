@@ -1,0 +1,71 @@
+# Pinned CoMaps release builder
+
+This is the MAP-14 T03 linker/build unblock, not ENGINE_GATE acceptance.
+Upstream: `4587b8ad4d12c9f59982709fdaf03cc925948827` (Apache-2.0 core).
+Preserve the upstream LICENSE/NOTICE and the separate transitive/asset audit.
+
+## Why the source patch is necessary
+
+The pinned SDK CMake 3.22.1 Clang module appends `-fuse-ld=gold` for IPO when
+the legacy NDK toolchain leaves `CMAKE_ANDROID_NDK_VERSION` unset. NDK r28c
+uses LLD and does not ship LLVMgold.so. Adding an earlier `-fuse-ld=lld` does
+not fix the trailing IPO option. `AbastevoAndroidLld.cmake` removes only the
+obsolete gold IPO option for NDK >=22 and retains ThinLTO for C and C++.
+
+`ndk-r28-lld.patch` records the root fix and the earlier explicit LLD/16 KB
+SDK settings. It never modifies generated Ninja files or the diagnostic map
+checker. Apply it only to the exact pin; preserve unrelated source edits.
+
+## Build and consume
+
+Use a prepared local source checkout with every pinned submodule and generated
+map/style assets, the installed SDK/NDK, and a complete JDK 21 (a JRE alone is
+insufficient). The builder is offline and refuses wrong pins or patch drift.
+
+```sh
+JAVA_HOME=/data/dev/java/candidates/java/current \
+  bash scripts/maps/build-comaps-aar.sh \
+    --source /data/dev/src/comaps-4587b8ad \
+    --sdk /data/dev/android/sdk/Sdk \
+    --output /tmp/abastevo-comaps-release-arm64 --abi arm64-v8a
+
+JAVA_HOME=/data/dev/java/candidates/java/current \
+  ./gradlew :app:assembleDebug :app:verifyReleaseApkSize \
+    -PcomapsSdkDir=/tmp/abastevo-comaps-release-arm64 --offline --console=plain
+```
+
+The output contains the actual `sdk-release.aar`, its verified unpacked
+contents, `build.json`, the source patch, runtime diff, submodule pins and build
+log. The verifier refuses debug/hybrid classes, incorrect minSdk/ABI,
+unstripped native libraries and misaligned 64-bit LOAD segments. The adapter
+consumes the upstream release BuildConfig; it must not generate a duplicate
+class or remove that class from the AAR. Consumer keep rules preserve JNI
+class/member names while the final symbol-specific audit remains pending.
+
+No patch to files under `.cxx`/`build.ninja`, debug-JAR/release-.so mixing,
+ignored linker failure, algorithm substitution or changed size gate is needed.
+The recorded user-approved APK budget remains 80 MiB.
+
+## Still required
+
+- Clean-checkout double-build comparison, complete source/resource admission
+  and SBOM/notices; a local incremental build does not prove reproducibility.
+- Other supported ABI acceptance, packaged APK/16 KB runtime checks, native
+  device/emulator behavior and the full lifecycle/selection matrix.
+- Overlay hit-test with canonical UUID, custom symbols/clustering and the
+  accessible equivalent; MAP-15/16 remain dependent on ENGINE_GATE.
+
+For Android Ed25519, the pinned core already compiles
+`libs/platform/crypto/ed25519_monocypher.cpp` and
+`3party/monocypher/monocypher-ed25519.c`. The implementation route for MAP-15
+is to expose that verifier behind an injected Abastevo port, without requiring
+the platform Java Ed25519 provider or reimplementing cryptography. Its pinned
+Monocypher source offers BSD-2-Clause (or CC0); retain the chosen BSD notices
+and audit the shipped files. Before accepting the bridge, test exact Go-signed
+manifest bytes, RFC 8032 vectors, altered message/key/signature, wrong lengths,
+untrusted key IDs and key rotation on API 26. Do not use Java provider presence
+as proof or treat this design choice as an already implemented verifier.
+
+Room/download implementation is also an engineering task, not a pending human
+choice: reuse the current database and add the next append-only migration after
+checking the actual schema head, with crash/disk-full/cancellation tests.

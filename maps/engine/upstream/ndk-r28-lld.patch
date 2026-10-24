@@ -1,0 +1,49 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,6 +1,9 @@
+ cmake_minimum_required(VERSION 3.22.1)
+
+ project(omim C CXX)
++
++# Abastevo: avoid CMake 3.22 forcing gold for modern Android NDK ThinLTO.
++include(cmake/AbastevoAndroidLld.cmake)
+
+ set(CMAKE_CXX_STANDARD 23)
+ set(CMAKE_C_STANDARD 23)
+diff --git a/android/sdk/build.gradle.kts b/android/sdk/build.gradle.kts
+--- a/android/sdk/build.gradle.kts
++++ b/android/sdk/build.gradle.kts
+@@ -39,6 +39,9 @@
+                     "-DUSE_PCH=${project.getPropertyValueForCMake("enablePCH")}",
+                     "-DENABLE_TRACE=${project.getPropertyValueForCMake("enableTrace")}",
+                     "-DENABLE_VULKAN_DIAGNOSTICS=${project.getPropertyValueForCMake("enableVulkanDiagnostics")}",
++                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
++                    "-DANDROID_LD=lld",
++                    "-DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld -Wl,-z,max-page-size=16384",
+                 )
+                 targets += "organicmaps"
+             }
+diff --git a/android/sdk/src/main/cpp/CMakeLists.txt b/android/sdk/src/main/cpp/CMakeLists.txt
+--- a/android/sdk/src/main/cpp/CMakeLists.txt
++++ b/android/sdk/src/main/cpp/CMakeLists.txt
+@@ -153,3 +153,6 @@
+   target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=hwaddress)
+ endif()
+
++
++# Abastevo local build: NDK r28 ships lld, not the gold plugin.
++target_link_options(${PROJECT_NAME} PRIVATE "-fuse-ld=lld")
+diff --git a/cmake/AbastevoAndroidLld.cmake b/cmake/AbastevoAndroidLld.cmake
+new file mode 100644
+--- /dev/null
++++ b/cmake/AbastevoAndroidLld.cmake
+@@ -0,0 +1,8 @@
++# Abastevo MAP-14: keep ThinLTO while using the modern NDK's default LLD.
++# CMake 3.22's Clang module otherwise appends gold when the legacy NDK
++# toolchain does not populate CMAKE_ANDROID_NDK_VERSION (android/ndk#1444).
++if(ANDROID AND ANDROID_NDK_MAJOR GREATER_EQUAL 22)
++  foreach(language IN ITEMS C CXX)
++    list(REMOVE_ITEM CMAKE_${language}_LINK_OPTIONS_IPO "-fuse-ld=gold")
++  endforeach()
++endif()

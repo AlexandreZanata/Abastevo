@@ -265,3 +265,21 @@ The versioned fixtures in
 No national completeness, live availability, operator feed, payment/reservation/
 OCPP control, upstream OSM editing, cloud voice, traffic forecast, iOS/CarPlay or
 guaranteed safe arrival is contracted here.
+
+## MAP-14 T03 release-build recovery (2026-10-24)
+
+- **B-BR-MAP-BUILD-01:** a distributable engine AAR comes from the pinned
+  `:sdk:assembleRelease` task with minSdk 26. Debug Java classes mixed with a
+  release native library are probe inputs, never accepted release artifacts.
+- **B-BR-MAP-BUILD-02:** the modern NDK uses LLD with ThinLTO retained; source
+  patches are recorded and reapplicable. Generated Ninja files are not edited.
+- **B-BR-MAP-BUILD-03:** artifact verification checks actual release BuildConfig,
+  native ABI/stripping/LOAD alignment and hashes. It does not certify runtime
+  16 KB compatibility, transitive rights or the other ENGINE_GATE obligations.
+- **BUC-MAP-BUILD-01:** GIVEN CMake 3.22.1 and NDK 28.2, WHEN a C/C++ ThinLTO
+  library links without the source fix, THEN the obsolete gold option fails;
+  WITH the recorded source fix, the library links using NDK LLD with 16 KB
+  alignment and ThinLTO still enabled.
+- **BUC-MAP-BUILD-02:** GIVEN a debug/hybrid AAR or wrong minSdk/ABI, WHEN
+  release candidate verification runs, THEN it refuses publication and retains
+  any prior output. A valid Gradle release AAR publishes to a new output only.
