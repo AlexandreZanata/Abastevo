@@ -179,6 +179,10 @@ PAY-02 is LOCAL_DONE: [provider admission v1](STRIPE_ASAAS_PROVIDER_ADMISSION.md
 pins Stripe Go `v87.0.0`/API `2026-09-30.endive` and the Asaas v3 client approach,
 with synthetic contract fixtures. No dependency/runtime/account change; SDK
 installation remains at PAY-06 and account/sandbox proof remains PAY-21.
+PAY-03 is LOCAL_DONE: `backend/internal/modules/payments/domain` now owns pure
+order/attempt/settlement/contract/mandate/refund/dispute/grant transitions,
+exact BRL periods and source allocation. Existing Play/free exits are unchanged;
+persistence/providers/runtime remain PAY-04+.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider

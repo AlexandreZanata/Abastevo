@@ -1,5 +1,16 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-03 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-02 `efe5f170`. New pure
+  `backend/internal/modules/payments/domain` implements order/attempt/settlement/
+  contract/mandate/refund/dispute/grant transitions, exact BRL periods, one order
+  one grant, early/late renewal, zero grace, bounded refunds/disputes, excess and
+  one recurring source. Redirect/authorization/manual/unknown evidence cannot
+  grant. Play/free exits unchanged. [PAY-03 evidence](../backend/evidence/payments/PAY-03.md):
+  race tests, existing subscription suites, vet, staticcheck, 26 golden cases,
+  73.8% domain coverage PASS. No DB/HTTP/provider/runtime/sale. Next: PAY-04
+  persistence/concurrency only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-02 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-01 `7bfa2fd4`.
   [Provider admission v1](../planning/STRIPE_ASAAS_PROVIDER_ADMISSION.md) pins
