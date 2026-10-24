@@ -1,0 +1,166 @@
+{
+  "version": 1,
+  "provider": "stripe",
+  "status": "ADMITTED_FOR_LOCAL_IMPLEMENTATION / ACCOUNT_PROOF_OWED",
+  "provenance": "Synthetic provider contract fixtures for PAY-02. No real customer, card, account, Price, webhook or payment.",
+  "admission": {
+    "sdk_module": "github.com/stripe/stripe-go/v87",
+    "sdk_version": "v87.0.0",
+    "api_version": "2026-09-30.endive",
+    "go_min": "1.24",
+    "license": "MIT",
+    "client": "stripe.NewClient",
+    "webhook_package": "github.com/stripe/stripe-go/v87/webhook",
+    "base_url": "https://api.stripe.com",
+    "webhook_tolerance_seconds": 300,
+    "idempotency_header": "Idempotency-Key",
+    "idempotency_retention_hours_min": 24,
+    "sdk_default_network_retries": 2
+  },
+  "checkout_request": {
+    "endpoint": "POST /v1/checkout/sessions",
+    "mode": "subscription",
+    "payment_method_types": ["card"],
+    "line_items": [{"price": "price_SYNTHETIC", "quantity": 1}],
+    "customer": "cus_SYNTHETIC",
+    "client_reference_id": "order_SYNTHETIC",
+    "success_url": "https://app.example.invalid/billing/return?session_id={CHECKOUT_SESSION_ID}",
+    "cancel_url": "https://app.example.invalid/billing/cancel",
+    "allow_promotion_codes": false,
+    "locale": "pt-BR",
+    "metadata": {
+      "order_id": "order_SYNTHETIC",
+      "account_id": "account_SYNTHETIC",
+      "offer_id": "premium.monthly",
+      "catalog_version": "pay-catalog-v1"
+    },
+    "subscription_data": {
+      "metadata": {
+        "order_id": "order_SYNTHETIC",
+        "account_id": "account_SYNTHETIC",
+        "offer_id": "premium.monthly"
+      }
+    }
+  },
+  "checkout_response": {
+    "id": "cs_test_SYNTHETIC",
+    "object": "checkout.session",
+    "mode": "subscription",
+    "status": "open",
+    "payment_status": "unpaid",
+    "url": "https://example.invalid/checkout/SYNTHETIC",
+    "customer": "cus_SYNTHETIC",
+    "subscription": null,
+    "payment_intent": null,
+    "client_reference_id": "order_SYNTHETIC",
+    "amount_total": 1234,
+    "currency": "brl",
+    "livemode": false,
+    "metadata": {
+      "order_id": "order_SYNTHETIC",
+      "account_id": "account_SYNTHETIC",
+      "offer_id": "premium.monthly",
+      "catalog_version": "pay-catalog-v1"
+    }
+  },
+  "operations": [
+    {"operation": "create_customer", "method": "POST", "path": "/v1/customers", "idempotency_key": true},
+    {"operation": "create_checkout_session", "method": "POST", "path": "/v1/checkout/sessions", "idempotency_key": true},
+    {"operation": "retrieve_checkout_session", "method": "GET", "path": "/v1/checkout/sessions/{id}", "idempotency_key": false},
+    {"operation": "expire_checkout_session", "method": "POST", "path": "/v1/checkout/sessions/{id}/expire", "idempotency_key": true},
+    {"operation": "create_billing_portal_session", "method": "POST", "path": "/v1/billing_portal/sessions", "idempotency_key": true},
+    {"operation": "update_subscription", "method": "POST", "path": "/v1/subscriptions/{id}", "idempotency_key": true},
+    {"operation": "cancel_subscription", "method": "DELETE", "path": "/v1/subscriptions/{id}", "idempotency_key": true},
+    {"operation": "create_refund", "method": "POST", "path": "/v1/refunds", "idempotency_key": true},
+    {"operation": "retrieve_invoice", "method": "GET", "path": "/v1/invoices/{id}", "idempotency_key": false},
+    {"operation": "retrieve_subscription", "method": "GET", "path": "/v1/subscriptions/{id}", "idempotency_key": false},
+    {"operation": "retrieve_charge", "method": "GET", "path": "/v1/charges/{id}", "idempotency_key": false},
+    {"operation": "retrieve_dispute", "method": "GET", "path": "/v1/disputes/{id}", "idempotency_key": false}
+  ],
+  "webhook": {
+    "header": "Stripe-Signature",
+    "raw_body_required": true,
+    "event_api_version": "2026-09-30.endive",
+    "expected_livemode": false,
+    "connect_account_allowed": false,
+    "signature_rotation": "overlapping endpoint secrets",
+    "unknown_event_effect": "retain-minimal-no-financial-effect"
+  },
+  "event_cases": [
+    {"type": "checkout.session.completed", "financial_effect": "none", "grant": false, "reason": "redirect-or-notification-only"},
+    {"type": "checkout.session.async_payment_succeeded", "financial_effect": "none", "grant": false, "reason": "requires-canonical-verification"},
+    {"type": "checkout.session.async_payment_failed", "financial_effect": "none", "grant": false, "reason": "payment-failed"},
+    {"type": "invoice.paid", "financial_effect": "settlement-candidate", "grant": "after-verification", "requires_remote_verification": true},
+    {"type": "invoice.payment_failed", "financial_effect": "none", "grant": false, "reason": "payment-failed"},
+    {"type": "invoice.payment_action_required", "financial_effect": "none", "grant": false, "reason": "sca-action-required"},
+    {"type": "customer.subscription.updated", "financial_effect": "lifecycle-only", "grant": false},
+    {"type": "customer.subscription.deleted", "financial_effect": "lifecycle-only", "grant": false},
+    {"type": "charge.refunded", "financial_effect": "refund-candidate", "grant": false, "requires_remote_verification": true},
+    {"type": "charge.dispute.created", "financial_effect": "dispute-candidate", "grant": false, "requires_remote_verification": true},
+    {"type": "charge.dispute.closed", "financial_effect": "dispute-candidate", "grant": false, "requires_remote_verification": true},
+    {"type": "synthetic.unknown_event", "financial_effect": "none", "grant": false, "reason": "unknown-event"}
+  ],
+  "invoice_verification": {
+    "event": "invoice.paid",
+    "required": {
+      "status": "paid",
+      "currency": "brl",
+      "amount_paid_equals_amount_due": true,
+      "amount_paid_off_stripe": 0,
+      "collection_method": "charge_automatically",
+      "billing_reason_in": ["subscription_create", "subscription_cycle", "subscription_update"],
+      "subscription_parent_required": true,
+      "customer_binding_required": true,
+      "livemode_must_match": true,
+      "canonical_payment_reference_required": true
+    }
+  },
+  "invoice_fixture": {
+    "object": "invoice",
+    "id": "in_SYNTHETIC",
+    "status": "paid",
+    "currency": "brl",
+    "amount_due": 1234,
+    "amount_paid": 1234,
+    "amount_paid_off_stripe": 0,
+    "collection_method": "charge_automatically",
+    "billing_reason": "subscription_cycle",
+    "customer": "cus_SYNTHETIC",
+    "livemode": false,
+    "parent": {
+      "type": "subscription_details",
+      "subscription_details": {
+        "subscription": {
+          "id": "sub_SYNTHETIC",
+          "object": "subscription",
+          "status": "active",
+          "customer": "cus_SYNTHETIC",
+          "currency": "brl",
+          "livemode": false,
+          "metadata": {
+            "order_id": "order_SYNTHETIC",
+            "account_id": "account_SYNTHETIC",
+            "offer_id": "premium.monthly"
+          }
+        },
+        "metadata": {
+          "order_id": "order_SYNTHETIC",
+          "account_id": "account_SYNTHETIC",
+          "offer_id": "premium.monthly"
+        }
+      }
+    }
+  },
+  "refusal_cases": [
+    {"id": "manual-paid-invoice", "input": {"amount_paid_off_stripe": 1}, "expected": "no-grant"},
+    {"id": "wrong-amount", "input": {"amount_paid": 1000}, "expected": "no-grant"},
+    {"id": "wrong-currency", "input": {"currency": "usd"}, "expected": "no-grant"},
+    {"id": "missing-subscription-parent", "input": {"parent": null}, "expected": "no-grant"},
+    {"id": "checkout-completed-only", "input": {"event": "checkout.session.completed"}, "expected": "no-grant"},
+    {"id": "wrong-livemode", "input": {"livemode": true}, "expected": "quarantine"},
+    {"id": "unknown-event", "input": {"type": "synthetic.unknown_event"}, "expected": "no-effect"},
+    {"id": "bad-signature", "input": {"header": "t=1,v1=invalid"}, "expected": "reject"},
+    {"id": "stale-signature", "input": {"timestamp_age_seconds": 301}, "expected": "reject"},
+    {"id": "api-version-mismatch", "input": {"api_version": "2020-01-01.legacy"}, "expected": "reject"}
+  ]
+}

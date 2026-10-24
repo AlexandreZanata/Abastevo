@@ -175,6 +175,10 @@ synthetic fixtures; they do block real checkout and commercial readiness.
 PAY-01 is LOCAL_DONE: [offer and lifecycle policy v1](../product/STRIPE_ASAAS_OFFER_POLICY.md)
 freezes the technical envelope and golden fixture, leaves production prices/
 Enterprise/fiscal/legal inputs unresolved and keeps all three channels disabled.
+PAY-02 is LOCAL_DONE: [provider admission v1](STRIPE_ASAAS_PROVIDER_ADMISSION.md)
+pins Stripe Go `v87.0.0`/API `2026-09-30.endive` and the Asaas v3 client approach,
+with synthetic contract fixtures. No dependency/runtime/account change; SDK
+installation remains at PAY-06 and account/sandbox proof remains PAY-21.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider

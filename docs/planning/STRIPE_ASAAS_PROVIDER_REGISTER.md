@@ -1,13 +1,35 @@
 # Stripe and Asaas provider admission register
 
-Status: RESEARCHED / NOT_ACCOUNT_ADMITTED. Date: 2026-10-24.
+Status: PROVIDER_CONTRACTS_ADMITTED / ACCOUNT_PROOF_OWED. Date: 2026-10-24.
 Owner: [payment plan](STRIPE_ASAAS_PAYMENT_PLAN.md), PAY-01/02/21.
 
-Primary public documentation was inspected in this conversation. No provider
-account, credentials, actual webhook, resource schema, eligibility, paid service
-or live transaction was configured/validated. Freeze exact SDK/API versions and
-actual request/response fixtures at PAY-02; distinguish documented capability
-from availability in the maintainer's merchant account. Recheck before activation.
+PAY-02 froze the local provider contracts in
+[provider admission v1](STRIPE_ASAAS_PROVIDER_ADMISSION.md), with synthetic
+fixtures for [Stripe v87](../../contracts/testdata/payments/stripe-contracts-v1.json)
+and [Asaas v3](../../contracts/testdata/payments/asaas-contracts-v1.json).
+Selected: Stripe Go `v87.0.0`/API `2026-09-30.endive` and an Asaas v3 `net/http`
+client (no vendor Go SDK). No provider account, credential, actual webhook,
+eligibility or live transaction was configured/validated; account-specific proof
+remains PAY-21. Recheck before activation.
+
+Primary public documentation was inspected in this conversation. Distinguish the
+documented contract above from availability in the maintainer's merchant account.
+
+## PAY-02 admission record
+
+| Item | Stripe | Asaas |
+|---|---|---|
+| Contract | API `2026-09-30.endive`; hosted Checkout, Billing, Refunds, Disputes | REST `v3`; conventional Pix and Pix Automático |
+| Client | `github.com/stripe/stripe-go/v87` `v87.0.0`, `stripe.NewClient` + `webhook` | `net/http` thin client; no vendor Go SDK |
+| License/toolchain | MIT; Go 1.24+ | Go standard library; no new module |
+| Auth | API key + SDK `Stripe-Signature` raw-body verification | `access_token` header; webhook `asaas-access-token` |
+| Idempotency | `Idempotency-Key`, retained at least 24h; reconcile ambiguity | No provider key; `externalReference`/`contractId` correlation only |
+| Cycle owner | Stripe subscription | Asaas provider-owned `SUBSCRIPTION` for Pix Automático |
+| Current status | Local contract admitted; account/catalog/webhook proof owed | Local contract admitted; account/eligibility/sandbox proof owed |
+
+`backend/go.mod`/`go.sum` were not changed by PAY-02. Add the Stripe SDK at
+PAY-06 after a coordinated head and dependency/license/vulnerability review;
+Asaas needs no new module. All sale channels remain disabled.
 
 ## Stripe card billing
 

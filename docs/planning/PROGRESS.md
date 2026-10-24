@@ -1,5 +1,19 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-02 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-01 `7bfa2fd4`.
+  [Provider admission v1](../planning/STRIPE_ASAAS_PROVIDER_ADMISSION.md) pins
+  Stripe Go `v87.0.0`/API `2026-09-30.endive` (MIT, Go 1.24+, hosted Checkout +
+  SDK raw-body webhooks) and an Asaas v3 `net/http` client (no vendor Go SDK;
+  `access_token` API header, `asaas-access-token` webhook header). Synthetic
+  [Stripe](../../contracts/testdata/payments/stripe-contracts-v1.json) and
+  [Asaas](../../contracts/testdata/payments/asaas-contracts-v1.json) fixtures cover
+  endpoints, events, status maps, idempotency limits, Pix QR and provider-owned
+  Pix Automático (`SUBSCRIPTION`, retry `NOT_ALLOWED`). No go.mod/go.sum,
+  provider/runtime, credential or sale change; SDK installation remains PAY-06
+  and account/sandbox proof PAY-21. Next: PAY-03 pure billing/access rules only
+  after maintainer authorization.
+
 - Stripe/Asaas payment PAY-01 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-00 `5f66c0d1`. [Offer/lifecycle policy v1](../product/STRIPE_ASAAS_OFFER_POLICY.md)
   freezes `premium.monthly` (one account, P1M anchor, zero grace, one future

@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "provider": "asaas",
+  "status": "ADMITTED_FOR_LOCAL_IMPLEMENTATION / ACCOUNT_PROOF_OWED",
+  "provenance": "Synthetic Asaas v3 provider contract fixtures for PAY-02. No real customer, CPF/CNPJ, Pix key, QR, account or payment.",
+  "admission": {
+    "api_version": "v3",
+    "base_url_sandbox": "https://api-sandbox.asaas.com",
+    "base_url_production": "https://api.asaas.com",
+    "api_auth_header": "access_token",
+    "user_agent": "Abastevo/1.0",
+    "sdk": "none-selected-stdlib-net/http",
+    "webhook_auth_header": "asaas-access-token",
+    "webhook_token_length": {"min": 32, "max": 255},
+    "webhook_success_status": 200,
+    "webhook_retention_days": 14,
+    "webhook_pause_after_consecutive_failures": 15,
+    "money_format": "JSON decimal BRL; generated from integer centavos, never float64"
+  },
+  "operations": [
+    {"operation": "create_customer", "method": "POST", "path": "/v3/customers", "required": ["name", "cpfCnpj"], "correlation": "externalReference", "provider_idempotency": "none"},
+    {"operation": "find_customer", "method": "GET", "path": "/v3/customers", "query": ["externalReference"], "provider_idempotency": "read-only-not-unique"},
+    {"operation": "create_pix_payment", "method": "POST", "path": "/v3/payments", "required": ["customer", "billingType", "value", "dueDate"], "fixed": {"billingType": "PIX"}, "correlation": "externalReference", "provider_idempotency": "none"},
+    {"operation": "retrieve_payment", "method": "GET", "path": "/v3/payments/{id}", "provider_idempotency": "read-only"},
+    {"operation": "find_payment", "method": "GET", "path": "/v3/payments", "query": ["externalReference", "status"], "provider_idempotency": "read-only-not-unique"},
+    {"operation": "get_pix_qr", "method": "GET", "path": "/v3/payments/{id}/pixQrCode", "provider_idempotency": "read-only"},
+    {"operation": "refund_payment", "method": "POST", "path": "/v3/payments/{id}/refund", "body": ["value", "description"], "provider_idempotency": "none"},
+    {"operation": "list_refunds", "method": "GET", "path": "/v3/payments/{id}/refunds", "provider_idempotency": "read-only"},
+    {"operation": "create_pix_auto_authorization", "method": "POST", "path": "/v3/pix/automatic/authorizations", "required": ["frequency", "contractId", "startDate", "customerId", "immediateQrCode"], "selection": {"frequency": "MONTHLY", "paymentCreationMode": "SUBSCRIPTION", "retryPolicy": "NOT_ALLOWED"}, "provider_idempotency": "none"},
+    {"operation": "retrieve_pix_auto_authorization", "method": "GET", "path": "/v3/pix/automatic/authorizations/{id}", "provider_idempotency": "read-only"},
+    {"operation": "list_pix_auto_authorizations", "method": "GET", "path": "/v3/pix/automatic/authorizations", "query": ["status", "customerId"], "provider_idempotency": "read-only"},
+    {"operation": "cancel_pix_auto_authorization", "method": "DELETE", "path": "/v3/pix/automatic/authorizations/{id}", "provider_idempotency": "none"}
+  ],
+  "payment_status_map": {
+    "PENDING": "pending",
+    "AWAITING_RISK_ANALYSIS": "pending",
+    "CONFIRMED": "pending",
+    "RECEIVED": "settled",
+    "OVERDUE": "unpaid",
+    "REFUND_REQUESTED": "refund-pending",
+    "REFUND_IN_PROGRESS": "refund-pending",
+    "REFUNDED": "refunded",
+    "RECEIVED_IN_CASH": "not-admitted",
+    "CHARGEBACK_REQUESTED": "dispute-pending",
+    "CHARGEBACK_DISPUTE": "dispute-pending",
+    "AWAITING_CHARGEBACK_REVERSAL": "dispute-pending",
+    "DUNNING_REQUESTED": "ignored",
+    "DUNNING_RECEIVED": "ignored"
+  },
+  "event_cases": [
+    {"event": "PAYMENT_CREATED", "effect": "none", "grant": false, "reason": "creation-is-not-payment"},
+    {"event": "PAYMENT_CONFIRMED", "effect": "none", "grant": false, "reason": "funds-not-available"},
+    {"event": "PAYMENT_RECEIVED", "effect": "settlement-candidate", "grant": "after-verification", "requires_remote_verification": true},
+    {"event": "PAYMENT_OVERDUE", "effect": "none", "grant": false, "reason": "unpaid"},
+    {"event": "PAYMENT_REFUND_IN_PROGRESS", "effect": "refund-pending", "grant": false},
+    {"event": "PAYMENT_PARTIALLY_REFUNDED", "effect": "refund-partial", "grant": false},
+    {"event": "PAYMENT_REFUNDED", "effect": "refund-full", "grant": false, "requires_remote_verification": true},
+    {"event": "PAYMENT_REFUND_DENIED", "effect": "none", "grant": false},
+    {"event": "PAYMENT_CHARGEBACK_REQUESTED", "effect": "dispute-pending", "grant": false},
+    {"event": "PAYMENT_CHARGEBACK_DISPUTE", "effect": "dispute-pending", "grant": false},
+    {"event": "PAYMENT_AWAITING_CHARGEBACK_REVERSAL", "effect": "dispute-pending", "grant": false},
+    {"event": "PAYMENT_DELETED", "effect": "none", "grant": false},
+    {"event": "PAYMENT_RESTORED", "effect": "none", "grant": false, "reason": "requires-new-receipt"},
+    {"event": "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CREATED", "effect": "mandate-created", "grant": false},
+    {"event": "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED", "effect": "mandate-active", "grant": false},
+    {"event": "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED", "effect": "mandate-refused", "grant": false},
+    {"event": "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED", "effect": "mandate-cancelled", "grant": false},
+    {"event": "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED", "effect": "mandate-expired", "grant": false},
+    {"event": "PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_CREATED", "effect": "cycle-created", "grant": false},
+    {"event": "PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_SCHEDULED", "effect": "cycle-scheduled", "grant": false},
+    {"event": "PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_REFUSED", "effect": "cycle-refused", "grant": false},
+    {"event": "PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_CANCELLED", "effect": "cycle-cancelled", "grant": false},
+    {"event": "PIX_AUTOMATIC_RECURRING_ELIGIBILITY_UPDATED", "effect": "eligibility", "grant": false},
+    {"event": "SYNTHETIC_UNKNOWN_EVENT", "effect": "none", "grant": false, "reason": "unknown-event"}
+  ],
+  "pix_automatic": {
+    "frequency": "MONTHLY",
+    "payment_creation_mode": "SUBSCRIPTION",
+    "retry_policy": "NOT_ALLOWED",
+    "value_required": true,
+    "immediate_qr_code_required": ["expirationSeconds", "originalValue"],
+    "contract_id_max_length": 35,
+    "authorization_statuses": ["CREATED", "ACTIVE", "CANCELLED", "REFUSED", "EXPIRED"],
+    "instruction_statuses": ["AWAITING_REQUEST", "SCHEDULED", "REFUSED", "CANCELLED"],
+    "eligibility_requirements": [
+      "approved PJ account",
+      "active CNPJ",
+      "CNPJ active for at least six months",
+      "no Pix restriction"
+    ],
+    "initial_payment_independent_of_mandate": true,
+    "future_debit_requires_active_mandate": true
+  },
+  "fixtures": {
+    "customer": {
+      "object": "customer",
+      "id": "cus_SYNTHETIC",
+      "name": "Synthetic Payer",
+      "cpfCnpj": "00000000000",
+      "email": "synthetic@example.invalid",
+      "externalReference": "account_SYNTHETIC",
+      "notificationDisabled": true
+    },
+    "payment": {
+      "object": "payment",
+      "id": "pay_SYNTHETIC",
+      "customer": "cus_SYNTHETIC",
+      "billingType": "PIX",
+      "value": 12.34,
+      "dueDate": "2026-10-24",
+      "status": "PENDING",
+      "externalReference": "order_SYNTHETIC"
+    },
+    "pix_qr": {
+      "encodedImage": "U1lOVEhFVElDX0lNQUdF",
+      "payload": "SYNTHETIC_NOT_A_VALID_PIX_PAYLOAD",
+      "expirationDate": "2026-10-24 23:59:59",
+      "description": "Synthetic Pix order"
+    },
+    "pix_automatic_authorization": {
+      "id": "auth_SYNTHETIC",
+      "status": "CREATED",
+      "customerId": "cus_SYNTHETIC",
+      "frequency": "MONTHLY",
+      "contractId": "contract_SYNTHETIC",
+      "startDate": "2026-10-24",
+      "value": 12.34,
+      "paymentCreationMode": "SUBSCRIPTION",
+      "retryPolicy": "NOT_ALLOWED",
+      "immediateQrCode": {
+        "expirationDate": "2026-10-24 23:59:59",
+        "conciliationIdentifier": "SYNTHETIC_CONCILIATION"
+      }
+    },
+    "webhook": {
+      "id": "evt_SYNTHETIC",
+      "event": "PAYMENT_RECEIVED",
+      "dateCreated": "2026-10-24 12:00:00",
+      "account": {"id": "acc_SYNTHETIC", "ownerId": null},
+      "payment": {
+        "object": "payment",
+        "id": "pay_SYNTHETIC",
+        "customer": "cus_SYNTHETIC",
+        "status": "RECEIVED",
+        "externalReference": "order_SYNTHETIC"
+      }
+    }
+  },
+  "refusal_cases": [
+    {"id": "missing-api-key", "input": {"access_token": null}, "expected": "reject"},
+    {"id": "api-key-as-webhook-token", "input": {"asaas-access-token": "same-as-api-key"}, "expected": "reject"},
+    {"id": "wrong-amount", "input": {"value": 10.00}, "expected": "no-grant"},
+    {"id": "wrong-currency", "input": {"currency": "USD"}, "expected": "no-grant"},
+    {"id": "unknown-status", "input": {"status": "SYNTHETIC_STATUS"}, "expected": "no-grant"},
+    {"id": "unknown-event", "input": {"event": "SYNTHETIC_UNKNOWN_EVENT"}, "expected": "no-effect"},
+    {"id": "foreign-account", "input": {"account": {"id": "acc_FOREIGN"}}, "expected": "reject"},
+    {"id": "authorization-without-active-mandate", "input": {"pixAutomaticAuthorizationId": "auth_CREATED"}, "expected": "no-future-debit"},
+    {"id": "initial-payment-refused-mandate", "input": {"payment": "RECEIVED", "authorization": "REFUSED"}, "expected": "paid-first-period-no-future-debit"},
+    {"id": "manual-charge-without-authorization-id", "input": {"pixAutomaticAuthorizationId": null}, "expected": "conventional-pix-only"}
+  ]
+}

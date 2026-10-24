@@ -3718,8 +3718,8 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 
 ## Stripe and Asaas payments
 
-Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00 and
-PAY-01 are LOCAL_DONE / INTEGRATION_PENDING; PAY-02–23 remain planned.
+Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–02 are
+LOCAL_DONE / INTEGRATION_PENDING; PAY-03–23 remain planned.
 Selected methods: Stripe cards, Asaas conventional Pix and Pix Automático,
 independently activated.
 Google Play is LATER. Reuse PRM subscription/account/jobs; no Stage D team/tenant
@@ -3728,6 +3728,7 @@ expansion.
 Canonical [plan](docs/planning/STRIPE_ASAAS_PAYMENT_PLAN.md),
 [phase checklist](docs/planning/STRIPE_ASAAS_PAYMENT_PHASES.json),
 [provider register](docs/planning/STRIPE_ASAAS_PROVIDER_REGISTER.md),
+[provider admission v1](docs/planning/STRIPE_ASAAS_PROVIDER_ADMISSION.md),
 [rules/use cases](docs/product/STRIPE_ASAAS_PAYMENT_CONTRACT.md) and
 [agent prompt](docs/planning/STRIPE_ASAAS_PAYMENT_PROMPT.md).
 PAY-00 [baseline/ownership evidence](docs/backend/evidence/payments/PAY-00.md) and
@@ -3739,7 +3740,7 @@ coordination, evidence and commit topic.
 
 - **PAY-00:** Reconcile baseline and parallel ownership. LOCAL_DONE.
 - **PAY-01:** Freeze offers and lifecycle policy. LOCAL_DONE; production prices unresolved and all sales disabled.
-- **PAY-02:** Admit providers and maintained SDKs.
+- **PAY-02:** Admit providers and maintained SDKs. LOCAL_DONE; Stripe Go v87/API 2026-09-30.endive and Asaas v3 admitted; account proof owed.
 - **PAY-03:** Build pure financial and access policy.
 - **PAY-04:** Persist financial intents and concurrency guards.
 - **PAY-05:** Validate credentials and channel configuration.
