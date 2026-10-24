@@ -161,6 +161,9 @@ mapped explicitly; unknown values have no effect.
 | Retrieve authorization | `GET /v3/pix/automatic/authorizations/{id}` | Provider authorization ID | Read-only |
 | List authorizations | `GET /v3/pix/automatic/authorizations?status=&customerId=` | Status/customer | Read-only; `contractId` is not documented as a filter |
 | Cancel authorization | `DELETE /v3/pix/automatic/authorizations/{id}` | Provider authorization ID | None; retrieve status before retry |
+| Retrieve instruction | `GET /v3/pix/automatic/paymentInstructions/{id}` | Provider instruction ID | Read-only |
+| List instructions | `GET /v3/pix/automatic/paymentInstructions?authorizationId=` | Authorization ID | Read-only; bounded census |
+| List subscription payments | `GET /v3/payments?subscription=&status=RECEIVED` | Provider subscription ID | Read-only; bounded census |
 
 Required fields are enforced server-side: customer `name` and `cpfCnpj`; Pix
 payment `customer`, `billingType`, `value`, `dueDate`; authorization `frequency`,
@@ -223,7 +226,12 @@ Selected mode remains provider-owned `SUBSCRIPTION`, matching PAY-01.
   `PIX_AUTOMATIC_RECURRING_ELIGIBILITY_UPDATED` and stop new instructions when
   ineligible, preserving paid-through.
 - Cancellation/expiry stops future instructions; already scheduled instructions
-  may be canceled and must be reconciled.
+  may be canceled and must be reconciled. The application records the local
+  cancellation intent before calling the provider and keeps an unknown outcome
+  pending until canonical retrieval confirms it.
+- Instruction status `DONE` reports provider processing, not financial
+  settlement. Only `PAYMENT_RECEIVED` after canonical verification grants a
+  period. No application-side retry instruction is created under `NOT_ALLOWED`.
 
 Selected Pix Automático events:
 

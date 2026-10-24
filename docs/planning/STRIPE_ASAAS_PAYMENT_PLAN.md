@@ -213,6 +213,11 @@ PAY-12 is LOCAL_DONE: Pix Automático consent/authorization, mandate persistence
 initial paid-period independence, refusal/expiry/cancel and lost-reply recovery
 are implemented; merchant eligibility remains an external gate and auto Pix stays
 disabled until proof.
+PAY-13 is LOCAL_DONE: provider-owned Pix Automático instructions, retry policy,
+received-cycle settlement, durable cancellation and eligibility blocks are
+implemented and reconciled under concurrency; the application never creates a
+second charge owner. Provider proof remains PAY-21 and runtime wiring remains
+PAY-19.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
@@ -285,6 +290,8 @@ that a nonexistent command or endpoint is available.
 - **PAY-11:** Stripe renewals, failures and constrained hosted management.
 - **PAY-12:** Pix Automático initial payment/consent/mandate lifecycle.
 - **PAY-13:** Pix Automático cycle generation/retries/cancellation and eligibility.
+  LOCAL_DONE; provider-owned cycles, instructions, eligibility and durable
+  cancellation tested.
 - **PAY-14:** plan/term changes and cross-provider funding-source fences.
 - **PAY-15:** cancellation, account exit/deletion and recovery.
 - **PAY-16:** full/partial refunds, disputes/MED and restricted operator recovery.

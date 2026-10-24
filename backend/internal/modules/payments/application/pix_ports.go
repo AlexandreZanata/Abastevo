@@ -77,6 +77,7 @@ type PixPayment struct {
 	ProviderStatus    string
 	Class             string
 	DueDate           time.Time
+	SettledAt         time.Time
 }
 
 type PixQR struct {

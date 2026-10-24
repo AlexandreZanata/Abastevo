@@ -36,6 +36,13 @@ func (s *PixAutoService) Start(ctx context.Context, principal Principal, request
 	if err := s.validateConfig(); err != nil {
 		return PixAutoAuthorization{}, err
 	}
+	eligibility, found, err := s.Store.Eligibility(ctx, s.Config.Environment, s.Config.MerchantID)
+	if err != nil {
+		return PixAutoAuthorization{}, err
+	}
+	if found && eligibility.Status == "INELIGIBLE" {
+		return PixAutoAuthorization{}, domain.ErrUnavailable
+	}
 	if request.PayerName != "" || request.PayerTaxID != "" || request.PayerEmail != "" {
 		if _, _, _, err := validatedPayer(PixStartRequest{
 			PayerName: request.PayerName, PayerTaxID: request.PayerTaxID, PayerEmail: request.PayerEmail,
@@ -49,6 +56,14 @@ func (s *PixAutoService) Start(ctx context.Context, principal Principal, request
 		return PixAutoAuthorization{}, err
 	}
 	orderID := pixAutoOrderID(principal.AccountID, request.OperationID)
+	existing, err := s.Store.MandateForAccount(ctx, principal.AccountID, request.OfferID)
+	if err == nil && existing.OrderID != orderID && !pixAutoTerminal(existing.Status) &&
+		(existing.Status == "CREATED" || existing.Status == "ACTIVE" || existing.CancelRequestedAt != nil) {
+		return PixAutoAuthorization{}, domain.ErrConflict
+	}
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return PixAutoAuthorization{}, err
+	}
 	order, err := s.Store.GetOrder(ctx, orderID)
 	if err == nil {
 		if order.AccountID != principal.AccountID || order.OfferID != quote.OfferID ||
@@ -191,6 +206,21 @@ func (s *PixAutoService) Status(ctx context.Context, principal Principal, offerI
 	if err := s.Store.UpsertMandate(ctx, mandate); err != nil {
 		return PixAutoAuthorization{}, err
 	}
+	if authorization.Status == "ACTIVE" {
+		eligibility, found, err := s.Store.Eligibility(ctx, s.Config.Environment, s.Config.MerchantID)
+		if err != nil {
+			return PixAutoAuthorization{}, err
+		}
+		if found && eligibility.Status == "INELIGIBLE" {
+			if err := cancelPixAutoMandate(ctx, s.Store, s.Provider, mandate, pixAutoCancelIneligible, s.now()); err != nil {
+				return PixAutoAuthorization{}, err
+			}
+			authorization.Status = "CANCELLED"
+		}
+	}
+	if mandate.CancelRequestedAt != nil && !pixAutoTerminal(authorization.Status) {
+		authorization.CancellationPending = true
+	}
 	return s.result(authorization, true), nil
 }
 
@@ -209,12 +239,7 @@ func (s *PixAutoService) Cancel(ctx context.Context, principal Principal, offerI
 	if mandate.Status == "CANCELLED" || mandate.Status == "EXPIRED" || mandate.Status == "REFUSED" {
 		return nil
 	}
-	if err := s.Provider.CancelPixAutoAuthorization(ctx, mandate.RemoteAuthorizationID); err != nil {
-		return domain.ErrUnavailable
-	}
-	mandate.Status = "CANCELLED"
-	mandate.LastEventAt = s.now()
-	return s.Store.UpsertMandate(ctx, mandate)
+	return cancelPixAutoMandate(ctx, s.Store, s.Provider, mandate, "OWNER_REQUEST", s.now())
 }
 
 func (s *PixAutoService) persist(ctx context.Context, order domain.Order, accountID, customerID, contractID string, authorization PixAutoAuthorization, now time.Time) error {
@@ -227,6 +252,7 @@ func (s *PixAutoService) persist(ctx context.Context, order domain.Order, accoun
 		Provider: domain.ProviderAsaas, RemoteAuthorizationID: authorization.ID,
 		RemoteSubscriptionID: authorization.RemoteSubscriptionID, ContractID: contractID,
 		RemoteCustomerID: customerID, Status: authorization.Status, Frequency: "MONTHLY",
+		PaymentCreationMode: authorization.PaymentCreationMode, RetryPolicy: authorization.RetryPolicy,
 		Value: authorization.Value, StartDate: authorization.StartDate, FinishDate: authorization.FinishDate,
 		ConsentVersion: s.Config.ConsentVersion, ConsentAt: now, LastEventAt: now,
 	})
@@ -322,7 +348,8 @@ func validatePixAuto(authorization PixAutoAuthorization, customerID, contractID 
 	}
 	if authorization.ID == "" || authorization.CustomerID != customerID ||
 		authorization.ContractID != contractID || !authorization.Value.Equal(amount) ||
-		authorization.Value.Currency != "BRL" {
+		authorization.Value.Currency != "BRL" ||
+		authorization.PaymentCreationMode != "SUBSCRIPTION" || authorization.RetryPolicy != "NOT_ALLOWED" {
 		return domain.ErrBinding
 	}
 	if (authorization.QRCode != "" && len(authorization.QRCode) > 4096) ||

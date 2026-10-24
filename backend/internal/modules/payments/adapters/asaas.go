@@ -172,6 +172,63 @@ func (p *AsaasProvider) CreatePixAutoAuthorization(ctx context.Context, request 
 	return mapPixAuto(response, location)
 }
 
+func (p *AsaasProvider) RetrievePixAutoInstruction(ctx context.Context, id string) (app.PixAutoInstruction, error) {
+	if !validAsaasID(id) {
+		return app.PixAutoInstruction{}, domain.ErrInvalid
+	}
+	var response asaasPixAutoInstruction
+	if err := p.do(ctx, http.MethodGet, "/v3/pix/automatic/paymentInstructions/"+url.PathEscape(id), nil, &response); err != nil {
+		return app.PixAutoInstruction{}, err
+	}
+	return mapPixAutoInstruction(response)
+}
+
+func (p *AsaasProvider) ListPixAutoInstructions(ctx context.Context, authorizationID string) ([]app.PixAutoInstruction, bool, error) {
+	if !validAsaasID(authorizationID) {
+		return nil, false, domain.ErrInvalid
+	}
+	var list asaasPixAutoInstructionList
+	query := url.Values{"authorizationId": {authorizationID}, "limit": {"100"}}
+	if err := p.do(ctx, http.MethodGet, "/v3/pix/automatic/paymentInstructions?"+query.Encode(), nil, &list); err != nil {
+		return nil, false, err
+	}
+	instructions := make([]app.PixAutoInstruction, 0, len(list.Data))
+	for _, item := range list.Data {
+		mapped, err := mapPixAutoInstruction(item)
+		if err != nil {
+			return nil, false, err
+		}
+		instructions = append(instructions, mapped)
+	}
+	complete := !list.HasMore && list.TotalCount <= len(list.Data)
+	return instructions, complete, nil
+}
+
+func (p *AsaasProvider) ListSubscriptionPayments(ctx context.Context, subscriptionID string) ([]app.PixPayment, bool, error) {
+	if !validAsaasID(subscriptionID) {
+		return nil, false, domain.ErrInvalid
+	}
+	location, err := time.LoadLocation(domain.BillingTimezone)
+	if err != nil {
+		return nil, false, domain.ErrUnavailable
+	}
+	var list asaasPaymentList
+	query := url.Values{"subscription": {subscriptionID}, "status": {"RECEIVED"}, "limit": {"100"}}
+	if err := p.do(ctx, http.MethodGet, "/v3/payments?"+query.Encode(), nil, &list); err != nil {
+		return nil, false, err
+	}
+	payments := make([]app.PixPayment, 0, len(list.Data))
+	for _, payment := range list.Data {
+		mapped, err := mapAsaasPayment(payment, location)
+		if err != nil {
+			return nil, false, err
+		}
+		payments = append(payments, mapped)
+	}
+	complete := !list.HasMore && list.TotalCount <= len(list.Data)
+	return payments, complete, nil
+}
+
 func (p *AsaasProvider) RetrievePixAutoAuthorization(ctx context.Context, id string) (app.PixAutoAuthorization, error) {
 	if !validAsaasID(id) {
 		return app.PixAutoAuthorization{}, domain.ErrInvalid
@@ -242,13 +299,21 @@ func (p *AsaasProvider) VerifySettlement(ctx context.Context, event app.InboxRec
 	if settledAt.IsZero() {
 		settledAt = time.Now().UTC()
 	}
+	channel := domain.ChannelPixManual
 	orderID := payment.ExternalReference
 	if !domain.ValidID(orderID) {
 		orderID = ""
 	}
+	if payment.SubscriptionID != "" {
+		channel = domain.ChannelPixAutomatic
+		orderID = ""
+	}
+	if !payment.SettledAt.IsZero() {
+		settledAt = payment.SettledAt
+	}
 	return app.SettlementCandidate{
 		OrderID: orderID, Provider: domain.ProviderAsaas,
-		Environment: p.Environment, Merchant: event.Merchant, Channel: domain.ChannelPixManual,
+		Environment: p.Environment, Merchant: event.Merchant, Channel: channel,
 		CustomerID: payment.CustomerID, RemotePaymentID: payment.ID,
 		RemoteSubscriptionID: payment.SubscriptionID, ProviderStatus: payment.ProviderStatus,
 		Amount: payment.Amount, SettledAt: settledAt,
@@ -357,7 +422,7 @@ func asaasStatusError(status int) error {
 }
 
 func mapAsaasPayment(payment asaasPayment, location *time.Location) (app.PixPayment, error) {
-	if payment.ID == "" || payment.Customer == "" || payment.ExternalReference == "" ||
+	if payment.ID == "" || payment.Customer == "" ||
 		payment.Status == "" || payment.Value.String() == "" {
 		return app.PixPayment{}, domain.ErrBinding
 	}
@@ -374,6 +439,11 @@ func mapAsaasPayment(payment asaasPayment, location *time.Location) (app.PixPaym
 	if payment.DueDate != "" {
 		if due, err := time.ParseInLocation("2006-01-02", payment.DueDate, location); err == nil {
 			result.DueDate = due.UTC()
+		}
+	}
+	if payment.PaymentDate != "" {
+		if settled, err := time.ParseInLocation("2006-01-02", payment.PaymentDate, location); err == nil {
+			result.SettledAt = settled.UTC()
 		}
 	}
 	return result, nil
@@ -460,6 +530,7 @@ type asaasPayment struct {
 	ExternalReference string      `json:"externalReference"`
 	Value             json.Number `json:"value"`
 	DueDate           string      `json:"dueDate"`
+	PaymentDate       string      `json:"paymentDate"`
 }
 
 type asaasPaymentList struct {
@@ -469,17 +540,19 @@ type asaasPaymentList struct {
 }
 
 type asaasPixAuto struct {
-	ID              string      `json:"id"`
-	CustomerID      string      `json:"customerId"`
-	ContractID      string      `json:"contractId"`
-	Status          string      `json:"status"`
-	SubscriptionID  string      `json:"subscriptionId"`
-	Value           json.Number `json:"value"`
-	StartDate       string      `json:"startDate"`
-	FinishDate      string      `json:"finishDate"`
-	Payload         string      `json:"payload"`
-	EncodedImage    string      `json:"encodedImage"`
-	ImmediateQrCode struct {
+	ID                  string      `json:"id"`
+	CustomerID          string      `json:"customerId"`
+	ContractID          string      `json:"contractId"`
+	Status              string      `json:"status"`
+	SubscriptionID      string      `json:"subscriptionId"`
+	PaymentCreationMode string      `json:"paymentCreationMode"`
+	RetryPolicy         string      `json:"retryPolicy"`
+	Value               json.Number `json:"value"`
+	StartDate           string      `json:"startDate"`
+	FinishDate          string      `json:"finishDate"`
+	Payload             string      `json:"payload"`
+	EncodedImage        string      `json:"encodedImage"`
+	ImmediateQrCode     struct {
 		ExpirationDate string `json:"expirationDate"`
 	} `json:"immediateQrCode"`
 }
@@ -488,6 +561,55 @@ type asaasPixAutoList struct {
 	Data       []asaasPixAuto `json:"data"`
 	TotalCount int            `json:"totalCount"`
 	HasMore    bool           `json:"hasMore"`
+}
+
+type asaasPixAutoInstruction struct {
+	ID            string `json:"id"`
+	Status        string `json:"status"`
+	DueDate       string `json:"dueDate"`
+	PaymentID     string `json:"paymentId"`
+	Purpose       string `json:"purpose"`
+	RefusalReason string `json:"refusalReason"`
+	RetryAttempt  int    `json:"retryAttempt"`
+	Authorization struct {
+		ID string `json:"id"`
+	} `json:"authorization"`
+}
+
+type asaasPixAutoInstructionList struct {
+	Data       []asaasPixAutoInstruction `json:"data"`
+	TotalCount int                       `json:"totalCount"`
+	HasMore    bool                      `json:"hasMore"`
+}
+
+func mapPixAutoInstruction(response asaasPixAutoInstruction) (app.PixAutoInstruction, error) {
+	if response.ID == "" || response.Authorization.ID == "" || response.Status == "" ||
+		response.Purpose == "" || response.DueDate == "" || len(response.RefusalReason) > 128 ||
+		response.RetryAttempt < 0 || response.RetryAttempt > 3 ||
+		(response.PaymentID != "" && !validAsaasID(response.PaymentID)) {
+		return app.PixAutoInstruction{}, domain.ErrBinding
+	}
+	switch response.Status {
+	case "AWAITING_REQUEST", "SCHEDULED", "DONE", "REFUSED", "CANCELLED":
+	default:
+		return app.PixAutoInstruction{}, domain.ErrBinding
+	}
+	if response.Purpose != "SCHEDULE" && response.Purpose != "RETRY_AFTER_DUE_DATE" {
+		return app.PixAutoInstruction{}, domain.ErrBinding
+	}
+	location, err := time.LoadLocation(domain.BillingTimezone)
+	if err != nil {
+		return app.PixAutoInstruction{}, domain.ErrUnavailable
+	}
+	dueDate, err := time.ParseInLocation("2006-01-02", response.DueDate, location)
+	if err != nil {
+		return app.PixAutoInstruction{}, domain.ErrBinding
+	}
+	return app.PixAutoInstruction{
+		ID: response.ID, AuthorizationID: response.Authorization.ID, PaymentID: response.PaymentID,
+		Status: response.Status, Purpose: response.Purpose, RetryAttempt: response.RetryAttempt,
+		DueDate: dueDate.UTC(), RefusalReason: response.RefusalReason,
+	}, nil
 }
 
 func mapPixAuto(response asaasPixAuto, location *time.Location) (app.PixAutoAuthorization, error) {
@@ -501,9 +623,18 @@ func mapPixAuto(response asaasPixAuto, location *time.Location) (app.PixAutoAuth
 	if err != nil {
 		return app.PixAutoAuthorization{}, domain.ErrBinding
 	}
+	retryPolicy := response.RetryPolicy
+	if retryPolicy == "" {
+		retryPolicy = "NOT_ALLOWED"
+	}
+	creationMode := response.PaymentCreationMode
+	if creationMode == "" {
+		creationMode = "SUBSCRIPTION"
+	}
 	result := app.PixAutoAuthorization{
 		ID: response.ID, CustomerID: response.CustomerID, ContractID: response.ContractID,
 		RemoteSubscriptionID: response.SubscriptionID, Status: response.Status,
+		PaymentCreationMode: creationMode, RetryPolicy: retryPolicy,
 		Value: domain.BRL(amount), QRCode: response.Payload, QRImage: response.EncodedImage,
 	}
 	if response.StartDate != "" {
@@ -534,4 +665,7 @@ type asaasQR struct {
 	ExpirationDate string `json:"expirationDate"`
 }
 
-var _ app.PixProvider = (*AsaasProvider)(nil)
+var (
+	_ app.PixProvider     = (*AsaasProvider)(nil)
+	_ app.PixAutoProvider = (*AsaasProvider)(nil)
+)

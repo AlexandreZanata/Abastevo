@@ -512,7 +512,8 @@ func TestMigrationUpgradeReplayAndPostGIS(t *testing.T) {
 		t.Fatal(err)
 	}
 	applied, err := migrate.Apply(ctx, dsn, target)
-	if err != nil || len(applied) != 3 || applied[0] != "000123" || applied[1] != "000124" || applied[2] != "000125" {
+	if err != nil || len(applied) != 4 || applied[0] != "000123" || applied[1] != "000124" ||
+		applied[2] != "000125" || applied[3] != "000126" {
 		t.Fatalf("upgrade applied=%v err=%v", applied, err)
 	}
 	again, err := migrate.Apply(ctx, dsn, target)
@@ -531,6 +532,12 @@ func TestMigrationUpgradeReplayAndPostGIS(t *testing.T) {
 	var exists bool
 	if err := pool.QueryRow(ctx, "SELECT to_regclass('payment_grants') IS NOT NULL").Scan(&exists); err != nil || !exists {
 		t.Fatalf("payment_grants exists=%v err=%v", exists, err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT to_regclass('payment_pix_auto_instructions') IS NOT NULL").Scan(&exists); err != nil || !exists {
+		t.Fatalf("instruction table exists=%v err=%v", exists, err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT to_regclass('payment_pix_auto_eligibility') IS NOT NULL").Scan(&exists); err != nil || !exists {
+		t.Fatalf("eligibility table exists=%v err=%v", exists, err)
 	}
 }
 

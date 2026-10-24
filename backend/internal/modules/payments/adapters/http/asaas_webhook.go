@@ -19,6 +19,7 @@ import (
 const (
 	defaultAsaasWebhookBody = 1 << 20
 	maxAsaasTokenLength     = 255
+	eligibilityEvent        = "PIX_AUTOMATIC_RECURRING_ELIGIBILITY_UPDATED"
 )
 
 type AsaasWebhookHandler struct {
@@ -75,11 +76,20 @@ func (h AsaasWebhookHandler) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resourceType, resourceID := asaasResource(event)
+	resourceStatus := ""
+	if event.Event == eligibilityEvent {
+		resourceStatus = event.Eligibility.Status
+		if resourceStatus != "ELIGIBLE" && resourceStatus != "INELIGIBLE" {
+			asaasWebhookError(w, r, http.StatusBadRequest, "payments.asaas-eligibility")
+			return
+		}
+	}
 	digest := sha256.Sum256(body)
 	_, err = h.Inbox.RecordInbox(r.Context(), app.InboxEvent{
 		Provider: domain.ProviderAsaas, Environment: h.Environment, Merchant: h.Merchant,
 		EventID: event.ID, PayloadHash: hex.EncodeToString(digest[:]),
 		EventType: event.Event, ResourceType: resourceType, ResourceID: resourceID,
+		ResourceStatus: resourceStatus,
 	})
 	if err != nil {
 		switch {
@@ -157,6 +167,9 @@ type asaasEvent struct {
 	Payment            *asaasResourceRef `json:"payment"`
 	Authorization      *asaasResourceRef `json:"authorization"`
 	PaymentInstruction *asaasResourceRef `json:"paymentInstruction"`
+	Eligibility        struct {
+		Status string `json:"status"`
+	} `json:"eligibility"`
 }
 
 func asaasResource(event asaasEvent) (string, string) {

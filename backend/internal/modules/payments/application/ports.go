@@ -79,14 +79,15 @@ type Claim struct {
 }
 
 type InboxEvent struct {
-	Provider     domain.Provider
-	Environment  domain.Environment
-	Merchant     string
-	EventID      string
-	PayloadHash  string
-	EventType    string
-	ResourceType string
-	ResourceID   string
+	Provider       domain.Provider
+	Environment    domain.Environment
+	Merchant       string
+	EventID        string
+	PayloadHash    string
+	EventType      string
+	ResourceType   string
+	ResourceID     string
+	ResourceStatus string
 }
 
 type InboxResult struct {
@@ -132,6 +133,7 @@ type SettlementStore interface {
 	Customer(context.Context, string, domain.Provider, domain.Environment, string) (string, bool, error)
 	MandateForSubscription(context.Context, domain.Environment, string, string) (MandateRecord, error)
 	RecordSettlement(context.Context, SettlementInput) (SettlementOutcome, error)
+	EnsurePixAutoCycleOrder(context.Context, PixAutoCycleOrderInput) (string, error)
 	MarkInbox(context.Context, InboxEvent, string, string) error
 	RevokeGrant(context.Context, string, time.Time) error
 }

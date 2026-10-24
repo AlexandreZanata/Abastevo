@@ -66,11 +66,17 @@ func TestAsaasWebhookValidAndUnknownEvents(t *testing.T) {
 	}
 
 	inbox = &fakeInbox{result: app.InboxResult{Created: true, State: "PENDING"}}
-	body = asaasBody("evt_eligibility", "PIX_AUTOMATIC_RECURRING_ELIGIBILITY_UPDATED", "", "")
+	body = asaasEligibilityBody("evt_eligibility", "INELIGIBLE")
 	response = serveAsaas(t, validAsaasHandler(inbox), body, asaasToken, "application/json", false)
-	if response.Code != http.StatusOK || inbox.last.ResourceType != "event" || inbox.last.ResourceID != "evt_eligibility" {
+	if response.Code != http.StatusOK || inbox.last.ResourceType != "event" ||
+		inbox.last.ResourceID != "evt_eligibility" || inbox.last.ResourceStatus != "INELIGIBLE" {
 		t.Fatalf("unknown status=%d event=%+v", response.Code, inbox.last)
 	}
+}
+
+func asaasEligibilityBody(id, status string) []byte {
+	return []byte(fmt.Sprintf(`{"id":%q,"event":"PIX_AUTOMATIC_RECURRING_ELIGIBILITY_UPDATED","account":{"id":%q},"eligibility":{"status":%q,"ineligibleReasons":[]}}`,
+		id, asaasMerchant, status))
 }
 
 func TestAsaasWebhookDuplicateAndConflict(t *testing.T) {
@@ -95,13 +101,15 @@ func TestAsaasWebhookAuthAndBindingRefusals(t *testing.T) {
 		contentType string
 		status      int
 	}{
-		"missing-token":    {body, "", "application/json", http.StatusUnauthorized},
-		"wrong-token":      {body, "wrong-token-but-long-enough-123456", "application/json", http.StatusUnauthorized},
-		"wrong-content":    {body, asaasToken, "text/plain", http.StatusBadRequest},
-		"invalid-json":     {[]byte(`{`), asaasToken, "application/json", http.StatusBadRequest},
-		"wrong-account":    {[]byte(`{"id":"evt","event":"PAYMENT_RECEIVED","account":{"id":"other"},"payment":{"id":"pay"}}`), asaasToken, "application/json", http.StatusBadRequest},
-		"missing-event-id": {[]byte(fmt.Sprintf(`{"event":"PAYMENT_RECEIVED","account":{"id":%q},"payment":{"id":"pay"}}`, asaasMerchant)), asaasToken, "application/json", http.StatusBadRequest},
-		"missing-type":     {[]byte(fmt.Sprintf(`{"id":"evt","account":{"id":%q},"payment":{"id":"pay"}}`, asaasMerchant)), asaasToken, "application/json", http.StatusBadRequest},
+		"missing-token":       {body, "", "application/json", http.StatusUnauthorized},
+		"wrong-token":         {body, "wrong-token-but-long-enough-123456", "application/json", http.StatusUnauthorized},
+		"wrong-content":       {body, asaasToken, "text/plain", http.StatusBadRequest},
+		"invalid-json":        {[]byte(`{`), asaasToken, "application/json", http.StatusBadRequest},
+		"wrong-account":       {[]byte(`{"id":"evt","event":"PAYMENT_RECEIVED","account":{"id":"other"},"payment":{"id":"pay"}}`), asaasToken, "application/json", http.StatusBadRequest},
+		"missing-eligibility": {asaasEligibilityBody("evt_elig", ""), asaasToken, "application/json", http.StatusBadRequest},
+		"unknown-eligibility": {asaasEligibilityBody("evt_elig", "MAYBE"), asaasToken, "application/json", http.StatusBadRequest},
+		"missing-event-id":    {[]byte(fmt.Sprintf(`{"event":"PAYMENT_RECEIVED","account":{"id":%q},"payment":{"id":"pay"}}`, asaasMerchant)), asaasToken, "application/json", http.StatusBadRequest},
+		"missing-type":        {[]byte(fmt.Sprintf(`{"id":"evt","account":{"id":%q},"payment":{"id":"pay"}}`, asaasMerchant)), asaasToken, "application/json", http.StatusBadRequest},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {

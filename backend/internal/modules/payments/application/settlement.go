@@ -37,67 +37,123 @@ func (s *SettlementService) Process(ctx context.Context, event InboxRecord) erro
 		candidate.Merchant != event.Merchant {
 		return s.conflict(ctx, event, domain.ErrBinding)
 	}
-	if candidate.OrderID == "" && candidate.RemoteSubscriptionID != "" {
-		mandate, err := s.Store.MandateForSubscription(ctx, candidate.Environment, candidate.Merchant, candidate.RemoteSubscriptionID)
-		if err != nil {
-			return s.conflict(ctx, event, err)
-		}
-		candidate.OrderID = mandate.OrderID
-	}
-	order, err := s.Store.GetOrder(ctx, candidate.OrderID)
-	if err != nil {
-		return s.conflict(ctx, event, err)
-	}
-	if order.AccountID == "" || order.Channel != candidate.Channel || !order.Amount.Equal(candidate.Amount) ||
-		order.CatalogVersion != s.Catalog.Version || order.OfferID == "" {
-		return s.conflict(ctx, event, domain.ErrBinding)
-	}
-	offer, ok := s.Catalog.Offers[order.OfferID]
-	if !ok || !offer.Price.Equal(candidate.Amount) || len(offer.Capabilities) == 0 ||
-		!sameStrings(offer.Capabilities, order.Capabilities) {
-		return s.conflict(ctx, event, domain.ErrBinding)
-	}
-	attempt, err := s.Store.AttemptForOrder(ctx, order.ID)
-	if err != nil {
-		return s.conflict(ctx, event, err)
-	}
-	switch attempt.State {
-	case "SUCCEEDED", "DISPATCHED", "UNKNOWN":
-	default:
-		return s.conflict(ctx, event, domain.ErrConflict)
-	}
-	if attempt.Provider != event.Provider || attempt.Environment != event.Environment || attempt.Merchant != event.Merchant {
-		return s.conflict(ctx, event, domain.ErrBinding)
-	}
-	customerID, found, err := s.Store.Customer(ctx, order.AccountID, event.Provider, event.Environment, event.Merchant)
-	if err != nil {
-		return err
-	}
-	if !found || customerID != candidate.CustomerID {
-		return s.conflict(ctx, event, domain.ErrBinding)
-	}
 	if candidate.SettledAt.IsZero() {
 		candidate.SettledAt = event.ReceivedAt
 	}
 	if candidate.SettledAt.IsZero() {
 		candidate.SettledAt = time.Now().UTC()
 	}
-	settlement := domain.Settlement{
-		ID:      settlementUUID(event.Provider, candidate.RemotePaymentID),
-		OrderID: order.ID, AttemptID: attempt.ID, AccountID: order.AccountID,
-		OfferID: order.OfferID, Channel: candidate.Channel, Provider: candidate.Provider,
-		Environment: candidate.Environment, MerchantID: event.Merchant,
-		RemotePaymentID: candidate.RemotePaymentID, ProviderStatus: candidate.ProviderStatus,
-		Amount: candidate.Amount, Status: domain.SettlementSettled,
-		Authority: domain.AuthorityProviderVerified, SettledAt: candidate.SettledAt,
-	}
-	if _, err := s.Store.RecordSettlement(ctx, SettlementInput{Offer: offer, Settlement: settlement}); err != nil {
+	if err := s.Settle(ctx, candidate); err != nil {
 		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, domain.ErrStale) || errors.Is(err, ErrAmbiguous) {
 			return err
 		}
 		return s.conflict(ctx, event, err)
 	}
 	return s.Store.MarkInbox(ctx, event.InboxEvent, "PROCESSED", "")
+}
+
+// Settle records one already-verified provider payment. Provider-owned automatic
+// Pix cycles always receive a fresh cycle order; the mandate order is
+// authorization context, not a reusable paid period.
+func (s *SettlementService) Settle(ctx context.Context, candidate SettlementCandidate) error {
+	if s == nil || s.Store == nil || s.Catalog.Version == "" {
+		return domain.ErrUnavailable
+	}
+	if candidate.Provider != domain.ProviderAsaas && candidate.Provider != domain.ProviderStripe {
+		return domain.ErrInvalid
+	}
+	if err := candidate.Environment.Validate(); err != nil {
+		return err
+	}
+	if candidate.RemotePaymentID == "" || len(candidate.RemotePaymentID) > 255 ||
+		candidate.CustomerID == "" || candidate.ProviderStatus == "" || candidate.SettledAt.IsZero() {
+		return domain.ErrInvalid
+	}
+	if err := candidate.Amount.Positive(); err != nil {
+		return err
+	}
+	orderID := candidate.OrderID
+	if candidate.Channel == domain.ChannelPixAutomatic {
+		if candidate.Provider != domain.ProviderAsaas || candidate.RemoteSubscriptionID == "" {
+			return domain.ErrBinding
+		}
+		mandate, err := s.Store.MandateForSubscription(ctx, candidate.Environment, candidate.Merchant, candidate.RemoteSubscriptionID)
+		if err != nil {
+			return err
+		}
+		if mandate.Provider != domain.ProviderAsaas || mandate.AccountID == "" || mandate.OrderID == "" ||
+			mandate.RemoteSubscriptionID != candidate.RemoteSubscriptionID ||
+			mandate.RemoteCustomerID != candidate.CustomerID || !mandate.Value.Equal(candidate.Amount) {
+			return domain.ErrBinding
+		}
+		initial, err := s.Store.GetOrder(ctx, mandate.OrderID)
+		if err != nil {
+			return err
+		}
+		if initial.AccountID != mandate.AccountID || initial.OfferID != mandate.OfferID ||
+			initial.Channel != domain.ChannelPixAutomatic || initial.CatalogVersion == "" ||
+			len(initial.Capabilities) == 0 {
+			return domain.ErrBinding
+		}
+		orderID, err = s.Store.EnsurePixAutoCycleOrder(ctx, PixAutoCycleOrderInput{
+			AccountID: mandate.AccountID, OfferID: mandate.OfferID,
+			CatalogVersion: initial.CatalogVersion, Capabilities: initial.Capabilities,
+			Amount: mandate.Value, Environment: candidate.Environment, Merchant: candidate.Merchant,
+			RemotePaymentID: candidate.RemotePaymentID, RemoteSubscriptionID: candidate.RemoteSubscriptionID,
+			SettledAt: candidate.SettledAt,
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		if orderID == "" || candidate.RemoteSubscriptionID != "" {
+			return domain.ErrInvalid
+		}
+	}
+	order, err := s.Store.GetOrder(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if order.AccountID == "" || order.Channel != candidate.Channel || !order.Amount.Equal(candidate.Amount) ||
+		order.CatalogVersion != s.Catalog.Version || order.OfferID == "" {
+		return domain.ErrBinding
+	}
+	offer, ok := s.Catalog.Offers[order.OfferID]
+	if !ok || !offer.Price.Equal(candidate.Amount) || len(offer.Capabilities) == 0 ||
+		!offer.Channels[candidate.Channel] || !sameStrings(offer.Capabilities, order.Capabilities) {
+		return domain.ErrBinding
+	}
+	attempt, err := s.Store.AttemptForOrder(ctx, order.ID)
+	if err != nil {
+		return err
+	}
+	switch attempt.State {
+	case "SUCCEEDED", "DISPATCHED", "UNKNOWN":
+	default:
+		return domain.ErrConflict
+	}
+	if attempt.Provider != candidate.Provider || attempt.Environment != candidate.Environment ||
+		attempt.Merchant != candidate.Merchant {
+		return domain.ErrBinding
+	}
+	customerID, found, err := s.Store.Customer(ctx, order.AccountID, candidate.Provider, candidate.Environment, candidate.Merchant)
+	if err != nil {
+		return err
+	}
+	if !found || customerID != candidate.CustomerID {
+		return domain.ErrBinding
+	}
+	settlement := domain.Settlement{
+		ID:      settlementUUID(candidate.Provider, candidate.RemotePaymentID),
+		OrderID: order.ID, AttemptID: attempt.ID, AccountID: order.AccountID,
+		OfferID: order.OfferID, Channel: candidate.Channel, Provider: candidate.Provider,
+		Environment: candidate.Environment, MerchantID: candidate.Merchant,
+		RemotePaymentID: candidate.RemotePaymentID, ProviderStatus: candidate.ProviderStatus,
+		Amount: candidate.Amount, Status: domain.SettlementSettled,
+		Authority: domain.AuthorityProviderVerified, SettledAt: candidate.SettledAt,
+	}
+	_, err = s.Store.RecordSettlement(ctx, SettlementInput{Offer: offer, Settlement: settlement})
+	return err
 }
 
 func (s *SettlementService) ProcessPending(ctx context.Context, provider domain.Provider, environment domain.Environment, merchant string, limit int) (int, error) {

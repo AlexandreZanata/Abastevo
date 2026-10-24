@@ -251,7 +251,7 @@ func (q *Queries) GetPaymentGrantByOrder(ctx context.Context, orderID pgtype.UUI
 }
 
 const getPaymentInbox = `-- name: GetPaymentInbox :one
-SELECT provider, environment, merchant, event_id, payload_hash, event_type, resource_type, resource_id, state, attempts, received_at, processed_at, last_error FROM payment_inbox
+SELECT provider, environment, merchant, event_id, payload_hash, event_type, resource_type, resource_id, state, attempts, received_at, processed_at, last_error, resource_status FROM payment_inbox
 WHERE provider=$1 AND environment=$2 AND merchant=$3 AND event_id=$4
 `
 
@@ -284,12 +284,13 @@ func (q *Queries) GetPaymentInbox(ctx context.Context, arg GetPaymentInboxParams
 		&i.ReceivedAt,
 		&i.ProcessedAt,
 		&i.LastError,
+		&i.ResourceStatus,
 	)
 	return i, err
 }
 
 const getPaymentMandateByRemote = `-- name: GetPaymentMandateByRemote :one
-SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at FROM payment_mandates
+SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at, payment_creation_mode, retry_policy, cancel_requested_at, cancel_reason, cancelled_at FROM payment_mandates
 WHERE provider='asaas' AND environment=$1 AND merchant=$2
   AND remote_authorization_id=$3
 `
@@ -325,12 +326,17 @@ func (q *Queries) GetPaymentMandateByRemote(ctx context.Context, arg GetPaymentM
 		&i.LastEventAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PaymentCreationMode,
+		&i.RetryPolicy,
+		&i.CancelRequestedAt,
+		&i.CancelReason,
+		&i.CancelledAt,
 	)
 	return i, err
 }
 
 const getPaymentMandateForAccount = `-- name: GetPaymentMandateForAccount :one
-SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at FROM payment_mandates
+SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at, payment_creation_mode, retry_policy, cancel_requested_at, cancel_reason, cancelled_at FROM payment_mandates
 WHERE account_id=$1::uuid AND offer_id=$2
 ORDER BY updated_at DESC LIMIT 1
 `
@@ -365,12 +371,17 @@ func (q *Queries) GetPaymentMandateForAccount(ctx context.Context, arg GetPaymen
 		&i.LastEventAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PaymentCreationMode,
+		&i.RetryPolicy,
+		&i.CancelRequestedAt,
+		&i.CancelReason,
+		&i.CancelledAt,
 	)
 	return i, err
 }
 
 const getPaymentMandateForSubscription = `-- name: GetPaymentMandateForSubscription :one
-SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at FROM payment_mandates
+SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at, payment_creation_mode, retry_policy, cancel_requested_at, cancel_reason, cancelled_at FROM payment_mandates
 WHERE provider='asaas' AND environment=$1 AND merchant=$2
   AND remote_subscription_id=$3
 `
@@ -406,6 +417,11 @@ func (q *Queries) GetPaymentMandateForSubscription(ctx context.Context, arg GetP
 		&i.LastEventAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PaymentCreationMode,
+		&i.RetryPolicy,
+		&i.CancelRequestedAt,
+		&i.CancelReason,
+		&i.CancelledAt,
 	)
 	return i, err
 }
@@ -534,6 +550,69 @@ func (q *Queries) GetPaymentOrderForUpdate(ctx context.Context, id pgtype.UUID) 
 		&i.PaidAt,
 		&i.SettlementID,
 		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPaymentPixAutoEligibility = `-- name: GetPaymentPixAutoEligibility :one
+SELECT provider, environment, merchant, status, reason, last_event_at, observed_at FROM payment_pix_auto_eligibility
+WHERE provider='asaas' AND environment=$1 AND merchant=$2
+`
+
+type GetPaymentPixAutoEligibilityParams struct {
+	Environment string `json:"environment"`
+	Merchant    string `json:"merchant"`
+}
+
+func (q *Queries) GetPaymentPixAutoEligibility(ctx context.Context, arg GetPaymentPixAutoEligibilityParams) (PaymentPixAutoEligibility, error) {
+	row := q.db.QueryRow(ctx, getPaymentPixAutoEligibility, arg.Environment, arg.Merchant)
+	var i PaymentPixAutoEligibility
+	err := row.Scan(
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.Status,
+		&i.Reason,
+		&i.LastEventAt,
+		&i.ObservedAt,
+	)
+	return i, err
+}
+
+const getPaymentPixAutoInstruction = `-- name: GetPaymentPixAutoInstruction :one
+SELECT id, account_id, offer_id, environment, merchant, provider, remote_instruction_id, remote_authorization_id, remote_subscription_id, remote_payment_id, status, purpose, retry_attempt, due_date, refusal_reason, last_event_at, created_at, updated_at FROM payment_pix_auto_instructions
+WHERE provider='asaas' AND environment=$1 AND merchant=$2
+  AND remote_instruction_id=$3
+`
+
+type GetPaymentPixAutoInstructionParams struct {
+	Environment         string `json:"environment"`
+	Merchant            string `json:"merchant"`
+	RemoteInstructionID string `json:"remote_instruction_id"`
+}
+
+func (q *Queries) GetPaymentPixAutoInstruction(ctx context.Context, arg GetPaymentPixAutoInstructionParams) (PaymentPixAutoInstruction, error) {
+	row := q.db.QueryRow(ctx, getPaymentPixAutoInstruction, arg.Environment, arg.Merchant, arg.RemoteInstructionID)
+	var i PaymentPixAutoInstruction
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Environment,
+		&i.Merchant,
+		&i.Provider,
+		&i.RemoteInstructionID,
+		&i.RemoteAuthorizationID,
+		&i.RemoteSubscriptionID,
+		&i.RemotePaymentID,
+		&i.Status,
+		&i.Purpose,
+		&i.RetryAttempt,
+		&i.DueDate,
+		&i.RefusalReason,
+		&i.LastEventAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -804,22 +883,23 @@ func (q *Queries) InsertPaymentGrant(ctx context.Context, arg InsertPaymentGrant
 
 const insertPaymentInbox = `-- name: InsertPaymentInbox :execrows
 INSERT INTO payment_inbox(
- provider,environment,merchant,event_id,payload_hash,event_type,resource_type,resource_id
+ provider,environment,merchant,event_id,payload_hash,event_type,resource_type,resource_id,resource_status
 ) VALUES(
- $1,$2,$3,$4,$5,$6,$7,$8
+ $1,$2,$3,$4,$5,$6,$7,$8,$9
 )
 ON CONFLICT DO NOTHING
 `
 
 type InsertPaymentInboxParams struct {
-	Provider     string `json:"provider"`
-	Environment  string `json:"environment"`
-	Merchant     string `json:"merchant"`
-	EventID      string `json:"event_id"`
-	PayloadHash  string `json:"payload_hash"`
-	EventType    string `json:"event_type"`
-	ResourceType string `json:"resource_type"`
-	ResourceID   string `json:"resource_id"`
+	Provider       string `json:"provider"`
+	Environment    string `json:"environment"`
+	Merchant       string `json:"merchant"`
+	EventID        string `json:"event_id"`
+	PayloadHash    string `json:"payload_hash"`
+	EventType      string `json:"event_type"`
+	ResourceType   string `json:"resource_type"`
+	ResourceID     string `json:"resource_id"`
+	ResourceStatus string `json:"resource_status"`
 }
 
 func (q *Queries) InsertPaymentInbox(ctx context.Context, arg InsertPaymentInboxParams) (int64, error) {
@@ -832,6 +912,7 @@ func (q *Queries) InsertPaymentInbox(ctx context.Context, arg InsertPaymentInbox
 		arg.EventType,
 		arg.ResourceType,
 		arg.ResourceID,
+		arg.ResourceStatus,
 	)
 	if err != nil {
 		return 0, err
@@ -923,6 +1004,45 @@ func (q *Queries) InsertPaymentOrder(ctx context.Context, arg InsertPaymentOrder
 	return result.RowsAffected(), nil
 }
 
+const insertPaymentPixAutoCycleAttempt = `-- name: InsertPaymentPixAutoCycleAttempt :exec
+INSERT INTO payment_attempts(
+ id,operation_id,order_id,attempt_no,generation,provider,environment,merchant,payload_hash,
+ state,remote_id,lease_until,created_at,updated_at,completed_at
+) VALUES(
+ $1::uuid,$2::uuid,$3::uuid,1,1,
+ 'asaas',$4,$5,$6,
+ 'SUCCEEDED',$7,$8::timestamptz,
+ $9::timestamptz,$9::timestamptz,$9::timestamptz
+)
+`
+
+type InsertPaymentPixAutoCycleAttemptParams struct {
+	ID          pgtype.UUID        `json:"id"`
+	OperationID pgtype.UUID        `json:"operation_id"`
+	OrderID     pgtype.UUID        `json:"order_id"`
+	Environment string             `json:"environment"`
+	Merchant    string             `json:"merchant"`
+	PayloadHash string             `json:"payload_hash"`
+	RemoteID    pgtype.Text        `json:"remote_id"`
+	LeaseUntil  pgtype.Timestamptz `json:"lease_until"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) InsertPaymentPixAutoCycleAttempt(ctx context.Context, arg InsertPaymentPixAutoCycleAttemptParams) error {
+	_, err := q.db.Exec(ctx, insertPaymentPixAutoCycleAttempt,
+		arg.ID,
+		arg.OperationID,
+		arg.OrderID,
+		arg.Environment,
+		arg.Merchant,
+		arg.PayloadHash,
+		arg.RemoteID,
+		arg.LeaseUntil,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const insertPaymentSettlement = `-- name: InsertPaymentSettlement :execrows
 INSERT INTO payment_settlements(
  id,order_id,attempt_id,account_id,offer_id,channel,provider,environment,merchant,
@@ -975,6 +1095,67 @@ func (q *Queries) InsertPaymentSettlement(ctx context.Context, arg InsertPayment
 	return result.RowsAffected(), nil
 }
 
+const listActivePaymentMandates = `-- name: ListActivePaymentMandates :many
+SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at, payment_creation_mode, retry_policy, cancel_requested_at, cancel_reason, cancelled_at FROM payment_mandates
+WHERE provider='asaas' AND environment=$1 AND merchant=$2
+  AND status='ACTIVE'
+ORDER BY updated_at,id
+LIMIT $3::int
+`
+
+type ListActivePaymentMandatesParams struct {
+	Environment string `json:"environment"`
+	Merchant    string `json:"merchant"`
+	LimitCount  int32  `json:"limit_count"`
+}
+
+func (q *Queries) ListActivePaymentMandates(ctx context.Context, arg ListActivePaymentMandatesParams) ([]PaymentMandate, error) {
+	rows, err := q.db.Query(ctx, listActivePaymentMandates, arg.Environment, arg.Merchant, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentMandate
+	for rows.Next() {
+		var i PaymentMandate
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.OfferID,
+			&i.OrderID,
+			&i.Environment,
+			&i.Merchant,
+			&i.Provider,
+			&i.RemoteAuthorizationID,
+			&i.RemoteSubscriptionID,
+			&i.ContractID,
+			&i.RemoteCustomerID,
+			&i.Status,
+			&i.Frequency,
+			&i.ValueCentavos,
+			&i.StartDate,
+			&i.FinishDate,
+			&i.ConsentVersion,
+			&i.ConsentAt,
+			&i.LastEventAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PaymentCreationMode,
+			&i.RetryPolicy,
+			&i.CancelRequestedAt,
+			&i.CancelReason,
+			&i.CancelledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPaymentGrantsForEntitlement = `-- name: ListPaymentGrantsForEntitlement :many
 SELECT id, order_id, settlement_id, remote_payment_id, account_id, offer_id, source, paid_centavos, currency, start_at, end_at, anchor_day, policy_version, capabilities, state, created_at, revoked_at FROM payment_grants
 WHERE account_id=$1::uuid AND offer_id=$2
@@ -1024,8 +1205,67 @@ func (q *Queries) ListPaymentGrantsForEntitlement(ctx context.Context, arg ListP
 	return items, nil
 }
 
+const listPaymentPixAutoInstructions = `-- name: ListPaymentPixAutoInstructions :many
+SELECT id, account_id, offer_id, environment, merchant, provider, remote_instruction_id, remote_authorization_id, remote_subscription_id, remote_payment_id, status, purpose, retry_attempt, due_date, refusal_reason, last_event_at, created_at, updated_at FROM payment_pix_auto_instructions
+WHERE provider='asaas' AND environment=$1 AND merchant=$2
+  AND remote_authorization_id=$3
+ORDER BY due_date,id
+LIMIT $4::int
+`
+
+type ListPaymentPixAutoInstructionsParams struct {
+	Environment           string `json:"environment"`
+	Merchant              string `json:"merchant"`
+	RemoteAuthorizationID string `json:"remote_authorization_id"`
+	LimitCount            int32  `json:"limit_count"`
+}
+
+func (q *Queries) ListPaymentPixAutoInstructions(ctx context.Context, arg ListPaymentPixAutoInstructionsParams) ([]PaymentPixAutoInstruction, error) {
+	rows, err := q.db.Query(ctx, listPaymentPixAutoInstructions,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteAuthorizationID,
+		arg.LimitCount,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentPixAutoInstruction
+	for rows.Next() {
+		var i PaymentPixAutoInstruction
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.OfferID,
+			&i.Environment,
+			&i.Merchant,
+			&i.Provider,
+			&i.RemoteInstructionID,
+			&i.RemoteAuthorizationID,
+			&i.RemoteSubscriptionID,
+			&i.RemotePaymentID,
+			&i.Status,
+			&i.Purpose,
+			&i.RetryAttempt,
+			&i.DueDate,
+			&i.RefusalReason,
+			&i.LastEventAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingPaymentInbox = `-- name: ListPendingPaymentInbox :many
-SELECT provider, environment, merchant, event_id, payload_hash, event_type, resource_type, resource_id, state, attempts, received_at, processed_at, last_error FROM payment_inbox
+SELECT provider, environment, merchant, event_id, payload_hash, event_type, resource_type, resource_id, state, attempts, received_at, processed_at, last_error, resource_status FROM payment_inbox
 WHERE provider=$1 AND environment=$2
   AND merchant=$3 AND state='PENDING'
 ORDER BY received_at,event_id
@@ -1067,6 +1307,7 @@ func (q *Queries) ListPendingPaymentInbox(ctx context.Context, arg ListPendingPa
 			&i.ReceivedAt,
 			&i.ProcessedAt,
 			&i.LastError,
+			&i.ResourceStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -1184,6 +1425,64 @@ func (q *Queries) MarkPaymentOrderPaid(ctx context.Context, arg MarkPaymentOrder
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const requestPaymentMandateCancel = `-- name: RequestPaymentMandateCancel :one
+UPDATE payment_mandates
+SET cancel_requested_at=COALESCE(cancel_requested_at,$1::timestamptz),
+    cancel_reason=COALESCE(cancel_reason,$2),
+    updated_at=clock_timestamp()
+WHERE provider='asaas' AND environment=$3 AND merchant=$4
+  AND remote_authorization_id=$5
+RETURNING id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at, payment_creation_mode, retry_policy, cancel_requested_at, cancel_reason, cancelled_at
+`
+
+type RequestPaymentMandateCancelParams struct {
+	RequestedAt           pgtype.Timestamptz `json:"requested_at"`
+	Reason                pgtype.Text        `json:"reason"`
+	Environment           string             `json:"environment"`
+	Merchant              string             `json:"merchant"`
+	RemoteAuthorizationID string             `json:"remote_authorization_id"`
+}
+
+func (q *Queries) RequestPaymentMandateCancel(ctx context.Context, arg RequestPaymentMandateCancelParams) (PaymentMandate, error) {
+	row := q.db.QueryRow(ctx, requestPaymentMandateCancel,
+		arg.RequestedAt,
+		arg.Reason,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteAuthorizationID,
+	)
+	var i PaymentMandate
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.OrderID,
+		&i.Environment,
+		&i.Merchant,
+		&i.Provider,
+		&i.RemoteAuthorizationID,
+		&i.RemoteSubscriptionID,
+		&i.ContractID,
+		&i.RemoteCustomerID,
+		&i.Status,
+		&i.Frequency,
+		&i.ValueCentavos,
+		&i.StartDate,
+		&i.FinishDate,
+		&i.ConsentVersion,
+		&i.ConsentAt,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PaymentCreationMode,
+		&i.RetryPolicy,
+		&i.CancelRequestedAt,
+		&i.CancelReason,
+		&i.CancelledAt,
+	)
+	return i, err
 }
 
 const resolvePaymentAttempt = `-- name: ResolvePaymentAttempt :execrows
@@ -1377,9 +1676,14 @@ INSERT INTO payment_mandates(
 ON CONFLICT (provider,environment,merchant,remote_authorization_id) DO UPDATE SET
  remote_subscription_id=COALESCE(EXCLUDED.remote_subscription_id,payment_mandates.remote_subscription_id),
  status=EXCLUDED.status,finish_date=EXCLUDED.finish_date,last_event_at=EXCLUDED.last_event_at,
+ cancelled_at=CASE WHEN EXCLUDED.status IN ('CANCELLED','EXPIRED','REFUSED')
+                   THEN COALESCE(payment_mandates.cancelled_at,EXCLUDED.last_event_at)
+                   ELSE payment_mandates.cancelled_at END,
  updated_at=clock_timestamp()
 WHERE payment_mandates.last_event_at <= EXCLUDED.last_event_at
-RETURNING id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at
+  AND (payment_mandates.cancel_requested_at IS NULL
+       OR EXCLUDED.status IN ('CANCELLED','EXPIRED','REFUSED'))
+RETURNING id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at, payment_creation_mode, retry_policy, cancel_requested_at, cancel_reason, cancelled_at
 `
 
 type UpsertPaymentMandateParams struct {
@@ -1442,6 +1746,141 @@ func (q *Queries) UpsertPaymentMandate(ctx context.Context, arg UpsertPaymentMan
 		&i.FinishDate,
 		&i.ConsentVersion,
 		&i.ConsentAt,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PaymentCreationMode,
+		&i.RetryPolicy,
+		&i.CancelRequestedAt,
+		&i.CancelReason,
+		&i.CancelledAt,
+	)
+	return i, err
+}
+
+const upsertPaymentPixAutoEligibility = `-- name: UpsertPaymentPixAutoEligibility :one
+INSERT INTO payment_pix_auto_eligibility(
+ provider,environment,merchant,status,reason,last_event_at,observed_at
+) VALUES(
+ 'asaas',$1,$2,$3,$4,
+ $5::timestamptz,$6::timestamptz
+)
+ON CONFLICT (provider,environment,merchant) DO UPDATE SET
+ status=EXCLUDED.status,reason=EXCLUDED.reason,last_event_at=EXCLUDED.last_event_at,
+ observed_at=GREATEST(payment_pix_auto_eligibility.observed_at,EXCLUDED.observed_at)
+WHERE payment_pix_auto_eligibility.last_event_at <= EXCLUDED.last_event_at
+RETURNING provider, environment, merchant, status, reason, last_event_at, observed_at
+`
+
+type UpsertPaymentPixAutoEligibilityParams struct {
+	Environment string             `json:"environment"`
+	Merchant    string             `json:"merchant"`
+	Status      string             `json:"status"`
+	Reason      string             `json:"reason"`
+	LastEventAt pgtype.Timestamptz `json:"last_event_at"`
+	ObservedAt  pgtype.Timestamptz `json:"observed_at"`
+}
+
+func (q *Queries) UpsertPaymentPixAutoEligibility(ctx context.Context, arg UpsertPaymentPixAutoEligibilityParams) (PaymentPixAutoEligibility, error) {
+	row := q.db.QueryRow(ctx, upsertPaymentPixAutoEligibility,
+		arg.Environment,
+		arg.Merchant,
+		arg.Status,
+		arg.Reason,
+		arg.LastEventAt,
+		arg.ObservedAt,
+	)
+	var i PaymentPixAutoEligibility
+	err := row.Scan(
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.Status,
+		&i.Reason,
+		&i.LastEventAt,
+		&i.ObservedAt,
+	)
+	return i, err
+}
+
+const upsertPaymentPixAutoInstruction = `-- name: UpsertPaymentPixAutoInstruction :one
+INSERT INTO payment_pix_auto_instructions(
+ id,account_id,offer_id,environment,merchant,provider,remote_instruction_id,
+ remote_authorization_id,remote_subscription_id,remote_payment_id,status,purpose,
+ retry_attempt,due_date,refusal_reason,last_event_at
+) VALUES(
+ $1::uuid,$2::uuid,$3,$4,
+ $5,'asaas',$6,$7,
+ $8,$9,$10,
+ $11,$12::int,$13::date,
+ $14,$15::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_instruction_id) DO UPDATE SET
+ account_id=EXCLUDED.account_id,offer_id=EXCLUDED.offer_id,
+ remote_subscription_id=COALESCE(EXCLUDED.remote_subscription_id,payment_pix_auto_instructions.remote_subscription_id),
+ remote_payment_id=COALESCE(EXCLUDED.remote_payment_id,payment_pix_auto_instructions.remote_payment_id),
+ status=EXCLUDED.status,purpose=EXCLUDED.purpose,retry_attempt=EXCLUDED.retry_attempt,
+ due_date=EXCLUDED.due_date,refusal_reason=EXCLUDED.refusal_reason,
+ last_event_at=EXCLUDED.last_event_at,updated_at=clock_timestamp()
+WHERE payment_pix_auto_instructions.last_event_at <= EXCLUDED.last_event_at
+  AND (payment_pix_auto_instructions.status NOT IN ('REFUSED','CANCELLED','DONE')
+       OR EXCLUDED.status IN ('REFUSED','CANCELLED','DONE'))
+RETURNING id, account_id, offer_id, environment, merchant, provider, remote_instruction_id, remote_authorization_id, remote_subscription_id, remote_payment_id, status, purpose, retry_attempt, due_date, refusal_reason, last_event_at, created_at, updated_at
+`
+
+type UpsertPaymentPixAutoInstructionParams struct {
+	ID                    pgtype.UUID        `json:"id"`
+	AccountID             pgtype.UUID        `json:"account_id"`
+	OfferID               string             `json:"offer_id"`
+	Environment           string             `json:"environment"`
+	Merchant              string             `json:"merchant"`
+	RemoteInstructionID   string             `json:"remote_instruction_id"`
+	RemoteAuthorizationID string             `json:"remote_authorization_id"`
+	RemoteSubscriptionID  pgtype.Text        `json:"remote_subscription_id"`
+	RemotePaymentID       pgtype.Text        `json:"remote_payment_id"`
+	Status                string             `json:"status"`
+	Purpose               string             `json:"purpose"`
+	RetryAttempt          int32              `json:"retry_attempt"`
+	DueDate               pgtype.Date        `json:"due_date"`
+	RefusalReason         pgtype.Text        `json:"refusal_reason"`
+	LastEventAt           pgtype.Timestamptz `json:"last_event_at"`
+}
+
+func (q *Queries) UpsertPaymentPixAutoInstruction(ctx context.Context, arg UpsertPaymentPixAutoInstructionParams) (PaymentPixAutoInstruction, error) {
+	row := q.db.QueryRow(ctx, upsertPaymentPixAutoInstruction,
+		arg.ID,
+		arg.AccountID,
+		arg.OfferID,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteInstructionID,
+		arg.RemoteAuthorizationID,
+		arg.RemoteSubscriptionID,
+		arg.RemotePaymentID,
+		arg.Status,
+		arg.Purpose,
+		arg.RetryAttempt,
+		arg.DueDate,
+		arg.RefusalReason,
+		arg.LastEventAt,
+	)
+	var i PaymentPixAutoInstruction
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Environment,
+		&i.Merchant,
+		&i.Provider,
+		&i.RemoteInstructionID,
+		&i.RemoteAuthorizationID,
+		&i.RemoteSubscriptionID,
+		&i.RemotePaymentID,
+		&i.Status,
+		&i.Purpose,
+		&i.RetryAttempt,
+		&i.DueDate,
+		&i.RefusalReason,
 		&i.LastEventAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,

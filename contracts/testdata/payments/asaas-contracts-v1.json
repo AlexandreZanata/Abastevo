@@ -29,7 +29,10 @@
     {"operation": "create_pix_auto_authorization", "method": "POST", "path": "/v3/pix/automatic/authorizations", "required": ["frequency", "contractId", "startDate", "customerId", "immediateQrCode"], "selection": {"frequency": "MONTHLY", "paymentCreationMode": "SUBSCRIPTION", "retryPolicy": "NOT_ALLOWED"}, "provider_idempotency": "none"},
     {"operation": "retrieve_pix_auto_authorization", "method": "GET", "path": "/v3/pix/automatic/authorizations/{id}", "provider_idempotency": "read-only"},
     {"operation": "list_pix_auto_authorizations", "method": "GET", "path": "/v3/pix/automatic/authorizations", "query": ["status", "customerId"], "provider_idempotency": "read-only"},
-    {"operation": "cancel_pix_auto_authorization", "method": "DELETE", "path": "/v3/pix/automatic/authorizations/{id}", "provider_idempotency": "none"}
+    {"operation": "cancel_pix_auto_authorization", "method": "DELETE", "path": "/v3/pix/automatic/authorizations/{id}", "provider_idempotency": "none"},
+    {"operation": "retrieve_pix_auto_instruction", "method": "GET", "path": "/v3/pix/automatic/paymentInstructions/{id}", "provider_idempotency": "read-only"},
+    {"operation": "list_pix_auto_instructions", "method": "GET", "path": "/v3/pix/automatic/paymentInstructions", "query": ["authorizationId", "customerId", "paymentId", "status"], "provider_idempotency": "read-only"},
+    {"operation": "list_subscription_payments", "method": "GET", "path": "/v3/payments", "query": ["subscription", "status"], "provider_idempotency": "read-only"}
   ],
   "payment_status_map": {
     "PENDING": "pending",
@@ -81,7 +84,9 @@
     "immediate_qr_code_required": ["expirationSeconds", "originalValue"],
     "contract_id_max_length": 35,
     "authorization_statuses": ["CREATED", "ACTIVE", "CANCELLED", "REFUSED", "EXPIRED"],
-    "instruction_statuses": ["AWAITING_REQUEST", "SCHEDULED", "REFUSED", "CANCELLED"],
+    "instruction_statuses": ["AWAITING_REQUEST", "SCHEDULED", "DONE", "REFUSED", "CANCELLED"],
+    "cycle_owner": "asaas-provider-subscription",
+    "instruction_reconciliation_limit": 100,
     "eligibility_requirements": [
       "approved PJ account",
       "active CNPJ",

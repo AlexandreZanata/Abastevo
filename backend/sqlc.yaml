@@ -324,6 +324,7 @@ sql:
       - db/migrations/000123_payment_intents.sql
       - db/migrations/000124_payment_contracts.sql
       - db/migrations/000125_payment_mandates.sql
+      - db/migrations/000126_pix_auto_cycles.sql
     gen:
       go:
         package: payments

@@ -30,3 +30,16 @@ type SettlementCandidate struct {
 type SettlementVerifier interface {
 	Verify(context.Context, InboxRecord) (SettlementCandidate, error)
 }
+
+type PixAutoCycleOrderInput struct {
+	AccountID            string
+	OfferID              string
+	CatalogVersion       string
+	Capabilities         []string
+	Amount               domain.Money
+	Environment          domain.Environment
+	Merchant             string
+	RemotePaymentID      string
+	RemoteSubscriptionID string
+	SettledAt            time.Time
+}

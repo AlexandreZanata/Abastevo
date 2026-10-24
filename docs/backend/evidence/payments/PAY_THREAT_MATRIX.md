@@ -57,7 +57,7 @@ case cannot be fully accepted without separately authorized live verification.
 | RMT-01 | Retry before/after provider dedupe retention reuses or reconciles the original intent; it never blindly creates a second resource. | OPEN | PAY-04, PAY-06, PAY-07 | none |
 | RMT-02 | Provider created a customer/charge/subscription but the reply was lost; recovery finds or quarantines it as OUTCOME_UNKNOWN. | OPEN | PAY-04, PAY-06, PAY-07, PAY-16 | none |
 | RMT-03 | Webhook arrives before the local create response or after DB commit but before response; effects stay single and consistent. | OPEN | PAY-04, PAY-08, PAY-09, PAY-10 | none |
-| RMT-04 | Two workers, stale leases or a restarted process cannot duplicate a remote attempt or financial effect. | OPEN | PAY-04, PAY-13 | none |
+| RMT-04 | Two workers, stale leases or a restarted process cannot duplicate a remote attempt or financial effect. | CLOSED_LOCAL | PAY-04, PAY-13 | none |
 | RMT-05 | Duplicate refund/event or a reordered event cannot refund or grant twice. | OPEN | PAY-10, PAY-16 | none |
 | RMT-06 | When remote absence cannot be proved after timeout, the operation stays uncertain and requires reviewed recovery. | OPEN | PAY-04, PAY-06, PAY-07 | none |
 
@@ -93,7 +93,7 @@ case cannot be fully accepted without separately authorized live verification.
 | LIF-03 | Grace, hold, past-due, cancellation and paid-through expiry preserve only policy-eligible access. | OPEN | PAY-01, PAY-03, PAY-11 | sandbox |
 | LIF-04 | Renewal/cancel/refund races cannot resurrect a revoked grant or extend access twice. | OPEN | PAY-11, PAY-14, PAY-16 | sandbox |
 | LIF-05 | Expired Pix QR is not payable/reusable and a late payment is reconciled, not blindly granted. | OPEN | PAY-07 | sandbox |
-| LIF-06 | Pix Automático refusal, retry, expiry, cancellation and merchant ineligibility stop new instructions. | OPEN | PAY-12, PAY-13 | sandbox |
+| LIF-06 | Pix Automático refusal, retry, expiry, cancellation and merchant ineligibility stop new instructions. | CLOSED_LOCAL | PAY-12, PAY-13 | sandbox |
 | LIF-07 | Switching card/Pix remains single-funding-source; unknown old cancellation blocks a second auto-debit. | OPEN | PAY-14 | sandbox |
 | LIF-08 | An operator/dashboard plan change cannot bypass the offer catalog, proration policy or cross-provider fence. | OPEN | PAY-11, PAY-14 | sandbox |
 
@@ -135,6 +135,15 @@ evidence was not rerun at PAY-00.
 | PRM-04 | Reconciliation, refresh leases and retired purchase chains. | REUSE_OPEN | PAY-10, PAY-11, PAY-13 | Preserve Play behavior; web sources get their own freshness/lifecycle rules. |
 | PRM-05 | Account deletion purges/retires provider material. | REUSE_OPEN | PAY-15 | Migration `000075` trigger; extend without replaying financial writes. |
 | PRM-06 | Free status/export remains available when payments are disabled. | REUSE_OPEN | PAY-10, PAY-15 | Preserve `Export` independence from provider configuration. |
+
+## PAY-13 local closure
+
+- RMT-04: PAY-04 stale-lease/operation fences plus PAY-13 concurrent
+  reconciliation of one provider cycle payment, which produced one settlement,
+  grant and cycle. See [PAY-13](PAY-13.md).
+- LIF-06: refusal/cancellation/expiry and merchant ineligibility stop new
+  authority; unknown remote cancellation stays pending and is reconciled. Actual
+  provider timing/eligibility remains `sandbox` proof at PAY-21.
 
 ## Residual risks and open external proof
 

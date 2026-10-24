@@ -111,6 +111,10 @@ requirements. MANUAL means the application creates authorized debit instructions
 it is not the conventional customer-paid Pix mode. Never run both schedulers.
 Provider retries must be admitted with the relevant supported retry policy.
 
+PAY-13 keeps the provider-owned `SUBSCRIPTION` flow: instructions and received
+payments are reconciled locally, never re-created; cancellation/expiry and
+eligibility loss stop future authority while verified paid periods remain.
+
 [FAQ](https://docs.asaas.com/docs/faq-2) describes merchant eligibility requirements
 and loss of eligibility. Initial payment can succeed even when authorization is
 refused. Verify the actual merchant's eligibility before enabling this channel.

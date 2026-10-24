@@ -121,19 +121,20 @@ type PaymentGrant struct {
 }
 
 type PaymentInbox struct {
-	Provider     string             `json:"provider"`
-	Environment  string             `json:"environment"`
-	Merchant     string             `json:"merchant"`
-	EventID      string             `json:"event_id"`
-	PayloadHash  string             `json:"payload_hash"`
-	EventType    string             `json:"event_type"`
-	ResourceType string             `json:"resource_type"`
-	ResourceID   string             `json:"resource_id"`
-	State        string             `json:"state"`
-	Attempts     int32              `json:"attempts"`
-	ReceivedAt   pgtype.Timestamptz `json:"received_at"`
-	ProcessedAt  pgtype.Timestamptz `json:"processed_at"`
-	LastError    string             `json:"last_error"`
+	Provider       string             `json:"provider"`
+	Environment    string             `json:"environment"`
+	Merchant       string             `json:"merchant"`
+	EventID        string             `json:"event_id"`
+	PayloadHash    string             `json:"payload_hash"`
+	EventType      string             `json:"event_type"`
+	ResourceType   string             `json:"resource_type"`
+	ResourceID     string             `json:"resource_id"`
+	State          string             `json:"state"`
+	Attempts       int32              `json:"attempts"`
+	ReceivedAt     pgtype.Timestamptz `json:"received_at"`
+	ProcessedAt    pgtype.Timestamptz `json:"processed_at"`
+	LastError      string             `json:"last_error"`
+	ResourceStatus string             `json:"resource_status"`
 }
 
 type PaymentMandate struct {
@@ -158,6 +159,11 @@ type PaymentMandate struct {
 	LastEventAt           pgtype.Timestamptz `json:"last_event_at"`
 	CreatedAt             pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+	PaymentCreationMode   string             `json:"payment_creation_mode"`
+	RetryPolicy           string             `json:"retry_policy"`
+	CancelRequestedAt     pgtype.Timestamptz `json:"cancel_requested_at"`
+	CancelReason          pgtype.Text        `json:"cancel_reason"`
+	CancelledAt           pgtype.Timestamptz `json:"cancelled_at"`
 }
 
 type PaymentOperation struct {
@@ -197,6 +203,37 @@ type PaymentOrder struct {
 	Revision       int64              `json:"revision"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PaymentPixAutoEligibility struct {
+	Provider    string             `json:"provider"`
+	Environment string             `json:"environment"`
+	Merchant    string             `json:"merchant"`
+	Status      string             `json:"status"`
+	Reason      string             `json:"reason"`
+	LastEventAt pgtype.Timestamptz `json:"last_event_at"`
+	ObservedAt  pgtype.Timestamptz `json:"observed_at"`
+}
+
+type PaymentPixAutoInstruction struct {
+	ID                    pgtype.UUID        `json:"id"`
+	AccountID             pgtype.UUID        `json:"account_id"`
+	OfferID               string             `json:"offer_id"`
+	Environment           string             `json:"environment"`
+	Merchant              string             `json:"merchant"`
+	Provider              string             `json:"provider"`
+	RemoteInstructionID   string             `json:"remote_instruction_id"`
+	RemoteAuthorizationID string             `json:"remote_authorization_id"`
+	RemoteSubscriptionID  pgtype.Text        `json:"remote_subscription_id"`
+	RemotePaymentID       pgtype.Text        `json:"remote_payment_id"`
+	Status                string             `json:"status"`
+	Purpose               string             `json:"purpose"`
+	RetryAttempt          int32              `json:"retry_attempt"`
+	DueDate               pgtype.Date        `json:"due_date"`
+	RefusalReason         pgtype.Text        `json:"refusal_reason"`
+	LastEventAt           pgtype.Timestamptz `json:"last_event_at"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
 }
 
 type PaymentSettlement struct {

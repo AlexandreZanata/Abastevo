@@ -6,6 +6,7 @@ package adapters
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -198,6 +199,7 @@ func inboxRecord(row qpay.PaymentInbox) app.InboxRecord {
 			Provider: domain.Provider(row.Provider), Environment: domain.Environment(row.Environment),
 			Merchant: row.Merchant, EventID: row.EventID, PayloadHash: row.PayloadHash,
 			EventType: row.EventType, ResourceType: row.ResourceType, ResourceID: row.ResourceID,
+			ResourceStatus: row.ResourceStatus,
 		},
 		State: row.State, ReceivedAt: row.ReceivedAt.Time,
 	}
@@ -782,7 +784,8 @@ func (s *Store) RecordInbox(ctx context.Context, input InboxInput) (InboxResult,
 		return InboxResult{}, err
 	}
 	if !validText(input.Merchant) || !validText(input.EventID) || !digestOK(input.PayloadHash) ||
-		!validText(input.EventType) || !validText(input.ResourceType) || len(input.ResourceID) > 255 {
+		!validText(input.EventType) || !validText(input.ResourceType) || len(input.ResourceID) > 255 ||
+		len(input.ResourceStatus) > 64 || (input.ResourceStatus != "" && !validText(input.ResourceStatus)) {
 		return InboxResult{}, domain.ErrInvalid
 	}
 	ctx, cancel := context.WithTimeout(ctx, opTimeout)
@@ -797,6 +800,7 @@ func (s *Store) RecordInbox(ctx context.Context, input InboxInput) (InboxResult,
 		Provider: string(input.Provider), Environment: string(input.Environment),
 		Merchant: input.Merchant, EventID: input.EventID, PayloadHash: input.PayloadHash,
 		EventType: input.EventType, ResourceType: input.ResourceType, ResourceID: input.ResourceID,
+		ResourceStatus: input.ResourceStatus,
 	})
 	if err != nil {
 		return InboxResult{}, dbError(err)
@@ -1101,7 +1105,9 @@ func (s *Store) UpsertMandate(ctx context.Context, mandate app.MandateRecord) er
 		!validText(mandate.RemoteCustomerID) || !validText(mandate.Status) ||
 		mandate.Provider != domain.ProviderAsaas || mandate.Value.Centavos <= 0 ||
 		mandate.Value.Currency != "BRL" || mandate.StartDate.IsZero() ||
-		mandate.ConsentAt.IsZero() || !validText(mandate.ConsentVersion) || mandate.LastEventAt.IsZero() {
+		mandate.ConsentAt.IsZero() || !validText(mandate.ConsentVersion) || mandate.LastEventAt.IsZero() ||
+		(mandate.PaymentCreationMode != "" && mandate.PaymentCreationMode != "SUBSCRIPTION") ||
+		(mandate.RetryPolicy != "" && mandate.RetryPolicy != "NOT_ALLOWED") {
 		return domain.ErrInvalid
 	}
 	if err := mandate.Environment.Validate(); err != nil {
@@ -1213,6 +1219,332 @@ func (s *Store) MandateForSubscription(ctx context.Context, environment domain.E
 	return mandateRecord(row), nil
 }
 
+func (s *Store) RequestMandateCancel(ctx context.Context, environment domain.Environment, merchant, remoteAuthorizationID string, at time.Time, reason string) (app.MandateRecord, error) {
+	if s == nil || s.Pool == nil {
+		return app.MandateRecord{}, domain.ErrUnavailable
+	}
+	if err := environment.Validate(); err != nil {
+		return app.MandateRecord{}, err
+	}
+	if !validText(merchant) || !validText(remoteAuthorizationID) || at.IsZero() ||
+		reason == "" || len(reason) > 64 {
+		return app.MandateRecord{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).RequestPaymentMandateCancel(ctx, qpay.RequestPaymentMandateCancelParams{
+		RequestedAt: stamp(at), Reason: nullableText(reason), Environment: string(environment),
+		Merchant: merchant, RemoteAuthorizationID: remoteAuthorizationID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.MandateRecord{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return app.MandateRecord{}, dbError(err)
+	}
+	return mandateRecord(row), nil
+}
+
+func (s *Store) Eligibility(ctx context.Context, environment domain.Environment, merchant string) (app.PixAutoEligibility, bool, error) {
+	if s == nil || s.Pool == nil {
+		return app.PixAutoEligibility{}, false, domain.ErrUnavailable
+	}
+	if err := environment.Validate(); err != nil {
+		return app.PixAutoEligibility{}, false, err
+	}
+	if !validText(merchant) {
+		return app.PixAutoEligibility{}, false, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentPixAutoEligibility(ctx, qpay.GetPaymentPixAutoEligibilityParams{
+		Environment: string(environment), Merchant: merchant,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.PixAutoEligibility{}, false, nil
+	}
+	if err != nil {
+		return app.PixAutoEligibility{}, false, dbError(err)
+	}
+	return eligibilityRecord(row), true, nil
+}
+
+func (s *Store) UpsertEligibility(ctx context.Context, eligibility app.PixAutoEligibility) error {
+	if s == nil || s.Pool == nil {
+		return domain.ErrUnavailable
+	}
+	if err := eligibility.Environment.Validate(); err != nil {
+		return err
+	}
+	if !validText(eligibility.Merchant) || (eligibility.Status != "ELIGIBLE" && eligibility.Status != "INELIGIBLE") ||
+		len(eligibility.Reason) > 256 || eligibility.LastEventAt.IsZero() || eligibility.ObservedAt.IsZero() {
+		return domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	_, err := qpay.New(s.Pool).UpsertPaymentPixAutoEligibility(ctx, qpay.UpsertPaymentPixAutoEligibilityParams{
+		Environment: string(eligibility.Environment), Merchant: eligibility.Merchant,
+		Status: eligibility.Status, Reason: eligibility.Reason,
+		LastEventAt: stamp(eligibility.LastEventAt), ObservedAt: stamp(eligibility.ObservedAt),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return dbError(err)
+	}
+	return nil
+}
+
+func (s *Store) ActiveMandates(ctx context.Context, environment domain.Environment, merchant string, limit int) ([]app.MandateRecord, error) {
+	if s == nil || s.Pool == nil {
+		return nil, domain.ErrUnavailable
+	}
+	if err := environment.Validate(); err != nil {
+		return nil, err
+	}
+	if !validText(merchant) || limit < 1 || limit > 100 {
+		return nil, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	rows, err := qpay.New(s.Pool).ListActivePaymentMandates(ctx, qpay.ListActivePaymentMandatesParams{
+		Environment: string(environment), Merchant: merchant, LimitCount: int32(limit),
+	})
+	if err != nil {
+		return nil, dbError(err)
+	}
+	records := make([]app.MandateRecord, 0, len(rows))
+	for _, row := range rows {
+		records = append(records, mandateRecord(row))
+	}
+	return records, nil
+}
+
+func (s *Store) UpsertInstruction(ctx context.Context, instruction app.InstructionRecord) error {
+	if s == nil || s.Pool == nil {
+		return domain.ErrUnavailable
+	}
+	if err := instruction.Environment.Validate(); err != nil {
+		return err
+	}
+	if !validText(instruction.ID) || !validText(instruction.AccountID) || !validText(instruction.OfferID) ||
+		!validText(instruction.Merchant) || !validText(instruction.RemoteInstructionID) ||
+		!validText(instruction.RemoteAuthorizationID) || (instruction.RemoteSubscriptionID != "" && !validText(instruction.RemoteSubscriptionID)) ||
+		(instruction.RemotePaymentID != "" && !validText(instruction.RemotePaymentID)) ||
+		!validText(instruction.Status) || !validText(instruction.Purpose) ||
+		instruction.RetryAttempt < 0 || instruction.RetryAttempt > 3 || instruction.DueDate.IsZero() ||
+		len(instruction.RefusalReason) > 128 || instruction.LastEventAt.IsZero() {
+		return domain.ErrInvalid
+	}
+	uid, err := toUUID(instruction.ID)
+	if err != nil {
+		return domain.ErrInvalid
+	}
+	accountID, err := toUUID(instruction.AccountID)
+	if err != nil {
+		return domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	_, err = qpay.New(s.Pool).UpsertPaymentPixAutoInstruction(ctx, qpay.UpsertPaymentPixAutoInstructionParams{
+		ID: uid, AccountID: accountID, OfferID: instruction.OfferID,
+		Environment: string(instruction.Environment), Merchant: instruction.Merchant,
+		RemoteInstructionID:   instruction.RemoteInstructionID,
+		RemoteAuthorizationID: instruction.RemoteAuthorizationID,
+		RemoteSubscriptionID:  nullableText(instruction.RemoteSubscriptionID),
+		RemotePaymentID:       nullableText(instruction.RemotePaymentID),
+		Status:                instruction.Status, Purpose: instruction.Purpose,
+		RetryAttempt: int32(instruction.RetryAttempt), DueDate: dateValue(instruction.DueDate),
+		RefusalReason: nullableText(instruction.RefusalReason), LastEventAt: stamp(instruction.LastEventAt),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return dbError(err)
+	}
+	return nil
+}
+
+func (s *Store) InstructionsForMandate(ctx context.Context, environment domain.Environment, merchant, remoteAuthorizationID string, limit int) ([]app.InstructionRecord, error) {
+	if s == nil || s.Pool == nil {
+		return nil, domain.ErrUnavailable
+	}
+	if err := environment.Validate(); err != nil {
+		return nil, err
+	}
+	if !validText(merchant) || !validText(remoteAuthorizationID) || limit < 1 || limit > 100 {
+		return nil, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	rows, err := qpay.New(s.Pool).ListPaymentPixAutoInstructions(ctx, qpay.ListPaymentPixAutoInstructionsParams{
+		Environment: string(environment), Merchant: merchant,
+		RemoteAuthorizationID: remoteAuthorizationID, LimitCount: int32(limit),
+	})
+	if err != nil {
+		return nil, dbError(err)
+	}
+	records := make([]app.InstructionRecord, 0, len(rows))
+	for _, row := range rows {
+		records = append(records, instructionRecord(row))
+	}
+	return records, nil
+}
+
+func (s *Store) EnsurePixAutoCycleOrder(ctx context.Context, input app.PixAutoCycleOrderInput) (string, error) {
+	if s == nil || s.Pool == nil {
+		return "", domain.ErrUnavailable
+	}
+	if !validText(input.AccountID) || !validText(input.OfferID) || !validText(input.CatalogVersion) ||
+		len(input.Capabilities) == 0 || input.Merchant == "" || !validText(input.Merchant) ||
+		!validText(input.RemotePaymentID) || !validText(input.RemoteSubscriptionID) ||
+		input.SettledAt.IsZero() || input.Amount.Positive() != nil {
+		return "", domain.ErrInvalid
+	}
+	if err := input.Environment.Validate(); err != nil {
+		return "", err
+	}
+	accountID, err := toUUID(input.AccountID)
+	if err != nil {
+		return "", domain.ErrInvalid
+	}
+	orderID := derivedUUID("payment-pix-auto-cycle-order", string(input.Environment), input.Merchant, input.RemotePaymentID)
+	orderUID, _ := toUUID(orderID)
+	operationID := derivedUUID("payment-pix-auto-cycle-operation", string(input.Environment), input.Merchant, input.RemotePaymentID)
+	operationUID, _ := toUUID(operationID)
+	attemptID := derivedUUID("payment-pix-auto-cycle-attempt", string(input.Environment), input.Merchant, input.RemotePaymentID)
+	attemptUID, _ := toUUID(attemptID)
+	operationKey := "pix-auto-payment:" + digestValue(input.RemotePaymentID)
+
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return "", domain.ErrUnavailable
+	}
+	defer rollback(tx)
+	q := qpay.New(tx)
+	if err := q.LockPaymentKey(ctx, "payment-pix-auto-cycle:"+string(input.Environment)+":"+input.Merchant+":"+input.RemotePaymentID); err != nil {
+		return "", dbError(err)
+	}
+	if row, err := q.GetPaymentSettlementByRemote(ctx, qpay.GetPaymentSettlementByRemoteParams{
+		Provider: "asaas", Environment: string(input.Environment), Merchant: input.Merchant,
+		RemotePaymentID: input.RemotePaymentID,
+	}); err == nil {
+		if row.Channel != string(domain.ChannelPixAutomatic) || row.AmountCentavos != input.Amount.Centavos {
+			return "", domain.ErrConflict
+		}
+		return uuidText(row.OrderID), nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return "", dbError(err)
+	}
+	if operation, err := q.GetPaymentOperationByKey(ctx, qpay.GetPaymentOperationByKeyParams{
+		AccountID: accountID, Provider: "asaas", Environment: string(input.Environment),
+		Merchant: input.Merchant, OperationKey: operationKey,
+	}); err == nil {
+		if !operation.OrderID.Valid {
+			return "", domain.ErrBinding
+		}
+		return uuidText(operation.OrderID), nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return "", dbError(err)
+	}
+	now := time.Now().UTC()
+	rows, err := q.InsertPaymentOrder(ctx, qpay.InsertPaymentOrderParams{
+		ID: orderUID, AccountID: accountID, OfferID: input.OfferID,
+		CatalogVersion: input.CatalogVersion, Channel: string(domain.ChannelPixAutomatic),
+		AmountCentavos: input.Amount.Centavos, Currency: "BRL", Capabilities: input.Capabilities,
+		State: string(domain.OrderPending), QuotedAt: stamp(input.SettledAt),
+		ExpiresAt: stamp(input.SettledAt.Add(domain.QuoteTTL)),
+	})
+	if err != nil {
+		return "", dbError(err)
+	}
+	if rows != 1 {
+		existing, getErr := q.GetPaymentOrder(ctx, orderUID)
+		if getErr != nil {
+			return "", dbError(getErr)
+		}
+		if uuidText(existing.AccountID) != input.AccountID || existing.OfferID != input.OfferID ||
+			existing.Channel != string(domain.ChannelPixAutomatic) || existing.AmountCentavos != input.Amount.Centavos ||
+			existing.CatalogVersion != input.CatalogVersion || !sameSet(existing.Capabilities, input.Capabilities) {
+			return "", domain.ErrConflict
+		}
+	}
+	if err := q.InsertPaymentOperation(ctx, qpay.InsertPaymentOperationParams{
+		ID: operationUID, AccountID: accountID, Provider: "asaas",
+		Environment: string(input.Environment), Merchant: input.Merchant,
+		OperationKey: operationKey, Kind: "reconcile", PayloadHash: digestValue(input.RemotePaymentID),
+		OrderID: orderUID, LeaseUntil: stamp(now.Add(time.Minute)),
+	}); err != nil {
+		return "", dbError(err)
+	}
+	resolved, err := q.ResolvePaymentOperation(ctx, qpay.ResolvePaymentOperationParams{
+		State: "SUCCEEDED", RemoteID: nullableText(input.RemotePaymentID), LeaseUntil: stamp(now),
+		CompletedAt: stamp(now), ID: operationUID, Generation: 1,
+	})
+	if err != nil {
+		return "", dbError(err)
+	}
+	if resolved != 1 {
+		return "", domain.ErrConflict
+	}
+	if err := q.InsertPaymentPixAutoCycleAttempt(ctx, qpay.InsertPaymentPixAutoCycleAttemptParams{
+		ID: attemptUID, OperationID: operationUID, OrderID: orderUID,
+		Environment: string(input.Environment), Merchant: input.Merchant,
+		PayloadHash: digestValue(input.RemotePaymentID), RemoteID: nullableText(input.RemotePaymentID),
+		LeaseUntil: stamp(input.SettledAt), CreatedAt: stamp(input.SettledAt),
+	}); err != nil {
+		return "", dbError(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", domain.ErrUnavailable
+	}
+	return orderID, nil
+}
+
+func eligibilityRecord(row qpay.PaymentPixAutoEligibility) app.PixAutoEligibility {
+	return app.PixAutoEligibility{
+		Environment: domain.Environment(row.Environment), Merchant: row.Merchant,
+		Status: row.Status, Reason: row.Reason,
+		LastEventAt: row.LastEventAt.Time, ObservedAt: row.ObservedAt.Time,
+	}
+}
+
+func instructionRecord(row qpay.PaymentPixAutoInstruction) app.InstructionRecord {
+	return app.InstructionRecord{
+		ID: uuidText(row.ID), AccountID: uuidText(row.AccountID), OfferID: row.OfferID,
+		Environment: domain.Environment(row.Environment), Merchant: row.Merchant,
+		RemoteInstructionID: row.RemoteInstructionID, RemoteAuthorizationID: row.RemoteAuthorizationID,
+		RemoteSubscriptionID: textValue(row.RemoteSubscriptionID), RemotePaymentID: textValue(row.RemotePaymentID),
+		Status: row.Status, Purpose: row.Purpose, RetryAttempt: int(row.RetryAttempt),
+		DueDate: row.DueDate.Time, RefusalReason: textValue(row.RefusalReason),
+		LastEventAt: row.LastEventAt.Time,
+	}
+}
+
+func derivedUUID(namespace string, values ...string) string {
+	hash := sha256.New()
+	_, _ = hash.Write([]byte(namespace))
+	for _, value := range values {
+		_, _ = hash.Write([]byte{0})
+		_, _ = hash.Write([]byte(value))
+	}
+	raw := hash.Sum(nil)[:16]
+	raw[6] = raw[6]&0x0f | 0x40
+	raw[8] = raw[8]&0x3f | 0x80
+	encoded := hex.EncodeToString(raw)
+	return encoded[0:8] + "-" + encoded[8:12] + "-" + encoded[12:16] + "-" +
+		encoded[16:20] + "-" + encoded[20:32]
+}
+
+func digestValue(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
+}
+
 func mandateRecord(row qpay.PaymentMandate) app.MandateRecord {
 	mandate := app.MandateRecord{
 		ID: uuidText(row.ID), AccountID: uuidText(row.AccountID), OfferID: row.OfferID,
@@ -1221,11 +1553,21 @@ func mandateRecord(row qpay.PaymentMandate) app.MandateRecord {
 		RemoteAuthorizationID: row.RemoteAuthorizationID, RemoteSubscriptionID: textValue(row.RemoteSubscriptionID),
 		ContractID: row.ContractID, RemoteCustomerID: row.RemoteCustomerID,
 		Status: row.Status, Frequency: row.Frequency, Value: domain.BRL(row.ValueCentavos),
+		PaymentCreationMode: row.PaymentCreationMode, RetryPolicy: row.RetryPolicy,
 		StartDate: row.StartDate.Time, ConsentVersion: row.ConsentVersion,
 		ConsentAt: row.ConsentAt.Time, LastEventAt: row.LastEventAt.Time,
+		CancelReason: textValue(row.CancelReason),
 	}
 	if row.FinishDate.Valid {
 		mandate.FinishDate = row.FinishDate.Time
+	}
+	if row.CancelRequestedAt.Valid {
+		value := row.CancelRequestedAt.Time
+		mandate.CancelRequestedAt = &value
+	}
+	if row.CancelledAt.Valid {
+		value := row.CancelledAt.Time
+		mandate.CancelledAt = &value
 	}
 	return mandate
 }

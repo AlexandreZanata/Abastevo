@@ -21,12 +21,17 @@ type MandateRecord struct {
 	RemoteCustomerID      string
 	Status                string
 	Frequency             string
+	PaymentCreationMode   string
+	RetryPolicy           string
 	Value                 domain.Money
 	StartDate             time.Time
 	FinishDate            time.Time
 	ConsentVersion        string
 	ConsentAt             time.Time
 	LastEventAt           time.Time
+	CancelRequestedAt     *time.Time
+	CancelReason          string
+	CancelledAt           *time.Time
 }
 
 type PixAutoConfig struct {
@@ -61,6 +66,8 @@ type PixAutoAuthorization struct {
 	ContractID           string
 	RemoteSubscriptionID string
 	Status               string
+	PaymentCreationMode  string
+	RetryPolicy          string
 	Value                domain.Money
 	StartDate            time.Time
 	FinishDate           time.Time
@@ -68,6 +75,46 @@ type PixAutoAuthorization struct {
 	QRImage              string
 	ExpiresAt            *time.Time
 	Replayed             bool
+	CancellationPending  bool
+}
+
+type PixAutoInstruction struct {
+	ID              string
+	AuthorizationID string
+	SubscriptionID  string
+	PaymentID       string
+	Status          string
+	Purpose         string
+	RetryAttempt    int
+	DueDate         time.Time
+	RefusalReason   string
+}
+
+type InstructionRecord struct {
+	ID                    string
+	AccountID             string
+	OfferID               string
+	Environment           domain.Environment
+	Merchant              string
+	RemoteInstructionID   string
+	RemoteAuthorizationID string
+	RemoteSubscriptionID  string
+	RemotePaymentID       string
+	Status                string
+	Purpose               string
+	RetryAttempt          int
+	DueDate               time.Time
+	RefusalReason         string
+	LastEventAt           time.Time
+}
+
+type PixAutoEligibility struct {
+	Environment domain.Environment
+	Merchant    string
+	Status      string
+	Reason      string
+	LastEventAt time.Time
+	ObservedAt  time.Time
 }
 
 type PixAutoProviderRequest struct {
@@ -87,6 +134,9 @@ type PixAutoProvider interface {
 	RetrievePixAutoAuthorization(context.Context, string) (PixAutoAuthorization, error)
 	FindPixAutoAuthorization(context.Context, string, string) (PixAutoAuthorization, bool, bool, error)
 	CancelPixAutoAuthorization(context.Context, string) error
+	RetrievePixAutoInstruction(context.Context, string) (PixAutoInstruction, error)
+	ListPixAutoInstructions(context.Context, string) ([]PixAutoInstruction, bool, error)
+	ListSubscriptionPayments(context.Context, string) ([]PixPayment, bool, error)
 }
 
 type PixAutoStore interface {
@@ -100,4 +150,11 @@ type PixAutoStore interface {
 	UpsertMandate(context.Context, MandateRecord) error
 	MandateForAccount(context.Context, string, string) (MandateRecord, error)
 	MandateByRemote(context.Context, domain.Environment, string, string) (MandateRecord, error)
+	RequestMandateCancel(context.Context, domain.Environment, string, string, time.Time, string) (MandateRecord, error)
+	Eligibility(context.Context, domain.Environment, string) (PixAutoEligibility, bool, error)
+	UpsertEligibility(context.Context, PixAutoEligibility) error
+	ActiveMandates(context.Context, domain.Environment, string, int) ([]MandateRecord, error)
+	UpsertInstruction(context.Context, InstructionRecord) error
+	InstructionsForMandate(context.Context, domain.Environment, string, string, int) ([]InstructionRecord, error)
+	MarkInbox(context.Context, InboxEvent, string, string) error
 }

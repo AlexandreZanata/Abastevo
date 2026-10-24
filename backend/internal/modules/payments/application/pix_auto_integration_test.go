@@ -19,19 +19,29 @@ type fakePixAutoProvider struct {
 	mu             sync.Mutex
 	auths          map[string]app.PixAutoAuthorization
 	byContract     map[string]string
+	instructions   map[string]app.PixAutoInstruction
+	payments       map[string][]app.PixPayment
 	ensureCount    int
 	createCount    int
 	findCount      int
 	retrieveCount  int
 	cancelCount    int
+	instructionGet int
+	instructionLst int
+	paymentLst     int
 	ambiguousOnce  bool
 	findDefinitive bool
+	cancelPending  bool
 	badBinding     bool
 	last           app.PixAutoProviderRequest
 }
 
 func newFakePixAutoProvider() *fakePixAutoProvider {
-	return &fakePixAutoProvider{auths: map[string]app.PixAutoAuthorization{}, byContract: map[string]string{}, findDefinitive: true}
+	return &fakePixAutoProvider{
+		auths: map[string]app.PixAutoAuthorization{}, byContract: map[string]string{},
+		instructions: map[string]app.PixAutoInstruction{}, payments: map[string][]app.PixPayment{},
+		findDefinitive: true,
+	}
 }
 
 func (p *fakePixAutoProvider) EnsureCustomer(_ context.Context, request app.PixCustomerRequest) (app.Customer, error) {
@@ -49,6 +59,7 @@ func (p *fakePixAutoProvider) CreatePixAutoAuthorization(_ context.Context, requ
 	auth := app.PixAutoAuthorization{
 		ID: "auth_" + request.ContractID, CustomerID: request.CustomerID, ContractID: request.ContractID,
 		RemoteSubscriptionID: "sub_" + request.ContractID, Status: "CREATED", Value: request.Value,
+		PaymentCreationMode: "SUBSCRIPTION", RetryPolicy: "NOT_ALLOWED",
 		StartDate: request.StartDate, FinishDate: request.FinishDate, QRCode: "qr_" + request.ContractID,
 		QRImage: "image_" + request.ContractID,
 	}
@@ -97,9 +108,55 @@ func (p *fakePixAutoProvider) CancelPixAutoAuthorization(_ context.Context, id s
 	if !ok {
 		return paydomain.ErrUnavailable
 	}
+	if p.cancelPending {
+		return app.ErrAmbiguous
+	}
 	auth.Status = "CANCELLED"
 	p.auths[id] = auth
 	return nil
+}
+
+func (p *fakePixAutoProvider) RetrievePixAutoInstruction(_ context.Context, id string) (app.PixAutoInstruction, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.instructionGet++
+	instruction, ok := p.instructions[id]
+	if !ok {
+		return app.PixAutoInstruction{}, paydomain.ErrUnavailable
+	}
+	return instruction, nil
+}
+
+func (p *fakePixAutoProvider) ListPixAutoInstructions(_ context.Context, authorizationID string) ([]app.PixAutoInstruction, bool, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.instructionLst++
+	var result []app.PixAutoInstruction
+	for _, instruction := range p.instructions {
+		if instruction.AuthorizationID == authorizationID {
+			result = append(result, instruction)
+		}
+	}
+	return result, true, nil
+}
+
+func (p *fakePixAutoProvider) ListSubscriptionPayments(_ context.Context, subscriptionID string) ([]app.PixPayment, bool, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.paymentLst++
+	return append([]app.PixPayment(nil), p.payments[subscriptionID]...), true, nil
+}
+
+func (p *fakePixAutoProvider) addInstruction(instruction app.PixAutoInstruction) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.instructions[instruction.ID] = instruction
+}
+
+func (p *fakePixAutoProvider) addPayment(subscriptionID string, payment app.PixPayment) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.payments[subscriptionID] = append(p.payments[subscriptionID], payment)
 }
 
 func (p *fakePixAutoProvider) setStatus(id, status string) {
@@ -181,7 +238,10 @@ func TestPixAutoMandateRefusedKeepsInitialPaidPeriod(t *testing.T) {
 		ProviderStatus: "RECEIVED", Amount: order.Amount, SettledAt: time.Now().UTC(),
 	}
 	settlement := settlementInbox(t, store, "evt_auto_paid", "pay_auto_initial")
-	settlementService := settlementService(store, &fakeSettlementVerifier{candidate: candidate})
+	settlementService := &app.SettlementService{
+		Store: store, Catalog: pixAutoCatalog(t),
+		Verifier: &fakeSettlementVerifier{candidate: candidate},
+	}
 	if err := settlementService.Process(context.Background(), settlement); err != nil {
 		t.Fatal(err)
 	}
@@ -198,8 +258,9 @@ func TestPixAutoMandateRefusedKeepsInitialPaidPeriod(t *testing.T) {
 	if mandate.Status != "REFUSED" {
 		t.Fatal("refused mandate gained future authority")
 	}
-	if countRows(t, pool, "SELECT count(*) FROM payment_grants WHERE order_id=$1 AND state='ACTIVE'", order.ID) != 1 {
-		t.Fatal("initial period not funded")
+	if countRows(t, pool, "SELECT count(*) FROM payment_grants WHERE account_id=$1 AND offer_id=$2 AND state='ACTIVE'", owner, testOffer) != 1 ||
+		countRows(t, pool, "SELECT count(*) FROM payment_cycles WHERE settlement_id IS NOT NULL") != 1 {
+		t.Fatal("initial period not funded exactly once")
 	}
 }
 

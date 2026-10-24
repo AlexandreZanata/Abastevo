@@ -284,6 +284,84 @@ func TestAsaasVerifySettlementRequiresReceived(t *testing.T) {
 	}
 }
 
+func TestAsaasAutomaticSubscriptionPaymentBinding(t *testing.T) {
+	event := app.InboxRecord{InboxEvent: app.InboxEvent{
+		Provider: domain.ProviderAsaas, Environment: domain.EnvironmentTest,
+		Merchant: "merchant_1", EventID: "evt_auto", EventType: "PAYMENT_RECEIVED",
+		ResourceType: "payment", ResourceID: "pay_auto_1",
+	}, State: "PENDING", ReceivedAt: time.Now().UTC()}
+	provider := asaasTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v3/payments/pay_auto_1" {
+			t.Fatalf("path=%s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "pay_auto_1", "customer": "cus_synthetic", "subscription": "sub_1",
+			"status": "RECEIVED", "value": 12.34, "dueDate": "2026-11-24",
+			"paymentDate": "2022-06-10",
+		})
+	}))
+	candidate, err := provider.VerifySettlement(context.Background(), event)
+	if err != nil || candidate.Channel != domain.ChannelPixAutomatic || candidate.OrderID != "" ||
+		candidate.RemoteSubscriptionID != "sub_1" || candidate.SettledAt.Format("2006-01-02") != "2022-06-10" {
+		t.Fatalf("candidate=%+v err=%v", candidate, err)
+	}
+}
+
+func TestAsaasPixAutoInstructionsAndSubscriptionPayments(t *testing.T) {
+	provider := asaasTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v3/pix/automatic/paymentInstructions/ins_1":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "ins_1", "status": "SCHEDULED", "dueDate": "2026-11-24",
+				"paymentId": "pay_1", "purpose": "SCHEDULE", "retryAttempt": 0,
+				"authorization": map[string]any{"id": "auth_1", "customerId": "cus_1"},
+			})
+		case "/v3/pix/automatic/paymentInstructions":
+			if r.URL.Query().Get("authorizationId") != "auth_1" {
+				t.Fatalf("query=%s", r.URL.RawQuery)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{{
+					"id": "ins_1", "status": "REFUSED", "dueDate": "2026-11-24",
+					"purpose": "RETRY_AFTER_DUE_DATE", "retryAttempt": 1,
+					"refusalReason": "INSUFFICIENT_FUNDS", "authorization": map[string]any{"id": "auth_1"},
+				}},
+				"totalCount": 1, "hasMore": false,
+			})
+		case "/v3/payments":
+			if r.URL.Query().Get("subscription") != "sub_1" || r.URL.Query().Get("status") != "RECEIVED" {
+				t.Fatalf("query=%s", r.URL.RawQuery)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{{
+					"id": "pay_cycle_1", "customer": "cus_1", "subscription": "sub_1",
+					"status": "RECEIVED", "value": 12.34, "dueDate": "2026-11-24",
+					"paymentDate": "2026-11-24",
+				}},
+				"totalCount": 1, "hasMore": false,
+			})
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	instruction, err := provider.RetrievePixAutoInstruction(context.Background(), "ins_1")
+	if err != nil || instruction.ID != "ins_1" || instruction.Status != "SCHEDULED" ||
+		instruction.AuthorizationID != "auth_1" || instruction.PaymentID != "pay_1" ||
+		instruction.DueDate.Format("2006-01-02") != "2026-11-24" {
+		t.Fatalf("instruction=%+v err=%v", instruction, err)
+	}
+	list, complete, err := provider.ListPixAutoInstructions(context.Background(), "auth_1")
+	if err != nil || !complete || len(list) != 1 || list[0].Status != "REFUSED" ||
+		list[0].RetryAttempt != 1 || list[0].RefusalReason != "INSUFFICIENT_FUNDS" {
+		t.Fatalf("list=%+v complete=%v err=%v", list, complete, err)
+	}
+	payments, complete, err := provider.ListSubscriptionPayments(context.Background(), "sub_1")
+	if err != nil || !complete || len(payments) != 1 || payments[0].ID != "pay_cycle_1" ||
+		payments[0].Class != app.PixSettled || payments[0].SettledAt.Format("2006-01-02") != "2026-11-24" {
+		t.Fatalf("payments=%+v complete=%v err=%v", payments, complete, err)
+	}
+}
+
 func TestAsaasPixAutoAuthorizationContract(t *testing.T) {
 	provider := asaasTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -301,6 +379,7 @@ func TestAsaasPixAutoAuthorizationContract(t *testing.T) {
 			}
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id": "auth_1", "customerId": "cus_1", "contractId": "contract_1", "status": "CREATED",
+				"paymentCreationMode": "SUBSCRIPTION", "retryPolicy": "NOT_ALLOWED",
 				"value": 12.34, "startDate": "2026-10-24", "finishDate": "2027-10-24",
 				"subscriptionId": "sub_1", "payload": "qr", "encodedImage": "image",
 				"immediateQrCode": map[string]any{"expirationDate": "2026-10-24 23:59:59"},
@@ -331,7 +410,8 @@ func TestAsaasPixAutoAuthorizationContract(t *testing.T) {
 		FinishDate: time.Now().AddDate(1, 0, 0), ImmediateExpiration: time.Hour,
 	})
 	if err != nil || created.ID != "auth_1" || created.Status != "CREATED" || created.QRCode != "qr" ||
-		created.RemoteSubscriptionID != "sub_1" || !created.Value.Equal(domain.BRL(1234)) {
+		created.RemoteSubscriptionID != "sub_1" || !created.Value.Equal(domain.BRL(1234)) ||
+		created.PaymentCreationMode != "SUBSCRIPTION" || created.RetryPolicy != "NOT_ALLOWED" {
 		t.Fatalf("created=%+v err=%v", created, err)
 	}
 	retrieved, err := provider.RetrievePixAutoAuthorization(context.Background(), "auth_1")

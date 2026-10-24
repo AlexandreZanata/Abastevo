@@ -160,9 +160,9 @@ WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id) AND 
 
 -- name: InsertPaymentInbox :execrows
 INSERT INTO payment_inbox(
- provider,environment,merchant,event_id,payload_hash,event_type,resource_type,resource_id
+ provider,environment,merchant,event_id,payload_hash,event_type,resource_type,resource_id,resource_status
 ) VALUES(
- sqlc.arg(provider),sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(event_id),sqlc.arg(payload_hash),sqlc.arg(event_type),sqlc.arg(resource_type),sqlc.arg(resource_id)
+ sqlc.arg(provider),sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(event_id),sqlc.arg(payload_hash),sqlc.arg(event_type),sqlc.arg(resource_type),sqlc.arg(resource_id),sqlc.arg(resource_status)
 )
 ON CONFLICT DO NOTHING;
 
@@ -231,8 +231,13 @@ INSERT INTO payment_mandates(
 ON CONFLICT (provider,environment,merchant,remote_authorization_id) DO UPDATE SET
  remote_subscription_id=COALESCE(EXCLUDED.remote_subscription_id,payment_mandates.remote_subscription_id),
  status=EXCLUDED.status,finish_date=EXCLUDED.finish_date,last_event_at=EXCLUDED.last_event_at,
+ cancelled_at=CASE WHEN EXCLUDED.status IN ('CANCELLED','EXPIRED','REFUSED')
+                   THEN COALESCE(payment_mandates.cancelled_at,EXCLUDED.last_event_at)
+                   ELSE payment_mandates.cancelled_at END,
  updated_at=clock_timestamp()
 WHERE payment_mandates.last_event_at <= EXCLUDED.last_event_at
+  AND (payment_mandates.cancel_requested_at IS NULL
+       OR EXCLUDED.status IN ('CANCELLED','EXPIRED','REFUSED'))
 RETURNING *;
 
 -- name: GetPaymentMandateForAccount :one
@@ -249,3 +254,83 @@ WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.a
 SELECT * FROM payment_mandates
 WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
   AND remote_subscription_id=sqlc.arg(remote_subscription_id);
+
+-- name: RequestPaymentMandateCancel :one
+UPDATE payment_mandates
+SET cancel_requested_at=COALESCE(cancel_requested_at,sqlc.arg(requested_at)::timestamptz),
+    cancel_reason=COALESCE(cancel_reason,sqlc.arg(reason)),
+    updated_at=clock_timestamp()
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_authorization_id=sqlc.arg(remote_authorization_id)
+RETURNING *;
+
+-- name: ListActivePaymentMandates :many
+SELECT * FROM payment_mandates
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND status='ACTIVE'
+ORDER BY updated_at,id
+LIMIT sqlc.arg(limit_count)::int;
+
+-- name: UpsertPaymentPixAutoInstruction :one
+INSERT INTO payment_pix_auto_instructions(
+ id,account_id,offer_id,environment,merchant,provider,remote_instruction_id,
+ remote_authorization_id,remote_subscription_id,remote_payment_id,status,purpose,
+ retry_attempt,due_date,refusal_reason,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(environment),
+ sqlc.arg(merchant),'asaas',sqlc.arg(remote_instruction_id),sqlc.arg(remote_authorization_id),
+ sqlc.narg(remote_subscription_id),sqlc.narg(remote_payment_id),sqlc.arg(status),
+ sqlc.arg(purpose),sqlc.arg(retry_attempt)::int,sqlc.arg(due_date)::date,
+ sqlc.narg(refusal_reason),sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_instruction_id) DO UPDATE SET
+ account_id=EXCLUDED.account_id,offer_id=EXCLUDED.offer_id,
+ remote_subscription_id=COALESCE(EXCLUDED.remote_subscription_id,payment_pix_auto_instructions.remote_subscription_id),
+ remote_payment_id=COALESCE(EXCLUDED.remote_payment_id,payment_pix_auto_instructions.remote_payment_id),
+ status=EXCLUDED.status,purpose=EXCLUDED.purpose,retry_attempt=EXCLUDED.retry_attempt,
+ due_date=EXCLUDED.due_date,refusal_reason=EXCLUDED.refusal_reason,
+ last_event_at=EXCLUDED.last_event_at,updated_at=clock_timestamp()
+WHERE payment_pix_auto_instructions.last_event_at <= EXCLUDED.last_event_at
+  AND (payment_pix_auto_instructions.status NOT IN ('REFUSED','CANCELLED','DONE')
+       OR EXCLUDED.status IN ('REFUSED','CANCELLED','DONE'))
+RETURNING *;
+
+-- name: GetPaymentPixAutoInstruction :one
+SELECT * FROM payment_pix_auto_instructions
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_instruction_id=sqlc.arg(remote_instruction_id);
+
+-- name: ListPaymentPixAutoInstructions :many
+SELECT * FROM payment_pix_auto_instructions
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_authorization_id=sqlc.arg(remote_authorization_id)
+ORDER BY due_date,id
+LIMIT sqlc.arg(limit_count)::int;
+
+-- name: UpsertPaymentPixAutoEligibility :one
+INSERT INTO payment_pix_auto_eligibility(
+ provider,environment,merchant,status,reason,last_event_at,observed_at
+) VALUES(
+ 'asaas',sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(status),sqlc.arg(reason),
+ sqlc.arg(last_event_at)::timestamptz,sqlc.arg(observed_at)::timestamptz
+)
+ON CONFLICT (provider,environment,merchant) DO UPDATE SET
+ status=EXCLUDED.status,reason=EXCLUDED.reason,last_event_at=EXCLUDED.last_event_at,
+ observed_at=GREATEST(payment_pix_auto_eligibility.observed_at,EXCLUDED.observed_at)
+WHERE payment_pix_auto_eligibility.last_event_at <= EXCLUDED.last_event_at
+RETURNING *;
+
+-- name: GetPaymentPixAutoEligibility :one
+SELECT * FROM payment_pix_auto_eligibility
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant);
+
+-- name: InsertPaymentPixAutoCycleAttempt :exec
+INSERT INTO payment_attempts(
+ id,operation_id,order_id,attempt_no,generation,provider,environment,merchant,payload_hash,
+ state,remote_id,lease_until,created_at,updated_at,completed_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(operation_id)::uuid,sqlc.arg(order_id)::uuid,1,1,
+ 'asaas',sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(payload_hash),
+ 'SUCCEEDED',sqlc.arg(remote_id),sqlc.arg(lease_until)::timestamptz,
+ sqlc.arg(created_at)::timestamptz,sqlc.arg(created_at)::timestamptz,sqlc.arg(created_at)::timestamptz
+);

@@ -1,5 +1,15 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-13 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-12 `e60dcf60`. Migration 000126 adds
+  provider-owned Pix Automático instruction/eligibility tracking, retry policy and
+  durable cancel intent. Asaas remains the only cycle owner: each verified
+  subscription payment funds one local cycle order/grant, instructions never
+  grant, and cancellation/expiry/ineligibility stop future authority without
+  erasing paid-through. [PAY-13 evidence](../backend/evidence/payments/PAY-13.md):
+  concurrent PostGIS cycle/cancel/eligibility and full race/Play suites PASS. No
+  worker/route/provider proof/sale. Next: PAY-14 only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-12 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-11 `65ffd486`. Migration 000125 adds
   Pix Automático mandates with explicit consent audit, bounded authorization,
