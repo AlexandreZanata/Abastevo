@@ -22,6 +22,14 @@
   to derive ≥000109. Staging/two-device/object receipts and physical Room
   remain OWED.
 
+- MEX-34 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `3b36e117`.
+  [Official source-to-mobile](../backend/evidence/mobile-expansion/MEX-34.md):
+  pinned 16,188,087-byte enforcement workbook + independent census + trusted
+  nonroot preparer through the real worker/source lease/PostGIS
+  replay-correction-full traversal PASS in 60.4 s; wrong workbook refused
+  first; Android occurrence/public typed selectors PASS. Exact whole-source
+  Android decode/device remains OWED; flags OFF, no activation.
+
 - EE-27 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `f46a7f2c`.
   [End-to-end acceptance](../backend/evidence/ev-support/EE-27.md): actual
   admitted OCM Rust artifact → strict Go bridge → PostGIS publication → full
