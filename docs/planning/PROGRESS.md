@@ -1,5 +1,16 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-03 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-03.md).
+  Directory/Official now expose bounded export ports; `enterpriseexport` writes
+  deterministic stations/revisions/prices JSONL plus a pinned manifest and
+  content hash into a private candidate dir. Active-identifier-only CNPJ,
+  sourced status, reviewed coordinates, current-revision-only prices and
+  superseded/staging exclusion are covered by real PostGIS tests. A
+  repeatable-read snapshot proves a concurrent correction cannot mix into one
+  build; no DB write, migration, dependency, route or publication. Next: ESP-04
+  deterministic analytics.
+
 - Enterprise data/static portal ESP-02 2026-10-24: LOCAL_DONE /
   INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-02.md).
   Official discovery now accepts the observed current/legacy weekly filename

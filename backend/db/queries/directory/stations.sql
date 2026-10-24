@@ -124,3 +124,21 @@ LIMIT @limit_n;
 
 -- name: ActiveReference :one
 SELECT EXISTS(SELECT 1 FROM directory_stations WHERE id=$1 AND status='active');
+
+-- name: ExportStations :many
+-- Bounded snapshot read for the enterprise export. Includes sourced status and
+-- only the active identifier; an invalidated CNPJ is never resurrected.
+SELECT s.id, s.display_name, s.address, s.municipality_code, s.state,
+    s.status, ST_AsText(s.current_point) AS current_point_wkt,
+    s.current_quality, s.current_revision_id,
+    COALESCE(i.normalized_value, '') AS cnpj
+FROM directory_stations AS s
+LEFT JOIN LATERAL (
+    SELECT normalized_value
+    FROM directory_identifiers
+    WHERE station_id = s.id AND kind = 'CNPJ' AND valid_to IS NULL
+    LIMIT 1
+) AS i ON TRUE
+WHERE (@after_id::text = '' OR s.id::text > @after_id::text)
+ORDER BY s.id::text ASC
+LIMIT @limit_plus_one::int;

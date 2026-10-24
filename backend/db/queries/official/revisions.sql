@@ -142,3 +142,35 @@ WHERE p.station_id = @station_id
         (p.collected_on, p.id::text) < (@after_date::date, @after_id::text))
 ORDER BY p.collected_on DESC, p.id::text DESC
 LIMIT @limit_plus_one::int;
+
+-- name: ExportPublishedRevisions :many
+-- Bounded export of the current revision for each published survey window.
+SELECT r.id, r.survey_start, r.survey_end, r.published_at,
+    r.supersedes_revision_id, run.source_url, run.source_checksum,
+    run.parser_version
+FROM official_current_revisions AS c
+JOIN official_revisions AS r ON r.id = c.revision_id
+JOIN official_import_runs AS run ON run.id = r.import_run_id
+WHERE r.status = 'published'
+    AND r.survey_start >= @from_survey::date
+    AND r.survey_end <= @to_survey::date
+    AND (@after_id::text = '' OR r.id::text > @after_id::text)
+ORDER BY r.id::text ASC
+LIMIT @limit_plus_one::int;
+
+-- name: ExportRevisionPrices :many
+-- Prices only for a current published revision; staging, failed and superseded
+-- revisions never leak into a public snapshot.
+SELECT p.id, p.revision_id, p.station_id, p.fuel_product, p.unit,
+    p.amount_milli_brl, p.collected_on
+FROM official_station_prices AS p
+JOIN official_revisions AS r ON r.id = p.revision_id
+JOIN official_current_revisions AS c
+    ON c.revision_id = r.id
+    AND c.survey_start = r.survey_start
+    AND c.survey_end = r.survey_end
+WHERE p.revision_id = @revision_id
+    AND r.status = 'published'
+    AND (@after_id::text = '' OR p.id::text > @after_id::text)
+ORDER BY p.id::text ASC
+LIMIT @limit_plus_one::int;

@@ -63,8 +63,10 @@ nearby station's value.
   establishment CNPJ → canonical UUID; Rust prep remains the source preparer.
 - **Native key/dedupe:** full CNPJ + establishment identity. A missing row never
   retires a station; absence is not evidence of closure.
-- **Public fields:** UUID, CNPJ, display name, address components, IBGE
-  municipality/UF, `location_quality`, reviewed coordinates, source anchor date.
+- **Public fields:** UUID, CNPJ (absent when the active binding is invalidated),
+  display name, address components, IBGE municipality/UF, `location_quality`,
+  reviewed coordinates, source-reported registry `operation_status`
+  (active/suspended/revoked), identity revision ID and source anchor date.
 - **Clocks:** source snapshot update, last successful check, Abastevo publication.
 - **Coverage:** current national registry; not proof of historical membership or
   of survey sampling.
@@ -97,9 +99,10 @@ nearby station's value.
   version; observations are keyed by station, product, unit and collection date
   inside one published revision. Supersession retains corrections.
 - **Public fields:** UUID, CNPJ, product, unit, `condition.kind`, amount in
-  milli-BRL, currency BRL, collected date, survey start/end, revision, source
-  URL/checksum. Municipal summaries keep their official product/period/unit and
-  are labeled as ANP summary statistics.
+  milli-BRL, currency BRL, collected date, survey start/end, revision ID,
+  supersession reference, source URL/checksum, parser version and Abastevo
+  publication time. Municipal summaries keep their official product/period/unit
+  and are labeled as ANP summary statistics.
 - **Excluded:** raw workbook text from HTML pages; municipal mean is never
   attached to a station; no national mean is derived by averaging municipal means.
 - **Clocks:** collection date, survey week, source page update, last successful

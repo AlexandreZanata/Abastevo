@@ -78,6 +78,136 @@ func (q *Queries) CreateRevision(ctx context.Context, arg CreateRevisionParams) 
 	return id, err
 }
 
+const exportPublishedRevisions = `-- name: ExportPublishedRevisions :many
+SELECT r.id, r.survey_start, r.survey_end, r.published_at,
+    r.supersedes_revision_id, run.source_url, run.source_checksum,
+    run.parser_version
+FROM official_current_revisions AS c
+JOIN official_revisions AS r ON r.id = c.revision_id
+JOIN official_import_runs AS run ON run.id = r.import_run_id
+WHERE r.status = 'published'
+    AND r.survey_start >= $1::date
+    AND r.survey_end <= $2::date
+    AND ($3::text = '' OR r.id::text > $3::text)
+ORDER BY r.id::text ASC
+LIMIT $4::int
+`
+
+type ExportPublishedRevisionsParams struct {
+	FromSurvey   pgtype.Date `json:"from_survey"`
+	ToSurvey     pgtype.Date `json:"to_survey"`
+	AfterID      string      `json:"after_id"`
+	LimitPlusOne int32       `json:"limit_plus_one"`
+}
+
+type ExportPublishedRevisionsRow struct {
+	ID                   pgtype.UUID        `json:"id"`
+	SurveyStart          pgtype.Date        `json:"survey_start"`
+	SurveyEnd            pgtype.Date        `json:"survey_end"`
+	PublishedAt          pgtype.Timestamptz `json:"published_at"`
+	SupersedesRevisionID pgtype.UUID        `json:"supersedes_revision_id"`
+	SourceUrl            string             `json:"source_url"`
+	SourceChecksum       string             `json:"source_checksum"`
+	ParserVersion        string             `json:"parser_version"`
+}
+
+// Bounded export of the current revision for each published survey window.
+func (q *Queries) ExportPublishedRevisions(ctx context.Context, arg ExportPublishedRevisionsParams) ([]ExportPublishedRevisionsRow, error) {
+	rows, err := q.db.Query(ctx, exportPublishedRevisions,
+		arg.FromSurvey,
+		arg.ToSurvey,
+		arg.AfterID,
+		arg.LimitPlusOne,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportPublishedRevisionsRow
+	for rows.Next() {
+		var i ExportPublishedRevisionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SurveyStart,
+			&i.SurveyEnd,
+			&i.PublishedAt,
+			&i.SupersedesRevisionID,
+			&i.SourceUrl,
+			&i.SourceChecksum,
+			&i.ParserVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const exportRevisionPrices = `-- name: ExportRevisionPrices :many
+SELECT p.id, p.revision_id, p.station_id, p.fuel_product, p.unit,
+    p.amount_milli_brl, p.collected_on
+FROM official_station_prices AS p
+JOIN official_revisions AS r ON r.id = p.revision_id
+JOIN official_current_revisions AS c
+    ON c.revision_id = r.id
+    AND c.survey_start = r.survey_start
+    AND c.survey_end = r.survey_end
+WHERE p.revision_id = $1
+    AND r.status = 'published'
+    AND ($2::text = '' OR p.id::text > $2::text)
+ORDER BY p.id::text ASC
+LIMIT $3::int
+`
+
+type ExportRevisionPricesParams struct {
+	RevisionID   pgtype.UUID `json:"revision_id"`
+	AfterID      string      `json:"after_id"`
+	LimitPlusOne int32       `json:"limit_plus_one"`
+}
+
+type ExportRevisionPricesRow struct {
+	ID             pgtype.UUID `json:"id"`
+	RevisionID     pgtype.UUID `json:"revision_id"`
+	StationID      pgtype.UUID `json:"station_id"`
+	FuelProduct    string      `json:"fuel_product"`
+	Unit           string      `json:"unit"`
+	AmountMilliBrl int64       `json:"amount_milli_brl"`
+	CollectedOn    pgtype.Date `json:"collected_on"`
+}
+
+// Prices only for a current published revision; staging, failed and superseded
+// revisions never leak into a public snapshot.
+func (q *Queries) ExportRevisionPrices(ctx context.Context, arg ExportRevisionPricesParams) ([]ExportRevisionPricesRow, error) {
+	rows, err := q.db.Query(ctx, exportRevisionPrices, arg.RevisionID, arg.AfterID, arg.LimitPlusOne)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportRevisionPricesRow
+	for rows.Next() {
+		var i ExportRevisionPricesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RevisionID,
+			&i.StationID,
+			&i.FuelProduct,
+			&i.Unit,
+			&i.AmountMilliBrl,
+			&i.CollectedOn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findConflictingStationPrice = `-- name: FindConflictingStationPrice :many
 SELECT id, source_row, amount_milli_brl
 FROM official_station_prices
