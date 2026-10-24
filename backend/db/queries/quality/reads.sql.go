@@ -254,6 +254,107 @@ func (q *Queries) LeaseByStream(ctx context.Context, arg LeaseByStreamParams) (L
 	return i, err
 }
 
+const officialExportPublicationKey = `-- name: OfficialExportPublicationKey :one
+SELECT publication_key
+FROM quality_revision_provenance
+WHERE revision_id = $1 AND provenance_state = 'VERIFIED'
+`
+
+func (q *Queries) OfficialExportPublicationKey(ctx context.Context, revisionID pgtype.UUID) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, officialExportPublicationKey, revisionID)
+	var publication_key pgtype.Text
+	err := row.Scan(&publication_key)
+	return publication_key, err
+}
+
+const officialSanctionExportPage = `-- name: OfficialSanctionExportPage :many
+SELECT v.id, v.revision_id, v.native_key, v.party_cnpj, v.proceeding_ref,
+    v.amount_minor, v.amount_text, v.status, v.decided_on, v.due_on, v.as_of,
+    v.evidence_ref, v.source_contract, v.extraction_month, v.report_year,
+    a.resolution_kind, a.reason, a.station_id
+FROM quality_sanction_events v
+JOIN quality_revisions r ON r.id = v.revision_id AND r.status = 'published'
+JOIN quality_company_association_revisions c ON c.revision_id = v.revision_id
+JOIN quality_company_associations a
+    ON a.revision_id = v.revision_id AND a.record_key = v.native_key
+WHERE v.revision_id = $1
+    AND c.policy_version = 'current-company-v1'
+    AND c.association_scope = 'CURRENT_COMPANY_ONLY'
+    AND NOT c.historical_business_window_known
+    AND ($2::text = '' OR v.native_key > $2::text)
+ORDER BY v.native_key ASC
+LIMIT $3::int
+`
+
+type OfficialSanctionExportPageParams struct {
+	RevisionID   pgtype.UUID `json:"revision_id"`
+	AfterNative  string      `json:"after_native"`
+	LimitPlusOne int32       `json:"limit_plus_one"`
+}
+
+type OfficialSanctionExportPageRow struct {
+	ID              pgtype.UUID `json:"id"`
+	RevisionID      pgtype.UUID `json:"revision_id"`
+	NativeKey       string      `json:"native_key"`
+	PartyCnpj       string      `json:"party_cnpj"`
+	ProceedingRef   string      `json:"proceeding_ref"`
+	AmountMinor     pgtype.Int8 `json:"amount_minor"`
+	AmountText      pgtype.Text `json:"amount_text"`
+	Status          string      `json:"status"`
+	DecidedOn       pgtype.Date `json:"decided_on"`
+	DueOn           pgtype.Date `json:"due_on"`
+	AsOf            pgtype.Date `json:"as_of"`
+	EvidenceRef     string      `json:"evidence_ref"`
+	SourceContract  string      `json:"source_contract"`
+	ExtractionMonth pgtype.Text `json:"extraction_month"`
+	ReportYear      pgtype.Int4 `json:"report_year"`
+	ResolutionKind  string      `json:"resolution_kind"`
+	Reason          string      `json:"reason"`
+	StationID       pgtype.UUID `json:"station_id"`
+}
+
+// One frozen current-company census per published sanction revision. The inner
+// joins make missing association evidence a failed export, never an invented
+// unmatched/station claim. Only the static builder consumes these rows.
+func (q *Queries) OfficialSanctionExportPage(ctx context.Context, arg OfficialSanctionExportPageParams) ([]OfficialSanctionExportPageRow, error) {
+	rows, err := q.db.Query(ctx, officialSanctionExportPage, arg.RevisionID, arg.AfterNative, arg.LimitPlusOne)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OfficialSanctionExportPageRow
+	for rows.Next() {
+		var i OfficialSanctionExportPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RevisionID,
+			&i.NativeKey,
+			&i.PartyCnpj,
+			&i.ProceedingRef,
+			&i.AmountMinor,
+			&i.AmountText,
+			&i.Status,
+			&i.DecidedOn,
+			&i.DueOn,
+			&i.AsOf,
+			&i.EvidenceRef,
+			&i.SourceContract,
+			&i.ExtractionMonth,
+			&i.ReportYear,
+			&i.ResolutionKind,
+			&i.Reason,
+			&i.StationID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const readRevisionResources = `-- name: ReadRevisionResources :many
 SELECT url,sha256,bytes,member_name,member_sha256,member_bytes FROM quality_revision_resources WHERE revision_id= $1 ORDER BY url
 `

@@ -102,6 +102,32 @@ SELECT id, revision_id, native_key, proceeding_ref, party_cnpj, amount_minor,
 FROM quality_sanction_events
 WHERE id = @id AND revision_id = @revision_id;
 
+-- One frozen current-company census per published sanction revision. The inner
+-- joins make missing association evidence a failed export, never an invented
+-- unmatched/station claim. Only the static builder consumes these rows.
+-- name: OfficialSanctionExportPage :many
+SELECT v.id, v.revision_id, v.native_key, v.party_cnpj, v.proceeding_ref,
+    v.amount_minor, v.amount_text, v.status, v.decided_on, v.due_on, v.as_of,
+    v.evidence_ref, v.source_contract, v.extraction_month, v.report_year,
+    a.resolution_kind, a.reason, a.station_id
+FROM quality_sanction_events v
+JOIN quality_revisions r ON r.id = v.revision_id AND r.status = 'published'
+JOIN quality_company_association_revisions c ON c.revision_id = v.revision_id
+JOIN quality_company_associations a
+    ON a.revision_id = v.revision_id AND a.record_key = v.native_key
+WHERE v.revision_id = @revision_id
+    AND c.policy_version = 'current-company-v1'
+    AND c.association_scope = 'CURRENT_COMPANY_ONLY'
+    AND NOT c.historical_business_window_known
+    AND (@after_native::text = '' OR v.native_key > @after_native::text)
+ORDER BY v.native_key ASC
+LIMIT @limit_plus_one::int;
+
+-- name: OfficialExportPublicationKey :one
+SELECT publication_key
+FROM quality_revision_provenance
+WHERE revision_id = @revision_id AND provenance_state = 'VERIFIED';
+
 -- name: RevisionCatalog :many
 SELECT r.id,r.status,r.published_at,r.supersedes_revision_id,e.edition,m.provenance_state,
  EXISTS(SELECT 1 FROM quality_current_revisions c WHERE c.revision_id=r.id)::boolean AS is_current_stream

@@ -1,5 +1,20 @@
 # Current execution state
 
+- Fuel-quality portal readiness 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  local `codex/fq-portal-ready` worktree from `origin/dev 721582b8`; commits
+  `424d71b7`, `9795a36e` plus this evidence commit. [Evidence](../backend/evidence/fuel-quality/FQ-PORTAL-READY.md).
+  Seven verified FQ-07 fine resources accepted through the real Rust→worker→
+  PostGIS→FQ-08 read path: 35,911 input = 35,612 accepted + 293 CPF + 6 metadata;
+  35,612 explicit unmatched company decisions, zero links/identity writes in the
+  empty Directory. Added a read-only frozen official-record export port
+  (`ExportPin`/`ExportSanctions`, revision-sealed keyset cursor) and
+  `BuildOfficialExport` JSONL/manifest with payload SHA-256; real exports total
+  35,612 rows. Tests: quality integration/race, seven-file `qualitysource`
+  PASS, build/vet/staticcheck/sqlc/diff. No FQ-06, portal page, map, VPS,
+  production activation or `main` merge claimed. Fine-association live
+  revalidation/rebound remains OWED; event-level ESP-11 can consume the frozen
+  snapshot without station claims.
+
 - Enterprise data/static portal ESP-12 2026-10-24: LOCAL_DONE / PARTIAL;
   official-record insights blocked by ESP-11 (FQ-06/07 runtime/safe links).
   [Evidence](../backend/evidence/enterprise-static/ESP-12.md).
@@ -123,7 +138,6 @@
   V1/V2 scope, MAP component split, FQ-06/07/08 runtime/safe-link OWED and
   unaccepted MAP-08 work boundary recorded. Docs only; no source, schema, job,
   API or hosting change. Next: ESP-01 source/rights/public-field admission.
-
 - Map/EV execution 2026-10-24: MAP-00–07 LOCAL_DONE / INTEGRATION_PENDING;
   MAP-08 IN_PROGRESS/BLOCKED; engine spike PASS but adapter pending. Commits
   `34750fe1..5cf02a73` on maintained dev after `01c1f068`; no PR/merge/wiki.
