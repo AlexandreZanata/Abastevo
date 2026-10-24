@@ -397,6 +397,34 @@ mod tests {
     }
 
     #[test]
+    fn keeps_unknown_connector_power_and_quantity_honest() {
+        let mut seen = HashSet::new();
+        let mut providers = HashSet::new();
+        let mut emit = |_: &super::OcmEntity| Ok(());
+        let raw = br#"{"ID":4,"DataProviderID":1,"UsageTypeID":1,"NumberOfPoints":2,"AddressInfo":{"Title":"Mixed","CountryID":36,"Latitude":-23.0,"Longitude":-46.0},"Connections":[{"ID":40,"ConnectionTypeID":9999,"CurrentTypeID":99},{"ID":41,"ConnectionTypeID":1036,"CurrentTypeID":10,"PowerKW":7.4,"Quantity":1}]}"#;
+        let run = parse_ocm_poi("f.json", raw, "00", &mut seen, &mut providers, &mut emit).unwrap();
+        assert_eq!(run.accepted, 3);
+        let unknown = run
+            .entities
+            .iter()
+            .find(|entity| entity.external_id == "4:40")
+            .unwrap();
+        assert_eq!(unknown.payload["connector_code"], "UNKNOWN");
+        assert_eq!(unknown.payload["raw_connector_code"], "9999");
+        assert!(unknown.payload["power_w"].is_null());
+        assert!(unknown.payload["reported_quantity"].is_null());
+        assert_eq!(unknown.payload["current"], "UNKNOWN");
+        let known = run
+            .entities
+            .iter()
+            .find(|entity| entity.external_id == "4:41")
+            .unwrap();
+        assert_eq!(known.payload["connector_code"], "TYPE2");
+        assert_eq!(known.payload["power_w"], 7400);
+        assert_eq!(known.payload["reported_quantity"], 1);
+    }
+
+    #[test]
     fn quarantines_unlicensed_and_foreign_units() {
         let mut seen = HashSet::new();
         let mut providers = HashSet::new();
