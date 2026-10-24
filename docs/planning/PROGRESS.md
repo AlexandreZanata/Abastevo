@@ -1,5 +1,13 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-05 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-05.md).
+  One regional pricing analyst buyer, one sample-comparison decision and one
+  Regional Fuel Price Brief frozen; five-station municipal sample rule,
+  Abastevo-derived label, unmeasured costs, `RIGHTS_PENDING` redistribution and
+  `DEMAND_UNVALIDATED`. No implementation, customer, price, contract or
+  deployment. Next: ESP-06 bounded export orchestration.
+
 - Enterprise data/static portal ESP-04 2026-10-24: LOCAL_DONE /
   INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-04.md).
   Pure `enterpriseexport/analytics` metrics: per-revision census/coverage,
