@@ -1,5 +1,20 @@
 # Current execution state
 
+- Enterprise portal ESP-15 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-14 `43574f7a`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-15.md). Added default-off
+  automatic refresh: fine/official publication → export build (`ObservedAt`) →
+  durable `enterprise-portal-refresh` → generate/verify/promote with current
+  fence; 15-minute recovery schedule, dedicated dispatcher, no-op/restart/
+  orphan recovery, failed-build preservation, private receipt and withdrawal of
+  a release whose FQ revision is no longer published. Real 2025 official slice
+  (3,375 all-unmatched records) over the synthetic price fixture: 3,401 pages/
+  3,411 files/15,881,532 bytes, content `ccd42669…`; correction created a second
+  release, withdrawal removed the current official release. Unit/race,
+  PostGIS integration, real refresh and fine after-publish hook tests PASS;
+  build/vet/staticcheck/sqlc/gofmt/diff PASS. No production activation; real
+  prices, multi-edition FQ, live fine revalidation and prod hosting remain OWED.
+  No VPS/publication/merge. Next: ESP-16.
 - Enterprise portal ESP-14 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/enterprise-static-portal` after ESP-13 `06e871e9`.
   [Evidence](../backend/evidence/enterprise-static/ESP-14.md). Added an atomic
