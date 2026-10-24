@@ -1,5 +1,22 @@
 # Current execution state
 
+- Android container outlines 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  maintained `dev`, no PR/push/merge. [Rule and validation](../mobile/UI_CONTAINER_GUIDELINES.md).
+  Shared `AnpContainerDefaults` resolves a 1dp neutral outline from the active
+  Material scheme (`outlineVariant`→`outline`, ≥2:1 against the effective fill),
+  preserving shape, fill, semantics and state borders under light/dark/dynamic
+  colors. Applied to Home vehicle/fuel/benefit/skeleton cards, vehicles,
+  stations list/summary/details/public page, account/auth/key backup, settings/
+  privacy/consent, profile/contributions, community/charging, ledger/monthly,
+  games, help, suggestions, capture and occurrence. `OutlinedCard`, selectable
+  option rows, branded hero and status/badge surfaces keep their specialized
+  treatments. Commits `26b8534a`, `0e6e95ce`, `f80fab46`. Full app unit suite
+  470 tests 0 failures/errors/skips; lint 0 errors (258 existing warnings);
+  debug APK and `git diff --check` PASS; no credentials/PII added. Rendered
+  light/dark/dynamic, 200% font, narrow-device and TalkBack checks remain
+  VISUAL_VALIDATION_PENDING for user device review; no blanket accessibility
+  claim.
+
 - Test-environment update 2026-10-24: API/worker `53719336` deployed to the
   explicitly selected `teste.abastevo.com.br`; schema95→120 rehearsed on a
   restored copy, quiesced backups retained, original data fingerprints unchanged
