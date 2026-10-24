@@ -1,7 +1,7 @@
 # MAP-14 — Extracted engine adapter and render proof
 
-Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / MULTI_ABI_ARTIFACT_PASS / T08_16KB_RUNTIME_DEFERRED / T06_PARTIAL / T07_TECHNICAL_AUDIT_DONE_LEGAL_PENDING
-Validation: PARTIAL (arm64 phone runtime PASS; multi-ABI release artifact PASS; T06 overlay model/clustering/symbols/accessible list/safe generation PASS; T07 technical audit/SBOM/notices/endpoint decision PASS; armv7 runtime, native cluster hit-test/artwork, legal sign-off and 16 KB pending)
+Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / MULTI_ABI_ARTIFACT_PASS / CLEAN_BUILD_REPRODUCIBLE / T08_16KB_RUNTIME_DEFERRED / T06_PARTIAL / T07_TECHNICAL_AUDIT_DONE_LEGAL_PENDING
+Validation: PARTIAL (arm64 phone runtime PASS; multi-ABI release artifact PASS; clean-build double-build PASS; T06 overlay model/clustering/symbols/accessible list/safe generation PASS; T07 technical audit/SBOM/notices/endpoint decision PASS; fresh-clone build, armv7 runtime, native cluster hit-test/artwork, legal sign-off and 16 KB pending)
 Integration: NOT_INTEGRATED
 
 Tested tree: `codex/map-ev-implementation` at `721582b8` plus the uncommitted
@@ -185,6 +185,13 @@ The release now carries both `arm64-v8a` and `armeabi-v7a`:
 cores with 0x4000 LOAD alignment, `zipalign` PASS and the 80 MiB gate PASS
 with ~3.32 MiB headroom. The armv7 runtime is not executed; 16 KB runtime
 remains deferred.
+
+Clean-build reproducibility (2026-10-24):
+[MAP-14_REPRODUCIBILITY](MAP-14_REPRODUCIBILITY.md). Generated
+`android/sdk/build` and `android/sdk/.cxx` were removed and the arm64 AAR was
+rebuilt; AAR (`1fe196f9…`, 35,160,271 bytes), `classes.jar`
+(`074122f4…`) and stripped core (`08342926…`) were byte-identical (`cmp` 0),
+with a 4m 1s clean Gradle build. A fresh-checkout clone comparison remains.
 
 ## T08 arm64 runtime on the physical phone — 2026-10-24
 

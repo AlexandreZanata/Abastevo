@@ -55,7 +55,10 @@
   34,517,731 bytes / core 10,499,236 bytes; merged with arm64; universal APK
   80,407,806 bytes (76.68 MB), SHA `b2ede0a6…`, both cores 0x4000-aligned,
   zipalign PASS and 80 MiB gate PASS (~3.32 MiB headroom). Armv7 runtime is not
-  executed; 16 KB runtime remains deferred.
+  executed; 16 KB runtime remains deferred. Clean-build double-build PASS:
+  generated `android/sdk/build`/`.cxx` removed, arm64 AAR rebuilt; AAR
+  `1fe196f9…`, `classes.jar` `074122f4…` and core `08342926…` byte-identical
+  (`cmp` 0, 4m 1s clean build). Fresh-checkout clone comparison remains.
   T06 PARTIAL: canonical UUID normalization/dedupe, fuel/charging flags,
   UNKNOWN/CITY_CENTROID/REVIEWED states, 60 m clustering, native
   Gas/ChargingStation/Information symbols and accessible Compose list (48 dp,
@@ -101,9 +104,10 @@
   remaining tasks, the existing native Ed25519 implementation direction and
   prior DATA_GATE/distribution review obligations. Next: T06 native cluster
   hit-test/final Abastevo artwork/native 48 dp target; T07 legal sign-off,
-  public source offer and per-asset review; armv7 runtime and the deferred
-  16 KB runtime obligation before ENGINE_GATE/MAP-17. The multi-ABI artifact
-  is under the existing 80 MiB budget. No further budget/linker owner decision.
+  public source offer and per-asset review; fresh-checkout build comparison,
+  armv7 runtime and the deferred 16 KB runtime obligation before
+  ENGINE_GATE/MAP-17. The multi-ABI artifact is under the existing 80 MiB
+  budget. No further budget/linker owner decision.
 - Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
   IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
   [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),

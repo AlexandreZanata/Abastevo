@@ -100,6 +100,11 @@ and do not invent a tested commit SHA.
   headroom); armv7 runtime is not executed. See
   [MAP-14 evidence](../backend/evidence/maps/MAP-14.md) and
   [multi-ABI evidence](../backend/evidence/maps/MAP-14_MULTI_ABI.md).
+- T01/T03 clean-build double-build PASS: generated `android/sdk/build` and
+  `.cxx` removed, arm64 AAR rebuilt; AAR `1fe196f9…`, `classes.jar`
+  `074122f4…` and core `08342926…` byte-identical (`cmp` 0, 4m 1s). A
+  fresh-checkout clone comparison remains. See
+  [reproducibility evidence](../backend/evidence/maps/MAP-14_REPRODUCIBILITY.md).
 - T06 PARTIAL: canonical UUID dedupe, fuel/charging, location quality, 60 m
   clustering, native Gas/ChargingStation/Information symbols and the 48 dp
   accessible Compose list are implemented; the prepared Abastevo fuel/electric
@@ -117,6 +122,6 @@ and do not invent a tested commit SHA.
   derived-database/source-offer determination and patch rollback recorded.
   Human legal sign-off and the public source-offer URL remain.
 - Still open: T06 native cluster hit-test/final artwork/native 48 dp target,
-  T07 legal sign-off/public offer/per-asset review, armv7 runtime, deferred
-  16 KB runtime and full ENGINE_GATE evidence. MAP-15/16 are LOCAL_DONE but
-  remain gated by ENGINE_GATE.
+  T07 legal sign-off/public offer/per-asset review, fresh-checkout build
+  comparison, armv7 runtime, deferred 16 KB runtime and full ENGINE_GATE
+  evidence. MAP-15/16 are LOCAL_DONE but remain gated by ENGINE_GATE.

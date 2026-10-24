@@ -98,8 +98,8 @@ human license/ODbL sign-off remains an owner obligation.
 
 ## Still required
 
-- Clean-checkout double-build comparison and final per-asset font/symbol/style
-  admission; a local incremental build does not prove reproducibility.
+- Fresh-checkout double-build comparison (clean-build double-build PASS) and
+  final per-asset font/symbol/style admission.
 - Armv7 runtime acceptance, packaged APK/16 KB runtime checks, native
   device/emulator behavior and the full lifecycle/selection matrix.
 - Overlay native cluster hit-test and final Abastevo artwork; MAP-15/16 are

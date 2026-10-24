@@ -111,6 +111,12 @@ arm64 candidate. MAP-15/16 still depend on real ENGINE_GATE acceptance.
 The arm64 build above remains the historical T03 recovery record. A separate
 `armeabi-v7a` candidate was subsequently built and merged with it:
 [multi-ABI evidence](MAP-14_MULTI_ABI.md) records both AAR/core hashes and the
-80,401,070-byte universal APK under the 80 MiB gate. Armv7 runtime and actual
+80,407,806-byte universal APK under the 80 MiB gate. Armv7 runtime and actual
 16 KB execution remain open. T07 technical audit is complete with legal
 sign-off pending; T06 remains partial for native cluster hit-test/final artwork.
+
+A clean-build double-build was also run: generated `android/sdk/build` and
+`android/sdk/.cxx` were removed, the arm64 AAR was rebuilt, and the AAR,
+`classes.jar` and stripped core were byte-identical. See
+[MAP-14_REPRODUCIBILITY](MAP-14_REPRODUCIBILITY.md). A fresh-checkout clone
+comparison remains.
