@@ -1,11 +1,36 @@
 # Map and EV source/commercial-use admission register
 
-Date: 2026-10-24. Status: RESEARCHED / BYTE_AND_TRANSITIVE_ADMISSION_PENDING.
+Date: 2026-10-24. Status: MAP-01 DECISIONS_RECORDED / TRANSITIVE_AND_BYTE_ADMISSION_PENDING.
 This register qualifies candidates; it does not grant rights or activate a source.
 Implementation must fill exact version/SHA, raw digest, license evidence digest,
 redistribution/derivative obligations, attribution text, retained notices, limits,
 responsible task and admission decision for every shipped artifact. Unknown fields
 mean NOT_ADMITTED. Code, data, artwork, hosting and protocol rights are separate.
+
+## MAP-01 admission decisions
+
+Decision vocabulary: `ADMITTED_FOR_SPIKE` permits local, non-shipped technical
+evaluation only; `ADMITTED_FOR_SOURCE` permits implementation and tests but not
+deployment; `PENDING` blocks the dependent artifact; `REJECTED` must not be used.
+No decision below authorizes production distribution, an external account, a
+public OSM write or a provider contact.
+
+| ID | Candidate | Exact evidence | Decision | Remaining obligation |
+| --- | --- | --- | --- | --- |
+| SRC-COMAPS | CoMaps native source | `4587b8ad4d12c9f59982709fdaf03cc925948827`; LICENSE SHA-256 `09e8a9bc…f1130b`; NOTICE SHA-256 `307a6cfe…e6acc`; copyright inventory SHA-256 `5d0156f5…8121e` | `ADMITTED_FOR_SPIKE` | Pin all 22 submodule gitlinks and audit each shipped transitive license; do not ship an AAR/APK until complete |
+| SRC-GEN | CoMaps generator/styles/fonts/resources | Same source commit; `tools/python/maps_generator`, `data/countries.txt`, `data/styles`, `data/fonts` | `PENDING` | Per-file license/artwork review, exact input PBF/extract digest, reproducible regional build |
+| SRC-OSM | OSM/Geofabrik Brazil extract | No extract selected yet | `PENDING` | Exact extract URL/date/bytes/SHA-256, ODbL attribution and derived-database treatment |
+| SRC-ANP | ANP station facts | Existing admitted pipeline covers current Android import; station-level server facts not yet selected | `PENDING` for new server artifact; existing importer behavior preserved | Exact dataset/terms/metadata, bytes/SHA-256, station linkage and period rules |
+| SRC-OCM | Open Charge Map subset | No provider subset selected | `PENDING` | Per-record/provider license and attribution; `opendata` flag alone is insufficient |
+| SRC-COMM | Abastevo community data | Existing account/consent/moderation contracts | `ADMITTED_FOR_SOURCE` under existing rules | Public extract/relicense review; no private GPS/photos |
+| SRC-ICON | Generated map pictograms | `docs/assets/map-icons/` provenance and hashes | `ADMITTED_FOR_SOURCE` | Preserve MIT notice/provenance; complete MAP-18 map-background/accessibility review |
+| SRC-PLATFORM | Android location/TTS | Platform APIs | `ADMITTED_FOR_SOURCE` | No Play Services or cloud TTS requirement; permission/fallback tests |
+| SRC-CAR | AndroidX Car App Library | Not selected/versioned | `PENDING` | Exact revision/license/dependency tree; external host acceptance separate |
+
+Behavior and fixture decisions are frozen in
+[the map discovery contract](../product/MAP_DISCOVERY_CONTRACT.md) and
+`contracts/testdata/map-discovery/cases-v1.json`. Source admission is not runtime
+activation.
 
 ## Primary stack
 
