@@ -33,7 +33,7 @@ Primary sources checked on 2026-10-24:
 
 ## Frozen contract details
 
-- Stripe: hosted Checkout `mode=subscription`, `payment_method_types[]=card`,
+- Stripe: hosted Checkout `mode=subscription`, `allowed_payment_method_types[]=card`,
   server Price ID, stored Customer, owner/order metadata, allowlisted HTTPS
   success/cancel URLs, no promotion/trial/Connect/split/raw card data. The SDK
   `webhook` package verifies the exact raw body and `Stripe-Signature` (300s

@@ -1,5 +1,16 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-06 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-05 `d519a49b`. Stripe Go v87 hosted
+  Checkout use case added: server catalog, deterministic order, owner customer
+  mapping, card-only `allowed_payment_method_types`, config return origin, stable
+  idempotency, dispatch-before-call and ambiguous recovery via persisted
+  `client_reference_id`. Client amount/customer/order/return URL/metadata are
+  refused. [PAY-06 evidence](../backend/evidence/payments/PAY-06.md): app/adapter/
+  real-Store race integration tests, full backend suite, vet/staticcheck,
+  govulncheck, sqlc/security/secret gates PASS. No HTTP/runtime/webhook/grant or
+  sale activation. Next: PAY-07 Asaas Pix only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-05 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-04 `b931a1df`. `PaymentsConfig`
   binds Stripe/Asaas test/live modes, merchant/catalog/keys/webhook material and

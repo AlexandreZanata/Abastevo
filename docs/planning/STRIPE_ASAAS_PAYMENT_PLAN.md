@@ -189,6 +189,9 @@ outbox with lease/generation fences. Provider/runtime work remains PAY-05+.
 PAY-05 is LOCAL_DONE: provider mode/merchant/catalog/key/return-origin config,
 independent new-sales and maintenance switches, and a redacted read-only
 preflight are validated; missing/mixed values disable only unsafe sales.
+PAY-06 is LOCAL_DONE: server-catalog Stripe hosted Checkout, owner-bound customer
+mapping, stable idempotency, durable ambiguous recovery and card-only/return-
+origin checks are implemented and tested; runtime/webhook wiring remains PAY-08+.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider

@@ -20,7 +20,7 @@
   "checkout_request": {
     "endpoint": "POST /v1/checkout/sessions",
     "mode": "subscription",
-    "payment_method_types": ["card"],
+    "allowed_payment_method_types": ["card"],
     "line_items": [{"price": "price_SYNTHETIC", "quantity": 1}],
     "customer": "cus_SYNTHETIC",
     "client_reference_id": "order_SYNTHETIC",

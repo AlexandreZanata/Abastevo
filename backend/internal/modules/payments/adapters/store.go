@@ -13,6 +13,7 @@ import (
 	"time"
 
 	qpay "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/payments"
+	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/jackc/pgx/v5"
@@ -32,36 +33,57 @@ type Store struct {
 
 func NewStore(pool *pgxpool.Pool) *Store { return &Store{Pool: pool} }
 
-type CustomerMapping struct {
-	AccountID        string
-	Provider         domain.Provider
-	Environment      domain.Environment
-	Merchant         string
-	RemoteCustomerID string
+func (s *Store) GetOrder(ctx context.Context, id string) (domain.Order, error) {
+	if s == nil || s.Pool == nil {
+		return domain.Order{}, domain.ErrUnavailable
+	}
+	orderID, err := toUUID(id)
+	if err != nil {
+		return domain.Order{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentOrder(ctx, orderID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Order{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return domain.Order{}, dbError(err)
+	}
+	return domainOrder(row)
 }
 
-type ClaimAttemptInput struct {
-	AccountID    string
-	Provider     domain.Provider
-	Environment  domain.Environment
-	Merchant     string
-	OperationKey string
-	Kind         string
-	PayloadHash  string
-	OrderID      string
-	LeaseUntil   time.Time
+func (s *Store) Customer(ctx context.Context, accountID string, provider domain.Provider, environment domain.Environment, merchant string) (string, bool, error) {
+	if s == nil || s.Pool == nil {
+		return "", false, domain.ErrUnavailable
+	}
+	uid, err := toUUID(accountID)
+	if err != nil || !validText(merchant) {
+		return "", false, domain.ErrInvalid
+	}
+	if err := provider.Validate(); err != nil {
+		return "", false, err
+	}
+	if err := environment.Validate(); err != nil {
+		return "", false, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentCustomer(ctx, qpay.GetPaymentCustomerParams{
+		AccountID: uid, Provider: string(provider), Environment: string(environment), Merchant: merchant,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, dbError(err)
+	}
+	return row.RemoteCustomerID, true, nil
 }
 
-type Claim struct {
-	OperationID string
-	AttemptID   string
-	Generation  int64
-	AttemptNo   int32
-	State       string
-	RemoteID    string
-	LeaseUntil  time.Time
-	Replay      bool
-}
+type CustomerMapping = app.CustomerMapping
+type ClaimAttemptInput = app.ClaimAttemptInput
+type Claim = app.Claim
 
 type SettlementInput struct {
 	Offer      domain.Offer

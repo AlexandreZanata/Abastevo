@@ -7,8 +7,10 @@
 package domain
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -40,6 +42,7 @@ var (
 	ErrStale              = errors.New("payments: stale")
 	ErrBusy               = errors.New("payments: busy")
 	ErrUnavailable        = errors.New("payments: unavailable")
+	ErrNotFound           = errors.New("payments: not found")
 )
 
 // Money is exact BRL minor units. It is never converted through float64.
@@ -371,6 +374,14 @@ func copyStrings(values []string) []string {
 	out := make([]string, len(values))
 	copy(out, values)
 	return out
+}
+
+func ValidID(value string) bool {
+	if len(value) != 36 || value[8] != '-' || value[13] != '-' || value[18] != '-' || value[23] != '-' {
+		return false
+	}
+	_, err := hex.DecodeString(strings.ReplaceAll(value, "-", ""))
+	return err == nil
 }
 
 func sameStringSet(left, right []string) bool {

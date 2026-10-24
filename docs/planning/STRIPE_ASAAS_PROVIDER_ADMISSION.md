@@ -57,7 +57,7 @@ key and parameters. No blind create/refund retry after ambiguity.
 
 Use hosted Checkout, `mode=subscription`, cards only:
 
-- `payment_method_types[]=card`; no Pix/boleto/Connect/split.
+- `allowed_payment_method_types[]=card` (v87 filter; only card is eligible); no Pix/boleto/Connect/split.
 - `line_items[0].price` = server catalog Price ID; `quantity=1`.
 - `customer` = stored Stripe customer for the authenticated owner.
 - `client_reference_id` = local order ID (not a bearer secret).
