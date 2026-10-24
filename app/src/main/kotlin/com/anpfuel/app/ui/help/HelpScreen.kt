@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 /**
  * P23-T02 — Help and community rules (Ajuda).
@@ -77,12 +78,14 @@ fun HelpScreen(
 
 @Composable
 private fun HelpSection(titleRes: Int, bodyRes: Int) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = CardDefaults.shape,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(
             modifier = Modifier.padding(24.dp),

@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 /**
  * P10-T07 — Confirm/dispute panel (BUC-005, B-BR-006/011).
@@ -55,7 +56,10 @@ fun CommunityVotePanel(
             CircularProgressIndicator(modifier = modifier.padding(16.dp))
         }
         is CommunityVoteUiState.Confirmed -> {
-            Card(modifier = modifier.fillMaxWidth()) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -76,7 +80,10 @@ fun CommunityVotePanel(
             }
         }
         is CommunityVoteUiState.Disputed -> {
-            Card(modifier = modifier.fillMaxWidth()) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -90,7 +97,10 @@ fun CommunityVotePanel(
             }
         }
         is CommunityVoteUiState.Rejected -> {
-            Card(modifier = modifier.fillMaxWidth()) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -124,7 +134,10 @@ private fun VoteForm(
     var reasonWire by remember { mutableStateOf<String?>(null) }
     var detail by remember { mutableStateOf("") }
     var replacement by remember { mutableStateOf("") }
-    Card(modifier = modifier.fillMaxWidth()) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),

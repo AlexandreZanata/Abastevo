@@ -52,6 +52,7 @@ import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.premium.PremiumState
 
 /**
@@ -109,12 +110,14 @@ fun AccountScreen(
                 return@Column
             }
             if (!signedIn) {
+                val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        containerColor = containerColor,
                     ),
+                    border = AnpContainerDefaults.borderStroke(containerColor),
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
@@ -150,7 +153,12 @@ fun AccountScreen(
                 onRestoreUnavailable = premiumViewModel::restoreUnavailable,
                 onClearNotice = premiumViewModel::clearNotice,
             )
-            Card(modifier = Modifier.fillMaxWidth()) {
+            val ledgerSyncContainer = MaterialTheme.colorScheme.surfaceContainerHighest
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = ledgerSyncContainer),
+                border = AnpContainerDefaults.borderStroke(ledgerSyncContainer),
+            ) {
                 AccountActionRow(icon = Icons.Default.PersonOutline,
                     title = stringResource(R.string.ledger_sync_title),
                     subtitle = stringResource(R.string.ledger_sync_explanation),
@@ -214,7 +222,12 @@ private fun PremiumSection(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.semantics { heading() },
         )
-        Card(modifier = Modifier.fillMaxWidth()) {
+        val premiumContainer = MaterialTheme.colorScheme.surfaceContainerHighest
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = premiumContainer),
+            border = AnpContainerDefaults.borderStroke(premiumContainer),
+        ) {
             Column {
                 Row(
                     modifier = Modifier
@@ -289,11 +302,13 @@ internal fun SignedInAccountContent(state: com.anpfuel.app.ui.auth.AuthUiState, 
     state.keyBackup?.let { backup ->
         AccountKeyCard(backup = backup)
     }
+    val actionContainer = MaterialTheme.colorScheme.surface
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = actionContainer,
         ),
+        border = AnpContainerDefaults.borderStroke(actionContainer),
     ) {
         Column {
             AccountActionRow(
@@ -315,12 +330,14 @@ internal fun SignedInAccountContent(state: com.anpfuel.app.ui.auth.AuthUiState, 
 
 @Composable
 internal fun AccountStatusCard(title: String, subtitle: String) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(
             modifier = Modifier.padding(20.dp),

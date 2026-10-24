@@ -47,6 +47,7 @@ import com.anpfuel.data.repository.PlaceDetail
 import com.anpfuel.domain.charging.ChargingAccess
 import com.anpfuel.domain.charging.ChargingSnapshotAge
 import com.anpfuel.domain.charging.ChargingConnector
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.charging.ChargingCurrent
 import com.anpfuel.domain.charging.Compatibility
 import com.anpfuel.domain.valueobject.DomainId
@@ -293,10 +294,12 @@ private fun ChargingPlaceRow(
     locale: Locale,
     onClick: () -> Unit,
 ) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = row.place.name, style = MaterialTheme.typography.titleMedium)

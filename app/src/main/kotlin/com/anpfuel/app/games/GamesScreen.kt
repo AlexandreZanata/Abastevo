@@ -2,7 +2,6 @@ package com.anpfuel.app.games
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.size
@@ -74,6 +73,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.games.ArcadeSession
 import com.anpfuel.domain.games.GameAction
 import com.anpfuel.domain.games.GameId
@@ -247,8 +247,9 @@ private fun GamesSelector(
                 }
             }
         }
+        val settingsContainer = MaterialTheme.colorScheme.surfaceContainerLow
         Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            containerColor = settingsContainer), border = AnpContainerDefaults.borderStroke(settingsContainer)) {
             Column(Modifier.padding(16.dp)) {
                 Text(stringResource(R.string.games_settings), style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
@@ -264,9 +265,10 @@ private fun GamesSelector(
 
 @Composable
 private fun GameCard(game: GameId, best: Int, loaded: Boolean, onChoose: () -> Unit, modifier: Modifier = Modifier) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        border = AnpContainerDefaults.borderStroke(containerColor),
+        colors = CardDefaults.cardColors(containerColor = containerColor)) {
         Box(Modifier.fillMaxWidth().aspectRatio(2.65f)) {
             GameArtwork(game, Modifier.fillMaxSize())
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC0B1830)))))

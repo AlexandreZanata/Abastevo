@@ -70,6 +70,7 @@ import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.FuelProductIcon
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.data.local.media.BoundedPhotoBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -627,7 +628,10 @@ private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () ->
         city?.let { Text("${it.name} · ${it.state.abbreviation}") }
         TextButton(onClick = { viewModel.changeNominalStation(); onChooseCity() }, enabled = !busy) { Text(stringResource(R.string.capture_choose_city)) }
         if (selected != null) {
-            Card(Modifier.fillMaxWidth()) {
+            Card(
+                Modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(selected!!.displayName, style = MaterialTheme.typography.titleMedium)
                     Text(selected!!.addressLabel.ifBlank { selected!!.cnpjNormalized.orEmpty() })

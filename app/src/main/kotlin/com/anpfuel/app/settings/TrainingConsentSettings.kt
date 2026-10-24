@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.LocalBottomSafePadding
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.repository.TrainingConsentReview
 
 @Composable
@@ -59,7 +60,12 @@ internal fun TrainingConsentContent(
     }
     var reader by remember(ownerKey,document?.digest,state.loaded) { mutableStateOf(false) }
     val busy=consent is TrainingConsentUiState.Updating || consent is TrainingConsentUiState.Loading
-    Card(Modifier.fillMaxWidth()) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
+    ) {
         Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.privacy_training_heading),style=MaterialTheme.typography.titleMedium,modifier=Modifier.semantics {heading()})
             Text(stringResource(R.string.privacy_training_unavailable))
@@ -159,12 +165,14 @@ internal fun TrainingConsentContent(
  */
 @Composable
 fun TrainingConsentRightsCard(modifier: Modifier = Modifier) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = CardDefaults.shape,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(
             modifier = Modifier.padding(24.dp),

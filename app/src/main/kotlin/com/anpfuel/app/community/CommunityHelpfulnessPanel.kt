@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 /**
  * CS08B — Helpful/unhelpful panel (B-BR-CS01, BUC-CS02).
@@ -47,7 +48,10 @@ fun CommunityHelpfulnessPanel(    state: CommunityHelpfulnessUiState,
             CircularProgressIndicator(modifier = modifier.padding(16.dp))
         }
         is CommunityHelpfulnessUiState.Guest -> {
-            Card(modifier = modifier.fillMaxWidth()) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -69,7 +73,10 @@ fun CommunityHelpfulnessPanel(    state: CommunityHelpfulnessUiState,
             }
         }
         is CommunityHelpfulnessUiState.Content -> {
-            Card(modifier = modifier.fillMaxWidth()) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -146,7 +153,10 @@ fun CommunityHelpfulnessPanel(    state: CommunityHelpfulnessUiState,
             CircularProgressIndicator(modifier = modifier.padding(16.dp))
         }
         is CommunityHelpfulnessUiState.Rejected -> {
-            Card(modifier = modifier.fillMaxWidth()) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),

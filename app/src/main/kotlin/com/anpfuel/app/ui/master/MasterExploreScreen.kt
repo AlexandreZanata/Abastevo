@@ -38,6 +38,7 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.OfflineBanner
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import java.util.Locale
 
@@ -149,7 +150,10 @@ internal fun MasterExploreContent(
                 }
             }
             uiState.interpretation?.let { interpretation ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+                ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = interpretation.kind,
@@ -209,7 +213,10 @@ internal fun MasterExploreContent(
                 }
             }
             if (uiState.needsElectricVehicle) {
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+                ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             text = stringResource(R.string.master_explore_add_vehicle_message),
@@ -246,7 +253,10 @@ internal fun MasterExploreContent(
                     )
                 }
                 uiState.rows.forEach { row ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(text = row.title, style = MaterialTheme.typography.titleMedium)
                             Text(text = row.subtitle, style = MaterialTheme.typography.bodySmall)

@@ -39,7 +39,7 @@ Cover first launch, manual city, denied permission, unsupported integrity, simul
 
 ## Visual identity and accessibility
 
-Use the approved blue/green A on white, navy reference wordmark and generous whitespace. Blue is the principal action color; green signals contribution/community without implying price truth. Derive named theme tokens from approved assets; measure contrast before use, especially white text on green. Warning/error/state labels need text/icons as well as color. Retain readable money/time/fuel hierarchy, large touch targets, screen-reader labels, reduced-motion behavior and font-scale/layout testing. Do not redesign the approved logo.
+Use the approved blue/green A on white, navy reference wordmark and generous whitespace. Blue is the principal action color; green signals contribution/community without implying price truth. Derive named theme tokens from approved assets; measure contrast before use, especially white text on green. Warning/error/state labels need text/icons as well as color. Retain readable money/time/fuel hierarchy, large touch targets, screen-reader labels, reduced-motion behavior and font-scale/layout testing. Do not redesign the approved logo. Content card outlines follow the [Android UI container guidelines](../mobile/UI_CONTAINER_GUIDELINES.md).
 
 P19 defines a small reusable set of price card, source/time badge, state, station header, contribution progress, discussion/reply/vote and permission components within existing modules. Domain state drives presentation; no business rules in composables. A later polish phase may refine aesthetics after acceptance; useful navigation/readability is part of the commercial functional work now.
 

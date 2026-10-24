@@ -61,6 +61,7 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.SkeletonButton
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 /**
  * P19-T04: Profile screen (Perfil).
@@ -135,11 +136,13 @@ fun ProfileScreen(
             ) { slot ->
                 when (slot) {
                     AccountSlot.RESOLVING -> {
+                        val containerColor = MaterialTheme.colorScheme.surfaceVariant
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                containerColor = containerColor,
                             ),
+                            border = AnpContainerDefaults.borderStroke(containerColor),
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
@@ -154,11 +157,13 @@ fun ProfileScreen(
                         }
                     }
                     AccountSlot.GUEST -> {
+                        val containerColor = MaterialTheme.colorScheme.surfaceVariant
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                containerColor = containerColor,
                             ),
+                            border = AnpContainerDefaults.borderStroke(containerColor),
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
@@ -196,11 +201,13 @@ fun ProfileScreen(
                         }
                     }
                     AccountSlot.SIGNED_IN -> {
+                        val containerColor = MaterialTheme.colorScheme.primaryContainer
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                containerColor = containerColor,
                             ),
+                            border = AnpContainerDefaults.borderStroke(containerColor),
                         ) {
                             Row(
                                 modifier = Modifier.padding(16.dp),
@@ -249,11 +256,13 @@ fun ProfileScreen(
                     .semantics { heading() },
             )
 
+            val toolsContainer = MaterialTheme.colorScheme.surface
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = toolsContainer,
                 ),
+                border = AnpContainerDefaults.borderStroke(toolsContainer),
             ) {
                 Column {
                     ProfileToolItem(
