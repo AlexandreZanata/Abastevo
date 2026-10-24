@@ -106,6 +106,20 @@ class ComapsMapEngine(
         }
     }
 
+    override fun currentCenter(): MapCenter? {
+        if (!initialized) return null
+        val center = Framework.nativeGetParsedCenterLatLon() ?: return null
+        if (center.size != 2 || center[0].isNaN() || center[1].isNaN()) return null
+        return MapCenter(center[0], center[1])
+    }
+
+    override fun recenter(): Boolean {
+        if (!initialized) return false
+        val position = organicMaps?.locationHelper?.myPosition ?: return false
+        Framework.nativeSetViewportCenter(position.lat, position.lon, 15)
+        return true
+    }
+
     override fun isInitialized(): Boolean = initialized
 
     override fun search(

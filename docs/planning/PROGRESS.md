@@ -2,8 +2,8 @@
 
 - Map/EV execution 2026-10-24: MAP-00–07 LOCAL_DONE / INTEGRATION_PENDING;
   MAP-08 LOCAL_DONE; MAP-09–13 LOCAL_DONE / INTEGRATION_PENDING; MAP-14
-  IN_PROGRESS / ENGINE_GATE_PARTIAL; MAP-15 LOCAL_DONE /
-  INTEGRATION_PENDING; MAP-16 blocked by MAP-14. Local commits
+  IN_PROGRESS / ENGINE_GATE_PARTIAL; MAP-15 and MAP-16 LOCAL_DONE /
+  INTEGRATION_PENDING; MAP-17 next but still gated by ENGINE_GATE. Local commits
   dc3282fb..8b5a3a21 on `codex/map-ev-implementation` (base `721582b8`); tree
   clean, no push/PR/merge. [MAP-08](../backend/evidence/maps/MAP-08.md),
   [MAP-09](../backend/evidence/maps/MAP-09.md),
@@ -43,9 +43,15 @@
   safe inactive cleanup and Hilt WorkManager worker. JVM data tests and a real
   phone Room/Ed25519 instrumentation test PASS; WorkManager retry/cancel and
   historical schema-25 migration remain follow-up.
+  MAP-16: Compose `MapHost` over the `MapEngine` port, explicit recenter-only
+  location permission, no hidden GPS, lifecycle camera persistence, dispose
+  cancellation and 48 dp recenter. 5 JVM view-model tests and 2 real-phone
+  Compose host/recreation tests PASS; native arm64 surface remains blocked by
+  the T08 phone blank/BLAST issue.
   Tests: `go test ./...`, targeted `-race -tags=integration`, MAP-12/13 process
   proofs, `MapPoiCodecTest`, `MapDiscoveryResponseCodecTest`, `:data` unit and
-  phone instrumentation, normal app debug build and engine debug build.
+  phone instrumentation, `:maps:engine` JVM/phone tests, normal app debug build
+  and engine debug build.
   Local commits only; no push/PR/merge, deploy, Play, production or
   RELEASE_CERTIFIED claim.
   Build recovery: [MAP-14 T03](../backend/evidence/maps/MAP-14_BUILD_RECOVERY.md)

@@ -7,6 +7,10 @@ data class MapSearchResult(val name: String, val latitude: Double, val longitude
 
 data class MapRouteInfo(val distance: Double, val unit: String, val seconds: Int)
 
+data class MapCenter(val latitude: Double, val longitude: Double)
+
+data class MapCamera(val latitude: Double, val longitude: Double, val zoom: Int)
+
 data class MapOverlayMarker(
     val uuid: String,
     val latitude: Double,
@@ -20,6 +24,8 @@ interface MapEngine {
     fun initialize(context: Context, onReady: () -> Unit): Boolean
     fun newMapView(context: Context): View
     fun setViewport(latitude: Double, longitude: Double, zoom: Int)
+    fun currentCenter(): MapCenter?
+    fun recenter(): Boolean
     fun isInitialized(): Boolean
 
     fun search(context: Context, query: String, onResult: (List<MapSearchResult>) -> Unit): Boolean
