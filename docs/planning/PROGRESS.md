@@ -13,6 +13,14 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- EE-29 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `887d5a71`.
+  [Retained/upgrade/privacy](../backend/evidence/ev-support/EE-29.md): full
+  matrix 2,130 JVM (0 failures/errors, 2 pre-existing skips), lint/APK, Go
+  race/vet/static/sqlc/gofmt and real PostGIS integration, Rust 177/fmt/clippy
+  PASS. PostgreSQL upgrade derives every ≥000109 migration; SQLite 24→25 6/6;
+  CSV formula refusal; source data stays outside MIT. Physical Room/device and
+  staging receipts OWED.
+
 - MEX-35 2026-10-23: PARTIAL / INTEGRATION_PENDING, parent `dd9d9c7e`.
   [Discovery measurement map](../backend/evidence/mobile-expansion/MEX-35.md):
   cited prior MEX-06/OPT-A/MEX-24/28/29 measurements plus EE-28 real prep/public
