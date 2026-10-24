@@ -102,3 +102,17 @@ disabled, loading and error states where they exist.
   alter text colors.
 - Rendered light/dark/dynamic verification and 200% font/device checks are
   manual: VISUAL_VALIDATION_PENDING until an authorized device/emulator run.
+
+## Premium accent exception
+
+Premium entries are the only fixed gold controls. They use
+`PremiumColors.current()` from `app/ui/theme/PremiumColors.kt`, which selects a
+fixed light/dark palette from the active app theme (`LocalAnpDarkTheme`), not
+from dynamic `colorScheme` accents. The crown is a local vector; the action text
+still names Premium, so the icon remains decorative for TalkBack.
+
+The gold fill and border are limited to the Premium entry and compact shortcut.
+Premium status, capability, notice and action cards use the neutral
+`AnpContainerDefaults` outline like other content cards. The palette test
+requires 4.5:1 for text and 3:1 for the accent/control boundary. Do not spread
+gold hex values or copy this palette into screens.

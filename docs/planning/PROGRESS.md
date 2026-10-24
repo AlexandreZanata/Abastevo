@@ -1,5 +1,18 @@
 # Current execution state
 
+- Android Premium area 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  maintained `dev`; connected-device update installed, dev push follows this record.
+  [Evidence](../mobile/premium-area-organization.md). Dedicated Premium and
+  Manage subscription pages/routes, Profile category below the signed-in card,
+  compact Manage-account shortcut, old account Premium section/query removed,
+  owner-fenced VM moved, fixed light/dark gold palette, local crown, 25 strings
+  × 8 locales and three-tab Profile context preserved. 483 app tests 0
+  failures/errors/skips; lint 0 errors (257 existing warnings); debug APK
+  28,272,706 bytes, SHA-256 `6d0224de…`, installed via `adb install -r` on
+  2311DRK48G without data clear. Purchase/restore remain unavailable by design;
+  no backend/billing change. Rendered visual/font/TalkBack review remains
+  VISUAL_VALIDATION_PENDING for the owner; no production or release claim.
+
 - Android container outlines 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   maintained `dev`, no PR/push/merge. [Rule and validation](../mobile/UI_CONTAINER_GUIDELINES.md).
   Shared `AnpContainerDefaults` resolves a 1dp neutral outline from the active
