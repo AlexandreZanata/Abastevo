@@ -1,7 +1,7 @@
 # MAP-14 — Extracted engine adapter and render proof
 
-Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_BLOCKED_ON_16KB_RUNTIME
-Validation: PARTIAL (static packaging PASS; prior x86_64 render/search/route and overlay hit-test proven; arm64 render and actual 16 KB runtime blocked; selection/clustering/audit pending)
+Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / T08_16KB_RUNTIME_DEFERRED
+Validation: PARTIAL (arm64 phone render/pan/zoom/offline search/route/select PASS; 16 KB runtime deferred by owner; clustering/accessibility/audit/ABI budgets pending)
 Integration: NOT_INTEGRATED
 
 Tested tree: `codex/map-ev-implementation` at `721582b8` plus the uncommitted
@@ -155,40 +155,129 @@ records remaining engineering tasks and the existing native Ed25519 direction.
 - Physical arm64 phone (Android 16, 4 KB page size): the release AAR arm64
   library loaded and the engine created a SurfaceView, but the map surface
   stayed blank with repeated `BLASTBufferQueue ... Can't acquire next buffer`
-  errors. The probe was uninstalled and its files removed. This does not prove
-  actual 16 KB runtime (device page size is 4096) or arm64 render.
-- Remaining T08: a 16 KB-page runtime, real arm64 render/lifecycle, release
-  runtime instrumentation and full ENGINE_GATE closure.
+  errors. The probe was uninstalled and its files removed. The blank result was
+  later reproduced as a test-seeding fault (unreadable adb-created external
+  map directory), not a renderer failure; see the arm64 runtime section below.
+- Remaining T08: actual 16 KB-page runtime, T06 overlay/accessibility work,
+  measured budgets and full ENGINE_GATE closure.
 
-## T08 runtime blocker — 2026-10-24
-
-Status: **T08 BLOCKED_ON_16KB_RUNTIME**. ENGINE_GATE is **not** passed.
-
-Rechecked on the authorized physical phone (model `2311DRK48G`, Android
-16/API 36, `arm64-v8a`, page size **4096**). A
-device or emulator with 16 KB pages is required for the runtime half of T08;
-the only connected device cannot provide that evidence. No emulator/AVD was
-started for this check.
-
-Fresh static re-verification of the existing release APK:
+Fresh static re-verification of the release APK:
 
 ```text
-app-release-unsigned.apk  69,881,875 bytes
-SHA-256 79a3117eed91aa5dffb455f0ccafacb2cc6e2223ab37d8af8511ffe50e98e678
+app-release-unsigned.apk  69,898,847 bytes (66.66 MiB)
+SHA-256 d8094048837bedbc52c517eb53daea4185f56b7bedc626852388154313f4bd92
 zipalign -c -P 16 4  PASS
 lib/arm64-v8a/liborganicmaps.so  14,675,096 bytes
 SHA-256 08342926e3799d29851baf093e535c3ca107dd19e218eb69b3e1447e7d155ccb
 LOAD segments: 0x4000 / 0x4000 / 0x4000
 ```
 
-The static alignment is not a substitute for executing on a 16 KB kernel. The
-physical arm64 runtime also remains unproven: the prior probe loaded the arm64
-library and created a SurfaceView, but the surface stayed blank with
-`BLASTBufferQueue ... Can't acquire next buffer`; that is not render acceptance.
+This rebuild includes the overlay KML fix; the earlier 69,881,875-byte artifact
+`79a3117e…` is superseded for the current tree.
 
-A 16 KB x86_64 API-35 system image (`google_apis_ps16k`) and an unstarted
-`anpfuel-16k` AVD exist locally, but the current instruction requires adb on the
-physical phone and forbids starting an emulator/AVD by default. An arm64-v8a
-16 KB image is listed by `sdkmanager` as available but is not installed.
-Arm64 16 KB runtime therefore requires an explicit owner decision. No waiver,
-gate promotion or release claim is recorded here.
+## T08 arm64 runtime on the physical phone — 2026-10-24
+
+Status: **T08 arm64 runtime PASS** on the authorized physical phone;
+**16 KB runtime DEFERRED by owner decision**. ENGINE_GATE remains **PARTIAL**,
+not PASS.
+
+Owner decision: use the physical phone (4 KB pages) and support the whole
+device population rather than requiring a 16 KB-only runtime. The 16 KB runtime
+proof is therefore not claimed; the static `0x4000` alignment remains recorded
+above. No waiver is recorded for the other MAP-14 tasks.
+
+Device: model `2311DRK48G`, Android 16/API 36, `arm64-v8a`, PAGE_SIZE=4096.
+Engine: release AAR `1fe196f9…` / core `08342926…`, consumed by a new
+debug-only `mapProbe` app variant (package `com.anpfuel.app.mapprobe`,
+91,053,490 bytes, SHA-256 `008318f5…`). The probe was uninstalled and its
+app/external data removed after the run.
+
+Map data: `Brazil_Parana_East.mwm`, `World.mwm` and `WorldCoasts.mwm` copied
+into the probe's **internal** `files/` directory (`files/261004/...`). An
+earlier attempt to seed the probe's external `Android/data` directory through
+`adb` produced `Permission denied`/`listFiles() null`; the engine selected that
+unreadable storage and showed a beige map. This was a test-seeding fault, not a
+renderer failure. The product download repository stores packages under
+`context.filesDir/maps` (internal), so its storage is readable; mapping the
+MAP-15 flat package layout into the engine's country-directory layout remains a
+MAP-17 integration task.
+
+Observed on the physical phone (airplane mode on for the offline proof):
+
+```text
+StoragePathManager: Found map files at /data/data/com.anpfuel.app.mapprobe/files/
+SetWritableDir(): Writable path = /data/data/com.anpfuel.app.mapprobe/files/
+Framework initialized
+RegisterMap(): Loaded Brazil_Parana_East map, of version 261004
+ComapsMapEngine: overlay generation category=1022 markers=2
+MapProbe: search=38 first=Museu do Holocausto
+Route length: 1575.15 meters. ETA: 288.154 seconds.
+MapProbe: route=1.6Kilometers eta=288
+ComapsMapEngine: place page activated title=ABASTEVO:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+MapProbe: selected=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
+```
+
+The SurfaceFlinger producer queued the map SurfaceView at ~117–120 FPS during
+the interactive checks. Screenshot evidence is in [map14-phone/](map14-phone/):
+[render-curitiba.jpg](map14-phone/render-curitiba.jpg),
+[overlay-pan.jpg](map14-phone/overlay-pan.jpg),
+[zoom.jpg](map14-phone/zoom.jpg),
+[landscape.jpg](map14-phone/landscape.jpg) and
+[offline-airplane.jpg](map14-phone/offline-airplane.jpg).
+
+- Pan: a 500 ms swipe changed 61.97% of sampled pixels; both fuel/charging UUID
+  labels stayed visible.
+- Zoom: a double-tap changed 74.32% of sampled pixels; the scale bar moved from
+  500 m to 100 m.
+- Rotation: the Activity and SurfaceView were recreated; the map, route and both
+  overlay labels rendered in landscape without a fatal error.
+- Offline: with airplane mode on, render, 38-result search and the 1.6 km /
+  288 s route still worked from the local package.
+
+The overlay KML generator was corrected to emit the XML declaration as the
+first bytes and to escape titles (`buildOverlayKml`); the previous indented
+declaration caused `Could not parse KML` and empty overlay IDs on this device.
+A JVM regression test covers the declaration, canonical UUIDs, coordinates and
+escaping. `getBookmarkIdByPosition` is asynchronous and is no longer used for
+the generation log; selection is proven by the native place-page title.
+
+Commands actually run:
+
+```sh
+JAVA_HOME=/data/dev/java/candidates/java/current \
+  ./gradlew :maps:engine:testDebugUnitTest \
+    -PcomapsSdkDir=/tmp/abastevo-comaps-release-arm64 \
+    --offline --no-daemon --max-workers=2 --console=plain
+
+JAVA_HOME=/data/dev/java/candidates/java/current \
+  ./gradlew :app:assembleMapProbe \
+    -PcomapsSdkDir=/tmp/abastevo-comaps-release-arm64 \
+    --offline --no-daemon --max-workers=2 --console=plain
+
+JAVA_HOME=/data/dev/java/candidates/java/current \
+  ./gradlew :app:assembleDebug :app:testDebugUnitTest \
+    --offline --no-daemon --max-workers=2 --console=plain
+
+JAVA_HOME=/data/dev/java/candidates/java/current \
+  ./gradlew :app:assembleRelease :app:verifyReleaseApkSize \
+    -PcomapsSdkDir=/tmp/abastevo-comaps-release-arm64 \
+    --offline --no-daemon --max-workers=2 --console=plain
+
+adb install -r app/build/outputs/apk/mapProbe/app-mapProbe.apk
+# seed internal files/ (not Android/data), then:
+adb shell am start -n com.anpfuel.app.mapprobe/com.anpfuel.app.map.MapProbeActivity
+adb shell input swipe 610 1356 700 1280 500
+adb shell input tap 610 1356
+adb shell cmd connectivity airplane-mode enable
+adb uninstall com.anpfuel.app.mapprobe
+adb shell rm -rf /sdcard/Android/data/com.anpfuel.app.mapprobe
+```
+
+Residual limits: the `BLASTBufferQueue ... Can't acquire next buffer` warnings
+still appear in logcat, although frames render and the screenshots are
+non-blank; this is recorded as a residual vendor/SurfaceFlinger warning, not a
+claim that its root cause is fixed. T06 clustering/co-located symbol
+disambiguation/accessible list, T07 transitive licenses/SBOM/notices, measured
+budgets, armeabi-v7a packaging and actual 16 KB runtime remain open. The release
+currently packages only the arm64 engine; supporting the whole device
+population requires the 32-bit release ABI and a size-budget check.

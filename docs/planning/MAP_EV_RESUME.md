@@ -87,6 +87,15 @@ and do not invent a tested commit SHA.
   `app.organicmaps.sdk.BuildConfig` (for example a fresh `sdk-debug.aar` with
   only R classes removed). Removing BuildConfig reproduces a
   `NoClassDefFoundError`; do not delete it.
-- Still open: T06 hit-test/custom symbols/clustering/accessibility, T07
-  transitive license/SBOM/endpoint audit, T08 arm64/16 KB runtime and full
-  ENGINE_GATE evidence, then MAP-15/16.
+- T08 arm64 runtime PASS on the authorized physical phone (2311DRK48G,
+  Android 16/API 36, 4 KB pages) using the release AAR inside the isolated
+  `mapProbe` variant: render, pan, zoom, 38-result offline search, 1.6 km/288 s
+  offline route and UUID overlay selection worked; rotation repainted. The
+  earlier blank surface was an unreadable adb-created external map directory;
+  internal `files/261004` data renders. Overlay KML declaration/escaping was
+  fixed. Owner chose the physical-phone/all-device direction; actual 16 KB
+  runtime is DEFERRED and not proven. See [MAP-14 evidence](../backend/evidence/maps/MAP-14.md).
+- Still open: T06 clustering/co-located symbols/accessible list, T07
+  transitive license/SBOM/endpoint audit, armeabi-v7a release ABI, deferred
+  16 KB runtime and full ENGINE_GATE evidence. MAP-15/16 are LOCAL_DONE but
+  remain gated by ENGINE_GATE.

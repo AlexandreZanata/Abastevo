@@ -72,6 +72,12 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
+        create("mapProbe") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".mapprobe"
+            versionNameSuffix = "-mapprobe"
+            matchingFallbacks += listOf("debug")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -104,6 +110,10 @@ android {
         sourceSets.getByName("debug") {
             kotlin.srcDir("src/comapsProbe/kotlin")
             manifest.srcFile("src/comapsProbe/AndroidManifest.xml")
+        }
+        sourceSets.getByName("mapProbe") {
+            kotlin.srcDir("src/comapsProbe/kotlin")
+            manifest.srcFile("src/mapProbe/AndroidManifest.xml")
         }
     }
 
