@@ -3,6 +3,7 @@ package com.anpfuel.app.ui.master
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
+import com.anpfuel.application.usecase.vehicle.ListVehiclesUseCase
 import com.anpfuel.application.usecase.ranking.GetPriceRankingUseCase
 import com.anpfuel.domain.exploration.ChargingPlaceQuery
 import com.anpfuel.domain.exploration.EnergyPriceQuery
@@ -12,6 +13,7 @@ import com.anpfuel.domain.exploration.OfficialQuery
 import com.anpfuel.domain.exploration.PriceQuery
 import com.anpfuel.domain.exploration.ScenarioCostQuery
 import com.anpfuel.domain.premium.PremiumValidationException
+import com.anpfuel.domain.valueobject.Propulsion
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import javax.inject.Inject
@@ -40,6 +42,11 @@ data class RankingRowView(
     val subtitle: String,
 )
 
+data class ChargingVehicleChoice(
+    val id: String,
+    val name: String,
+)
+
 data class MasterExploreUiState(
     val isLoading: Boolean = false,
     val question: String = "",
@@ -53,6 +60,11 @@ data class MasterExploreUiState(
     val coverageNote: String? = null,
     val empty: Boolean = false,
     val route: String? = null,
+    val chargingVehicleId: String? = null,
+    val chargingVehicleChoices: List<ChargingVehicleChoice> = emptyList(),
+    val needsElectricVehicle: Boolean = false,
+    val energyExecutionPending: Boolean = false,
+    val scenarioExecutionPending: Boolean = false,
     val isOffline: Boolean = false,
     val error: String? = null,
 )
@@ -68,6 +80,7 @@ data class MasterExploreUiState(
 class MasterExploreViewModel @Inject constructor(
     private val ranking: GetPriceRankingUseCase,
     private val connectivity: ObserveNetworkConnectivityUseCase,
+    private val vehicles: ListVehiclesUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MasterExploreUiState())
@@ -159,6 +172,11 @@ class MasterExploreViewModel @Inject constructor(
                 alternatives = emptyList(),
                 rows = emptyList(),
                 route = null,
+                chargingVehicleId = null,
+                chargingVehicleChoices = emptyList(),
+                needsElectricVehicle = false,
+                energyExecutionPending = false,
+                scenarioExecutionPending = false,
                 error = null,
             )
         }
@@ -167,10 +185,49 @@ class MasterExploreViewModel @Inject constructor(
             state == InterpretationState.UNSUPPORTED.name -> _uiState.update { it.copy(isLoading = false) }
             query is PriceQuery -> executeRanking(query, cursor)
             query is OfficialQuery -> _uiState.update { it.copy(isLoading = false, route = "OFFICIAL") }
-            query is ChargingPlaceQuery -> _uiState.update { it.copy(isLoading = false, route = "CHARGING:" + query.connector) }
-            query is EnergyPriceQuery -> _uiState.update { it.copy(isLoading = false, route = "ENERGY") }
-            query is com.anpfuel.domain.exploration.ScenarioCostQuery -> _uiState.update { it.copy(isLoading = false, route = "SCENARIO") }
+            query is ChargingPlaceQuery -> openCharging(query)
+            query is EnergyPriceQuery -> _uiState.update {
+                it.copy(isLoading = false, energyExecutionPending = true)
+            }
+            query is com.anpfuel.domain.exploration.ScenarioCostQuery -> _uiState.update {
+                it.copy(isLoading = false, scenarioExecutionPending = true)
+            }
             else -> _uiState.update { it.copy(isLoading = false) }
+        }
+    }
+
+    private suspend fun openCharging(query: ChargingPlaceQuery) {
+        val electric = vehicles().filter {
+            (it.propulsion == Propulsion.BEV || it.propulsion == Propulsion.PHEV) && it.batteryCapacity != null
+        }
+        when {
+            electric.isEmpty() -> _uiState.update {
+                it.copy(isLoading = false, needsElectricVehicle = true, route = null, chargingVehicleId = null)
+            }
+            electric.size == 1 -> _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    route = "CHARGING",
+                    chargingVehicleId = electric.single().id.value,
+                    chargingVehicleChoices = emptyList(),
+                )
+            }
+            else -> _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    route = "CHARGING_CHOICE",
+                    chargingVehicleId = null,
+                    chargingVehicleChoices = electric.map { vehicle ->
+                        ChargingVehicleChoice(vehicle.id.value, vehicle.displayName)
+                    },
+                )
+            }
+        }
+    }
+
+    fun clearExecutionNotice() {
+        _uiState.update {
+            it.copy(energyExecutionPending = false, scenarioExecutionPending = false, needsElectricVehicle = false)
         }
     }
 

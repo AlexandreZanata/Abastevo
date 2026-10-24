@@ -174,6 +174,12 @@
     <string name="master_explore_hint">Ask about prices, records or charging…</string>
     <string name="master_explore_ask">Ask</string>
     <string name="master_explore_suggestions">Try one of these</string>
+    <string name="master_explore_open_charging">Open compatible charging</string>
+    <string name="master_explore_choose_vehicle">Choose the electric vehicle</string>
+    <string name="master_explore_add_vehicle">Add an electric vehicle</string>
+    <string name="master_explore_add_vehicle_message">This question needs an electric or plug-in hybrid vehicle for connector compatibility. Adding one is free.</string>
+    <string name="master_explore_energy_pending">Reported energy price needs a place-level aggregate that is not available yet. The interpretation stays visible and no price was invented.</string>
+    <string name="master_explore_scenario_pending">A complete scenario needs the chosen place tariff and components. This build does not invent a provider tariff; the interpretation stays visible.</string>
     <string name="master_explore_alternatives">Did you mean:</string>
     <string name="master_explore_results">Results</string>
     <string name="master_explore_revision">Revision %1$s</string>

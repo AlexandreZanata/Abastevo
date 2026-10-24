@@ -225,6 +225,8 @@ fun AnpNavGraph(
             com.anpfuel.app.ui.master.MasterExploreScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onOpenOccurrences = { navController.navigate(Routes.OCCURRENCE_EXPLORER) },
+                onOpenCharging = { vehicleId -> navController.navigate(Routes.chargingExplore(vehicleId)) },
+                onOpenVehicles = { navController.navigate(Routes.VEHICLES) },
             )
         }
         composable(Routes.VEHICLES) {

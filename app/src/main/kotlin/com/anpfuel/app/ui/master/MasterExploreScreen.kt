@@ -55,6 +55,8 @@ private val FROZEN_SUGGESTIONS = listOf(
 fun MasterExploreScreen(
     onNavigateBack: () -> Unit,
     onOpenOccurrences: () -> Unit,
+    onOpenCharging: (String) -> Unit = {},
+    onOpenVehicles: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: MasterExploreViewModel = hiltViewModel(),
 ) {
@@ -68,6 +70,9 @@ fun MasterExploreScreen(
         onChooseAlternative = viewModel::chooseAlternative,
         onLoadMore = viewModel::loadMore,
         onOpenOccurrences = onOpenOccurrences,
+        onOpenCharging = onOpenCharging,
+        onOpenVehicles = onOpenVehicles,
+        onDismissExecution = viewModel::clearExecutionNotice,
         onDismissError = viewModel::dismissError,
         onNavigateBack = onNavigateBack,
         modifier = modifier,
@@ -84,6 +89,9 @@ internal fun MasterExploreContent(
     onChooseAlternative: (Int) -> Unit,
     onLoadMore: () -> Unit,
     onOpenOccurrences: () -> Unit,
+    onOpenCharging: (String) -> Unit = {},
+    onOpenVehicles: () -> Unit = {},
+    onDismissExecution: () -> Unit = {},
     onDismissError: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -178,6 +186,49 @@ internal fun MasterExploreContent(
             if (uiState.route == "OFFICIAL") {
                 TextButton(onClick = onOpenOccurrences) {
                     Text(text = stringResource(R.string.master_explore_open_official))
+                }
+            }
+            uiState.chargingVehicleId?.let { vehicleId ->
+                Button(onClick = { onOpenCharging(vehicleId) }, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = stringResource(R.string.master_explore_open_charging))
+                }
+            }
+            if (uiState.chargingVehicleChoices.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.master_explore_choose_vehicle),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    uiState.chargingVehicleChoices.forEach { choice ->
+                        FilterChip(
+                            selected = false,
+                            onClick = { onOpenCharging(choice.id) },
+                            label = { Text(text = choice.name) },
+                        )
+                    }
+                }
+            }
+            if (uiState.needsElectricVehicle) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(R.string.master_explore_add_vehicle_message),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        TextButton(onClick = onOpenVehicles) {
+                            Text(text = stringResource(R.string.master_explore_add_vehicle))
+                        }
+                    }
+                }
+            }
+            if (uiState.energyExecutionPending) {
+                Button(onClick = onDismissExecution, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = stringResource(R.string.master_explore_energy_pending))
+                }
+            }
+            if (uiState.scenarioExecutionPending) {
+                Button(onClick = onDismissExecution, modifier = Modifier.fillMaxWidth()) {
+                    Text(text = stringResource(R.string.master_explore_scenario_pending))
                 }
             }
             if (uiState.isLoading) {

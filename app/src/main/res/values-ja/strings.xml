@@ -90,6 +90,12 @@
     <string name="master_explore_hint">価格・記録・充電について質問…</string>
     <string name="master_explore_ask">質問する</string>
     <string name="master_explore_suggestions">こちらをお試しください</string>
+    <string name="master_explore_open_charging">互換充電を開く</string>
+    <string name="master_explore_choose_vehicle">電気自動車を選択</string>
+    <string name="master_explore_add_vehicle">電気自動車を追加</string>
+    <string name="master_explore_add_vehicle_message">この質問にはコネクタ互換性のため電気自動車またはプラグインハイブリッドが必要です。追加は無料です。</string>
+    <string name="master_explore_energy_pending">報告されたエネルギー価格には場所単位の集計が必要ですが、まだ利用できません。解釈は表示したままで、価格は捏造していません。</string>
+    <string name="master_explore_scenario_pending">完全なシナリオには選択した場所の料金と構成要素が必要です。このビルドは事業者料金を捏造しません。解釈は表示したままです。</string>
     <string name="master_explore_alternatives">もしかして:</string>
     <string name="master_explore_results">結果</string>
     <string name="master_explore_revision">リビジョン %1$s</string>

@@ -90,6 +90,12 @@
     <string name="master_explore_hint">Спросите о ценах, записях или зарядке…</string>
     <string name="master_explore_ask">Спросить</string>
     <string name="master_explore_suggestions">Попробуйте один из этих</string>
+    <string name="master_explore_open_charging">Открыть совместимую зарядку</string>
+    <string name="master_explore_choose_vehicle">Выберите электромобиль</string>
+    <string name="master_explore_add_vehicle">Добавить электромобиль</string>
+    <string name="master_explore_add_vehicle_message">Для совместимости разъёма нужен электромобиль или подключаемый гибрид. Добавление бесплатно.</string>
+    <string name="master_explore_energy_pending">Для заявленной цены энергии нужна агрегация по месту, которая пока недоступна. Интерпретация остаётся видимой, цена не выдумана.</string>
+    <string name="master_explore_scenario_pending">Для полного сценария нужны тариф и компоненты выбранного места. Эта сборка не выдумывает тариф оператора; интерпретация остаётся видимой.</string>
     <string name="master_explore_alternatives">Вы имели в виду:</string>
     <string name="master_explore_results">Результаты</string>
     <string name="master_explore_revision">Ревизия %1$s</string>

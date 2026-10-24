@@ -174,6 +174,12 @@
     <string name="master_explore_hint">Pergunte sobre preços, registros ou recarga…</string>
     <string name="master_explore_ask">Perguntar</string>
     <string name="master_explore_suggestions">Experimente uma destas</string>
+    <string name="master_explore_open_charging">Abrir recarga compatível</string>
+    <string name="master_explore_choose_vehicle">Escolha o veículo elétrico</string>
+    <string name="master_explore_add_vehicle">Adicionar veículo elétrico</string>
+    <string name="master_explore_add_vehicle_message">Esta pergunta precisa de um veículo elétrico ou híbrido plug-in para a compatibilidade do conector. Adicionar é gratuito.</string>
+    <string name="master_explore_energy_pending">O preço de energia relatado precisa de uma agregação por local ainda indisponível. A interpretação continua visível e nenhum preço foi inventado.</string>
+    <string name="master_explore_scenario_pending">Um cenário completo precisa da tarifa e dos componentes do local escolhido. Esta versão não inventa tarifa de operadora; a interpretação continua visível.</string>
     <string name="master_explore_alternatives">Você quis dizer:</string>
     <string name="master_explore_results">Resultados</string>
     <string name="master_explore_revision">Revisão %1$s</string>

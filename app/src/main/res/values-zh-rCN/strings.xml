@@ -90,6 +90,12 @@
     <string name="master_explore_hint">询问价格、记录或充电…</string>
     <string name="master_explore_ask">提问</string>
     <string name="master_explore_suggestions">试试这些</string>
+    <string name="master_explore_open_charging">打开兼容充电</string>
+    <string name="master_explore_choose_vehicle">选择电动汽车</string>
+    <string name="master_explore_add_vehicle">添加电动汽车</string>
+    <string name="master_explore_add_vehicle_message">此问题需要电动汽车或插电式混合动力车才能判断接口兼容性。添加免费。</string>
+    <string name="master_explore_energy_pending">报告能源价格需要按地点聚合，目前尚不可用。解释仍会显示，未编造任何价格。</string>
+    <string name="master_explore_scenario_pending">完整场景需要所选地点的费率和组成。此版本不会编造运营商费率；解释仍会显示。</string>
     <string name="master_explore_alternatives">您的意思是:</string>
     <string name="master_explore_results">结果</string>
     <string name="master_explore_revision">版本 %1$s</string>

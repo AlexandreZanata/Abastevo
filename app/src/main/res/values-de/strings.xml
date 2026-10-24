@@ -90,6 +90,12 @@
     <string name="master_explore_hint">Fragen Sie nach Preisen, Datensätzen oder Laden…</string>
     <string name="master_explore_ask">Fragen</string>
     <string name="master_explore_suggestions">Probieren Sie eine davon</string>
+    <string name="master_explore_open_charging">Kompatibles Laden öffnen</string>
+    <string name="master_explore_choose_vehicle">Elektrofahrzeug wählen</string>
+    <string name="master_explore_add_vehicle">Elektrofahrzeug hinzufügen</string>
+    <string name="master_explore_add_vehicle_message">Diese Frage braucht ein Elektro- oder Plug-in-Hybridfahrzeug für die Steckerkompatibilität. Hinzufügen ist kostenlos.</string>
+    <string name="master_explore_energy_pending">Der gemeldete Energiepreis braucht eine ortsbezogene Aggregation, die noch nicht verfügbar ist. Die Interpretation bleibt sichtbar; kein Preis wurde erfunden.</string>
+    <string name="master_explore_scenario_pending">Ein vollständiges Szenario braucht Tarif und Komponenten des gewählten Ortes. Diese Version erfindet keinen Anbietertarif; die Interpretation bleibt sichtbar.</string>
     <string name="master_explore_alternatives">Meinten Sie:</string>
     <string name="master_explore_results">Ergebnisse</string>
     <string name="master_explore_revision">Revision %1$s</string>

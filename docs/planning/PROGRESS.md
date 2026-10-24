@@ -13,6 +13,15 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- MEX-31/EE-25 gap 2026-10-23: PARTIAL / INTEGRATION_PENDING, parent
+  `82ea53c3`. [Gap record](../backend/evidence/ev-support/EE-25-MEX-31-GAP.md):
+  master EV place intents now open compatible charging with a real BEV/PHEV
+  vehicle (single/choice/none-add), and energy/scenario intents show explicit
+  execution-pending notices instead of dead routes. Reported-energy ranking and
+  complete scenario cost remain OWED on missing place-level aggregate/provider
+  tariff inputs; interpretation is not counted as a result. Master tests/lint/
+  APK and eight locales PASS. Next EE-27.
+
 - EE-22 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `b5fc0277`.
   [Community EV journeys](../backend/evidence/ev-support/EE-22.md): completed
   EE-12/13 HTTP reads (owner revisions), helpfulness and report endpoints with

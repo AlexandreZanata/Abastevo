@@ -90,6 +90,12 @@
     <string name="master_explore_hint">Interrogez prix, dossiers ou recharge…</string>
     <string name="master_explore_ask">Demander</string>
     <string name="master_explore_suggestions">Essayez l’une de celles-ci</string>
+    <string name="master_explore_open_charging">Ouvrir la recharge compatible</string>
+    <string name="master_explore_choose_vehicle">Choisir le véhicule électrique</string>
+    <string name="master_explore_add_vehicle">Ajouter un véhicule électrique</string>
+    <string name="master_explore_add_vehicle_message">Cette question nécessite un véhicule électrique ou hybride rechargeable pour la compatibilité du connecteur. L’ajout est gratuit.</string>
+    <string name="master_explore_energy_pending">Le prix d’énergie déclaré nécessite une agrégation par lieu encore indisponible. L’interprétation reste visible et aucun prix n’a été inventé.</string>
+    <string name="master_explore_scenario_pending">Un scénario complet nécessite le tarif et les composants du lieu choisi. Cette version n’invente pas de tarif opérateur ; l’interprétation reste visible.</string>
     <string name="master_explore_alternatives">Vouliez-vous dire :</string>
     <string name="master_explore_results">Résultats</string>
     <string name="master_explore_revision">Révision %1$s</string>
