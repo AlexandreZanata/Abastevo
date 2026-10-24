@@ -69,12 +69,15 @@ type officialManifest struct {
 
 type officialPin struct {
 	SchemaVersion          string         `json:"schema_version"`
+	PublicFieldPolicy      string         `json:"public_field_policy"`
 	Source                 string         `json:"source"`
 	Stream                 string         `json:"stream"`
 	Edition                string         `json:"edition"`
 	RevisionID             string         `json:"revision_id"`
 	LeaseID                string         `json:"lease_id"`
 	PublishedAt            string         `json:"published_at"`
+	Status                 string         `json:"status"`
+	ProvenanceState        string         `json:"provenance_state"`
 	SourceURL              string         `json:"source_url"`
 	SourceChecksum         string         `json:"source_checksum"`
 	SourcePeriod           string         `json:"source_period"`
@@ -172,9 +175,11 @@ type fiscalizacaoRecordPage struct {
 
 func (m officialManifest) pin() officialPin {
 	return officialPin{
-		SchemaVersion: m.SchemaVersion, Source: m.Source, Stream: m.Stream,
+		SchemaVersion: m.SchemaVersion, PublicFieldPolicy: m.PublicFieldPolicy,
+		Source: m.Source, Stream: m.Stream,
 		Edition: m.Edition, RevisionID: m.RevisionID, LeaseID: m.LeaseID,
-		PublishedAt: m.PublishedAt, SourceURL: m.SourceURL, SourceChecksum: m.SourceChecksum,
+		PublishedAt: m.PublishedAt, Status: m.Status, ProvenanceState: m.ProvenanceState,
+		SourceURL: m.SourceURL, SourceChecksum: m.SourceChecksum,
 		SourcePeriod: m.SourcePeriod, SourceClockPrecision: m.SourceClockPrecision,
 		SourceClockValue: m.SourceClockValue, Counts: m.Counts,
 		AssociationPolicy: m.AssociationPolicy, AssociationScope: m.AssociationScope,
@@ -436,6 +441,11 @@ func (g *generator) generateOfficial(official *officialDataset, stations map[str
 		if err := g.writePage(path, "fiscalizacao", data); err != nil {
 			return err
 		}
+		if page == 1 {
+			g.addSitemapRoute("/fiscalizacao/")
+		} else {
+			g.addSitemapRoute(fmt.Sprintf("/fiscalizacao/pagina/%d/", page))
+		}
 	}
 	recordPageBase := func(view officialRecordView) pageBase {
 		return g.base("Registro oficial — "+view.Proceeding, "Registro oficial de multa aplicada com status, datas, fonte e vínculo apenas quando decidido com segurança.", "fiscalizacao", period, published, inputHash, []crumb{
@@ -449,6 +459,7 @@ func (g *generator) generateOfficial(official *officialDataset, stations map[str
 		}); err != nil {
 			return err
 		}
+		g.addSitemapRoute("/fiscalizacao/registro/" + view.RecordID + "/")
 	}
 	return nil
 }

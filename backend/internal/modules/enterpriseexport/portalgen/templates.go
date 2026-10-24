@@ -9,7 +9,7 @@ const templates = `
   <meta name="robots" content="{{if .Indexable}}index,follow{{else}}noindex,nofollow{{end}}">
   <title>{{.Title}} | abastevo</title>
   <meta name="description" content="{{.Description}}">
-  <link rel="stylesheet" href="/assets/portal.css">
+  {{if .CSSURL}}<link rel="stylesheet" href="{{.CSSURL}}">{{end}}
 </head>
 <body>
   <a class="skip" href="#conteudo">Pular para o conteúdo</a>

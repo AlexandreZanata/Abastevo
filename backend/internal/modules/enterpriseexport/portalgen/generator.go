@@ -6,8 +6,10 @@ import (
 	"embed"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"html/template"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -23,7 +25,7 @@ import (
 var embeddedAssets embed.FS
 
 const (
-	SchemaVersion     = "enterprise-portal-v1"
+	SchemaVersion     = "enterprise-portal-v2"
 	defaultMaxPages   = 50_000
 	defaultMaxBytes   = int64(2 << 30)
 	maxRankingPerPage = 20
@@ -36,6 +38,7 @@ type Options struct {
 	MaxPages         int
 	MaxBytes         int64
 	Indexable        bool
+	SiteURL          string
 	SearchScriptPath string
 }
 
@@ -71,6 +74,7 @@ type pageBase struct {
 	Period      string
 	PublishedAt string
 	InputHash   string
+	CSSURL      string
 	ScriptURL   string
 	Breadcrumbs []crumb
 }
@@ -226,14 +230,18 @@ type observation struct {
 }
 
 type generator struct {
-	opts      Options
-	outDir    string
-	tmpl      *template.Template
-	files     map[string]FileDigest
-	pages     int
-	bytes     int64
-	indexable bool
-	scriptURL string
+	opts          Options
+	outDir        string
+	tmpl          *template.Template
+	files         map[string]FileDigest
+	pages         int
+	bytes         int64
+	indexable     bool
+	siteURL       string
+	cssURL        string
+	scriptURL     string
+	sitemapRoutes []string
+	hasSitemap    bool
 }
 
 // Generate reads one frozen export candidate and writes a complete private
@@ -247,6 +255,16 @@ func Generate(opts Options) (Result, error) {
 	}
 	if opts.MaxBytes <= 0 {
 		opts.MaxBytes = defaultMaxBytes
+	}
+	siteURL := strings.TrimRight(opts.SiteURL, "/")
+	if siteURL != "" {
+		parsed, err := url.Parse(siteURL)
+		if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+			return Result{}, fmt.Errorf("portalgen: invalid site URL")
+		}
+	}
+	if opts.Indexable && siteURL == "" {
+		return Result{}, fmt.Errorf("portalgen: indexable output requires a site URL")
 	}
 	if _, err := os.Stat(opts.OutputDir); err == nil {
 		return Result{}, fmt.Errorf("portalgen: output directory already exists")
@@ -274,12 +292,16 @@ func Generate(opts Options) (Result, error) {
 	}
 	g := &generator{
 		opts: opts, outDir: tmp, files: map[string]FileDigest{}, indexable: opts.Indexable,
+		siteURL: siteURL,
 	}
 	g.tmpl, err = template.New("portal").Funcs(template.FuncMap{
 		"brl": brl, "brlPtr": brlPtr, "dateBR": dateBR,
 		"periodLabel": periodLabel, "fuelLabel": fuelLabel, "plural": plural,
 	}).Parse(templates)
 	if err != nil {
+		return Result{}, err
+	}
+	if err := g.copyAssets(); err != nil {
 		return Result{}, err
 	}
 
@@ -401,7 +423,7 @@ func Generate(opts Options) (Result, error) {
 	if err := g.generateStatic(period, published, combinedHash); err != nil {
 		return Result{}, err
 	}
-	if err := g.copyAssets(); err != nil {
+	if err := g.writeSitemap(manifest.BuiltAt); err != nil {
 		return Result{}, err
 	}
 	if err := g.writeRobots(); err != nil {
@@ -679,13 +701,76 @@ func (g *generator) copyAssets() error {
 	if err != nil {
 		return err
 	}
-	return g.writeAsset("assets/portal.css", css)
+	sum := sha256.Sum256(css)
+	name := "portal." + hex.EncodeToString(sum[:4]) + ".css"
+	if err := g.writeAsset("assets/"+name, css); err != nil {
+		return err
+	}
+	g.cssURL = "/assets/" + name
+	return nil
+}
+
+func (g *generator) addSitemapRoute(route string) {
+	g.sitemapRoutes = append(g.sitemapRoutes, route)
+}
+
+type sitemapURL struct {
+	Loc     string `xml:"loc"`
+	LastMod string `xml:"lastmod,omitempty"`
+}
+
+type sitemapSet struct {
+	XMLName xml.Name     `xml:"urlset"`
+	XMLNS   string       `xml:"xmlns,attr"`
+	URLs    []sitemapURL `xml:"url"`
+}
+
+func (g *generator) writeSitemap(builtAt string) error {
+	if !g.indexable {
+		return nil
+	}
+	routes := append([]string(nil), g.sitemapRoutes...)
+	sort.Strings(routes)
+	unique := routes[:0]
+	for _, route := range routes {
+		if len(unique) == 0 || unique[len(unique)-1] != route {
+			unique = append(unique, route)
+		}
+	}
+	if len(unique) == 0 || len(unique) > 50_000 {
+		return fmt.Errorf("portalgen: invalid sitemap route count")
+	}
+	lastMod := ""
+	if at, err := time.Parse(time.RFC3339, builtAt); err == nil {
+		lastMod = at.UTC().Format("2006-01-02")
+	}
+	set := sitemapSet{XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9", URLs: make([]sitemapURL, 0, len(unique))}
+	for _, route := range unique {
+		if !strings.HasPrefix(route, "/") || !strings.HasSuffix(route, "/") {
+			return fmt.Errorf("portalgen: invalid sitemap route")
+		}
+		set.URLs = append(set.URLs, sitemapURL{Loc: g.siteURL + route, LastMod: lastMod})
+	}
+	body, err := xml.MarshalIndent(set, "", "  ")
+	if err != nil {
+		return err
+	}
+	body = append([]byte(xml.Header), body...)
+	body = append(body, '\n')
+	if err := g.writeAsset("sitemap.xml", body); err != nil {
+		return err
+	}
+	g.hasSitemap = true
+	return nil
 }
 
 func (g *generator) writeRobots() error {
 	body := "User-agent: *\nDisallow: /\n"
 	if g.indexable {
 		body = "User-agent: *\nAllow: /\n"
+		if g.hasSitemap {
+			body += "Sitemap: " + g.siteURL + "/sitemap.xml\n"
+		}
 	}
 	return g.writeAsset("robots.txt", []byte(body))
 }
@@ -706,23 +791,11 @@ func (g *generator) writeManifest(exportManifest enterpriseexport.Manifest, proj
 		pin := official.Manifest.pin()
 		manifest.OfficialRecords = &pin
 	}
-	descriptor, err := json.Marshal(struct {
-		SchemaVersion      string       `json:"schema_version"`
-		InputContentSHA256 string       `json:"input_content_sha256"`
-		MetricsVersion     string       `json:"metrics_version"`
-		PublishedAt        string       `json:"published_at"`
-		Pages              int          `json:"pages"`
-		Files              []FileDigest `json:"files"`
-	}{
-		SchemaVersion: manifest.SchemaVersion, InputContentSHA256: manifest.InputContentSHA256,
-		MetricsVersion: manifest.MetricsVersion, PublishedAt: manifest.PublishedAt,
-		Pages: manifest.Pages, Files: manifest.Files,
-	})
+	contentSHA256, err := manifestContentDigest(manifest)
 	if err != nil {
 		return Manifest{}, err
 	}
-	sum := sha256.Sum256(descriptor)
-	manifest.ContentSHA256 = "sha256:" + hex.EncodeToString(sum[:])
+	manifest.ContentSHA256 = contentSHA256
 	encoded, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return Manifest{}, err
@@ -738,6 +811,30 @@ func (g *generator) writeManifest(exportManifest enterpriseexport.Manifest, proj
 	return manifest, nil
 }
 
+// manifestContentDigest binds the complete manifest, including the official
+// pin, so a verifier can reject a changed source/association descriptor even
+// when the page files are untouched.
+func manifestContentDigest(manifest Manifest) (string, error) {
+	descriptor, err := json.Marshal(struct {
+		SchemaVersion      string       `json:"schema_version"`
+		InputContentSHA256 string       `json:"input_content_sha256"`
+		MetricsVersion     string       `json:"metrics_version"`
+		PublishedAt        string       `json:"published_at"`
+		Pages              int          `json:"pages"`
+		Files              []FileDigest `json:"files"`
+		OfficialRecords    *officialPin `json:"official_records,omitempty"`
+	}{
+		SchemaVersion: manifest.SchemaVersion, InputContentSHA256: manifest.InputContentSHA256,
+		MetricsVersion: manifest.MetricsVersion, PublishedAt: manifest.PublishedAt,
+		Pages: manifest.Pages, Files: manifest.Files, OfficialRecords: manifest.OfficialRecords,
+	})
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(descriptor)
+	return "sha256:" + hex.EncodeToString(sum[:]), nil
+}
+
 func digestBytes(data []byte) string {
 	sum := sha256.Sum256(data)
 	return "sha256:" + hex.EncodeToString(sum[:])
@@ -747,7 +844,7 @@ func (g *generator) base(title, description, active, period, published, inputHas
 	return pageBase{
 		Title: title, Description: description, ActiveNav: active,
 		Indexable: g.indexable, Period: period, PublishedAt: published,
-		InputHash: inputHash, ScriptURL: g.scriptURL, Breadcrumbs: crumbs,
+		InputHash: inputHash, CSSURL: g.cssURL, ScriptURL: g.scriptURL, Breadcrumbs: crumbs,
 	}
 }
 
@@ -768,7 +865,11 @@ func (g *generator) generateConsultar(summaries []analytics.Summary, states map[
 		States:   stateLinks, National: summaryRows(summaries, analytics.LevelNational, "BR", false),
 		SearchStates: searchStates, SearchRelease: release,
 	}
-	return g.writePage("consultar/index.html", "consultar", data)
+	if err := g.writePage("consultar/index.html", "consultar", data); err != nil {
+		return err
+	}
+	g.addSitemapRoute("/consultar/")
+	return nil
 }
 
 func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []analytics.Ranking, stations map[string]enterpriseexport.Station, states map[string]int, period, published, inputHash string) error {
@@ -791,7 +892,11 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 		pageBase: g.base("Preços por região", "Resumo derivado da pesquisa ANP por região, com amostra, mínimo, máximo, dispersão e vínculo com a metodologia.", "precos", period, published, inputHash, []crumb{{Label: "Preços", Current: true}}),
 		National: summaryRows(summaries, analytics.LevelNational, "BR", false), Rankings: views, States: stateLinks,
 	}
-	return g.writePage("precos/index.html", "precos", data)
+	if err := g.writePage("precos/index.html", "precos", data); err != nil {
+		return err
+	}
+	g.addSitemapRoute("/precos/")
+	return nil
 }
 
 func (g *generator) generateStates(summaries []analytics.Summary, rankings []analytics.Ranking, stations map[string]enterpriseexport.Station, municipalityStations map[string]int, municipalityState, municipalityName map[string]string, period, published, inputHash string) error {
@@ -841,6 +946,7 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 		if err := g.writePage("precos/uf/"+uf+"/index.html", "state", data); err != nil {
 			return err
 		}
+		g.addSitemapRoute("/precos/uf/" + uf + "/")
 	}
 	return nil
 }
@@ -888,6 +994,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 		if err := g.writePage("precos/uf/"+uf+"/municipio/"+code+"/index.html", "municipality", data); err != nil {
 			return err
 		}
+		g.addSitemapRoute("/precos/uf/" + uf + "/municipio/" + code + "/")
 	}
 	return nil
 }
@@ -991,6 +1098,7 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 		if err := g.writePage("postos/"+station.StationID+"/index.html", "station", data); err != nil {
 			return err
 		}
+		g.addSitemapRoute("/postos/" + station.StationID + "/")
 	}
 	return nil
 }
@@ -1000,7 +1108,11 @@ func (g *generator) generateCuriosidades(cards []insightCard, period, published,
 		pageBase: g.base("Perguntas aprovadas sobre os dados", "Respostas determinísticas sobre amostra, preços e cobertura da pesquisa ANP, com fórmula e fonte.", "curiosidades", period, published, inputHash, []crumb{{Label: "Curiosidades", Current: true}}),
 		Cards:    cards, DownloadsHref: "/dados/",
 	}
-	return g.writePage("curiosidades/index.html", "curiosidades", data)
+	if err := g.writePage("curiosidades/index.html", "curiosidades", data); err != nil {
+		return err
+	}
+	g.addSitemapRoute("/curiosidades/")
+	return nil
 }
 
 func (g *generator) generateDownloads(files []downloadFile, manifest downloadFile, period, release, published, inputHash string) error {
@@ -1008,7 +1120,11 @@ func (g *generator) generateDownloads(files []downloadFile, manifest downloadFil
 		pageBase: g.base("Baixar dados públicos", "Downloads CSV e manifesto da pesquisa ANP mais recente, com amostra, período, fonte e limites.", "", period, published, inputHash, []crumb{{Label: "Dados para download", Current: true}}),
 		Release:  release, Period: period, Files: files, Manifest: manifest, Notes: downloadNotes,
 	}
-	return g.writePage("dados/index.html", "dados", data)
+	if err := g.writePage("dados/index.html", "dados", data); err != nil {
+		return err
+	}
+	g.addSitemapRoute("/dados/")
+	return nil
 }
 
 func (g *generator) generateStatic(period, published, inputHash string) error {
@@ -1020,6 +1136,7 @@ func (g *generator) generateStatic(period, published, inputHash string) error {
 	if err := g.writePage("metodologia/index.html", "metodologia", metodologia); err != nil {
 		return err
 	}
+	g.addSitemapRoute("/metodologia/")
 	notFound := pageBase{
 		Title: "Página não encontrada", Description: "A página ou o posto solicitado não existe neste portal estático.",
 		ActiveNav: "", Indexable: false, Period: period, PublishedAt: published, InputHash: inputHash,

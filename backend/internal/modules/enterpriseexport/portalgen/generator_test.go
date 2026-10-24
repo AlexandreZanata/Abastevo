@@ -171,7 +171,7 @@ func TestGenerateFixturePages(t *testing.T) {
 		"postos/" + stA + "/index.html", "postos/" + stD + "/index.html",
 		"metodologia/index.html", "fiscalizacao/index.html", "404.html",
 		"curiosidades/index.html", "dados/index.html",
-		"assets/portal.css", "robots.txt", "portal-manifest.json",
+		"robots.txt", "portal-manifest.json",
 		"dados/busca/fixture/SP.json", "dados/busca/fixture/MG.json",
 		"dados/busca/fixture/sem-uf.json",
 		"dados/fixture/estacoes.csv", "dados/fixture/precos.csv",
@@ -180,6 +180,10 @@ func TestGenerateFixturePages(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(out, page)); err != nil {
 			t.Errorf("missing %s: %v", page, err)
 		}
+	}
+	cssFiles, err := filepath.Glob(filepath.Join(out, "assets", "portal.*.css"))
+	if err != nil || len(cssFiles) != 1 {
+		t.Fatalf("fingerprinted CSS = %v %v", cssFiles, err)
 	}
 	consultar := readPortal(t, out, "consultar/index.html")
 	for _, want := range []string{
@@ -838,19 +842,41 @@ func TestRealOfficialSnapshotPages(t *testing.T) {
 	if err := json.Unmarshal(manifestRaw, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	out := filepath.Join(t.TempDir(), "portal-real-official")
-	result, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out})
+	out := os.Getenv("ANPFUEL_TEST_PORTAL_OUT")
+	if out == "" {
+		out = filepath.Join(t.TempDir(), "portal-real-official")
+	}
+	indexable := os.Getenv("ANPFUEL_TEST_PORTAL_INDEXABLE") == "1"
+	siteURL := os.Getenv("ANPFUEL_TEST_PORTAL_SITE_URL")
+	if siteURL == "" {
+		siteURL = "https://portal.example"
+	}
+	searchJS := os.Getenv("ANPFUEL_TEST_PORTAL_SEARCH_JS")
+	result, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out, Indexable: indexable, SiteURL: siteURL, SearchScriptPath: searchJS})
 	if err != nil {
 		t.Fatal(err)
 	}
 	pages := (manifest.Rows + officialPageSize - 1) / officialPageSize
 	wantPages := 18 + (pages - 1) + manifest.Rows
 	wantFiles := 28 + (pages - 1) + manifest.Rows
+	if indexable {
+		wantFiles++
+	}
+	if searchJS != "" {
+		wantFiles++
+	}
 	if result.Pages != wantPages || result.Files != wantFiles {
 		t.Fatalf("real official result = %+v, want %d pages/%d files", result, wantPages, wantFiles)
 	}
 	t.Logf("real FQ-07 2025 portal: rows=%d pages=%d files=%d bytes=%d content=%s",
 		manifest.Rows, result.Pages, result.Files, result.Bytes, result.ContentSHA256)
+	verified, err := Verify(out, VerifyOptions{SiteURL: siteURL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("real FQ-07 2025 portal verified: pages=%d files=%d bytes=%d html_gzip=%d shard_gzip=%d initial_gzip=%d path=%s",
+		verified.Pages, verified.Files, verified.Bytes, verified.LargestHTMLGzipBytes,
+		verified.LargestShardGzipBytes, verified.InitialViewGzipBytes, out)
 	index := readPortal(t, out, "fiscalizacao/index.html")
 	if !strings.Contains(index, "Fiscalização — multas aplicadas") || !strings.Contains(index, "Edição 2025") {
 		t.Errorf("real official index missing identity")
