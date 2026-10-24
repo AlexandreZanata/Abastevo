@@ -13,6 +13,13 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- EE-30 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `113d6df7`.
+  [Source-ready manifest](../backend/evidence/ev-support/EE-30.md): pins code
+  head `887d5a71`, append-only `000120`, Room 25, OpenAPI/profile/vector hashes,
+  private OCM/PBE/enforcement artifact hashes/census, feature defaults and
+  license boundaries. SOURCE_READY_LOCAL only; staging/integration/release and
+  all external proofs stay OWED. No deploy/activation.
+
 - MEX-37 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `4c8f86eb`.
   [Final scoped union](../backend/evidence/mobile-expansion/MEX-37.md): code
   head `887d5a71` full matrix 2,130 JVM (0 failures/errors, 2 pre-existing

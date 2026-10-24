@@ -1,0 +1,78 @@
+{
+  "schema": "abastevo-ev-source-ready-manifest-v1",
+  "created": "2026-10-23",
+  "state": "SOURCE_READY_LOCAL",
+  "source_head": "887d5a71",
+  "manifest_parent": "113d6df7",
+  "code": {
+    "modules": ["domain", "application", "data", "app", "backend", "tools/station-prep"],
+    "jvm_tests": 2130,
+    "jvm_failures": 0,
+    "jvm_errors": 0,
+    "jvm_skips": 2,
+    "rust_tests": 177,
+    "go_race": "PASS",
+    "go_integration": "PASS with documented disposable PostGIS and trusted preparers"
+  },
+  "schema": {
+    "postgres_latest_migration": "000120_ledger_charge_consent.sql",
+    "postgres_latest_sha256": "cbb6214c45da4dce05bf3dccc297722172c47443fd28fc17f3f867f6ee86932f",
+    "room_version": 25,
+    "room_upgrade_test": "24->25 six real SQLite cases PASS",
+    "append_only": true,
+    "down_migration": "none; recovery restores forward/redeploys the prior image"
+  },
+  "contracts": {
+    "openapi_v1_sha256": "85dd7153342488b4134b99e274f66a381bd87f1ac98a59bfd962470329902019",
+    "preparation_profiles_sha256": "aba3a884b08a6e5dc5305eb8e14635bc0317cf07a74bb3e267ccf6e330890727",
+    "tariff_vectors_sha256": "c383ed79f0b4d81ba2c7de22408f964e53aa61a3ad9e7431f66ededda9104bae",
+    "exact_vectors_sha256": "59da7167575932045b4b370807df7e9fddddafb01b81373d64bde5dab43eb38e",
+    "support_vectors_sha256": "60f138842416dc322a5e24f08782540e3fdd95c54112fc5e4da4da93004bbecd"
+  },
+  "private_source_artifacts": {
+    "ocm_prepared_manifest_sha256": "abd5cdf4e7c303b63e356a521d2ee0f43e0048ec14fa639df8dae1191ec31cf9",
+    "ocm_places": 1298,
+    "ocm_groups": 2089,
+    "pbe_prepared_manifest_sha256": "5f9e66b9daa7cfca333688288348cde0f50b8a49090102ecd7aceb4cd3874dd8",
+    "pbe_vehicle_references": 181,
+    "enforcement_census_sha256": "b28e1129ffdfc9402589bfa60670d3c7a0e83ed52e11739ed99afe6b57b6e857",
+    "enforcement_rows": 244247,
+    "raw_artifacts_in_git": false
+  },
+  "feature_defaults": {
+    "ANPFUEL_CHARGING_READS_ENABLED": "true",
+    "ANPFUEL_CHARGING_IMPORTS_ENABLED": "false",
+    "ANPFUEL_QUALITY_ENFORCEMENT_IMPORTS_ENABLED": "false",
+    "ANPFUEL_QUALITY_ENFORCEMENT_DISCOVERY_ENABLED": "false",
+    "ANPFUEL_QUALITY_DISCOVERY_ENABLED": "false",
+    "paid_acquisition": "disabled; restore unavailable without billing token source",
+    "occurrence_ui": "build-scoped OCCURRENCE_UI_ENABLED"
+  },
+  "licenses": {
+    "code": "MIT",
+    "ocm": "CC-BY-4.0 / CC0 per provider, attribution retained",
+    "pbe": "prepared under user-authorized local admission; redistribution outside scope",
+    "enforcement": "prepared under user-authorized local admission; no raw PII/artifact in Git"
+  },
+  "state_boundaries": {
+    "source_ready": true,
+    "staging_proven": false,
+    "integrated_to_main": false,
+    "release_certified": false,
+    "dynamic_charger_availability": false
+  },
+  "rollback": {
+    "app": "disable affected UI/flag; keep local Room data",
+    "backend": "set imports/discovery flags false; reads may stay enabled; keep published immutable revisions",
+    "database": "no destructive down; restore verified backup or redeploy prior image, replay append-only migrations"
+  },
+  "external_proofs_owed": [
+    "Play Billing sandbox purchase/renewal/lapse and restore token",
+    "signed staging two-device sync and private R2/S3 deletion receipts",
+    "licensed operator feed ACCESS_PENDING credentials and current tariff",
+    "physical Android TalkBack/font/offline/process-death and Room reopen",
+    "production deploy/migration/load/restore certification and public pilot",
+    "PBE/OCM data redistribution outside the admitted local preparation scope",
+    "dynamic Brazilian charger availability/live status"
+  ]
+}
