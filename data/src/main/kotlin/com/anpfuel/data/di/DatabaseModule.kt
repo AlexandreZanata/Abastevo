@@ -63,12 +63,17 @@ object DatabaseModule {
                 AnpFuelDatabaseMigrations.MIGRATION_22_23,
                 AnpFuelDatabaseMigrations.MIGRATION_23_24,
                 AnpFuelDatabaseMigrations.MIGRATION_24_25,
+                AnpFuelDatabaseMigrations.MIGRATION_25_26,
             )
             .build()
 
     @Provides
     fun provideSurveyWeekDao(database: AnpFuelDatabase): SurveyWeekDao =
         database.surveyWeekDao()
+
+    @Provides
+    fun provideMapPackageDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.MapPackageDao =
+        database.mapPackageDao()
 
     @Provides
     fun provideAveragePriceDao(database: AnpFuelDatabase): AveragePriceDao =

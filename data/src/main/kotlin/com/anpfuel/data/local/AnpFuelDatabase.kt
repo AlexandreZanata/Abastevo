@@ -54,8 +54,10 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.entity.VehicleCapabilityLeaseEntity::class,
         com.anpfuel.data.local.entity.LedgerDraftEntity::class,
         com.anpfuel.data.local.entity.LedgerErasedEntity::class,
+        com.anpfuel.data.local.map.MapGenerationEntity::class,
+        com.anpfuel.data.local.map.MapPackageEntity::class,
     ],
-    version = 25,
+    version = 26,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
@@ -97,4 +99,6 @@ abstract class AnpFuelDatabase : RoomDatabase() {
     abstract fun ledgerDraftDao(): com.anpfuel.data.local.dao.LedgerDraftDao
 
     abstract fun ledgerErasedDao(): com.anpfuel.data.local.dao.LedgerErasedDao
+
+    abstract fun mapPackageDao(): com.anpfuel.data.local.dao.MapPackageDao
 }

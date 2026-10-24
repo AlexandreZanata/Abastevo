@@ -700,4 +700,41 @@ object AnpFuelDatabaseMigrations {
             )
         }
     }
+
+    val MIGRATION_25_26: Migration = object : Migration(25, 26) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `map_generation` (
+                    `generation` TEXT NOT NULL,
+                    `manifest_sha256` TEXT NOT NULL,
+                    `active` INTEGER NOT NULL,
+                    `activated_at_millis` INTEGER,
+                    PRIMARY KEY(`generation`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `map_package` (
+                    `package_id` TEXT NOT NULL,
+                    `generation` TEXT NOT NULL,
+                    `role` TEXT NOT NULL,
+                    `file_name` TEXT NOT NULL,
+                    `bytes` INTEGER NOT NULL,
+                    `sha256` TEXT NOT NULL,
+                    `etag` TEXT,
+                    `status` TEXT NOT NULL,
+                    `downloaded_bytes` INTEGER NOT NULL,
+                    `error` TEXT,
+                    `updated_at_millis` INTEGER NOT NULL,
+                    PRIMARY KEY(`generation`, `package_id`),
+                    FOREIGN KEY(`generation`) REFERENCES `map_generation`(`generation`) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent(),
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_map_package_generation` ON `map_package` (`generation`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_map_package_status` ON `map_package` (`status`)")
+        }
+    }
 }

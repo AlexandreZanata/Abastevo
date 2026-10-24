@@ -2,7 +2,8 @@
 
 - Map/EV execution 2026-10-24: MAP-00–07 LOCAL_DONE / INTEGRATION_PENDING;
   MAP-08 LOCAL_DONE; MAP-09–13 LOCAL_DONE / INTEGRATION_PENDING; MAP-14
-  IN_PROGRESS / ENGINE_GATE_PARTIAL; MAP-15–16 blocked by MAP-14. Local commits
+  IN_PROGRESS / ENGINE_GATE_PARTIAL; MAP-15 LOCAL_DONE /
+  INTEGRATION_PENDING; MAP-16 blocked by MAP-14. Local commits
   dc3282fb..8b5a3a21 on `codex/map-ev-implementation` (base `721582b8`); tree
   clean, no push/PR/merge. [MAP-08](../backend/evidence/maps/MAP-08.md),
   [MAP-09](../backend/evidence/maps/MAP-09.md),
@@ -37,9 +38,14 @@
   bytes, SHA `79a3117e…`, zipalign/16 KB LOAD PASS. Arm64 phone (4 KB pages)
   loaded the library but rendered a blank SurfaceView with BLAST buffer errors;
   actual 16 KB runtime and arm64 render remain unproven.
+  MAP-15: Room v26 public map metadata, resumable `.part` download, Ed25519
+  envelope/key rotation, SHA-256, reserve/disk failure, all-package activation,
+  safe inactive cleanup and Hilt WorkManager worker. JVM data tests and a real
+  phone Room/Ed25519 instrumentation test PASS; WorkManager retry/cancel and
+  historical schema-25 migration remain follow-up.
   Tests: `go test ./...`, targeted `-race -tags=integration`, MAP-12/13 process
-  proofs, `MapPoiCodecTest`, `MapDiscoveryResponseCodecTest`, normal app debug
-  build and engine debug build.
+  proofs, `MapPoiCodecTest`, `MapDiscoveryResponseCodecTest`, `:data` unit and
+  phone instrumentation, normal app debug build and engine debug build.
   Local commits only; no push/PR/merge, deploy, Play, production or
   RELEASE_CERTIFIED claim.
   Build recovery: [MAP-14 T03](../backend/evidence/maps/MAP-14_BUILD_RECOVERY.md)
