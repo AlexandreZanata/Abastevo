@@ -13,6 +13,14 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- MEX-37 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `4c8f86eb`.
+  [Final scoped union](../backend/evidence/mobile-expansion/MEX-37.md): code
+  head `887d5a71` full matrix 2,130 JVM (0 failures/errors, 2 pre-existing
+  skips), lint/APK, Go race/vet/static/sqlc/PostGIS/OpenAPI, Rust 177/fmt/
+  clippy, compat script and 8-locale parity PASS; later commits are docs only.
+  Physical TalkBack/font/offline/device Room and staging remain OWED. Next
+  EE-30/MEX-38 manifest.
+
 - MEX-36 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `54e8a021`.
   [Privacy/all-copy recovery](../backend/evidence/mobile-expansion/MEX-36.md):
   real PostGIS erasure reuse/outage/retry, stale/double restore, delete-during-
