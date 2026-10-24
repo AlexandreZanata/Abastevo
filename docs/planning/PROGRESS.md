@@ -1,5 +1,25 @@
 # Current execution state
 
+- Map/EV execution 2026-10-24: MAP-00–07 LOCAL_DONE / INTEGRATION_PENDING;
+  MAP-08 IN_PROGRESS/BLOCKED; engine spike PASS but adapter pending. Commits
+  `34750fe1..5cf02a73` on maintained dev after `01c1f068`; no PR/merge/wiki.
+  [MAP-00](evidence/MAP-00.md), [MAP-01](evidence/MAP-01.md),
+  [MAP-02](evidence/MAP-02.md), [MAP-03](evidence/MAP-03.md),
+  [MAP-04](evidence/MAP-04.md), [MAP-05](evidence/MAP-05.md),
+  [MAP-06](evidence/MAP-06.md), [MAP-07](evidence/MAP-07.md),
+  [MAP-08](evidence/MAP-08.md), [engine spike](MAP-14_SPIKE.md).
+  Contracts/goldens for POI/price/native manifest; OSM PBF nodes/ways/relations;
+  exact ANP station facts; admitted OCM/PBE reuse; reviewed charging/station
+  links and separate access points; electric handlers/ledger charge fixed.
+  Tests: real PostGIS linking/migration/concurrency/rollback; Rust station-prep
+  full suites/clippy; Go charging/ledger/API process; Kotlin contract/ANP fixture.
+  CoMaps `4587b8ad` built (AAR x86_64; APK 144 MB) and proved render, offline
+  search, POI selection and a 2,007.85 m offline car route on emulator API 26.
+  A generated Curitiba `.mwm` renders but fails `--check_mwm` and an earlier
+  routed build crashed; no map package was published. No Abastevo adapter/UI,
+  arm64/16KB, data gate MAP-09–13, device manual acceptance, staging or release
+  claim. Next: fix MAP-08 generation/check/route, then MAP-09–13 and the
+  Abastevo adapter/Compose map before MAP-15–33.
 - Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
   IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
   [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),
