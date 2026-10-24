@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-rust check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-rust check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 test-portal-release rehearse-portal help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -61,6 +61,12 @@ test-security:
 test-rehearse:
 	bash scripts/tests/test-rehearse.sh
 
+test-portal-release:
+	cd backend && go test -race -count=1 ./internal/modules/enterpriseexport/portalgen
+
+rehearse-portal:
+	bash infra/scripts/rehearse-portal.sh
+
 check-compat:
 	bash scripts/check-compat.sh
 
@@ -92,6 +98,8 @@ help:
 	@echo "  check-security  STRIDE/dependency release review gate (P08-T08)"
 	@echo "  test-security   security gate failure-behavior harness (P08-T08)"
 	@echo "  test-rehearse   local release rehearsal, real disposable DB (P09-T01)"
+	@echo "  test-portal-release  portal publisher/verifier tests (ESP-14)"
+	@echo "  rehearse-portal isolated static portal Caddy rehearsal (ESP-14)"
 	@echo "  check-compat    contract + frozen deltas + runbooks gate (P09-T02)"
 	@echo "  test-compat     compat gate failure-behavior harness (P09-T02)"
 	@echo "  check-g09       G09 readiness gate, refuses open blockers (P09-T03)"

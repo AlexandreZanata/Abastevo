@@ -88,6 +88,17 @@ docker/curl. The full sequence, backup precheck, receipt keeping and
 the CI publish design live in [the deploy runbook](../docs/operator/deploy.md).
 No destructive down migration exists: rollback is a forward redeploy.
 
+## Static portal rehearsal (ESP-14)
+
+The enterprise portal has a separate, isolated promotion/hosting rehearsal:
+`infra/scripts/rehearse-portal.sh` promotes verified candidates into a private
+release root and serves the atomic `current` symlink with the pinned Caddy image
+on loopback only. It is not wired into the staging/production edge and does not
+contact the API, database, DNS or CDN. See
+[static portal hosting](../docs/operator/portal-static-hosting.md) for the
+topology decision, release layout, headers, rollback/withdrawal and remaining
+production obligations.
+
 ## Encrypted off-host backups (P08-T03)
 
 `infra/scripts/backup.sh` writes daily encrypted dumps with a
