@@ -1,5 +1,19 @@
 # Current execution state
 
+- Test-environment update 2026-10-24: API/worker `53719336` deployed to the
+  explicitly selected `teste.abastevo.com.br`; schema95→120 rehearsed on a
+  restored copy, quiesced backups retained, original data fingerprints unchanged
+  across105 tables. API/worker/storage ready with zero restarts; public health200,
+  signed consent16 checks and account/session30 checks PASS. Physical debug APK
+  replaced via ADB with matching signature/hash and retained app data; UI tests
+  remain user-owned. [Runtime evidence and gaps](../backend/evidence/TEST_ENV_UPDATE_2026-10-24.md):
+  EV community/rank/history routes unmounted, charge reads/delete selector incomplete,
+  charging sources unpublished; full electric runtime acceptance remains PARTIAL.
+  Local test setup/restore repairs: Go race2414 and integrated3352 outcomes PASS
+  (2/6 opt-in skips), real source→HTTP/PostGIS, static/security/restore/load PASS.
+  Test-harness corrections LOCAL_DONE / INTEGRATION_PENDING; no new remote delivery
+  or G09 certification. Next: bounded runtime-gap correction and user manual checks.
+
 - Delivery integrated 2026-10-24: PR #147 merged to protected main as
   `c82823cb` (head `3fa0bd08`, base `c3de5c03`); PR #149's five audited commits
   are ancestors of main (`ebd777ef` etc.) and the PR is MERGED via the dev

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -25,12 +26,15 @@ import (
 
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	adminDSN := "postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable"
+	adminDSN := os.Getenv("ANPFUEL_TEST_DATABASE_URL")
+	if adminDSN == "" {
+		adminDSN = "postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable"
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	admin, err := pgx.Connect(ctx, adminDSN)
 	if err != nil {
-		t.Skip("database unavailable")
+		t.Fatal("integration database unavailable", err)
 	}
 	defer admin.Close(ctx)
 	name := fmt.Sprintf("charging_read_%d", time.Now().UnixNano())

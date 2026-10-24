@@ -55,7 +55,7 @@ cd backend && govulncheck ./...
 Integration gate, real disposable PostGIS (from the repository root):
 
 ```sh
-cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --target-dir /tmp/abastevo-integration-rust
+cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --bin prepare_enforcement --target-dir /tmp/abastevo-integration-rust
 export ANPFUEL_TEST_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_registry
 chmod 755 /tmp/abastevo-integration-rust/debug/prepare_quality
 export ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality
@@ -63,6 +63,8 @@ chmod 755 /tmp/abastevo-integration-rust/debug/prepare_sanctions
 export ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions
 chmod 755 /tmp/abastevo-integration-rust/debug/prepare_fine_history
 export ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_fine_history
+chmod 755 /tmp/abastevo-integration-rust/debug/prepare_enforcement
+export ANPFUEL_TEST_ENFORCEMENT_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_enforcement
 docker compose -f infra/compose.dev.yml up -d db
 (
   cd backend
@@ -93,6 +95,13 @@ It clears inherited runtime DSN/storage settings and never selects the shared
 Reports remain in a printed `/tmp` directory; set `ANPFUEL_LOCAL_REPORT_DIR` to
 choose a local output path. The container credentials are synthetic test values.
 These tmpfs services lose all data on removal; they are not production storage.
+
+The restore harness also needs the disposable `ANPFUEL_TEST_STORAGE_{ENDPOINT,
+BUCKET,REGION,ACCESS_KEY_ID,SECRET_ACCESS_KEY}` settings supplied by this runner.
+It first proves that missing storage refuses an evidence-erasure acknowledgement,
+then replays the restored deletion ledger with the private S3 fixture configured.
+The enforcement integration cases require the trusted `prepare_enforcement` CLI,
+which the full runner builds and exports alongside the other native preparers.
 
 For an already running synthetic API on a local/private literal IP, run:
 

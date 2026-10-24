@@ -31,7 +31,7 @@ func observationTestPool(t *testing.T) *pgxpool.Pool {
 	defer cancel()
 	admin, err := pgx.Connect(ctx, adminDSN)
 	if err != nil {
-		t.Skip("database unavailable")
+		t.Fatal("integration database unavailable", err)
 	}
 	defer admin.Close(ctx)
 	name := fmt.Sprintf("charging_obs_%d", time.Now().UnixNano())

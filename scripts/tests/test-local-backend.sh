@@ -23,14 +23,15 @@ export GOCACHE="${GOCACHE:-$WORK/go-cache}"
 echo "Local reports: $REPORT"
 # The full Go integration suite invokes the real Rust pipeline; never inherit
 # an external preparer or skip that case when the prerequisite is missing.
-cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --target-dir "$WORK/rust-target" >"$REPORT/rust-preparer.log" 2>&1
+cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --bin prepare_enforcement --target-dir "$WORK/rust-target" >"$REPORT/rust-preparer.log" 2>&1
 # Cargo follows the operator umask. The trusted bridge correctly rejects
 # group-writable executables, so normalize only our freshly built fixtures.
-chmod 755 "$WORK/rust-target/debug/prepare_registry" "$WORK/rust-target/debug/prepare_quality" "$WORK/rust-target/debug/prepare_sanctions" "$WORK/rust-target/debug/prepare_fine_history"
+chmod 755 "$WORK/rust-target/debug/prepare_registry" "$WORK/rust-target/debug/prepare_quality" "$WORK/rust-target/debug/prepare_sanctions" "$WORK/rust-target/debug/prepare_fine_history" "$WORK/rust-target/debug/prepare_enforcement"
 export ANPFUEL_TEST_PREPARER_PATH="$WORK/rust-target/debug/prepare_registry"
 export ANPFUEL_TEST_QUALITY_PREPARER_PATH="$WORK/rust-target/debug/prepare_quality"
 export ANPFUEL_TEST_SANCTIONS_PREPARER_PATH="$WORK/rust-target/debug/prepare_sanctions"
 export ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH="$WORK/rust-target/debug/prepare_fine_history"
+export ANPFUEL_TEST_ENFORCEMENT_PREPARER_PATH="$WORK/rust-target/debug/prepare_enforcement"
 docker compose -f "$COMPOSE" up -d --wait db storage >"$REPORT/startup.log" 2>&1
 docker compose -f "$COMPOSE" run --rm storage-init >"$REPORT/storage-init.log" 2>&1
 DB_ADDR="$(docker compose -f "$COMPOSE" port db 5432)"
