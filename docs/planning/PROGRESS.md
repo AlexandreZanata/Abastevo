@@ -1,5 +1,15 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-07 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-06 `6e52f9bd`. Conventional Asaas Pix
+  service/adapter added: owner customer mapping, server price/BRL, due date,
+  external-reference correlation, bounded owner QR/status, dispatch-before-call,
+  ambiguous recovery and incomplete-search fencing. No auto-debit/settlement/
+  grant. [PAY-07 evidence](../backend/evidence/payments/PAY-07.md): app/adapter/
+  real-Store race tests, full backend suite, vet/staticcheck/govulncheck/sqlc and
+  security/secret gates PASS. No HTTP/runtime/webhook or sale activation. Next:
+  PAY-08 Stripe webhook inbox only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-06 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-05 `d519a49b`. Stripe Go v87 hosted
   Checkout use case added: server catalog, deterministic order, owner customer

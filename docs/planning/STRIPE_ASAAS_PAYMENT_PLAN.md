@@ -192,6 +192,9 @@ preflight are validated; missing/mixed values disable only unsafe sales.
 PAY-06 is LOCAL_DONE: server-catalog Stripe hosted Checkout, owner-bound customer
 mapping, stable idempotency, durable ambiguous recovery and card-only/return-
 origin checks are implemented and tested; runtime/webhook wiring remains PAY-08+.
+PAY-07 is LOCAL_DONE: conventional Asaas Pix uses owner customer mapping, exact
+server amount/due date/external reference, bounded owner QR/status, serialized
+creation and external-reference recovery; no auto-debit/settlement is added.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider

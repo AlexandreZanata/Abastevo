@@ -161,3 +161,82 @@ func TestCheckoutServiceLostResponseRealStore(t *testing.T) {
 		t.Fatalf("create=%d find=%d", provider.createCount, provider.findCount)
 	}
 }
+
+func pixCatalog(t *testing.T) domain.Catalog {
+	t.Helper()
+	catalog, err := domain.NewCatalog("pay-catalog-v1", domain.Offer{
+		ID: testOffer, Family: "premium", Term: domain.TermMonthly, Price: domain.BRL(1234),
+		Capabilities: domain.PremiumCapabilityList(),
+		Channels:     map[domain.Channel]bool{domain.ChannelPixManual: true},
+		SaleEnabled:  true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return catalog
+}
+
+func TestPixServiceRealStore(t *testing.T) {
+	pool := freshCheckoutDB(t)
+	owner := seedCheckoutOwner(t, pool)
+	provider := newFakePixProvider()
+	service := &app.PixService{
+		Store: adapters.NewStore(pool), Provider: provider, Catalog: pixCatalog(t),
+		Config: app.PixConfig{
+			Environment: domain.EnvironmentTest, MerchantID: "11111111-1111-4111-8111-111111111111",
+			CatalogVersion: "pay-catalog-v1", NewSalesEnabled: true, LeaseTTL: time.Minute,
+		},
+	}
+	started, err := service.Start(context.Background(), app.Principal{AccountID: owner}, pixRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, err := service.Status(context.Background(), app.Principal{AccountID: owner}, started.OrderID)
+	if err != nil || status.PaymentID != started.PaymentID || status.QRCode == "" {
+		t.Fatalf("status=%+v err=%v", status, err)
+	}
+	if _, err := service.Status(context.Background(), app.Principal{AccountID: testOther}, started.OrderID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("foreign status err = %v", err)
+	}
+	var orders, operations, attempts, customers, settlements, grants int
+	if err := pool.QueryRow(context.Background(), `SELECT
+		(SELECT count(*) FROM payment_orders),
+		(SELECT count(*) FROM payment_operations),
+		(SELECT count(*) FROM payment_attempts),
+		(SELECT count(*) FROM payment_customers),
+		(SELECT count(*) FROM payment_settlements),
+		(SELECT count(*) FROM payment_grants)`).Scan(&orders, &operations, &attempts, &customers, &settlements, &grants); err != nil {
+		t.Fatal(err)
+	}
+	if orders != 1 || operations != 1 || attempts != 1 || customers != 1 || settlements != 0 || grants != 0 {
+		t.Fatalf("orders=%d operations=%d attempts=%d customers=%d settlements=%d grants=%d", orders, operations, attempts, customers, settlements, grants)
+	}
+}
+
+func TestPixServiceLostResponseRealStore(t *testing.T) {
+	pool := freshCheckoutDB(t)
+	owner := seedCheckoutOwner(t, pool)
+	provider := newFakePixProvider()
+	provider.ambiguousOnce = true
+	service := &app.PixService{
+		Store: adapters.NewStore(pool), Provider: provider, Catalog: pixCatalog(t),
+		Config: app.PixConfig{
+			Environment: domain.EnvironmentTest, MerchantID: "11111111-1111-4111-8111-111111111111",
+			CatalogVersion: "pay-catalog-v1", NewSalesEnabled: true, LeaseTTL: time.Minute,
+		},
+	}
+	if _, err := service.Start(context.Background(), app.Principal{AccountID: owner}, pixRequest()); !errors.Is(err, app.ErrAmbiguous) {
+		t.Fatalf("first err = %v", err)
+	}
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE payment_operations SET lease_until=clock_timestamp()-interval '1 second'"); err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := service.Start(context.Background(), app.Principal{AccountID: owner}, pixRequest())
+	if err != nil || !recovered.Replayed {
+		t.Fatalf("recovered=%+v err=%v", recovered, err)
+	}
+	if provider.createCount != 1 || provider.findCount != 1 {
+		t.Fatalf("create=%d find=%d", provider.createCount, provider.findCount)
+	}
+}
