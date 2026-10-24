@@ -1,7 +1,7 @@
 # MAP-14 — Extracted engine adapter and render proof
 
-Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / T08_16KB_RUNTIME_DEFERRED
-Validation: PARTIAL (arm64 phone render/pan/zoom/offline search/route/select PASS; 16 KB runtime deferred by owner; clustering/accessibility/audit/ABI budgets pending)
+Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / T08_16KB_RUNTIME_DEFERRED / T06_PARTIAL
+Validation: PARTIAL (arm64 phone runtime PASS; T06 overlay model/clustering/symbols/accessible list/safe generation PASS; native cluster hit-test/artwork, 16 KB, T07 and ABI budgets pending)
 Integration: NOT_INTEGRATED
 
 Tested tree: `codex/map-ev-implementation` at `721582b8` plus the uncommitted
@@ -276,8 +276,111 @@ adb shell rm -rf /sdcard/Android/data/com.anpfuel.app.mapprobe
 Residual limits: the `BLASTBufferQueue ... Can't acquire next buffer` warnings
 still appear in logcat, although frames render and the screenshots are
 non-blank; this is recorded as a residual vendor/SurfaceFlinger warning, not a
-claim that its root cause is fixed. T06 clustering/co-located symbol
-disambiguation/accessible list, T07 transitive licenses/SBOM/notices, measured
-budgets, armeabi-v7a packaging and actual 16 KB runtime remain open. The release
-currently packages only the arm64 engine; supporting the whole device
-population requires the 32-bit release ABI and a size-budget check.
+claim that its root cause is fixed. T07 transitive licenses/SBOM/notices,
+measured budgets, armeabi-v7a packaging and actual 16 KB runtime remain open.
+The release currently packages only the arm64 engine; supporting the whole
+device population requires the 32-bit release ABI and a size-budget check.
+
+## T06 overlay model, clustering and accessibility — 2026-10-24
+
+Status: **T06 PARTIAL / IN_PROGRESS**. The overlay model, duplicate/type
+handling, 60 m clustering, native symbols, safe generation swap and accessible
+list are implemented and tested. The native cluster hit-test at a dense OSM POI
+location, final Abastevo artwork and the native 48 dp target remain open.
+
+Implemented in `maps/engine`:
+
+- `MapOverlay.kt`: canonical UUID validation/normalization, exact-UUID duplicate
+  merge (types and best location quality win), `UNKNOWN`/`CITY_CENTROID`/
+  `REVIEWED` location states, fuel/charging flags, deterministic leader
+  clustering, cluster IDs, KML with `Gas`/`ChargingStation`/`Information`
+  symbols and orange/teal/bluegray styles, and flat accessible list items.
+- `MapEngine`: `overlayClusters()` and
+  `setOnOverlaySelected(Station|Cluster)`. A cluster selection carries all
+  member markers; it never collapses distinct UUIDs into one station.
+- `ComapsMapEngine`: the previous category is kept until a new category is
+  found; the old category is deleted only after commit. The commit is posted
+  after the bookmark callback because calling `showBookmarkCategoryOnMap`
+  inside it reproduced a native `CHECK(m_updatedGroups.empty())` SIGABRT. The
+  fix was verified on the phone. Overlay updates only touch
+  `BookmarkManager`; no map package or routing graph is rebuilt.
+- `MapOverlayList`: Compose list with 48 dp minimum item height, merged
+  semantics and a TalkBack content description per station. Labels are
+  injectable; the future MAP-17 screen supplies localized strings.
+
+Probe fixture: 7 markers, 6 unique UUIDs after duplicate suppression, three
+clusters (one single, two multi), including a co-located fuel+charging station
+and all three location states. A second generation adds one station.
+
+Phone results (release AAR, isolated `mapProbe` variant):
+
+```text
+overlay generation=1 markers=7 clusters=3 pending
+overlay committed generation=1 category=1002 markers=7 clusters=3 rejected=0 duplicates=1
+MapProbe: first clusters=3 singles=1 multi=2 list=6
+overlay generation=2 markers=8 clusters=3 pending
+overlay committed generation=2 category=1003 markers=8 clusters=3 rejected=0 duplicates=1
+MapProbe: second clusters=3 singles=0 multi=3 list=7
+```
+
+After generation 2 only `files/bookmarks/abastevo-overlay-2.kml` remained; the
+generation-1 file was removed with its category. The cluster pin rendered with
+the `Information` symbol and label `ABASTEVO_CLUSTER:c2-1`; the fuel station
+rendered with the orange `Gas` symbol. The charging-only `ChargingStation`
+mapping is asserted by the KML test; it is not visible as an individual pin in
+the fixture capture because that marker is inside a cluster. Evidence image:
+[t06-clusters.jpg](map14-phone/t06-clusters.jpg) (cropped to exclude an
+unrelated user notification).
+
+Tests: **12** engine JVM tests PASS (KML declaration/escaping, icons/styles,
+duplicate merge, co-located distinct UUIDs, nearby/far clustering, invalid
+rejection, cluster KML, accessible labels, selection mapping). **3** phone
+instrumentation tests PASS (2 existing MapHost lifecycle/host tests plus
+`MapOverlayListInstrumentedTest`, which asserts the TalkBack description and
+`assertHeightIsAtLeast(48.dp)`). Gradle's UTP install was blocked by
+`INSTALL_FAILED_USER_RESTRICTED`; the self-instrumenting test APK was installed
+with `adb install` and run with `am instrument`, 3/3 OK.
+
+Known T06 limits:
+
+- Tapping the cluster pin at the fixture location opened an OSM POI
+  (`place page activated title=110139`) instead of the bookmark; this is the
+  known OSM-vs-bookmark hit-test collision. The app-owned cluster selection
+  mapping (`overlaySelectionFor`) is unit-tested, and individual station
+  selection was proven in T08, but native cluster hit-test needs a clean
+  location or an app-owned disambiguation/quick-sheet path in MAP-17.
+- The prepared Abastevo PNG pictograms are not integrated yet; the native
+  `Gas`/`ChargingStation` symbols are used. Final artwork/theme review remains
+  MAP-18 per the asset plan.
+- The accessible list has 48 dp targets; the native marker's own touch target
+  was not separately measured.
+- Clustering uses a fixed 60 m radius, not a zoom-dependent radius yet.
+- A failed overlay import retains the previous category by construction; the
+  failure path was not separately injected after the crash fix.
+- The list labels default to English; MAP-17 must pass localized labels.
+
+Commands for the T06 checks:
+
+```sh
+JAVA_HOME=/data/dev/java/candidates/java/current \
+  ./gradlew :maps:engine:testDebugUnitTest \
+    -PcomapsSdkDir=/tmp/abastevo-comaps-release-arm64 \
+    --offline --no-daemon --max-workers=2 --console=plain
+# 12 tests, 0 failures
+
+JAVA_HOME=/data/dev/java/candidates/java/current \
+  ./gradlew :maps:engine:assembleDebugAndroidTest \
+    -PcomapsSdkDir=/tmp/abastevo-comaps-release-arm64 \
+    --offline --no-daemon --max-workers=2 --console=plain
+adb install -r maps/engine/build/outputs/apk/androidTest/debug/engine-debug-androidTest.apk
+adb shell am instrument -w -r \
+  app.organicmaps.sdk.test/androidx.test.runner.AndroidJUnitRunner
+# OK (3 tests)
+
+adb install -r app/build/outputs/apk/mapProbe/app-mapProbe.apk
+adb shell am start -n com.anpfuel.app.mapprobe/com.anpfuel.app.map.MapProbeActivity \
+  --ez overlayOnly true
+```
+
+The probe and instrumentation packages were uninstalled and their data removed
+after the run.

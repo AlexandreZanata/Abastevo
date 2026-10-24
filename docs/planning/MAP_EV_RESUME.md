@@ -95,7 +95,15 @@ and do not invent a tested commit SHA.
   internal `files/261004` data renders. Overlay KML declaration/escaping was
   fixed. Owner chose the physical-phone/all-device direction; actual 16 KB
   runtime is DEFERRED and not proven. See [MAP-14 evidence](../backend/evidence/maps/MAP-14.md).
-- Still open: T06 clustering/co-located symbols/accessible list, T07
-  transitive license/SBOM/endpoint audit, armeabi-v7a release ABI, deferred
-  16 KB runtime and full ENGINE_GATE evidence. MAP-15/16 are LOCAL_DONE but
-  remain gated by ENGINE_GATE.
+- T06 PARTIAL: canonical UUID dedupe, fuel/charging, location quality, 60 m
+  clustering, native Gas/ChargingStation/Information symbols and the 48 dp
+  accessible Compose list are implemented. Safe generation swap retains the
+  old category until commit; deferring `showBookmarkCategoryOnMap` fixed a
+  reproduced native `CHECK(m_updatedGroups.empty())` crash. Phone probe
+  committed two generations (7/6/3 then 8/7/3 markers/unique/clusters) and
+  removed the old file. Cluster tap at a dense OSM POI opened the OSM POI
+  instead; final artwork and native marker 48 dp remain.
+- Still open: T06 native cluster hit-test/final artwork/native 48 dp target,
+  T07 transitive license/SBOM/endpoint audit, armeabi-v7a release ABI,
+  deferred 16 KB runtime and full ENGINE_GATE evidence. MAP-15/16 are
+  LOCAL_DONE but remain gated by ENGINE_GATE.

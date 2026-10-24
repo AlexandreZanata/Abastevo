@@ -11,14 +11,6 @@ data class MapCenter(val latitude: Double, val longitude: Double)
 
 data class MapCamera(val latitude: Double, val longitude: Double, val zoom: Int)
 
-data class MapOverlayMarker(
-    val uuid: String,
-    val latitude: Double,
-    val longitude: Double,
-    val title: String,
-    val charging: Boolean = false,
-)
-
 /** Narrow Abastevo-owned surface over the pinned native map core. */
 interface MapEngine {
     fun initialize(context: Context, onReady: () -> Unit): Boolean
@@ -37,7 +29,8 @@ interface MapEngine {
         onResult: (MapRouteInfo?) -> Unit,
     ): Boolean
     fun setOverlayMarkers(markers: List<MapOverlayMarker>): Boolean
-    fun setOnMarkerSelected(listener: (String) -> Unit)
+    fun overlayClusters(): List<MapOverlayCluster>
+    fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit)
     fun cancelSearch()
     fun cancelRoute()
     fun release()

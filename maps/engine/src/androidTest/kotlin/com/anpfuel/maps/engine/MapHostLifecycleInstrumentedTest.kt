@@ -25,7 +25,8 @@ class MapHostLifecycleInstrumentedTest {
         override fun search(context: Context, query: String, onResult: (List<MapSearchResult>) -> Unit): Boolean = true
         override fun buildCarRoute(startLatitude: Double, startLongitude: Double, endLatitude: Double, endLongitude: Double, onResult: (MapRouteInfo?) -> Unit): Boolean = true
         override fun setOverlayMarkers(markers: List<MapOverlayMarker>): Boolean = true
-        override fun setOnMarkerSelected(listener: (String) -> Unit) = Unit
+        override fun overlayClusters(): List<MapOverlayCluster> = emptyList()
+        override fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit) = Unit
         override fun cancelSearch() = Unit
         override fun cancelRoute() = Unit
         override fun release() = Unit

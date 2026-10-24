@@ -49,6 +49,17 @@
   DEFERRED and not proven. BLAST buffer warnings remain despite ~120 FPS
   rendering. ENGINE_GATE remains PARTIAL. The probe package was uninstalled and
   its data removed.
+  T06 PARTIAL: canonical UUID normalization/dedupe, fuel/charging flags,
+  UNKNOWN/CITY_CENTROID/REVIEWED states, 60 m clustering, native
+  Gas/ChargingStation/Information symbols and accessible Compose list (48 dp,
+  content descriptions) implemented. The old overlay category is retained
+  until the new generation commits; deferring `showBookmarkCategoryOnMap` fixed
+  a reproduced native `CHECK(m_updatedGroups.empty())` SIGABRT. 12 engine JVM
+  tests and 3 phone instrumentation tests PASS. Phone probe: generation 1
+  (7 markers/6 unique/3 clusters) and generation 2 (8/7/3) committed, old file
+  removed, cluster/gas pins rendered. Tapping the cluster at a dense OSM POI
+  opened the OSM POI (title 110139), so native cluster hit-test, final Abastevo
+  artwork and the native marker 48 dp target remain open.
   MAP-15: Room v26 public map metadata, resumable `.part` download, Ed25519
   envelope/key rotation, SHA-256, reserve/disk failure, all-package activation,
   safe inactive cleanup and Hilt WorkManager worker. JVM data tests and a real
@@ -58,13 +69,16 @@
   location permission, no hidden GPS, lifecycle camera persistence, dispose
   cancellation and 48 dp recenter. 5 JVM view-model tests and 2 real-phone
   Compose host/recreation tests PASS; the native arm64 surface is now proven on
-  the physical phone by T08, while clustering/accessibility and MAP-15 package
-  layout mapping remain open.
+  the physical phone by T08, and T06 supplies the overlay clustering and
+  accessible list; MAP-15 package layout mapping remains open.
   Tests: `go test ./...`, targeted `-race -tags=integration`, MAP-12/13 process
   proofs, `MapPoiCodecTest`, `MapDiscoveryResponseCodecTest`, `:data` unit and
-  phone instrumentation, `:maps:engine` JVM/phone tests, normal app debug build
-  and engine debug build, plus `:maps:engine:testDebugUnitTest` and
+  phone instrumentation, `:maps:engine` 12 JVM tests and 3 phone instrumentation
+  tests, normal app debug build and engine debug build, plus
   `:app:assembleMapProbe` with the release AAR and the physical-phone probe.
+  The Gradle UTP install was blocked by `INSTALL_FAILED_USER_RESTRICTED`; the
+  self-instrumenting test APK was installed with `adb` and run with
+  `am instrument`.
   Local commits only; no push/PR/merge, deploy, Play, production or
   RELEASE_CERTIFIED claim.
   Build recovery: [MAP-14 T03](../backend/evidence/maps/MAP-14_BUILD_RECOVERY.md)
@@ -73,10 +87,11 @@
   (66.64 MiB), 80 MiB gate and APK/64-bit ELF alignment PASS. No new native
   execution or full ENGINE_GATE acceptance. [Resume](MAP_EV_RESUME.md) records
   remaining tasks, the existing native Ed25519 implementation direction and
-  prior DATA_GATE/distribution review obligations. Next: T06 clustering,
-  co-located symbols and accessible list; T07 transitive licenses/SBOM/notices;
-  then the armeabi-v7a release ABI and the deferred 16 KB runtime obligation
-  before ENGINE_GATE/MAP-17. No further budget/linker owner decision.
+  prior DATA_GATE/distribution review obligations. Next: T06 native cluster
+  hit-test/final Abastevo artwork/native 48 dp target; T07 transitive
+  licenses/SBOM/notices; then the armeabi-v7a release ABI and the deferred
+  16 KB runtime obligation before ENGINE_GATE/MAP-17. No further budget/linker
+  owner decision.
 - Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
   IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
   [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),

@@ -1,6 +1,8 @@
 package com.anpfuel.maps.engine
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import app.organicmaps.sdk.Framework
@@ -8,9 +10,10 @@ import app.organicmaps.sdk.MapView
 import app.organicmaps.sdk.MapViewHelper
 import app.organicmaps.sdk.OrganicMaps
 import app.organicmaps.sdk.PlacePageActivationListener
+import app.organicmaps.sdk.bookmarks.data.BookmarkCategory
 import app.organicmaps.sdk.bookmarks.data.BookmarkManager
+import app.organicmaps.sdk.bookmarks.data.DataChangedListener
 import app.organicmaps.sdk.bookmarks.data.FeatureId
-import app.organicmaps.sdk.bookmarks.data.Icon
 import app.organicmaps.sdk.bookmarks.data.MapObject
 import app.organicmaps.sdk.location.AndroidNativeProvider
 import app.organicmaps.sdk.location.BaseLocationProvider
@@ -37,11 +40,16 @@ class ComapsMapEngine(
     private var initializing = false
     private var initialized = false
     private var appContext: Context? = null
-    private var selectedListener: ((String) -> Unit)? = null
+    private var overlayListener: ((MapOverlaySelection) -> Unit)? = null
     private var placePageListener: PlacePageActivationListener? = null
     private var searchListener: SearchListener? = null
     private var routingContainer: RoutingController.Container? = null
     private var overlayCategory = -1L
+    private var overlayClusters: List<MapOverlayCluster> = emptyList()
+    private var overlayClusterMembers: Map<String, List<MapOverlayMarker>> = emptyMap()
+    private var overlayLoadingListener: BookmarkManager.BookmarksLoadingListener? = null
+    private var overlayCategoriesListener: DataChangedListener? = null
+    private var overlayGeneration = 0L
     private val pendingReady = mutableListOf<() -> Unit>()
 
     override fun initialize(context: Context, onReady: () -> Unit): Boolean {
@@ -200,27 +208,93 @@ class ComapsMapEngine(
         val context = appContext ?: return false
         val manager = BookmarkManager.INSTANCE
         return try {
-            if (overlayCategory >= 0) {
-                manager.deleteCategory(overlayCategory)
-                overlayCategory = -1L
+            clearOverlayListeners()
+            val generation = ++overlayGeneration
+            val preparation = prepareOverlay(markers, generation = generation)
+            if (preparation.clusters.isEmpty()) {
+                Log.w("ComapsMapEngine", "overlay rejected=${preparation.rejected} duplicates=${preparation.duplicates}")
+                return false
             }
-            val file = File(context.cacheDir, "abastevo-overlay-${System.currentTimeMillis()}.kml")
-            file.writeText(buildOverlayKml(markers))
+            val oldCategory = overlayCategory
+            val oldIds = manager.getCategories().map { it.id }.toSet()
+            val file = File(context.cacheDir, "abastevo-overlay-$generation.kml")
+            file.writeText(buildOverlayKml(preparation.clusters))
+            var settled = false
+            fun settle(category: BookmarkCategory?) {
+                if (settled) return
+                settled = true
+                clearOverlayListeners()
+                if (category == null) {
+                    Log.w("ComapsMapEngine", "overlay generation $generation not committed; previous category retained")
+                    return
+                }
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if (!initialized || overlayGeneration != generation) return@postDelayed
+                    try {
+                        manager.showBookmarkCategoryOnMap(category.id)
+                        if (oldCategory >= 0 && oldCategory != category.id) {
+                            manager.deleteCategory(oldCategory)
+                        }
+                        overlayCategory = category.id
+                        overlayClusters = preparation.clusters
+                        overlayClusterMembers = preparation.clusters
+                            .filter { it.isCluster }
+                            .associate { it.id to it.markers }
+                        Log.i(
+                            "ComapsMapEngine",
+                            "overlay committed generation=$generation category=${category.id} markers=${markers.size} " +
+                                "clusters=${preparation.clusters.size} rejected=${preparation.rejected} " +
+                                "duplicates=${preparation.duplicates}",
+                        )
+                    } catch (error: Exception) {
+                        Log.e("ComapsMapEngine", "overlay commit failed; previous category retained", error)
+                    }
+                }, 100L)
+            }
+            fun newCategory(): BookmarkCategory? =
+                manager.getCategories().lastOrNull { it.id !in oldIds && it.name.startsWith("Abastevo") }
+
+            val loadingListener = object : BookmarkManager.BookmarksLoadingListener {
+                override fun onBookmarksFileImportSuccessful() {
+                    newCategory()?.let(::settle)
+                }
+
+                override fun onBookmarksFileImportFailed() {
+                    settle(null)
+                }
+
+                override fun onBookmarksFileUnsupported(uri: android.net.Uri) {
+                    settle(null)
+                }
+
+                override fun onBookmarksLoadingFinished() {
+                    newCategory()?.let(::settle)
+                }
+            }
+            val categoriesListener = DataChangedListener {
+                newCategory()?.let(::settle)
+            }
+            overlayLoadingListener = loadingListener
+            overlayCategoriesListener = categoriesListener
+            manager.addLoadingListener(loadingListener)
+            manager.addCategoriesUpdatesListener(categoriesListener)
             manager.loadBookmarksFile(file.absolutePath, true)
-            val category = manager.getCategories().lastOrNull()
-            if (category == null) return false
-            overlayCategory = category.id
-            manager.showBookmarkCategoryOnMap(category.id)
-            Log.i("ComapsMapEngine", "overlay generation category=$overlayCategory markers=${markers.size}")
+            Log.i(
+                "ComapsMapEngine",
+                "overlay generation=$generation markers=${markers.size} clusters=${preparation.clusters.size} pending",
+            )
             true
         } catch (error: Exception) {
+            clearOverlayListeners()
             Log.e("ComapsMapEngine", "overlay generation failed", error)
             false
         }
     }
 
-    override fun setOnMarkerSelected(listener: (String) -> Unit) {
-        selectedListener = listener
+    override fun overlayClusters(): List<MapOverlayCluster> = overlayClusters
+
+    override fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit) {
+        overlayListener = listener
     }
 
     override fun cancelSearch() {
@@ -240,9 +314,19 @@ class ComapsMapEngine(
     override fun release() {
         cancelSearch()
         cancelRoute()
+        clearOverlayListeners()
         placePageListener?.let { Framework.nativeRemovePlacePageActivationListener(it) }
         placePageListener = null
-        selectedListener = null
+        overlayListener = null
+        overlayClusters = emptyList()
+        overlayClusterMembers = emptyMap()
+    }
+
+    private fun clearOverlayListeners() {
+        overlayLoadingListener?.let { BookmarkManager.INSTANCE.removeLoadingListener(it) }
+        overlayCategoriesListener?.let { BookmarkManager.INSTANCE.removeCategoriesUpdatesListener(it) }
+        overlayLoadingListener = null
+        overlayCategoriesListener = null
     }
 
     private fun installPlacePageListener() {
@@ -251,9 +335,7 @@ class ComapsMapEngine(
             override fun onPlacePageActivated(data: PlacePageData) {
                 val title = (data as? MapObject)?.title ?: return
                 Log.i("ComapsMapEngine", "place page activated title=$title")
-                if (title.startsWith("ABASTEVO:")) {
-                    selectedListener?.invoke(title.removePrefix("ABASTEVO:"))
-                }
+                overlaySelectionFor(title, overlayClusterMembers)?.let { overlayListener?.invoke(it) }
             }
 
             override fun onPlacePageDeactivated() = Unit
@@ -264,25 +346,13 @@ class ComapsMapEngine(
     }
 }
 
-internal fun buildOverlayKml(markers: List<MapOverlayMarker>): String = buildString {
-    appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
-    appendLine("""<kml xmlns="http://www.opengis.net/kml/2.2">""")
-    appendLine("  <Document>")
-    appendLine("    <name>Abastevo</name>")
-    for (marker in markers) {
-        appendLine("    <Placemark>")
-        appendLine("      <name>ABASTEVO:${escapeXml(marker.uuid)}</name>")
-        appendLine("      <description>${escapeXml(marker.title)}</description>")
-        appendLine("      <Point><coordinates>${marker.longitude},${marker.latitude}</coordinates></Point>")
-        appendLine("    </Placemark>")
-    }
-    appendLine("  </Document>")
-    appendLine("</kml>")
-}
+internal fun overlaySelectionFor(
+    title: String,
+    clusterMembers: Map<String, List<MapOverlayMarker>>,
+): MapOverlaySelection? = when {
+    title.startsWith("ABASTEVO_CLUSTER:") ->
+        clusterMembers[title.removePrefix("ABASTEVO_CLUSTER:")]?.let { MapOverlaySelection.Cluster(it) }
 
-private fun escapeXml(value: String): String = value
-    .replace("&", "&amp;")
-    .replace("<", "&lt;")
-    .replace(">", "&gt;")
-    .replace("\"", "&quot;")
-    .replace("'", "&apos;")
+    title.startsWith("ABASTEVO:") -> MapOverlaySelection.Station(title.removePrefix("ABASTEVO:"))
+    else -> null
+}

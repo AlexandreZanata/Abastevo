@@ -1,34 +1,212 @@
 package com.anpfuel.maps.engine
 
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class OverlayKmlTest {
     @Test
     fun `kml starts with the xml declaration and keeps canonical markers`() {
-        val kml = buildOverlayKml(
+        val preparation = prepareOverlay(
             listOf(
-                MapOverlayMarker(
-                    uuid = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-                    latitude = -25.42,
-                    longitude = -49.27,
-                    title = "Posto & Cia <centro>",
-                ),
-                MapOverlayMarker(
-                    uuid = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", title = "Posto & Cia <centro>"),
+                marker(
+                    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
                     latitude = -25.43,
-                    longitude = -49.26,
+                    longitude = -49.28,
                     title = "Recarga",
+                    fuel = false,
                     charging = true,
+                    quality = MapStationLocationQuality.REVIEWED,
                 ),
             ),
+            radiusMeters = 1.0,
+            generation = 42,
         )
+        val kml = buildOverlayKml(preparation.clusters)
 
         assertTrue(kml.startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"))
         assertTrue(kml.contains("<name>ABASTEVO:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa</name>"))
-        assertTrue(kml.contains("<description>Posto &amp; Cia &lt;centro&gt;</description>"))
-        assertTrue(kml.contains("<coordinates>-49.27,-25.42</coordinates>"))
+        assertTrue(kml.contains("<description>Posto &amp; Cia &lt;centro&gt; - Fuel - Location unknown</description>"))
+        assertTrue(kml.contains("<styleUrl>#placemark-orange</styleUrl>"))
+        assertTrue(kml.contains("<mwm:icon>Gas</mwm:icon>"))
+        assertTrue(kml.contains("<styleUrl>#placemark-teal</styleUrl>"))
+        assertTrue(kml.contains("<mwm:icon>ChargingStation</mwm:icon>"))
         assertFalse(kml.contains("Posto & Cia"))
     }
+
+    @Test
+    fun `duplicate UUIDs merge and co-located distinct UUIDs stay separate`() {
+        val duplicate = prepareOverlay(
+            listOf(
+                marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", quality = MapStationLocationQuality.UNKNOWN),
+                marker(
+                    "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+                    fuel = false,
+                    charging = true,
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
+            ),
+            radiusMeters = 60.0,
+            generation = 7,
+        )
+
+        assertEquals(1, duplicate.duplicates)
+        assertEquals(0, duplicate.rejected)
+        assertEquals(1, duplicate.clusters.single().markers.size)
+        val merged = duplicate.clusters.single().markers.single()
+        assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", merged.uuid)
+        assertTrue(merged.fuel)
+        assertTrue(merged.charging)
+        assertEquals(MapStationLocationQuality.REVIEWED, merged.locationQuality)
+
+        val coLocated = prepareOverlay(
+            listOf(
+                marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", title = "Posto"),
+                marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", title = "Recarga", fuel = false, charging = true),
+            ),
+            radiusMeters = 60.0,
+            generation = 8,
+        )
+        assertEquals(0, coLocated.duplicates)
+        assertEquals(1, coLocated.clusters.size)
+        assertEquals(2, coLocated.clusters.single().markers.size)
+        assertEquals(
+            setOf("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
+            coLocated.clusters.single().markers.map { it.uuid }.toSet(),
+        )
+        assertEquals(2, overlayListItems(coLocated.clusters).size)
+    }
+
+    @Test
+    fun `nearby markers cluster while far markers stay single`() {
+        val preparation = prepareOverlay(
+            listOf(
+                marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", latitude = -25.4200, longitude = -49.2700),
+                marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", latitude = -25.4201, longitude = -49.2701),
+                marker("cccccccc-cccc-4ccc-8ccc-cccccccccccc", latitude = -25.4202, longitude = -49.2702),
+                marker("dddddddd-dddd-4ddd-8ddd-dddddddddddd", latitude = -25.4300, longitude = -49.2800),
+            ),
+            radiusMeters = 60.0,
+            generation = 9,
+        )
+
+        assertEquals(2, preparation.clusters.size)
+        assertEquals(3, preparation.clusters[0].markers.size)
+        assertTrue(preparation.clusters[0].isCluster)
+        assertEquals("c9-0", preparation.clusters[0].id)
+        assertFalse(preparation.clusters[1].isCluster)
+        assertEquals(4, overlayListItems(preparation.clusters).size)
+    }
+
+    @Test
+    fun `invalid markers are rejected`() {
+        val preparation = prepareOverlay(
+            listOf(
+                marker("not-a-uuid"),
+                marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", latitude = Double.NaN),
+                marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", fuel = false, charging = false),
+            ),
+        )
+
+        assertEquals(3, preparation.rejected)
+        assertTrue(preparation.clusters.isEmpty())
+    }
+
+    @Test
+    fun `cluster kml uses the cluster title and information icon`() {
+        val preparation = prepareOverlay(
+            listOf(
+                marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+                marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", latitude = -25.4201, longitude = -49.2701),
+            ),
+            radiusMeters = 60.0,
+            generation = 10,
+        )
+        val kml = buildOverlayKml(preparation.clusters)
+
+        assertTrue(kml.contains("<name>ABASTEVO_CLUSTER:c10-0</name>"))
+        assertTrue(kml.contains("<description>2 stations</description>"))
+        assertTrue(kml.contains("<styleUrl>#placemark-bluegray</styleUrl>"))
+        assertTrue(kml.contains("<mwm:icon>Information</mwm:icon>"))
+    }
+
+    @Test
+    fun `accessible list items carry type location and title`() {
+        val preparation = prepareOverlay(
+            listOf(
+                marker(
+                    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    title = "Posto Central",
+                    fuel = true,
+                    charging = true,
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
+                marker(
+                    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                    title = "Recarga Aproximada",
+                    fuel = false,
+                    charging = true,
+                    quality = MapStationLocationQuality.CITY_CENTROID,
+                ),
+                marker(
+                    "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+                    title = "Posto Sem Local",
+                    quality = MapStationLocationQuality.UNKNOWN,
+                ),
+            ),
+            radiusMeters = 1.0,
+            generation = 11,
+        )
+        val items = overlayListItems(preparation.clusters)
+
+        assertEquals(3, items.size)
+        val central = items.single { it.uuid == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }
+        assertEquals("Fuel and charging", central.typeLabel)
+        assertEquals("Reviewed location", central.locationLabel)
+        assertEquals("Posto Central, Fuel and charging, Reviewed location", central.contentDescription)
+        val approximate = items.single { it.uuid == "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }
+        assertEquals("Approximate city location", approximate.locationLabel)
+        val unknown = items.single { it.uuid == "cccccccc-cccc-4ccc-8ccc-cccccccccccc" }
+        assertEquals("Location unknown", unknown.locationLabel)
+    }
+
+    @Test
+    fun `selection maps station and cluster titles to app events`() {
+        val first = marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+        val second = marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+        val cluster = MapOverlayCluster("c1-0", -25.42, -49.27, listOf(first, second))
+        val members = mapOf("c1-0" to cluster.markers)
+
+        val station = overlaySelectionFor("ABASTEVO:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", members)
+        assertTrue(station is MapOverlaySelection.Station)
+        assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", (station as MapOverlaySelection.Station).uuid)
+
+        val clusterSelection = overlaySelectionFor("ABASTEVO_CLUSTER:c1-0", members)
+        assertTrue(clusterSelection is MapOverlaySelection.Cluster)
+        assertEquals(2, (clusterSelection as MapOverlaySelection.Cluster).members.size)
+
+        assertNull(overlaySelectionFor("ABASTEVO_CLUSTER:missing", members))
+        assertNull(overlaySelectionFor("Some OSM POI", members))
+    }
+
+    private fun marker(
+        uuid: String,
+        latitude: Double = -25.42,
+        longitude: Double = -49.27,
+        title: String = "Posto",
+        fuel: Boolean = true,
+        charging: Boolean = false,
+        quality: MapStationLocationQuality = MapStationLocationQuality.UNKNOWN,
+    ) = MapOverlayMarker(
+        uuid = uuid,
+        latitude = latitude,
+        longitude = longitude,
+        title = title,
+        fuel = fuel,
+        charging = charging,
+        locationQuality = quality,
+    )
 }
