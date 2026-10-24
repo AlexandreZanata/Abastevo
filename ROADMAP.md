@@ -3718,8 +3718,8 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 
 ## Stripe and Asaas payments
 
-Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–04 are
-LOCAL_DONE / INTEGRATION_PENDING; PAY-05–23 remain planned.
+Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–05 are
+LOCAL_DONE / INTEGRATION_PENDING; PAY-06–23 remain planned.
 Selected methods: Stripe cards, Asaas conventional Pix and Pix Automático,
 independently activated.
 Google Play is LATER. Reuse PRM subscription/account/jobs; no Stage D team/tenant
@@ -3738,7 +3738,9 @@ its [golden fixture](contracts/testdata/payments/offer-policy-v1.json), and PAY-
 [pure billing/access domain](backend/internal/modules/payments/domain) with
 [evidence](docs/backend/evidence/payments/PAY-03.md), and PAY-04
 [persistence/store](backend/internal/modules/payments/adapters) with
-[evidence](docs/backend/evidence/payments/PAY-04.md), are local only. The
+[evidence](docs/backend/evidence/payments/PAY-04.md), and PAY-05
+[provider configuration](backend/internal/platform/config/payments.go) with
+[evidence](docs/backend/evidence/payments/PAY-05.md), are local only. The
 checklist owns dependencies, steps, risk checks, shared-path coordination,
 evidence and commit topic.
 
@@ -3751,7 +3753,9 @@ evidence and commit topic.
 - **PAY-04:** Persist financial intents and concurrency guards. LOCAL_DONE;
   migration 000123, sqlc/store, lease fences, settlement/grant persistence and
   inbox/outbox integration tests pass.
-- **PAY-05:** Validate credentials and channel configuration.
+- **PAY-05:** Validate credentials and channel configuration. LOCAL_DONE;
+  independent sales/maintenance switches, redacted preflight, rotation tests and
+  staging template validated; all sales remain off.
 - **PAY-06:** Create Stripe hosted card checkout.
 - **PAY-07:** Create conventional Asaas Pix orders.
 - **PAY-08:** Receive Stripe events durably.

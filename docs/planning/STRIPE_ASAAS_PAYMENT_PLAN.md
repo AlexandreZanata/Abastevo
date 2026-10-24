@@ -186,6 +186,9 @@ persistence/providers/runtime remain PAY-04+.
 PAY-04 is LOCAL_DONE: migration 000123 and the payment sqlc/store layer persist
 idempotent operations, attempts, settlements/grants, cycles, inbox and job_queue
 outbox with lease/generation fences. Provider/runtime work remains PAY-05+.
+PAY-05 is LOCAL_DONE: provider mode/merchant/catalog/key/return-origin config,
+independent new-sales and maintenance switches, and a redacted read-only
+preflight are validated; missing/mixed values disable only unsafe sales.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider

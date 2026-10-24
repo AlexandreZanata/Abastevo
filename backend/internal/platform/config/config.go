@@ -166,6 +166,9 @@ type Config struct {
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
 	DevelopmentPhotoPreviewUntil time.Time
+	// Payments holds provider switches and credentials; LogValue/Preflight
+	// expose readiness only, never key material.
+	Payments PaymentsConfig
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -179,6 +182,7 @@ func (c Config) LogValue() slog.Value {
 		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
 		slog.Bool("db_configured", c.DatabaseURL != ""),
 		slog.Any("r2", c.R2.r2LogValue()),
+		slog.Any("payments", c.Payments.logValue()),
 	)
 }
 
@@ -444,6 +448,7 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		return Config{}, err
 	}
 	cfg.R2 = r2
+	cfg.Payments = loadPayments(getenv, cfg.Env)
 	if raw, _ := getenv(keyEvidenceMaxPending); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 || n > 100 {

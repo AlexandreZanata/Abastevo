@@ -1,5 +1,17 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-05 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-04 `b931a1df`. `PaymentsConfig`
+  binds Stripe/Asaas test/live modes, merchant/catalog/keys/webhook material and
+  return origin; sale flags are independent and default OFF while maintenance
+  defaults ON. Redacted `Preflight()`/`logValue()` expose readiness only; missing/
+  mixed values disable unsafe channels without crashing, and rotation redaction
+  is tested. Staging template uses test placeholders with all sales false.
+  [PAY-05 evidence](../backend/evidence/payments/PAY-05.md): config race, full
+  backend unit suite, vet/staticcheck, security/infra/secret gates PASS. No
+  provider/runtime/sale. Next: PAY-06 Stripe checkout only after maintainer
+  authorization.
+
 - Stripe/Asaas payment PAY-04 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-03 `22feac69`. Migration
   `000123_payment_intents` (MAP owns 122) and `db/queries/payments` persist
