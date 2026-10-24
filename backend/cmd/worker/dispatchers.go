@@ -42,7 +42,7 @@ func validNativeKind(kind string) bool {
 	case "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute",
 		"quality-sanctions-import", "quality-sanctions-discovery",
 		"quality-enforcement-import", "quality-enforcement-discovery",
-		"enterprise-export-build":
+		"enterprise-export-build", "enterprise-portal-refresh":
 		return true
 	}
 	return false

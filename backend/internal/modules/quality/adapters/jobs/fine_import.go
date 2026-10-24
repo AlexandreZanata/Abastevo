@@ -28,6 +28,11 @@ type FineFileImport struct {
 	Prepare        func(context.Context, ImportPayload, FileArtifact) (prepared.FineBatch, error)
 	PrepareHistory func(context.Context, ImportPayload, FileArtifact) (prepared.FineHistoryBatch, error)
 	Serial         func(context.Context, func(context.Context) error) error
+	// AfterPublish is the optional durable export intent. It runs after the
+	// watermark/recompute acknowledgement; a failure is visible to the job and
+	// recovered by periodic export/portal reconciliation, never by rolling back
+	// the published revision.
+	AfterPublish func(context.Context, string) error
 }
 
 func (FineFileImport) Kind() string     { return NativeFineImportKind }
@@ -116,6 +121,11 @@ func (im FineFileImport) importFine(ctx context.Context, payload ImportPayload) 
 	}
 	if e = EnqueueRecompute(ctx, im.Pool, payload.Source, payload.Stream, revision); e != nil {
 		return fineImportError("derived intent acknowledgement unavailable")
+	}
+	if im.AfterPublish != nil {
+		if e := im.AfterPublish(ctx, revision); e != nil {
+			return fineImportError("export intent acknowledgement unavailable")
+		}
 	}
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -129,9 +130,17 @@ func TestBuildCoalescesCorrectionsAndReconciles(t *testing.T) {
 	ctx := context.Background()
 	root := t.TempDir()
 	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+	afterBuild := 0
 	builder := Build{
 		Pool: pool, Root: root, WindowWeeks: 2, PageSize: 2,
 		Now: func() time.Time { return now },
+		AfterBuild: func(_ context.Context, state State) error {
+			afterBuild++
+			if state.ObservedAt == "" {
+				t.Error("build state lacks observed_at")
+			}
+			return nil
+		},
 	}
 	if err := builder.Handle(ctx, platformjobs.Job{}); err != nil {
 		t.Fatalf("empty build: %v", err)
@@ -158,8 +167,8 @@ func TestBuildCoalescesCorrectionsAndReconciles(t *testing.T) {
 	if !ok || !state.Valid() {
 		t.Fatalf("first state = %+v, %v", state, ok)
 	}
-	if candidateCount(t, root) != 1 {
-		t.Fatalf("candidates = %d", candidateCount(t, root))
+	if candidateCount(t, root) != 1 || afterBuild != 1 {
+		t.Fatalf("candidates/afterBuild = %d/%d", candidateCount(t, root), afterBuild)
 	}
 	if len(state.OfficialRevisions) != 2 || state.DirectoryFingerprint == "" || state.AnalyticsSHA256 == "" {
 		t.Fatalf("state provenance = %+v", state)
@@ -201,14 +210,17 @@ func TestBuildCoalescesCorrectionsAndReconciles(t *testing.T) {
 	if stateAfterNoop.BuiltAt != firstBuiltAt {
 		t.Error("no-op build rewrote the state")
 	}
+	if afterBuild != 1 {
+		t.Error("no-op build re-ran AfterBuild")
+	}
 
 	correction := seedJobsWeek(t, pool, station.ID, "w1b", week1Start, week1End, 5799, 3699)
 	if err := builder.Handle(ctx, platformjobs.Job{}); err != nil {
 		t.Fatalf("correction build: %v", err)
 	}
 	state, _ = LoadState(root)
-	if !state.Valid() || candidateCount(t, root) != 2 {
-		t.Fatalf("correction state/candidates = %+v/%d", state, candidateCount(t, root))
+	if !state.Valid() || candidateCount(t, root) != 2 || afterBuild != 2 {
+		t.Fatalf("correction state/candidates/afterBuild = %+v/%d/%d", state, candidateCount(t, root), afterBuild)
 	}
 	foundCorrection := false
 	for _, revision := range state.OfficialRevisions {
@@ -321,11 +333,13 @@ func TestBuildWritesOfficialSnapshotAndReconcilesPin(t *testing.T) {
 		Now:             func() time.Time { return time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC) },
 		OfficialRecords: func(pgx.Tx) OfficialProvider { return provider },
 	}
-	if err := builder.Handle(ctx, platformjobs.Job{}); err != nil {
+	observed := "2026-01-02T03:04:05Z"
+	payload, _ := json.Marshal(BuildPayload{Version: 1, ObservedAt: observed})
+	if err := builder.Handle(ctx, platformjobs.Job{Payload: payload}); err != nil {
 		t.Fatal(err)
 	}
 	state, ok := LoadState(root)
-	if !ok || !state.Valid() || state.Official == nil || state.Official.LeaseID != officialPin.LeaseID {
+	if !ok || !state.Valid() || state.Official == nil || state.Official.LeaseID != officialPin.LeaseID || state.ObservedAt != observed {
 		t.Fatalf("state official = %+v, %v", state.Official, ok)
 	}
 	if _, err := os.Stat(filepath.Join(state.CandidateDir, "official-records.jsonl")); err != nil {
@@ -375,5 +389,56 @@ func TestBuildWritesOfficialSnapshotAndReconcilesPin(t *testing.T) {
 	}
 	if enqueued != 1 {
 		t.Errorf("changed official pin enqueued %d", enqueued)
+	}
+}
+
+func TestRefreshPromotesBuiltCandidateAndCorrection(t *testing.T) {
+	pool := freshJobsPool(t)
+	ctx := context.Background()
+	exportRoot := t.TempDir()
+	portalRoot := filepath.Join(t.TempDir(), "portal")
+	station, err := parentdirectory.NewRepository(pool).ResolveCNPJ(ctx, "04218406000104", "Posto Refresh", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Date(2025, 1, 6, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2025, 1, 12, 0, 0, 0, 0, time.UTC)
+	seedJobsWeek(t, pool, station.ID, "refresh-a", start, end, 5999)
+	builder := Build{Pool: pool, Root: exportRoot, WindowWeeks: 1, PageSize: 100}
+	if err := builder.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	refresh := Refresh{ExportRoot: exportRoot, PortalRoot: portalRoot, SiteURL: "https://portal.example"}
+	if err := refresh.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	first, _, err := portalgen.CurrentRelease(portalRoot, "https://portal.example")
+	if err != nil || first.ContentSHA256 == "" {
+		t.Fatalf("first refresh = %+v %v", first, err)
+	}
+	if err := refresh.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	refreshState, ok := loadRefreshState(portalRoot)
+	if !ok || refreshState.LastOutcome != "noop" {
+		t.Fatalf("refresh no-op = %+v %v", refreshState, ok)
+	}
+	seedJobsWeek(t, pool, station.ID, "refresh-b", start, end, 5799)
+	if err := builder.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := refresh.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	second, releases, err := portalgen.CurrentRelease(portalRoot, "https://portal.example")
+	if err != nil || second.ContentSHA256 == first.ContentSHA256 {
+		t.Fatalf("correction refresh = %+v %v", second, err)
+	}
+	if len(releases.Releases) != 2 {
+		t.Fatalf("releases = %+v", releases.Releases)
+	}
+	refreshState, _ = loadRefreshState(portalRoot)
+	if refreshState.LastOutcome != "released" || refreshState.ExportContentSHA256 == "" || refreshState.ReleasedAt == "" {
+		t.Fatalf("correction receipt = %+v", refreshState)
 	}
 }

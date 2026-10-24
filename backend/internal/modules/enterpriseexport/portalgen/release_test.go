@@ -278,3 +278,18 @@ func TestPromoteReconcilesStaleState(t *testing.T) {
 		t.Fatalf("reconciled state = %+v", repaired)
 	}
 }
+
+func TestReleaseStoresOfficialPin(t *testing.T) {
+	snapshot := writeFixture(t)
+	writeOfficialFixture(t, snapshot)
+	out := filepath.Join(t.TempDir(), "artifact")
+	if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out}); err != nil {
+		t.Fatal(err)
+	}
+	root := releaseRoot(t)
+	promoteFixture(t, out, root)
+	current := currentFixture(t, root)
+	if current.OfficialRevisionID != "00000000-0000-4000-8000-0000000000f1" || current.OfficialLeaseID != strings.Repeat("b", 64) || current.OfficialEdition != "2025" {
+		t.Fatalf("official release metadata = %+v", current)
+	}
+}

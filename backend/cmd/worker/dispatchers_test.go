@@ -122,3 +122,33 @@ func TestEnterpriseExportBuildIsIsolated(t *testing.T) {
 		t.Fatalf("dedicated dispatcher = %+v", dispatchers[5])
 	}
 }
+
+func TestEnterprisePortalRefreshIsIsolated(t *testing.T) {
+	handlers := map[string]jobs.Handler{}
+	for _, kind := range []string{
+		"evidence-sweep", "account-erasure-reconcile",
+		"privacy-training-reconcile", "privacy-training-sweep",
+		enterprisejobs.RefreshKind,
+	} {
+		handlers[kind] = dispatcherHandler(kind)
+	}
+	dispatchers, err := workerDispatchers(nil, handlers, enterprisejobs.RefreshKind)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dispatchers) != 6 {
+		t.Fatalf("dispatchers = %d, want general + four safety + refresh", len(dispatchers))
+	}
+	excluded := false
+	for _, kind := range dispatchers[0].ExcludedKinds {
+		if kind == enterprisejobs.RefreshKind {
+			excluded = true
+		}
+	}
+	if !excluded {
+		t.Fatal("general dispatcher can claim the portal refresh")
+	}
+	if dispatchers[5].Kind != enterprisejobs.RefreshKind {
+		t.Fatalf("dedicated refresh dispatcher = %+v", dispatchers[5])
+	}
+}

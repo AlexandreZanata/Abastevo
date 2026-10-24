@@ -32,12 +32,16 @@ var (
 )
 
 type Release struct {
-	ContentSHA256 string `json:"content_sha256"`
-	PromotedAt    string `json:"promoted_at"`
-	Pages         int    `json:"pages"`
-	Files         int    `json:"files"`
-	Bytes         int64  `json:"bytes"`
-	Withdrawn     bool   `json:"withdrawn,omitempty"`
+	ContentSHA256          string `json:"content_sha256"`
+	PromotedAt             string `json:"promoted_at"`
+	Pages                  int    `json:"pages"`
+	Files                  int    `json:"files"`
+	Bytes                  int64  `json:"bytes"`
+	OfficialRevisionID     string `json:"official_revision_id,omitempty"`
+	OfficialLeaseID        string `json:"official_lease_id,omitempty"`
+	OfficialEdition        string `json:"official_edition,omitempty"`
+	OfficialSourceChecksum string `json:"official_source_checksum,omitempty"`
+	Withdrawn              bool   `json:"withdrawn,omitempty"`
 }
 
 type ReleaseState struct {
@@ -82,7 +86,9 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 	if err := ensurePrivateRoot(opts.RootDir); err != nil {
 		return ReleaseState{}, err
 	}
-	if inside(opts.RootDir, opts.ArtifactDir) || inside(opts.ArtifactDir, opts.RootDir) {
+	artifactAbs, _ := filepath.Abs(opts.ArtifactDir)
+	rootAbs, _ := filepath.Abs(opts.RootDir)
+	if artifactAbs == rootAbs || inside(opts.ArtifactDir, opts.RootDir) || inside(filepath.Join(opts.RootDir, ReleaseDir), opts.ArtifactDir) {
 		return ReleaseState{}, fmt.Errorf("portal release: artifact and root overlap")
 	}
 	unlock, err := lockRelease(opts.RootDir)
@@ -99,7 +105,12 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 	if err != nil {
 		return ReleaseState{}, fmt.Errorf("portal release: candidate verification: %w", err)
 	}
+	portalManifest, err := readPortalManifest(opts.ArtifactDir)
+	if err != nil {
+		return ReleaseState{}, err
+	}
 	content := verified.ContentSHA256
+	releaseMeta := releaseMetadata(portalManifest)
 	current, currentExists, err := readCurrent(opts.RootDir)
 	if err != nil {
 		return ReleaseState{}, err
@@ -126,6 +137,10 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 		release.Pages = verified.Pages
 		release.Files = verified.Files
 		release.Bytes = verified.Bytes
+		release.OfficialRevisionID = releaseMeta.OfficialRevisionID
+		release.OfficialLeaseID = releaseMeta.OfficialLeaseID
+		release.OfficialEdition = releaseMeta.OfficialEdition
+		release.OfficialSourceChecksum = releaseMeta.OfficialSourceChecksum
 		if release.PromotedAt == "" {
 			release.PromotedAt = now().UTC().Format(time.RFC3339)
 		}
@@ -190,6 +205,10 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 	state = updateRelease(state, Release{
 		ContentSHA256: content, PromotedAt: now().UTC().Format(time.RFC3339),
 		Pages: verified.Pages, Files: verified.Files, Bytes: verified.Bytes,
+		OfficialRevisionID:     releaseMeta.OfficialRevisionID,
+		OfficialLeaseID:        releaseMeta.OfficialLeaseID,
+		OfficialEdition:        releaseMeta.OfficialEdition,
+		OfficialSourceChecksum: releaseMeta.OfficialSourceChecksum,
 	}, content, current)
 	if err := writeReleaseState(opts.RootDir, state); err != nil {
 		return ReleaseState{}, err
@@ -303,6 +322,32 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 		return ReleaseState{}, err
 	}
 	return state, nil
+}
+
+// CurrentReleaseHeader returns the selected release metadata without rehashing
+// the complete tree. Promotion verifies the candidate and copied release before
+// switching; use CurrentRelease (or the portalcheck verify command) for an
+// explicit full integrity check.
+func CurrentReleaseHeader(root string) (Release, ReleaseState, error) {
+	state, ok := LoadReleaseState(root)
+	if !ok {
+		return Release{}, ReleaseState{}, ErrReleaseState
+	}
+	current, exists, err := readCurrent(root)
+	if err != nil {
+		return Release{}, ReleaseState{}, err
+	}
+	if !exists {
+		return Release{}, ReleaseState{}, ErrNoCurrentRelease
+	}
+	if state.Current != current {
+		return Release{}, ReleaseState{}, ErrReleaseState
+	}
+	release, ok := findRelease(state, current)
+	if !ok || release.Withdrawn {
+		return Release{}, ReleaseState{}, ErrReleaseWithdrawn
+	}
+	return release, state, nil
 }
 
 func CurrentRelease(root, siteURL string) (Release, ReleaseState, error) {
@@ -483,6 +528,30 @@ func switchCurrent(root, name string) error {
 		return err
 	}
 	return syncDir(root)
+}
+
+func readPortalManifest(dir string) (Manifest, error) {
+	raw, err := os.ReadFile(filepath.Join(dir, "portal-manifest.json"))
+	if err != nil {
+		return Manifest{}, fmt.Errorf("portal release: portal manifest unavailable")
+	}
+	var manifest Manifest
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		return Manifest{}, fmt.Errorf("portal release: portal manifest invalid")
+	}
+	return manifest, nil
+}
+
+func releaseMetadata(manifest Manifest) Release {
+	if manifest.OfficialRecords == nil {
+		return Release{}
+	}
+	return Release{
+		OfficialRevisionID:     manifest.OfficialRecords.RevisionID,
+		OfficialLeaseID:        manifest.OfficialRecords.LeaseID,
+		OfficialEdition:        manifest.OfficialRecords.Edition,
+		OfficialSourceChecksum: manifest.OfficialRecords.SourceChecksum,
+	}
 }
 
 func verifyRelease(root, content, siteURL string) error {

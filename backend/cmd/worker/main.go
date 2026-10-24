@@ -199,6 +199,13 @@ func run() error {
 		}
 		return jobs.Enqueue(ctx, raw, enterprisejobs.BuildKind, encoded, dedupe, 3, time.Time{})
 	}
+	enqueuePortalRefresh := func(ctx context.Context, payload enterprisejobs.RefreshPayload, dedupe string) (jobs.EnqueueResult, error) {
+		encoded, err := json.Marshal(payload)
+		if err != nil {
+			return jobs.EnqueueResult{}, err
+		}
+		return jobs.Enqueue(ctx, raw, enterprisejobs.RefreshKind, encoded, dedupe, 3, time.Time{})
+	}
 	communityStore := communityadapters.NewStore(raw)
 	privacyStore := privacyadapters.NewStore(raw)
 	modStore := moderationadapters.NewStore(raw)
@@ -510,6 +517,7 @@ func run() error {
 		officialImport.AfterPublish = func(ctx context.Context, revisionID string) error {
 			_, err := enqueueEnterpriseExport(ctx, enterprisejobs.BuildPayload{
 				Version: 1, Trigger: "after-publication", RevisionID: revisionID,
+				ObservedAt: time.Now().UTC().Format(time.RFC3339),
 			}, "enterprise-export:official:"+revisionID)
 			return err
 		}
@@ -858,9 +866,20 @@ func run() error {
 		},
 	}
 	if cfg.EnterpriseExportEnabled {
+		var afterBuild func(context.Context, enterprisejobs.State) error
+		if cfg.EnterprisePortalRefreshEnabled {
+			afterBuild = func(ctx context.Context, state enterprisejobs.State) error {
+				_, err := enqueuePortalRefresh(ctx, enterprisejobs.RefreshPayload{
+					Version: 1, Trigger: "after-build",
+					ObservedAt: state.ObservedAt, ExportContentSHA256: state.ContentSHA256,
+				}, portalRefreshDedupe(state))
+				return err
+			}
+		}
 		handlers[enterprisejobs.BuildKind] = enterprisejobs.Build{
 			Pool: raw, Root: cfg.EnterpriseExportRoot,
 			WindowWeeks: cfg.EnterpriseExportWindowWeeks,
+			AfterBuild:  afterBuild,
 			OfficialRecords: func(tx pgx.Tx) enterprisejobs.OfficialProvider {
 				return enterprisejobs.NewQualityOfficialProvider(qualityread.NewExportReader(tx))
 			},
@@ -873,10 +892,21 @@ func run() error {
 				return enterprisejobs.NewQualityOfficialProvider(qualityread.NewExportReader(pool))
 			},
 		}
+		if cfg.EnterprisePortalRefreshEnabled {
+			handlers[enterprisejobs.RefreshKind] = enterprisejobs.Refresh{
+				ExportRoot: cfg.EnterpriseExportRoot, PortalRoot: cfg.EnterprisePortalRoot,
+				SiteURL: cfg.EnterprisePortalSiteURL, Indexable: cfg.EnterprisePortalIndexable,
+				SearchScriptPath: cfg.EnterprisePortalSearchScript,
+				Status:           qualitySourceStatus(raw),
+			}
+		}
 	}
 	nativeKinds := []string{}
 	if cfg.EnterpriseExportEnabled {
 		nativeKinds = append(nativeKinds, enterprisejobs.BuildKind)
+	}
+	if cfg.EnterprisePortalRefreshEnabled {
+		nativeKinds = append(nativeKinds, enterprisejobs.RefreshKind)
 	}
 	if cfg.QualityImportsEnabled {
 
@@ -885,7 +915,17 @@ func run() error {
 			handlers[qualityjobs.EnforcementDiscoveryKind] = nativeEnforcementLiveDiscovery(raw)
 			nativeKinds = append(nativeKinds, qualityjobs.EnforcementImportKind, qualityjobs.EnforcementDiscoveryKind)
 		}
-		handlers[qualityjobs.NativeFineImportKind] = nativeFineImport(raw, bundledFinePreparer, bundledFineHistoryPreparer, "")
+		fineImport := nativeFineImport(raw, bundledFinePreparer, bundledFineHistoryPreparer, "")
+		if cfg.EnterprisePortalRefreshEnabled {
+			fineImport.AfterPublish = func(ctx context.Context, revisionID string) error {
+				_, err := enqueueEnterpriseExport(ctx, enterprisejobs.BuildPayload{
+					Version: 1, Trigger: "fine-publication", RevisionID: revisionID,
+					ObservedAt: time.Now().UTC().Format(time.RFC3339),
+				}, "enterprise-export:fine:"+revisionID)
+				return err
+			}
+		}
+		handlers[qualityjobs.NativeFineImportKind] = fineImport
 		handlers[qualityjobs.NativeFineDiscoveryKind] = nativeFineLiveDiscovery(raw)
 		handlers["quality-import"] = nativeQualityImport(raw, bundledQualityPreparer, "")
 		handlers[qualityjobs.RevalidationKind] = nativeQualityRevalidate(raw)
@@ -908,6 +948,13 @@ func run() error {
 			Interval: 6 * time.Hour, Enabled: cfg.EnterpriseExportEnabled, Reason: "disabled by configuration",
 			Build: func(period string) map[string]any {
 				return map[string]any{"version": 1, "period": period}
+			},
+		},
+		{
+			Name: "enterprise-portal-refresh", Kind: enterprisejobs.RefreshKind, Version: 1,
+			Interval: 15 * time.Minute, Enabled: cfg.EnterprisePortalRefreshEnabled, Reason: "disabled by configuration",
+			Build: func(string) map[string]any {
+				return map[string]any{"version": 1, "trigger": "reconcile"}
 			},
 		},
 		{

@@ -42,6 +42,7 @@ type BuildPayload struct {
 	Version    int    `json:"version"`
 	Trigger    string `json:"trigger,omitempty"`
 	RevisionID string `json:"revision_id,omitempty"`
+	ObservedAt string `json:"observed_at,omitempty"`
 }
 
 // Build is the bounded, single-active export builder. It owns a private
@@ -58,6 +59,7 @@ type Build struct {
 	AnalyticsOptions analytics.Options
 	Now              func() time.Time
 	OfficialRecords  func(tx pgx.Tx) OfficialProvider
+	AfterBuild       func(ctx context.Context, state State) error
 }
 
 func (Build) Kind() string { return BuildKind }
@@ -118,13 +120,18 @@ func (b Build) maxPrices() int {
 // the state file, builds one candidate and writes analytics/state. A busy lock
 // is a retryable error; a failed/cancelled build leaves the previous state.
 func (b Build) Handle(ctx context.Context, job platformjobs.Job) error {
+	var payload BuildPayload
 	if len(job.Payload) > 0 {
-		var payload BuildPayload
 		if err := json.Unmarshal(job.Payload, &payload); err != nil {
 			return fmt.Errorf("enterprise export: bad payload: %w", err)
 		}
 		if payload.Version != 1 {
 			return fmt.Errorf("enterprise export: unsupported payload version")
+		}
+		if payload.ObservedAt != "" {
+			if _, err := time.Parse(time.RFC3339, payload.ObservedAt); err != nil {
+				return fmt.Errorf("enterprise export: bad observed_at")
+			}
 		}
 	}
 	if b.Pool == nil || b.Root == "" {
@@ -136,6 +143,10 @@ func (b Build) Handle(ctx context.Context, job platformjobs.Job) error {
 	}
 	defer release()
 	now := b.now()
+	observedAt := now.UTC().Format(time.RFC3339)
+	if payload.ObservedAt != "" {
+		observedAt = payload.ObservedAt
+	}
 	state, hasState := LoadState(b.Root)
 	if err := CleanStale(b.Root, state.CandidateDir, staleCandidateAge, now); err != nil {
 		return err
@@ -254,6 +265,7 @@ func (b Build) Handle(ctx context.Context, job platformjobs.Job) error {
 	next := State{
 		SchemaVersion:        StateSchemaVersion,
 		BuiltAt:              now.UTC().Format(time.RFC3339),
+		ObservedAt:           observedAt,
 		CandidateDir:         candidate,
 		ContentSHA256:        manifest.ContentSHA256,
 		AnalyticsSHA256:      "sha256:" + hex.EncodeToString(analyticsSum[:]),
@@ -269,6 +281,11 @@ func (b Build) Handle(ctx context.Context, job platformjobs.Job) error {
 		return err
 	}
 	success = true
+	if b.AfterBuild != nil {
+		if err := b.AfterBuild(ctx, next); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

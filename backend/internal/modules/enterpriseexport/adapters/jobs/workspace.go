@@ -28,6 +28,7 @@ type RevisionState struct {
 type State struct {
 	SchemaVersion        string          `json:"schema_version"`
 	BuiltAt              string          `json:"built_at"`
+	ObservedAt           string          `json:"observed_at,omitempty"`
 	CandidateDir         string          `json:"candidate_dir"`
 	ContentSHA256        string          `json:"content_sha256"`
 	AnalyticsSHA256      string          `json:"analytics_sha256"`

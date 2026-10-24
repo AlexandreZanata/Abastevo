@@ -168,6 +168,14 @@ type Config struct {
 	EnterpriseExportEnabled     bool
 	EnterpriseExportRoot        string
 	EnterpriseExportWindowWeeks int
+	// Enterprise portal refresh builds and promotes a verified static release
+	// from the export candidate. It is off by default and requires the export
+	// builder plus an absolute private root and a public origin.
+	EnterprisePortalRefreshEnabled bool
+	EnterprisePortalRoot           string
+	EnterprisePortalSiteURL        string
+	EnterprisePortalIndexable      bool
+	EnterprisePortalSearchScript   string
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
@@ -254,6 +262,44 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	if cfg.EnterpriseExportEnabled {
 		if cfg.EnterpriseExportRoot == "" || !filepath.IsAbs(cfg.EnterpriseExportRoot) {
 			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_EXPORT_ROOT must be an absolute path when enterprise export is enabled")
+		}
+	}
+	if raw, present := getenv("ANPFUEL_ENTERPRISE_PORTAL_REFRESH_ENABLED"); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_REFRESH_ENABLED must be boolean")
+		}
+		cfg.EnterprisePortalRefreshEnabled = enabled
+	}
+	if raw, present := getenv("ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE"); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE must be boolean")
+		}
+		cfg.EnterprisePortalIndexable = enabled
+	}
+	cfg.EnterprisePortalRoot, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_ROOT")
+	cfg.EnterprisePortalSiteURL, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL")
+	cfg.EnterprisePortalSearchScript, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS")
+	if cfg.EnterprisePortalRefreshEnabled {
+		if !cfg.EnterpriseExportEnabled {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_REFRESH_ENABLED requires ANPFUEL_ENTERPRISE_EXPORT_ENABLED")
+		}
+		if cfg.EnterprisePortalRoot == "" || !filepath.IsAbs(cfg.EnterprisePortalRoot) {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_ROOT must be an absolute path when portal refresh is enabled")
+		}
+		if cfg.EnterprisePortalSiteURL == "" {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL is required when portal refresh is enabled")
+		}
+		parsed, err := url.Parse(cfg.EnterprisePortalSiteURL)
+		if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL must be an http(s) origin")
+		}
+		if cfg.EnterprisePortalRoot == cfg.EnterpriseExportRoot {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_ROOT must differ from the export root")
+		}
+		if cfg.EnterprisePortalSearchScript != "" && !filepath.IsAbs(cfg.EnterprisePortalSearchScript) {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS must be an absolute path")
 		}
 	}
 	if raw, present := getenv(keyQualityCompanyReadsEnabled); present {

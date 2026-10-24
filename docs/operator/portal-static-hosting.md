@@ -92,13 +92,59 @@ rolls back A, corrupts A and rolls back to B, withdraws B to A, and finally
 withdraws without fallback. It removes its container and temporary root unless
 `PORTAL_KEEP=1`/`PORTAL_RELEASE_ROOT` is set.
 
+## Automatic refresh and correction (ESP-15)
+
+Automatic refresh is implemented as a private worker job and remains **off by
+default**. It requires the enterprise export builder and these settings:
+
+```sh
+ANPFUEL_ENTERPRISE_PORTAL_REFRESH_ENABLED=true
+ANPFUEL_ENTERPRISE_PORTAL_ROOT=/var/lib/abastevo/portal
+ANPFUEL_ENTERPRISE_PORTAL_SITE_URL=https://portal.example
+ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE=false       # explicit preview default
+ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS=/opt/abastevo/search.<hash>.js  # optional
+```
+
+`ANPFUEL_ENTERPRISE_EXPORT_ENABLED` must also be true; `PORTAL_ROOT` must be an
+absolute private path distinct from the export root. The worker schedules
+`enterprise-portal-refresh` every 15 minutes. A fine or official publication
+enqueues an export build; a successful new export state enqueues a refresh
+immediately. The periodic job recovers lost hooks.
+
+The refresh reads the durable export candidate, generates a portal candidate,
+verifies it, and promotes it with an expected-current fence. If the export state
+and source pin are unchanged, or the generated content hash already equals the
+current release, it records a no-op and leaves the release untouched. A failed
+generation, copy, verification or promotion preserves the current release and
+records `failed` in `portal-refresh-state.json`. Orphan `candidates/portal-*`
+directories older than 24 hours are removed; a crash after promotion is
+recovered as a no-op on the next run.
+
+If the current FQ official revision is no longer published/withdrawn, the
+refresh:
+
+- withdraws the affected release when the current release contains official
+  records;
+- uses a newer safe release without official records as fallback if one exists;
+- otherwise removes `current`, so the static site returns 404 rather than
+  serving a withdrawn official slice.
+
+The receipt records `last_outcome`, `last_error`, `trigger`, `observed_at`,
+`export_built_at`, `portal_built_at`, `released_at`, `withdrawn_at`,
+`export_content_sha256`, `portal_content_sha256`, source revision/lease/
+edition/checksum/clock, generation seconds and observed/export-to-release
+seconds. `observed_at` is the local source/build detection time and is **not**
+the ANP publication delay; the source clock is recorded separately and no ANP
+delay is inferred. The receipt is private and never served by the static root.
+
 ## Limitations
 
 - Production host/CDN/TLS/DNS, shared-edge routing, cache purge, multi-host
   locking, disk quotas and capacity remain OWED to ESP-14's deployment scope and
   ESP-18. The current flock is single-host.
+- Automatic refresh is composed and tested locally but disabled by default; no
+  production activation or source schedule was changed.
 - Real price publication remains blocked by ESP-07/rights; the rehearsal proves
   the selected event-level official artifact plus the synthetic price fixture.
-- Automatic source refresh/correction publication is ESP-15, not this document.
 - No API, database, source or shared edge is contacted by the publisher or the
   rehearsal.
