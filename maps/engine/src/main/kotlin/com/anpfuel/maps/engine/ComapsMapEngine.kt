@@ -205,32 +205,13 @@ class ComapsMapEngine(
                 overlayCategory = -1L
             }
             val file = File(context.cacheDir, "abastevo-overlay-${System.currentTimeMillis()}.kml")
-            val placemarks = markers.joinToString("\n") { marker ->
-                """
-                <Placemark>
-                  <name>ABASTEVO:${marker.uuid}</name>
-                  <description>${marker.title.replace("<", " ").replace(">", " ")}</description>
-                  <Point><coordinates>${marker.longitude},${marker.latitude}</coordinates></Point>
-                </Placemark>
-                """.trimIndent()
-            }
-            val kml = """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <kml xmlns="http://www.opengis.net/kml/2.2">
-                  <Document>
-                    <name>Abastevo</name>
-                    $placemarks
-                  </Document>
-                </kml>
-            """.trimIndent()
-            file.writeText(kml)
+            file.writeText(buildOverlayKml(markers))
             manager.loadBookmarksFile(file.absolutePath, true)
             val category = manager.getCategories().lastOrNull()
             if (category == null) return false
             overlayCategory = category.id
             manager.showBookmarkCategoryOnMap(category.id)
-            val ids = (0 until markers.size).map { manager.getBookmarkIdByPosition(category.id, it) }
-            Log.i("ComapsMapEngine", "overlay generation category=$overlayCategory markers=${markers.size} ids=$ids")
+            Log.i("ComapsMapEngine", "overlay generation category=$overlayCategory markers=${markers.size}")
             true
         } catch (error: Exception) {
             Log.e("ComapsMapEngine", "overlay generation failed", error)
@@ -282,3 +263,26 @@ class ComapsMapEngine(
         Framework.nativePlacePageActivationListener(listener)
     }
 }
+
+internal fun buildOverlayKml(markers: List<MapOverlayMarker>): String = buildString {
+    appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
+    appendLine("""<kml xmlns="http://www.opengis.net/kml/2.2">""")
+    appendLine("  <Document>")
+    appendLine("    <name>Abastevo</name>")
+    for (marker in markers) {
+        appendLine("    <Placemark>")
+        appendLine("      <name>ABASTEVO:${escapeXml(marker.uuid)}</name>")
+        appendLine("      <description>${escapeXml(marker.title)}</description>")
+        appendLine("      <Point><coordinates>${marker.longitude},${marker.latitude}</coordinates></Point>")
+        appendLine("    </Placemark>")
+    }
+    appendLine("  </Document>")
+    appendLine("</kml>")
+}
+
+private fun escapeXml(value: String): String = value
+    .replace("&", "&amp;")
+    .replace("<", "&lt;")
+    .replace(">", "&gt;")
+    .replace("\"", "&quot;")
+    .replace("'", "&apos;")
