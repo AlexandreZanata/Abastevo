@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -36,6 +37,7 @@ type State struct {
 	FromSurvey           string          `json:"from_survey"`
 	ToSurvey             string          `json:"to_survey"`
 	OfficialRevisions    []RevisionState `json:"official_revisions"`
+	Official             *OfficialPin    `json:"official,omitempty"`
 }
 
 // Valid checks that the state points at a complete candidate payload.
@@ -60,6 +62,22 @@ func (s State) Valid() bool {
 	}
 	if _, err := os.Stat(filepath.Join(s.CandidateDir, "analytics-v1.json")); err != nil {
 		return false
+	}
+	if s.Official != nil {
+		if s.Official.PayloadSHA256 == "" {
+			return false
+		}
+		payload, err := os.ReadFile(filepath.Join(s.CandidateDir, "official-records.jsonl"))
+		if err != nil {
+			return false
+		}
+		sum := sha256.Sum256(payload)
+		if "sha256:"+hex.EncodeToString(sum[:]) != "sha256:"+s.Official.PayloadSHA256 {
+			return false
+		}
+		if _, err := os.Stat(filepath.Join(s.CandidateDir, "official-records-manifest.json")); err != nil {
+			return false
+		}
 	}
 	return true
 }

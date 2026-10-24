@@ -1,5 +1,17 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-11 2026-10-24: LOCAL_DONE (event-level) /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-11.md).
+  Merged FQ-PORTAL-READY; real FQ-07 seven-file acceptance 35,911=35,612+293
+  CPF+6 metadata, 35,612 unmatched/zero links; 2025 export 3,375 rows.
+  `/fiscalizacao/` event-level index/pagination/detail and linked station
+  sections; only `linked` shows a station, unmatched/ambiguous never. Real 2025
+  portal candidate: 3,409 pages/3,419 files/15.2 MB; synthetic linked/ambiguous
+  case covered. Builder provider/state, FQ pin reconcile and no-published gate
+  tested. FQ-06, live fine-link revalidation/rebound, multi-edition snapshot and
+  real FQ+price same-DB deployment remain OWED; real prices still ESP-07-blocked.
+  Next: ESP-13 artifacts.
+
 - Fuel-quality portal readiness 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   local `codex/fq-portal-ready` worktree from `origin/dev 721582b8`; commits
   `424d71b7`, `9795a36e` plus this evidence commit. [Evidence](../backend/evidence/fuel-quality/FQ-PORTAL-READY.md).
@@ -16,7 +28,8 @@
   snapshot without station claims.
 
 - Enterprise data/static portal ESP-12 2026-10-24: LOCAL_DONE / PARTIAL;
-  official-record insights blocked by ESP-11 (FQ-06/07 runtime/safe links).
+  official-record insights were blocked at that checkpoint; ESP-11 event-level
+  now unblocks them, but they are not included in this batch.
   [Evidence](../backend/evidence/enterprise-static/ESP-12.md).
   `/curiosidades/` has six approved deterministic questions with formulas,
   sample-change explanation and exclusion census; `/dados/` exports latest

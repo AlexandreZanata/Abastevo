@@ -19,7 +19,7 @@ labelled synthetic data and is not part of the landing build or `dist/`.
 | `/precos/uf/{uf}/` | State summary and municipalities | indexable when the state has a sample | Official current revisions + Directory geography |
 | `/precos/uf/{uf}/municipio/{ibge}/` | Municipality summary and cheapest-in-sample list | indexable when the municipality has at least five priced stations; otherwise `noindex,follow` | Official current revisions + Directory geography |
 | `/combustiveis/{fuel}/` | Fuel/unit definitions and period context | indexable | Official metadata; reserved for ESP-09/12 |
-| `/fiscalizacao/` | Source-reported official events | `noindex,follow` until the selected FQ source/runtime is accepted | FQ-06/07 public reads; currently gated |
+| `/fiscalizacao/` | Source-reported official events, event-level | indexable when publication is authorized; candidate `noindex` | FQ-07/FQ-08 frozen export; FQ-06 still gated |
 | `/curiosidades/` | Approved deterministic data questions | formulas approved in ESP-12; candidate builds `noindex` until publication | ESP-04 metrics; official-record questions remain blocked by ESP-11 |
 | `/dados/` | Bounded CSV downloads and download manifest | indexable when publication is authorized; candidate builds `noindex` | Latest ESP-03/04 snapshot |
 | `/metodologia/` | Sources, dates, clocks, methods, rights and corrections | indexable | Source admission register + metrics definitions |
@@ -33,6 +33,20 @@ operator's prices or official records.
 Search URLs (`/consultar/?q=...`, `?uf=...`) are not indexable variants and
 carry a canonical link to `/consultar/`. Empty search queries and filter
 combinations are not generated as indexable pages.
+
+### Official records (ESP-11)
+
+`/fiscalizacao/` consumes a frozen FQ `quality-official-export-v1` JSONL and
+manifest from the same read-only snapshot as the price export. It validates the
+payload SHA-256, rows, accepted/input counts and association census before
+rendering. The index is paginated at 200 records; record pages are stable,
+source-reporting and explicit that a fine is not proof of adulteration, guilt or
+definitive legal status, and that absence is not a clean-record certificate.
+The page never presents a due date as occurrence or ownership and never invents
+a station link. The accepted 2025 real edition contains 3,375 event-level fines;
+all are `unmatched` in the acceptance Directory. Linked/ambiguous rendering is
+covered by synthetic PostGIS/portal tests; live revalidation of fine links is
+OWED. The gated placeholder remains when no official snapshot is present.
 
 ### Insights and downloads (ESP-12)
 

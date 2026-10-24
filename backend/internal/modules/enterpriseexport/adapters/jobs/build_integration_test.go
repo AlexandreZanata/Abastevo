@@ -4,8 +4,11 @@ package jobs
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -268,5 +271,109 @@ func TestBuildCoalescesCorrectionsAndReconciles(t *testing.T) {
 	}
 	if len(enqueued) != 2 || dedupes[0] == dedupes[1] {
 		t.Fatalf("changed fingerprint reused a dedupe key: %v", dedupes)
+	}
+}
+
+type fakeOfficialProvider struct {
+	pin     *OfficialPin
+	payload []byte
+}
+
+func (f *fakeOfficialProvider) Pin(context.Context) (*OfficialPin, error) {
+	return f.pin, nil
+}
+
+func (f *fakeOfficialProvider) Build(_ context.Context, out io.Writer) (OfficialBuild, error) {
+	if _, err := out.Write(f.payload); err != nil {
+		return OfficialBuild{}, err
+	}
+	pin := *f.pin
+	sum := sha256.Sum256(f.payload)
+	pin.PayloadSHA256 = hex.EncodeToString(sum[:])
+	return OfficialBuild{Manifest: []byte(`{"schema_version":"quality-official-export-v1"}` + "\n"), Pin: pin}, nil
+}
+
+func TestBuildWritesOfficialSnapshotAndReconcilesPin(t *testing.T) {
+	pool := freshJobsPool(t)
+	ctx := context.Background()
+	root := t.TempDir()
+	station, err := parentdirectory.NewRepository(pool).ResolveCNPJ(ctx, "04218406000104", "Posto A", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedJobsWeek(t, pool, station.ID, "w1a",
+		time.Date(2025, 1, 6, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 12, 0, 0, 0, 0, time.UTC), 5999, 3799)
+	seedJobsWeek(t, pool, station.ID, "w2",
+		time.Date(2025, 1, 13, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 19, 0, 0, 0, 0, time.UTC), 6199, 3899)
+	officialPin := &OfficialPin{
+		RevisionID: "00000000-0000-4000-8000-0000000000f1",
+		LeaseID:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		Edition:    "2025", SourceURL: "https://example.test/fines.csv",
+		SourceChecksum: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		SourcePeriod:   "2025", Rows: 1, Accepted: 1, Input: 1,
+		Linked: 1, Unmatched: 0, Ambiguous: 0,
+	}
+	provider := &fakeOfficialProvider{pin: officialPin, payload: []byte(`{"native_key":"f1"}` + "\n")}
+	builder := Build{
+		Pool: pool, Root: root, WindowWeeks: 2, PageSize: 2,
+		Now:             func() time.Time { return time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC) },
+		OfficialRecords: func(pgx.Tx) OfficialProvider { return provider },
+	}
+	if err := builder.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	state, ok := LoadState(root)
+	if !ok || !state.Valid() || state.Official == nil || state.Official.LeaseID != officialPin.LeaseID {
+		t.Fatalf("state official = %+v, %v", state.Official, ok)
+	}
+	if _, err := os.Stat(filepath.Join(state.CandidateDir, "official-records.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(state.CandidateDir, "official-records-manifest.json")); err != nil {
+		t.Fatal(err)
+	}
+	if candidateCount(t, root) != 1 {
+		t.Errorf("official build candidates = %d", candidateCount(t, root))
+	}
+	if err := builder.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	if candidateCount(t, root) != 1 {
+		t.Errorf("unchanged official pin created a candidate")
+	}
+	officialPin.LeaseID = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+	provider.payload = []byte(`{"native_key":"f1","v":2}` + "\n")
+	if err := builder.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	state, _ = LoadState(root)
+	if state.Official == nil || state.Official.LeaseID != officialPin.LeaseID || candidateCount(t, root) != 2 {
+		t.Fatalf("official correction state/candidates = %+v/%d", state.Official, candidateCount(t, root))
+	}
+
+	var enqueued int
+	reconcile := Reconcile{
+		Pool: pool, Root: root, WindowWeeks: 2, PageSize: 2,
+		OfficialRecords: func(*pgxpool.Pool) OfficialProvider { return provider },
+		Enqueue: func(context.Context, BuildPayload, string) (platformjobs.EnqueueResult, error) {
+			enqueued++
+			return platformjobs.EnqueueResult{}, nil
+		},
+	}
+	if err := reconcile.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	if enqueued != 0 {
+		t.Errorf("current official state enqueued %d", enqueued)
+	}
+	officialPin.LeaseID = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+	provider.payload = []byte(`{"native_key":"f1","v":3}` + "\n")
+	if err := reconcile.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	if enqueued != 1 {
+		t.Errorf("changed official pin enqueued %d", enqueued)
 	}
 }

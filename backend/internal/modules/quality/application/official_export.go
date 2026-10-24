@@ -26,9 +26,10 @@ const (
 )
 
 var (
-	ErrOfficialExportUnavailable = errors.New("quality: official export unavailable")
-	ErrOfficialExportCursor      = errors.New("quality: official export cursor")
-	ErrOfficialExportIncomplete  = errors.New("quality: official export incomplete")
+	ErrOfficialExportUnavailable  = errors.New("quality: official export unavailable")
+	ErrNoPublishedOfficialRecords = fmt.Errorf("%w: no published records", ErrOfficialExportUnavailable)
+	ErrOfficialExportCursor       = errors.New("quality: official export cursor")
+	ErrOfficialExportIncomplete   = errors.New("quality: official export incomplete")
 )
 
 // AssociationState is the public snapshot vocabulary. Exact current-company

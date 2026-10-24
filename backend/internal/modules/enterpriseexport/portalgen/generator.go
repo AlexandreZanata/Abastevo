@@ -59,6 +59,7 @@ type Manifest struct {
 	PublishedAt        string       `json:"published_at"`
 	Pages              int          `json:"pages"`
 	Files              []FileDigest `json:"files"`
+	OfficialRecords    *officialPin `json:"official_records,omitempty"`
 	ContentSHA256      string       `json:"content_sha256"`
 }
 
@@ -210,10 +211,13 @@ type sourceView struct {
 
 type stationPage struct {
 	pageBase
-	Station      stationView
-	Observations []observationView
-	Histories    []historyView
-	Source       sourceView
+	Station         stationView
+	Observations    []observationView
+	Histories       []historyView
+	Source          sourceView
+	OfficialRecords []officialRecordView
+	OfficialCount   int
+	OfficialMore    bool
 }
 
 type observation struct {
@@ -307,6 +311,11 @@ func Generate(opts Options) (Result, error) {
 			return Result{}, fmt.Errorf("portalgen: price has unknown revision")
 		}
 	}
+	official, err := loadOfficialDataset(opts.SnapshotDir, stations)
+	if err != nil {
+		return Result{}, err
+	}
+	combinedHash := combinedInputHash(manifest.ContentSHA256, official)
 	latest := latestRevision(snapshot.Revisions)
 	observations, err := latestObservations(snapshot, latest, stations)
 	if err != nil {
@@ -359,34 +368,37 @@ func Generate(opts Options) (Result, error) {
 	if latest != nil {
 		period = periodLabel(latest.SurveyStart, latest.SurveyEnd)
 	}
-	downloadFiles, manifestLink, err := g.writeDownloads(snapshot, latest, stations, observations, latestSummaries, release, period, published, manifest.ContentSHA256)
+	downloadFiles, manifestLink, err := g.writeDownloads(snapshot, latest, stations, observations, latestSummaries, release, period, published, combinedHash)
 	if err != nil {
 		return Result{}, err
 	}
 	cards := buildInsights(latest, previous, latestSummaries, previousSummaries, latestCoverage, observations, municipalityStations, published)
-	if err := g.generateCuriosidades(cards, period, published, manifest.ContentSHA256); err != nil {
+	if err := g.generateCuriosidades(cards, period, published, combinedHash); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateDownloads(downloadFiles, manifestLink, period, release, published, manifest.ContentSHA256); err != nil {
+	if err := g.generateDownloads(downloadFiles, manifestLink, period, release, published, combinedHash); err != nil {
 		return Result{}, err
 	}
 
-	if err := g.generateConsultar(latestSummaries, stateStations, searchStates, release, period, published, manifest.ContentSHA256); err != nil {
+	if err := g.generateConsultar(latestSummaries, stateStations, searchStates, release, period, published, combinedHash); err != nil {
 		return Result{}, err
 	}
-	if err := g.generatePrecos(latestSummaries, latestRankings, stations, stateStations, period, published, manifest.ContentSHA256); err != nil {
+	if err := g.generatePrecos(latestSummaries, latestRankings, stations, stateStations, period, published, combinedHash); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateStates(latestSummaries, latestRankings, stations, municipalityStations, municipalityState, municipalityName, period, published, manifest.ContentSHA256); err != nil {
+	if err := g.generateStates(latestSummaries, latestRankings, stations, municipalityStations, municipalityState, municipalityName, period, published, combinedHash); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateMunicipalities(latestSummaries, observations, municipalityStations, municipalityState, municipalityName, period, published, manifest.ContentSHA256); err != nil {
+	if err := g.generateMunicipalities(latestSummaries, observations, municipalityStations, municipalityState, municipalityName, period, published, combinedHash); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateStations(snapshot, stations, obsByStation, stateStations, municipalityStations, municipalityName, period, published, manifest.ContentSHA256); err != nil {
+	if err := g.generateStations(snapshot, stations, obsByStation, stateStations, municipalityStations, municipalityName, official, period, published, combinedHash); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateStatic(period, published, manifest.ContentSHA256); err != nil {
+	if err := g.generateOfficial(official, stations, period, published, combinedHash); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateStatic(period, published, combinedHash); err != nil {
 		return Result{}, err
 	}
 	if err := g.copyAssets(); err != nil {
@@ -395,7 +407,7 @@ func Generate(opts Options) (Result, error) {
 	if err := g.writeRobots(); err != nil {
 		return Result{}, err
 	}
-	portalManifest, err := g.writeManifest(manifest, projection)
+	portalManifest, err := g.writeManifest(manifest, projection, official, combinedHash)
 	if err != nil {
 		return Result{}, err
 	}
@@ -678,17 +690,21 @@ func (g *generator) writeRobots() error {
 	return g.writeAsset("robots.txt", []byte(body))
 }
 
-func (g *generator) writeManifest(exportManifest enterpriseexport.Manifest, projection analytics.Projection) (Manifest, error) {
+func (g *generator) writeManifest(exportManifest enterpriseexport.Manifest, projection analytics.Projection, official *officialDataset, inputHash string) (Manifest, error) {
 	files := make([]FileDigest, 0, len(g.files))
 	for _, file := range g.files {
 		files = append(files, file)
 	}
 	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 	manifest := Manifest{
-		SchemaVersion: SchemaVersion, InputContentSHA256: exportManifest.ContentSHA256,
+		SchemaVersion: SchemaVersion, InputContentSHA256: inputHash,
 		MetricsVersion: projection.MetricsVersion,
 		PublishedAt:    exportManifest.BuiltAt,
 		Pages:          g.pages, Files: files,
+	}
+	if official != nil {
+		pin := official.Manifest.pin()
+		manifest.OfficialRecords = &pin
 	}
 	descriptor, err := json.Marshal(struct {
 		SchemaVersion      string       `json:"schema_version"`
@@ -876,7 +892,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 	return nil
 }
 
-func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, stations map[string]enterpriseexport.Station, observations map[string][]observation, stateStations, municipalityStations map[string]int, municipalityName map[string]string, period, published, inputHash string) error {
+func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, stations map[string]enterpriseexport.Station, observations map[string][]observation, stateStations, municipalityStations map[string]int, municipalityName map[string]string, official *officialDataset, period, published, inputHash string) error {
 	ordered := make([]enterpriseexport.Station, 0, len(stations))
 	for _, station := range stations {
 		ordered = append(ordered, station)
@@ -966,9 +982,11 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 				Period: periodLabel(latest.SurveyStart, latest.SurveyEnd),
 			}
 		}
+		officialRecords, officialCount := officialStationViews(official, station.StationID, stations)
 		data := stationPage{
-			pageBase: g.base(station.DisplayName, "Preços datados da pesquisa ANP para "+station.DisplayName+", com fonte, histórico, lacunas e status informado.", "consultar", period, published, inputHash, []crumb{{Label: "Consultar", Href: "/consultar/"}, {Label: station.DisplayName, Current: true}}),
+			pageBase: g.base(station.DisplayName, "Preços datados da pesquisa ANP para "+station.DisplayName+", com fonte, histórico, lacunas, status informado e registros oficiais vinculados.", "consultar", period, published, inputHash, []crumb{{Label: "Consultar", Href: "/consultar/"}, {Label: station.DisplayName, Current: true}}),
 			Station:  view, Observations: obsView, Histories: historyViews, Source: source,
+			OfficialRecords: officialRecords, OfficialCount: officialCount, OfficialMore: officialCount > len(officialRecords),
 		}
 		if err := g.writePage("postos/"+station.StationID+"/index.html", "station", data); err != nil {
 			return err
@@ -1000,14 +1018,6 @@ func (g *generator) generateStatic(period, published, inputHash string) error {
 		Breadcrumbs: []crumb{{Label: "Metodologia", Current: true}},
 	}
 	if err := g.writePage("metodologia/index.html", "metodologia", metodologia); err != nil {
-		return err
-	}
-	fiscalizacao := pageBase{
-		Title: "Fiscalização — ainda não disponível", Description: "Recorte oficial de fiscalização ainda não admitido; nenhum registro é exibido ou inferido.",
-		ActiveNav: "fiscalizacao", Indexable: false, Period: period, PublishedAt: published, InputHash: inputHash,
-		Breadcrumbs: []crumb{{Label: "Fiscalização", Current: true}},
-	}
-	if err := g.writePage("fiscalizacao/index.html", "fiscalizacao", fiscalizacao); err != nil {
 		return err
 	}
 	notFound := pageBase{

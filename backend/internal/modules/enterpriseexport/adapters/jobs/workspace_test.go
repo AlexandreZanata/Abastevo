@@ -147,6 +147,21 @@ func TestWindowFor(t *testing.T) {
 	}
 }
 
+func TestExportStateKeyIncludesOfficialPin(t *testing.T) {
+	fingerprint := directoryapp.ExportFingerprint{Stations: 2, Hash: "md5:a:b"}
+	pins := []RevisionState{{RevisionID: "r1", SourceChecksum: "sha256:r1"}}
+	base := exportStateKey(fingerprint, pins, nil)
+	official := &OfficialPin{RevisionID: "f1", LeaseID: "l1", Edition: "2025", Rows: 1}
+	withOfficial := exportStateKey(fingerprint, pins, official)
+	if base == withOfficial {
+		t.Error("official pin did not change the export state key")
+	}
+	official.LeaseID = "l2"
+	if withOfficial == exportStateKey(fingerprint, pins, official) {
+		t.Error("official lease did not change the export state key")
+	}
+}
+
 func TestStateMatches(t *testing.T) {
 	state := State{
 		DirectoryFingerprint: "md5:a:b",
@@ -163,18 +178,30 @@ func TestStateMatches(t *testing.T) {
 		{RevisionID: "r1", SourceChecksum: "sha256:r1"},
 		{RevisionID: "r2", SourceChecksum: "sha256:r2"},
 	}
-	if !stateMatches(state, fingerprint, pins, "2026-01-01", "2026-12-31") {
+	if !stateMatches(state, fingerprint, pins, "2026-01-01", "2026-12-31", nil) {
 		t.Error("matching state rejected")
 	}
 	pins[1].SourceChecksum = "sha256:changed"
-	if stateMatches(state, fingerprint, pins, "2026-01-01", "2026-12-31") {
+	if stateMatches(state, fingerprint, pins, "2026-01-01", "2026-12-31", nil) {
 		t.Error("changed revision accepted")
 	}
-	if stateMatches(state, directoryapp.ExportFingerprint{Stations: 3, Hash: "md5:a:b"}, pins, "2026-01-01", "2026-12-31") {
+	if stateMatches(state, directoryapp.ExportFingerprint{Stations: 3, Hash: "md5:a:b"}, pins, "2026-01-01", "2026-12-31", nil) {
 		t.Error("changed station count accepted")
 	}
-	if stateMatches(state, fingerprint, pins, "2026-02-01", "2026-12-31") {
+	if stateMatches(state, fingerprint, pins, "2026-02-01", "2026-12-31", nil) {
 		t.Error("changed window accepted")
+	}
+	pins[1].SourceChecksum = "sha256:r2"
+	official := &OfficialPin{RevisionID: "r1", LeaseID: "l1", Edition: "2025", SourceChecksum: "sum", Rows: 3, Accepted: 3}
+	withOfficial := state
+	withOfficial.Official = official
+	if !stateMatches(withOfficial, fingerprint, pins, "2026-01-01", "2026-12-31", official) {
+		t.Error("matching official pin rejected")
+	}
+	changed := *official
+	changed.LeaseID = "l2"
+	if stateMatches(withOfficial, fingerprint, pins, "2026-01-01", "2026-12-31", &changed) {
+		t.Error("changed official pin accepted")
 	}
 }
 

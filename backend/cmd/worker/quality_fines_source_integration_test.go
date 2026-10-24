@@ -227,6 +227,22 @@ func TestOfficialSevenFileWorkerPipeline(t *testing.T) {
 				t.Fatal("worker frozen export source identity mismatch")
 			}
 			t.Logf("frozen export %s revision=%s lease=%s rows=%d sha256=%s", exportManifest.Edition, exportManifest.RevisionID, exportManifest.LeaseID, exportManifest.Rows, exportManifest.PayloadSHA256)
+			if exportDir := os.Getenv("ANPFUEL_TEST_EXPORT_DIR"); exportDir != "" {
+				if err := os.MkdirAll(exportDir, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(exportDir, "official-records-"+tc.period+".jsonl"), exportPayload.Bytes(), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				manifestJSON, err := json.MarshalIndent(exportManifest, "", "  ")
+				if err != nil {
+					t.Fatal(err)
+				}
+				manifestJSON = append(manifestJSON, '\n')
+				if err := os.WriteFile(filepath.Join(exportDir, "official-records-"+tc.period+".json"), manifestJSON, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
 			children, e := os.ReadDir(root)
 			if e != nil || len(children) != 0 {
 				t.Fatal("worker retained private candidate", e)

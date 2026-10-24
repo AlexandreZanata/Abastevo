@@ -33,7 +33,7 @@ func (r *ExportReader) ExportPin(ctx context.Context) (application.OfficialExpor
 	row, err := q.LeaseByStream(ctx, quality.LeaseByStreamParams{Source: application.OfficialExportSource, Stream: domain.StreamSanction})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return application.OfficialExportPin{}, fmt.Errorf("%w: no published revision", application.ErrOfficialExportUnavailable)
+			return application.OfficialExportPin{}, fmt.Errorf("%w: no published revision", application.ErrNoPublishedOfficialRecords)
 		}
 		if ctx.Err() != nil {
 			return application.OfficialExportPin{}, ctx.Err()

@@ -22,12 +22,13 @@ import (
 // official window and Directory fingerprint with the durable state and enqueues
 // one bounded build only when the state is stale or incomplete.
 type Reconcile struct {
-	Pool         *pgxpool.Pool
-	Root         string
-	WindowWeeks  int
-	PageSize     int
-	MaxRevisions int
-	Enqueue      func(ctx context.Context, payload BuildPayload, dedupe string) (platformjobs.EnqueueResult, error)
+	Pool            *pgxpool.Pool
+	Root            string
+	WindowWeeks     int
+	PageSize        int
+	MaxRevisions    int
+	Enqueue         func(ctx context.Context, payload BuildPayload, dedupe string) (platformjobs.EnqueueResult, error)
+	OfficialRecords func(pool *pgxpool.Pool) OfficialProvider
 }
 
 func (Reconcile) Kind() string { return ReconcileKind }
@@ -84,21 +85,31 @@ func (r Reconcile) Handle(ctx context.Context, job platformjobs.Job) error {
 	if err != nil {
 		return err
 	}
+	var currentOfficial *OfficialPin
+	if r.OfficialRecords != nil {
+		currentOfficial, err = r.OfficialRecords(r.Pool).Pin(ctx)
+		if err != nil {
+			return err
+		}
+	}
 	state, hasState := LoadState(r.Root)
-	if hasState && stateMatches(state, fingerprint, pins, fromSurvey, toSurvey) && state.Valid() {
+	if hasState && stateMatches(state, fingerprint, pins, fromSurvey, toSurvey, currentOfficial) && state.Valid() {
 		return nil
 	}
 	_, err = r.Enqueue(ctx, BuildPayload{
 		Version: 1, Trigger: "reconcile", RevisionID: latest.ID,
-	}, "enterprise-export:reconcile:"+period+":"+exportStateKey(fingerprint, pins))
+	}, "enterprise-export:reconcile:"+period+":"+exportStateKey(fingerprint, pins, currentOfficial))
 	return err
 }
 
-func exportStateKey(fingerprint directoryapp.ExportFingerprint, pins []RevisionState) string {
+func exportStateKey(fingerprint directoryapp.ExportFingerprint, pins []RevisionState, official *OfficialPin) string {
 	hash := sha256.New()
 	_, _ = hash.Write([]byte(fmt.Sprintf("%s|%d|", fingerprint.Hash, fingerprint.Stations)))
 	for _, pin := range pins {
 		_, _ = hash.Write([]byte(pin.RevisionID + "|" + pin.SourceChecksum + "|"))
+	}
+	if official != nil {
+		_, _ = hash.Write([]byte(official.RevisionID + "|" + official.LeaseID + "|" + official.Edition + "|"))
 	}
 	return hex.EncodeToString(hash.Sum(nil))
 }

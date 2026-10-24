@@ -3,7 +3,9 @@ package portalgen
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -424,6 +426,11 @@ func TestGeneratedLinksResolve(t *testing.T) {
 	if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out}); err != nil {
 		t.Fatal(err)
 	}
+	checkPortalLinks(t, out)
+}
+
+func checkPortalLinks(t *testing.T, out string) {
+	t.Helper()
 	linkPattern := regexp.MustCompile(`(?:href|src)="(/[^"#?]*)"`)
 	err := filepath.WalkDir(out, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
@@ -631,4 +638,231 @@ func TestInsightsExplainSampleChange(t *testing.T) {
 	if strings.Contains(page, "A amostra de postos foi a mesma") {
 		t.Errorf("sample change was compared as if unchanged")
 	}
+}
+
+func writeOfficialFixture(t *testing.T, dir string) {
+	t.Helper()
+	revision := "00000000-0000-4000-8000-0000000000f1"
+	lease := strings.Repeat("b", 64)
+	checksum := strings.Repeat("a", 64)
+	sourceURL := "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/mav/multas-aplicadas-2025.csv"
+	amount := func(value int64) *int64 { return &value }
+	year := func(value int32) *int32 { return &value }
+	records := []officialRecord{
+		{
+			NativeKey: "f1", SubjectCNPJ: "04218406000104", Scope: "sanction",
+			Status: "Multa aplicada", Evidence: "fines.csv:2", StationID: stA,
+			AssociationState: "linked", AssociationReason: "exact current cnpj; historical business window unknown",
+			RevisionID: revision, LeaseID: lease, SourceURL: sourceURL, SourceChecksum: checksum,
+			ProceedingRef: "48000.1/2025-11", AmountMinor: amount(150000), AmountText: "1.500,00",
+			DecidedOn: "2025-01-15", DueOn: "2025-02-28", AsOf: "2026-01-31",
+			SourceContract: "anp-sicom-cp850-9-v1", SourcePeriod: "2025",
+			ExtractionMonth: "2026-01", ReportYear: year(2025),
+		},
+		{
+			NativeKey: "f2", SubjectCNPJ: "11222333000181", Scope: "sanction",
+			Status: "Multa aplicada", Evidence: "fines.csv:3",
+			AssociationState: "unmatched", AssociationReason: "no current station",
+			RevisionID: revision, LeaseID: lease, SourceURL: sourceURL, SourceChecksum: checksum,
+			ProceedingRef: "48000.2/2025-12", AmountMinor: amount(30000), AmountText: "300,00",
+			DecidedOn: "2025-02-10", DueOn: "2025-03-31", AsOf: "2026-01-31",
+			SourceContract: "anp-sicom-cp850-9-v1", SourcePeriod: "2025",
+			ExtractionMonth: "2026-01", ReportYear: year(2025),
+		},
+		{
+			NativeKey: "f3", SubjectCNPJ: "11444777000161", Scope: "sanction",
+			Status: "Multa aplicada", Evidence: "fines.csv:4",
+			AssociationState: "ambiguous", AssociationReason: "multiple current stations",
+			RevisionID: revision, LeaseID: lease, SourceURL: sourceURL, SourceChecksum: checksum,
+			ProceedingRef: "48000.3/2025-13", AmountMinor: amount(5000), AmountText: "50,00",
+			DecidedOn: "2025-03-12", DueOn: "2025-04-30", AsOf: "2026-01-31",
+			SourceContract: "anp-sicom-cp850-9-v1", SourcePeriod: "2025",
+			ExtractionMonth: "2026-01", ReportYear: year(2025),
+		},
+	}
+	var payload bytes.Buffer
+	encoder := json.NewEncoder(&payload)
+	encoder.SetEscapeHTML(false)
+	for _, record := range records {
+		if err := encoder.Encode(record); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := officialManifest{
+		SchemaVersion: officialSchema, PublicFieldPolicy: "fq-public-v1",
+		Source: "sanctions", Stream: "sanction-v1", Edition: "2025",
+		RevisionID: revision, LeaseID: lease, PublishedAt: "2026-10-24T21:55:16Z",
+		Status: "published", ProvenanceState: "VERIFIED",
+		SourceURL: sourceURL, SourceChecksum: checksum, SourceBytes: 450504,
+		SourcePeriod: "2025", SourceClockPrecision: "MONTH", SourceClockValue: "2026-01",
+		Counts:            officialCounts{Input: 3, Accepted: 3, Duplicates: 0, Quarantined: 0},
+		AssociationPolicy: "current-company-v1", AssociationScope: "CURRENT_COMPANY_ONLY",
+		AssociationDecisionDay: "2026-10-20",
+		AssociationCensus:      officialCensus{Total: 3, Linked: 1, Unmatched: 1, Ambiguous: 1},
+		Rows:                   3, PayloadSHA256: hex.EncodeToString(func() []byte { sum := sha256.Sum256(payload.Bytes()); return sum[:] }()),
+	}
+	if err := os.WriteFile(filepath.Join(dir, "official-records.jsonl"), payload.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	writeJSON(t, filepath.Join(dir, "official-records-manifest.json"), manifest)
+}
+
+func TestOfficialRecordsPages(t *testing.T) {
+	snapshot := writeFixture(t)
+	writeOfficialFixture(t, snapshot)
+	out := filepath.Join(t.TempDir(), "portal")
+	result, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Pages != 21 || result.Files != 31 {
+		t.Fatalf("result = %+v, want 21 pages and 31 files", result)
+	}
+	index := readPortal(t, out, "fiscalizacao/index.html")
+	indexLower := strings.ToLower(index)
+	for _, want := range []string{
+		"Fiscalização — multas aplicadas", "Edição 2025", "1",
+		"não prova adulteração",
+		"não é certidão negativa", "48000.1/2025-11", "48000.2/2025-12",
+		"48000.3/2025-13", "R$ 1.500,00",
+	} {
+		if !strings.Contains(index, want) {
+			t.Errorf("fiscalizacao index missing %q", want)
+		}
+	}
+	for _, want := range []string{"sem vínculo", "ambíguos"} {
+		if !strings.Contains(indexLower, want) {
+			t.Errorf("fiscalizacao index missing %q", want)
+		}
+	}
+	linked := readPortal(t, out, "fiscalizacao/registro/"+officialRecordID("f1")+"/index.html")
+	for _, want := range []string{
+		"Posto Alfa", "/postos/" + stA + "/", "Vínculo de empresa atual",
+		"não é histórico de propriedade", "R$ 1.500,00",
+		"não é a data da ocorrência",
+	} {
+		if !strings.Contains(linked, want) {
+			t.Errorf("linked record missing %q", want)
+		}
+	}
+	unmatched := readPortal(t, out, "fiscalizacao/registro/"+officialRecordID("f2")+"/index.html")
+	if !strings.Contains(unmatched, "Sem vínculo de posto") || strings.Contains(unmatched, "/postos/") {
+		t.Errorf("unmatched record leaked a station")
+	}
+	ambiguous := readPortal(t, out, "fiscalizacao/registro/"+officialRecordID("f3")+"/index.html")
+	if !strings.Contains(ambiguous, "Vínculo ambíguo") || strings.Contains(ambiguous, "/postos/") {
+		t.Errorf("ambiguous record leaked a station")
+	}
+	station := readPortal(t, out, "postos/"+stA+"/index.html")
+	if !strings.Contains(station, "Registros oficiais vinculados") || !strings.Contains(station, "48000.1/2025-11") {
+		t.Errorf("linked station section missing")
+	}
+	stationB := readPortal(t, out, "postos/"+stB+"/index.html")
+	if strings.Contains(stationB, "Registros oficiais vinculados") {
+		t.Errorf("unmatched station section must be absent")
+	}
+	var manifest Manifest
+	if err := json.Unmarshal([]byte(readPortal(t, out, "portal-manifest.json")), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.OfficialRecords == nil || manifest.OfficialRecords.Rows != 3 ||
+		manifest.OfficialRecords.RevisionID != "00000000-0000-4000-8000-0000000000f1" ||
+		manifest.InputContentSHA256 == "sha256:fixture" {
+		t.Errorf("portal manifest official pin = %+v", manifest.OfficialRecords)
+	}
+	if strings.Contains(index, "CPF") && !strings.Contains(index, "Nenhum CPF") && !strings.Contains(index, "não") {
+		t.Errorf("unexpected CPF claim")
+	}
+	checkPortalLinks(t, out)
+}
+
+func TestOfficialIntegrityFailures(t *testing.T) {
+	t.Run("payload hash", func(t *testing.T) {
+		snapshot := writeFixture(t)
+		writeOfficialFixture(t, snapshot)
+		var manifest officialManifest
+		if err := json.Unmarshal([]byte(readPortal(t, snapshot, "official-records-manifest.json")), &manifest); err != nil {
+			t.Fatal(err)
+		}
+		manifest.PayloadSHA256 = strings.Repeat("0", 64)
+		writeJSON(t, filepath.Join(snapshot, "official-records-manifest.json"), manifest)
+		if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: filepath.Join(t.TempDir(), "out")}); err == nil {
+			t.Fatal("payload mismatch accepted")
+		}
+	})
+	t.Run("linked station missing", func(t *testing.T) {
+		snapshot := writeFixture(t)
+		writeOfficialFixture(t, snapshot)
+		raw, err := os.ReadFile(filepath.Join(snapshot, "official-records.jsonl"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw = bytes.Replace(raw, []byte(stA), []byte("00000000-0000-4000-8000-0000000000ff"), 1)
+		var manifest officialManifest
+		if err := json.Unmarshal([]byte(readPortal(t, snapshot, "official-records-manifest.json")), &manifest); err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(raw)
+		manifest.PayloadSHA256 = hex.EncodeToString(sum[:])
+		if err := os.WriteFile(filepath.Join(snapshot, "official-records.jsonl"), raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		writeJSON(t, filepath.Join(snapshot, "official-records-manifest.json"), manifest)
+		if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: filepath.Join(t.TempDir(), "out")}); err == nil {
+			t.Fatal("linked station outside snapshot accepted")
+		}
+	})
+}
+
+func TestRealOfficialSnapshotPages(t *testing.T) {
+	dir := os.Getenv("ANPFUEL_TEST_REAL_OFFICIAL_DIR")
+	if dir == "" {
+		t.Skip("ANPFUEL_TEST_REAL_OFFICIAL_DIR is not set")
+	}
+	snapshot := writeFixture(t)
+	payload, err := os.ReadFile(filepath.Join(dir, "official-records-2025.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestRaw, err := os.ReadFile(filepath.Join(dir, "official-records-2025.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(snapshot, "official-records.jsonl"), payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(snapshot, "official-records-manifest.json"), manifestRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var manifest officialManifest
+	if err := json.Unmarshal(manifestRaw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "portal-real-official")
+	result, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pages := (manifest.Rows + officialPageSize - 1) / officialPageSize
+	wantPages := 18 + (pages - 1) + manifest.Rows
+	wantFiles := 28 + (pages - 1) + manifest.Rows
+	if result.Pages != wantPages || result.Files != wantFiles {
+		t.Fatalf("real official result = %+v, want %d pages/%d files", result, wantPages, wantFiles)
+	}
+	t.Logf("real FQ-07 2025 portal: rows=%d pages=%d files=%d bytes=%d content=%s",
+		manifest.Rows, result.Pages, result.Files, result.Bytes, result.ContentSHA256)
+	index := readPortal(t, out, "fiscalizacao/index.html")
+	if !strings.Contains(index, "Fiscalização — multas aplicadas") || !strings.Contains(index, "Edição 2025") {
+		t.Errorf("real official index missing identity")
+	}
+	firstLine := strings.SplitN(string(payload), "\n", 2)[0]
+	var first officialRecord
+	if err := json.Unmarshal([]byte(firstLine), &first); err != nil {
+		t.Fatal(err)
+	}
+	recordPage := readPortal(t, out, "fiscalizacao/registro/"+officialRecordID(first.NativeKey)+"/index.html")
+	if !strings.Contains(recordPage, cnpjBR(first.SubjectCNPJ)) || !strings.Contains(recordPage, "não é certidão negativa") {
+		t.Errorf("real official record page missing fields")
+	}
+	checkPortalLinks(t, out)
 }

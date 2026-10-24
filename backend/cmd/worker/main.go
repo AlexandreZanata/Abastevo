@@ -54,6 +54,7 @@ import (
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/jobs"
+	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
 	subscriptionjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/jobs"
 	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
@@ -65,6 +66,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // inventoryFunc adapts a closure to the privacy inventory port.
@@ -859,11 +861,17 @@ func run() error {
 		handlers[enterprisejobs.BuildKind] = enterprisejobs.Build{
 			Pool: raw, Root: cfg.EnterpriseExportRoot,
 			WindowWeeks: cfg.EnterpriseExportWindowWeeks,
+			OfficialRecords: func(tx pgx.Tx) enterprisejobs.OfficialProvider {
+				return enterprisejobs.NewQualityOfficialProvider(qualityread.NewExportReader(tx))
+			},
 		}
 		handlers[enterprisejobs.ReconcileKind] = enterprisejobs.Reconcile{
 			Pool: raw, Root: cfg.EnterpriseExportRoot,
 			WindowWeeks: cfg.EnterpriseExportWindowWeeks,
 			Enqueue:     enqueueEnterpriseExport,
+			OfficialRecords: func(pool *pgxpool.Pool) enterprisejobs.OfficialProvider {
+				return enterprisejobs.NewQualityOfficialProvider(qualityread.NewExportReader(pool))
+			},
 		}
 	}
 	nativeKinds := []string{}

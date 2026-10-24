@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -56,6 +57,7 @@ type Build struct {
 	MaxPrices        int
 	AnalyticsOptions analytics.Options
 	Now              func() time.Time
+	OfficialRecords  func(tx pgx.Tx) OfficialProvider
 }
 
 func (Build) Kind() string { return BuildKind }
@@ -165,7 +167,14 @@ func (b Build) Handle(ctx context.Context, job platformjobs.Job) error {
 	if err != nil {
 		return err
 	}
-	if hasState && stateMatches(state, fingerprint, pins, fromSurvey, toSurvey) && state.Valid() {
+	var currentOfficial *OfficialPin
+	if b.OfficialRecords != nil {
+		currentOfficial, err = b.OfficialRecords(tx).Pin(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	if hasState && stateMatches(state, fingerprint, pins, fromSurvey, toSurvey, currentOfficial) && state.Valid() {
 		return nil
 	}
 
@@ -218,6 +227,30 @@ func (b Build) Handle(ctx context.Context, job platformjobs.Job) error {
 		return err
 	}
 	analyticsSum := sha256.Sum256(analyticsJSON)
+	var officialPin *OfficialPin
+	if currentOfficial != nil {
+		officialPath := filepath.Join(candidate, "official-records.jsonl")
+		officialFile, err := os.OpenFile(officialPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err != nil {
+			return err
+		}
+		hasher := sha256.New()
+		build, buildErr := b.OfficialRecords(tx).Build(ctx, io.MultiWriter(officialFile, hasher))
+		closeErr := officialFile.Close()
+		if buildErr != nil {
+			return buildErr
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+		if build.Pin.PayloadSHA256 == "" || "sha256:"+hex.EncodeToString(hasher.Sum(nil)) != "sha256:"+build.Pin.PayloadSHA256 {
+			return fmt.Errorf("enterprise export: official payload hash mismatch")
+		}
+		if err := os.WriteFile(filepath.Join(candidate, "official-records-manifest.json"), build.Manifest, 0o600); err != nil {
+			return err
+		}
+		officialPin = &build.Pin
+	}
 	next := State{
 		SchemaVersion:        StateSchemaVersion,
 		BuiltAt:              now.UTC().Format(time.RFC3339),
@@ -230,6 +263,7 @@ func (b Build) Handle(ctx context.Context, job platformjobs.Job) error {
 		FromSurvey:           fromSurvey,
 		ToSurvey:             toSurvey,
 		OfficialRevisions:    pinsFromManifest(manifest),
+		Official:             officialPin,
 	}
 	if err := WriteState(b.Root, next); err != nil {
 		return err
@@ -284,8 +318,11 @@ func pinsFromManifest(manifest enterpriseexport.Manifest) []RevisionState {
 	return pins
 }
 
-func stateMatches(state State, fingerprint directoryapp.ExportFingerprint, pins []RevisionState, fromSurvey, toSurvey string) bool {
+func stateMatches(state State, fingerprint directoryapp.ExportFingerprint, pins []RevisionState, fromSurvey, toSurvey string, official *OfficialPin) bool {
 	if state.FromSurvey != fromSurvey || state.ToSurvey != toSurvey {
+		return false
+	}
+	if !sameOfficial(state.Official, official) {
 		return false
 	}
 	if state.DirectoryFingerprint != fingerprint.Hash || state.DirectoryStations != fingerprint.Stations {

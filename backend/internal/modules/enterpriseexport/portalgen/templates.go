@@ -192,6 +192,7 @@ const templates = `
     <thead><tr><th scope="col">Período da pesquisa</th><th scope="col" class="num">Preço</th><th scope="col">Coleta</th><th scope="col">Situação</th></tr></thead>
     <tbody>{{range .Points}}<tr><td>{{.Period}}</td><td class="num">{{brlPtr .Amount}}</td><td>{{if .Collected}}{{.Collected}}{{else}}—{{end}}</td><td>{{if .Missing}}Sem observação nesta pesquisa{{else}}Observação publicada{{end}}</td></tr>{{end}}</tbody>
   </table></div>{{end}}{{else}}<div class="notice"><strong>Sem histórico publicado.</strong><p>Não há observações anteriores para este posto.</p></div>{{end}}
+  {{if .OfficialRecords}}<h2>Registros oficiais vinculados</h2><p class="muted">Vínculo de empresa atual na data da decisão; não é histórico de propriedade. Multa não prova adulteração, culpa ou definitividade.</p><ul class="station-list">{{range .OfficialRecords}}<li><a href="/fiscalizacao/registro/{{.RecordID}}/">{{.Status}}</a>{{if .Proceeding}} — {{.Proceeding}}{{end}}{{if .Amount}} · {{.Amount}}{{end}}{{if .DueOn}} · vencimento {{.DueOn}}{{else if .DecidedOn}} · decisão {{.DecidedOn}}{{end}} · {{.AssociationLabel}}</li>{{end}}</ul>{{if .OfficialMore}}<p class="muted">Há {{.OfficialCount}} registros; exibindo os {{len .OfficialRecords}} mais recentes.</p>{{end}}{{end}}
   <div class="source">
     <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. {{if .Source.URL}}<a href="{{.Source.URL}}">Página oficial da pesquisa</a>.{{end}}</p>
     <p class="muted source-url">Revisão: {{if .Source.Period}}{{.Source.Period}}{{else}}não informada{{end}} · checksum: {{if .Source.Checksum}}{{.Source.Checksum}}{{else}}não informado{{end}} · parser: {{if .Source.ParserVersion}}{{.Source.ParserVersion}}{{else}}não informado{{end}} · publicação na fonte: {{if .Source.PublishedAt}}{{.Source.PublishedAt}}{{else}}não informada{{end}}</p>
@@ -278,6 +279,33 @@ const templates = `
 
 {{define "fiscalizacao"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
+  {{if .HasData}}
+  <p class="eyebrow">Registros oficiais</p>
+  <h1>{{.Title}}</h1>
+  <p class="lead">Multas aplicadas, event-level, da edição {{.Manifest.Edition}} ({{.Manifest.SourcePeriod}}). Não é score de risco, não prova adulteração e não declara culpa ou definitividade.</p>
+  <div class="grid summary-grid">
+    <section class="card"><h2>Total</h2><p class="price">{{.Total}}</p><p class="muted">registros oficiais nesta edição</p></section>
+    <section class="card"><h2>Vinculados</h2><p class="price">{{.Linked}}</p><p class="muted">com posto atual na data da decisão</p></section>
+    <section class="card"><h2>Sem vínculo</h2><p class="price">{{.Unmatched}}</p><p class="muted">unmatched, wrong branch ou succession review; nenhum posto exibido</p></section>
+    <section class="card"><h2>Ambíguos</h2><p class="price">{{.Ambiguous}}</p><p class="muted">mais de um posto possível; nenhum posto exibido</p></section>
+  </div>
+  <div class="notice"><strong>Como ler um registro oficial</strong><p>O status é o texto da fonte. Uma multa ou ação não prova adulteração, interdição atual ou culpa definitiva. Ausência de registro não é certidão negativa. A data de vencimento não é a data da ocorrência nem prova de propriedade. O vínculo é a decisão de empresa atual na data indicada, não um histórico de propriedade.</p></div>
+  {{if eq .Page 1}}<div class="source"><p><strong>Fonte:</strong> ANP — multas aplicadas. Edição {{.Manifest.Edition}} · período {{.Manifest.SourcePeriod}} · clock {{.Manifest.SourceClockValue}} ({{.Manifest.SourceClockPrecision}}).</p><p class="muted source-url">Revisão {{.Manifest.RevisionID}} · lease {{.Manifest.LeaseID}} · checksum {{.Manifest.SourceChecksum}} · política {{.Manifest.AssociationPolicy}}/{{.Manifest.AssociationScope}} · decisão {{.Manifest.AssociationDecisionDay}}.</p></div>{{end}}
+  <h2>Registros{{if gt .Pages 1}} — página {{.Page}} de {{.Pages}}{{end}}</h2>
+  {{if .Records}}<div class="table-wrap"><table>
+    <caption>Multas aplicadas; uma linha por evento; vínculo de posto apenas quando decidido com segurança</caption>
+    <thead><tr><th scope="col">CNPJ</th><th scope="col">Status</th><th scope="col">Processo</th><th scope="col" class="num">Valor</th><th scope="col">Vencimento</th><th scope="col">Decisão</th><th scope="col">Vínculo</th><th scope="col">Detalhe</th></tr></thead>
+    <tbody>{{range .Records}}<tr>
+      <td>{{.CNPJ}}</td><td>{{.Status}}</td><td>{{if .Proceeding}}{{.Proceeding}}{{else}}—{{end}}</td>
+      <td class="num">{{if .Amount}}{{.Amount}}{{else}}—{{end}}</td>
+      <td>{{if .DueOn}}{{.DueOn}}{{else}}—{{end}}</td>
+      <td>{{if .DecidedOn}}{{.DecidedOn}}{{else}}{{if .AsOf}}{{.AsOf}}{{else}}—{{end}}{{end}}</td>
+      <td>{{if .StationHref}}<a href="{{.StationHref}}">{{.StationName}}</a>{{else}}{{.AssociationLabel}}{{end}}</td>
+      <td><a href="/fiscalizacao/registro/{{.RecordID}}/">Abrir</a></td>
+    </tr>{{end}}</tbody>
+  </table></div>{{else}}<div class="notice"><strong>Sem registros oficiais nesta edição.</strong></div>{{end}}
+  <div class="links">{{if .PrevHref}}<a href="{{.PrevHref}}">Página anterior</a>{{end}}{{if .NextHref}}<a href="{{.NextHref}}">Próxima página</a>{{end}}<a href="/metodologia/">Metodologia e fontes</a><a href="/consultar/">Consultar preços</a></div>
+  {{else}}
   <p class="eyebrow">Registros oficiais</p>
   <h1>Fiscalização — ainda não disponível</h1>
   <p class="lead">Este recorte depende da aceitação do fluxo oficial de fiscalização e da associação segura ao posto. Até lá, nenhum registro é exibido.</p>
@@ -291,6 +319,34 @@ const templates = `
   </ul>
   <p>A indisponibilidade deste recorte não desabilita a consulta de preços, o resumo regional ou a metodologia.</p>
   <div class="links"><a href="/consultar/">Consultar preços</a><a href="/metodologia/">Metodologia e fontes</a></div>
+  {{end}}
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "fiscalizacaoRecord"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <p class="eyebrow">Registro oficial</p>
+  <h1>{{.Record.Status}}</h1>
+  <p class="lead">CNPJ {{.Record.CNPJ}} · {{.Record.AssociationLabel}}</p>
+  <div class="grid summary-grid">
+    <section class="card"><h2>Vínculo</h2>{{if .Record.StationHref}}<p><a href="{{.Record.StationHref}}">{{.Record.StationName}}</a></p>{{else}}<p>Sem vínculo de posto.</p>{{end}}<p class="muted">{{.Record.AssociationReason}}</p><p class="muted">Vínculo de empresa atual na data da decisão; não é histórico de propriedade.</p></section>
+    <section class="card"><h2>Fonte e datas</h2><p>Edição {{.Manifest.Edition}} · período {{.Manifest.SourcePeriod}}</p><p>Extração: {{if .Record.ExtractionMonth}}{{.Record.ExtractionMonth}}{{else}}não informada{{end}}</p><p>Publicação Abastevo: {{.PublishedAt}}</p><p class="muted">Fonte: ANP — multas aplicadas.</p></section>
+  </div>
+  <h2>Dados do registro</h2>
+  <div class="card">
+    <p><strong>CNPJ:</strong> {{.Record.CNPJ}}</p>
+    <p><strong>Status da fonte:</strong> {{.Record.Status}}</p>
+    <p><strong>Processo:</strong> {{if .Record.Proceeding}}{{.Record.Proceeding}}{{else}}não informado{{end}}</p>
+    <p><strong>Valor informado:</strong> {{if .Record.Amount}}{{.Record.Amount}}{{else}}não informado{{end}}</p>
+    <p><strong>Vencimento:</strong> {{if .Record.DueOn}}{{.Record.DueOn}}{{else}}não informado{{end}}</p>
+    <p><strong>Decisão:</strong> {{if .Record.DecidedOn}}{{.Record.DecidedOn}}{{else}}não informada{{end}}</p>
+    <p><strong>As-of:</strong> {{if .Record.AsOf}}{{.Record.AsOf}}{{else}}não informado{{end}}</p>
+    {{if .Record.OccurredOn}}<p><strong>Ocorrência:</strong> {{.Record.OccurredOn}}</p>{{end}}
+    <p><strong>Referência de evidência:</strong> {{.Record.Evidence}}</p>
+  </div>
+  <div class="notice"><strong>Limites do registro</strong><p>Uma multa ou ação não prova adulteração, interdição atual ou culpa definitiva. O vencimento não é a data da ocorrência nem prova de propriedade. Ausência de registro não é certidão negativa. O vínculo é a decisão de empresa atual na data indicada, não um histórico de propriedade.</p></div>
+  <div class="source"><p><strong>Fonte:</strong> ANP — multas aplicadas. {{if .Record.SourceURL}}<a href="{{.Record.SourceURL}}">Página oficial da fonte</a>.{{end}}</p><p class="muted source-url">Revisão {{.Record.RevisionID}} · lease {{.Record.LeaseID}} · checksum {{.Record.SourceChecksum}} · publicação {{.Manifest.PublishedAt}}.</p></div>
+  <div class="links"><a href="/fiscalizacao/">Voltar à fiscalização</a><a href="/metodologia/">Metodologia e fontes</a><a href="/consultar/">Consultar preços</a></div>
 </main>
 {{template "foot" .}}{{end}}
 

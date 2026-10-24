@@ -21,7 +21,7 @@ rights come only from the dataset metadata or an explicit ANP statement:
 | S-ESP-01 registry | none found; metadata PDF has no text layer | `RIGHTS_PENDING` |
 | S-ESP-02 prices | none found in the historical/series metadata | `RIGHTS_PENDING` |
 | S-ESP-03 enforcement | CC BY, CC0, ODbL or PDDL (metadata menu) | `ADMITTED` under CC BY attribution, runtime blocked |
-| S-ESP-04 fines | CC BY (metadata) | `ADMITTED` under CC BY attribution, association blocked |
+| S-ESP-04 fines | CC BY (metadata) | event-level `ADMITTED` under CC BY attribution; station links only when `linked` |
 | S-ESP-05 PMQC | none found in the October 2026 metadata | `RIGHTS_PENDING` |
 | S-ESP-06 registry API | not inspected/admitted | `NOT_ADMITTED` |
 
@@ -181,9 +181,15 @@ nearby station's value.
   source notes retained. Default-off.
 - **Correction window:** current annual edition plus the previous edition;
   corrections supersede, never rewrite. Older edits require a controlled backfill.
-- **Status:** `ingest=LOCAL`, `runtime=DEFAULT_OFF`, `public_release=ADMITTED`
-  (CC BY attribution) but **station association blocked** until safe Directory
-  links are accepted. Event-level pages may publish only without a station claim.
+- **Status (ESP-11, 2026-10-24):** `ingest=REAL_STAGING_ACCEPTED` for the seven
+  FQ-07 files (35,911 input = 35,612 accepted + 293 CPF quarantines + 6
+  metadata) through the real FQ-08 read/export path; `runtime=DEFAULT_OFF` for
+  scheduled imports; `public_release=EVENT_LEVEL_ADMITTED` under CC BY
+  attribution. The accepted 2025 edition is event-level and all 3,375 records
+  are `unmatched` (empty acceptance Directory); no station link is invented.
+  Station pages show a record only when `association_state=linked`; fine
+  association live revalidation/rebound remains OWED. No score, guilt, current
+  interdiction or definitive-finality claim is admitted. FQ-06 remains blocked.
 
 ## S-ESP-05 — PMQC monitoring (optional portal slice)
 
