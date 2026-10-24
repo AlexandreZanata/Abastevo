@@ -29,6 +29,12 @@
   and cross-checks it against the prepared corpus. MAP-14 adapter now serializes
   concurrent init, cancels stale search/route work and removes listeners on
   release; manual rotation/relaunch/permission-denied browsing passed.
+  T07 draft: 193 pinned submodules clean, 191 with license/notice evidence;
+  `glm`/`just_gtfs` still need legal resolution; no secret hits but upstream
+  endpoints remain in the native binary. T08 static: release APK 69,881,875
+  bytes, SHA `79a3117e…`, zipalign/16 KB LOAD PASS. Arm64 phone (4 KB pages)
+  loaded the library but rendered a blank SurfaceView with BLAST buffer errors;
+  actual 16 KB runtime and arm64 render remain unproven.
   Tests: `go test ./...`, targeted `-race -tags=integration`, MAP-12/13 process
   proofs, `MapPoiCodecTest`, `MapDiscoveryResponseCodecTest`, normal app debug
   build and engine debug build.

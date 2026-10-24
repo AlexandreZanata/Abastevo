@@ -71,4 +71,6 @@ python3 "$repo_root/scripts/maps/verify-comaps-aar.py" \
   --abi "$abi" --ndk "$ndk" --output "$output_dir"
 cp "$work_dir/build.log" "$work_dir/submodules.txt" "$work_dir/runtime-source.diff" "$output_dir/"
 cp "$patch_file" "$output_dir/"
+cp "$source_dir/LICENSE" "$source_dir/NOTICE" "$output_dir/"
+if [[ -f "$source_dir/data/copyright.html" ]]; then cp "$source_dir/data/copyright.html" "$output_dir/"; fi
 printf 'Candidate ready: -PcomapsSdkDir=%s\nENGINE_GATE remains pending its other acceptance checks.\n' "$(realpath "$output_dir")"

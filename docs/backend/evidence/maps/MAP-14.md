@@ -139,3 +139,23 @@ BuildConfig, stripped core and packaged alignment passed. App release is
 66.64 MiB under the already accepted 80 MiB budget. The full phase remains
 ENGINE_GATE_PARTIAL. [Bounded continuation](../../../planning/MAP_EV_RESUME.md)
 records remaining engineering tasks and the existing native Ed25519 direction.
+
+## T07/T08 continuation — 2026-10-24
+
+- T07 draft inventory: [MAP-14_T07_AUDIT](MAP-14_T07_AUDIT.md). 193 pinned
+  submodules are clean; 191 have own/inherited license/notice evidence; `glm`
+  and `just_gtfs` need legal resolution. No secret-pattern hits; default upstream
+  endpoints remain in the native binary. This is a draft, not acceptance.
+- T08 packaging reproduced from the Codex release candidate: release APK
+  69,881,875 bytes (66.64 MiB), SHA-256
+  `79a3117eed91aa5dffb455f0ccafacb2cc6e2223ab37d8af8511ffe50e98e678`;
+  `zipalign -c -P 16 4` PASS; packaged `liborganicmaps.so` arm64 14,675,096
+  bytes with three 16 KB LOAD segments. Only the core is arm64; no engine
+  libraries are packaged for the other ABIs.
+- Physical arm64 phone (Android 16, 4 KB page size): the release AAR arm64
+  library loaded and the engine created a SurfaceView, but the map surface
+  stayed blank with repeated `BLASTBufferQueue ... Can't acquire next buffer`
+  errors. The probe was uninstalled and its files removed. This does not prove
+  actual 16 KB runtime (device page size is 4096) or arm64 render.
+- Remaining T08: a 16 KB-page runtime, real arm64 render/lifecycle, release
+  runtime instrumentation and full ENGINE_GATE closure.
