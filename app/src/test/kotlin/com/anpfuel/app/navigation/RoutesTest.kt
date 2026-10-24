@@ -2,6 +2,7 @@ package com.anpfuel.app.navigation
 
 import com.anpfuel.domain.valueobject.FuelProduct
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
 
 class RoutesTest {
@@ -45,6 +46,16 @@ class RoutesTest {
     @Test
     fun contributionsRouteIsRegisteredConstant() {
         assertEquals("contributions", Routes.CONTRIBUTIONS)
+    }
+
+    @Test
+    fun premiumRoutesCarryNoAccountOrPurchaseArguments() {
+        assertEquals("premium", Routes.PREMIUM)
+        assertEquals("premium-management", Routes.PREMIUM_MANAGEMENT)
+        assertFalse(Routes.PREMIUM.contains("{"))
+        assertFalse(Routes.PREMIUM.contains("?"))
+        assertFalse(Routes.PREMIUM_MANAGEMENT.contains("{"))
+        assertFalse(Routes.PREMIUM_MANAGEMENT.contains("?"))
     }
 
     @Test

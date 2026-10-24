@@ -1,4 +1,4 @@
-package com.anpfuel.app.ui.account
+package com.anpfuel.app.ui.premium
 
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.usecase.premium.GetPremiumStatusUseCase
@@ -88,6 +88,44 @@ class PremiumViewModelTest {
         assertNull(vm.uiState.value.status)
     }
 
+    @Test fun `refresh for a new owner clears the previous status before the response`() = runTest(dispatcher) {
+        every { sessions.load() } returns session
+        coEvery { useCase.invoke() } returns PremiumStatusSnapshot("acct", active)
+        val vm = model()
+        vm.refresh()
+        advanceUntilIdle()
+        assertEquals(PremiumState.ACTIVE, vm.uiState.value.status!!.state)
+
+        every { sessions.load() } returns session.copy(accountId = "other")
+        coEvery { useCase.invoke() } returns PremiumStatusSnapshot(
+            "other",
+            active.copy(state = PremiumState.PAUSED),
+        )
+        vm.refresh()
+        assertTrue(vm.uiState.value.loading)
+        assertNull(vm.uiState.value.status)
+
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.signedOut)
+        assertEquals(PremiumState.PAUSED, vm.uiState.value.status!!.state)
+    }
+
+    @Test fun `logout clears the previous verified status on the next refresh`() = runTest(dispatcher) {
+        every { sessions.load() } returns session
+        coEvery { useCase.invoke() } returns PremiumStatusSnapshot("acct", active)
+        val vm = model()
+        vm.refresh()
+        advanceUntilIdle()
+        assertEquals(PremiumState.ACTIVE, vm.uiState.value.status!!.state)
+
+        every { sessions.load() } returns null
+        vm.refresh()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.signedOut)
+        assertNull(vm.uiState.value.status)
+        coVerify(exactly = 1) { useCase.invoke() }
+    }
+
     @Test fun `restore stays explicitly unavailable without a provider token`() = runTest(dispatcher) {
         every { sessions.load() } returns session
         coEvery { useCase.invoke() } returns PremiumStatusSnapshot("acct", active)
@@ -96,6 +134,19 @@ class PremiumViewModelTest {
         advanceUntilIdle()
         vm.restoreUnavailable()
         assertEquals(PremiumNotice.RESTORE_UNAVAILABLE, vm.uiState.value.notice)
+        assertEquals(PremiumState.ACTIVE, vm.uiState.value.status!!.state)
+        vm.clearNotice()
+        assertNull(vm.uiState.value.notice)
+    }
+
+    @Test fun `store handoff failure is recoverable and keeps the verified status`() = runTest(dispatcher) {
+        every { sessions.load() } returns session
+        coEvery { useCase.invoke() } returns PremiumStatusSnapshot("acct", active)
+        val vm = model()
+        vm.refresh()
+        advanceUntilIdle()
+        vm.storeOpenFailed()
+        assertEquals(PremiumNotice.STORE_FAILED, vm.uiState.value.notice)
         assertEquals(PremiumState.ACTIVE, vm.uiState.value.status!!.state)
         vm.clearNotice()
         assertNull(vm.uiState.value.notice)

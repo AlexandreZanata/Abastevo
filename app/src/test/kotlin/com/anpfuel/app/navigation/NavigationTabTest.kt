@@ -49,6 +49,12 @@ class NavigationTabTest {
     }
 
     @Test
+    fun premiumPagesKeepProfileSelected() {
+        assertEquals(NavigationTab.PROFILE, NavigationTab.fromRoute(Routes.PREMIUM))
+        assertEquals(NavigationTab.PROFILE, NavigationTab.fromRoute(Routes.PREMIUM_MANAGEMENT))
+    }
+
+    @Test
     fun fromRouteReturnsNullForNonTopLevelRoutes() {
         assertNull(NavigationTab.fromRoute(Routes.GAMES))
         assertNull(NavigationTab.fromRoute(Routes.LOCATION))
