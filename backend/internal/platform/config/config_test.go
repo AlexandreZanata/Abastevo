@@ -316,3 +316,18 @@ func TestMEX29RankingSwitchAndCacheBounds(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadMapDistributionRequiresPair(t *testing.T) {
+	if _, err := load(envFunc(map[string]string{keyMapDistributionDir: "/tmp/maps"})); err == nil {
+		t.Fatal("directory without keys accepted")
+	}
+	if _, err := load(envFunc(map[string]string{keyMapDistributionKeys: "k:abc"})); err == nil {
+		t.Fatal("keys without directory accepted")
+	}
+	cfg, err := load(envFunc(map[string]string{
+		keyMapDistributionDir: "/tmp/maps", keyMapDistributionKeys: "k:abc",
+	}))
+	if err != nil || cfg.MapDistributionDir != "/tmp/maps" || cfg.MapDistributionKeys != "k:abc" {
+		t.Fatalf("pair not preserved: %+v %v", cfg, err)
+	}
+}

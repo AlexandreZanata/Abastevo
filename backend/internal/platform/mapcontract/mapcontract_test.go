@@ -168,3 +168,27 @@ func TestNativeManifestRejections(t *testing.T) {
 	}
 	_ = base
 }
+
+func TestClocksPreserveFutureAndRejectMalformed(t *testing.T) {
+	doc := corpusMap(t, fixture(t, "poi-assertions-v1.json"))
+	assertionsOf(doc)[0].(map[string]any)["clocks"].(map[string]any)["fetched_at"] = "2099-01-01T00:00:00Z"
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := ParseAssertions(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if corpus.Assertions[0].Clocks.FetchedAt != "2099-01-01T00:00:00Z" {
+		t.Fatal("future clock not preserved")
+	}
+	assertionsOf(doc)[0].(map[string]any)["clocks"].(map[string]any)["fetched_at"] = "not-a-time"
+	raw, err = json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ParseAssertions(raw); err == nil {
+		t.Fatal("malformed clock accepted")
+	}
+}
