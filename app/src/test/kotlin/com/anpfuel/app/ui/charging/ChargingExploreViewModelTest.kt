@@ -20,12 +20,14 @@ import io.mockk.every
 import io.mockk.mockk
 import java.time.Instant
 import java.util.Locale
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
@@ -110,6 +112,32 @@ class ChargingExploreViewModelTest {
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.isOffline)
         assertEquals(1, viewModel.uiState.value.rows.size)
+    }
+
+    @Test fun `repeated refresh triggers converge on one active request`() = runTest(dispatcher) {
+        val meta = com.anpfuel.data.local.charging.StoredPackMeta(
+            key = "pack:ocm-br-20261021-v1", generation = 4, profile = "ocm-br-20261021-v1",
+            sourceRevision = "rev-1", origin = "https://api.example.test", license = "L",
+            schemaVersion = 1, baseGeneration = 0, placeCount = 0, groupCount = 0,
+            cursor = null, state = "COMPLETE", savedAtMillis = 1,
+        )
+        coEvery { repository.generationMeta(any()) } returns meta
+        coEvery { repository.list(any(), 4L, any(), any(), any(), 20, 0) } returns emptyList()
+        val gate = CompletableDeferred<Unit>()
+        coEvery { repository.refresh(any(), any(), any(), any(), any()) } coAnswers {
+            gate.await()
+            meta
+        }
+        viewModel.load(vehicleId)
+        advanceUntilIdle()
+        viewModel.refresh()
+        runCurrent()
+        viewModel.refresh()
+        runCurrent()
+        coVerify(exactly = 1) { repository.refresh("ocm-br-20261021-v1", any(), any(), any(), any()) }
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(false, viewModel.uiState.value.isRefreshing)
     }
 
     @Test fun `detail opens offline and unknown verdicts never claim availability`() = runTest(dispatcher) {

@@ -71,6 +71,28 @@ class OccurrenceExplorerViewModelTest {
         assertTrue(viewModel.state.value.filter.isEmpty())
     }
 
+    @Test fun `repeated refresh does not restart an active equivalent read`() = runTest(dispatcher) {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        var calls = 0
+        val slow = object : OccurrenceGateway by gateway() {
+            override suspend fun records(uf: String?, municipality: String?, segment: String?, subjectKind: String?, fromDay: String?, toDay: String?, limit: Int, cursor: String?, revisionId: String?): OccurrencePage<OccurrenceRecord> {
+                calls++
+                gate.await()
+                return OccurrencePage(listOf(record), null, lease, false)
+            }
+        }
+        val viewModel = OccurrenceExplorerViewModel(fakeSavedState(), slow)
+        runCurrent()
+        viewModel.refresh()
+        runCurrent()
+        viewModel.refresh()
+        runCurrent()
+        assertEquals(1, calls)
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(1, viewModel.state.value.items.size)
+    }
+
     @Test fun `timeline separates company and source-global records`() = runTest(dispatcher) {
         val company = record
         val global = record.copy(id = "eeeeeeee-6666-4666-8666-000000000003", subjectKind = "personal-shaped", documentDay = "2019-01-02")

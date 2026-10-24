@@ -13,6 +13,14 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- MEX-32 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `188c2cdb`.
+  [Shared refresh](../backend/evidence/mobile-expansion/MEX-32.md): community
+  policy reused; advisory `refresh_after_seconds` decoupled from a fixed 15
+  (bounded 0..3600, never a policy); charging and occurrence manual refreshes
+  are single-flight and keep loaded windows; eight locales verified free of
+  fixed-interval claims. Targeted app/data tests and compilation PASS. Device
+  lifecycle and byte/SQL measurements remain OWED. Next EE-26.
+
 - EE-24 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `af32cea5`.
   [EV sync/privacy allowlist](../backend/evidence/ev-support/EE-24.md): MHEV
   is a first-class hosted kind (tank-only, same as HEV); vehicle payloads use

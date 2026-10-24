@@ -43,6 +43,8 @@ class CityCommunitySummaryHttpClientTest {
         )
         invalid.forEach { mutate ->val doc=payload();mutate(doc);assertThrows(IllegalArgumentException::class.java){CityCommunityFeedHttpClient.decodeSummary(doc.toString(),city)} }
         val empty=payload().put("items",JSONArray());assertTrue(CityCommunityFeedHttpClient.decodeSummary(empty.toString(),city).items.isEmpty())
+        val bounded=payload().put("refresh_after_seconds",30);assertEquals(1,CityCommunityFeedHttpClient.decodeSummary(bounded.toString(),city).items.size)
+        for (hint in listOf(-1,3601)) { val bad=payload().put("refresh_after_seconds",hint); assertThrows(IllegalArgumentException::class.java){CityCommunityFeedHttpClient.decodeSummary(bad.toString(),city)} }
         assertThrows(IllegalArgumentException::class.java){CityCommunityFeedHttpClient.decodeSummary("[".repeat(13)+"]".repeat(13),city)}
         assertThrows(IllegalArgumentException::class.java){CityCommunityFeedHttpClient.decodeSummary(" ".repeat(262145),city)}
     }

@@ -79,8 +79,14 @@ class OccurrenceExplorerViewModel @Inject constructor(
 
     init { if (enabled) refresh() }
 
+    /**
+     * MEX-32/EE-26: repeated refresh triggers while one equivalent first
+     * page is active do not restart it. A filter/scope change still owns
+     * cancellation because it is a different query.
+     */
     fun refresh() {
         if (!enabled) return
+        if (readJob?.isActive == true && mutable.value.loading) return
         mutable.update { it.copy(items = emptyList(), cursor = null, coverage = null) }
         load(first = true)
     }

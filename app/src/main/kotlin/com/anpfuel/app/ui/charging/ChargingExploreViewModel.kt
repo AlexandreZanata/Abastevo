@@ -18,6 +18,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -52,6 +53,7 @@ class ChargingExploreViewModel @Inject constructor(
 
     private var generation: Long? = null
     private var offset = 0
+    private var refreshJob: Job? = null
 
     fun load(vehicleId: DomainId) {
         viewModelScope.launch {
@@ -90,8 +92,15 @@ class ChargingExploreViewModel @Inject constructor(
         }
     }
 
+    /**
+     * MEX-32/EE-26 single-flight manual refresh: repeated triggers while
+     * one equivalent pack read is active converge on that read instead
+     * of restarting it. The previously loaded window is kept until the
+     * replacement generation is committed.
+     */
     fun refresh() {
-        viewModelScope.launch {
+        if (refreshJob?.isActive == true) return
+        refreshJob = viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
             runCatching {
                 refreshInternal()
