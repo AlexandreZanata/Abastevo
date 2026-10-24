@@ -36,8 +36,8 @@ import com.anpfuel.app.ui.theme.AnpFuelTheme
  *
  * Shimmer built only on Compose animation primitives over theme container
  * colors, so light/dark follow the app theme with no extra dependency.
- * Placeholders mirror real card shapes (20-24dp) and paddings to avoid a
- * layout jump when content arrives. The shimmer is decorative; the group
+ * Placeholders mirror the shared 12dp content-container shape and paddings
+ * to avoid a layout jump when content arrives. The shimmer is decorative; the group
  * announces the existing loading label to accessibility services.
  */
 @Composable
@@ -103,7 +103,7 @@ fun SkeletonCard(
         modifier
             .fillMaxWidth()
             .height(height)
-            .then(skeletonShimmer(cornerRadius = 20.dp)),
+            .then(skeletonShimmer(cornerRadius = 12.dp)),
     )
 }
 
@@ -115,7 +115,7 @@ fun SkeletonButton(
         modifier
             .fillMaxWidth()
             .height(48.dp)
-            .then(skeletonShimmer(cornerRadius = 14.dp)),
+            .then(skeletonShimmer(cornerRadius = 12.dp)),
     )
 }
 

@@ -3,7 +3,6 @@ package com.anpfuel.app.ui.stations
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Flag
@@ -258,7 +257,7 @@ internal fun StationPageContent(
             }
             item {
                 val containerColor = MaterialTheme.colorScheme.secondaryContainer
-                Card(Modifier.widthIn(max = 720.dp).fillMaxWidth(), shape = RoundedCornerShape(24.dp),
+                Card(Modifier.widthIn(max = 720.dp).fillMaxWidth(), shape = AnpContainerDefaults.containerShape(),
                     colors = CardDefaults.cardColors(containerColor = containerColor),
                     border = AnpContainerDefaults.borderStroke(containerColor)) {
                     Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -314,7 +313,7 @@ private fun StationDetailLoadingSkeleton() {
 @Composable
 internal fun StationSectionCard(title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    Card(modifier.widthIn(max = 720.dp).fillMaxWidth(), shape = RoundedCornerShape(24.dp),
+    Card(modifier.widthIn(max = 720.dp).fillMaxWidth(), shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor)) {
         Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

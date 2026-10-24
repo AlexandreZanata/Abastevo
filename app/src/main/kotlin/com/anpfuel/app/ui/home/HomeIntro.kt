@@ -53,7 +53,7 @@ internal fun HomeCommunityHero(onContribute: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(AnpContainerDefaults.containerShape())
             .background(HomeHeroColors.Navy),
     ) {
         Image(
@@ -128,7 +128,7 @@ internal fun HomeBenefits(onDismiss: () -> Unit) {
     Box(modifier = Modifier.fillMaxWidth()) {
         val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         Card(
-            shape = RoundedCornerShape(24.dp),
+            shape = AnpContainerDefaults.containerShape(),
             colors = CardDefaults.cardColors(containerColor = containerColor),
             border = AnpContainerDefaults.borderStroke(containerColor),
         ) {

@@ -46,7 +46,7 @@ internal fun HomeReferencePriceCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = description },
-        shape = RoundedCornerShape(20.dp),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {

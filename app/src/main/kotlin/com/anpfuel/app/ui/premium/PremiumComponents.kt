@@ -6,10 +6,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.anpfuel.domain.premium.PremiumState
 import com.anpfuel.domain.premium.PremiumStatus
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.PremiumColors
 
@@ -34,6 +36,7 @@ internal fun PremiumSignedOutCard(onSignIn: () -> Unit, modifier: Modifier = Mod
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
@@ -65,26 +68,74 @@ internal fun PremiumSignedOutCard(onSignIn: () -> Unit, modifier: Modifier = Mod
 }
 
 @Composable
-internal fun PremiumLoadingCard(modifier: Modifier = Modifier) {
+internal fun PremiumStatusSkeletonCard(modifier: Modifier = Modifier) {
+    val palette = PremiumColors.current()
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.dp,
+            Icon(
+                painter = painterResource(R.drawable.ic_premium_crown),
+                contentDescription = null,
+                tint = palette.accent,
+                modifier = Modifier.size(24.dp),
             )
-            Text(
-                text = stringResource(R.string.premium_loading),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SkeletonLine(width = 150.dp, height = 20.dp)
+                Text(
+                    text = stringResource(R.string.premium_valid_until, "—"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.premium_retained),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun PremiumCapabilitiesSkeletonCard(modifier: Modifier = Modifier) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            repeat(3) { index ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                    SkeletonLine(
+                        width = if (index % 2 == 0) 190.dp else 150.dp,
+                        height = 16.dp,
+                    )
+                }
+            }
         }
     }
 }
@@ -113,6 +164,7 @@ internal fun PremiumNoticeCard(
     }
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
@@ -160,6 +212,7 @@ internal fun PremiumStatusCard(status: PremiumStatus?, modifier: Modifier = Modi
     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {

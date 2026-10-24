@@ -37,21 +37,32 @@ data class PremiumUiState(
 class PremiumViewModel @Inject constructor(
     private val status: GetPremiumStatusUseCase,
     private val sessions: AuthSessionStore,
+    private val cache: PremiumStatusCache,
 ) : ViewModel() {
     private val state = MutableStateFlow(PremiumUiState(signedOut = false, loading = true))
     val uiState = state.asStateFlow()
     private var generation = 0L
     private var statusOwner: String? = null
 
-    fun refresh() {
+    fun refresh(force: Boolean = false) {
         val request = ++generation
         val owner = sessions.load()?.accountId
         if (owner == null) {
+            cache.clear()
             statusOwner = null
             state.value = PremiumUiState(signedOut = true)
             return
         }
-        state.value = if (statusOwner == owner) {
+        if (!force) {
+            val cached = cache.get(owner, System.currentTimeMillis())
+            if (cached != null) {
+                statusOwner = owner
+                state.value = PremiumUiState(signedOut = false, status = cached)
+                return
+            }
+        }
+        val keepVisibleStatus = force && statusOwner == owner && state.value.status != null
+        state.value = if (keepVisibleStatus) {
             state.value.copy(signedOut = false, loading = true, notice = null)
         } else {
             statusOwner = owner
@@ -62,15 +73,18 @@ class PremiumViewModel @Inject constructor(
                 val snapshot = status.invoke()
                 if (request != generation) return@launch
                 if (sessions.load()?.accountId != owner || snapshot.accountId != owner) {
+                    cache.clear()
                     statusOwner = null
                     state.value = PremiumUiState(signedOut = true)
                     return@launch
                 }
+                cache.put(snapshot, System.currentTimeMillis())
                 state.value = PremiumUiState(signedOut = false, status = snapshot.status)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
                 if (request != generation) return@launch
+                cache.clear()
                 if (sessions.load()?.accountId != owner) {
                     statusOwner = null
                     state.value = PremiumUiState(signedOut = true)
@@ -79,6 +93,14 @@ class PremiumViewModel @Inject constructor(
                 state.value = state.value.copy(loading = false, status = null, notice = noticeFor(error))
             }
         }
+    }
+
+    fun forceRefresh() {
+        refresh(force = true)
+    }
+
+    fun invalidateCache() {
+        cache.clear()
     }
 
     fun clearNotice() {

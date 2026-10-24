@@ -1,12 +1,5 @@
 package com.anpfuel.app.ui.profile
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -59,6 +52,7 @@ import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.SkeletonButton
+import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.premium.PremiumEntryCard
@@ -96,13 +90,6 @@ fun ProfileScreen(
         authViewModel.refreshAccount()
     }
     val signedIn = authState.step in listOf(AuthStep.AUTHENTICATED, AuthStep.OFFLINE_ACCOUNT)
-    // Crossfade slot: a skeleton holds the account space while the session
-    // resolves, so logged-out containers never flash before sign-in lands.
-    val accountSlot = when {
-        authState.step == AuthStep.CHECKING -> AccountSlot.RESOLVING
-        signedIn -> AccountSlot.SIGNED_IN
-        else -> AccountSlot.GUEST
-    }
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
@@ -130,116 +117,80 @@ fun ProfileScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Account header crossfades between resolving skeleton, guest
-            // entry and the signed-in summary; signed-in users still reach
-            // full management via "Gerenciar conta" under expert tools.
-            AnimatedContent(
-                targetState = accountSlot,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "profile-account",
-            ) { slot ->
-                when (slot) {
-                    AccountSlot.RESOLVING -> {
-                        val containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = containerColor,
-                            ),
-                            border = AnpContainerDefaults.borderStroke(containerColor),
+            if (authState.step == AuthStep.CHECKING) {
+                ProfileSkeleton()
+                return@Column
+            }
+
+            if (signedIn) {
+                val containerColor = MaterialTheme.colorScheme.primaryContainer
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = AnpContainerDefaults.containerShape(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = containerColor,
+                    ),
+                    border = AnpContainerDefaults.borderStroke(containerColor),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PersonOutline,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
-                                    SkeletonLine(width = 160.dp, height = 24.dp)
-                                    SkeletonLine()
-                                    SkeletonButton()
-                                }
-                            }
+                            Text(
+                                text = stringResource(R.string.profile_signed_in_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.semantics { heading() },
+                            )
+                            Text(
+                                text = stringResource(R.string.profile_signed_in_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
                         }
                     }
-                    AccountSlot.GUEST -> {
-                        val containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = containerColor,
-                            ),
-                            border = AnpContainerDefaults.borderStroke(containerColor),
+                }
+            } else {
+                val containerColor = MaterialTheme.colorScheme.surfaceVariant
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = AnpContainerDefaults.containerShape(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = containerColor,
+                    ),
+                    border = AnpContainerDefaults.borderStroke(containerColor),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.profile_guest_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics { heading() },
+                        )
+                        Text(
+                            text = stringResource(R.string.profile_guest_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Button(
+                            onClick = { onNavigate(Routes.AUTH) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = stringResource(
-                                        R.string.profile_guest_title,
-                                    ),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.semantics { heading() },
-                                )
-                                Text(
-                                    text = stringResource(
-                                        R.string.profile_guest_subtitle,
-                                    ),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Button(
-                                    onClick = {
-                                        onNavigate(Routes.AUTH)
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 4.dp),
-                                ) {
-                                    Text(
-                                        text = stringResource(
-                                            R.string.profile_action_sign_in,
-                                        ),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    AccountSlot.SIGNED_IN -> {
-                        val containerColor = MaterialTheme.colorScheme.primaryContainer
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = containerColor,
-                            ),
-                            border = AnpContainerDefaults.borderStroke(containerColor),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PersonOutline,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.profile_signed_in_title),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.semantics { heading() },
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.profile_signed_in_subtitle),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    )
-                                }
-                            }
+                            Text(stringResource(R.string.profile_action_sign_in))
                         }
                     }
                 }
@@ -279,6 +230,7 @@ fun ProfileScreen(
             val toolsContainer = MaterialTheme.colorScheme.surface
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                shape = AnpContainerDefaults.containerShape(),
                 colors = CardDefaults.cardColors(
                     containerColor = toolsContainer,
                 ),
@@ -292,20 +244,14 @@ fun ProfileScreen(
                         onClick = { onNavigate(Routes.GAMES) },
                     )
                     HorizontalDivider()
-                    AnimatedVisibility(
-                        visible = signedIn,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
-                    ) {
-                        Column {
-                            ProfileToolItem(
-                                icon = Icons.Default.PersonOutline,
-                                title = stringResource(R.string.profile_action_manage_account),
-                                subtitle = stringResource(R.string.profile_signed_in_title),
-                                onClick = { onNavigate(Routes.ACCOUNT) },
-                            )
-                            HorizontalDivider()
-                        }
+                    if (signedIn) {
+                        ProfileToolItem(
+                            icon = Icons.Default.PersonOutline,
+                            title = stringResource(R.string.profile_action_manage_account),
+                            subtitle = stringResource(R.string.profile_signed_in_title),
+                            onClick = { onNavigate(Routes.ACCOUNT) },
+                        )
+                        HorizontalDivider()
                     }
                     ProfileToolItem(
                         icon = Icons.Default.DirectionsCar,
@@ -368,11 +314,15 @@ fun ProfileScreen(
     }
 }
 
-/** Account header slot for the profile crossfade. */
-private enum class AccountSlot {
-    RESOLVING,
-    GUEST,
-    SIGNED_IN,
+@Composable
+private fun ProfileSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
+        SkeletonCard(height = 96.dp)
+        SkeletonCard(height = 64.dp)
+        SkeletonButton()
+        SkeletonLine(width = 180.dp, height = 20.dp)
+        SkeletonCard(height = 320.dp)
+    }
 }
 
 @Composable

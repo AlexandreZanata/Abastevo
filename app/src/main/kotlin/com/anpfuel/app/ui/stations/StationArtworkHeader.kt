@@ -2,7 +2,6 @@ package com.anpfuel.app.ui.stations
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -16,6 +15,7 @@ import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AbastevoBrandBanner
 import com.anpfuel.domain.profile.StationArtworkAsset
 import com.anpfuel.domain.profile.StationArtwork
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 /** Shared README-style brand banner as the default station artwork; local default artwork is not a business badge. */
 @Composable
@@ -32,7 +32,7 @@ internal fun StationArtworkIcon(modifier: Modifier = Modifier, artwork: StationA
     val mark = when (artwork.icon) {
         StationArtworkAsset.ABASTEVO_ICON, StationArtworkAsset.ABASTEVO_BANNER -> R.drawable.ic_abastevo_logo
     }
-    Surface(modifier, shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+    Surface(modifier, shape = AnpContainerDefaults.containerShape(), color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         Image(painterResource(mark), contentDescription = null,
             modifier = Modifier.padding(8.dp))
     }
