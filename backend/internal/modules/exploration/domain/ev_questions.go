@@ -11,9 +11,9 @@ import (
 // Nothing here dials, stores or prices: execution resolves coverage
 // and cancels late responses on its own bounded path.
 const (
-	KindChargingPlaces  = "CHARGING_COMPATIBLE_PLACES"
-	KindEnergyPrice     = "REPORTED_ENERGY_PRICE"
-	KindScenarioCost    = "COMPLETE_SCENARIO_COST"
+	KindChargingPlaces      = "CHARGING_COMPATIBLE_PLACES"
+	KindEnergyPrice         = "REPORTED_ENERGY_PRICE"
+	KindScenarioCost        = "COMPLETE_SCENARIO_COST"
 	ReasonConnectorRequired = "CONNECTOR_REQUIRED"
 	ReasonComponentRequired = "COMPONENT_REQUIRED"
 )
@@ -22,15 +22,15 @@ const (
 // current and access filter server-side; empty means unfiltered, never
 // a hidden default. Profile is pinned to the admitted open corpus.
 type ChargingPlaceQuery struct {
-	Version    int       `json:"version"`
-	Kind       string    `json:"kind"`
-	Profile    string    `json:"profile"`
-	Connector  string    `json:"connector,omitempty"`
-	Current    string    `json:"current,omitempty"`
-	Access     string    `json:"access,omitempty"`
-	Geog       Geography `json:"geography"`
-	Page       Page      `json:"page"`
-	Policy     string    `json:"policy_version"`
+	Version   int       `json:"version"`
+	Kind      string    `json:"kind"`
+	Profile   string    `json:"profile"`
+	Connector string    `json:"connector,omitempty"`
+	Current   string    `json:"current,omitempty"`
+	Access    string    `json:"access,omitempty"`
+	Geog      Geography `json:"geography"`
+	Page      Page      `json:"page"`
+	Policy    string    `json:"policy_version"`
 }
 
 // EnergyPriceQuery is one typed reported-energy-price question with an
@@ -52,15 +52,15 @@ type EnergyPriceQuery struct {
 // ones the executor reports as unknown fees. No quantities travel here:
 // amounts are scenario inputs at execution, never query defaults.
 type ScenarioCostQuery struct {
-	Version    int               `json:"version"`
-	Kind       string            `json:"kind"`
-	Profile    string            `json:"profile"`
-	Dimensions map[string]bool   `json:"dimensions"`
-	Missing    []string          `json:"missing"`
-	Cond       Condition         `json:"condition"`
-	Geog       Geography         `json:"geography"`
-	Page       Page              `json:"page"`
-	Policy     string            `json:"policy_version"`
+	Version    int             `json:"version"`
+	Kind       string          `json:"kind"`
+	Profile    string          `json:"profile"`
+	Dimensions map[string]bool `json:"dimensions"`
+	Missing    []string        `json:"missing"`
+	Cond       Condition       `json:"condition"`
+	Geog       Geography       `json:"geography"`
+	Page       Page            `json:"page"`
+	Policy     string          `json:"policy_version"`
 }
 
 // Scenario dimensions mirror the tariff engine vocabulary.

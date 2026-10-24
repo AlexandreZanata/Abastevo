@@ -114,7 +114,7 @@ func TestEVAdversarialAndLiquidStayOut(t *testing.T) {
 		"Qual o maior preço observado da gasolina comum no Brasil?": "not-ev",
 		"Quais ações de fiscalização da ANP no DF?":                 "not-ev",
 		"'; DROP TABLE charging; --":                                ReasonUnsupportedIntent,
-		"Quanto custa o kWh da tomada de casa?":                      "energy",
+		"Quanto custa o kWh da tomada de casa?":                     "energy",
 	} {
 		got := Interpret(question, testNow)
 		switch want {
