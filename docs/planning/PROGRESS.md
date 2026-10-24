@@ -1,5 +1,15 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-01 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Source admission register](../product/ENTERPRISE_SOURCE_ADMISSION.md)
+  and [evidence](../backend/evidence/enterprise-static/ESP-01.md). Six ANP
+  profiles frozen with fields/keys/clocks/coverage/retention/quotas; rights split
+  into `RIGHTS_PENDING` (registry, prices, PMQC), `ADMITTED` CC BY (enforcement,
+  fines, still runtime/association blocked) and `NOT_ADMITTED` (registry API).
+  Observed weekly filename variant breaks current discovery; historical series is
+  semester ZIP; FQ-06 live stream and safe fine links remain OWED. No source,
+  schema, job, route or deployment enabled. Next: ESP-02 bounded discovery.
+
 - Enterprise data/static portal ESP-00 2026-10-24: LOCAL_DONE /
   INTEGRATION_PENDING on `codex/enterprise-static-portal` (isolated worktree),
   replayed onto maintained dev `721582b8`; planning commit `b1a2bde6` preserved.
