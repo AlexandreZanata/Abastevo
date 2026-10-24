@@ -13,6 +13,15 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- EE-31/MEX-39 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent
+  `80bd7eb2`. [Combined overview](../backend/evidence/ev-support/EE-31.md):
+  Portuguese task/commit/test/measurement map for the 17-commit batch; 2,130
+  JVM (2 pre-existing skips), Go/Rust/PostGIS/OpenAPI, real source chains and
+  operational manifest. Explicit pending: EE-25 energy/scenario execution,
+  MEX-35 combined device campaign, Android vehicle backup, exact Go-page
+  Android decode, staging/Play/native/operator/production. No release claim.
+  Next: final GitHub inventory and protected dev → main delivery.
+
 - MEX-38 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `83b77df4`.
   [Operational handoff](../backend/evidence/mobile-expansion/MEX-38.md): reuses
   the EE-30 source-ready manifest and local restore/erase/replay rehearsals;
