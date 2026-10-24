@@ -35,7 +35,7 @@ class MapProbeActivity : Activity() {
                     }
                 }
                 view.postDelayed({
-                    engine.setViewport(-25.42, -49.27, if (overlayOnly) 16 else 13)
+                    engine.setViewport(if (overlayOnly) -25.46 else -25.42, if (overlayOnly) -49.31 else -49.27, if (overlayOnly) 16 else 13)
                     engine.setOverlayMarkers(fixture(1))
                 }, 2500)
                 view.postDelayed({ logOverlay("first") }, 4500)
@@ -71,11 +71,11 @@ class MapProbeActivity : Activity() {
 
     private fun fixture(generation: Int): List<MapOverlayMarker> {
         val markers = mutableListOf(
-            marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", -25.4200, -49.2700, "Posto Central", reviewed = true),
+            marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", -25.4600, -49.3100, "Posto Central", reviewed = true),
             marker(
                 "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-                -25.4201,
-                -49.2701,
+                -25.4601,
+                -49.3101,
                 "Recarga Central",
                 fuel = false,
                 charging = true,
@@ -83,8 +83,8 @@ class MapProbeActivity : Activity() {
             ),
             marker(
                 "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
-                -25.4202,
-                -49.2702,
+                -25.4602,
+                -49.3102,
                 "Posto Ambos",
                 charging = true,
                 cityCentroid = true,
@@ -101,8 +101,8 @@ class MapProbeActivity : Activity() {
             marker("ffffffff-ffff-4fff-8fff-ffffffffffff", -25.4400, -49.2900, "Posto Revisado", reviewed = true),
             marker(
                 "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-                -25.4200,
-                -49.2700,
+                -25.4600,
+                -49.3100,
                 "Posto Central duplicado",
                 charging = true,
                 reviewed = true,

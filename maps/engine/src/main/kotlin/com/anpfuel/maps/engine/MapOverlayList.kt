@@ -14,6 +14,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -36,14 +37,14 @@ fun MapOverlayList(
                             Icon(
                                 painter = painterResource(R.drawable.ic_map_station_combustion),
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(24.dp).testTag("station-icon-combustion"),
                             )
                         }
                         if (item.type != MapStationType.FUEL) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_map_station_electric),
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(24.dp).testTag("station-icon-electric"),
                             )
                         }
                     }

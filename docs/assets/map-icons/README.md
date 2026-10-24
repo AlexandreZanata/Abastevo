@@ -58,7 +58,9 @@ Integration update 2026-10-24: the reviewed Android exports are copied to
 `maps/engine/src/main/res/drawable-nodpi/` and used as 24 dp leading icons in
 the accessible `MapOverlayList` (fuel, electric, or both side by side). The list
 keeps the textual type label and TalkBack description; the icons are decorative
-and do not replace the text. The native map overlay still uses the SDK's
+and do not replace the text. The device instrumentation test asserts the list
+content description, 48 dp target and both icon compositions; visual appearance
+and map-background/20 px review remain MAP-18. The native map overlay still uses the SDK's
 `Gas`/`ChargingStation` bookmark symbols; theme-aware native marker backing/
 outline/selection, map-background/20 px review and the final MAP-18 artwork
 review remain open. Raw large source images stay out of the APK; only the

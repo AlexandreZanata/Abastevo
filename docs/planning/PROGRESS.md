@@ -59,20 +59,22 @@
   generated `android/sdk/build`/`.cxx` removed, arm64 AAR rebuilt; AAR
   `1fe196f9…`, `classes.jar` `074122f4…` and core `08342926…` byte-identical
   (`cmp` 0, 4m 1s clean build). Fresh-checkout clone comparison remains.
-  T06 PARTIAL: canonical UUID normalization/dedupe, fuel/charging flags,
+  T06 LOCAL_DONE / INTEGRATION_PENDING: canonical UUID normalization/dedupe,
+  fuel/charging flags,
   UNKNOWN/CITY_CENTROID/REVIEWED states, 60 m clustering, native
   Gas/ChargingStation/Information symbols and accessible Compose list (48 dp,
   content descriptions) implemented; the prepared Abastevo fuel/electric
   exports are now 24 dp list icons. The old overlay category is retained
   until the new generation commits; deferring `showBookmarkCategoryOnMap` fixed
   a reproduced native `CHECK(m_updatedGroups.empty())` SIGABRT. 12 engine JVM
-  tests PASS; 3 phone instrumentation tests passed before the list-icon
-  addition. Phone probe: generation 1
+  tests PASS; 3 phone instrumentation tests PASS after the list-icon addition
+  (TalkBack, 48 dp, fuel/electric icon composition). Phone probe: generation 1
   (7 markers/6 unique/3 clusters) and generation 2 (8/7/3) committed, old file
-  removed, cluster/gas pins rendered. Tapping the cluster at a dense OSM POI
-  opened the OSM POI (title 110139), so native cluster hit-test, native map
-  artwork/theme review and the native marker 48 dp target remain open; the
-  list icon's device visual check is pending.
+  removed, cluster/gas pins rendered. Clean-location cluster tap PASS:
+  `ABASTEVO_CLUSTER:c1-0`, 3 UUID members. Tapping the same cluster at a dense
+  OSM POI opened the OSM POI (title 110139); MAP-17 must disambiguate or route
+  through the accessible list. Native map artwork/theme review and the native
+  marker 48 dp target remain MAP-18/integration items.
   MAP-15: Room v26 public map metadata, resumable `.part` download, Ed25519
   envelope/key rotation, SHA-256, reserve/disk failure, all-package activation,
   safe inactive cleanup and Hilt WorkManager worker. JVM data tests and a real
@@ -102,8 +104,8 @@
   (66.64 MiB), 80 MiB gate and APK/64-bit ELF alignment PASS. No new native
   execution or full ENGINE_GATE acceptance. [Resume](MAP_EV_RESUME.md) records
   remaining tasks, the existing native Ed25519 implementation direction and
-  prior DATA_GATE/distribution review obligations. Next: T06 native cluster
-  hit-test/final Abastevo artwork/native 48 dp target; T07 legal sign-off,
+  prior DATA_GATE/distribution review obligations. Next: T06 dense-OSM
+  disambiguation/native map artwork/native 48 dp target; T07 legal sign-off,
   public source offer and per-asset review; fresh-checkout build comparison,
   armv7 runtime and the deferred 16 KB runtime obligation before
   ENGINE_GATE/MAP-17. The multi-ABI artifact is under the existing 80 MiB

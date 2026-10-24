@@ -1,7 +1,7 @@
 # MAP-14 — Extracted engine adapter and render proof
 
-Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / MULTI_ABI_ARTIFACT_PASS / CLEAN_BUILD_REPRODUCIBLE / T08_16KB_RUNTIME_DEFERRED / T06_PARTIAL / T07_TECHNICAL_AUDIT_DONE_LEGAL_PENDING
-Validation: PARTIAL (arm64 phone runtime PASS; multi-ABI release artifact PASS; clean-build double-build PASS; T06 overlay model/clustering/symbols/accessible list/safe generation PASS; T07 technical audit/SBOM/notices/endpoint decision PASS; fresh-clone build, armv7 runtime, native cluster hit-test/artwork, legal sign-off and 16 KB pending)
+Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / MULTI_ABI_ARTIFACT_PASS / CLEAN_BUILD_REPRODUCIBLE / T08_16KB_RUNTIME_DEFERRED / T06_LOCAL_DONE_INTEGRATION_PENDING / T07_TECHNICAL_AUDIT_DONE_LEGAL_PENDING
+Validation: PARTIAL (arm64 phone runtime PASS; multi-ABI release artifact PASS; clean-build double-build PASS; T06 overlay model/clustering/symbols/accessible list/safe generation/cluster hit-test PASS with MAP-17/18 integration items; T07 technical audit/SBOM/notices/endpoint decision PASS; fresh-clone build, armv7 runtime, legal sign-off and 16 KB pending)
 Integration: NOT_INTEGRATED
 
 Tested tree: `codex/map-ev-implementation` at `721582b8` plus the uncommitted
@@ -111,10 +111,11 @@ final app-owned place-page/list surface still has to disambiguate that case.
 - **T05:** proven in the Abastevo adapter: 29 offline search results and a
   1,575.15 m / 288 s car route between in-map checkpoints. Guidance UI and
   route cancellation remain open.
-- **T06:** overlay model, duplicate/type/location handling, 60 m clustering,
-  native Gas/ChargingStation/Information symbols, safe generation swap and the
-  48 dp accessible list are implemented and tested. Native cluster hit-test at
-  a dense OSM POI and final Abastevo artwork remain.
+- **T06:** LOCAL_DONE / INTEGRATION_PENDING. Overlay model, duplicate/type/
+  location handling, 60 m clustering, native symbols, safe generation swap,
+  48 dp accessible list with Abastevo pictograms and clean-location cluster
+  hit-test are implemented and tested. Dense-OSM disambiguation and native map
+  artwork/theme review remain MAP-17/18 integration items.
 - **T07:** technical audit, 215-component notices/SBOM, endpoint decision and
   patch/rollback record are complete; human legal sign-off remains.
 - **T08:** arm64 runtime PASS on the physical phone; the release artifact now
@@ -301,12 +302,12 @@ cores; armv7 runtime is not proven.
 
 ## T06 overlay model, clustering and accessibility — 2026-10-24
 
-Status: **T06 PARTIAL / IN_PROGRESS**. The overlay model, duplicate/type
-handling, 60 m clustering, native map symbols, safe generation swap and
-accessible list are implemented and tested. The accessible list now uses the
-prepared Abastevo fuel/electric pictograms. The native cluster hit-test at a
-dense OSM POI location, native map artwork/theme review and the native 48 dp
-target remain open.
+Status: **T06 LOCAL_DONE / INTEGRATION_PENDING**. The overlay model,
+duplicate/type handling, 60 m clustering, native map symbols, safe generation
+swap, accessible list and native cluster hit-test are implemented and tested.
+The accessible list uses the prepared Abastevo fuel/electric pictograms.
+Dense-OSM-POI disambiguation/quick-sheet UX and native map artwork/theme review
+remain MAP-17/18 integration items.
 
 Implemented in `maps/engine`:
 
@@ -358,26 +359,29 @@ unrelated user notification).
 Tests: **12** engine JVM tests PASS (KML declaration/escaping, icons/styles,
 duplicate merge, co-located distinct UUIDs, nearby/far clustering, invalid
 rejection, cluster KML, accessible labels/types, selection mapping). **3** phone
-instrumentation tests PASS before the pictogram addition (2 existing MapHost
+instrumentation tests PASS after the pictogram addition (2 existing MapHost
 lifecycle/host tests plus `MapOverlayListInstrumentedTest`, which asserts the
-TalkBack description and `assertHeightIsAtLeast(48.dp)`). The current release
-build includes both drawables; the icon list's device visual check remains
-pending. Gradle's UTP install was blocked by `INSTALL_FAILED_USER_RESTRICTED`;
-the self-instrumenting test APK was installed with `adb install` and run with
-`am instrument`, 3/3 OK.
+TalkBack description, `assertHeightIsAtLeast(48.dp)` and the combustion/electric
+icon composition). Gradle's UTP install was blocked by
+`INSTALL_FAILED_USER_RESTRICTED`; the self-instrumenting test APK was installed
+with `adb install` and run with `am instrument`, 3/3 OK in 8.5 s. Clean-location
+cluster tap: `ABASTEVO_CLUSTER:c1-0`, 3 members. Evidence image:
+[t06-clean-cluster.jpg](map14-phone/t06-clean-cluster.jpg).
 
 Known T06 limits:
 
-- Tapping the cluster pin at the fixture location opened an OSM POI
-  (`place page activated title=110139`) instead of the bookmark; this is the
-  known OSM-vs-bookmark hit-test collision. The app-owned cluster selection
-  mapping (`overlaySelectionFor`) is unit-tested, and individual station
-  selection was proven in T08, but native cluster hit-test needs a clean
-  location or an app-owned disambiguation/quick-sheet path in MAP-17.
-- The accessible list uses the prepared Abastevo PNG exports. The native map
-  overlay still uses the SDK `Gas`/`ChargingStation` symbols; native marker
-  backing/outline/selection, map-background/20 px review and final artwork
-  remain MAP-18. The list icon's device visual check remains pending.
+- The cluster hit-test was proven on the phone at a clean location:
+  `place page activated title=ABASTEVO_CLUSTER:c1-0` and
+  `MapProbe: cluster=3 uuids=[aaaaaaaa-…, bbbbbbbb-…, cccccccc-…]`.
+  At a dense downtown OSM POI the same tap opened the OSM POI
+  (`title=110139`); this is a known OSM-vs-bookmark collision. MAP-17 must
+  disambiguate or route selection through the app-owned accessible list/quick
+  sheet. The selection mapping is unit-tested; individual station selection was
+  proven in T08.
+- The accessible list uses the prepared Abastevo PNG exports and the device
+  composition/semantics test passes. The native map overlay still uses the SDK
+  `Gas`/`ChargingStation` symbols; native marker backing/outline/selection,
+  map-background/20 px review and final artwork remain MAP-18.
 - The accessible list has 48 dp targets; the native marker's own touch target
   was not separately measured.
 - Clustering uses a fixed 60 m radius, not a zoom-dependent radius yet.

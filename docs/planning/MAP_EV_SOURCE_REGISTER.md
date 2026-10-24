@@ -23,7 +23,7 @@ public OSM write or a provider contact.
 | SRC-ANP | ANP station facts | Existing admitted pipeline covers current Android import; station-level server facts not yet selected | `PENDING` for new server artifact; existing importer behavior preserved | Exact dataset/terms/metadata, bytes/SHA-256, station linkage and period rules |
 | SRC-OCM | Open Charge Map subset | No provider subset selected | `PENDING` | Per-record/provider license and attribution; `opendata` flag alone is insufficient |
 | SRC-COMM | Abastevo community data | Existing account/consent/moderation contracts | `ADMITTED_FOR_SOURCE` under existing rules | Public extract/relicense review; no private GPS/photos |
-| SRC-ICON | Generated map pictograms | `docs/assets/map-icons/` provenance and hashes | `ADMITTED_FOR_SOURCE` | Preserve MIT notice/provenance; complete MAP-18 map-background/accessibility review |
+| SRC-ICON | Generated map pictograms | `docs/assets/map-icons/` provenance and hashes; Android exports integrated in the accessible list | `ADMITTED_FOR_SOURCE` | Preserve MIT notice/provenance; device list semantics/48 dp/icon composition PASS; MAP-18 native map-background/theme review remains |
 | SRC-PLATFORM | Android location/TTS | Platform APIs | `ADMITTED_FOR_SOURCE` | No Play Services or cloud TTS requirement; permission/fallback tests |
 | SRC-CAR | AndroidX Car App Library | Not selected/versioned | `PENDING` | Exact revision/license/dependency tree; external host acceptance separate |
 

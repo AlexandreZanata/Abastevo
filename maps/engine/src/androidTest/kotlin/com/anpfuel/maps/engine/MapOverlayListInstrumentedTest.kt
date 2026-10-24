@@ -1,8 +1,10 @@
 package com.anpfuel.maps.engine
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
@@ -46,5 +48,8 @@ class MapOverlayListInstrumentedTest {
             .assertHeightIsAtLeast(48.dp)
             .performClick()
         assertEquals(items[0].uuid, selected)
+
+        compose.onAllNodesWithTag("station-icon-combustion", useUnmergedTree = true).assertCountEquals(2)
+        compose.onAllNodesWithTag("station-icon-electric", useUnmergedTree = true).assertCountEquals(1)
     }
 }

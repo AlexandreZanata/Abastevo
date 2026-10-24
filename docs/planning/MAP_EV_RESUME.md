@@ -105,23 +105,26 @@ and do not invent a tested commit SHA.
   `074122f4…` and core `08342926…` byte-identical (`cmp` 0, 4m 1s). A
   fresh-checkout clone comparison remains. See
   [reproducibility evidence](../backend/evidence/maps/MAP-14_REPRODUCIBILITY.md).
-- T06 PARTIAL: canonical UUID dedupe, fuel/charging, location quality, 60 m
+- T06 LOCAL_DONE / INTEGRATION_PENDING: canonical UUID dedupe, fuel/charging,
+  location quality, 60 m
   clustering, native Gas/ChargingStation/Information symbols and the 48 dp
   accessible Compose list are implemented; the prepared Abastevo fuel/electric
   exports are now 24 dp list icons. Safe generation swap retains the
   old category until commit; deferring `showBookmarkCategoryOnMap` fixed a
   reproduced native `CHECK(m_updatedGroups.empty())` crash. Phone probe
   committed two generations (7/6/3 then 8/7/3 markers/unique/clusters) and
-  removed the old file. Cluster tap at a dense OSM POI opened the OSM POI
-  instead; native map artwork, native marker 48 dp and the list icon's device
-  visual check remain.
+  removed the old file. Clean-location cluster tap PASS:
+  `ABASTEVO_CLUSTER:c1-0`, 3 members; the 3 phone instrumentation tests pass
+  after the icon addition (TalkBack, 48 dp, icon composition). A dense OSM POI
+  still wins the native tap; MAP-17 must disambiguate or use the accessible
+  list. Native map artwork and native marker 48 dp remain MAP-18/integration.
 - T07 technical audit COMPLETE / LEGAL_SIGNOFF_PENDING: 193 submodules + 22
   vendored = 215 components, 204 license files + 11 resolved, 0 missing;
   219-license-file notices bundle, CycloneDX 1.5 SBOM, 30 endpoint hosts classified
   (0 unclassified), upstream service strings documented unused, ODbL
   derived-database/source-offer determination and patch rollback recorded.
   Human legal sign-off and the public source-offer URL remain.
-- Still open: T06 native cluster hit-test/final artwork/native 48 dp target,
-  T07 legal sign-off/public offer/per-asset review, fresh-checkout build
+- Still open: T06 dense-OSM disambiguation/native map artwork/native 48 dp
+  target, T07 legal sign-off/public offer/per-asset review, fresh-checkout build
   comparison, armv7 runtime, deferred 16 KB runtime and full ENGINE_GATE
   evidence. MAP-15/16 are LOCAL_DONE but remain gated by ENGINE_GATE.
