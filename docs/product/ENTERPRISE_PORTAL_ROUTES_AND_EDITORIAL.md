@@ -33,6 +33,22 @@ Search URLs (`/consultar/?q=...`, `?uf=...`) are not indexable variants and
 carry a canonical link to `/consultar/`. Empty search queries and filter
 combinations are not generated as indexable pages.
 
+### Search implementation (ESP-10)
+
+`/consultar/` keeps a GET form and an HTML state directory. With JavaScript it
+loads exactly one immutable regional shard at
+`/dados/busca/{release}/{uf}.json` (or `sem-uf`); no national all-stations locator
+is generated. Query normalization is accent-insensitive; numeric and
+alphanumeric CNPJ punctuation is stripped; results are capped at 50 and input is
+truncated at 80 characters. Shards contain only UUID, display/normalized name,
+CNPJ, municipality code/name, UF, source status and the station's latest fuel
+counts/prices. A missing or release-mismatched shard falls back to the HTML
+directory; obsolete requests are aborted. No API, ANP call or database is used.
+A synthetic 6,000-station scale test measured a 2,000-station SP shard at
+346,084 bytes / 23,639 gzip versus a synthetic national locator at 1,020,084 /
+70,029; the regional design is selected. Real-scale measurement remains OWED
+while the real edition is blocked by ESP-07.
+
 ## Page fields (public allowlist)
 
 - **Station list:** canonical UUID, display name, CNPJ only while the active

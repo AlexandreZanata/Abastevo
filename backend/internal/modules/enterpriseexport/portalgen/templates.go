@@ -34,6 +34,7 @@ const templates = `
       <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; não é preço ao vivo.</p>
     </div>
   </footer>
+  {{if .ScriptURL}}<script type="module" src="{{.ScriptURL}}" defer></script>{{end}}
 </body>
 </html>{{end}}
 
@@ -79,8 +80,30 @@ const templates = `
   <p class="eyebrow">Consulta pública</p>
   <h1>Consultar preços de combustíveis</h1>
   <p class="lead">Preços encontrados na pesquisa da ANP, com período, fonte e amostra. Não é preço ao vivo.</p>
-  <div class="notice"><strong>Busca por nome/CNPJ</strong><p>Os índices estáticos de busca serão publicados na próxima etapa. Por enquanto, navegue pelos estados abaixo.</p></div>
-  <h2>Estados na amostra</h2>
+  <form data-portal-search data-shard-base="/dados/busca/" data-release="{{.SearchRelease}}" data-result-limit="50" action="/consultar/" method="get" role="search">
+    <div class="form-row">
+      <div>
+        <label for="portal-q">Posto, CNPJ ou marca</label>
+        <input id="portal-q" name="q" data-search-query type="search" maxlength="80" autocomplete="off" placeholder="Ex.: Posto Alfa ou 04.218.406/0001-04">
+      </div>
+      <div>
+        <label for="portal-uf">UF</label>
+        <select id="portal-uf" name="uf" data-search-uf>
+          <option value="">Selecione</option>
+          {{range .SearchStates}}<option value="{{.Code}}">{{.Name}}</option>{{end}}
+        </select>
+      </div>
+      <div>
+        <label for="portal-city">Município</label>
+        <select id="portal-city" name="municipio" data-search-city disabled><option value="">Todos</option></select>
+      </div>
+      <button class="button" type="submit">Buscar</button>
+    </div>
+    <p class="muted" data-search-status role="status" aria-live="polite">Escolha uma UF e digite ao menos 2 caracteres.</p>
+    <ul class="station-list" data-search-results aria-label="Resultados da busca"></ul>
+  </form>
+  <noscript><p class="muted">A busca interativa requer JavaScript. Use a navegação por estado abaixo.</p></noscript>
+  <h2>Estados com resumo</h2>
   {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="/precos/uf/{{.Code}}/">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem preços nesta publicação.</strong><p>A pesquisa mais recente não tem observações publicadas.</p></div>{{end}}
   <h2>Resumo nacional</h2>
   {{template "summary" .National}}

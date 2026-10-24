@@ -1,5 +1,17 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-10 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-10.md).
+  Accent-insensitive name and numeric/alphanumeric CNPJ search over one immutable
+  regional shard per UF (`sem-uf` when absent), 80-char/50-result bounds, city
+  filter, abort/fallback for missing or version-mismatched shards and no national
+  locator. `search.ts` is emitted by the landing build and embedded by
+  `portalgen --search-js`; HTML directory works without JS. Landing suite 60/60;
+  Go/portalgen tests, real PostGIS build→portal, typecheck/build/check and
+  static checks PASS. Synthetic 6,000-station shard: SP 346,084 B / 23,639 gzip
+  vs national 1,020,084 / 70,029. Real-source search remains blocked by ESP-07.
+  Next: ESP-11 official-record pages.
+
 - Enterprise data/static portal ESP-09 2026-10-24: LOCAL_DONE /
   INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-09.md).
   `portalgen` verifies one export candidate (manifest/JSONL/analytics hash) and

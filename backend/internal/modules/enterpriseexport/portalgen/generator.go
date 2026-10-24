@@ -31,11 +31,12 @@ const (
 )
 
 type Options struct {
-	SnapshotDir string
-	OutputDir   string
-	MaxPages    int
-	MaxBytes    int64
-	Indexable   bool
+	SnapshotDir      string
+	OutputDir        string
+	MaxPages         int
+	MaxBytes         int64
+	Indexable        bool
+	SearchScriptPath string
 }
 
 type Result struct {
@@ -69,6 +70,7 @@ type pageBase struct {
 	Period      string
 	PublishedAt string
 	InputHash   string
+	ScriptURL   string
 	Breadcrumbs []crumb
 }
 
@@ -129,8 +131,10 @@ type municipalityLink struct {
 
 type consultarPage struct {
 	pageBase
-	States   []stateLink
-	National []summaryRow
+	States        []stateLink
+	National      []summaryRow
+	SearchStates  []searchState
+	SearchRelease string
 }
 
 type precosPage struct {
@@ -225,6 +229,7 @@ type generator struct {
 	pages     int
 	bytes     int64
 	indexable bool
+	scriptURL string
 }
 
 // Generate reads one frozen export candidate and writes a complete private
@@ -316,6 +321,27 @@ func Generate(opts Options) (Result, error) {
 	for _, item := range observations {
 		obsByStation[item.station.StationID] = append(obsByStation[item.station.StationID], item)
 	}
+	release := releaseSlug(manifest.ContentSHA256)
+	shards, err := buildSearchShards(snapshot, observations, release)
+	if err != nil {
+		return Result{}, err
+	}
+	searchStates := make([]searchState, 0, len(shards))
+	for _, shard := range shards {
+		searchStates = append(searchStates, searchState{Code: shard.UF, Name: searchStateName(shard.UF)})
+	}
+	sort.Slice(searchStates, func(i, j int) bool { return searchStates[i].Code < searchStates[j].Code })
+	if err := g.copySearchScript(opts.SearchScriptPath); err != nil {
+		return Result{}, err
+	}
+	for _, shard := range shards {
+		if err := validateSearchShard(shard); err != nil {
+			return Result{}, err
+		}
+		if err := g.writeAsset("dados/busca/"+release+"/"+shard.UF+".json", shard.Data); err != nil {
+			return Result{}, err
+		}
+	}
 	stateStations, municipalityStations, municipalityState, municipalityName, err := geography(observations)
 	if err != nil {
 		return Result{}, err
@@ -328,7 +354,7 @@ func Generate(opts Options) (Result, error) {
 		period = periodLabel(latest.SurveyStart, latest.SurveyEnd)
 	}
 
-	if err := g.generateConsultar(latestSummaries, stateStations, period, published, manifest.ContentSHA256); err != nil {
+	if err := g.generateConsultar(latestSummaries, stateStations, searchStates, release, period, published, manifest.ContentSHA256); err != nil {
 		return Result{}, err
 	}
 	if err := g.generatePrecos(latestSummaries, latestRankings, stations, stateStations, period, published, manifest.ContentSHA256); err != nil {
@@ -592,6 +618,26 @@ func (g *generator) writeAsset(rel string, data []byte) error {
 	return nil
 }
 
+func (g *generator) copySearchScript(path string) error {
+	if path == "" {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("portalgen: search script: %w", err)
+	}
+	if len(data) == 0 {
+		return fmt.Errorf("portalgen: empty search script")
+	}
+	sum := sha256.Sum256(data)
+	name := "portal." + hex.EncodeToString(sum[:4]) + ".js"
+	if err := g.writeAsset("assets/"+name, data); err != nil {
+		return err
+	}
+	g.scriptURL = "/assets/" + name
+	return nil
+}
+
 func (g *generator) copyAssets() error {
 	css, err := embeddedAssets.ReadFile("assets/portal.css")
 	if err != nil {
@@ -661,11 +707,11 @@ func (g *generator) base(title, description, active, period, published, inputHas
 	return pageBase{
 		Title: title, Description: description, ActiveNav: active,
 		Indexable: g.indexable, Period: period, PublishedAt: published,
-		InputHash: inputHash, Breadcrumbs: crumbs,
+		InputHash: inputHash, ScriptURL: g.scriptURL, Breadcrumbs: crumbs,
 	}
 }
 
-func (g *generator) generateConsultar(summaries []analytics.Summary, states map[string]int, period, published, inputHash string) error {
+func (g *generator) generateConsultar(summaries []analytics.Summary, states map[string]int, searchStates []searchState, release, period, published, inputHash string) error {
 	stateLinks := make([]stateLink, 0)
 	for code, stations := range states {
 		fuels := map[string]bool{}
@@ -680,6 +726,7 @@ func (g *generator) generateConsultar(summaries []analytics.Summary, states map[
 	data := consultarPage{
 		pageBase: g.base("Consultar preços de combustíveis", "Consulta estática de preços da pesquisa ANP, com período, fonte, amostra e status informado.", "consultar", period, published, inputHash, []crumb{{Label: "Consultar", Current: true}}),
 		States:   stateLinks, National: summaryRows(summaries, analytics.LevelNational, "BR", false),
+		SearchStates: searchStates, SearchRelease: release,
 	}
 	return g.writePage("consultar/index.html", "consultar", data)
 }

@@ -1,7 +1,10 @@
 package portalgen
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -146,8 +149,8 @@ func TestGenerateFixturePages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Pages != 16 || result.Files != 19 {
-		t.Fatalf("result = %+v, want 16 pages and 19 files", result)
+	if result.Pages != 16 || result.Files != 22 {
+		t.Fatalf("result = %+v, want 16 pages and 22 files", result)
 	}
 	for _, page := range []string{
 		"consultar/index.html", "precos/index.html", "precos/uf/SP/index.html",
@@ -156,16 +159,65 @@ func TestGenerateFixturePages(t *testing.T) {
 		"postos/" + stA + "/index.html", "postos/" + stD + "/index.html",
 		"metodologia/index.html", "fiscalizacao/index.html", "404.html",
 		"assets/portal.css", "robots.txt", "portal-manifest.json",
+		"dados/busca/fixture/SP.json", "dados/busca/fixture/MG.json",
+		"dados/busca/fixture/sem-uf.json",
 	} {
 		if _, err := os.Stat(filepath.Join(out, page)); err != nil {
 			t.Errorf("missing %s: %v", page, err)
 		}
 	}
 	consultar := readPortal(t, out, "consultar/index.html")
-	for _, want := range []string{"São Paulo (SP)", "Minas Gerais (MG)", "5 postos", "1 posto", "Busca por nome/CNPJ"} {
+	for _, want := range []string{
+		"São Paulo (SP)", "Minas Gerais (MG)", "5 postos", "1 posto",
+		`data-portal-search`, `data-release="fixture"`, `data-shard-base="/dados/busca/"`,
+		`<option value="SP">São Paulo</option>`, `<option value="sem-uf">Sem UF</option>`,
+		`data-search-query`, `data-search-status`,
+	} {
 		if !strings.Contains(consultar, want) {
 			t.Errorf("consultar missing %q", want)
 		}
+	}
+	shardRaw, err := os.ReadFile(filepath.Join(out, "dados/busca/fixture/SP.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sp searchShard
+	if err := json.Unmarshal(shardRaw, &sp); err != nil {
+		t.Fatal(err)
+	}
+	if sp.Schema != SearchSchema || sp.Release != "fixture" || sp.UF != "SP" || sp.Count != 5 || len(sp.Stations) != 5 {
+		t.Errorf("SP shard = %+v", sp)
+	}
+	foundA, foundE, foundG := false, false, false
+	for _, row := range sp.Stations {
+		if row.ID == stG {
+			foundG = true
+			if row.SearchName != "posto epsilon" {
+				t.Errorf("accent normalization missing: %+v", row)
+			}
+		}
+		if row.ID == stA {
+			foundA = true
+			if row.SearchName != "posto alfa" || row.CNPJ != "04218406000104" ||
+				row.Prices["GASOLINE_REGULAR"] != 6199 {
+				t.Errorf("station A shard row = %+v", row)
+			}
+		}
+		if row.ID == stE {
+			foundE = true
+			if !strings.Contains(row.StatusLabel, "Suspenso") {
+				t.Errorf("suspended shard row = %+v", row)
+			}
+		}
+	}
+	if !foundA || !foundE || !foundG {
+		t.Errorf("SP shard missing fixture stations")
+	}
+	if _, err := os.Stat(filepath.Join(out, "dados/busca/fixture/epsilon.json")); err == nil {
+		t.Error("unexpected national/extra shard")
+	}
+	if _, err := os.Stat(filepath.Join(out, "dados/busca/fixture/all.json")); err == nil {
+		t.Error("national shard must not be generated")
 	}
 	precos := readPortal(t, out, "precos/index.html")
 	for _, want := range []string{"R$ 6,099", "R$ 6,399", "R$ 0,300", "Menores preços encontrados", "7 postos"} {
@@ -239,7 +291,7 @@ func TestGenerateFixturePages(t *testing.T) {
 		t.Fatal(err)
 	}
 	if manifest.InputContentSHA256 != "sha256:fixture" || manifest.Pages != result.Pages ||
-		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 18 {
+		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 21 {
 		t.Errorf("portal manifest = %+v", manifest)
 	}
 }
@@ -362,4 +414,110 @@ func TestGeneratedLinksResolve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestSearchScriptIsEmbeddedAndReferenced(t *testing.T) {
+	snapshot := writeFixture(t)
+	out := filepath.Join(t.TempDir(), "portal")
+	expected := "__portalSearch"
+	script := filepath.Join(t.TempDir(), "search.js")
+	if real := os.Getenv("ANPFUEL_TEST_REAL_SEARCH_JS"); real != "" {
+		script = real
+		expected = "setupPortalSearch"
+	} else if err := os.WriteFile(script, []byte("globalThis.__portalSearch = true;\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out, SearchScriptPath: script}); err != nil {
+		t.Fatal(err)
+	}
+	consultar := readPortal(t, out, "consultar/index.html")
+	pattern := regexp.MustCompile(`<script type="module" src="(/assets/portal\.[a-f0-9]{8}\.js)" defer></script>`)
+	match := pattern.FindStringSubmatch(consultar)
+	if len(match) != 2 {
+		t.Fatalf("search script reference missing")
+	}
+	asset, err := os.ReadFile(filepath.Join(out, strings.TrimPrefix(match[1], "/")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(asset), expected) {
+		t.Errorf("embedded search script content mismatch")
+	}
+	var manifest Manifest
+	if err := json.Unmarshal([]byte(readPortal(t, out, "portal-manifest.json")), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, file := range manifest.Files {
+		if "/"+file.Path == match[1] {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("search script missing from portal manifest")
+	}
+}
+
+func TestRegionalSearchShardIsBounded(t *testing.T) {
+	stations := make([]enterpriseexport.Station, 0, 6000)
+	for i := 0; i < 6000; i++ {
+		uf := "SP"
+		if i >= 2000 {
+			uf = "MG"
+		}
+		if i >= 4000 {
+			uf = ""
+		}
+		stations = append(stations, enterpriseexport.Station{
+			StationID:        "00000000-0000-4000-8000-" + fmt.Sprintf("%012d", i),
+			DisplayName:      fmt.Sprintf("Posto %05d", i),
+			CNPJ:             fmt.Sprintf("%014d", i),
+			State:            uf,
+			MunicipalityCode: fmt.Sprintf("%07d", 3550308+i%100),
+			Address:          map[string]string{"municipio": fmt.Sprintf("Cidade %02d", i%50)},
+		})
+	}
+	shards, err := buildSearchShards(enterpriseexport.Snapshot{Stations: stations}, nil, "rel")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sp []byte
+	all := make([]searchStation, 0, len(stations))
+	for _, shard := range shards {
+		if shard.UF == "SP" {
+			sp = shard.Data
+		}
+		var decoded searchShard
+		if err := json.Unmarshal(shard.Data, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		all = append(all, decoded.Stations...)
+	}
+	if len(sp) == 0 {
+		t.Fatal("SP shard missing")
+	}
+	national, err := json.Marshal(searchShard{
+		Schema: SearchSchema, Release: "rel", UF: "all", Count: len(all), Stations: all,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spGzip := gzipLen(sp)
+	nationalGzip := gzipLen(national)
+	t.Logf("regional SP bytes=%d gzip=%d; national bytes=%d gzip=%d",
+		len(sp), spGzip, len(national), nationalGzip)
+	if len(sp) >= len(national) || spGzip >= nationalGzip {
+		t.Errorf("regional shard is not smaller than the national locator")
+	}
+	if spGzip > 250*1024 {
+		t.Errorf("regional SP gzip shard exceeds 250 KiB: %d", spGzip)
+	}
+}
+
+func gzipLen(data []byte) int {
+	var buf bytes.Buffer
+	writer := gzip.NewWriter(&buf)
+	_, _ = writer.Write(data)
+	_ = writer.Close()
+	return buf.Len()
 }

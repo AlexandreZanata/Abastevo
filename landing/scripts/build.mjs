@@ -119,6 +119,16 @@ export function build(options = {}) {
     const jsHash = computeHash(jsContent);
     const fingerprintedJsName = `main.${jsHash}.js`;
 
+    const searchSourcePath = path.join(tmpDir, 'search.js');
+    let searchContent = null;
+    let searchHash = null;
+    let fingerprintedSearchName = null;
+    if (fs.existsSync(searchSourcePath)) {
+      searchContent = fs.readFileSync(searchSourcePath);
+      searchHash = computeHash(searchContent);
+      fingerprintedSearchName = `search.${searchHash}.js`;
+    }
+
     // 2. Read and fingerprint CSS
     const cssPath = path.join(staticDir, 'assets', 'styles.css');
     if (!fs.existsSync(cssPath)) {
@@ -136,6 +146,9 @@ export function build(options = {}) {
 
     // 4. Write fingerprinted JS and CSS
     fs.writeFileSync(path.join(outDir, 'assets', fingerprintedJsName), jsContent);
+    if (searchContent && fingerprintedSearchName) {
+      fs.writeFileSync(path.join(outDir, 'assets', fingerprintedSearchName), searchContent);
+    }
     fs.writeFileSync(path.join(outDir, 'assets', fingerprintedCssName), cssContent);
 
     // 5. Copy brand assets
@@ -333,8 +346,10 @@ export function build(options = {}) {
       storeUrl,
       fingerprintedCss: fingerprintedCssName,
       fingerprintedJs: fingerprintedJsName,
+      fingerprintedSearch: fingerprintedSearchName,
       cssHash,
       jsHash,
+      searchHash,
       appAssets: appAssetsCopied,
     };
   } finally {
@@ -361,6 +376,9 @@ if (process.argv[1] === __filename) {
   console.log(`Build complete: dist created at ${result.outDir}`);
   console.log(`  CSS: /assets/${result.fingerprintedCss} (hash ${result.cssHash})`);
   console.log(`  JS:  /assets/${result.fingerprintedJs} (hash ${result.jsHash})`);
+  if (result.fingerprintedSearch) {
+    console.log(`  Portal search JS: /assets/${result.fingerprintedSearch} (hash ${result.searchHash})`);
+  }
   console.log(`  Store state: ${result.storeState}`);
 }
 

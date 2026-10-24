@@ -8,7 +8,7 @@ Static landing page and public web presence for the **abastevo** project.
 - **Styles:** Plain CSS with design tokens, responsive layout (mobile-first, 48rem and 64rem breakpoints), high-contrast accessible focus rings, print stylesheet, zero remote fonts.
 - **Typography:** Self-hosted variable Manrope for display/navigation/CTAs/prices and Source Sans 3 for prose/FAQ/legal copy; Latin and Latin Extended WOFF2, `font-display: swap`, hash-checked assets and SIL OFL notices. Source/license/security provenance: [font manifest](static/assets/fonts/provenance.json). No font CDN or mobile typography change.
 - **Language & Compilation:** Pure TypeScript **7.0.2** (`strict: true`, `noEmitOnError: true`) compiled to standard browser JavaScript module.
-- **Progressive enhancement:** All essential content, navigation, and legal links exist in plain HTML and function completely with JavaScript disabled or unavailable. TypeScript is used only for optional enhancements (active section highlight via IntersectionObserver, copy button helper).
+- **Progressive enhancement:** All essential content, navigation, and legal links exist in plain HTML and function completely with JavaScript disabled or unavailable. TypeScript is used only for optional enhancements (active section highlight via IntersectionObserver, copy button helper, and the portal's regional static search shard loader).
 - **Asset fingerprinting:** `scripts/build.mjs` generates content-hashed asset filenames (e.g. `styles.[hash].css`, `main.[hash].js`) and rewrites HTML references for safe immutable caching (`Cache-Control: public, max-age=31536000, immutable`).
 - **Zero runtime dependencies:** Built without frameworks (no React, Astro, Next, Svelte, Tailwind). Only TypeScript compiler is used as devDependency. Test suite uses Node's built-in test runner (`node --test`) and `assert`.
 
@@ -42,6 +42,7 @@ landing/
         icon-provenance.json      # Provenance and derivation log
   src/
     main.ts                       # TypeScript progressive enhancement
+    search.ts                     # Portal static search (SP-10); emits search.<hash>.js
   scripts/
     build.mjs                     # Asset fingerprinting & HTML build
     check.mjs                     # Artifact, SEO, JSON-LD & budget verification
@@ -71,6 +72,14 @@ npm run check
 # Run automated test suite
 npm test
 ```
+
+### Portal search asset
+
+`npm run build` emits `dist/assets/search.<hash>.js` from `src/search.ts`. The
+enterprise portal generator consumes that exact file with `--search-js`; the
+browser loads one immutable regional shard (`/dados/busca/<release>/<uf>.json`)
+and never calls the Abastevo API, the ANP API or a database. The search is an
+optional enhancement: the HTML directory navigation remains usable without it.
 
 ### Build Options
 
