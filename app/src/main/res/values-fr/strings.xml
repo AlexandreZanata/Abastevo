@@ -130,6 +130,7 @@
     <string name="charging_explore_all">Tous</string>
     <string name="charging_explore_all_current">Tout courant</string>
     <string name="charging_explore_public_only">Publics uniquement</string>
+    <string name="charging_explore_source_stale">Cet instantané est daté. Actualisez pour chercher un paquet source plus récent ; la disponibilité n’est jamais en direct.</string>
     <string name="charging_explore_refresh">Actualiser l’instantané</string>
     <string name="charging_explore_more">Afficher plus</string>
     <string name="charging_explore_empty">Aucune borne compatible dans cet instantané pour l’instant.</string>

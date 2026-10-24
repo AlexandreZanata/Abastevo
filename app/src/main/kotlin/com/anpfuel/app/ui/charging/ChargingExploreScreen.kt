@@ -45,6 +45,7 @@ import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.data.repository.DiscoveryRow
 import com.anpfuel.data.repository.PlaceDetail
 import com.anpfuel.domain.charging.ChargingAccess
+import com.anpfuel.domain.charging.ChargingSnapshotAge
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingCurrent
 import com.anpfuel.domain.charging.Compatibility
@@ -139,6 +140,13 @@ internal fun ChargingExploreContent(
                             DateFormat.getDateInstance(DateFormat.SHORT, locale).format(Date(it))
                         }.orEmpty(),
                     ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (uiState.sourceAge == ChargingSnapshotAge.STALE) {
+                Text(
+                    text = stringResource(R.string.charging_explore_source_stale),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

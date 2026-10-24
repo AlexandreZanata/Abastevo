@@ -114,6 +114,20 @@ class ChargingExploreViewModelTest {
         assertEquals(1, viewModel.uiState.value.rows.size)
     }
 
+    @Test fun `snapshot age is dated and never presented as live`() = runTest(dispatcher) {
+        val stale = com.anpfuel.data.local.charging.StoredPackMeta(
+            key = "pack:ocm-br-20261021-v1", generation = 4, profile = "ocm-br-20261021-v1",
+            sourceRevision = "rev-1", origin = "https://api.example.test", license = "L",
+            schemaVersion = 1, baseGeneration = 0, placeCount = 0, groupCount = 0,
+            cursor = null, state = "COMPLETE", savedAtMillis = 1L,
+        )
+        coEvery { repository.generationMeta(any()) } returns stale
+        coEvery { repository.list(any(), 4L, any(), any(), any(), 20, 0) } returns emptyList()
+        viewModel.load(vehicleId)
+        advanceUntilIdle()
+        assertEquals(com.anpfuel.domain.charging.ChargingSnapshotAge.STALE, viewModel.uiState.value.sourceAge)
+    }
+
     @Test fun `repeated refresh triggers converge on one active request`() = runTest(dispatcher) {
         val meta = com.anpfuel.data.local.charging.StoredPackMeta(
             key = "pack:ocm-br-20261021-v1", generation = 4, profile = "ocm-br-20261021-v1",

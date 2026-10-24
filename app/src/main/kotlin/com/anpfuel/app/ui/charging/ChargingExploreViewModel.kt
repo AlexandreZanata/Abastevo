@@ -11,6 +11,8 @@ import com.anpfuel.domain.charging.ChargingAccess
 import com.anpfuel.domain.charging.ChargingCompatibility
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingCurrent
+import com.anpfuel.domain.charging.ChargingSnapshotAge
+import com.anpfuel.domain.charging.ChargingSnapshotFreshness
 import com.anpfuel.domain.charging.Compatibility
 import com.anpfuel.domain.valueobject.DomainId
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,6 +40,7 @@ data class ChargingExploreUiState(
     val detail: PlaceDetail? = null,
     val sourceRevision: String? = null,
     val sourceSavedAt: Long? = null,
+    val sourceAge: ChargingSnapshotAge = ChargingSnapshotAge.UNKNOWN,
     val errorMessage: String? = null,
 )
 
@@ -82,7 +85,13 @@ class ChargingExploreViewModel @Inject constructor(
                     refreshInternal()
                 } else {
                     generation = meta.generation
-                    _uiState.update { it.copy(sourceRevision = meta.sourceRevision, sourceSavedAt = meta.savedAtMillis) }
+                    _uiState.update {
+                        it.copy(
+                            sourceRevision = meta.sourceRevision,
+                            sourceSavedAt = meta.savedAtMillis,
+                            sourceAge = ChargingSnapshotFreshness.classify(System.currentTimeMillis(), meta.savedAtMillis),
+                        )
+                    }
                     appendPage(reset = true)
                     _uiState.update { it.copy(isLoading = false) }
                 }
@@ -114,7 +123,13 @@ class ChargingExploreViewModel @Inject constructor(
     private suspend fun refreshInternal() {
         val meta = repository.refresh(PROFILE)
         generation = meta.generation
-        _uiState.update { it.copy(sourceRevision = meta.sourceRevision, sourceSavedAt = meta.savedAtMillis) }
+        _uiState.update {
+            it.copy(
+                sourceRevision = meta.sourceRevision,
+                sourceSavedAt = meta.savedAtMillis,
+                sourceAge = ChargingSnapshotFreshness.classify(System.currentTimeMillis(), meta.savedAtMillis),
+            )
+        }
         appendPage(reset = true)
         _uiState.update { it.copy(isLoading = false) }
     }

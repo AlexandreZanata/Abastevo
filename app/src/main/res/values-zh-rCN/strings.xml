@@ -130,6 +130,7 @@
     <string name="charging_explore_all">全部</string>
     <string name="charging_explore_all_current">任意电流</string>
     <string name="charging_explore_public_only">仅公共</string>
+    <string name="charging_explore_source_stale">此快照有日期。请刷新以检查更新的来源包；可用性从不是实时状态。</string>
     <string name="charging_explore_refresh">刷新快照</string>
     <string name="charging_explore_more">显示更多</string>
     <string name="charging_explore_empty">此快照中暂无兼容充电桩。</string>

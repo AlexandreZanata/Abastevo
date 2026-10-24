@@ -214,6 +214,7 @@
     <string name="charging_explore_all">Todos</string>
     <string name="charging_explore_all_current">Qualquer corrente</string>
     <string name="charging_explore_public_only">Somente públicos</string>
+    <string name="charging_explore_source_stale">Este snapshot é datado. Atualize para buscar um pacote de fonte mais novo; a disponibilidade nunca é ao vivo.</string>
     <string name="charging_explore_refresh">Atualizar foto</string>
     <string name="charging_explore_more">Mostrar mais</string>
     <string name="charging_explore_empty">Sem recargas compatíveis nesta foto ainda.</string>

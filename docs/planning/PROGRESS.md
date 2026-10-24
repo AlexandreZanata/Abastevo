@@ -13,6 +13,15 @@
   happen after the union. Native/device, staging, provider, sales and
   deployment remain separately OWED.
 
+- EE-26 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `05c22e23`.
+  [Refresh/stale policy](../backend/evidence/ev-support/EE-26.md): charging
+  snapshot age is UNKNOWN/FRESH/STALE at a 24 h boundary, shown in eight
+  locales as dated source (never live availability); duplicate triggers stay
+  single-flight and failed refreshes keep rows; occurrence/community reuse
+  the accepted event/manual policy. Domain/app/data targeted tests and
+  compilation PASS; byte/SQL measurement and physical lifecycle evidence
+  remain OWED. Next EE-22.
+
 - MEX-32 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING, parent `188c2cdb`.
   [Shared refresh](../backend/evidence/mobile-expansion/MEX-32.md): community
   policy reused; advisory `refresh_after_seconds` decoupled from a fixed 15

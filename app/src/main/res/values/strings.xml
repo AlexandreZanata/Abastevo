@@ -214,6 +214,7 @@
     <string name="charging_explore_all">All</string>
     <string name="charging_explore_all_current">Any current</string>
     <string name="charging_explore_public_only">Public only</string>
+    <string name="charging_explore_source_stale">This snapshot is dated. Refresh to check for a newer source pack; availability is never live.</string>
     <string name="charging_explore_refresh">Refresh snapshot</string>
     <string name="charging_explore_more">Show more</string>
     <string name="charging_explore_empty">No compatible chargers in this snapshot yet.</string>

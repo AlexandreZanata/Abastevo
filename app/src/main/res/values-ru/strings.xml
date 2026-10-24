@@ -130,6 +130,7 @@
     <string name="charging_explore_all">Все</string>
     <string name="charging_explore_all_current">Любой ток</string>
     <string name="charging_explore_public_only">Только публичные</string>
+    <string name="charging_explore_source_stale">Этот снимок датирован. Обновите, чтобы проверить новый пакет источника; доступность никогда не в реальном времени.</string>
     <string name="charging_explore_refresh">Обновить снимок</string>
     <string name="charging_explore_more">Показать ещё</string>
     <string name="charging_explore_empty">В этом снимке пока нет совместимых зарядок.</string>

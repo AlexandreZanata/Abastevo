@@ -130,6 +130,7 @@
     <string name="charging_explore_all">すべて</string>
     <string name="charging_explore_all_current">任意の電流</string>
     <string name="charging_explore_public_only">公共のみ</string>
+    <string name="charging_explore_source_stale">このスナップショットは日付付きです。更新して新しいソースパックを確認してください。空き状況はライブではありません。</string>
     <string name="charging_explore_refresh">スナップショットを更新</string>
     <string name="charging_explore_more">さらに表示</string>
     <string name="charging_explore_empty">このスナップショットに互換性のある充電器はまだありません。</string>

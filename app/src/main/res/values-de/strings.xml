@@ -130,6 +130,7 @@
     <string name="charging_explore_all">Alle</string>
     <string name="charging_explore_all_current">Beliebiger Strom</string>
     <string name="charging_explore_public_only">Nur öffentlich</string>
+    <string name="charging_explore_source_stale">Dieser Snapshot ist datiert. Aktualisieren Sie, um ein neueres Quellpaket zu prüfen; die Verfügbarkeit ist nie live.</string>
     <string name="charging_explore_refresh">Stand aktualisieren</string>
     <string name="charging_explore_more">Mehr anzeigen</string>
     <string name="charging_explore_empty">Noch keine kompatiblen Ladepunkte in diesem Stand.</string>

@@ -130,6 +130,7 @@
     <string name="charging_explore_all">Todos</string>
     <string name="charging_explore_all_current">Cualquier corriente</string>
     <string name="charging_explore_public_only">Solo públicos</string>
+    <string name="charging_explore_source_stale">Esta instantánea está fechada. Actualiza para buscar un paquete de origen más nuevo; la disponibilidad nunca es en vivo.</string>
     <string name="charging_explore_refresh">Actualizar foto</string>
     <string name="charging_explore_more">Mostrar más</string>
     <string name="charging_explore_empty">Aún no hay cargadores compatibles en esta foto.</string>
