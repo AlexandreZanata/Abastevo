@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	official "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/official"
 	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
@@ -331,5 +332,76 @@ func TestConflictingDuplicateQuarantined(t *testing.T) {
 	fin, err := im.FinishRun(ctx, r.RunID, r.RevisionID, &q)
 	if err != nil || !fin.Published {
 		t.Fatalf("finish = %+v, %v", fin, err)
+	}
+}
+
+func TestOlderWeekCorrectionKeepsNewerWindowCurrent(t *testing.T) {
+	im, pool := freshImporter(t)
+	ctx := context.Background()
+	st := makeStation(t, pool, "Posto A")
+	week2Start := time.Date(2025, 1, 13, 0, 0, 0, 0, time.UTC)
+	week2End := time.Date(2025, 1, 19, 0, 0, 0, 0, time.UTC)
+
+	publish := func(checksum string, start, end time.Time, row domain.PriceRow) string {
+		t.Helper()
+		run, err := im.BeginRun(ctx, domain.ImportKey{
+			SourceURL:      "https://www.gov.br/anp/" + checksum + ".xlsx",
+			SourceChecksum: checksum, ParserVersion: "esp02-test",
+		}, start, end)
+		if err != nil || run.NoOp {
+			t.Fatalf("begin %s = %+v, %v", checksum, run, err)
+		}
+		var tally domain.QuarantineTally
+		if _, err := im.StageBatch(ctx, run.RevisionID, []domain.PriceRow{row}, &tally); err != nil {
+			t.Fatalf("stage %s: %v", checksum, err)
+		}
+		fin, err := im.FinishRun(ctx, run.RunID, run.RevisionID, &tally)
+		if err != nil || !fin.Published {
+			t.Fatalf("finish %s = %+v, %v", checksum, fin, err)
+		}
+		return run.RevisionID
+	}
+
+	week1 := publish("sha256:w1a", weekStart, weekEnd, priceRow(st, 8, 5999))
+	week2Row := priceRow(st, 8, 6199)
+	week2Row.CollectedOn = time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
+	week2 := publish("sha256:w2", week2Start, week2End, week2Row)
+	week1Corrected := publish("sha256:w1b", weekStart, weekEnd, priceRow(st, 8, 5799))
+
+	cur1, err := im.CurrentRevision(ctx, weekStart, weekEnd)
+	if err != nil || cur1 != week1Corrected {
+		t.Errorf("week1 pointer = %q, %v; want correction %q", cur1, err, week1Corrected)
+	}
+	cur2, err := im.CurrentRevision(ctx, week2Start, week2End)
+	if err != nil || cur2 != week2 {
+		t.Errorf("week2 pointer = %q, %v; want %q", cur2, err, week2)
+	}
+
+	var supersedes string
+	if err := pool.QueryRow(ctx,
+		"SELECT supersedes_revision_id::text FROM official_revisions WHERE id = $1",
+		week1Corrected).Scan(&supersedes); err != nil {
+		t.Fatal(err)
+	}
+	if supersedes != week1 {
+		t.Errorf("correction supersedes %q, want the same week %q", supersedes, week1)
+	}
+
+	stationUUID, err := mustUUID(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := official.New(pool).StationCurrentPrices(ctx, official.StationCurrentPricesParams{
+		StationID: stationUUID, Fuel: "",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("current rows = %d, want the newest week only", len(rows))
+	}
+	if uuidString(rows[0].RevisionID) != week2 || rows[0].AmountMilliBrl != 6199 {
+		t.Errorf("current row = %s/%d, want week2 %s/6199",
+			uuidString(rows[0].RevisionID), rows[0].AmountMilliBrl, week2)
 	}
 }

@@ -221,17 +221,49 @@ func (q *Queries) GetImportRunByIdentity(ctx context.Context, arg GetImportRunBy
 	return i, err
 }
 
-const getLatestPublishedRevision = `-- name: GetLatestPublishedRevision :one
+const getLatestPublishedRevisionBeforeWindow = `-- name: GetLatestPublishedRevisionBeforeWindow :one
 SELECT id, import_run_id, survey_start, survey_end, published_at,
     supersedes_revision_id, status
 FROM official_revisions
 WHERE status = 'published'
+    AND survey_end < $1
+ORDER BY survey_end DESC, survey_start DESC, published_at DESC, id DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestPublishedRevisionBeforeWindow(ctx context.Context, surveyStart pgtype.Date) (OfficialRevision, error) {
+	row := q.db.QueryRow(ctx, getLatestPublishedRevisionBeforeWindow, surveyStart)
+	var i OfficialRevision
+	err := row.Scan(
+		&i.ID,
+		&i.ImportRunID,
+		&i.SurveyStart,
+		&i.SurveyEnd,
+		&i.PublishedAt,
+		&i.SupersedesRevisionID,
+		&i.Status,
+	)
+	return i, err
+}
+
+const getLatestPublishedRevisionForWindow = `-- name: GetLatestPublishedRevisionForWindow :one
+SELECT id, import_run_id, survey_start, survey_end, published_at,
+    supersedes_revision_id, status
+FROM official_revisions
+WHERE status = 'published'
+    AND survey_start = $1
+    AND survey_end = $2
 ORDER BY published_at DESC, id DESC
 LIMIT 1
 `
 
-func (q *Queries) GetLatestPublishedRevision(ctx context.Context) (OfficialRevision, error) {
-	row := q.db.QueryRow(ctx, getLatestPublishedRevision)
+type GetLatestPublishedRevisionForWindowParams struct {
+	SurveyStart pgtype.Date `json:"survey_start"`
+	SurveyEnd   pgtype.Date `json:"survey_end"`
+}
+
+func (q *Queries) GetLatestPublishedRevisionForWindow(ctx context.Context, arg GetLatestPublishedRevisionForWindowParams) (OfficialRevision, error) {
+	row := q.db.QueryRow(ctx, getLatestPublishedRevisionForWindow, arg.SurveyStart, arg.SurveyEnd)
 	var i OfficialRevision
 	err := row.Scan(
 		&i.ID,
@@ -334,20 +366,30 @@ func (q *Queries) StageStationPrice(ctx context.Context, arg StageStationPricePa
 }
 
 const stationCurrentPrices = `-- name: StationCurrentPrices :many
+WITH latest_station_window AS (
+    SELECT r.survey_start, r.survey_end
+    FROM official_revisions AS r
+    JOIN official_station_prices AS p ON p.revision_id = r.id
+    WHERE p.station_id = $1
+        AND r.status = 'published'
+    GROUP BY r.survey_start, r.survey_end
+    ORDER BY r.survey_start DESC, r.survey_end DESC
+    LIMIT 1
+)
 SELECT p.id, p.revision_id, p.station_id, p.fuel_product, p.unit,
     p.amount_milli_brl, p.raw_price_text, p.collected_on, p.source_row,
     r.survey_start, r.survey_end, run.source_url, run.source_checksum
 FROM official_station_prices AS p
 JOIN official_revisions AS r ON r.id = p.revision_id
+JOIN official_current_revisions AS c
+    ON c.revision_id = r.id
+    AND c.survey_start = r.survey_start
+    AND c.survey_end = r.survey_end
 JOIN official_import_runs AS run ON run.id = r.import_run_id
 WHERE p.station_id = $1
     AND r.status = 'published'
-    AND r.published_at = (
-        SELECT MAX(r2.published_at)
-        FROM official_station_prices AS p2
-        JOIN official_revisions AS r2 ON r2.id = p2.revision_id
-        WHERE p2.station_id = $1 AND r2.status = 'published'
-    )
+    AND r.survey_start = (SELECT survey_start FROM latest_station_window)
+    AND r.survey_end = (SELECT survey_end FROM latest_station_window)
     AND ($2::text = '' OR p.fuel_product = $2)
 ORDER BY p.fuel_product ASC, p.unit ASC, p.collected_on DESC, p.id ASC
 `
@@ -373,6 +415,9 @@ type StationCurrentPricesRow struct {
 	SourceChecksum string      `json:"source_checksum"`
 }
 
+// The latest survey week that contains the station, resolved through that
+// week's current pointer. An older correction must not become "current" just
+// because it was published after the newest week.
 func (q *Queries) StationCurrentPrices(ctx context.Context, arg StationCurrentPricesParams) ([]StationCurrentPricesRow, error) {
 	rows, err := q.db.Query(ctx, stationCurrentPrices, arg.StationID, arg.Fuel)
 	if err != nil {

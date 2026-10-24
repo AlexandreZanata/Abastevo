@@ -27,6 +27,7 @@ var (
 	ErrNoAddress      = errors.New("source: no allowed address for host")
 	ErrTooLarge       = errors.New("source: response exceeds size limit")
 	ErrBadStatus      = errors.New("source: unexpected status")
+	ErrNotFound       = errors.New("source: resource not found")
 	ErrRedirectLimit  = errors.New("source: too many redirects")
 	ErrRedirectTarget = errors.New("source: redirect target rejected")
 )
@@ -281,34 +282,51 @@ func (f Fetcher) Fetch(ctx context.Context, rawURL, etag, lastModified string) (
 	}, nil
 }
 
-// Probe reports whether a source changed since the known ETag,
-// downloading nothing. Any allowlisted URL probes; the allowlist itself is
-// the guard. Schedulers retain the last known revision on any error instead
-// of treating failure as change.
+// Probe reports whether a source changed since the known ETag. It keeps the
+// historical signature for callers that only need validators; discovery uses
+// ProbeContent so a missing or unreliable validator still has a content hash.
 func (f Fetcher) Probe(ctx context.Context, rawURL, knownETag string) (changed bool, etag, lastModified string, err error) {
+	changed, etag, lastModified, _, err = f.ProbeContent(ctx, rawURL, knownETag)
+	return changed, etag, lastModified, err
+}
+
+// ProbeContent reports whether a source changed and returns the SHA-256 of the
+// response body. A 304 returns no hash. Schedulers retain the last known
+// revision on any error instead of treating failure as change. The body is
+// bounded by MaxBytes and checked even though it is discarded.
+func (f Fetcher) ProbeContent(ctx context.Context, rawURL, knownETag string) (changed bool, etag, lastModified, bodySHA256 string, err error) {
 	if _, err := Match(f.Allow, rawURL); err != nil {
-		return false, "", "", err
+		return false, "", "", "", err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return false, "", "", err
+		return false, "", "", "", err
 	}
 	if knownETag != "" {
 		req.Header.Set("If-None-Match", knownETag)
 	}
 	resp, err := f.client().Do(req)
 	if err != nil {
-		return false, "", "", err
+		return false, "", "", "", err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotModified {
-		return false, knownETag, "", nil
+		return false, knownETag, "", "", nil
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return false, "", "", "", fmt.Errorf("%w: %s", ErrNotFound, resp.Status)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return false, "", "", fmt.Errorf("%w: %s", ErrBadStatus, resp.Status)
+		return false, "", "", "", fmt.Errorf("%w: %s", ErrBadStatus, resp.Status)
 	}
-	if _, err := io.Copy(io.Discard, io.LimitReader(resp.Body, f.maxBytes()+1)); err != nil {
-		return false, "", "", err
+	hash := sha256.New()
+	n, err := io.Copy(io.Discard, io.TeeReader(io.LimitReader(resp.Body, f.maxBytes()+1), hash))
+	if err != nil {
+		return false, "", "", "", err
 	}
-	return true, resp.Header.Get("ETag"), resp.Header.Get("Last-Modified"), nil
+	if n > f.maxBytes() {
+		return false, "", "", "", fmt.Errorf("%w: streamed content", ErrTooLarge)
+	}
+	return true, resp.Header.Get("ETag"), resp.Header.Get("Last-Modified"),
+		"sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
 }

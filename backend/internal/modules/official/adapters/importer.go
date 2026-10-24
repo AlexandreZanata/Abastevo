@@ -114,10 +114,14 @@ func (im *Importer) BeginRun(ctx context.Context, key domain.ImportKey, surveySt
 	if err != nil {
 		return BeginResult{}, err
 	}
-	// A corrected import supersedes the latest published revision when one
-	// exists; the first import stands alone.
+	// A corrected import supersedes the latest published revision for the
+	// same survey window. An older-week correction must never supersede a
+	// newer week merely because it was published later.
 	var supersedes pgtype.UUID
-	if latest, err := q.GetLatestPublishedRevision(ctx); err == nil {
+	if latest, err := q.GetLatestPublishedRevisionForWindow(ctx, official.GetLatestPublishedRevisionForWindowParams{
+		SurveyStart: pgDate(surveyStart),
+		SurveyEnd:   pgDate(surveyEnd),
+	}); err == nil {
 		supersedes = latest.ID
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return BeginResult{}, err
@@ -247,10 +251,11 @@ func (im *Importer) FinishRun(ctx context.Context, runID, revisionID string, q *
 				prevTotal, hasPrev = n, true
 			}
 		}
-	}
-	if !hasPrev {
-		if latest, err := tq.GetLatestPublishedRevision(ctx); err == nil {
-			if n, err := tq.CountRevisionRows(ctx, latest.ID); err == nil {
+	} else {
+		// First publication for this window: compare against the previous
+		// chronological week, not whatever happened to publish most recently.
+		if prev, err := tq.GetLatestPublishedRevisionBeforeWindow(ctx, rev.SurveyStart); err == nil {
+			if n, err := tq.CountRevisionRows(ctx, prev.ID); err == nil {
 				prevTotal, hasPrev = n, true
 			}
 		} else if !errors.Is(err, pgx.ErrNoRows) {

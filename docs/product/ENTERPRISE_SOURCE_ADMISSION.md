@@ -105,15 +105,19 @@ nearby station's value.
 - **Clocks:** collection date, survey week, source page update, last successful
   check and Abastevo publication are separate. Stored coverage is measured; a new
   build does not refresh source age.
-- **Discovery/validators:** current and previous survey week; ETag/Last-Modified
-  where supported; otherwise bounded content hash recheck. A 404 means "not
-  published", not "no prices".
-- **Correction window:** current week plus the previous four survey weeks for
-  bounded replaced-byte/hash rechecks, then a documented controlled backfill.
-  This is an Abastevo operating policy, not an ANP guarantee.
-- **Quotas/retention:** bounded probes for two weeks × two file kinds per run;
-  full download only on changed validator/hash; raw files private and removed
-  after publication. Backfill is one archive/member per run with byte/row caps.
+- **Discovery/validators:** scheduled run covers the current and previous survey
+  week; the source is not assumed to expose a reliable ETag, so each file is
+  content-hashed and the hash is the dedupe identity. A 404 means "not
+  published", not "no prices". An operator correction sweep may request up to
+  five recent weeks in the job payload; older corrections use a controlled
+  backfill.
+- **Correction window:** current and previous week on the schedule; a bounded
+  correction sweep may reach the previous four weeks, then a documented
+  controlled backfill. This is an Abastevo operating policy, not an ANP
+  guarantee.
+- **Quotas/retention:** scheduled run probes two weeks × two file kinds; a
+  correction sweep is capped at five weeks; raw files private and removed after
+  publication. Backfill is one archive/member per run with byte/row caps.
 - **Coverage:** station-level survey subset, not every station or every day.
   Rankings mean "prices found in the identified survey period", with counts,
   ties and exclusions.

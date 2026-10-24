@@ -196,11 +196,13 @@ func TestDiscoveryEnqueuesChangedOnly(t *testing.T) {
 	fetcher.InsecureTLS = true
 	fetcher.IPAllow = func(netip.Addr) bool { return true }
 	var enqueued []ImportPayload
+	var keys []string
 	d := Discovery{
 		Fetch:       &fetcher,
 		ListingBase: srv.URL + "/arquivos-lpc/",
-		Enqueue: func(_ context.Context, p ImportPayload, _ string) error {
+		Enqueue: func(_ context.Context, p ImportPayload, key string) error {
 			enqueued = append(enqueued, p)
+			keys = append(keys, key)
 			return nil
 		},
 		Now: func() time.Time { return time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC) },
@@ -213,10 +215,13 @@ func TestDiscoveryEnqueuesChangedOnly(t *testing.T) {
 		t.Fatalf("enqueued %d, want detail plus summary of the current week", len(enqueued))
 	}
 	kinds := map[string]bool{}
-	for _, p := range enqueued {
+	for i, p := range enqueued {
 		kinds[p.SourceURL] = true
-		if p.ETag != `"w1"` || p.SurveyStart != "2026-09-27" || p.SurveyEnd != "2026-10-03" {
+		if p.ETag != "" || p.SurveyStart != "2026-09-27" || p.SurveyEnd != "2026-10-03" {
 			t.Errorf("payload = %+v", p)
+		}
+		if !strings.Contains(keys[i], ":sha256:") {
+			t.Errorf("dedupe key = %q, want a content hash", keys[i])
 		}
 	}
 	if len(kinds) != 2 {

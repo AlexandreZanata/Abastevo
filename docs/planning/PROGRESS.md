@@ -1,5 +1,15 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-02 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-02.md).
+  Official discovery now accepts the observed current/legacy weekly filename
+  shapes, dedupes by bounded content SHA-256 (unreliable ETag), keeps the daily
+  two-week scope with an operator correction sweep capped at five weeks, and
+  supersedes only the same survey window. `StationCurrentPrices` uses the latest
+  station window plus its current pointer, so an older correction cannot become
+  current. Unit/race + real-PostGIS Official/read/jobs suites PASS; sqlc stable;
+  no migration, dependency, schedule or source activation. Next: ESP-03 export.
+
 - Enterprise data/static portal ESP-01 2026-10-24: LOCAL_DONE /
   INTEGRATION_PENDING. [Source admission register](../product/ENTERPRISE_SOURCE_ADMISSION.md)
   and [evidence](../backend/evidence/enterprise-static/ESP-01.md). Six ANP
