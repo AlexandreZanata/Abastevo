@@ -2,11 +2,13 @@ package read
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	official "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/official"
 	application "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -19,6 +21,28 @@ type ExportReader struct {
 // NewExportReader wires the owned queries to a pool or transaction.
 func NewExportReader(db official.DBTX) *ExportReader {
 	return &ExportReader{db: db}
+}
+
+// LatestRevision returns the current published revision with the newest survey
+// window, or ErrUnknownRevision when no official revision is published.
+func (r *ExportReader) LatestRevision(ctx context.Context) (application.ExportRevision, error) {
+	row, err := official.New(r.db).LatestPublishedRevision(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return application.ExportRevision{}, application.ErrNoPublishedRevision
+		}
+		return application.ExportRevision{}, err
+	}
+	return application.ExportRevision{
+		ID:                   uuidString(row.ID),
+		SurveyStart:          dateString(row.SurveyStart),
+		SurveyEnd:            dateString(row.SurveyEnd),
+		PublishedAt:          timestampString(row.PublishedAt),
+		SupersedesRevisionID: uuidString(row.SupersedesRevisionID),
+		SourceURL:            row.SourceUrl,
+		SourceChecksum:       row.SourceChecksum,
+		ParserVersion:        row.ParserVersion,
+	}, nil
 }
 
 // ExportRevisions returns the current published revision of each survey window

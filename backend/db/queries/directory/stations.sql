@@ -142,3 +142,22 @@ LEFT JOIN LATERAL (
 WHERE (@after_id::text = '' OR s.id::text > @after_id::text)
 ORDER BY s.id::text ASC
 LIMIT @limit_plus_one::int;
+
+-- name: ExportFingerprint :one
+-- Cheap change detector for the private export state. It covers every public
+-- station field and the active CNPJ binding without exporting rows.
+SELECT (SELECT count(*) FROM directory_stations)::bigint AS stations,
+    COALESCE((
+        SELECT md5(string_agg(
+            id::text || ':' || display_name || ':' || address::text || ':' ||
+            COALESCE(municipality_code, '') || ':' || COALESCE(state, '') || ':' ||
+            status || ':' || COALESCE(current_quality, '') || ':' ||
+            COALESCE(current_revision_id::text, ''), ',' ORDER BY id::text))
+        FROM directory_stations
+    ), '')::text AS stations_hash,
+    COALESCE((
+        SELECT md5(string_agg(station_id::text || ':' || normalized_value,
+            ',' ORDER BY station_id::text, normalized_value))
+        FROM directory_identifiers
+        WHERE kind = 'CNPJ' AND valid_to IS NULL
+    ), '')::text AS identifiers_hash;

@@ -174,3 +174,14 @@ WHERE p.revision_id = @revision_id
     AND (@after_id::text = '' OR p.id::text > @after_id::text)
 ORDER BY p.id::text ASC
 LIMIT @limit_plus_one::int;
+
+-- name: LatestPublishedRevision :one
+SELECT r.id, r.survey_start, r.survey_end, r.published_at,
+    r.supersedes_revision_id, run.source_url, run.source_checksum,
+    run.parser_version
+FROM official_current_revisions AS c
+JOIN official_revisions AS r ON r.id = c.revision_id
+JOIN official_import_runs AS run ON run.id = r.import_run_id
+WHERE r.status = 'published'
+ORDER BY r.survey_end DESC, r.survey_start DESC, r.published_at DESC, r.id DESC
+LIMIT 1;

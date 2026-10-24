@@ -2,9 +2,12 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
+
+var ErrNoPublishedRevision = errors.New("official: no published revision")
 
 const (
 	MinExportLimit = 1
@@ -39,6 +42,7 @@ type ExportPrice struct {
 type ExportReader interface {
 	ExportRevisions(ctx context.Context, fromSurvey, toSurvey, afterID string, limit int) ([]ExportRevision, string, error)
 	ExportPrices(ctx context.Context, revisionID, afterID string, limit int) ([]ExportPrice, string, error)
+	LatestRevision(ctx context.Context) (ExportRevision, error)
 }
 
 // ValidateExportRevisions bounds one revision page and the survey range.

@@ -175,6 +175,39 @@ func (q *Queries) CreateStation(ctx context.Context, arg CreateStationParams) (C
 	return i, err
 }
 
+const exportFingerprint = `-- name: ExportFingerprint :one
+SELECT (SELECT count(*) FROM directory_stations)::bigint AS stations,
+    COALESCE((
+        SELECT md5(string_agg(
+            id::text || ':' || display_name || ':' || address::text || ':' ||
+            COALESCE(municipality_code, '') || ':' || COALESCE(state, '') || ':' ||
+            status || ':' || COALESCE(current_quality, '') || ':' ||
+            COALESCE(current_revision_id::text, ''), ',' ORDER BY id::text))
+        FROM directory_stations
+    ), '')::text AS stations_hash,
+    COALESCE((
+        SELECT md5(string_agg(station_id::text || ':' || normalized_value,
+            ',' ORDER BY station_id::text, normalized_value))
+        FROM directory_identifiers
+        WHERE kind = 'CNPJ' AND valid_to IS NULL
+    ), '')::text AS identifiers_hash
+`
+
+type ExportFingerprintRow struct {
+	Stations        int64  `json:"stations"`
+	StationsHash    string `json:"stations_hash"`
+	IdentifiersHash string `json:"identifiers_hash"`
+}
+
+// Cheap change detector for the private export state. It covers every public
+// station field and the active CNPJ binding without exporting rows.
+func (q *Queries) ExportFingerprint(ctx context.Context) (ExportFingerprintRow, error) {
+	row := q.db.QueryRow(ctx, exportFingerprint)
+	var i ExportFingerprintRow
+	err := row.Scan(&i.Stations, &i.StationsHash, &i.IdentifiersHash)
+	return i, err
+}
+
 const exportStations = `-- name: ExportStations :many
 SELECT s.id, s.display_name, s.address, s.municipality_code, s.state,
     s.status, ST_AsText(s.current_point) AS current_point_wkt,

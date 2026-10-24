@@ -43,6 +43,19 @@ func exportAddress(raw []byte) map[string]string {
 	return address
 }
 
+// Fingerprint returns a change detector over public station fields and active
+// CNPJ bindings.
+func (r *ExportReader) Fingerprint(ctx context.Context) (application.ExportFingerprint, error) {
+	row, err := directory.New(r.db).ExportFingerprint(ctx)
+	if err != nil {
+		return application.ExportFingerprint{}, err
+	}
+	return application.ExportFingerprint{
+		Stations: row.Stations,
+		Hash:     "md5:" + row.StationsHash + ":" + row.IdentifiersHash,
+	}, nil
+}
+
 // ExportPage walks stations in canonical ID order. Identifiers are resolved
 // only while valid; a suspended or revoked station remains in the snapshot
 // with its sourced status instead of disappearing.

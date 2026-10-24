@@ -25,10 +25,17 @@ type ExportStation struct {
 	CurrentRevisionID string
 }
 
+// ExportFingerprint is a cheap, non-public change detector for the export state.
+type ExportFingerprint struct {
+	Stations int64
+	Hash     string
+}
+
 // ExportReader is the owned bounded snapshot port. Implementations must not
 // write canonical data.
 type ExportReader interface {
 	ExportPage(ctx context.Context, afterID string, limit int) ([]ExportStation, string, error)
+	Fingerprint(ctx context.Context) (ExportFingerprint, error)
 }
 
 // ValidateExportPage bounds one page request.

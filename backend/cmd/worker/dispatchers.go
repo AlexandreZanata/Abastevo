@@ -12,7 +12,10 @@ import (
 func workerDispatchers(queue *jobs.Queue, handlers map[string]jobs.Handler, nativeKinds ...string) ([]*jobs.Dispatcher, error) {
 	// Fixed serial slots in this process: no per-job concurrency expansion.
 	kinds := []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep"}
-	general := &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-general", LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute, ExcludedKinds: append(append([]string(nil), kinds...), "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery", "quality-enforcement-import", "quality-enforcement-discovery")}
+	fixedExcluded := []string{"quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery", "quality-enforcement-import", "quality-enforcement-discovery"}
+	excluded := append(append([]string(nil), kinds...), fixedExcluded...)
+	excluded = append(excluded, nativeKinds...)
+	general := &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-general", LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute, ExcludedKinds: dedupeStrings(excluded)}
 	dispatchers := []*jobs.Dispatcher{general}
 	for _, kind := range kinds {
 		if handler := handlers[kind]; handler == nil || handler.Kind() != kind {
@@ -22,7 +25,7 @@ func workerDispatchers(queue *jobs.Queue, handlers map[string]jobs.Handler, nati
 	}
 	seen := map[string]bool{}
 	for _, kind := range nativeKinds {
-		if (kind != "quality-import" && kind != "quality-discovery" && kind != "quality-revalidate" && kind != "quality-recompute" && kind != "quality-sanctions-import" && kind != "quality-sanctions-discovery" && kind != "quality-enforcement-import" && kind != "quality-enforcement-discovery") || seen[kind] {
+		if !validNativeKind(kind) || seen[kind] {
 			return nil, errors.New("worker: invalid native serial slot")
 		}
 		seen[kind] = true
@@ -32,6 +35,30 @@ func workerDispatchers(queue *jobs.Queue, handlers map[string]jobs.Handler, nati
 		dispatchers = append(dispatchers, &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-" + kind, Kind: kind, LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute})
 	}
 	return dispatchers, nil
+}
+
+func validNativeKind(kind string) bool {
+	switch kind {
+	case "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute",
+		"quality-sanctions-import", "quality-sanctions-discovery",
+		"quality-enforcement-import", "quality-enforcement-discovery",
+		"enterprise-export-build":
+		return true
+	}
+	return false
+}
+
+func dedupeStrings(values []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	return out
 }
 
 // runDispatchers cancels and joins all fixed loops on the first exit. A real

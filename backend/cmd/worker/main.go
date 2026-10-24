@@ -33,6 +33,7 @@ import (
 	directoryregistry "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/registry"
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
+	enterprisejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/adapters/jobs"
 	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
 	evidencejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/jobs"
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
@@ -188,6 +189,13 @@ func run() error {
 		}
 		_, err = jobs.Enqueue(ctx, raw, "anp-import", encoded, dedupe, 3, time.Time{})
 		return err
+	}
+	enqueueEnterpriseExport := func(ctx context.Context, payload enterprisejobs.BuildPayload, dedupe string) (jobs.EnqueueResult, error) {
+		encoded, err := json.Marshal(payload)
+		if err != nil {
+			return jobs.EnqueueResult{}, err
+		}
+		return jobs.Enqueue(ctx, raw, enterprisejobs.BuildKind, encoded, dedupe, 3, time.Time{})
 	}
 	communityStore := communityadapters.NewStore(raw)
 	privacyStore := privacyadapters.NewStore(raw)
@@ -484,6 +492,26 @@ func run() error {
 	// Payment ports remain deliberately nil until the future payment module is configured.
 	premiumStore := subscriptionadapters.NewStore(raw)
 	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
+	officialImport := officialjobs.Import{
+		Fetch:  &fetcher,
+		Parser: anp.Parser{Limits: anp.DefaultLimits()},
+		Import: importer,
+		Resolve: func(ctx context.Context, cnpj, display string, addr map[string]string) (string, error) {
+			st, err := directoryRepo.ResolveCNPJ(ctx, cnpj, display, addr)
+			if err != nil {
+				return "", err
+			}
+			return st.ID, nil
+		},
+	}
+	if cfg.EnterpriseExportEnabled {
+		officialImport.AfterPublish = func(ctx context.Context, revisionID string) error {
+			_, err := enqueueEnterpriseExport(ctx, enterprisejobs.BuildPayload{
+				Version: 1, Trigger: "after-publication", RevisionID: revisionID,
+			}, "enterprise-export:official:"+revisionID)
+			return err
+		}
+	}
 	handlers := map[string]jobs.Handler{
 		"subscription-refresh":     subscriptionjobs.Handler{Name: "subscription-refresh", RunWithID: premiumService.Refresh},
 		"subscription-acknowledge": subscriptionjobs.Handler{Name: "subscription-acknowledge", Run: premiumService.Acknowledge},
@@ -492,18 +520,7 @@ func run() error {
 			ListingBase: "https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/",
 			Enqueue:     enqueueImport,
 		},
-		"anp-import": officialjobs.Import{
-			Fetch:  &fetcher,
-			Parser: anp.Parser{Limits: anp.DefaultLimits()},
-			Import: importer,
-			Resolve: func(ctx context.Context, cnpj, display string, addr map[string]string) (string, error) {
-				st, err := directoryRepo.ResolveCNPJ(ctx, cnpj, display, addr)
-				if err != nil {
-					return "", err
-				}
-				return st.ID, nil
-			},
-		},
+		"anp-import": officialImport,
 		"geocode-station": directoryjobs.Geocode{
 			Pool:    raw,
 			Service: nil,
@@ -838,7 +855,21 @@ func run() error {
 			},
 		},
 	}
+	if cfg.EnterpriseExportEnabled {
+		handlers[enterprisejobs.BuildKind] = enterprisejobs.Build{
+			Pool: raw, Root: cfg.EnterpriseExportRoot,
+			WindowWeeks: cfg.EnterpriseExportWindowWeeks,
+		}
+		handlers[enterprisejobs.ReconcileKind] = enterprisejobs.Reconcile{
+			Pool: raw, Root: cfg.EnterpriseExportRoot,
+			WindowWeeks: cfg.EnterpriseExportWindowWeeks,
+			Enqueue:     enqueueEnterpriseExport,
+		}
+	}
 	nativeKinds := []string{}
+	if cfg.EnterpriseExportEnabled {
+		nativeKinds = append(nativeKinds, enterprisejobs.BuildKind)
+	}
 	if cfg.QualityImportsEnabled {
 
 		if cfg.QualityEnforcementImportsEnabled {
@@ -863,6 +894,13 @@ func run() error {
 			Name: "anp-discovery-daily", Kind: "anp-discovery", Version: 1,
 			Interval: 24 * time.Hour, Enabled: cfg.ANPDiscoveryEnabled, Reason: "disabled by configuration",
 			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
+		{
+			Name: "enterprise-export-reconcile", Kind: enterprisejobs.ReconcileKind, Version: 1,
+			Interval: 6 * time.Hour, Enabled: cfg.EnterpriseExportEnabled, Reason: "disabled by configuration",
+			Build: func(period string) map[string]any {
+				return map[string]any{"version": 1, "period": period}
+			},
 		},
 		{
 			Name: "geocode-hourly", Kind: "geocode-station", Version: 1,

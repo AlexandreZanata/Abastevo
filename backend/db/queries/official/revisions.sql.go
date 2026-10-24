@@ -429,6 +429,45 @@ func (q *Queries) GetRevision(ctx context.Context, id pgtype.UUID) (OfficialRevi
 	return i, err
 }
 
+const latestPublishedRevision = `-- name: LatestPublishedRevision :one
+SELECT r.id, r.survey_start, r.survey_end, r.published_at,
+    r.supersedes_revision_id, run.source_url, run.source_checksum,
+    run.parser_version
+FROM official_current_revisions AS c
+JOIN official_revisions AS r ON r.id = c.revision_id
+JOIN official_import_runs AS run ON run.id = r.import_run_id
+WHERE r.status = 'published'
+ORDER BY r.survey_end DESC, r.survey_start DESC, r.published_at DESC, r.id DESC
+LIMIT 1
+`
+
+type LatestPublishedRevisionRow struct {
+	ID                   pgtype.UUID        `json:"id"`
+	SurveyStart          pgtype.Date        `json:"survey_start"`
+	SurveyEnd            pgtype.Date        `json:"survey_end"`
+	PublishedAt          pgtype.Timestamptz `json:"published_at"`
+	SupersedesRevisionID pgtype.UUID        `json:"supersedes_revision_id"`
+	SourceUrl            string             `json:"source_url"`
+	SourceChecksum       string             `json:"source_checksum"`
+	ParserVersion        string             `json:"parser_version"`
+}
+
+func (q *Queries) LatestPublishedRevision(ctx context.Context) (LatestPublishedRevisionRow, error) {
+	row := q.db.QueryRow(ctx, latestPublishedRevision)
+	var i LatestPublishedRevisionRow
+	err := row.Scan(
+		&i.ID,
+		&i.SurveyStart,
+		&i.SurveyEnd,
+		&i.PublishedAt,
+		&i.SupersedesRevisionID,
+		&i.SourceUrl,
+		&i.SourceChecksum,
+		&i.ParserVersion,
+	)
+	return i, err
+}
+
 const setRevisionPublished = `-- name: SetRevisionPublished :exec
 UPDATE official_revisions
 SET status = 'published', published_at = now()

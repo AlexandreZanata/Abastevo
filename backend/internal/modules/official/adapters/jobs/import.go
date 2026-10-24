@@ -31,6 +31,10 @@ type Import struct {
 	Parser  anp.Parser
 	Import  *adapters.Importer
 	Resolve func(ctx context.Context, cnpjNormalized, displayName string, address map[string]string) (string, error)
+	// AfterPublish is the optional durable export intent. It runs after the
+	// publication commit; a failure is visible to the job and recovered by the
+	// periodic export reconciliation, never by rolling back published data.
+	AfterPublish func(ctx context.Context, revisionID string) error
 }
 
 // Kind implements jobs.Handler.
@@ -120,6 +124,11 @@ func (im Import) Handle(ctx context.Context, job jobs.Job) error {
 	}
 	if !fin.Published && fin.Verdict.Reason == "empty" {
 		return fmt.Errorf("import: empty source")
+	}
+	if fin.Published && im.AfterPublish != nil {
+		if err := im.AfterPublish(ctx, fin.RevisionID); err != nil {
+			return err
+		}
 	}
 	return nil
 }

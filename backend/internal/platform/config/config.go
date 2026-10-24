@@ -15,6 +15,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -162,6 +163,11 @@ type Config struct {
 	GlobalQuotaWrite     int
 	// Zero keeps photo intake closed pending a measured resource budget.
 	EvidenceMaxPendingPhotos int
+	// Enterprise export is a private, bounded candidate builder. It is off by
+	// default and requires an absolute private workspace root when enabled.
+	EnterpriseExportEnabled     bool
+	EnterpriseExportRoot        string
+	EnterpriseExportWindowWeeks int
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
@@ -228,6 +234,27 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_QUALITY_REPORTS_ENABLED must be boolean")
 		}
 		cfg.QualityReportsEnabled = enabled
+	}
+	if raw, present := getenv("ANPFUEL_ENTERPRISE_EXPORT_ENABLED"); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_EXPORT_ENABLED must be boolean")
+		}
+		cfg.EnterpriseExportEnabled = enabled
+	}
+	cfg.EnterpriseExportWindowWeeks = 5
+	if raw, present := getenv("ANPFUEL_ENTERPRISE_EXPORT_WINDOW_WEEKS"); present {
+		weeks, err := strconv.Atoi(raw)
+		if err != nil || weeks < 1 || weeks > 12 {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_EXPORT_WINDOW_WEEKS must be 1..12")
+		}
+		cfg.EnterpriseExportWindowWeeks = weeks
+	}
+	cfg.EnterpriseExportRoot, _ = getenv("ANPFUEL_ENTERPRISE_EXPORT_ROOT")
+	if cfg.EnterpriseExportEnabled {
+		if cfg.EnterpriseExportRoot == "" || !filepath.IsAbs(cfg.EnterpriseExportRoot) {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_EXPORT_ROOT must be an absolute path when enterprise export is enabled")
+		}
 	}
 	if raw, present := getenv(keyQualityCompanyReadsEnabled); present {
 		enabled, err := strconv.ParseBool(raw)

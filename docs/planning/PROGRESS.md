@@ -1,5 +1,15 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-06 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-06.md).
+  Durable after-publication build intent, private file-lock/state workspace,
+  latest-window coalescing, atomic candidate/state/analytics, Directory
+  fingerprint and Official pin reconciliation, period/fingerprint dedupe and
+  default-off worker schedule. Real PostGIS tests cover correction coalescing,
+  no-op, busy lock, cancellation, lost-notification reconcile and hook
+  failure/publication retention. Build has a dedicated dispatcher; no migration,
+  public route or activation. Next: ESP-07 local data acceptance.
+
 - Enterprise data/static portal ESP-05 2026-10-24: LOCAL_DONE /
   INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-05.md).
   One regional pricing analyst buyer, one sample-comparison decision and one

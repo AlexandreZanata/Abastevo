@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -285,4 +286,65 @@ func TestImportBadPayloadFailsSafely(t *testing.T) {
 			t.Errorf("bad payload accepted: %s", raw)
 		}
 	}
+}
+
+func TestImportCallsAfterPublishAndKeepsPublishedOnFailure(t *testing.T) {
+	t.Run("published once", func(t *testing.T) {
+		pool := freshPool(t)
+		ctx := context.Background()
+		seedStations(t, pool)
+		body := fixtureWorkbook(t)
+		srv := fixtureServer(t, "2026-09-27_2026-10-03", body)
+		imp := importHandler(t, pool, loopbackEntries(t, srv.URL))
+		var published []string
+		imp.AfterPublish = func(_ context.Context, revisionID string) error {
+			published = append(published, revisionID)
+			return nil
+		}
+		payload := ImportPayload{Version: 1,
+			SourceURL: srv.URL + "/arquivos-lpc/2026/revendas_lpc_2026-09-27_2026-10-03.xlsx",
+			ETag:      `"w1"`, SurveyStart: "2026-09-27", SurveyEnd: "2026-10-03"}
+		raw, _ := json.Marshal(payload)
+		if err := imp.Handle(ctx, jobs.Job{Payload: raw}); err != nil {
+			t.Fatalf("import: %v", err)
+		}
+		if len(published) != 1 || published[0] == "" {
+			t.Fatalf("published hooks = %v", published)
+		}
+		if err := imp.Handle(ctx, jobs.Job{Payload: raw}); err != nil {
+			t.Fatalf("re-import: %v", err)
+		}
+		if len(published) != 1 {
+			t.Fatalf("hook repeated on checksum no-op: %v", published)
+		}
+	})
+
+	t.Run("hook failure does not roll back publication", func(t *testing.T) {
+		pool := freshPool(t)
+		ctx := context.Background()
+		seedStations(t, pool)
+		body := fixtureWorkbook(t)
+		srv := fixtureServer(t, "2026-09-27_2026-10-03", body)
+		imp := importHandler(t, pool, loopbackEntries(t, srv.URL))
+		imp.AfterPublish = func(context.Context, string) error {
+			return errors.New("export enqueue unavailable")
+		}
+		payload := ImportPayload{Version: 1,
+			SourceURL: srv.URL + "/arquivos-lpc/2026/revendas_lpc_2026-09-27_2026-10-03.xlsx",
+			ETag:      `"w1"`, SurveyStart: "2026-09-27", SurveyEnd: "2026-10-03"}
+		raw, _ := json.Marshal(payload)
+		if err := imp.Handle(ctx, jobs.Job{Payload: raw}); err == nil {
+			t.Fatal("hook failure was hidden")
+		}
+		var published, pointers int64
+		if err := pool.QueryRow(ctx, "SELECT count(*) FROM official_revisions WHERE status='published'").Scan(&published); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(ctx, "SELECT count(*) FROM official_current_revisions").Scan(&pointers); err != nil {
+			t.Fatal(err)
+		}
+		if published != 1 || pointers != 1 {
+			t.Fatalf("published=%d pointers=%d, want publication retained for reconciliation", published, pointers)
+		}
+	})
 }
