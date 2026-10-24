@@ -10,6 +10,12 @@ enum class MapStationLocationQuality {
     REVIEWED,
 }
 
+enum class MapStationType {
+    FUEL,
+    CHARGING,
+    FUEL_AND_CHARGING,
+}
+
 data class MapOverlayMarker(
     val uuid: String,
     val latitude: Double,
@@ -56,6 +62,7 @@ data class MapOverlayLabels(
 data class MapOverlayListItem(
     val uuid: String,
     val title: String,
+    val type: MapStationType,
     val typeLabel: String,
     val locationLabel: String,
     val contentDescription: String,
@@ -145,7 +152,14 @@ fun overlayListItems(
         val description = listOf(marker.title, typeLabel, locationLabel, marker.subtitle)
             .filter { it.isNotBlank() }
             .joinToString(", ")
-        MapOverlayListItem(marker.uuid, marker.title, typeLabel, locationLabel, description)
+        MapOverlayListItem(
+            uuid = marker.uuid,
+            title = marker.title,
+            type = stationType(marker),
+            typeLabel = typeLabel,
+            locationLabel = locationLabel,
+            contentDescription = description,
+        )
     }
 
 internal fun buildOverlayKml(clusters: List<MapOverlayCluster>): String = buildString {
@@ -211,6 +225,12 @@ private fun distanceMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Doubl
     val x = Math.toRadians(lon2 - lon1) * cos(Math.toRadians((lat1 + lat2) / 2.0))
     val y = Math.toRadians(lat2 - lat1)
     return sqrt(x * x + y * y) * EARTH_RADIUS_METERS
+}
+
+private fun stationType(marker: MapOverlayMarker): MapStationType = when {
+    marker.fuel && marker.charging -> MapStationType.FUEL_AND_CHARGING
+    marker.charging -> MapStationType.CHARGING
+    else -> MapStationType.FUEL
 }
 
 private fun typeLabel(marker: MapOverlayMarker, labels: MapOverlayLabels): String = when {

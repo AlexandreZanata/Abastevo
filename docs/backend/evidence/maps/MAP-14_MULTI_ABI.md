@@ -29,19 +29,22 @@ no debug/Qt, stripped, 64-bit LOAD >= 16 KB; the armv7 verifier does not require
 `classes.jar` and `AndroidManifest.xml` are identical between ABIs.
 
 - Combined AAR SHA-256: `1b96a8467a37a86b9aeacbe9a515d9266d3d2e663d85e65df45b99b45d64b0a4`.
-- Release APK: `app-release-unsigned.apk`, **80,401,070 bytes (76.68 MB)**,
-  SHA-256 `68898ea6bec6baf3832f7676e3b8e5cfa27feb9b731d80d69d0a0fd6cc4546cc`.
+- Release APK: `app-release-unsigned.apk`, **80,407,806 bytes (76.68 MB)**,
+  SHA-256 `b2ede0a65b819ce59e227b5ece67bfbe555e07afeda654d15bbcac78e364b97b`.
 - Contains `lib/arm64-v8a/liborganicmaps.so` and
   `lib/armeabi-v7a/liborganicmaps.so` with the hashes above.
-- `:app:verifyReleaseApkSize` PASS: 80,401,070 <= 83,886,080 bytes (80 MiB),
-  leaving 3,485,010 bytes (~3.32 MiB) headroom.
+- `:app:verifyReleaseApkSize` PASS: 80,407,806 <= 83,886,080 bytes (80 MiB),
+  leaving 3,478,274 bytes (~3.32 MiB) headroom.
 - `zipalign -c -P 16 4` PASS; both cores have 0x4000 LOAD alignment.
 - Machine-readable combined report:
   [multi-build.json](map14-multi-abi/multi-build.json).
 
-The current release APK still has the engine adapter stripped by R8 because no
-production screen references it; the two native cores are packaged. MAP-17 will
-add the adapter and UI, so the 3.32 MiB headroom must be rechecked then.
+This rebuild also includes the two T06 accessible-list drawables
+(`ic_map_station_combustion`/`ic_map_station_electric`), a 6,736-byte increase
+from the prior multi-ABI artifact. The engine adapter code is still stripped by
+R8 because no production screen references it; the two native cores are
+packaged. MAP-17 will add the adapter and UI, so the 3.32 MiB headroom must be
+rechecked then.
 
 ## Commands
 

@@ -22,6 +22,7 @@ class MapOverlayListInstrumentedTest {
             MapOverlayListItem(
                 uuid = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
                 title = "Posto Central",
+                type = MapStationType.FUEL_AND_CHARGING,
                 typeLabel = "Fuel and charging",
                 locationLabel = "Reviewed location",
                 contentDescription = "Posto Central, Fuel and charging, Reviewed location",
@@ -29,6 +30,7 @@ class MapOverlayListInstrumentedTest {
             MapOverlayListItem(
                 uuid = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
                 title = "Posto Sem Local",
+                type = MapStationType.FUEL,
                 typeLabel = "Fuel",
                 locationLabel = "Location unknown",
                 contentDescription = "Posto Sem Local, Fuel, Location unknown",

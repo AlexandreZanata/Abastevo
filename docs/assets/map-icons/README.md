@@ -1,6 +1,6 @@
 # Prepared map station pictograms
 
-Date: 2026-10-24. Status: PREPARED_ASSET / NOT_INTEGRATED.
+Date: 2026-10-24. Status: INTEGRATED_IN_ACCESSIBLE_LIST / NATIVE_MAP_ARTWORK_PENDING.
 
 Original generic artwork generated separately with the built-in ImageGen tool,
 following the repository fuel/home icon process. The existing regular gasoline
@@ -52,12 +52,17 @@ SVG masters in this folder; `android/` candidate drawable-nodpi exports.
 `preview.png`/`preview.svg` show 24/48/128px on light/dark neutral backgrounds.
 Small-size and negative-space silhouettes were visually inspected during planning;
 actual map-background, selected-state, 20px and device/theme accessibility review
-remain required in MAP-18. These prepared files are not yet shipped in the APK.
+remain required in MAP-18.
 
-At MAP-18 copy reviewed Android exports into app/src/main/res/drawable-nodpi,
-reuse existing image resource loading and add theme-aware native marker backing/
-outline/selection. Maintain generous touch targets and a list equivalent.
-Do not replace launcher/fuel/Home icons. Keep raw large images out of the APK.
+Integration update 2026-10-24: the reviewed Android exports are copied to
+`maps/engine/src/main/res/drawable-nodpi/` and used as 24 dp leading icons in
+the accessible `MapOverlayList` (fuel, electric, or both side by side). The list
+keeps the textual type label and TalkBack description; the icons are decorative
+and do not replace the text. The native map overlay still uses the SDK's
+`Gas`/`ChargingStation` bookmark symbols; theme-aware native marker backing/
+outline/selection, map-background/20 px review and the final MAP-18 artwork
+review remain open. Raw large source images stay out of the APK; only the
+128 px Android exports are shipped.
 
 ## Requested electric SVG correction
 

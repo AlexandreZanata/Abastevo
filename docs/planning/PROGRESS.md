@@ -53,20 +53,23 @@
   rendering. ENGINE_GATE remains PARTIAL. The probe package was uninstalled and
   its data removed. Multi-ABI release artifact PASS: armeabi-v7a AAR
   34,517,731 bytes / core 10,499,236 bytes; merged with arm64; universal APK
-  80,401,070 bytes (76.68 MB), SHA `68898ea6…`, both cores 0x4000-aligned,
+  80,407,806 bytes (76.68 MB), SHA `b2ede0a6…`, both cores 0x4000-aligned,
   zipalign PASS and 80 MiB gate PASS (~3.32 MiB headroom). Armv7 runtime is not
   executed; 16 KB runtime remains deferred.
   T06 PARTIAL: canonical UUID normalization/dedupe, fuel/charging flags,
   UNKNOWN/CITY_CENTROID/REVIEWED states, 60 m clustering, native
   Gas/ChargingStation/Information symbols and accessible Compose list (48 dp,
-  content descriptions) implemented. The old overlay category is retained
+  content descriptions) implemented; the prepared Abastevo fuel/electric
+  exports are now 24 dp list icons. The old overlay category is retained
   until the new generation commits; deferring `showBookmarkCategoryOnMap` fixed
   a reproduced native `CHECK(m_updatedGroups.empty())` SIGABRT. 12 engine JVM
-  tests and 3 phone instrumentation tests PASS. Phone probe: generation 1
+  tests PASS; 3 phone instrumentation tests passed before the list-icon
+  addition. Phone probe: generation 1
   (7 markers/6 unique/3 clusters) and generation 2 (8/7/3) committed, old file
   removed, cluster/gas pins rendered. Tapping the cluster at a dense OSM POI
-  opened the OSM POI (title 110139), so native cluster hit-test, final Abastevo
-  artwork and the native marker 48 dp target remain open.
+  opened the OSM POI (title 110139), so native cluster hit-test, native map
+  artwork/theme review and the native marker 48 dp target remain open; the
+  list icon's device visual check is pending.
   MAP-15: Room v26 public map metadata, resumable `.part` download, Ed25519
   envelope/key rotation, SHA-256, reserve/disk failure, all-package activation,
   safe inactive cleanup and Hilt WorkManager worker. JVM data tests and a real

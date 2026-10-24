@@ -95,19 +95,21 @@ and do not invent a tested commit SHA.
   internal `files/261004` data renders. Overlay KML declaration/escaping was
   fixed. Owner chose the physical-phone/all-device direction; actual 16 KB
   runtime is DEFERRED and not proven. The multi-ABI release artifact now carries
-  arm64-v8a and armeabi-v7a: APK 80,401,070 bytes (76.68 MB), SHA
-  `68898ea6…`, both cores 0x4000-aligned, zipalign/80 MiB gate PASS (~3.32 MiB
+  arm64-v8a and armeabi-v7a: APK 80,407,806 bytes (76.68 MB), SHA
+  `b2ede0a6…`, both cores 0x4000-aligned, zipalign/80 MiB gate PASS (~3.32 MiB
   headroom); armv7 runtime is not executed. See
   [MAP-14 evidence](../backend/evidence/maps/MAP-14.md) and
   [multi-ABI evidence](../backend/evidence/maps/MAP-14_MULTI_ABI.md).
 - T06 PARTIAL: canonical UUID dedupe, fuel/charging, location quality, 60 m
   clustering, native Gas/ChargingStation/Information symbols and the 48 dp
-  accessible Compose list are implemented. Safe generation swap retains the
+  accessible Compose list are implemented; the prepared Abastevo fuel/electric
+  exports are now 24 dp list icons. Safe generation swap retains the
   old category until commit; deferring `showBookmarkCategoryOnMap` fixed a
   reproduced native `CHECK(m_updatedGroups.empty())` crash. Phone probe
   committed two generations (7/6/3 then 8/7/3 markers/unique/clusters) and
   removed the old file. Cluster tap at a dense OSM POI opened the OSM POI
-  instead; final artwork and native marker 48 dp remain.
+  instead; native map artwork, native marker 48 dp and the list icon's device
+  visual check remain.
 - T07 technical audit COMPLETE / LEGAL_SIGNOFF_PENDING: 193 submodules + 22
   vendored = 215 components, 204 license files + 11 resolved, 0 missing;
   219-license-file notices bundle, CycloneDX 1.5 SBOM, 30 endpoint hosts classified

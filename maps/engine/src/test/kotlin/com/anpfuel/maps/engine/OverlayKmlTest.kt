@@ -164,12 +164,15 @@ class OverlayKmlTest {
 
         assertEquals(3, items.size)
         val central = items.single { it.uuid == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }
+        assertEquals(MapStationType.FUEL_AND_CHARGING, central.type)
         assertEquals("Fuel and charging", central.typeLabel)
         assertEquals("Reviewed location", central.locationLabel)
         assertEquals("Posto Central, Fuel and charging, Reviewed location", central.contentDescription)
         val approximate = items.single { it.uuid == "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }
+        assertEquals(MapStationType.CHARGING, approximate.type)
         assertEquals("Approximate city location", approximate.locationLabel)
         val unknown = items.single { it.uuid == "cccccccc-cccc-4ccc-8ccc-cccccccccccc" }
+        assertEquals(MapStationType.FUEL, unknown.type)
         assertEquals("Location unknown", unknown.locationLabel)
     }
 

@@ -180,8 +180,8 @@ This rebuild includes the overlay KML fix; the earlier 69,881,875-byte artifact
 
 Multi-ABI extension (2026-10-24): [MAP-14_MULTI_ABI](MAP-14_MULTI_ABI.md).
 The release now carries both `arm64-v8a` and `armeabi-v7a`:
-`app-release-unsigned.apk` **80,401,070 bytes (76.68 MB)**, SHA-256
-`68898ea6bec6baf3832f7676e3b8e5cfa27feb9b731d80d69d0a0fd6cc4546cc`, both
+`app-release-unsigned.apk` **80,407,806 bytes (76.68 MB)**, SHA-256
+`b2ede0a65b819ce59e227b5ece67bfbe555e07afeda654d15bbcac78e364b97b`, both
 cores with 0x4000 LOAD alignment, `zipalign` PASS and the 80 MiB gate PASS
 with ~3.32 MiB headroom. The armv7 runtime is not executed; 16 KB runtime
 remains deferred.
@@ -295,9 +295,11 @@ cores; armv7 runtime is not proven.
 ## T06 overlay model, clustering and accessibility — 2026-10-24
 
 Status: **T06 PARTIAL / IN_PROGRESS**. The overlay model, duplicate/type
-handling, 60 m clustering, native symbols, safe generation swap and accessible
-list are implemented and tested. The native cluster hit-test at a dense OSM POI
-location, final Abastevo artwork and the native 48 dp target remain open.
+handling, 60 m clustering, native map symbols, safe generation swap and
+accessible list are implemented and tested. The accessible list now uses the
+prepared Abastevo fuel/electric pictograms. The native cluster hit-test at a
+dense OSM POI location, native map artwork/theme review and the native 48 dp
+target remain open.
 
 Implemented in `maps/engine`:
 
@@ -316,8 +318,11 @@ Implemented in `maps/engine`:
   fix was verified on the phone. Overlay updates only touch
   `BookmarkManager`; no map package or routing graph is rebuilt.
 - `MapOverlayList`: Compose list with 48 dp minimum item height, merged
-  semantics and a TalkBack content description per station. Labels are
-  injectable; the future MAP-17 screen supplies localized strings.
+  semantics and a TalkBack content description per station. The prepared
+  Abastevo 128 px Android exports are 24 dp leading icons for fuel/electric
+  (both side by side for a co-located station); they are decorative and the
+  textual type label remains the accessible source. Labels are injectable; the
+  future MAP-17 screen supplies localized strings.
 
 Probe fixture: 7 markers, 6 unique UUIDs after duplicate suppression, three
 clusters (one single, two multi), including a co-located fuel+charging station
@@ -345,12 +350,14 @@ unrelated user notification).
 
 Tests: **12** engine JVM tests PASS (KML declaration/escaping, icons/styles,
 duplicate merge, co-located distinct UUIDs, nearby/far clustering, invalid
-rejection, cluster KML, accessible labels, selection mapping). **3** phone
-instrumentation tests PASS (2 existing MapHost lifecycle/host tests plus
-`MapOverlayListInstrumentedTest`, which asserts the TalkBack description and
-`assertHeightIsAtLeast(48.dp)`). Gradle's UTP install was blocked by
-`INSTALL_FAILED_USER_RESTRICTED`; the self-instrumenting test APK was installed
-with `adb install` and run with `am instrument`, 3/3 OK.
+rejection, cluster KML, accessible labels/types, selection mapping). **3** phone
+instrumentation tests PASS before the pictogram addition (2 existing MapHost
+lifecycle/host tests plus `MapOverlayListInstrumentedTest`, which asserts the
+TalkBack description and `assertHeightIsAtLeast(48.dp)`). The current release
+build includes both drawables; the icon list's device visual check remains
+pending. Gradle's UTP install was blocked by `INSTALL_FAILED_USER_RESTRICTED`;
+the self-instrumenting test APK was installed with `adb install` and run with
+`am instrument`, 3/3 OK.
 
 Known T06 limits:
 
@@ -360,9 +367,10 @@ Known T06 limits:
   mapping (`overlaySelectionFor`) is unit-tested, and individual station
   selection was proven in T08, but native cluster hit-test needs a clean
   location or an app-owned disambiguation/quick-sheet path in MAP-17.
-- The prepared Abastevo PNG pictograms are not integrated yet; the native
-  `Gas`/`ChargingStation` symbols are used. Final artwork/theme review remains
-  MAP-18 per the asset plan.
+- The accessible list uses the prepared Abastevo PNG exports. The native map
+  overlay still uses the SDK `Gas`/`ChargingStation` symbols; native marker
+  backing/outline/selection, map-background/20 px review and final artwork
+  remain MAP-18. The list icon's device visual check remains pending.
 - The accessible list has 48 dp targets; the native marker's own touch target
   was not separately measured.
 - Clustering uses a fixed 60 m radius, not a zoom-dependent radius yet.
