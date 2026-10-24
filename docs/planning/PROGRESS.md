@@ -1,5 +1,16 @@
 # Current execution state
 
+- Enterprise data/static portal ESP-08 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-08.md).
+  [Routes/editorial contract](../product/ENTERPRISE_PORTAL_ROUTES_AND_EDITORIAL.md)
+  freezes canonical `/postos/{uuid}/`, `/consultar/`, `/precos/`,
+  `/metodologia/`, gated `/fiscalizacao/`, field allowlists, empty/stale/error
+  states, sample/period wording, attribution and no-JS accessibility. Labelled
+  synthetic prototype under `landing/prototype/` with active/suspended, missing
+  week, insufficient sample, derived summary and gated fiscalization. Landing
+  prototype tests 9/9, full suite 54/54, typecheck/build/check PASS; not in
+  `dist/` or sitemap. Next: ESP-09 generated catalog/price/history pages.
+
 - Enterprise data/static portal ESP-07 2026-10-24: LOCAL_DONE /
   SYNTHETIC_SLICE_ACCEPTED; real source `BLOCKED_OVER_PRECISION`.
   [Evidence](../backend/evidence/enterprise-static/ESP-07.md). Synthetic
