@@ -1,0 +1,29 @@
+{
+  "source_type": "original built-in ImageGen output",
+  "raw_sha256": "140fe6fdfe8b7e2d687c3212fafa4e383a097ce8b1349b73df1fc121574ef502",
+  "normalization": "alpha >=128; saturated ink + white; transparent padding; trace at 2x nearest-neighbor; no source downsample",
+  "category_ink": "#F57C00",
+  "category_semantics": "station service type, not fuel grade",
+  "source_size": [
+    1254,
+    1254
+  ],
+  "normalized_size": [
+    1099,
+    1099
+  ],
+  "android_export_size": [
+    128,
+    128
+  ],
+  "svg_paths": 5,
+  "svg_sha256": "f0480e8beef29b13ed4be1dd0854a381ff82ebe0135cffef761697322b77679d",
+  "android_sha256": "05283e889b56d45dfb7a3ad8486024f4facec1a1db87e39a0c85b60cdb89017e",
+  "validation": {
+    "silhouette_iou": 1.0,
+    "ink_iou": 1.0,
+    "white_iou": 1.0
+  },
+  "integration_status": "PREPARED_ASSET / NOT_INTEGRATED",
+  "attribution": "Original generic Abastevo artwork, no upstream CoMaps or operator logos; repository MIT notice applies to the delivered source assets."
+}

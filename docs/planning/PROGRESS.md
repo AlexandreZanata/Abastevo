@@ -1,5 +1,19 @@
 # Current execution state
 
+- Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
+  IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
+  [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),
+  [rights/source register](MAP_EV_SOURCE_REGISTER.md), [agent prompt](MAP_EV_AGENT_PROMPT.md).
+  User-requested data-first pipeline, commercial/open-only dependencies, CoMaps
+  native proof gate, four-tab minimum map and later offline/EV journeys are scoped.
+  [Prepared map icons](../assets/map-icons/README.md) retain raw/prompt/SVG/PNG;
+  one accidental electric SVG void was explicitly removed and re-exported with
+  bounded-pixel repair proof. This is planning/assets only, no product code,
+  source admission, phone/VPS change, push/PR/merge/wiki or release certification.
+  Validation: registry/link/structure/diff/asset checks; no runtime test claim.
+  Next: integrate the scoped planning artifacts when construction is requested,
+  then reconcile actual baseline at MAP-00. Native feasibility and external gates
+  remain unproven.
 - Android Premium area 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   maintained `dev`; connected-device update installed, dev push follows this record.
   [Evidence](../mobile/premium-area-organization.md). Dedicated Premium and

@@ -1,0 +1,963 @@
+{
+  "schema_version": 1,
+  "status": "PLANNING_LOCAL_DONE / IMPLEMENTATION_PLANNED",
+  "date": "2026-10-24",
+  "audited_base": "b90a0cd1277f0728d60fdf47bb1b62bc91613416",
+  "phase_count": 34,
+  "phases": [
+    {
+      "id": "MAP-00",
+      "title": "Reconcile the actual baseline and upstream inventory",
+      "status": "PLANNED",
+      "depends_on": [],
+      "scope": "Read-only inventory and bounded execution setup.",
+      "steps": [
+        "Read AGENTS, FAST_EXECUTION, current PROGRESS, DELIVERY_WORKFLOW, this plan, EE/MEX evidence and actual changes. Record tested source, deployed source and device obligations separately.",
+        "Use maintained dev synchronized normally from main. If occupied, use a managed isolated worktree and coordinate its eventual integration; never stash, reset or overwrite another task. Reconcile stable task IDs before creating trackers.",
+        "Inventory every relevant CoMaps capability at a pinned upstream SHA, actual native/build entry points, package format, notices and third-party dependencies. Document kept, adapted and excluded capabilities. Do not assume an Android SDK exists."
+      ],
+      "checks": [
+        "Verify inventory against real code, not just an old checklist.",
+        "Record actual SQL and Room versions; never allocate migration numbers from this plan."
+      ],
+      "exit": "A scoped source/feature/dependency inventory identifies the next task and source revisions.",
+      "paths": [
+        "docs/planning/PROGRESS.md",
+        "docs/planning/MAP_EV_PHASES.json",
+        "docs/adr/020-maintained-dev-main-delivery.md"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-00.md",
+      "commit": "docs(maps): reconcile the actual baseline and upstream inventory",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-01",
+      "title": "Freeze behavior, source rights and commercial admission",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-00"
+      ],
+      "scope": "Contracts only; no UI and no source activation.",
+      "steps": [
+        "Write B-BR-MAP and BUC-MAP cases from the mandatory rules below. Freeze price-source switching, marker eligibility, offline expiry, permissions and navigation behavior.",
+        "Complete the source register: exact bytes/revision, code/data/artwork licenses, commercial use, offline redistribution, attribution, derived-database obligations and access terms. Unknown rights means not admitted.",
+        "Record an ADR for the CoMaps-derived native engine and its isolation. Native C++/JNI is a declared exception to the Rust preparer language, not a backend rewrite. An alternative engine requires an explicit revised plan; never silently substitute MapLibre or a WebView."
+      ],
+      "checks": [
+        "Contract fixtures cover ANP-only, community-only, unknown prices, combined sites and missing coordinates.",
+        "Review transitive CoMaps licenses and upstream service endpoints independently from Apache-2.0 core."
+      ],
+      "exit": "Behavior and admission rules are versioned; no required input is silently unlicensed.",
+      "paths": [
+        "docs/product/MAP_DISCOVERY_CONTRACT.md (new)",
+        "docs/planning/MAP_EV_SOURCE_REGISTER.md",
+        "docs/adr/ (new numbered decision)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-01.md",
+      "commit": "docs(maps): freeze behavior, source rights and commercial admission",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-02",
+      "title": "Close the existing electric runtime gaps",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-01"
+      ],
+      "scope": "Reuse EE/MEX components; repair composition and incomplete selectors.",
+      "steps": [
+        "Reproduce actual missing charging command, owner, history and rank handlers with process-level tests, then register existing components using narrow ports and original feature gates.",
+        "Reproduce private charge read/delete failures; complete dataset selectors without changing refuel/expense behavior, ownership or idempotency.",
+        "Reconcile EE-22/24/25/26-31 obligations. Reuse passing implementation and name outstanding source, scenario, backup and physical proofs; do not restart the old plan or claim full EV acceptance."
+      ],
+      "checks": [
+        "Actual Go API process + disposable PostGIS: signed writes, owner read/delete, foreign owner, replay, disabled gate and failures.",
+        "Affected Go race suites, SQL/migration tests immediately if changed; Kotlin wire regressions if affected."
+      ],
+      "exit": "Current basic electric routes work on the local real API; preserved gaps have explicit owners and dependencies.",
+      "paths": [
+        "backend/cmd/api/main.go",
+        "backend/internal/modules/charging/",
+        "backend/internal/modules/ledger/adapters/store.go",
+        "docs/backend/evidence/TEST_ENV_UPDATE_2026-10-24.md"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-02.md",
+      "commit": "feat(maps): close the existing electric runtime gaps",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-03",
+      "title": "Define map artifacts and cross-language contracts",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-02"
+      ],
+      "scope": "Versioned schemas and fixtures before producers/consumers.",
+      "steps": [
+        "Define map POI, assertion provenance, station/charging aliases, exact price observations, geometry quality, clocks and capability flags. Reuse existing UUID and EV types.",
+        "Define a map prepared envelope compatible with the existing manifest/hash/census discipline; reuse charging-prepared-v1 where applicable. Separate OSM-derived reference packages, public first-party observations and private state.",
+        "Define native-map manifest fields: engine/upstream SHA, generator SHA, format/data generation, regions/neighbors, bytes/digests, source rights and attribution. Placeholder field names become frozen only with schema tests."
+      ],
+      "checks": [
+        "Rust/Go/Kotlin goldens for bytes, units, IDs, unknowns and schema rejection.",
+        "Reject overflow, duplicate keys, wrong hash, wrong rights/profile, truncated streams and unsupported versions."
+      ],
+      "exit": "A real golden corpus can be consumed without ambiguous units or fabricated coordinates/prices.",
+      "paths": [
+        "contracts/ (new map schemas/testdata)",
+        "docs/product/EV_PREPARATION_CONTRACT.md",
+        "docs/product/EV_TYPED_DATA_CONTRACT.md"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-03.md",
+      "commit": "docs(maps): define map artifacts and cross-language contracts",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-04",
+      "title": "Prepare OSM reference and location candidates in Rust",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-03"
+      ],
+      "scope": "Regional OSM data, fuel/charging POIs and access candidates.",
+      "steps": [
+        "Use a rights-admitted pinned regional PBF/extract from OSM/Geofabrik; fetching stays in the Go acquisition boundary. Rust parses local bounded files without network or DB.",
+        "Extract nodes/ways/relations for fuel and charging with names, addresses, source IDs, connectors, access, hours and geometry provenance. Preserve unknown tags and distinguish equipment from site; do not trust arbitrary tags as live state.",
+        "Emit deterministic entities, decisions, aliases and full census. Missing coordinates remain missing; a city centroid is never a station entrance. Validate coordinate ranges and country/region consistency without deleting legitimate border cases."
+      ],
+      "checks": [
+        "Streaming limit and malformed PBF/tag tests, Unicode, duplicate IDs, nested children and cancellation/old-output preservation.",
+        "Known synthetic node/way/relation fixtures and actual regional sample qualification outside Git."
+      ],
+      "exit": "Every input unit is accounted for; the last good output survives failure; OSM licensing accompanies the artifact.",
+      "paths": [
+        "tools/station-prep/ (bounded extension)",
+        "contracts/testdata/ (synthetic map fixtures)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-04.md",
+      "commit": "feat(maps): prepare osm reference and location candidates in rust",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-05",
+      "title": "Prepare exact per-station ANP price facts in Rust",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-04"
+      ],
+      "scope": "Extend price ingestion without replacing the existing Android ANP importer.",
+      "steps": [
+        "Inspect current CSV/XLSX and local import contracts first. Add the missing server-side preparer only where necessary; never assume prepare_prices exists.",
+        "Normalize actual station-level survey facts with observed date, publication/survey period, product, sale price, unit, CNPJ/address identity and source reference. Reuse product taxonomy and exact decimal rules.",
+        "Keep city/state aggregates separate. Quarantine ambiguous station links and unsupported units; never attach municipal mean to a station or manufacture an ANP premium/electric price."
+      ],
+      "checks": [
+        "Brazilian decimal/date/encoding/leading-zero CNPJ fixtures, duplicate/correction/out-of-order survey rows and exact unit tests.",
+        "Cross-language comparison with the current Android importer; existing historical price behavior remains valid."
+      ],
+      "exit": "ANP station facts have a traceable source and deterministic identity; unchanged current import behavior is proven.",
+      "paths": [
+        "tools/station-prep/",
+        "data/src/main/kotlin/com/anpfuel/data/local/importing/PriceTableBatchImporter.kt",
+        "data/src/main/kotlin/com/anpfuel/data/mapper/AnpProductMapper.kt"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-05.md",
+      "commit": "feat(maps): prepare exact per-station anp price facts in rust",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-06",
+      "title": "Prepare admitted charging and vehicle reference data",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-05"
+      ],
+      "scope": "Reuse electric producers and admit only open commercial-use subsets.",
+      "steps": [
+        "Reuse prepare_charging, ev_ocm and trusted profiles; select only individually admitted providers/records, including redistribution and attribution. opendata flags alone do not bypass the rights manifest.",
+        "Normalize place/equipment/connector, declared power, access and independent status clocks. Unknown tariff or status is not free or available. Do not transform OCM comments/photos into automatically reusable Abastevo content.",
+        "Reuse prepare_vehicle only for admitted reference inputs. PBE/manufacturer data remain optional until rights/variant matching are established; manual useful capacity/consumption enables core travel without proprietary catalogs."
+      ],
+      "checks": [
+        "Existing EV preparation suites plus mixed-rights, unknown connector, missing power, child census and exact tariff-unit cases.",
+        "No contributor PII, precise contributor GPS or photos in public artifacts."
+      ],
+      "exit": "An admitted regional charging batch can be produced with unknowns intact; optional blocked catalogs do not falsify readiness.",
+      "paths": [
+        "tools/station-prep/src/bin/prepare_charging.rs",
+        "tools/station-prep/src/ev_ocm.rs",
+        "tools/station-prep/src/bin/prepare_vehicle.rs",
+        "contracts/ev/preparation-profiles-v1.json"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-06.md",
+      "commit": "feat(maps): prepare admitted charging and vehicle reference data",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-07",
+      "title": "Resolve identities, co-located services and navigation entrances",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-06"
+      ],
+      "scope": "Explicit reconciliation instead of distance-only merges.",
+      "steps": [
+        "Keep Directory station UUIDs and charging identities; add aliases/relationships with source, method and reversible review state. Preserve alphanumeric CNPJ and leading zeros.",
+        "Use CNPJ/address/network/geometry as evidence, not automatic proof. Nearby competing stations or multiple chargers in a shopping center must stay distinct.",
+        "Distinguish display point from road-access entrance and location quality. A combined establishment can expose both fuel and charging without duplicate selectable prices or fictional co-location."
+      ],
+      "checks": [
+        "Near-neighbor false merge, CNPJ change, franchise, address ambiguity, stale correction and split/unlink tests.",
+        "Real PostGIS concurrent reconciliation/review/rollback tests when storage is added."
+      ],
+      "exit": "No unsafe identity/price/location conflation; reviewed and unresolved relationships remain distinguishable.",
+      "paths": [
+        "backend/internal/modules/directory/",
+        "backend/internal/modules/charging/",
+        "domain/src/main/kotlin/com/anpfuel/domain/discovery/ServerStation.kt"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-07.md",
+      "commit": "feat(maps): resolve identities, co-located services and navigation entrances",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-08",
+      "title": "Build the native map-generation toolchain",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-07"
+      ],
+      "scope": "CoMaps-compatible map assets; no Android UI yet.",
+      "steps": [
+        "Pin the actual CoMaps map generator/toolchain/submodules and admitted source data. Verify actual CLI and required world/regional/search/routing/style resources before writing wrappers.",
+        "Run the native generator as a versioned build-time tool alongside the Rust-prepared POI stream; do not reimplement its map format in Rust. Go orchestrates acquisition, bounded tool execution and publication.",
+        "Produce a consistent regional map set with routing/search and neighbor/overview dependencies. Separate immutable map packages from frequently updated Abastevo prices; no full national build on the shared VPS by default."
+      ],
+      "checks": [
+        "A clean reproducible tool build and regional generation; verify format and dependency manifest against pinned engine documentation.",
+        "Corrupt/truncated input, process timeout, traversal, resource exhaustion and atomic previous-generation preservation."
+      ],
+      "exit": "A self-produced, rights-admitted regional package set exists with exact generator/data hashes and required dependencies.",
+      "paths": [
+        "tools/ (new pinned map-generation integration)",
+        "scripts/ (build-time commands after verifying upstream CLI)",
+        "docs/planning/MAP_EV_SOURCE_REGISTER.md"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-08.md",
+      "commit": "feat(maps): build the native map-generation toolchain",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-09",
+      "title": "Import and publish map assertions transactionally in Go",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-08"
+      ],
+      "scope": "Prepared artifacts to existing PostgreSQL/PostGIS modules.",
+      "steps": [
+        "Extend existing acquisition/native bridge and publication patterns. Validate all hashes/profiles/census before publishing and keep raw/public/private storage boundaries.",
+        "Stage assertions and aliases; publish one consistent generation atomically. Use existing module ports and jobs; no speculative microservice or second canonical station table.",
+        "Allocate append-only migrations from actual HEAD; include source/rights references, geometry indexes and recovery. Support safe replay, cancellation and old-reader compatibility."
+      ],
+      "checks": [
+        "Mandatory real PostGIS empty install, previous-schema upgrade, replay, two writers, cancelled import, rollback and crash recovery.",
+        "Go race + parameterized SQL/static/sqlc checks; unauthorized/malformed prepared input refused."
+      ],
+      "exit": "Failed ingestion cannot partially replace the public catalog or lose existing station/user data.",
+      "paths": [
+        "backend/internal/modules/directory/",
+        "backend/internal/modules/charging/",
+        "backend/db/migrations/ (next version verified from actual HEAD)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-09.md",
+      "commit": "feat(maps): import and publish map assertions transactionally in go",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-10",
+      "title": "Serve bounded spatial discovery and exact price projections",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-09"
+      ],
+      "scope": "Viewport/nearby/corridor and quick-detail API contracts.",
+      "steps": [
+        "Extend current Directory and charging APIs through contracts; add missing bounded spatial endpoints only after checking reuse. Query by viewport/zoom or route corridor with appropriate GiST indexes and stable ordering.",
+        "Expose marker type, location quality, source-separated selected-fuel prices, time/period, known/unknown state and attribution. Apply query/response/area limits, bounded pagination or server aggregation; never return all Brazil.",
+        "Bind cursor/cache identity to area, source mode, product, survey period, filters, generation and permissions. Batch price loading; no per-pin N+1. Public reads remain anonymous; writes/owner reads stay signed."
+      ],
+      "checks": [
+        "PostGIS actual query plans/load fixtures, antimeridian/invalid bbox, huge corridor, pagination tamper, stale generation and timeout/cancellation.",
+        "Price-source, product/unit/condition isolation and stale response generation tests."
+      ],
+      "exit": "A bounded API returns honest individual prices and enough metadata for map selection without leaking private data.",
+      "paths": [
+        "backend/internal/modules/directory/",
+        "backend/internal/modules/charging/",
+        "backend/internal/platform/apicontract/",
+        "contracts/openapi/"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-10.md",
+      "commit": "feat(maps): serve bounded spatial discovery and exact price projections",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-11",
+      "title": "Apply freshness, moderation and source lifecycle rules",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-10"
+      ],
+      "scope": "Different lifetimes for geometry, price and operational observations.",
+      "steps": [
+        "Reuse existing refresh/consensus/moderation contracts. Add operational events only through new explicit rules; no invented fixed expiry or confidence percentage.",
+        "Keep observed_at, published_at, fetched_at and source generation distinct. Revocations/corrections/deletions propagate through snapshots and tombstones without rewriting history.",
+        "OCM/OSM static status, community reports and authorized dynamic data remain separate; the open-only launch has no assumed operator live feed. Kill switches and rollback retain the last admitted generation."
+      ],
+      "checks": [
+        "Clock-boundary and malformed/future date cases; stale/withdrawn/retracted values and mixed-generation negative tests.",
+        "Concurrent reports, moderation removal, cursor/cache invalidation and signed owner operations on real PostGIS."
+      ],
+      "exit": "A static/cached point never becomes a fictional live availability or fresh price.",
+      "paths": [
+        "backend/internal/modules/charging/",
+        "domain/src/main/kotlin/com/anpfuel/domain/charging/ChargingSnapshotFreshness.kt",
+        "docs/product/MAP_DISCOVERY_CONTRACT.md"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-11.md",
+      "commit": "feat(maps): apply freshness, moderation and source lifecycle rules",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-12",
+      "title": "Publish regional manifests and recoverable download contracts",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-11"
+      ],
+      "scope": "Public open data distribution with explicit access/integrity rules.",
+      "steps": [
+        "Expose versioned regional manifests and public immutable packages through existing Go/Compose/Caddy boundaries, separate from private S3 media. Do not make the private media bucket public.",
+        "Use HTTPS, verified digests and authenticated manifest integrity (signed metadata with app-pinned verification key), fixed allowed origins/path IDs, size limits, resumable Range/ETag semantics and key rotation.",
+        "Advertise engine-format compatibility and complete dependency sets. Stage files, verify all, atomically activate; retain rollback and reclaim policy. Open-license source/derived-database offers remain accessible as required."
+      ],
+      "checks": [
+        "Manifest/signature tamper, bad digest, changed ETag/range, disk full, cancelled transfer, missing neighbor/world files and old app compatibility.",
+        "HTTP actual-process tests, invalid path/redirect/SSRF controls and recovery to last valid package."
+      ],
+      "exit": "Downloads have a testable integrity and recovery protocol; public map delivery cannot expose private objects.",
+      "paths": [
+        "backend/ (existing download/publication boundaries)",
+        "infra/ (actual existing Caddy/Compose scope)",
+        "contracts/ (map distribution manifests)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-12.md",
+      "commit": "feat(maps): publish regional manifests and recoverable download contracts",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-13",
+      "title": "Prove the data pipeline before Android map work",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-12"
+      ],
+      "scope": "Hard DATA_GATE with real prepared bytes, process and local client decoding.",
+      "steps": [
+        "Execute admitted local input -> actual Rust executable/native generator -> real Go import/PostGIS -> running HTTP API -> Kotlin decoder fixture/Room import contract. No fake HTTP response may stand in for the real Go output.",
+        "Cover one fuel station with per-station ANP price, community-only station, charging site, combined site, no-price point, unknown/missing location, disputed identity and blocked-license record.",
+        "Record source/rights/preparer/generator/schema/API bytes and generation. Physical Android interaction is later; exact Kotlin decoding and local DB behavior must pass now."
+      ],
+      "checks": [
+        "End-to-end all named fixtures with exact IDs/prices/units and rejected inputs; real source process failures and old-generation survival.",
+        "Rust/Go/Kotlin contract checks and SQLite migration tests; required tests must execute rather than skip."
+      ],
+      "exit": "DATA_GATE PASS: data is consumable and legally admitted before adding the map tab.",
+      "paths": [
+        "docs/backend/evidence/maps/MAP-13.md",
+        "contracts/testdata/",
+        "backend/README.md"
+      ],
+      "gate": "DATA_GATE",
+      "evidence": "docs/backend/evidence/maps/MAP-13.md",
+      "commit": "feat(maps): prove the data pipeline before android map work",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-14",
+      "title": "Prove CoMaps engine reuse behind a narrow Android port",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-13"
+      ],
+      "scope": "Technical spike with real native engine, not a placeholder map.",
+      "steps": [
+        "Build the smallest pinned CoMaps-derived native library/adapter against the app toolchain without replacing com.anpfuel or application/navigation/DI roots. Inspect actual JNI names and resources before extraction.",
+        "Prove regional map render, pan/zoom, location-independent browsing, one custom selectable POI overlay, offline search and one offline car route. Keep core types inside the adapter; isolate callbacks and lifecycle/thread rules.",
+        "Measure native/APK/RAM/disk/build costs; inventory every packaged dependency, font/style/icon and network endpoint. Verify minSdk 26, required ABIs and native 16KB page-size compatibility. If extraction fails, record evidence and revise the bounded design; never call a WebView/external intent equivalent to embedded offline routing."
+      ],
+      "checks": [
+        "Real native render/search/route on owned emulator/device when authorized, plus JNI/ABI/lifecycle tests.",
+        "No missing native libs, no private upstream service/key assumption, no leaked activity/location callback."
+      ],
+      "exit": "ENGINE_GATE PASS: a measured working CoMaps-derived adapter and build recipe justify integration.",
+      "paths": [
+        "new bounded native engine module (name frozen after spike)",
+        "app/build.gradle.kts",
+        "gradle/libs.versions.toml",
+        "docs/adr/"
+      ],
+      "gate": "ENGINE_GATE",
+      "evidence": "docs/backend/evidence/maps/MAP-14.md",
+      "commit": "feat(maps): prove comaps engine reuse behind a narrow android port",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-15",
+      "title": "Add Android public map persistence and download recovery",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-14"
+      ],
+      "scope": "Room/managed file storage; no map UI until verified import.",
+      "steps": [
+        "Persist public map overlay generations, metadata, attribution and download progress using current DB conventions. Store map binaries outside Room; keep a separate private account namespace for routes/favorites.",
+        "Implement resumable cancel/retry downloads from MAP-12, signature/digest checks, dependency-aware activation, disk budget/quota warnings and safe deletion excluding active files.",
+        "Import public snapshots atomically; preserve old packages on failure. Reuse existing refresh/WorkManager policy instead of inventing aggressive periodic jobs or requiring login for public maps."
+      ],
+      "checks": [
+        "Real SQLite old-schema upgrade/rollback behavior, corruption, process death, partial writes, disk full and simultaneous readers.",
+        "WorkManager retry/cancel/account switch and signed-manifest/key rotation tests."
+      ],
+      "exit": "An interrupted download/import cannot corrupt the last working public map or reveal account-private state.",
+      "paths": [
+        "data/src/main/kotlin/com/anpfuel/data/local/AnpFuelDatabaseMigrations.kt",
+        "data/src/main/kotlin/com/anpfuel/data/local/charging/",
+        "data/src/main/kotlin/com/anpfuel/data/repository/"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-15.md",
+      "commit": "feat(maps): add android public map persistence and download recovery",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-16",
+      "title": "Integrate the engine with Compose lifecycle and location",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-15"
+      ],
+      "scope": "Map host and privacy-controlled platform services.",
+      "steps": [
+        "Wrap the proven native surface in Compose using verified lifecycle hooks; own resource creation/disposal, pause/resume, configuration change and process recovery. Keep domain/data independent of native SDK types.",
+        "Use Android platform location, foreground permission and approximate-location behavior; browsing/search/manual city selection work without permission or GPS. No new Play Services dependency or background location for simple browsing.",
+        "Implement compass/recenter and map camera persistence separately from navigation stack. Cancel obsolete requests by generation; never paint a late source/filter response into a new selection."
+      ],
+      "checks": [
+        "Lifecycle attach/detach/rotation/leak cases; no permission, approximate location, denied forever, GPS off and stale fix.",
+        "Deterministic view-model cancellation tests and native surface behavior evidence."
+      ],
+      "exit": "The map host works with existing app lifecycle, permissions and themes without continuous hidden GPS.",
+      "paths": [
+        "app/ (new map host/DI)",
+        "domain/ (map ports)",
+        "data/ (platform adapters)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-16.md",
+      "commit": "feat(maps): integrate the engine with compose lifecycle and location",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-17",
+      "title": "Add the fourth bottom tab and minimal map shell",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-16"
+      ],
+      "scope": "Exact requested navigation order and existing UI language.",
+      "steps": [
+        "Add Mapa between Comunidade and Perfil: Explorar | Comunidade | Mapa | Perfil. Use the existing bottom-bar icon system, localized label, equal-width cells and permanent visible labels.",
+        "Add a native MAP route/base following navigateToTabBase: single top, no restoration of a hidden child stack. Preserve station deep links and associate details opened from the map with the correct tab/origin.",
+        "Minimal shell contains the map, ANP/Comunidade selector at the top, fuel/charging filter entry, recenter, search and existing download affordance. Honor safe areas, app light/dark/dynamic themes and shared container borders; no app-wide redesign."
+      ],
+      "checks": [
+        "Actual navigation-controller regressions: four tabs/order, repeat tap, back, deep link, return from details and map child routes.",
+        "Compose semantics/48dp targets/200% font/narrow screen; affected app JVM, lint and debug assembly."
+      ],
+      "exit": "Four tabs work, and the real map is reachable without disrupting existing Explore/Community/Profile behavior.",
+      "paths": [
+        "app/src/main/kotlin/com/anpfuel/app/navigation/AbastevoBottomBar.kt",
+        "app/src/main/kotlin/com/anpfuel/app/navigation/TabNavigation.kt",
+        "app/src/main/kotlin/com/anpfuel/app/navigation/ (Routes/NavHost)",
+        "docs/mobile/UI_CONTAINER_GUIDELINES.md"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-17.md",
+      "commit": "feat(maps): add the fourth bottom tab and minimal map shell",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-18",
+      "title": "Render fuel and electric markers with clustering and selection",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-17"
+      ],
+      "scope": "Use the supplied generated pictograms; do not overload the map.",
+      "steps": [
+        "Integrate map-icons raw/provenance/SVG/Android exports through the current asset pipeline. Native marker backing/selection uses theme-aware neutral contrast, not hardcoded white on all maps.",
+        "Render fuel pump and electric bolt/plug as distinct symbols. Co-located services expose both without overlapping duplicate pins. Show selected-product price only when compatible and known; cluster density deterministically.",
+        "Preserve stable marker IDs across source changes. Fetch bounded viewports, debounce moves, expand clusters and reconcile selection after generation replacement; never place unknown/city-centroid stations as exact pins."
+      ],
+      "checks": [
+        "20/24/48/128px light/dark basemap inspection; generated alpha/ink/provenance and silhouette checks.",
+        "Dense synthetic viewport, overlapping sites, repeated pan/source switch, hit targets, TalkBack equivalent list and unknown geometry cases."
+      ],
+      "exit": "Users can distinguish, select and reach a real station without depending only on marker color.",
+      "paths": [
+        "docs/assets/map-icons/",
+        "app/src/main/res/drawable-nodpi/ (future integration)",
+        "app/ (map overlay adapter)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-18.md",
+      "commit": "feat(maps): render fuel and electric markers with clustering and selection",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-19",
+      "title": "Show fast station prices and honest source switching",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-18"
+      ],
+      "scope": "Map-to-bottom-sheet-to-existing-profile journey.",
+      "steps": [
+        "On marker tap show name, service type, selected source, exact product/unit prices, survey/report date, access/location quality and actions to route/open full profile/report price.",
+        "ANP mode shows station-specific ANP observations for the chosen existing survey period; if absent, say no ANP price for this station. Community mode uses the current validated community projection with its date/conditions. No silent fallback/mixing.",
+        "Charging markers remain discoverable in ANP mode but state ANP does not supply an electric tariff. Offer explicit switch to Comunidade; never disable the source selector silently. No-price stations remain visible. Reuse existing vehicle/product/week selection semantics after defining persistence scope."
+      ],
+      "checks": [
+        "Racing ANP/community responses, missing price, stale period, wrong fuel/unit, premium-vs-additive and EV-in-ANP tests.",
+        "Real quick sheet/profile route and data contract; no N+1 request fan-out."
+      ],
+      "exit": "Tap -> truthful quick prices -> existing profile/route works under both selected sources.",
+      "paths": [
+        "app/ (map quick sheet/view-model)",
+        "data/src/main/kotlin/com/anpfuel/data/repository/StationPriceRepositoryImpl.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/components/SourceTimeBadge.kt"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-19.md",
+      "commit": "feat(maps): show fast station prices and honest source switching",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-20",
+      "title": "Complete discovery, accessibility and the minimal release gate",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-19"
+      ],
+      "scope": "Search/filter/list equivalents before advanced navigation.",
+      "steps": [
+        "Support current area, city and name/address search, fuel types, compatible connector, AC/DC, known power, access/hours and date. Unknown metadata is shown and is not automatically excluded.",
+        "Provide equivalent accessible list of visible results, readable sheet order, focus return, map-control descriptions, app-owned dark/light styles and no permission lockout. Store public last map position locally without precise-coordinate telemetry.",
+        "Prove the minimum product end to end: open Mapa -> choose source/fuel -> see compatible pins -> quick price -> profile -> route action. A user-chosen installed open-source navigator can be an explicit optional interim action, never claimed as completed native navigation."
+      ],
+      "checks": [
+        "Native/device or user manual checklist with source dates, offline cached overlay, no GPS and 200% text.",
+        "Full affected navigation/UI/static tests and actual server->Kotlin price decode."
+      ],
+      "exit": "MINIMUM_MAP_GATE PASS with real map/prices; advanced navigation may remain planned, not hidden as completed.",
+      "paths": [
+        "app/ (map search/filter/list)",
+        "docs/backend/evidence/maps/MAP-20.md"
+      ],
+      "gate": "MINIMUM_MAP_GATE",
+      "evidence": "docs/backend/evidence/maps/MAP-20.md",
+      "commit": "feat(maps): complete discovery, accessibility and the minimal release gate",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-21",
+      "title": "Complete electric community and operational reports",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-20"
+      ],
+      "scope": "Signed contributions with offline recovery and honest recency.",
+      "steps": [
+        "Complete existing electric price/experience/edit/withdraw/vote/report screens by reuse. Add structured operational events per MAP-01, scoped to actual site/equipment/connector.",
+        "Reuse account proof, outbox, moderation, anti-abuse and ownership. Recover uploads after process death/network loss; contribution remains free. Do not activate photo intake or collection gates to add status reporting.",
+        "Separate static reference, dated community working reports and unavailable live feed. Show conditions and independent observations without invented scores or paid trust."
+      ],
+      "checks": [
+        "Go process/PostGIS + Kotlin outbox replay, duplicate/reordered edits, withdrawn/rejected reports, foreign owner and concurrent moderation.",
+        "Account switch/logout, airplane recovery and timestamp boundary cases."
+      ],
+      "exit": "A real authorized user can submit/recover/edit/withdraw a report and see the correct public projection.",
+      "paths": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/charging/",
+        "data/src/main/kotlin/com/anpfuel/data/remote/charging/",
+        "backend/internal/modules/charging/"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-21.md",
+      "commit": "feat(maps): complete electric community and operational reports",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-22",
+      "title": "Implement offline route planning and search with the native core",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-21"
+      ],
+      "scope": "Driving routes, stops and road constraints.",
+      "steps": [
+        "Expose the verified core search/route APIs through the adapter. Resolve origin/destination by manual input, map point, current fix or saved POI; support intermediate stops and route preview.",
+        "Use road access/one-way/turn restrictions and permitted avoidance options proven upstream. Compare only routes actually returned; do not invent alternative paths or real-time traffic.",
+        "Require all regional/neighbor routing dependencies. If missing, offer the explicit package download; no straight-line route presented as drivable. Include station entrance rather than inaccessible centroid."
+      ],
+      "checks": [
+        "Offline cross-region/neighbor, no route, inaccessible entrance, one-way/divided road, origin=destination and intermediate stops.",
+        "Native route cancellation/lifecycle and route-option contract cases with deterministic regional fixtures."
+      ],
+      "exit": "A real offline driving route can be planned, changed and cancelled with explicit missing-map states.",
+      "paths": [
+        "native engine adapter",
+        "domain/ (routing port/value objects)",
+        "app/ (route preview)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-22.md",
+      "commit": "feat(maps): implement offline route planning and search with the native core",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-23",
+      "title": "Implement foreground navigation, rerouting and voice",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-22"
+      ],
+      "scope": "Real guided navigation with explicit start/stop and privacy.",
+      "steps": [
+        "Add maneuver/ETA/distance display, route progress, off-route recalculation and recoverable guidance state using the proven core. Time estimates are estimates without live traffic.",
+        "Use Android platform foreground-service/location APIs only during explicit active navigation, notification and stop action. Handle audio focus and offline voice using local OS TTS with optional user-selected engine; do not add a cloud TTS dependency.",
+        "Keep GPS traces on-device only if explicitly saved; no background tracking for browsing, no automatic external telemetry. Handle tunnel/poor GPS, route cancel, call interruption and permission revocation."
+      ],
+      "checks": [
+        "Synthetic location replay in owned emulator: progress, wrong turn, GPS loss, reroute and stop releases resources.",
+        "Foreground service API-level rules, notification/permission failure, audio focus and no local TTS engine fallback."
+      ],
+      "exit": "Native guided navigation works offline, stops promptly and does not imply recording consent.",
+      "paths": [
+        "native engine adapter",
+        "app/ (navigation service/UI)",
+        "AndroidManifest.xml (actual existing location/FGS rules)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-23.md",
+      "commit": "feat(maps): implement foreground navigation, rerouting and voice",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-24",
+      "title": "Finish the regional offline experience and update UX",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-23"
+      ],
+      "scope": "Maps, references and prices keep distinct generations and lifetimes.",
+      "steps": [
+        "Expose region download sizes/dependencies, Wi-Fi preference, pause/cancel/retry, storage controls and active-route safe deletion/update rules.",
+        "Activate a complete map generation only when engine and region dependencies match; keep last-good fallback and recover from process death. Overlay/reference/prices update separately and retain their dates.",
+        "Demonstrate offline browse/search/route/guidance/POI detail with downloaded data and no network endpoint contact. Missing regions or prices get explicit actions rather than false coverage."
+      ],
+      "checks": [
+        "Airplane mode after clean restart, corrupted package, interrupted update, low storage and cross-region journey.",
+        "No stale price/live-status claim, no mixed native map generations and no file deletion while in use."
+      ],
+      "exit": "OFFLINE_GATE PASS covers the complete relevant journey, not only cached screenshots.",
+      "paths": [
+        "data/ (downloads/cache)",
+        "app/ (offline region management)",
+        "docs/backend/evidence/maps/MAP-24.md"
+      ],
+      "gate": "OFFLINE_GATE",
+      "evidence": "docs/backend/evidence/maps/MAP-24.md",
+      "commit": "feat(maps): finish the regional offline experience and update ux",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-25",
+      "title": "Add private favorites, saved trips and safe file exchange",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-24"
+      ],
+      "scope": "Useful CoMaps-inspired personal features, no mandatory tracking.",
+      "steps": [
+        "Save stations and route plans locally with clear account/guest ownership. Reuse existing private backup/sync contracts and deny cross-account restore by default.",
+        "Implement needed KML/GPX import/export via a reviewed open-source parser or existing primitives; KMZ only with bounded archive handling. Keep original/source IDs and export license notices for public data.",
+        "Recording a trip is optional explicit opt-in, local by default, with stop/delete/export controls; no automatic recording during normal navigation and no public route upload."
+      ],
+      "checks": [
+        "Malicious XML/XXE, oversized/recursive zip, traversal, point-count limits and malformed coordinates.",
+        "Account A/B/guest isolation, logout, stale restore, deleted trip resurrection, process restart and signed private backup cases."
+      ],
+      "exit": "Personal data is useful and portable without silently publishing home addresses or paths.",
+      "paths": [
+        "domain/ (private saved trip model)",
+        "data/ (private storage/backup)",
+        "app/ (favorites/trip screens)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-25.md",
+      "commit": "feat(maps): add private favorites, saved trips and safe file exchange",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-26",
+      "title": "Build the electric energy model as a pure domain component",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-25"
+      ],
+      "scope": "Conservative configurable calculations with explicit assumptions.",
+      "steps": [
+        "Use useful battery capacity, current SOC, desired reserve and consumption in exact units. Start with manual inputs/calibration from private sessions; PBE remains optional reference only after admission.",
+        "Calculate usable energy and segment consumption without claiming laboratory range as real range. Declared charger power is only an input bound; charging time depends on vehicle/curve/SOC and unknown components.",
+        "Define missing-data behavior and sensitivity inputs. Elevation can use admitted OSM/core/SRTM data later in this same scoped task if necessary; climate is not required and no noncommercial API is admitted."
+      ],
+      "checks": [
+        "Boundary reserve/SOC/capacity, PHEV usable portion, units, rounding/overflow, negative distance/energy and missing-consumption cases.",
+        "Compare independent hand-calculated vectors and monotonic behavior; never count tests that duplicate implementation only."
+      ],
+      "exit": "A documented pure model returns interpretable estimates/unknowns, not guaranteed trip feasibility.",
+      "paths": [
+        "domain/ (EV trip energy rules)",
+        "backend/ (only if authoritative shared calculations are required)",
+        "contracts/testdata/ (energy vectors)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-26.md",
+      "commit": "feat(maps): build the electric energy model as a pure domain component",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-27",
+      "title": "Plan charging stops with a reachable alternative",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-26"
+      ],
+      "scope": "Road-distance energy feasibility and explicit coverage gaps.",
+      "steps": [
+        "Find compatible charging candidates along native road routes with bounded offline overlay/corridor data. Account for road detours, access/hours, useful power, tariff conditions and report recency.",
+        "Plan energy-constrained legs with reserve and charging stops. Test reachability of a fallback when the primary point fails; expose cases with no evidenced alternative instead of asserting safety.",
+        "Do not auto-route onto private/closed sites, merge incompatible connectors or optimize unknown prices as zero. Keep algorithm cancellation/limits so large queries cannot hang the phone or API."
+      ],
+      "checks": [
+        "Single isolated charger, failed primary, unreachable alternate, nighttime closure, incompatible plug, unknown power/tariff, road closure uncertainty and offline missing corridor.",
+        "Deterministic route/energy integration vectors and bounded candidate explosion tests."
+      ],
+      "exit": "A plan explains primary/alternate reachability and assumptions; insufficient evidence is visible.",
+      "paths": [
+        "domain/ (EV stop planner)",
+        "native routing adapter",
+        "data/ (corridor charging lookup)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-27.md",
+      "commit": "feat(maps): plan charging stops with a reachable alternative",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-28",
+      "title": "Expose trip planning and complete the electric private journey",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-27"
+      ],
+      "scope": "Minimal themed screens over proven contracts.",
+      "steps": [
+        "Add route inputs, vehicle/SOC/reserve/consumption, stop list, alternative details and estimated arrival charge with understandable assumptions. Preserve current profile visual conventions and shared borders.",
+        "Allow save/download and replan after a failed charger, maintaining provenance/recency offline. No promise that a trip cannot strand the user.",
+        "Finish charge history/cost/scenario execution and electric backup fields needed by the trip journey. Preserve ICE/free/PHEV accounting and existing entitlement rules; no new paid safety/contribution restriction."
+      ],
+      "checks": [
+        "Server->Android price/scenario/private session actual flow, offline restart and two-account/two-device backup/restore when available.",
+        "TalkBack, 200% font, invalid inputs, low SOC, no map/no station and account switching."
+      ],
+      "exit": "The EV journey works from vehicle and map through plan, alternative, saved trip and private charge history.",
+      "paths": [
+        "app/ (EV trip flow)",
+        "app/src/main/kotlin/com/anpfuel/app/ui/ledger/",
+        "data/ (vehicle/backup transport)",
+        "domain/ (existing cost rules)"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-28.md",
+      "commit": "feat(maps): expose trip planning and complete the electric private journey",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-29",
+      "title": "Measure performance, native compatibility and operational budgets",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-28"
+      ],
+      "scope": "Measured constraints before broader geographic rollout.",
+      "steps": [
+        "Measure cold/warm map load, frame pacing, native/Java memory, APK/ABI size, package/storage use, GPS battery impact, network bytes, spatial query latency and routing cancellation.",
+        "Use representative low-resource device/emulator plus dense and sparse synthetic regions; define explicit budgets from product needs and measured MAP-14 baseline before acceptance, never after failures to declare green.",
+        "Bound map requests/clusters/caches/workers, verify source ingestion/backpressure and public package traffic. Build maps off the shared VPS unless its measured capacity supports the job; no live stress test without scoped authorization."
+      ],
+      "checks": [
+        "Document hardware/OS/ABI/data/config/commit/commands and repeatable samples; required ABIs, minSdk and 16KB native page-size checks.",
+        "DB concurrency/load/failure, regional generation resource ceilings, leak/pause/resume and cancellation."
+      ],
+      "exit": "PERFORMANCE_GATE PASS has declared budgets and actual measurements; national capacity remains unclaimed.",
+      "paths": [
+        "docs/backend/evidence/maps/MAP-29.md",
+        "backend/ (query/job metrics)",
+        "app/ (native performance validation)"
+      ],
+      "gate": "PERFORMANCE_GATE",
+      "evidence": "docs/backend/evidence/maps/MAP-29.md",
+      "commit": "feat(maps): measure performance, native compatibility and operational budgets",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-30",
+      "title": "Plan and validate optional in-car integration",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-29"
+      ],
+      "scope": "Open-source client adapter; external vehicle-host acceptance separate.",
+      "steps": [
+        "Assess AndroidX Car App Library license/dependency tree for the pinned version; no new closed-source map/navigation SDK or Google location dependency.",
+        "If admitted, implement a thin optional Android Auto client over the same local map/routes with host-safe controls, navigation intents and correct start/end metadata. Phone navigation must work without the host.",
+        "Car host/distribution rules, DHU/device availability and certification are external gates. If strict FOSS host requirements cannot be met, retain explicit EXTERNAL_PENDING/excluded platform obligation and do not block core phone features or claim this capability delivered."
+      ],
+      "checks": [
+        "Navigation service/host lifecycle, stop request, reconnect and no driving-time text-entry regressions.",
+        "Owned DHU/head-unit evidence only when available/authorized; missing host is not a pass."
+      ],
+      "exit": "Optional in-car scope and its actual acceptance are explicit; no false parity or external certification claim.",
+      "paths": [
+        "app/ (optional car adapter after admission)",
+        "docs/backend/evidence/maps/MAP-30.md"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-30.md",
+      "commit": "feat(maps): plan and validate optional in-car integration",
+      "required_for_phone": false
+    },
+    {
+      "id": "MAP-31",
+      "title": "Run regression, privacy and failure acceptance",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-29"
+      ],
+      "scope": "Mandatory risk tests and final local source union.",
+      "steps": [
+        "Prove isolation between public OSM references, public community and account-private routes/history. Review licensing obligations for actual derived databases; physical table separation alone is not a legal determination.",
+        "Exercise upgrades from actual prior Room/Postgres release, backup/restore/erasure, missing permissions, revoked account, stale source/manifests, source switch races and native failure recovery.",
+        "Preserve combustion ANP/community, free accounts/social participation, legacy IDs, existing UI/navigation and all critical security gates. Review dependencies/artifacts for secrets, private GPS and telemetry."
+      ],
+      "checks": [
+        "Targeted security/money/privacy/SQL suites immediately, then the final appropriate Go/Rust/Kotlin/native union once.",
+        "Two-account/device/manual and rendered accessibility evidence explicit; missing external executions remain OWED."
+      ],
+      "exit": "All mandatory local contracts pass with exact artifacts and preserved regressions; evidence distinguishes local and external acceptance.",
+      "paths": [
+        "docs/backend/TEST_STRATEGY.md",
+        "docs/backend/evidence/maps/MAP-31.md",
+        "existing EV/MEX test suites"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-31.md",
+      "commit": "feat(maps): run regression, privacy and failure acceptance",
+      "required_for_phone": true,
+      "optional_predecessor": "MAP-30 local disposition; external host proof is nonblocking for the phone"
+    },
+    {
+      "id": "MAP-32",
+      "title": "Prepare scoped staging and manual acceptance runbooks",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-31"
+      ],
+      "scope": "Reviewable deployment plan, not automatic production mutation.",
+      "steps": [
+        "Produce version/source/license manifest, configs/defaults, migration/package compatibility, backup rehearsal, rollback plan and smoke checklist for teste.abastevo.com.br only when separately authorized.",
+        "Backend checks use synthetic records and bounded requests; no real contributor content or unsanctioned load campaign. Android manual steps are provided to the user unless device execution is explicitly authorized.",
+        "Check fuel/charging pins, exact source switch, detail/profile/routes, download/airplane restart, no GPS, neighbor maps, failed charger alternative and private restore. Production/G09/public pilot remain distinct."
+      ],
+      "checks": [
+        "Local restore rehearsal and configuration validation; authorized staging results recorded only if actually executed.",
+        "Manual result sheet identifies device/build/region/source date; pending cases do not become PASS."
+      ],
+      "exit": "An operator/user can execute the runbook with explicit rollback and evidence; release stays uncertified until required real proofs.",
+      "paths": [
+        "docs/backend/evidence/maps/MAP-32.md",
+        "docs/operations/ (new scoped runbook)",
+        "docs/planning/PROGRESS.md"
+      ],
+      "gate": "",
+      "evidence": "docs/backend/evidence/maps/MAP-32.md",
+      "commit": "docs(maps): prepare scoped staging and manual acceptance runbooks",
+      "required_for_phone": true
+    },
+    {
+      "id": "MAP-33",
+      "title": "Deliver the cumulative protected batch and reconcile obligations",
+      "status": "PLANNED",
+      "depends_on": [
+        "MAP-32"
+      ],
+      "scope": "One final dev-to-main integration; no unrelated PR sweep.",
+      "steps": [
+        "Freeze/reconcile the final source union, complete the phase/feature/license/acceptance matrix, inventory open PRs and prove required commits are included. Merge current main normally if needed; revalidate affected changes.",
+        "With explicit delivery authorization, push maintained dev and open/reuse one protected cumulative dev -> main PR. Inspect all applicable exact-head/base checks and reviews at finalization, fix failures in new commits, and preserve history.",
+        "Invoke scripts/git-flow.sh finish with the actual PR and required Quick verification only when guards pass. Missing/failed/skipped/cancelled required checks block merge; no force/admin bypass/direct-main push. Keep dev, verify ancestry and mirror allowed wiki pages once if authorized."
+      ],
+      "checks": [
+        "git diff --check, secret-surface/dependency review, actual required CI current head/base and meaningful final acceptance evidence.",
+        "Record INTEGRATED/WIKI_PENDING and RELEASE_CERTIFIED separately; do not close incomplete issues or merge unrelated PRs merely because open."
+      ],
+      "exit": "Authorized source integration preserves every scoped commit and reports all remaining external/device/operator obligations honestly.",
+      "paths": [
+        "scripts/git-flow.sh",
+        "docs/planning/DELIVERY_WORKFLOW.md",
+        "docs/planning/PROGRESS.md"
+      ],
+      "gate": "DELIVERY_GATE",
+      "evidence": "docs/backend/evidence/maps/MAP-33.md",
+      "commit": "feat(maps): deliver the cumulative protected batch and reconcile obligations",
+      "required_for_phone": true
+    }
+  ]
+}
