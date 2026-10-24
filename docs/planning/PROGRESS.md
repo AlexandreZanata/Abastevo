@@ -1,5 +1,20 @@
 # Current execution state
 
+- Enterprise portal ESP-13 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-11 `af615284`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-13.md). Portal artifacts
+  now use `enterprise-portal-v2`: official-pin-bound manifest digest,
+  content-addressed CSS/JS, indexable sitemap + robots, and `portalcheck`
+  verification of manifest/file digests, public-field/JSON/search/CSV
+  allowlists, CPF/private-key/raw-HTML rejection, link/sitemap completeness,
+  gzip/page/file/byte budgets and two-build reproducibility. Real 2025 official
+  slice (3,375 all-unmatched records) over the synthetic station/price fixture:
+  noindex 3,409 pages/3,419 files/15,231,739 bytes; indexable + real search JS
+  3,409 pages/3,421 files/15,932,636 bytes, sitemap 3,408 URLs/466,272 bytes;
+  reproducible compare PASS; max HTML gzip 10,023 B, shard 376 B. Unit/race,
+  integration, real official portal, vet/staticcheck/sqlc/gofmt/diff PASS.
+  Real prices remain blocked by ESP-07/rights; multi-edition FQ and live fine
+  revalidation remain OWED. No VPS/publication/merge. Next: ESP-14.
 - Enterprise data/static portal ESP-11 2026-10-24: LOCAL_DONE (event-level) /
   INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-11.md).
   Merged FQ-PORTAL-READY; real FQ-07 seven-file acceptance 35,911=35,612+293
