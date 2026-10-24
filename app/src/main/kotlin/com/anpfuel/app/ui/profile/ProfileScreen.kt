@@ -257,7 +257,11 @@ fun ProfileScreen(
                 }
             }
 
-            OutlinedButton(onClick={onNavigate(Routes.qualityReportHistory())},modifier=Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { onNavigate(Routes.qualityReportHistory()) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = AnpContainerDefaults.containerShape(),
+            ) {
                 Text(stringResource(R.string.quality_reports_own))
             }
 

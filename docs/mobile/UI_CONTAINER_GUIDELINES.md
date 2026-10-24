@@ -33,6 +33,7 @@ val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
 
 Card(
     modifier = Modifier.fillMaxWidth(),
+    shape = AnpContainerDefaults.containerShape(),
     colors = CardDefaults.cardColors(containerColor = containerColor),
     border = AnpContainerDefaults.borderStroke(containerColor),
 ) {
@@ -45,12 +46,18 @@ For a Surface:
 ```kotlin
 Surface(
     color = containerColor,
-    shape = MaterialTheme.shapes.large,
+    shape = AnpContainerDefaults.containerShape(),
     border = AnpContainerDefaults.borderStroke(containerColor),
 ) {
     // Grouped content
 }
 ```
+
+Content containers use `AnpContainerDefaults.containerShape()` (the active
+Material medium shape) so Perfil cards, Premium entries, account cards and
+container-style buttons share the same more rectangular corners. Do not override
+the radius per screen. Nested panels inside a card may use
+`MaterialTheme.shapes.small`.
 
 Keep the existing `Shape` on the card/surface. Material applies the border to
 that same shape, so the fill, outline and clip cannot disagree. Do not add a

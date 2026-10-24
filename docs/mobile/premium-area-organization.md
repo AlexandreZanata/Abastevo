@@ -27,7 +27,8 @@ impossible.
   fixed Play subscription destination and post-store refresh through a
   resume-scoped refresh flow. No cancellation or renewal is simulated.
 - `ui/premium/PremiumEntry.kt`: one gold/crown entry component, full in Profile
-  and compact in Manage account.
+  and compact in Manage account. It uses the shared container shape rather than a
+  one-off radius.
 - Profile: Premium category immediately below the signed-in account card, shown
   only for `AUTHENTICATED` or `OFFLINE_ACCOUNT` sessions.
 - Manage account: old Premium section and Premium query removed; one compact
@@ -39,6 +40,11 @@ impossible.
 - Fixed light/dark Premium palette in `ui/theme/PremiumColors.kt`, selected by the
   app theme via `LocalAnpDarkTheme`; dynamic colors still drive general surfaces.
 - Local crown vector, shared `ProfileActionRow`, 25 new strings in eight locales.
+- Follow-up container-shape pass: `AnpContainerDefaults.containerShape()` (the
+  active Material medium shape) now covers the Premium entry, the private-reports
+  button, Manage-account guest/status cards and the account-key card. The nested
+  key panel uses `MaterialTheme.shapes.small`. This matches the more rectangular
+  Perfil tools and signed-in cards instead of 18/22/24dp one-offs.
 - Navigation bottom bar keeps three tabs. Premium and premium-management keep
   Profile selected; tapping Profile still opens the base page with
   `navigateToTabBase` and no child restore.
@@ -63,10 +69,10 @@ impossible.
   the new Premium files); debug APK produced (28,272,706 bytes).
 - Focused Premium/navigation/color tests PASS before the union.
 - `git diff --check` clean; secret-surface review found no credentials/PII added.
-- Debug APK SHA-256 `48f1558ef6f4c3d269ece1ffe2ebf47b1544bc4f9de9489b10a464f03e2e31a8`.
+- Debug APK SHA-256 `cbdc985d8c016f0a8a3060d5459c1ff5237b6468f58428efb4638f925e07bd15`.
 - Device update: `adb install -r app/build/outputs/apk/debug/app-debug.apk` succeeded
   on 2311DRK48G; package `com.anpfuel.app.debug`, version `3.1.0-debug`,
-  lastUpdateTime `2026-10-24 08:22:04`. firstInstallTime remained
+  lastUpdateTime `2026-10-24 08:28:23`. firstInstallTime remained
   `2026-10-05 16:00:02` (no data clear). No settings change or UI automation.
 
 ## Limits and manual review

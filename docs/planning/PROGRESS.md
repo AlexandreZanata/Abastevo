@@ -7,9 +7,11 @@
   compact Manage-account shortcut, old account Premium section/query removed,
   owner-fenced VM moved, resume-scoped status refresh, fixed light/dark gold
   palette, local crown, 25 strings × 8 locales and three-tab Profile context
-  preserved. 483 app tests 0 failures/errors/skips; lint 0 errors (257 existing
-  warnings); debug APK 28,272,706 bytes, SHA-256 `48f1558e…`, installed via
-  `adb install -r` on 2311DRK48G without data clear. Purchase/restore remain unavailable by design;
+  preserved. Follow-up container-shape pass standardizes Premium entry,
+  private-reports button and Manage-account cards on the active medium shape.
+  483 app tests 0 failures/errors/skips; lint 0 errors (257 existing warnings);
+  debug APK 28,272,706 bytes, SHA-256 `cbdc985d…`, installed via `adb install -r`
+  on 2311DRK48G without data clear. Purchase/restore remain unavailable by design;
   no backend/billing change. Rendered visual/font/TalkBack review remains
   VISUAL_VALIDATION_PENDING for the owner; no production or release claim.
 
