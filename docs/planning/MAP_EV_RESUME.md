@@ -1,130 +1,85 @@
-# MAP-14 bounded continuation after release-build recovery
+# Resume the Abastevo map after native engine acceptance
 
-Date: 2026-10-24. Phase: IN_PROGRESS / ENGINE_GATE_PARTIAL.
-Worktree: `/data/dev/worktrees/abastevo-map-ev`,
-branch `codex/map-ev-implementation`, base `721582b8`, with uncommitted work.
+Checkpoint review: 2026-10-25. **ENGINE_GATE PASS / LOCAL_DONE / INTEGRATION_PENDING** for
+[the accepted extraction matrix](../backend/evidence/maps/MAP-14_ENGINE_GATE.md).
+The [receipt](../backend/evidence/maps/map14-final/acceptance.json) pins exact
+artifacts, source files, tests and runtime qualifications. Earlier PARTIAL/owner
+requests are preserved in [history](history/MAP_EV_RESUME_BEFORE_ENGINE_ACCEPTANCE_20261024.md).
 
-Resume the existing work; preserve its dirty tree and do not restart MAP-00.
-Read current PROGRESS, MAP-14 and MAP-14_BUILD_RECOVERY evidence, then the
-selected MAP-14 task. This continuation does not authorize push/merge/deploy,
-real-phone installation, a different engine or a false gate declaration.
+Reuse `/data/dev/worktrees/abastevo-map-ev`, branch
+`codex/map-ev-implementation`, from the checkpoint commit containing this file.
+Inspect actual HEAD/status first. Preserve other checkouts and all existing
+MAP-00–16 work. No source/phone/VPS activation or remote delivery is implied.
 
-## Decisions already resolved
+## Already resolved — do not ask the owner again
 
-1. The user accepted the engine APK budget of 80 MiB. Do not request that
-   authorization again or raise the threshold further to pass a failed build.
-2. Build release classes and native code together with the recorded source
-   patch. The trailing gold option came from CMake IPO; it has been corrected
-   without disabling ThinLTO or editing generated Ninja files. The real arm64
-   release candidate is `/tmp/abastevo-comaps-release-arm64`; regenerate it with
-   `scripts/maps/build-comaps-aar.sh` if the temporary directory is absent.
-3. Do not delete or regenerate the SDK BuildConfig. `maps/engine` consumes the
-   original release class and the recorded JNI consumer rules.
-4. MAP-15 Ed25519 implementation direction: use the already pinned native
-   `platform::crypto::VerifyEd25519`/Monocypher behind an injected Abastevo
-   verification port. No new provider dependency or handwritten crypto is
-   needed. Audit the BSD-2-Clause source/notices and prove exact Go-signed bytes,
-   RFC vectors, bad lengths/message/key/signature, trust and rotation on API 26
-   before accepting that bridge. No implementation is claimed by this choice.
-5. Reuse existing Room/WorkManager/file-storage patterns. Allocate the next
-   append-only schema version from the actual head. Normal migration/download
-   implementation choices do not require a new owner decision.
+- The accepted ceiling is 80 MiB. The universal release is 74.19 MiB with both
+  ARM ABIs. Do not raise the ceiling to pass a future failure.
+- No manual gold/lld workaround or hybrid AAR remains. The source patch retains
+  ThinLTO, uses NDK LLD and strips unshipped metadata before the build ID.
+- Both ARM ABIs have byte-identical independent-checkout AAR/classes/core
+  comparisons. The exact resources, full notices/SBOM and expanded code audit
+  pass. Code2000 and KhmerOS are excluded; no arbitrary human legal-owner stamp
+  remains a local development prerequisite. Public source-offer publication is
+  still mandatory before public distribution.
+- Actual ARM64/16 KB/OpenGLES3 and ARM32/API30/Vulkan render/search/route,
+  native lifecycle and canonical overlay selection pass. Failed ARM32 OpenGL
+  emulator configurations are recorded and remain unaccepted; they are not
+  the recipe for repeating the accepted ARM32 test. No physical all-device or
+  production certification was inferred.
+- Static builder reports deliberately say `NOT_EVALUATED_BY_STATIC_BUILDER`
+  for runtime/gate fields. Use the versioned receipt for the phase result.
 
-## Work still required, one bounded task at a time
+## Use the existing admitted artifact
 
-- Reconcile the MAP-12/MAP-13 review obligations before certifying DATA_GATE:
-  reject non-finite viewport coordinates before storage; prevent serving changed
-  package bytes under a previously verified digest and immutable URL; and feed
-  actual API response bytes into the Kotlin HTTP decoder. The old corpus codec
-  expects `format/version/generation/assertions`, whereas the endpoint returns
-  `generation/items/next_cursor/generated_at`. Preserve exact identity/price
-  continuity from preparation; adjacent fixture tests are not one end-to-end
-  proof. The prior review reproduced the first two failures in an isolated copy.
-- MAP-14 T06: implement and prove canonical UUID hit-testing, independent
-  overlay generations, correct fuel/electric/co-located symbols, clustering
-  and the accessible equivalent. A KML title or rendered pin alone is not
-  selection acceptance. Use the actual SDK APIs, not a mocked map.
-- T04/T02: complete cancellation, explicit lifecycle/teardown and stale-callback
-  handling, permission denial/double-init/rotation/process-death/leak checks.
-- T01/T03/T07: clean-source rebuild comparison, the remaining supported ABI
-  matrix, admitted minimal resources, complete transitive audit/SBOM/notices,
-  endpoint/secret scan and source/update/rollback recipe. The local arm64 build
-  does not close all of these tasks.
-- T08: verify the packaged APK and actual 16 KB runtime, measure the remaining
-  declared costs, and close ENGINE_GATE only with the required real evidence.
-  Earlier x86_64/API 26 render/search/route results remain probe evidence; they
-  do not demonstrate execution of the new arm64 candidate.
+Persistent candidate (outside Git and `/tmp`):
+`/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22`.
+AAR SHA-256:
+`d2ec37881ede4e2288e1a929f01a1eabab193e7a6d518c76ff4342f085f2b10c`.
+Pass its absolute path as `-PcomapsSdkDir=...`. The SDK BuildConfig stays intact;
+never substitute debug classes, remove it, copy raw unadmitted SDK assets or
+edit generated Ninja files. Both advertised APK ABIs must contain the core.
 
-After DATA_GATE and ENGINE_GATE actually pass, continue MAP-15, then MAP-16
-and the later map tab. Do not move the full gate into a documentation waiver.
-Keep MAP-10 corridor/query-plan and MAP-12 rotation/recovery obligations visible
-until implemented or explicitly reassigned with their acceptance preserved.
+Rebuild only when needed using [the builder recipe](../../maps/engine/upstream/README.md).
+Pinned source is `/data/dev/src/comaps-4587b8ad`; a second independent source
+checkout and prepared-input hashes are documented in the evidence. Changes to
+SDK pin/patch/native ABI/resources invalidate affected artifact acceptance;
+ordinary Compose work does not require repeating a clean C++ build.
 
-Run meaningful affected checks immediately; use dedicated disposable PostGIS
-for SQL/concurrency changes and existing authorized emulator surfaces for native
-proof. Do not touch the physical phone or staging. Leave truthful evidence and
-atomic checkpoints after each bounded task; preserve previous uncommitted work
-and do not invent a tested commit SHA.
+## Next bounded work — real integration, not more owner decisions
 
-## Progress since this resume (2026-10-24)
+1. Reconcile retained MAP-15 integration items before claiming real downloads:
+   API-26 Ed25519 verification, WorkManager retry/cancel, schema-25 migration
+   and active-package-to-native storage layout. Reuse existing patterns and
+   allocate an append-only schema change only if the actual schema needs one.
+   Java provider absence is an engineering failure state, not an owner decision.
+   The pinned source already has Monocypher/BSD-2-Clause Ed25519; expose it
+   behind the existing verification port (or a small owned JNI bridge), retain
+   source/license hashes and prove exact Go bytes/RFC vectors, wrong lengths,
+   key/message/signature mutation, trust/rotation and fail-closed behavior on
+   API 26. No new provider or handwritten cryptographic algorithm is needed.
+2. Connect the actual activated package generation to the SDK's readable
+   internal versioned map directory. Preserve the prior active generation on
+   verification/native activation failure. Do not use an adb-seeded directory
+   or the probe fixture as the product downloader.
+3. Continue MAP-17: a process-scoped singleton engine, the actual native
+   MapHost and four tabs in order Explorar | Comunidade | Mapa | Perfil.
+   Complete error/loading/no-package/first-fix-recenter states with real adapter
+   behavior. The source host now waits for readiness, releases retired owners
+   and forwards the full SDK surface lifecycle; a bare Activity without an
+   AndroidX lifecycle owner is rejected. Test the real Compose/native host,
+   repeat tab/back/deep links/recreation and the minified product path.
+4. MAP-18/19/20 own viewport policy, dense OSM/bookmark disambiguation, final
+   native artwork/targets, localized accessible list, genuine API stations,
+   exact source-specific prices and minimum-map acceptance. Never pin unknown
+   or city-centroid locations as exact stations, expose debug KML identity
+   labels, or substitute a fixture/fake map/button for the real screen.
 
-- MAP-10 review fixed: `NaN`/`Inf` viewport coordinates are rejected before
-  storage; `capabilities.price_known` is now projected from the selected
-  source/product price array, so a hidden community price is not reported as a
-  known ANP price.
-- MAP-12 review fixed: package bytes are re-read and SHA-256-verified before
-  every response; a changed file returns `409 map.package-changed` instead of
-  serving under the old immutable URL/ETag.
-- MAP-13 review fixed: the actual API response is captured in
-  `contracts/testdata/map/assertions-response-v1.json` and decoded by
-  `MapDiscoveryResponseCodec`; the test cross-checks the API item against the
-  prepared corpus (station UUID and exact `5890` price).
-- MAP-14 T04 adapter guards added: serialized concurrent init, active search
-  listener/routing container tracking, stale search/route cancellation and
-  place-page listener removal. Manual double-init/rotation/relaunch/permission-
-  denied browsing passed. Instrumented leak/process-death tests remain open.
-- Debug probe fixture note: use an unpacked AAR that retains
-  `app.organicmaps.sdk.BuildConfig` (for example a fresh `sdk-debug.aar` with
-  only R classes removed). Removing BuildConfig reproduces a
-  `NoClassDefFoundError`; do not delete it.
-- T08 arm64 runtime PASS on the authorized physical phone (2311DRK48G,
-  Android 16/API 36, 4 KB pages) using the release AAR inside the isolated
-  `mapProbe` variant: render, pan, zoom, 38-result offline search, 1.6 km/288 s
-  offline route and UUID overlay selection worked; rotation repainted. The
-  earlier blank surface was an unreadable adb-created external map directory;
-  internal `files/261004` data renders. Overlay KML declaration/escaping was
-  fixed. Owner chose the physical-phone/all-device direction; actual 16 KB
-  runtime is DEFERRED and not proven. The multi-ABI release artifact now carries
-  arm64-v8a and armeabi-v7a: APK 80,407,806 bytes (76.68 MB), SHA
-  `b2ede0a6…`, both cores 0x4000-aligned, zipalign/80 MiB gate PASS (~3.32 MiB
-  headroom); armv7 runtime is not executed. See
-  [MAP-14 evidence](../backend/evidence/maps/MAP-14.md) and
-  [multi-ABI evidence](../backend/evidence/maps/MAP-14_MULTI_ABI.md).
-- T01/T03 clean-build double-build PASS: generated `android/sdk/build` and
-  `.cxx` removed, arm64 AAR rebuilt; AAR `1fe196f9…`, `classes.jar`
-  `074122f4…` and core `08342926…` byte-identical (`cmp` 0, 4m 1s). A
-  fresh-checkout clone comparison remains. See
-  [reproducibility evidence](../backend/evidence/maps/MAP-14_REPRODUCIBILITY.md).
-- T06 LOCAL_DONE / INTEGRATION_PENDING: canonical UUID dedupe, fuel/charging,
-  location quality, 60 m
-  clustering, native Gas/ChargingStation/Information symbols and the 48 dp
-  accessible Compose list are implemented; the prepared Abastevo fuel/electric
-  exports are now 24 dp list icons. Safe generation swap retains the
-  old category until commit; deferring `showBookmarkCategoryOnMap` fixed a
-  reproduced native `CHECK(m_updatedGroups.empty())` crash. Phone probe
-  committed two generations (7/6/3 then 8/7/3 markers/unique/clusters) and
-  removed the old file. Clean-location cluster tap PASS:
-  `ABASTEVO_CLUSTER:c1-0`, 3 members; the 3 phone instrumentation tests pass
-  after the icon addition (TalkBack, 48 dp, icon composition). A dense OSM POI
-  still wins the native tap; MAP-17 must disambiguate or use the accessible
-  list. Native map artwork and native marker 48 dp remain MAP-18/integration.
-- T07 technical audit COMPLETE / LEGAL_SIGNOFF_PENDING: 193 submodules + 22
-  vendored = 215 components, 204 license files + 11 resolved, 0 missing;
-  219-license-file notices bundle, CycloneDX 1.5 SBOM, 30 endpoint hosts classified
-  (0 unclassified), upstream service strings documented unused, ODbL
-  derived-database/source-offer determination and patch rollback recorded.
-  Human legal sign-off and the public source-offer URL remain.
-- Still open: T06 dense-OSM disambiguation/native map artwork/native 48 dp
-  target, T07 legal sign-off/public offer/per-asset review, fresh-checkout build
-  comparison, armv7 runtime, deferred 16 KB runtime and full ENGINE_GATE
-  evidence. MAP-15/16 are LOCAL_DONE but remain gated by ENGINE_GATE.
+These later UI duties cannot circularly require completed MAP-17/18 UI before
+those phases may start. The native extraction proof is ready; the production
+map tab is not yet delivered. Full search UX, guidance/trips/EV and broader
+physical/driver/performance QA retain their original owning phases. Read only
+current PROGRESS, selected task and relevant code/tests; archived chronology is
+not a new blocker. Run immediate scoped checks and truthful atomic local
+checkpoints; no PR/CI/merge waiting during construction. No push, PR, merge,
+phone installation, public distribution, deployment or certification here.

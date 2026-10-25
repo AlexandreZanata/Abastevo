@@ -1,8 +1,8 @@
 # Third-party notices
 
 Upstream: `4587b8ad4d12c9f59982709fdaf03cc925948827`
-Candidate: `/tmp/abastevo-comaps-release-arm64`
-Audit status: `TECHNICAL_AUDIT_COMPLETE_LEGAL_SIGNOFF_PENDING`; legal review: `PENDING_OWNER`.
+Artifact: pinned CoMaps SDK release candidate (paths omitted for reproducibility)
+Source notices; resource admission is recorded in the packaged resources.json.
 
 The core is Apache-2.0; the submodule licenses below are the exact
 pinned sources. The full license files are copied under `licenses/`.
@@ -11,7 +11,7 @@ This bundle is a technical inventory, not a legal opinion.
 ## Resolved items
 
 - `3party/glm`: **MIT**. Dual Happy Bunny (modified MIT) / MIT; MIT selected.
-- `3party/just_gtfs`: **MIT**. Pinned tree 7516753 predates LICENSE.MIT; the upstream repository is MIT and the file was added in b5b1df6.
+- `3party/just_gtfs`: **MIT**. MIT is present in ancestor 083d98e (2020-03-28), with copyright 2020 mesozoic-drones; its grant covers the pinned descendant code. The fork omitted the file; full terms are retained.
   Upstream evidence: https://github.com/comaps/just_gtfs/blob/master/LICENSE.MIT (`b5b1df6f5e26c7698d506a1bd0b8cfb5ffe2d64f`).
 - `3party/monocypher`: **BSD-2-Clause**. Pinned source offers BSD-2-Clause or CC0; BSD-2-Clause selected.
 - `3party/GL`: **MIT**. Khronos MIT-style header.
@@ -188,7 +188,7 @@ This bundle is a technical inventory, not a legal opinion.
 | `3party/boost/more` | submodule | `70ec2047cdc515fe2c6f026a589d5fa3b7414658` | PRESENT | INHERITED:3party/boost | `LICENSE_1_0.txt` `c9bff7573892…` |
 | `3party/boost/tools/auto_index` | submodule | `d8be00789cbe3aae8f247bcedbfa01f39c1a4343` | PRESENT | INHERITED:3party/boost | `LICENSE_1_0.txt` `c9bff7573892…` |
 | `3party/boost/tools/bcp` | submodule | `e0b9262f6ff4778973a29b601183f3f9367e69d2` | PRESENT | INHERITED:3party/boost | `LICENSE_1_0.txt` `c9bff7573892…` |
-| `3party/boost/tools/boost_install` | submodule | `5afffa2881dd84134f60c7473292aea4241a17b6` | PRESENT | OWN | `LICENSE` `c6dbbf828498…` |
+| `3party/boost/tools/boost_install` | submodule | `5afffa2881dd84134f60c7473292aea4241a17b6` | PRESENT | OWN | `LICENSE` `c6dbbf828498…`, `LICENSE_1_0.txt` `8d8291caf1ce…` |
 | `3party/boost/tools/boostbook` | submodule | `faacd1f26a714a5e2ec7d5c67ef81da371a1de50` | PRESENT | OWN | `LICENSE` `2f59ce71dd2b…` |
 | `3party/boost/tools/boostdep` | submodule | `8f9cb2ef559fbe760f6522ddb8f693c02b83c032` | PRESENT | INHERITED:3party/boost | `LICENSE_1_0.txt` `c9bff7573892…` |
 | `3party/boost/tools/build` | submodule | `efbf6ce59b4023f7adc9be2fc3875d371c7f52c6` | PRESENT | OWN | `LICENSE.txt` `c9bff7573892…` |
@@ -225,11 +225,11 @@ This bundle is a technical inventory, not a legal opinion.
 | `3party/GL` | vendored | `vendored` | RESOLVED_SOURCE_HEADER | RESOLVED_SOURCE_HEADER | `glcorearb.h` `8331fbf5dfbe…` |
 | `3party/agg` | vendored | `vendored` | RESOLVED_SOURCE_HEADER | RESOLVED_SOURCE_HEADER | `agg_vcgen_smooth_poly1.h` `a583877a3e01…` |
 | `3party/ankerl` | vendored | `vendored` | RESOLVED_SOURCE_HEADER | RESOLVED_SOURCE_HEADER | `stl.h` `954c0d08b6e1…` |
-| `3party/bsdiff-courgette` | vendored | `vendored` | PRESENT | OWN | `LICENCE` `0af2a39b2cb3…` |
-| `3party/freetype` | vendored | `vendored` | PRESENT | OWN | `LICENSE.TXT` `2e3bbb7d7c5c…` |
-| `3party/harfbuzz` | vendored | `vendored` | PRESENT | OWN | `COPYING` `ba8f810f2455…` |
-| `3party/icu` | vendored | `vendored` | PRESENT | OWN | `LICENSE` `3ae033da0bfd…` |
-| `3party/imgui` | vendored | `vendored` | PRESENT | OWN | `LICENSE.txt` `0ebf8feb0615…` |
+| `3party/bsdiff-courgette` | vendored | `vendored` | PRESENT | OWN | `LICENCE` `0af2a39b2cb3…`, `LICENSE` `29f948fde0da…` |
+| `3party/freetype` | vendored | `vendored` | PRESENT | OWN | `LICENSE.TXT` `2e3bbb7d7c5c…`, `LICENSE` `c9bff7573892…` |
+| `3party/harfbuzz` | vendored | `vendored` | PRESENT | OWN | `COPYING` `ba8f810f2455…`, `COPYING` `c2cfccb812fe…`, `COPYING` `9b35b8485f69…`, `COPYING` `f55f74bf740d…`, `COPYING` `d24039e4d22c…` |
+| `3party/icu` | vendored | `vendored` | PRESENT | OWN | `LICENSE` `3ae033da0bfd…`, `LICENSE` `3ae033da0bfd…`, `COPYING` `4af93c12062c…`, `LICENSE` `4af93c12062c…` |
+| `3party/imgui` | vendored | `vendored` | PRESENT | OWN | `LICENSE.txt` `0ebf8feb0615…`, `COPYING.txt` `da2fb2c80253…` |
 | `3party/jansson` | vendored | `vendored` | PRESENT | OWN | `LICENSE` `150d90904cd8…` |
 | `3party/kdtree++` | vendored | `vendored` | RESOLVED_REPO_LICENSE | RESOLVED_REPO_LICENSE | `region.hpp` `f30a6c539746…`, `Artistic-2.0.txt` `bae466ac8d71…` |
 | `3party/libtess2` | vendored | `vendored` | PRESENT | OWN | `LICENSE.txt` `a098305be22e…` |
@@ -237,7 +237,7 @@ This bundle is a technical inventory, not a legal opinion.
 | `3party/monocypher` | vendored | `vendored` | PRESENT | OWN | `LICENCE.md` `5f8360e4c06d…` |
 | `3party/open-location-code` | vendored | `vendored` | PRESENT | OWN | `LICENSE` `cfc7749b96f6…` |
 | `3party/opening_hours` | vendored | `vendored` | RESOLVED_SOURCE_HEADER | RESOLVED_SOURCE_HEADER | `opening_hours.hpp` `ae35afb06ecc…` |
-| `3party/protobuf` | vendored | `vendored` | PRESENT | OWN | `LICENSE` `af67c58de2e1…` |
+| `3party/protobuf` | vendored | `vendored` | PRESENT | OWN | `LICENSE` `af67c58de2e1…`, `LICENSE` `cfc7749b96f6…` |
 | `3party/pugixml` | vendored | `vendored` | PRESENT | OWN | `LICENSE.md` `0d0b3772af2f…` |
 | `3party/robust` | vendored | `vendored` | RESOLVED_SOURCE_HEADER | RESOLVED_SOURCE_HEADER | `predicates.c` `4aa3f8f52eb4…` |
 | `3party/skarupke` | vendored | `vendored` | RESOLVED_SOURCE_HEADER | RESOLVED_SOURCE_HEADER | `__flat_hash_map.hpp` `ddb4c95467f2…` |
@@ -245,8 +245,4 @@ This bundle is a technical inventory, not a legal opinion.
 | `3party/succinct` | vendored | `vendored` | PRESENT | OWN | `LICENSE` `567f39b9808a…` |
 | `3party/vulkan_wrapper` | vendored | `vendored` | RESOLVED_SOURCE_HEADER | RESOLVED_SOURCE_HEADER | `vulkan_wrapper.h` `c8fb702c3b5f…` |
 
-## Artifact hashes
-
-- `sdk-release.aar`: 35160271 bytes, SHA-256 `1fe196f928f94128f27898ace124c33fa788859bfe89111b19e1bb89848abed5`.
-- `classes.jar`: 368848 bytes, SHA-256 `074122f4de6c6c8c930bd5fae50be0626c527abb8498dae36f0176ce20ee3ca8`.
-- `jni/arm64-v8a/liborganicmaps.so`: 14675096 bytes, SHA-256 `08342926e3799d29851baf093e535c3ca107dd19e218eb69b3e1447e7d155ccb`.
+Artifact integrity hashes are retained in build.json/audit.json beside the candidate.

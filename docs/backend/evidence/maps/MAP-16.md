@@ -67,3 +67,15 @@ The optional app build with the engine and the normal app build both pass.
 - No map tab, quick sheet, marker cluster or source selector (MAP-17/18).
 - ENGINE_GATE remains partial, so this is a local host checkpoint, not a
   release/integration acceptance.
+
+## Engine checkpoint integration correction — 2026-10-24
+
+[MAP-14_ENGINE_GATE](MAP-14_ENGINE_GATE.md) adds a failing-then-passing
+instrumented asynchronous-init case: MapHost creates no native surface before
+readiness. Disposal is idempotent, releases the adapter and rejects late
+readiness/permission callbacks. MapViewHelper forwards the complete SDK
+lifecycle and pauses before buffer teardown. Actual native probe recreation is
+recorded separately from the controlled Compose tests. Native package-layout,
+first-fix/recenter, error states and the real navigation screen remain the
+retained MAP-15/MAP-17 integration work; this record does not accept fake GPS or
+a production map tab.

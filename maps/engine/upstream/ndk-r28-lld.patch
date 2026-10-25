@@ -38,11 +38,16 @@ diff --git a/cmake/AbastevoAndroidLld.cmake b/cmake/AbastevoAndroidLld.cmake
 new file mode 100644
 --- /dev/null
 +++ b/cmake/AbastevoAndroidLld.cmake
-@@ -0,0 +1,8 @@
+@@ -0,0 +1,13 @@
 +# Abastevo MAP-14: keep ThinLTO while using the modern NDK's default LLD.
 +# CMake 3.22's Clang module otherwise appends gold when the legacy NDK
 +# toolchain does not populate CMAKE_ANDROID_NDK_VERSION (android/ndk#1444).
 +if(ANDROID AND ANDROID_NDK_MAJOR GREATER_EQUAL 22)
++  # Hash the shipped release content, not absolute paths in unshipped DWARF.
++  # Independent source/build directories must retain identical build IDs.
++  if(CMAKE_BUILD_TYPE MATCHES "Rel")
++    add_link_options("LINKER:--strip-all")
++  endif()
 +  foreach(language IN ITEMS C CXX)
 +    list(REMOVE_ITEM CMAKE_${language}_LINK_OPTIONS_IPO "-fuse-ld=gold")
 +  endforeach()

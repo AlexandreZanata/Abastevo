@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -17,13 +18,15 @@ import org.junit.runner.RunWith
 class MapHostInstrumentedTest {
     @get:Rule val compose = createComposeRule()
 
-    private class FakeEngine : MapEngine {
+    private class FakeEngine(private val readyImmediately: Boolean = true) : MapEngine {
+        var readiness: (() -> Unit)? = null
         var initialized = false
         var viewCreated = false
         var recenterCalls = 0
         override fun initialize(context: Context, onReady: () -> Unit): Boolean {
             initialized = true
-            onReady()
+            readiness = onReady
+            if (readyImmediately) onReady()
             return true
         }
         override fun newMapView(context: Context): View {
@@ -48,6 +51,17 @@ class MapHostInstrumentedTest {
         var camera: MapCamera? = null
         override fun load(): MapCamera? = camera
         override fun save(camera: MapCamera) { this.camera = camera }
+    }
+
+    @Test
+    fun surfaceWaitsForNativeInitialization() {
+        val engine = FakeEngine(readyImmediately = false)
+        compose.setContent { MapHost(engine, cameraStore = FakeStore()) }
+        compose.waitForIdle()
+        assertFalse(engine.viewCreated)
+        compose.runOnIdle { engine.readiness?.invoke() }
+        compose.waitForIdle()
+        assertTrue(engine.viewCreated)
     }
 
     @Test

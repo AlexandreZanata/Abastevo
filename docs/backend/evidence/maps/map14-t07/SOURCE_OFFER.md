@@ -12,7 +12,8 @@ signed map distribution. The release must publish a durable source/derived-data
 offer at the distribution endpoint before public distribution; that public URL
 is a release/deployment obligation, not a claim of this audit.
 
-The Abastevo overlay (station identities, prices, charging/community records)
-is a separate database maintained by Abastevo. It is not merged into the OSM
-data and is not relicensed as ODbL; it is displayed as a separate layer over the
-map. This is a technical determination, not a legal opinion.
+Source-specific OSM reference assertions and OSM-derived geometry retain ODbL
+and attribution in any overlay/export. Independently sourced ANP/community
+records retain their admitted source terms; a separate table or rendering layer
+alone does not establish license independence. The release must preserve each
+source's obligations and provide the derived-data offer before public delivery.

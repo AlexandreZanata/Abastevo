@@ -1,0 +1,38 @@
+{
+  "fontTools": "4.63.0",
+  "admitted_font_files": 11,
+  "samples": {
+    "pt-BR": {
+      "text": "Combustível",
+      "missing": []
+    },
+    "en": {
+      "text": "Fuel",
+      "missing": []
+    },
+    "de": {
+      "text": "Straße",
+      "missing": []
+    },
+    "es": {
+      "text": "Eléctrico",
+      "missing": []
+    },
+    "fr": {
+      "text": "Énergie",
+      "missing": []
+    },
+    "ru": {
+      "text": "Топливо",
+      "missing": []
+    },
+    "zh-CN": {
+      "text": "加油站",
+      "missing": []
+    },
+    "ja": {
+      "text": "ガソリン",
+      "missing": []
+    }
+  }
+}

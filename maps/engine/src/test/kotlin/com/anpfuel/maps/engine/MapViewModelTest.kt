@@ -13,6 +13,7 @@ class MapViewModelTest {
         var recenterCalls = 0
         var cancelSearchCalls = 0
         var cancelRouteCalls = 0
+        var releaseCalls = 0
         var center: MapCenter? = MapCenter(-25.43, -49.28)
         var recenterResult = true
         override fun initialize(context: Context, onReady: () -> Unit): Boolean = true
@@ -28,7 +29,7 @@ class MapViewModelTest {
         override fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit) = Unit
         override fun cancelSearch() { cancelSearchCalls++ }
         override fun cancelRoute() { cancelRouteCalls++ }
-        override fun release() = Unit
+        override fun release() { releaseCalls++; cancelSearch(); cancelRoute() }
     }
 
     private class FakeStore(var camera: MapCamera? = null) : MapCameraStore {
@@ -80,6 +81,33 @@ class MapViewModelTest {
         val engine = FakeEngine()
         val vm = MapViewModel(engine, FakeStore())
         vm.dispose()
+        assertEquals(1, engine.cancelSearchCalls)
+        assertEquals(1, engine.cancelRouteCalls)
+        assertEquals(1, engine.releaseCalls)
+    }
+
+    @Test fun `late readiness and permission callbacks cannot revive disposed host`() {
+        val engine = FakeEngine()
+        val store = FakeStore()
+        val vm = MapViewModel(engine, store)
+        vm.dispose()
+        vm.onEngineReady()
+        vm.onPermissionState(fine = true, coarse = true, deniedForever = false)
+        vm.onRecenter()
+        vm.onHostStop()
+        assertFalse(vm.state.value.ready)
+        assertFalse(vm.state.value.hasLocationPermission)
+        assertEquals(null, engine.viewport)
+        assertEquals(null, store.camera)
+        assertEquals(0, engine.recenterCalls)
+    }
+
+    @Test fun `repeated disposal releases exactly once`() {
+        val engine = FakeEngine()
+        val vm = MapViewModel(engine, FakeStore())
+        vm.dispose()
+        vm.dispose()
+        assertEquals(1, engine.releaseCalls)
         assertEquals(1, engine.cancelSearchCalls)
         assertEquals(1, engine.cancelRouteCalls)
     }

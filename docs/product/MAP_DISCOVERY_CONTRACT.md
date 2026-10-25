@@ -283,3 +283,54 @@ guaranteed safe arrival is contracted here.
 - **BUC-MAP-BUILD-02:** GIVEN a debug/hybrid AAR or wrong minSdk/ABI, WHEN
   release candidate verification runs, THEN it refuses publication and retains
   any prior output. A valid Gradle release AAR publishes to a new output only.
+
+
+## MAP-14 final source/runtime acceptance
+
+- **B-BR-MAP-ADMIT-01:** only hash-pinned admitted resources enter an engine
+  candidate. Code2000 shareware and KhmerOS without an established preferred-
+  source offer are excluded; unchanged open fonts retain their notices.
+- **B-BR-MAP-ADMIT-02:** package the full retained license/source-offer bundle,
+  preserve code and native bytes during resource filtering, reject unreviewed
+  resource changes, and never replace an existing verified candidate.
+- **B-BR-MAP-REPRO-01:** native release linking removes unshipped debug metadata
+  before computing its build ID, so independent source/build paths produce
+  identical release bytes. ThinLTO remains enabled.
+- **BUC-MAP-ADMIT-01:** GIVEN a raw pinned AAR, WHEN admission packages it, THEN
+  both excluded fonts are absent, every retained resource digest matches,
+  license notices are embedded and Java/native code bytes are unchanged.
+- **BUC-MAP-ADMIT-02:** unknown/changed/traversal assets or an existing output
+  refuse publication and retain the previous candidate.
+
+- **B-BR-MAP-HOST-01:** host teardown releases the engine exactly once, drops
+  pending readiness/overlay generations and cancels search/route listeners.
+  A late native callback must not revive a discarded host.
+- **BUC-MAP-HOST-01:** GIVEN initialization is pending, WHEN its host is
+  disposed or a callback is already dispatched, THEN the old generation never
+  changes the viewport or resumes location; a new host can initialize again.
+
+- **B-BR-MAP-OVERLAY-RECOVERY-01:** an owned overlay category has a distinct
+  versioned name. After process recreation, replace previous owned categories
+  only after the next generation commits; preserve unrelated bookmarks and
+  retain the old generation on import failure. Release stops location polling.
+
+- **B-BR-MAP-HOST-02:** create the Android native surface only after the
+  engine reports readiness. Delayed initialization must not call native surface
+  APIs early; the loading/error presentation belongs to the MAP-17 screen.
+
+- **B-BR-MAP-OVERLAY-RECOVERY-02:** native import success must match the
+  requested overlay generation. An older import cannot confirm a newer UUID
+  membership set merely because both categories are owned by Abastevo.
+
+- **B-BR-MAP-SURFACE-01:** each surface forwards the SDK create/start/resume/
+  pause/stop contract from its AndroidX lifecycle owner. Pause rendering before
+  SurfaceView detachment destroys buffers, and remove lifecycle observers on
+  detach. A bare Activity without a lifecycle owner is rejected explicitly.
+
+- **B-BR-MAP-AUDIT-01:** expand runtime class/JNI entries inside compressed
+  JAR/AAR files when scanning credentials and endpoint constants; scanning the
+  compressed container bytes alone is insufficient.
+
+- **B-BR-MAP-SEARCH-SNAPSHOT-01:** a search update replaces the prior SDK
+  snapshot; it does not append repeated intermediate results into the final
+  callback. Cancellation/generation checks precede snapshot replacement.

@@ -107,6 +107,13 @@ android {
     }
 
     if (providers.gradleProperty("comapsSdkDir").isPresent) {
+        val engineAbis = file("${providers.gradleProperty("comapsSdkDir").get()}/jni")
+            .listFiles().orEmpty()
+            .filter { it.isDirectory && it.resolve("liborganicmaps.so").isFile }
+            .map { it.name }.toSet()
+        require(engineAbis.isNotEmpty()) { "The map candidate must contain its native engine" }
+        // Every advertised ABI must contain the core, including auxiliary AndroidX libs.
+        defaultConfig.ndk.abiFilters += engineAbis
         sourceSets.getByName("debug") {
             kotlin.srcDir("src/comapsProbe/kotlin")
             manifest.srcFile("src/comapsProbe/AndroidManifest.xml")

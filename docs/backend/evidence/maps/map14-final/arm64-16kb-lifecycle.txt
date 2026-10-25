@@ -1,0 +1,53 @@
+--------- beginning of main
+10-24 21:10:12.927  8740  8740 I MapProbe: double_init_ready=true
+10-24 21:10:15.434  8740  8740 I ComapsMapEngine: overlay generation=1 markers=7 clusters=3 pending
+10-24 21:10:15.552  8740  8740 I ComapsMapEngine: overlay committed generation=1 category=1016 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:10:17.428  8740  8740 I MapProbe: first clusters=3 singles=1 multi=2 list=6
+10-24 21:10:17.431  8740  8740 I MapProbe: first list cccccccc-cccc-4ccc-8ccc-cccccccccccc Posto Ambos, Fuel and charging, Approximate city location
+10-24 21:10:17.432  8740  8740 I MapProbe: first list aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa Posto Central, Fuel and charging, Reviewed location
+10-24 21:10:17.432  8740  8740 I MapProbe: first list ffffffff-ffff-4fff-8fff-ffffffffffff Posto Revisado, Fuel, Reviewed location
+10-24 21:10:17.432  8740  8740 I MapProbe: first list dddddddd-dddd-4ddd-8ddd-dddddddddddd Posto Sem Local, Fuel, Location unknown
+10-24 21:10:20.932  8740  8740 I ComapsMapEngine: overlay generation=2 markers=8 clusters=3 pending
+10-24 21:10:21.040  8740  8740 I ComapsMapEngine: overlay committed generation=2 category=1017 markers=8 clusters=3 rejected=0 duplicates=1
+10-24 21:10:22.927  8740  8740 I MapProbe: second clusters=3 singles=0 multi=3 list=7
+10-24 21:10:22.933  8740  8740 I MapProbe: second list cccccccc-cccc-4ccc-8ccc-cccccccccccc Posto Ambos, Fuel and charging, Approximate city location
+10-24 21:10:22.933  8740  8740 I MapProbe: second list aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa Posto Central, Fuel and charging, Reviewed location
+10-24 21:10:22.933  8740  8740 I MapProbe: second list 11111111-1111-4111-8111-111111111111 Posto Novo, Fuel, Reviewed location
+10-24 21:10:22.933  8740  8740 I MapProbe: second list ffffffff-ffff-4fff-8fff-ffffffffffff Posto Revisado, Fuel, Reviewed location
+10-24 21:10:24.010  8740  8740 I MapProbe: previous_host_checked=false released=true
+10-24 21:14:46.191  8740  8740 I MapProbe: double_init_ready=true
+10-24 21:14:48.697  8740  8740 I ComapsMapEngine: overlay generation=4 markers=7 clusters=3 pending
+10-24 21:14:48.801  8740  8740 I ComapsMapEngine: overlay committed generation=4 category=1018 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:14:50.141  8740  8740 I MapProbe: double_init_ready=true
+10-24 21:14:52.643  8740  8740 I ComapsMapEngine: overlay generation=6 markers=7 clusters=3 pending
+10-24 21:14:52.747  8740  8740 I ComapsMapEngine: overlay committed generation=6 category=1019 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:14:54.193  8740  8740 I MapProbe: double_init_ready=true
+10-24 21:14:56.697  8740  8740 I ComapsMapEngine: overlay generation=8 markers=7 clusters=3 pending
+10-24 21:14:56.800  8740  8740 I ComapsMapEngine: overlay committed generation=8 category=1020 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:14:58.174  8740  8740 I MapProbe: double_init_ready=true
+10-24 21:15:00.677  8740  8740 I ComapsMapEngine: overlay generation=10 markers=7 clusters=3 pending
+10-24 21:15:00.782  8740  8740 I ComapsMapEngine: overlay committed generation=10 category=1021 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:15:02.677  8740  8740 I MapProbe: first clusters=3 singles=1 multi=2 list=6
+10-24 21:15:02.677  8740  8740 I MapProbe: first list cccccccc-cccc-4ccc-8ccc-cccccccccccc Posto Ambos, Fuel and charging, Approximate city location
+10-24 21:15:02.677  8740  8740 I MapProbe: first list aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa Posto Central, Fuel and charging, Reviewed location
+10-24 21:15:02.677  8740  8740 I MapProbe: first list ffffffff-ffff-4fff-8fff-ffffffffffff Posto Revisado, Fuel, Reviewed location
+10-24 21:15:02.677  8740  8740 I MapProbe: first list dddddddd-dddd-4ddd-8ddd-dddddddddddd Posto Sem Local, Fuel, Location unknown
+10-24 21:15:06.177  8740  8740 I ComapsMapEngine: overlay generation=11 markers=8 clusters=3 pending
+10-24 21:15:06.282  8740  8740 I ComapsMapEngine: overlay committed generation=11 category=1022 markers=8 clusters=3 rejected=0 duplicates=1
+10-24 21:15:08.176  8740  8740 I MapProbe: second clusters=3 singles=0 multi=3 list=7
+10-24 21:15:08.176  8740  8740 I MapProbe: second list cccccccc-cccc-4ccc-8ccc-cccccccccccc Posto Ambos, Fuel and charging, Approximate city location
+10-24 21:15:08.176  8740  8740 I MapProbe: second list aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa Posto Central, Fuel and charging, Reviewed location
+10-24 21:15:08.177  8740  8740 I MapProbe: second list 11111111-1111-4111-8111-111111111111 Posto Novo, Fuel, Reviewed location
+10-24 21:15:08.177  8740  8740 I MapProbe: second list ffffffff-ffff-4fff-8fff-ffffffffffff Posto Revisado, Fuel, Reviewed location
+10-24 21:15:10.182  8740  8740 I MapProbe: previous_host_checked=true released=true
+10-24 21:33:03.665  8946  8946 I MapProbe: double_init_ready=true
+10-24 21:33:06.170  8946  8946 I ComapsMapEngine: overlay generation=1 markers=7 clusters=3 pending
+10-24 21:33:06.293  8946  8946 I ComapsMapEngine: overlay committed generation=1 category=1025 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:33:08.173  8946  8946 I MapProbe: first clusters=3 singles=1 multi=2 list=6
+10-24 21:33:08.173  8946  8946 I MapProbe: first list cccccccc-cccc-4ccc-8ccc-cccccccccccc Posto Ambos, Fuel and charging, Approximate city location
+10-24 21:33:08.173  8946  8946 I MapProbe: first list aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa Posto Central, Fuel and charging, Reviewed location
+10-24 21:33:08.173  8946  8946 I MapProbe: first list ffffffff-ffff-4fff-8fff-ffffffffffff Posto Revisado, Fuel, Reviewed location
+10-24 21:33:08.173  8946  8946 I MapProbe: first list dddddddd-dddd-4ddd-8ddd-dddddddddddd Posto Sem Local, Fuel, Location unknown
+10-24 21:33:11.247  8946  8946 I MapProbe: search=29 first=MAI - Museu de Arte Indígena
+10-24 21:33:11.689  8946  8946 I MapProbe: route=1.6Kilometers eta=288
+10-24 21:33:14.249  8946  8946 I MapProbe: previous_host_checked=false released=true

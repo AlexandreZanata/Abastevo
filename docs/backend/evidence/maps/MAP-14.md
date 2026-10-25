@@ -1,14 +1,21 @@
 # MAP-14 — Extracted engine adapter and render proof
 
-Status: IN_PROGRESS / ENGINE_GATE_PARTIAL / T08_ARM64_RUNTIME_PASS / MULTI_ABI_ARTIFACT_PASS / CLEAN_BUILD_REPRODUCIBLE / T08_16KB_RUNTIME_DEFERRED / T06_LOCAL_DONE_INTEGRATION_PENDING / T07_TECHNICAL_AUDIT_DONE_LEGAL_PENDING
-Validation: PARTIAL (arm64 phone runtime PASS; multi-ABI release artifact PASS; clean-build double-build PASS; T06 overlay model/clustering/symbols/accessible list/safe generation/cluster hit-test PASS with MAP-17/18 integration items; T07 technical audit/SBOM/notices/endpoint decision PASS; fresh-clone build, armv7 runtime, legal sign-off and 16 KB pending)
+Status: LOCAL_DONE / INTEGRATION_PENDING / ENGINE_GATE_PASS
+Validation: PASS for the accepted local extraction matrix; see the current checkpoint below.
 Integration: NOT_INTEGRATED
+
+Current checkpoint: [MAP-14_ENGINE_GATE](MAP-14_ENGINE_GATE.md) and its
+[hash-pinned acceptance receipt](map14-final/acceptance.json) supersede the
+PARTIAL/deferred/owner-signoff statuses below. ARM32 acceptance is Vulkan; the
+failed OpenGL emulator configurations remain explicitly unaccepted.
+
+## Earlier chronological evidence
 
 Tested tree: `codex/map-ev-implementation` at `721582b8` plus the uncommitted
 MAP-09–14 changes. Date: 2026-10-24.
 Upstream: `comaps/comaps` `4587b8ad4d12c9f59982709fdaf03cc925948827`.
 
-This record does **not** claim ENGINE_GATE PASS. It records the extracted
+This historical snapshot did **not** claim ENGINE_GATE PASS. It records the extracted
 artifact, the real adapter module and the render/pan proof, and the exact
 remaining blockers.
 

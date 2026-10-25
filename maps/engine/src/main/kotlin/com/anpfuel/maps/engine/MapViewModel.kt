@@ -21,19 +21,21 @@ class MapViewModel(
     private val cameraStore: MapCameraStore,
     private val defaultCamera: MapCamera = MapCamera(-25.42, -49.27, 13),
 ) : ViewModel() {
+    private var disposed = false
     private val _state = MutableStateFlow(MapUiState())
     val state: StateFlow<MapUiState> = _state.asStateFlow()
 
     fun newMapView(context: Context): View = engine.newMapView(context)
 
     fun onEngineReady() {
-        if (_state.value.ready) return
+        if (disposed || _state.value.ready) return
         val camera = cameraStore.load() ?: defaultCamera
         _state.update { it.copy(ready = true, camera = camera) }
         engine.setViewport(camera.latitude, camera.longitude, camera.zoom)
     }
 
     fun onPermissionState(fine: Boolean, coarse: Boolean, deniedForever: Boolean) {
+        if (disposed) return
         _state.update {
             it.copy(
                 hasLocationPermission = fine || coarse,
@@ -44,7 +46,7 @@ class MapViewModel(
     }
 
     fun onRecenter() {
-        if (!_state.value.hasLocationPermission) return
+        if (disposed || !_state.value.hasLocationPermission) return
         if (engine.recenter()) {
             _state.update {
                 it.copy(camera = it.camera?.copy(zoom = 15) ?: MapCamera(-25.42, -49.27, 15))
@@ -53,6 +55,7 @@ class MapViewModel(
     }
 
     fun onHostStop() {
+        if (disposed) return
         val camera = _state.value.camera ?: return
         engine.currentCenter()?.let {
             val saved = camera.copy(latitude = it.latitude, longitude = it.longitude)
@@ -62,8 +65,9 @@ class MapViewModel(
     }
 
     fun dispose() {
-        engine.cancelSearch()
-        engine.cancelRoute()
+        if (disposed) return
+        disposed = true
+        engine.release()
     }
 
     override fun onCleared() {

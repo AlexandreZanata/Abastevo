@@ -64,13 +64,20 @@ def verify(args):
                 raise ValueError("unstripped native release library")
             libraries.append({"path": str(path.relative_to(stage)), "bytes": path.stat().st_size,
                               "sha256": digest(path), "load_alignments": loads})
+        resource_record = None
+        if not args.raw_build_input:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("resource_admission", Path(__file__).with_name("prepare-comaps-assets.py"))
+            admission = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(admission)
+            resource_record = admission.verify(stage, Path(__file__).resolve().parents[2] / "maps/engine/upstream/resource-admission.json")
         shutil.copy2(args.aar, stage / "sdk-release.aar")
         report = {"upstream_sha": "4587b8ad4d12c9f59982709fdaf03cc925948827",
                   "ndk": "28.2.13676358", "cmake": "3.22.1", "min_sdk": 26,
                   "abi": args.abi, "java_debug": False, "aar_bytes": args.aar.stat().st_size,
                   "aar_sha256": digest(args.aar), "native": libraries,
-                  "engine_gate": "PARTIAL", "licenses": "AUDIT_PENDING",
-                  "runtime_16kb_acceptance": "PENDING"}
+                  "engine_gate": "NOT_EVALUATED_BY_STATIC_BUILDER", "resource_admission": "PASS" if resource_record else "NOT_RUN", "licenses": "SOURCE_AUDIT_REQUIRED",
+                  "runtime_16kb_acceptance": "NOT_EVALUATED_BY_STATIC_BUILDER"}
         (stage / "build.json").write_text(json.dumps(report, indent=2) + "\n")
         stage.rename(output)
         print(json.dumps(report, indent=2))
@@ -82,11 +89,12 @@ def verify(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--aar", required=True, type=Path)
+    parser.add_argument("--raw-build-input", action="store_true", help="internal unadmitted build input only; never a distributable candidate")
     parser.add_argument("--abi", required=True, choices=("arm64-v8a", "armeabi-v7a", "x86_64"))
     parser.add_argument("--ndk", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     options = parser.parse_args()
     try:
         verify(options)
-    except (ValueError, OSError, ET.ParseError, zipfile.BadZipFile, subprocess.CalledProcessError) as error:
+    except (ValueError, OSError, KeyError, ET.ParseError, zipfile.BadZipFile, subprocess.CalledProcessError) as error:
         parser.exit(1, f"Invalid CoMaps release candidate: {error}\n")

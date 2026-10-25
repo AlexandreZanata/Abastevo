@@ -162,11 +162,29 @@ fun overlayListItems(
         )
     }
 
-internal fun buildOverlayKml(clusters: List<MapOverlayCluster>): String = buildString {
+internal const val OVERLAY_CATEGORY_NAME = "Abastevo overlay v1:"
+
+// BookmarkManager appends decimal suffixes when a category name already exists.
+internal fun overlayCategoryName(generation: Long): String = "${OVERLAY_CATEGORY_NAME}g$generation:"
+
+internal fun isOverlayCategoryGeneration(name: String, generation: Long): Boolean =
+    name.startsWith(overlayCategoryName(generation)) &&
+        name.removePrefix(overlayCategoryName(generation)).all { it in '0'..'9' }
+
+internal fun isOwnedOverlayCategory(name: String): Boolean {
+    if (!name.startsWith(OVERLAY_CATEGORY_NAME)) return false
+    val suffix = name.removePrefix(OVERLAY_CATEGORY_NAME)
+    return suffix.all { it in '0'..'9' } || Regex("g[0-9]+:[0-9]*").matches(suffix)
+}
+
+internal fun buildOverlayKml(
+    clusters: List<MapOverlayCluster>,
+    categoryName: String = OVERLAY_CATEGORY_NAME,
+): String = buildString {
     appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
     appendLine("""<kml xmlns="http://www.opengis.net/kml/2.2">""")
     appendLine("  <Document>")
-    appendLine("    <name>Abastevo</name>")
+    appendLine("    <name>${escapeXml(categoryName)}</name>")
     for (cluster in clusters) {
         val marker = cluster.markers.singleOrNull()
         if (marker == null) {

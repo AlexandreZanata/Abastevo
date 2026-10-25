@@ -6,7 +6,6 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import app.organicmaps.sdk.Framework
-import app.organicmaps.sdk.MapView
 import app.organicmaps.sdk.MapViewHelper
 import app.organicmaps.sdk.OrganicMaps
 import app.organicmaps.sdk.PlacePageActivationListener
@@ -50,16 +49,18 @@ class ComapsMapEngine(
     private var overlayLoadingListener: BookmarkManager.BookmarksLoadingListener? = null
     private var overlayCategoriesListener: DataChangedListener? = null
     private var overlayGeneration = 0L
-    private val pendingReady = mutableListOf<() -> Unit>()
+    private val readyCallbacks = MapReadyCallbacks()
+    private var searchGeneration = 0L
 
+    @Synchronized
     override fun initialize(context: Context, onReady: () -> Unit): Boolean {
+        readyCallbacks.add(onReady)
         if (initialized) {
             installPlacePageListener()
-            onReady()
+            readyCallbacks.take().forEach { it() }
             return true
         }
         if (initializing) {
-            pendingReady += onReady
             return true
         }
         initializing = true
@@ -87,25 +88,22 @@ class ComapsMapEngine(
             engine.init {
                 initialized = true
                 initializing = false
-                installPlacePageListener()
-                val callbacks = pendingReady.toList()
-                pendingReady.clear()
-                onReady()
+                val callbacks = readyCallbacks.take()
+                if (callbacks.isNotEmpty()) installPlacePageListener()
                 callbacks.forEach { it() }
             }
             true
         } catch (error: Exception) {
             initializing = false
-            pendingReady.clear()
+            readyCallbacks.invalidate()
             Log.e("ComapsMapEngine", "native map initialization failed", error)
             false
         }
     }
 
     override fun newMapView(context: Context): View {
-        val mapView = MapView(context)
-        organicMaps?.let { MapViewHelper.setLocationHelper(mapView, it.locationHelper) }
-        return mapView
+        check(initialized) { "Map surface requested before native initialization" }
+        return MapViewHelper.create(context, checkNotNull(organicMaps).locationHelper)
     }
 
     override fun setViewport(latitude: Double, longitude: Double, zoom: Int) {
@@ -137,11 +135,13 @@ class ComapsMapEngine(
     ): Boolean {
         if (!initialized) return false
         cancelSearch()
-        val timestamp = System.currentTimeMillis()
+        val timestamp = ++searchGeneration
         val collected = mutableListOf<MapSearchResult>()
         val listener = object : SearchListener {
             override fun onResultsUpdate(results: Array<SearchResult>, resultTimestamp: Long) {
-                if (resultTimestamp != timestamp) return
+                if (searchListener !== this || resultTimestamp != timestamp) return
+                // SDK updates are complete snapshots, not append-only pages.
+                collected.clear()
                 for (result in results) {
                     if (result.lat == 0.0 && result.lon == 0.0) continue
                     collected += MapSearchResult(result.name, result.lat, result.lon)
@@ -149,7 +149,7 @@ class ComapsMapEngine(
             }
 
             override fun onResultsEnd(resultTimestamp: Long) {
-                if (resultTimestamp != timestamp) return
+                if (searchListener !== this || resultTimestamp != timestamp) return
                 SearchEngine.INSTANCE.removeListener(this)
                 if (searchListener === this) searchListener = null
                 onResult(collected.toList())
@@ -186,12 +186,14 @@ class ComapsMapEngine(
             }
 
             override fun onCommonBuildError(lastResultCode: Int, lastMissingMaps: Array<String>) {
-                if (routingContainer === this) routingContainer = null
+                if (routingContainer !== this) return
+                routingContainer = null
                 onResult(null)
             }
 
             override fun onDrivingOptionsBuildError() {
-                if (routingContainer === this) routingContainer = null
+                if (routingContainer !== this) return
+                routingContainer = null
                 onResult(null)
             }
         }
@@ -215,10 +217,11 @@ class ComapsMapEngine(
                 Log.w("ComapsMapEngine", "overlay rejected=${preparation.rejected} duplicates=${preparation.duplicates}")
                 return false
             }
-            val oldCategory = overlayCategory
-            val oldIds = manager.getCategories().map { it.id }.toSet()
+            val categories = manager.getCategories()
+            val oldCategories = categories.filter { isOwnedOverlayCategory(it.name) }.map { it.id }
+            val oldIds = categories.map { it.id }.toSet()
             val file = File(context.cacheDir, "abastevo-overlay-$generation.kml")
-            file.writeText(buildOverlayKml(preparation.clusters))
+            file.writeText(buildOverlayKml(preparation.clusters, overlayCategoryName(generation)))
             var settled = false
             fun settle(category: BookmarkCategory?) {
                 if (settled) return
@@ -232,9 +235,7 @@ class ComapsMapEngine(
                     if (!initialized || overlayGeneration != generation) return@postDelayed
                     try {
                         manager.showBookmarkCategoryOnMap(category.id)
-                        if (oldCategory >= 0 && oldCategory != category.id) {
-                            manager.deleteCategory(oldCategory)
-                        }
+                        oldCategories.filter { it != category.id }.forEach(manager::deleteCategory)
                         overlayCategory = category.id
                         overlayClusters = preparation.clusters
                         overlayClusterMembers = preparation.clusters
@@ -252,7 +253,7 @@ class ComapsMapEngine(
                 }, 100L)
             }
             fun newCategory(): BookmarkCategory? =
-                manager.getCategories().lastOrNull { it.id !in oldIds && it.name.startsWith("Abastevo") }
+                manager.getCategories().lastOrNull { it.id !in oldIds && isOverlayCategoryGeneration(it.name, generation) }
 
             val loadingListener = object : BookmarkManager.BookmarksLoadingListener {
                 override fun onBookmarksFileImportSuccessful() {
@@ -311,7 +312,11 @@ class ComapsMapEngine(
         }
     }
 
+    @Synchronized
     override fun release() {
+        readyCallbacks.invalidate()
+        organicMaps?.locationHelper?.stop()
+        overlayGeneration++
         cancelSearch()
         cancelRoute()
         clearOverlayListeners()

@@ -2,6 +2,8 @@
 """MAP-14 T07 inventory, notices and SBOM. Not a legal opinion."""
 
 import argparse
+from io import BytesIO
+import zipfile
 import hashlib
 import json
 from pathlib import Path
@@ -46,7 +48,7 @@ RESOLUTIONS = {
         "selected_license": str(REPO_ROOT / "maps/engine/upstream/licenses/just_gtfs-MIT.txt"),
         "upstream_url": "https://github.com/comaps/just_gtfs/blob/master/LICENSE.MIT",
         "upstream_commit": "b5b1df6f5e26c7698d506a1bd0b8cfb5ffe2d64f",
-        "note": "Pinned tree 7516753 predates LICENSE.MIT; the upstream repository is MIT and the file was added in b5b1df6.",
+        "note": "MIT is present in ancestor 083d98e (2020-03-28), with copyright 2020 mesozoic-drones; its grant covers the pinned descendant code. The fork omitted the file; full terms are retained.",
     },
     "3party/monocypher": {
         "license_id": "BSD-2-Clause",
@@ -107,6 +109,14 @@ RESOLUTIONS = {
 }
 
 ENDPOINT_CLASSES = {
+    # Legacy URL parsing prefix (libs/ge0/parser.hpp), not an outbound service.
+    "ge0.me": "SOCIAL_OR_REFERENCE",
+    # SDK Constants social/source links, not used by the Abastevo offline host.
+    "codeberg.org": "SOCIAL_OR_REFERENCE",
+    "floss.social": "SOCIAL_OR_REFERENCE",
+    "matrix.to": "SOCIAL_OR_REFERENCE",
+    "pixelfed.social": "SOCIAL_OR_REFERENCE",
+    "sopuli.xyz": "SOCIAL_OR_REFERENCE",
     "comaps.app": "UPSTREAM_SERVICE_UNUSED",
     "comaps.at": "UPSTREAM_SERVICE_UNUSED",
     "cdn-fi-1.comaps.app": "UPSTREAM_SERVICE_UNUSED",
@@ -153,10 +163,11 @@ signed map distribution. The release must publish a durable source/derived-data
 offer at the distribution endpoint before public distribution; that public URL
 is a release/deployment obligation, not a claim of this audit.
 
-The Abastevo overlay (station identities, prices, charging/community records)
-is a separate database maintained by Abastevo. It is not merged into the OSM
-data and is not relicensed as ODbL; it is displayed as a separate layer over the
-map. This is a technical determination, not a legal opinion.
+Source-specific OSM reference assertions and OSM-derived geometry retain ODbL
+and attribution in any overlay/export. Independently sourced ANP/community
+records retain their admitted source terms; a separate table or rendering layer
+alone does not establish license independence. The release must preserve each
+source's obligations and provide the derived-data offer before public delivery.
 """
 
 
@@ -169,9 +180,9 @@ def license_entries(source: Path, relative: str, path: Path) -> list[dict]:
     if relative == "3party/glm":
         files = sorted((path / "util/conan-package/lib_licenses").glob("LICENSE*.txt"))
     else:
-        files = [p for p in path.iterdir() if p.is_file() and p.name.upper() in LICENSE_NAMES] if path.is_dir() else []
+        files = sorted(p for p in path.iterdir() if p.is_file() and p.name.upper() in LICENSE_NAMES) if path.is_dir() else []
         if not files and path.is_dir():
-            files = [p for p in path.rglob("*") if p.is_file() and p.name.upper() in LICENSE_NAMES][:1]
+            files = sorted(p for p in path.rglob("*") if p.is_file() and p.name.upper() in LICENSE_NAMES)
     return [
         {
             "name": p.name,
@@ -198,7 +209,7 @@ def inventory(source: Path) -> list[dict]:
         if not licenses:
             parent = path.parent
             while parent != source and parent.is_relative_to(source):
-                found = [p for p in parent.iterdir() if p.is_file() and p.name.upper() in LICENSE_NAMES]
+                found = sorted(p for p in parent.iterdir() if p.is_file() and p.name.upper() in LICENSE_NAMES)
                 if found:
                     inherited = parent
                     licenses = [
@@ -326,11 +337,23 @@ def vendored_inventory(source: Path, submodules: list[dict]) -> list[dict]:
     return rows
 
 
+def runtime_payload(raw: bytes, depth: int = 0) -> bytes:
+    if depth < 3 and zipfile.is_zipfile(BytesIO(raw)):
+        with zipfile.ZipFile(BytesIO(raw)) as archive:
+            entries = [item for item in archive.infolist()
+                       if item.filename.endswith((".class", ".so", ".jar"))]
+            if sum(item.file_size for item in entries) > 512 * 1024 * 1024:
+                raise ValueError("runtime archive scan budget exceeded")
+            return b"\x00".join(runtime_payload(archive.read(item), depth + 1) for item in entries)
+    return raw
+
+
 def scan(path: Path) -> dict:
-    data = path.read_bytes() if path.is_file() else b""
+    data = runtime_payload(path.read_bytes()) if path.is_file() else b""
     return {
         "sha256": sha(path),
-        "bytes": len(data),
+        "bytes": path.stat().st_size,
+        "runtime_bytes_scanned": len(data),
         "url_hosts": sorted({m.group().decode("utf-8", "replace").split("/")[2] for m in URL.finditer(data)}),
         "secret_pattern_hits": [m.group().decode("ascii", "replace")[:8] + "…" for m in SECRET.finditer(data)],
     }
@@ -356,8 +379,8 @@ def write_notices(source: Path, candidate: Path, out_dir: Path, report: dict) ->
         "# Third-party notices",
         "",
         f"Upstream: `{report['upstream_sha']}`",
-        f"Candidate: `{report['candidate']}`",
-        f"Audit status: `{report['status']}`; legal review: `{report['legal_review']}`.",
+        "Artifact: pinned CoMaps SDK release candidate (paths omitted for reproducibility)",
+        "Source notices; resource admission is recorded in the packaged resources.json.",
         "",
         "The core is Apache-2.0; the submodule licenses below are the exact",
         "pinned sources. The full license files are copied under `licenses/`.",
@@ -383,9 +406,7 @@ def write_notices(source: Path, candidate: Path, out_dir: Path, report: dict) ->
             f"| `{row['path']}` | {row.get('kind', 'submodule')} | `{row['commit']}` | "
             f"{row['license_status']} | {row['license_scope']} | {evidence} |"
         )
-    lines += ["", "## Artifact hashes", ""]
-    for name, item in report["artifacts"].items():
-        lines.append(f"- `{name}`: {item['bytes']} bytes, SHA-256 `{item['sha256']}`.")
+    lines += ["", "Artifact integrity hashes are retained in build.json/audit.json beside the candidate."]
     (out_dir / "THIRD_PARTY_NOTICES.md").write_text("\n".join(lines) + "\n")
 
     for row in report["components"]:
@@ -394,7 +415,13 @@ def write_notices(source: Path, candidate: Path, out_dir: Path, report: dict) ->
         for item in row["licenses"]:
             src = Path(item["path"]) if item.get("source") == "abastevo-repo" else source / item["path"]
             if src.is_file():
-                shutil.copy2(src, target / item["name"])
+                try:
+                    relative = Path(item["path"]).relative_to(row["path"])
+                except ValueError:
+                    relative = Path(item["name"])
+                destination = target / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, destination)
 
 
 def write_sbom(out: Path, report: dict) -> None:
@@ -458,6 +485,19 @@ def write_sbom(out: Path, report: dict) -> None:
     out.write_text(json.dumps(sbom, indent=2) + "\n")
 
 
+def admission_failures(report):
+    failures = []
+    if report['license_files_missing']:
+        failures.append('missing component license evidence')
+    if report['submodules_clean'] != report['submodules_total']:
+        failures.append('unpinned submodule source')
+    if report['endpoint_decision']['unclassified']:
+        failures.append('unreviewed endpoint')
+    if any(item['secret_pattern_hits'] for item in report['artifacts'].values()):
+        failures.append('artifact secret pattern detected')
+    return failures
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", required=True, type=Path)
@@ -465,6 +505,7 @@ def main():
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--notices-dir", type=Path)
     parser.add_argument("--sbom", type=Path)
+    parser.add_argument("--require-admitted", action="store_true")
     args = parser.parse_args()
     source = args.source.resolve()
     candidate = args.candidate.resolve()
@@ -487,7 +528,7 @@ def main():
             if endpoint_classes[host] == "UNCLASSIFIED_REVIEW":
                 unclassified.add(host)
     report = {
-        "status": "TECHNICAL_AUDIT_COMPLETE_LEGAL_SIGNOFF_PENDING",
+        "status": "CORE_INVENTORY_COMPLETE_RESOURCE_ADMISSION_PENDING",
         "upstream_sha": build["upstream_sha"],
         "candidate": str(candidate),
         "candidate_build": build,
@@ -509,7 +550,7 @@ def main():
             "attribution": "Map data © OpenStreetMap contributors",
             "license": "ODbL-1.0",
             "derived_database": "regional .mwm package",
-            "overlay": "separate Abastevo database; not merged into OSM data",
+            "overlay": "separate rendering; OSM-derived reference assertions remain ODbL; independent ANP/community records retain their source terms",
             "source_offer": "retained recipe/package; public distribution URL remains a release obligation",
         },
         "endpoint_decision": {
@@ -519,8 +560,17 @@ def main():
             "classes": endpoint_classes,
             "unclassified": sorted(unclassified),
         },
-        "legal_review": "PENDING_OWNER",
+        "legal_review": "SOURCE_LICENSE_EVIDENCE_REVIEWED",
     }
+    resource_manifest = candidate / "assets/abastevo-map-licenses/resources.json"
+    if resource_manifest.is_file():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("resource_admission", Path(__file__).with_name("prepare-comaps-assets.py"))
+        admission = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(admission)
+        report["resource_admission"] = admission.verify(candidate, REPO_ROOT / "maps/engine/upstream/resource-admission.json")
+        if not admission_failures(report):
+            report["status"] = "LOCAL_SOURCE_ADMISSION_PASS"
     args.out.write_text(json.dumps(report, indent=2) + "\n")
     if args.notices_dir:
         write_notices(source, candidate, args.notices_dir, report)
@@ -544,6 +594,12 @@ def main():
             indent=2,
         )
     )
+
+    failures = admission_failures(report)
+    if args.require_admitted and report['status'] != 'LOCAL_SOURCE_ADMISSION_PASS':
+        failures.append('resource admission not complete')
+    if failures:
+        raise SystemExit('Source admission refused: ' + '; '.join(failures))
 
 
 if __name__ == "__main__":

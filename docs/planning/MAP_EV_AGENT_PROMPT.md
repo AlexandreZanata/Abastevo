@@ -1,8 +1,10 @@
 # Execution prompt — MAP-00–33
 
-Current continuation: read [MAP_EV_RESUME](MAP_EV_RESUME.md) first. The MAP-14
-release linker/build blocker is resolved; the full ENGINE_GATE remains partial.
-Do not repeat the already accepted 80 MiB budget decision.
+Current continuation: read [MAP_EV_RESUME](MAP_EV_RESUME.md) first. MAP-14
+ENGINE_GATE passes for the versioned local extraction matrix; the persistent
+admitted artifact is ready. Close retained MAP-15 integration duties and then
+implement the real MAP-17 screen. Do not reopen resolved budget/linker/owner
+stamp requests or confuse static builder metadata with the runtime receipt.
 
 Paste the following into the implementation agent only when you want construction
 and source delivery to begin. This planning turn does not execute the instructions.

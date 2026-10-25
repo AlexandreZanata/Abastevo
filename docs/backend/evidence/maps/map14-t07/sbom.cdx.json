@@ -5626,13 +5626,13 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "1fe196f928f94128f27898ace124c33fa788859bfe89111b19e1bb89848abed5"
+          "content": "d2ec37881ede4e2288e1a929f01a1eabab193e7a6d518c76ff4342f085f2b10c"
         }
       ],
       "properties": [
         {
           "name": "abastevo:bytes",
-          "value": "35160271"
+          "value": "40064390"
         }
       ]
     },
@@ -5658,13 +5658,29 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "08342926e3799d29851baf093e535c3ca107dd19e218eb69b3e1447e7d155ccb"
+          "content": "df51c422e3e6163e7079a53875933232577bb939396738cf05c0edb8cc509f21"
         }
       ],
       "properties": [
         {
           "name": "abastevo:bytes",
           "value": "14675096"
+        }
+      ]
+    },
+    {
+      "type": "file",
+      "name": "jni/armeabi-v7a/liborganicmaps.so",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c911390d5906f97f82ec4876e56f90dbe05d9d24487897f81907a40b89dc1788"
+        }
+      ],
+      "properties": [
+        {
+          "name": "abastevo:bytes",
+          "value": "10499236"
         }
       ]
     }

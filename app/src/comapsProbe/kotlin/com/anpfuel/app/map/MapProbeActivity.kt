@@ -1,6 +1,7 @@
 package com.anpfuel.app.map
 
 import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.os.Bundle
 import com.anpfuel.maps.engine.ComapsMapEngine
 import com.anpfuel.maps.engine.MapOverlayMarker
@@ -12,13 +13,30 @@ import com.anpfuel.maps.engine.overlayListItems
  * Debug-only host used to prove the extracted engine inside the real app
  * package. It is not reachable from the production navigation graph.
  */
-class MapProbeActivity : Activity() {
+class MapProbeActivity : ComponentActivity() {
     companion object {
         private val engine = ComapsMapEngine()
+        private var previousHost = java.lang.ref.WeakReference<Activity>(null)
+    }
+
+    private val pending = android.os.Handler(android.os.Looper.getMainLooper())
+
+    override fun onDestroy() {
+        pending.removeCallbacksAndMessages(null)
+        engine.release()
+        previousHost = java.lang.ref.WeakReference(this)
+        super.onDestroy()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val oldHost = previousHost
+        val checkOldHost = oldHost.get() != null
+        pending.postDelayed({
+            System.gc()
+            System.runFinalization()
+            android.util.Log.i("MapProbe", "previous_host_checked=$checkOldHost released=${oldHost.get() == null}")
+        }, 12000)
         val overlayOnly = intent.getBooleanExtra("overlayOnly", false)
         engine.initialize(this) {
             runOnUiThread {
@@ -34,27 +52,30 @@ class MapProbeActivity : Activity() {
                             )
                     }
                 }
-                view.postDelayed({
+                pending.postDelayed({
                     engine.setViewport(if (overlayOnly) -25.46 else -25.42, if (overlayOnly) -49.31 else -49.27, if (overlayOnly) 16 else 13)
                     engine.setOverlayMarkers(fixture(1))
                 }, 2500)
-                view.postDelayed({ logOverlay("first") }, 4500)
+                pending.postDelayed({ logOverlay("first") }, 4500)
                 if (overlayOnly) {
-                    view.postDelayed({ engine.setOverlayMarkers(fixture(2)) }, 8000)
-                    view.postDelayed({ logOverlay("second") }, 10000)
+                    pending.postDelayed({ engine.setOverlayMarkers(fixture(2)) }, 8000)
+                    pending.postDelayed({ logOverlay("second") }, 10000)
                 } else {
-                    view.postDelayed({
+                    pending.postDelayed({
                         engine.search(this, "Museu") { results ->
                             android.util.Log.i("MapProbe", "search=${results.size} first=${results.firstOrNull()?.name}")
                         }
                     }, 5000)
-                    view.postDelayed({
+                    pending.postDelayed({
                         engine.buildCarRoute(-25.42, -49.27, -25.43, -49.27) { route ->
                             android.util.Log.i("MapProbe", "route=${route?.distance}${route?.unit} eta=${route?.seconds}")
                         }
                     }, 7000)
                 }
             }
+        }
+        engine.initialize(applicationContext) {
+            android.util.Log.i("MapProbe", "double_init_ready=true")
         }
     }
 

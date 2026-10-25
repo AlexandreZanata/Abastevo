@@ -77,10 +77,12 @@ fun MapHost(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     Box(modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { vm.newMapView(it) },
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (state.ready) {
+            AndroidView(
+                factory = { vm.newMapView(it) },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         if (state.ready) {
             Surface(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),

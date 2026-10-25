@@ -66,11 +66,24 @@ export ANDROID_HOME="$sdk_dir" ANDROID_SDK_ROOT="$sdk_dir"
 
 # The verifier publishes only the actual Gradle release AAR, never a debug AAR
 # with a manually replaced .so. Invalid artifacts leave no output directory.
-python3 "$repo_root/scripts/maps/verify-comaps-aar.py" \
+python3 "$repo_root/scripts/maps/verify-comaps-aar.py" --raw-build-input \
   --aar "$source_dir/android/sdk/build/outputs/aar/sdk-release.aar" \
-  --abi "$abi" --ndk "$ndk" --output "$output_dir"
+  --abi "$abi" --ndk "$ndk" --output "$work_dir/raw"
+cp "$source_dir/LICENSE" "$source_dir/NOTICE" "$source_dir/data/copyright.html" "$work_dir/raw/"
+python3 "$repo_root/scripts/maps/audit-comaps-release.py" \
+  --source "$source_dir" --candidate "$work_dir/raw" --out "$work_dir/core-audit.json" \
+  --notices-dir "$work_dir/notices" --sbom "$work_dir/sbom.cdx.json"
+python3 "$repo_root/scripts/maps/prepare-comaps-assets.py" \
+  --aar "$work_dir/raw/sdk-release.aar" --notices "$work_dir/notices" \
+  --profile "$repo_root/maps/engine/upstream/resource-admission.json" --output "$work_dir/admitted.aar" > "$work_dir/resources.json"
+python3 "$repo_root/scripts/maps/verify-comaps-aar.py" \
+  --aar "$work_dir/admitted.aar" --abi "$abi" --ndk "$ndk" --output "$output_dir"
 cp "$work_dir/build.log" "$work_dir/submodules.txt" "$work_dir/runtime-source.diff" "$output_dir/"
 cp "$patch_file" "$output_dir/"
 cp "$source_dir/LICENSE" "$source_dir/NOTICE" "$output_dir/"
 if [[ -f "$source_dir/data/copyright.html" ]]; then cp "$source_dir/data/copyright.html" "$output_dir/"; fi
-printf 'Candidate ready: -PcomapsSdkDir=%s\nENGINE_GATE remains pending its other acceptance checks.\n' "$(realpath "$output_dir")"
+printf 'Candidate ready: -PcomapsSdkDir=%s\nThis builder checks static inputs only; consult the versioned MAP-14 acceptance receipt for runtime/gate status.\n' "$(realpath "$output_dir")"
+
+python3 "$repo_root/scripts/maps/audit-comaps-release.py" \
+  --source "$source_dir" --candidate "$output_dir" --out "$output_dir/audit.json" \
+  --sbom "$output_dir/sbom.cdx.json" --require-admitted

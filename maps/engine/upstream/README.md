@@ -1,6 +1,8 @@
 # Pinned CoMaps release builder
 
-This is the MAP-14 T03 linker/build unblock, not ENGINE_GATE acceptance.
+This is the owned MAP-14 builder. Local extraction acceptance is recorded in
+[MAP-14_ENGINE_GATE](../../../docs/backend/evidence/maps/MAP-14_ENGINE_GATE.md)
+and its exact receipt; static build tools do not run or certify Android runtime.
 Upstream: `4587b8ad4d12c9f59982709fdaf03cc925948827` (Apache-2.0 core).
 Preserve the upstream LICENSE/NOTICE and the separate transitive/asset audit.
 
@@ -11,6 +13,8 @@ the legacy NDK toolchain leaves `CMAKE_ANDROID_NDK_VERSION` unset. NDK r28c
 uses LLD and does not ship LLVMgold.so. Adding an earlier `-fuse-ld=lld` does
 not fix the trailing IPO option. `AbastevoAndroidLld.cmake` removes only the
 obsolete gold IPO option for NDK >=22 and retains ThinLTO for C and C++.
+Release linking strips unshipped debug/symbol metadata before computing its
+build ID, allowing identical native bytes across independent source paths.
 
 `ndk-r28-lld.patch` records the root fix and the earlier explicit LLD/16 KB
 SDK settings. It never modifies generated Ninja files or the diagnostic map
@@ -92,18 +96,40 @@ python3 scripts/maps/audit-comaps-release.py \
 
 The audit covers 193 submodules and 22 vendored `3party` directories, resolves
 `glm` (MIT), `just_gtfs` (MIT upstream) and the source-header/vendored licenses,
-writes a CycloneDX 1.5 SBOM and a 219-license-file notice bundle, and classifies the
-native endpoint strings. It is a technical inventory, not a legal opinion; the
-human license/ODbL sign-off remains an owner obligation.
+writes a CycloneDX 1.5 SBOM and a 231-license-file notice bundle, and classifies the
+native endpoint strings. Resource admission is hash-pinned in `resource-admission.json`: 193 admitted
+assets, Code2000/KhmerOS excluded, full notices embedded. Missing SDK localized
+entries inherit explicit base/default fallbacks; existing translations remain.
+The runtime scan expands compressed Java/JNI entries and fails on unknown
+endpoints, credential patterns or license gaps. Public source-offer publication
+remains a distribution obligation.
 
-## Still required
+## Accepted artifact and test matrix
 
-- Fresh-checkout double-build comparison (clean-build double-build PASS) and
-  final per-asset font/symbol/style admission.
-- Armv7 runtime acceptance, packaged APK/16 KB runtime checks, native
-  device/emulator behavior and the full lifecycle/selection matrix.
-- Overlay native cluster hit-test and final Abastevo artwork; MAP-15/16 are
-  LOCAL_DONE but remain dependent on ENGINE_GATE.
+Persistent merged candidate:
+`/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22`.
+SHA-256 `d2ec37881ede4e2288e1a929f01a1eabab193e7a6d518c76ff4342f085f2b10c`.
+Both ARM AAR/classes/core comparisons pass in independent checkouts. Prepared
+style/atlas inputs are explicit, pinned inputs in the evidence manifest.
+Use the official source preparation scripts with its compatible Python venv
+(protobuf 3.20.3), Boost bootstrap/headers and Serbian/desktop string generation;
+never copy native `.cxx` or build outputs to impersonate a clean source build.
+The prepared asset hashes are verified before admission.
+
+Accepted native environments: ARM64 on an actual 16 KB API35 emulator through
+the Android native bridge/OpenGLES3, and ARM32 on API30 through the native
+bridge/Vulkan with Mesa Lavapipe. Four native rotations and Activity collection
+pass on each; three ARM32 process restarts pass. ARM32 OpenGL recreation caused
+host-emulator crashes in attempted configurations and is not accepted. The
+receipt retains the precise environments; do not infer all-device certification.
+The isolated official 37.2.12 emulator download/hash is recorded for repetition;
+no global emulator upgrade or proprietary test-image component enters the APK.
+
+The SDK surface must use `MapViewHelper.create` with an AndroidX lifecycle
+owner, after readiness. It forwards create/start/resume/pause/stop and pauses
+before buffer teardown. The adapter keeps the application core across surfaces;
+construct one engine per application process. Future map UI and retained
+MAP-15 integration work are listed in the current resume, not new owner gates.
 
 For Android Ed25519, the pinned core already compiles
 `libs/platform/crypto/ed25519_monocypher.cpp` and

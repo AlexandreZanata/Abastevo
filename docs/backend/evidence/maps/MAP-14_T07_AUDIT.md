@@ -1,8 +1,23 @@
 # MAP-14 T07 — Dependency/license/SBOM/endpoint audit
 
-Status: **TECHNICAL_AUDIT_COMPLETE / LEGAL_SIGNOFF_PENDING**
-Validation: PASS for the mechanical inventory, notices, SBOM, endpoint decision and patch/rollback record. Not a legal opinion and not an ENGINE_GATE closure.
+Status: **LOCAL_SOURCE_ADMISSION_PASS**
+Validation: PASS for exact local code/resource admission, notices, expanded runtime-code scan and update recipe. Current hashes and qualified engine acceptance are in [MAP-14_ENGINE_GATE](MAP-14_ENGINE_GATE.md).
 Date: 2026-10-24. Upstream: `4587b8ad4d12c9f59982709fdaf03cc925948827`.
+
+Current admission supersedes the older owner-signoff request below. The exact
+asset profile excludes Code2000/KhmerOS, admits 193 assets and embeds 231 source
+license files/full upstream terms. Both ABI builds are independently
+reproducible. The runtime scan expands compressed Java/JNI entries: 36 combined
+hosts, none unknown, no secret-pattern hits. The five SDK social/source URLs
+are documented unused references. The retained source offer distinguishes
+OSM-derived reference assertions from independently obtained ANP/community
+records; separate storage alone is not a license boundary. Public source-offer
+publication remains required before public distribution. The just_gtfs MIT
+grant is present in ancestor `083d98e`, not merely a later tree. Updated durable
+JSON/notices below are current; numeric hashes and owner requests in the earlier
+chronology are historical, superseded by the versioned receipt.
+
+## Earlier audit chronology
 
 ## Source inventory
 

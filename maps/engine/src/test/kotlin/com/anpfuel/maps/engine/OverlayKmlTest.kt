@@ -8,6 +8,23 @@ import org.junit.jupiter.api.Test
 
 class OverlayKmlTest {
     @Test
+    fun `late import cannot commit into a newer overlay generation`() {
+        assertTrue(isOverlayCategoryGeneration("Abastevo overlay v1:g12:2", 12))
+        assertTrue(isOwnedOverlayCategory("Abastevo overlay v1:g12:2"))
+        assertFalse(isOverlayCategoryGeneration("Abastevo overlay v1:g1:2", 12))
+        assertFalse(isOverlayCategoryGeneration("Abastevo overlay v1:g12:other", 12))
+    }
+
+    @Test
+    fun `native duplicate name suffixes retain ownership without adopting unrelated categories`() {
+        assertTrue(isOwnedOverlayCategory("Abastevo overlay v1:"))
+        assertTrue(isOwnedOverlayCategory("Abastevo overlay v1:12"))
+        assertFalse(isOwnedOverlayCategory("Abastevo"))
+        assertFalse(isOwnedOverlayCategory("Abastevo overlay v2:1"))
+        assertFalse(isOwnedOverlayCategory("Abastevo overlay v1:my places"))
+    }
+
+    @Test
     fun `kml starts with the xml declaration and keeps canonical markers`() {
         val preparation = prepareOverlay(
             listOf(
@@ -26,6 +43,7 @@ class OverlayKmlTest {
             generation = 42,
         )
         val kml = buildOverlayKml(preparation.clusters)
+        assertTrue(kml.contains("<name>Abastevo overlay v1:</name>"))
 
         assertTrue(kml.startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"))
         assertTrue(kml.contains("<name>ABASTEVO:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa</name>"))

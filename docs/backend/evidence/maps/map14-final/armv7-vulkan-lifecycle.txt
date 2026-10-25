@@ -1,0 +1,34 @@
+--------- beginning of system
+--------- beginning of main
+--------- beginning of kernel
+10-24 21:39:56.040  5403  5403 I MapProbe: double_init_ready=true
+10-24 21:39:58.544  5403  5403 I ComapsMapEngine: overlay generation=1 markers=7 clusters=3 pending
+10-24 21:39:58.681  5403  5403 I ComapsMapEngine: overlay committed generation=1 category=1002 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:40:00.541  5403  5403 I MapProbe: first clusters=3 singles=1 multi=2 list=6
+10-24 21:40:00.541  5403  5403 I MapProbe: first list cccccccc-cccc-4ccc-8ccc-cccccccccccc Posto Ambos, Fuel and charging, Approximate city location
+10-24 21:40:00.541  5403  5403 I MapProbe: first list aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa Posto Central, Fuel and charging, Reviewed location
+10-24 21:40:00.541  5403  5403 I MapProbe: first list ffffffff-ffff-4fff-8fff-ffffffffffff Posto Revisado, Fuel, Reviewed location
+10-24 21:40:00.541  5403  5403 I MapProbe: first list dddddddd-dddd-4ddd-8ddd-dddddddddddd Posto Sem Local, Fuel, Location unknown
+10-24 21:40:04.127  5403  5403 I MapProbe: search=29 first=MAI - Museu de Arte Indígena
+10-24 21:40:04.701  5403  5403 I MapProbe: route=1.6Kilometers eta=288
+10-24 21:40:06.757  5403  5403 I MapProbe: previous_host_checked=false released=true
+10-24 21:42:59.554  5403  5403 I MapProbe: double_init_ready=true
+10-24 21:43:02.057  5403  5403 I ComapsMapEngine: overlay generation=3 markers=7 clusters=3 pending
+10-24 21:43:02.180  5403  5403 I ComapsMapEngine: overlay committed generation=3 category=1003 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:43:03.622  5403  5403 I MapProbe: double_init_ready=true
+10-24 21:43:06.125  5403  5403 I ComapsMapEngine: overlay generation=5 markers=7 clusters=3 pending
+10-24 21:43:06.249  5403  5403 I ComapsMapEngine: overlay committed generation=5 category=1004 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:43:07.580  5403  5403 I MapProbe: double_init_ready=true
+10-24 21:43:10.084  5403  5403 I ComapsMapEngine: overlay generation=7 markers=7 clusters=3 pending
+10-24 21:43:10.218  5403  5403 I ComapsMapEngine: overlay committed generation=7 category=1005 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:43:11.582  5403  5403 I MapProbe: double_init_ready=true
+10-24 21:43:14.084  5403  5403 I ComapsMapEngine: overlay generation=9 markers=7 clusters=3 pending
+10-24 21:43:14.196  5403  5403 I ComapsMapEngine: overlay committed generation=9 category=1006 markers=7 clusters=3 rejected=0 duplicates=1
+10-24 21:43:16.083  5403  5403 I MapProbe: first clusters=3 singles=1 multi=2 list=6
+10-24 21:43:16.083  5403  5403 I MapProbe: first list cccccccc-cccc-4ccc-8ccc-cccccccccccc Posto Ambos, Fuel and charging, Approximate city location
+10-24 21:43:16.083  5403  5403 I MapProbe: first list aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa Posto Central, Fuel and charging, Reviewed location
+10-24 21:43:16.083  5403  5403 I MapProbe: first list ffffffff-ffff-4fff-8fff-ffffffffffff Posto Revisado, Fuel, Reviewed location
+10-24 21:43:16.083  5403  5403 I MapProbe: first list dddddddd-dddd-4ddd-8ddd-dddddddddddd Posto Sem Local, Fuel, Location unknown
+10-24 21:43:17.209  5403  5403 I MapProbe: search=29 first=MAI - Museu de Arte Indígena
+10-24 21:43:19.032  5403  5403 I MapProbe: route=1.6Kilometers eta=288
+10-24 21:43:23.593  5403  5403 I MapProbe: previous_host_checked=true released=true
