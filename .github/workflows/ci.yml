@@ -39,4 +39,4 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: Run unit tests
-        run: ./gradlew test --no-daemon
+        run: ./gradlew test --no-daemon --max-workers=1
