@@ -120,10 +120,11 @@ fun MapScreen(
         }
     }
 
-    // Selection and source/product/period switches reload the price sheet (MAP-19).
+    // Selection and source/product/period/connector switches reload the price sheet (MAP-19).
     LaunchedEffect(
         discUi?.selectedUuid,
         discUi?.selectedMarker,
+        discUi?.connector,
         ui.source,
         ui.selectedFuelProduct,
         ui.selectedSurveyPeriod,
@@ -145,6 +146,7 @@ fun MapScreen(
                 source = ui.source,
                 product = ui.selectedFuelProduct,
                 surveyPeriod = ui.selectedSurveyPeriod,
+                chargingConnector = discUi?.connector,
             )
         }
     }
@@ -493,6 +495,7 @@ fun MapScreen(
                         source = MapPriceSource.COMMUNITY,
                         product = ui.selectedFuelProduct,
                         surveyPeriod = ui.selectedSurveyPeriod,
+                        chargingConnector = discUi?.connector,
                     )
                 }
             },

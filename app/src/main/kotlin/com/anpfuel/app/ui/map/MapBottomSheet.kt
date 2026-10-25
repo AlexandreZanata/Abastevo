@@ -20,10 +20,64 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.app.community.CommunityPriceDisplay
+import com.anpfuel.app.mapper.FuelProductI18n
+import com.anpfuel.domain.valueobject.FuelProduct
 import com.anpfuel.maps.engine.MapStationLocationQuality
+import java.util.Locale
+
+@Composable
+internal fun localizedMapProductLabel(rawProduct: String): String {
+    val norm = rawProduct.trim().uppercase(Locale.ROOT)
+    val fuelProduct = when (norm) {
+        "ETHANOL" -> FuelProduct.ETHANOL
+        "GASOLINE_REGULAR" -> FuelProduct.GASOLINE_REGULAR
+        "GASOLINE_ADDITIVED", "GASOLINE_PREMIUM" -> FuelProduct.GASOLINE_PREMIUM
+        "GASOLINE_PREMIUM_GRADE" -> FuelProduct.GASOLINE_PREMIUM_GRADE
+        "DIESEL_S500" -> FuelProduct.DIESEL_S500
+        "DIESEL_S10" -> FuelProduct.DIESEL_S10
+        "CNG" -> FuelProduct.CNG
+        "LPG_P13" -> FuelProduct.LPG_P13
+        else -> null
+    }
+    if (fuelProduct != null) {
+        return stringResource(FuelProductI18n.toStringRes(fuelProduct))
+    }
+    return when (norm) {
+        "CCS2" -> "CCS2"
+        "TYPE2" -> "Type 2"
+        "CHADEMO" -> "CHAdeMO"
+        "NACS" -> "NACS"
+        "UNKNOWN" -> stringResource(R.string.charging_explore_unknown)
+        else -> rawProduct
+    }
+}
+
+@Composable
+internal fun localizedMapConditionLabel(conditionKind: String, qualifier: String?): String {
+    val norm = conditionKind.trim().uppercase(Locale.ROOT)
+    val baseLabel = when (norm) {
+        "STANDARD" -> stringResource(R.string.charging_community_condition_standard)
+        "OFF_PEAK" -> stringResource(R.string.charging_community_condition_off_peak)
+        "PEAK" -> stringResource(R.string.charging_community_condition_peak)
+        "MEMBER" -> stringResource(R.string.charging_community_condition_member)
+        "UNKNOWN" -> stringResource(R.string.charging_community_condition_unknown)
+        else -> CommunityPriceDisplay.formatCondition(norm, qualifier)
+    }
+    return if (norm == "STANDARD") {
+        baseLabel
+    } else {
+        val contractNote = CommunityPriceDisplay.formatCondition(norm, qualifier)
+        if (baseLabel.contains(norm, ignoreCase = true)) {
+            baseLabel
+        } else {
+            "$baseLabel ($contractNote)"
+        }
+    }
+}
 
 /**
- * MAP-19 quick sheet: name, services, exact source/product/unit/price/date,
+ * MAP-19 quick sheet: name, services, exact source/product/unit/price/condition/date,
  * quality/access and real actions (route, profile, report). ANP absence is
  * explicit; community never mixes silently; EV in ANP offers explicit switch.
  */
@@ -73,7 +127,22 @@ fun MapBottomSheet(
                 ui.loading -> Text(stringResource(R.string.map_sheet_loading_price))
                 ui.price != null -> {
                     val p = ui.price!!
-                    Text("${p.product} ${p.amount} ${p.unit}", style = MaterialTheme.typography.titleMedium)
+                    val productLabel = localizedMapProductLabel(p.product)
+                    Text(
+                        "$productLabel ${p.amount} ${p.unit}",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.testTag("map-sheet-price"),
+                    )
+                    Text(
+                        localizedMapConditionLabel(p.conditionKind, p.conditionQualifier),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (p.isConditional) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.testTag("map-sheet-condition"),
+                    )
                     Text(p.dateLabel, style = MaterialTheme.typography.bodySmall)
                     if (p.stale) {
                         Text(

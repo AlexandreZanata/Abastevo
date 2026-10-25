@@ -2,9 +2,12 @@ package com.anpfuel.app.ui.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.anpfuel.app.community.CommunityPriceDisplay
+import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.valueobject.FuelProduct
 import com.anpfuel.maps.engine.MapOverlayMarker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -22,7 +25,19 @@ data class SheetPrice(
     val source: MapPriceSource,
     val dateLabel: String,
     val stale: Boolean = false,
-)
+    val conditionKind: String = "STANDARD",
+    val conditionQualifier: String? = null,
+) {
+    init {
+        require(conditionKind.isNotBlank()) { "conditionKind must not be blank" }
+    }
+
+    val isConditional: Boolean
+        get() = conditionKind.trim().uppercase(Locale.ROOT) != "STANDARD"
+
+    val conditionSummary: String
+        get() = CommunityPriceDisplay.formatCondition(conditionKind, conditionQualifier)
+}
 
 data class SheetPriceRequest(
     val stationUuid: String,
@@ -30,6 +45,7 @@ data class SheetPriceRequest(
     val marker: MapOverlayMarker,
     val fuelProduct: FuelProduct? = null,
     val surveyPeriod: String? = null,
+    val chargingConnector: ChargingConnector? = null,
 )
 
 data class MapSheetUi(
@@ -37,6 +53,7 @@ data class MapSheetUi(
     val source: MapPriceSource = MapPriceSource.ANP,
     val product: FuelProduct = FuelProduct.GASOLINE_REGULAR,
     val surveyPeriod: String? = null,
+    val chargingConnector: ChargingConnector? = null,
     val price: SheetPrice? = null,
     val priceAbsent: Boolean = false,
     val absentReason: String? = null,
@@ -45,12 +62,12 @@ data class MapSheetUi(
 )
 
 /**
- * MAP-19 bottom sheet: exact source/date/product/unit prices with explicit
- * absence. ANP shows station-specific observations; Community shows the
- * validated projection; charging in ANP explains the missing electric tariff.
- * Rapid source/station/period switches and clear() invalidate generation and
- * cancel in-flight jobs before any branch or debounce. No silent fallback,
- * no float money, no N+1 (single lookup per selection).
+ * MAP-19 bottom sheet: exact source/date/product/unit/condition prices with
+ * explicit absence. ANP shows station-specific observations; Community shows
+ * the validated projection with its condition; charging in ANP explains the
+ * missing electric tariff. Rapid source/station/period switches and clear()
+ * invalidate generation and cancel in-flight jobs before any branch or debounce.
+ * No silent fallback, no float money, no N+1 (single lookup per selection).
  */
 @HiltViewModel
 class MapSheetViewModel @Inject constructor(
@@ -66,6 +83,7 @@ class MapSheetViewModel @Inject constructor(
         source: MapPriceSource,
         product: FuelProduct? = null,
         surveyPeriod: String? = null,
+        chargingConnector: ChargingConnector? = null,
     ) {
         // B-BR-MAP-SHEET-RACE-01: invalidate generation and cancel in-flight
         // lookup immediately before any early-return branch or debounce.
@@ -74,6 +92,7 @@ class MapSheetViewModel @Inject constructor(
         job = null
         val resolvedProduct = product ?: _ui.value.product
         val resolvedPeriod = surveyPeriod ?: _ui.value.surveyPeriod
+        val resolvedConnector = chargingConnector ?: _ui.value.chargingConnector
         // Charging in ANP mode never invents a tariff.
         if (source == MapPriceSource.ANP && !marker.fuel && marker.charging) {
             _ui.update {
@@ -82,6 +101,7 @@ class MapSheetViewModel @Inject constructor(
                     source = source,
                     product = resolvedProduct,
                     surveyPeriod = resolvedPeriod,
+                    chargingConnector = resolvedConnector,
                     price = null,
                     priceAbsent = true,
                     absentReason = "anp-no-tariff",
@@ -97,6 +117,7 @@ class MapSheetViewModel @Inject constructor(
                 source = source,
                 product = resolvedProduct,
                 surveyPeriod = resolvedPeriod,
+                chargingConnector = resolvedConnector,
                 loading = true,
                 price = null,
                 priceAbsent = false,
@@ -115,6 +136,7 @@ class MapSheetViewModel @Inject constructor(
                         marker = marker,
                         fuelProduct = product,
                         surveyPeriod = surveyPeriod,
+                        chargingConnector = chargingConnector,
                     ),
                 )
                 if (gen != generation) return@launch

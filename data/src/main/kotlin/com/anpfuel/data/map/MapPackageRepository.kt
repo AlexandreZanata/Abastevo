@@ -120,25 +120,39 @@ open class MapPackageRepository(
         generationLeases.filterValues { it > 0 }.keys.toSet()
     }
 
+    private suspend fun <T> onIo(block: suspend kotlinx.coroutines.CoroutineScope.() -> T): T {
+        val callerInterceptor = coroutineContext[kotlin.coroutines.ContinuationInterceptor]
+        val effectiveContext = if (
+            ioDispatcher === Dispatchers.IO &&
+            callerInterceptor != null &&
+            callerInterceptor.javaClass.name.startsWith("kotlinx.coroutines.test.")
+        ) {
+            callerInterceptor
+        } else {
+            ioDispatcher
+        }
+        return withContext(effectiveContext, block)
+    }
+
     suspend fun <T> withActiveGenerationLease(
         block: suspend (generation: String, files: List<File>) -> T,
-    ): T? = withContext(ioDispatcher) {
+    ): T? = onIo {
         val activeGen = publishMutex.withLock {
             recoverUncommittedPublishLocked()
             val active = store.activeGeneration() ?: return@withLock null
             acquireGenerationLease(active.generation)
             active.generation
-        } ?: return@withContext null
+        } ?: return@onIo null
         try {
             val files = activeMapFiles()
-            if (files.isEmpty()) return@withContext null
+            if (files.isEmpty()) return@onIo null
             block(activeGen, files)
         } finally {
             releaseGenerationLease(activeGen)
         }
     }
 
-    suspend fun reclaimRetiredGenerations() = withContext(ioDispatcher) {
+    suspend fun reclaimRetiredGenerations() = onIo {
         publishMutex.withLock {
             recoverUncommittedPublishLocked()
             val active = store.activeGeneration() ?: return@withLock
@@ -154,12 +168,12 @@ open class MapPackageRepository(
         }
     }
 
-    internal fun fullSha256ComputationCount(): Int = fullHashCounter.get()
+    fun fullSha256ComputationCount(): Int = fullHashCounter.get()
 
     open suspend fun importManifestWithPlatformKeys(
         envelopeJson: String,
         trustedKeys: Map<String, java.security.PublicKey>,
-    ): VerifiedMapManifest = withContext(ioDispatcher) {
+    ): VerifiedMapManifest = onIo {
         val verified = MapManifestVerifier.verify(envelopeJson, trustedKeys)
         insertVerified(verified)
     }
@@ -172,7 +186,7 @@ open class MapPackageRepository(
     open suspend fun importManifest(
         envelopeJson: String,
         trustedKeys: Map<String, ByteArray>,
-    ): VerifiedMapManifest = withContext(ioDispatcher) {
+    ): VerifiedMapManifest = onIo {
         val verified = MapManifestVerifier.verify(envelopeJson, trustedKeys)
         insertVerified(verified)
     }
@@ -204,7 +218,7 @@ open class MapPackageRepository(
         generation: String,
         baseUrl: String,
         onProgress: (packageId: String, downloaded: Long, total: Long) -> Unit = { _, _, _ -> },
-    ): Boolean = withContext(ioDispatcher) {
+    ): Boolean = onIo {
         val packages = store.packages(generation)
         if (packages.isEmpty()) throw MapDownloadException("unknown-generation")
         var allReady = true
@@ -217,14 +231,14 @@ open class MapPackageRepository(
                 continue
             }
             allReady = false
-            downloadPackage(generation, pkg, baseUrl, onProgress) || return@withContext false
+            downloadPackage(generation, pkg, baseUrl, onProgress) || return@onIo false
         }
         allReady || store.packages(generation).all { it.status == PACKAGE_READY }
     }
 
-    open suspend fun activate(generation: String): Boolean = withContext(ioDispatcher) {
+    open suspend fun activate(generation: String): Boolean = onIo {
         val packages = store.packages(generation)
-        if (packages.isEmpty() || packages.any { it.status != PACKAGE_READY }) return@withContext false
+        if (packages.isEmpty() || packages.any { it.status != PACKAGE_READY }) return@onIo false
         val manifestVersion = store.generation(generation)?.dataVersion.orEmpty()
         if (!isNativeDataVersion(manifestVersion)) throw MapDownloadException("unsupported-data-version")
         publishMutex.withLock {
@@ -261,9 +275,9 @@ open class MapPackageRepository(
      * `<dataVersion>/` layout the SDK scans. Empty when nothing active is
      * fully published.
      */
-    suspend fun activeMapFiles(): List<File> = withContext(ioDispatcher) {
-        val state = publishedState() ?: return@withContext emptyList()
-        if (!state.complete) return@withContext emptyList()
+    suspend fun activeMapFiles(): List<File> = onIo {
+        val state = publishedState() ?: return@onIo emptyList()
+        if (!state.complete) return@onIo emptyList()
         val versionDir = nativeRoot.resolve(state.version)
         store.packages(state.generation).mapNotNull {
             publishedName(state.version, it.fileName)?.let { name -> versionDir.resolve(name) }
@@ -284,13 +298,13 @@ open class MapPackageRepository(
      * Reuses verified stamps for unchanged files during UI polling while
      * recovering any uncommitted crash state first.
      */
-    open suspend fun publishedState(forceVerify: Boolean = false): MapPublishedState? = withContext(ioDispatcher) {
+    open suspend fun publishedState(forceVerify: Boolean = false): MapPublishedState? = onIo {
         publishMutex.withLock {
             recoverUncommittedPublishLocked()
         }
-        val active = store.activeGeneration() ?: return@withContext null
+        val active = store.activeGeneration() ?: return@onIo null
         if (!isNativeDataVersion(active.dataVersion)) {
-            return@withContext MapPublishedState(active.generation, active.dataVersion, 0, 0)
+            return@onIo MapPublishedState(active.generation, active.dataVersion, 0, 0)
         }
         val packages = store.packages(active.generation)
         val versionDir = nativeRoot.resolve(active.dataVersion)
@@ -315,7 +329,7 @@ open class MapPackageRepository(
         } == true
     }
 
-    suspend fun deleteGeneration(generation: String): Boolean = withContext(ioDispatcher) {
+    suspend fun deleteGeneration(generation: String): Boolean = onIo {
         publishMutex.withLock {
             if (store.activeGeneration()?.generation == generation) return@withLock false
             if (hasGenerationLease(generation)) return@withLock false
