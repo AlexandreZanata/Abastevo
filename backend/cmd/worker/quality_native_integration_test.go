@@ -180,7 +180,7 @@ func TestNativeWorkerDisabledQueueDoesNotChargeAttempts(t *testing.T) {
 	ctx := context.Background()
 	q := platformjobs.NewQueue(p)
 	handlers := map[string]platformjobs.Handler{}
-	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "ordinary", "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery"} {
+	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "payment-inbox", "ordinary", "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery"} {
 		handlers[kind] = dispatcherHandler(kind)
 	}
 	ids := map[string]string{}
