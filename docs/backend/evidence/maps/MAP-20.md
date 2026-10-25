@@ -34,6 +34,16 @@ Date: 2026-10-25.
   → explicit external `geo:` route (never counted as native guidance; native
   `buildCarRoute` preview owns MAP-22).
 
+### Business Rules & Use Cases (Review Remediation)
+
+- **B-BR-MAP-DISCOVERY-01 (Dynamic Viewport, City Selection & Generation Invalidation)**:
+  1. Camera/viewport changes from `MapHost` / `MapViewModel` drive bounded debounced `onViewport` queries without hardcoded coordinates, and city selection uses the configured/selected IBGE municipality code (with city switching in UI) without requiring GPS.
+  2. `ChargingMarkersSource` pages through the active offline snapshot generation with region/query/filter matching rather than silently truncating at the first 100 global rows, rethrows `CancellationException`, and surfaces snapshot errors/emptiness honestly.
+  3. Generation counter (`++generation`) and `fetchJob?.cancel()` execute immediately before debounce in `onViewport`, `onSearch` (including when clearing or shortening queries to `< 2` characters), and filter changes so stale in-flight responses can never overwrite newer state.
+- **B-BR-MAP-FILTERS-01 (Contract-Accurate Fuel & EV Filters)**: `MapFiltersDialog` and `MapDiscoveryViewModel` support filtering by price source (`ANP` / `COMMUNITY`), service (`fuel` / `charging`), fuel product (`FuelProduct`), EV connector (`ChargingConnector`), current (`ChargingCurrent` AC/DC), access (`ChargingAccess`), minimum known power (`kW`, keeping unknown power visible), and survey period; server station directory list/nearby endpoints do not filter by fuel price on the wire, so fuel product and survey period scope the active sheet/profile price query while EV filters scope charging markers/list items directly.
+- **B-BR-MAP-I18N-A11Y-01 (8-Locale Completeness, Narrow Layout & Route Failure Feedback)**: All user-facing map strings (including `MapBottomSheet`, `MapDownloadsScreen`, `MapFiltersDialog`, `MapHost`, location quality labels, and route errors) are localized across all 8 locales (`en`, `de`, `es`, `fr`, `ja`, `pt-rBR`, `ru`, `zh-rCN`), narrow-screen controls use flexible widths without clipping, and failed external route intents display an actionable message.
+- **BUC-MAP-20-01**: User pans the map or selects a city/search query -> filters by fuel product or EV connector/current/power/access -> selects a station from a cluster or accessible list -> views localized sheet/profile or triggers external route with honest error handling.
+
 ## Implementation
 
 - `MapDiscoveryViewModel`: viewport + search + service filter, `lastMarkers`

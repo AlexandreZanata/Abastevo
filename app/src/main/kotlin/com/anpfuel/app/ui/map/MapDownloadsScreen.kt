@@ -57,29 +57,31 @@ fun MapDownloadsScreen(
                 }
             }
             ui.error != null -> {
+                val retryDesc = stringResource(R.string.map_retry)
                 Text(ui.error ?: "")
                 TextButton(
                     onClick = { viewModel.retry() },
-                    modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Retry download" },
+                    modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = retryDesc },
                     enabled = ui.retryable || ui.candidateGeneration != null,
                 ) {
-                    Text(stringResource(R.string.map_retry))
+                    Text(retryDesc)
                 }
             }
             else -> {
                 if (ui.activeGeneration != null) {
-                    Text("Active: ${ui.activeGeneration}")
+                    Text(stringResource(R.string.map_downloads_active_generation, ui.activeGeneration ?: ""))
                     if (ui.published) {
                         Text(stringResource(R.string.map_published))
                     } else {
+                        val activateLabel = stringResource(R.string.map_activate)
                         Text(stringResource(R.string.map_needs_activation))
                         Button(
                             onClick = { viewModel.activateActive() },
                             modifier = Modifier.heightIn(min = 48.dp).semantics {
-                                contentDescription = "Activate downloaded maps"
+                                contentDescription = activateLabel
                             },
                         ) {
-                            Text(stringResource(R.string.map_activate))
+                            Text(activateLabel)
                         }
                     }
                 } else {
@@ -87,15 +89,27 @@ fun MapDownloadsScreen(
                 }
                 val candidate = ui.candidateGeneration
                 if (candidate != null) {
-                    Text("Update: $candidate")
-                    Text("Size: ${ui.candidateBytes / 1024} KiB in ${ui.candidatePackages.size} packages")
+                    Text(stringResource(R.string.map_downloads_update_generation, candidate))
+                    Text(
+                        stringResource(
+                            R.string.map_downloads_size_summary,
+                            (ui.candidateBytes / 1024).toInt(),
+                            ui.candidatePackages.size,
+                        )
+                    )
                     if (ui.candidateDependencies.isNotEmpty()) {
-                        Text("Depends on: ${ui.candidateDependencies.joinToString()}")
+                        Text(
+                            stringResource(
+                                R.string.map_downloads_depends_on,
+                                ui.candidateDependencies.joinToString(),
+                            )
+                        )
                     }
                     ui.candidatePackages.forEach { pkg ->
                         Text("${pkg.packageId}: ${pkg.downloadedBytes}/${pkg.bytes} ${pkg.status}")
                     }
                     if (ui.downloading) {
+                        val cancelLabel = stringResource(R.string.map_cancel)
                         val total = ui.candidateBytes.coerceAtLeast(1)
                         LinearProgressIndicator(
                             progress = { (ui.downloadedBytes.toFloat() / total).coerceIn(0f, 1f) },
@@ -105,34 +119,38 @@ fun MapDownloadsScreen(
                             TextButton(
                                 onClick = { viewModel.cancel() },
                                 modifier = Modifier.heightIn(min = 48.dp).semantics {
-                                    contentDescription = "Cancel download"
+                                    contentDescription = cancelLabel
                                 },
                             ) {
-                                Text(stringResource(R.string.map_cancel))
+                                Text(cancelLabel)
                             }
                         }
                     } else {
+                        val downloadLabel = stringResource(R.string.map_download)
                         Button(
                             onClick = { viewModel.download() },
                             modifier = Modifier.heightIn(min = 48.dp).semantics {
-                                contentDescription = "Download update"
+                                contentDescription = downloadLabel
                             },
                         ) {
-                            Text(stringResource(R.string.map_download))
+                            Text(downloadLabel)
                         }
                     }
                 } else {
+                    val checkUpdateLabel = stringResource(R.string.map_check_update)
                     Button(
                         onClick = { viewModel.checkForUpdate() },
                         modifier = Modifier.heightIn(min = 48.dp).semantics {
-                            contentDescription = "Check for map update"
+                            contentDescription = checkUpdateLabel
                         },
                     ) {
-                        Text(stringResource(R.string.map_check_update))
+                        Text(checkUpdateLabel)
                     }
                 }
             }
         }
-        Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("OK") }
+        Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(stringResource(R.string.map_downloads_ok))
+        }
     }
 }
