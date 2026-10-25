@@ -586,7 +586,7 @@ func asaasStatusError(status int) error {
 	case status == http.StatusConflict:
 		return domain.ErrConflict
 	case status == http.StatusUnauthorized, status == http.StatusForbidden:
-		return domain.ErrUnavailable
+		return app.ErrProviderUnauthorized
 	case status == http.StatusTooManyRequests, status >= 500:
 		return app.ErrAmbiguous
 	default:

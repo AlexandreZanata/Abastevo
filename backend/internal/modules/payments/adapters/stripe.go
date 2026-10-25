@@ -21,7 +21,13 @@ type StripeProvider struct {
 }
 
 func NewStripeProvider(secretKey string, environment domain.Environment, httpClient *http.Client) *StripeProvider {
-	backends := stripe.NewBackends(httpClient)
+	// The SDK default logger prints provider errors (which carry resource
+	// identifiers) to stderr. Payment diagnostics stay structured error
+	// codes returned to callers — never raw SDK emission.
+	backends := stripe.NewBackendsWithConfig(&stripe.BackendConfig{
+		HTTPClient:    httpClient,
+		LeveledLogger: &stripe.LeveledLogger{Level: stripe.LevelNull},
+	})
 	return &StripeProvider{
 		Client:      stripe.NewClient(secretKey, stripe.WithBackends(backends)),
 		Environment: environment,
@@ -561,7 +567,7 @@ func stripeError(err error) error {
 	if errors.As(err, &stripeErr) {
 		switch {
 		case stripeErr.HTTPStatusCode == http.StatusUnauthorized || stripeErr.HTTPStatusCode == http.StatusForbidden:
-			return domain.ErrUnauthorized
+			return app.ErrProviderUnauthorized
 		case stripeErr.HTTPStatusCode == 429, stripeErr.HTTPStatusCode >= 500, stripeErr.Type == stripe.ErrorTypeAPI:
 			return app.ErrAmbiguous
 		case stripeErr.Type == stripe.ErrorTypeIdempotency:

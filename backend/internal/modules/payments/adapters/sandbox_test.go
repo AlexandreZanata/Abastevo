@@ -287,7 +287,7 @@ func classifySandbox(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrNotFound):
 		return errors.New("expected-absence")
-	case errors.Is(err, domain.ErrUnauthorized):
+	case errors.Is(err, app.ErrProviderUnauthorized):
 		return errors.New("authentication-failed")
 	case errors.Is(err, domain.ErrUnavailable):
 		return errors.New("provider-unavailable")

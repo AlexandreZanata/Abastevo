@@ -11,6 +11,13 @@ import (
 
 var ErrAmbiguous = errors.New("payments: provider outcome unknown")
 
+// ErrProviderUnauthorized reports a rejected provider credential (revoked
+// key, mismatched account). Unlike domain.ErrUnauthorized — which refuses
+// user, owner and operator authorization terminally — it preserves the
+// event: nothing is marked, granted, revoked or failed, so rotation and
+// retry converge without loss.
+var ErrProviderUnauthorized = errors.New("payments: provider credential rejected")
+
 type Principal struct {
 	AccountID string
 }

@@ -4,7 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"log"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,7 +80,7 @@ func TestPAY21StripeRevokedKeyIsUnauthorized(t *testing.T) {
 			SuccessURL: "https://app.example.invalid/return", CancelURL: "https://app.example.invalid/cancel",
 			IdempotencyKey: "pay:checkout:op_revoked",
 		})
-		if !errors.Is(err, domain.ErrUnauthorized) {
+		if !errors.Is(err, app.ErrProviderUnauthorized) {
 			t.Fatalf("status=%d err = %v", status, err)
 		}
 	}
@@ -150,12 +155,12 @@ func TestPAY21AsaasRetryableFaultsStayAmbiguous(t *testing.T) {
 	}
 }
 
-func TestPAY21AsaasRevokedKeyStaysUnavailable(t *testing.T) {
+func TestPAY21AsaasRevokedKeyIsProviderAuthFailure(t *testing.T) {
 	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden} {
 		provider := asaasTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(status)
 		}))
-		if _, _, _, err := provider.FindPayment(context.Background(), "pay_revoked"); !errors.Is(err, domain.ErrUnavailable) {
+		if _, _, _, err := provider.FindPayment(context.Background(), "pay_revoked"); !errors.Is(err, app.ErrProviderUnauthorized) {
 			t.Fatalf("status=%d err = %v", status, err)
 		}
 	}
@@ -222,5 +227,68 @@ func TestPAY21AsaasCancelAuthorizationExactCall(t *testing.T) {
 	}))
 	if err := provider.CancelPixAutoAuthorization(context.Background(), "auth_1"); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// redirectTransport sends every request to a local double regardless of
+// the production host baked into the constructor under test.
+type redirectTransport struct {
+	target string
+	base   http.RoundTripper
+}
+
+func (t redirectTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	clone := request.Clone(request.Context())
+	clone.URL.Scheme = "http"
+	clone.URL.Host = strings.TrimPrefix(t.target, "http://")
+	clone.Host = clone.URL.Host
+	return t.base.RoundTrip(clone)
+}
+
+func TestStripeConstructorEmitsNoRawLogs(t *testing.T) {
+	const syntheticID = "synthetic_identifier_leak_probe_12345"
+	const syntheticSecret = "sk_test_synthetic_leak_probe_67890"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{
+			"type": "invalid_request_error", "message": "revoked for " + syntheticID,
+		}})
+	}))
+	t.Cleanup(server.Close)
+	// The constructor under test is the production one used by the API
+	// and the sandbox harness — not a pre-silenced test client.
+	provider := NewStripeProvider(syntheticSecret, domain.EnvironmentTest,
+		&http.Client{Transport: redirectTransport{target: server.URL, base: http.DefaultTransport}})
+
+	oldStdout, oldStderr := os.Stdout, os.Stderr
+	oldLog := log.Writer()
+	outReader, outWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	errReader, errWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout, os.Stderr = outWriter, errWriter
+	log.SetOutput(errWriter)
+	_, callErr := provider.EnsureCustomer(context.Background(), app.CustomerRequest{
+		AccountID: "11111111-1111-4111-8111-111111111111", Environment: domain.EnvironmentTest,
+		MerchantID: "acct_synthetic",
+	})
+	_ = outWriter.Close()
+	_ = errWriter.Close()
+	os.Stdout, os.Stderr = oldStdout, oldStderr
+	log.SetOutput(oldLog)
+	capturedOut, _ := io.ReadAll(outReader)
+	capturedErr, _ := io.ReadAll(errReader)
+	combined := string(capturedOut) + string(capturedErr)
+	for _, marker := range []string{syntheticID, syntheticSecret, "invalid_request_error"} {
+		if strings.Contains(combined, marker) {
+			t.Fatalf("raw SDK emission contains %q in %q", marker, combined)
+		}
+	}
+	if !errors.Is(callErr, app.ErrProviderUnauthorized) {
+		t.Fatalf("call err = %v", callErr)
 	}
 }
