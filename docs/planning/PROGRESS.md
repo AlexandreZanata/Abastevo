@@ -1,5 +1,24 @@
 # Current execution state
 
+- Cumulative PR #150 integration 2026-10-25: IN_PROGRESS / CI_PENDING.
+  User authorized publishing the partial map, PAY and enterprise/static portal
+  source union and merging protected dev -> main after current checks pass.
+  Isolated clone `/tmp/abastevo-pr150-integration-20261025`; occupied dev and
+  primary dirty checkout remain untouched. Includes PAY `1948035c`, MAP
+  `e9af87dd`, ESP/FQ-PORTAL-READY `d74334dc`, normal merge commits `df9612af`
+  and `0284128f`, and tested integration repairs `4b029756`.
+  [Cumulative evidence](../backend/evidence/PR150_CUMULATIVE_INTEGRATION.md).
+  Dedicated payment/export/refresh slots preserved; exact admitted native AAR
+  vendored with SHA/source access/notices/SBOM for fresh CI; map paths select
+  full guards. Worker/config race tests, HTTP size repeat 20, Python provisioning
+  (13 cases) and classifier checks PASS. Full Android/PostGIS union in progress.
+  Map minimum gate remains PARTIAL; PAY-21 provider proof stays PENDING; portal
+  rights/precision/public-release obligations remain. User authorized the known
+  `https://teste.abastevo.com.br` staging origin and scoped VPS update after
+  integration. Next: finish acceptance, current CI/review checks, guarded merge,
+  verify ancestry, retain dev, then staging rollback/smoke. Earlier entries below
+  are historical checkpoints and do not override this integration scope.
+
 - Stripe/Asaas payment PAY-22 2026-10-25: INTEGRATION_PENDING.
   `codex/payments-stripe-asaas` fast-forward merged into `dev` in the
   isolated `pay22-dev` worktree (no conflicts, no foreign code; the
