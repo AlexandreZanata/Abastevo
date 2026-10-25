@@ -79,6 +79,8 @@ type BeginResult struct {
 // A failed earlier run never blocks a retry: only completed triples match.
 func (im *Importer) BeginRun(ctx context.Context, key domain.ImportKey, surveyStart, surveyEnd time.Time) (BeginResult, error) {
 	q := official.New(im.pool)
+	var runText string
+	var runID pgtype.UUID
 	if existing, err := q.GetImportRunByIdentity(ctx, official.GetImportRunByIdentityParams{
 		SourceUrl:      key.SourceURL,
 		SourceChecksum: key.SourceChecksum,
@@ -87,24 +89,30 @@ func (im *Importer) BeginRun(ctx context.Context, key domain.ImportKey, surveySt
 		if existing.Status == domain.RunCompleted {
 			return BeginResult{NoOp: true, ExistingRevision: ""}, nil
 		}
+		// A failed (or interrupted) attempt keeps the one identity row.
+		// Retry under that same run and open a fresh revision; the failed
+		// revision stays append-only history.
+		runID = existing.ID
+		runText = uuidString(existing.ID)
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return BeginResult{}, err
-	}
-	runText, err := newUUIDv4()
-	if err != nil {
-		return BeginResult{}, err
-	}
-	runID, err := mustUUID(runText)
-	if err != nil {
-		return BeginResult{}, err
-	}
-	if _, err := q.CreateImportRun(ctx, official.CreateImportRunParams{
-		ID:             runID,
-		SourceUrl:      key.SourceURL,
-		SourceChecksum: key.SourceChecksum,
-		ParserVersion:  key.ParserVersion,
-	}); err != nil {
-		return BeginResult{}, err
+	} else {
+		runText, err = newUUIDv4()
+		if err != nil {
+			return BeginResult{}, err
+		}
+		runID, err = mustUUID(runText)
+		if err != nil {
+			return BeginResult{}, err
+		}
+		if _, err := q.CreateImportRun(ctx, official.CreateImportRunParams{
+			ID:             runID,
+			SourceUrl:      key.SourceURL,
+			SourceChecksum: key.SourceChecksum,
+			ParserVersion:  key.ParserVersion,
+		}); err != nil {
+			return BeginResult{}, err
+		}
 	}
 	revText, err := newUUIDv4()
 	if err != nil {

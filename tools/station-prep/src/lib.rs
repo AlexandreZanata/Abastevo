@@ -24,6 +24,7 @@ pub mod ev_output;
 pub mod ev_pbe;
 pub mod ev_tariff;
 pub mod join;
+pub mod location_review;
 pub mod map_contract;
 pub mod municipality;
 pub mod osm_reference;

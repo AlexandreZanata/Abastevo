@@ -153,6 +153,51 @@ func TestSameBytesNoOp(t *testing.T) {
 	}
 }
 
+func TestFailedRunRetriesSameIdentity(t *testing.T) {
+	im, pool := freshImporter(t)
+	ctx := context.Background()
+	st := makeStation(t, pool, "Posto A")
+	key := domain.ImportKey{SourceURL: "https://www.gov.br/anp/retry.xlsx", SourceChecksum: "sha256:retry", ParserVersion: "p02-t04"}
+	first, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var q domain.QuarantineTally
+	if _, err := im.StageBatch(ctx, first.RevisionID, []domain.PriceRow{priceRow(st, 8, 5999)}, &q); err != nil {
+		t.Fatal(err)
+	}
+	q.Add("unknown-fuel-label", "row-99")
+	fin, err := im.FinishRun(ctx, first.RunID, first.RevisionID, &q)
+	if err != nil || fin.Published {
+		t.Fatalf("failed finish = %+v, %v", fin, err)
+	}
+	retry, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil {
+		t.Fatalf("retry begin: %v", err)
+	}
+	if retry.NoOp {
+		t.Fatal("failed run was treated as a completed no-op")
+	}
+	if retry.RunID != first.RunID {
+		t.Fatalf("retry created a second run: %s != %s", retry.RunID, first.RunID)
+	}
+	if retry.RevisionID == first.RevisionID {
+		t.Fatal("retry reused the failed revision")
+	}
+	var q2 domain.QuarantineTally
+	if _, err := im.StageBatch(ctx, retry.RevisionID, []domain.PriceRow{priceRow(st, 8, 5999)}, &q2); err != nil {
+		t.Fatal(err)
+	}
+	fin2, err := im.FinishRun(ctx, retry.RunID, retry.RevisionID, &q2)
+	if err != nil || !fin2.Published {
+		t.Fatalf("retry finish = %+v, %v", fin2, err)
+	}
+	cur, err := im.CurrentRevision(ctx, weekStart, weekEnd)
+	if err != nil || cur != retry.RevisionID {
+		t.Errorf("pointer = %q, %v; want %q", cur, err, retry.RevisionID)
+	}
+}
+
 func TestCorrectedBytesNewRevision(t *testing.T) {
 	im, pool := freshImporter(t)
 	ctx := context.Background()
