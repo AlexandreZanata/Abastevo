@@ -1,5 +1,29 @@
 # Current execution state
 
+- Map/EV construction 2026-10-25: MAP-15/16/17/18/19 LOCAL_DONE /
+  INTEGRATION_PENDING; MAP-20 LOCAL_DONE / INTEGRATION_PENDING with
+  MINIMUM_MAP_GATE PARTIAL (no fake PASS) on `codex/map-ev-implementation`
+  at `3ccb6988` plus MAP-17/18/19/20 commits. [MAP-15](..//backend/evidence/maps/MAP-15.md)
+  proves API-26 Monocypher/JNI Ed25519 with Go bytes, 18→26 migration,
+  WorkManager retry/cancel, process-death resume and native-readable activation.
+  [MAP-16](../backend/evidence/maps/MAP-16.md) proves singleton Hilt engine,
+  readiness-gated surface, GPS/off/no-fix states, camera restore and real
+  native init on-device. [MAP-17](../backend/evidence/maps/MAP-17.md) delivers
+  Explorar|Comunidade|Mapa|Perfil with real `MapHost`, ANP/Community selector,
+  downloads screen and eight-locale strings. [MAP-18](../backend/evidence/maps/MAP-18.md)
+  proves UUID-stable deterministic clusters, REVIEWED-only pins with
+  unknown/city-centroid list-only, fuel/charging/combined pictograms and 48dp
+  TalkBack list. [MAP-19](../backend/evidence/maps/MAP-19.md) proves exact
+  source/product/unit/price/date sheet with explicit absence and real
+  profile/route/report actions. [MAP-20](../backend/evidence/maps/MAP-20.md)
+  proves bounded debounced search/filters with stale discard, 48dp/light-dark/
+  eight-locale accessibility, staging Go JSON → Kotlin decode over real HTTP
+  and the on-device list/sheet/profile/route flow. Release APK 78,020,574
+  bytes / 74.41 MiB (both ARM ABIs, 16 KB, under 80 MiB). Staging has no
+  REVIEWED coords or station prices for live pins/prices (reproduced with curl);
+  gate stays PARTIAL, not certified. No push/PR/merge/wiki/deploy; MAP-21–33
+  untouched.
+
 - Map/EV checkpoint 2026-10-25 (measurements 2026-10-24): MAP-00–13 LOCAL_DONE / INTEGRATION_PENDING; MAP-14
   **LOCAL_DONE / ENGINE_GATE_PASS / INTEGRATION_PENDING** on
   `codex/map-ev-implementation`, from `8e707b62` plus the checkpoint commit
