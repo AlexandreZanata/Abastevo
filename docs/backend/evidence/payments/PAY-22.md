@@ -74,10 +74,35 @@ tests unchanged and green.
 
 The required `payment-inbox` slot broke four partial dispatcher maps in
 quality worker tests; fixed with one-line additions each (`d149e092`).
-Remaining `cmd/worker` integration failures are byte-identical on
-pristine dev `721582b8` (verified side by side): Rust preparer fixture
-rejections and a private-source requirement owned by other fronts — no
-payments behavior involved, not fixed here, not hidden.
+The remaining worker integration failures reproduced byte-identically on
+pristine dev `721582b8` and on the PR base main `c82823cb` — then root
+caused to the local environment, not the code: `Runner.Validate`
+refuses group/world-writable preparer binaries, and the local build
+left them `775`. The backend README and CI both prescribe `chmod 755`;
+after applying it, the full worker integration suite passes locally
+with pinned preparers and disposable PostGIS. No quality, enforcement
+or fines code, fixture or tag was changed; nothing was hidden.
+
+Reproducible worker command (real assignments, from `backend/`):
+
+```sh
+cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml \
+  --bin prepare_registry --bin prepare_quality --bin prepare_sanctions \
+  --bin prepare_fine_history --bin prepare_enforcement \
+  --target-dir /tmp/abastevo-integration-rust
+chmod 755 /tmp/abastevo-integration-rust/debug/prepare_registry \
+  /tmp/abastevo-integration-rust/debug/prepare_quality \
+  /tmp/abastevo-integration-rust/debug/prepare_sanctions \
+  /tmp/abastevo-integration-rust/debug/prepare_fine_history \
+  /tmp/abastevo-integration-rust/debug/prepare_enforcement
+export ANPFUEL_TEST_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_registry
+export ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality
+export ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions
+export ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_fine_history
+export ANPFUEL_TEST_ENFORCEMENT_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_enforcement
+export ANPFUEL_TEST_DATABASE_URL='postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable'
+go test -race -tags=integration -count=1 ./cmd/worker/
+```
 
 ## Provider credential classification correction
 

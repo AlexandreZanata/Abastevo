@@ -19,7 +19,11 @@
   corrections: provider credential failures reclassified as recoverable
   (`ErrProviderUnauthorized`, no conflict marking, single-convergence
   proof on PostGIS with real adapters) and Stripe SDK raw log emission
-  silenced with capture-test proof. Remote CI on the corrected head
+  silenced with capture-test proof. Worker integration fully green
+  locally after the README-prescribed `chmod 755` on pinned preparers
+  (earlier failures reproduced identically on pristine dev and PR-base
+  main and root-caused to binary permissions, not code; no quality
+  code touched). Remote CI on the corrected head
   pending; merge awaits green CI via guarded finish. No other work
   branch touched.
   Next: push corrections, refresh PR #150, guarded merge on green CI.
