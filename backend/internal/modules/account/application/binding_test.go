@@ -43,6 +43,7 @@ func testBindingService(t *testing.T, contributors ...string) (*Service, *fakeCl
 	prover := newStubProver(contributors...)
 	svc.KeyProver = prover
 	svc.RequestErasure = func(_ context.Context, _ string, _ []string) error { return nil }
+	svc.RequestBillingExit = func(_ context.Context, _ string) error { return nil }
 	return svc, clock, prover
 }
 

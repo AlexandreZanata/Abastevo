@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.usecase.ledger.LedgerConflictChoice
 import com.anpfuel.domain.premium.LedgerDataset
 import java.text.DateFormat
@@ -77,7 +78,10 @@ fun LedgerSyncScreen(onNavigateBack: () -> Unit, viewModel: LedgerSyncViewModel 
                 item { SyncToggle(stringResource(R.string.ledger_sync_master), it.masterEnabled, !state.busy && (it.accountId != null || it.masterEnabled), viewModel::setMasterEnabled) }
                 item { SyncToggle(stringResource(R.string.ledger_sync_device), it.deviceEnabled, !state.busy, viewModel::setDeviceEnabled) }
                 items(it.datasets, key = { row -> row.dataset.wire }) { row ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    ) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             SyncToggle(datasetName(row.dataset), row.enabled, !state.busy) { value -> viewModel.setDatasetEnabled(row.dataset, value) }
                             Text(stringResource(R.string.ledger_sync_counts, row.pending, row.conflicts))
@@ -90,7 +94,10 @@ fun LedgerSyncScreen(onNavigateBack: () -> Unit, viewModel: LedgerSyncViewModel 
                 }
                 if (it.conflictRecords.isEmpty()) item { Text(stringResource(R.string.ledger_sync_no_conflicts)) }
                 items(it.conflictRecords, key = { row -> row.dataset.wire + row.recordId }) { record ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    ) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(stringResource(R.string.ledger_sync_conflict, datasetName(record.dataset), record.recordId))
                             val enabled = !state.busy && it.masterEnabled && it.deviceEnabled && it.datasets.any { row -> row.dataset == record.dataset && row.enabled }
@@ -109,7 +116,10 @@ fun LedgerSyncScreen(onNavigateBack: () -> Unit, viewModel: LedgerSyncViewModel 
             }
             state.staged?.let { diff ->
                 item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    ) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(stringResource(R.string.ledger_sync_diff, diff.toPull.size, diff.localOnlyUnsynced, diff.skippedErased, diff.skippedVoided))
                             if (diff.truncated) Text(stringResource(R.string.ledger_sync_truncated))

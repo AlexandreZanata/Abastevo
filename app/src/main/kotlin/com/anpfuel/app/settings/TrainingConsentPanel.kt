@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 /**
  * CS11B — Training-consent settings panel (B-BR-CS06, BUC-CS05).
@@ -50,7 +51,10 @@ fun TrainingConsentPanel(
             CircularProgressIndicator(modifier = modifier.padding(16.dp))
         }
         is TrainingConsentUiState.Content -> {
-            Card(modifier = modifier.fillMaxWidth()) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -128,7 +132,10 @@ fun TrainingConsentPanel(
             CircularProgressIndicator(modifier = modifier.padding(16.dp))
         }
         is TrainingConsentUiState.Offline -> {
-            Card(modifier = modifier.fillMaxWidth()) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -145,7 +152,10 @@ fun TrainingConsentPanel(
             }
         }
         is TrainingConsentUiState.Pending -> {
-            Card(modifier = modifier.fillMaxWidth()) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -162,7 +172,10 @@ fun TrainingConsentPanel(
             }
         }
         is TrainingConsentUiState.Rejected -> {
-            Card(modifier = modifier.fillMaxWidth()) {
+            Card(
+                modifier = modifier.fillMaxWidth(),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),

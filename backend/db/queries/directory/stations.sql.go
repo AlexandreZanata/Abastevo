@@ -175,6 +175,107 @@ func (q *Queries) CreateStation(ctx context.Context, arg CreateStationParams) (C
 	return i, err
 }
 
+const exportFingerprint = `-- name: ExportFingerprint :one
+SELECT (SELECT count(*) FROM directory_stations)::bigint AS stations,
+    COALESCE((
+        SELECT md5(string_agg(
+            id::text || ':' || display_name || ':' || address::text || ':' ||
+            COALESCE(municipality_code, '') || ':' || COALESCE(state, '') || ':' ||
+            status || ':' || COALESCE(current_quality, '') || ':' ||
+            COALESCE(current_revision_id::text, ''), ',' ORDER BY id::text))
+        FROM directory_stations
+    ), '')::text AS stations_hash,
+    COALESCE((
+        SELECT md5(string_agg(station_id::text || ':' || normalized_value,
+            ',' ORDER BY station_id::text, normalized_value))
+        FROM directory_identifiers
+        WHERE kind = 'CNPJ' AND valid_to IS NULL
+    ), '')::text AS identifiers_hash
+`
+
+type ExportFingerprintRow struct {
+	Stations        int64  `json:"stations"`
+	StationsHash    string `json:"stations_hash"`
+	IdentifiersHash string `json:"identifiers_hash"`
+}
+
+// Cheap change detector for the private export state. It covers every public
+// station field and the active CNPJ binding without exporting rows.
+func (q *Queries) ExportFingerprint(ctx context.Context) (ExportFingerprintRow, error) {
+	row := q.db.QueryRow(ctx, exportFingerprint)
+	var i ExportFingerprintRow
+	err := row.Scan(&i.Stations, &i.StationsHash, &i.IdentifiersHash)
+	return i, err
+}
+
+const exportStations = `-- name: ExportStations :many
+SELECT s.id, s.display_name, s.address, s.municipality_code, s.state,
+    s.status, ST_AsText(s.current_point) AS current_point_wkt,
+    s.current_quality, s.current_revision_id,
+    COALESCE(i.normalized_value, '') AS cnpj
+FROM directory_stations AS s
+LEFT JOIN LATERAL (
+    SELECT normalized_value
+    FROM directory_identifiers
+    WHERE station_id = s.id AND kind = 'CNPJ' AND valid_to IS NULL
+    LIMIT 1
+) AS i ON TRUE
+WHERE ($1::text = '' OR s.id::text > $1::text)
+ORDER BY s.id::text ASC
+LIMIT $2::int
+`
+
+type ExportStationsParams struct {
+	AfterID      string `json:"after_id"`
+	LimitPlusOne int32  `json:"limit_plus_one"`
+}
+
+type ExportStationsRow struct {
+	ID                pgtype.UUID `json:"id"`
+	DisplayName       string      `json:"display_name"`
+	Address           []byte      `json:"address"`
+	MunicipalityCode  pgtype.Text `json:"municipality_code"`
+	State             pgtype.Text `json:"state"`
+	Status            string      `json:"status"`
+	CurrentPointWkt   interface{} `json:"current_point_wkt"`
+	CurrentQuality    pgtype.Text `json:"current_quality"`
+	CurrentRevisionID pgtype.UUID `json:"current_revision_id"`
+	Cnpj              string      `json:"cnpj"`
+}
+
+// Bounded snapshot read for the enterprise export. Includes sourced status and
+// only the active identifier; an invalidated CNPJ is never resurrected.
+func (q *Queries) ExportStations(ctx context.Context, arg ExportStationsParams) ([]ExportStationsRow, error) {
+	rows, err := q.db.Query(ctx, exportStations, arg.AfterID, arg.LimitPlusOne)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportStationsRow
+	for rows.Next() {
+		var i ExportStationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisplayName,
+			&i.Address,
+			&i.MunicipalityCode,
+			&i.State,
+			&i.Status,
+			&i.CurrentPointWkt,
+			&i.CurrentQuality,
+			&i.CurrentRevisionID,
+			&i.Cnpj,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const fixDistanceM = `-- name: FixDistanceM :one
 
 SELECT ST_Distance(current_point,

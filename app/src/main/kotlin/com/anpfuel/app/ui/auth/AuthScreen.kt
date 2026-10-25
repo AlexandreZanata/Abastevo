@@ -61,6 +61,7 @@ import com.anpfuel.app.ui.components.SkeletonButton
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 
 /**
@@ -195,10 +196,12 @@ fun AuthScreen(
                 return@Column
             }
             AbastevoBrandBanner()
+            val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             Card(
                 modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                shape = AnpContainerDefaults.containerShape(),
+                colors = CardDefaults.cardColors(containerColor = containerColor),
+                border = AnpContainerDefaults.borderStroke(containerColor),
             ) {
                 Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // Pure crossfade: no positional slide, so texts and inputs

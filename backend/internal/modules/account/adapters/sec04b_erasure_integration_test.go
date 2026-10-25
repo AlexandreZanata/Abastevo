@@ -26,6 +26,7 @@ func TestSEC04BDeleteCapturesIntentsOnRealSQL(t *testing.T) {
 		enqueued = append(enqueued, append([]string{}, contributorIDs...))
 		return nil
 	}
+	svc.RequestBillingExit = func(context.Context, string) error { return nil }
 	// Email signup, then bind two contributors through the store port
 	// (key-proof ceremony is covered elsewhere).
 	if err := svc.RequestCode(ctx, "sec04b@example.invalid"); err != nil {

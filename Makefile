@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-rust check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-rust check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 test-portal-release rehearse-portal check-portal-capacity portal-capacity check-preview-probe preview-portal check-publication-gate preflight-portal-publication smoke-portal-public help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -61,6 +61,37 @@ test-security:
 test-rehearse:
 	bash scripts/tests/test-rehearse.sh
 
+test-portal-release:
+	cd backend && go test -race -count=1 ./internal/modules/enterpriseexport/portalgen
+
+rehearse-portal:
+	bash infra/scripts/rehearse-portal.sh
+
+check-portal-capacity:
+	python3 infra/scripts/load/stats.py --self-test
+	python3 infra/scripts/load/drive.py --self-test
+	python3 infra/scripts/load/portal_report.py --self-test
+	node infra/scripts/load/browser_probe.mjs --self-test
+
+portal-capacity:
+	bash infra/scripts/load/portal_capacity.sh
+
+check-preview-probe:
+	node infra/scripts/load/preview_probe.mjs --self-test
+
+preview-portal:
+	bash infra/scripts/preview_portal.sh
+
+check-publication-gate:
+	python3 infra/scripts/load/publication_preflight.py --self-test
+	bash infra/scripts/smoke_portal_public.sh --self-test
+
+preflight-portal-publication:
+	python3 infra/scripts/load/publication_preflight.py --artifact "$${PORTAL_PUBLICATION_ARTIFACT:?}" --scope "$${PORTAL_PUBLICATION_SCOPE:?}" --out "$${PORTAL_PUBLICATION_OUT:-/tmp/portal-preflight.json}"
+
+smoke-portal-public:
+	bash infra/scripts/smoke_portal_public.sh --origin "$${PORTAL_PUBLIC_ORIGIN:?}" --expected-sha "$${PORTAL_EXPECTED_CONTENT_SHA256:?}" --mode "$${PORTAL_SMOKE_MODE:-full}" --topology "$${PORTAL_SMOKE_TOPOLOGY:?}" --out "$${PORTAL_SMOKE_OUT:-/tmp/portal-smoke.txt}"
+
 check-compat:
 	bash scripts/check-compat.sh
 
@@ -92,6 +123,15 @@ help:
 	@echo "  check-security  STRIDE/dependency release review gate (P08-T08)"
 	@echo "  test-security   security gate failure-behavior harness (P08-T08)"
 	@echo "  test-rehearse   local release rehearsal, real disposable DB (P09-T01)"
+	@echo "  test-portal-release  portal publisher/verifier tests (ESP-14)"
+	@echo "  rehearse-portal isolated static portal Caddy rehearsal (ESP-14)"
+	@echo "  check-portal-capacity  capacity harness self-tests (ESP-16)"
+	@echo "  portal-capacity      bounded portal load/browser campaign (ESP-16)"
+	@echo "  check-preview-probe  preview/accessibility probe self-test (ESP-17)"
+	@echo "  preview-portal       isolated HTTPS preview/a11y/backup rehearsal (ESP-17)"
+	@echo "  check-publication-gate  public preflight/smoke self-tests (ESP-18)"
+	@echo "  preflight-portal-publication  local public-scope candidate gate (ESP-18)"
+	@echo "  smoke-portal-public  read-only public release smoke (ESP-18)"
 	@echo "  check-compat    contract + frozen deltas + runbooks gate (P09-T02)"
 	@echo "  test-compat     compat gate failure-behavior harness (P09-T02)"
 	@echo "  check-g09       G09 readiness gate, refuses open blockers (P09-T03)"

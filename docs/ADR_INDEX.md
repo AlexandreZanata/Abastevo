@@ -39,3 +39,7 @@ Existing Android decisions remain applicable to the imported release. New status
 - [ADR-019 — Android/VPS first](adr/019-android-vps-integration-first.md): P34–P38 live app source integration before catalog/profile expansion; final project batch delivery.
 
 - [ADR-020 — Maintained dev and protected main](adr/020-maintained-dev-main-delivery.md): consolidate historical construction branches, maintain dev → main, preserve incomplete acceptance obligations.
+
+- [ADR-021 — Address-first community contribution](adr/021-community-first-contribution.md): identity/address suffice for initial contribution; mandatory proximity deferred.
+
+- [ADR-022 — CoMaps-derived native map engine](adr/022-comaps-derived-native-map-engine.md): pinned Apache-2.0 core behind a narrow Android port; real ENGINE_GATE proof before UI integration.

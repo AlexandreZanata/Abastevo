@@ -1,0 +1,28 @@
+{
+  "name": "monocypher-ed25519-fallback",
+  "version": "4.0.2",
+  "upstream": "comaps-4587b8ad 3party/monocypher (Monocypher 4.0.2)",
+  "upstream_sha": "4587b8ad4d12c9f59982709fdaf03cc925948827",
+  "license": "BSD-2-Clause OR CC0-1.0",
+  "license_file": "LICENCE.md",
+  "files": [
+    {
+      "path": "monocypher.c",
+      "sha256": "afe2b098c8569577a84488e0b98d276d1fba6506adea68bb9241a52111734c59"
+    },
+    {
+      "path": "monocypher-ed25519.c",
+      "sha256": "7c9b16056cbd27521919e8a6f56a228808b9e718afc42e3d33f28c08e5abdee2"
+    },
+    {
+      "path": "monocypher.h",
+      "sha256": "f78bb31255cfb7beba66afd2137f5194c8a025cf40488b6cc1e295234d43f374"
+    },
+    {
+      "path": "monocypher-ed25519.h",
+      "sha256": "bd546edcd468d64e28caa3dbf4b1d6bfad7435c0ce994723fd81aae26405121b"
+    }
+  ],
+  "bridge": "ed25519_bridge.c (owned, no crypto logic; calls crypto_ed25519_check only)",
+  "notes": "Vendored byte-identical from the pinned MAP-14 source checkout. No algorithm reimplementation. CMake builds a small shared library with 16 KB page alignment."
+}

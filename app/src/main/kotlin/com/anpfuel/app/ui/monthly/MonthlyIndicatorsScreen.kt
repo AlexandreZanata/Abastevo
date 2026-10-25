@@ -43,6 +43,7 @@ import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.application.usecase.ledger.MonthlyVehicleIndicators
 import com.anpfuel.domain.valueobject.DomainId
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.valueobject.PriceAmount
 import java.math.BigDecimal
 import java.time.Month
@@ -179,9 +180,11 @@ private fun MonthlyIndicatorCard(row: MonthlyVehicleIndicators, locale: Locale) 
     fun money(centavos: Long): String =
         PriceFormatter.formatAmount(PriceAmount.of(BigDecimal.valueOf(centavos, 2)), locale).orEmpty()
 
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = row.vehicleName, style = MaterialTheme.typography.titleMedium)

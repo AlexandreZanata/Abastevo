@@ -119,11 +119,15 @@ type Service struct {
 	// repeat the AUD-05 disconnect. Tests set an explicit fake; the
 	// composition root wires privacy jobs plus feedback erasure.
 	RequestErasure func(ctx context.Context, accountID string, contributorIDs []string) error
-	CodeGen        func() (string, error)
-	TokenGen       func() (string, error)
-	AliasGen       func() (string, error)
-	KeyGen         func() (string, error)
-	IDGen          func() (string, error)
+	// RequestBillingExit records a durable stop-renewal intent before the
+	// account is marked deleted. Nil refuses deletion closed until the
+	// payment composition is wired (PAY-19).
+	RequestBillingExit func(ctx context.Context, accountID string) error
+	CodeGen            func() (string, error)
+	TokenGen           func() (string, error)
+	AliasGen           func() (string, error)
+	KeyGen             func() (string, error)
+	IDGen              func() (string, error)
 }
 
 // RequestCode issues a code when quota and cooldown allow. Unknown

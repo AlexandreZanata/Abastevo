@@ -1,5 +1,749 @@
 # Current execution state
 
+- Cumulative PR #150 integration 2026-10-25: IN_PROGRESS / CI_PENDING.
+  User authorized publishing the partial map, PAY and enterprise/static portal
+  source union and merging protected dev -> main after current checks pass.
+  Isolated clone `/tmp/abastevo-pr150-integration-20261025`; occupied dev and
+  primary dirty checkout remain untouched. Includes PAY `1948035c`, MAP
+  `e9af87dd`, ESP/FQ-PORTAL-READY `d74334dc`, normal merge commits `df9612af`
+  and `0284128f`, and tested integration repairs `4b029756`.
+  [Cumulative evidence](../backend/evidence/PR150_CUMULATIVE_INTEGRATION.md).
+  Dedicated payment/export/refresh slots preserved; exact admitted native AAR
+  vendored with SHA/source access/notices/SBOM for fresh CI; map paths select
+  full guards. Worker/config race tests, HTTP size repeat 20, Python provisioning
+  (13 cases) and classifier checks PASS. Android full test/lint/release PASS;
+  131-migration disposable PostGIS union plus affected-failure reruns PASS at
+  source `2707c218`. Three cumulative test assumptions and app SDK path fixed;
+  no domain/security gate relaxed. Remote exact-head CI still required.
+  Map minimum gate remains PARTIAL; PAY-21 provider proof stays PENDING; portal
+  rights/precision/public-release obligations remain. User authorized the known
+  `https://teste.abastevo.com.br` staging origin and scoped VPS update after
+  integration. Next: finish acceptance, current CI/review checks, guarded merge,
+  verify ancestry, retain dev, then staging rollback/smoke. Earlier entries below
+  are historical checkpoints and do not override this integration scope.
+
+- Stripe/Asaas payment PAY-22 2026-10-25: INTEGRATION_PENDING.
+  `codex/payments-stripe-asaas` fast-forward merged into `dev` in the
+  isolated `pay22-dev` worktree (no conflicts, no foreign code; the
+  occupied local `dev` branch at `5c9f5204` untouched, all work in
+  detached worktrees plus a separate `pay22-full` clone for the helper).
+  Pushed `721582b8..6e5e8518` without force; cumulative protected PR
+  `AlexandreZanata/Abastevo#150` (dev → main, ready) carries 56 commits
+  (maps, Android Premium behavior/UI, PAY-00–21). Candidate corrections
+  after review: Pix concurrent root cause (lenient order double vs
+  durable timestamps) fixed with deterministic rendezvous regression
+  plus PostGIS proof (`dbff7917`, repro 50/50 green); Stripe 401 mapping
+  and PAY-21 harness rework around real/operator resources (`c9ea4aa4`,
+  `8313283b`, PENDING kept); worker dispatcher maps completed
+  (`d149e092`, remainder byte-identical to pristine dev). Android
+  Premium suites re-run on the candidate: 20 tests, 0 failures.
+  [PAY-22 evidence](../backend/evidence/payments/PAY-22.md). Follow-up
+  corrections: provider credential failures reclassified as recoverable
+  (`ErrProviderUnauthorized`, no conflict marking, single-convergence
+  proof on PostGIS with real adapters) and Stripe SDK raw log emission
+  silenced with capture-test proof. Worker integration fully green
+  locally after the README-prescribed `chmod 755` on pinned preparers
+  (earlier failures reproduced identically on pristine dev and PR-base
+  main and root-caused to binary permissions, not code; no quality
+  code touched). CI `test` failure root-caused to the missing Room v25
+  export (parallel debug/release KSP raced creating it); the
+  machine-generated `25.json` is committed (`dcc7c143`), full
+  `./gradlew test` passes locally, intermediates 19–24 stay owed by the
+  owning front. Remote CI on the corrected head
+  pending; merge awaits green CI via guarded finish. No other work
+  branch touched.
+  Next: push corrections, refresh PR #150, guarded merge on green CI.
+
+- Stripe/Asaas payment PAY-21 2026-10-25: PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-20 `45e90604`. No sandbox
+  credentials were supplied, so per the phase contract no provider API
+  was touched and no sandbox row closes. Landed: gated sandbox harness
+  (`-tags=sandbox`, skips without creds, refuses live keys, logs counts
+  only), no-leak guard, and sandbox-relevant fault fixtures (retry
+  windows, decline terminality, revocation, overdue, reversal closure).
+  [PAY-21 evidence](../backend/evidence/payments/PAY-21.md): fixtures,
+  harness gates and full backend/static/secret suites PASS; real journeys
+  enumerated and awaiting credentials. Next: supply credentials and run
+  the harness; PAY-22 only after authorization.
+
+- Stripe/Asaas payment PAY-20 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-19 `4ef85fe3`. Secure operations
+  packaging: owner proofs verify one live session per action, switch records
+  bind the old source's merchant, portal configuration admitted optionally,
+  maintenance-off darkens a channel with money and reads preserved; staging
+  example plus operations runbook, no migration, no new route, no live
+  activation. [PAY-20 evidence](../backend/evidence/payments/PAY-20.md):
+  config/switch/composition/kill-switch/proof suites plus real PostGIS
+  journeys PASS (`-race`), full backend/static/secret suites green (one
+  pre-existing Pix 6-racer timing flake, green alone and on re-run).
+  Operator proofs, catalog admission and sandbox proof stay gated.
+  Next: PAY-21 only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-19 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-18 `3d529a8c`. Real API/worker
+  runtime composed from validated config: gated provider clients, webhook
+  intake only, single-owner inbox drain on an isolated `payment-inbox`
+  worker slot, settlement/lifecycle/dispute/cycle processing, billing exits
+  and refunds — sales impossible (empty production catalog, flags off),
+  proofs/switch-merchant/portal fail closed by construction, no Play/cookie
+  surface. [PAY-19 evidence](../backend/evidence/payments/PAY-19.md):
+  callback→drain→grant/revoke/exit journeys, restart/outage convergence and
+  fail-closed composition suites PASS on real PostGIS (`-race`), plus full
+  backend/static/secret suites. Worker quality-native cases need the pinned
+  Rust preparers (environmental, unrelated). Threat matrix AUTH-01/AUTH-03/
+  BND-04/BND-05/BND-07 now CLOSED_LOCAL. No provider proof/sale/deployment.
+  Next: PAY-20 only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-18 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-17 `24a0c0dc`. Tests only, no
+  production change: webhook refusal/intake redaction (no PAN/CVV/secret/QR/
+  URL/token echo or retention, `no-store` everywhere), rotated operator-proof
+  refusal on request/replay/reconcile, restore/stale-replay convergence with
+  no financial effect, outage-pending recovery with exactly one provider
+  write, and frozen bounded intake ceilings with indexed hot-query plans.
+  [PAY-18 evidence](../backend/evidence/payments/PAY-18.md): privacy unit
+  suites, race PostGIS acceptance, measured 200-callback intake (total
+  174.76ms, mean 873.80µs, p95 1.12ms) and full backend/static/secret suites
+  PASS. First full unit run hit one unrelated pre-existing keyprover flake
+  (passes alone and on re-run). Threat matrix AUTH-05/WHK-04/WHK-07/REC-02/
+  REC-04/REC-05/BND-01/BND-02 now CLOSED_LOCAL. No worker/route/provider
+  proof/sale. Next: PAY-19 only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-17 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-16 `72725283`. Migration 000130
+  permits capability-free orders/grants for the enterprise family only; premium
+  invariants (non-empty capabilities in catalog, binding and settlement) are
+  untouched. Added `DecideEnterpriseBinding` (single payer = billed entity =
+  service target, quantity one, no app capabilities, explicit approval flag) and
+  a runtime gate on card/Pix-manual/Pix-auto starts. Billing history now exposes
+  the provider invoice/receipt reference, owner-scoped. [PAY-17 evidence](../backend/evidence/payments/PAY-17.md):
+  domain binding matrix, cross-channel refusal without order/provider side
+  effects, approved self-purchase end-to-end (checkout + Pix Automático mandate),
+  product-confusion binding refusals, no-capability grant with denied premium
+  access, and history scoping/proof suites PASS. No worker/route/provider
+  proof/sale; no fiscal engine. Next: PAY-18 only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-16 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-15 `5a1a96e6`. Migration 000129 adds
+  refund/dispute/hold/audit tables plus settlement charge reference. Refunds run
+  only on the original route under entitlement locks, with fresh operator proof,
+  reason/audit and amount-dependent dual approval; disputes revoke only matched
+  unexpired grants; unmatched money becomes an explicit reviewable hold.
+  [PAY-16 evidence](../backend/evidence/payments/PAY-16.md): adapter contract and
+  PostGIS concurrency/lost-reply/insufficient-balance/duplicate/reversed/no-payment-
+  hold suites PASS. No worker/route/provider proof/sale. Next: PAY-17 only after
+  maintainer authorization.
+
+- Stripe/Asaas payment PAY-15 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-14 `a9b2903f`. Migration 000128 adds
+  durable billing-exit intents and per-source cancellation records. Owner
+  cancel/status/history/export use fresh proof for sensitive operations; account
+  deletion records the exit before mutation, retains minimal financial rows,
+  never refunds and keeps uncertain provider cancellation visible. The API
+  composition records the intent; provider execution/reconciliation remains
+  PAY-19. [PAY-15 evidence](../backend/evidence/payments/PAY-15.md): account/
+  PostGIS exit, outage, stale-replay, proof and retention suites PASS. No
+  worker/route/provider proof/sale. Next: PAY-16 only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-14 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-13 `5ba72b33`. Migration 000127 adds
+  durable switch intents and leases. Stripe card renewal uses confirmed
+  `cancel_at_period_end`; Pix Automático uses the durable mandate cancellation
+  path. New recurring starts are gated by family, paid-through boundary and a
+  matching READY target quote; unresolved old cancellation blocks activation.
+  Next-term same-family plan/price changes are supported as source replacement;
+  proration/immediate changes are refused. [PAY-14 evidence](../backend/evidence/payments/PAY-14.md):
+  two-provider/concurrent/unknown-cancel/stale-quote/excess PostGIS and full
+  race/Play suites PASS. No worker/route/provider proof/sale. Next: PAY-15 only
+  after maintainer authorization.
+
+- Stripe/Asaas payment PAY-13 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-12 `e60dcf60`. Migration 000126 adds
+  provider-owned Pix Automático instruction/eligibility tracking, retry policy and
+  durable cancel intent. Asaas remains the only cycle owner: each verified
+  subscription payment funds one local cycle order/grant, instructions never
+  grant, and cancellation/expiry/ineligibility stop future authority without
+  erasing paid-through. [PAY-13 evidence](../backend/evidence/payments/PAY-13.md):
+  concurrent PostGIS cycle/cancel/eligibility and full race/Play suites PASS. No
+  worker/route/provider proof/sale. Next: PAY-14 only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-12 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-11 `65ffd486`. Migration 000125 adds
+  Pix Automático mandates with explicit consent audit, bounded authorization,
+  provider-owned SUBSCRIPTION mode, refusal/expiry/cancel/reconcile and lost-reply
+  recovery. Initial paid period is independent from mandate status; MERCHANT
+  eligibility remains an external gate. [PAY-12 evidence](../backend/evidence/payments/PAY-12.md):
+  Asaas adapter/PostGIS Pix-Auto and full race/Play suites PASS. No worker/route/
+  provider proof/sale. Next: PAY-13 cycles only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-11 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-10 `2529e167`. Migration 000124 adds
+  provider subscription contracts separate from invoice grants; Stripe lifecycle
+  maps subscription updated/deleted, invoice failed/action-required/paid and
+  checkout completion, with last-event stale fencing and reconciliation. Portal
+  is owner-bound and requires approved configuration. SCA/past-due/cancel keep only
+  paid-through; invoice creation grants nothing. [PAY-11 evidence](../backend/evidence/payments/PAY-11.md):
+  adapter/PostGIS lifecycle/portal and full Play regression/race suites PASS. No
+  runtime/worker/portal route/sale. Next: PAY-12 Pix Automático only after
+  maintainer authorization.
+
+- Stripe/Asaas payment PAY-10 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-09 `8251aa19`. Canonical Stripe invoice
+  and Asaas received-payment verifiers feed an idempotent settlement processor;
+  settlement/order/grant/cycle/outbox commit atomically and inbox processing is
+  durable. Revocation/replay, delayed/duplicate events, provider outage recovery,
+  wrong amount/currency/pending/manual invoice and concurrent receipt are tested.
+  Subscription capability/status now honors active web grants without Play
+  credentials; Play/free access regressions pass. [PAY-10 evidence](../backend/evidence/payments/PAY-10.md):
+  race PostGIS/payment/subscription suites, full backend, vet/staticcheck/
+  govulncheck/sqlc/security gates PASS. No runtime/worker/sale. Next: PAY-11
+  Stripe recurring lifecycle only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-09 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-08 `bb200890`. Asaas webhook handler
+  uses a separate 32–255 char rotating token in constant time, optional TLS,
+  1 MiB bound, merchant binding and durable hashed inbox before HTTP 200. Unknown
+  events, duplicates/conflicts, token rotation/API-key separation, backlog retry
+  and DB outage are tested. No provider call/grant/runtime. [PAY-09 evidence](../backend/evidence/payments/PAY-09.md):
+  handler/race/full backend/vet/staticcheck/govulncheck/sqlc/security gates PASS.
+  No runtime wiring/sale. Next: PAY-10 settlement/access only after maintainer
+  authorization.
+
+- Stripe/Asaas payment PAY-08 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-07 `0af7918e`. Stripe webhook handler
+  verifies exact raw body via SDK, 300s tolerance, pinned API version/livemode/
+  no-Connect/merchant, bounds body/signature and writes hashed minimal metadata
+  to the durable inbox before HTTP 200. Duplicate alteration 409; DB failure 503;
+  unknown/rotated-signature cases tested; no provider call or grant. [PAY-08
+  evidence](../backend/evidence/payments/PAY-08.md): handler/race/full backend/
+  vet/staticcheck/govulncheck/sqlc/security gates PASS. No runtime wiring/sale.
+  Next: PAY-09 Asaas webhook inbox only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-07 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-06 `6e52f9bd`. Conventional Asaas Pix
+  service/adapter added: owner customer mapping, server price/BRL, due date,
+  external-reference correlation, bounded owner QR/status, dispatch-before-call,
+  ambiguous recovery and incomplete-search fencing. No auto-debit/settlement/
+  grant. [PAY-07 evidence](../backend/evidence/payments/PAY-07.md): app/adapter/
+  real-Store race tests, full backend suite, vet/staticcheck/govulncheck/sqlc and
+  security/secret gates PASS. No HTTP/runtime/webhook or sale activation. Next:
+  PAY-08 Stripe webhook inbox only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-06 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-05 `d519a49b`. Stripe Go v87 hosted
+  Checkout use case added: server catalog, deterministic order, owner customer
+  mapping, card-only `allowed_payment_method_types`, config return origin, stable
+  idempotency, dispatch-before-call and ambiguous recovery via persisted
+  `client_reference_id`. Client amount/customer/order/return URL/metadata are
+  refused. [PAY-06 evidence](../backend/evidence/payments/PAY-06.md): app/adapter/
+  real-Store race integration tests, full backend suite, vet/staticcheck,
+  govulncheck, sqlc/security/secret gates PASS. No HTTP/runtime/webhook/grant or
+  sale activation. Next: PAY-07 Asaas Pix only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-05 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-04 `b931a1df`. `PaymentsConfig`
+  binds Stripe/Asaas test/live modes, merchant/catalog/keys/webhook material and
+  return origin; sale flags are independent and default OFF while maintenance
+  defaults ON. Redacted `Preflight()`/`logValue()` expose readiness only; missing/
+  mixed values disable unsafe channels without crashing, and rotation redaction
+  is tested. Staging template uses test placeholders with all sales false.
+  [PAY-05 evidence](../backend/evidence/payments/PAY-05.md): config race, full
+  backend unit suite, vet/staticcheck, security/infra/secret gates PASS. No
+  provider/runtime/sale. Next: PAY-06 Stripe checkout only after maintainer
+  authorization.
+
+- Stripe/Asaas payment PAY-04 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-03 `22feac69`. Migration
+  `000123_payment_intents` (MAP owns 122) and `db/queries/payments` persist
+  customers/orders/operations/attempts/settlements/grants/cycles/inbox; outbox
+  reuses transactional `job_queue`. Store fences claims by unique key, payload
+  hash, lease and generation; webhook-before-reply, unknown outcomes and stale
+  workers are tested; concurrent claims/settlements produce one grant. [PAY-04
+  evidence](../backend/evidence/payments/PAY-04.md): 10 PostGIS integration tests,
+  race, migration upgrade/replay, forced rollback, vet/staticcheck/sqlc/diff/secret
+  PASS. No provider/HTTP/runtime/sale. Next: PAY-05 config/activation only after
+  maintainer authorization.
+
+- Stripe/Asaas payment PAY-03 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-02 `efe5f170`. New pure
+  `backend/internal/modules/payments/domain` implements order/attempt/settlement/
+  contract/mandate/refund/dispute/grant transitions, exact BRL periods, one order
+  one grant, early/late renewal, zero grace, bounded refunds/disputes, excess and
+  one recurring source. Redirect/authorization/manual/unknown evidence cannot
+  grant. Play/free exits unchanged. [PAY-03 evidence](../backend/evidence/payments/PAY-03.md):
+  race tests, existing subscription suites, vet, staticcheck, 26 golden cases,
+  73.8% domain coverage PASS. No DB/HTTP/provider/runtime/sale. Next: PAY-04
+  persistence/concurrency only after maintainer authorization.
+
+- Stripe/Asaas payment PAY-02 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-01 `7bfa2fd4`.
+  [Provider admission v1](../planning/STRIPE_ASAAS_PROVIDER_ADMISSION.md) pins
+  Stripe Go `v87.0.0`/API `2026-09-30.endive` (MIT, Go 1.24+, hosted Checkout +
+  SDK raw-body webhooks) and an Asaas v3 `net/http` client (no vendor Go SDK;
+  `access_token` API header, `asaas-access-token` webhook header). Synthetic
+  [Stripe](../../contracts/testdata/payments/stripe-contracts-v1.json) and
+  [Asaas](../../contracts/testdata/payments/asaas-contracts-v1.json) fixtures cover
+  endpoints, events, status maps, idempotency limits, Pix QR and provider-owned
+  Pix Automático (`SUBSCRIPTION`, retry `NOT_ALLOWED`). No go.mod/go.sum,
+  provider/runtime, credential or sale change; SDK installation remains PAY-06
+  and account/sandbox proof PAY-21. Next: PAY-03 pure billing/access rules only
+  after maintainer authorization.
+
+- Stripe/Asaas payment PAY-01 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-00 `5f66c0d1`. [Offer/lifecycle policy v1](../product/STRIPE_ASAAS_OFFER_POLICY.md)
+  freezes `premium.monthly` (one account, P1M anchor, zero grace, one future
+  period, exact amount), refund/dispute/excess/switching rules and the
+  provider-owned Pix Automático scheduler. Production prices remain UNRESOLVED
+  (`1234` centavos is synthetic only); Enterprise is non-sellable and all three
+  channels stay OFF. [26-case golden fixture](../../contracts/testdata/payments/offer-policy-v1.json)
+  and [PAY-01 evidence](../backend/evidence/payments/PAY-01.md): period/access/
+  refund/dispute/excess/switch/sale recomputation, diff, links and secret scan
+  PASS. Additive shared edit to `PREMIUM_PRODUCT_CONTRACT.md`; no provider/
+  runtime/migration or sale activation. Next: PAY-02 provider/SDK admission only
+  after maintainer authorization.
+
+- Stripe/Asaas payment PAY-00 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  exclusive `codex/payments-stripe-asaas`, base fetched `origin/dev` `721582b8`.
+  Payment planning from `ee8d316b` replayed onto the reconciled head (five docs
+  unchanged; scoped ROADMAP/README/PREMIUM/PROGRESS additions re-applied); original
+  planning worktree preserved. [Baseline/ownership evidence](../backend/evidence/payments/PAY-00.md)
+  and v1 [threat/test matrix](../backend/evidence/payments/PAY_THREAT_MATRIX.md)
+  record source `721582b8` versus deployed test source `53719336`/schema 120, MAP
+  (`606f3b08`), ESP (`46fee9e0`) and integrated PRM owners. PAY-00 edits are
+  docs/evidence only: no provider/catalog/credential/runtime/migration change, no
+  charge/refund/mandate, no PR/CI/merge/deploy/wiki and no occupied worktree moved.
+  Checks: worktree/ref ancestry, diff check, scoped links/registry/DAG and secret
+  scan. Next: PAY-01 offers/lifecycle policy only after maintainer authorization.
+
+- Enterprise portal second-review corrections 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on `codex/enterprise-static-portal`; validated code head `7fd5c414` (this evidence commit follows). [Second-review evidence](../backend/evidence/enterprise-static/ESP-CORRECTIONS-02.md).
+  The earlier follow-up entry below was too broad: the four additional RED scenarios were real and are now closed with maintained regressions, not only external decisions.
+  (1) Official publication is serialized per survey window (advisory lock even without a pointer row + revision row lock): concurrent first publications/corrections publish once, stale finishes retire `superseded`, duplicate finishes converge, Stage is frozen on every terminal status, divergent restage is refused, run/revision/pointer/counts are checked, persisted windows are validated on resume, and cancellation/transaction rollback leave no partial state. Migration 000131 retained and status compatibility asserted.
+  (2) Operational pause (`operator-pause`) is distinct from invalid-content revocation (`revoked-source`): the same eligible source/bytes recover through Promote/Refresh in full and official-only modes, including restart and failure preservation, while revoked identity stays refused by any hash.
+  (3) The current release is mandatory in the retained store beyond `keep`, budgets fail before the pointer moves, nested/safe asset paths and unique-byte accounting are enforced, and promote/rollback/refresh/withdraw prepare assets automatically.
+  (4) `retained` is an atomic symlink to an immutable generation with completeness marker: failed switches keep the previous store, missing links recover the newest complete generation, legacy directories migrate recoverably, withdrawal purges retired generations, and concurrent HTTP readers survive transitions.
+  Commits: `6e34f223`, `aafb492b`, `c958c866`, `3235d9ad`, `471c1f2d`, `7fd5c414`. Verification: real disposable PostGIS `-race -tags=integration` official + enterpriseexport suites PASS; unit/race portalgen+jobs PASS; build/vet/staticcheck/sqlc/gofmt/diff CHECK PASS; local Caddy full and official-only rehearsals PASS (A→B→A, retained asset after rollback, corrupt rollback, pause/recover, withdraw fallback/404).
+  Scope remains LOCAL_ONLY: no VPS/staging data/third-party/push/PR/merge/wiki/publication, and no precision/rights/public-scope approval. Branch is based on `bf32027d`; `dev` has three later Android-only commits with no ESP overlap and was not blindly merged. Remaining: integration/remote checks, authorized staging drill, precision policy, rights/clarification/public scope and G09 certification.
+- Enterprise portal follow-up corrections 2026-10-25: LOCAL_ONLY / NO_PUBLIC_EXECUTION on `codex/enterprise-static-portal` (49 ahead / 43 behind origin/dev at fetch; snapshot only, nothing incorporated).
+  All three follow-up RED reproduced via overlay, then fixed with maintained regressions (no assertions weakened): (1) automatic withdrawal classifies reason from source state — only `Status=withdrawn` revokes (`ErrOfficialRevoked` by any hash), outage pauses; full + official-only + restart + recovery covered.
+  (2) atomic import begin (single tx + advisory lock): identical retries converge, orphans adopted with supersession from persisted state, cancel persists nothing, stale finish retires as `superseded` (new append-only migration 000131, coordinated past dev's 000122-130) instead of repointing; race/concurrency green on real PostGIS.
+  (3) official insights reconcile every state (wrong_branch/succession_review grouped as unlinked with explanation; inconsistent census refused).
+  (4) real cross-release asset retention: hardlinked `retained/` store with keep/byte budgets, withdraw purge, `/assets/*` edge mapping; Caddy rehearsals green (retained-200 after rollback, no mixing, purged-404 after withdraw); prior 404-rehearsal distinguished from retention acceptance.
+  (5) backup/restore proves canonical content digests (rows, raw text, runs, revisions, pointers) from per-execution private dumps.
+  (6) S-ESP-03 aligned to indeterminate (menu without selection): table/section now `RIGHTS_PENDING`, S-ESP-04 preserved, gates needed no change (enforcement never admitted).
+  Publication scope still EMPTY: no origin/rights/approval invented, no VPS/third-party/PR/merge. Commits: reason classification, atomic begin, insights census, retention, backup proof, rights alignment. Remaining externals: precision policy, clarification answers, public scope, authorized staging A→B→A drill.
+  Historical note: the "all fixed" scope of this entry is corrected by the second-review entry above; the four uncovered publication/freeze/pause/asset scenarios were real and are now closed.
+- Enterprise portal Prompt-2 delivery prep 2026-10-25: LOCAL_ONLY / NO_PUBLIC_EXECUTION on `codex/enterprise-static-portal` (42 ahead / 36 behind origin/dev at fetch; counts are a snapshot, nothing incorporated).
+  Publication scope fields are EMPTY, so no origin/rights/approval was invented and no public step ran; STAGING-01 is not claimed as the full portal.
+  [ESP-07 addendum](../backend/evidence/enterprise-static/ESP-07.md): registered edition re-fetched byte-identical and re-imported (19,609 staged / 880 over-precision / needs-review); all 880 are IEEE-754 storage noise collapsing to 46 exact 2-decimal values (0 genuine decimals) — no parser bug, no rounding implemented; exact float-noise admission policy proposed with golden vectors, owner decision pending; real-data replay/outage/backup-restore/export-noop proven (`TestManualRealWeeklyRecovery`); retry-path defect fixed (identical retries crashed on run identity → now converge/resume, `TestFailedBytesConvergeWithoutNewRevision`, `TestRunningAttemptResumesSameRevision`, `TestConcurrentIdenticalBeginConverges`, race green).
+  [Rights re-examination](../product/ENTERPRISE_SOURCE_ADMISSION.md): current primaries re-fetched (registry PDF unchanged + OCR without license; prices metadata URL 404s with no dataset license; enforcement DOCX unchanged menu without selection; fines CC BY re-verified; PMQC DOCX unchanged without license) — no status change, clarification draft recorded unsent.
+  Functional: admitted official insights added to curiosidades (counts/formulas, no guilt verdicts); association-change rebuild proven; historical static navigation stays pending (scope not approved); PMQC/FQ-06 not blockers nor done.
+  Pipeline: full+official-only Caddy rehearsals green (A→B→A, withdraw→404, resurrection refused, asset-retention probe); target capacity campaign OWED with predeclared limits/stops, never against ANP.
+  Integration: origin/dev tip is active payments work (migrations 000123–130 our branch lacks) with payments/MAP branches ahead in other worktrees — NO blind merge, NO PR without delivery authorization; zero file overlap in ESP areas; primary checkout and other worktrees untouched.
+  Commits: retry-convergence fix, rights addendum, insights/rehearsal. Limits: real revision switch OWED behind precision policy; public origin/rights/approval/window/CDN all missing. Next: owner decisions (precision policy, clarification answers, public scope), then final candidate + authorized staging drill.
+- Enterprise portal review corrections 2026-10-25: IN_PROGRESS / LOCAL_ONLY on `codex/enterprise-static-portal`.
+  Three reproduced defects, no VPS/publication/merge: (1) withdrawn releases could be re-promoted — fixed with pre-copy refusal preserving the mark plus revoked-source identity (`ErrReleaseWithdrawn`/`ErrOfficialRevoked`); the STAGING-01 drill exercised the defect, corrected by addendum without deleting history; staging A → B → A drill OWED.
+  (2) preflight/smoke are mode-aware (official-only home `/fiscalizacao/`, manifest cross-check) with required dedicated|shared topology and generator→preflight integration tests; approval stays external.
+  (3) official-only verification enforces an exact file allowlist (export CSV/JSONL and unexpected roots refused even when manifested).
+  (4) maintained `cmd/portalexport` replaces the uncommitted helper (read-only REPEATABLE READ over ExportPin/BuildOfficialExport; real-PostGIS no-op/second-version/refusal green); `Refresh`/config/worker propagate `OfficialOnly` (official-only withdraw goes 404, never full fallback); serve/current pointer contract in the runbook.
+  (5) obligation ledger corrected: ESP-07 real prices BLOCKED_OVER_PRECISION, ESP-12 PARTIAL, ESP-11 revalidation OWED, ESP-16 public capacity OWED, ESP-18 public BLOCKED; staging noindex != private (anonymous GET documented). Next: full local validation, atomic commits.
+- Enterprise portal ESP-STAGING-01 2026-10-25: STAGING_DONE / NOT_PUBLIC on `codex/enterprise-static-portal` after ESP-18 `f1591b82`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-STAGING-01.md). User-authorized scope: real FQ-07 2016–2025 via staging API plus official-only `/fiscalizacao` on `https://teste.abastevo.com.br`; no synthetics.
+  Implemented `portalgen`/`portalcheck`/`portalrelease --official-only` (admitted slice only, delinked station hrefs, mode-mismatch refusal); `enterpriseexport` suites green.
+  Staging: pre-ingest backup verified; 7/7 sanction discovery+import jobs done, seven VERIFIED revisions, current 2025 lease (3,375 rows); candidate `460d8b9f…` (3,394 pages) promoted; additive noindex edge locations; smoke PASS (manifest hash, no price links, API/health intact); withdraw→404→repromote→200 rollback drill PASS.
+  Linked records show association state without station pages; price/registry/PMQC rights still pending; ESP-18 public still blocked; no merge/pilot/G09 claim. Next: second official-only release replay or rights-gated full portal decision.
+- Enterprise portal ESP-18 2026-10-25: BLOCKED_EXTERNAL_AUTHORIZATION /
+  NOT_PUBLISHED on `codex/enterprise-static-portal` after ESP-17 `103dcf6b`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-18.md).
+  [Runbook](../operator/PORTAL_PUBLICATION.md). Implemented the local public
+  preflight, read-only public smoke and publication/rollback runbook;
+  `make check-publication-gate` PASS. No public release was executed: no named
+  public origin/host/root/CDN/TLS/ownership/approval/window; candidate B
+  (`914d8b9f…`) is internally valid at the `https://portal.example` placeholder
+  but its sitemap/robots use that origin and it contains price/station/download
+  pages whose S-ESP-01/02/05 public rights are `RIGHTS_PENDING` (only official
+  S-ESP-04 is admitted; B's official census is 3,375 unmatched). Preflight
+  correctly returns FAILED_LOCAL_GATE; public smoke self-tests PASS but was not
+  run. No VPS/DNS/CDN/shared edge/API/DB/ANP mutation, no app/API/G09
+  certification, no merge/publication. Next: owner approval/rights and an
+  official-only candidate rebuilt at the approved origin.
+- Enterprise portal ESP-17 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-16 `a6c3758e`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-17.md). Found and fixed
+  missing shared CSS/search script on `metodologia`/`404` (raw `pageBase` →
+  `g.base`), with regression tests. Added isolated HTTPS preview (Caddy internal
+  CA, localhost:18443, HTTP 308, HSTS/cache/noindex, no API), preview probe
+  (metadata/landmarks/labels/links, JS-disabled state/station navigation,
+  keyboard skip/focus order, 200% mobile reflow, screenshots) and release-root
+  backup/restore rehearsal. New A/B artifacts `7c37f485…`/`914d8b9f…`; preview
+  A→B→A, 0 probe failures/warnings, backup SHA `a99a3ee9…`. No public
+  TLS/DNS/CDN, shared preview edge, real device/screen reader, cross-release
+  asset retention or production claim; real prices remain OWED. No
+  VPS/publication/merge. Next: ESP-18.
+- Enterprise portal ESP-16 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-15 `71e4f92b`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-16.md). Added a frozen
+  local capacity/browser harness: pinned Caddy container, separate pinned
+  Python generator container, gzip open-loop driver, Caddy CPU/mem/net/block
+  sampling, headless-Chrome FCP/LCP/CLS/same-origin/API probe and fail-closed
+  report; `make check-portal-capacity` + `make portal-capacity`. Baseline
+  real-official 2025 full artifact (`75bc8a1a…`): 3,000/3,000 requests,
+  100.03 req/s, p95 1.47 ms, 0 errors/drops, 6.46% CPU, 26.64 MiB Caddy,
+  browser FCP/LCP 16–184 ms, CLS 0. Concurrent switch A→B and rollback under
+  load: 100.03 req/s, p95 1.25 ms, 0 errors, final current restored; browser
+  FCP/LCP 20–108 ms. No CDN/VPS-direct campaign; real prices, old-asset
+  cross-release retention and production capacity remain OWED. No
+  VPS/publication/merge. Next: ESP-17.
+- Enterprise portal ESP-15 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-14 `43574f7a`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-15.md). Added default-off
+  automatic refresh: fine/official publication → export build (`ObservedAt`) →
+  durable `enterprise-portal-refresh` → generate/verify/promote with current
+  fence; 15-minute recovery schedule, dedicated dispatcher, no-op/restart/
+  orphan recovery, failed-build preservation, private receipt and withdrawal of
+  a release whose FQ revision is no longer published. Real 2025 official slice
+  (3,375 all-unmatched records) over the synthetic price fixture: 3,401 pages/
+  3,411 files/15,881,532 bytes, content `ccd42669…`; correction created a second
+  release, withdrawal removed the current official release. Unit/race,
+  PostGIS integration, real refresh and fine after-publish hook tests PASS;
+  build/vet/staticcheck/sqlc/gofmt/diff PASS. No production activation; real
+  prices, multi-edition FQ, live fine revalidation and prod hosting remain OWED.
+  No VPS/publication/merge. Next: ESP-16.
+- Enterprise portal ESP-14 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-13 `06e871e9`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-14.md). Added an atomic
+  private portal publisher (`portalrelease`: flock/fence, complete copy +
+  second verify, content-addressed releases, atomic `current` symlink,
+  rollback/withdraw/stale-state reconcile), a pinned loopback Caddy rehearsal
+  with security/immutable/noindex headers, gzip and a real 404, and the
+  isolated `rehearse-portal.sh` script. Real ESP-13 A/B artifacts: promote,
+  switch, rollback, corrupt-current recovery, withdraw-to-fallback and
+  withdraw-to-404 all PASS; headers/compression/API-independence checked.
+  Unit/race and integration enterpriseexport PASS; build/vet/staticcheck/sqlc/
+  gofmt/diff PASS. Production host/CDN/TLS/DNS/shared edge, multi-host locking,
+  real prices and auto-refresh remain OWED. No VPS/publication/merge. Next:
+  ESP-15.
+- Enterprise portal ESP-13 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-11 `af615284`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-13.md). Portal artifacts
+  now use `enterprise-portal-v2`: official-pin-bound manifest digest,
+  content-addressed CSS/JS, indexable sitemap + robots, and `portalcheck`
+  verification of manifest/file digests, public-field/JSON/search/CSV
+  allowlists, CPF/private-key/raw-HTML rejection, link/sitemap completeness,
+  gzip/page/file/byte budgets and two-build reproducibility. Real 2025 official
+  slice (3,375 all-unmatched records) over the synthetic station/price fixture:
+  noindex 3,409 pages/3,419 files/15,231,739 bytes; indexable + real search JS
+  3,409 pages/3,421 files/15,932,636 bytes, sitemap 3,408 URLs/466,272 bytes;
+  reproducible compare PASS; max HTML gzip 10,023 B, shard 376 B. Unit/race,
+  integration, real official portal, vet/staticcheck/sqlc/gofmt/diff PASS.
+  Real prices remain blocked by ESP-07/rights; multi-edition FQ and live fine
+  revalidation remain OWED. No VPS/publication/merge. Next: ESP-14.
+- Enterprise data/static portal ESP-11 2026-10-24: LOCAL_DONE (event-level) /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-11.md).
+  Merged FQ-PORTAL-READY; real FQ-07 seven-file acceptance 35,911=35,612+293
+  CPF+6 metadata, 35,612 unmatched/zero links; 2025 export 3,375 rows.
+  `/fiscalizacao/` event-level index/pagination/detail and linked station
+  sections; only `linked` shows a station, unmatched/ambiguous never. Real 2025
+  portal candidate: 3,409 pages/3,419 files/15.2 MB; synthetic linked/ambiguous
+  case covered. Builder provider/state, FQ pin reconcile and no-published gate
+  tested. FQ-06, live fine-link revalidation/rebound, multi-edition snapshot and
+  real FQ+price same-DB deployment remain OWED; real prices still ESP-07-blocked.
+  Next: ESP-13 artifacts.
+
+- Fuel-quality portal readiness 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  local `codex/fq-portal-ready` worktree from `origin/dev 721582b8`; commits
+  `424d71b7`, `9795a36e` plus this evidence commit. [Evidence](../backend/evidence/fuel-quality/FQ-PORTAL-READY.md).
+  Seven verified FQ-07 fine resources accepted through the real Rust→worker→
+  PostGIS→FQ-08 read path: 35,911 input = 35,612 accepted + 293 CPF + 6 metadata;
+  35,612 explicit unmatched company decisions, zero links/identity writes in the
+  empty Directory. Added a read-only frozen official-record export port
+  (`ExportPin`/`ExportSanctions`, revision-sealed keyset cursor) and
+  `BuildOfficialExport` JSONL/manifest with payload SHA-256; real exports total
+  35,612 rows. Tests: quality integration/race, seven-file `qualitysource`
+  PASS, build/vet/staticcheck/sqlc/diff. No FQ-06, portal page, map, VPS,
+  production activation or `main` merge claimed. Fine-association live
+  revalidation/rebound remains OWED; event-level ESP-11 can consume the frozen
+  snapshot without station claims.
+
+- Enterprise data/static portal ESP-12 2026-10-24: LOCAL_DONE / PARTIAL;
+  official-record insights were blocked at that checkpoint; ESP-11 event-level
+  now unblocks them, but they are not included in this batch.
+  [Evidence](../backend/evidence/enterprise-static/ESP-12.md).
+  `/curiosidades/` has six approved deterministic questions with formulas,
+  sample-change explanation and exclusion census; `/dados/` exports latest
+  station/price/summary CSVs plus a hashed manifest, with safe spreadsheet text,
+  attribution and no private fields. Fixture 18 pages/28 files; download census
+  7/8/8; Go/race, Portalgen 8 tests + 5 subtests, real PostGIS build→portal and
+  static checks PASS. No official records, API, source activation or publication.
+  Real prices remain blocked by ESP-07/rights. Next: ESP-13 artifacts; ESP-11
+  remains the gating phase.
+
+- Enterprise data/static portal ESP-10 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-10.md).
+  Accent-insensitive name and numeric/alphanumeric CNPJ search over one immutable
+  regional shard per UF (`sem-uf` when absent), 80-char/50-result bounds, city
+  filter, abort/fallback for missing or version-mismatched shards and no national
+  locator. `search.ts` is emitted by the landing build and embedded by
+  `portalgen --search-js`; HTML directory works without JS. Landing suite 60/60;
+  Go/portalgen tests, real PostGIS build→portal, typecheck/build/check and
+  static checks PASS. Synthetic 6,000-station shard: SP 346,084 B / 23,639 gzip
+  vs national 1,020,084 / 70,029. Real-source search remains blocked by ESP-07.
+  Next: ESP-11 official-record pages.
+
+- Enterprise data/static portal ESP-09 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-09.md).
+  `portalgen` verifies one export candidate (manifest/JSONL/analytics hash) and
+  writes deterministic station, price, state/municipality, methodology, gated
+  fiscalization, 404, CSS, robots and portal-manifest pages. Exact prices,
+  periods, history gaps, status, sample/insufficient states, no JS/API, noindex
+  preview, page/byte budgets and local links are tested; real PostGIS
+  build→generate PASS. Real price publication remains blocked by ESP-07
+  over-precision/rights. Next: ESP-10 static search.
+
+- Enterprise data/static portal ESP-08 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-08.md).
+  [Routes/editorial contract](../product/ENTERPRISE_PORTAL_ROUTES_AND_EDITORIAL.md)
+  freezes canonical `/postos/{uuid}/`, `/consultar/`, `/precos/`,
+  `/metodologia/`, gated `/fiscalizacao/`, field allowlists, empty/stale/error
+  states, sample/period wording, attribution and no-JS accessibility. Labelled
+  synthetic prototype under `landing/prototype/` with active/suspended, missing
+  week, insufficient sample, derived summary and gated fiscalization. Landing
+  prototype tests 9/9, full suite 54/54, typecheck/build/check PASS; not in
+  `dist/` or sitemap. Next: ESP-09 generated catalog/price/history pages.
+
+- Enterprise data/static portal ESP-07 2026-10-24: LOCAL_DONE /
+  SYNTHETIC_SLICE_ACCEPTED; real source `BLOCKED_OVER_PRECISION`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-07.md). Synthetic
+  Directory/Official/export/analytics/build chain passes unit/race/PostGIS.
+  Real weekly `revendas_lpc_2026_10_11-2026_10_17.xlsx` (1,875,300 bytes,
+  SHA-256 `e148758e…aaa6d6`) parsed 20,489 rows; import created 7,708 stations
+  and staged 19,609 prices, but 880 over-precision rows (4.29%) correctly kept
+  the revision `needs-review` (limit 1%). Fixed lost CNPJ leading zeros, dot
+  decimal and GLP/DIESEL station labels; no rounding policy invented. No real
+  edition published/exported. Next: ESP-08 routes/templates with labelled
+  synthetic data; real VPS price publication remains blocked.
+
+- Enterprise data/static portal ESP-06 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-06.md).
+  Durable after-publication build intent, private file-lock/state workspace,
+  latest-window coalescing, atomic candidate/state/analytics, Directory
+  fingerprint and Official pin reconciliation, period/fingerprint dedupe and
+  default-off worker schedule. Real PostGIS tests cover correction coalescing,
+  no-op, busy lock, cancellation, lost-notification reconcile and hook
+  failure/publication retention. Build has a dedicated dispatcher; no migration,
+  public route or activation. Next: ESP-07 local data acceptance.
+
+- Enterprise data/static portal ESP-05 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-05.md).
+  One regional pricing analyst buyer, one sample-comparison decision and one
+  Regional Fuel Price Brief frozen; five-station municipal sample rule,
+  Abastevo-derived label, unmeasured costs, `RIGHTS_PENDING` redistribution and
+  `DEMAND_UNVALIDATED`. No implementation, customer, price, contract or
+  deployment. Next: ESP-06 bounded export orchestration.
+
+- Enterprise data/static portal ESP-04 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-04.md).
+  Pure `enterpriseexport/analytics` metrics: per-revision census/coverage,
+  national/state/municipality summaries with sample hash, national/state
+  cheapest rankings with explicit ties/cutoff/population, station history with
+  gaps and summary change only for matching samples. Golden tests cover ties,
+  missing units/periods/identity, sample changes, exclusion reconciliation and
+  input-order independence. No DB/network/clock dependency, migration, route or
+  artifact publication. Next: ESP-05 enterprise offering boundary.
+
+- Enterprise data/static portal ESP-03 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-03.md).
+  Directory/Official now expose bounded export ports; `enterpriseexport` writes
+  deterministic stations/revisions/prices JSONL plus a pinned manifest and
+  content hash into a private candidate dir. Active-identifier-only CNPJ,
+  sourced status, reviewed coordinates, current-revision-only prices and
+  superseded/staging exclusion are covered by real PostGIS tests. A
+  repeatable-read snapshot proves a concurrent correction cannot mix into one
+  build; no DB write, migration, dependency, route or publication. Next: ESP-04
+  deterministic analytics.
+
+- Enterprise data/static portal ESP-02 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-02.md).
+  Official discovery now accepts the observed current/legacy weekly filename
+  shapes, dedupes by bounded content SHA-256 (unreliable ETag), keeps the daily
+  two-week scope with an operator correction sweep capped at five weeks, and
+  supersedes only the same survey window. `StationCurrentPrices` uses the latest
+  station window plus its current pointer, so an older correction cannot become
+  current. Unit/race + real-PostGIS Official/read/jobs suites PASS; sqlc stable;
+  no migration, dependency, schedule or source activation. Next: ESP-03 export.
+
+- Enterprise data/static portal ESP-01 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Source admission register](../product/ENTERPRISE_SOURCE_ADMISSION.md)
+  and [evidence](../backend/evidence/enterprise-static/ESP-01.md). Six ANP
+  profiles frozen with fields/keys/clocks/coverage/retention/quotas; rights split
+  into `RIGHTS_PENDING` (registry, prices, PMQC), `ADMITTED` CC BY (enforcement,
+  fines, still runtime/association blocked) and `NOT_ADMITTED` (registry API).
+  Observed weekly filename variant breaks current discovery; historical series is
+  semester ZIP; FQ-06 live stream and safe fine links remain OWED. No source,
+  schema, job, route or deployment enabled. Next: ESP-02 bounded discovery.
+
+- Enterprise data/static portal ESP-00 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING on `codex/enterprise-static-portal` (isolated worktree),
+  replayed onto maintained dev `721582b8`; planning commit `b1a2bde6` preserved.
+  [Evidence](../backend/evidence/enterprise-static/ESP-00.md). Actual baseline,
+  V1/V2 scope, MAP component split, FQ-06/07/08 runtime/safe-link OWED and
+  unaccepted MAP-08 work boundary recorded. Docs only; no source, schema, job,
+  API or hosting change. Next: ESP-01 source/rights/public-field admission.
+- Map/EV execution 2026-10-24: MAP-00–07 LOCAL_DONE / INTEGRATION_PENDING;
+  MAP-08 IN_PROGRESS/BLOCKED; engine spike PASS but adapter pending. Commits
+  `34750fe1..5cf02a73` on maintained dev after `01c1f068`; no PR/merge/wiki.
+  [MAP-00](evidence/MAP-00.md), [MAP-01](evidence/MAP-01.md),
+  [MAP-02](evidence/MAP-02.md), [MAP-03](evidence/MAP-03.md),
+  [MAP-04](evidence/MAP-04.md), [MAP-05](evidence/MAP-05.md),
+  [MAP-06](evidence/MAP-06.md), [MAP-07](evidence/MAP-07.md),
+  [MAP-08](evidence/MAP-08.md), [engine spike](MAP-14_SPIKE.md).
+  Contracts/goldens for POI/price/native manifest; OSM PBF nodes/ways/relations;
+  exact ANP station facts; admitted OCM/PBE reuse; reviewed charging/station
+  links and separate access points; electric handlers/ledger charge fixed.
+  Tests: real PostGIS linking/migration/concurrency/rollback; Rust station-prep
+  full suites/clippy; Go charging/ledger/API process; Kotlin contract/ANP fixture.
+  CoMaps `4587b8ad` built (AAR x86_64; APK 144 MB) and proved render, offline
+  search, POI selection and a 2,007.85 m offline car route on emulator API 26.
+  A generated Curitiba `.mwm` renders but fails `--check_mwm` and an earlier
+  routed build crashed; no map package was published. No Abastevo adapter/UI,
+  arm64/16KB, data gate MAP-09–13, device manual acceptance, staging or release
+  claim. Next: fix MAP-08 generation/check/route, then MAP-09–13 and the
+  Abastevo adapter/Compose map before MAP-15–33.
+- Map review remediation 2026-10-25: bounded repairs LOCAL_DONE /
+  INTEGRATION_PENDING on `codex/map-ev-implementation`; inherited Antigravity
+  commits `483cff59` and `2d51eef6` and unfinished native work preserved.
+  [Current evidence](../backend/evidence/maps/MAP-15_20_REMEDIATION_20261025.md);
+  [previous progress preserved](history/MAP_REMEDIATION_PROGRESS_BEFORE_20261025.md).
+  Fixed rollback/cancellation/reader consistency, real Gradle distribution
+  values, Main-only native reload/query handling, pan/zoom restoration,
+  conditional prices and reachable source controls, general city/week reuse.
+  Real phone signed-download → exact A/B activation → regional-map registration
+  → offline search → Activity recreation PASS (1/1); route/screen PASS (5/5).
+  JVM/domain/application/data/engine/app and scoped release security checks PASS.
+  Final emulator UI 5/5 at 200% font / 320 dp; final app JVM 535/535 + lint
+  PASS. Unsigned release 78,121,062 bytes / 74.502 MiB, all native ELF/ZIP
+  alignments 16 KB. Source checkpoint `51cc4457`; final receipt pins hashes.
+  Phone disconnected; temporary emulator and proof server stopped.
+  MAP-15/16/17/19 retain local implementation checkpoints; MAP-18 artwork and
+  MAP-20 / MINIMUM_MAP_GATE remain PARTIAL. Admitted live station geometry/
+  prices, product distribution config, native combined artwork, opening-hours
+  contract and public offline-overlay acceptance remain named obligations.
+  No push/PR/merge/wiki/deploy or production/pilot certification. MAP-21–33 untouched.
+
+- Map/EV checkpoint 2026-10-25 (measurements 2026-10-24): MAP-00–13 LOCAL_DONE / INTEGRATION_PENDING; MAP-14
+  **LOCAL_DONE / ENGINE_GATE_PASS / INTEGRATION_PENDING** on
+  `codex/map-ev-implementation`, from `8e707b62` plus the checkpoint commit
+  containing this record. [Current evidence](../backend/evidence/maps/MAP-14_ENGINE_GATE.md),
+  [acceptance receipt](../backend/evidence/maps/map14-final/acceptance.json),
+  [resume](MAP_EV_RESUME.md). MAP-15/16 local records remain; their retained
+  integration gaps must be closed as engineering tasks, not owner decisions.
+  Both ARM ABIs have byte-identical independent-checkout AAR/classes/core
+  comparisons, exact resource admission (193 admitted / 2 excluded fonts), full
+  retained notices and expanded runtime-code audit (36 hosts classified, 0
+  unknown, 0 secret-pattern hits). Actual ARM64/16 KB/OpenGLES3 and
+  ARM32/API30/Vulkan render/search/route passed; four native rotations per ABI,
+  old Activity collection and three ARM32 process restarts passed. The ARM32
+  OpenGL emulator attempts crashed the emulator and are not accepted profiles.
+  APK 77,794,496 bytes / 74.19 MiB, both advertised ARM ABIs complete, all 64-bit
+  LOAD/ZIP alignments 16 KB, existing 80 MiB ceiling unchanged. Persistent
+  candidate: `/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22`.
+  Fixed SDK lifecycle forwarding/buffer teardown, readiness-before-surface,
+  retired callbacks, generation-correlated KML category recovery and search
+  snapshots. Eight Python, 19 engine JVM and 4 Compose instrumentation tests
+  PASS; affected app JVM run 490 PASS, normal debug, engine probe/release,
+  lint and scoped integrity checks PASS. No redundant backend/SQL aggregate.
+  Next: close MAP-15 native activation/API26 crypto/recovery integration items,
+  then MAP-17 real four-tab/native host wiring; MAP-18/19/20 own final markers,
+  disambiguation, prices and minimum-map acceptance. No fabricated map UI,
+  source activation, phone installation, push/PR/merge, deploy or release claim.
+  [Earlier detailed progress](history/MAP_ENGINE_PROGRESS_BEFORE_ACCEPTANCE_20261024.md)
+  preserves the superseded checkpoints and all outstanding product obligations.
+
+- Enterprise data/static portal planning 2026-10-24: PLANNING_LOCAL_DONE /
+  IMPLEMENTATION_PLANNED / LOCAL_ONLY. Planning commit `b1a2bde6` was preserved
+  from its old local-dev parent and replayed onto maintained dev `721582b8` in
+  ESP worktree branch `codex/enterprise-static-portal`; the map worktree remains
+  untouched. [ESP-00–18 plan](ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md),
+  [rules/use cases](../product/ENTERPRISE_DATA_STATIC_PORTAL_CONTRACT.md) and
+  [continuation prompt](ENTERPRISE_DATA_STATIC_PORTAL_PROMPT.md) define existing
+  ANP/FQ reuse, analytics, static search/pages, versioned publication, correction
+  recovery and measured VPS/CDN capacity. Next: ESP-00 actual baseline/scope
+  reconciliation and component split with the map. No source activation,
+  D implementation, VPS/load/deployment or release acceptance.
+
+- Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
+  IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
+  [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),
+  [rights/source register](MAP_EV_SOURCE_REGISTER.md), [agent prompt](MAP_EV_AGENT_PROMPT.md).
+  User-requested data-first pipeline, commercial/open-only dependencies, CoMaps
+  native proof gate, four-tab minimum map and later offline/EV journeys are scoped.
+  [Prepared map icons](../assets/map-icons/README.md) retain raw/prompt/SVG/PNG;
+  one accidental electric SVG void was explicitly removed and re-exported with
+  bounded-pixel repair proof. This is planning/assets only, no product code,
+  source admission, phone/VPS change, push/PR/merge/wiki or release certification.
+  Validation: registry/link/structure/diff/asset checks; no runtime test claim.
+  Next: integrate the scoped planning artifacts when construction is requested,
+  then reconcile actual baseline at MAP-00. Native feasibility and external gates
+  remain unproven.
+- Android Premium area 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  maintained `dev`; connected-device update installed, dev push follows this record.
+  [Evidence](../mobile/premium-area-organization.md). Dedicated Premium and
+  Manage subscription pages/routes, Profile category below the signed-in card,
+  compact Manage-account shortcut, old account Premium section/query removed,
+  owner-fenced VM moved, resume-scoped status refresh, 60s account-scoped
+  display cache, structural Premium/Management loading skeletons, fixed
+  light/dark gold palette, local crown, 25 strings × 8 locales and three-tab
+  Profile context preserved. Profile loading now uses a full-page skeleton with
+  no mount animation; Auth login crossfade untouched. App-wide content-card
+  shape standardized on the active medium radius (12dp), with one-offs limited
+  to dialogs, dropdowns, sheets, badges and controls. 490 app tests 0
+  failures/errors/skips; lint 0 errors (257 existing warnings); debug APK
+  28,272,706 bytes, SHA-256 `f2869b78…`, installed via `adb install -r` on
+  2311DRK48G without data clear. Purchase/restore remain unavailable by design;
+  no backend/billing change. Rendered visual/font/TalkBack review remains
+  VISUAL_VALIDATION_PENDING for the owner; no production or release claim.
+
+- Android container outlines 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  maintained `dev`, no PR/push/merge. [Rule and validation](../mobile/UI_CONTAINER_GUIDELINES.md).
+  Shared `AnpContainerDefaults` resolves a 1dp neutral outline from the active
+  Material scheme (`outlineVariant`→`outline`, ≥2:1 against the effective fill),
+  preserving shape, fill, semantics and state borders under light/dark/dynamic
+  colors. Applied to Home vehicle/fuel/benefit/skeleton cards, vehicles,
+  stations list/summary/details/public page, account/auth/key backup, settings/
+  privacy/consent, profile/contributions, community/charging, ledger/monthly,
+  games, help, suggestions, capture and occurrence. `OutlinedCard`, selectable
+  option rows, branded hero and status/badge surfaces keep their specialized
+  treatments. Commits `26b8534a`, `0e6e95ce`, `f80fab46`. Full app unit suite
+  470 tests 0 failures/errors/skips; lint 0 errors (258 existing warnings);
+  debug APK and `git diff --check` PASS; no credentials/PII added. Rendered
+  light/dark/dynamic, 200% font, narrow-device and TalkBack checks remain
+  VISUAL_VALIDATION_PENDING for user device review; no blanket accessibility
+  claim.
+
+- Test-environment update 2026-10-24: API/worker `53719336` deployed to the
+  explicitly selected `teste.abastevo.com.br`; schema95→120 rehearsed on a
+  restored copy, quiesced backups retained, original data fingerprints unchanged
+  across105 tables. API/worker/storage ready with zero restarts; public health200,
+  signed consent16 checks and account/session30 checks PASS. Physical debug APK
+  replaced via ADB with matching signature/hash and retained app data; UI tests
+  remain user-owned. [Runtime evidence and gaps](../backend/evidence/TEST_ENV_UPDATE_2026-10-24.md):
+  EV community/rank/history routes unmounted, charge reads/delete selector incomplete,
+  charging sources unpublished; full electric runtime acceptance remains PARTIAL.
+  Local test setup/restore repairs: Go race2414 and integrated3352 outcomes PASS
+  (2/6 opt-in skips), real source→HTTP/PostGIS, static/security/restore/load PASS.
+  Test-harness corrections LOCAL_DONE / INTEGRATION_PENDING; no new remote delivery
+  or G09 certification. Next: bounded runtime-gap correction and user manual checks.
+
+- Delivery integrated 2026-10-24: PR #147 merged to protected main as
+  `c82823cb` (head `3fa0bd08`, base `c3de5c03`); PR #149's five audited commits
+  are ancestors of main (`ebd777ef` etc.) and the PR is MERGED via the dev
+  reconciliation merge `9c93892c`. Current-head required checks
+  (Quick verification, fast, test, integration) all passed before the guarded
+  finish; local quick PASS. Wiki published once from `c82823cb` as `02e5391`
+  (dry run no conflicts, zero mutation before publish). `dev` retained and
+  synchronized to the merge; this entry is a docs-only post-merge note.
+  External obligations (Play/staging/operator/device/production) remain OWED;
+  no RELEASE_CERTIFIED or production-ready claim.
+
 - Final union after PR149 merge 2026-10-23: LOCAL_DONE / INTEGRATION_PENDING,
   merge `9c93892c`. Re-ran the union instead of reusing pre-merge counts:
   domain675/application454/data549/app465 = 2,143 JVM (0 failures/errors, 2

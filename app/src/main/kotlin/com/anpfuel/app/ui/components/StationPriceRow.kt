@@ -23,6 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.model.StationPriceUiModel
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 
 /**
@@ -52,6 +53,7 @@ fun StationPriceRow(
         stringResource(R.string.stations_collected_at_label, it)
     }
     val rowDescription = stationRowTalkBackDescription(pricePart, collectedPart)
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
 
     Card(
         modifier = modifier
@@ -62,8 +64,9 @@ fun StationPriceRow(
             }
             .clickable(onClick = onNavigate),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Row(
             modifier = Modifier

@@ -1,0 +1,70 @@
+{
+  "apk_bytes": 77794496,
+  "apk_mib": 74.19061279296875,
+  "apk_sha256": "595ef30dd2daebcadb9d0d8dfca6f1d6700dce27967e06e1e1705ed2ded8ca9d",
+  "libraries": [
+    {
+      "path": "lib/arm64-v8a/libandroidx.graphics.path.so",
+      "bytes": 10096,
+      "sha256": "41e9a793c43a0f4fddb19e33f346bace464f30f888ba7b9eaf96294ea115bfb6",
+      "alignments": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    {
+      "path": "lib/arm64-v8a/libdatastore_shared_counter.so",
+      "bytes": 7112,
+      "sha256": "d3e48717c9aa147e0ab21063ba0e8e0211cabf8bf40b222640829519edbf58e1",
+      "alignments": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    {
+      "path": "lib/arm64-v8a/liborganicmaps.so",
+      "bytes": 14675096,
+      "sha256": "df51c422e3e6163e7079a53875933232577bb939396738cf05c0edb8cc509f21",
+      "alignments": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    {
+      "path": "lib/armeabi-v7a/libandroidx.graphics.path.so",
+      "bytes": 7252,
+      "sha256": "41399eba6fc2a60f6f14642375c1824f3cf25eb8fec7397d753730a3ceda3e2b",
+      "alignments": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    {
+      "path": "lib/armeabi-v7a/libdatastore_shared_counter.so",
+      "bytes": 4416,
+      "sha256": "716c5d8d2cac8ca0edf65da8f139c7886b726ac79d542a14edeb94994ba6d3dc",
+      "alignments": [
+        16384,
+        16384
+      ]
+    },
+    {
+      "path": "lib/armeabi-v7a/liborganicmaps.so",
+      "bytes": 10499236,
+      "sha256": "c911390d5906f97f82ec4876e56f90dbe05d9d24487897f81907a40b89dc1788",
+      "alignments": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  ],
+  "zipalign_16kb": "PASS",
+  "no_missing_advertised_engine_abi": true,
+  "excluded_fonts_absent": true,
+  "notices_match_candidate": true
+}

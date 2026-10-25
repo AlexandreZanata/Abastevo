@@ -106,6 +106,13 @@ def summarize(samples):
     sched = [s["started"] - s["scheduled"] for s in samples if s["started"] is not None]
     latency = percentiles(latencies) if latencies else None
     histogram = histogram_of(latencies)
+    completed_times = [s["completed"] for s in samples if s["completed"] is not None]
+    scheduled_times = [s["scheduled"] for s in samples if s["scheduled"] is not None]
+    window_s = ((max(completed_times) - min(scheduled_times)) / 1000.0
+                if completed_times and scheduled_times else 0.0)
+    successful_bytes = sum(
+        s["bytes"] for s in samples
+        if s["completed"] is not None and _is_success(s["status"]))
     reconcile = (offered == completed + dropped + cancelled
                  and completed == successful + timeouts + wrong + error_codes
                  and error_codes >= 0)
@@ -125,6 +132,10 @@ def summarize(samples):
         "histogram": histogram,
         "sched_p50": percentiles(sched)["p50"] if sched else 0.0,
         "sched_max": max(sched) if sched else 0.0,
+        "window_s": window_s,
+        "successful_bytes": successful_bytes,
+        "achieved_rps": successful / window_s if window_s > 0 else 0.0,
+        "bytes_per_s": successful_bytes / window_s if window_s > 0 else 0.0,
         "reconcile": reconcile,
     }
 
@@ -154,12 +165,15 @@ def summary_line(summary):
     return (
         "offered=%d started=%d completed=%d successful=%d dropped=%d cancelled=%d "
         "timeouts=%d wrong=%d errors=%d err_rate=%.4f "
-        "p50=%.2f p95=%.2f p99=%.2f max=%.2f sched_p50=%.2f sched_max=%.2f reconcile=%s" % (
+        "p50=%.2f p95=%.2f p99=%.2f max=%.2f sched_p50=%.2f sched_max=%.2f "
+        "window_s=%.3f achieved_rps=%.2f bytes_total=%d bytes_per_s=%.2f reconcile=%s" % (
             summary["offered"], summary["started"], summary["completed"],
             summary["successful"], summary["dropped"], summary["cancelled"],
             summary["timeouts"], summary["wrong"], summary["errors"], summary["err_rate"],
             latency["p50"], latency["p95"], latency["p99"], latency["max"],
             summary["sched_p50"], summary["sched_max"],
+            summary["window_s"], summary["achieved_rps"], summary["successful_bytes"],
+            summary["bytes_per_s"],
             "ok" if summary["reconcile"] else "MISMATCH"))
 
 
@@ -197,6 +211,9 @@ def _self_test():
     assert abs(mixed_summary["err_rate"] - 0.15) < 1e-9, mixed_summary
     assert mixed_summary["dropped"] == 3 and mixed_summary["cancelled"] == 2
     assert mixed_summary["reconcile"], mixed_summary
+    assert mixed_summary["successful_bytes"] == 80 * 100, mixed_summary
+    assert mixed_summary["window_s"] > 0 and mixed_summary["achieved_rps"] > 0
+    assert mixed_summary["bytes_per_s"] > 0
 
     # Histogram merge: split halves combine into exactly the whole run.
     half = len(slow) // 2

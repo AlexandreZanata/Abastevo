@@ -168,6 +168,7 @@ func TestSEC04BWiredErasureCompositionOnRealSQL(t *testing.T) {
 		return err
 	}
 
+	svc.RequestBillingExit = func(context.Context, string) error { return nil }
 	receipt, err := svc.DeleteAccount(ctx, auth.Account.ID)
 	if err != nil {
 		t.Fatalf("DeleteAccount: %v", err)

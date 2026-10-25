@@ -19,13 +19,20 @@ func (s *Store) RequireCapability(ctx context.Context, tx pgx.Tx, owner, capabil
 		return err
 	}
 	row, err := q.ReadStatus(ctx, uid(owner))
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.ErrDenied
-		}
+	playCapabilities := []string{}
+	if err == nil {
+		playCapabilities = domain.Evaluate(snapshot(row), time.Now(), true).Capabilities
+	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return domain.ErrUnavailable
 	}
-	if !slices.Contains(domain.Evaluate(snapshot(row), time.Now(), true).Capabilities, capability) {
+	if slices.Contains(playCapabilities, capability) {
+		return nil
+	}
+	capabilities, _, err := webGrants(ctx, tx, owner, time.Now())
+	if err != nil {
+		return domain.ErrUnavailable
+	}
+	if !slices.Contains(capabilities, capability) {
 		return domain.ErrDenied
 	}
 	return nil

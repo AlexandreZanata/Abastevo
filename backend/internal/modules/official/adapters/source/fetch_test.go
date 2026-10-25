@@ -339,3 +339,57 @@ func TestDisallowedURLNeverDials(t *testing.T) {
 		t.Errorf("allowlist changed size = %s", got)
 	}
 }
+
+func TestProbeContentHashesAndBounds(t *testing.T) {
+	body := "content-bytes"
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/anp/missing.xlsx":
+			w.WriteHeader(http.StatusNotFound)
+		case "/anp/busy.xlsx":
+			w.WriteHeader(http.StatusTooManyRequests)
+		default:
+			w.Header().Set("ETag", `"v2"`)
+			w.Header().Set("Last-Modified", "Tue, 03 Jan 2006 15:04:05 GMT")
+			_, _ = w.Write([]byte(body))
+		}
+	}))
+	defer srv.Close()
+	f := testFetcher(loopbackAllowlist(t, srv.URL, "/anp/"), tempDir(t))
+	changed, etag, lastMod, sha, err := f.ProbeContent(context.Background(), srv.URL+"/anp/file.xlsx", "")
+	if err != nil || !changed || etag != `"v2"` || lastMod == "" {
+		t.Fatalf("probe = %v %q %q %q %v", changed, etag, lastMod, sha, err)
+	}
+	sum := sha256.Sum256([]byte(body))
+	if sha != "sha256:"+hex.EncodeToString(sum[:]) {
+		t.Errorf("hash = %q", sha)
+	}
+	if _, _, _, _, err := f.ProbeContent(context.Background(), srv.URL+"/anp/missing.xlsx", ""); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing = %v, want ErrNotFound", err)
+	}
+	if _, _, _, _, err := f.ProbeContent(context.Background(), srv.URL+"/anp/busy.xlsx", ""); !errors.Is(err, ErrBadStatus) {
+		t.Errorf("busy = %v, want retryable ErrBadStatus", err)
+	}
+
+	small := testFetcher(loopbackAllowlist(t, srv.URL, "/anp/"), tempDir(t))
+	small.MaxBytes = int64(len(body) - 1)
+	if _, _, _, _, err := small.ProbeContent(context.Background(), srv.URL+"/anp/file.xlsx", ""); !errors.Is(err, ErrTooLarge) {
+		t.Errorf("oversize = %v, want ErrTooLarge", err)
+	}
+}
+
+func TestProbeContentNotModified(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("If-None-Match") == `"same"` {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		_, _ = w.Write([]byte("body"))
+	}))
+	defer srv.Close()
+	f := testFetcher(loopbackAllowlist(t, srv.URL, "/anp/"), tempDir(t))
+	changed, etag, lastMod, sha, err := f.ProbeContent(context.Background(), srv.URL+"/anp/file.xlsx", `"same"`)
+	if err != nil || changed || etag != `"same"` || lastMod != "" || sha != "" {
+		t.Errorf("not modified = %v %q %q %q %v", changed, etag, lastMod, sha, err)
+	}
+}

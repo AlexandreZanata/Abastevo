@@ -31,6 +31,10 @@ type Import struct {
 	Parser  anp.Parser
 	Import  *adapters.Importer
 	Resolve func(ctx context.Context, cnpjNormalized, displayName string, address map[string]string) (string, error)
+	// AfterPublish is the optional durable export intent. It runs after the
+	// publication commit; a failure is visible to the job and recovered by the
+	// periodic export reconciliation, never by rolling back published data.
+	AfterPublish func(ctx context.Context, revisionID string) error
 }
 
 // Kind implements jobs.Handler.
@@ -121,6 +125,11 @@ func (im Import) Handle(ctx context.Context, job jobs.Job) error {
 	if !fin.Published && fin.Verdict.Reason == "empty" {
 		return fmt.Errorf("import: empty source")
 	}
+	if fin.Published && im.AfterPublish != nil {
+		if err := im.AfterPublish(ctx, fin.RevisionID); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -146,12 +155,13 @@ func normalizeRow(row anp.Row, tally *odomain.QuarantineTally) (normalizedRow, b
 		tally.Add(kernel.QuarantineCode(err), row.Cells["CNPJ"])
 		return out, false
 	}
-	price, err := kernel.ParsePrice(product, unit, row.Cells["PRECO"])
+	rawPrice := row.Cells["PRECO"]
+	price, err := kernel.ParsePrice(product, unit, sourcePriceText(rawPrice))
 	if err != nil {
 		tally.Add(kernel.QuarantineCode(err), row.Cells["CNPJ"])
 		return out, false
 	}
-	cnpj, err := kernel.ParseCNPJ(row.Cells["CNPJ"])
+	cnpj, err := kernel.ParseCNPJ(padSourceCNPJ(row.Cells["CNPJ"]))
 	if err != nil {
 		tally.Add("cnpj-checksum-invalid", row.Cells["CNPJ"])
 		return out, false
@@ -167,7 +177,7 @@ func normalizeRow(row anp.Row, tally *odomain.QuarantineTally) (normalizedRow, b
 	out = normalizedRow{
 		Row: odomain.PriceRow{
 			Product: string(product), Unit: string(unit),
-			AmountMilli: price.Milli, RawText: price.Raw,
+			AmountMilli: price.Milli, RawText: rawPrice,
 			CollectedOn: collected, SourceRow: row.Number,
 		},
 		CNPJ:    cnpj.Normalized(),
@@ -175,6 +185,39 @@ func normalizeRow(row anp.Row, tally *odomain.QuarantineTally) (normalizedRow, b
 		Address: map[string]string{},
 	}
 	return out, true
+}
+
+// padSourceCNPJ restores leading zeros lost by the ANP spreadsheet's numeric
+// CNPJ column. Formatting is left to the strict kernel parser; non-numeric
+// values (including alphanumeric CNPJs) pass through unchanged.
+// sourcePriceText accepts the ANP workbook's dot decimal while the kernel
+// keeps its strict comma contract. The original text remains the raw evidence.
+func sourcePriceText(text string) string {
+	if strings.Contains(text, ",") {
+		return text
+	}
+	if strings.Count(text, ".") == 1 {
+		return strings.Replace(text, ".", ",", 1)
+	}
+	return text
+}
+
+func padSourceCNPJ(text string) string {
+	var digits strings.Builder
+	for _, r := range text {
+		switch {
+		case r >= '0' && r <= '9':
+			digits.WriteRune(r)
+		case r == '.' || r == '/' || r == '-' || r == ' ':
+		default:
+			return text
+		}
+	}
+	value := digits.String()
+	if value == "" || len(value) >= 14 {
+		return text
+	}
+	return strings.Repeat("0", 14-len(value)) + value
 }
 
 func firstPresent(cells map[string]string, names ...string) string {

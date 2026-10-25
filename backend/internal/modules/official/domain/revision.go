@@ -23,6 +23,10 @@ const (
 	RevisionPublished   = "published"
 	RevisionFailed      = "failed"
 	RevisionNeedsReview = "needs-review"
+	// RevisionSuperseded retires a staging revision whose survey window
+	// moved on while it was still open: a late finish must never repoint
+	// the current pointer at stale facts.
+	RevisionSuperseded = "superseded"
 )
 
 var (
@@ -30,6 +34,13 @@ var (
 	ErrNeedsReview     = errors.New("official: operator review required")
 	ErrUnknownRevision = errors.New("official: unknown revision")
 	ErrDuplicateImport = errors.New("official: identical bytes already imported")
+	// ErrRevisionFrozen rejects any staging write after the terminal
+	// publication decision. The reviewed set is immutable once the
+	// revision leaves staging.
+	ErrRevisionFrozen = errors.New("official: revision is no longer mutable")
+	// ErrDivergentRestage rejects a resumed batch that reuses a source row
+	// number with different facts. Identical retries remain no-ops.
+	ErrDivergentRestage = errors.New("official: divergent restage of a source row")
 )
 
 // Verdict is the review-gate outcome for one staged revision.

@@ -1,0 +1,322 @@
+{
+  "format": "abastevo.map-discovery-contract-fixtures",
+  "version": 1,
+  "status": "CONTRACT_ONLY_NOT_PUBLISHED",
+  "provenance": {
+    "task": "MAP-01",
+    "behavior_contract": "docs/product/MAP_DISCOVERY_CONTRACT.md",
+    "data": "synthetic; no production station, contributor, photo, GPS or provider record"
+  },
+  "cases": [
+    {
+      "id": "MAP-C01-ANP-ONLY",
+      "purpose": "Official individual station price is shown exactly; municipal averages never enter.",
+      "source_mode": "ANP",
+      "station": {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "name": "Posto Contrato Um",
+        "cnpj": "11222333000181",
+        "services": ["FUEL"],
+        "location": {
+          "latitude": -15.7939,
+          "longitude": -47.8828,
+          "quality": "reviewed",
+          "display_point": "station",
+          "entrance": {"latitude": -15.7941, "longitude": -47.8825}
+        }
+      },
+      "price": {
+        "source": "ANP",
+        "product": "GASOLINE_REGULAR",
+        "amount": "5.89",
+        "currency": "BRL",
+        "unit": "L",
+        "observed_at": "2026-10-20",
+        "period": {"from": "2026-10-18", "to": "2026-10-24"},
+        "station_level": true
+      },
+      "expected": {
+        "marker": "fuel",
+        "pin": true,
+        "quick_sheet_price": "R$ 5,89/L",
+        "source_label": "ANP",
+        "date_label": "20/10/2026",
+        "route_target": "entrance",
+        "fallback_allowed": false
+      }
+    },
+    {
+      "id": "MAP-C02-COMMUNITY-ONLY",
+      "purpose": "Community projection is shown only in Comunidade mode and carries its date.",
+      "source_mode": "COMMUNITY",
+      "station": {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "name": "Posto Contrato Dois",
+        "cnpj": "11222333000181",
+        "services": ["FUEL"],
+        "location": {
+          "latitude": -23.5505,
+          "longitude": -46.6333,
+          "quality": "reviewed",
+          "display_point": "station",
+          "entrance": null
+        }
+      },
+      "price": {
+        "source": "COMMUNITY",
+        "product": "ETHANOL_HYDRATED",
+        "amount": "4.27",
+        "currency": "BRL",
+        "unit": "L",
+        "observed_at": "2026-10-24",
+        "period": null,
+        "station_level": true,
+        "validation": "community_projection"
+      },
+      "expected": {
+        "marker": "fuel",
+        "pin": true,
+        "quick_sheet_price": "R$ 4,27/L",
+        "source_label": "Comunidade",
+        "date_label": "24/10/2026",
+        "route_target": "station_display_point_with_warning",
+        "fallback_allowed": false
+      }
+    },
+    {
+      "id": "MAP-C03-UNKNOWN-PRICE",
+      "purpose": "Unknown price is null and is never rendered as zero or free.",
+      "source_mode": "ANP",
+      "station": {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "name": "Posto Sem Preço",
+        "cnpj": "11222333000181",
+        "services": ["FUEL"],
+        "location": {
+          "latitude": -15.8012,
+          "longitude": -47.9001,
+          "quality": "reviewed",
+          "display_point": "station",
+          "entrance": null
+        }
+      },
+      "price": null,
+      "expected": {
+        "marker": "fuel",
+        "pin": true,
+        "quick_sheet_price_text": "Sem preço ANP para este posto",
+        "numeric_price": null,
+        "fallback_allowed": false
+      }
+    },
+    {
+      "id": "MAP-C04-COMBINED-SITE",
+      "purpose": "A combined fuel/charging site keeps one selectable site and two services; ANP supplies no electric tariff.",
+      "source_mode": "ANP",
+      "station": {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "name": "Posto e Recarga Quatro",
+        "cnpj": "11222333000181",
+        "services": ["FUEL", "CHARGING"],
+        "location": {
+          "latitude": -15.8100,
+          "longitude": -47.8700,
+          "quality": "reviewed",
+          "display_point": "station",
+          "entrance": {"latitude": -15.8102, "longitude": -47.8698}
+        },
+        "charging": {
+          "place_id": "44444444-4444-4444-8444-444444444441",
+          "equipment_id": "44444444-4444-4444-8444-444444444442",
+          "connector_id": "44444444-4444-4444-8444-444444444443",
+          "connector": "CCS2",
+          "power_kw": "50",
+          "access": "public",
+          "status": "unknown",
+          "tariff": null
+        }
+      },
+      "price": {
+        "source": "ANP",
+        "product": "GASOLINE_REGULAR",
+        "amount": "6.05",
+        "currency": "BRL",
+        "unit": "L",
+        "observed_at": "2026-10-21",
+        "period": {"from": "2026-10-18", "to": "2026-10-24"},
+        "station_level": true
+      },
+      "expected": {
+        "marker": "fuel_and_electric",
+        "pin": true,
+        "quick_sheet_price": "R$ 6,05/L",
+        "electric_tariff_text": "ANP não fornece tarifa elétrica",
+        "community_switch_action": true,
+        "duplicate_selectable_pins": false,
+        "availability_claim": false
+      }
+    },
+    {
+      "id": "MAP-C05-MISSING-COORDINATE",
+      "purpose": "A station without coordinates is list-only and never a pin.",
+      "source_mode": "ANP",
+      "station": {
+        "id": "55555555-5555-4555-8555-555555555555",
+        "name": "Posto Sem Geometria",
+        "cnpj": "11222333000181",
+        "services": ["FUEL"],
+        "location": {
+          "latitude": null,
+          "longitude": null,
+          "quality": "unknown",
+          "display_point": null,
+          "entrance": null
+        }
+      },
+      "price": {
+        "source": "ANP",
+        "product": "DIESEL_S10",
+        "amount": "6.42",
+        "currency": "BRL",
+        "unit": "L",
+        "observed_at": "2026-10-22",
+        "period": {"from": "2026-10-18", "to": "2026-10-24"},
+        "station_level": true
+      },
+      "expected": {
+        "marker": null,
+        "pin": false,
+        "list_visible": true,
+        "location_warning": "Posição não confirmada",
+        "quick_sheet_price": "R$ 6,42/L"
+      }
+    },
+    {
+      "id": "MAP-C06-CITY-CENTROID",
+      "purpose": "A city centroid is never promoted to an exact station position.",
+      "source_mode": "COMMUNITY",
+      "station": {
+        "id": "66666666-6666-4666-8666-666666666666",
+        "name": "Posto Centroide",
+        "cnpj": "11222333000181",
+        "services": ["FUEL"],
+        "location": {
+          "latitude": -15.7939,
+          "longitude": -47.8828,
+          "quality": "city-centroid",
+          "display_point": "city_centroid",
+          "entrance": null
+        }
+      },
+      "price": null,
+      "expected": {
+        "marker": null,
+        "pin": false,
+        "list_visible": true,
+        "location_warning": "Apenas localização aproximada da cidade",
+        "route_allowed": false
+      }
+    },
+    {
+      "id": "MAP-C07-STALE-SOURCE-RACE",
+      "purpose": "A delayed response for the previous source selection is discarded.",
+      "source_mode": "COMMUNITY",
+      "selected_generation": 8,
+      "late_result": {
+        "source": "ANP",
+        "generation": 7,
+        "station_id": "11111111-1111-4111-8111-111111111111",
+        "amount": "5.89"
+      },
+      "expected": {
+        "apply_late_result": false,
+        "reason": "selection_generation_mismatch",
+        "markers_sheet_list_cache_consistent": true
+      }
+    },
+    {
+      "id": "MAP-C08-WRONG-PRODUCT-UNIT",
+      "purpose": "A mismatched product/unit is quarantined, not relabeled.",
+      "source_mode": "ANP",
+      "observation": {
+        "station_id": "11111111-1111-4111-8111-111111111111",
+        "product": "ETHANOL_HYDRATED",
+        "unit": "M3",
+        "amount": "4270.00",
+        "station_level": true
+      },
+      "expected": {
+        "accepted": false,
+        "reason": "unsupported_product_unit",
+        "published": false
+      }
+    },
+    {
+      "id": "MAP-C09-MUNICIPAL-AVERAGE",
+      "purpose": "A municipal average is not a station price.",
+      "source_mode": "ANP",
+      "observation": {
+        "station_id": null,
+        "municipality": "Cuiabá",
+        "product": "GASOLINE_REGULAR",
+        "average_amount": "5.95",
+        "station_level": false
+      },
+      "expected": {
+        "accepted": false,
+        "reason": "aggregate_not_station_fact",
+        "published": false
+      }
+    },
+    {
+      "id": "MAP-C10-RIGHTS-BLOCKED",
+      "purpose": "A record without admitted rights is excluded from public artifacts.",
+      "source_mode": "COMMUNITY",
+      "record": {
+        "id": "77777777-7777-4777-8777-777777777777",
+        "license": "UNKNOWN",
+        "redistribution": "not_admitted"
+      },
+      "expected": {
+        "published": false,
+        "reason": "rights_not_admitted",
+        "attribution_required": true
+      }
+    },
+    {
+      "id": "MAP-C11-UNKNOWN-EV-POWER-TARIFF",
+      "purpose": "Unknown charger power/tariff remains unknown, not zero/free.",
+      "source_mode": "COMMUNITY",
+      "station": {
+        "id": "88888888-8888-4888-8888-888888888888",
+        "name": "Recarga Desconhecida",
+        "services": ["CHARGING"],
+        "location": {
+          "latitude": -15.8200,
+          "longitude": -47.9100,
+          "quality": "reviewed",
+          "display_point": "station",
+          "entrance": null
+        },
+        "charging": {
+          "place_id": "88888888-8888-4888-8888-888888888881",
+          "equipment_id": "88888888-8888-4888-8888-888888888882",
+          "connector_id": "88888888-8888-4888-8888-888888888883",
+          "connector": "TYPE2",
+          "power_kw": null,
+          "access": "unknown",
+          "status": "unknown",
+          "tariff": null
+        }
+      },
+      "expected": {
+        "marker": "electric",
+        "pin": true,
+        "power_text": "Potência desconhecida",
+        "tariff_text": "Tarifa desconhecida",
+        "availability_claim": false,
+        "free_claim": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "upstream_sha": "4587b8ad4d12c9f59982709fdaf03cc925948827",
+  "independent_checkouts": true,
+  "shared_inputs": "immutable Git objects, pinned toolchain and hash-pinned prepared resources; no native build directory copied",
+  "abis": {
+    "arm64-v8a": {
+      "sdk-release.aar": {
+        "sha256": [
+          "43eb683f2d5ae880dd133d6ea1d1bbe312dd5ecaf0ef3536a6518ae938084db0",
+          "43eb683f2d5ae880dd133d6ea1d1bbe312dd5ecaf0ef3536a6518ae938084db0"
+        ],
+        "byte_identical": true
+      },
+      "classes.jar": {
+        "sha256": [
+          "074122f4de6c6c8c930bd5fae50be0626c527abb8498dae36f0176ce20ee3ca8",
+          "074122f4de6c6c8c930bd5fae50be0626c527abb8498dae36f0176ce20ee3ca8"
+        ],
+        "byte_identical": true
+      },
+      "jni/arm64-v8a/liborganicmaps.so": {
+        "sha256": [
+          "df51c422e3e6163e7079a53875933232577bb939396738cf05c0edb8cc509f21",
+          "df51c422e3e6163e7079a53875933232577bb939396738cf05c0edb8cc509f21"
+        ],
+        "byte_identical": true
+      }
+    },
+    "armeabi-v7a": {
+      "sdk-release.aar": {
+        "sha256": [
+          "a3bdb7da7dabd3cb408ad6ee08053d1ebb00eccda3ca18325d0b066a603fdce6",
+          "a3bdb7da7dabd3cb408ad6ee08053d1ebb00eccda3ca18325d0b066a603fdce6"
+        ],
+        "byte_identical": true
+      },
+      "classes.jar": {
+        "sha256": [
+          "074122f4de6c6c8c930bd5fae50be0626c527abb8498dae36f0176ce20ee3ca8",
+          "074122f4de6c6c8c930bd5fae50be0626c527abb8498dae36f0176ce20ee3ca8"
+        ],
+        "byte_identical": true
+      },
+      "jni/armeabi-v7a/liborganicmaps.so": {
+        "sha256": [
+          "c911390d5906f97f82ec4876e56f90dbe05d9d24487897f81907a40b89dc1788",
+          "c911390d5906f97f82ec4876e56f90dbe05d9d24487897f81907a40b89dc1788"
+        ],
+        "byte_identical": true
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "upstream_sha": "4587b8ad4d12c9f59982709fdaf03cc925948827",
+  "ndk": "28.2.13676358",
+  "cmake": "3.22.1",
+  "min_sdk": 26,
+  "abi": "armeabi-v7a",
+  "java_debug": false,
+  "aar_bytes": 34517731,
+  "aar_sha256": "1ac7ba2935063de63ecee104216eae07b78442487ae5bafd3985290f3fe315ec",
+  "native": [
+    {
+      "path": "jni/armeabi-v7a/liborganicmaps.so",
+      "bytes": 10499236,
+      "sha256": "4b69c2aa8c9e4c33da0278994e01d49187afd359c270559bb74a753f9fa0b28e",
+      "load_alignments": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  ],
+  "engine_gate": "PARTIAL",
+  "licenses": "AUDIT_PENDING",
+  "runtime_16kb_acceptance": "PENDING"
+}

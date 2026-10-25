@@ -37,6 +37,7 @@ import com.anpfuel.app.R
 import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.ui.accessibility.accessibilityDescription
 import com.anpfuel.app.ui.model.HistoryEntryUiModel
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.valueobject.SurveyWeek
 import java.math.BigDecimal
@@ -49,11 +50,13 @@ fun PriceHistoryEntryRow(
     averageFormatted: String,
     modifier: Modifier = Modifier,
 ) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Row(
             modifier = Modifier
@@ -104,13 +107,15 @@ fun PriceHistoryTrendChart(
     val minValue = values.minOf { it }
     val range = maxValue.subtract(minValue).takeIf { it.signum() > 0 } ?: BigDecimal.ONE
 
+    val chartContainer = MaterialTheme.colorScheme.surfaceContainerHighest
     Card(
         modifier = modifier
             .fillMaxWidth()
             .accessibilityDescription(stringResource(R.string.a11y_price_trend_chart)),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            containerColor = chartContainer,
         ),
+        border = AnpContainerDefaults.borderStroke(chartContainer),
     ) {
         Column(
             modifier = Modifier

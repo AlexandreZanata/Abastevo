@@ -1,0 +1,253 @@
+#!/usr/bin/env bash
+# ESP-14 isolated static-portal rehearsal. No shared edge, API, DNS or
+# production root is touched. It promotes verified candidates into a private
+# release root and serves the current symlink with the pinned Caddy image on
+# loopback only.
+#
+# Required:
+#   PORTAL_ARTIFACT_A   verified portal candidate
+# Optional:
+#   PORTAL_ARTIFACT_B   second verified candidate for switch/rollback tests
+#   PORTAL_RELEASE_ROOT private new directory (default: mktemp)
+#   PORTAL_SITE_URL     origin bound in the artifact manifest (default:
+#                       https://portal.example)
+#   PORTAL_OFFICIAL_ONLY=1  artifacts are official-only slices (changes the
+#                       home-page probes from /consultar/ to /fiscalizacao/
+#                       and asserts price routes stay absent)
+#   PORTAL_HTTP_PORT    loopback port (default: 18080)
+#   PORTAL_KEEP=1       keep the release root after the rehearsal
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT"
+
+ARTIFACT_A="${PORTAL_ARTIFACT_A:?PORTAL_ARTIFACT_A is required}"
+ARTIFACT_B="${PORTAL_ARTIFACT_B:-}"
+SITE_URL="${PORTAL_SITE_URL:-https://portal.example}"
+OFFICIAL_ONLY="${PORTAL_OFFICIAL_ONLY:-0}"
+HTTP_PORT="${PORTAL_HTTP_PORT:-18080}"
+MODE_FLAGS=()
+if [[ "$OFFICIAL_ONLY" == "1" ]]; then
+    MODE_FLAGS=(--official-only)
+    HOME_PAGE="/fiscalizacao/"
+else
+    HOME_PAGE="/consultar/"
+fi
+ORIGIN="http://127.0.0.1:${HTTP_PORT}"
+CADDY_IMAGE='caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
+CADDYFILE="$ROOT/infra/caddy/portal-rehearsal.Caddyfile"
+KEEP="${PORTAL_KEEP:-0}"
+
+WORK="$(mktemp -d /tmp/abastevo-portal-rehearsal.XXXXXX)"
+BIN="$WORK/portalrelease"
+NAME="abastevo-portal-rehearsal-$$"
+ROOT_TEMP=0
+if [[ -n "${PORTAL_RELEASE_ROOT:-}" ]]; then
+    RELEASE_ROOT="$PORTAL_RELEASE_ROOT"
+    [[ ! -e "$RELEASE_ROOT" ]] || { echo "REFUSED: release root already exists: $RELEASE_ROOT" >&2; exit 2; }
+else
+    RELEASE_ROOT="$(mktemp -d /tmp/abastevo-portal-release.XXXXXX)"
+    ROOT_TEMP=1
+fi
+
+log() { echo "rehearse-portal: $*" >&2; }
+refuse() { echo "REFUSED: $*" >&2; exit 1; }
+
+cleanup() {
+    docker rm -f "$NAME" >/dev/null 2>&1 || true
+    if [[ "$ROOT_TEMP" == "1" && "$KEEP" != "1" ]]; then
+        rm -rf "$RELEASE_ROOT"
+    fi
+    rm -rf "$WORK"
+}
+trap cleanup EXIT
+
+[[ -f "$ARTIFACT_A/portal-manifest.json" ]] || refuse "artifact A is not a portal candidate"
+[[ -z "$ARTIFACT_B" || -f "$ARTIFACT_B/portal-manifest.json" ]] || refuse "artifact B is not a portal candidate"
+[[ -f "$CADDYFILE" ]] || refuse "rehearsal Caddyfile missing"
+docker image inspect "$CADDY_IMAGE" >/dev/null 2>&1 || refuse "pinned Caddy image is not available locally"
+
+(cd backend && go build -o "$BIN" ./cmd/portalrelease)
+docker run --rm -v "$CADDYFILE:/etc/caddy/Caddyfile:ro" "$CADDY_IMAGE" \
+    caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1
+
+release_hash() {
+    "$BIN" verify --root "$RELEASE_ROOT" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" | sed -n 's/^current=\([^ ]*\).*/\1/p'
+}
+
+wait_http() {
+    for _ in $(seq 1 100); do
+        if curl -sS -o /dev/null --max-time 1 "$ORIGIN/consultar/" 2>/dev/null; then
+            return 0
+        fi
+        sleep 0.1
+    done
+    docker logs "$NAME" >&2 || true
+    refuse "Caddy did not become ready"
+}
+
+fetch() {
+    local url="$1" output="$2" headers="$3"
+    shift 3
+    curl -sS --max-time 5 -D "$headers" -o "$output" "$@" "$url"
+}
+
+status() {
+    local url="$1"
+    curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "$url"
+}
+
+header_value() {
+    local headers="$1" name="$2"
+    awk -v key="$name" '
+        index(tolower($0), tolower(key) ":") == 1 {
+            line=$0
+            sub(/^[^:]*:[[:space:]]*/, "", line)
+            sub(/\r$/, "", line)
+            print line
+            exit
+        }' "$headers"
+}
+
+assert_status() {
+    local desc="$1" want="$2" url="$3" got
+    got="$(status "$url")"
+    [[ "$got" == "$want" ]] || refuse "$desc: got $got want $want"
+    log "$desc: $got"
+}
+
+assert_header() {
+    local desc="$1" headers="$2" name="$3" want="$4" got
+    got="$(header_value "$headers" "$name")"
+    [[ "$got" == *"$want"* ]] || refuse "$desc: $name=$got want $want"
+    log "$desc: $name=$got"
+}
+
+assert_body() {
+    local desc="$1" body="$2" want="$3"
+    grep -qF "$want" "$body" || refuse "$desc: body missing $want"
+    log "$desc: body ok"
+}
+
+assert_gzip() {
+    local desc="$1" url="$2"
+    fetch "$url" "$WORK/body.gz" "$WORK/headers.gz" -H 'Accept-Encoding: gzip'
+    assert_header "$desc encoding" "$WORK/headers.gz" Content-Encoding gzip
+    assert_header "$desc type" "$WORK/headers.gz" Content-Type "$3"
+}
+
+log "promoting candidate A"
+"$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "" "${MODE_FLAGS[@]}" >/dev/null
+A_HASH="$(release_hash)"
+[[ -n "$A_HASH" ]] || refuse "candidate A did not become current"
+
+log "starting isolated Caddy on $ORIGIN"
+docker run --rm -d --name "$NAME" \
+    -p "127.0.0.1:${HTTP_PORT}:80" \
+    -v "$CADDYFILE:/etc/caddy/Caddyfile:ro" \
+    -v "$RELEASE_ROOT:/srv/portal:ro" \
+    "$CADDY_IMAGE" >/dev/null
+wait_http
+
+assert_status "home" 200 "$ORIGIN$HOME_PAGE"
+fetch "$ORIGIN$HOME_PAGE" "$WORK/home.html" "$WORK/home.headers"
+assert_header "home type" "$WORK/home.headers" Content-Type text/html
+assert_header "home cache" "$WORK/home.headers" Cache-Control "public, max-age=0, must-revalidate"
+assert_header "home nosniff" "$WORK/home.headers" X-Content-Type-Options nosniff
+assert_header "home robots" "$WORK/home.headers" X-Robots-Tag noindex
+assert_gzip "home" "$ORIGIN$HOME_PAGE" text/html
+assert_status "missing page" 404 "$ORIGIN/nao-existe/"
+fetch "$ORIGIN/nao-existe/" "$WORK/404.html" "$WORK/404.headers"
+assert_body "404" "$WORK/404.html" "Página não encontrada"
+assert_status "no API proxy" 404 "$ORIGIN/v1/health/live"
+assert_status "no health proxy" 404 "$ORIGIN/health/live"
+if [[ "$OFFICIAL_ONLY" == "1" ]]; then
+    assert_status "no price route" 404 "$ORIGIN/consultar/"
+    assert_status "no price index" 404 "$ORIGIN/precos/"
+fi
+
+CSS_PATH="$(sed -n 's/.*href="\(\/assets\/[^"]*\.css\)".*/\1/p' "$WORK/home.html" | head -1)"
+[[ -n "$CSS_PATH" ]] || refuse "home has no stylesheet"
+assert_status "css" 200 "$ORIGIN$CSS_PATH"
+fetch "$ORIGIN$CSS_PATH" "$WORK/css" "$WORK/css.headers" -H 'Accept-Encoding: gzip'
+assert_header "css cache" "$WORK/css.headers" Cache-Control "public, max-age=31536000, immutable"
+assert_gzip "css" "$ORIGIN$CSS_PATH" text/css
+
+if [[ -n "$ARTIFACT_B" ]]; then
+    log "promoting candidate B with fence"
+    "$BIN" promote --artifact "$ARTIFACT_B" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$A_HASH" "${MODE_FLAGS[@]}" >/dev/null
+    B_HASH="$(release_hash)"
+    [[ -n "$B_HASH" && "$B_HASH" != "$A_HASH" ]] || refuse "candidate B did not switch"
+    assert_status "B sitemap" 200 "$ORIGIN/sitemap.xml"
+    fetch "$ORIGIN$HOME_PAGE" "$WORK/home-b.html" "$WORK/home-b.headers"
+    if [[ "$OFFICIAL_ONLY" != "1" ]]; then
+        grep -q 'portal\.[a-f0-9]*\.js' "$WORK/home-b.html" || refuse "B search script missing"
+        JS_PATH="$(sed -n 's/.*src="\(\/assets\/portal\.[a-f0-9]*\.js\)".*/\1/p' "$WORK/home-b.html" | head -1)"
+        [[ -n "$JS_PATH" ]] || refuse "B script path missing"
+        assert_gzip "js" "$ORIGIN$JS_PATH" javascript
+    fi
+    # Cross-release asset retention: an asset unique to B keeps being
+    # served from the retained store after the rollback to A, while pages
+    # come from A (no version mixing). Assets identical in both releases
+    # are shared by content hash, which is correct and stays.
+    B_ASSET=""
+    if [[ "$OFFICIAL_ONLY" != "1" ]]; then
+        B_ASSET="$(grep -o '/assets/[^"]*' "$WORK/home-b.html" | while read -r ref; do
+            rel="${ref#/}"
+            grep -q "\"path\": *\"$rel\"" "$ARTIFACT_A/portal-manifest.json" || { echo "$ref"; break; }
+        done)"
+    fi
+    if [[ -z "$B_ASSET" ]]; then
+        log "B shares all assets with A by content hash: retention HTTP probe skipped (publisher unit tests cover byte-exact retention)"
+    fi
+
+    log "rolling back to candidate A"
+    "$BIN" rollback --root "$RELEASE_ROOT" --target "$A_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "A sitemap after rollback" 404 "$ORIGIN/sitemap.xml"
+    if [[ -n "$B_ASSET" ]]; then
+        assert_status "B-only asset retained" 200 "$ORIGIN$B_ASSET"
+        fetch "$ORIGIN/precos/" "$WORK/precos-a.html" "$WORK/precos-a.headers"
+        grep -q "Posto Alfa" "$WORK/precos-a.html" || refuse "rollback serves mixed content"
+        if grep -q "Revisado" "$WORK/precos-a.html"; then
+            refuse "rollback mixes B content into A pages"
+        fi
+        log "rollback serves A pages with retained B assets: no mixing"
+    fi
+
+    log "corrupting current A and proving safe rollback to B"
+    CORRUPT="$(find "$RELEASE_ROOT/releases/$(echo "$A_HASH" | sed 's/^sha256://')" -type f -name '*.html' -print -quit)"
+    [[ -n "$CORRUPT" ]] || refuse "no release page to corrupt"
+    printf 'corrupt' >"$CORRUPT"
+    if "$BIN" verify --root "$RELEASE_ROOT" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null 2>&1; then
+        refuse "corrupt current passed verification"
+    fi
+    "$BIN" rollback --root "$RELEASE_ROOT" --target "$B_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "B sitemap after corrupt rollback" 200 "$ORIGIN/sitemap.xml"
+
+    log "repairing A, pausing it to B, then recovering the same source"
+    "$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$B_HASH" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "repaired A home" 200 "$ORIGIN$HOME_PAGE"
+    "$BIN" withdraw --root "$RELEASE_ROOT" --fallback "$B_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "B sitemap after withdraw to B" 200 "$ORIGIN/sitemap.xml"
+    if "$BIN" rollback --root "$RELEASE_ROOT" --target "$A_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null 2>&1; then
+        refuse "paused A rolled back without a source recovery"
+    fi
+    "$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$B_HASH" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "recovered A home" 200 "$ORIGIN$HOME_PAGE"
+    "$BIN" withdraw --root "$RELEASE_ROOT" --fallback "$B_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "B sitemap after second pause" 200 "$ORIGIN/sitemap.xml"
+
+    log "withdrawing the current release without fallback"
+    "$BIN" withdraw --root "$RELEASE_ROOT" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "withdrawn portal" 404 "$ORIGIN$HOME_PAGE"
+    # Withdrawal purges the retained store too: withdrawn assets must not
+    # survive through retention.
+    if [[ -n "$B_ASSET" ]]; then
+        assert_status "withdrawn asset purged" 404 "$ORIGIN$B_ASSET"
+    fi
+fi
+
+if [[ "$KEEP" == "1" ]]; then
+    log "release root retained: $RELEASE_ROOT"
+fi
+echo "rehearse-portal ok: isolated static root, atomic switch/rollback, headers/compression/404 and API independence"

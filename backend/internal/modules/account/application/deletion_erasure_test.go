@@ -36,6 +36,7 @@ func deletionService() (*Service, *fakeClock, *erasureRecorder) {
 	svc, clock, _ := testService()
 	rec := &erasureRecorder{}
 	svc.RequestErasure = rec.port()
+	svc.RequestBillingExit = func(_ context.Context, _ string) error { return nil }
 	return svc, clock, rec
 }
 
@@ -177,6 +178,7 @@ func TestDeleteBindingFreeAccountEnqueuesEmpty(t *testing.T) {
 func TestDeleteMinimizesKeyCredentials(t *testing.T) {
 	svc := testKeyService()
 	svc.RequestErasure = func(_ context.Context, _ string, _ []string) error { return nil }
+	svc.RequestBillingExit = func(_ context.Context, _ string) error { return nil }
 	ctx := context.Background()
 	created, err := svc.CreateKeyAccount(ctx, "erasablekey")
 	if err != nil {
@@ -233,5 +235,43 @@ func TestConcurrentDuplicateDeletionsConverge(t *testing.T) {
 	defer rec.mu.Unlock()
 	if len(rec.contributors) != racers {
 		t.Fatalf("enqueue calls = %d, want %d convergent calls", len(rec.contributors), racers)
+	}
+}
+
+func TestDeleteRequiresBillingExitBeforeMutation(t *testing.T) {
+	svc, _, rec := deletionService()
+	auth := signupBound(t, svc, "billing-exit@example.com", "482916", "contrib-billing")
+	svc.RequestBillingExit = nil
+	if _, err := svc.DeleteAccount(context.Background(), auth.Account.ID); !errors.Is(err, domain.ErrBillingExitWiringMissing) {
+		t.Fatalf("nil billing exit err=%v", err)
+	}
+	if acc, ok, _ := svc.Store.GetAccount(context.Background(), auth.Account.ID); !ok || acc.Status != domain.StatusActive {
+		t.Fatal("deletion mutated account without billing wiring")
+	}
+	billingDown := errors.New("billing down")
+	svc.RequestBillingExit = func(context.Context, string) error { return billingDown }
+	if _, err := svc.DeleteAccount(context.Background(), auth.Account.ID); !errors.Is(err, billingDown) {
+		t.Fatalf("billing failure err=%v", err)
+	}
+	if acc, ok, _ := svc.Store.GetAccount(context.Background(), auth.Account.ID); !ok || acc.Status != domain.StatusActive {
+		t.Fatal("deletion mutated account after billing failure")
+	}
+	if len(rec.accountIDs) != 0 {
+		t.Fatal("erasure dispatched before billing exit succeeded")
+	}
+	order := []string{}
+	svc.RequestBillingExit = func(context.Context, string) error {
+		order = append(order, "billing")
+		return nil
+	}
+	svc.RequestErasure = func(context.Context, string, []string) error {
+		order = append(order, "erasure")
+		return nil
+	}
+	if _, err := svc.DeleteAccount(context.Background(), auth.Account.ID); err != nil {
+		t.Fatal(err)
+	}
+	if len(order) != 2 || order[0] != "billing" || order[1] != "erasure" {
+		t.Fatalf("order=%v", order)
 	}
 }

@@ -1,0 +1,325 @@
+{
+  "task": "MAP-15–20 bounded review remediation",
+  "date": "2026-10-25",
+  "source_head": "51cc445700761d782587ce0a38450b6e356addb2",
+  "status": "LOCAL_DONE",
+  "integration": "INTEGRATION_PENDING",
+  "minimum_map_gate": "PARTIAL",
+  "inherited_commits": [
+    "483cff59",
+    "2d51eef6"
+  ],
+  "completion_source_commits": [
+    "f4533358",
+    "e1d38269",
+    "51cc4457"
+  ],
+  "engine_candidate_aar_sha256": "d2ec37881ede4e2288e1a929f01a1eabab193e7a6d518c76ff4342f085f2b10c",
+  "engine_core_matches_map14_receipt": true,
+  "release_apk": {
+    "path": "app/build/outputs/apk/release/app-release-unsigned.apk",
+    "bytes": 78121062,
+    "mib": 74.502,
+    "sha256": "4374b4320c7939bc37cb62c346fbcb4f310936b9d37f6ed06621c57d4abbefcb",
+    "unsigned": true,
+    "limit_bytes": 83886080,
+    "native_libraries": [
+      {
+        "entry": "lib/arm64-v8a/libandroidx.graphics.path.so",
+        "bytes": 10096,
+        "sha256": "41e9a793c43a0f4fddb19e33f346bace464f30f888ba7b9eaf96294ea115bfb6",
+        "elf_load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "zip_stored": true,
+        "zip_data_offset": 3407872,
+        "zip_offset_mod_16384": 0
+      },
+      {
+        "entry": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "bytes": 7112,
+        "sha256": "d3e48717c9aa147e0ab21063ba0e8e0211cabf8bf40b222640829519edbf58e1",
+        "elf_load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "zip_stored": true,
+        "zip_data_offset": 3424256,
+        "zip_offset_mod_16384": 0
+      },
+      {
+        "entry": "lib/arm64-v8a/libmonocypher_ed25519.so",
+        "bytes": 80824,
+        "sha256": "ae020c09776cc45d7b03b7f5312a048fab9a35eb21d31070cf3137f9970c8442",
+        "elf_load_alignments": [
+          16384,
+          16384
+        ],
+        "zip_stored": true,
+        "zip_data_offset": 3440640,
+        "zip_offset_mod_16384": 0
+      },
+      {
+        "entry": "lib/arm64-v8a/liborganicmaps.so",
+        "bytes": 14675096,
+        "sha256": "df51c422e3e6163e7079a53875933232577bb939396738cf05c0edb8cc509f21",
+        "elf_load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "zip_stored": true,
+        "zip_data_offset": 3522560,
+        "zip_offset_mod_16384": 0
+      },
+      {
+        "entry": "lib/armeabi-v7a/libandroidx.graphics.path.so",
+        "bytes": 7252,
+        "sha256": "41399eba6fc2a60f6f14642375c1824f3cf25eb8fec7397d753730a3ceda3e2b",
+        "elf_load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "zip_stored": true,
+        "zip_data_offset": 18202624,
+        "zip_offset_mod_16384": 0
+      },
+      {
+        "entry": "lib/armeabi-v7a/libdatastore_shared_counter.so",
+        "bytes": 4416,
+        "sha256": "716c5d8d2cac8ca0edf65da8f139c7886b726ac79d542a14edeb94994ba6d3dc",
+        "elf_load_alignments": [
+          16384,
+          16384
+        ],
+        "zip_stored": true,
+        "zip_data_offset": 18219008,
+        "zip_offset_mod_16384": 0
+      },
+      {
+        "entry": "lib/armeabi-v7a/libmonocypher_ed25519.so",
+        "bytes": 85008,
+        "sha256": "19ea820e9f35e57c8090ce8e842575ad6d6f2a6756c9820c1791821ca277a5aa",
+        "elf_load_alignments": [
+          16384,
+          16384
+        ],
+        "zip_stored": true,
+        "zip_data_offset": 18235392,
+        "zip_offset_mod_16384": 0
+      },
+      {
+        "entry": "lib/armeabi-v7a/liborganicmaps.so",
+        "bytes": 10499236,
+        "sha256": "c911390d5906f97f82ec4876e56f90dbe05d9d24487897f81907a40b89dc1788",
+        "elf_load_alignments": [
+          16384,
+          16384,
+          16384
+        ],
+        "zip_stored": true,
+        "zip_data_offset": 18333696,
+        "zip_offset_mod_16384": 0
+      }
+    ]
+  },
+  "debug_apk": {
+    "path": "app/build/outputs/apk/debug/app-debug.apk",
+    "bytes": 106331920,
+    "sha256": "fae3ed3f97c3b8983f05c900d19740462ac6810b344430c18131fbdbb3dd6890",
+    "signing": "development debug key",
+    "distribution_configuration": "empty; proof origin and ephemeral public key are absent"
+  },
+  "jvm_matrix_during_batch": {
+    "domain": {
+      "tests": 675,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_checks": []
+    },
+    "application": {
+      "tests": 454,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_checks": []
+    },
+    "data": {
+      "tests": 609,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 2,
+      "skipped_checks": [
+        "com.anpfuel.data.remote.TrainingConsentBackendInteropTest / actual Kotlin signed consent interoperates with Go verifier and PostgreSQL()",
+        "com.anpfuel.data.remote.AnpListingLiveCatalogValidationTest / liveListingCatalogMatchesCompleteVisibleWeekBlocks()"
+      ]
+    },
+    "maps/engine": {
+      "tests": 32,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_checks": []
+    },
+    "app": {
+      "tests": 535,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "skipped_checks": []
+    }
+  },
+  "release_distribution_client_tests": {
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "python_map_harness_tests": {
+    "tests": 9,
+    "failures": 0
+  },
+  "physical_phone_proofs": [
+    {
+      "suite": "MapNativeDownloadInstrumentedTest",
+      "tests": 1,
+      "result": "PASS",
+      "seconds": 14.923,
+      "model": "2311DRK48G",
+      "api": 36,
+      "abi": "arm64-v8a",
+      "claims": [
+        "real signed MWM download through app UI",
+        "exact distinct active A/B generations",
+        "regional native registration at Curitiba",
+        "nonempty offline native search",
+        "Activity recreation with same process engine"
+      ],
+      "map_package_total_bytes": 72067998
+    },
+    {
+      "suite": "MapRouteInstrumentedTest + MapScreenInstrumentedTest",
+      "tests": 5,
+      "result": "PASS",
+      "seconds": 16.219,
+      "qualification": "construction-time proof before owner disconnected phone; not final release APK certification"
+    }
+  ],
+  "emulator_ui_proof": {
+    "suite": "MapScreenInstrumentedTest",
+    "tests": 5,
+    "result": "PASS",
+    "seconds": 11.269,
+    "avd": "anpfuel-16k",
+    "page_size": 16384,
+    "execution": "ARM64 installation via native bridge on x86_64",
+    "ram_mib": 4096,
+    "graphics": "swiftshader",
+    "font_scale": 2.0,
+    "width_dp": 320,
+    "display_pixels": "840x1800",
+    "density_dpi": 420,
+    "map_content": "fake surface for UI tests; real native map covered separately on phone",
+    "external_map_deep_link_resolves": true,
+    "qualification": "not a new native render/search certification on 16 KB; first 2 GB attempt killed by system low-memory killer; hardware GPU attempt exited 139; neither is accepted"
+  },
+  "checks": {
+    "app_final_jvm": "PASS (535 tests)",
+    "lintDebug": "PASS; no suppression/baseline added",
+    "assembleDebug": "PASS",
+    "assembleDebugAndroidTest": "PASS",
+    "assembleRelease": "PASS",
+    "verifyReleaseApkSize": "PASS",
+    "all_packaged_elf_load_alignments_16kb": "PASS",
+    "all_packaged_native_zip_offsets_16kb": "PASS",
+    "secret_scan": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "artifact_directory": "/home/iiii/.codex/visualizations/2026/10/24/01a16e8c-02d7-7481-9b53-02921398b76b/map-remediation-final-20261025",
+  "logs": [
+    {
+      "name": "map-native-phone-proof-final.log",
+      "bytes": 861,
+      "sha256": "3f1000db958e129064b2ceef5f03ea69d57908a7ca45fa6fb1ef4e4e81292341"
+    },
+    {
+      "name": "map-phone-route-ui-final2.log",
+      "bytes": 3573,
+      "sha256": "23b2e8f804e7354e236da266c3516b794d3db7e5b04b7cad212b8f70fc704481"
+    },
+    {
+      "name": "map-final-candidate-validation.log",
+      "bytes": 18499,
+      "sha256": "8cee1cce58ab50b5d885769e976cfbe2d6ec0e26481baa16f0b34c4e7b7d5127"
+    },
+    {
+      "name": "map-final-release-validation.log",
+      "bytes": 19241,
+      "sha256": "b8801cd0983d902bcc5e1fbcf118f5a5ea64a80bdf5cb4f971ae3192a28aaeb3"
+    },
+    {
+      "name": "map-release-final-20261025.log",
+      "bytes": 9392,
+      "sha256": "45b8e9e4e494f48e3a0b3241d157fcc0aa236f13b75f4f7d2b8237a929c87354"
+    },
+    {
+      "name": "map-app-final-checks.log",
+      "bytes": 8734,
+      "sha256": "87a01ac416ca561f67d31381baab1435056c33291ebb2d5325aea8a07071fbab"
+    },
+    {
+      "name": "map-emulator-large-text-green.log",
+      "bytes": 3538,
+      "sha256": "bf6699a78e36ab079ac3c8d3f16b979d0403c436a35438c03a839677b841cf58"
+    },
+    {
+      "name": "map-emulator-large-text-4gb.log",
+      "bytes": 5337,
+      "sha256": "a285151ec214fbb1a0db402d72dc93e65e0b6318ddca13f1d39cb66e1fafbd49"
+    },
+    {
+      "name": "map-emulator-large-text-final.log",
+      "bytes": 1185,
+      "sha256": "b7e43f3068b13350462d704131fe26fc0cd8c834034fdb6a00a97c855020e2e1"
+    },
+    {
+      "name": "map-emulator-low-memory.txt",
+      "bytes": 503,
+      "sha256": "ec9cc195ac64c6f4dd479b2d8659457315fe7daf9853362ef6f8f19dce87cd32"
+    },
+    {
+      "name": "map-emulator-final-conditions.txt",
+      "bytes": 185,
+      "sha256": "0a0ffc3d1f2f8c577e964d97047e13892425c165ee009608b800b50bdae69e5a"
+    },
+    {
+      "name": "map-camera-red.log",
+      "bytes": 2641,
+      "sha256": "79ca7d90640c53eab03727da1ee217c46a67ce5870feedf11f50e03daae9feda"
+    },
+    {
+      "name": "map-reader-green.log",
+      "bytes": 3741,
+      "sha256": "46a0b7bcc53fcf786c1d84817d4b606254991106371a52f909ecea322a4ab03a"
+    }
+  ],
+  "remaining_acceptance": [
+    "MAP-18 native Abastevo combined pictogram and visual/theme/size acceptance",
+    "MAP-20 admitted live reviewed station coordinates and exact prices for pin -> price -> profile acceptance",
+    "Production distribution origin/region/public-key set; final APK is intentionally unconfigured",
+    "Opening-hours contract unavailable; UI reports unknown; no open-now filter accepted",
+    "Public offline overlay acceptance separately owed from native basemap/search proof",
+    "MAP-21–33, guided navigation, release signing, remote delivery, G09/pilot/commercial certification outside this checkpoint"
+  ],
+  "cleanup": {
+    "temporary_proof_server": "stopped",
+    "temporary_emulator": "stopped; read-only no-snapshot",
+    "phone_after_disconnection": "no further commands",
+    "remote_mutations": "none"
+  }
+}

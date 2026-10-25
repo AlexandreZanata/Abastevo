@@ -29,7 +29,7 @@ func TestEnforcementDisabledJobsKeepAttempts(t *testing.T) {
 	p := freshNativeWorkerDB(t)
 	ctx := context.Background()
 	handlers := map[string]platformjobs.Handler{}
-	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep"} {
+	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "payment-inbox"} {
 		handlers[kind] = dispatcherHandler(kind)
 	}
 	ds, e := workerDispatchers(platformjobs.NewQueue(p), handlers)
@@ -144,7 +144,7 @@ func TestEnforcementWorkerNativeDiscoveryCorrectionAckLossCleanupAndDeadBudget(t
 	im := nativeEnforcementImport(p, binary, root)
 	im.Fetch = func(context.Context, string) (qualityjobs.FileArtifact, error) { return file() }
 	handlers := map[string]platformjobs.Handler{qualityjobs.EnforcementImportKind: im}
-	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep"} {
+	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "payment-inbox"} {
 		handlers[kind] = dispatcherHandler(kind)
 	}
 	ds, e := workerDispatchers(platformjobs.NewQueue(p), handlers, qualityjobs.EnforcementImportKind)

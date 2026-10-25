@@ -27,7 +27,9 @@ func (s *Service) Status(ctx context.Context, p Principal) (domain.Status, error
 		return domain.Status{}, err
 	}
 	result := domain.Evaluate(snapshot, s.now(), true)
-	result.PaymentsConfigured = s.Configured()
+	webActive := snapshot != nil && len(snapshot.WebCapabilities) > 0 &&
+		!snapshot.WebValidUntil.IsZero() && s.now().Before(snapshot.WebValidUntil)
+	result.PaymentsConfigured = s.Configured() || webActive
 	if !result.PaymentsConfigured {
 		result.Capabilities = []string{}
 		result.Reason = "payments-disabled"

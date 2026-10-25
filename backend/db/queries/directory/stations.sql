@@ -124,3 +124,40 @@ LIMIT @limit_n;
 
 -- name: ActiveReference :one
 SELECT EXISTS(SELECT 1 FROM directory_stations WHERE id=$1 AND status='active');
+
+-- name: ExportStations :many
+-- Bounded snapshot read for the enterprise export. Includes sourced status and
+-- only the active identifier; an invalidated CNPJ is never resurrected.
+SELECT s.id, s.display_name, s.address, s.municipality_code, s.state,
+    s.status, ST_AsText(s.current_point) AS current_point_wkt,
+    s.current_quality, s.current_revision_id,
+    COALESCE(i.normalized_value, '') AS cnpj
+FROM directory_stations AS s
+LEFT JOIN LATERAL (
+    SELECT normalized_value
+    FROM directory_identifiers
+    WHERE station_id = s.id AND kind = 'CNPJ' AND valid_to IS NULL
+    LIMIT 1
+) AS i ON TRUE
+WHERE (@after_id::text = '' OR s.id::text > @after_id::text)
+ORDER BY s.id::text ASC
+LIMIT @limit_plus_one::int;
+
+-- name: ExportFingerprint :one
+-- Cheap change detector for the private export state. It covers every public
+-- station field and the active CNPJ binding without exporting rows.
+SELECT (SELECT count(*) FROM directory_stations)::bigint AS stations,
+    COALESCE((
+        SELECT md5(string_agg(
+            id::text || ':' || display_name || ':' || address::text || ':' ||
+            COALESCE(municipality_code, '') || ':' || COALESCE(state, '') || ':' ||
+            status || ':' || COALESCE(current_quality, '') || ':' ||
+            COALESCE(current_revision_id::text, ''), ',' ORDER BY id::text))
+        FROM directory_stations
+    ), '')::text AS stations_hash,
+    COALESCE((
+        SELECT md5(string_agg(station_id::text || ':' || normalized_value,
+            ',' ORDER BY station_id::text, normalized_value))
+        FROM directory_identifiers
+        WHERE kind = 'CNPJ' AND valid_to IS NULL
+    ), '')::text AS identifiers_hash;

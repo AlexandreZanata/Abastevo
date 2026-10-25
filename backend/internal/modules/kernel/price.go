@@ -72,8 +72,11 @@ var productByLabel = map[string]Product{
 	"GASOLINA ADITIVADA": GasolineAdditived,
 	"OLEO DIESEL S500":   DieselS500,
 	"OLEO DIESEL S10":    DieselS10,
+	"DIESEL S500":        DieselS500,
+	"DIESEL S10":         DieselS10,
 	"GNV":                CNG,
 	"GLP P13":            LPGP13,
+	"GLP":                LPGP13,
 }
 
 // ParseProduct maps a source label to the wire product. Unknown labels fail

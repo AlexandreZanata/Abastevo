@@ -1,0 +1,598 @@
+{
+  "schema_version": 1,
+  "status": "PLANNING_LOCAL_DONE / IMPLEMENTATION_PLANNED",
+  "date": "2026-10-24",
+  "audited_base": "b1a2bde6bf08f69012e4795abdf350579bcbd146",
+  "selected_channels": [
+    "stripe_card",
+    "asaas_pix_manual",
+    "asaas_pix_automatic"
+  ],
+  "future_channels": [
+    "google_play"
+  ],
+  "phase_count": 24,
+  "execution_rule": "One bounded phase at a time; one meaningful commit with tests/evidence per accepted phase. Define ordered children before a phase proves too broad. No parallel agents. Exact executable checks are selected from actual current code at phase opening.",
+  "phases": [
+    {
+      "id": "PAY-00",
+      "title": "Reconcile baseline and parallel ownership",
+      "status": "PLANNED",
+      "depends_on": [],
+      "steps": [
+        "Inspect current dev/main, all MAP/ESP/PRM worktrees and actual subscription implementation; record source versus deployment state.",
+        "Create an exclusive payment branch/worktree and declare owned/shared paths; coordinate shared mutations before editing.",
+        "Create a versioned threat/test matrix with acceptance states and existing PRM reuse."
+      ],
+      "required_checks": [
+        "No foreign modifications lost or occupied branch moved.",
+        "No duplicate subscription/account/payment ownership; real shared-path coordination identified."
+      ],
+      "shared_paths_requiring_coordination": [
+        "ROADMAP.md",
+        "docs/planning/PROGRESS.md"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-00.md",
+      "exit": "Baseline and ownership evidence is complete; no provider activity.",
+      "commit_topic": "docs(payments): PAY-00 reconcile baseline and ownership"
+    },
+    {
+      "id": "PAY-01",
+      "title": "Freeze offers and lifecycle policy",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-00"
+      ],
+      "steps": [
+        "Define Premium and single-payer Enterprise deliverables, terms, BRL values/mappings and actual capability targets.",
+        "Freeze manual Pix and Pix Automatic as independently enabled; choose one automatic cycle scheduler.",
+        "Freeze refund/partial allocation, paid-through/grace, switching, late/excess settlement, legal/fiscal and distribution gates; record missing real catalog inputs."
+      ],
+      "required_checks": [
+        "Golden policy examples cover month ends, early/late renewal, refund/dispute and method switching.",
+        "Missing actual price or unimplemented Enterprise service keeps that sale disabled; no fabricated production values."
+      ],
+      "shared_paths_requiring_coordination": [
+        "docs/product/PREMIUM_PRODUCT_CONTRACT.md"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-01.md",
+      "exit": "Policy is explicit and unresolved commercial inputs cannot enable checkout.",
+      "commit_topic": "docs(payments): PAY-01 freeze offers and lifecycle policy"
+    },
+    {
+      "id": "PAY-02",
+      "title": "Admit providers and maintained SDKs",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-01"
+      ],
+      "steps": [
+        "Revalidate primary sources and exact merchant/environment/resource/API contracts.",
+        "Select pinned Stripe SDK/raw-body verification and Asaas client approach after dependency/license/security review.",
+        "Record retry/idempotency capabilities per write operation, QR and automatic Pix eligibility/sandbox limitations."
+      ],
+      "required_checks": [
+        "Adapter fixtures match admitted versions and unknown/additive states remain safe.",
+        "Asaas externalReference is not assumed unique; no manual crypto or undocumented status mapping."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/go.mod",
+        "backend/go.sum"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-02.md",
+      "exit": "Versions and provider contracts are admitted; account-dependent proof remains separate.",
+      "commit_topic": "docs(payments): PAY-02 admit provider contracts and SDKs"
+    },
+    {
+      "id": "PAY-03",
+      "title": "Build pure financial and access policy",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-01",
+        "PAY-02"
+      ],
+      "steps": [
+        "Define separate order, attempt, settlement, contract, mandate, refund/dispute and grant transitions.",
+        "Implement deterministic period/currency/refund/source-allocation rules behind explicit ports.",
+        "Version provider-neutral access policy while preserving existing Play behavior and free exits."
+      ],
+      "required_checks": [
+        "Golden/permutation/time-boundary cases cover every admitted state and invalid transition.",
+        "A redirect, authorization, manually paid Stripe invoice or unknown provider state cannot grant access."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/internal/modules/subscription/domain/"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-03.md",
+      "exit": "Pure rules and preserved-source regressions pass.",
+      "commit_topic": "feat(payments): PAY-03 add deterministic billing policy"
+    },
+    {
+      "id": "PAY-04",
+      "title": "Persist financial intents and concurrency guards",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-03"
+      ],
+      "steps": [
+        "Reserve current migration sequence with other efforts; add only required append-only schema/sqlc.",
+        "Persist orders, owner/customer mappings, operation hashes, cycles, inbox/outbox and grant-source identities.",
+        "Fence concurrent remote attempts and persist uncertain outcomes without network I/O inside transactions."
+      ],
+      "required_checks": [
+        "Real PostGIS upgrade/replay/rollback and concurrent writers prove no duplicate local economic effect.",
+        "Crash before/after remote dispatch, webhook-before-reply, stale lease and changed-payload idempotency are tested."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/db/migrations/",
+        "backend/db/queries/"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-04.md",
+      "exit": "Transactional and recovery invariants pass on actual PostgreSQL/PostGIS.",
+      "commit_topic": "feat(payments): PAY-04 persist idempotent financial intents"
+    },
+    {
+      "id": "PAY-05",
+      "title": "Validate credentials and channel configuration",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-02",
+        "PAY-04"
+      ],
+      "steps": [
+        "Implement independent Stripe/manual-Pix/automatic-Pix and new-sales versus maintenance switches.",
+        "Bind test/live merchant, catalog, API/webhook keys and redirect origins; store sensitive references under reviewed key management.",
+        "Provide read-only redacted preflight and tested rotation paths; startup creates no financial resources."
+      ],
+      "required_checks": [
+        "Missing/mixed credentials or environment refuse only unsafe channel sales.",
+        "Disabling new sales preserves accepted entitlement, webhook intake, cancellation and reconciliation."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/internal/platform/config/",
+        "infra/env.staging.example"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-05.md",
+      "exit": "Configuration failures are safe and diagnosable without secret exposure.",
+      "commit_topic": "feat(payments): PAY-05 validate provider configuration"
+    },
+    {
+      "id": "PAY-06",
+      "title": "Create Stripe hosted card checkout",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-04",
+        "PAY-05"
+      ],
+      "steps": [
+        "Use authenticated owner, server catalog and durable intent to create/reuse the correct customer and Checkout Session.",
+        "Restrict card/offer/merchant/mode and allowlisted return origins; do not accept raw card data.",
+        "Recover ambiguous creates with stable provider keys and persisted mapping, including beyond remote dedupe retention."
+      ],
+      "required_checks": [
+        "Tampered amount/customer/metadata/return URL and owner-IDOR are refused.",
+        "Two simultaneous requests, lost response and later stale retry cannot blindly create another subscription; remote ambiguity is surfaced."
+      ],
+      "shared_paths_requiring_coordination": [],
+      "evidence": "docs/backend/evidence/payments/PAY-06.md",
+      "exit": "Hosted creation and uncertain-write tests pass; redirect grants nothing.",
+      "commit_topic": "feat(payments): PAY-06 integrate Stripe hosted checkout"
+    },
+    {
+      "id": "PAY-07",
+      "title": "Create conventional Asaas Pix orders",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-04",
+        "PAY-05"
+      ],
+      "steps": [
+        "Create or resolve owner-bound customer and charge with exact amount, expiry, correlation and bounded QR response.",
+        "Serialize creation intents and reconcile inconclusive responses before any retry.",
+        "Expose only owner status/QR and implement expired/late/duplicate-settlement policy without auto-debit consent."
+      ],
+      "required_checks": [
+        "Lost create response and incomplete remote search stay uncertain rather than generating another charge.",
+        "Wrong amount/currency/customer/order, QR harvesting and foreign status reads are denied."
+      ],
+      "shared_paths_requiring_coordination": [],
+      "evidence": "docs/backend/evidence/payments/PAY-07.md",
+      "exit": "Pix order/QR flow is safe locally; provider receipt proof remains pending.",
+      "commit_topic": "feat(payments): PAY-07 integrate conventional Asaas Pix"
+    },
+    {
+      "id": "PAY-08",
+      "title": "Receive Stripe events durably",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-02",
+        "PAY-04",
+        "PAY-05"
+      ],
+      "steps": [
+        "Verify bounded exact raw body with maintained SDK signature/timestamp handling and rotation.",
+        "Bind expected account/mode/version, insert minimal durable inbox before acknowledgement.",
+        "Handle duplicates/content conflicts/unknown events without invoking remote APIs in the response path."
+      ],
+      "required_checks": [
+        "Forged/stale/rotated signatures, mutated raw body, wrong mode, huge JSON and duplicate-ID alteration are tested.",
+        "DB failure never returns fake delivery success; callback load has bounded resource use."
+      ],
+      "shared_paths_requiring_coordination": [],
+      "evidence": "docs/backend/evidence/payments/PAY-08.md",
+      "exit": "Authenticated durable callback contract passes adversarial tests.",
+      "commit_topic": "feat(payments): PAY-08 add Stripe webhook inbox"
+    },
+    {
+      "id": "PAY-09",
+      "title": "Receive Asaas events durably",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-02",
+        "PAY-04",
+        "PAY-05"
+      ],
+      "steps": [
+        "Require separate strong webhook authToken via asaas-access-token and safe comparison over TLS.",
+        "Persist bounded events and return exact HTTP 200 only after durable acceptance.",
+        "Handle authentic unknown/additive data safely; track interrupted delivery and reactivation/reconciliation obligations."
+      ],
+      "required_checks": [
+        "API key is not reused as webhook token; no invented per-body HMAC or trust in a source IP alone.",
+        "Token rotation, duplicated/conflicting events, backlog, oversized input and DB outage have meaningful tests."
+      ],
+      "shared_paths_requiring_coordination": [],
+      "evidence": "docs/backend/evidence/payments/PAY-09.md",
+      "exit": "Asaas-specific intake is durable and safe; no financial effect is trusted from payload alone.",
+      "commit_topic": "feat(payments): PAY-09 add Asaas webhook inbox"
+    },
+    {
+      "id": "PAY-10",
+      "title": "Verify settlements and project existing access",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-03",
+        "PAY-04",
+        "PAY-06",
+        "PAY-07",
+        "PAY-08",
+        "PAY-09"
+      ],
+      "steps": [
+        "Process durable events with bounded provider lookups and canonical order/customer/merchant/mode/amount matches.",
+        "Commit financial fact, one cycle effect, source-specific access grant and durable follow-up atomically.",
+        "Extend subscription/capability ports without fake Play tokens or mandatory Play credentials for web purchases; add reconciliation."
+      ],
+      "required_checks": [
+        "Reordered/delayed events, revoked grants, manual paid invoices, pending capture and wrong currency never yield invalid rights.",
+        "Real PostGIS concurrent receipt/revoke and provider-outage recovery preserve legitimate unrelated grants and local/free data."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/internal/modules/subscription/"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-10.md",
+      "exit": "Verified financial facts fund exactly the eligible local grant; all sources remain independent.",
+      "commit_topic": "feat(payments): PAY-10 project verified payment access"
+    },
+    {
+      "id": "PAY-11",
+      "title": "Complete Stripe recurring lifecycle",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-06",
+        "PAY-08",
+        "PAY-10"
+      ],
+      "steps": [
+        "Handle initial action-required/decline, renewals, failed invoices, grace, cancellation and dashboard changes.",
+        "Create constrained owner-bound hosted management sessions with approved catalog operations.",
+        "Keep provider subscription and verified invoice-funded periods distinct and reconcile missed events."
+      ],
+      "required_checks": [
+        "SCA/3DS/past-due/cancel/renew races and unsupported portal plan changes are covered.",
+        "A canceled renewal retains only eligible paid-through access; no new entitlement from invoice creation."
+      ],
+      "shared_paths_requiring_coordination": [],
+      "evidence": "docs/backend/evidence/payments/PAY-11.md",
+      "exit": "Complete recurring card lifecycle is locally accepted.",
+      "commit_topic": "feat(payments): PAY-11 complete Stripe recurring lifecycle"
+    },
+    {
+      "id": "PAY-12",
+      "title": "Integrate Pix Automatic consent and authorization",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-07",
+        "PAY-09",
+        "PAY-10"
+      ],
+      "steps": [
+        "Implement actual admitted authorization/customer/first-payment contract with explicit consent and merchant eligibility.",
+        "Track initial paid period independently from ACTIVE/REFUSED mandate.",
+        "Implement retrieval, refusal, expiry, cancellation and privacy-safe authorization audit without assuming activation."
+      ],
+      "required_checks": [
+        "Initial PAYMENT_RECEIVED plus authorization REFUSED still retains the valid first paid period but grants no future debit authority.",
+        "Foreign authorization, revoked consent, wrong customer and lost authorization reply are covered."
+      ],
+      "shared_paths_requiring_coordination": [],
+      "evidence": "docs/backend/evidence/payments/PAY-12.md",
+      "exit": "Mandate lifecycle is correct; automatic Pix remains independently disabled until external proof.",
+      "commit_topic": "feat(payments): PAY-12 integrate Pix Automatic authorization"
+    },
+    {
+      "id": "PAY-13",
+      "title": "Complete Pix Automatic recurring cycles",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-12"
+      ],
+      "steps": [
+        "Implement only the selected provider-owned or application-owned cycle scheduler; never both.",
+        "Track provider-supported instruction/retry windows, received payments and account eligibility changes.",
+        "Stop future instructions on mandate cancel/expiry/ineligibility and reconcile in-flight attempts."
+      ],
+      "required_checks": [
+        "Concurrent scheduler/retry workers, cancellation races and failed/deferred instructions cannot duplicate debits or grants.",
+        "Unknown remote creation/cancellation remains pending; provider account limitations remain explicit."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/internal/platform/jobs/"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-13.md",
+      "exit": "One recurring charge owner and recovery paths pass actual DB/process tests.",
+      "commit_topic": "feat(payments): PAY-13 complete Pix Automatic cycles"
+    },
+    {
+      "id": "PAY-14",
+      "title": "Fence plan changes and cross-provider switching",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-11",
+        "PAY-13"
+      ],
+      "steps": [
+        "Implement approved next-term upgrade/downgrade/term/price transitions; reject unsupported proration explicitly.",
+        "Fence old recurring funding source before new activation and preserve original paid windows.",
+        "Reconcile simultaneous manual Pix/card/automatic payments with no duplicate grant and explicit excess-payment handling."
+      ],
+      "required_checks": [
+        "Two-device/two-provider switch, unknown old cancellation, stale quote and retry-after-crash are tested.",
+        "A provider's automatic renewal and application renewal never coexist for one obligation."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/internal/modules/subscription/"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-14.md",
+      "exit": "Change and switching policies are safe under real concurrency.",
+      "commit_topic": "feat(payments): PAY-14 fence cross-provider billing changes"
+    },
+    {
+      "id": "PAY-15",
+      "title": "Complete cancellation and account exits",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-14"
+      ],
+      "steps": [
+        "Implement owner-authenticated cancel/status/history/export with fresh proof for sensitive operations.",
+        "Separate stopping renewal from expiry and from payment/refund; preserve already-held data and free exits.",
+        "Record cancellation/deletion recovery, minimal financial retention and restore-safe tombstones."
+      ],
+      "required_checks": [
+        "Foreign/deleted/revoked caller, logout/account switch, provider outage and restored stale outbox are covered.",
+        "Deleting an account cannot create automatic refunds or continue unnoticed billing; uncertain cancellation stays visible."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/internal/modules/account/",
+        "backend/internal/modules/privacy/"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-15.md",
+      "exit": "Account exit is durable and cannot replay remote money writes.",
+      "commit_topic": "feat(payments): PAY-15 complete billing cancellation and exits"
+    },
+    {
+      "id": "PAY-16",
+      "title": "Complete refunds disputes and financial recovery",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-10",
+        "PAY-11",
+        "PAY-13",
+        "PAY-15"
+      ],
+      "steps": [
+        "Implement restricted original-route full/partial refund intents with concurrent refundable-balance reservations.",
+        "Reconcile pending/failed/completed refund, Stripe chargeback and Asaas Pix MED/hold lifecycles.",
+        "Provide scoped operator replay/review with fresh strong proof, reason/audit and approval policy; no arbitrary payout/manual premium endpoint."
+      ],
+      "required_checks": [
+        "Concurrent refunds exceed neither original principal nor policy; lost refund reply never triggers blind second refund.",
+        "Insufficient balance, duplicate/reversed dispute, no-payment account hold and restore/replay are tested."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/internal/modules/subscription/"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-16.md",
+      "exit": "Refund/dispute effects match confirmed original payments and limited grants.",
+      "commit_topic": "feat(payments): PAY-16 handle refunds and disputes safely"
+    },
+    {
+      "id": "PAY-17",
+      "title": "Complete single-payer Enterprise billing",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-01",
+        "PAY-10",
+        "PAY-14",
+        "PAY-16"
+      ],
+      "steps": [
+        "Bind exact implemented Enterprise offer, billed entity and authenticated payer to its allowed service/account target.",
+        "Expose owner-safe billing records and approved provider invoice/receipt references; freeze fiscal workflow.",
+        "Prevent company data/email/domain from granting team, station-management or organization privileges; refuse unimplemented offers."
+      ],
+      "required_checks": [
+        "Foreign payer/order/target, product confusion, arbitrary quantity/seat override and entity substitution are denied.",
+        "Premium remains independent; no hidden tenant/representation schema is introduced."
+      ],
+      "shared_paths_requiring_coordination": [],
+      "evidence": "docs/backend/evidence/payments/PAY-17.md",
+      "exit": "Defined Enterprise billing flow passes without inventing missing business capabilities.",
+      "commit_topic": "feat(payments): PAY-17 support scoped Enterprise billing"
+    },
+    {
+      "id": "PAY-18",
+      "title": "Close adversarial privacy and performance acceptance",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-15",
+        "PAY-16",
+        "PAY-17"
+      ],
+      "steps": [
+        "Execute and update the full threat matrix with retained residual risks and source-dependent proof obligations.",
+        "Verify bounded rates/retries/workers/queues, secret rotation, private retention and financial restore recovery.",
+        "Freeze then measure accepted operations, callback latency/resources, query plans and recovery load with synthetic provider fixtures."
+      ],
+      "required_checks": [
+        "Immediate real PostGIS/fault/race tests cover abuse matrix; no skipped critical auth/money/privacy tests.",
+        "No PII/QR/payment URLs/keys in logs; no adverse safety/map workload regression; benchmark counts successful valid effects."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/internal/platform/jobs/",
+        "docs/backend/TEST_STRATEGY.md"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-18.md",
+      "exit": "Required local security/consistency/performance cases pass at a pinned revision.",
+      "commit_topic": "test(payments): PAY-18 validate abuse privacy and capacity"
+    },
+    {
+      "id": "PAY-19",
+      "title": "Wire actual API and worker runtime",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-05",
+        "PAY-10",
+        "PAY-11",
+        "PAY-13",
+        "PAY-14",
+        "PAY-15",
+        "PAY-16",
+        "PAY-17",
+        "PAY-18"
+      ],
+      "steps": [
+        "At a coordinated shared-file boundary, compose real provider clients/config, private commands, webhooks and durable jobs.",
+        "Keep startup/new-sales defaults off; define source-specific local access freshness and switches correctly.",
+        "Run real process + PostGIS journeys and affected PRM/MAP/ESP consumers; preserve route and worker isolation."
+      ],
+      "required_checks": [
+        "No deployed test provider/manual grant bypass; web channels do not require Play credentials.",
+        "Process tests demonstrate callback-to-grant, restart/outage/revoke and cancellation/refund routes with all relevant gates."
+      ],
+      "shared_paths_requiring_coordination": [
+        "backend/cmd/api/main.go",
+        "backend/cmd/worker/main.go",
+        "contracts/openapi/"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-19.md",
+      "exit": "PAY-LOCAL_READY source/runtime gate passes; no external provider acceptance inferred.",
+      "commit_topic": "feat(payments): PAY-19 compose verified payment runtime"
+    },
+    {
+      "id": "PAY-20",
+      "title": "Package deployment and configuration handoff",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-19"
+      ],
+      "steps": [
+        "Provide redacted example configuration, independent channel switches, least-privilege secrets and read-only preflight.",
+        "Document catalog/webhook/event/version/account/eligibility/notification/fiscal setup beyond API keys.",
+        "Prepare tested backup/restore/rollback, queue recovery, key rotation, channel-disable and bounded test procedures."
+      ],
+      "required_checks": [
+        "Incomplete/mixed setup refuses checkout with actionable redacted codes; secrets never cause automatic live activation.",
+        "Startup and upgrade preserve existing app/map/site behavior and pending financial maintenance."
+      ],
+      "shared_paths_requiring_coordination": [
+        "infra/env.staging.example",
+        "infra/compose.staging.yml",
+        "infra/caddy/Caddyfile"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-20.md",
+      "exit": "PAY-CONFIG_READY has complete configuration contract and tested safe defaults.",
+      "commit_topic": "chore(payments): PAY-20 package secure payment operations"
+    },
+    {
+      "id": "PAY-21",
+      "title": "Prove actual provider sandbox journeys",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-20"
+      ],
+      "steps": [
+        "Using securely supplied test credentials and named account setup, run actual Stripe test-mode and Asaas Sandbox checkout/callback/access paths.",
+        "Prove renewal/action-required/decline/cancel/refund, duplicate event recovery and both selected Pix modes to the extent actually supported.",
+        "Record merchant/environment/resources privately and public redacted artifact/test evidence; enumerate unsupported external proofs."
+      ],
+      "required_checks": [
+        "Test-only fixtures do not count as provider integration; missing credentials/eligibility keeps this phase pending.",
+        "Real supported journeys and callbacks are verified per channel; no live-money substitution for unsupported sandbox."
+      ],
+      "shared_paths_requiring_coordination": [],
+      "evidence": "docs/backend/evidence/payments/PAY-21.md",
+      "exit": "PAY-SANDBOX_ACCEPTED only for channels with complete actual required proof.",
+      "commit_topic": "test(payments): PAY-21 verify provider sandbox flows"
+    },
+    {
+      "id": "PAY-22",
+      "title": "Integrate batch and validate protected CI",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-21"
+      ],
+      "steps": [
+        "Coordinate latest dev/main and other workstreams; merge owned changes normally without importing unfinished map/portal code.",
+        "Run affected final acceptance once and open/reuse cumulative protected dev-to-main PR with real identifiers.",
+        "Fix CI/review failures in new commits and use guarded finish with required Quick verification only on current passing head/base."
+      ],
+      "required_checks": [
+        "All required/applicable checks actually pass; changed head/base invalidates affected proof.",
+        "No force/admin/no-verify; dev retained; merged commit ancestry and scope verified."
+      ],
+      "shared_paths_requiring_coordination": [
+        "ROADMAP.md",
+        "docs/planning/PROGRESS.md"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-22.md",
+      "exit": "PAY-INTEGRATED after actual protected merge, never from a local commit alone.",
+      "commit_topic": "chore(payments): PAY-22 reconcile final delivery candidate"
+    },
+    {
+      "id": "PAY-23",
+      "title": "Validate scoped VPS test deployment and activation handoff",
+      "status": "PLANNED",
+      "depends_on": [
+        "PAY-22"
+      ],
+      "steps": [
+        "Prepare the exact merged artifact and coordinate an Abastevo-only test-environment deployment window with map/portal owners.",
+        "Verify real HTTPS and provider test callbacks, order/payment/access/renewal/cancel/refund, resources and rollback without disrupting shared services.",
+        "Keep live sales off; document production catalog/eligibility/distribution approvals and obtain explicit live-money scope before real charges/refunds."
+      ],
+      "required_checks": [
+        "PAY-VPS_TEST_ACCEPTED requires actual external test-mode functionality, not only health endpoints.",
+        "No other app/shared edge expansion/global cleanup; remaining production gates and unsupported proof stay explicit."
+      ],
+      "shared_paths_requiring_coordination": [
+        "infra/caddy/Caddyfile",
+        "infra/compose.staging.yml"
+      ],
+      "evidence": "docs/backend/evidence/payments/PAY-23.md",
+      "exit": "Actual test deployment accepted; commercial readiness remains channel-specific and separately authorized.",
+      "commit_topic": "docs(payments): PAY-23 record real VPS payment verification"
+    }
+  ]
+}

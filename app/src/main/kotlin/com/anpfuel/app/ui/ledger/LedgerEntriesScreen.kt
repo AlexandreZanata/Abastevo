@@ -56,6 +56,7 @@ import com.anpfuel.application.usecase.ledger.LedgerEntryRow
 import com.anpfuel.application.usecase.ledger.LedgerEntryState
 import com.anpfuel.application.usecase.ledger.LedgerEntrySummary
 import com.anpfuel.domain.premium.ExpenseCategory
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.premium.LedgerDataset
 import com.anpfuel.domain.premium.LedgerFill
 import com.anpfuel.domain.valueobject.DomainId
@@ -393,9 +394,11 @@ private fun EstimateSection(
     onSaveEstimate: () -> Unit,
     onClearEstimate: () -> Unit,
 ) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -461,9 +464,11 @@ private fun LedgerEntryCard(
         LedgerEntryState.PENDING -> R.string.ledger_entry_state_pending
         LedgerEntryState.CONFLICT -> R.string.ledger_entry_state_conflict
     }
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),

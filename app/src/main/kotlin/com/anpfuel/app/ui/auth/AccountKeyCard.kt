@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
@@ -52,6 +51,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.portable.AuthFlow
 import java.util.WeakHashMap
 import kotlinx.coroutines.delay
@@ -187,9 +187,11 @@ fun AccountKeyCard(backup: AuthFlow.KeyBackup, modifier: Modifier = Modifier) {
         }
     }
 
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
-        modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        modifier = modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -201,7 +203,7 @@ fun AccountKeyCard(backup: AuthFlow.KeyBackup, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Text(stringResource(R.string.profile_backup_subtitle), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+            Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,

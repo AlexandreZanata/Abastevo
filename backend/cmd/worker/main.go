@@ -33,6 +33,7 @@ import (
 	directoryregistry "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/registry"
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
+	enterprisejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/adapters/jobs"
 	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
 	evidencejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/jobs"
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
@@ -53,6 +54,7 @@ import (
 	privacydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/domain"
 	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/jobs"
+	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
 	subscriptionjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/jobs"
 	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
@@ -64,6 +66,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // inventoryFunc adapts a closure to the privacy inventory port.
@@ -188,6 +191,20 @@ func run() error {
 		}
 		_, err = jobs.Enqueue(ctx, raw, "anp-import", encoded, dedupe, 3, time.Time{})
 		return err
+	}
+	enqueueEnterpriseExport := func(ctx context.Context, payload enterprisejobs.BuildPayload, dedupe string) (jobs.EnqueueResult, error) {
+		encoded, err := json.Marshal(payload)
+		if err != nil {
+			return jobs.EnqueueResult{}, err
+		}
+		return jobs.Enqueue(ctx, raw, enterprisejobs.BuildKind, encoded, dedupe, 3, time.Time{})
+	}
+	enqueuePortalRefresh := func(ctx context.Context, payload enterprisejobs.RefreshPayload, dedupe string) (jobs.EnqueueResult, error) {
+		encoded, err := json.Marshal(payload)
+		if err != nil {
+			return jobs.EnqueueResult{}, err
+		}
+		return jobs.Enqueue(ctx, raw, enterprisejobs.RefreshKind, encoded, dedupe, 3, time.Time{})
 	}
 	communityStore := communityadapters.NewStore(raw)
 	privacyStore := privacyadapters.NewStore(raw)
@@ -481,29 +498,42 @@ func run() error {
 			return false, nil
 		},
 	}
-	// Payment ports remain deliberately nil until the future payment module is configured.
+	// PAY-19: verified payment runtime on its own serial slot. Provider
+	// clients exist only for maintenance-ready channels; pending events
+	// are preserved, never dropped, while unconfigured.
 	premiumStore := subscriptionadapters.NewStore(raw)
 	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
+	officialImport := officialjobs.Import{
+		Fetch:  &fetcher,
+		Parser: anp.Parser{Limits: anp.DefaultLimits()},
+		Import: importer,
+		Resolve: func(ctx context.Context, cnpj, display string, addr map[string]string) (string, error) {
+			st, err := directoryRepo.ResolveCNPJ(ctx, cnpj, display, addr)
+			if err != nil {
+				return "", err
+			}
+			return st.ID, nil
+		},
+	}
+	if cfg.EnterpriseExportEnabled {
+		officialImport.AfterPublish = func(ctx context.Context, revisionID string) error {
+			_, err := enqueueEnterpriseExport(ctx, enterprisejobs.BuildPayload{
+				Version: 1, Trigger: "after-publication", RevisionID: revisionID,
+				ObservedAt: time.Now().UTC().Format(time.RFC3339),
+			}, "enterprise-export:official:"+revisionID)
+			return err
+		}
+	}
 	handlers := map[string]jobs.Handler{
 		"subscription-refresh":     subscriptionjobs.Handler{Name: "subscription-refresh", RunWithID: premiumService.Refresh},
 		"subscription-acknowledge": subscriptionjobs.Handler{Name: "subscription-acknowledge", Run: premiumService.Acknowledge},
+		"payment-inbox":            composePaymentInbox(cfg.Payments, raw, time.Now),
 		"anp-discovery": officialjobs.Discovery{
 			Fetch:       &fetcher,
 			ListingBase: "https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/",
 			Enqueue:     enqueueImport,
 		},
-		"anp-import": officialjobs.Import{
-			Fetch:  &fetcher,
-			Parser: anp.Parser{Limits: anp.DefaultLimits()},
-			Import: importer,
-			Resolve: func(ctx context.Context, cnpj, display string, addr map[string]string) (string, error) {
-				st, err := directoryRepo.ResolveCNPJ(ctx, cnpj, display, addr)
-				if err != nil {
-					return "", err
-				}
-				return st.ID, nil
-			},
-		},
+		"anp-import": officialImport,
 		"geocode-station": directoryjobs.Geocode{
 			Pool:    raw,
 			Service: nil,
@@ -838,7 +868,50 @@ func run() error {
 			},
 		},
 	}
+	if cfg.EnterpriseExportEnabled {
+		var afterBuild func(context.Context, enterprisejobs.State) error
+		if cfg.EnterprisePortalRefreshEnabled {
+			afterBuild = func(ctx context.Context, state enterprisejobs.State) error {
+				_, err := enqueuePortalRefresh(ctx, enterprisejobs.RefreshPayload{
+					Version: 1, Trigger: "after-build",
+					ObservedAt: state.ObservedAt, ExportContentSHA256: state.ContentSHA256,
+				}, portalRefreshDedupe(state))
+				return err
+			}
+		}
+		handlers[enterprisejobs.BuildKind] = enterprisejobs.Build{
+			Pool: raw, Root: cfg.EnterpriseExportRoot,
+			WindowWeeks: cfg.EnterpriseExportWindowWeeks,
+			AfterBuild:  afterBuild,
+			OfficialRecords: func(tx pgx.Tx) enterprisejobs.OfficialProvider {
+				return enterprisejobs.NewQualityOfficialProvider(qualityread.NewExportReader(tx))
+			},
+		}
+		handlers[enterprisejobs.ReconcileKind] = enterprisejobs.Reconcile{
+			Pool: raw, Root: cfg.EnterpriseExportRoot,
+			WindowWeeks: cfg.EnterpriseExportWindowWeeks,
+			Enqueue:     enqueueEnterpriseExport,
+			OfficialRecords: func(pool *pgxpool.Pool) enterprisejobs.OfficialProvider {
+				return enterprisejobs.NewQualityOfficialProvider(qualityread.NewExportReader(pool))
+			},
+		}
+		if cfg.EnterprisePortalRefreshEnabled {
+			handlers[enterprisejobs.RefreshKind] = enterprisejobs.Refresh{
+				ExportRoot: cfg.EnterpriseExportRoot, PortalRoot: cfg.EnterprisePortalRoot,
+				SiteURL: cfg.EnterprisePortalSiteURL, Indexable: cfg.EnterprisePortalIndexable,
+				OfficialOnly:     cfg.EnterprisePortalOfficialOnly,
+				SearchScriptPath: cfg.EnterprisePortalSearchScript,
+				Status:           qualitySourceStatus(raw),
+			}
+		}
+	}
 	nativeKinds := []string{}
+	if cfg.EnterpriseExportEnabled {
+		nativeKinds = append(nativeKinds, enterprisejobs.BuildKind)
+	}
+	if cfg.EnterprisePortalRefreshEnabled {
+		nativeKinds = append(nativeKinds, enterprisejobs.RefreshKind)
+	}
 	if cfg.QualityImportsEnabled {
 
 		if cfg.QualityEnforcementImportsEnabled {
@@ -846,7 +919,17 @@ func run() error {
 			handlers[qualityjobs.EnforcementDiscoveryKind] = nativeEnforcementLiveDiscovery(raw)
 			nativeKinds = append(nativeKinds, qualityjobs.EnforcementImportKind, qualityjobs.EnforcementDiscoveryKind)
 		}
-		handlers[qualityjobs.NativeFineImportKind] = nativeFineImport(raw, bundledFinePreparer, bundledFineHistoryPreparer, "")
+		fineImport := nativeFineImport(raw, bundledFinePreparer, bundledFineHistoryPreparer, "")
+		if cfg.EnterprisePortalRefreshEnabled {
+			fineImport.AfterPublish = func(ctx context.Context, revisionID string) error {
+				_, err := enqueueEnterpriseExport(ctx, enterprisejobs.BuildPayload{
+					Version: 1, Trigger: "fine-publication", RevisionID: revisionID,
+					ObservedAt: time.Now().UTC().Format(time.RFC3339),
+				}, "enterprise-export:fine:"+revisionID)
+				return err
+			}
+		}
+		handlers[qualityjobs.NativeFineImportKind] = fineImport
 		handlers[qualityjobs.NativeFineDiscoveryKind] = nativeFineLiveDiscovery(raw)
 		handlers["quality-import"] = nativeQualityImport(raw, bundledQualityPreparer, "")
 		handlers[qualityjobs.RevalidationKind] = nativeQualityRevalidate(raw)
@@ -863,6 +946,20 @@ func run() error {
 			Name: "anp-discovery-daily", Kind: "anp-discovery", Version: 1,
 			Interval: 24 * time.Hour, Enabled: cfg.ANPDiscoveryEnabled, Reason: "disabled by configuration",
 			Build: func(period string) map[string]any { return map[string]any{"period": period} },
+		},
+		{
+			Name: "enterprise-export-reconcile", Kind: enterprisejobs.ReconcileKind, Version: 1,
+			Interval: 6 * time.Hour, Enabled: cfg.EnterpriseExportEnabled, Reason: "disabled by configuration",
+			Build: func(period string) map[string]any {
+				return map[string]any{"version": 1, "period": period}
+			},
+		},
+		{
+			Name: "enterprise-portal-refresh", Kind: enterprisejobs.RefreshKind, Version: 1,
+			Interval: 15 * time.Minute, Enabled: cfg.EnterprisePortalRefreshEnabled, Reason: "disabled by configuration",
+			Build: func(string) map[string]any {
+				return map[string]any{"version": 1, "trigger": "reconcile"}
+			},
 		},
 		{
 			Name: "geocode-hourly", Kind: "geocode-station", Version: 1,

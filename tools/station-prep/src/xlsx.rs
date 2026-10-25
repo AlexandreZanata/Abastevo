@@ -114,6 +114,8 @@ pub fn read_workbook(archive: &ZipArchive) -> Result<Workbook, XlsxError> {
         return Err(XlsxError::ProfileRefused);
     }
     let target = read_relationship(archive, &relationship)?;
+    let target = target.strip_prefix('/').unwrap_or(&target);
+    let target = target.strip_prefix("xl/").unwrap_or(target);
     if !target.starts_with("worksheets/") {
         return Err(XlsxError::ProfileRefused);
     }

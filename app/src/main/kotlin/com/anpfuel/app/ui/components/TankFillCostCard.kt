@@ -25,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.model.TankFillCostUnitPriceSource
 import com.anpfuel.domain.valueobject.DomainId
@@ -49,6 +50,7 @@ fun TankFillCostCard(
         estimate.displayName,
         totalCost,
     )
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
 
     Card(
         onClick = onClick,
@@ -56,8 +58,9 @@ fun TankFillCostCard(
             .fillMaxWidth()
             .defaultMinSize(minHeight = 112.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(
             modifier = Modifier

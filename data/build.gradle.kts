@@ -12,9 +12,29 @@ android {
     defaultConfig {
         buildConfigField("boolean", "QUALITY_CACHE_ENABLED", providers.gradleProperty("qualityCacheEnabled").orElse("true").get().toBooleanStrict().toString())
         buildConfigField("boolean", "QUALITY_OUTBOX_ENABLED", providers.gradleProperty("qualityOutboxEnabled").orElse("true").get().toBooleanStrict().toString())
+        // Map distribution origin/region/keys are build-time operational
+        // config; empty means "not configured" (UI shows the pending state,
+        // never a fake download). Keys are public verification keys only.
+        buildConfigField("String", "MAP_DIST_BASE_URL", "\"${providers.gradleProperty("mapDistBaseUrl").orElse("").get()}\"")
+        buildConfigField("String", "MAP_DIST_REGION", "\"${providers.gradleProperty("mapDistRegion").orElse("").get()}\"")
+        buildConfigField("String", "MAP_DIST_KEYS", "\"${providers.gradleProperty("mapDistKeys").orElse("").get()}\"")
         minSdk = libs.versions.minSdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
+        externalNativeBuild {
+            cmake {
+                cppFlags += listOf("-std=c99")
+                // Keep 16 KB page alignment consistent with the MAP-14 engine gate.
+                arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/jni/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     testOptions {
@@ -104,6 +124,7 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.work:work-testing:${libs.versions.work.get()}")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:${libs.versions.okhttp.get()}")
     androidTestImplementation(libs.mockk)
     androidTestImplementation("io.mockk:mockk-android:${libs.versions.mockk.get()}")
     androidTestImplementation(libs.kotlinx.coroutines.test)

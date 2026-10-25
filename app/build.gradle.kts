@@ -72,6 +72,12 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
+        create("mapProbe") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".mapprobe"
+            versionNameSuffix = "-mapprobe"
+            matchingFallbacks += listOf("debug")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -88,6 +94,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -97,6 +104,30 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    val resolvedSdkDir = rootProject.extra["comapsSdkDirResolved"] as String
+    // The production map tab always ships the accepted native engine.
+    // The fallback is the versioned MAP-14 candidate; pass -PcomapsSdkDir to
+    // override with a newly verified candidate.
+    val engineAbis = file("$resolvedSdkDir/jni")
+        .listFiles().orEmpty()
+        .filter { it.isDirectory && it.resolve("liborganicmaps.so").isFile }
+        .map { it.name }.toSet()
+    require(engineAbis.isNotEmpty()) { "The map candidate must contain its native engine" }
+    // Every advertised ABI must contain the core, including auxiliary AndroidX libs.
+    defaultConfig.ndk.abiFilters += engineAbis
+    sourceSets.getByName("debug") {
+        kotlin.srcDir("src/comapsProbe/kotlin")
+        manifest.srcFile("src/comapsProbe/AndroidManifest.xml")
+    }
+    sourceSets.getByName("mapProbe") {
+        kotlin.srcDir("src/comapsProbe/kotlin")
+        manifest.srcFile("src/mapProbe/AndroidManifest.xml")
+    }
+
+    androidResources {
+        noCompress += listOf("txt", "bin", "html", "png", "json", "mwm", "ttf", "sdf", "ui", "config", "csv", "spv", "obj")
     }
 
     packaging {
@@ -113,6 +144,8 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":application"))
     implementation(project(":data"))
+    implementation(project(":maps:engine"))
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     implementation(platform(libs.compose.bom))
     implementation(libs.bundles.compose)
@@ -131,6 +164,7 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    testImplementation(libs.okhttp)
     // Same JVM org.json artifact already used by :data tests (Android
     // framework org.json stubs throw under local JVM unit tests).
     testImplementation("org.json:json:20240303")
@@ -160,11 +194,11 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-private val maxReleaseApkBytes = 15L * 1024 * 1024
+private val maxReleaseApkBytes = 80L * 1024 * 1024
 
 tasks.register("verifyReleaseApkSize") {
     group = "verification"
-    description = "Builds release APK and fails when uncompressed size exceeds 15 MB (Phase 9.2.2)"
+    description = "Builds release APK and fails when size exceeds the 80 MiB MAP-14 budget (user-authorized; measured ~76.68 MB with both ARM ABIs)"
     dependsOn("assembleRelease")
     doLast {
         val apkDir = layout.buildDirectory.dir("outputs/apk/release").get().asFile
@@ -176,7 +210,7 @@ tasks.register("verifyReleaseApkSize") {
         logger.lifecycle("Release APK: ${apk.name} — ${"%.2f".format(sizeMb)} MB ($sizeBytes bytes)")
         if (sizeBytes > maxReleaseApkBytes) {
             throw GradleException(
-                "Release APK exceeds 15 MB limit: ${"%.2f".format(sizeMb)} MB",
+                "Release APK exceeds the 80 MiB limit: ${"%.2f".format(sizeMb)} MB",
             )
         }
     }

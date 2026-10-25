@@ -13,6 +13,8 @@ object FuelProductNormalizationRule {
         put("ETANOL", FuelProduct.ETHANOL)
         put("GASOLINA COMUM", FuelProduct.GASOLINE_REGULAR)
         put("GASOLINA ADITIVADA", FuelProduct.GASOLINE_PREMIUM)
+        put("GASOLINA PREMIUM", FuelProduct.GASOLINE_PREMIUM_GRADE)
+        put("GASOLINA PREMIUM GRADE", FuelProduct.GASOLINE_PREMIUM_GRADE)
         put("OLEO DIESEL", FuelProduct.DIESEL_S500)
         put("DIESEL S500", FuelProduct.DIESEL_S500)
         put("OLEO DIESEL S10", FuelProduct.DIESEL_S10)

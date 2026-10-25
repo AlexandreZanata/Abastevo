@@ -317,6 +317,26 @@ sql:
         sql_package: pgx/v5
         emit_json_tags: true
   - engine: postgresql
+    queries: db/queries/payments
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000123_payment_intents.sql
+      - db/migrations/000124_payment_contracts.sql
+      - db/migrations/000125_payment_mandates.sql
+      - db/migrations/000126_pix_auto_cycles.sql
+      - db/migrations/000127_payment_source_switches.sql
+      - db/migrations/000128_payment_billing_exits.sql
+      - db/migrations/000129_payment_refunds_disputes.sql
+      - db/migrations/000130_payment_enterprise_capabilities.sql
+    gen:
+      go:
+        package: payments
+        out: db/queries/payments
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
     queries: db/queries/charging
     schema:
       - db/migrations/000001_enable_postgis.sql

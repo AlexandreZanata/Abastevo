@@ -42,7 +42,7 @@ impl Default for Limits {
 }
 
 /// Per-input row accounting. Every input row lands in exactly one bucket.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 pub struct Counts {
     pub input: usize,
     pub accepted: usize,
@@ -80,6 +80,13 @@ pub mod reason {
     /// FQ-02 assay stream: unrecognized or empty conformity text. The row
     /// quarantines; unknown status never classifies as conforming.
     pub const UNKNOWN_CONFORMITY: &str = "unknown_conformity";
+    pub const UNMAPPED_PRODUCT: &str = "unmapped_product";
+    pub const PRODUCT_UNIT_MISMATCH: &str = "product_unit_mismatch";
+    pub const PRICE_OUT_OF_RANGE: &str = "price_out_of_range";
+    pub const MISSING_OBSERVED_AT: &str = "missing_observed_at";
+    pub const OUTSIDE_PERIOD: &str = "outside_period";
+    pub const CONFLICTING_STATION_FACT: &str = "conflicting_station_fact";
+    pub const MISSING_STATION_CONTEXT: &str = "missing_station_context";
 }
 
 /// One quarantined row with a stable locator. `row_locator` is

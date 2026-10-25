@@ -44,6 +44,7 @@ import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.FuelProductTint
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.community.CommunityFeedItem
 import com.anpfuel.domain.community.FeedSort
 import com.anpfuel.domain.valueobject.FuelProduct
@@ -101,7 +102,9 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 }
             }
             item {
-                Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                val containerColor = MaterialTheme.colorScheme.primaryContainer
+                Card(shape = AnpContainerDefaults.containerShape(), colors = CardDefaults.cardColors(containerColor = containerColor),
+                    border = AnpContainerDefaults.borderStroke(containerColor)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.size(48.dp)) {
@@ -239,7 +242,9 @@ private fun feedSortIcon(sort: FeedSort) = when (sort) {
 
 @Composable
 private fun FeedMessage(title: String, description: String, action: @Composable () -> Unit) {
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    Card(Modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape(), colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -257,8 +262,10 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
             minimumFractionDigits = 2; maximumFractionDigits = 3
         }.format(BigDecimal.valueOf(item.amountMilliBrl, 3))
     }
-    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(Modifier.weight(1f)) {

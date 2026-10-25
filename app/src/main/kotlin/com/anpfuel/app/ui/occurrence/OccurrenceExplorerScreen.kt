@@ -1,5 +1,6 @@
 package com.anpfuel.app.ui.occurrence
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +98,15 @@ fun OccurrenceExplorerScreen(
 
 @Composable
 private fun OccurrenceCard(record: com.anpfuel.domain.occurrence.OccurrenceRecord, onDetail: (String) -> Unit) {
-    ElevatedCard(onClick = { onDetail(record.id) }, modifier = Modifier.fillMaxWidth()) {
+    ElevatedCard(
+        onClick = { onDetail(record.id) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerLow),
+                shape = CardDefaults.shape,
+            ),
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(R.string.occurrence_action_label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
             Text(record.result, style = MaterialTheme.typography.bodyMedium, maxLines = 2)

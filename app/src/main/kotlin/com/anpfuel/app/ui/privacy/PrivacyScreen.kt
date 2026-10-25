@@ -23,6 +23,7 @@ import com.anpfuel.app.settings.TrainingConsentRightsCard
 import com.anpfuel.app.settings.TrainingConsentSettings
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 /**
  * Perfil > Privacidade (B-BR-CS06 / BUC-CS05).
@@ -59,12 +60,14 @@ fun PrivacyScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = CardDefaults.shape,
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    containerColor = containerColor,
                 ),
+                border = AnpContainerDefaults.borderStroke(containerColor),
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),

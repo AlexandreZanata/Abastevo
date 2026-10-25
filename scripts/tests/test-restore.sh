@@ -138,6 +138,23 @@ capture env -i PATH="/usr/bin:/bin" HOME="$HOME" \
     ANPFUEL_DATABASE_URL="${ANPFUEL_TEST_DRILL_DSN_PREFIX:-postgres://anpfuel:anpfuel@127.0.0.1:5434}/$DRILL?sslmode=disable" \
     ANPFUEL_OPERATOR_ID=drill-op \
     "$WORK/ops" privacy replay --contributor c9999999-0000-4000-8000-000000000001
+if [[ "$CAP_CODE" -ne 0 ]] \
+    && [[ "$(psql_dev "$DRILL" "SELECT COUNT(*) FROM privacy_deletion_ledger WHERE contributor_id = 'c9999999-0000-4000-8000-000000000001' AND scope = 'EVIDENCE' AND replayed_at IS NULL;")" == "1" ]]; then
+    pass "missing storage refuses evidence erasure acknowledgement"
+else
+    fail "missing storage refuses evidence erasure acknowledgement"
+fi
+# Replay must use the real private disposable S3 fixture. Never weaken the
+# fail-closed production eraser to make a database-only drill look complete.
+capture env -i PATH="/usr/bin:/bin" HOME="$HOME" \
+    ANPFUEL_DATABASE_URL="${ANPFUEL_TEST_DRILL_DSN_PREFIX:-postgres://anpfuel:anpfuel@127.0.0.1:5434}/$DRILL?sslmode=disable" \
+    ANPFUEL_R2_ENDPOINT="${ANPFUEL_TEST_STORAGE_ENDPOINT:?private test storage required}" \
+    ANPFUEL_R2_BUCKET="${ANPFUEL_TEST_STORAGE_BUCKET:?private test bucket required}" \
+    ANPFUEL_R2_REGION="${ANPFUEL_TEST_STORAGE_REGION:?private test region required}" \
+    ANPFUEL_R2_ACCESS_KEY_ID="${ANPFUEL_TEST_STORAGE_ACCESS_KEY_ID:?private test access key required}" \
+    ANPFUEL_R2_SECRET_ACCESS_KEY="${ANPFUEL_TEST_STORAGE_SECRET_ACCESS_KEY:?private test secret required}" \
+    ANPFUEL_OPERATOR_ID=drill-op \
+    "$WORK/ops" privacy replay --contributor c9999999-0000-4000-8000-000000000001
 if [[ "$CAP_CODE" -eq 0 ]]; then
     pass "ledger replayed on restored snapshot"
 else

@@ -15,6 +15,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -45,6 +46,10 @@ const (
 	keyCursorSecret    = "ANPFUEL_CURSOR_SECRET"
 	keyCanonicalHost   = "ANPFUEL_CANONICAL_HOST"
 	keyMetricsAddr     = "ANPFUEL_METRICS_ADDR"
+	// Optional signed map distribution. Both variables are required together;
+	// an unset pair leaves the map distribution routes unmounted.
+	keyMapDistributionDir  = "ANPFUEL_MAP_DIST_DIR"
+	keyMapDistributionKeys = "ANPFUEL_MAP_DIST_PUBLIC_KEYS"
 	// keyMailMode selects code delivery: "off" (default — codes
 	// never issue) or "memory" (bounded local outbox for
 	// development/tests). SMTP lands with deployment
@@ -121,7 +126,11 @@ type Config struct {
 	CursorSecret    []byte
 	CanonicalHost   string
 	// MetricsAddr is the private metrics listener; empty disables it.
-	MetricsAddr           string
+	MetricsAddr string
+	// MapDistributionDir/Keys configure the optional signed native-map
+	// distribution. Keys use keyid:base64url,keyid:base64url.
+	MapDistributionDir    string
+	MapDistributionKeys   string
 	ANPDiscoveryEnabled   bool
 	QualityImportsEnabled bool
 	// Bounded source schedules are independent and default off. Handlers
@@ -162,10 +171,30 @@ type Config struct {
 	GlobalQuotaWrite     int
 	// Zero keeps photo intake closed pending a measured resource budget.
 	EvidenceMaxPendingPhotos int
+	// Enterprise export is a private, bounded candidate builder. It is off by
+	// default and requires an absolute private workspace root when enabled.
+	EnterpriseExportEnabled     bool
+	EnterpriseExportRoot        string
+	EnterpriseExportWindowWeeks int
+	// Enterprise portal refresh builds and promotes a verified static release
+	// from the export candidate. It is off by default and requires the export
+	// builder plus an absolute private root and a public origin.
+	EnterprisePortalRefreshEnabled bool
+	EnterprisePortalRoot           string
+	EnterprisePortalSiteURL        string
+	EnterprisePortalIndexable      bool
+	// EnterprisePortalOfficialOnly restricts refresh generation,
+	// verification, promotion and withdrawal to the admitted
+	// official-records slice. It can never widen to the full portal.
+	EnterprisePortalOfficialOnly bool
+	EnterprisePortalSearchScript string
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
 	DevelopmentPhotoPreviewUntil time.Time
+	// Payments holds provider switches and credentials; LogValue/Preflight
+	// expose readiness only, never key material.
+	Payments PaymentsConfig
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -179,6 +208,7 @@ func (c Config) LogValue() slog.Value {
 		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
 		slog.Bool("db_configured", c.DatabaseURL != ""),
 		slog.Any("r2", c.R2.r2LogValue()),
+		slog.Any("payments", c.Payments.logValue()),
 	)
 }
 
@@ -228,6 +258,72 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_QUALITY_REPORTS_ENABLED must be boolean")
 		}
 		cfg.QualityReportsEnabled = enabled
+	}
+	if raw, present := getenv("ANPFUEL_ENTERPRISE_EXPORT_ENABLED"); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_EXPORT_ENABLED must be boolean")
+		}
+		cfg.EnterpriseExportEnabled = enabled
+	}
+	cfg.EnterpriseExportWindowWeeks = 5
+	if raw, present := getenv("ANPFUEL_ENTERPRISE_EXPORT_WINDOW_WEEKS"); present {
+		weeks, err := strconv.Atoi(raw)
+		if err != nil || weeks < 1 || weeks > 12 {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_EXPORT_WINDOW_WEEKS must be 1..12")
+		}
+		cfg.EnterpriseExportWindowWeeks = weeks
+	}
+	cfg.EnterpriseExportRoot, _ = getenv("ANPFUEL_ENTERPRISE_EXPORT_ROOT")
+	if cfg.EnterpriseExportEnabled {
+		if cfg.EnterpriseExportRoot == "" || !filepath.IsAbs(cfg.EnterpriseExportRoot) {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_EXPORT_ROOT must be an absolute path when enterprise export is enabled")
+		}
+	}
+	if raw, present := getenv("ANPFUEL_ENTERPRISE_PORTAL_REFRESH_ENABLED"); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_REFRESH_ENABLED must be boolean")
+		}
+		cfg.EnterprisePortalRefreshEnabled = enabled
+	}
+	if raw, present := getenv("ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE"); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE must be boolean")
+		}
+		cfg.EnterprisePortalIndexable = enabled
+	}
+	if raw, present := getenv("ANPFUEL_ENTERPRISE_PORTAL_OFFICIAL_ONLY"); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_OFFICIAL_ONLY must be boolean")
+		}
+		cfg.EnterprisePortalOfficialOnly = enabled
+	}
+	cfg.EnterprisePortalRoot, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_ROOT")
+	cfg.EnterprisePortalSiteURL, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL")
+	cfg.EnterprisePortalSearchScript, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS")
+	if cfg.EnterprisePortalRefreshEnabled {
+		if !cfg.EnterpriseExportEnabled {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_REFRESH_ENABLED requires ANPFUEL_ENTERPRISE_EXPORT_ENABLED")
+		}
+		if cfg.EnterprisePortalRoot == "" || !filepath.IsAbs(cfg.EnterprisePortalRoot) {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_ROOT must be an absolute path when portal refresh is enabled")
+		}
+		if cfg.EnterprisePortalSiteURL == "" {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL is required when portal refresh is enabled")
+		}
+		parsed, err := url.Parse(cfg.EnterprisePortalSiteURL)
+		if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL must be an http(s) origin")
+		}
+		if cfg.EnterprisePortalRoot == cfg.EnterpriseExportRoot {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_ROOT must differ from the export root")
+		}
+		if cfg.EnterprisePortalSearchScript != "" && !filepath.IsAbs(cfg.EnterprisePortalSearchScript) {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS must be an absolute path")
+		}
 	}
 	if raw, present := getenv(keyQualityCompanyReadsEnabled); present {
 		enabled, err := strconv.ParseBool(raw)
@@ -376,6 +472,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	}
 	cfg.CanonicalHost = strings.ToLower(host)
 
+	mapDir, _ := getenv(keyMapDistributionDir)
+	mapKeys, _ := getenv(keyMapDistributionKeys)
+	if (strings.TrimSpace(mapDir) == "") != (strings.TrimSpace(mapKeys) == "") {
+		return Config{}, fmt.Errorf("%s and %s must be set together", keyMapDistributionDir, keyMapDistributionKeys)
+	}
+	cfg.MapDistributionDir = strings.TrimSpace(mapDir)
+	cfg.MapDistributionKeys = strings.TrimSpace(mapKeys)
+
 	metrics, metricsSet := getenv(keyMetricsAddr)
 	if !metricsSet {
 		metrics = defaultMetricsAddr
@@ -444,6 +548,7 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		return Config{}, err
 	}
 	cfg.R2 = r2
+	cfg.Payments = loadPayments(getenv, cfg.Env)
 	if raw, _ := getenv(keyEvidenceMaxPending); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 || n > 100 {

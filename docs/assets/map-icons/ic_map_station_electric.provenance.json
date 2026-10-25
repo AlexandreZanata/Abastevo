@@ -1,0 +1,55 @@
+{
+  "source_type": "original built-in ImageGen output",
+  "raw_sha256": "03fd5ba57bc0af665b6f0bb6285cbe67946e76a70a3d871d63a7c00738135689",
+  "normalization": "alpha >=128; saturated ink + white; transparent padding; trace at 2x nearest-neighbor; no source downsample; explicit final SVG void correction per user request",
+  "category_ink": "#00796B",
+  "category_semantics": "station service type, not fuel grade",
+  "source_size": [
+    1254,
+    1254
+  ],
+  "normalized_size": [
+    1214,
+    1214
+  ],
+  "android_export_size": [
+    128,
+    128
+  ],
+  "svg_paths": 6,
+  "svg_sha256": "b03449e120062bf8af965c78def2b26f835ccb73d1477b7c9d840fa54a4ca1dc",
+  "android_sha256": "ad6ff16628370d69efc78639d62e9215cc53a9d9e97dd17bb915428183954bf9",
+  "integration_status": "PREPARED_ASSET / NOT_INTEGRATED",
+  "attribution": "Original generic Abastevo artwork, no upstream CoMaps or operator logos; repository MIT notice applies to the delivered source assets.",
+  "pre_correction_trace_validation": {
+    "silhouette_iou": 1.0,
+    "ink_iou": 1.0,
+    "white_iou": 1.0
+  },
+  "manual_svg_correction": {
+    "request": "Fill the unwanted interior hole; preserve display, lightning bolt and plug.",
+    "method": "Remove exactly the final enclosed subpath of the first teal filled path.",
+    "removed_subpath_local_control_bounds": [
+      10.0,
+      944.0,
+      240.0,
+      1150.0
+    ],
+    "pre_correction_svg_sha256": "20098fc46fcb3f6bdaa7bd79d307a55b85c17fe62fc817f16706d70b2e4bd27e",
+    "changed_normalized_pixel_bounds": [
+      296,
+      548,
+      411,
+      651
+    ],
+    "outside_repair_region_unchanged": true,
+    "interior_alpha": 255,
+    "interior_rgb": [
+      0,
+      121,
+      107
+    ],
+    "corrected_master": "transparent/ic_map_station_electric.png is rendered from the user-corrected SVG; raw source and pre-correction normalization retained.",
+    "reproduction": "Run trace-map-icons.py, then fix-map-electric-svg.py. Original raw-mask IoU belongs to pre-correction trace only, not to the intentional geometry change."
+  }
+}

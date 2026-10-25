@@ -27,6 +27,7 @@ import com.anpfuel.app.R
 import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.model.AveragePriceUiModel
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.FuelProductTint
 
 /** These are municipal ANP averages, never synthetic nearby station offers. */
@@ -41,11 +42,13 @@ internal fun HomeReferencePriceCard(
     val fuelLabel = stringResource(FuelProductI18n.toStringRes(price.fuelProduct))
     val featured = priceSort.featuredPrice(price) ?: stringResource(R.string.prices_not_available)
     val description = stringResource(R.string.a11y_fuel_price_card, fuelLabel, featured)
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = description },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),

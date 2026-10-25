@@ -329,16 +329,28 @@ func (s *Store) Status(ctx context.Context, p app.Principal) (*domain.Snapshot, 
 		return nil, err
 	}
 	row, err := q.ReadStatus(ctx, uid(p.AccountID))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
+	var result *domain.Snapshot
+	if err == nil {
+		result = snapshot(row)
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, domain.ErrUnavailable
 	}
+	webCapabilities, webValidUntil, err := webGrants(ctx, tx, p.AccountID, time.Now())
 	if err != nil {
 		return nil, domain.ErrUnavailable
 	}
+	if result == nil && len(webCapabilities) == 0 {
+		return nil, nil
+	}
+	if result == nil {
+		result = &domain.Snapshot{}
+	}
+	result.WebCapabilities = webCapabilities
+	result.WebValidUntil = webValidUntil
 	if err = tx.Commit(ctx); err != nil {
 		return nil, domain.ErrUnavailable
 	}
-	return snapshot(row), nil
+	return result, nil
 }
 
 var _ app.Store = (*Store)(nil)

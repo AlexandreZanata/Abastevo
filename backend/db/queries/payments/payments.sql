@@ -1,0 +1,603 @@
+-- Private payment persistence ports. All writes are transactional; remote
+-- network I/O must happen only after the dispatch commit and before outcome
+-- persistence. Outbox items reuse job_queue, never a second queue.
+
+-- name: LockPaymentKey :exec
+SELECT pg_advisory_xact_lock(hashtextextended(sqlc.arg(key)::text, 0));
+
+-- name: InsertPaymentCustomer :execrows
+INSERT INTO payment_customers(account_id,provider,environment,merchant,remote_customer_id)
+VALUES(sqlc.arg(account_id)::uuid,sqlc.arg(provider),sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(remote_customer_id))
+ON CONFLICT DO NOTHING;
+
+-- name: GetPaymentCustomer :one
+SELECT * FROM payment_customers
+WHERE account_id=sqlc.arg(account_id)::uuid AND provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant);
+
+-- name: InsertPaymentOrder :execrows
+INSERT INTO payment_orders(
+ id,account_id,offer_id,family,catalog_version,channel,amount_centavos,currency,capabilities,state,quoted_at,expires_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(family),sqlc.arg(catalog_version),sqlc.arg(channel),
+ sqlc.arg(amount_centavos)::bigint,sqlc.arg(currency),sqlc.arg(capabilities)::text[],sqlc.arg(state),sqlc.arg(quoted_at)::timestamptz,sqlc.arg(expires_at)::timestamptz
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- name: GetPaymentOrder :one
+SELECT * FROM payment_orders WHERE id=sqlc.arg(id)::uuid;
+
+-- name: GetPaymentOrderForUpdate :one
+SELECT * FROM payment_orders WHERE id=sqlc.arg(id)::uuid FOR UPDATE;
+
+-- name: MarkPaymentOrderPaid :execrows
+UPDATE payment_orders
+SET state='PAID',paid_at=sqlc.arg(paid_at)::timestamptz,settlement_id=sqlc.arg(settlement_id)::uuid,
+    revision=revision+1,updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid
+  AND (state IN ('PENDING','EXPIRED') OR (state='PAID' AND settlement_id=sqlc.arg(settlement_id)::uuid));
+
+-- name: InsertPaymentOperation :exec
+INSERT INTO payment_operations(
+ id,account_id,provider,environment,merchant,operation_key,kind,payload_hash,order_id,
+ state,generation,attempt_no,lease_until,remote_id
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(provider),sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(operation_key),sqlc.arg(kind),sqlc.arg(payload_hash),
+ sqlc.narg(order_id)::uuid,'PENDING',1,1,sqlc.arg(lease_until)::timestamptz,sqlc.narg(remote_id)
+);
+
+-- name: GetPaymentOperationByKey :one
+SELECT * FROM payment_operations
+WHERE account_id=sqlc.arg(account_id)::uuid AND provider=sqlc.arg(provider) AND environment=sqlc.arg(environment)
+  AND merchant=sqlc.arg(merchant) AND operation_key=sqlc.arg(operation_key);
+
+-- name: GetPaymentOperationForUpdate :one
+SELECT * FROM payment_operations WHERE id=sqlc.arg(id)::uuid FOR UPDATE;
+
+-- name: TakeoverPaymentOperation :execrows
+UPDATE payment_operations
+SET state='PENDING',generation=sqlc.arg(generation)::bigint,attempt_no=sqlc.arg(attempt_no)::int,
+    lease_until=sqlc.arg(lease_until)::timestamptz,updated_at=clock_timestamp(),completed_at=NULL
+WHERE id=sqlc.arg(id)::uuid AND generation=sqlc.arg(previous_generation)::bigint
+  AND state IN ('PENDING','DISPATCHED','OUTCOME_UNKNOWN')
+  AND lease_until IS NOT NULL AND lease_until<=clock_timestamp();
+
+-- name: InsertPaymentAttempt :exec
+INSERT INTO payment_attempts(
+ id,operation_id,order_id,attempt_no,generation,provider,environment,merchant,payload_hash,
+ state,remote_id,lease_until
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(operation_id)::uuid,sqlc.arg(order_id)::uuid,sqlc.arg(attempt_no)::int,sqlc.arg(generation)::bigint,
+ sqlc.arg(provider),sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(payload_hash),sqlc.arg(state),sqlc.narg(remote_id),sqlc.arg(lease_until)::timestamptz
+);
+
+-- name: GetPaymentAttempt :one
+SELECT * FROM payment_attempts WHERE id=sqlc.arg(id)::uuid;
+
+-- name: GetPaymentAttemptForUpdate :one
+SELECT * FROM payment_attempts WHERE id=sqlc.arg(id)::uuid FOR UPDATE;
+
+-- name: GetPaymentAttemptForOrder :one
+SELECT * FROM payment_attempts
+WHERE order_id=sqlc.arg(order_id)::uuid
+ORDER BY created_at DESC,id DESC LIMIT 1;
+
+-- name: MarkPaymentAttemptDispatched :execrows
+UPDATE payment_attempts
+SET state='DISPATCHED',updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND generation=sqlc.arg(generation)::bigint AND state='CREATED'
+  AND lease_until>clock_timestamp();
+
+-- name: MarkPaymentOperationDispatched :execrows
+UPDATE payment_operations
+SET state='DISPATCHED',updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND generation=sqlc.arg(generation)::bigint AND state='PENDING'
+  AND lease_until>clock_timestamp();
+
+-- name: ResolvePaymentAttempt :execrows
+UPDATE payment_attempts
+SET state=sqlc.arg(state),remote_id=sqlc.narg(remote_id),updated_at=clock_timestamp(),
+    completed_at=sqlc.narg(completed_at)::timestamptz
+WHERE id=sqlc.arg(id)::uuid AND generation=sqlc.arg(generation)::bigint AND state IN ('DISPATCHED','UNKNOWN');
+
+-- name: ResolvePaymentOperation :execrows
+UPDATE payment_operations
+SET state=sqlc.arg(state),remote_id=sqlc.narg(remote_id),lease_until=sqlc.arg(lease_until)::timestamptz,
+    updated_at=clock_timestamp(),completed_at=sqlc.narg(completed_at)::timestamptz
+WHERE id=sqlc.arg(id)::uuid AND generation=sqlc.arg(generation)::bigint
+  AND state IN ('PENDING','DISPATCHED','OUTCOME_UNKNOWN');
+
+-- name: InsertPaymentSettlement :execrows
+INSERT INTO payment_settlements(
+ id,order_id,attempt_id,account_id,offer_id,channel,provider,environment,merchant,
+ remote_payment_id,remote_charge_id,provider_status,authority,amount_centavos,currency,state,outcome,settled_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(order_id)::uuid,sqlc.arg(attempt_id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(channel),sqlc.arg(provider),
+ sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(remote_payment_id),sqlc.narg(remote_charge_id),sqlc.arg(provider_status),'provider_verified',
+ sqlc.arg(amount_centavos)::bigint,'BRL','SETTLED',sqlc.arg(outcome),sqlc.arg(settled_at)::timestamptz
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- name: GetPaymentSettlementByID :one
+SELECT * FROM payment_settlements WHERE id=sqlc.arg(id)::uuid;
+
+-- name: GetPaymentSettlementByOrder :one
+SELECT * FROM payment_settlements
+WHERE order_id=sqlc.arg(order_id)::uuid AND outcome='GRANTED';
+
+-- name: GetPaymentSettlementByRemote :one
+SELECT * FROM payment_settlements
+WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_payment_id=sqlc.arg(remote_payment_id);
+
+-- name: InsertPaymentGrant :execrows
+INSERT INTO payment_grants(
+ id,order_id,settlement_id,remote_payment_id,account_id,offer_id,source,paid_centavos,currency,
+ start_at,end_at,anchor_day,policy_version,capabilities,state
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(order_id)::uuid,sqlc.arg(settlement_id)::uuid,sqlc.arg(remote_payment_id),
+ sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(source),
+ sqlc.arg(paid_centavos)::bigint,'BRL',sqlc.arg(start_at)::timestamptz,sqlc.arg(end_at)::timestamptz,sqlc.arg(anchor_day)::smallint,
+ sqlc.arg(policy_version)::int,sqlc.arg(capabilities)::text[],'ACTIVE'
+)
+ON CONFLICT (order_id) DO NOTHING;
+
+-- name: GetPaymentGrantByOrder :one
+SELECT * FROM payment_grants WHERE order_id=sqlc.arg(order_id)::uuid;
+
+-- name: ListPaymentGrantsForEntitlement :many
+SELECT * FROM payment_grants
+WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id)
+ORDER BY start_at,id;
+
+-- name: InsertPaymentCycle :execrows
+INSERT INTO payment_cycles(id,account_id,offer_id,source,period_start,period_end,state,settlement_id)
+VALUES(sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(source),sqlc.arg(period_start)::timestamptz,
+ sqlc.arg(period_end)::timestamptz,sqlc.arg(state),sqlc.narg(settlement_id)::uuid)
+ON CONFLICT (account_id,offer_id,period_start) DO NOTHING;
+
+-- name: GetPaymentCycleByKey :one
+SELECT * FROM payment_cycles
+WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id) AND period_start=sqlc.arg(period_start)::timestamptz;
+
+-- name: InsertPaymentInbox :execrows
+INSERT INTO payment_inbox(
+ provider,environment,merchant,event_id,payload_hash,event_type,resource_type,resource_id,resource_status
+) VALUES(
+ sqlc.arg(provider),sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(event_id),sqlc.arg(payload_hash),sqlc.arg(event_type),sqlc.arg(resource_type),sqlc.arg(resource_id),sqlc.arg(resource_status)
+)
+ON CONFLICT DO NOTHING;
+
+-- name: GetPaymentInbox :one
+SELECT * FROM payment_inbox
+WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant) AND event_id=sqlc.arg(event_id);
+
+-- name: ListPendingPaymentInbox :many
+SELECT * FROM payment_inbox
+WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment)
+  AND merchant=sqlc.arg(merchant) AND state='PENDING'
+ORDER BY received_at,event_id
+LIMIT sqlc.arg(limit_count)::int;
+
+-- name: RevokePaymentGrant :execrows
+UPDATE payment_grants
+SET state='REVOKED',revoked_at=sqlc.arg(revoked_at)::timestamptz
+WHERE order_id=sqlc.arg(order_id)::uuid AND state='ACTIVE';
+
+-- name: MarkPaymentInbox :execrows
+UPDATE payment_inbox
+SET state=sqlc.arg(state),attempts=attempts+1,processed_at=sqlc.arg(processed_at)::timestamptz,last_error=sqlc.arg(last_error)
+WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant) AND event_id=sqlc.arg(event_id)
+  AND state='PENDING';
+
+-- name: UpsertPaymentContract :one
+INSERT INTO payment_contracts(
+ id,account_id,offer_id,source,environment,merchant,provider,remote_subscription_id,
+ remote_customer_id,provider_status,cancel_at_period_end,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),'stripe_card',
+ sqlc.arg(environment),sqlc.arg(merchant),'stripe',sqlc.arg(remote_subscription_id),
+ sqlc.arg(remote_customer_id),sqlc.arg(provider_status),sqlc.arg(cancel_at_period_end)::boolean,
+ sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_subscription_id) DO UPDATE SET
+ account_id=EXCLUDED.account_id,offer_id=EXCLUDED.offer_id,remote_customer_id=EXCLUDED.remote_customer_id,
+ provider_status=EXCLUDED.provider_status,cancel_at_period_end=EXCLUDED.cancel_at_period_end,
+ last_event_at=EXCLUDED.last_event_at,updated_at=clock_timestamp()
+WHERE payment_contracts.last_event_at <= EXCLUDED.last_event_at
+RETURNING *;
+
+-- name: GetPaymentContractForAccount :one
+SELECT * FROM payment_contracts
+WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id) AND source='stripe_card'
+ORDER BY updated_at DESC LIMIT 1;
+
+-- name: GetPaymentContractByRemote :one
+SELECT * FROM payment_contracts
+WHERE provider='stripe' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_subscription_id=sqlc.arg(remote_subscription_id);
+
+-- name: UpsertPaymentMandate :one
+INSERT INTO payment_mandates(
+ id,account_id,offer_id,order_id,environment,merchant,provider,remote_authorization_id,
+ remote_subscription_id,contract_id,remote_customer_id,status,frequency,value_centavos,
+ start_date,finish_date,consent_version,consent_at,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(order_id)::uuid,
+ sqlc.arg(environment),sqlc.arg(merchant),'asaas',sqlc.arg(remote_authorization_id),
+ sqlc.narg(remote_subscription_id),sqlc.arg(contract_id),sqlc.arg(remote_customer_id),
+ sqlc.arg(status),'MONTHLY',sqlc.arg(value_centavos)::bigint,sqlc.arg(start_date)::date,
+ sqlc.narg(finish_date)::date,sqlc.arg(consent_version),sqlc.arg(consent_at)::timestamptz,
+ sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_authorization_id) DO UPDATE SET
+ remote_subscription_id=COALESCE(EXCLUDED.remote_subscription_id,payment_mandates.remote_subscription_id),
+ status=EXCLUDED.status,finish_date=EXCLUDED.finish_date,last_event_at=EXCLUDED.last_event_at,
+ cancelled_at=CASE WHEN EXCLUDED.status IN ('CANCELLED','EXPIRED','REFUSED')
+                   THEN COALESCE(payment_mandates.cancelled_at,EXCLUDED.last_event_at)
+                   ELSE payment_mandates.cancelled_at END,
+ updated_at=clock_timestamp()
+WHERE payment_mandates.last_event_at <= EXCLUDED.last_event_at
+  AND (payment_mandates.cancel_requested_at IS NULL
+       OR EXCLUDED.status IN ('CANCELLED','EXPIRED','REFUSED'))
+RETURNING *;
+
+-- name: GetPaymentMandateForAccount :one
+SELECT * FROM payment_mandates
+WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id)
+ORDER BY updated_at DESC LIMIT 1;
+
+-- name: GetPaymentMandateByRemote :one
+SELECT * FROM payment_mandates
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_authorization_id=sqlc.arg(remote_authorization_id);
+
+-- name: GetPaymentMandateForSubscription :one
+SELECT * FROM payment_mandates
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_subscription_id=sqlc.arg(remote_subscription_id);
+
+-- name: RequestPaymentMandateCancel :one
+UPDATE payment_mandates
+SET cancel_requested_at=COALESCE(cancel_requested_at,sqlc.arg(requested_at)::timestamptz),
+    cancel_reason=COALESCE(cancel_reason,sqlc.arg(reason)),
+    updated_at=clock_timestamp()
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_authorization_id=sqlc.arg(remote_authorization_id)
+RETURNING *;
+
+-- name: ListActivePaymentMandates :many
+SELECT * FROM payment_mandates
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND status='ACTIVE'
+ORDER BY updated_at,id
+LIMIT sqlc.arg(limit_count)::int;
+
+-- name: UpsertPaymentPixAutoInstruction :one
+INSERT INTO payment_pix_auto_instructions(
+ id,account_id,offer_id,environment,merchant,provider,remote_instruction_id,
+ remote_authorization_id,remote_subscription_id,remote_payment_id,status,purpose,
+ retry_attempt,due_date,refusal_reason,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(environment),
+ sqlc.arg(merchant),'asaas',sqlc.arg(remote_instruction_id),sqlc.arg(remote_authorization_id),
+ sqlc.narg(remote_subscription_id),sqlc.narg(remote_payment_id),sqlc.arg(status),
+ sqlc.arg(purpose),sqlc.arg(retry_attempt)::int,sqlc.arg(due_date)::date,
+ sqlc.narg(refusal_reason),sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_instruction_id) DO UPDATE SET
+ account_id=EXCLUDED.account_id,offer_id=EXCLUDED.offer_id,
+ remote_subscription_id=COALESCE(EXCLUDED.remote_subscription_id,payment_pix_auto_instructions.remote_subscription_id),
+ remote_payment_id=COALESCE(EXCLUDED.remote_payment_id,payment_pix_auto_instructions.remote_payment_id),
+ status=EXCLUDED.status,purpose=EXCLUDED.purpose,retry_attempt=EXCLUDED.retry_attempt,
+ due_date=EXCLUDED.due_date,refusal_reason=EXCLUDED.refusal_reason,
+ last_event_at=EXCLUDED.last_event_at,updated_at=clock_timestamp()
+WHERE payment_pix_auto_instructions.last_event_at <= EXCLUDED.last_event_at
+  AND (payment_pix_auto_instructions.status NOT IN ('REFUSED','CANCELLED','DONE')
+       OR EXCLUDED.status IN ('REFUSED','CANCELLED','DONE'))
+RETURNING *;
+
+-- name: GetPaymentPixAutoInstruction :one
+SELECT * FROM payment_pix_auto_instructions
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_instruction_id=sqlc.arg(remote_instruction_id);
+
+-- name: ListPaymentPixAutoInstructions :many
+SELECT * FROM payment_pix_auto_instructions
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_authorization_id=sqlc.arg(remote_authorization_id)
+ORDER BY due_date,id
+LIMIT sqlc.arg(limit_count)::int;
+
+-- name: UpsertPaymentPixAutoEligibility :one
+INSERT INTO payment_pix_auto_eligibility(
+ provider,environment,merchant,status,reason,last_event_at,observed_at
+) VALUES(
+ 'asaas',sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(status),sqlc.arg(reason),
+ sqlc.arg(last_event_at)::timestamptz,sqlc.arg(observed_at)::timestamptz
+)
+ON CONFLICT (provider,environment,merchant) DO UPDATE SET
+ status=EXCLUDED.status,reason=EXCLUDED.reason,last_event_at=EXCLUDED.last_event_at,
+ observed_at=GREATEST(payment_pix_auto_eligibility.observed_at,EXCLUDED.observed_at)
+WHERE payment_pix_auto_eligibility.last_event_at <= EXCLUDED.last_event_at
+RETURNING *;
+
+-- name: GetPaymentPixAutoEligibility :one
+SELECT * FROM payment_pix_auto_eligibility
+WHERE provider='asaas' AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant);
+
+-- name: InsertPaymentPixAutoCycleAttempt :exec
+INSERT INTO payment_attempts(
+ id,operation_id,order_id,attempt_no,generation,provider,environment,merchant,payload_hash,
+ state,remote_id,lease_until,created_at,updated_at,completed_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(operation_id)::uuid,sqlc.arg(order_id)::uuid,1,1,
+ 'asaas',sqlc.arg(environment),sqlc.arg(merchant),sqlc.arg(payload_hash),
+ 'SUCCEEDED',sqlc.arg(remote_id),sqlc.arg(lease_until)::timestamptz,
+ sqlc.arg(created_at)::timestamptz,sqlc.arg(created_at)::timestamptz,sqlc.arg(created_at)::timestamptz
+);
+
+-- name: InsertPaymentSourceSwitch :one
+INSERT INTO payment_source_switches(
+ id,account_id,offer_id,environment,merchant,operation_key,old_source,old_offer_id,new_source,
+ old_local_id,old_remote_id,target_catalog_version,target_amount_centavos,
+ target_capabilities,current_end,first_debit_at,state,old_cancellation,
+ requested_at,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(environment),
+ sqlc.arg(merchant),sqlc.arg(operation_key),sqlc.arg(old_source),sqlc.arg(old_offer_id),sqlc.arg(new_source),
+ sqlc.narg(old_local_id),sqlc.narg(old_remote_id),sqlc.arg(target_catalog_version),
+ sqlc.arg(target_amount_centavos)::bigint,sqlc.arg(target_capabilities)::text[],
+ sqlc.narg(current_end)::timestamptz,sqlc.narg(first_debit_at)::timestamptz,
+ sqlc.arg(state),sqlc.arg(old_cancellation),sqlc.arg(requested_at)::timestamptz,
+ sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (account_id,environment,merchant,operation_key) DO NOTHING
+RETURNING *;
+
+-- name: GetPaymentSourceSwitchByOperation :one
+SELECT * FROM payment_source_switches
+WHERE account_id=sqlc.arg(account_id)::uuid AND environment=sqlc.arg(environment)
+  AND merchant=sqlc.arg(merchant) AND operation_key=sqlc.arg(operation_key);
+
+-- name: GetOpenPaymentSourceSwitch :one
+SELECT * FROM payment_source_switches
+WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id)
+  AND state IN ('PENDING','CANCELING','READY')
+ORDER BY updated_at DESC,id DESC LIMIT 1;
+
+-- name: ClaimPaymentSourceSwitch :execrows
+UPDATE payment_source_switches
+SET state='CANCELING',worker_id=sqlc.arg(worker_id),lease_until=sqlc.arg(lease_until)::timestamptz,
+    attempts=attempts+1,updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND state IN ('PENDING','CANCELING')
+  AND (lease_until IS NULL OR lease_until<=clock_timestamp())
+  AND attempts<20;
+
+-- name: ResolvePaymentSourceSwitch :execrows
+UPDATE payment_source_switches
+SET state=sqlc.arg(state),old_cancellation=sqlc.arg(old_cancellation),
+    first_debit_at=sqlc.narg(first_debit_at)::timestamptz,
+    last_error=sqlc.arg(last_error),last_event_at=sqlc.arg(last_event_at)::timestamptz,
+    worker_id=NULL,lease_until=NULL,updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND state IN ('PENDING','CANCELING');
+
+-- name: ConsumePaymentSourceSwitch :execrows
+UPDATE payment_source_switches
+SET state='CONSUMED',updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND state='READY';
+
+-- name: GetActivePaymentGrantEnd :one
+SELECT end_at
+FROM payment_grants
+WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id) AND state='ACTIVE'
+ORDER BY end_at DESC LIMIT 1;
+
+-- name: InsertPaymentBillingExit :one
+INSERT INTO payment_billing_exits(
+ id,account_id,operation_key,reason,state,requested_at,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(operation_key),sqlc.arg(reason),
+ sqlc.arg(state),sqlc.arg(requested_at)::timestamptz,sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (account_id,operation_key) DO NOTHING
+RETURNING *;
+
+-- name: GetPaymentBillingExitByOperation :one
+SELECT * FROM payment_billing_exits
+WHERE account_id=sqlc.arg(account_id)::uuid AND operation_key=sqlc.arg(operation_key);
+
+-- name: GetPaymentBillingExitByID :one
+SELECT * FROM payment_billing_exits WHERE id=sqlc.arg(id)::uuid;
+
+-- name: GetLatestPaymentBillingExit :one
+SELECT * FROM payment_billing_exits
+WHERE account_id=sqlc.arg(account_id)::uuid
+ORDER BY requested_at DESC,id DESC LIMIT 1;
+
+-- name: UpdatePaymentBillingExit :execrows
+UPDATE payment_billing_exits
+SET state=sqlc.arg(state),last_event_at=sqlc.arg(last_event_at)::timestamptz,
+    last_error=sqlc.arg(last_error),updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid;
+
+-- name: InsertPaymentBillingExitSource :one
+INSERT INTO payment_billing_exit_sources(
+ id,exit_id,account_id,source,local_id,remote_id,offer_id,provider,environment,merchant,
+ state,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(exit_id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(source),sqlc.arg(local_id),
+ sqlc.arg(remote_id),sqlc.arg(offer_id),sqlc.arg(provider),sqlc.arg(environment),
+ sqlc.arg(merchant),'PENDING',sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (exit_id,source,local_id) DO NOTHING
+RETURNING *;
+
+-- name: ListPaymentBillingExitSources :many
+SELECT * FROM payment_billing_exit_sources
+WHERE exit_id=sqlc.arg(exit_id)::uuid
+ORDER BY created_at,id;
+
+-- name: ClaimPaymentBillingExitSource :execrows
+UPDATE payment_billing_exit_sources
+SET state='CANCELING',lease_until=sqlc.arg(lease_until)::timestamptz,
+    attempts=attempts+1,updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND state IN ('PENDING','CANCELING')
+  AND (lease_until IS NULL OR lease_until<=clock_timestamp())
+  AND attempts<20;
+
+-- name: ResolvePaymentBillingExitSource :execrows
+UPDATE payment_billing_exit_sources
+SET state=sqlc.arg(state),last_error=sqlc.arg(last_error),
+    last_event_at=sqlc.arg(last_event_at)::timestamptz,lease_until=NULL,
+    updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND state='CANCELING';
+
+-- name: ListPaymentBillingCardsForAccount :many
+SELECT * FROM payment_contracts
+WHERE account_id=sqlc.arg(account_id)::uuid
+  AND provider_status NOT IN ('canceled','incomplete_expired')
+  AND cancel_at_period_end=false
+ORDER BY created_at,id;
+
+-- name: ListPaymentBillingMandatesForAccount :many
+SELECT * FROM payment_mandates
+WHERE account_id=sqlc.arg(account_id)::uuid AND status IN ('CREATED','ACTIVE')
+ORDER BY created_at,id;
+
+-- name: ListPaymentBillingHistory :many
+SELECT o.id AS order_id,o.offer_id,o.channel,o.amount_centavos,o.state AS order_state,
+       o.created_at AS ordered_at,s.id AS settlement_id,s.remote_payment_id,s.state AS settlement_state,
+       s.settled_at,g.id AS grant_id,g.start_at,g.end_at,g.state AS grant_state
+FROM payment_orders o
+LEFT JOIN payment_settlements s ON s.order_id=o.id AND s.outcome='GRANTED'
+LEFT JOIN payment_grants g ON g.settlement_id=s.id
+WHERE o.account_id=sqlc.arg(account_id)::uuid
+ORDER BY o.created_at DESC,o.id DESC
+LIMIT sqlc.arg(limit_count)::int;
+
+-- name: GetPaymentSettlementByCharge :one
+SELECT * FROM payment_settlements
+WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_charge_id=sqlc.arg(remote_charge_id);
+
+-- name: GetPaymentGrantForUpdate :one
+SELECT * FROM payment_grants WHERE id=sqlc.arg(id)::uuid FOR UPDATE;
+
+-- name: GetPaymentGrantBySettlement :one
+SELECT * FROM payment_grants WHERE settlement_id=sqlc.arg(settlement_id)::uuid;
+
+-- name: MarkPaymentSettlementRefunded :execrows
+UPDATE payment_settlements SET state=sqlc.arg(state)
+WHERE id=sqlc.arg(id)::uuid AND state IN ('SETTLED','PARTIALLY_REFUNDED');
+
+-- name: MarkPaymentSettlementReversed :execrows
+UPDATE payment_settlements SET state='REVERSED'
+WHERE id=sqlc.arg(id)::uuid AND state IN ('SETTLED','PARTIALLY_REFUNDED','REFUNDED');
+
+-- name: InsertPaymentRefund :one
+INSERT INTO payment_refunds(
+ id,account_id,offer_id,order_id,grant_id,settlement_id,provider,environment,merchant,
+ operation_key,remote_payment_id,remote_refund_id,amount_centavos,state,reason,
+ requested_by,approved_by,requested_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(order_id)::uuid,
+ sqlc.narg(grant_id)::uuid,sqlc.arg(settlement_id)::uuid,sqlc.arg(provider),sqlc.arg(environment),
+ sqlc.arg(merchant),sqlc.arg(operation_key),sqlc.arg(remote_payment_id),sqlc.narg(remote_refund_id),
+ sqlc.arg(amount_centavos)::bigint,sqlc.arg(state),sqlc.arg(reason),
+ sqlc.arg(requested_by),sqlc.narg(approved_by),sqlc.arg(requested_at)::timestamptz
+)
+ON CONFLICT (account_id,provider,environment,merchant,operation_key) DO NOTHING
+RETURNING *;
+
+-- name: GetPaymentRefundByOperation :one
+SELECT * FROM payment_refunds
+WHERE account_id=sqlc.arg(account_id)::uuid AND provider=sqlc.arg(provider)
+  AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND operation_key=sqlc.arg(operation_key);
+
+-- name: GetPaymentRefundByRemote :one
+SELECT * FROM payment_refunds
+WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_refund_id=sqlc.arg(remote_refund_id);
+
+-- name: GetPaymentRefund :one
+SELECT * FROM payment_refunds WHERE id=sqlc.arg(id)::uuid;
+
+-- name: ListPaymentRefundsForGrant :many
+SELECT * FROM payment_refunds
+WHERE grant_id=sqlc.arg(grant_id)::uuid
+ORDER BY requested_at,id;
+
+-- name: ListPaymentRefundsForSettlement :many
+SELECT * FROM payment_refunds
+WHERE settlement_id=sqlc.arg(settlement_id)::uuid
+ORDER BY requested_at,id;
+
+-- name: UpdatePaymentRefundState :execrows
+UPDATE payment_refunds
+SET state=sqlc.arg(state),remote_refund_id=COALESCE(sqlc.narg(remote_refund_id),remote_refund_id),
+    updated_at=clock_timestamp(),resolved_at=sqlc.narg(resolved_at)::timestamptz,
+    last_error=sqlc.arg(last_error)
+WHERE id=sqlc.arg(id)::uuid AND state=sqlc.arg(previous_state);
+
+-- name: InsertPaymentDispute :one
+INSERT INTO payment_disputes(
+ id,account_id,offer_id,grant_id,settlement_id,provider,environment,merchant,
+ remote_dispute_id,remote_payment_id,remote_charge_id,amount_centavos,state,opened_at,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.narg(grant_id)::uuid,
+ sqlc.arg(settlement_id)::uuid,sqlc.arg(provider),sqlc.arg(environment),sqlc.arg(merchant),
+ sqlc.arg(remote_dispute_id),sqlc.narg(remote_payment_id),sqlc.narg(remote_charge_id),
+ sqlc.arg(amount_centavos)::bigint,sqlc.arg(state),sqlc.arg(opened_at)::timestamptz,
+ sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_dispute_id) DO NOTHING
+RETURNING *;
+
+-- name: GetPaymentDisputeByRemote :one
+SELECT * FROM payment_disputes
+WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_dispute_id=sqlc.arg(remote_dispute_id);
+
+-- name: GetPaymentDispute :one
+SELECT * FROM payment_disputes WHERE id=sqlc.arg(id)::uuid;
+
+-- name: UpdatePaymentDisputeState :execrows
+UPDATE payment_disputes
+SET state=sqlc.arg(state),updated_at=clock_timestamp(),
+    resolved_at=sqlc.narg(resolved_at)::timestamptz,last_event_at=sqlc.arg(last_event_at)::timestamptz
+WHERE id=sqlc.arg(id)::uuid AND state=sqlc.arg(previous_state);
+
+-- name: InsertPaymentProviderHold :one
+INSERT INTO payment_provider_holds(
+ id,provider,environment,merchant,remote_hold_id,remote_payment_id,amount_centavos,
+ reason,state,observed_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(provider),sqlc.arg(environment),sqlc.arg(merchant),
+ sqlc.arg(remote_hold_id),sqlc.narg(remote_payment_id),sqlc.narg(amount_centavos)::bigint,
+ sqlc.arg(reason),'OPEN',sqlc.arg(observed_at)::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_hold_id) DO NOTHING
+RETURNING *;
+
+-- name: GetPaymentProviderHold :one
+SELECT * FROM payment_provider_holds WHERE id=sqlc.arg(id)::uuid;
+
+-- name: GetPaymentProviderHoldByRemote :one
+SELECT * FROM payment_provider_holds
+WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND remote_hold_id=sqlc.arg(remote_hold_id);
+
+-- name: UpdatePaymentProviderHold :execrows
+UPDATE payment_provider_holds
+SET state=sqlc.arg(state),reviewed_at=sqlc.arg(reviewed_at)::timestamptz,
+    reviewed_by=sqlc.arg(reviewed_by),review_reason=sqlc.arg(review_reason)
+WHERE id=sqlc.arg(id)::uuid AND state='OPEN';
+
+-- name: InsertPaymentOperatorAction :exec
+INSERT INTO payment_operator_actions(
+ id,actor,action,target_id,account_id,reason,amount_centavos,result
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(actor),sqlc.arg(action),sqlc.arg(target_id)::uuid,
+ sqlc.narg(account_id)::uuid,sqlc.arg(reason),sqlc.narg(amount_centavos)::bigint,sqlc.arg(result)
+);

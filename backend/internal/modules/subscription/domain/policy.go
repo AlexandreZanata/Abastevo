@@ -48,6 +48,11 @@ type Snapshot struct {
 	BasePlanID   string
 	Retired      bool
 	Acknowledged bool
+
+	// WebCapabilities/WebValidUntil are projected from verified web payment
+	// grants; they are independent of Play proof and credentials.
+	WebCapabilities []string
+	WebValidUntil   time.Time
 }
 type Status struct {
 	PolicyVersion      int        `json:"policy_version"`
@@ -78,15 +83,15 @@ func Evaluate(s *Snapshot, now time.Time, live bool) Status {
 	}
 	if s.Retired {
 		result.Reason = "purchase-retired"
-		return result
+		return mergeWeb(result, s, now)
 	}
 	if s.VerifiedAt.IsZero() || now.Before(s.VerifiedAt) || now.Sub(s.VerifiedAt) >= ProofFreshness {
 		result.Reason = "proof-stale"
-		return result
+		return mergeWeb(result, s, now)
 	}
 	if !now.Before(s.ValidUntil) {
 		result.Reason = "access-expired"
-		return result
+		return mergeWeb(result, s, now)
 	}
 	switch s.State {
 	case Active, Canceled, Grace:
@@ -94,6 +99,34 @@ func Evaluate(s *Snapshot, now time.Time, live bool) Status {
 		result.Capabilities = []string{"cloud.sync", "cloud.backup", "cloud.restore", "alerts.advanced", "professional.write", "professional.report", "vehicles.multiple"}
 	default:
 		result.Reason = "state-ineligible"
+	}
+	return mergeWeb(result, s, now)
+}
+
+func mergeWeb(result Status, s *Snapshot, now time.Time) Status {
+	if len(s.WebCapabilities) == 0 || s.WebValidUntil.IsZero() || !now.Before(s.WebValidUntil) {
+		return result
+	}
+	hadPlay := len(result.Capabilities) > 0
+	seen := make(map[string]bool, len(result.Capabilities)+len(s.WebCapabilities))
+	for _, capability := range result.Capabilities {
+		seen[capability] = true
+	}
+	for _, capability := range s.WebCapabilities {
+		if !seen[capability] {
+			result.Capabilities = append(result.Capabilities, capability)
+			seen[capability] = true
+		}
+	}
+	result.State = Active
+	if hadPlay {
+		result.Reason = "verified"
+	} else {
+		result.Reason = "verified-web"
+	}
+	until := s.WebValidUntil.UTC()
+	if result.ValidUntil == nil || until.After(*result.ValidUntil) {
+		result.ValidUntil = &until
 	}
 	return result
 }

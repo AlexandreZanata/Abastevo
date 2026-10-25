@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.usecase.intake.SubmitSuggestionOutcome
 
 /**
@@ -175,11 +176,13 @@ fun SuggestStationScreen(
                     modifier = Modifier.semantics { heading() },
                 )
                 uiState.ownItems.forEach { item ->
+                    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            containerColor = containerColor,
                         ),
+                        border = AnpContainerDefaults.borderStroke(containerColor),
                     ) {
                         Column(
                             modifier = Modifier.padding(12.dp),

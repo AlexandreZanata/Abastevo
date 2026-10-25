@@ -71,7 +71,11 @@ func TestStagingMaximumAndOverLimitOnRealHTTPStreams(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	client := &http.Client{Timeout: 45 * time.Second}
+	// Each admission case owns its connection; oversized uploads deliberately
+	// close their stream and must not influence a subsequent chunked case.
+	transport := &http.Transport{DisableKeepAlives: true}
+	t.Cleanup(transport.CloseIdleConnections)
+	client := &http.Client{Transport: transport, Timeout: 45 * time.Second}
 	for _, chunked := range []bool{false, true} {
 		for _, tc := range []struct {
 			path       string
@@ -84,6 +88,9 @@ func TestStagingMaximumAndOverLimitOnRealHTTPStreams(t *testing.T) {
 			res, err := client.Do(r)
 			if err != nil {
 				t.Fatalf("path=%s chunked=%v size=%d: %v", tc.path, chunked, tc.size, err)
+			}
+			if _, err := io.Copy(io.Discard, res.Body); err != nil {
+				t.Fatal(err)
 			}
 			res.Body.Close()
 			if res.StatusCode != tc.code {

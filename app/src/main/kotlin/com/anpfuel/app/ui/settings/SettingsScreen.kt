@@ -66,6 +66,7 @@ import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.model.StorageUsage
 import com.anpfuel.domain.model.UserPreferences
@@ -506,11 +507,13 @@ private fun PrivacyRedirectCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            containerColor = containerColor,
         ),
+        border = AnpContainerDefaults.borderStroke(containerColor),
         onClick = onClick,
     ) {
         Row(

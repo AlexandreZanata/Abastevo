@@ -37,6 +37,7 @@ import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.OfflineBanner
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.charging.ChargingCondition
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingReportReason
@@ -70,7 +71,10 @@ fun ChargingCommunityScreen(
             if (state.offline) item { OfflineBanner() }
             state.notice?.let { notice ->
                 item {
-                    Card(Modifier.fillMaxWidth()) {
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    ) {
                         Row(Modifier.fillMaxWidth().padding(12.dp), Arrangement.SpaceBetween) {
                             Text(
                                 text = stringResource(
@@ -196,7 +200,10 @@ fun ChargingCommunityScreen(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun CommunityForm(state: ChargingCommunityUiState, viewModel: ChargingCommunityViewModel) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
                 text = stringResource(
@@ -294,7 +301,10 @@ private fun CommunityForm(state: ChargingCommunityUiState, viewModel: ChargingCo
 
 @Composable
 private fun PendingRow(pending: PendingChargingOperation) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
         Text(
             text = stringResource(
                 when (pending.kind.name) {
@@ -316,7 +326,10 @@ private fun OwnedRow(
     onEdit: () -> Unit,
     onWithdraw: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = "${owned.connector.name} · ${owned.condition.name} · ${owned.observedDay}")
             owned.priceMilliBrlPerKwh?.let {
@@ -342,7 +355,10 @@ private fun HistoryRow(
     onVote: (ChargingVote) -> Unit,
     onReport: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(
+        Modifier.fillMaxWidth(),
+        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = "${observation.connector.name} · ${observation.condition.name} · ${observation.observedDay}")
             observation.priceMilliBrlPerKwh?.let {

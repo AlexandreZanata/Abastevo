@@ -3,21 +3,23 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	qualityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/jobs"
-	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/prepared"
-	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
-	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	qualityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/native"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/prepared"
+	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
+	qualityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/application"
+	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 )
 
 // Explicit manual live-source smoke only, excluded from deterministic CI.
@@ -215,6 +217,31 @@ func TestOfficialSevenFileWorkerPipeline(t *testing.T) {
 			}
 			if count != tc.accepted {
 				t.Fatal("worker public traversal lost records", count)
+			}
+			var exportPayload bytes.Buffer
+			exportManifest, e := qualityapp.BuildOfficialExport(ctx, qualityread.NewExportReader(p), &exportPayload, 500)
+			if e != nil || exportManifest.Rows != tc.accepted || exportManifest.AssociationCensus.Total != tc.accepted || exportManifest.AssociationCensus.Unmatched != tc.accepted || exportManifest.AssociationCensus.Linked != 0 {
+				t.Fatal("worker frozen export pin/traversal mismatch", e)
+			}
+			if exportManifest.Edition != tc.period || exportManifest.SourceChecksum != tc.sha || !strings.Contains(exportManifest.SourceURL, tc.file) || exportPayload.Len() == 0 {
+				t.Fatal("worker frozen export source identity mismatch")
+			}
+			t.Logf("frozen export %s revision=%s lease=%s rows=%d sha256=%s", exportManifest.Edition, exportManifest.RevisionID, exportManifest.LeaseID, exportManifest.Rows, exportManifest.PayloadSHA256)
+			if exportDir := os.Getenv("ANPFUEL_TEST_EXPORT_DIR"); exportDir != "" {
+				if err := os.MkdirAll(exportDir, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(exportDir, "official-records-"+tc.period+".jsonl"), exportPayload.Bytes(), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				manifestJSON, err := json.MarshalIndent(exportManifest, "", "  ")
+				if err != nil {
+					t.Fatal(err)
+				}
+				manifestJSON = append(manifestJSON, '\n')
+				if err := os.WriteFile(filepath.Join(exportDir, "official-records-"+tc.period+".json"), manifestJSON, 0o600); err != nil {
+					t.Fatal(err)
+				}
 			}
 			children, e := os.ReadDir(root)
 			if e != nil || len(children) != 0 {

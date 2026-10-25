@@ -161,11 +161,12 @@ func freshServiceSchema(t *testing.T, schema fs.FS) (*application.Service, *inte
 		RequestErasure: func(_ context.Context, _ string, _ []string) error {
 			return nil
 		},
-		CodeGen:  nextCode,
-		TokenGen: nextToken,
-		AliasGen: nextAlias,
-		KeyGen:   domain.GenerateAccountKey,
-		IDGen:    nextID,
+		RequestBillingExit: func(_ context.Context, _ string) error { return nil },
+		CodeGen:            nextCode,
+		TokenGen:           nextToken,
+		AliasGen:           nextAlias,
+		KeyGen:             domain.GenerateAccountKey,
+		IDGen:              nextID,
 	}
 	return svc, clock, mail
 }

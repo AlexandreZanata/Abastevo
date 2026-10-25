@@ -22,6 +22,7 @@ func TestSignupDeletionCannotRefundAdmissionOnSQL(t *testing.T) {
 	svc, clock, _ := freshService(t)
 	ctx := context.Background()
 	svc.RequestErasure = func(context.Context, string, []string) error { return nil }
+	svc.RequestBillingExit = func(context.Context, string) error { return nil }
 	var admitted atomic.Int32
 	var wg sync.WaitGroup
 	for i := 0; i < 115; i++ {

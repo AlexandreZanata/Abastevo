@@ -62,6 +62,12 @@ func (s *Service) DeleteAccount(ctx context.Context, accountID string) (Deletion
 	if s.RequestErasure == nil {
 		return DeletionReceipt{}, domain.ErrErasureWiringMissing
 	}
+	if s.RequestBillingExit == nil {
+		return DeletionReceipt{}, domain.ErrBillingExitWiringMissing
+	}
+	if err := s.RequestBillingExit(ctx, accountID); err != nil {
+		return DeletionReceipt{}, err
+	}
 	contributors, err := s.Store.DeleteAccount(ctx, accountID, s.Clock.NowUnix())
 	if err != nil {
 		return DeletionReceipt{}, err

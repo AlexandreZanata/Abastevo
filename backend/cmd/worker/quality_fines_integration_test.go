@@ -85,7 +85,7 @@ func testFineWorkerDiscoveryDispatchRustAndCorrection(t *testing.T, period strin
 		return file()
 	}
 	handlers := map[string]platformjobs.Handler{qualityjobs.NativeFineImportKind: im}
-	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep"} {
+	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "payment-inbox"} {
 		handlers[kind] = dispatcherHandler(kind)
 	}
 	dispatchers, e := workerDispatchers(platformjobs.NewQueue(p), handlers, qualityjobs.NativeFineImportKind)

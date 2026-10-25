@@ -36,6 +36,7 @@ import (
 	alertsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters"
 	alertshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/alerts/adapters/http"
 	charginghttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/http"
+	chargingprepared "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/prepared"
 	chargingread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/read"
 	cloudadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters"
 	cloudhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters/http"
@@ -67,6 +68,8 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	ledgeradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters"
 	ledgerhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters/http"
+	mapdata "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/mapdata"
+	mapdist "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/mapdist"
 	metricsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/adapters"
 	metricshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/adapters/http"
 	metricsapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/application"
@@ -97,6 +100,8 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // unixClock adapts wall time to the account domain Clock port.
@@ -125,6 +130,15 @@ func newUUID() (string, error) {
 	hexed := hex.EncodeToString(b[:])
 	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
 		hexed[16:20] + "-" + hexed[20:32], nil
+}
+
+// registerChargingSurfaces mounts the existing charging command, history
+// and ranking handlers. Kept as one composition function so route wiring
+// has a direct regression test without opening a database.
+func registerChargingSurfaces(r chi.Router, store chargingprepared.ObservationStore, sessions func(context.Context, string, string) (string, error), enabled func() bool, pool *pgxpool.Pool) {
+	charginghttp.CommandsHandler{Store: store, Sessions: sessions}.RegisterRoutes(r)
+	charginghttp.HistoryHandler{Pool: pool, Enabled: enabled}.RegisterHistoryRoutes(r)
+	charginghttp.RankHandler{Enabled: enabled}.RegisterRankRoutes(r)
 }
 
 type metricsLedgerReader struct{ store *ledgeradapters.Store }
@@ -256,10 +270,37 @@ func run() error {
 	communityPrices := communityread.NewReader(pool.Underlying())
 	communityhttp.FeedHandler{Read: communityPrices.Feed, Summary: communityPrices.CitySummary, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
 	directoryhttp.Handler{Stations: stations, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
+	mapdata.Handler{Store: mapdata.NewStore(rawPool), Secrets: cfg.CursorSecret}.RegisterRoutes(router)
+	if cfg.MapDistributionDir != "" {
+		keys, err := mapdist.ParsePublicKeys(cfg.MapDistributionKeys)
+		if err != nil {
+			return fmt.Errorf("map distribution keys: %w", err)
+		}
+		dist, err := mapdist.Load(cfg.MapDistributionDir, keys)
+		if err != nil {
+			return fmt.Errorf("map distribution: %w", err)
+		}
+		mapdist.Handler{Dist: dist}.RegisterRoutes(router)
+	}
 	// Public station profiles (P30-T02). Same composition rule: the
 	// profile handler gets the canonical reader as a closure so
 	// modules never cross-read. Anonymous; no badge without a grant.
 	accountStore := accountadapters.NewPGStore(pool.Underlying())
+	// PAY-20: verified payment runtime. Provider clients exist only for
+	// maintenance-ready channels; sales stay off and operator proofs stay
+	// unimplemented, so dependent commands fail closed. Owner proofs are
+	// attached below once the account service exists. Account deletion
+	// keeps recording its durable billing-exit intent before mutation.
+	payments := composePayments(cfg.Payments, pool.Underlying(), time.Now, nil)
+	registerPaymentRoutes(router, payments)
+	logger.Info(context.Background(), "api.payments",
+		"stripe_maintenance_ready", payments.Preflight.Stripe.MaintenanceReady,
+		"pix_manual_maintenance_ready", payments.Preflight.PixManual.MaintenanceReady,
+		"pix_automatic_maintenance_ready", payments.Preflight.PixAutomatic.MaintenanceReady,
+		"stripe_new_sales_ready", payments.Preflight.Stripe.NewSalesReady,
+		"pix_manual_new_sales_ready", payments.Preflight.PixManual.NewSalesReady,
+		"pix_automatic_new_sales_ready", payments.Preflight.PixAutomatic.NewSalesReady)
+	billingExit := payments.Billing
 	profileadapters.Handler{
 		Store: profileadapters.Store{Q: dbstationprofile.New(pool.Underlying())},
 		Representation: func(ctx context.Context, stationID, cnpj string) (bool, error) {
@@ -447,6 +488,11 @@ func run() error {
 		KeyGen:      accountdomain.GenerateAccountKey,
 		IDGen:       newUUID,
 	}
+	accountService.RequestBillingExit = billingExit.RequestAccountExit
+	// PAY-20: proof-gated owner commands verify one live session per
+	// action through the account service; the proof value itself never
+	// leaves this closure.
+	payments.Billing.Proof = accountOwnerProof{validate: accountService.ValidateAccess}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
 	// Station/fuel feedback (P14-T03). Same closure rule: session
 	// ownership, account liveness and station existence arrive as
@@ -516,6 +562,19 @@ func run() error {
 		_, err := platformjobs.Enqueue(ctx, pool.Underlying(), "account-erasure-reconcile", []byte(`{"version":1}`), "account-erasure-hint:"+time.Now().UTC().Format("200601021504"), 5, time.Time{})
 		return err
 	}
+
+	// Community charging writes and derived reads (MAP-02): the handlers
+	// already existed but were not mounted, so the documented routes
+	// answered 404. Free account sessions authorize writes; public history
+	// and tariff ranking follow the existing charging-read gate.
+	registerChargingSurfaces(router,
+		chargingprepared.ObservationStore{Pool: rawPool},
+		func(ctx context.Context, familyID, accessToken string) (string, error) {
+			return accountService.ValidateAccess(ctx, familyID, accessToken)
+		},
+		func() bool { return cfg.ChargingReadsEnabled },
+		rawPool,
+	)
 
 	feedbackhttp.Handler{
 		Service: feedbackService,
