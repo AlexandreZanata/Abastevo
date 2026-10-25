@@ -46,7 +46,7 @@ class ComapsMapEngine(
     private var routingContainer: RoutingController.Container? = null
     private var overlayCategory = -1L
     private var overlayClusters: List<MapOverlayCluster> = emptyList()
-    private var overlayClusterMembers: Map<String, List<MapOverlayMarker>> = emptyMap()
+    private var overlayMarkers: List<MapOverlayMarker> = emptyList()
     private var overlayLoadingListener: BookmarkManager.BookmarksLoadingListener? = null
     private var overlayCategoriesListener: DataChangedListener? = null
     private var overlayGeneration = 0L
@@ -406,9 +406,7 @@ class ComapsMapEngine(
                         oldCategories.filter { it != category.id }.forEach(manager::deleteCategory)
                         overlayCategory = category.id
                         overlayClusters = preparation.clusters
-                        overlayClusterMembers = preparation.clusters
-                            .filter { it.isCluster }
-                            .associate { it.id to it.markers }
+                        overlayMarkers = markers
                         Log.i(
                             "ComapsMapEngine",
                             "overlay committed generation=$generation category=${category.id} markers=${markers.size} " +
@@ -492,7 +490,7 @@ class ComapsMapEngine(
         placePageListener = null
         overlayListener = null
         overlayClusters = emptyList()
-        overlayClusterMembers = emptyMap()
+        overlayMarkers = emptyList()
     }
 
     private fun clearOverlayListeners() {
@@ -506,9 +504,14 @@ class ComapsMapEngine(
         if (placePageListener != null) return
         val listener = object : PlacePageActivationListener {
             override fun onPlacePageActivated(data: PlacePageData) {
-                val title = (data as? MapObject)?.title ?: return
-                Log.i("ComapsMapEngine", "place page activated title=$title")
-                overlaySelectionFor(title, overlayClusterMembers)?.let { overlayListener?.invoke(it) }
+                val objectData = data as? MapObject ?: return
+                Log.i("ComapsMapEngine", "place page activated title=${objectData.title}")
+                overlaySelectionFor(
+                    objectData.lat,
+                    objectData.lon,
+                    overlayMarkers,
+                    overlayClusters,
+                )?.let { overlayListener?.invoke(it) }
             }
 
             override fun onPlacePageDeactivated() = Unit
@@ -519,13 +522,28 @@ class ComapsMapEngine(
     }
 }
 
+/**
+ * Identifies an Abastevo overlay object by its exact rendered point, never by
+ * a technical label. The native place-page title is user-facing station text;
+ * canonical UUIDs remain internal. Ambiguous/nearby points fail closed.
+ */
 internal fun overlaySelectionFor(
-    title: String,
-    clusterMembers: Map<String, List<MapOverlayMarker>>,
-): MapOverlaySelection? = when {
-    title.startsWith("ABASTEVO_CLUSTER:") ->
-        clusterMembers[title.removePrefix("ABASTEVO_CLUSTER:")]?.let { MapOverlaySelection.Cluster(it) }
+    latitude: Double,
+    longitude: Double,
+    markers: List<MapOverlayMarker>,
+    clusters: List<MapOverlayCluster>,
+): MapOverlaySelection? {
+    fun matches(lat: Double, lon: Double): Boolean =
+        kotlin.math.abs(lat - latitude) < 1e-6 && kotlin.math.abs(lon - longitude) < 1e-6
 
-    title.startsWith("ABASTEVO:") -> MapOverlaySelection.Station(title.removePrefix("ABASTEVO:"))
-    else -> null
+    val cluster = clusters.firstOrNull { matches(it.latitude, it.longitude) }
+    if (cluster != null) {
+        return if (cluster.markers.size == 1) {
+            MapOverlaySelection.Station(cluster.markers.single().uuid)
+        } else {
+            MapOverlaySelection.Cluster(cluster.markers)
+        }
+    }
+    return markers.firstOrNull { matches(it.latitude, it.longitude) }
+        ?.let { MapOverlaySelection.Station(it.uuid) }
 }

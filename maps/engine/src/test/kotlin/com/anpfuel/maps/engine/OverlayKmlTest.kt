@@ -59,13 +59,13 @@ class OverlayKmlTest {
         assertTrue(kml.contains("<name>Abastevo overlay v1:</name>"))
 
         assertTrue(kml.startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"))
-        assertTrue(kml.contains("<name>ABASTEVO:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa</name>"))
+        assertTrue(kml.contains("<name>Posto &amp; Cia &lt;centro&gt;</name>"))
         assertTrue(kml.contains("<description>Posto &amp; Cia &lt;centro&gt; - Fuel - Reviewed location</description>"))
         assertTrue(kml.contains("<styleUrl>#placemark-orange</styleUrl>"))
         assertTrue(kml.contains("<mwm:icon>Gas</mwm:icon>"))
         assertTrue(kml.contains("<styleUrl>#placemark-teal</styleUrl>"))
         assertTrue(kml.contains("<mwm:icon>ChargingStation</mwm:icon>"))
-        assertTrue(kml.contains("<name>ABASTEVO:cccccccc-cccc-4ccc-8ccc-cccccccccccc</name>"))
+        assertTrue(kml.contains("<name>Hibrido</name>"))
         assertTrue(kml.contains("<description>Hibrido - Fuel and charging - Reviewed location</description>"))
         assertTrue(kml.contains("<styleUrl>#placemark-purple</styleUrl>"))
         assertFalse(kml.contains("Posto & Cia"))
@@ -199,7 +199,7 @@ class OverlayKmlTest {
         )
         val kml = buildOverlayKml(preparation.clusters)
 
-        assertTrue(kml.contains("<name>ABASTEVO_CLUSTER:c10-0</name>"))
+        assertTrue(kml.contains("<name>2</name>"))
         assertTrue(kml.contains("<description>2 stations</description>"))
         assertTrue(kml.contains("<styleUrl>#placemark-bluegray</styleUrl>"))
         assertTrue(kml.contains("<mwm:icon>Information</mwm:icon>"))
@@ -249,22 +249,25 @@ class OverlayKmlTest {
     }
 
     @Test
-    fun `selection maps station and cluster titles to app events`() {
-        val first = marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
-        val second = marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
-        val cluster = MapOverlayCluster("c1-0", -25.42, -49.27, listOf(first, second))
-        val members = mapOf("c1-0" to cluster.markers)
+    fun `selection maps exact rendered points and never technical labels`() {
+        val first = marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", latitude = -25.41, longitude = -49.26)
+        val second = marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", latitude = -25.42, longitude = -49.27)
+        val single = MapOverlayCluster("c1-0", -25.41, -49.26, listOf(first))
+        val cluster = MapOverlayCluster("c1-1", -25.42, -49.27, listOf(second, marker(
+            "cccccccc-cccc-4ccc-8ccc-cccccccccccc", latitude = -25.4201, longitude = -49.2701,
+        )))
+        val clusters = listOf(single, cluster)
+        val markers = clusters.flatMap { it.markers }
 
-        val station = overlaySelectionFor("ABASTEVO:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", members)
+        val station = overlaySelectionFor(-25.41, -49.26, markers, clusters)
         assertTrue(station is MapOverlaySelection.Station)
         assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", (station as MapOverlaySelection.Station).uuid)
 
-        val clusterSelection = overlaySelectionFor("ABASTEVO_CLUSTER:c1-0", members)
+        val clusterSelection = overlaySelectionFor(-25.42, -49.27, markers, clusters)
         assertTrue(clusterSelection is MapOverlaySelection.Cluster)
         assertEquals(2, (clusterSelection as MapOverlaySelection.Cluster).members.size)
 
-        assertNull(overlaySelectionFor("ABASTEVO_CLUSTER:missing", members))
-        assertNull(overlaySelectionFor("Some OSM POI", members))
+        assertNull(overlaySelectionFor(-25.5, -49.5, markers, clusters))
     }
 
     private fun marker(

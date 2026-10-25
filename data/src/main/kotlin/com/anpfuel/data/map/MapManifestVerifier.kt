@@ -118,6 +118,11 @@ object MapManifestVerifier {
     private fun tryPlatformRawKey(rawKey: ByteArray, message: ByteArray, signature: ByteArray): Boolean? {
         try {
             val keyFactory = KeyFactory.getInstance("Ed25519")
+            // Android's KeyFactory("Ed25519") may resolve the AndroidKeyStore
+            // provider, which only accepts KeyGenParameterSpec and cannot import
+            // an X.509 SPKI. That is provider absence for pinned raw keys, not
+            // malformed key material; use the owned Monocypher bridge instead.
+            if (keyFactory.provider.name == "AndroidKeyStore") return null
             val publicKey = keyFactory.generatePublic(X509EncodedKeySpec(ED25519_SPKI_PREFIX + rawKey))
             val verifier = Signature.getInstance("Ed25519")
             verifier.initVerify(publicKey)

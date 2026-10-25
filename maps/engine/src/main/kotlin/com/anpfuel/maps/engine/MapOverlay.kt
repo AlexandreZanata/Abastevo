@@ -207,7 +207,7 @@ internal fun buildOverlayKml(
         val marker = cluster.markers.singleOrNull()
         if (marker == null) {
             appendPlacemark(
-                name = "ABASTEVO_CLUSTER:${escapeXml(cluster.id)}",
+                name = cluster.count.toString(),
                 description = "${cluster.count} stations",
                 latitude = cluster.latitude,
                 longitude = cluster.longitude,
@@ -216,7 +216,7 @@ internal fun buildOverlayKml(
             )
         } else {
             appendPlacemark(
-                name = "ABASTEVO:${escapeXml(marker.uuid)}",
+                name = escapeXml(marker.title),
                 description = describe(marker),
                 latitude = marker.latitude,
                 longitude = marker.longitude,

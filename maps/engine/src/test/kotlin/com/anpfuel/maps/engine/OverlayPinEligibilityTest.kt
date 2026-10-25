@@ -33,9 +33,10 @@ class OverlayPinEligibilityTest {
         assertEquals(1, preparation.clusters.size)
         assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", preparation.clusters.single().markers.single().uuid)
         assertEquals(2, preparation.unpinned.size)
-        // KML contains only the reviewed pin.
+        // KML contains only the reviewed pin, labelled by station text, not UUID.
         val kml = buildOverlayKml(preparation.clusters)
-        assertTrue(kml.contains("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"))
+        assertTrue(kml.contains("<name>Reviewed</name>"))
+        assertTrue(!kml.contains("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"))
         assertTrue(!kml.contains("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"))
         assertTrue(!kml.contains("cccccccc-cccc-4ccc-8ccc-cccccccccccc"))
         // Accessible list keeps all three with explicit warnings.

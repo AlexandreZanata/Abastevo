@@ -8,8 +8,10 @@ import com.anpfuel.domain.charging.ChargingCurrent
 import com.anpfuel.domain.charging.ChargingPlace
 import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.discovery.ServerStation
+import com.anpfuel.domain.discovery.ServerStationPage
 import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.repository.MunicipalityCatalogRepository
+import com.anpfuel.domain.repository.ServerStationCache
 import com.anpfuel.domain.repository.ServerStationGateway
 import com.anpfuel.domain.repository.UserPreferencesRepository
 import com.anpfuel.domain.valueobject.FuelProduct
@@ -85,6 +87,7 @@ data class MapDiscoveryUi(
     val chargingSnapshotPresent: Boolean = true,
     val chargingError: String? = null,
     val cityLocationUnknown: Boolean = false,
+    val offlineCached: Boolean = false,
 )
 
 /**
@@ -101,6 +104,7 @@ class MapDiscoveryViewModel @Inject constructor(
     private val engine: MapEngine,
     private val userPreferences: UserPreferencesRepository?,
     private val catalog: MunicipalityCatalogRepository?,
+    private val stationCache: ServerStationCache = NoopServerStationCache,
 ) : ViewModel() {
 
     constructor(
@@ -113,6 +117,7 @@ class MapDiscoveryViewModel @Inject constructor(
         engine = engine,
         userPreferences = null,
         catalog = null,
+        stationCache = NoopServerStationCache,
     )
 
     private val _ui = MutableStateFlow(MapDiscoveryUi())
@@ -214,7 +219,8 @@ class MapDiscoveryViewModel @Inject constructor(
                 val reviewed = page.items.firstOrNull {
                     it.locationQuality == StationLocationQuality.REVIEWED && it.latitude != null && it.longitude != null
                 }
-                _ui.update { it.copy(cityLocationUnknown = reviewed == null) }
+                _ui.update { it.copy(cityLocationUnknown = reviewed == null, offlineCached = false) }
+                saveMapCache(code, page.items)
                 pushMarkers(
                     page.items.mapNotNull { it.toMarker() }, gen,
                     page.items.filter { it.latitude == null || it.longitude == null },
@@ -225,7 +231,17 @@ class MapDiscoveryViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (gen == generation) _ui.update { it.copy(loading = false, error = e.message ?: "city-unavailable") }
+                if (gen != generation) return@launch
+                val cached = loadMapCache(code)
+                if (cached.isNotEmpty()) {
+                    pushMarkers(
+                        cached.mapNotNull { it.toMarker() }, gen,
+                        cached.filter { it.latitude == null || it.longitude == null },
+                    )
+                    _ui.update { it.copy(loading = false, error = null, offlineCached = true) }
+                } else {
+                    _ui.update { it.copy(loading = false, error = e.message ?: "city-unavailable") }
+                }
             }
         }
     }
@@ -233,6 +249,20 @@ class MapDiscoveryViewModel @Inject constructor(
     fun onViewport(latitude: Double, longitude: Double, radiusMeters: Int = 10_000) {
         if (!latitude.isFinite() || !longitude.isFinite()) return
         val boundedRadius = radiusMeters.coerceIn(100, 15_000)
+        // Search is a mode: native camera sync must not silently replace
+        // searched pins and the list with nearby results. Clearing the query
+        // below re-enters viewport mode explicitly.
+        val current = _ui.value
+        if (current.searchQuery.isNotBlank()) {
+            _ui.update {
+                it.copy(
+                    viewportLatitude = latitude,
+                    viewportLongitude = longitude,
+                    viewportRadiusMeters = boundedRadius,
+                )
+            }
+            return
+        }
         // B-BR-MAP-DISCOVERY-01: Cancel in-flight job and advance generation BEFORE debounce.
         fetchJob?.cancel()
         val gen = ++generation
@@ -259,6 +289,7 @@ class MapDiscoveryViewModel @Inject constructor(
                 )
                 if (gen != generation) return@launch
                 val fuelMarkers = nearby.mapNotNull { it.station.toMarker() }
+                saveMapCache(_ui.value.municipalityCode, nearby.map { it.station })
                 // Stations without coordinates stay list-only with explicit warning.
                 val nullCoords = nearby.map { it.station }.filter { it.latitude == null || it.longitude == null }
                 val uiSnapshot = _ui.value
@@ -305,7 +336,16 @@ class MapDiscoveryViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 if (gen != generation) return@launch
-                _ui.update { it.copy(loading = false, error = e.message ?: "discovery-failed") }
+                val cached = loadMapCache(_ui.value.municipalityCode)
+                if (cached.isNotEmpty()) {
+                    pushMarkers(
+                        cached.mapNotNull { it.toMarker() }, gen,
+                        cached.filter { it.latitude == null || it.longitude == null },
+                    )
+                    _ui.update { it.copy(loading = false, error = null, offlineCached = true) }
+                } else {
+                    _ui.update { it.copy(loading = false, error = e.message ?: "discovery-failed") }
+                }
             }
         }
     }
@@ -339,6 +379,10 @@ class MapDiscoveryViewModel @Inject constructor(
                     error = null,
                     generation = gen,
                 )
+            }
+            if (q.isEmpty()) {
+                val state = _ui.value
+                onViewport(state.viewportLatitude, state.viewportLongitude, state.viewportRadiusMeters)
             }
             return
         }
@@ -392,6 +436,7 @@ class MapDiscoveryViewModel @Inject constructor(
                         chargingError = chargingResult.error,
                     )
                 }
+                _ui.update { it.copy(offlineCached = false) }
                 pushMarkers(
                     markers = markers + chargeMarkers,
                     gen = gen,
@@ -402,7 +447,18 @@ class MapDiscoveryViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 if (gen != generation) return@launch
-                _ui.update { it.copy(loading = false, error = e.message ?: "search-failed") }
+                val cached = loadMapCache(effectiveCode).filter {
+                    it.displayName.contains(q, ignoreCase = true)
+                }
+                if (cached.isNotEmpty()) {
+                    pushMarkers(
+                        cached.mapNotNull { it.toMarker() }, gen,
+                        cached.filter { it.latitude == null || it.longitude == null },
+                    )
+                    _ui.update { it.copy(loading = false, error = null, offlineCached = true) }
+                } else {
+                    _ui.update { it.copy(loading = false, error = e.message ?: "search-failed") }
+                }
             }
         }
     }
@@ -681,9 +737,38 @@ class MapDiscoveryViewModel @Inject constructor(
                 selectedMembers = reconciledMembers,
                 loading = false,
                 error = null,
+                offlineCached = false,
             )
         }
     }
+
+    private suspend fun saveMapCache(code: String, stations: List<ServerStation>) {
+        try {
+            stationCache.saveScopedPage(mapScope(code), ServerStationPage(stations, null))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Cache failure never blocks the live map.
+        }
+    }
+
+    private suspend fun loadMapCache(code: String): List<ServerStation> = try {
+        stationCache.loadScopedPage(mapScope(code))?.items.orEmpty()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        emptyList()
+    }
+
+    private fun mapScope(code: String): String = "map:${code.ifBlank { "national" }}"
+}
+
+private object NoopServerStationCache : ServerStationCache {
+    override suspend fun savePage(page: ServerStationPage) = Unit
+    override suspend fun loadPage(): ServerStationPage? = null
+    override suspend fun saveDetail(station: ServerStation) = Unit
+    override suspend fun loadDetail(stationId: String): ServerStation? = null
+    override suspend fun clear() = Unit
 }
 
 private fun ServerStation.toMarker(): MapOverlayMarker? {
