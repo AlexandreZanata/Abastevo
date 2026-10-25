@@ -560,6 +560,8 @@ func stripeError(err error) error {
 	var stripeErr *stripe.Error
 	if errors.As(err, &stripeErr) {
 		switch {
+		case stripeErr.HTTPStatusCode == http.StatusUnauthorized || stripeErr.HTTPStatusCode == http.StatusForbidden:
+			return domain.ErrUnauthorized
 		case stripeErr.HTTPStatusCode == 429, stripeErr.HTTPStatusCode >= 500, stripeErr.Type == stripe.ErrorTypeAPI:
 			return app.ErrAmbiguous
 		case stripeErr.Type == stripe.ErrorTypeIdempotency:

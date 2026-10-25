@@ -61,6 +61,26 @@ func TestPAY21StripeRetryableFaultsStayAmbiguous(t *testing.T) {
 	}
 }
 
+func TestPAY21StripeRevokedKeyIsUnauthorized(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden} {
+		provider := stripeTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(status)
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{
+				"type": "invalid_request_error", "message": "revoked",
+			}})
+		}))
+		_, err := provider.CreateCheckout(context.Background(), app.CheckoutRequest{
+			Order: testOrder(t), CustomerID: "cus_synthetic", PriceID: "price_synthetic",
+			MerchantID: "acct_synthetic", Environment: domain.EnvironmentTest,
+			SuccessURL: "https://app.example.invalid/return", CancelURL: "https://app.example.invalid/cancel",
+			IdempotencyKey: "pay:checkout:op_revoked",
+		})
+		if !errors.Is(err, domain.ErrUnauthorized) {
+			t.Fatalf("status=%d err = %v", status, err)
+		}
+	}
+}
+
 func TestPAY21StripeDeclineNeverRetries(t *testing.T) {
 	provider := stripeTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusPaymentRequired)
