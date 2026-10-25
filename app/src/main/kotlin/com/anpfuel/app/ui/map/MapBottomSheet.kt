@@ -15,11 +15,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
-import com.anpfuel.maps.engine.MapStationType
 
 /**
  * MAP-19 quick sheet: name, services, exact source/product/unit/price/date,
@@ -63,10 +63,21 @@ fun MapBottomSheet(
                     val p = ui.price!!
                     Text("${p.product} ${p.amount} ${p.unit}", style = MaterialTheme.typography.titleMedium)
                     Text(p.dateLabel, style = MaterialTheme.typography.bodySmall)
+                    if (p.stale) {
+                        Text("Cached price (offline)", style = MaterialTheme.typography.labelSmall)
+                    }
                 }
                 ui.absentReason == "anp-no-tariff" -> {
                     Text("ANP does not supply electric tariffs.")
-                    Button(onClick = onSwitchToCommunity) { Text("Show Community") }
+                    Button(
+                        onClick = onSwitchToCommunity,
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("map-sheet-switch-community"),
+                    ) {
+                        Text("Show Community")
+                    }
+                }
+                ui.absentReason == "load-failed" -> {
+                    Text("Price lookup failed.")
                 }
                 else -> Text("No price for this station.")
             }
@@ -75,9 +86,18 @@ fun MapBottomSheet(
                 style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onRoute(marker.uuid) }) { Text("Route") }
-                TextButton(onClick = { onOpenProfile(marker.uuid) }) { Text("Profile") }
-                TextButton(onClick = { onReport(marker.uuid) }) { Text("Report") }
+                Button(
+                    onClick = { onRoute(marker.uuid) },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("map-sheet-route"),
+                ) { Text("Route") }
+                TextButton(
+                    onClick = { onOpenProfile(marker.uuid) },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("map-sheet-profile"),
+                ) { Text("Profile") }
+                TextButton(
+                    onClick = { onReport(marker.uuid) },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("map-sheet-report"),
+                ) { Text("Report") }
             }
         }
     }

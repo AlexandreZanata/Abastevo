@@ -39,6 +39,8 @@ class MapNavigationTest {
     @Test fun `map child routes do not hijack other tabs`() {
         assertEquals(NavigationTab.EXPLORE, NavigationTab.fromRoute(Routes.STATION_PAGE))
         assertEquals(NavigationTab.MAP, NavigationTab.fromRoute(Routes.MAP_STATION_PAGE))
+        assertEquals(NavigationTab.MAP, NavigationTab.fromRoute(Routes.MAP_CHARGING_COMMUNITY))
+        assertEquals(NavigationTab.MAP, NavigationTab.fromRoute(Routes.mapChargingCommunity("33333333-3333-4333-8333-333333333333")))
         assertEquals(NavigationTab.PROFILE, NavigationTab.fromRoute(Routes.PROFILE))
     }
 }

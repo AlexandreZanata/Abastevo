@@ -29,17 +29,18 @@ Date: 2026-10-25. Search/filters remain MAP-20.
   are never relabeled as per-liter. Single lookup per selection (no N+1).
 - Unknown is not zero/free; premium/additive stay distinct by product.
 
+## Business Rules & Use Cases (Review Remediation)
+
+- **B-BR-MAP-PRICE-WIRE-01**: Production `SheetPriceSource` (`RealSheetPriceSource`) must resolve prices from real repositories/use cases (`StationPriceRepository`, `PriceTableRepository`, `GetServerStationDetailUseCase`, `MunicipalityCatalogRepository`, `GetCommunityPriceGroupsUseCase`, `CityCommunityFeedReader`, `ChargingObservationGateway`, `UserPreferencesRepository`, `VehicleRepository`) using canonical UUID identity, selected fuel product, unit, source, and survey period. ANP uses the station's observation in the selected survey period; Community uses the validated non-expired projection (or EV community observation for charging). Exact decimal money (`BigDecimal` / integer milli-BRL) is preserved; absence of price (`"no-price"`) and lookup failure (`"load-failed"`) are distinct; electric tariffs are never invented in ANP (`"anp-no-tariff"`) and sources never fall back to each other.
+- **B-BR-MAP-SHEET-RACE-01**: Every `MapSheetViewModel.select(...)` and `clear()` call must increment `generation` and cancel any active lookup `Job` immediately at entry — before early-return branches (such as charging in ANP) and before the 100 ms debounce. Stale completions must be rejected by `gen != generation` even when the underlying provider does not cooperate with coroutine cancellation.
+- **BUC-MAP-19-01**: Selecting a station or charger on the map, switching ANP ↔ Community (via top filter chips or the sheet's "Show Community" button), or changing selected product/period reloads the sheet for the active UUID without removing/reinserting pins, and profile/report actions respect the selected fuel product or route charging markers to `charging-community/{placeId}` instead of fuel capture.
+
 ## Implementation
 
-- `app/ui/map/MapSheetViewModel.kt`: generation-checked single lookup,
-  ANP-tariff guard for charging, explicit absence reasons.
-- `SheetPriceSource` + `MapSheetModule.kt`: Hilt binding defaults to
-  explicit absence (never invents); tests inject exact fixtures.
-- `app/ui/map/MapBottomSheet.kt`: ModalBottomSheet with name, services,
-  source, exact price/unit/date, quality, route/profile/report actions.
-- `MapScreen.kt`: selection opens the sheet; route uses explicit `geo:`
-  external intent (never counted as native guidance); profile uses
-  `mapStationPage`; report uses `capture`.
+- `app/ui/map/MapSheetViewModel.kt`: immediate generation invalidation and job cancellation before branches/debounce, ANP-tariff guard for charging, explicit absence vs load-failure reasons.
+- `RealSheetPriceSource` + `MapSheetModule.kt`: production Hilt binding wired to real ANP/Community/EV repositories and user/vehicle preferences.
+- `app/ui/map/MapBottomSheet.kt`: ModalBottomSheet with name, services, source, exact price/unit/date, stale/failure/absence distinction, quality, route/profile/report actions.
+- `MapScreen.kt` + `AnpNavGraph.kt`: selection and source/product/period changes reload the sheet; profile/report pass the active fuel product for fuel stations and route charging stations to `map/charging/{placeId}`.
 
 ## Verification executed
 

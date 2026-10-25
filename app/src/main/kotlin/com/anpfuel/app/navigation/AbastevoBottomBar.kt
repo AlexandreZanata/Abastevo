@@ -60,10 +60,10 @@ enum class NavigationTab(
     companion object {
         fun fromRoute(route: String?): NavigationTab? = when {
             route == null -> null
-            route.startsWith("map/station/") -> MAP
+            route.startsWith("map/") -> MAP
             route.startsWith("station/") -> EXPLORE
             route == Routes.STATION_PAGE -> EXPLORE
-            route == Routes.MAP_STATION_PAGE -> MAP
+            route == Routes.MAP_STATION_PAGE || route == Routes.MAP_CHARGING_COMMUNITY -> MAP
             route == Routes.PREMIUM || route == Routes.PREMIUM_MANAGEMENT -> PROFILE
             else -> entries.firstOrNull { it.route == route }
         }

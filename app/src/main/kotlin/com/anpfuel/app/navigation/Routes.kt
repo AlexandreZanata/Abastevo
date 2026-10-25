@@ -72,6 +72,12 @@ object Routes {
         return "map/station/$stationKey?fuelProduct=${fuel.name}"
     }
 
+    const val MAP_CHARGING_COMMUNITY = "map/charging/{placeId}"
+    fun mapChargingCommunity(placeId: String): String {
+        require(java.util.UUID.fromString(placeId).toString() == placeId) { "invalid charging place identity" }
+        return "map/charging/$placeId"
+    }
+
     const val STATION_PROFILE = "station-profile/{stationId}"
 
     const val STATION_QUALITY = "station-quality/{stationId}?fuelProduct={fuelProduct}"

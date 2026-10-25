@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.anpfuel.data.local.map.MapGenerationEntity
@@ -67,5 +68,64 @@ class MapScreenInstrumentedTest {
         vm.selectSource(MapPriceSource.COMMUNITY)
         compose.waitForIdle()
         compose.onNodeWithText("Community", ignoreCase = true).assertIsDisplayed()
+    }
+
+    @Test fun clickingSourceSelectorAndShowCommunityButtonReloadsChargingSheet() {
+        val vm = MapScreenViewModel(emptyStore())
+        val charger = com.anpfuel.maps.engine.MapOverlayMarker(
+            uuid = "33333333-3333-4333-8333-333333333333",
+            latitude = -25.42,
+            longitude = -49.27,
+            title = "Eletroposto Centro",
+            fuel = false,
+            charging = true,
+            locationQuality = com.anpfuel.maps.engine.MapStationLocationQuality.REVIEWED,
+        )
+        val sheetVm = MapSheetViewModel(SheetPriceSource { uuid, source, _ ->
+            if (uuid == charger.uuid && source == MapPriceSource.COMMUNITY) {
+                SheetPrice("CCS2", "kWh", "2.45", MapPriceSource.COMMUNITY, "2026-10-25")
+            } else {
+                null
+            }
+        })
+        var reportedProduct: String? = null
+        compose.setContent {
+            MapScreen(
+                onOpenStation = { _, _ -> },
+                onOpenSearch = {},
+                onOpenDownloads = {},
+                onReportStation = { _, product -> reportedProduct = product },
+                viewModel = vm,
+                sheet = sheetVm,
+                mapContent = { Box(Modifier.size(10.dp)) },
+            )
+        }
+        compose.runOnIdle {
+            sheetVm.select(charger, vm.ui.value.source)
+        }
+        compose.waitForIdle()
+        // In ANP mode, charging shows anp-no-tariff message and "Show Community" button.
+        compose.onNodeWithTag("map-sheet-switch-community").assertIsDisplayed()
+        compose.onNodeWithTag("map-sheet-switch-community").performClick()
+        // Wait for 100ms debounce + lookup completion.
+        compose.mainClock.advanceTimeBy(250)
+        compose.waitForIdle()
+        compose.onNodeWithText("CCS2 2.45 kWh", substring = true).assertIsDisplayed()
+
+        // Clicking top ANP chip switches back to ANP and shows Show Community button again.
+        compose.onNodeWithTag("map-source-anp").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("map-sheet-switch-community").assertIsDisplayed()
+
+        // Clicking top Community chip reloads Community price on the same UUID.
+        compose.onNodeWithTag("map-source-community").performClick()
+        compose.mainClock.advanceTimeBy(250)
+        compose.waitForIdle()
+        compose.onNodeWithText("CCS2 2.45 kWh", substring = true).assertIsDisplayed()
+
+        // Clicking Report on a charging-only station passes CHARGING (not GASOLINE_REGULAR).
+        compose.onNodeWithTag("map-sheet-report").performClick()
+        compose.waitForIdle()
+        org.junit.Assert.assertEquals("CHARGING", reportedProduct)
     }
 }

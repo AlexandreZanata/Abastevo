@@ -68,6 +68,17 @@ fun MapScreen(
     var showFilters by remember { mutableStateOf(false) }
     var showList by remember { mutableStateOf(false) }
 
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshAvailability()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // Initial viewport loads markers once the engine is ready. Panning
     // triggers new bounded queries in the full MAP-20 journey; the shell
     // keeps one deterministic load for the minimum gate.
@@ -75,14 +86,30 @@ fun MapScreen(
         discovery?.onViewport(-25.42, -49.27, 10_000)
     }
 
-    // Selection opens the price sheet with source truth (MAP-19).
+    // Selection and source/product/period switches reload the price sheet (MAP-19).
     val discUi = discovery?.ui?.collectAsStateWithLifecycle()?.value
-    LaunchedEffect(discUi?.selectedUuid) {
-        val sel = discUi?.selectedUuid ?: return@LaunchedEffect
-        val marker: MapOverlayMarker? = discUi.clusters.flatMap { it.markers }.firstOrNull { it.uuid == sel }
-            ?: discUi.selectedMembers.firstOrNull { it.uuid == sel }
+    LaunchedEffect(
+        discUi?.selectedUuid,
+        ui.source,
+        ui.selectedFuelProduct,
+        ui.selectedSurveyPeriod,
+    ) {
+        val sel = discUi?.selectedUuid
+        val marker: MapOverlayMarker? = if (sel != null) {
+            discUi.clusters.flatMap { it.markers }.firstOrNull { it.uuid == sel }
+                ?: discUi.selectedMembers.firstOrNull { it.uuid == sel }
+        } else if (discovery == null) {
+            sheet?.ui?.value?.marker
+        } else {
+            null
+        }
         if (marker != null) {
-            sheet?.select(marker, ui.source)
+            sheet?.select(
+                marker = marker,
+                source = ui.source,
+                product = ui.selectedFuelProduct,
+                surveyPeriod = ui.selectedSurveyPeriod,
+            )
         }
     }
 
@@ -95,13 +122,13 @@ fun MapScreen(
                 selected = ui.source == MapPriceSource.ANP,
                 onClick = { viewModel.selectSource(MapPriceSource.ANP) },
                 label = { Text(stringResource(R.string.map_source_anp)) },
-                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "ANP prices" },
+                modifier = Modifier.heightIn(min = 48.dp).testTag("map-source-anp").semantics { contentDescription = "ANP prices" },
             )
             FilterChip(
                 selected = ui.source == MapPriceSource.COMMUNITY,
                 onClick = { viewModel.selectSource(MapPriceSource.COMMUNITY) },
                 label = { Text(stringResource(R.string.map_source_community)) },
-                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Community prices" },
+                modifier = Modifier.heightIn(min = 48.dp).testTag("map-source-community").semantics { contentDescription = "Community prices" },
             )
         }
 
@@ -255,17 +282,27 @@ fun MapScreen(
     }
 
     // MAP-19 sheet with source truth and real actions.
-    if (sheet != null && discUi?.selectedUuid != null) {
+    val sheetUi = sheet?.ui?.collectAsStateWithLifecycle()?.value
+    if (sheet != null && (discUi?.selectedUuid != null || sheetUi?.marker != null)) {
         val context = androidx.compose.ui.platform.LocalContext.current
+        val activeMarker = sheetUi?.marker
+            ?: discUi?.clusters?.flatMap { it.markers }?.firstOrNull { it.uuid == discUi.selectedUuid }
+            ?: discUi?.selectedMembers?.firstOrNull { it.uuid == discUi.selectedUuid }
+        val targetFuel = if (activeMarker != null && !activeMarker.fuel && activeMarker.charging) {
+            "CHARGING"
+        } else {
+            ui.selectedFuelProduct.name
+        }
         MapBottomSheet(
             viewModel = sheet,
-            onOpenProfile = { uuid -> onOpenStation(uuid, "GASOLINE_REGULAR") },
+            onOpenProfile = { uuid -> onOpenStation(uuid, targetFuel) },
             onRoute = { uuid ->
                 // Explicit external interim: never counted as native guidance.
                 // Native preview (buildCarRoute) owns MAP-22; this keeps the
                 // minimum gate honest about what is proven.
-                val marker = discUi.clusters.flatMap { it.markers }.firstOrNull { it.uuid == uuid }
-                    ?: discUi.selectedMembers.firstOrNull { it.uuid == uuid }
+                val marker = activeMarker?.takeIf { it.uuid == uuid }
+                    ?: discUi?.clusters?.flatMap { it.markers }?.firstOrNull { it.uuid == uuid }
+                    ?: discUi?.selectedMembers?.firstOrNull { it.uuid == uuid }
                 if (marker != null) {
                     try {
                         val uri = android.net.Uri.parse("geo:${marker.latitude},${marker.longitude}?q=${marker.latitude},${marker.longitude}(${android.net.Uri.encode(marker.title)})")
@@ -274,8 +311,18 @@ fun MapScreen(
                     }
                 }
             },
-            onReport = { uuid -> onReportStation(uuid, "GASOLINE_REGULAR") },
-            onSwitchToCommunity = { viewModel.selectSource(MapPriceSource.COMMUNITY) },
+            onReport = { uuid -> onReportStation(uuid, targetFuel) },
+            onSwitchToCommunity = {
+                viewModel.selectSource(MapPriceSource.COMMUNITY)
+                if (discUi?.selectedUuid == null && activeMarker != null) {
+                    sheet.select(
+                        marker = activeMarker,
+                        source = MapPriceSource.COMMUNITY,
+                        product = ui.selectedFuelProduct,
+                        surveyPeriod = ui.selectedSurveyPeriod,
+                    )
+                }
+            },
             onDismiss = { discovery?.clearSelection(); sheet.clear() },
         )
     }

@@ -135,8 +135,12 @@ fun AnpNavGraph(
                 onOpenStation = { stationKey, fuel ->
                     // Map origin keeps the MAP tab selected on return.
                     try {
-                        val product = com.anpfuel.domain.valueobject.FuelProduct.valueOf(fuel)
-                        navController.navigate(Routes.mapStationPage(stationKey, product))
+                        if (fuel == "CHARGING") {
+                            navController.navigate(Routes.mapChargingCommunity(stationKey))
+                        } else {
+                            val product = com.anpfuel.domain.valueobject.FuelProduct.valueOf(fuel)
+                            navController.navigate(Routes.mapStationPage(stationKey, product))
+                        }
                     } catch (_: Exception) {
                         navController.navigate(Routes.STATIONS)
                     }
@@ -145,7 +149,17 @@ fun AnpNavGraph(
                 onOpenDownloads = { navController.navigate("map/downloads") },
                 onReportStation = { stationId, fuel ->
                     try {
-                        navController.navigate(Routes.capture(stationId, fuel))
+                        if (fuel == "CHARGING") {
+                            navController.navigate(Routes.mapChargingCommunity(stationId))
+                        } else {
+                            require(com.anpfuel.domain.discovery.StationPageIdentity.parse(stationId) != null)
+                            val wireFuel = runCatching {
+                                com.anpfuel.data.mapper.WireFuelMapper.toWire(
+                                    com.anpfuel.domain.valueobject.FuelProduct.valueOf(fuel),
+                                )
+                            }.getOrDefault(fuel)
+                            navController.navigate(Routes.capture(stationId, wireFuel))
+                        }
                     } catch (_: Exception) {
                         navController.navigate(Routes.CAPTURE)
                     }
@@ -157,6 +171,16 @@ fun AnpNavGraph(
         composable("map/downloads") {
             com.anpfuel.app.ui.map.MapDownloadsScreen(
                 onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.MAP_CHARGING_COMMUNITY,
+            arguments = listOf(
+                navArgument("placeId") { type = NavType.StringType },
+            ),
+        ) {
+            com.anpfuel.app.ui.charging.ChargingCommunityScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         composable(
