@@ -89,6 +89,12 @@ payments behavior involved, not fixed here, not hidden.
   manifests/digests, OSM/ANP preparation, charging identities, comaps
   spike/diagnostics, partial gates). No later MAP/ESP branch is
   imported to complete this batch.
+- Inherited batch note (not fixed here): the expansion entities ship
+  Room `@Database` version 25 while versioned schema exports stop at
+  18 — exports 19–25 were never committed. Compiling `:app` regenerates
+  `25.json` (five added tables) as untracked build output; it is left
+  out of this integration for the owning front to reconcile with its
+  migration chain.
 - Worker regressions affected by this batch (dispatcher topology,
   payment-inbox drain, safety-slot isolation) run green; the full
   worker integration set was executed with pinned Rust preparers and
