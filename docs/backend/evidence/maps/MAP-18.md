@@ -1,7 +1,9 @@
 # MAP-18 — Markers, clustering and selection
 
-Status: LOCAL_DONE / INTEGRATION_PENDING
-Validation: PASS (JVM clustering + discovery, real-phone list)
+Current assessment: [2026-10-25 remediation](MAP-15_20_REMEDIATION_20261025.md) supersedes earlier integration/acceptance claims. Historical evidence below is retained.
+
+Status: PARTIAL / INTEGRATION_PENDING
+Validation: scoped checks PASS; full phase acceptance PARTIAL (JVM clustering + discovery, real-phone list)
 Integration: INTEGRATION_PENDING
 
 Tested tree: `codex/map-ev-implementation` at `3ccb6988` plus MAP-18 changes.

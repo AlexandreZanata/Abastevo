@@ -1,5 +1,7 @@
 # MAP-19 — Fast station prices and honest source switching
 
+Current assessment: [2026-10-25 remediation](MAP-15_20_REMEDIATION_20261025.md) supersedes earlier integration/acceptance claims. Historical evidence below is retained.
+
 Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS (JVM sheet ViewModel, real-phone shell)
 Integration: INTEGRATION_PENDING
@@ -60,7 +62,8 @@ wiring (profile/route/report navigation) is exercised in MAP-20 gate.
 
 ## Limits
 
-- Default Hilt `SheetPriceSource` returns explicit absence; full ANP week +
-  community projection wiring owns its follow-up and must not invent prices.
+- The earlier default-absence binding was replaced by the real source binding;
+  current source/condition/unit/period regressions are in the remediation record.
+  Live on-device station-price acceptance still needs admitted staging data.
 - Native route preview (`buildCarRoute`) owns MAP-22; the interim external
   `geo:` action is explicit and never claimed as native navigation.

@@ -1,5 +1,7 @@
 # MAP-16 — Compose lifecycle and privacy-controlled map host
 
+Current assessment: [2026-10-25 remediation](MAP-15_20_REMEDIATION_20261025.md) supersedes earlier integration/acceptance claims. Historical evidence below is retained.
+
 Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS (JVM view model + real-phone Compose host + real native engine lifecycle)
 Integration: INTEGRATION_PENDING
@@ -149,3 +151,13 @@ recorded separately from the controlled Compose tests. Native package-layout,
 first-fix/recenter, error states and the real navigation screen remain the
 retained MAP-15/MAP-17 integration work; this record does not accept fake GPS or
 a production map tab.
+
+## Native storage and live camera completion — 2026-10-25
+
+B-BR-MAP-NATIVE-SYNC-01: publication reconnects the initialized SDK to the
+verified map storage and re-registers regional maps on the main thread.
+BUC-MAP-NATIVE-SYNC-01: returning from Downloads shows the newly activated
+map without seeding files through adb or restarting the process.
+B-BR-MAP-CAMERA-02: native pan AND zoom update viewport discovery; host stop
+persists the current native center and zoom, including zoom-only gestures.
+Validation results are recorded after the scoped regression/device checks.

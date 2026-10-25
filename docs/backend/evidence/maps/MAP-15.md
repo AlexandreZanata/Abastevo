@@ -1,5 +1,7 @@
 # MAP-15 — Android public map persistence and download recovery
 
+Current assessment: [2026-10-25 remediation](MAP-15_20_REMEDIATION_20261025.md) supersedes earlier integration/acceptance claims. Historical evidence below is retained.
+
 Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS (Go + JVM + real-phone Room/native-layout/migration/worker instrumentation)
 Integration: INTEGRATION_PENDING

@@ -51,11 +51,12 @@ for the [accepted local extraction matrix](docs/backend/evidence/maps/MAP-14_ENG
 reproducible admitted ARM64/ARM32 AARs, real offline map/search/route/UUID
 selection, ARM64 16 KB execution and ARM32 Vulkan lifecycle, 74.19 MiB APK
 under the existing 80 MiB ceiling. Failed ARM32 OpenGL-emulator profiles remain
-unaccepted. MAP-15/16 retain their source checkpoints and named integration
-obligations. [Resume](docs/planning/MAP_EV_RESUME.md) owns the next bounded
-work and MAP-17 real fourth-tab/native host, then MAP-18/19/20. Prepared
-[pictograms](docs/assets/map-icons/README.md) retain the corrected electric SVG.
-No production map UI, deployment or remote delivery is inferred from this gate.
+unaccepted. The [2026-10-25 remediation checkpoint](docs/backend/evidence/maps/MAP-15_20_REMEDIATION_20261025.md)
+now proves the real app download/activation/native-registration/offline-search
+flow and host lifecycle on the phone. MAP-18 native artwork and MAP-20 minimum
+product acceptance remain PARTIAL with named data/contract obligations;
+[prepared pictograms](docs/assets/map-icons/README.md) remain admitted assets.
+No deployment or remote delivery is inferred from these local checks.
 
 **Full EV extension (2026-10-20):** [EE-00–31](docs/planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md)
 adds BEV/PHEV/non-plug-in hybrid data support to MEX without renumbering existing

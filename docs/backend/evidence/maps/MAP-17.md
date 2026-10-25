@@ -1,5 +1,7 @@
 # MAP-17 — Fourth tab and minimal map shell
 
+Current assessment: [2026-10-25 remediation](MAP-15_20_REMEDIATION_20261025.md) supersedes earlier integration/acceptance claims. Historical evidence below is retained.
+
 Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS (JVM navigation + ViewModel, real-phone Compose shell)
 Integration: INTEGRATION_PENDING

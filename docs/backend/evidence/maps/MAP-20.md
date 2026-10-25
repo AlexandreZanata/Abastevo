@@ -1,7 +1,9 @@
 # MAP-20 — Discovery, accessibility and minimum gate
 
-Status: LOCAL_DONE / INTEGRATION_PENDING
-Validation: PASS (JVM search/filters/decode + real-phone list/sheet/accessibility)
+Current assessment: [2026-10-25 remediation](MAP-15_20_REMEDIATION_20261025.md) supersedes earlier integration/acceptance claims. Historical evidence below is retained.
+
+Status: PARTIAL / INTEGRATION_PENDING
+Validation: scoped checks PASS; full phase acceptance PARTIAL (JVM search/filters/decode + real-phone list/sheet/accessibility)
 Integration: INTEGRATION_PENDING
 Gate: MINIMUM_MAP_GATE PARTIAL (real list/profile/route proven; real pins/prices blocked by staging data, documented below — no fake PASS)
 
@@ -132,3 +134,13 @@ Blocked by external data/operations (reproduced above, not a code waiver):
 Gate: **PARTIAL / INTEGRATION_PENDING**. Do not merge/publish/certify as
 complete. Next: populate staging coordinates/prices and distribution config for
 live gate sign-off, or proceed to MAP-21–33 local construction.
+
+## Completion behavior — 2026-10-25
+
+B-BR-MAP-CITY-02: the city chip reuses the national IBGE picker and returns
+to MAP. A city without a reviewed point uses its scoped Directory list; it
+never borrows the previous city's coordinates or fabricates a centroid pin.
+B-BR-MAP-PERIOD-02: ANP map prices reuse the existing survey-week picker.
+Unavailable opening-hours metadata is explicitly unknown; no open-now claim
+or synthetic opening-hours filter is introduced. Native combined artwork
+remains an explicit product criterion until its own glyph is admitted.
