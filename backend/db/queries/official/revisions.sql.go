@@ -429,6 +429,28 @@ func (q *Queries) GetRevision(ctx context.Context, id pgtype.UUID) (OfficialRevi
 	return i, err
 }
 
+const getRevisionByRun = `-- name: GetRevisionByRun :one
+SELECT id, import_run_id, survey_start, survey_end, published_at,
+    supersedes_revision_id, status
+FROM official_revisions
+WHERE import_run_id = $1
+`
+
+func (q *Queries) GetRevisionByRun(ctx context.Context, importRunID pgtype.UUID) (OfficialRevision, error) {
+	row := q.db.QueryRow(ctx, getRevisionByRun, importRunID)
+	var i OfficialRevision
+	err := row.Scan(
+		&i.ID,
+		&i.ImportRunID,
+		&i.SurveyStart,
+		&i.SurveyEnd,
+		&i.PublishedAt,
+		&i.SupersedesRevisionID,
+		&i.Status,
+	)
+	return i, err
+}
+
 const latestPublishedRevision = `-- name: LatestPublishedRevision :one
 SELECT r.id, r.survey_start, r.survey_end, r.published_at,
     r.supersedes_revision_id, run.source_url, run.source_checksum,

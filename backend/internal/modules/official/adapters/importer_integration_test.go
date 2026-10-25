@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -403,5 +404,97 @@ func TestOlderWeekCorrectionKeepsNewerWindowCurrent(t *testing.T) {
 	if uuidString(rows[0].RevisionID) != week2 || rows[0].AmountMilliBrl != 6199 {
 		t.Errorf("current row = %s/%d, want week2 %s/6199",
 			uuidString(rows[0].RevisionID), rows[0].AmountMilliBrl, week2)
+	}
+}
+
+func TestFailedBytesConvergeWithoutNewRevision(t *testing.T) {
+	im, pool := freshImporter(t)
+	ctx := context.Background()
+	st := makeStation(t, pool, "Posto A")
+	key := domain.ImportKey{SourceURL: "https://www.gov.br/anp/w1.xlsx", SourceChecksum: "sha256:aaa", ParserVersion: "p02-t04"}
+	first, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil || first.NoOp {
+		t.Fatalf("begin = %+v, %v", first, err)
+	}
+	var tally domain.QuarantineTally
+	if _, err := im.StageBatch(ctx, first.RevisionID, []domain.PriceRow{priceRow(st, 8, 5999)}, &tally); err != nil {
+		t.Fatalf("stage: %v", err)
+	}
+	tally.Add("over-precision", "synthetic-noise")
+	fin, err := im.FinishRun(ctx, first.RunID, first.RevisionID, &tally)
+	if err != nil || fin.Published {
+		t.Fatalf("finish = %+v, %v", fin, err)
+	}
+	// An identical retry converges on the recorded verdict instead of
+	// crashing on the run identity or opening a duplicate revision.
+	again, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil {
+		t.Fatalf("retry begin: %v", err)
+	}
+	if !again.NoOp {
+		t.Errorf("failed bytes opened a duplicate revision: %+v", again)
+	}
+	var revisions int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM official_revisions").Scan(&revisions); err != nil {
+		t.Fatal(err)
+	}
+	if revisions != 1 {
+		t.Errorf("revisions = %d, want exactly the failed one", revisions)
+	}
+}
+
+func TestRunningAttemptResumesSameRevision(t *testing.T) {
+	im, _ := freshImporter(t)
+	ctx := context.Background()
+	key := domain.ImportKey{SourceURL: "https://www.gov.br/anp/w1.xlsx", SourceChecksum: "sha256:aaa", ParserVersion: "p02-t04"}
+	first, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil || first.NoOp {
+		t.Fatalf("begin = %+v, %v", first, err)
+	}
+	// A second attempt while the first is still running resumes the same
+	// run and staging revision instead of failing on the identity.
+	again, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil {
+		t.Fatalf("resume begin: %v", err)
+	}
+	if again.NoOp || again.RunID != first.RunID || again.RevisionID != first.RevisionID {
+		t.Errorf("resume diverged: first=%+v again=%+v", first, again)
+	}
+}
+
+func TestConcurrentIdenticalBeginConverges(t *testing.T) {
+	im, _ := freshImporter(t)
+	ctx := context.Background()
+	key := domain.ImportKey{SourceURL: "https://www.gov.br/anp/w1.xlsx", SourceChecksum: "sha256:aaa", ParserVersion: "p02-t04"}
+	const racers = 4
+	results := make(chan BeginResult, racers)
+	errs := make(chan error, racers)
+	var wg sync.WaitGroup
+	for i := 0; i < racers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			res, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+			results <- res
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(results)
+	close(errs)
+	seen := map[string]bool{}
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent begin: %v", err)
+		}
+	}
+	for res := range results {
+		if res.NoOp {
+			t.Fatalf("concurrent begin took no-op: %+v", res)
+		}
+		seen[res.RevisionID] = true
+	}
+	if len(seen) != 1 {
+		t.Errorf("concurrent identical begins opened %d revisions", len(seen))
 	}
 }

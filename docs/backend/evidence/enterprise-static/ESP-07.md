@@ -119,3 +119,53 @@ The parser smoke PASSes. The end-to-end smoke correctly SKIPs at the
   build leaves it unchanged. No public release pointer exists yet.
 - Next: ESP-08 — freeze portal routes, fields and editorial templates using
   labelled synthetic data while the real-source precision decision is pending.
+
+## Addendum 2026-10-25 — over-precision root cause (history preserved above)
+
+The registered edition was re-fetched byte-identically (1,875,300 bytes,
+SHA-256 `e148758e…3faaa6`) and re-imported on a disposable database:
+19,609 staged / 880 `over-precision` / `needs-review` / 7,708 stations —
+the exact counts above. The 880 cases were then characterized field by
+field from the raw workbook XML.
+
+**Finding: all 880 are IEEE-754 storage noise, zero are real decimals.**
+Every over-precision `<v>` text (46 distinct, 16 fraction digits, e.g.
+`4.0199999999999996`, `5.1100000000000003`, `8.0399999999999991`) is
+bit-identical to the nearest double of a 2-decimal anchor (0 ulps of
+distance; 0 values farther than noise from any 2-decimal value). The
+parser reads the raw `<v>` text with no float formatting, so it is
+faithful: there is no parser bug to fix, and nothing was changed in the
+parser, the 1% gate, or the quarantine share for this finding.
+
+Denominators: 20,489 price cells; 880 over-precision (4.29%); implied
+displayed values collapse to 46 distinct 2-decimal prices across ETANOL,
+GNV, GASOLINA ADITIVADA, DIESEL S10 and others. No station, CNPJ,
+address or row identity is recorded here.
+
+**Proposed exact policy (NOT implemented — owner decision required).**
+Admit a price text with more than 3 fraction digits iff it is float-noise:
+parse as float64 `v`, take `m = round(v*1000)` as int64, and accept with
+milli `m` iff `float64(m)/1000 == v` exactly. Golden vectors:
+`4.0199999999999996` → 4020 admit; `5.1100000000000003` → 5110 admit;
+`5.5999` → refuse; `5,999` → 5999 admit (unchanged); `5,9999` → refuse.
+Compatibility: Go (`math.Round` + exact equality), Rust (same f64 rule,
+verify with golden vectors), Kotlin (same IEEE-754 rule, verify — no
+`BigDecimal` leniency), API/DB unchanged (milli-BRL int64), recovery via
+the existing quarantine codes plus a distinct `float-noise` admission
+marker in review evidence; `RawText` already preserves the source text.
+Rejected alternative: rendering Excel display formats would add an
+interpretation layer between source bytes and facts. Until the owner
+approves, the gate stays closed and the 880 rows stay quarantined.
+
+**Real-data recovery proven** (`TestManualRealWeeklyRecovery`,
+`integration realsource`, disposable PostGIS): identical replay converges
+with zero duplicate stations/prices; unreachable source fails visibly
+with counts and revision state unchanged; `pg_dump -Fc` → restore into a
+second disposable database reproduces all acceptance-table counts
+exactly; with no published revision the export builder writes no
+candidate. Real-data revision switch stays OWED behind the precision
+policy above; pointer switching itself is proven by the synthetic
+correction suites. A retry-path defect found by this proof (identical
+retry crashed on the run identity instead of converging) is fixed with
+regression tests: completed/failed triples converge, running attempts
+resume, concurrent identical begins converge on one revision.

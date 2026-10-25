@@ -34,6 +34,12 @@ SELECT id, import_run_id, survey_start, survey_end, published_at,
 FROM official_revisions
 WHERE id = @id;
 
+-- name: GetRevisionByRun :one
+SELECT id, import_run_id, survey_start, survey_end, published_at,
+    supersedes_revision_id, status
+FROM official_revisions
+WHERE import_run_id = @import_run_id;
+
 -- name: SetRevisionPublished :exec
 UPDATE official_revisions
 SET status = 'published', published_at = now()

@@ -6,10 +6,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -74,9 +76,17 @@ type BeginResult struct {
 	SurveyEnd        time.Time
 }
 
-// BeginRun records an import run and its staging revision, or reports a
-// no-op when the identical bytes plus parser version already completed.
-// A failed earlier run never blocks a retry: only completed triples match.
+// BeginRun records an import run and its staging revision, or converges on
+// an already attempted identical triple instead of crashing:
+//   - completed: no-op, the accepted revision stands;
+//   - failed (terminal verdict recorded): no-op, the recorded outcome stands;
+//   - running: resume the same run and staging revision, so a retry after a
+//     transient crash completes the partial attempt instead of duplicating
+//     it. Restaging is idempotent; a concurrent duplicate converges on the
+//     same revision and its FinishRun fails visibly once the first commits.
+//
+// A failed earlier run never blocks a retry: only new bytes (or a new parser
+// version) open a new attempt.
 func (im *Importer) BeginRun(ctx context.Context, key domain.ImportKey, surveyStart, surveyEnd time.Time) (BeginResult, error) {
 	q := official.New(im.pool)
 	if existing, err := q.GetImportRunByIdentity(ctx, official.GetImportRunByIdentityParams{
@@ -84,9 +94,7 @@ func (im *Importer) BeginRun(ctx context.Context, key domain.ImportKey, surveySt
 		SourceChecksum: key.SourceChecksum,
 		ParserVersion:  key.ParserVersion,
 	}); err == nil {
-		if existing.Status == domain.RunCompleted {
-			return BeginResult{NoOp: true, ExistingRevision: ""}, nil
-		}
+		return convergeImportRun(ctx, q, key, existing, surveyStart, surveyEnd)
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return BeginResult{}, err
 	}
@@ -104,6 +112,20 @@ func (im *Importer) BeginRun(ctx context.Context, key domain.ImportKey, surveySt
 		SourceChecksum: key.SourceChecksum,
 		ParserVersion:  key.ParserVersion,
 	}); err != nil {
+		// Lost the race with an identical concurrent attempt: re-read the
+		// winner and converge instead of crashing on the identity.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			existing, rerr := q.GetImportRunByIdentity(ctx, official.GetImportRunByIdentityParams{
+				SourceUrl:      key.SourceURL,
+				SourceChecksum: key.SourceChecksum,
+				ParserVersion:  key.ParserVersion,
+			})
+			if rerr != nil {
+				return BeginResult{}, err
+			}
+			return convergeImportRun(ctx, q, key, existing, surveyStart, surveyEnd)
+		}
 		return BeginResult{}, err
 	}
 	revText, err := newUUIDv4()
@@ -139,6 +161,39 @@ func (im *Importer) BeginRun(ctx context.Context, key domain.ImportKey, surveySt
 		RunID: runText, RevisionID: revText,
 		SurveyStart: surveyStart, SurveyEnd: surveyEnd,
 	}, nil
+}
+
+// convergeImportRun resolves an already recorded identical import triple to
+// a no-op (terminal verdict recorded) or to a resume of its staging run.
+func convergeImportRun(ctx context.Context, q *official.Queries, key domain.ImportKey, existing official.GetImportRunByIdentityRow, surveyStart, surveyEnd time.Time) (BeginResult, error) {
+	switch existing.Status {
+	case domain.RunCompleted, domain.RunFailed:
+		return BeginResult{NoOp: true, ExistingRevision: ""}, nil
+	default:
+		// The winning attempt may not have written its staging revision
+		// yet; wait boundedly instead of failing the converger.
+		deadline := time.Now().Add(10 * time.Second)
+		for {
+			rev, err := q.GetRevisionByRun(ctx, existing.ID)
+			if err == nil {
+				if rev.Status != domain.RevisionStaging {
+					return BeginResult{}, fmt.Errorf("adapters: import of %s already %s", key.SourceURL, rev.Status)
+				}
+				return BeginResult{
+					RunID: uuidString(existing.ID), RevisionID: uuidString(rev.ID),
+					SurveyStart: surveyStart, SurveyEnd: surveyEnd,
+				}, nil
+			}
+			if !errors.Is(err, pgx.ErrNoRows) || time.Now().After(deadline) {
+				return BeginResult{}, err
+			}
+			select {
+			case <-ctx.Done():
+				return BeginResult{}, ctx.Err()
+			case <-time.After(50 * time.Millisecond):
+			}
+		}
+	}
 }
 
 // StageBatch inserts one batch of validated rows, counting staged rows and
