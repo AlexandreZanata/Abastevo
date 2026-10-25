@@ -68,6 +68,8 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	ledgeradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters"
 	ledgerhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/ledger/adapters/http"
+	mapdata "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/mapdata"
+	mapdist "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/mapdist"
 	metricsadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/adapters"
 	metricshttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/adapters/http"
 	metricsapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/metrics/application"
@@ -268,6 +270,18 @@ func run() error {
 	communityPrices := communityread.NewReader(pool.Underlying())
 	communityhttp.FeedHandler{Read: communityPrices.Feed, Summary: communityPrices.CitySummary, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
 	directoryhttp.Handler{Stations: stations, Secrets: cfg.CursorSecret}.RegisterRoutes(router)
+	mapdata.Handler{Store: mapdata.NewStore(rawPool), Secrets: cfg.CursorSecret}.RegisterRoutes(router)
+	if cfg.MapDistributionDir != "" {
+		keys, err := mapdist.ParsePublicKeys(cfg.MapDistributionKeys)
+		if err != nil {
+			return fmt.Errorf("map distribution keys: %w", err)
+		}
+		dist, err := mapdist.Load(cfg.MapDistributionDir, keys)
+		if err != nil {
+			return fmt.Errorf("map distribution: %w", err)
+		}
+		mapdist.Handler{Dist: dist}.RegisterRoutes(router)
+	}
 	// Public station profiles (P30-T02). Same composition rule: the
 	// profile handler gets the canonical reader as a closure so
 	// modules never cross-read. Anonymous; no badge without a grant.

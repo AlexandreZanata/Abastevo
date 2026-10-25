@@ -123,6 +123,93 @@ fun AnpNavGraph(
                 onNavigate = navController::navigate,
             )
         }
+        composable(
+            route = Routes.MAP,
+            deepLinks = listOf(
+                navDeepLink { uriPattern = "anpfuel://map" },
+            ),
+        ) {
+            val discovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel = hiltViewModel()
+            val sheet: com.anpfuel.app.ui.map.MapSheetViewModel = hiltViewModel()
+            com.anpfuel.app.ui.map.MapScreen(
+                onOpenCity = { navController.navigate(Routes.MAP_CITY) },
+                periodContent = { changed ->
+                    com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction(onWeekChanged = changed)
+                },
+                onOpenStation = { stationKey, fuel ->
+                    // Map origin keeps the MAP tab selected on return.
+                    try {
+                        if (fuel == "CHARGING") {
+                            navController.navigate(Routes.mapChargingCommunity(stationKey))
+                        } else {
+                            val product = com.anpfuel.domain.valueobject.FuelProduct.valueOf(fuel)
+                            navController.navigate(Routes.mapStationPage(stationKey, product))
+                        }
+                    } catch (_: Exception) {
+                        navController.navigate(Routes.STATIONS)
+                    }
+                },
+                onOpenSearch = { navController.navigate(Routes.STATIONS) },
+                onOpenDownloads = { navController.navigate("map/downloads") },
+                onReportStation = { stationId, fuel ->
+                    try {
+                        if (fuel == "CHARGING") {
+                            navController.navigate(Routes.mapChargingCommunity(stationId))
+                        } else {
+                            require(com.anpfuel.domain.discovery.StationPageIdentity.parse(stationId) != null)
+                            val wireFuel = runCatching {
+                                com.anpfuel.data.mapper.WireFuelMapper.toWire(
+                                    com.anpfuel.domain.valueobject.FuelProduct.valueOf(fuel),
+                                )
+                            }.getOrDefault(fuel)
+                            navController.navigate(Routes.capture(stationId, wireFuel))
+                        }
+                    } catch (_: Exception) {
+                        navController.navigate(Routes.CAPTURE)
+                    }
+                },
+                discovery = discovery,
+                sheet = sheet,
+            )
+        }
+        composable(Routes.MAP_CITY) {
+            LocationPickerScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToHome = { navController.popBackStack() },
+            )
+        }
+        composable("map/downloads") {
+            com.anpfuel.app.ui.map.MapDownloadsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.MAP_CHARGING_COMMUNITY,
+            arguments = listOf(
+                navArgument("placeId") { type = NavType.StringType },
+            ),
+        ) {
+            com.anpfuel.app.ui.charging.ChargingCommunityScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.MAP_STATION_PAGE,
+            arguments = listOf(
+                navArgument("stationKey") { type = NavType.StringType },
+                navArgument("fuelProduct") { type = NavType.StringType; defaultValue = "GASOLINE_REGULAR" },
+            ),
+            deepLinks = listOf(
+                navDeepLink { uriPattern = "anpfuel://map/station/{stationKey}?fuelProduct={fuelProduct}" },
+            ),
+        ) {
+            com.anpfuel.app.ui.stations.StationPageScreen(
+                onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
+                onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
+                onQuality = { stationId, fuel -> navController.navigate(Routes.stationQuality(stationId, fuel)) },
+            )
+        }
         composable(Routes.PROFILE) {
             ProfileScreen(
                 darkTheme = darkTheme,

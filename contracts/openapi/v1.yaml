@@ -26,6 +26,8 @@ tags:
     description: Process liveness and dependency readiness probes.
   - name: directory
     description: Anonymous public station catalog reads.
+  - name: map
+    description: Bounded public map-overlay reads with exact source prices.
   - name: official
     description: Anonymous revision-aware official price reads.
   - name: community
@@ -1029,6 +1031,187 @@ paths:
                 generated_at: '2026-09-28T00:00:00Z'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /v1/map/assertions:
+    get:
+      summary: Bounded public map assertions with exact source-specific prices.
+      operationId: listMapAssertions
+      tags: [map]
+      security: []
+      parameters:
+        - name: min_lat
+          in: query
+          required: true
+          schema: {type: number, minimum: -90, maximum: 90}
+        - name: min_lon
+          in: query
+          required: true
+          schema: {type: number, minimum: -180, maximum: 180}
+        - name: max_lat
+          in: query
+          required: true
+          schema: {type: number, minimum: -90, maximum: 90}
+        - name: max_lon
+          in: query
+          required: true
+          schema: {type: number, minimum: -180, maximum: 180}
+        - name: source
+          in: query
+          required: true
+          description: Price source. Charging/reference records stay visible in both modes.
+          schema: {type: string, enum: [ANP, COMMUNITY]}
+        - name: product
+          in: query
+          description: Optional exact product filter.
+          schema: {type: string, pattern: '^[A-Z0-9_]{2,40}$'}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 100}
+        - name: cursor
+          in: query
+          description: Opaque cursor bound to generation, bbox, source and product.
+          schema: {type: string}
+      responses:
+        '200':
+          description: Bounded assertion page; no private state.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [generation, items, next_cursor, generated_at]
+                properties:
+                  generation:
+                    oneOf:
+                      - type: 'null'
+                      - type: object
+                        required: [id, key, source_revision, status, activated_at]
+                        properties:
+                          id: {type: string, format: uuid}
+                          key: {type: string}
+                          source_revision: {type: string}
+                          status: {type: string}
+                          activated_at: {type: string, format: date-time}
+                  items:
+                    type: array
+                    maxItems: 100
+                    items:
+                      type: object
+                      required: [assertion_id, source, kind, name, location_quality, services, prices, clocks, rights, capabilities]
+                      properties:
+                        assertion_id: {type: string, format: uuid}
+                        source: {type: string, enum: [ANP, COMMUNITY, OSM, OCM]}
+                        kind: {type: string, enum: [FUEL_STATION, CHARGING_SITE, COMBINED_SITE, REFERENCE_POI]}
+                        name: {type: string}
+                        station_uuid: {type: [string, 'null'], format: uuid}
+                        cnpj: {type: [string, 'null']}
+                        place_id: {type: [string, 'null'], format: uuid}
+                        equipment_id: {type: [string, 'null'], format: uuid}
+                        connector_id: {type: [string, 'null'], format: uuid}
+                        osm_type: {type: [string, 'null'], enum: [node, way, relation, null]}
+                        osm_id: {type: [integer, 'null']}
+                        location_quality: {type: string, enum: [reviewed, osm-mapped, unknown, city-centroid]}
+                        display_point: {type: [string, 'null']}
+                        coordinates:
+                          oneOf:
+                            - type: 'null'
+                            - type: object
+                              required: [latitude_deg, longitude_deg]
+                              properties:
+                                latitude_deg: {type: string}
+                                longitude_deg: {type: string}
+                        entrance:
+                          oneOf:
+                            - type: 'null'
+                            - type: object
+                              required: [latitude_deg, longitude_deg]
+                              properties:
+                                latitude_deg: {type: string}
+                                longitude_deg: {type: string}
+                        services:
+                          type: array
+                          items: {type: string, enum: [FUEL, CHARGING]}
+                        prices:
+                          type: array
+                          maxItems: 20
+                          items:
+                            type: object
+                            required: [source, product, unit, amount_milli_brl, observed_at]
+                            properties:
+                              source: {type: string, enum: [ANP, COMMUNITY]}
+                              product: {type: string}
+                              unit: {type: string}
+                              amount_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+                              observed_at: {type: string, format: date}
+                              period_start: {type: [string, 'null'], format: date}
+                              period_end: {type: [string, 'null'], format: date}
+                        clocks: {type: object}
+                        rights: {type: object}
+                        capabilities: {type: object}
+                  next_cursor: {type: [string, 'null']}
+                  generated_at: {type: string, format: date-time}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: The active map generation changed; refresh the viewport.
+        '500':
+          description: Map overlay projection unavailable.
+  /v1/map/regions/{region}/manifest:
+    get:
+      summary: Signed native-map distribution manifest.
+      operationId: getMapRegionManifest
+      tags: [map]
+      security: []
+      parameters:
+        - name: region
+          in: path
+          required: true
+          schema: {type: string, pattern: '^[a-z0-9-]{1,64}$'}
+      responses:
+        '200':
+          description: Ed25519-signed manifest envelope for the pinned key id.
+          content:
+            application/json:
+              schema: {type: object}
+        '304':
+          description: The client already holds the current manifest.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Map distribution is not configured.
+  /v1/map/packages/{package_id}:
+    get:
+      summary: Immutable native map package with Range/ETag support.
+      operationId: getMapPackage
+      tags: [map]
+      security: []
+      parameters:
+        - name: package_id
+          in: path
+          required: true
+          schema: {type: string, pattern: '^[a-z0-9-]{1,64}$'}
+        - name: Range
+          in: header
+          required: false
+          schema: {type: string}
+      responses:
+        '200':
+          description: Complete package bytes.
+          headers:
+            ETag:
+              schema: {type: string}
+            Accept-Ranges:
+              schema: {type: string, example: bytes}
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '206':
+          description: Partial package bytes for a valid Range request.
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Map distribution is not configured.
   /v1/stations/nearby:
     get:
       summary: Nearby stations (anonymous, never stored).

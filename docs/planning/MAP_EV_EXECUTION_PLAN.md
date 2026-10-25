@@ -13,9 +13,19 @@ Canonical companions: [phase registry](MAP_EV_PHASES.json), [source register](MA
 
 Add **Explorar | Comunidade | Mapa | Perfil** to the Android bottom bar, in that exact order. The map presents fuel and electric stations with distinct icons. A top **ANP / Comunidade** selector controls displayed prices. Selecting a station opens a fast bottom sheet with exact source/date/product/unit prices and actions to navigate, open the existing full station profile and report a price. A list equivalent keeps discovery accessible.
 
-First finish information ingestion and serving: admitted raw sources -> Rust preparation -> Go validation/publication -> PostgreSQL/PostGIS and immutable regional packages -> actual HTTP contracts -> Android decoding/persistence. Only after DATA_GATE should the agent start Android map functionality. After a native engine proof, deliver the minimum map UI; then complete offline search, driving routes, guidance, favorites, electric stops and acceptance. A hidden unfinished button is not a delivered capability.
+First finish information ingestion and serving: admitted raw sources -> Rust preparation -> Go validation/publication -> PostgreSQL/PostGIS and immutable regional packages -> actual HTTP contracts -> Android decoding/persistence. Only after DATA_GATE should the agent start Android map functionality. After ENGINE_GATE, deliver the minimum map UI; then complete offline search, driving routes, guidance, favorites, electric stops and acceptance. A hidden unfinished button is not a delivered capability.
 
-The primary engine direction is **a pinned, audited CoMaps-derived native C++ core behind a narrow Android adapter**, not a second app or a wholesale fork of its UI. CoMaps is both inspiration and a reusable source candidate. Its core Apache-2.0 license does not license all third-party code/art/maps/services automatically. The agent must prove extraction at ENGINE_GATE before relying on it. No claim that it is a drop-in Gradle SDK has been made.
+The map is an **Abastevo product built on an owned, pinned CoMaps-derived native core**, not a second app, an upstream SDK add-on or a wholesale fork of the CoMaps UI. We vendor the minimal core/JNI host at an exact audited SHA, keep a small documented patch set, build our own AAR in a reproducible builder, and expose a narrow `MapEngine` Kotlin port. Abastevo owns the application identity, Compose UI, station identities, prices, community data, download/manifest policy and map style; the native core owns rendering, the compatible map format, offline search and routing. ENGINE_GATE (MAP-14) proves that extracted artifact before any UI depends on it. Its Apache-2.0 core does not license all third-party code/art/maps/services automatically. Never ship the CoMaps app, branding, CDN or service key.
+
+### Engine ownership boundary
+
+- **Abastevo app/UI:** navigation, Compose theme, map shell, quick sheet, existing station profile, filters, accessible list, favorites and trip UI. No CoMaps screen or widget is shipped.
+- **`MapEngine` port and adapter:** the only native surface the app sees; initialization config, lifecycle, camera, overlay/markers, selection, search, route and guidance events, cancellation and error mapping. Kotlin owns Activity/Compose lifecycle, FileProvider, storage, permissions and location source.
+- **Native core:** renderer, compatible map package reader, offline search index, routing graph and guidance state machine. JNI types and threads stay inside the adapter.
+- **Data:** Go/PostGIS/HTTP owns canonical station identity, ANP/community prices and charging facts; Room/files own overlay generations, map packages and download state. The engine never becomes a second station/price database.
+- **Assets:** admitted Abastevo map style, fonts, symbols, voices and the generated pictograms; reference OSM and ODbL attribution stay visible. No CoMaps brand/logo is reused.
+
+The extraction is the committed architecture, not a fallback spike: MAP-14 must produce the real artifact, build recipe and measurements. An alternative engine still requires an explicit revised ADR; never silently substitute MapLibre, a WebView or a proprietary SDK.
 
 This is an authorized planning extension beyond the old EV data/cost plan, which explicitly excluded route feasibility. Keep EE/MEX completed code and evidence; do not rename old pending obligations as accepted or restart all of EE-00–31. iOS/CarPlay stay archived. Source merge, staging acceptance, device validation and production RELEASE_CERTIFIED are different results.
 
@@ -129,7 +139,7 @@ Implementation steps:
 
 1. Write B-BR-MAP and BUC-MAP cases from the mandatory rules below. Freeze price-source switching, marker eligibility, offline expiry, permissions and navigation behavior.
 2. Complete the source register: exact bytes/revision, code/data/artwork licenses, commercial use, offline redistribution, attribution, derived-database obligations and access terms. Unknown rights means not admitted.
-3. Record an ADR for the CoMaps-derived native engine and its isolation. Native C++/JNI is a declared exception to the Rust preparer language, not a backend rewrite. An alternative engine requires an explicit revised plan; never silently substitute MapLibre or a WebView.
+3. Record ADR-022 for the committed CoMaps-derived native engine extraction: pinned source and patch set, Abastevo-owned reproducible AAR/build recipe, narrow `MapEngine` port, app-owned UI/data/station identity, admitted style/font/symbol assets, no CoMaps app/brand/CDN, and ENGINE_GATE as the pre-UI proof. Native C++/JNI is a declared exception to the Rust preparer language, not a backend rewrite. An alternative engine requires an explicit revised ADR; never silently substitute MapLibre or a WebView.
 
 Required evidence:
 
@@ -288,9 +298,9 @@ Dependency: MAP-07.
 
 Implementation steps:
 
-1. Pin the actual CoMaps map generator/toolchain/submodules and admitted source data. Verify actual CLI and required world/regional/search/routing/style resources before writing wrappers.
-2. Run the native generator as a versioned build-time tool alongside the Rust-prepared POI stream; do not reimplement its map format in Rust. Go orchestrates acquisition, bounded tool execution and publication.
-3. Produce a consistent regional map set with routing/search and neighbor/overview dependencies. Separate immutable map packages from frequently updated Abastevo prices; no full national build on the shared VPS by default.
+1. Pin the audited CoMaps SHA, patch set and toolchain selected for the MAP-14 engine, plus admitted source data. Verify the actual generator CLI and required world/regional/search/routing/style resources before writing wrappers.
+2. Build the generator as a versioned, reproducible build-time tool from the pinned source; run it alongside the Rust-prepared POI stream. Do not reimplement its map format in Rust. Go orchestrates acquisition, bounded tool execution and publication.
+3. Produce a consistent regional map set with routing/search and neighbor/overview dependencies, including the admitted style/font/symbol assets that the MAP-14 artifact expects. Separate immutable map packages from frequently updated Abastevo prices; no full national build on the shared VPS by default.
 
 Required evidence:
 
@@ -420,28 +430,77 @@ Evidence destination: `docs/backend/evidence/maps/MAP-13.md`. Commit topic: `fea
 
 Hard gate: **DATA_GATE**.
 
-### MAP-14 — Prove CoMaps engine reuse behind a narrow Android port
+### MAP-14 — Extract, package and own the pinned CoMaps-derived engine
 
-Scope: Technical spike with real native engine, not a placeholder map.
+Scope: Committed extraction, not an optional spike. Build the actual Abastevo-owned map artifact: a pinned, audited CoMaps-derived native core packaged by us behind a narrow Kotlin/JNI port. No CoMaps app, upstream SDK contract, CoMaps UI or upstream CDN. ENGINE_GATE still proves it before any map UI depends on it.
 
 Dependency: MAP-13.
 
-Implementation steps:
+Fixed architecture: Abastevo owns the module layout, build recipe, public Kotlin surface, app identity, Compose UI, station identity and data. The native core owns rendering, compatible map packages, offline search, routing and guidance. The base/reference layer is OSM roads/POIs from the generated packages; the Abastevo overlay is stations, prices, charging and community data from MAP-10. Upstream source is vendored at an exact SHA with a small documented patch set, never consumed as an unpinned Gradle dependency.
 
-1. Build the smallest pinned CoMaps-derived native library/adapter against the app toolchain without replacing com.anpfuel or application/navigation/DI roots. Inspect actual JNI names and resources before extraction.
-2. Prove regional map render, pan/zoom, location-independent browsing, one custom selectable POI overlay, offline search and one offline car route. Keep core types inside the adapter; isolate callbacks and lifecycle/thread rules.
-3. Measure native/APK/RAM/disk/build costs; inventory every packaged dependency, font/style/icon and network endpoint. Verify minSdk 26, required ABIs and native 16KB page-size compatibility. If extraction fails, record evidence and revise the bounded design; never call a WebView/external intent equivalent to embedded offline routing.
+Implementation tasks (split into tested commits; all are required for the gate):
+
+**T01 — Pin, vendor and make the build reproducible**
+
+1. Select and record the exact CoMaps upstream commit/tag; vendor only the minimal core/JNI host and required submodules, not the full Android application, under a dedicated path (`third_party/comaps/` or the module name frozen in T02).
+2. Pin NDK, CMake, Qt-skin/generator toolchain and every included submodule. Preserve LICENSE/NOTICE/copyright, mark Abastevo patches, and draft the SBOM/third-party notice for exactly included code, fonts, styles, symbols, voices and data.
+3. Build twice from a clean checkout in the reproducible builder image; record source/toolchain/artifact hashes. No CoMaps logo, brand asset or upstream service credential is copied.
+
+**T02 — Freeze the Abastevo `MapEngine` port**
+
+1. Define the Kotlin port and value types independent of JNI: initialize/configure, region open/close, camera, overlay/markers, selection, search, route, guidance events, cancellation and release.
+2. Freeze ownership: Kotlin owns Activity/Compose lifecycle, application id, FileProvider, storage directories, permissions, location source and threading; native owns renderer, map package reader, search index and routing graph. No native type leaks into `domain` or `data`.
+3. Define errors and generations for missing/corrupt/incompatible packages, unsupported ABI, init failure, route failure, stale callbacks and teardown. Write the module/package naming decision in the ADR.
+
+**T03 — Produce and integrate the owned AAR/artifact**
+
+1. Build our AAR (or bounded module artifact) with release `arm64-v8a` and supported `armeabi-v7a`; `x86_64` only for debug/emulator. Enforce minSdk 26, native 16 KB page-size, stripped symbols, no Qt runtime and no debug-only assets.
+2. Package only the admitted minimal style/font/symbol/voice set, with a manifest; no upstream CDN, demo server or key is a runtime dependency.
+3. Integrate the artifact into the real app build without replacing `com.anpfuel`, application/navigation/DI roots or existing modules; add only the required consumer/R8 keep rules for the JNI surface.
+4. Record AAR/APK size delta, build time and memory/disk baseline; declare a provisional budget. Exceeding it needs a recorded decision, not a silent waiver.
+
+**T04 — Implement the JNI host adapter and lifecycle**
+
+1. Implement initialization, resource/storage paths, FileProvider, location callback and lifecycle (create/start/resume/pause/stop/destroy, rotation, process death) behind the port.
+2. Confine callback threads; never leak Activity, Context or location listeners. Provide explicit teardown and no hidden/background GPS.
+3. Test double init, missing/corrupt resources, invalid paths, permission denied, stale callbacks, rotation and process recreation.
+
+**T05 — Prove render, reference layer, offline search and route**
+
+1. Load an admitted regional package set and render the Abastevo-owned light/dark style with visible OSM attribution; prove pan/zoom, compass/recenter and no network requirement.
+2. Prove offline place/address/category search over the loaded region and one offline car route with instructions using roads/entrances and restrictions, not straight-line distance.
+3. Verify labels, road classes, fuel/charging reference POIs and scale; no missing native libs and no CoMaps branding.
+
+**T06 — Prove the Abastevo overlay and selection**
+
+1. Render a custom overlay fixture with canonical station UUIDs, fuel/electric types and `unknown`/`city-centroid`/`reviewed` location states; hit-test returns the UUID and never merges by proximity.
+2. Keep overlay updates independent from map packages: a new overlay generation must not rebuild the routing graph, and the previous generation survives failure. Selection emits an app-owned event that opens the future Compose quick sheet.
+3. Prove co-located fuel/charging, duplicate suppression, cluster/overlap behavior, 48dp targets and a TalkBack-equivalent result list.
+
+**T07 — Complete rights, security and update operations**
+
+1. Complete the transitive audit for the exact included code/assets/data; determine ODbL attribution/derived-database obligations; retain the source/derived-data offer and all notices.
+2. Scan the artifact for secrets, credentials and upstream endpoints; document offline redistribution and confirm no required private service.
+3. Document patch reapplication and rollback for an upstream engine update; a changed SHA or ABI set invalidates the gate evidence.
+
+**T08 — Close ENGINE_GATE with real evidence**
+
+1. On an owned emulator/device when authorized, demonstrate real render/pan/zoom, custom POI selection, offline search and one offline car route; run JNI/ABI/lifecycle checks and measure the declared budgets.
+2. Write `docs/backend/evidence/maps/MAP-14.md` with source SHA, patch set, toolchain, artifact hashes, licenses/SBOM, measured costs, negative cases and unresolved limits; record ADR-022.
+3. If extraction fails, stop dependent map UI, keep the exact failure evidence and revise this bounded extraction design. Opening an alternative engine requires a new explicit ADR; never silently swap MapLibre, a WebView, Google or an external intent and call it equivalent.
 
 Required evidence:
 
-- Real native render/search/route on owned emulator/device when authorized, plus JNI/ABI/lifecycle tests.
+- Clean reproducible build and the actual owned artifact/AAR; per-ABI, minSdk 26 and 16 KB page-size proof.
+- Real native render/search/route and Abastevo overlay selection on an owned emulator/device, plus JNI/ABI/lifecycle tests.
 - No missing native libs, no private upstream service/key assumption, no leaked activity/location callback.
+- License/SBOM/notices, measured APK/RAM/disk/build budgets and the patch/update recipe.
 
-Exit: **ENGINE_GATE PASS: a measured working CoMaps-derived adapter and build recipe justify integration.**
+Exit: **ENGINE_GATE PASS: an Abastevo-owned, reproducible, licensed CoMaps-derived engine artifact and adapter render, search, route and select Abastevo stations offline within measured budgets.**
 
-Code/document targets to verify: `new bounded native engine module (name frozen after spike)`; `app/build.gradle.kts`; `gradle/libs.versions.toml`; `docs/adr/`.
+Code/document targets to verify: `third_party/comaps/` or the bounded engine module (name frozen at T02); `maps/engine-adapter/` (or current module convention); `app/build.gradle.kts`; `gradle/libs.versions.toml`; `docs/adr/022-*.md`.
 
-Evidence destination: `docs/backend/evidence/maps/MAP-14.md`. Commit topic: `feat(maps): prove comaps engine reuse behind a narrow android port`; split broad phases into tested task commits.
+Evidence destination: `docs/backend/evidence/maps/MAP-14.md`. Commit topic: `feat(maps): extract and package the pinned comaps engine`; use atomic T01–T08 commits.
 
 Hard gate: **ENGINE_GATE**.
 
@@ -501,7 +560,7 @@ Implementation steps:
 
 1. Add Mapa between Comunidade and Perfil: Explorar | Comunidade | Mapa | Perfil. Use the existing bottom-bar icon system, localized label, equal-width cells and permanent visible labels.
 2. Add a native MAP route/base following navigateToTabBase: single top, no restoration of a hidden child stack. Preserve station deep links and associate details opened from the map with the correct tab/origin.
-3. Minimal shell contains the map, ANP/Comunidade selector at the top, fuel/charging filter entry, recenter, search and existing download affordance. Honor safe areas, app light/dark/dynamic themes and shared container borders; no app-wide redesign.
+3. Minimal shell contains the map, ANP/Comunidade selector at the top, fuel/charging filter entry, recenter, search and existing download affordance. Use the Abastevo-owned map style (brand, typography, light/dark, visible OSM attribution), not CoMaps branding or its app chrome. Honor safe areas, app light/dark/dynamic themes and shared container borders; no app-wide redesign.
 
 Required evidence:
 
@@ -522,7 +581,7 @@ Dependency: MAP-17.
 
 Implementation steps:
 
-1. Integrate map-icons raw/provenance/SVG/Android exports through the current asset pipeline. Native marker backing/selection uses theme-aware neutral contrast, not hardcoded white on all maps.
+1. Integrate map-icons raw/provenance/SVG/Android exports through the current asset pipeline. Marker backing/selection is Abastevo-owned and uses theme-aware neutral contrast, not hardcoded white on all maps; reference OSM POIs stay visually distinct from Abastevo stations.
 2. Render fuel pump and electric bolt/plug as distinct symbols. Co-located services expose both without overlapping duplicate pins. Show selected-product price only when compatible and known; cluster density deterministically.
 3. Preserve stable marker IDs across source changes. Fetch bounded viewports, debounce moves, expand clusters and reconcile selection after generation replacement; never place unknown/city-centroid stations as exact pins.
 
@@ -779,7 +838,7 @@ Dependency: MAP-28.
 
 Implementation steps:
 
-1. Measure cold/warm map load, frame pacing, native/Java memory, APK/ABI size, package/storage use, GPS battery impact, network bytes, spatial query latency and routing cancellation.
+1. Measure cold/warm map load, frame pacing, native/Java memory, APK/ABI size, package/storage use, GPS battery impact, network bytes, spatial query latency and routing cancellation against the MAP-14 declared budgets.
 2. Use representative low-resource device/emulator plus dense and sparse synthetic regions; define explicit budgets from product needs and measured MAP-14 baseline before acceptance, never after failures to declare green.
 3. Bound map requests/clusters/caches/workers, verify source ingestion/backpressure and public package traffic. Build maps off the shared VPS unless its measured capacity supports the job; no live stress test without scoped authorization.
 
@@ -873,7 +932,7 @@ Dependency: MAP-32.
 
 Implementation steps:
 
-1. Freeze/reconcile the final source union, complete the phase/feature/license/acceptance matrix, inventory open PRs and prove required commits are included. Merge current main normally if needed; revalidate affected changes.
+1. Freeze/reconcile the final source union, complete the phase/feature/license/acceptance matrix, include the engine source/SBOM/patch set/notices, inventory open PRs and prove required commits are included. Merge current main normally if needed; revalidate affected changes.
 2. With explicit delivery authorization, push maintained dev and open/reuse one protected cumulative dev -> main PR. Inspect all applicable exact-head/base checks and reviews at finalization, fix failures in new commits, and preserve history.
 3. Invoke scripts/git-flow.sh finish with the actual PR and required Quick verification only when guards pass. Missing/failed/skipped/cancelled required checks block merge; no force/admin bypass/direct-main push. Keep dev, verify ancestry and mirror allowed wiki pages once if authorized.
 
@@ -917,7 +976,7 @@ Required adversarial matrix includes identity/price false joins; exact money and
 
 Use feature gates to disable map UI/new APIs without deleting prior application data. Map packages/public overlays roll back to a compatible last-good generation, independently from private account state. Database changes are append-only expand/contract: app rollback must not rely on destructive down migrations. A private data restore must reapply existing erasure/revocation rules before serving. Public ODbL files must not be put in the private contributor-media bucket by relaxing its policy.
 
-A failed engine proof has a concrete deliverable: pinned source/tool logs, incompatible interface/resource evidence and a revised bounded integration proposal. It does not justify rewriting the entire app, changing identifiers, swallowing native errors, replacing real navigation with a mock or silently adding a proprietary SDK. Stop dependent engine UI work; keep independent data/contract work reviewable.
+A failed extraction or ENGINE_GATE has a concrete deliverable: pinned source/tool logs, incompatible interface/resource evidence, measured costs and a revised bounded extraction proposal. It does not justify rewriting the entire app, changing identifiers, swallowing native errors, replacing real navigation with a mock or silently adding a proprietary SDK. Stop dependent engine UI work; keep independent data/contract work reviewable.
 
 ## Final acceptance, not a promise of national coverage
 

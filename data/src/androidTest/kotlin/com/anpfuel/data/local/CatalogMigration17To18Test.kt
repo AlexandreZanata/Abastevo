@@ -26,7 +26,18 @@ class CatalogMigration17To18Test {
                 close()
             }
             helper.runMigrationsAndValidate(name, 18, true, AnpFuelDatabaseMigrations.MIGRATION_17_18).close()
-            val reopened = Room.databaseBuilder(context, AnpFuelDatabase::class.java, name).build()
+            val reopened = Room.databaseBuilder(context, AnpFuelDatabase::class.java, name)
+                .addMigrations(
+                    AnpFuelDatabaseMigrations.MIGRATION_18_19,
+                    AnpFuelDatabaseMigrations.MIGRATION_19_20,
+                    AnpFuelDatabaseMigrations.MIGRATION_20_21,
+                    AnpFuelDatabaseMigrations.MIGRATION_21_22,
+                    AnpFuelDatabaseMigrations.MIGRATION_22_23,
+                    AnpFuelDatabaseMigrations.MIGRATION_23_24,
+                    AnpFuelDatabaseMigrations.MIGRATION_24_25,
+                    AnpFuelDatabaseMigrations.MIGRATION_25_26,
+                    AnpFuelDatabaseMigrations.MIGRATION_26_27,
+                ).build()
             try {
                 val db = reopened.openHelper.readableDatabase
                 db.query("SELECT payload_json FROM community_feed_cache WHERE `key` = 'scope'").use {

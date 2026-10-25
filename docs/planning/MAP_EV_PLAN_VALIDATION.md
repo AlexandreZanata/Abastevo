@@ -16,6 +16,29 @@ map data acquisition, device/VPS mutation or remote delivery occurred. MAP-00–
 are all PLANNED. Native extraction, dependency admission, real route behavior,
 minimum map and production/device gates remain unproven.
 
+## Revision — committed engine extraction (2026-10-24)
+
+The user rejected leaving MAP-14 as an optional engine-proof spike and requested
+the Abastevo-owned map approach: extract and package a pinned CoMaps-derived
+native core, expose a narrow Kotlin `MapEngine` port, and keep Abastevo ownership
+of the UI, station identity, prices, community data and map style. MAP-14 is now
+a committed extraction split into T01–T08 (pin/vendor, port, owned AAR, JNI host,
+render/search/route, Abastevo overlay, rights/SBOM/update, gate evidence).
+Architecture, MAP-01/08/17/18/29/33, the phase registry, source register,
+ROADMAP/PROGRESS and both execution prompts were reconciled with that decision.
+No upstream SDK, CoMaps app/brand/CDN or unpinned Gradle dependency is assumed.
+Feasibility still must pass ENGINE_GATE; planning does not certify extraction.
+
+Revision checks executed:
+
+- Re-parsed `MAP_EV_PHASES.json`: 34 ordered unique IDs, dependencies precede
+  consumers, phase count unchanged and Markdown headings/exits match the registry.
+- Checked internal companion links in the revised plan, prompt and source register.
+- Ran `git diff --check` and a credential/private-key token scan over the diff;
+  no app/backend code, build, data, device or VPS test was run or claimed.
+- Rebuilt the local planning bundle and compared its canonical documents
+  byte-for-byte against the planning worktree.
+
 ## Planning checks executed
 
 - Parsed MAP_EV_PHASES.json: 34 ordered unique IDs MAP-00–33, all PLANNED;

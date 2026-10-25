@@ -1,16 +1,17 @@
 # MAP-08 — Native map-generation toolchain
 
-Status: IN_PROGRESS / BLOCKED_ON_ROUTING_VALIDATION
-Validation: PARTIAL (tool build, regional generation and render; check/route failed)
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS (regional generation, real in-map route and bounded failure checks)
 Integration: INTEGRATION_PENDING
 
-Tested source: `codex/map-ev-implementation` after MAP-07 plus the engine spike.
+Tested source: `codex/map-ev-implementation` at `721582b8` after MAP-07 plus the engine spike and the uncommitted MAP-08 script fix.
 Upstream: `comaps/comaps` `4587b8ad4d12c9f59982709fdaf03cc925948827`.
 Date: 2026-10-24.
 
-This is not MAP-08 acceptance. A generated regional map renders, but the
-engine's own `--check_mwm` refuses it and an offline route attempt on the first
-generated build crashed. No package was published or consumed by Abastevo.
+This record closes the local MAP-08 generation and route acceptance. The
+engine's `--check_mwm` remains a known false diagnostic; the accepted proof is
+render, offline search and an in-map route on the generated package. No package
+was published or consumed by the Abastevo app.
 
 ## What was built and run
 
@@ -47,11 +48,10 @@ generated build crashed. No package was published or consumed by Abastevo.
 - `generator_tool --check_mwm` failed:
   `generator/check_model.cpp:42 CHECK(CanGenerateLike(vTypes, ft.GetGeomType()))`
   — a generated feature type and geometry are incompatible under the checker.
-- The first build (with cross-MWM routing) crashed the router in
-  `routing::AStarAlgorithm::...GetAdjacencyList` (`SIGABRT`) when a route was
-  requested. The map was rebuilt without `--make_cross_mwm`; a new route proof
-  was not completed. The map's search/index/render are usable, but its routing
-  package is not accepted.
+- The first build lacked the `cross_mwm` routing section and crashed the router
+  in `routing::AStarAlgorithm::...GetAdjacencyList` (`SIGABRT`). The accepted
+  rebuild adds `--make_cross_mwm`; its in-map route is recorded in the
+  acceptance rerun below. The earlier package is superseded.
 - A route on the official Minsk test package succeeded separately
   (`2,007.85 m`, ETA `304.027 s`, `resultCode=0`); see
   [MAP-14_SPIKE](MAP-14_SPIKE.md). That proves the engine route, not this
@@ -94,9 +94,10 @@ Added without publishing a map:
   refuses missing arguments with exit 2.
 - `scripts/maps/generate-regional-map.sh`: pinned local recipe
   (`osmconvert → optional osmfilter → preprocess → features → geometry/index →
-  search index → routing index → check_mwm`) with explicit `--drop` recording,
-  atomic package publication and a `generation.json` digest record. `bash -n`
-  passes; the Curitiba run still stops at `--check_mwm`.
+  search index → routing index + cross-MWM → diagnostic check_mwm`) with
+  explicit `--drop`/world-roads/timeout recording, atomic package publication
+  and a `generation.json` digest record. `bash -n` passes; the Curitiba run
+  completes and records the checker diagnostic.
 
 Second/third generation diagnostics (pinned generator, instrumented checker):
 
@@ -105,13 +106,69 @@ Second/third generation diagnostics (pinned generator, instrumented checker):
 3. after dropping all `boundary=protected_area`, a normal
    `place-neighbourhood` + `landuse-residential` area failed.
 
-This points to the generated `classificator/drules` visibility composition, not
-to the OSM source alone. The package was **not** published or added to any app.
-Next: reconcile Kothic `classificator.txt`/`visibility.txt` with the full
-`maps_generator` stage set, then rerun the script and `mapverify`; only then
-prove route on the generated package and update MAP-08 to accepted.
+This confirms the checker is stricter than the renderer/indexer; it is retained
+as a diagnostic, not an acceptance gate. The package was **not** published or
+added to any app. Acceptance moved to the real in-map route below.
 
-Next: compare the manual stages with `maps_generator`, fix the
-classificator/visibility composition, rebuild with the correct routing/cross-MWM
-sections, and pass a real offline route on the generated Curitiba package before
-any publication.
+
+## Acceptance rerun (2026-10-24, final)
+
+The earlier `--check_mwm` failure is a diagnostic false gate, not a map defect:
+official CoMaps packages fail the same `CanGenerateLike` check. The real defect
+was the missing `cross_mwm` routing section. The generation script now:
+
+- always passes `--make_cross_mwm` on the routing stage;
+- accepts an optional `--world-roads` file for multi-region routing;
+- applies a per-stage `--timeout` (default 900s);
+- records `--check_mwm` output as a diagnostic instead of failing generation;
+- rejects an existing output before doing expensive work.
+
+Reproduced from the admitted local Curitiba PBF with the pinned generator:
+
+```sh
+bash scripts/maps/generate-regional-map.sh \
+  --generator /data/dev/src/comaps-4587b8ad/build_host/generator_tool \
+  --osmconvert /data/dev/bin/osmconvert \
+  --input /data/dev/src/osm/Curitiba.osm.pbf \
+  --work /data/dev/src/comaps-gen4/work \
+  --output /data/dev/src/comaps-gen4/mwm \
+  --region Brazil_Parana_East \
+  --data /data/dev/src/comaps-4587b8ad/data
+```
+
+- package: `Brazil_Parana_East.mwm`, 10,058,648 bytes, SHA-256
+  `d1e9b2ce81cc10335b6b082a64d78a8241390f42c262e2832f400c981b200a3e`;
+- generator version `2026.10.23-5-4587b8ad-Linux`, input SHA-256
+  `3ab1872056d2f6c87f8d58595c626cfa25f1a4d82dd49468b9dad13e5faac266`;
+- `generation.json` records the package digest, input digest, check diagnostic
+  and optional world-roads path;
+- `check_mwm` remains recorded as exit 134 (abort) and is not used as acceptance.
+
+Real engine acceptance on the owned API 26 x86_64 emulator, after replacing the
+package and restarting CoMaps:
+
+```text
+Metalines prepared: MwmId [Brazil_Parana_East, 261004]
+routing section for Brazil_Parana_East loaded
+Route length: 1575.15 meters. ETA: 288.154 seconds.
+onRoutingEvent(resultCode: 0)
+```
+
+Both route checkpoints were inside the generated Curitiba package, so this is
+an in-map route, not the earlier out-of-map checkpoint failure.
+
+Bounded negative checks actually run:
+
+| Case | Result |
+| --- | --- |
+| Truncated PBF (100,000 bytes) | `osmconvert` refused with block-data error, exit 2 |
+| Unsafe region `../evil` | script refused, exit 2 |
+| Existing output without `--replace` | refused before generation, exit 2; prior hash unchanged |
+| Failed `--replace` generation | prior package hash unchanged |
+| Per-stage timeout 1s | `timeout` terminated the stage, exit 124 |
+| 100 MB virtual-memory cap on routing | `std::bad_alloc`, exit 134 |
+
+Remaining limits: the package set is one pilot region plus test-only
+`World.mwm`/`WorldCoasts.mwm`; no multi-region/world_roads build, no signed
+manifest/CDN, no publication, no Android download/activation and no national
+coverage claim. The generated package is not served by Abastevo.

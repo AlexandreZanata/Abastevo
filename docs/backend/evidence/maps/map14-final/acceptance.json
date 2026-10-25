@@ -1,0 +1,76 @@
+{
+  "gate": "ENGINE_GATE",
+  "status": "PASS",
+  "delivery": "LOCAL_DONE / INTEGRATION_PENDING",
+  "upstream_sha": "4587b8ad4d12c9f59982709fdaf03cc925948827",
+  "candidate_directory": "/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22",
+  "candidate_aar_sha256": "d2ec37881ede4e2288e1a929f01a1eabab193e7a6d518c76ff4342f085f2b10c",
+  "classes_sha256": "074122f4de6c6c8c930bd5fae50be0626c527abb8498dae36f0176ce20ee3ca8",
+  "resource_profile_sha256": "bce836a29196946c9d588db9e5e797d1e4e5252e778c60ea706331c7699348bb",
+  "patch_sha256": "fbeb8ab4e4117be80f552b4ed84cf2ad740b51ea3c28c47fe2c3938723c3c9f7",
+  "runtime_matrix": [
+    {
+      "abi": "arm64-v8a",
+      "android_api": 35,
+      "kernel_page_bytes": 16384,
+      "system_image": "google_apis_ps16k/x86_64",
+      "execution": "Android native bridge on x86_64/KVM",
+      "renderer": "OpenGLES3",
+      "emulator": "36.5.11",
+      "render_light_dark": "PASS",
+      "offline_search_route": "PASS",
+      "native_rotations": 4,
+      "prior_activity_released": true
+    },
+    {
+      "abi": "armeabi-v7a",
+      "android_api": 30,
+      "kernel_page_bytes": 4096,
+      "system_image": "google_apis/x86_64",
+      "execution": "explicit ARM32 install through Android native bridge on x86_64/KVM",
+      "renderer": "Vulkan / Mesa Lavapipe",
+      "emulator": "37.2.12 isolated official package",
+      "render": "PASS",
+      "offline_search_route": "PASS",
+      "native_rotations": 4,
+      "process_restarts": 3,
+      "prior_activity_released": true
+    }
+  ],
+  "runtime_qualifications": [
+    "No physical ARM64 16 KB or physical ARMv7 certification.",
+    "ARM32 OpenGL recreation crashed the tested emulator process; this configuration is not accepted.",
+    "Real fourth-tab, package activation bridge, native artwork and full release UX remain their owning phases."
+  ],
+  "tests": {
+    "python_admission_inventory": 8,
+    "engine_jvm": 19,
+    "compose_instrumentation": 4,
+    "app_jvm_earlier_checkpoint": 490,
+    "engine_lint": "PASS",
+    "normal_debug_build": "PASS",
+    "engine_probe_release_builds": "PASS",
+    "apk_80_mib_and_all_arm64_16kb_alignment": "PASS"
+  },
+  "probe_apk_sha256": "3518778bc85e4ac9e6c34e8b52c43a1e240dfbb7dbeec6ec334fb0ef7d2adadb",
+  "release_apk_sha256": "595ef30dd2daebcadb9d0d8dfca6f1d6700dce27967e06e1e1705ed2ded8ca9d",
+  "release_apk_bytes": 77794496,
+  "source_files": {
+    "maps/engine/src/main/kotlin/com/anpfuel/maps/engine/ComapsMapEngine.kt": "a6d3878f964c398a1f68b5a5f7de78ff13889c1a9f0d70ae625838649a2d3faf",
+    "maps/engine/src/main/kotlin/com/anpfuel/maps/engine/MapCameraStore.kt": "f4a3075c2e9fe894a0fb096804af9c8d6288f6f4e8e80479b70dd0ff9e5fbc08",
+    "maps/engine/src/main/kotlin/com/anpfuel/maps/engine/MapEngine.kt": "0e924a2e930f746b922b045875808d833fd022e2e8a52d947d12151185b6659c",
+    "maps/engine/src/main/kotlin/com/anpfuel/maps/engine/MapHost.kt": "ce30e1bd7aaf0db6cefb0c68440d6836b8d6747373e8ad598f2d02aab9be4047",
+    "maps/engine/src/main/kotlin/com/anpfuel/maps/engine/MapOverlay.kt": "f5cb88f77adfbef0551a4aca74e1b3e1a1cf2a6555a7c5a89b701736a4cbea28",
+    "maps/engine/src/main/kotlin/com/anpfuel/maps/engine/MapOverlayList.kt": "ea4c1b742a9bad10bc8ccc499681311e5399f9325e85df71c49af37720d9ef97",
+    "maps/engine/src/main/kotlin/com/anpfuel/maps/engine/MapReadyCallbacks.kt": "6de186b8f4e3fbd2fe38a671ffe7024a3efe97b49b0a17a666c6085fdba88283",
+    "maps/engine/src/main/kotlin/com/anpfuel/maps/engine/MapViewModel.kt": "d40336d3bc1cff0b07651d0d169ac0959821cc2e3eeee9630ee58a957929edc4",
+    "maps/engine/src/main/java/app/organicmaps/sdk/MapViewHelper.java": "af4d58269934fa96a0851f6d588138658629517f87cd321b82ca1c65558b2085"
+  },
+  "checkpoint_review_date": "2026-10-25",
+  "cleanup": {
+    "owned_probe_and_test_packages": "removed from owned emulators",
+    "owned_emulator_processes": "stopped",
+    "physical_phone": "untouched",
+    "avds": "retained for reuse"
+  }
+}

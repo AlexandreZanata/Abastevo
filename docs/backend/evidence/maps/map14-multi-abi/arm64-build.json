@@ -1,0 +1,25 @@
+{
+  "upstream_sha": "4587b8ad4d12c9f59982709fdaf03cc925948827",
+  "ndk": "28.2.13676358",
+  "cmake": "3.22.1",
+  "min_sdk": 26,
+  "abi": "arm64-v8a",
+  "java_debug": false,
+  "aar_bytes": 35160271,
+  "aar_sha256": "1fe196f928f94128f27898ace124c33fa788859bfe89111b19e1bb89848abed5",
+  "native": [
+    {
+      "path": "jni/arm64-v8a/liborganicmaps.so",
+      "bytes": 14675096,
+      "sha256": "08342926e3799d29851baf093e535c3ca107dd19e218eb69b3e1447e7d155ccb",
+      "load_alignments": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  ],
+  "engine_gate": "PARTIAL",
+  "licenses": "AUDIT_PENDING",
+  "runtime_16kb_acceptance": "PENDING"
+}

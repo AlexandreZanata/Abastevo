@@ -399,31 +399,39 @@
     },
     {
       "id": "MAP-14",
-      "title": "Prove CoMaps engine reuse behind a narrow Android port",
+      "title": "Extract, package and own the pinned CoMaps-derived engine",
       "status": "PLANNED",
       "depends_on": [
         "MAP-13"
       ],
-      "scope": "Technical spike with real native engine, not a placeholder map.",
+      "scope": "Committed extraction: pinned/audited native core, Abastevo-owned reproducible AAR and narrow MapEngine port. ENGINE_GATE proves it before UI.",
       "steps": [
-        "Build the smallest pinned CoMaps-derived native library/adapter against the app toolchain without replacing com.anpfuel or application/navigation/DI roots. Inspect actual JNI names and resources before extraction.",
-        "Prove regional map render, pan/zoom, location-independent browsing, one custom selectable POI overlay, offline search and one offline car route. Keep core types inside the adapter; isolate callbacks and lifecycle/thread rules.",
-        "Measure native/APK/RAM/disk/build costs; inventory every packaged dependency, font/style/icon and network endpoint. Verify minSdk 26, required ABIs and native 16KB page-size compatibility. If extraction fails, record evidence and revise the bounded design; never call a WebView/external intent equivalent to embedded offline routing."
+        "T01 pin/vendor only the minimal CoMaps core/JNI host and required submodules at an exact SHA; pin NDK/CMake/Qt-skin/generator; preserve licenses, mark patches, draft SBOM and build twice reproducibly.",
+        "T02 freeze the Kotlin MapEngine port and ownership boundary: Kotlin owns lifecycle/FileProvider/storage/permissions/location/threading, native owns render/map reader/search/routing, no native types in domain/data.",
+        "T03 build the owned AAR/module with release arm64-v8a and supported armeabi-v7a, debug-only x86_64, minSdk 26, 16 KB pages, stripped symbols, no Qt runtime; integrate without replacing app roots and record size/build/RAM/disk budgets.",
+        "T04 implement initialization, resources, storage, FileProvider, location callback and lifecycle/rotation/process-death teardown behind the port; test double init, corrupt/missing packages, denied permission and stale callbacks.",
+        "T05 load an admitted regional package set and prove Abastevo-owned light/dark render, pan/zoom/recenter, OSM attribution, offline search and one offline car route using roads/entrances/restrictions.",
+        "T06 prove the Abastevo overlay fixture with canonical UUIDs and location quality, hit-testing without proximity merge, independent overlay generations, co-located fuel/charging, clustering, 48dp targets and accessible list equivalence.",
+        "T07 complete transitive license/ODbL audit, SBOM/notices, secret/endpoint scan, offline redistribution evidence and documented patch reapplication/rollback for engine updates.",
+        "T08 close ENGINE_GATE with real device/emulator render/select/search/route, JNI/ABI/lifecycle tests, measured budgets and MAP-14 evidence. On failure, stop dependent UI and record a bounded extraction revision; an alternative engine requires a new ADR."
       ],
       "checks": [
-        "Real native render/search/route on owned emulator/device when authorized, plus JNI/ABI/lifecycle tests.",
-        "No missing native libs, no private upstream service/key assumption, no leaked activity/location callback."
+        "Clean reproducible owned artifact/AAR; per-ABI, minSdk 26 and 16 KB page-size proof; no CoMaps app, branding, CDN or service key.",
+        "Real native render/search/route and Abastevo overlay selection on owned emulator/device when authorized, plus JNI/ABI/lifecycle tests.",
+        "No missing native libs, no private upstream service/key assumption, no leaked activity/location callback.",
+        "Transitive licenses/SBOM/notices, ODbL attribution decision, measured APK/RAM/disk/build budgets and update/rollback recipe."
       ],
-      "exit": "ENGINE_GATE PASS: a measured working CoMaps-derived adapter and build recipe justify integration.",
+      "exit": "ENGINE_GATE PASS: an Abastevo-owned, reproducible, licensed CoMaps-derived engine artifact and adapter render, search, route and select Abastevo stations offline within measured budgets.",
       "paths": [
-        "new bounded native engine module (name frozen after spike)",
+        "third_party/comaps/ or bounded engine module (name frozen at T02)",
+        "maps/engine-adapter/ (or current module convention)",
         "app/build.gradle.kts",
         "gradle/libs.versions.toml",
-        "docs/adr/"
+        "docs/adr/022-*.md"
       ],
       "gate": "ENGINE_GATE",
       "evidence": "docs/backend/evidence/maps/MAP-14.md",
-      "commit": "feat(maps): prove comaps engine reuse behind a narrow android port",
+      "commit": "feat(maps): extract and package the pinned comaps engine",
       "required_for_phone": true
     },
     {
@@ -493,7 +501,7 @@
       "steps": [
         "Add Mapa between Comunidade and Perfil: Explorar | Comunidade | Mapa | Perfil. Use the existing bottom-bar icon system, localized label, equal-width cells and permanent visible labels.",
         "Add a native MAP route/base following navigateToTabBase: single top, no restoration of a hidden child stack. Preserve station deep links and associate details opened from the map with the correct tab/origin.",
-        "Minimal shell contains the map, ANP/Comunidade selector at the top, fuel/charging filter entry, recenter, search and existing download affordance. Honor safe areas, app light/dark/dynamic themes and shared container borders; no app-wide redesign."
+        "Minimal shell contains the map, ANP/Comunidade selector at the top, fuel/charging filter entry, recenter, search and existing download affordance. Use the Abastevo-owned map style (brand, typography, light/dark, visible OSM attribution), not CoMaps branding or its app chrome. Honor safe areas, app light/dark/dynamic themes and shared container borders; no app-wide redesign."
       ],
       "checks": [
         "Actual navigation-controller regressions: four tabs/order, repeat tap, back, deep link, return from details and map child routes.",
@@ -520,7 +528,7 @@
       ],
       "scope": "Use the supplied generated pictograms; do not overload the map.",
       "steps": [
-        "Integrate map-icons raw/provenance/SVG/Android exports through the current asset pipeline. Native marker backing/selection uses theme-aware neutral contrast, not hardcoded white on all maps.",
+        "Integrate map-icons raw/provenance/SVG/Android exports through the current asset pipeline. Marker backing/selection is Abastevo-owned and uses theme-aware neutral contrast, not hardcoded white on all maps; reference OSM POIs stay visually distinct from Abastevo stations.",
         "Render fuel pump and electric bolt/plug as distinct symbols. Co-located services expose both without overlapping duplicate pins. Show selected-product price only when compatible and known; cluster density deterministically.",
         "Preserve stable marker IDs across source changes. Fetch bounded viewports, debounce moves, expand clusters and reconcile selection after generation replacement; never place unknown/city-centroid stations as exact pins."
       ],
@@ -828,7 +836,7 @@
       ],
       "scope": "Measured constraints before broader geographic rollout.",
       "steps": [
-        "Measure cold/warm map load, frame pacing, native/Java memory, APK/ABI size, package/storage use, GPS battery impact, network bytes, spatial query latency and routing cancellation.",
+        "Measure cold/warm map load, frame pacing, native/Java memory, APK/ABI size, package/storage use, GPS battery impact, network bytes, spatial query latency and routing cancellation against the MAP-14 declared budgets.",
         "Use representative low-resource device/emulator plus dense and sparse synthetic regions; define explicit budgets from product needs and measured MAP-14 baseline before acceptance, never after failures to declare green.",
         "Bound map requests/clusters/caches/workers, verify source ingestion/backpressure and public package traffic. Build maps off the shared VPS unless its measured capacity supports the job; no live stress test without scoped authorization."
       ],
@@ -940,7 +948,7 @@
       ],
       "scope": "One final dev-to-main integration; no unrelated PR sweep.",
       "steps": [
-        "Freeze/reconcile the final source union, complete the phase/feature/license/acceptance matrix, inventory open PRs and prove required commits are included. Merge current main normally if needed; revalidate affected changes.",
+        "Freeze/reconcile the final source union, complete the phase/feature/license/acceptance matrix, include the engine source/SBOM/patch set/notices, inventory open PRs and prove required commits are included. Merge current main normally if needed; revalidate affected changes.",
         "With explicit delivery authorization, push maintained dev and open/reuse one protected cumulative dev -> main PR. Inspect all applicable exact-head/base checks and reviews at finalization, fix failures in new commits, and preserve history.",
         "Invoke scripts/git-flow.sh finish with the actual PR and required Quick verification only when guards pass. Missing/failed/skipped/cancelled required checks block merge; no force/admin bypass/direct-main push. Keep dev, verify ancestry and mirror allowed wiki pages once if authorized."
       ],

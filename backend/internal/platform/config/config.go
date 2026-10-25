@@ -45,6 +45,10 @@ const (
 	keyCursorSecret    = "ANPFUEL_CURSOR_SECRET"
 	keyCanonicalHost   = "ANPFUEL_CANONICAL_HOST"
 	keyMetricsAddr     = "ANPFUEL_METRICS_ADDR"
+	// Optional signed map distribution. Both variables are required together;
+	// an unset pair leaves the map distribution routes unmounted.
+	keyMapDistributionDir  = "ANPFUEL_MAP_DIST_DIR"
+	keyMapDistributionKeys = "ANPFUEL_MAP_DIST_PUBLIC_KEYS"
 	// keyMailMode selects code delivery: "off" (default — codes
 	// never issue) or "memory" (bounded local outbox for
 	// development/tests). SMTP lands with deployment
@@ -121,7 +125,11 @@ type Config struct {
 	CursorSecret    []byte
 	CanonicalHost   string
 	// MetricsAddr is the private metrics listener; empty disables it.
-	MetricsAddr           string
+	MetricsAddr string
+	// MapDistributionDir/Keys configure the optional signed native-map
+	// distribution. Keys use keyid:base64url,keyid:base64url.
+	MapDistributionDir    string
+	MapDistributionKeys   string
 	ANPDiscoveryEnabled   bool
 	QualityImportsEnabled bool
 	// Bounded source schedules are independent and default off. Handlers
@@ -379,6 +387,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		return Config{}, fmt.Errorf("%s must be a bare hostname", keyCanonicalHost)
 	}
 	cfg.CanonicalHost = strings.ToLower(host)
+
+	mapDir, _ := getenv(keyMapDistributionDir)
+	mapKeys, _ := getenv(keyMapDistributionKeys)
+	if (strings.TrimSpace(mapDir) == "") != (strings.TrimSpace(mapKeys) == "") {
+		return Config{}, fmt.Errorf("%s and %s must be set together", keyMapDistributionDir, keyMapDistributionKeys)
+	}
+	cfg.MapDistributionDir = strings.TrimSpace(mapDir)
+	cfg.MapDistributionKeys = strings.TrimSpace(mapKeys)
 
 	metrics, metricsSet := getenv(keyMetricsAddr)
 	if !metricsSet {

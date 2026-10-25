@@ -12,6 +12,8 @@ object Routes {
     const val HOME = "home"
     const val EXPLORE = "home"
     const val COMMUNITY = "community"
+    const val MAP = "map"
+    const val MAP_CITY = "map/city"
     const val PROFILE = "profile"
     const val GAMES = "games"
     const val LOCATION = "location"
@@ -63,6 +65,18 @@ object Routes {
     fun stationPage(stationKey: String, fuel: FuelProduct): String {
         require(com.anpfuel.domain.discovery.StationPageIdentity.parse(stationKey) != null) { "invalid station identity" }
         return "station/$stationKey?fuelProduct=${fuel.name}"
+    }
+
+    const val MAP_STATION_PAGE = "map/station/{stationKey}?fuelProduct={fuelProduct}"
+    fun mapStationPage(stationKey: String, fuel: FuelProduct): String {
+        require(com.anpfuel.domain.discovery.StationPageIdentity.parse(stationKey) != null) { "invalid station identity" }
+        return "map/station/$stationKey?fuelProduct=${fuel.name}"
+    }
+
+    const val MAP_CHARGING_COMMUNITY = "map/charging/{placeId}"
+    fun mapChargingCommunity(placeId: String): String {
+        require(java.util.UUID.fromString(placeId).toString() == placeId) { "invalid charging place identity" }
+        return "map/charging/$placeId"
     }
 
     const val STATION_PROFILE = "station-profile/{stationId}"

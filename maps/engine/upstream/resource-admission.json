@@ -1,0 +1,1584 @@
+{
+  "format": "abastevo.map-resources-v1",
+  "upstream_sha": "4587b8ad4d12c9f59982709fdaf03cc925948827",
+  "resources": [
+    {
+      "path": "assets/categories.txt",
+      "sha256": "c2229d8dfb7e519e8b7065113a0846aea423ff2b22fb65c07f9861cb5b8a2a80",
+      "bytes": 649859,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/categories_brands.txt",
+      "sha256": "80f264e2c98a8be74aeb11c3aa82be064e4ad52d52b4f29ab8df1fde40b9a963",
+      "bytes": 11930,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/classificator.txt",
+      "sha256": "51e7d002b089a9f2bce05325294f7b83d7ecb46213682bf7ac5d270d49d50fc7",
+      "bytes": 35729,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/colors.txt",
+      "sha256": "138d2161cfb15ad9d760a439669026b212153936da74633023ff9a864baa0a7b",
+      "bytes": 9241,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/ar.json/localize.json",
+      "sha256": "b770b0524bebcef350e3e3f5f9ef5fb46d1f2b3efdab93cd07c065c7fbf9a8ca",
+      "bytes": 147622,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/ast.json/localize.json",
+      "sha256": "9c9b20d755d4bea3df97fd76de46f6a197737717bc962d479ce89cb3d9964fae",
+      "bytes": 3537,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/az.json/localize.json",
+      "sha256": "eb44f67cbdb083a3174190c76e08ff47176ab7106ad490953c0e808df9e51090",
+      "bytes": 135283,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/be.json/localize.json",
+      "sha256": "291806db2adccf7c7c607defc5abb1f9c54356a146da8e2e538a32e87682ca1d",
+      "bytes": 148613,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/ca.json/localize.json",
+      "sha256": "93d86fed53be5f497823a7d22d73fb9f52a116db941febf42a3c6b6ab5bfa65f",
+      "bytes": 138181,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/cs.json/localize.json",
+      "sha256": "24115e33e19d248892f92ee9bbbedcc00aea1b124dbb34cd278f6a338d45be28",
+      "bytes": 134264,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/cy.json/localize.json",
+      "sha256": "e5fe17a4fe992449cdf0de4067c41c9fe7803f2aab30b5fd00a99dbc7fd64d39",
+      "bytes": 15051,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/da.json/localize.json",
+      "sha256": "1c36a6ca8d4178a8b8e8ae7d012b8bc60b236a21bb95522d2039495286943dc1",
+      "bytes": 133558,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/de.json/localize.json",
+      "sha256": "d567914a22463ca27a3e07ebf633e624de779a427fd6bb0a0f283c3138fabfc9",
+      "bytes": 138094,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/default.json/localize.json",
+      "sha256": "255768d5971e316fd29169244af0a5a7e28788bd2010598355db147ba26e018b",
+      "bytes": 137051,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/el.json/localize.json",
+      "sha256": "a329927d5106f8362ff6472c7baf1eb198a2a4e1c5be2a2b336e00a73ac6dd64",
+      "bytes": 185611,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/en.json/localize.json",
+      "sha256": "255768d5971e316fd29169244af0a5a7e28788bd2010598355db147ba26e018b",
+      "bytes": 137051,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/en_CA.json/localize.json",
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/en_NZ.json/localize.json",
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/es.json/localize.json",
+      "sha256": "497b566b798fe15467b1d35d16a8811d638ab5b5797734bda0ec056a27eb52da",
+      "bytes": 138852,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/es_419.json/localize.json",
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/et.json/localize.json",
+      "sha256": "855a0dc5b4eda2a29f126a5e0c2831d0e465656f0cef6e06911dd1dbe2c01cc5",
+      "bytes": 136862,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/eu.json/localize.json",
+      "sha256": "c39774c0d8d5566fb17b69e4e74105e00da626e2cefe88422902f66b15dff87e",
+      "bytes": 137061,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/fa.json/localize.json",
+      "sha256": "6c8a3b10f6fcc2a2a5136c79dc81beef14c18188375e80606fce9949139aa3d4",
+      "bytes": 22876,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/fi.json/localize.json",
+      "sha256": "44a6dc061a142595ac90025428b7e89fb658e6a2b72e598be40148f0e9016dce",
+      "bytes": 134550,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/fr.json/localize.json",
+      "sha256": "efbe82bea6e007774f6d10dfa6109e040fcbd1c45d032a02c96ec678461ef5be",
+      "bytes": 132763,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/ga.json/localize.json",
+      "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bytes": 3,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/he.json/localize.json",
+      "sha256": "b2737af5cb451cd1f12c8a84ffa6f2b2347cfd831b9b2f1071bb17d09e8ccee2",
+      "bytes": 139962,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/hu.json/localize.json",
+      "sha256": "36543a161ad6ffc119df5a25d69c1f8e97af1ec2ae23a1c51a2b25c3d44fac94",
+      "bytes": 138825,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/ia.json/localize.json",
+      "sha256": "09818386c10d93b806859f36ec39b4e825c35b3675d160925b02addb03d7a7a7",
+      "bytes": 1151,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/id.json/localize.json",
+      "sha256": "e6fd3d41bff80f75ad489e0a4764eaa74af019e9c2ed70aa654508244fa203ac",
+      "bytes": 135025,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/it.json/localize.json",
+      "sha256": "97f98dcafbdbe05685ce770f7c6b72a966a0907c62aba6dbd8dd5e21873f2c98",
+      "bytes": 134959,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/ja.json/localize.json",
+      "sha256": "fe034af1fb6d93b1b8d4711185d97cbf74ee02ad513fe5ae39627d7fe84e1f95",
+      "bytes": 149999,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/kab.json/localize.json",
+      "sha256": "9d0a9139113a02e1ab309da2fe6b7ea2531b94a2c07ace8f8e883582c5c55e33",
+      "bytes": 721,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/ko.json/localize.json",
+      "sha256": "fe6787ebc013d9afd6c8c8ef886952aaaab870296dfea89fef05894a71f2202f",
+      "bytes": 137312,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/lt.json/localize.json",
+      "sha256": "8cad4ce84073ac6014b52b1d6ef1ed9dc22fc3ee90e5daf9350af07c584961c7",
+      "bytes": 141596,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/mr.json/localize.json",
+      "sha256": "244aaefd23e1a790bbb50c4e1d3f0917f21199afcf995e064e75b892e9c40db7",
+      "bytes": 141332,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/nb.json/localize.json",
+      "sha256": "22ec471d255706021a74df8397862c56c55771a8e0272ca5b46ed0c157a82791",
+      "bytes": 134533,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/nl.json/localize.json",
+      "sha256": "5d8d76cb0b6fa96ae3924cd5553421fbc154c53efbd8d4cd6823a91740e5757f",
+      "bytes": 135170,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/pl.json/localize.json",
+      "sha256": "dd79656e0594969485eb7738033c951994c074e1804fba62ad4bfb1919f3b98a",
+      "bytes": 132886,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/pt.json/localize.json",
+      "sha256": "0ddd9c0c98d400b8d16a7ddb5eb230daef3fe1551eb43e1ae68fe88a49bfeed9",
+      "bytes": 132554,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/ro.json/localize.json",
+      "sha256": "becd6f0ce820a9601ba893fec671d00a0ce512ff1ec98801983f76d30aac04be",
+      "bytes": 134908,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/ru.json/localize.json",
+      "sha256": "f6775b59f11c331e99df10cc3378c4d49339483f368b858e084a3a33e8b477c7",
+      "bytes": 159310,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/sk.json/localize.json",
+      "sha256": "abe4647e404eaf72ea2007c6abd317fdcd61d3708c739ff77919db8b6533655e",
+      "bytes": 132733,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/sr.json/localize.json",
+      "sha256": "0dfe653ccd31314eb4cfa6d5fe09fda8e17fc08c1e5ef3177dc51d90d22dbac1",
+      "bytes": 175989,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/sr_Latn.json/localize.json",
+      "sha256": "71b4b8cba85a5defdc5f91363fd60b56892dc5417e670c36ed5b5ea588de27ca",
+      "bytes": 134879,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/sv.json/localize.json",
+      "sha256": "63b77eb2852f97e3615718dc988704f739e39a2bfc048ad4c2c01225dfe7a973",
+      "bytes": 130874,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/ta.json/localize.json",
+      "sha256": "664e4d936e46f5274e30aecfeaaea5b7504e65b279ac6c1ab45d15d6dc185553",
+      "bytes": 3337,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/th.json/localize.json",
+      "sha256": "6db218482d98014d2c1c699e350b39fb556938b12d83512322066981fa0a4ecd",
+      "bytes": 184057,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/tr.json/localize.json",
+      "sha256": "118c32f73777966d6eb9bbbf1fc56d4a08f3a850916bf4a437fa1a641f4c8346",
+      "bytes": 135051,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/uk.json/localize.json",
+      "sha256": "126f24a57f495544df87a38417b2e4c5b95bd07d3b6eeaba1fe59ea29cc85afd",
+      "bytes": 154328,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/vi.json/localize.json",
+      "sha256": "3cb9e1cbd13fa04e38e088269e6bd7f90898d22695be78a7223d9a6628b3cdc2",
+      "bytes": 134642,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/zh-Hans.json/localize.json",
+      "sha256": "8691e4fa87dd895b1e433b8c8cf0d6041cacd0175d6ff28827552d6d0f2008de",
+      "bytes": 140091,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries-strings/zh-Hant.json/localize.json",
+      "sha256": "261b4f3606d367e74e899eea726a758d87f25a56eafb6d0b7776a8e037451e9f",
+      "bytes": 138334,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries.txt",
+      "sha256": "feacd23b1ea2320b05ac37045bcd9c11f86a41f343bd783cc91ac0c6d2702689",
+      "bytes": 363790,
+      "license": "ODbL-1.0",
+      "evidence": "pinned OSM-derived country/region reference data; retain OSM attribution and derived-data source offer",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/countries_meta.txt",
+      "sha256": "fe19df7cb36890e69b38f3f1f9502a5de6ec3ad98921244defed81975afea23d",
+      "bytes": 12133,
+      "license": "ODbL-1.0",
+      "evidence": "pinned OSM-derived country/region reference data; retain OSM attribution and derived-data source offer",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/drules_proto_default_dark.bin",
+      "sha256": "293a2747e44098b413771f4c33ece44508601477fe0e8e4e1d2ab572c408f70c",
+      "bytes": 497801,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/drules_proto_default_light.bin",
+      "sha256": "85f3d2e413d703c8a2559f873bed34aaa25919b7bb0067bdd3da92b57f5c5ae1",
+      "bytes": 497944,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/drules_proto_outdoors_dark.bin",
+      "sha256": "e96ad9b0ec0ce3ecd99ffeb9519d716b70b414b4c18e555d714a4d1848033854",
+      "bytes": 526284,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/drules_proto_outdoors_light.bin",
+      "sha256": "6b11fbf6d8fbbe609c193a068ada6bc609a466f48f68b51582380e438dcca7d9",
+      "bytes": 526454,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/drules_proto_public-transport_dark.bin",
+      "sha256": "6f1cfae3be125fb0c653a79c825c5f51df921fd2de100bbb124f3e7fa8417ba8",
+      "bytes": 497124,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/drules_proto_public-transport_light.bin",
+      "sha256": "4988e1f157943d0371b2b9e06b88505d50c8a230f9c4c9d57f252edcc4e6e813",
+      "bytes": 497267,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/drules_proto_public-transport_outdoor_dark.bin",
+      "sha256": "e01dd8432f9358e98486f121b18eb77a5a677d5c489e51e04f3e484f0a6ae6f2",
+      "bytes": 525587,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/drules_proto_public-transport_outdoor_light.bin",
+      "sha256": "86db2edd3be7cc4cf76be03855b0fd1375ca5f290afca3d46d6c207c8fd187a9",
+      "bytes": 525757,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/drules_proto_vehicle_dark.bin",
+      "sha256": "be2fbcde628a84b60188108ebb7c39eeb9dd594a0e3b5c0f83d94763f8064128",
+      "bytes": 294434,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/drules_proto_vehicle_light.bin",
+      "sha256": "501f165869ca5bcbe05e7875f9c2329ba1e06dfc95fed2ab5d6b9a1d98b66fa1",
+      "bytes": 294730,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/editor.config",
+      "sha256": "2d9fdd9d8c3690f686c2044013eeada8c5dfac9b0b378e873730b62de6c9d070",
+      "bytes": 56200,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/fonts/00_NotoNaskhArabic-Regular.ttf",
+      "sha256": "7ba3f384c12ccbbb3d966e13cd2d7d58b57459a03f04647df5118087ee6e41a0",
+      "bytes": 149192,
+      "license": "OFL-1.1",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Copyright 2014 Google Inc. All Rights Reserved."
+    },
+    {
+      "path": "assets/fonts/00_NotoSansBengali-Regular.ttf",
+      "sha256": "8e99829203d09a576c4599210fc094299b5f260145df6d6550278fbde21bb5e8",
+      "bytes": 167796,
+      "license": "OFL-1.1",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Copyright 2022 The Noto Project Authors (https://github.com/notofonts/bengali)"
+    },
+    {
+      "path": "assets/fonts/00_NotoSansHebrew-Regular.ttf",
+      "sha256": "e0ee753f09733337b9236221018d4bf71fd6d06c87dd76bbc83120514bc55911",
+      "bytes": 48036,
+      "license": "OFL-1.1",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Copyright 2024 The Noto Project Authors (https://github.com/notofonts/hebrew)"
+    },
+    {
+      "path": "assets/fonts/00_NotoSansMalayalam-Regular.ttf",
+      "sha256": "2d8b54ae74234945cc101c890f2e2b83daac317981eba788576ff4c73b242bc8",
+      "bytes": 106812,
+      "license": "OFL-1.1",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Copyright 2022 The Noto Project Authors (https://github.com/notofonts/malayalam)"
+    },
+    {
+      "path": "assets/fonts/00_NotoSansThai-Regular.ttf",
+      "sha256": "2b705e4da5434d8f8dafd568fb38fa59ebe128895888784a1fa6249a8217d876",
+      "bytes": 21952,
+      "license": "OFL-1.1",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Copyright 2016 Google Inc. All Rights Reserved."
+    },
+    {
+      "path": "assets/fonts/00_NotoSerifDevanagari-Regular.ttf",
+      "sha256": "e4dfe99a0cf20d3847c2ca6025d9dc84f191e1e2ea7916eea841ccfe5bf52c4e",
+      "bytes": 229444,
+      "license": "OFL-1.1",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Copyright 2022 The Noto Project Authors (https://github.com/notofonts/devanagari)"
+    },
+    {
+      "path": "assets/fonts/01_dejavusans.ttf",
+      "sha256": "7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954",
+      "bytes": 757076,
+      "license": "Bitstream-Vera AND LicenseRef-Arev",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved.\nCopyright (c) 2006 by Tavmjong Bah. All Rights Reserved.\nDejaVu changes are in public domain\n"
+    },
+    {
+      "path": "assets/fonts/02_droidsans-fallback.ttf",
+      "sha256": "21b96a0377f067833a93af3082eb28d4ffab7a8cd46bfd513286f1d64b7b0949",
+      "bytes": 3451900,
+      "license": "Apache-2.0",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Digitized data copyright Google Corporation © 2006"
+    },
+    {
+      "path": "assets/fonts/03_jomolhari-id-a3d.ttf",
+      "sha256": "b0e6462f7a09762bcb5a25237a19faba1c5fc56a24c657d77bc808a918b622f5",
+      "bytes": 1817160,
+      "license": "OFL-1.1",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Copyright (c) 2006-2009 by Christopher  Fynn. All rights reserved."
+    },
+    {
+      "path": "assets/fonts/04_padauk.ttf",
+      "sha256": "8cc084693d02ffac22c31e1534b2f12a29fef356cfe613c5351d2975609b6335",
+      "bytes": 248076,
+      "license": "OFL-1.1",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Copyright (c) SIL, 2003. All rights reserved."
+    },
+    {
+      "path": "assets/fonts/05_khmeros.ttf",
+      "sha256": "6de5f3993a4bc22e580f865d721c922cfa9c030cc4966d890ce0330022588e0a",
+      "bytes": 265552,
+      "license": "NOT_ADMITTED",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "EXCLUDED",
+      "reason": "LGPL font preferred-source offer not established for this build; excluded pending source admission"
+    },
+    {
+      "path": "assets/fonts/06_code2000.ttf",
+      "sha256": "afabc4e845085d6b4f72a9de672d752c002273b52221a10caf90d8cb03334f3c",
+      "bytes": 3155104,
+      "license": "NOT_ADMITTED",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "EXCLUDED",
+      "reason": "Shareware registration requirement; not admitted as an open resource"
+    },
+    {
+      "path": "assets/fonts/07_roboto_medium.ttf",
+      "sha256": "4ac8e03606ffa4c37f61a6510a2080f1f37a7054f4726c214887d3b23f72e369",
+      "bytes": 168644,
+      "license": "Apache-2.0",
+      "evidence": "embedded TTF name table and data/copyright.html; unchanged font bytes",
+      "admission": "ADMITTED",
+      "copyright": "Copyright 2011 Google Inc. All Rights Reserved."
+    },
+    {
+      "path": "assets/fonts/blacklist.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/fonts/unicode_blocks.txt",
+      "sha256": "abd3752346380926de0e163593853067201715f28b3ccf5005f51736ceff4d51",
+      "bytes": 4646,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/fonts/whitelist.txt",
+      "sha256": "a074bb64caa57a2ce3ffa36e885ce0d4cec658ce01a2c84b21347d047904344d",
+      "bytes": 1392,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/icudt75l.dat",
+      "sha256": "04dc782e89a7dc69985255d8f1e6690d9a9403c3eec4b8305b6a6283f3ac0e1d",
+      "bytes": 1312992,
+      "license": "Unicode-3.0",
+      "evidence": "3party/icu/icu/LICENSE; unchanged Unicode data",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/languages.txt",
+      "sha256": "1aa401082d3d1c3cfd4962a795f0527b32ec0101bc653a7d4ff159990760800b",
+      "bytes": 3399,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/mapcss-mapping.csv",
+      "sha256": "c5148523e809482d584a9d9c5b1003cb34721294a31c92ec83d6b60dd85b5b8b",
+      "bytes": 112410,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/packed_polygons.bin",
+      "sha256": "fab76fc9d0759c75f837c014bbfdc4214cf8fb1a1780a70217bc39184f55c611",
+      "bytes": 5196276,
+      "license": "ODbL-1.0",
+      "evidence": "pinned OSM-derived country/region reference data; retain OSM attribution and derived-data source offer",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/patterns.txt",
+      "sha256": "a8cce0c5412bdee05040193470f55e7a63b3a50864ac4b105ea33a94d43366c9",
+      "bytes": 1182,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/ar.json/localize.json",
+      "sha256": "cbfba90dc4ecd30688beb39bf110836fab5633346e9fec21947becaf0e729854",
+      "bytes": 4642,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/be.json/localize.json",
+      "sha256": "0dfd72a6a91e52f93675bc82f0c53692f6b9fc6f53c0c9e1a271d1a40183e41f",
+      "bytes": 5270,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/bg.json/localize.json",
+      "sha256": "3a01261fb512aa789918ad9014789233bdfb828b926516665cf78221709ec4c4",
+      "bytes": 5393,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/ca.json/localize.json",
+      "sha256": "e31eeed197cafb0689f64e7d13d1e72a2ffc37f6a0fbc5d2d9e55c39f7423bd6",
+      "bytes": 5600,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/cs.json/localize.json",
+      "sha256": "f24655313280a7885c79869c185f18365dc02fa3c32c9fe35b89e08a0b98a466",
+      "bytes": 5805,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/da.json/localize.json",
+      "sha256": "423067b886c8be315e4d7ed0add6e2d004151779b9368fcd68a76ea2c99661cc",
+      "bytes": 5803,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/de.json/localize.json",
+      "sha256": "4d20302d38e29ac27ab23e22aed38b052f5ba957a43687f0fcd320b035a97fd3",
+      "bytes": 5924,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/el.json/localize.json",
+      "sha256": "6b3f5a3432f5406bb0ed8bbfcc59e9cc68b5095eff99faa80be410a7cf235269",
+      "bytes": 7597,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/en.json/localize.json",
+      "sha256": "244c509f3f0e6b37e8c785fceb7b732af0b1a3d2b740bbaa8b4068d57aaa3620",
+      "bytes": 5836,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/en_CA.json/localize.json",
+      "sha256": "ce9e1edf801663b2c72e885ec57a8dcce5aff2bc39616203d9bad42e362eaa2c",
+      "bytes": 463,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/en_NZ.json/localize.json",
+      "sha256": "510e2baacabdfae3c02c0652d32666d99ac5bdbaec399c00ed257e8599a20049",
+      "bytes": 44,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/es-MX.json/localize.json",
+      "sha256": "92d2cec4033753d9f4e3da13a5634864e1a3280b6e05b6881957bfe918eb8948",
+      "bytes": 4108,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/es.json/localize.json",
+      "sha256": "10ac8e3661391fc92021ad69d4f0c346547e04d9f7ac75ff02a1813f79c4591a",
+      "bytes": 5862,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/es_419.json/localize.json",
+      "sha256": "dba551f45ffda3f537b8bd45f5b13c4d91d35050e24188c51c984814b0ae828f",
+      "bytes": 47,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/et.json/localize.json",
+      "sha256": "1991bfe5955a79aebc4e6fb06adbef3adde0e3a282a7d4fb907cdf3dd248f245",
+      "bytes": 6198,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/eu.json/localize.json",
+      "sha256": "92fe9216f7ff5d3f7763c28a7458225161a81cb7195cfa512a72cf4599ff24b6",
+      "bytes": 5789,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/fa.json/localize.json",
+      "sha256": "2718c03917d9c75814287040bd7897578257149ca6e1e1c48fa974caef71a291",
+      "bytes": 4822,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/fi.json/localize.json",
+      "sha256": "02452e8d91753bf1d70e1b4abc2bc0a3978bf599b3c1e5c75f74a0e691cb86be",
+      "bytes": 4584,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/fr.json/localize.json",
+      "sha256": "ac82ca27a434ba360974b80e41d203d7c6133d278850bd6110fa4004e5d5ef29",
+      "bytes": 6001,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/gl.json/localize.json",
+      "sha256": "183c5b6c4d0be998b4b214ab6385060849f129d9ac1f0ad6c32f5c11c495bdad",
+      "bytes": 5766,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/hi.json/localize.json",
+      "sha256": "e48fdad6b1cb1ea2973f5cb1e92e2cd392df27afcc04f3ce4218ad35ee1bd36f",
+      "bytes": 5667,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/hr.json/localize.json",
+      "sha256": "c08abeedd7766611d803c883dea50552a8492809fd1f5ad3f00ea9dcbee14c91",
+      "bytes": 4115,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/hu.json/localize.json",
+      "sha256": "8c9b46e05d42fa0958aab958742d6cd75af0b4ea8a7974b6c4a3e72090b7c3d9",
+      "bytes": 4313,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/id.json/localize.json",
+      "sha256": "733a3cbc99160ddceb2218e98c19d1f58e1354d3bfbf1df62be9021e154eab4e",
+      "bytes": 4260,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/it.json/localize.json",
+      "sha256": "a4b99fe9b6be435dc62f1b002b58b229fb25a861ab283c89743554394adc68da",
+      "bytes": 5793,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/ja.json/localize.json",
+      "sha256": "cf63224adcaedcdc24b83d0af414ee01e049c6e3f5cea8b7dafacbc08eff5243",
+      "bytes": 4646,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/ko.json/localize.json",
+      "sha256": "94671e51e5a6bf277ede3469cbb5307a5fab96aa362fda111fb6bd88ba6915aa",
+      "bytes": 4088,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/lo.json/localize.json",
+      "sha256": "1878ec2f657b90823558e964fcb856ab224000b1f4545c33c0669d8b9e5073e6",
+      "bytes": 8364,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/lt.json/localize.json",
+      "sha256": "12adb1ae86e315b30cde7f3459b19315f6e2a63c1164d8335c61d0293bc75863",
+      "bytes": 4645,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/lv.json/localize.json",
+      "sha256": "89ade5bbd05a5d56f87eb66242f19f29544b7d9ba79faff0ae289308624a93f0",
+      "bytes": 4408,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/mk.json/localize.json",
+      "sha256": "aa6cb009fe6278df6df968f11a5a09870f901fda8941703449f57f95ce1762c8",
+      "bytes": 7892,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/mr.json/localize.json",
+      "sha256": "7a2781b9d957edfdec6abbc393bc8b42ae731baef8aace8077e76fe2bf7eef24",
+      "bytes": 5499,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/nb.json/localize.json",
+      "sha256": "68b8418feea930a970d42383bb60b67ac25c4734bf023880a2d160f7e8fb847f",
+      "bytes": 3998,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/nl.json/localize.json",
+      "sha256": "11f95e3551788e87a220c124b894a30ed1cd7a9f511e54673a856ad0f34f24cb",
+      "bytes": 6089,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/pl.json/localize.json",
+      "sha256": "c01270a282b6c5fa81ef3ac5ebca093f17260843041dccfd75f8ef802154019d",
+      "bytes": 5285,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/pt-BR.json/localize.json",
+      "sha256": "e7c4dbb0a52ab332e176b2d76db95097635a90cf366dddf4ad6e07e066df3d47",
+      "bytes": 5837,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/pt.json/localize.json",
+      "sha256": "834bef3917fa7b3358be9fda9480a0e19083653de54ec226b3461fbf8bb97a74",
+      "bytes": 5786,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/ro.json/localize.json",
+      "sha256": "c3a70b4fca8b82d0f8c255c38ab9dfb0f4a44fb3301a96716a62caff7a5894b2",
+      "bytes": 5154,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/ru.json/localize.json",
+      "sha256": "084def0bfaa52aefc0ea872ba2417899fe8d5dbf469717ff68a882863499010c",
+      "bytes": 5411,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/sk.json/localize.json",
+      "sha256": "6881c51e7c50bb644c33b5cf288468eba91fc250071004f4cbbd618d01c520cb",
+      "bytes": 4216,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/sr.json/localize.json",
+      "sha256": "c98ed3b1313593c521b93d2cea532b33d78a128359bdf7fec2c24d1e7f734738",
+      "bytes": 7400,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/sv.json/localize.json",
+      "sha256": "48d3c3418eb1441dfdd9165a8051cc2e2b52e050e1f1bfd2f0a660ad2ae0a844",
+      "bytes": 4014,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/sw.json/localize.json",
+      "sha256": "fb4efa390190fab894dbb978ab9733b892fcec006178342670ce18173dfc4493",
+      "bytes": 4365,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/ta.json/localize.json",
+      "sha256": "2db2668a5a2ffc2a12e2a4ed890ed69ffba90cf6979786396f68c9a1a9716223",
+      "bytes": 6978,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/th.json/localize.json",
+      "sha256": "f27c6177ab052a3fc3aeb9dd28fe64acdfe18a1bcba7fd18b55afe0b27b11661",
+      "bytes": 5554,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/tr.json/localize.json",
+      "sha256": "0ef54420be5affbeb92a3ac1ae62cabb094464253756cd74898ed64b69ebeea4",
+      "bytes": 5812,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/uk.json/localize.json",
+      "sha256": "6d4ffd495110d238febc8f35648234e8831ad5965e5e903ada5635b28be14c3d",
+      "bytes": 5478,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/vi.json/localize.json",
+      "sha256": "5e9dc0a0bb49e3cc53ff9f275f9ad180a8b9c46a8dfd367297f28924ee38e72e",
+      "bytes": 5300,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/zh-Hans.json/localize.json",
+      "sha256": "4245e3cf6fa177c85e4e4aa367d42902ec3834d948ae5a61756c8af3dc1b4f24",
+      "bytes": 5612,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/sound-strings/zh-Hant.json/localize.json",
+      "sha256": "733305e54dec23963435997913226e6903772d3be2ebb08a082880ad6908ddc5",
+      "bytes": 5589,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/subtypes.csv",
+      "sha256": "5d8c9e6eadfcdb2c012ddcb2041d8be74aae708562e9018758390a4758c52c06",
+      "bytes": 2650,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/6plus/dark/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/6plus/dark/symbols.png",
+      "sha256": "fe2873959d79c7aa578295a973c2c011766a2ffafcd3cadeb000b700cddb3427",
+      "bytes": 1338623,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/6plus/dark/symbols.sdf",
+      "sha256": "147cc36e841f13abd318febc83a01f57af8d7097d4841c74d4ef299275d27165",
+      "bytes": 89113,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/6plus/dark/traffic-arrow.png",
+      "sha256": "b43d8c0818daa8ab88aa74d86f9c6e61674de278c1427016534d0dd66d7a7483",
+      "bytes": 15056,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/6plus/light/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/6plus/light/symbols.png",
+      "sha256": "1ef2040972c3d0ff22383f183c6647f5ed6d772428a249703906a9ca5fe8ce7b",
+      "bytes": 1336160,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/6plus/light/symbols.sdf",
+      "sha256": "4f565bf7e2e97fff880187924b89030c99a6209b3207f14be3982063cf92f2d6",
+      "bytes": 88963,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/6plus/light/traffic-arrow.png",
+      "sha256": "b43d8c0818daa8ab88aa74d86f9c6e61674de278c1427016534d0dd66d7a7483",
+      "bytes": 15056,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/default/arrow.obj",
+      "sha256": "5ccfb1c7695bcb5e3bda375d97c78ea921ce98a54f050dbb95b01fa492362451",
+      "bytes": 417,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/default/arrow_shadow.obj",
+      "sha256": "883adf4cd3b54fd53b30a6b880dfd6cca505738ed6d13ad3e45c2ef4516a3d43",
+      "bytes": 771,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/default/default.ui",
+      "sha256": "5e0f2a850f839be34260a477252505c132e8b1f138ff4532201b4b351b51e821",
+      "bytes": 1098,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/default/smaa-area.png",
+      "sha256": "fde1a4ae7e9350619fa7bb366e97afab8b505d99f92b48e58d426bf717359be6",
+      "bytes": 63887,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/default/smaa-search.png",
+      "sha256": "795f3bb6047d89151058f383ff9df431003d9b5eb584e6e6e16bb539a342a13a",
+      "bytes": 598,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/hdpi/dark/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/hdpi/dark/symbols.png",
+      "sha256": "42a8dec6febbfc70a18ba8fba32888ad42157773123af97923d80b90dc8cdd4c",
+      "bytes": 762171,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/hdpi/dark/symbols.sdf",
+      "sha256": "3e100ec22f90a37e5fdd9c1911c2f3064471db87bd683e64b9ff05d1fcf3e30d",
+      "bytes": 87745,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/hdpi/dark/traffic-arrow.png",
+      "sha256": "f2281ec8722561a8ac26ea62d80a9046fcc94488d46fba4c00873ee117ed853a",
+      "bytes": 15042,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/hdpi/light/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/hdpi/light/symbols.png",
+      "sha256": "c3ba59e02e2383cdcd7c705a8cca02da49839442349287d480888fe93ee5c04f",
+      "bytes": 754823,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/hdpi/light/symbols.sdf",
+      "sha256": "6b0d99fde3d28640ece339a7988994592412aa03fcdd048f578eeaf167988a82",
+      "bytes": 87585,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/hdpi/light/traffic-arrow.png",
+      "sha256": "f2281ec8722561a8ac26ea62d80a9046fcc94488d46fba4c00873ee117ed853a",
+      "bytes": 15042,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/mdpi/dark/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/mdpi/dark/symbols.png",
+      "sha256": "89caa43f20999b4ff37be2c3d5a0b534420ba3e3cd6881bd41cc31eddcab8918",
+      "bytes": 457225,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/mdpi/dark/symbols.sdf",
+      "sha256": "231455249dce94ad05c121c985f51a89e9f730ccd5de3bda06183a79b2f30ff3",
+      "bytes": 86528,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/mdpi/dark/traffic-arrow.png",
+      "sha256": "a4b2c1b9af0a3539b894a10da6c2d60cb5d10991030e8ccbaf1d3f9a99ee600f",
+      "bytes": 14744,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/mdpi/light/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/mdpi/light/symbols.png",
+      "sha256": "c5bc978858e4e01fb734d3fd5db2ecc6ddb0ad4d5ba93b66888add53534521b7",
+      "bytes": 452594,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/mdpi/light/symbols.sdf",
+      "sha256": "b223ca41912bf0e41891f7a482ab0f97459d50859e5cad192519f8effedf4e2e",
+      "bytes": 86368,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/mdpi/light/traffic-arrow.png",
+      "sha256": "a4b2c1b9af0a3539b894a10da6c2d60cb5d10991030e8ccbaf1d3f9a99ee600f",
+      "bytes": 14744,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xhdpi/dark/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xhdpi/dark/symbols.png",
+      "sha256": "f9f2168dc5b0204bf72a3f7a11a6a4b66a2f90805ea77310be619354e17e4f51",
+      "bytes": 1057197,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xhdpi/dark/symbols.sdf",
+      "sha256": "d0056e99436ff488b26315a6f7712e9efd393e4b504118bfd38c04bc94eb6feb",
+      "bytes": 88408,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xhdpi/dark/traffic-arrow.png",
+      "sha256": "b43d8c0818daa8ab88aa74d86f9c6e61674de278c1427016534d0dd66d7a7483",
+      "bytes": 15056,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xhdpi/light/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xhdpi/light/symbols.png",
+      "sha256": "585dd716e74f24bafe279b3f9f246a036f7a4e0126a6c64d7dde9930b89a555a",
+      "bytes": 1052363,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xhdpi/light/symbols.sdf",
+      "sha256": "1d2549f06ab43b8ad7d7166789118e082db7fc56df4432afd6e909277efc01b7",
+      "bytes": 88244,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xhdpi/light/traffic-arrow.png",
+      "sha256": "b43d8c0818daa8ab88aa74d86f9c6e61674de278c1427016534d0dd66d7a7483",
+      "bytes": 15056,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxhdpi/dark/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxhdpi/dark/symbols.png",
+      "sha256": "21248b1d552e10485f557e30348c703c3e85cb97b18d15668c18baefba818b3b",
+      "bytes": 1676684,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxhdpi/dark/symbols.sdf",
+      "sha256": "4e4e6e75259c5ddce3d41faec8da933ffa1600066d1cfed90e0bcc03054f1cf4",
+      "bytes": 89168,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxhdpi/dark/traffic-arrow.png",
+      "sha256": "80fea50c8e3d64f45f35059722ad6ab7f1bde7d0fa12cc39842432d87530dcc4",
+      "bytes": 15928,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxhdpi/light/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxhdpi/light/symbols.png",
+      "sha256": "c7be15f520999f0d78a8e2dbb1812b2a8ed62a4e685c688af42df1abb0b3a58e",
+      "bytes": 1668293,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxhdpi/light/symbols.sdf",
+      "sha256": "eaeee2d47381bdb39f39c6017e8e537a4cd1352a77e9a7fc622fa45db16377ab",
+      "bytes": 89011,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxhdpi/light/traffic-arrow.png",
+      "sha256": "80fea50c8e3d64f45f35059722ad6ab7f1bde7d0fa12cc39842432d87530dcc4",
+      "bytes": 15928,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxxhdpi/dark/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxxhdpi/dark/symbols.png",
+      "sha256": "e4a409af31d774770724fddf6956d3d84dc4d30fabfa973d4eafe2af558a8633",
+      "bytes": 2045395,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxxhdpi/dark/symbols.sdf",
+      "sha256": "f9784af6d10817be269f26dc0e53ab2e5d9b0b9a841c62935bc7a5ce15d5e79f",
+      "bytes": 89906,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxxhdpi/dark/traffic-arrow.png",
+      "sha256": "80fea50c8e3d64f45f35059722ad6ab7f1bde7d0fa12cc39842432d87530dcc4",
+      "bytes": 15928,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxxhdpi/light/area-hatching.png",
+      "sha256": "9bad2f7a099be6b1bb34119f2351bee59ec0ab92506b0f3c6c004689ae971516",
+      "bytes": 17758,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxxhdpi/light/symbols.png",
+      "sha256": "d5dce0cea551e308a94c5a4a8062531d1433ff70911f3d31c8c21e3d74a99d20",
+      "bytes": 2039779,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxxhdpi/light/symbols.sdf",
+      "sha256": "8567442f044754dc7e5a0fcda9a1db9989a1a62d5f90e27dd73be76cba29b497",
+      "bytes": 89746,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/symbols/xxxhdpi/light/traffic-arrow.png",
+      "sha256": "80fea50c8e3d64f45f35059722ad6ab7f1bde7d0fa12cc39842432d87530dcc4",
+      "bytes": 15928,
+      "license": "Apache-2.0 AND MIT AND CC-BY-4.0 AND CC-BY-SA-3.0 AND CC0-1.0",
+      "evidence": "data/copyright.html#icons; native atlas generated from pinned open icon sources",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/transit_colors.txt",
+      "sha256": "c790f804c015b4652e9958cf21ca1b905a533d2c0febd8aad74deec4f0e468af",
+      "bytes": 4502,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/types.txt",
+      "sha256": "ac739c64aee1ae689133a50b11cf104ed9346c78193a22162be8b9ae794b6b23",
+      "bytes": 35956,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/vulkan_shaders/reflection.json",
+      "sha256": "6eb5a3525b531541641eb6558fe4f37b6a70e5f827735cd0122f1296d44d8844",
+      "bytes": 8691,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    },
+    {
+      "path": "assets/vulkan_shaders/shaders_pack.spv",
+      "sha256": "3034ddc5bf9dd11ddfbad338014107760bd06fa2634ceeb3a2ceae56c9dff12b",
+      "bytes": 356028,
+      "license": "Apache-2.0",
+      "evidence": "upstream LICENSE and source at the pinned revision",
+      "admission": "ADMITTED"
+    }
+  ],
+  "evidence_notes": [
+    "Original binary font licensing inspected from name IDs 0/13/14. Code2000 explicitly says shareware and asks for registration.",
+    "Pinned native icon sources retain Apache/MIT/CC notices. Organic Maps issue 3311 and PR 3302 document replacement of proposed Flaticon icons before merge; stale broad credits are not used as a license grant.",
+    "No font is modified or renamed. LGPL KhmerOS is excluded until its preferred-source offer is admitted."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "role": "local public native proof inputs, not product download activation",
+  "native_data_directory_version": 261004,
+  "maps": [
+    {
+      "name": "Brazil_Parana_East.mwm",
+      "bytes": 10058648,
+      "sha256": "d1e9b2ce81cc10335b6b082a64d78a8241390f42c262e2832f400c981b200a3e"
+    },
+    {
+      "name": "World.mwm",
+      "bytes": 53519450,
+      "sha256": "77a35c16fad64252fe7dffadb8e966e8e3af906354b14df2edc1809b3e22e4a5"
+    },
+    {
+      "name": "WorldCoasts.mwm",
+      "bytes": 8489900,
+      "sha256": "d42a71b10c5637814468929dc4c72c2fc20f2996ce9877d697bd3dd4dc143626"
+    }
+  ]
+}

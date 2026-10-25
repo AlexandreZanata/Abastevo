@@ -203,7 +203,7 @@ object MapPoiCodec {
         )
     }
 
-    private fun decodeCharging(obj: JSONObject): MapCharging {
+    internal fun decodeCharging(obj: JSONObject): MapCharging {
         strict(
             obj,
             "place_id", "equipment_id", "connector_id", "connector_code", "power_w",
@@ -223,25 +223,25 @@ object MapPoiCodec {
         )
     }
 
-    private fun objectOf(raw: String): JSONObject =
+    internal fun objectOf(raw: String): JSONObject =
         try {
             JSONObject(raw)
         } catch (_: Exception) {
             throw MapContractException("invalid-json")
         }
 
-    private fun strict(obj: JSONObject, vararg keys: String) {
+    internal fun strict(obj: JSONObject, vararg keys: String) {
         val actual = obj.keys().asSequence().toSet()
         if (actual != keys.toSet()) throw MapContractException("unknown-or-missing-field")
     }
 
-    private fun optString(obj: JSONObject, key: String): String? =
+    internal fun optString(obj: JSONObject, key: String): String? =
         if (obj.isNull(key)) null else obj.getString(key)
 
-    private fun optLong(obj: JSONObject, key: String): Long? =
+    internal fun optLong(obj: JSONObject, key: String): Long? =
         if (obj.isNull(key)) null else obj.getLong(key)
 
-    private fun strings(array: JSONArray): List<String> =
+    internal fun strings(array: JSONArray): List<String> =
         (0 until array.length()).map { array.getString(it) }
 
     private val sha256 = Regex("^[0-9a-f]{64}$")

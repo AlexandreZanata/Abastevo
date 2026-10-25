@@ -313,6 +313,55 @@
   arm64/16KB, data gate MAP-09–13, device manual acceptance, staging or release
   claim. Next: fix MAP-08 generation/check/route, then MAP-09–13 and the
   Abastevo adapter/Compose map before MAP-15–33.
+- Map review remediation 2026-10-25: bounded repairs LOCAL_DONE /
+  INTEGRATION_PENDING on `codex/map-ev-implementation`; inherited Antigravity
+  commits `483cff59` and `2d51eef6` and unfinished native work preserved.
+  [Current evidence](../backend/evidence/maps/MAP-15_20_REMEDIATION_20261025.md);
+  [previous progress preserved](history/MAP_REMEDIATION_PROGRESS_BEFORE_20261025.md).
+  Fixed rollback/cancellation/reader consistency, real Gradle distribution
+  values, Main-only native reload/query handling, pan/zoom restoration,
+  conditional prices and reachable source controls, general city/week reuse.
+  Real phone signed-download → exact A/B activation → regional-map registration
+  → offline search → Activity recreation PASS (1/1); route/screen PASS (5/5).
+  JVM/domain/application/data/engine/app and scoped release security checks PASS.
+  Final emulator UI 5/5 at 200% font / 320 dp; final app JVM 535/535 + lint
+  PASS. Unsigned release 78,121,062 bytes / 74.502 MiB, all native ELF/ZIP
+  alignments 16 KB. Source checkpoint `51cc4457`; final receipt pins hashes.
+  Phone disconnected; temporary emulator and proof server stopped.
+  MAP-15/16/17/19 retain local implementation checkpoints; MAP-18 artwork and
+  MAP-20 / MINIMUM_MAP_GATE remain PARTIAL. Admitted live station geometry/
+  prices, product distribution config, native combined artwork, opening-hours
+  contract and public offline-overlay acceptance remain named obligations.
+  No push/PR/merge/wiki/deploy or production/pilot certification. MAP-21–33 untouched.
+
+- Map/EV checkpoint 2026-10-25 (measurements 2026-10-24): MAP-00–13 LOCAL_DONE / INTEGRATION_PENDING; MAP-14
+  **LOCAL_DONE / ENGINE_GATE_PASS / INTEGRATION_PENDING** on
+  `codex/map-ev-implementation`, from `8e707b62` plus the checkpoint commit
+  containing this record. [Current evidence](../backend/evidence/maps/MAP-14_ENGINE_GATE.md),
+  [acceptance receipt](../backend/evidence/maps/map14-final/acceptance.json),
+  [resume](MAP_EV_RESUME.md). MAP-15/16 local records remain; their retained
+  integration gaps must be closed as engineering tasks, not owner decisions.
+  Both ARM ABIs have byte-identical independent-checkout AAR/classes/core
+  comparisons, exact resource admission (193 admitted / 2 excluded fonts), full
+  retained notices and expanded runtime-code audit (36 hosts classified, 0
+  unknown, 0 secret-pattern hits). Actual ARM64/16 KB/OpenGLES3 and
+  ARM32/API30/Vulkan render/search/route passed; four native rotations per ABI,
+  old Activity collection and three ARM32 process restarts passed. The ARM32
+  OpenGL emulator attempts crashed the emulator and are not accepted profiles.
+  APK 77,794,496 bytes / 74.19 MiB, both advertised ARM ABIs complete, all 64-bit
+  LOAD/ZIP alignments 16 KB, existing 80 MiB ceiling unchanged. Persistent
+  candidate: `/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22`.
+  Fixed SDK lifecycle forwarding/buffer teardown, readiness-before-surface,
+  retired callbacks, generation-correlated KML category recovery and search
+  snapshots. Eight Python, 19 engine JVM and 4 Compose instrumentation tests
+  PASS; affected app JVM run 490 PASS, normal debug, engine probe/release,
+  lint and scoped integrity checks PASS. No redundant backend/SQL aggregate.
+  Next: close MAP-15 native activation/API26 crypto/recovery integration items,
+  then MAP-17 real four-tab/native host wiring; MAP-18/19/20 own final markers,
+  disambiguation, prices and minimum-map acceptance. No fabricated map UI,
+  source activation, phone installation, push/PR/merge, deploy or release claim.
+  [Earlier detailed progress](history/MAP_ENGINE_PROGRESS_BEFORE_ACCEPTANCE_20261024.md)
+  preserves the superseded checkpoints and all outstanding product obligations.
 - Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
   IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
   [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),

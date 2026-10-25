@@ -1,0 +1,9 @@
+{
+  "pinned_revision": "7516753",
+  "license_ancestor": "083d98e4315574a4d556d3fc8184c71ae1234ef9",
+  "ancestor_check_exit": 0,
+  "date": "2020-03-28",
+  "license": "MIT",
+  "repository": "https://github.com/comaps/just_gtfs",
+  "retained_terms": "maps/engine/upstream/licenses/just_gtfs-MIT.txt"
+}

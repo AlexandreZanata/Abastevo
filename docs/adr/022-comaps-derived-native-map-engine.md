@@ -1,9 +1,9 @@
 # ADR-022 — CoMaps-derived native map engine behind a narrow Android port
 
 Date: 2026-10-24
-Status: ACCEPTED for a gated technical spike (MAP-14); production integration
-requires ENGINE_GATE evidence and transitive source admission. No deployment or
-release is implied.
+Status: ACCEPTED for the owned native extraction. The local ENGINE_GATE
+checkpoint is recorded in [MAP-14_ENGINE_GATE](../backend/evidence/maps/MAP-14_ENGINE_GATE.md).
+Product integration and production certification retain their separate gates.
 
 ## Context
 
@@ -41,7 +41,7 @@ data require separate admission.
 6. No upstream CDN, demo server, API key or public tile bulk download is a
    production dependency. Abastevo hosts admitted regional packages through its
    own signed manifest/download contract.
-7. The spike must prove real render, pan/zoom, custom POI selection, offline
+7. The artifact must prove real render, pan/zoom, custom POI selection, offline
    search and one offline car route before any map UI depends on it. A mock,
    screenshot, external intent or compile-only APK does not pass ENGINE_GATE.
 8. If extraction fails, record the concrete build/interface/resource failure and
@@ -76,5 +76,6 @@ data require separate admission.
 MAP-14 evidence must include the pinned source/toolchain, real native build and
 launch on an authorized emulator/device, render/search/route/POI selection,
 ABI/16 KB page-size/minSdk checks, packaged dependency/network inventory and
-lifecycle/leak results. Until then the engine is
-`SPIKE_PENDING`, not integrated.
+lifecycle/leak results. The local extraction checkpoint now passes for its
+recorded runtime matrix. The real map tab and public release remain their
+owning phases; failed emulator profiles are not accepted by this decision.
