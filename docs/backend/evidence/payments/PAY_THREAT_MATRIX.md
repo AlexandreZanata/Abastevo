@@ -34,9 +34,9 @@ case cannot be fully accepted without separately authorized live verification.
 
 | ID | Required case | State | Owner | Provider proof |
 |---|---|---|---|---|
-| AUTH-01 | Forged, revoked, expired or foreign account/session/key cannot create or read a payment command. | OPEN | PAY-05, PAY-19 | none |
+| AUTH-01 | Forged, revoked, expired or foreign account/session/key cannot create or read a payment command. | CLOSED_LOCAL | PAY-05, PAY-19 | none |
 | AUTH-02 | IDOR on order, customer, QR, invoice, portal session, cancellation and refund is denied. | OPEN | PAY-06, PAY-07, PAY-11, PAY-15, PAY-16 | none |
-| AUTH-03 | CSRF/cookie-bound browser commands require the existing proof; no state change from a redirect or cross-site form. | OPEN | PAY-06, PAY-19 | none |
+| AUTH-03 | CSRF/cookie-bound browser commands require the existing proof; no state change from a redirect or cross-site form. | CLOSED_LOCAL | PAY-06, PAY-19 | none |
 | AUTH-04 | Duplicate command/webhook delivery and replay cannot repeat a charge, grant, refund or cancellation. | OPEN | PAY-04, PAY-08, PAY-09 | none |
 | AUTH-05 | Operator refund/replay requires fresh strong proof, reason/audit and approved privilege; key rotation invalidates old proof. | CLOSED_LOCAL | PAY-16, PAY-18 | none |
 
@@ -116,10 +116,10 @@ case cannot be fully accepted without separately authorized live verification.
 | BND-01 | No PAN/CVV/raw card form, secret or provider credential enters handlers, logs, tests, fixtures or storage. | CLOSED_LOCAL | PAY-02, PAY-06, PAY-18 | none |
 | BND-02 | No customer PII, raw QR, payment URL, signature or token appears in logs/artifacts; retention is reviewed. | CLOSED_LOCAL | PAY-05, PAY-18, PAY-20 | none |
 | BND-03 | Protected billing retention is separated from account erasure without losing legitimate financial obligations. | CLOSED_LOCAL | PAY-15, PAY-16, PAY-20 | none |
-| BND-04 | Payment never changes community trust and cannot buy safety/trust privileges. | OPEN | PAY-03, PAY-10, PAY-17 | none |
-| BND-05 | Disabling sales, expiry or provider outage preserves free data, export and legitimate paid-through access. | OPEN | PAY-10, PAY-15 | none |
+| BND-04 | Payment never changes community trust and cannot buy safety/trust privileges. | CLOSED_LOCAL | PAY-03, PAY-10, PAY-17, PAY-19 | none |
+| BND-05 | Disabling sales, expiry or provider outage preserves free data, export and legitimate paid-through access. | CLOSED_LOCAL | PAY-10, PAY-15, PAY-19 | none |
 | BND-06 | Enterprise payer/customer identity grants no team, tenant, station or cross-account privilege. | CLOSED_LOCAL | PAY-17 | none |
-| BND-07 | No Android map/charging, MAP ingestion, static portal, app purchase UI or unrelated shared-edge regression. | OPEN | PAY-19, PAY-22, PAY-23 | none |
+| BND-07 | No Android map/charging, MAP ingestion, static portal, app purchase UI or unrelated shared-edge regression. | CLOSED_LOCAL | PAY-19, PAY-22, PAY-23 | none |
 
 ## Existing PRM reuse candidates
 
@@ -135,6 +135,26 @@ evidence was not rerun at PAY-00.
 | PRM-04 | Reconciliation, refresh leases and retired purchase chains. | REUSE_OPEN | PAY-10, PAY-11, PAY-13 | Preserve Play behavior; web sources get their own freshness/lifecycle rules. |
 | PRM-05 | Account deletion purges/retires provider material. | REUSE_OPEN | PAY-15 | Migration `000075` trigger; extend without replaying financial writes. |
 | PRM-06 | Free status/export remains available when payments are disabled. | REUSE_OPEN | PAY-10, PAY-15 | Preserve `Export` independence from provider configuration. |
+
+## PAY-19 local closure
+
+- AUTH-01: the composed API mounts webhook intake only — HMAC/token-bound
+  server callbacks with per-request verification, no owner command, portal
+  or purchase surface; forgeries are refused before any store effect.
+  See [PAY-19](PAY-19.md).
+- AUTH-03: the payment runtime holds no cookie, session-cookie, redirect
+  or Play credential surface; callbacks are bearer/token POSTs verified
+  per request. See [PAY-19](PAY-19.md).
+- BND-04: composed grants carry exactly catalog capabilities through the
+  existing subscription projection; the runtime wires no trust, community
+  or safety modules. See [PAY-19](PAY-19.md).
+- BND-05: flags without credentials enable nothing while owner history/
+  status and free data keep working; outage preserves PENDING with paid-
+  through access intact. See [PAY-19](PAY-19.md).
+- BND-07: payment-inbox runs on its own serial worker slot excluded from
+  the general dispatcher; API composition touches no map, charging,
+  portal or shared-edge routes; full payments/subscription/api suites
+  green. Final protected integration revalidates at PAY-22.
 
 ## PAY-18 local closure
 

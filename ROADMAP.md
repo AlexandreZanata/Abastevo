@@ -3718,8 +3718,8 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 
 ## Stripe and Asaas payments
 
-Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-25. PAY-00–18 are
-LOCAL_DONE / INTEGRATION_PENDING; PAY-19–23 remain planned.
+Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-25. PAY-00–19 are
+LOCAL_DONE / INTEGRATION_PENDING; PAY-20–23 remain planned.
 Selected methods: Stripe cards, Asaas conventional Pix and Pix Automático,
 independently activated.
 Google Play is LATER. Reuse PRM subscription/account/jobs; no Stage D team/tenant
@@ -3818,7 +3818,10 @@ evidence and commit topic.
   refusal/intake redaction, proof rotation, restore convergence, outage
   recovery and frozen intake ceilings with indexed plans pass; provider
   proof remains PAY-21, runtime wiring remains PAY-19.
-- **PAY-19:** Wire actual API and worker runtime.
+- **PAY-19:** Wire actual API and worker runtime. LOCAL_DONE;
+  gated providers, webhook intake, isolated inbox drain, settlement/
+  revocation/exit journeys and fail-closed defaults pass with no Play
+  surface; sandbox proof remains PAY-21, packaging remains PAY-20.
 - **PAY-20:** Package deployment and configuration handoff.
 - **PAY-21:** Prove actual provider sandbox journeys.
 - **PAY-22:** Integrate batch and validate protected CI.

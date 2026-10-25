@@ -76,8 +76,6 @@ import (
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
-	payadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/adapters"
-	paymentsapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/application"
 	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
 	privacyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
@@ -274,12 +272,20 @@ func run() error {
 	// profile handler gets the canonical reader as a closure so
 	// modules never cross-read. Anonymous; no badge without a grant.
 	accountStore := accountadapters.NewPGStore(pool.Underlying())
-	// PAY-15: account deletion records a durable billing-exit intent before the
-	// account row changes. Provider cancellation/replay is wired at PAY-19; the
-	// pending source rows remain visible until then.
-	billingExit := &paymentsapp.BillingExitService{
-		Store: payadapters.NewStore(pool.Underlying()), Clock: time.Now,
-	}
+	// PAY-19: verified payment runtime. Provider clients exist only for
+	// maintenance-ready channels; sales stay off and proofs stay
+	// unimplemented, so dependent commands fail closed. Account deletion
+	// keeps recording its durable billing-exit intent before mutation.
+	payments := composePayments(cfg.Payments, pool.Underlying(), time.Now)
+	registerPaymentRoutes(router, payments)
+	logger.Info(context.Background(), "api.payments",
+		"stripe_maintenance_ready", payments.Preflight.Stripe.MaintenanceReady,
+		"pix_manual_maintenance_ready", payments.Preflight.PixManual.MaintenanceReady,
+		"pix_automatic_maintenance_ready", payments.Preflight.PixAutomatic.MaintenanceReady,
+		"stripe_new_sales_ready", payments.Preflight.Stripe.NewSalesReady,
+		"pix_manual_new_sales_ready", payments.Preflight.PixManual.NewSalesReady,
+		"pix_automatic_new_sales_ready", payments.Preflight.PixAutomatic.NewSalesReady)
+	billingExit := payments.Billing
 	profileadapters.Handler{
 		Store: profileadapters.Store{Q: dbstationprofile.New(pool.Underlying())},
 		Representation: func(ctx context.Context, stationID, cnpj string) (bool, error) {

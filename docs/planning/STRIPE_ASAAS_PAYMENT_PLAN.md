@@ -245,6 +245,13 @@ restore/stale-replay convergence without financial effect, outage-pending
 recovery without duplicate writes, and frozen bounded intake ceilings with
 indexed hot-query plans are implemented and tested; provider sandbox timing
 and runtime wiring remain PAY-21/PAY-19.
+PAY-19 is LOCAL_DONE: the API and worker payment runtime is composed from
+validated configuration — config-gated provider clients, webhook intake,
+single-owner inbox drain on an isolated worker slot, settlement/lifecycle/
+dispute/cycle processing, billing exits and refunds — with sales impossible,
+proofs/switch-merchant/portal unimplemented by construction, and Play
+untouched; provider sandbox proof and deployment packaging remain
+PAY-21/PAY-20.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
@@ -336,6 +343,9 @@ that a nonexistent command or endpoint is available.
   outage recovery and frozen intake ceilings with indexed plans tested;
   provider proof remains PAY-21, runtime wiring remains PAY-19.
 - **PAY-19:** actual API/worker composition and regressions with MAP/ESP/PRM.
+  LOCAL_DONE; gated providers, webhook intake, isolated inbox drain,
+  settlement/revocation/exit journeys and fail-closed defaults tested with
+  no Play surface; sandbox proof remains PAY-21, packaging remains PAY-20.
 - **PAY-20:** deployment/configuration packaging, preflight and operations runbook.
 - **PAY-21:** actual Stripe test-mode and Asaas sandbox end-to-end acceptance.
 - **PAY-22:** final coordinated dev integration, protected PR/CI and guarded merge.

@@ -1,5 +1,20 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-19 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-18 `3d529a8c`. Real API/worker
+  runtime composed from validated config: gated provider clients, webhook
+  intake only, single-owner inbox drain on an isolated `payment-inbox`
+  worker slot, settlement/lifecycle/dispute/cycle processing, billing exits
+  and refunds — sales impossible (empty production catalog, flags off),
+  proofs/switch-merchant/portal fail closed by construction, no Play/cookie
+  surface. [PAY-19 evidence](../backend/evidence/payments/PAY-19.md):
+  callback→drain→grant/revoke/exit journeys, restart/outage convergence and
+  fail-closed composition suites PASS on real PostGIS (`-race`), plus full
+  backend/static/secret suites. Worker quality-native cases need the pinned
+  Rust preparers (environmental, unrelated). Threat matrix AUTH-01/AUTH-03/
+  BND-04/BND-05/BND-07 now CLOSED_LOCAL. No provider proof/sale/deployment.
+  Next: PAY-20 only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-18 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-17 `24a0c0dc`. Tests only, no
   production change: webhook refusal/intake redaction (no PAN/CVV/secret/QR/

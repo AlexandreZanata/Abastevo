@@ -11,7 +11,9 @@ import (
 
 func workerDispatchers(queue *jobs.Queue, handlers map[string]jobs.Handler, nativeKinds ...string) ([]*jobs.Dispatcher, error) {
 	// Fixed serial slots in this process: no per-job concurrency expansion.
-	kinds := []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep"}
+	// payment-inbox runs isolated from safety and map workloads so callback
+	// floods can neither stall erasure/privacy sweeps nor share their slot.
+	kinds := []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "payment-inbox"}
 	general := &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-general", LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute, ExcludedKinds: append(append([]string(nil), kinds...), "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery", "quality-enforcement-import", "quality-enforcement-discovery")}
 	dispatchers := []*jobs.Dispatcher{general}
 	for _, kind := range kinds {
