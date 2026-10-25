@@ -1,5 +1,18 @@
 # Current execution state
 
+- Enterprise portal ESP-17 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-16 `a6c3758e`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-17.md). Found and fixed
+  missing shared CSS/search script on `metodologia`/`404` (raw `pageBase` →
+  `g.base`), with regression tests. Added isolated HTTPS preview (Caddy internal
+  CA, localhost:18443, HTTP 308, HSTS/cache/noindex, no API), preview probe
+  (metadata/landmarks/labels/links, JS-disabled state/station navigation,
+  keyboard skip/focus order, 200% mobile reflow, screenshots) and release-root
+  backup/restore rehearsal. New A/B artifacts `7c37f485…`/`914d8b9f…`; preview
+  A→B→A, 0 probe failures/warnings, backup SHA `a99a3ee9…`. No public
+  TLS/DNS/CDN, shared preview edge, real device/screen reader, cross-release
+  asset retention or production claim; real prices remain OWED. No
+  VPS/publication/merge. Next: ESP-18.
 - Enterprise portal ESP-16 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/enterprise-static-portal` after ESP-15 `71e4f92b`.
   [Evidence](../backend/evidence/enterprise-static/ESP-16.md). Added a frozen
