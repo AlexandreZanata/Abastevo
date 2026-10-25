@@ -84,6 +84,51 @@ Real phone instrumentation through adb (2311DRK48G, Android 16 / API 36):
   round-trip and idempotent release/re-init. Rendering with map data stays in
   MAP-14; this proves the host contract with the real core.
 
+## Fix 2026-10-25 — production Hilt/Compose init path (review defect 1)
+
+- **B-BR-MAP-HOST-INIT-01:** the production `MapScreen`/`MapHost` path owns
+  exactly one native initialization of the injected singleton engine, on the
+  application context (never a retained Activity), gating the AndroidView on
+  readiness. Synchronous init failure surfaces `initError` with a 48 dp retry;
+  a blank screen is never the terminal state.
+- **BUC-MAP-HOST-INIT-01:** GIVEN the MAP route with Hilt VMs and the real
+  engine, WHEN opened, THEN `ensureInitialized` runs once and the surface
+  appears; GIVEN a failed init, WHEN retrying, THEN one more init runs and
+  the surface appears; GIVEN tab return, rotation or recreation, THEN the
+  same engine serves the surface with no repeated native init and stale
+  callbacks are dropped.
+
+`MapViewModel.ensureInitialized/retryInit` is the single owner (per-VM guard
++ application context + error state). `MapHostContent` drives it from a
+single `LaunchedEffect(vm)` for both the Hilt and explicit-engine overloads;
+the `engine?.initialize` direct call is gone. User-visible init strings are
+parameters (`recenterDescription`, `initErrorMessage`, `retryLabel`) so the
+app passes localized resources; remaining hardcoded host strings are owned by
+the MAP-18/20 language pass.
+
+Verification (2311DRK48G, API 36):
+
+```sh
+./gradlew :maps:engine:testDebugUnitTest \
+  -PcomapsSdkDir=/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22
+# MapInitTest 3/3 PASS (app-context init, failure+retry, late-callback drop)
+
+./gradlew :maps:engine:connectedDebugAndroidTest \
+  -PcomapsSdkDir=/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22 \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.anpfuel.maps.engine.MapHostInstrumentedTest
+# 4/4 PASS (readiness gate, no location on entry, init error + retry UI)
+
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.anpfuel.app.ui.map.MapRouteInstrumentedTest
+# 1/1 PASS — real MainActivity + real nav + Hilt + real engine, no
+# mapContent override, no manual initialize/onEngineReady: open → surface,
+# other tab → back → surface, landscape → portrait → recreate, same
+# MapEngineHolder instance, isInitialized() true throughout.
+```
+
+The pre-existing fake-host tests are preserved for their scope; the new
+route test owns the production path.
+
 ## Limits
 
 - No map tab, quick sheet, marker cluster or source selector (MAP-17/18).

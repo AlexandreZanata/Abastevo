@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -37,7 +38,12 @@ import com.anpfuel.maps.engine.MapOverlayMarker
 
 @Composable
 private fun RealMapHost(modifier: Modifier = Modifier) {
-    MapHost(modifier = modifier)
+    MapHost(
+        modifier = modifier,
+        recenterDescription = stringResource(R.string.map_recenter),
+        initErrorMessage = stringResource(R.string.map_unavailable),
+        retryLabel = stringResource(R.string.map_retry),
+    )
 }
 
 /**
@@ -113,11 +119,11 @@ fun MapScreen(
                 singleLine = true,
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics {
                     contentDescription = "Search stations"
-                },
+                }.testTag("map-search-field"),
             )
             TextButton(
                 onClick = { discovery?.onSearch("4106902", query) },
-                modifier = Modifier.size(width = 96.dp, height = 48.dp),
+                modifier = Modifier.size(width = 96.dp, height = 48.dp).testTag("map-search-submit"),
             ) {
                 Text(stringResource(R.string.map_search))
             }

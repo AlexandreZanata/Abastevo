@@ -551,6 +551,7 @@
     <string name="map_loading">Karte wird geladen…</string>
     <string name="map_unavailable">Karte nicht verfügbar</string>
     <string name="map_retry">Wiederholen</string>
+    <string name="map_recenter">Karte zentrieren</string>
     <string name="map_no_package">Kein Offline-Paket</string>
     <string name="map_download">Herunterladen</string>
     <string name="map_attribution">© OpenStreetMap-Mitwirkende</string>

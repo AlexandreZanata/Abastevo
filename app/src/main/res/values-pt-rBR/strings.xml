@@ -25,6 +25,7 @@
     <string name="map_loading">Carregando mapa…</string>
     <string name="map_unavailable">Mapa indisponível</string>
     <string name="map_retry">Tentar novamente</string>
+    <string name="map_recenter">Recentralizar mapa</string>
     <string name="map_no_package">Sem pacote offline</string>
     <string name="map_download">Baixar</string>
     <string name="map_attribution">© Colaboradores do OpenStreetMap</string>

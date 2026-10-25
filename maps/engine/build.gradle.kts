@@ -63,6 +63,7 @@ dependencies {
     ksp(libs.hilt.compiler)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
     debugImplementation(libs.compose.ui.test.manifest)
     androidTestImplementation(platform(libs.compose.bom))

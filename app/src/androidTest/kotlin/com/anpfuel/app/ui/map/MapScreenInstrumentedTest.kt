@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -31,7 +32,8 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithText("ANP", ignoreCase = true).assertIsDisplayed()
         // Functional entries.
         compose.onNodeWithText("Filters", ignoreCase = true).assertIsDisplayed()
-        compose.onNodeWithText("Search", ignoreCase = true).assertIsDisplayed()
+        compose.onNodeWithTag("map-search-field", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("map-search-submit", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("Downloads", ignoreCase = true).assertIsDisplayed()
         // OSM attribution stays visible.
         compose.onNodeWithText("OpenStreetMap", substring = true, ignoreCase = true).assertExists()

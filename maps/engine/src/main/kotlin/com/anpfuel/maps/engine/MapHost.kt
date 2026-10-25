@@ -46,9 +46,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun MapHost(
     modifier: Modifier = Modifier,
+    recenterDescription: String = "Recenter map",
+    initErrorMessage: String = "Map unavailable",
+    retryLabel: String = "Retry",
 ) {
     val vm: MapViewModel = hiltViewModel()
-    MapHostContent(vm = vm, engine = null, modifier = modifier)
+    MapHostContent(
+        vm = vm,
+        modifier = modifier,
+        recenterDescription = recenterDescription,
+        initErrorMessage = initErrorMessage,
+        retryLabel = retryLabel,
+    )
 }
 
 /**
@@ -60,6 +69,9 @@ fun MapHost(
     engine: MapEngine,
     modifier: Modifier = Modifier,
     cameraStore: MapCameraStore? = null,
+    recenterDescription: String = "Recenter map",
+    initErrorMessage: String = "Map unavailable",
+    retryLabel: String = "Retry",
 ) {
     val context = LocalContext.current
     val store = cameraStore ?: remember(context) { SharedPreferencesMapCameraStore(context) }
@@ -74,14 +86,22 @@ fun MapHost(
             }
         },
     )
-    MapHostContent(vm = vm, engine = engine, modifier = modifier)
+    MapHostContent(
+        vm = vm,
+        modifier = modifier,
+        recenterDescription = recenterDescription,
+        initErrorMessage = initErrorMessage,
+        retryLabel = retryLabel,
+    )
 }
 
 @Composable
 private fun MapHostContent(
     vm: MapViewModel,
-    engine: MapEngine?,
     modifier: Modifier = Modifier,
+    recenterDescription: String = "Recenter map",
+    initErrorMessage: String = "Map unavailable",
+    retryLabel: String = "Retry",
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -96,10 +116,10 @@ private fun MapHostContent(
         if (granted) vm.onRecenter()
     }
 
-    LaunchedEffect(engine) {
+    LaunchedEffect(vm) {
         updatePermission(context, vm)
         vm.onGpsState(isGpsEnabled(context))
-        engine?.initialize(context) { vm.onEngineReady() }
+        vm.ensureInitialized(context.applicationContext)
     }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -113,6 +133,25 @@ private fun MapHostContent(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     Box(modifier.fillMaxSize()) {
+        if (state.initError != null && !state.ready) {
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    initErrorMessage,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                androidx.compose.material3.TextButton(
+                    onClick = { vm.retryInit(context.applicationContext) },
+                    modifier = Modifier.size(width = 160.dp, height = 48.dp).semantics {
+                        contentDescription = retryLabel
+                    },
+                ) {
+                    Text(retryLabel)
+                }
+            }
+        }
         if (state.ready) {
             AndroidView(
                 factory = { vm.newMapView(it) },
@@ -160,7 +199,7 @@ private fun MapHostContent(
                             }
                         },
                         modifier = Modifier.size(48.dp).semantics {
-                            contentDescription = "Recenter map"
+                            contentDescription = recenterDescription
                         },
                     ) {
                         Text("◎", style = MaterialTheme.typography.titleLarge)

@@ -551,6 +551,7 @@
     <string name="map_loading">正在加载地图…</string>
     <string name="map_unavailable">地图不可用</string>
     <string name="map_retry">重试</string>
+    <string name="map_recenter">重新定位地图</string>
     <string name="map_no_package">无离线包</string>
     <string name="map_download">下载</string>
     <string name="map_attribution">© OpenStreetMap 贡献者</string>

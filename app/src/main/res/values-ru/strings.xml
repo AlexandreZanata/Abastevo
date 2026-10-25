@@ -551,6 +551,7 @@
     <string name="map_loading">Загрузка карты…</string>
     <string name="map_unavailable">Карта недоступна</string>
     <string name="map_retry">Повторить</string>
+    <string name="map_recenter">Центрировать карту</string>
     <string name="map_no_package">Нет офлайн-пакета</string>
     <string name="map_download">Скачать</string>
     <string name="map_attribution">© Участники OpenStreetMap</string>

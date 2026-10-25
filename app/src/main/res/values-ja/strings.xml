@@ -551,6 +551,7 @@
     <string name="map_loading">地図を読み込み中…</string>
     <string name="map_unavailable">マップを利用できません</string>
     <string name="map_retry">再試行</string>
+    <string name="map_recenter">地図をセンタリング</string>
     <string name="map_no_package">オフラインパッケージなし</string>
     <string name="map_download">ダウンロード</string>
     <string name="map_attribution">© OpenStreetMap 投稿者</string>

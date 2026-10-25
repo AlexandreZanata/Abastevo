@@ -17,6 +17,7 @@ data class MapUiState(
     val deniedForever: Boolean = false,
     val gpsEnabled: Boolean = true,
     val recenterError: String? = null,
+    val initError: String? = null,
     val camera: MapCamera? = null,
 )
 
@@ -27,8 +28,36 @@ class MapViewModel @Inject constructor(
 ) : ViewModel() {
     private var defaultCamera: MapCamera = MapCamera(-25.42, -49.27, 13)
     private var disposed = false
+    private var initializing = false
     private val _state = MutableStateFlow(MapUiState())
     val state: StateFlow<MapUiState> = _state.asStateFlow()
+
+    /**
+     * Single owner of native initialization. Safe to call on every
+     * composition: the first call starts the engine once on the application
+     * context (never a retained Activity), later calls are no-ops, and a
+     * synchronous failure surfaces [MapUiState.initError] with retry.
+     */
+    fun ensureInitialized(context: Context) {
+        if (disposed || _state.value.ready || initializing) return
+        initializing = true
+        _state.update { it.copy(initError = null) }
+        val started = try {
+            engine.initialize(context.applicationContext) { onEngineReady() }
+        } catch (_: Exception) {
+            false
+        }
+        if (!started) {
+            initializing = false
+            _state.update { it.copy(initError = "map-init-failed") }
+        }
+    }
+
+    fun retryInit(context: Context) {
+        if (disposed || _state.value.ready) return
+        initializing = false
+        ensureInitialized(context)
+    }
 
     /** Test-only secondary constructor preserves the frozen default camera. */
     constructor(
@@ -43,8 +72,9 @@ class MapViewModel @Inject constructor(
 
     fun onEngineReady() {
         if (disposed || _state.value.ready) return
+        initializing = false
         val camera = cameraStore.load() ?: defaultCamera
-        _state.update { it.copy(ready = true, camera = camera, recenterError = null) }
+        _state.update { it.copy(ready = true, camera = camera, recenterError = null, initError = null) }
         engine.setViewport(camera.latitude, camera.longitude, camera.zoom)
     }
 
