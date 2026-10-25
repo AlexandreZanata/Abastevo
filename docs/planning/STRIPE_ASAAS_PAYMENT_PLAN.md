@@ -239,6 +239,12 @@ single accountable payer and its own account target, with no app capabilities
 and no team/station/organization privilege; unapproved offers are refused on
 every channel without side effects; provider invoice/receipt references are
 owner-scoped; the fiscal engine stays explicitly frozen with no tax construction.
+PAY-18 is LOCAL_DONE: adversarial privacy acceptance (no card/secret/QR/URL/
+token echo or retention on any webhook path), rotated operator-proof refusal,
+restore/stale-replay convergence without financial effect, outage-pending
+recovery without duplicate writes, and frozen bounded intake ceilings with
+indexed hot-query plans are implemented and tested; provider sandbox timing
+and runtime wiring remain PAY-21/PAY-19.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
@@ -326,6 +332,9 @@ that a nonexistent command or endpoint is available.
   LOCAL_DONE; binding policy, cross-channel refusal, approved self-purchase and
   no-capability grant isolation tested; fiscal workflow frozen.
 - **PAY-18:** adversarial matrix, privacy/restore and bounded performance acceptance.
+  LOCAL_DONE; refusal/intake redaction, proof rotation, restore convergence,
+  outage recovery and frozen intake ceilings with indexed plans tested;
+  provider proof remains PAY-21, runtime wiring remains PAY-19.
 - **PAY-19:** actual API/worker composition and regressions with MAP/ESP/PRM.
 - **PAY-20:** deployment/configuration packaging, preflight and operations runbook.
 - **PAY-21:** actual Stripe test-mode and Asaas sandbox end-to-end acceptance.

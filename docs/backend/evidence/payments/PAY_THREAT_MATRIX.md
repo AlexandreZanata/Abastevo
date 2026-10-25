@@ -38,7 +38,7 @@ case cannot be fully accepted without separately authorized live verification.
 | AUTH-02 | IDOR on order, customer, QR, invoice, portal session, cancellation and refund is denied. | OPEN | PAY-06, PAY-07, PAY-11, PAY-15, PAY-16 | none |
 | AUTH-03 | CSRF/cookie-bound browser commands require the existing proof; no state change from a redirect or cross-site form. | OPEN | PAY-06, PAY-19 | none |
 | AUTH-04 | Duplicate command/webhook delivery and replay cannot repeat a charge, grant, refund or cancellation. | OPEN | PAY-04, PAY-08, PAY-09 | none |
-| AUTH-05 | Operator refund/replay requires fresh strong proof, reason/audit and approved privilege; key rotation invalidates old proof. | OPEN | PAY-16, PAY-18 | none |
+| AUTH-05 | Operator refund/replay requires fresh strong proof, reason/audit and approved privilege; key rotation invalidates old proof. | CLOSED_LOCAL | PAY-16, PAY-18 | none |
 
 ## Catalog, quote and price integrity
 
@@ -68,10 +68,10 @@ case cannot be fully accepted without separately authorized live verification.
 | WHK-01 | Missing, bad, old or rotated Stripe signature / Asaas `asaas-access-token` is rejected; Asaas API key is not reused as its webhook token. | OPEN | PAY-08, PAY-09 | sandbox |
 | WHK-02 | Stripe verification uses the exact bounded raw body; a mutated/re-encoded body is rejected. | OPEN | PAY-08 | sandbox |
 | WHK-03 | Wrong merchant/account, live-vs-test mode, API version or resource binding is rejected or quarantined. | OPEN | PAY-08, PAY-09, PAY-10 | sandbox |
-| WHK-04 | Huge, malformed or oversized JSON is bounded and rejected without unbounded CPU/memory. | OPEN | PAY-08, PAY-09, PAY-18 | none |
+| WHK-04 | Huge, malformed or oversized JSON is bounded and rejected without unbounded CPU/memory. | CLOSED_LOCAL | PAY-08, PAY-09, PAY-18 | none |
 | WHK-05 | Duplicate event ID with altered content is recorded as a conflict, not reprocessed. | OPEN | PAY-08, PAY-09 | none |
 | WHK-06 | Authenticated unknown/additive event causes no grant and is retained minimally for review. | OPEN | PAY-08, PAY-09, PAY-10 | sandbox |
-| WHK-07 | DB outage, flood or backlog never returns fake success; Asaas acknowledgement is HTTP 200 only after durable local acceptance. | OPEN | PAY-08, PAY-09, PAY-18 | none |
+| WHK-07 | DB outage, flood or backlog never returns fake success; Asaas acknowledgement is HTTP 200 only after durable local acceptance. | CLOSED_LOCAL | PAY-08, PAY-09, PAY-18 | none |
 
 ## Settlement and access projection
 
@@ -102,10 +102,10 @@ case cannot be fully accepted without separately authorized live verification.
 | ID | Required case | State | Owner | Provider proof |
 |---|---|---|---|---|
 | REC-01 | Missed, paused or reordered webhooks are repaired by bounded reconciliation, not per-read provider polling. | OPEN | PAY-08, PAY-09, PAY-10 | sandbox |
-| REC-02 | Dead job, provider outage, 429 and bounded retry/backoff preserve unrelated safety work and do not duplicate writes. | OPEN | PAY-04, PAY-13, PAY-18 | sandbox |
+| REC-02 | Dead job, provider outage, 429 and bounded retry/backoff preserve unrelated safety work and do not duplicate writes. | CLOSED_LOCAL | PAY-04, PAY-13, PAY-18 | sandbox |
 | REC-03 | Deleted/deactivating account stops future billing and cannot auto-refund or keep unnoticed billing. | CLOSED_LOCAL | PAY-15 | sandbox |
-| REC-04 | Revoked/rotated provider key is diagnosed safely; maintenance, cancellation and existing access remain operable. | OPEN | PAY-05, PAY-18 | none |
-| REC-05 | Database restore/stale outbox cannot replay a charge/refund or resurrect deleted ownership. | OPEN | PAY-04, PAY-18 | none |
+| REC-04 | Revoked/rotated provider key is diagnosed safely; maintenance, cancellation and existing access remain operable. | CLOSED_LOCAL | PAY-05, PAY-18 | none |
+| REC-05 | Database restore/stale outbox cannot replay a charge/refund or resurrect deleted ownership. | CLOSED_LOCAL | PAY-04, PAY-18 | none |
 | REC-06 | Refund with insufficient provider balance or a lost reply stays pending/failed; no blind second refund. | OPEN | PAY-16 | sandbox |
 | REC-07 | Chargeback, Pix MED and unmatched account hold affect only matched rights and surface for review. | OPEN | PAY-16 | sandbox |
 
@@ -113,8 +113,8 @@ case cannot be fully accepted without separately authorized live verification.
 
 | ID | Required case | State | Owner | Provider proof |
 |---|---|---|---|---|
-| BND-01 | No PAN/CVV/raw card form, secret or provider credential enters handlers, logs, tests, fixtures or storage. | OPEN | PAY-02, PAY-06, PAY-18 | none |
-| BND-02 | No customer PII, raw QR, payment URL, signature or token appears in logs/artifacts; retention is reviewed. | OPEN | PAY-05, PAY-18, PAY-20 | none |
+| BND-01 | No PAN/CVV/raw card form, secret or provider credential enters handlers, logs, tests, fixtures or storage. | CLOSED_LOCAL | PAY-02, PAY-06, PAY-18 | none |
+| BND-02 | No customer PII, raw QR, payment URL, signature or token appears in logs/artifacts; retention is reviewed. | CLOSED_LOCAL | PAY-05, PAY-18, PAY-20 | none |
 | BND-03 | Protected billing retention is separated from account erasure without losing legitimate financial obligations. | CLOSED_LOCAL | PAY-15, PAY-16, PAY-20 | none |
 | BND-04 | Payment never changes community trust and cannot buy safety/trust privileges. | OPEN | PAY-03, PAY-10, PAY-17 | none |
 | BND-05 | Disabling sales, expiry or provider outage preserves free data, export and legitimate paid-through access. | OPEN | PAY-10, PAY-15 | none |
@@ -135,6 +135,35 @@ evidence was not rerun at PAY-00.
 | PRM-04 | Reconciliation, refresh leases and retired purchase chains. | REUSE_OPEN | PAY-10, PAY-11, PAY-13 | Preserve Play behavior; web sources get their own freshness/lifecycle rules. |
 | PRM-05 | Account deletion purges/retires provider material. | REUSE_OPEN | PAY-15 | Migration `000075` trigger; extend without replaying financial writes. |
 | PRM-06 | Free status/export remains available when payments are disabled. | REUSE_OPEN | PAY-10, PAY-15 | Preserve `Export` independence from provider configuration. |
+
+## PAY-18 local closure
+
+- AUTH-05: rotated operator proof fails closed on fresh refund requests,
+  completed-intent replays and reconciliation; exactly one provider write
+  and one audit row. See [PAY-18](PAY-18.md).
+- WHK-04: card/secret-laden huge and malformed bodies are bounded and
+  refused without echo or retention. See [PAY-18](PAY-18.md).
+- WHK-07: DB outage returns 503 with a static code on both webhooks; a
+  64-way duplicate flood converges on one durable inbox row with zero
+  grants. See [PAY-18](PAY-18.md).
+- REC-02: ambiguous provider outage leaves the refund PENDING with access
+  preserved; recovery reconciles the one durable intent exactly once.
+  Real 429/backoff windows remain `sandbox` proof at PAY-21.
+- REC-04: webhook secret/token rotation accepts the new credential,
+  refuses the old-only credential, never reuses the API key as the webhook
+  token, and missing configuration fails closed to 503 with maintenance
+  intake intact. Live revocation remains `sandbox` proof at PAY-21.
+- REC-05: re-driving the settled event after refund is a durable no-op
+  (one grant, state preserved); completed refund replay converges without
+  a second provider write; stale state transitions are refused as
+  conflicts with the terminal record unchanged. See [PAY-18](PAY-18.md).
+- BND-01/BND-02: every refusal and intake response is free of PAN, CVV,
+  secrets, QR/payment URLs and tokens with `no-store` caching; the inbox
+  retains only the payload hash and bounded IDs. See [PAY-18](PAY-18.md).
+- Performance: 200-callback intake measured total=174.76ms mean=873.80µs
+  p95=1.12ms on disposable PostGIS, inside the frozen ceilings; hot
+  inbox/grants/orders/pending queries use indexes with no sequential
+  scan. Sandbox timing and production sizing remain PAY-21/PAY-23.
 
 ## PAY-17 local closure
 

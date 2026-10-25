@@ -1,5 +1,20 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-18 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-17 `24a0c0dc`. Tests only, no
+  production change: webhook refusal/intake redaction (no PAN/CVV/secret/QR/
+  URL/token echo or retention, `no-store` everywhere), rotated operator-proof
+  refusal on request/replay/reconcile, restore/stale-replay convergence with
+  no financial effect, outage-pending recovery with exactly one provider
+  write, and frozen bounded intake ceilings with indexed hot-query plans.
+  [PAY-18 evidence](../backend/evidence/payments/PAY-18.md): privacy unit
+  suites, race PostGIS acceptance, measured 200-callback intake (total
+  174.76ms, mean 873.80µs, p95 1.12ms) and full backend/static/secret suites
+  PASS. First full unit run hit one unrelated pre-existing keyprover flake
+  (passes alone and on re-run). Threat matrix AUTH-05/WHK-04/WHK-07/REC-02/
+  REC-04/REC-05/BND-01/BND-02 now CLOSED_LOCAL. No worker/route/provider
+  proof/sale. Next: PAY-19 only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-17 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-16 `72725283`. Migration 000130
   permits capability-free orders/grants for the enterprise family only; premium
