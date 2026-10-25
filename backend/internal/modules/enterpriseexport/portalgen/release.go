@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -26,6 +27,11 @@ const (
 	// cached old pages keep loading correct dependencies across switches.
 	// Pages are never retained: only the current release serves HTML.
 	RetainedDir = "retained"
+)
+
+const (
+	defaultRetainKeep     = 2
+	defaultRetainMaxBytes = 100 << 20
 )
 
 const (
@@ -94,14 +100,18 @@ type PromoteOptions struct {
 	Fence           bool
 	Now             func() time.Time
 	OfficialOnly    bool
+	RetainKeep      int
+	RetainMaxBytes  int64
 }
 
 type RollbackOptions struct {
-	RootDir      string
-	Target       string
-	SiteURL      string
-	Now          func() time.Time
-	OfficialOnly bool
+	RootDir        string
+	Target         string
+	SiteURL        string
+	Now            func() time.Time
+	OfficialOnly   bool
+	RetainKeep     int
+	RetainMaxBytes int64
 }
 
 type WithdrawOptions struct {
@@ -178,6 +188,7 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 	}
 	if current == content {
 		release, ok := findRelease(state, content)
+		wasWithdrawn := release.Withdrawn
 		if release.Withdrawn && !recoverablePause(state, release) {
 			return ReleaseState{}, ErrReleaseWithdrawn
 		}
@@ -197,7 +208,10 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 		if release.PromotedAt == "" {
 			release.PromotedAt = now().UTC().Format(time.RFC3339)
 		}
-		if state.Current != content || !ok {
+		if _, err := rebuildRetained(opts.RootDir, state, []string{content}, opts.RetainKeep, opts.RetainMaxBytes); err != nil {
+			return ReleaseState{}, fmt.Errorf("portal release: asset preparation: %w", err)
+		}
+		if state.Current != content || !ok || wasWithdrawn {
 			previous := state.Current
 			if previous == content {
 				previous = state.Previous
@@ -252,6 +266,9 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 		return ReleaseState{}, err
 	}
 
+	if _, err := rebuildRetained(opts.RootDir, state, []string{content}, opts.RetainKeep, opts.RetainMaxBytes); err != nil {
+		return ReleaseState{}, fmt.Errorf("portal release: asset preparation: %w", err)
+	}
 	if err := switchCurrent(opts.RootDir, targetName); err != nil {
 		return ReleaseState{}, err
 	}
@@ -304,10 +321,16 @@ func Rollback(opts RollbackOptions) (ReleaseState, error) {
 		if err := verifyRelease(opts.RootDir, current, opts.SiteURL, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, ErrReleaseUnavailable
 		}
+		if _, err := rebuildRetained(opts.RootDir, state, []string{current}, opts.RetainKeep, opts.RetainMaxBytes); err != nil {
+			return ReleaseState{}, fmt.Errorf("portal release: asset preparation: %w", err)
+		}
 		return state, nil
 	}
 	if err := verifyRelease(opts.RootDir, opts.Target, opts.SiteURL, opts.OfficialOnly); err != nil {
 		return ReleaseState{}, ErrReleaseUnavailable
+	}
+	if _, err := rebuildRetained(opts.RootDir, state, []string{opts.Target}, opts.RetainKeep, opts.RetainMaxBytes); err != nil {
+		return ReleaseState{}, fmt.Errorf("portal release: asset preparation: %w", err)
 	}
 	if err := switchCurrent(opts.RootDir, releaseName(opts.Target)); err != nil {
 		return ReleaseState{}, err
@@ -370,29 +393,38 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 			}
 		}
 	}
-	// Withdrawn content must not survive through the retained asset store.
-	if err := purgeWithdrawnAssets(opts.RootDir, state); err != nil {
-		return ReleaseState{}, err
-	}
-	if opts.Fallback != "" {
-		if opts.Fallback == current {
+	fallback := opts.Fallback
+	if fallback != "" {
+		if fallback == current {
 			return ReleaseState{}, ErrReleaseWithdrawn
 		}
-		release, ok := findRelease(state, opts.Fallback)
+		release, ok := findRelease(state, fallback)
 		if !ok || release.Withdrawn {
 			return ReleaseState{}, ErrReleaseWithdrawn
 		}
 		if revokedOfficial(state, release) {
 			return ReleaseState{}, ErrOfficialRevoked
 		}
-		if err := verifyRelease(opts.RootDir, opts.Fallback, opts.SiteURL, opts.OfficialOnly); err != nil {
+		if err := verifyRelease(opts.RootDir, fallback, opts.SiteURL, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, ErrReleaseUnavailable
 		}
-		if err := switchCurrent(opts.RootDir, releaseName(opts.Fallback)); err != nil {
+	}
+	// Prepare the post-withdrawal asset store before changing the pointer:
+	// withdrawn content never survives, shared assets of the fallback stay,
+	// and a failed rebuild leaves the previous pointer untouched.
+	var required []string
+	if fallback != "" {
+		required = append(required, fallback)
+	}
+	if _, err := rebuildRetained(opts.RootDir, state, required, defaultRetainKeep, defaultRetainMaxBytes); err != nil {
+		return ReleaseState{}, err
+	}
+	if fallback != "" {
+		if err := switchCurrent(opts.RootDir, releaseName(fallback)); err != nil {
 			return ReleaseState{}, err
 		}
 		state.Previous = current
-		state.Current = opts.Fallback
+		state.Current = fallback
 	} else {
 		if err := os.Remove(filepath.Join(opts.RootDir, ReleasePointer)); err != nil && !os.IsNotExist(err) {
 			return ReleaseState{}, err
@@ -430,6 +462,9 @@ func CurrentReleaseHeader(root string) (Release, ReleaseState, error) {
 	if !ok || release.Withdrawn {
 		return Release{}, ReleaseState{}, ErrReleaseWithdrawn
 	}
+	if err := verifyRetainedCurrent(root, current); err != nil {
+		return Release{}, ReleaseState{}, err
+	}
 	return release, state, nil
 }
 
@@ -453,6 +488,9 @@ func CurrentRelease(root, siteURL string, officialOnly bool) (Release, ReleaseSt
 		return Release{}, ReleaseState{}, ErrReleaseWithdrawn
 	}
 	if err := verifyRelease(root, current, siteURL, officialOnly); err != nil {
+		return Release{}, ReleaseState{}, ErrReleaseUnavailable
+	}
+	if err := verifyRetainedCurrent(root, current); err != nil {
 		return Release{}, ReleaseState{}, ErrReleaseUnavailable
 	}
 	return release, state, nil
@@ -806,16 +844,13 @@ type RetainedSummary struct {
 	Bytes    int64
 }
 
-// RetainAssets rebuilds the retained asset store from the newest `keep`
-// non-withdrawn releases (by promotion time, newest first), hardlinking
-// their verified assets/* files so cached old pages keep loading correct
-// dependencies after switches and rollbacks. Releases are included newest
-// first while the running total fits maxBytes; if even the newest release
-// alone exceeds maxBytes the previous store is kept and an error is
-// returned. Withdrawn releases never contribute. Pages, sitemaps, robots
-// and manifests are never retained: only the current release serves HTML.
-// The rebuild is atomic (tmp directory renamed over retained/) and the
-// previous store survives any failure.
+// RetainAssets rebuilds the retained asset store around the current release
+// plus the newest `keep` non-withdrawn releases (by promotion time). The
+// current release is mandatory even when it is older than the keep window or
+// a rollback target; a page that can be served as current never depends on
+// promotion ordering. Mandatory assets must fit maxBytes before any pointer
+// is exposed. Shared paths are hardlinked once and counted once. Withdrawn
+// releases never contribute.
 func RetainAssets(root string, keep int, maxBytes int64) (RetainedSummary, error) {
 	var summary RetainedSummary
 	if keep <= 0 {
@@ -833,18 +868,63 @@ func RetainAssets(root string, keep int, maxBytes int64) (RetainedSummary, error
 	if !ok {
 		return summary, ErrReleaseState
 	}
-	type candidate struct {
-		content string
-		at      string
+	var required []string
+	current, exists, err := readCurrent(root)
+	if err != nil {
+		return summary, err
 	}
-	candidates := make([]candidate, 0, len(state.Releases))
-	for _, release := range state.Releases {
-		if release.Withdrawn {
+	if exists {
+		release, ok := findRelease(state, current)
+		if !ok || release.Withdrawn {
+			return summary, ErrReleaseWithdrawn
+		}
+		required = append(required, current)
+	}
+	return rebuildRetained(root, state, required, keep, maxBytes)
+}
+
+// rebuildRetained materializes a complete retained store and switches it
+// into place only after every required asset has been verified and linked.
+// The caller holds the release lock.
+func rebuildRetained(root string, state ReleaseState, required []string, keep int, maxBytes int64) (RetainedSummary, error) {
+	var summary RetainedSummary
+	if keep == 0 {
+		keep = defaultRetainKeep
+	}
+	if maxBytes == 0 {
+		maxBytes = defaultRetainMaxBytes
+	}
+	if keep <= 0 {
+		return summary, fmt.Errorf("portal release: retain keep must be positive")
+	}
+	if maxBytes <= 0 {
+		return summary, fmt.Errorf("portal release: retain max bytes must be positive")
+	}
+	type candidate struct {
+		content   string
+		promoted  string
+		mandatory bool
+	}
+	seen := map[string]bool{}
+	candidates := make([]candidate, 0, len(state.Releases)+len(required))
+	for _, content := range required {
+		if seen[content] {
 			continue
 		}
-		candidates = append(candidates, candidate{content: release.ContentSHA256, at: release.PromotedAt})
+		seen[content] = true
+		candidates = append(candidates, candidate{content: content, mandatory: true})
 	}
-	sort.SliceStable(candidates, func(i, j int) bool { return candidates[i].at > candidates[j].at })
+	optional := make([]candidate, 0, len(state.Releases))
+	for _, release := range state.Releases {
+		if release.Withdrawn || seen[release.ContentSHA256] {
+			continue
+		}
+		seen[release.ContentSHA256] = true
+		optional = append(optional, candidate{content: release.ContentSHA256, promoted: release.PromotedAt})
+	}
+	sort.SliceStable(optional, func(i, j int) bool { return optional[i].promoted > optional[j].promoted })
+	candidates = append(candidates, optional...)
+
 	tmp, err := os.MkdirTemp(root, ".retained-*.tmp")
 	if err != nil {
 		return summary, err
@@ -859,62 +939,73 @@ func RetainAssets(root string, keep int, maxBytes int64) (RetainedSummary, error
 	if err := os.MkdirAll(assetsDir, 0o700); err != nil {
 		return summary, err
 	}
-	linked := map[string]bool{}
+	linked := map[string]FileDigest{}
+	type chosenAsset struct {
+		digest FileDigest
+		source string
+	}
+	var chosen []chosenAsset
 	var total int64
 	included := 0
 	for _, cand := range candidates {
-		if included >= keep {
+		if !cand.mandatory && included >= keep {
 			break
 		}
 		releaseDir := releasePath(root, cand.content)
-		manifest, err := readPortalManifest(releaseDir)
+		assets, err := verifiedReleaseAssets(releaseDir)
 		if err != nil {
-			return summary, fmt.Errorf("portal release: retained manifest unreadable: %w", err)
+			if cand.mandatory {
+				return summary, fmt.Errorf("portal release: required release assets unavailable: %w", err)
+			}
+			continue
 		}
-		var releaseBytes int64
-		var assets []FileDigest
-		for _, file := range manifest.Files {
-			if !strings.HasPrefix(file.Path, "assets/") {
+		var incremental int64
+		conflict := ""
+		for _, asset := range assets {
+			if existing, ok := linked[asset.Path]; ok {
+				if existing.SHA256 != asset.SHA256 || existing.Bytes != asset.Bytes {
+					conflict = asset.Path
+					break
+				}
 				continue
 			}
-			body, err := os.ReadFile(filepath.Join(releaseDir, filepath.FromSlash(file.Path)))
-			if err != nil {
-				return summary, fmt.Errorf("portal release: retained asset unreadable %s: %w", file.Path, err)
-			}
-			sum := sha256.Sum256(body)
-			if "sha256:"+hex.EncodeToString(sum[:]) != file.SHA256 || int64(len(body)) != file.Bytes {
-				return summary, fmt.Errorf("portal release: retained asset failed verification %s", file.Path)
-			}
-			assets = append(assets, file)
-			releaseBytes += file.Bytes
+			incremental += asset.Bytes
 		}
-		if total+releaseBytes > maxBytes {
-			if included == 0 {
-				return summary, fmt.Errorf("portal release: newest release exceeds the retention budget")
-			}
-			break
+		if conflict != "" {
+			return summary, fmt.Errorf("portal release: retained asset path has conflicting content: %s", conflict)
 		}
-		for _, file := range assets {
-			if linked[file.Path] {
+		if total+incremental > maxBytes {
+			if cand.mandatory {
+				return summary, fmt.Errorf("portal release: required release exceeds the retention budget")
+			}
+			continue
+		}
+		for _, asset := range assets {
+			if _, ok := linked[asset.Path]; ok {
 				continue
 			}
-			dst := filepath.Join(tmp, filepath.FromSlash(file.Path))
-			if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
-				return summary, err
-			}
-			// Remove-then-link keeps reruns idempotent across retries.
-			_ = os.Remove(dst)
-			if err := os.Link(filepath.Join(releaseDir, filepath.FromSlash(file.Path)), dst); err != nil {
-				return summary, fmt.Errorf("portal release: retained asset link %s: %w", file.Path, err)
-			}
-			if err := os.Chmod(dst, 0o600); err != nil {
-				return summary, err
-			}
-			linked[file.Path] = true
-			summary.Files++
-			total += file.Bytes
+			linked[asset.Path] = asset
+			chosen = append(chosen, chosenAsset{
+				digest: asset,
+				source: filepath.Join(releaseDir, filepath.FromSlash(asset.Path)),
+			})
 		}
+		total += incremental
 		included++
+	}
+	for _, asset := range chosen {
+		dst := filepath.Join(tmp, filepath.FromSlash(asset.digest.Path))
+		if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+			return summary, err
+		}
+		// Remove-then-link keeps reruns idempotent across retries.
+		_ = os.Remove(dst)
+		if err := os.Link(asset.source, dst); err != nil {
+			return summary, fmt.Errorf("portal release: retained asset link %s: %w", asset.digest.Path, err)
+		}
+		if err := os.Chmod(dst, 0o600); err != nil {
+			return summary, err
+		}
 	}
 	retained := filepath.Join(root, RetainedDir)
 	_ = os.RemoveAll(retained + ".prev")
@@ -932,48 +1023,84 @@ func RetainAssets(root string, keep int, maxBytes int64) (RetainedSummary, error
 	_ = os.RemoveAll(retained + ".prev")
 	keepTmp = false
 	summary.Releases = included
+	summary.Files = len(chosen)
 	summary.Bytes = total
 	return summary, nil
 }
 
-// purgeWithdrawnAssets removes retained files no longer referenced by any
-// non-withdrawn release, so withdrawn content cannot be reintroduced
-// through the retained store. Shared assets referenced by a live release
-// stay. It runs inside the withdrawal lock before the state write.
-func purgeWithdrawnAssets(root string, state ReleaseState) error {
-	live := map[string]bool{}
-	for _, release := range state.Releases {
-		if release.Withdrawn {
-			continue
-		}
-		manifest, err := readPortalManifest(releasePath(root, release.ContentSHA256))
-		if err != nil {
-			return fmt.Errorf("portal release: live manifest unreadable during purge: %w", err)
-		}
-		for _, file := range manifest.Files {
-			if strings.HasPrefix(file.Path, "assets/") {
-				live[file.Path] = true
-			}
-		}
-	}
-	retained := filepath.Join(root, RetainedDir, "assets")
-	entries, err := os.ReadDir(retained)
+// verifiedReleaseAssets returns the manifest's safe asset paths after
+// verifying their bytes. Only regular files under assets/ are eligible for
+// hardlinking; traversal, absolute or symlinked paths fail closed.
+func verifiedReleaseAssets(releaseDir string) ([]FileDigest, error) {
+	manifest, err := readPortalManifest(releaseDir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
+		return nil, err
 	}
-	for _, entry := range entries {
-		if entry.IsDir() {
+	assets := make([]FileDigest, 0, len(manifest.Files))
+	for _, file := range manifest.Files {
+		if !strings.HasPrefix(file.Path, "assets/") {
 			continue
 		}
-		rel := "assets/" + entry.Name()
-		if !live[rel] {
-			if err := os.Remove(filepath.Join(retained, entry.Name())); err != nil {
-				return err
-			}
+		clean, ok := safeRetainedAssetPath(file.Path)
+		if !ok {
+			return nil, fmt.Errorf("portal release: unsafe retained asset path %q", file.Path)
+		}
+		source := filepath.Join(releaseDir, filepath.FromSlash(clean))
+		info, err := os.Lstat(source)
+		if err != nil {
+			return nil, fmt.Errorf("portal release: retained asset unreadable %s: %w", file.Path, err)
+		}
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("portal release: retained asset is not a regular file %s", file.Path)
+		}
+		body, err := os.ReadFile(source)
+		if err != nil {
+			return nil, fmt.Errorf("portal release: retained asset unreadable %s: %w", file.Path, err)
+		}
+		sum := sha256.Sum256(body)
+		if "sha256:"+hex.EncodeToString(sum[:]) != file.SHA256 || int64(len(body)) != file.Bytes {
+			return nil, fmt.Errorf("portal release: retained asset failed verification %s", file.Path)
+		}
+		file.Path = clean
+		assets = append(assets, file)
+	}
+	return assets, nil
+}
+
+// safeRetainedAssetPath accepts only clean, relative, slash-separated asset
+// paths. The store and the edge both address the returned value.
+// verifyRetainedCurrent proves every asset referenced by the current page
+// set is present in the retained store before the edge can serve it. Bytes
+// are verified during promotion; this is the cheap restart/tamper check.
+func verifyRetainedCurrent(root, content string) error {
+	assets, err := verifiedReleaseAssets(releasePath(root, content))
+	if err != nil {
+		return fmt.Errorf("portal release: current assets unavailable: %w", err)
+	}
+	for _, asset := range assets {
+		info, err := os.Lstat(filepath.Join(root, RetainedDir, filepath.FromSlash(asset.Path)))
+		if err != nil {
+			return fmt.Errorf("portal release: current asset not retained %s: %w", asset.Path, err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("portal release: current asset not retained %s", asset.Path)
 		}
 	}
 	return nil
+}
+
+func safeRetainedAssetPath(value string) (string, bool) {
+	if value == "" || strings.HasPrefix(value, "/") || strings.Contains(value, "\\") {
+		return "", false
+	}
+	clean := path.Clean(value)
+	if clean != value || clean == "assets" || !strings.HasPrefix(clean, "assets/") {
+		return "", false
+	}
+	for _, part := range strings.Split(clean, "/") {
+		if part == "" || part == "." || part == ".." {
+			return "", false
+		}
+	}
+	return clean, true
 }

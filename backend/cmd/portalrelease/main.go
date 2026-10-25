@@ -39,16 +39,21 @@ func promote(args []string) {
 	fs := flag.NewFlagSet("promote", flag.ExitOnError)
 	var artifact, root, siteURL, expected string
 	var fence, officialOnly bool
+	var retainKeep int
+	var retainMaxBytes int64
 	fs.StringVar(&artifact, "artifact", "", "verified portal candidate directory")
 	fs.StringVar(&root, "root", "", "private release root")
 	fs.StringVar(&siteURL, "site-url", "", "origin used by the artifact manifest")
 	fs.BoolVar(&fence, "fence", false, "require the current release to equal --expect-current")
 	fs.StringVar(&expected, "expect-current", "", "expected current content hash")
 	fs.BoolVar(&officialOnly, "official-only", false, "require an official-only candidate")
+	fs.IntVar(&retainKeep, "retain-keep", 2, "non-current releases whose assets stay retained")
+	fs.Int64Var(&retainMaxBytes, "retain-max-bytes", 100<<20, "retained asset byte budget")
 	fs.Parse(args)
 	state, err := portalgen.Promote(portalgen.PromoteOptions{
 		ArtifactDir: artifact, RootDir: root, SiteURL: siteURL,
 		Fence: fence, ExpectedCurrent: expected, OfficialOnly: officialOnly,
+		RetainKeep: retainKeep, RetainMaxBytes: retainMaxBytes,
 	})
 	if err != nil {
 		fatal(err)
@@ -60,12 +65,16 @@ func rollback(args []string) {
 	fs := flag.NewFlagSet("rollback", flag.ExitOnError)
 	var root, target, siteURL string
 	var officialOnly bool
+	var retainKeep int
+	var retainMaxBytes int64
 	fs.StringVar(&root, "root", "", "private release root")
 	fs.StringVar(&target, "target", "", "release content hash")
 	fs.StringVar(&siteURL, "site-url", "", "origin used by the artifact manifest")
 	fs.BoolVar(&officialOnly, "official-only", false, "require an official-only release")
+	fs.IntVar(&retainKeep, "retain-keep", 2, "non-current releases whose assets stay retained")
+	fs.Int64Var(&retainMaxBytes, "retain-max-bytes", 100<<20, "retained asset byte budget")
 	fs.Parse(args)
-	state, err := portalgen.Rollback(portalgen.RollbackOptions{RootDir: root, Target: target, SiteURL: siteURL, OfficialOnly: officialOnly})
+	state, err := portalgen.Rollback(portalgen.RollbackOptions{RootDir: root, Target: target, SiteURL: siteURL, OfficialOnly: officialOnly, RetainKeep: retainKeep, RetainMaxBytes: retainMaxBytes})
 	if err != nil {
 		fatal(err)
 	}

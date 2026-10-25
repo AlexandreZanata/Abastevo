@@ -7,7 +7,9 @@ package jobs
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -213,5 +215,37 @@ func TestESPFollowupFullPipelineRevokesOnWithdrawn(t *testing.T) {
 	persisted, ok := portalgen.LoadReleaseState(portalRoot)
 	if !ok || len(persisted.RevokedOfficial) != 1 {
 		t.Fatalf("full-pipeline revocation missing = %+v", persisted)
+	}
+}
+
+func TestESPFollowupRefreshRetainsCurrentAssets(t *testing.T) {
+	exportRoot, portalRoot, handler, _ := refreshFixture(t)
+	writeRefreshExport(t, exportRoot, "review-assets", "sha256:"+strings.Repeat("d", 64), "6000", "")
+	if err := runRefresh(t, handler); err != nil {
+		t.Fatal(err)
+	}
+	current := refreshCurrent(t, portalRoot)
+	releaseDir := filepath.Join(portalRoot, "releases", strings.TrimPrefix(current.ContentSHA256, "sha256:"))
+	raw, err := os.ReadFile(filepath.Join(releaseDir, "portal-manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest portalgen.Manifest
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	assets := 0
+	for _, file := range manifest.Files {
+		if !strings.HasPrefix(file.Path, "assets/") {
+			continue
+		}
+		info, err := os.Stat(filepath.Join(portalRoot, portalgen.RetainedDir, filepath.FromSlash(file.Path)))
+		if err != nil || !info.Mode().IsRegular() {
+			t.Fatalf("refresh exposed current release without retained asset %s: %v", file.Path, err)
+		}
+		assets++
+	}
+	if assets == 0 {
+		t.Fatal("fixture has no assets")
 	}
 }
