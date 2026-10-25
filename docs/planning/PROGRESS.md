@@ -1,5 +1,23 @@
 # Current execution state
 
+- Map minimum local acceptance 2026-10-25: **MINIMUM_MAP_GATE LOCAL_PASS /
+  STAGING_PENDING / PRODUCTION_PENDING**, LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/map-ev-minimum-gate`. [Evidence](../backend/evidence/maps/MAP-20_MINIMUM_LOCAL_20261025.md),
+  [receipt](../backend/evidence/maps/MAP-20-minimum-local-20261025/receipt.json).
+  Real ANP registry (45,706 stations), real 2026-10-11..17 survey facts and the
+  ANP Curitiba API were combined with admitted OSM geometry under exact
+  address/number + ≤50 m review: 62 reviewed points and 33 exact priced
+  stations. A disposable PostGIS API fed the real app: 62 native fuel pins on
+  the admitted MWM, quick sheet `R$ 6,79 L` Standard for 2026-10-11..17,
+  no-price explicit state and existing profile route. Offline process restart
+  used the separate Room public-page/price cache with explicit cached banner and
+  price label. Native labels no longer expose UUID/cluster IDs; search is no
+  longer clobbered by camera sync. Engine 32, data 612 (2 known external skips)
+  and app 537 tests PASS; lint/release size PASS. Unsigned release 78,121,062
+  bytes / 74.50 MiB SHA-256 `5937649c…deabdd`, local proof config empty. Staging
+  data/distribution origin/keys, opening-hours contract, MAP-21–33 and
+  production/G09 remain PENDING. No push/PR/merge/deploy.
+
 - Map review remediation 2026-10-25: bounded repairs LOCAL_DONE /
   INTEGRATION_PENDING on `codex/map-ev-implementation`; inherited Antigravity
   commits `483cff59` and `2d51eef6` and unfinished native work preserved.

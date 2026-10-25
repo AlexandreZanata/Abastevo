@@ -32,6 +32,19 @@ Behavior and fixture decisions are frozen in
 `contracts/testdata/map-discovery/cases-v1.json`. Source admission is not runtime
 activation.
 
+## Local proof source use (2026-10-25; not a production admission)
+
+The MAP-20 local acceptance downloaded the official ANP registry CSV, the
+2026-10-11..17 station survey XLSX and the Curitiba registry API response, and
+used the admitted OSM Curitiba PBF. Exact URLs, bytes, SHA-256, review method
+and the 62 reviewed/33 priced counts are in the
+[MAP-20 local receipt](../backend/evidence/maps/MAP-20-minimum-local-20261025/receipt.json).
+This is **local proof only**: it does not admit ANP redistribution, does not
+authorize a public package/data offer and does not change `SRC-ANP` from
+`PENDING` for a production server artifact. The OSM package keeps ODbL-1.0
+attribution. No municipal average, centroid or proximity-only station link was
+used.
+
 ## Primary stack
 
 - **CoMaps native source:** Apache-2.0 core is the committed commercial-use engine source, extracted under MAP-14 rather than consumed as a published SDK. Pin the exact upstream commit and every included dependency; vendor the minimal core/JNI host, maintain a documented patch set, build our own AAR reproducibly, and preserve LICENSE/NOTICE while marking modifications. Inspect tools, third-party code, fonts/styles/artwork and endpoints. Do not reuse the brand/logo or ship the CoMaps application/CDN. Extraction and ENGINE_GATE feasibility remain unproven until MAP-14 executes. [License](https://github.com/comaps/comaps/blob/main/LICENSE), [NOTICE](https://github.com/comaps/comaps/blob/main/NOTICE), [copyright inventory](https://github.com/comaps/comaps/blob/main/data/copyright.html), [Apache terms](https://www.apache.org/licenses/LICENSE-2.0).
