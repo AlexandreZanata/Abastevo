@@ -98,6 +98,17 @@ def validate_scope(scope):
         unknown = [item for item in slices if item not in PUBLIC_SLICES]
         if unknown:
             errors.append(f"scope.source_slices not publicly admitted: {','.join(unknown)}")
+    # Publication mode is inferred from the declared slices and checked
+    # against the artifact manifest: an official-only scope requires an
+    # official-only candidate, and vice versa.
+    mode = scope.get("publication_mode")
+    if mode is None:
+        mode = "official-only" if slices == ["official-sanctions"] else "full"
+        scope["publication_mode"] = mode
+    if mode not in ("full", "official-only"):
+        errors.append("scope.publication_mode must be full or official-only")
+    elif mode == "official-only" and slices != ["official-sanctions"]:
+        errors.append("scope.publication_mode official-only requires source_slices [official-sanctions]")
     evidence = scope.get("rights_evidence")
     if not isinstance(evidence, list) or not evidence or any(placeholder(item) for item in evidence):
         errors.append("scope.rights_evidence must be non-placeholder references")
@@ -139,6 +150,14 @@ def verify_artifact(artifact, scope):
     except ValueError as err:
         return [str(err)], checks, {}
     checks.append(("manifest", "INFO", "portal manifest present"))
+    mode = scope.get("publication_mode")
+    if mode is None:
+        mode = "official-only" if scope.get("source_slices") == ["official-sanctions"] else "full"
+    manifest_official_only = bool(manifest.get("official_only", False))
+    if (mode == "official-only") != manifest_official_only:
+        failures.append(f"publication mode mismatch: scope={mode} artifact_official_only={manifest_official_only}")
+    else:
+        checks.append(("publication_mode", "PASS", mode))
     content = manifest.get("content_sha256")
     if content != scope.get("candidate_content_sha256"):
         failures.append(f"candidate content hash mismatch: artifact={content} scope={scope.get('candidate_content_sha256')}")
@@ -198,10 +217,11 @@ def verify_artifact(artifact, scope):
         failures.append("robots.txt sitemap does not match the public origin")
     else:
         checks.append(("robots", "PASS", "Allow + origin sitemap"))
-    consultar = artifact / "consultar" / "index.html"
-    page = consultar.read_text(encoding="utf-8", errors="replace") if consultar.exists() else ""
+    home_name = "fiscalizacao" if mode == "official-only" else "consultar"
+    home = artifact / home_name / "index.html"
+    page = home.read_text(encoding="utf-8", errors="replace") if home.exists() else ""
     if 'name="robots" content="index,follow"' not in page:
-        failures.append("consultar page is not indexable")
+        failures.append(f"{home_name} page is not indexable")
     else:
         checks.append(("page_indexable", "PASS", "index,follow"))
     return failures, checks, manifest

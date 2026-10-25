@@ -2,6 +2,11 @@
 # ESP-18 post-publication public smoke (read-only). It requires an approved
 # public HTTPS origin and the exact expected portal content hash. It is never
 # run automatically and performs no mutation, DNS/CDN change or publication.
+#
+# --mode full|official-only selects the required page set (defaults differ per
+# mode; --pages overrides). --topology dedicated|shared is required: a
+# dedicated static host must serve no API/health paths, while a shared host
+# must preserve the existing API health endpoint. There is no generic mode.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -19,21 +24,41 @@ if [[ "${1:-}" == "--self-test" ]]; then
             fail "unsafe origin accepted: $origin"
         fi
     done
+    if bash "$0" --mode bogus --topology shared --origin https://portal.abastevo.com.br --expected-sha sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >/dev/null 2>&1; then
+        fail "unknown mode accepted"
+    fi
+    if bash "$0" --mode full --topology bogus --origin https://portal.abastevo.com.br --expected-sha sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >/dev/null 2>&1; then
+        fail "unknown topology accepted"
+    fi
+    if bash "$0" --mode full --origin https://portal.abastevo.com.br --expected-sha sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >/dev/null 2>&1; then
+        fail "missing topology accepted"
+    fi
     echo "public smoke self-test ok"
     exit 0
 fi
 
-ORIGIN=""; EXPECTED=""; PAGES="/consultar/,/fiscalizacao/,/metodologia/,/dados/"; OUT=""
+ORIGIN=""; EXPECTED=""; PAGES=""; MODE="full"; TOPOLOGY=""; OUT=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --origin) ORIGIN="${2:-}"; shift 2 ;;
         --expected-sha) EXPECTED="${2:-}"; shift 2 ;;
         --pages) PAGES="${2:-}"; shift 2 ;;
+        --mode) MODE="${2:-}"; shift 2 ;;
+        --topology) TOPOLOGY="${2:-}"; shift 2 ;;
         --out) OUT="${2:-}"; shift 2 ;;
         *) refuse "unknown flag $1" ;;
     esac
 done
 [[ -n "$ORIGIN" && -n "$EXPECTED" ]] || refuse "--origin and --expected-sha are required"
+[[ "$MODE" == "full" || "$MODE" == "official-only" ]] || refuse "--mode must be full or official-only"
+[[ "$TOPOLOGY" == "dedicated" || "$TOPOLOGY" == "shared" ]] || refuse "--topology must be dedicated or shared"
+if [[ -z "$PAGES" ]]; then
+    if [[ "$MODE" == "official-only" ]]; then
+        PAGES="/fiscalizacao/,/metodologia/"
+    else
+        PAGES="/consultar/,/fiscalizacao/,/metodologia/,/dados/"
+    fi
+fi
 python3 "$PREFLIGHT" --check-origin "$ORIGIN" >/dev/null || refuse "origin is not an approved public HTTPS origin"
 [[ "$EXPECTED" =~ ^sha256:[0-9a-f]{64}$ ]] || refuse "expected hash must be sha256:<64 hex>"
 command -v curl >/dev/null || refuse "curl required"
@@ -41,11 +66,18 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 if [[ -n "$OUT" ]]; then
     mkdir -p "$(dirname "$OUT")"
 fi
-log "smoke target $ORIGIN expected=$EXPECTED"
+log "smoke target $ORIGIN expected=$EXPECTED mode=$MODE topology=$TOPOLOGY"
 
 curl -fsS --max-time 15 "$ORIGIN/portal-manifest.json" -o "$TMP/portal-manifest.json" || fail "portal manifest unavailable"
 CONTENT="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("content_sha256",""))' "$TMP/portal-manifest.json")"
 [[ "$CONTENT" == "$EXPECTED" ]] || fail "portal manifest content hash $CONTENT != $EXPECTED"
+OFFICIAL_ONLY="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("official_only",False))' "$TMP/portal-manifest.json")"
+if [[ "$MODE" == "official-only" && "$OFFICIAL_ONLY" != "True" ]]; then
+    fail "official-only smoke against a full portal manifest"
+fi
+if [[ "$MODE" == "full" && "$OFFICIAL_ONLY" == "True" ]]; then
+    fail "full smoke against an official-only portal manifest"
+fi
 
 IFS=',' read -r -a page_list <<<"$PAGES"
 [[ "${#page_list[@]}" -gt 0 ]] || fail "no pages configured"
@@ -73,16 +105,25 @@ for page in "${page_list[@]}"; do
     [[ "$code" == "200" ]] || fail "page $page returned $code"
 done
 [[ "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$ORIGIN/nao-existe/")" == "404" ]] || fail "custom 404 missing"
-[[ "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$ORIGIN/v1/health/live")" == "404" ]] || fail "API path served"
-[[ "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$ORIGIN/health/live")" == "404" ]] || fail "health path served"
+if [[ "$MODE" == "official-only" ]]; then
+    [[ "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$ORIGIN/consultar/")" == "404" ]] || fail "price route served in official-only slice"
+    [[ "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$ORIGIN/precos/")" == "404" ]] || fail "price route served in official-only slice"
+fi
+if [[ "$TOPOLOGY" == "dedicated" ]]; then
+    [[ "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$ORIGIN/v1/health/live")" == "404" ]] || fail "API path served on dedicated static host"
+    [[ "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$ORIGIN/health/live")" == "404" ]] || fail "health path served on dedicated static host"
+else
+    [[ "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$ORIGIN/health/live")" == "200" ]] || fail "shared host lost the existing API health endpoint"
+fi
 
 cat > "$TMP/summary.txt" <<SUMMARY
 public smoke PASS
 origin=$ORIGIN
 content=$EXPECTED
+mode=$MODE
+topology=$TOPOLOGY
 pages=${PAGES}
 indexable=true
-api_proxy=false
 SUMMARY
 cat "$TMP/summary.txt"
 if [[ -n "$OUT" ]]; then
