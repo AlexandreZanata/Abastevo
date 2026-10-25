@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.maps.engine.MapHost
 import com.anpfuel.maps.engine.MapOverlayList
+import com.anpfuel.maps.engine.MapOverlayMarker
 
 @Composable
 private fun RealMapHost(modifier: Modifier = Modifier) {
@@ -50,9 +51,11 @@ fun MapScreen(
     onOpenStation: (stationKey: String, fuel: String) -> Unit,
     onOpenSearch: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onReportStation: (stationId: String, fuel: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: MapScreenViewModel = hiltViewModel(),
     discovery: MapDiscoveryViewModel? = null,
+    sheet: MapSheetViewModel? = null,
     mapContent: @Composable (Modifier) -> Unit = { RealMapHost(modifier = it) },
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
@@ -64,6 +67,17 @@ fun MapScreen(
     // keeps one deterministic load for the minimum gate.
     LaunchedEffect(discovery, ui.source) {
         discovery?.onViewport(-25.42, -49.27, 10_000)
+    }
+
+    // Selection opens the price sheet with source truth (MAP-19).
+    val discUi = discovery?.ui?.collectAsStateWithLifecycle()?.value
+    LaunchedEffect(discUi?.selectedUuid) {
+        val sel = discUi?.selectedUuid ?: return@LaunchedEffect
+        val marker: MapOverlayMarker? = discUi.clusters.flatMap { it.markers }.firstOrNull { it.uuid == sel }
+            ?: discUi.selectedMembers.firstOrNull { it.uuid == sel }
+        if (marker != null) {
+            sheet?.select(marker, ui.source)
+        }
     }
 
     Column(modifier.fillMaxSize()) {
@@ -203,6 +217,32 @@ fun MapScreen(
             source = ui.source,
             onSelectSource = { viewModel.selectSource(it); showFilters = false },
             onDismiss = { showFilters = false },
+        )
+    }
+
+    // MAP-19 sheet with source truth and real actions.
+    if (sheet != null && discUi?.selectedUuid != null) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        MapBottomSheet(
+            viewModel = sheet,
+            onOpenProfile = { uuid -> onOpenStation(uuid, "GASOLINE_REGULAR") },
+            onRoute = { uuid ->
+                // Explicit external interim: never counted as native guidance.
+                // Native preview (buildCarRoute) owns MAP-22; this keeps the
+                // minimum gate honest about what is proven.
+                val marker = discUi.clusters.flatMap { it.markers }.firstOrNull { it.uuid == uuid }
+                    ?: discUi.selectedMembers.firstOrNull { it.uuid == uuid }
+                if (marker != null) {
+                    try {
+                        val uri = android.net.Uri.parse("geo:${marker.latitude},${marker.longitude}?q=${marker.latitude},${marker.longitude}(${android.net.Uri.encode(marker.title)})")
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
+                    } catch (_: Exception) {
+                    }
+                }
+            },
+            onReport = { uuid -> onReportStation(uuid, "GASOLINE_REGULAR") },
+            onSwitchToCommunity = { viewModel.selectSource(MapPriceSource.COMMUNITY) },
+            onDismiss = { discovery?.clearSelection(); sheet.clear() },
         )
     }
 }

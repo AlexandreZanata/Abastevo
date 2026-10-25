@@ -130,6 +130,7 @@ fun AnpNavGraph(
             ),
         ) {
             val discovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel = hiltViewModel()
+            val sheet: com.anpfuel.app.ui.map.MapSheetViewModel = hiltViewModel()
             com.anpfuel.app.ui.map.MapScreen(
                 onOpenStation = { stationKey, fuel ->
                     // Map origin keeps the MAP tab selected on return.
@@ -142,7 +143,15 @@ fun AnpNavGraph(
                 },
                 onOpenSearch = { navController.navigate(Routes.STATIONS) },
                 onOpenDownloads = { navController.navigate("map/downloads") },
+                onReportStation = { stationId, fuel ->
+                    try {
+                        navController.navigate(Routes.capture(stationId, fuel))
+                    } catch (_: Exception) {
+                        navController.navigate(Routes.CAPTURE)
+                    }
+                },
                 discovery = discovery,
+                sheet = sheet,
             )
         }
         composable("map/downloads") {
