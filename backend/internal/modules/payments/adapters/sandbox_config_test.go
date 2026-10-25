@@ -40,3 +40,17 @@ func TestSandboxConfigGating(t *testing.T) {
 		t.Fatalf("asaas not ready: %+v err=%v", asaas, err)
 	}
 }
+
+func TestSandboxOperationKeysArePerOperation(t *testing.T) {
+	first := sandboxOperationKey("checkout", "11111111-1111-4111-8111-111111111111")
+	if again := sandboxOperationKey("checkout", "11111111-1111-4111-8111-111111111111"); again != first {
+		t.Fatalf("same operation changed key: %q vs %q", first, again)
+	}
+	second := sandboxOperationKey("checkout", "22222222-2222-4222-8222-222222222222")
+	if second == first {
+		t.Fatalf("independent operations share key %q", first)
+	}
+	if other := sandboxOperationKey("cancel", "11111111-1111-4111-8111-111111111111"); other == first {
+		t.Fatalf("scopes share key %q", first)
+	}
+}

@@ -156,9 +156,11 @@ func TestSandboxStripeCheckoutRecovery(t *testing.T) {
 	session, err := provider.CreateCheckout(ctx, app.CheckoutRequest{
 		Order: order, CustomerID: customer.ID, PriceID: stripeCreds.price,
 		MerchantID: stripeCreds.merchant, Environment: domain.EnvironmentTest,
-		SuccessURL:     "https://app.example.invalid/billing/checkout/return?session_id={CHECKOUT_SESSION_ID}",
-		CancelURL:      "https://app.example.invalid/billing/checkout/cancel",
-		IdempotencyKey: "sandbox:checkout:probe",
+		SuccessURL: "https://app.example.invalid/billing/checkout/return?session_id={CHECKOUT_SESSION_ID}",
+		CancelURL:  "https://app.example.invalid/billing/checkout/cancel",
+		// One key per operation: repeats of this checkout reuse it while
+		// any other operation mints its own.
+		IdempotencyKey: sandboxOperationKey("checkout", order.ID),
 	})
 	if err != nil {
 		t.Fatalf("checkout err=%v", classifySandbox(err))
@@ -195,7 +197,7 @@ func TestSandboxStripeSubscriptionCancel(t *testing.T) {
 		before.Provider != domain.ProviderStripe {
 		t.Fatal("subscription binding refused")
 	}
-	if err := provider.CancelRenewal(ctx, stripeCreds.subscription, "sandbox:cancel:probe"); err != nil {
+	if err := provider.CancelRenewal(ctx, stripeCreds.subscription, sandboxOperationKey("cancel", stripeCreds.subscription)); err != nil {
 		t.Fatalf("cancel err=%v", classifySandbox(err))
 	}
 	after, err := provider.RetrieveLifecycle(ctx, stripeCreds.subscription)

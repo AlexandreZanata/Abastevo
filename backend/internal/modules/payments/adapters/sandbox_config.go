@@ -58,3 +58,11 @@ func (c sandboxStripeConfig) testKey() bool {
 func (c sandboxAsaasConfig) journeysReady() bool {
 	return c.key != "" && c.merchant != ""
 }
+
+// sandboxOperationKey binds one idempotency key to one logical operation:
+// the same order reuses its key across attempts and recovery, while a
+// different order never shares it. A bare order UUID is not an HTTP key;
+// the scope prefix keeps checkout, refund and cancel namespaces apart.
+func sandboxOperationKey(scope, orderID string) string {
+	return "sandbox:" + scope + ":" + orderID
+}

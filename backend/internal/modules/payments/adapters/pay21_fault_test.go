@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -294,5 +295,72 @@ func TestStripeConstructorEmitsNoRawLogs(t *testing.T) {
 	}
 	if !errors.Is(callErr, app.ErrProviderUnauthorized) {
 		t.Fatalf("call err = %v", callErr)
+	}
+}
+
+func TestSandboxCheckoutKeysArePerOperationOnTheWire(t *testing.T) {
+	var mu sync.Mutex
+	var keys []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/checkout/sessions" || r.Method != http.MethodPost {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		mu.Lock()
+		keys = append(keys, r.Header.Get("Idempotency-Key"))
+		mu.Unlock()
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "cs_test_synthetic", "object": "checkout.session", "mode": "subscription",
+			"status": "open", "url": "https://checkout.example.invalid/cs",
+			"customer":     map[string]any{"id": "cus_synthetic", "object": "customer"},
+			"amount_total": 1234, "currency": "brl", "livemode": false,
+		})
+	}))
+	t.Cleanup(server.Close)
+	provider := NewStripeProvider("sk_test_"+strings.Repeat("s", 24), domain.EnvironmentTest,
+		&http.Client{Transport: redirectTransport{target: server.URL, base: http.DefaultTransport}})
+	provider.Merchant = "acct_synthetic"
+
+	orderA := testOrder(t)
+	orderB := orderA
+	orderB.ID = "66666666-6666-4666-8666-666666666666"
+	checkout := func(order domain.Order) app.CheckoutSession {
+		session, err := provider.CreateCheckout(context.Background(), app.CheckoutRequest{
+			Order: order, CustomerID: "cus_synthetic", PriceID: "price_synthetic",
+			MerchantID: "acct_synthetic", Environment: domain.EnvironmentTest,
+			SuccessURL: "https://app.example.invalid/return", CancelURL: "https://app.example.invalid/cancel",
+			IdempotencyKey: sandboxOperationKey("checkout", order.ID),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return session
+	}
+	first := checkout(orderA)
+	// Repeating the same operation reuses its key and binds the same session.
+	again := checkout(orderA)
+	if again.ID != first.ID {
+		t.Fatalf("repeat bound %q want %q", again.ID, first.ID)
+	}
+	// An independent operation carries its own key.
+	other := checkout(orderB)
+	if other.ID != first.ID {
+		t.Fatalf("independent op bound %q", other.ID)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	want := []string{
+		sandboxOperationKey("checkout", orderA.ID),
+		sandboxOperationKey("checkout", orderA.ID),
+		sandboxOperationKey("checkout", orderB.ID),
+	}
+	if len(keys) != len(want) {
+		t.Fatalf("keys = %v", keys)
+	}
+	for i := range want {
+		if keys[i] != want[i] {
+			t.Fatalf("keys = %v want %v", keys, want)
+		}
 	}
 }
