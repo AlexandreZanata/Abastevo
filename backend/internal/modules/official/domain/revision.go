@@ -23,6 +23,10 @@ const (
 	RevisionPublished   = "published"
 	RevisionFailed      = "failed"
 	RevisionNeedsReview = "needs-review"
+	// RevisionSuperseded retires a staging revision whose survey window
+	// moved on while it was still open: a late finish must never repoint
+	// the current pointer at stale facts.
+	RevisionSuperseded = "superseded"
 )
 
 var (
