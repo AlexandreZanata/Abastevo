@@ -106,8 +106,7 @@ android {
         buildConfig = true
     }
 
-    val resolvedSdkDir = providers.gradleProperty("comapsSdkDir").orNull
-        ?: "/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22"
+    val resolvedSdkDir = rootProject.extra["comapsSdkDirResolved"] as String
     // The production map tab always ships the accepted native engine.
     // The fallback is the versioned MAP-14 candidate; pass -PcomapsSdkDir to
     // override with a newly verified candidate.

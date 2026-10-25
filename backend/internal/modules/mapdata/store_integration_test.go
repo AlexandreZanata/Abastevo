@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"testing/fstest"
@@ -309,7 +310,8 @@ func TestPreviousSchemaUpgradeAddsMapTables(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(applied) != 1 || applied[0] != "000122" {
+	expected := []string{"000122", "000123", "000124", "000125", "000126", "000127", "000128", "000129", "000130", "000131"}
+	if !slices.Equal(applied, expected) {
 		t.Fatalf("applied %v", applied)
 	}
 	pool, err := pgxpool.New(context.Background(), dsn)

@@ -331,10 +331,12 @@ func TestIdenticalRestageIsNoOpAndDivergentBatchRejected(t *testing.T) {
 }
 
 func TestStageConcurrentWithFinishRespectsTerminalState(t *testing.T) {
-	im, pool := freshImporter(t)
-	station := makeStation(t, pool, "Review station")
-	installPublishDelay(t, pool)
 	for i := 0; i < 4; i++ {
+		// Each race owns its publication history. A prior 4-row winner must
+		// not turn a later 3-row winner into a valid 25% row-drop refusal.
+		im, pool := freshImporter(t)
+		station := makeStation(t, pool, "Review station")
+		installPublishDelay(t, pool)
 		start := weekStart.AddDate(0, 0, 7*i)
 		end := weekEnd.AddDate(0, 0, 7*i)
 		key := domain.ImportKey{SourceURL: "https://example.test/race.xlsx", SourceChecksum: "sha256:race-" + string(rune('a'+i)), ParserVersion: "review-guard"}

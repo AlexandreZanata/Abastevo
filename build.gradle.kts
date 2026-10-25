@@ -8,6 +8,26 @@ plugins {
     alias(libs.plugins.ksp) apply false
 }
 
+// Resolve once before app ABI selection and engine configuration. Fresh clones
+// consume the exact admitted archive; explicit operators may override its path.
+val mapLocalProperties = java.util.Properties().apply {
+    val local = rootProject.file("local.properties")
+    if (local.isFile) local.inputStream().use { load(it) }
+}
+val configuredMapSdk = providers.gradleProperty("comapsSdkDir").orNull
+    ?: mapLocalProperties.getProperty("comaps.sdk.dir")
+    ?: mapLocalProperties.getProperty("comapsSdkDir")
+    ?: providers.environmentVariable("COMAPS_SDK_DIR").orNull
+val resolvedMapSdk = configuredMapSdk ?: layout.buildDirectory.dir("comaps/d2ec37881ede4e22").get().asFile.absolutePath
+if (configuredMapSdk == null) {
+    providers.exec {
+        commandLine("python3", rootProject.file("scripts/maps/provision-comaps-aar.py"),
+            "--aar", rootProject.file("maps/engine/vendor/sdk-release.aar"),
+            "--output", resolvedMapSdk)
+    }.result.get().assertNormalExitValue()
+}
+extra["comapsSdkDirResolved"] = resolvedMapSdk.trim()
+
 tasks.register<Exec>("scanSecrets") {
     group = "verification"
     description = "Scans tracked files for accidental secrets (Phase 9.4.2)"
