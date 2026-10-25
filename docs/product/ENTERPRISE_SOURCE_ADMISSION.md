@@ -20,7 +20,7 @@ rights come only from the dataset metadata or an explicit ANP statement:
 | --- | --- | --- |
 | S-ESP-01 registry | none found; metadata PDF has no text layer | `RIGHTS_PENDING` |
 | S-ESP-02 prices | none found in the historical/series metadata | `RIGHTS_PENDING` |
-| S-ESP-03 enforcement | CC BY, CC0, ODbL or PDDL (metadata menu) | `ADMITTED` under CC BY attribution, runtime blocked |
+| S-ESP-03 enforcement | CC BY, CC0, ODbL or PDDL (metadata menu, no selection) | `RIGHTS_PENDING` (applicable license indeterminate; see re-examination) |
 | S-ESP-04 fines | CC BY (metadata) | event-level `ADMITTED` under CC BY attribution; station links only when `linked` |
 | S-ESP-05 PMQC | none found in the October 2026 metadata | `RIGHTS_PENDING` |
 | S-ESP-06 registry API | not inspected/admitted | `NOT_ADMITTED` |
@@ -150,9 +150,14 @@ nearby station's value.
   private raw cleanup; supersession retains corrections. Default-off.
 - **Correction window:** current published edition plus the two preceding
   monthly editions, then controlled backfill. No page label creates a period.
-- **Status:** `ingest=ADAPTER_LOCAL`, `runtime=OWED`, `public_release=ADMITTED`
-  (CC BY attribution) but **slice blocked** until the live stream, coverage and
-  safe station association are accepted.
+- **Status:** `ingest=ADAPTER_LOCAL`, `runtime=OWED`,
+  `public_release=RIGHTS_PENDING`. The license cell holds four alternatives
+  joined by "ou" with no selection control; absence of a checkbox alone does
+  not decide between alternative licensing and an unfilled form, so no
+  specific admission is sustained. The slice stays blocked until the live
+  stream, coverage, safe station association AND a determined license are
+  accepted. This doubt changes nothing for the independent fines slice
+  S-ESP-04.
 
 ## S-ESP-04 — ANP fines (reuse FQ-07)
 
@@ -289,3 +294,18 @@ and license-relevant extracts are recorded here.
 > Sem resposta, os slices correspondentes permanecem `RIGHTS_PENDING` e
 > nenhum conteúdo deles será publicado. Nada aqui autoriza contato com
 > terceiros pelo agente.
+
+## Alignment 2026-10-25 — S-ESP-03 license indeterminacy
+
+The re-examination proved the "LICENÇA DE USO" cell is a four-alternative
+menu (CC BY / CC0 / ODbL / PDDL) with zero checkbox or selection controls
+in the document XML. That byte-level fact cannot decide between
+"alternative licensing" and "unfilled form". Per the rule that no specific
+admission stands without foundation, the table and the S-ESP-03 section
+above now record `RIGHTS_PENDING` for public derived release instead of
+the earlier CC BY reading; runtime was and stays blocked. Historical
+records that quoted the earlier reading are preserved as history, not
+rewritten. The S-ESP-04 fines slice is independent and unchanged. Gates
+need no change: neither `portalcheck` nor the publication preflight ever
+admitted enforcement pages or slices (only `official-sanctions`), so no
+enforcement content could have passed them.
