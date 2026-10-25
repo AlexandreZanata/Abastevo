@@ -69,10 +69,11 @@ type SwitchStore interface {
 }
 
 type SwitchConfig struct {
-	Environment  domain.Environment
-	MerchantID   string
-	CardReady    bool
-	PixAutoReady bool
+	Environment       domain.Environment
+	CardMerchantID    string
+	PixAutoMerchantID string
+	CardReady         bool
+	PixAutoReady      bool
 }
 
 type SwitchRequest struct {

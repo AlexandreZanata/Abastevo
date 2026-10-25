@@ -23,6 +23,7 @@ const (
 	keyStripeWebhook     = "ANPFUEL_STRIPE_WEBHOOK_SECRET"
 	keyStripeMerchant    = "ANPFUEL_STRIPE_MERCHANT_ID"
 	keyStripePrice       = "ANPFUEL_STRIPE_PRICE_ID"
+	keyStripePortal      = "ANPFUEL_STRIPE_PORTAL_CONFIGURATION_ID"
 	keyStripeNewSales    = "ANPFUEL_STRIPE_CARD_NEW_SALES_ENABLED"
 	keyStripeMaintenance = "ANPFUEL_STRIPE_MAINTENANCE_ENABLED"
 
@@ -54,6 +55,7 @@ type StripePaymentConfig struct {
 	WebhookSecret      string
 	MerchantID         string
 	PriceID            string
+	PortalConfigID     string
 	NewSalesEnabled    bool
 	MaintenanceEnabled bool
 	Configured         bool
@@ -92,6 +94,7 @@ type PaymentChannelPreflight struct {
 	MerchantConfigured     bool     `json:"merchant_configured"`
 	WebhookConfigured      bool     `json:"webhook_configured"`
 	PriceConfigured        bool     `json:"price_configured,omitempty"`
+	PortalConfigured       bool     `json:"portal_configured,omitempty"`
 	CatalogConfigured      bool     `json:"catalog_configured"`
 	ReturnOriginConfigured bool     `json:"return_origin_configured,omitempty"`
 	Reason                 string   `json:"reason,omitempty"`
@@ -146,6 +149,9 @@ func loadPayments(getenv func(string) (string, bool), env Environment) PaymentsC
 	if raw, present := getenv(keyStripePrice); present {
 		cfg.Stripe.PriceID = strings.TrimSpace(raw)
 	}
+	if raw, present := getenv(keyStripePortal); present {
+		cfg.Stripe.PortalConfigID = strings.TrimSpace(raw)
+	}
 	cfg.Stripe.Configured = cfg.Stripe.Mode != "" || cfg.Stripe.SecretKey != "" ||
 		cfg.Stripe.WebhookSecret != "" || cfg.Stripe.MerchantID != "" ||
 		cfg.Stripe.PriceID != "" || cfg.Stripe.NewSalesEnabled
@@ -166,6 +172,9 @@ func loadPayments(getenv func(string) (string, bool), env Environment) PaymentsC
 		}
 		if !strings.HasPrefix(cfg.Stripe.PriceID, "price_") || len(cfg.Stripe.PriceID) <= 6 {
 			cfg.StripeIssues = append(cfg.StripeIssues, keyStripePrice+" is missing or malformed")
+		}
+		if cfg.Stripe.PortalConfigID != "" && !validStripePortal(cfg.Stripe.PortalConfigID) {
+			cfg.StripeIssues = append(cfg.StripeIssues, keyStripePortal+" is malformed")
 		}
 		if cfg.Stripe.NewSalesEnabled && !originOK {
 			cfg.StripeIssues = append(cfg.StripeIssues, keyPaymentsReturnOrigin+" is required for card sales")
@@ -232,8 +241,10 @@ func (p PaymentsConfig) Preflight() PaymentsPreflight {
 			MaintenanceReason: maintenanceReason(p.Stripe.MaintenanceEnabled, p.Stripe.Configured,
 				p.Stripe.Mode == p.Stripe.ExpectedMode, stripeCredentialsReady(p.Stripe)),
 			Mode: p.Stripe.Mode, MerchantConfigured: strings.HasPrefix(p.Stripe.MerchantID, "acct_"),
-			WebhookConfigured: validStripeWebhook(p.Stripe.WebhookSecret),
-			PriceConfigured:   validStripePrice(p.Stripe.PriceID), CatalogConfigured: catalogOK,
+			WebhookConfigured:      validStripeWebhook(p.Stripe.WebhookSecret),
+			PriceConfigured:        validStripePrice(p.Stripe.PriceID),
+			PortalConfigured:       validStripePortal(p.Stripe.PortalConfigID),
+			CatalogConfigured:      catalogOK,
 			ReturnOriginConfigured: p.ReturnOrigin != "",
 			Reason: saleReason(p.Stripe.NewSalesEnabled, stripeSales, p.Stripe.Configured,
 				p.Stripe.MaintenanceEnabled, p.Stripe.Mode == p.Stripe.ExpectedMode,
@@ -377,6 +388,10 @@ func validStripeWebhook(secret string) bool {
 
 func validStripePrice(price string) bool {
 	return strings.HasPrefix(price, "price_") && len(price) > len("price_")+3
+}
+
+func validStripePortal(id string) bool {
+	return strings.HasPrefix(id, "bpc_") && len(id) > len("bpc_")+3
 }
 
 func validAsaasAPIKey(key string) bool {

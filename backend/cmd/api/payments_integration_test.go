@@ -146,7 +146,7 @@ func pay19PostAsaas(t *testing.T, router chi.Router, body []byte) *httptest.Resp
 
 func TestPAY19CallbackToDrainJourney(t *testing.T) {
 	pool := pay19FreshPool(t)
-	comp := composePayments(pay19TestConfig(), pool, time.Now)
+	comp := composePayments(pay19TestConfig(), pool, time.Now, nil)
 	if comp.Asaas == nil {
 		t.Fatal("asaas provider not composed")
 	}
@@ -210,7 +210,7 @@ func TestPAY19CallbackToDrainJourney(t *testing.T) {
 func TestPAY19OutagePreservesPendingWithoutGrant(t *testing.T) {
 	pool := pay19FreshPool(t)
 	// Empty configuration: no provider client exists anywhere.
-	comp := composePayments(config.PaymentsConfig{}, pool, time.Now)
+	comp := composePayments(config.PaymentsConfig{}, pool, time.Now, nil)
 	if comp.Stripe != nil || comp.Asaas != nil {
 		t.Fatal("providers exist without credentials")
 	}
@@ -305,7 +305,7 @@ func pay19TestCatalog(t *testing.T) paydomain.Catalog {
 
 func TestPAY19ComposedSettlementRevocationAndExit(t *testing.T) {
 	pool := pay19FreshPool(t)
-	comp := composePayments(pay19TestConfig(), pool, time.Now)
+	comp := composePayments(pay19TestConfig(), pool, time.Now, nil)
 	now := time.Now().UTC().Truncate(time.Microsecond)
 
 	// The composed store binds the synthetic order exactly like the
@@ -427,7 +427,7 @@ func TestPAY19FlagsAloneNeverEnableSales(t *testing.T) {
 			PixManualNewSalesEnabled: true, PixAutomaticNewSalesEnabled: true,
 		},
 	}
-	comp := composePayments(cfg, pool, time.Now)
+	comp := composePayments(cfg, pool, time.Now, nil)
 	// Flags without credentials change nothing: no provider, no sales.
 	if comp.Stripe != nil || comp.Asaas != nil {
 		t.Fatal("flags conjured providers")
@@ -457,5 +457,98 @@ func TestPAY19FlagsAloneNeverEnableSales(t *testing.T) {
 	}
 	if pay19Count(t, pool, "SELECT count(*) FROM accounts") != 1 {
 		t.Fatal("free data disturbed")
+	}
+}
+
+func TestPAY20MaintenanceOffPreservesMoneyAndFreesReads(t *testing.T) {
+	pool := pay19FreshPool(t)
+	cfg := pay19TestConfig()
+	cfg.Asaas.MaintenanceEnabled = false
+	comp := composePayments(cfg, pool, time.Now, nil)
+	if comp.Asaas != nil {
+		t.Fatal("provider exists with maintenance off")
+	}
+
+	// Intake refuses despite present credentials.
+	router := chi.NewRouter()
+	registerPaymentRoutes(router, comp)
+	if response := pay19PostAsaas(t, router, pay19AsaasBody("evt_p20_dark", "PAYMENT_RECEIVED")); response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("dark channel status=%d", response.Code)
+	}
+
+	// Previously accepted rows stay pending: the worker drain over the
+	// remaining channels preserves them with no grant and no loss.
+	event := paymentsapp.InboxEvent{
+		Provider: paydomain.ProviderAsaas, Environment: paydomain.EnvironmentTest,
+		Merchant: pay19Merchant, EventID: "evt_p20_held",
+		PayloadHash: strings.Repeat("e", 64), EventType: "PAYMENT_RECEIVED",
+		ResourceType: "payment", ResourceID: "pay_p20_held",
+	}
+	if _, err := comp.Store.RecordInbox(context.Background(), event); err != nil {
+		t.Fatal(err)
+	}
+	drain := &payjobs.Router{Store: comp.Store}
+	processed, err := drain.Drain(context.Background())
+	if err != nil || processed != 0 {
+		t.Fatalf("drain=%d err=%v", processed, err)
+	}
+	record, err := comp.Store.Inbox(context.Background(), paydomain.ProviderAsaas,
+		paydomain.EnvironmentTest, pay19Merchant, "evt_p20_held")
+	if err != nil || record.State != "PENDING" {
+		t.Fatalf("record=%+v err=%v", record, err)
+	}
+	if pay19Count(t, pool, "SELECT count(*) FROM payment_inbox WHERE state='PENDING'") != 1 {
+		t.Fatal("held row lost")
+	}
+	if pay19Count(t, pool, "SELECT count(*) FROM payment_grants") != 0 {
+		t.Fatal("dark channel granted access")
+	}
+
+	// Free owner reads and account data keep working with sales disabled.
+	principal := paymentsapp.Principal{AccountID: pay19Owner}
+	history, err := comp.Billing.History(context.Background(), principal, 100)
+	if err != nil || len(history) != 0 {
+		t.Fatalf("history=%+v err=%v", history, err)
+	}
+	if pay19Count(t, pool, "SELECT count(*) FROM accounts") != 1 {
+		t.Fatal("free data disturbed")
+	}
+	if comp.Preflight.PixManual.MaintenanceReason != config.PaymentReasonMaintenanceDisabled {
+		t.Fatalf("reason=%q", comp.Preflight.PixManual.MaintenanceReason)
+	}
+}
+
+func TestPAY20OwnerProofWiringEnablesCancel(t *testing.T) {
+	pool := pay19FreshPool(t)
+	// Without a validate closure the proof stays unwired and owner cancel
+	// stays unavailable.
+	dark := composePayments(pay19TestConfig(), pool, time.Now, nil)
+	if dark.Billing.Proof != nil {
+		t.Fatal("proof wired without validator")
+	}
+	principal := paymentsapp.Principal{AccountID: pay19Owner}
+	if _, err := dark.Billing.Cancel(context.Background(), principal, pay19OpCheckout, "family:token"); !errors.Is(err, paydomain.ErrUnavailable) {
+		t.Fatalf("unwired cancel err=%v", err)
+	}
+
+	// With a validator the same composed service cancels: the adapter maps
+	// a live session to the owner and refuses everything else.
+	wired := composePayments(pay19TestConfig(), pool, time.Now, func(_ context.Context, family, token string) (string, error) {
+		if family == "family-live" && token == "token-live" {
+			return pay19Owner, nil
+		}
+		return "", errors.New("synthetic denial")
+	})
+	if wired.Billing.Proof == nil {
+		t.Fatal("proof not wired")
+	}
+	exit, err := wired.Billing.Cancel(context.Background(), principal, pay19OpCheckout, "family-live:token-live")
+	if err != nil || exit.State != "DONE" {
+		t.Fatalf("exit=%+v err=%v", exit, err)
+	}
+	// The service maps every proof failure to unauthorized (fail-closed);
+	// transport outages stay visible through health/preflight instead.
+	if _, err := wired.Billing.Cancel(context.Background(), principal, pay19OpCheckout, "family-live:token-nope"); !errors.Is(err, paydomain.ErrUnauthorized) {
+		t.Fatalf("denied proof err=%v", err)
 	}
 }

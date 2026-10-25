@@ -272,11 +272,12 @@ func run() error {
 	// profile handler gets the canonical reader as a closure so
 	// modules never cross-read. Anonymous; no badge without a grant.
 	accountStore := accountadapters.NewPGStore(pool.Underlying())
-	// PAY-19: verified payment runtime. Provider clients exist only for
-	// maintenance-ready channels; sales stay off and proofs stay
-	// unimplemented, so dependent commands fail closed. Account deletion
+	// PAY-20: verified payment runtime. Provider clients exist only for
+	// maintenance-ready channels; sales stay off and operator proofs stay
+	// unimplemented, so dependent commands fail closed. Owner proofs are
+	// attached below once the account service exists. Account deletion
 	// keeps recording its durable billing-exit intent before mutation.
-	payments := composePayments(cfg.Payments, pool.Underlying(), time.Now)
+	payments := composePayments(cfg.Payments, pool.Underlying(), time.Now, nil)
 	registerPaymentRoutes(router, payments)
 	logger.Info(context.Background(), "api.payments",
 		"stripe_maintenance_ready", payments.Preflight.Stripe.MaintenanceReady,
@@ -474,6 +475,10 @@ func run() error {
 		IDGen:       newUUID,
 	}
 	accountService.RequestBillingExit = billingExit.RequestAccountExit
+	// PAY-20: proof-gated owner commands verify one live session per
+	// action through the account service; the proof value itself never
+	// leaves this closure.
+	payments.Billing.Proof = accountOwnerProof{validate: accountService.ValidateAccess}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
 	// Station/fuel feedback (P14-T03). Same closure rule: session
 	// ownership, account liveness and station existence arrive as

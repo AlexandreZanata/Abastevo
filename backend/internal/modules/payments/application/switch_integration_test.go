@@ -94,7 +94,8 @@ func newSwitchService(t *testing.T, store *payadapters.Store, pixAuto *app.PixAu
 	return &app.SwitchService{
 		Store: store, Catalog: switchCatalog(t),
 		Config: app.SwitchConfig{
-			Environment: paydomain.EnvironmentTest, MerchantID: switchMerchant,
+			Environment:    paydomain.EnvironmentTest,
+			CardMerchantID: switchMerchant, PixAutoMerchantID: switchMerchant,
 			CardReady: true, PixAutoReady: true,
 		},
 		Stripe: fencer, PixAuto: pixAuto, WorkerID: "switch-test", LeaseTTL: time.Minute,
@@ -495,4 +496,102 @@ func TestSourceSwitchSameChannelNextTermPriceChange(t *testing.T) {
 		checkoutProvider.last.Order.Amount != paydomain.BRL(1490) {
 		t.Fatalf("checkout=%+v", checkoutProvider.last)
 	}
+}
+
+func TestSourceSwitchStampsOldSourceMerchant(t *testing.T) {
+	const cardMerchant = "acct_card_merchant_synthetic"
+	seedMerchantContract := func(t *testing.T, store *payadapters.Store, owner string) time.Time {
+		t.Helper()
+		now := time.Now().UTC()
+		if err := store.UpsertContract(context.Background(), app.ContractRecord{
+			ID: deterministicTestUUID("contract-sub_merchant"), AccountID: owner, OfferID: testOffer,
+			Source: paydomain.ChannelCard, Environment: paydomain.EnvironmentTest, Merchant: cardMerchant,
+			Provider: paydomain.ProviderStripe, RemoteSubscriptionID: "sub_merchant",
+			RemoteCustomerID: "cus_" + owner, ProviderStatus: "active", LastEventAt: now,
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return now
+	}
+	newMerchantSwitcher := func(t *testing.T, store *payadapters.Store, fencer *fakeStripeRenewal) *app.SwitchService {
+		t.Helper()
+		provider := newFakePixAutoProvider()
+		pixAuto := newPixAutoService(t, store, provider)
+		pixAuto.Catalog = switchCatalog(t)
+		return &app.SwitchService{
+			Store: store, Catalog: switchCatalog(t),
+			Config: app.SwitchConfig{
+				Environment:    paydomain.EnvironmentTest,
+				CardMerchantID: cardMerchant, PixAutoMerchantID: switchMerchant,
+				CardReady: true, PixAutoReady: true,
+			},
+			Stripe: fencer, PixAuto: pixAuto, WorkerID: "switch-test", LeaseTTL: time.Minute,
+		}
+	}
+	merchantFact := func(owner string, merchant string, now time.Time) *fakeStripeRenewal {
+		return &fakeStripeRenewal{fact: app.LifecycleFact{
+			AccountID: owner, OfferID: testOffer, Environment: paydomain.EnvironmentTest,
+			Merchant: merchant, Provider: paydomain.ProviderStripe,
+			RemoteSubscriptionID: "sub_merchant", RemoteCustomerID: "cus_" + owner,
+			ProviderStatus: "active", LastEventAt: now,
+		}}
+	}
+	merchantOp := func(tag string) app.SwitchRequest {
+		return app.SwitchRequest{
+			OperationID: tag, OfferID: testOffer,
+			NewChannel: paydomain.ChannelPixAutomatic,
+		}
+	}
+
+	t.Run("matching", func(t *testing.T) {
+		pool := freshCheckoutDB(t)
+		store := payadapters.NewStore(pool)
+		owner := seedCheckoutOwner(t, pool)
+		now := seedMerchantContract(t, store, owner)
+		// Matching old-source merchant: the card fence binds and the
+		// record carries the card merchant, not the Pix one.
+		fencer := merchantFact(owner, cardMerchant, now)
+		record, err := newMerchantSwitcher(t, store, fencer).Request(context.Background(),
+			app.Principal{AccountID: owner}, merchantOp("55555555-5555-4555-8555-555555555555"))
+		if err != nil || record.OldSource != paydomain.ChannelCard || record.Merchant != cardMerchant {
+			t.Fatalf("record=%+v err=%v", record, err)
+		}
+		if fencer.cancelCount != 1 {
+			t.Fatalf("card renewal cancels=%d", fencer.cancelCount)
+		}
+	})
+
+	t.Run("foreign", func(t *testing.T) {
+		pool := freshCheckoutDB(t)
+		store := payadapters.NewStore(pool)
+		owner := seedCheckoutOwner(t, pool)
+		now := seedMerchantContract(t, store, owner)
+		// Foreign old-source merchant: binding refuses before any
+		// provider write.
+		foreign := merchantFact(owner, "acct_foreign_merchant", now)
+		denied, err := newMerchantSwitcher(t, store, foreign).Request(context.Background(),
+			app.Principal{AccountID: owner}, merchantOp("66666666-6666-4666-8666-666666666666"))
+		if !errors.Is(err, paydomain.ErrBinding) || denied.State != app.SourceSwitchPending {
+			t.Fatalf("record=%+v err=%v", denied, err)
+		}
+		if foreign.cancelCount != 0 {
+			t.Fatal("foreign merchant reached the provider")
+		}
+	})
+
+	t.Run("unconfigured", func(t *testing.T) {
+		pool := freshCheckoutDB(t)
+		store := payadapters.NewStore(pool)
+		owner := seedCheckoutOwner(t, pool)
+		now := seedMerchantContract(t, store, owner)
+		// Missing per-channel merchant fails closed at admission.
+		unconfigured := newMerchantSwitcher(t, store, merchantFact(owner, cardMerchant, now))
+		unconfigured.Config.CardMerchantID = ""
+		if _, err := unconfigured.Request(context.Background(), app.Principal{AccountID: owner}, app.SwitchRequest{
+			OperationID: "77777777-7777-4777-8777-777777777777", OfferID: testOffer,
+			NewChannel: paydomain.ChannelCard,
+		}); !errors.Is(err, paydomain.ErrUnavailable) {
+			t.Fatalf("err=%v", err)
+		}
+	})
 }

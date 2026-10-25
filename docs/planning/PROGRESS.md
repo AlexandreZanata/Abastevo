@@ -1,5 +1,18 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-20 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-19 `4ef85fe3`. Secure operations
+  packaging: owner proofs verify one live session per action, switch records
+  bind the old source's merchant, portal configuration admitted optionally,
+  maintenance-off darkens a channel with money and reads preserved; staging
+  example plus operations runbook, no migration, no new route, no live
+  activation. [PAY-20 evidence](../backend/evidence/payments/PAY-20.md):
+  config/switch/composition/kill-switch/proof suites plus real PostGIS
+  journeys PASS (`-race`), full backend/static/secret suites green (one
+  pre-existing Pix 6-racer timing flake, green alone and on re-run).
+  Operator proofs, catalog admission and sandbox proof stay gated.
+  Next: PAY-21 only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-19 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-18 `3d529a8c`. Real API/worker
   runtime composed from validated config: gated provider clients, webhook

@@ -252,6 +252,13 @@ dispute/cycle processing, billing exits and refunds — with sales impossible,
 proofs/switch-merchant/portal unimplemented by construction, and Play
 untouched; provider sandbox proof and deployment packaging remain
 PAY-21/PAY-20.
+PAY-20 is LOCAL_DONE: owner proofs verify one live account session per
+action, switch records bind the old source's merchant, the portal
+configuration is admitted optionally, and maintenance-off darkens a channel
+with money and reads preserved; the staging example and the operations
+runbook complete the configuration handoff with no migration, no new route
+and no live activation. Operator proofs, catalog admission and provider
+sandbox proof remain explicitly gated.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
@@ -347,6 +354,9 @@ that a nonexistent command or endpoint is available.
   settlement/revocation/exit journeys and fail-closed defaults tested with
   no Play surface; sandbox proof remains PAY-21, packaging remains PAY-20.
 - **PAY-20:** deployment/configuration packaging, preflight and operations runbook.
+  LOCAL_DONE; owner proofs, per-source switch merchants, portal admission,
+  kill-switch and staging example/runbook tested with no migration or live
+  activation; operator proofs and sandbox proof remain gated.
 - **PAY-21:** actual Stripe test-mode and Asaas sandbox end-to-end acceptance.
 - **PAY-22:** final coordinated dev integration, protected PR/CI and guarded merge.
 - **PAY-23:** scoped VPS test-mode deployment and explicit production handoff.

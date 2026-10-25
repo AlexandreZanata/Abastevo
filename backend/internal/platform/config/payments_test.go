@@ -279,3 +279,36 @@ func TestPaymentsAcceptsStripeRestrictedKey(t *testing.T) {
 		t.Fatal("restricted Stripe key refused")
 	}
 }
+
+func TestPaymentsPortalConfigurationIsOptionalAndValidated(t *testing.T) {
+	plain := paymentConfig(t, validPaymentEnv("staging")).Payments.Preflight().Stripe
+	if plain.PortalConfigured {
+		t.Fatal("portal configured without input")
+	}
+	if containsIssue(paymentConfig(t, validPaymentEnv("staging")).Payments.StripeIssues, keyStripePortal) {
+		t.Fatal("missing portal reported as an issue")
+	}
+
+	admitted := validPaymentEnv("staging")
+	admitted[keyStripePortal] = "bpc_synthetic_portal"
+	configured := paymentConfig(t, admitted).Payments
+	if !configured.Preflight().Stripe.PortalConfigured {
+		t.Fatal("valid portal configuration refused")
+	}
+	if !configured.Preflight().Stripe.NewSalesReady {
+		t.Fatal("portal admission disturbed sales readiness")
+	}
+
+	pending := validPaymentEnv("staging")
+	pending[keyStripePortal] = "portal_malformed"
+	misconfigured := paymentConfig(t, pending).Payments
+	if misconfigured.Preflight().Stripe.PortalConfigured {
+		t.Fatal("malformed portal configuration admitted")
+	}
+	if !containsIssue(misconfigured.StripeIssues, keyStripePortal) {
+		t.Fatalf("portal issue missing: %v", misconfigured.StripeIssues)
+	}
+	if !misconfigured.Preflight().Stripe.NewSalesReady {
+		t.Fatal("portal misconfiguration disturbed sales readiness")
+	}
+}

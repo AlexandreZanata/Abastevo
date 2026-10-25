@@ -90,9 +90,13 @@ func (s *SwitchService) Request(ctx context.Context, principal Principal, reques
 			return SourceSwitchRecord{}, domain.ErrFeatureUnsupported
 		}
 	}
+	oldSource := domain.ChannelPixManual
+	if found {
+		oldSource = active.Source
+	}
 	record := SourceSwitchRecord{
 		AccountID: principal.AccountID, OfferID: request.OfferID,
-		Environment: s.Config.Environment, Merchant: s.Config.MerchantID,
+		Environment: s.Config.Environment, Merchant: s.merchantFor(oldSource),
 		OperationKey: request.OperationID, NewSource: request.NewChannel,
 		OldSource: domain.ChannelPixManual, OldOfferID: request.OfferID,
 		OldCancellation:      domain.CancellationNotApplicable,
@@ -320,22 +324,29 @@ func (s *SwitchService) validateConfig(channel domain.Channel) error {
 	if s.Config.Environment != domain.EnvironmentTest && s.Config.Environment != domain.EnvironmentProduction {
 		return domain.ErrUnavailable
 	}
-	if s.Config.MerchantID == "" {
-		return domain.ErrUnavailable
-	}
 	switch channel {
 	case domain.ChannelCard:
-		if !s.Config.CardReady {
+		if !s.Config.CardReady || s.Config.CardMerchantID == "" {
 			return domain.ErrUnavailable
 		}
 	case domain.ChannelPixAutomatic:
-		if !s.Config.PixAutoReady {
+		if !s.Config.PixAutoReady || s.Config.PixAutoMerchantID == "" {
 			return domain.ErrUnavailable
 		}
 	default:
 		return domain.ErrInvalid
 	}
 	return nil
+}
+
+// merchantFor binds the switch record to the old source's merchant: only
+// the card fence consumes it (Stripe facts must match), while manual and
+// Pix Automático fences use their own mandate configuration.
+func (s *SwitchService) merchantFor(oldSource domain.Channel) string {
+	if oldSource == domain.ChannelCard {
+		return s.Config.CardMerchantID
+	}
+	return s.Config.PixAutoMerchantID
 }
 
 func (s *SwitchService) now() time.Time {

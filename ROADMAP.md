@@ -3718,8 +3718,8 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 
 ## Stripe and Asaas payments
 
-Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-25. PAY-00–19 are
-LOCAL_DONE / INTEGRATION_PENDING; PAY-20–23 remain planned.
+Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-25. PAY-00–20 are
+LOCAL_DONE / INTEGRATION_PENDING; PAY-21–23 remain planned.
 Selected methods: Stripe cards, Asaas conventional Pix and Pix Automático,
 independently activated.
 Google Play is LATER. Reuse PRM subscription/account/jobs; no Stage D team/tenant
@@ -3822,7 +3822,10 @@ evidence and commit topic.
   gated providers, webhook intake, isolated inbox drain, settlement/
   revocation/exit journeys and fail-closed defaults pass with no Play
   surface; sandbox proof remains PAY-21, packaging remains PAY-20.
-- **PAY-20:** Package deployment and configuration handoff.
+- **PAY-20:** Package deployment and configuration handoff. LOCAL_DONE;
+  owner proofs, per-source switch merchants, portal admission, kill-switch
+  and staging example/runbook pass with no migration or live activation;
+  operator proofs and sandbox proof remain gated.
 - **PAY-21:** Prove actual provider sandbox journeys.
 - **PAY-22:** Integrate batch and validate protected CI.
 - **PAY-23:** Validate scoped VPS test deployment and activation handoff.

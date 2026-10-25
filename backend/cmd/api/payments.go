@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	payadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/adapters"
 	paywebhook "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/adapters/http"
 	paymentsapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/application"
@@ -67,11 +70,49 @@ func asaasEnvironment(mode string) paydomain.Environment {
 	return paydomain.EnvironmentTest
 }
 
+// accountOwnerProof verifies one action-time owner proof: a live account
+// session presented as "familyID:accessToken" and validated at call time.
+// Nothing is cached, so freshness is the session's own liveness; transport
+// outages stay retryable while every explicit denial is unauthorized. The
+// proof value is never logged or stored anywhere on this path.
+type accountOwnerProof struct {
+	validate func(ctx context.Context, familyID, accessToken string) (string, error)
+}
+
+func (p accountOwnerProof) VerifyFreshOwner(ctx context.Context, accountID, proof, action string) error {
+	if p.validate == nil || accountID == "" || proof == "" || action == "" {
+		return paydomain.ErrUnauthorized
+	}
+	family, token, ok := strings.Cut(proof, ":")
+	if !ok || family == "" || token == "" || strings.Contains(token, ":") {
+		return paydomain.ErrUnauthorized
+	}
+	id, err := p.validate(ctx, family, token)
+	if err != nil {
+		switch accountdomain.VerdictCode(err) {
+		case "invalid-value", "oidc-unavailable", "key-unavailable":
+			return paydomain.ErrUnavailable
+		default:
+			return paydomain.ErrUnauthorized
+		}
+	}
+	if id != accountID {
+		return paydomain.ErrUnauthorized
+	}
+	return nil
+}
+
 // composePayments builds the payment runtime from validated configuration.
 // Sales stay off unless flags, catalog, return origin and credentials all
 // agree; maintenance intake, reconciliation, cancellation and refunds never
 // depend on the sales switches.
-func composePayments(payments config.PaymentsConfig, pool *pgxpool.Pool, clock func() time.Time) paymentsComposition {
+//
+// A channel with maintenance disabled is dark: its webhook credentials are
+// blanked so intake refuses with 503, its provider stays nil and its inbox
+// rows stay pending. Already-granted access and free reads are unaffected
+// because projection is local. Pass validateOwner to enable proof-gated
+// owner commands; nil keeps them unavailable.
+func composePayments(payments config.PaymentsConfig, pool *pgxpool.Pool, clock func() time.Time, validateOwner func(ctx context.Context, familyID, accessToken string) (string, error)) paymentsComposition {
 	if clock == nil {
 		clock = time.Now
 	}
@@ -172,9 +213,10 @@ func composePayments(payments config.PaymentsConfig, pool *pgxpool.Pool, clock f
 			},
 		}
 	}
-	// Cross-merchant switch records need per-target merchant routing that is
-	// not designed yet: the merchant stays empty so switch requests fail
-	// closed while the PAY-14 fences remain proven at service level.
+	// Merchants route per source: the card fence binds old card renewals
+	// to the Stripe merchant while Pix Automático fences use their own
+	// mandate configuration. Unconfigured merchants fail closed per
+	// channel while the PAY-14 fences remain proven at service level.
 	switchEnv := paydomain.Environment("")
 	if stripeReady {
 		switchEnv = stripeEnv
@@ -185,8 +227,10 @@ func composePayments(payments config.PaymentsConfig, pool *pgxpool.Pool, clock f
 		Store: store, Catalog: catalog, PixAuto: comp.PixAuto,
 		Clock: clock, WorkerID: "api-payments", LeaseTTL: payServiceLease,
 		Config: paymentsapp.SwitchConfig{
-			Environment: switchEnv,
-			CardReady:   stripeReady, PixAutoReady: preflight.PixAutomatic.MaintenanceReady,
+			Environment:       switchEnv,
+			CardMerchantID:    payments.Stripe.MerchantID,
+			PixAutoMerchantID: payments.Asaas.MerchantID,
+			CardReady:         stripeReady, PixAutoReady: preflight.PixAutomatic.MaintenanceReady,
 		},
 	}
 	if comp.Stripe != nil {
@@ -195,10 +239,12 @@ func composePayments(payments config.PaymentsConfig, pool *pgxpool.Pool, clock f
 	comp.Portal = &paymentsapp.PortalService{Store: store}
 	if comp.Stripe != nil {
 		comp.Portal.Provider = comp.Stripe
-		// No portal configuration ID is admitted by configuration yet.
+		// The portal stays unavailable until a configuration ID is
+		// admitted; an empty value fails closed inside Manage.
 		comp.Portal.Config = paymentsapp.PortalConfig{
 			Environment: stripeEnv, Merchant: payments.Stripe.MerchantID,
-			ReturnOrigin: payments.ReturnOrigin,
+			ReturnOrigin:    payments.ReturnOrigin,
+			ConfigurationID: payments.Stripe.PortalConfigID,
 		}
 	}
 	comp.Billing = &paymentsapp.BillingExitService{
@@ -208,16 +254,27 @@ func composePayments(payments config.PaymentsConfig, pool *pgxpool.Pool, clock f
 	if comp.Stripe != nil {
 		comp.Billing.Stripe = comp.Stripe
 	}
+	if validateOwner != nil {
+		comp.Billing.Proof = accountOwnerProof{validate: validateOwner}
+	}
 
+	stripeSecret, stripeMerchant := payments.Stripe.WebhookSecret, payments.Stripe.MerchantID
+	if !payments.Stripe.MaintenanceEnabled {
+		stripeSecret, stripeMerchant = "", ""
+	}
+	asaasToken, asaasMerchant := payments.Asaas.WebhookToken, payments.Asaas.MerchantID
+	if !payments.Asaas.MaintenanceEnabled {
+		asaasToken, asaasMerchant = "", ""
+	}
 	comp.StripeHook = paywebhook.StripeWebhookHandler{
-		Inbox: store, Secret: payments.Stripe.WebhookSecret,
-		Environment: stripeEnv, Merchant: payments.Stripe.MerchantID,
+		Inbox: store, Secret: stripeSecret,
+		Environment: stripeEnv, Merchant: stripeMerchant,
 		ExpectedLivemode: stripeEnv == paydomain.EnvironmentProduction,
 	}
 	comp.AsaasHook = paywebhook.AsaasWebhookHandler{
-		Inbox: store, WebhookToken: payments.Asaas.WebhookToken,
+		Inbox: store, WebhookToken: asaasToken,
 		APIKey: payments.Asaas.APIKey, Environment: asaasEnv,
-		Merchant: payments.Asaas.MerchantID, RequireTLS: true,
+		Merchant: asaasMerchant, RequireTLS: true,
 	}
 	return comp
 }
