@@ -33,6 +33,13 @@ Date: 2026-10-25. Prices and search remain MAP-19/20.
   atlas/style changes (SDK `Gas`/`ChargingStation` symbols retained, so no
   admission update was needed).
 
+### Business Rules & Use Cases (Review Remediation)
+
+- **B-BR-MAP-CLUSTER-01 (Cluster Member Reachability)**: Tapping a multi-station cluster (`MapOverlaySelection.Cluster` or `onClusterExpanded(clusterId)`) must never silently pick only the first station. It must expose all cluster members in an accessible chooser (48 dp targets, TalkBack descriptions) so the 1st, 2nd, and last members are individually selectable, and reconcile selection across overlay generation updates.
+- **B-BR-MAP-UNPINNED-SELECT-01 (Coordinate-Independent UUID Selection)**: `MapDiscoveryViewModel` must index all discoverable stations by canonical UUID (`selectableByUuid`), including `UNKNOWN`, `CITY_CENTROID`, and null-coordinate records. Selecting an unpinned or coordinate-less station from `MapOverlayList` opens the bottom sheet and station profile normally, while disabling coordinate routing (`canRouteByCoordinates == false`) with an explicit user-facing reason—never routing to `0.0, 0.0` or a city centroid.
+- **B-BR-MAP-KML-COMBINED-01 (Distinct Combined KML Style)**: Single-station placemarks in `buildOverlayKml` must distinguish fuel-only (`orange` / `Gas`), charging-only (`teal` / `ChargingStation`), and combined fuel+charging (`purple` / `FuelAndCharging` description + distinct style) so combined stations are not collapsed into charging-only in KML output.
+- **BUC-MAP-18-01**: User explores a dense area or list -> expands a multi-station cluster or selects an unpinned station -> chooses any member -> views its bottom sheet and profile, with coordinate routing enabled only for `REVIEWED` coordinates.
+
 ## Implementation
 
 - `maps/engine/.../MapOverlay.kt`: `prepareOverlay` splits pinnable vs

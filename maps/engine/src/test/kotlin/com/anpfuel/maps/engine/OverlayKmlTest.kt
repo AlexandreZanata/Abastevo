@@ -42,6 +42,15 @@ class OverlayKmlTest {
                     charging = true,
                     quality = MapStationLocationQuality.REVIEWED,
                 ),
+                marker(
+                    "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+                    latitude = -25.44,
+                    longitude = -49.29,
+                    title = "Hibrido",
+                    fuel = true,
+                    charging = true,
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
             ),
             radiusMeters = 1.0,
             generation = 42,
@@ -56,6 +65,9 @@ class OverlayKmlTest {
         assertTrue(kml.contains("<mwm:icon>Gas</mwm:icon>"))
         assertTrue(kml.contains("<styleUrl>#placemark-teal</styleUrl>"))
         assertTrue(kml.contains("<mwm:icon>ChargingStation</mwm:icon>"))
+        assertTrue(kml.contains("<name>ABASTEVO:cccccccc-cccc-4ccc-8ccc-cccccccccccc</name>"))
+        assertTrue(kml.contains("<description>Hibrido - Fuel and charging - Reviewed location</description>"))
+        assertTrue(kml.contains("<styleUrl>#placemark-purple</styleUrl>"))
         assertFalse(kml.contains("Posto & Cia"))
     }
 

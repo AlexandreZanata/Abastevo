@@ -49,6 +49,10 @@ fun MapHost(
     recenterDescription: String = "Recenter map",
     initErrorMessage: String = "Map unavailable",
     retryLabel: String = "Retry",
+    locationDeniedMessage: String = "Location denied. Browsing stays available.",
+    gpsOffMessage: String = "GPS off. Browsing stays available.",
+    waitingForFixMessage: String = "Waiting for first fix.",
+    onViewportChanged: ((latitude: Double, longitude: Double, radiusMeters: Int) -> Unit)? = null,
 ) {
     val vm: MapViewModel = hiltViewModel()
     MapHostContent(
@@ -57,6 +61,10 @@ fun MapHost(
         recenterDescription = recenterDescription,
         initErrorMessage = initErrorMessage,
         retryLabel = retryLabel,
+        locationDeniedMessage = locationDeniedMessage,
+        gpsOffMessage = gpsOffMessage,
+        waitingForFixMessage = waitingForFixMessage,
+        onViewportChanged = onViewportChanged,
     )
 }
 
@@ -72,6 +80,10 @@ fun MapHost(
     recenterDescription: String = "Recenter map",
     initErrorMessage: String = "Map unavailable",
     retryLabel: String = "Retry",
+    locationDeniedMessage: String = "Location denied. Browsing stays available.",
+    gpsOffMessage: String = "GPS off. Browsing stays available.",
+    waitingForFixMessage: String = "Waiting for first fix.",
+    onViewportChanged: ((latitude: Double, longitude: Double, radiusMeters: Int) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val store = cameraStore ?: remember(context) { SharedPreferencesMapCameraStore(context) }
@@ -92,6 +104,10 @@ fun MapHost(
         recenterDescription = recenterDescription,
         initErrorMessage = initErrorMessage,
         retryLabel = retryLabel,
+        locationDeniedMessage = locationDeniedMessage,
+        gpsOffMessage = gpsOffMessage,
+        waitingForFixMessage = waitingForFixMessage,
+        onViewportChanged = onViewportChanged,
     )
 }
 
@@ -102,6 +118,10 @@ private fun MapHostContent(
     recenterDescription: String = "Recenter map",
     initErrorMessage: String = "Map unavailable",
     retryLabel: String = "Retry",
+    locationDeniedMessage: String = "Location denied. Browsing stays available.",
+    gpsOffMessage: String = "GPS off. Browsing stays available.",
+    waitingForFixMessage: String = "Waiting for first fix.",
+    onViewportChanged: ((latitude: Double, longitude: Double, radiusMeters: Int) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -120,6 +140,20 @@ private fun MapHostContent(
         updatePermission(context, vm)
         vm.onGpsState(isGpsEnabled(context))
         vm.ensureInitialized(context.applicationContext)
+    }
+    LaunchedEffect(state.ready, state.camera) {
+        val cam = state.camera
+        if (state.ready && cam != null) {
+            onViewportChanged?.invoke(cam.latitude, cam.longitude, vm.radiusForZoom(cam.zoom))
+        }
+    }
+    LaunchedEffect(vm, state.ready, onViewportChanged != null) {
+        if (state.ready && onViewportChanged != null) {
+            while (true) {
+                kotlinx.coroutines.delay(600)
+                vm.syncCameraFromEngine()
+            }
+        }
     }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -164,7 +198,7 @@ private fun MapHostContent(
                 if (!state.hasLocationPermission && state.deniedForever) {
                     Surface(shape = MaterialTheme.shapes.small, tonalElevation = 3.dp) {
                         Text(
-                            "Location denied. Browsing stays available.",
+                            locationDeniedMessage,
                             modifier = Modifier.padding(8.dp),
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -172,7 +206,7 @@ private fun MapHostContent(
                 } else if (!state.gpsEnabled) {
                     Surface(shape = MaterialTheme.shapes.small, tonalElevation = 3.dp) {
                         Text(
-                            "GPS off. Browsing stays available.",
+                            gpsOffMessage,
                             modifier = Modifier.padding(8.dp),
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -180,7 +214,7 @@ private fun MapHostContent(
                 } else if (state.recenterError == "no-fix") {
                     Surface(shape = MaterialTheme.shapes.small, tonalElevation = 3.dp) {
                         Text(
-                            "Waiting for first fix.",
+                            waitingForFixMessage,
                             modifier = Modifier.padding(8.dp),
                             style = MaterialTheme.typography.bodySmall,
                         )

@@ -25,7 +25,14 @@ data class MapOverlayMarker(
     val charging: Boolean = false,
     val locationQuality: MapStationLocationQuality = MapStationLocationQuality.UNKNOWN,
     val subtitle: String = "",
-)
+    val hasValidCoordinates: Boolean = true,
+) {
+    val canRouteByCoordinates: Boolean
+        get() = hasValidCoordinates &&
+            latitude.isFinite() &&
+            longitude.isFinite() &&
+            locationQuality == MapStationLocationQuality.REVIEWED
+}
 
 sealed interface MapOverlaySelection {
     data class Station(val uuid: String) : MapOverlaySelection
@@ -213,8 +220,16 @@ internal fun buildOverlayKml(
                 description = describe(marker),
                 latitude = marker.latitude,
                 longitude = marker.longitude,
-                style = if (marker.charging) "teal" else "orange",
-                icon = if (marker.charging) "ChargingStation" else "Gas",
+                style = when {
+                    marker.fuel && marker.charging -> "purple"
+                    marker.charging -> "teal"
+                    else -> "orange"
+                },
+                icon = when {
+                    marker.fuel && marker.charging -> "Gas"
+                    marker.charging -> "ChargingStation"
+                    else -> "Gas"
+                },
             )
         }
     }
@@ -238,6 +253,7 @@ private fun mergeDuplicate(existing: MapOverlayMarker, incoming: MapOverlayMarke
         charging = existing.charging || incoming.charging,
         locationQuality = if (useIncomingLocation) incoming.locationQuality else existing.locationQuality,
         subtitle = existing.subtitle.ifBlank { incoming.subtitle },
+        hasValidCoordinates = existing.hasValidCoordinates || incoming.hasValidCoordinates,
     )
 }
 

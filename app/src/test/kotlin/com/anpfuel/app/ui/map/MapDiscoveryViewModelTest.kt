@@ -289,4 +289,218 @@ class MapDiscoveryViewModelTest {
         vm.onServiceFilter(showFuel = false, showCharging = false)
         assertTrue(vm.ui.value.showFuel || vm.ui.value.showCharging)
     }
+
+    @Test fun `unpinned and coordinate-less stations are selectable by uuid with route disabled`() = runTest {
+        val reviewedId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        val unknownId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+        val centroidId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+        val nullCoordId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+        val gateway = FakeGateway(
+            stations = listOf(
+                station(reviewedId, quality = StationLocationQuality.REVIEWED),
+                station(unknownId, quality = StationLocationQuality.UNKNOWN),
+                station(centroidId, quality = StationLocationQuality.CITY_CENTROID),
+                station(nullCoordId, lat = null, lon = null, quality = StationLocationQuality.UNKNOWN),
+            ),
+        )
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onViewport(-25.42, -49.27)
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(4, vm.ui.value.listItems.size)
+        assertEquals(1, engine.markers.size)
+
+        vm.onSelection(reviewedId)
+        assertEquals(reviewedId, vm.ui.value.selectedUuid)
+        assertTrue(vm.ui.value.selectedMarker!!.canRouteByCoordinates)
+
+        vm.onSelection(unknownId)
+        assertEquals(unknownId, vm.ui.value.selectedUuid)
+        org.junit.jupiter.api.Assertions.assertNotNull(vm.ui.value.selectedMarker)
+        org.junit.jupiter.api.Assertions.assertFalse(vm.ui.value.selectedMarker!!.canRouteByCoordinates)
+
+        vm.onSelection(centroidId)
+        assertEquals(centroidId, vm.ui.value.selectedUuid)
+        org.junit.jupiter.api.Assertions.assertNotNull(vm.ui.value.selectedMarker)
+        org.junit.jupiter.api.Assertions.assertFalse(vm.ui.value.selectedMarker!!.canRouteByCoordinates)
+
+        vm.onSelection(nullCoordId)
+        assertEquals(nullCoordId, vm.ui.value.selectedUuid)
+        org.junit.jupiter.api.Assertions.assertNotNull(vm.ui.value.selectedMarker)
+        org.junit.jupiter.api.Assertions.assertFalse(vm.ui.value.selectedMarker!!.hasValidCoordinates)
+        org.junit.jupiter.api.Assertions.assertFalse(vm.ui.value.selectedMarker!!.canRouteByCoordinates)
+    }
+
+    @Test fun `cluster expansion reaches second and last member and reconciles across generations`() = runTest {
+        val aId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        val bId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+        val cId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+        val gateway = FakeGateway(
+            stations = listOf(
+                station(aId, lat = -25.4200, lon = -49.2700, name = "Posto Alpha"),
+                station(bId, lat = -25.4201, lon = -49.2701, name = "Posto Beta"),
+                station(cId, lat = -25.4202, lon = -49.2702, name = "Posto Gamma"),
+            ),
+        )
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onViewport(-25.42, -49.27)
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        val cluster = vm.ui.value.clusters.single()
+        assertEquals(3, cluster.count)
+
+        // Native cluster tap expands without auto-selecting the first member.
+        engine.listener?.invoke(MapOverlaySelection.Cluster(cluster.markers))
+        org.junit.jupiter.api.Assertions.assertNull(vm.ui.value.selectedUuid)
+        assertEquals(cluster.id, vm.ui.value.expandedClusterId)
+        assertEquals(3, vm.ui.value.selectedMembers.size)
+
+        // Select 2nd member.
+        val secondUuid = vm.ui.value.selectedMembers[1].uuid
+        vm.onSelection(secondUuid)
+        assertEquals(bId, vm.ui.value.selectedUuid)
+        assertEquals(bId, vm.ui.value.selectedMarker?.uuid)
+        assertEquals(3, vm.ui.value.selectedMembers.size)
+
+        // Expand again via UI control and select last (3rd) member.
+        vm.onClusterExpanded(cluster.id)
+        org.junit.jupiter.api.Assertions.assertNull(vm.ui.value.selectedUuid)
+        val lastUuid = vm.ui.value.selectedMembers.last().uuid
+        vm.onSelection(lastUuid)
+        assertEquals(cId, vm.ui.value.selectedUuid)
+        assertEquals(cId, vm.ui.value.selectedMarker?.uuid)
+
+        // Trigger a new viewport generation: selection of last member is reconciled & preserved.
+        vm.onViewport(-25.42, -49.27)
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(cId, vm.ui.value.selectedUuid)
+        assertEquals(cId, vm.ui.value.selectedMarker?.uuid)
+        assertEquals(3, vm.ui.value.selectedMembers.size)
+    }
+
+    @Test fun `clearing or shortening search during debounce or in-flight cancels prior query`() = runTest {
+        val gateway = FakeGateway(
+            stations = listOf(
+                station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name = "Posto Central Curitiba"),
+            ),
+            delayMs = 300,
+        )
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+
+        // Case 1: Clear search during the 300ms debounce window.
+        vm.onSearch("4106902", "Central")
+        advanceTimeBy(150)
+        vm.onSearch("4106902", "")
+        advanceTimeBy(1_000)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(0, gateway.calls)
+        assertEquals("", vm.ui.value.searchQuery)
+        assertTrue(vm.ui.value.listItems.isEmpty())
+
+        // Case 2: Clear search while network call is already in-flight (after debounce).
+        vm.onSearch("4106902", "Central")
+        advanceTimeBy(350) // Past 300ms debounce, inside 300ms gateway delay.
+        assertEquals(1, gateway.calls)
+        vm.onSearch("4106902", "c") // Shortened to < 2 chars while in-flight.
+        advanceTimeBy(1_000)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("c", vm.ui.value.searchQuery)
+        assertTrue(vm.ui.value.listItems.isEmpty(), "In-flight search must not overwrite cleared state")
+    }
+
+    @Test fun `charging markers source paginates beyond first 100 rows and preserves unknown power`() = runTest {
+        val profile = com.anpfuel.data.repository.ChargingDiscoveryRepository.OCM_PROFILE
+        val now = 1_700_000_000_000L
+        val allPlaces = (0 until 125).map { idx ->
+            val id = "%08d-2222-4222-8222-%012d".format(idx, idx)
+            val isCuritiba = idx >= 120
+            val lat = if (isCuritiba) "-25.420${idx - 120}" else "-23.5500"
+            val lon = if (isCuritiba) "-49.270${idx - 120}" else "-46.6300"
+            val powerWJson = when (idx) {
+                120 -> "60000"
+                121 -> "null" // unknown power must remain visible when minPowerKw is set
+                122 -> "11000" // known power < 50kW must be filtered out
+                else -> "50000"
+            }
+            val groupId = "%08d-3333-4333-8333-%012d".format(idx, idx)
+            val entityKey = "%064x".format(idx + 1)
+            val groupsJson = """[{"id":"$groupId","entity_key":"$entityKey","external_id":"grp-$idx","connector_code":"CCS2","raw_connector_code":"CCS2","current":"DC","power_w":$powerWJson,"reported_quantity":2}]"""
+            com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity(
+                placeId = id,
+                entityKey = entityKey,
+                externalId = "ocm-$idx",
+                generation = 1L,
+                profile = profile,
+                sourceRevision = "rev-1",
+                origin = "https://teste.abastevo.com.br",
+                license = com.anpfuel.data.repository.ChargingDiscoveryRepository.OCM_LICENSE,
+                name = if (isCuritiba) "Eletroposto Curitiba $idx" else "Eletroposto SP $idx",
+                country = "BR",
+                latitude = lat,
+                longitude = lon,
+                publicAccess = "PUBLIC",
+                reportedPoints = 2,
+                groupsJson = groupsJson,
+                tombstone = false,
+                savedAtMillis = now,
+            )
+        }
+        val metaEntity = com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity(
+            key = com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity.packKey(profile),
+            generation = 1L,
+            profile = profile,
+            sourceRevision = "rev-1",
+            origin = "https://teste.abastevo.com.br",
+            license = com.anpfuel.data.repository.ChargingDiscoveryRepository.OCM_LICENSE,
+            schemaVersion = 1,
+            baseGeneration = 0L,
+            placeCount = allPlaces.size.toLong(),
+            groupCount = allPlaces.size.toLong(),
+            cursor = null,
+            state = "ACTIVE",
+            savedAtMillis = now,
+        )
+        val fakeDao = object : com.anpfuel.data.local.dao.ChargingSnapshotDao {
+            override suspend fun upsertPlaces(places: List<com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity>) = Unit
+            override suspend fun upsertMeta(meta: com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity) = Unit
+            override suspend fun deleteOlderGenerations(profile: String, generation: Long) = Unit
+            override suspend fun deleteProfilePlaces(profile: String) = Unit
+            override suspend fun clearMeta(key: String) = Unit
+            override suspend fun markTombstones(ids: List<String>, generation: Long) = Unit
+            override suspend fun findMeta(key: String) = metaEntity.takeIf { it.key == key }
+            override suspend fun readPlaces(profile: String, generation: Long, limit: Int, offset: Int) =
+                allPlaces.drop(offset).take(limit)
+            override suspend fun findPlace(placeId: String, profile: String, generation: Long) =
+                allPlaces.firstOrNull { it.placeId == placeId }
+            override suspend fun countPlaces(generation: Long) = allPlaces.size.toLong()
+            override suspend fun estimatedBytes(generation: Long) = 1024L
+        }
+        val repo = com.anpfuel.data.repository.ChargingDiscoveryRepository(
+            client = com.anpfuel.data.remote.charging.ChargingSnapshotHttpClient(okhttp3.OkHttpClient(), "https://teste.abastevo.com.br"),
+            dao = fakeDao,
+            environment = com.anpfuel.data.remote.ApiEnvironment.STAGING,
+        )
+        val source = MapDiscoveryModule.provideChargingMarkersSource(repo)
+        val result = source.query(
+            ChargingMarkersQuery(
+                latitude = -25.42,
+                longitude = -49.27,
+                radiusMeters = 10_000,
+                minPowerKw = 50,
+                limit = 100,
+            )
+        )
+        assertTrue(result.snapshotPresent)
+        // Indices 120 (60kW), 121 (unknown power), 123 (50kW), 124 (50kW) match; 122 (11kW) is excluded.
+        assertEquals(4, result.places.size)
+        assertTrue(result.places.any { it.name == "Eletroposto Curitiba 120" })
+        assertTrue(result.places.any { it.name == "Eletroposto Curitiba 121" })
+        assertTrue(result.places.none { it.name == "Eletroposto Curitiba 122" })
+    }
 }

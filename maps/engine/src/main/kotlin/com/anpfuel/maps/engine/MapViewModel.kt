@@ -106,16 +106,54 @@ class MapViewModel @Inject constructor(
             return
         }
         if (engine.recenter()) {
+            val centered = engine.currentCenter()
             _state.update {
+                val base = it.camera ?: defaultCamera
                 it.copy(
                     recenterError = null,
-                    camera = it.camera?.copy(zoom = 15) ?: defaultCamera.copy(zoom = 15),
+                    camera = base.copy(
+                        latitude = centered?.latitude ?: base.latitude,
+                        longitude = centered?.longitude ?: base.longitude,
+                        zoom = 15,
+                    ),
                 )
             }
         } else {
             // First fix not yet available; browsing stays usable.
             _state.update { it.copy(recenterError = "no-fix") }
         }
+    }
+
+    fun setViewport(latitude: Double, longitude: Double, zoom: Int = 13) {
+        if (disposed) return
+        val next = MapCamera(latitude, longitude, zoom.coerceIn(1, 20))
+        cameraStore.save(next)
+        _state.update { it.copy(camera = next) }
+        if (_state.value.ready) {
+            engine.setViewport(next.latitude, next.longitude, next.zoom)
+        }
+    }
+
+    fun syncCameraFromEngine(): MapCamera? {
+        if (disposed || !_state.value.ready) return null
+        val center = engine.currentCenter() ?: return _state.value.camera
+        val current = _state.value.camera ?: defaultCamera
+        val dLat = kotlin.math.abs(center.latitude - current.latitude)
+        val dLon = kotlin.math.abs(center.longitude - current.longitude)
+        if (dLat >= 0.0005 || dLon >= 0.0005) {
+            val updated = current.copy(latitude = center.latitude, longitude = center.longitude)
+            _state.update { it.copy(camera = updated) }
+            return updated
+        }
+        return current
+    }
+
+    fun radiusForZoom(zoom: Int): Int = when {
+        zoom >= 16 -> 2_000
+        zoom == 15 -> 4_000
+        zoom == 14 -> 7_000
+        zoom == 13 -> 10_000
+        else -> 15_000
     }
 
     fun onHostStop() {
