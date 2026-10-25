@@ -1,5 +1,20 @@
 # Current execution state
 
+- Enterprise portal ESP-18 2026-10-25: BLOCKED_EXTERNAL_AUTHORIZATION /
+  NOT_PUBLISHED on `codex/enterprise-static-portal` after ESP-17 `103dcf6b`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-18.md).
+  [Runbook](../operator/PORTAL_PUBLICATION.md). Implemented the local public
+  preflight, read-only public smoke and publication/rollback runbook;
+  `make check-publication-gate` PASS. No public release was executed: no named
+  public origin/host/root/CDN/TLS/ownership/approval/window; candidate B
+  (`914d8b9f…`) is internally valid at the `https://portal.example` placeholder
+  but its sitemap/robots use that origin and it contains price/station/download
+  pages whose S-ESP-01/02/05 public rights are `RIGHTS_PENDING` (only official
+  S-ESP-04 is admitted; B's official census is 3,375 unmatched). Preflight
+  correctly returns FAILED_LOCAL_GATE; public smoke self-tests PASS but was not
+  run. No VPS/DNS/CDN/shared edge/API/DB/ANP mutation, no app/API/G09
+  certification, no merge/publication. Next: owner approval/rights and an
+  official-only candidate rebuilt at the approved origin.
 - Enterprise portal ESP-17 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/enterprise-static-portal` after ESP-16 `a6c3758e`.
   [Evidence](../backend/evidence/enterprise-static/ESP-17.md). Found and fixed
