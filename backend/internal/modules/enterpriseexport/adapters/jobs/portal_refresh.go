@@ -59,6 +59,7 @@ type RefreshState struct {
 	ReleasedAt               string `json:"released_at,omitempty"`
 	WithdrawnAt              string `json:"withdrawn_at,omitempty"`
 	WithdrawnRevisionID      string `json:"withdrawn_revision_id,omitempty"`
+	WithdrawnReason          string `json:"withdrawn_reason,omitempty"`
 	ExportContentSHA256      string `json:"export_content_sha256,omitempty"`
 	PortalContentSHA256      string `json:"portal_content_sha256,omitempty"`
 	SourceRevisionID         string `json:"source_revision_id,omitempty"`
@@ -157,7 +158,7 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 	}
 	if !status.HasPublished {
 		if current.ContentSHA256 != "" && current.OfficialRevisionID != "" {
-			return r.withdraw(refresh, now, payload, state, current, releases)
+			return r.withdraw(refresh, now, payload, state, current, releases, status)
 		}
 		if state.Official != nil {
 			return r.recordNoop(refresh, now, payload, state, current, "source-unavailable")
@@ -246,6 +247,7 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 	refresh.ReleasedAt = released.UTC().Format(time.RFC3339)
 	refresh.WithdrawnAt = ""
 	refresh.WithdrawnRevisionID = ""
+	refresh.WithdrawnReason = ""
 	refresh.ExportContentSHA256 = state.ContentSHA256
 	refresh.PortalContentSHA256 = generated.ContentSHA256
 	refresh.GenerationSeconds = secondsBetweenTimes(started, portalBuilt)
@@ -295,7 +297,16 @@ func (r Refresh) withdrawRelease(opts portalgen.WithdrawOptions) (portalgen.Rele
 	return portalgen.Withdraw(opts)
 }
 
-func (r Refresh) withdraw(refresh RefreshState, now time.Time, payload RefreshPayload, state State, current portalgen.Release, releases portalgen.ReleaseState) error {
+func (r Refresh) withdraw(refresh RefreshState, now time.Time, payload RefreshPayload, state State, current portalgen.Release, releases portalgen.ReleaseState, status SourceStatus) error {
+	// The withdrawal reason is classified from the authoritative source
+	// state, never inferred from the outage itself: only an explicit
+	// source-side "withdrawn" marker revokes the official identity. A
+	// temporary outage or operational pause records no revocation, so the
+	// same content stays eligible for a future release.
+	reason := ""
+	if status.Status == "withdrawn" {
+		reason = "revoked-source"
+	}
 	// An official-only pipeline must never fall back to a full release:
 	// withdrawal removes the pointer (404) instead of serving wider scope.
 	fallback := ""
@@ -304,7 +315,7 @@ func (r Refresh) withdraw(refresh RefreshState, now time.Time, payload RefreshPa
 	}
 	if _, err := r.withdrawRelease(portalgen.WithdrawOptions{
 		RootDir: r.PortalRoot, Fallback: fallback, SiteURL: r.SiteURL,
-		OfficialOnly: r.OfficialOnly,
+		OfficialOnly: r.OfficialOnly, Reason: reason,
 	}); err != nil {
 		return r.fail(refresh, now, payload, state, err)
 	}
@@ -318,6 +329,9 @@ func (r Refresh) withdraw(refresh RefreshState, now time.Time, payload RefreshPa
 	refresh.ExportBuiltAt = state.BuiltAt
 	refresh.WithdrawnAt = now.UTC().Format(time.RFC3339)
 	refresh.WithdrawnRevisionID = current.OfficialRevisionID
+	if reason != "" {
+		refresh.WithdrawnReason = reason
+	}
 	refresh.PortalContentSHA256 = current.ContentSHA256
 	refresh.ReleasedAt = current.PromotedAt
 	refresh.ExportContentSHA256 = state.ContentSHA256
