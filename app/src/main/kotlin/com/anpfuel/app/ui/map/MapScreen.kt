@@ -398,7 +398,7 @@ fun MapScreen(
                 MapOverlayList(
                     items = discUi.listItems,
                     onSelect = { discovery?.onSelection(it) },
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp).testTag("map-overlay-list"),
                 )
             }
         }

@@ -3,6 +3,10 @@ package com.anpfuel.app.ui.map
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.onParent
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -129,6 +133,41 @@ class MapScreenInstrumentedTest {
         org.junit.Assert.assertEquals("CHARGING", reportedProduct)
     }
 
+    @Test fun extendedFiltersRemainReachableAndApplyTheirSelectedValues() {
+        var selectedSource: MapPriceSource? = null
+        var applied: List<Any?>? = null
+        compose.setContent {
+            MapFiltersDialog(
+                source = MapPriceSource.ANP,
+                showFuel = true,
+                showCharging = true,
+                onSelectSource = { selectedSource = it },
+                onServiceFilter = { _, _ -> },
+                onDismiss = {},
+                onApplyExtendedFilters = { fuel, charging, product, connector, current, access, power ->
+                    applied = listOf(fuel, charging, product, connector, current, access, power)
+                },
+            )
+        }
+        compose.onNodeWithTag("map-filter-source-community").performScrollTo().performClick()
+        org.junit.Assert.assertEquals(MapPriceSource.COMMUNITY, selectedSource)
+        compose.onNodeWithTag("map-filter-current-DC").onParent().performScrollTo()
+        compose.onNodeWithTag("map-filter-current-DC").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
+        compose.onNodeWithTag("map-filter-power-150").onParent().performScrollTo()
+        compose.onNodeWithTag("map-filter-power-150").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
+        compose.onNodeWithTag("map-filter-access-PUBLIC").onParent().performScrollTo()
+        compose.onNodeWithTag("map-filter-access-PUBLIC").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
+        compose.onNodeWithTag("map-filter-apply").performClick()
+        org.junit.Assert.assertEquals(
+            listOf(
+                true, true, com.anpfuel.domain.valueobject.FuelProduct.GASOLINE_REGULAR, null,
+                com.anpfuel.domain.charging.ChargingCurrent.DC,
+                com.anpfuel.domain.charging.ChargingAccess.PUBLIC, 150,
+            ),
+            applied,
+        )
+    }
+
     @Test fun clusterExpandAllowsSelectingSecondAndLastMemberAndUnpinnedDisablesRoute() {
         val aId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
         val bId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
@@ -231,6 +270,7 @@ class MapScreenInstrumentedTest {
         // Open accessible list and select coordinate-less station: sheet opens with route unavailable and profile enabled.
         compose.onNodeWithTag("map-list-toggle").performClick()
         compose.waitForIdle()
+        compose.onNodeWithTag("map-overlay-list").performScrollToNode(hasText("Posto Sem Coordenada", substring = true))
         compose.onNodeWithText("Posto Sem Coordenada", substring = true).performClick()
         compose.waitUntil(5_000) { sheetVm.ui.value.marker?.uuid == unpinnedId }
         compose.onNodeWithTag("map-sheet-route-unavailable").performScrollTo().assertIsDisplayed()

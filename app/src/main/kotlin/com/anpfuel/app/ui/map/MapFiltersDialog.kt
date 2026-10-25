@@ -101,7 +101,10 @@ fun MapFiltersDialog(
                     .padding(4.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     FilterChip(
                         selected = source == MapPriceSource.ANP,
                         onClick = { onSelectSource(MapPriceSource.ANP) },
@@ -191,7 +194,10 @@ fun MapFiltersDialog(
                 }
 
                 Text(stringResource(R.string.map_filter_current), style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     FilterChip(
                         selected = current == null,
                         onClick = { current = null },
@@ -209,7 +215,10 @@ fun MapFiltersDialog(
                 }
 
                 Text(stringResource(R.string.map_filter_min_power), style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     FilterChip(
                         selected = minPowerKw == null,
                         onClick = { minPowerKw = null },
@@ -227,7 +236,10 @@ fun MapFiltersDialog(
                 }
 
                 Text(stringResource(R.string.map_filter_access), style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     FilterChip(
                         selected = access == null,
                         onClick = { access = null },

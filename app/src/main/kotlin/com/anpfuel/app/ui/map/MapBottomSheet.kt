@@ -1,5 +1,6 @@
 package com.anpfuel.app.ui.map
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
@@ -120,7 +121,10 @@ fun MapBottomSheet(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(marker.title, style = MaterialTheme.typography.titleLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 MapPriceSource.entries.forEach { source ->
                     FilterChip(
                         selected = ui.source == source,
