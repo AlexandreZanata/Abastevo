@@ -554,6 +554,12 @@
     <string name="map_recenter">地図をセンタリング</string>
     <string name="map_no_package">オフラインパッケージなし</string>
     <string name="map_download">ダウンロード</string>
+    <string name="map_check_update">更新を確認</string>
+    <string name="map_cancel">キャンセル</string>
+    <string name="map_activate">有効化</string>
+    <string name="map_needs_activation">インストール済み、マップへの反映待ち</string>
+    <string name="map_published">公開済み</string>
+    <string name="map_dist_unconfigured">このビルドではマップのダウンロードが設定されていません</string>
     <string name="map_attribution">© OpenStreetMap 投稿者</string>
     <string name="map_search_hint">スタンドを検索…</string>
     <string name="map_filter_service">サービス</string>

@@ -57,7 +57,7 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.map.MapGenerationEntity::class,
         com.anpfuel.data.local.map.MapPackageEntity::class,
     ],
-    version = 26,
+    version = 27,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {

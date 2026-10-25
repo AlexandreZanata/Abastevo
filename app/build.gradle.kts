@@ -165,6 +165,7 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    testImplementation(libs.okhttp)
     // Same JVM org.json artifact already used by :data tests (Android
     // framework org.json stubs throw under local JVM unit tests).
     testImplementation("org.json:json:20240303")

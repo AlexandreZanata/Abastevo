@@ -9,9 +9,22 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.anpfuel.data.local.map.MapGenerationEntity
+import com.anpfuel.data.local.map.MapPackageEntity
+import com.anpfuel.data.map.MapPackageStore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+
+private fun emptyStore() = object : MapPackageStore {
+    override suspend fun insertGeneration(generation: MapGenerationEntity, packages: List<MapPackageEntity>) = Unit
+    override suspend fun generation(generation: String): MapGenerationEntity? = null
+    override suspend fun activeGeneration(): MapGenerationEntity? = null
+    override suspend fun packages(generation: String) = emptyList<MapPackageEntity>()
+    override suspend fun updatePackage(generation: String, packageId: String, status: String, downloadedBytes: Long, etag: String?, error: String?, updatedAtMillis: Long) = Unit
+    override suspend fun activate(generation: String, activatedAtMillis: Long) = Unit
+    override suspend fun deleteInactive(generation: String) = Unit
+}
 
 @RunWith(AndroidJUnit4::class)
 class MapScreenInstrumentedTest {
@@ -23,7 +36,7 @@ class MapScreenInstrumentedTest {
                 onOpenStation = { _, _ -> },
                 onOpenSearch = {},
                 onOpenDownloads = {},
-                viewModel = MapScreenViewModel(),
+                viewModel = MapScreenViewModel(emptyStore()),
                 mapContent = { Box(Modifier.size(10.dp)) },
             )
         }
@@ -40,7 +53,7 @@ class MapScreenInstrumentedTest {
     }
 
     @Test fun sourceSwitchUpdatesSelector() {
-        val vm = MapScreenViewModel()
+        val vm = MapScreenViewModel(emptyStore())
         compose.setContent {
             MapScreen(
                 onOpenStation = { _, _ -> },

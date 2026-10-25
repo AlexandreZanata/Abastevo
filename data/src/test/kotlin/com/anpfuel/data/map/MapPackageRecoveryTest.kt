@@ -68,14 +68,16 @@ class MapPackageRecoveryTest {
     @Test fun `interrupted download resumes after process death`() {
         val store = store()
         val repository = repo(store)
-        runBlocking { repository.importManifest(envelope(manifest()), mapOf("k1" to keyPair.public)) }
+        runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest()), mapOf("k1" to keyPair.public)) }
         val dir = File(root, "map-packages/gen-1").apply { mkdirs() }
         File(dir, "region.mwm.part").writeBytes(packageBytes.copyOfRange(0, 8))
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val range = request.getHeader("Range")
                 return if (range == "bytes=8-") MockResponse().setResponseCode(206)
-                    .setHeader("ETag", "\"e1\"").setBody(Buffer().write(packageBytes.copyOfRange(8, packageBytes.size)))
+                    .setHeader("ETag", "\"e1\"")
+                    .setHeader("Content-Range", "bytes 8-${packageBytes.size - 1}/${packageBytes.size}")
+                    .setBody(Buffer().write(packageBytes.copyOfRange(8, packageBytes.size)))
                 else MockResponse().setResponseCode(200).setBody(Buffer().write(packageBytes))
             }
         }
@@ -94,10 +96,10 @@ class MapPackageRecoveryTest {
         val store = store()
         val repository = repo(store)
         runBlocking {
-            repository.importManifest(envelope(manifest("gen-1")), mapOf("k1" to keyPair.public))
+            repository.importManifestWithPlatformKeys(envelope(manifest("gen-1")), mapOf("k1" to keyPair.public))
             store.packages = store.packages.map { it.copy(status = PACKAGE_READY) }
-            store.active = MapGenerationEntity("gen-1", "old", true, 1L)
-            repository.importManifest(envelope(manifest("gen-2")), mapOf("k1" to keyPair.public))
+            store.active = MapGenerationEntity("gen-1", "old", true, 1L, "261004")
+            repository.importManifestWithPlatformKeys(envelope(manifest("gen-2")), mapOf("k1" to keyPair.public))
             store.packages = store.packages.map {
                 if (it.generation == "gen-2") it.copy(status = PACKAGE_READY) else it
             }
@@ -111,7 +113,7 @@ class MapPackageRecoveryTest {
     @Test fun `concurrent readers keep prior generation while new downloads`() {
         val store = store()
         val repository = repo(store)
-        runBlocking { repository.importManifest(envelope(manifest("gen-1")), mapOf("k1" to keyPair.public)) }
+        runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest("gen-1")), mapOf("k1" to keyPair.public)) }
         val dir1 = File(root, "map-packages/gen-1").apply { mkdirs() }
         File(dir1, "region.mwm").writeBytes(packageBytes)
         runBlocking {
@@ -122,7 +124,7 @@ class MapPackageRecoveryTest {
         assertEquals(1, activeBefore.size)
         assertTrue(activeBefore.single().isFile)
 
-        runBlocking { repository.importManifest(envelope(manifest("gen-2")), mapOf("k1" to keyPair.public)) }
+        runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest("gen-2")), mapOf("k1" to keyPair.public)) }
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(200)
                 .setBody(Buffer().write("wrong-bytes".toByteArray()))
@@ -140,7 +142,7 @@ class MapPackageRecoveryTest {
     @Test fun `cancellation leaves part file for resume`() {
         val store = store()
         val repository = repo(store)
-        runBlocking { repository.importManifest(envelope(manifest()), mapOf("k1" to keyPair.public)) }
+        runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest()), mapOf("k1" to keyPair.public)) }
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 // Slow stream so cancellation interrupts mid-body.
@@ -166,7 +168,7 @@ class MapPackageRecoveryTest {
     @Test fun `public packages never touch account-private state`() {
         val store = store()
         val repository = repo(store)
-        runBlocking { repository.importManifest(envelope(manifest()), mapOf("k1" to keyPair.public)) }
+        runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest()), mapOf("k1" to keyPair.public)) }
         // Files root contains only the public map-packages tree.
         val names = root.listFiles()?.map { it.name } ?: emptyList()
         assertTrue(names.all { it == "map-packages" || it.startsWith(".") })

@@ -737,4 +737,14 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_map_package_status` ON `map_package` (`status`)")
         }
     }
+
+    val MIGRATION_26_27: Migration = object : Migration(26, 27) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Append-only: records the native data version
+            // (`engine.format_version`, numeric version-directory name) that
+            // activation publishes. Pre-existing rows default to empty and
+            // are treated as unpublished until re-activated.
+            db.execSQL("ALTER TABLE `map_generation` ADD COLUMN `data_version` TEXT NOT NULL DEFAULT ''")
+        }
+    }
 }

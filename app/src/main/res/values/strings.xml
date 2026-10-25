@@ -28,6 +28,12 @@
     <string name="map_recenter">Recenter map</string>
     <string name="map_no_package">No offline package</string>
     <string name="map_download">Download</string>
+    <string name="map_check_update">Check for updates</string>
+    <string name="map_cancel">Cancel</string>
+    <string name="map_activate">Activate</string>
+    <string name="map_needs_activation">Installed, pending map activation</string>
+    <string name="map_published">Published</string>
+    <string name="map_dist_unconfigured">Map downloads are not configured on this build</string>
     <string name="map_attribution">© OpenStreetMap contributors</string>
     <string name="map_search_hint">Search stations…</string>
     <string name="map_filter_service">Service</string>

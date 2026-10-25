@@ -12,6 +12,12 @@ android {
     defaultConfig {
         buildConfigField("boolean", "QUALITY_CACHE_ENABLED", providers.gradleProperty("qualityCacheEnabled").orElse("true").get().toBooleanStrict().toString())
         buildConfigField("boolean", "QUALITY_OUTBOX_ENABLED", providers.gradleProperty("qualityOutboxEnabled").orElse("true").get().toBooleanStrict().toString())
+        // Map distribution origin/region/keys are build-time operational
+        // config; empty means "not configured" (UI shows the pending state,
+        // never a fake download). Keys are public verification keys only.
+        buildConfigField("String", "MAP_DIST_BASE_URL", "\"${providers.gradleProperty("mapDistBaseUrl").orElse("")}\"")
+        buildConfigField("String", "MAP_DIST_REGION", "\"${providers.gradleProperty("mapDistRegion").orElse("")}\"")
+        buildConfigField("String", "MAP_DIST_KEYS", "\"${providers.gradleProperty("mapDistKeys").orElse("")}\"")
         minSdk = libs.versions.minSdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
@@ -118,6 +124,7 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.work:work-testing:${libs.versions.work.get()}")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:${libs.versions.okhttp.get()}")
     androidTestImplementation(libs.mockk)
     androidTestImplementation("io.mockk:mockk-android:${libs.versions.mockk.get()}")
     androidTestImplementation(libs.kotlinx.coroutines.test)

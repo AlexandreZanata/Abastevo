@@ -163,6 +163,25 @@ class MapDownloadWorkerTest {
         assertEquals(true, activated)
     }
 
+    @Test fun unsupportedDataVersionFailsClosedWithoutActivation() = runBlocking {
+        val failing = object : MapPackageRepository(
+            store = fakeStore(),
+            filesRoot = File(context.cacheDir, "map-worker-test"),
+            http = okhttp3.OkHttpClient(),
+        ) {
+            override suspend fun downloadMissing(generation: String, baseUrl: String, onProgress: (String, Long, Long) -> Unit) = true
+            override suspend fun activate(generation: String): Boolean =
+                throw MapDownloadException("unsupported-data-version")
+        }
+        val w = TestListenableWorkerBuilder<MapDownloadWorker>(context)
+            .setInputData(workDataOf(MapDownloadWorker.KEY_GENERATION to "gen-1", MapDownloadWorker.KEY_BASE_URL to "https://example.test"))
+            .setWorkerFactory(object : WorkerFactory() {
+                override fun createWorker(appContext: Context, workerClassName: String, params: WorkerParameters) =
+                    MapDownloadWorker(appContext, params, failing)
+            }).build()
+        assertEquals(ListenableWorker.Result.failure(), w.doWork())
+    }
+
     @Test fun schedulerUsesUniqueConnectedWorkWithBackoff() {
         val req = MapDownloadScheduler.request("gen-1", "https://example.test")
         assertEquals(NetworkType.CONNECTED, req.workSpec.constraints.requiredNetworkType)

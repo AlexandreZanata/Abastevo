@@ -69,12 +69,12 @@ class MapPackageRepositoryTest {
     @Test fun `manifest signature and generation are verified before storage`() {
         val store = store()
         val verified = kotlinx.coroutines.runBlocking {
-            repo(store).importManifest(envelope(manifest()), mapOf("test-key" to keyPair.public))
+            repo(store).importManifestWithPlatformKeys(envelope(manifest()), mapOf("test-key" to keyPair.public))
         }
         assertEquals("gen-1", verified.manifest.generation)
         assertEquals(1, store.packages.size)
         assertThrows(MapSignatureException::class.java) {
-            kotlinx.coroutines.runBlocking { repo(store).importManifest(envelope(manifest("gen-2"), correctSignature = false), mapOf("test-key" to keyPair.public)) }
+            kotlinx.coroutines.runBlocking { repo(store).importManifestWithPlatformKeys(envelope(manifest("gen-2"), correctSignature = false), mapOf("test-key" to keyPair.public)) }
         }
     }
 
@@ -82,7 +82,7 @@ class MapPackageRepositoryTest {
         val rotated = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
         val store = store()
         val verified = kotlinx.coroutines.runBlocking {
-            repo(store).importManifest(
+            repo(store).importManifestWithPlatformKeys(
                 envelope(manifest("gen-rotate"), keyId = "test-key-2", signer = rotated.private),
                 mapOf("test-key" to keyPair.public, "test-key-2" to rotated.public),
             )
@@ -94,7 +94,7 @@ class MapPackageRepositoryTest {
     @Test fun `resumable download verifies digest and activates atomically`() {
         val store = store()
         val repository = repo(store)
-        kotlinx.coroutines.runBlocking { repository.importManifest(envelope(manifest()), mapOf("test-key" to keyPair.public)) }
+        kotlinx.coroutines.runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest()), mapOf("test-key" to keyPair.public)) }
         val dir = File(root, "map-packages/gen-1").apply { mkdirs() }
         File(dir, "region.mwm.part").writeBytes(packageBytes.copyOfRange(0, 4))
         server.dispatcher = object : Dispatcher() {
@@ -102,6 +102,7 @@ class MapPackageRepositoryTest {
                 val range = request.getHeader("Range")
                 return if (range == "bytes=4-") MockResponse().setResponseCode(206)
                     .setHeader("ETag", "\"etag-1\"")
+                    .setHeader("Content-Range", "bytes 4-${packageBytes.size - 1}/${packageBytes.size}")
                     .setBody(okio.Buffer().write(packageBytes.copyOfRange(4, packageBytes.size)))
                 else MockResponse().setResponseCode(200).setHeader("ETag", "\"etag-1\"").setBody(okio.Buffer().write(packageBytes))
             }
@@ -119,10 +120,10 @@ class MapPackageRepositoryTest {
         val store = store()
         val repository = repo(store)
         kotlinx.coroutines.runBlocking {
-            repository.importManifest(envelope(manifest("gen-1")), mapOf("test-key" to keyPair.public))
+            repository.importManifestWithPlatformKeys(envelope(manifest("gen-1")), mapOf("test-key" to keyPair.public))
             store.packages = store.packages.map { it.copy(status = PACKAGE_READY) }
-            store.active = MapGenerationEntity("gen-1", "old", true, 1L)
-            repository.importManifest(envelope(manifest("gen-2")), mapOf("test-key" to keyPair.public))
+            store.active = MapGenerationEntity("gen-1", "old", true, 1L, "261004")
+            repository.importManifestWithPlatformKeys(envelope(manifest("gen-2")), mapOf("test-key" to keyPair.public))
         }
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(200).setBody("wrong-bytes")
@@ -138,7 +139,7 @@ class MapPackageRepositoryTest {
     @Test fun `disk budget refuses before any network request`() {
         val store = store()
         val repository = repo(store, free = 5)
-        kotlinx.coroutines.runBlocking { repository.importManifest(envelope(manifest()), mapOf("test-key" to keyPair.public)) }
+        kotlinx.coroutines.runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest()), mapOf("test-key" to keyPair.public)) }
         server.start()
         val before = server.requestCount
         assertThrows(MapStorageException::class.java) {
@@ -150,10 +151,10 @@ class MapPackageRepositoryTest {
     @Test fun `active generation cannot be re-imported as pending`() {
         val store = store()
         val repository = repo(store)
-        kotlinx.coroutines.runBlocking { repository.importManifest(envelope(manifest()), mapOf("test-key" to keyPair.public)) }
-        store.active = MapGenerationEntity("gen-1", "hash", true, 1L)
+        kotlinx.coroutines.runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest()), mapOf("test-key" to keyPair.public)) }
+        store.active = MapGenerationEntity("gen-1", "hash", true, 1L, "261004")
         assertThrows(MapDownloadException::class.java) {
-            kotlinx.coroutines.runBlocking { repository.importManifest(envelope(manifest()), mapOf("test-key" to keyPair.public)) }
+            kotlinx.coroutines.runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest()), mapOf("test-key" to keyPair.public)) }
         }
         assertEquals("gen-1", store.active?.generation)
     }
@@ -161,8 +162,8 @@ class MapPackageRepositoryTest {
     @Test fun `active generation cannot be deleted`() {
         val store = store()
         val repository = repo(store)
-        kotlinx.coroutines.runBlocking { repository.importManifest(envelope(manifest()), mapOf("test-key" to keyPair.public)) }
-        store.active = MapGenerationEntity("gen-1", "hash", true, 1L)
+        kotlinx.coroutines.runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest()), mapOf("test-key" to keyPair.public)) }
+        store.active = MapGenerationEntity("gen-1", "hash", true, 1L, "261004")
         assertFalse(kotlinx.coroutines.runBlocking { repository.deleteGeneration("gen-1") })
     }
 

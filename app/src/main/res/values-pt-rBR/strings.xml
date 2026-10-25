@@ -28,6 +28,12 @@
     <string name="map_recenter">Recentralizar mapa</string>
     <string name="map_no_package">Sem pacote offline</string>
     <string name="map_download">Baixar</string>
+    <string name="map_check_update">Verificar atualizações</string>
+    <string name="map_cancel">Cancelar</string>
+    <string name="map_activate">Ativar</string>
+    <string name="map_needs_activation">Instalado, aguardando ativação no mapa</string>
+    <string name="map_published">Publicado</string>
+    <string name="map_dist_unconfigured">Downloads de mapa não configurados nesta build</string>
     <string name="map_attribution">© Colaboradores do OpenStreetMap</string>
     <string name="map_search_hint">Buscar postos…</string>
     <string name="map_filter_service">Serviço</string>

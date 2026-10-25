@@ -12,6 +12,12 @@ data class MapGenerationEntity(
     @ColumnInfo(name = "manifest_sha256") val manifestSha256: String,
     val active: Boolean,
     @ColumnInfo(name = "activated_at_millis") val activatedAtMillis: Long?,
+    /**
+     * Native data version (`engine.format_version`, numeric directory name).
+     * Empty for rows imported before native-layout publication; those rows
+     * are treated as unpublished and require re-activation.
+     */
+    @ColumnInfo(name = "data_version", defaultValue = "") val dataVersion: String = "",
 )
 
 @Entity(

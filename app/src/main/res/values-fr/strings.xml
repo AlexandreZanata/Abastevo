@@ -554,6 +554,12 @@
     <string name="map_recenter">Recentrer la carte</string>
     <string name="map_no_package">Aucun paquet hors ligne</string>
     <string name="map_download">Télécharger</string>
+    <string name="map_check_update">Vérifier les mises à jour</string>
+    <string name="map_cancel">Annuler</string>
+    <string name="map_activate">Activer</string>
+    <string name="map_needs_activation">Installé, en attente d’activation sur la carte</string>
+    <string name="map_published">Publié</string>
+    <string name="map_dist_unconfigured">Téléchargements de cartes non configurés dans cette version</string>
     <string name="map_attribution">© Contributeurs OpenStreetMap</string>
     <string name="map_search_hint">Rechercher des stations…</string>
     <string name="map_filter_service">Service</string>

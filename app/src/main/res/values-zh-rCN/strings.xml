@@ -554,6 +554,12 @@
     <string name="map_recenter">重新定位地图</string>
     <string name="map_no_package">无离线包</string>
     <string name="map_download">下载</string>
+    <string name="map_check_update">检查更新</string>
+    <string name="map_cancel">取消</string>
+    <string name="map_activate">激活</string>
+    <string name="map_needs_activation">已安装，等待在地图上激活</string>
+    <string name="map_published">已发布</string>
+    <string name="map_dist_unconfigured">此版本未配置地图下载</string>
     <string name="map_attribution">© OpenStreetMap 贡献者</string>
     <string name="map_search_hint">搜索站点…</string>
     <string name="map_filter_service">服务</string>
