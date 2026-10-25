@@ -278,7 +278,7 @@ func (s *PixAutoCycleService) reconcilePayments(ctx context.Context, mandate Man
 
 func (s *PixAutoCycleService) fail(ctx context.Context, event InboxRecord, cause error) error {
 	if errors.Is(cause, domain.ErrUnavailable) || errors.Is(cause, ErrAmbiguous) ||
-		errors.Is(cause, domain.ErrBusy) {
+		errors.Is(cause, ErrProviderUnauthorized) || errors.Is(cause, domain.ErrBusy) {
 		return cause
 	}
 	if errors.Is(cause, domain.ErrNotFound) {

@@ -130,7 +130,7 @@ func (s *RefundService) settle(ctx context.Context, record RefundRecord, actor s
 	}
 	result, err := provider.CreateRefund(ctx, request)
 	if err != nil {
-		if errors.Is(err, ErrAmbiguous) || errors.Is(err, domain.ErrUnavailable) {
+		if errors.Is(err, ErrAmbiguous) || errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrProviderUnauthorized) {
 			updated, uerr := s.Store.UpdateRefundState(ctx, record.ID, record.State, domain.RefundPending, "", err.Error(), s.now())
 			if uerr != nil {
 				return record, uerr

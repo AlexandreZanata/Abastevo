@@ -28,7 +28,7 @@ func (s *SettlementService) Process(ctx context.Context, event InboxRecord) erro
 		if errors.Is(err, ErrIgnored) || errors.Is(err, ErrNotSettled) {
 			return s.Store.MarkInbox(ctx, event.InboxEvent, "PROCESSED", "")
 		}
-		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) {
+		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) || errors.Is(err, ErrProviderUnauthorized) {
 			return err
 		}
 		return s.conflict(ctx, event, err)
@@ -44,7 +44,8 @@ func (s *SettlementService) Process(ctx context.Context, event InboxRecord) erro
 		candidate.SettledAt = time.Now().UTC()
 	}
 	if err := s.Settle(ctx, candidate); err != nil {
-		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, domain.ErrStale) || errors.Is(err, ErrAmbiguous) {
+		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, domain.ErrStale) ||
+			errors.Is(err, ErrAmbiguous) || errors.Is(err, ErrProviderUnauthorized) {
 			return err
 		}
 		return s.conflict(ctx, event, err)

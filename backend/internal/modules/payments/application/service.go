@@ -151,7 +151,7 @@ func (s *Service) Start(ctx context.Context, principal Principal, request StartR
 		IdempotencyKey: "pay:checkout:" + request.OperationID,
 	})
 	if err != nil {
-		if errors.Is(err, ErrAmbiguous) {
+		if errors.Is(err, ErrAmbiguous) || errors.Is(err, ErrProviderUnauthorized) {
 			_ = s.Store.MarkOutcome(ctx, claim, domain.AttemptUnknown, "")
 			return Checkout{}, ErrAmbiguous
 		}

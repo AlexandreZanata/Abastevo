@@ -57,6 +57,11 @@ func (s *DisputeService) Process(ctx context.Context, event InboxRecord) error {
 	}
 	verifier, err := s.verifierFor(event.Provider)
 	if err != nil {
+		// An unconfigured provider preserves the event; only an unknown
+		// provider is a data-integrity conflict.
+		if errors.Is(err, domain.ErrUnavailable) {
+			return err
+		}
 		return s.conflict(ctx, event, err)
 	}
 	fact, err := verifier.VerifyDispute(ctx, event)
@@ -64,7 +69,7 @@ func (s *DisputeService) Process(ctx context.Context, event InboxRecord) error {
 		if errors.Is(err, ErrIgnored) {
 			return s.markProcessed(ctx, event)
 		}
-		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) {
+		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) || errors.Is(err, ErrProviderUnauthorized) {
 			return err
 		}
 		return s.conflict(ctx, event, err)
@@ -82,7 +87,7 @@ func (s *DisputeService) Process(ctx context.Context, event InboxRecord) error {
 		if errors.Is(err, domain.ErrNotFound) {
 			return s.recordUnmatched(ctx, event, fact)
 		}
-		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) {
+		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) || errors.Is(err, ErrProviderUnauthorized) {
 			return err
 		}
 		return s.conflict(ctx, event, err)
@@ -92,7 +97,7 @@ func (s *DisputeService) Process(ctx context.Context, event InboxRecord) error {
 			return s.markProcessed(ctx, event)
 		}
 		if _, err := s.Store.UpdateDisputeState(ctx, record.ID, record.State, fact.State, s.now()); err != nil {
-			if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) {
+			if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) || errors.Is(err, ErrProviderUnauthorized) {
 				return err
 			}
 			return s.conflict(ctx, event, err)

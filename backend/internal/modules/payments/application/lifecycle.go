@@ -27,7 +27,7 @@ func (s *LifecycleService) Process(ctx context.Context, event InboxRecord) error
 		if errors.Is(err, ErrIgnored) {
 			return s.Store.MarkInbox(ctx, event.InboxEvent, "PROCESSED", "")
 		}
-		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) {
+		if errors.Is(err, domain.ErrUnavailable) || errors.Is(err, ErrAmbiguous) || errors.Is(err, ErrProviderUnauthorized) {
 			return err
 		}
 		_ = s.Store.MarkInbox(ctx, event.InboxEvent, "CONFLICT", "lifecycle-binding")

@@ -145,7 +145,7 @@ func (s *PixService) Start(ctx context.Context, principal Principal, request Pix
 		MerchantID: s.Config.MerchantID, DueDate: dueDate,
 	})
 	if err != nil {
-		if errors.Is(err, ErrAmbiguous) {
+		if errors.Is(err, ErrAmbiguous) || errors.Is(err, ErrProviderUnauthorized) {
 			_ = s.Store.MarkOutcome(ctx, claim, domain.AttemptUnknown, "")
 			return PixOrder{}, ErrAmbiguous
 		}
