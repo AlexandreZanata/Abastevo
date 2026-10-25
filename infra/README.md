@@ -100,7 +100,9 @@ topology decision, release layout, headers, rollback/withdrawal and remaining
 production obligations. ESP-16 adds the local capacity/browser harness
 (`make check-portal-capacity`, `make portal-capacity`), including a
 concurrent switch/rollback drill; its measurements are loopback-only and do not
-stand in for CDN or VPS-direct campaigns.
+stand in for CDN or VPS-direct campaigns. ESP-17 adds the isolated HTTPS
+preview/accessibility/backup rehearsal (`make check-preview-probe`,
+`make preview-portal`).
 
 ## Encrypted off-host backups (P08-T03)
 

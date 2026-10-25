@@ -187,6 +187,59 @@ The measured numbers in ESP-16 evidence are **local loopback only**: no CDN,
 TLS, real network latency, real mobile device or VPS-direct campaign. Those
 campaigns and any production capacity statement remain OWED.
 
+## Preview, accessibility and operations handoff (ESP-17)
+
+`infra/scripts/preview_portal.sh` runs an isolated HTTPS preview with Caddy's
+local internal CA, a noindex edge and a dedicated private release root. It does
+not touch the shared edge, DNS, API, database or ANP. It promotes the noindex
+candidate, starts `https://localhost:18443` (HTTP `:18082` redirects), verifies
+TLS/headers/cache, probes desktop/mobile accessibility, then promotes a full
+corrected candidate, rolls back and rehearses a release-root backup/restore.
+
+```sh
+PORTAL_PREVIEW_ROOT=/path/to/new-preview-root PORTAL_PREVIEW_ARTIFACT_A=/path/to/noindex-candidate PORTAL_PREVIEW_ARTIFACT_B=/path/to/full-corrected-candidate PORTAL_SITE_URL=https://portal.example make preview-portal
+```
+
+Checks are fail-closed:
+
+- HTTPS/HTTP2, TLS 1.2 verification against the copied internal CA, HSTS,
+  HTTP->HTTPS 308, gzip, immutable assets, revalidation and noindex headers;
+- dated period/source/checksum/official disclaimers, no-API navigation and no
+  external resources;
+- metadata/landmarks, one `h1`, labelled controls, non-empty links, skip link,
+  first-focus order and visible 3 px focus outline;
+- JS-disabled state directory/station navigation;
+- 200% font mobile reflow with no document horizontal overflow and no small
+  primary targets;
+- screenshots for desktop, mobile-large-font and JS-disabled states;
+- A→B promotion and rollback under the preview edge;
+- backup of `state.json`, `releases/` and `current`, restore verification and
+  rollback between releases.
+
+Results live under `PORTAL_RESULTS_DIR`
+(`/tmp/abastevo-portal-preview-*` by default). The internal CA is copied there
+for the TLS check and is not a public certificate. The noindex A release is the
+final preview current; the full B candidate is used only for the correction /
+recovery rehearsal under the same noindex edge. B's own meta may be indexable
+because it is a publication candidate; the preview edge header blocks indexing.
+
+### Release backup and recovery
+
+The release root is private and reproducible; back up `state.json`, `releases/`
+and the `current` symlink together. Restore into a new private root, run
+`portalrelease verify --root <restored> --site-url <origin>`, then rehearse
+rollback across the restored releases before switching any preview. The ESP-17
+rehearsal verified the archive hash, restored current A, switched to B and back
+to A. Do not restore a release root over a live `current`; publish through the
+publisher and its fence.
+
+If the current release is corrupt, use `portalrelease rollback` to a verified
+previous release; if the state is corrupt or missing, restore the backed-up
+root; if the official source is withdrawn, use `withdraw` (fallback or 404).
+Cross-release retention of old content-addressed JS/sitemap is not implemented;
+an old page requesting a removed asset can 404. That retention/versioned-asset
+policy and public preview/VPS handoff remain OWED.
+
 ## Limitations
 
 - Production host/CDN/TLS/DNS, shared-edge routing, cache purge, multi-host
@@ -196,6 +249,9 @@ campaigns and any production capacity statement remain OWED.
   production activation or source schedule was changed.
 - ESP-16 measured local loopback only. CDN and VPS-direct campaigns, real
   network/TLS, real mobile devices and production capacity remain OWED.
+- ESP-17's preview uses a local internal CA and headless Chrome, not public TLS,
+  a real device/screen reader or a shared preview edge. Cross-release asset
+  retention and public preview handoff remain OWED; see above.
 - Real price publication remains blocked by ESP-07/rights; the rehearsal proves
   the selected event-level official artifact plus the synthetic price fixture.
 - No API, database, source or shared edge is contacted by the publisher or the
