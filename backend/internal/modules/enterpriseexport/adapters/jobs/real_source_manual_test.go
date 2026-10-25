@@ -4,6 +4,8 @@ package jobs
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -294,19 +296,22 @@ func TestManualRealWeeklyRecovery(t *testing.T) {
 	if stations3 != stations || prices3 != prices || revisions3 != revisions {
 		t.Fatalf("outage mutated accepted state: %d/%d/%q", stations3, prices3, revisions3)
 	}
-	// Backup the disposable database and restore it elsewhere; all
-	// acceptance tables must match exactly.
+	// Backup the disposable database and restore it elsewhere; canonical
+	// content digests (rows, prices with raw text, runs, revisions with
+	// status, provenance and pointers) must match exactly — not just counts.
 	restored := backupRestoreJobsDB(t, pool)
-	for _, table := range []string{"directory_stations", "official_station_prices", "official_import_runs", "official_revisions"} {
-		var want, got int64
-		if err := pool.QueryRow(ctx, "SELECT count(*) FROM "+table).Scan(&want); err != nil {
-			t.Fatal(err)
-		}
-		if err := restored.QueryRow(ctx, "SELECT count(*) FROM "+table).Scan(&got); err != nil {
-			t.Fatal(err)
-		}
-		if want != got {
-			t.Fatalf("backup/restore mismatch %s: %d != %d", table, want, got)
+	for _, table := range []struct{ name, order string }{
+		{"directory_stations", "id"},
+		{"official_station_prices", "id"},
+		{"official_import_runs", "started_at, id"},
+		{"official_revisions", "id"},
+		{"official_current_revisions", "survey_start, survey_end"},
+	} {
+		wantCount, wantDigest := canonicalTable(t, pool, table.name, table.order)
+		gotCount, gotDigest := canonicalTable(t, restored, table.name, table.order)
+		if wantCount != gotCount || wantDigest != gotDigest {
+			t.Fatalf("backup/restore mismatch %s: count %d/%d digest %s/%s",
+				table.name, wantCount, gotCount, wantDigest, gotDigest)
 		}
 	}
 	// With no published revision the export builder must leave no
@@ -319,6 +324,34 @@ func TestManualRealWeeklyRecovery(t *testing.T) {
 	if _, ok := LoadState(builderRoot); ok {
 		t.Fatal("export wrote state for an unpublished official stream")
 	}
+}
+
+// canonicalTable hashes the full ordered content of one acceptance table:
+// row JSON (prices with raw text, runs, revisions with status, provenance
+// and pointers) so backup/restore proves identical content, not just equal
+// counts. Table and order are fixed call-site constants, never input.
+func canonicalTable(t *testing.T, pool *pgxpool.Pool, table, order string) (int64, string) {
+	t.Helper()
+	rows, err := pool.Query(context.Background(),
+		"SELECT row_to_json(t) FROM (SELECT * FROM "+table+" ORDER BY "+order+") t")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	hasher := sha256.New()
+	var count int64
+	for rows.Next() {
+		var raw []byte
+		if err := rows.Scan(&raw); err != nil {
+			t.Fatal(err)
+		}
+		hasher.Write(raw)
+		count++
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return count, hex.EncodeToString(hasher.Sum(nil))
 }
 
 // backupRestoreJobsDB dumps the given disposable database with pg_dump and
@@ -357,11 +390,12 @@ func backupRestoreJobsDB(t *testing.T, pool *pgxpool.Pool) *pgxpool.Pool {
 			t.Fatalf("%s: %v %s", tool, err, out)
 		}
 	}
-	// The dump file must live where the container can write it: use a
-	// container-side temp path and restore from it directly.
-	execDocker("pg_dump", "-Fc", "-f", "/tmp/jobs-manual.dump", sourceDB)
+	// The dump file is private and exclusive per execution inside the
+	// container, so simultaneous tests/agents cannot overwrite backups.
+	dumpName := fmt.Sprintf("/tmp/jobs-manual-%d.dump", time.Now().UnixNano())
+	execDocker("pg_dump", "-Fc", "-f", dumpName, sourceDB)
 	defer func() {
-		_ = exec.Command("docker", "exec", container, "rm", "-f", "/tmp/jobs-manual.dump").Run()
+		_ = exec.Command("docker", "exec", container, "rm", "-f", dumpName).Run()
 	}()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -387,7 +421,7 @@ func backupRestoreJobsDB(t *testing.T, pool *pgxpool.Pool) *pgxpool.Pool {
 			t.Errorf("drop database: %v", err)
 		}
 	})
-	execDocker("pg_restore", "-d", name, "--no-owner", "/tmp/jobs-manual.dump")
+	execDocker("pg_restore", "-d", name, "--no-owner", dumpName)
 	ru, err := url.Parse(adminDSN)
 	if err != nil {
 		t.Fatal(err)

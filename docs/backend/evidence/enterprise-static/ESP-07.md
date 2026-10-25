@@ -161,9 +161,11 @@ approves, the gate stays closed and the 880 rows stay quarantined.
 `integration realsource`, disposable PostGIS): identical replay converges
 with zero duplicate stations/prices; unreachable source fails visibly
 with counts and revision state unchanged; `pg_dump -Fc` → restore into a
-second disposable database reproduces all acceptance-table counts
-exactly; with no published revision the export builder writes no
-candidate. Real-data revision switch stays OWED behind the precision
+second disposable database reproduces canonical content digests exactly
+(full ordered row JSON for stations, prices with raw text, runs,
+revisions with status, and the current pointer — not just counts), from a
+per-execution private dump file with cleanup; with no published revision
+the export builder writes no candidate. Real-data revision switch stays OWED behind the precision
 policy above; pointer switching itself is proven by the synthetic
 correction suites. A retry-path defect found by this proof (identical
 retry crashed on the run identity instead of converging) is fixed with
