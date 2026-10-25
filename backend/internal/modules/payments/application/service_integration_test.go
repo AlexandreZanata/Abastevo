@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -238,5 +239,58 @@ func TestPixServiceLostResponseRealStore(t *testing.T) {
 	}
 	if provider.createCount != 1 || provider.findCount != 1 {
 		t.Fatalf("create=%d find=%d", provider.createCount, provider.findCount)
+	}
+}
+
+func TestPixConcurrentStartsConvergeRealStore(t *testing.T) {
+	pool := freshCheckoutDB(t)
+	owner := seedCheckoutOwner(t, pool)
+	provider := newFakePixProvider()
+	service := &app.PixService{
+		Store: adapters.NewStore(pool), Provider: provider, Catalog: pixCatalog(t),
+		Config: app.PixConfig{
+			Environment: domain.EnvironmentTest, MerchantID: "11111111-1111-4111-8111-111111111111",
+			CatalogVersion: "pay-catalog-v1", NewSalesEnabled: true, LeaseTTL: time.Minute,
+		},
+	}
+	const racers = 6
+	gate := make(chan struct{})
+	errs := make([]error, racers)
+	results := make([]app.PixOrder, racers)
+	var wg sync.WaitGroup
+	for i := range racers {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-gate
+			results[i], errs[i] = service.Start(context.Background(), app.Principal{AccountID: owner}, pixRequest())
+		}(i)
+	}
+	close(gate)
+	wg.Wait()
+	payments := map[string]bool{}
+	for i, err := range errs {
+		if err == nil {
+			if results[i].PaymentID == "" {
+				t.Fatal("missing payment")
+			}
+			payments[results[i].PaymentID] = true
+		} else if !errors.Is(err, domain.ErrBusy) {
+			t.Fatalf("unexpected err = %v", err)
+		}
+	}
+	if len(payments) != 1 {
+		t.Fatalf("payments = %v", payments)
+	}
+	if provider.createCount != 1 {
+		t.Fatalf("provider creates = %d", provider.createCount)
+	}
+	var orders, operations int
+	if err := pool.QueryRow(context.Background(), `SELECT (SELECT count(*) FROM payment_orders),
+		(SELECT count(*) FROM payment_operations)`).Scan(&orders, &operations); err != nil {
+		t.Fatal(err)
+	}
+	if orders != 1 || operations != 1 {
+		t.Fatalf("orders=%d operations=%d", orders, operations)
 	}
 }

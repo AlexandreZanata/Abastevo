@@ -24,6 +24,9 @@ type memoryStore struct {
 	orders     map[string]domain.Order
 	customers  map[string]string
 	operations map[string]*memoryOperation
+	// beforeCreate, when set, runs before CreateOrder takes the lock so
+	// tests can rendezvous racers on the build-then-store boundary.
+	beforeCreate func()
 }
 
 type memoryOperation struct {
@@ -41,17 +44,38 @@ func newMemoryStore() *memoryStore {
 }
 
 func (s *memoryStore) CreateOrder(_ context.Context, order domain.Order) error {
+	if s.beforeCreate != nil {
+		s.beforeCreate()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if existing, ok := s.orders[order.ID]; ok {
+		// Mirror Store.CreateOrder: a repeated creation converges only
+		// for the identical durable row, timestamps included. Anything
+		// else conflicts so the service refetches the winner instead of
+		// claiming with a divergent payload.
 		if existing.AccountID != order.AccountID || existing.OfferID != order.OfferID ||
-			existing.Channel != order.Channel || !existing.Amount.Equal(order.Amount) {
+			existing.Channel != order.Channel || !existing.Amount.Equal(order.Amount) ||
+			existing.CatalogVersion != order.CatalogVersion || !equalStrings(existing.Capabilities, order.Capabilities) ||
+			!existing.QuotedAt.Equal(order.QuotedAt) || !existing.ExpiresAt.Equal(order.ExpiresAt) {
 			return domain.ErrConflict
 		}
 		return nil
 	}
 	s.orders[order.ID] = order
 	return nil
+}
+
+func equalStrings(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *memoryStore) GetOrder(_ context.Context, id string) (domain.Order, error) {
@@ -500,4 +524,38 @@ func (s *memoryStore) ActiveGrantEnd(context.Context, string, string) (time.Time
 
 func (s *memoryStore) OpenSourceSwitch(context.Context, string, string) (app.SourceSwitchRecord, bool, error) {
 	return app.SourceSwitchRecord{}, false, nil
+}
+
+func TestMemoryStoreCreateOrderRequiresIdenticalRow(t *testing.T) {
+	service, store, _ := newPixService(t)
+	started, err := service.Start(context.Background(), app.Principal{AccountID: testAccount}, pixRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := store.GetOrder(context.Background(), started.OrderID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Identical repeat converges like the durable insert.
+	if err := store.CreateOrder(context.Background(), stored); err != nil {
+		t.Fatalf("identical repeat err = %v", err)
+	}
+	for name, mutate := range map[string]func(*domain.Order){
+		"quoted-at":    func(o *domain.Order) { o.QuotedAt = o.QuotedAt.Add(time.Second) },
+		"expires-at":   func(o *domain.Order) { o.ExpiresAt = o.ExpiresAt.Add(time.Second) },
+		"capabilities": func(o *domain.Order) { o.Capabilities = append(append([]string(nil), o.Capabilities...), "extra.cap") },
+		"offer":        func(o *domain.Order) { o.OfferID = "premium.other" },
+		"account":      func(o *domain.Order) { o.AccountID = testOther },
+	} {
+		t.Run(name, func(t *testing.T) {
+			divergent := stored
+			mutate(&divergent)
+			if err := store.CreateOrder(context.Background(), divergent); !errors.Is(err, domain.ErrConflict) {
+				t.Fatalf("err = %v", err)
+			}
+		})
+	}
+	if len(store.orders) != 1 {
+		t.Fatalf("orders = %d", len(store.orders))
+	}
 }
