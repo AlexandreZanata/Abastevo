@@ -11,7 +11,10 @@
   Dedicated payment/export/refresh slots preserved; exact admitted native AAR
   vendored with SHA/source access/notices/SBOM for fresh CI; map paths select
   full guards. Worker/config race tests, HTTP size repeat 20, Python provisioning
-  (13 cases) and classifier checks PASS. Full Android/PostGIS union in progress.
+  (13 cases) and classifier checks PASS. Android full test/lint/release PASS;
+  131-migration disposable PostGIS union plus affected-failure reruns PASS at
+  source `2707c218`. Three cumulative test assumptions and app SDK path fixed;
+  no domain/security gate relaxed. Remote exact-head CI still required.
   Map minimum gate remains PARTIAL; PAY-21 provider proof stays PENDING; portal
   rights/precision/public-release obligations remain. User authorized the known
   `https://teste.abastevo.com.br` staging origin and scoped VPS update after
