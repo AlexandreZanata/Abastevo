@@ -1,28 +1,39 @@
 # Current execution state
 
-- Map/EV construction 2026-10-25: MAP-15/16/17/18/19 LOCAL_DONE /
-  INTEGRATION_PENDING; MAP-20 LOCAL_DONE / INTEGRATION_PENDING with
-  MINIMUM_MAP_GATE PARTIAL (no fake PASS) on `codex/map-ev-implementation`
-  at `3ccb6988` plus MAP-17/18/19/20 commits. [MAP-15](..//backend/evidence/maps/MAP-15.md)
+- Map/EV construction & integration remediation 2026-10-25: MAP-15/16/17/18/19
+  LOCAL_DONE / INTEGRATION_PENDING; MAP-20 LOCAL_DONE / INTEGRATION_PENDING
+  with MINIMUM_MAP_GATE PARTIAL (no fake PASS) on `codex/map-ev-implementation`
+  (`a203b7ad`, `5473ccfb`, `235d52e7`, `cf031ce9`, `27801f48`, `3496a5ba`
+  plus this progress record). [MAP-15](../backend/evidence/maps/MAP-15.md)
   proves API-26 Monocypher/JNI Ed25519 with Go bytes, 18→26 migration,
-  WorkManager retry/cancel, process-death resume and native-readable activation.
-  [MAP-16](../backend/evidence/maps/MAP-16.md) proves singleton Hilt engine,
-  readiness-gated surface, GPS/off/no-fix states, camera restore and real
-  native init on-device. [MAP-17](../backend/evidence/maps/MAP-17.md) delivers
-  Explorar|Comunidade|Mapa|Perfil with real `MapHost`, ANP/Community selector,
-  downloads screen and eight-locale strings. [MAP-18](../backend/evidence/maps/MAP-18.md)
-  proves UUID-stable deterministic clusters, REVIEWED-only pins with
-  unknown/city-centroid list-only, fuel/charging/combined pictograms and 48dp
-  TalkBack list. [MAP-19](../backend/evidence/maps/MAP-19.md) proves exact
-  source/product/unit/price/date sheet with explicit absence and real
-  profile/route/report actions. [MAP-20](../backend/evidence/maps/MAP-20.md)
-  proves bounded debounced search/filters with stale discard, 48dp/light-dark/
-  eight-locale accessibility, staging Go JSON → Kotlin decode over real HTTP
-  and the on-device list/sheet/profile/route flow. Release APK 78,020,574
-  bytes / 74.41 MiB (both ARM ABIs, 16 KB, under 80 MiB). Staging has no
-  REVIEWED coords or station prices for live pins/prices (reproduced with curl);
-  gate stays PARTIAL, not certified. No push/PR/merge/wiki/deploy; MAP-21–33
-  untouched.
+  WorkManager retry/cancel, streaming byte-cap enforcement, incompatible
+  Content-Range rejection, atomic `<formatVersion>/<file>.mwm` native layout
+  materialization (`FindAllLocalMapsAndCleanup`), reader retention leases, and
+  explicit distribution configuration gating. [MAP-16](../backend/evidence/maps/MAP-16.md)
+  proves single-owner `MapViewModel.ensureInitialized(context)` with application
+  context, readiness-gated surface, GPS/off/no-fix states, camera restore, and
+  production route proof (`MapRouteInstrumentedTest` on physical device
+  2311DRK48G / VKCQGAUCGYAMR4W4). [MAP-17](../backend/evidence/maps/MAP-17.md)
+  delivers Explorar|Comunidade|Mapa|Perfil with real `MapHost`, ANP/Community
+  selector, active-package availability refresh, wired `MapDownloadsScreen`
+  actions (download/cancel/retry), and eight-locale strings.
+  [MAP-18](../backend/evidence/maps/MAP-18.md) proves UUID-stable deterministic
+  clusters, REVIEWED-only pins with unknown/city-centroid/null-coordinate
+  stations selectable by UUID (`selectableByUuid`), accessible cluster member
+  chooser (2nd/last member selection and cross-generation reconciliation),
+  combined `#placemark-purple` KML style, and 48dp TalkBack list.
+  [MAP-19](../backend/evidence/maps/MAP-19.md) wires real `SheetPriceSource`
+  (ANP station detail + Community feed/detail + EV community reports), fixes
+  the ANP EV source-switch race (`MapReviewRegressionTest` in permanent suite),
+  and routes electric vs fuel actions honestly. [MAP-20](../backend/evidence/maps/MAP-20.md)
+  connects viewport movement, city selection, paginated EE-18 charging snapshot
+  queries (no silent 100-item truncation), extended fuel/EV filters, 36 map
+  strings × 8 locales, reproducible `comapsSdkDir` SHA-256 verification, and
+  full JVM/lint/release APK verification (78,103,646 bytes / 74.49 MiB, both
+  ARM ABIs, 16 KB ELF LOAD alignment, under 80 MiB). Staging has no REVIEWED
+  coords, station prices, or signed `.mwm` distribution host configured yet;
+  `MINIMUM_MAP_GATE` stays PARTIAL, not certified. No push/PR/merge/wiki/deploy;
+  MAP-21–33 untouched.
 
 - Map/EV checkpoint 2026-10-25 (measurements 2026-10-24): MAP-00–13 LOCAL_DONE / INTEGRATION_PENDING; MAP-14
   **LOCAL_DONE / ENGINE_GATE_PASS / INTEGRATION_PENDING** on

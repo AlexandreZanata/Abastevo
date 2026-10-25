@@ -46,49 +46,50 @@ Date: 2026-10-25.
 
 ## Implementation
 
-- `MapDiscoveryViewModel`: viewport + search + service filter, `lastMarkers`
-  + `lastNullStations` (null-coords stay list-only), `prepareOverlay` split,
-  `overlayListItems(..., unpinned)` + null-coords items.
-- `MapScreen`: ANP/Community chips (48 dp), search field (48 dp, Curitiba
-  `4106902` default for gate), service filter dialog (48 dp checkboxes),
-  `MapOverlayList` toggle (48 dp), attribution, loading/error/no-package.
-- `MapSheetViewModel` + `MapBottomSheet`: exact money (BigDecimal, no float),
-  explicit absence with reason (`no-price`, `anp-no-tariff`), EV-in-ANP switch,
-  profile/route/report actions. Hilt defaults to absence (never invents).
-- `ChargingMarkersSource` + `MapDiscoveryModule` + `MapSheetModule`: offline
-  snapshot (fail-open), explicit absence bindings.
-- `MapServerDecodeTest`: staging Go JSON decodes + real localhost HTTP with Go
-  bytes (no MockWebServer canned synthesis).
+- `MapDiscoveryViewModel`: dynamic viewport + city selection (`DEFAULT_MAP_CITIES` + `MunicipalityCatalogRepository`/`UserPreferencesRepository`) + search + extended filters (`showFuel`, `showCharging`, `fuelProduct`, `connector`, `current`, `access`, `minPowerKw`, `surveyPeriod`), `selectableByUuid` indexing pinned, unpinned (`UNKNOWN`, `CITY_CENTROID`), and null-coordinate stations, accessible cluster expansion (`expandedClusterId`, `selectedMembers`), and pre-debounce generation invalidation (`++generation`, `fetchJob?.cancel()`).
+- `MapScreen`: ANP/Community chips (48 dp), active city chip (`map-city-chip`), search field (48 dp, clears/shortens immediately invalidating in-flight search), extended filter dialog (`MapFiltersDialog`), accessible cluster expansion controls (`map-cluster-expand-*`) and member chooser (`map-cluster-chooser`), `MapOverlayList` toggle (48 dp), attribution, loading/error/no-package, and safe route guard (`canRouteByCoordinates`).
+- `MapSheetViewModel` + `MapBottomSheet` + `RealSheetPriceSource`: real production price binding in `MapSheetModule` (ANP station detail + Community city feed/detail + EV community reports), pre-branch generation invalidation fixing the ANP EV source-switch race (`MapReviewRegressionTest`), localized strings across 8 locales, and explicit disabled route notice (`map-sheet-route-unavailable`) for stations without `REVIEWED` coordinates.
+- `ChargingMarkersSource` + `MapDiscoveryModule`: paginated EE-18 snapshot scanning across pages of 100 (eliminating silent 100-item global truncation), region/query/connector/current/access/minPowerKw filtering (preserving unknown power), and `CancellationException` rethrow.
+- `MapServerDecodeTest`: staging Go JSON decodes + real localhost HTTP with Go bytes (resolved across root and `:data` working directories).
+- `settings.gradle.kts` + `maps/engine/build.gradle.kts`: unconditional `:maps:engine` inclusion and configurable `comapsSdkDir` resolution with SHA-256 verification of `classes.jar` and both ARM `liborganicmaps.so` binaries.
 
 ## Verification executed
 
-JVM (`:app:testDebugUnitTest`, `:data:testDebugUnitTest`, green):
+JVM (`:domain:test`, `:application:test`, `:maps:engine:testDebugUnitTest`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest`, `:app:lintDebug`, `:app:assembleRelease`, all green):
 
-- `MapDiscoveryViewModelTest` (8): bounded debounced viewport + stale discard;
+- `MapDiscoveryViewModelTest` (12): bounded debounced viewport + stale discard;
   unknown/city-centroid list-only; deterministic clusters + preserved selection;
   cluster expansion without technical IDs; fuel/charging/combined distinct;
   dense 50-marker deterministic; search by city/name bounded + short-query no-wire;
-  service filters keep unknown visible.
-- `MapSheetViewModelTest` (5): exact product/unit/amount/date; explicit absence
-  without fallback; rapid switches discard stale; EV-in-ANP explains + no lookup;
-  no-price stays discoverable.
+  service filters keep unknown visible; unpinned and coordinate-less stations
+  selectable by UUID with `canRouteByCoordinates == false`; cluster expansion
+  reaches 2nd and last member and reconciles across generations; clearing/shortening
+  search during debounce or in-flight cancels prior query; `ChargingMarkersSource`
+  paginates beyond first 100 rows and preserves unknown power.
+- `MapSheetViewModelTest` (12) + `MapReviewRegressionTest` (1): exact product/unit/
+  amount/date; explicit absence without fallback; rapid switches discard stale;
+  EV-in-ANP explains + no lookup; real `RealSheetPriceSource` ANP/Community/EV
+  price resolution + error/absence distinction; permanent regression proof for
+  ANP fuel → ANP charger race.
+- `OverlayKmlTest`: distinct `#placemark-orange` (fuel), `#placemark-teal`
+  (charging), and `#placemark-purple` (combined) styles.
 - `MapServerDecodeTest` (2): staging `GET /v1/stations` Go JSON decodes with
   canonical UUIDs/CNPJ leading zeros; same Go bytes over real localhost HTTP
   decode identically (production codec, no invented price).
-- `MapScreenViewModelTest`, `MapNavigationTest`, `NavigationTabTest` retain MAP-17.
+- `MapDownloadsViewModelTest`, `MapScreenViewModelTest`, `MapNavigationTest`,
+  `NavigationTabTest` all PASS.
 
-Phone (2311DRK48G, Android 16):
+Phone (2311DRK48G / `VKCQGAUCGYAMR4W4`, Android 16):
 
-```sh
-./gradlew :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.anpfuel.app.ui.map.MapScreenInstrumentedTest
-# 2 tests PASS — shell, source switch, OSM attribution
-
-./gradlew :maps:engine:connectedDebugAndroidTest \
-  -PcomapsSdkDir=/data/dev/artifacts/... \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.anpfuel.maps.engine.MapOverlayListAccessibilityTest
-# 2 tests PASS — light/dark TalkBack descriptions, distinct icons
-```
+- `MapRouteInstrumentedTest`: real `MainActivity` + Hilt + native `ComapsMapEngine`
+  renders MAP tab, survives tab switch, rotation, and activity recreation with
+  a single engine instance.
+- `MapNativeLayoutInstrumentedTest`: real signed download → `<formatVersion>/<file>.mwm`
+  activation → native `FindAllLocalMapsAndCleanup` registration and concurrent
+  reader retention.
+- `MapScreenInstrumentedTest` & `MapOverlayListAccessibilityTest`: source switch,
+  cluster expansion (2nd/last member), unpinned selection with route disabled,
+  and light/dark TalkBack descriptions.
 
 Backend (staging `https://teste.abastevo.com.br`, 2026-10-25):
 
@@ -101,36 +102,33 @@ Backend (staging `https://teste.abastevo.com.br`, 2026-10-25):
 
 Release APK (with accepted engine + Monocypher + map UI):
 
-- `app-release-unsigned.apk` 78,020,574 bytes / 74.41 MiB, under the 80 MiB
-  ceiling (was 74.19 MiB; +0.22 MiB for verifier + UI). Both ARM ABIs contain
-  `liborganicmaps.so` + `libmonocypher_ed25519.so`; 16 KB alignment retained
-  from MAP-14 (no new native waiver).
+- `app-release-unsigned.apk` 78,103,646 bytes / 74.49 MiB, under the 80 MiB
+  ceiling. Both ARM ABIs (`arm64-v8a`, `armeabi-v7a`) contain uncompressed
+  16 KB-aligned (`0x4000`) `liborganicmaps.so` + `libmonocypher_ed25519.so`.
 
 ## Minimum-gate assessment (honest, no fake PASS)
 
 Proven in app (phone + JVM + real staging bytes):
 
-- Open Mapa → choose ANP/Community → see real staging stations in accessible
-  list (UUIDs/names preserved, unknown warnings, no centroid pins).
-- Select list → sheet shows explicit absence with quality/location (no invented
-  price, no silent fallback, no N+1).
-- Open profile (`map/station/<uuid>`) keeps MAP selected; back returns to map.
-- Route action fires explicit external `geo:` (documented interim, never
-  native guidance).
+- Open Mapa → real Hilt + native `ComapsMapEngine` initializes via `MapViewModel`
+  → choose ANP/Community or city → see real staging stations in accessible list
+  (UUIDs/names preserved, unknown warnings, no centroid pins).
+- Select any station (pinned, cluster 2nd/last member, `UNKNOWN`, `CITY_CENTROID`,
+  or null-coordinate) → sheet loads via real `RealSheetPriceSource` without
+  source-switch races, disables coordinate routing when coordinates are not
+  `REVIEWED`, and opens full station profile (`map/station/<uuid>`).
 
-Blocked by external data (reproduced above, not a code waiver):
+Blocked by external data/operations (reproduced above, not a code waiver):
 
 - No REVIEWED coordinates in staging (all `unknown` + `null`), so native pins
-  cannot appear with real data; dense/cluster/selection proofs use contract
-  fixtures + unit tests, not live pins.
-- No station-specific ANP/community prices in staging/local test DB, so the
-  sheet cannot show a real price/date on-device; exact-money proofs use the
-  frozen `poi-assertions-v1.json` (ANP 5890 milli = R$5.89, 2026-10-20) + unit
-  tests, not live prices.
-- Full search/filter UX (connector/AC/DC/power/access/hours/date scoping) and
-  native route preview (`buildCarRoute`) own MAP-22; the interim external route
-  is explicit.
+  cannot appear with live staging data yet.
+- No station-specific ANP/community prices or EV observations populated in live
+  staging yet.
+- No signed `.mwm` distribution host/public key configured in runtime environment
+  yet (`MapDownloadsScreen` explicitly surfaces `config-missing` until configured).
+- Native route preview (`buildCarRoute`), offline search, and MAP-21–33 remain
+  scoped to the next phases.
 
 Gate: **PARTIAL / INTEGRATION_PENDING**. Do not merge/publish/certify as
-complete. Next: seed admitted REVIEWED + price data (or staging with coords/
-prices) and rerun the on-device flow; then MAP-21–33 remain out of scope.
+complete. Next: populate staging coordinates/prices and distribution config for
+live gate sign-off, or proceed to MAP-21–33 local construction.
