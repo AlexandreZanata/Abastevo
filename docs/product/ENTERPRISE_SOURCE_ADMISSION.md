@@ -245,3 +245,47 @@ A profile change (URL pattern, schema, key, clock, field allowlist, rights,
 correction window or quota) requires a new register revision and affected tests.
 A source whose rights or live contract is unknown stays `RIGHTS_PENDING` or
 `NOT_ADMITTED`; it does not inherit admission from a sibling ANP dataset.
+
+## Re-examination 2026-10-25 (no status change)
+
+Primary sources were re-fetched and re-inspected before any publication
+decision. No compatible new license was found, so every status above
+stands. Code license, site footer, download availability and derived
+redistribution rights were kept distinct; the deploy authorization is not
+a third-party license.
+
+| Source | Document fetched 2026-10-25 | Bytes / SHA-256 | License finding |
+| --- | --- | --- | --- |
+| S-ESP-01 registry | `.../arquivos-dados-cadastrais-dos-revendedores-varejistas-de-combustiveis-automotivos/metadados-revendedores-varejistas-combustiveis-automoveis.pdf` | 159,866 / `774259f8…ef8c98` (unchanged) | No license field; full OCR of the single page (title, description, catalog, org, keywords, language, daily frequency, CSV format, source, contact, column metadata) contains zero license mentions. `RIGHTS_PENDING` stands. |
+| S-ESP-02 prices | old `.../arquivos/shpc/metadados-serie-historica-precos-combustiveis.pdf` now answers 404 (`{"error_type":"NotFound"}`); current series page (276,528 bytes) links no dataset metadata; dados.gov.br API answers 401 | — | Only the generic site footer (CC BY-ND 3.0, not a dataset license). `RIGHTS_PENDING` stands. |
+| S-ESP-03 enforcement | `.../arquivos-acoes-de-fiscalizacao/metadados-acoes-fiscalizacao.docx` | 17,715 / `04917ce1…c5066cf` (unchanged) | License cell is an unselected menu (CC BY / CC0 / ODbL / PDDL, zero checkbox elements in the XML). Admission reading unchanged with this caveat recorded; runtime stays blocked. |
+| S-ESP-04 fines | `.../arquivos/mav/metadados-multas-aplicadas-2016a2019.pdf` | 108,518 / `0b2c4fd2…c0e36b` (unchanged) | `Licença de uso: Creative Commons Atribuição (CC BY)`, public visibility, annual cadence re-verified. Event-level admission stands. |
+| S-ESP-05 PMQC | `.../arquivos/pmqc/pmqc-metadados` (moved URL, identical bytes) | 84,545 / `9eaed144…144e3f` (unchanged) | All 202 paragraphs scanned: no license field. `RIGHTS_PENDING` stands. |
+| S-ESP-06 registry API | — | — | `NOT_ADMITTED` stands. |
+
+Raw documents stay outside Git under private `/tmp`; only bytes, hashes
+and license-relevant extracts are recorded here.
+
+## Clarification request draft (NOT sent — for the maintainer to forward)
+
+> Subject: Licença de uso para redistribuição derivada — dados abertos ANP
+>
+> Para publicação de derivados estáticos com atribuição, solicitamos
+> confirmação escrita, por conjunto abaixo, da licença aplicável à
+> redistribuição de dados derivados (não apenas download):
+> 1. Série histórica / levantamento semanal de preços de combustíveis
+>    (revendas LPC): existe licença de uso do conjunto que autorize
+>    derivados públicos? O antigo PDF de metadados da série não é mais
+>    servido (404).
+> 2. Dados cadastrais dos revendedores varejistas: existe licença de uso
+>    do conjunto que autorize derivados públicos? O PDF de metadados não
+>    declara licença (verificado inclusive por OCR).
+> 3. PMQC (monitoramento da qualidade): existe licença de uso do conjunto?
+>    O DOCX de metadados não declara licença.
+> 4. Ações de fiscalização: qual das quatro opções do campo "licença de
+>    uso" do DOCX de metadados (CC BY, CC0, ODbL ou PDDL) vale para o
+>    conjunto? O campo é um menu sem seleção marcada.
+>
+> Sem resposta, os slices correspondentes permanecem `RIGHTS_PENDING` e
+> nenhum conteúdo deles será publicado. Nada aqui autoriza contato com
+> terceiros pelo agente.
