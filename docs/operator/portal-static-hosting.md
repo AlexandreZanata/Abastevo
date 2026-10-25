@@ -183,7 +183,6 @@ Predeclared defaults:
 | achieved rate | 90 req/s at 100 offered |
 | Caddy CPU / memory | 80% / 256 MiB |
 | browser FCP / LCP / CLS | 1500 ms / 2500 ms / 0.1 |
-
 `portal_report.py` fails closed on a breached budget, drops, timeouts,
 semantic mismatches, generator limitation, external/API browser resources or
 errors. The trap stops/removes the Caddy/generator containers and the private
@@ -197,6 +196,17 @@ retained. Results stay private under `PORTAL_RESULTS_DIR` (default
 The measured numbers in ESP-16 evidence are **local loopback only**: no CDN,
 TLS, real network latency, real mobile device or VPS-direct campaign. Those
 campaigns and any production capacity statement remain OWED.
+
+### Target capacity campaign (OWED — predeclared limits, not executed)
+
+No campaign runs against ANP, and none may degrade the API. When a target
+environment is authorized, run the ESP-16 harness there with these frozen
+inputs: the budgets table above, a 100 req/s open-loop profile plus the
+atomic promote/rollback update scenario, and these stop conditions —
+any breached budget, any error/drop, Caddy above 80% CPU or 256 MiB, or
+any API/safety degradation observed during the window: stop immediately,
+roll back to the last safe release, and record the failed campaign
+without rerunning for a better number.
 
 ## Preview, accessibility and operations handoff (ESP-17)
 
