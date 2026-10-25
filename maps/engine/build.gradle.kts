@@ -6,8 +6,10 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val defaultCandidate = "/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22"
 val comapsSdkDir = providers.gradleProperty("comapsSdkDir").orNull
-    ?: error("comapsSdkDir Gradle property is required for :maps:engine")
+    ?: if (file(defaultCandidate).isDirectory) defaultCandidate
+    else error("comapsSdkDir Gradle property is required for :maps:engine")
 
 android {
     namespace = "app.organicmaps.sdk"

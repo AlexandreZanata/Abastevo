@@ -106,22 +106,25 @@ android {
         buildConfig = true
     }
 
-    if (providers.gradleProperty("comapsSdkDir").isPresent) {
-        val engineAbis = file("${providers.gradleProperty("comapsSdkDir").get()}/jni")
-            .listFiles().orEmpty()
-            .filter { it.isDirectory && it.resolve("liborganicmaps.so").isFile }
-            .map { it.name }.toSet()
-        require(engineAbis.isNotEmpty()) { "The map candidate must contain its native engine" }
-        // Every advertised ABI must contain the core, including auxiliary AndroidX libs.
-        defaultConfig.ndk.abiFilters += engineAbis
-        sourceSets.getByName("debug") {
-            kotlin.srcDir("src/comapsProbe/kotlin")
-            manifest.srcFile("src/comapsProbe/AndroidManifest.xml")
-        }
-        sourceSets.getByName("mapProbe") {
-            kotlin.srcDir("src/comapsProbe/kotlin")
-            manifest.srcFile("src/mapProbe/AndroidManifest.xml")
-        }
+    val resolvedSdkDir = providers.gradleProperty("comapsSdkDir").orNull
+        ?: "/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22"
+    // The production map tab always ships the accepted native engine.
+    // The fallback is the versioned MAP-14 candidate; pass -PcomapsSdkDir to
+    // override with a newly verified candidate.
+    val engineAbis = file("$resolvedSdkDir/jni")
+        .listFiles().orEmpty()
+        .filter { it.isDirectory && it.resolve("liborganicmaps.so").isFile }
+        .map { it.name }.toSet()
+    require(engineAbis.isNotEmpty()) { "The map candidate must contain its native engine" }
+    // Every advertised ABI must contain the core, including auxiliary AndroidX libs.
+    defaultConfig.ndk.abiFilters += engineAbis
+    sourceSets.getByName("debug") {
+        kotlin.srcDir("src/comapsProbe/kotlin")
+        manifest.srcFile("src/comapsProbe/AndroidManifest.xml")
+    }
+    sourceSets.getByName("mapProbe") {
+        kotlin.srcDir("src/comapsProbe/kotlin")
+        manifest.srcFile("src/mapProbe/AndroidManifest.xml")
     }
 
     androidResources {
@@ -142,10 +145,8 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":application"))
     implementation(project(":data"))
+    implementation(project(":maps:engine"))
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
-    if (providers.gradleProperty("comapsSdkDir").isPresent) {
-        implementation(project(":maps:engine"))
-    }
 
     implementation(platform(libs.compose.bom))
     implementation(libs.bundles.compose)

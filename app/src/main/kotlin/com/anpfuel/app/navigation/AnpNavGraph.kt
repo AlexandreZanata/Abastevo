@@ -123,6 +123,48 @@ fun AnpNavGraph(
                 onNavigate = navController::navigate,
             )
         }
+        composable(
+            route = Routes.MAP,
+            deepLinks = listOf(
+                navDeepLink { uriPattern = "anpfuel://map" },
+            ),
+        ) {
+            com.anpfuel.app.ui.map.MapScreen(
+                onOpenStation = { stationKey, fuel ->
+                    // Map origin keeps the MAP tab selected on return.
+                    try {
+                        val product = com.anpfuel.domain.valueobject.FuelProduct.valueOf(fuel)
+                        navController.navigate(Routes.mapStationPage(stationKey, product))
+                    } catch (_: Exception) {
+                        navController.navigate(Routes.STATIONS)
+                    }
+                },
+                onOpenSearch = { navController.navigate(Routes.STATIONS) },
+                onOpenDownloads = { navController.navigate("map/downloads") },
+            )
+        }
+        composable("map/downloads") {
+            com.anpfuel.app.ui.map.MapDownloadsScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.MAP_STATION_PAGE,
+            arguments = listOf(
+                navArgument("stationKey") { type = NavType.StringType },
+                navArgument("fuelProduct") { type = NavType.StringType; defaultValue = "GASOLINE_REGULAR" },
+            ),
+            deepLinks = listOf(
+                navDeepLink { uriPattern = "anpfuel://map/station/{stationKey}?fuelProduct={fuelProduct}" },
+            ),
+        ) {
+            com.anpfuel.app.ui.stations.StationPageScreen(
+                onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
+                onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
+                onQuality = { stationId, fuel -> navController.navigate(Routes.stationQuality(stationId, fuel)) },
+            )
+        }
         composable(Routes.PROFILE) {
             ProfileScreen(
                 darkTheme = darkTheme,

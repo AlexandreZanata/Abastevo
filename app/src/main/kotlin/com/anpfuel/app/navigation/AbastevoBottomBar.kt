@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -39,9 +40,10 @@ import com.anpfuel.app.R
 /**
  * Top-level navigation tabs.
  *
- * Three tabs per frozen IA (P19-T02):
+ * Four tabs per MAP-17 (Explorar | Comunidade | Mapa | Perfil):
  * - Explorar (Routes.HOME): fuel & station discovery
  * - Comunidade (Routes.COMMUNITY): community activity, verification, discussions
+ * - Mapa (Routes.MAP): native offline map with ANP/Community prices
  * - Perfil (Routes.PROFILE): free account, rights/privacy, preserved expert tools
  */
 enum class NavigationTab(
@@ -51,13 +53,18 @@ enum class NavigationTab(
 ) {
     EXPLORE(Routes.HOME, R.string.nav_explore, Icons.Default.Explore),
     COMMUNITY(Routes.COMMUNITY, R.string.nav_community, Icons.Default.Groups),
+    MAP(Routes.MAP, R.string.nav_map, Icons.Default.Map),
     PROFILE(Routes.PROFILE, R.string.nav_profile, Icons.Default.AccountCircle),
     ;
 
     companion object {
-        fun fromRoute(route: String?): NavigationTab? = when (route) {
-            Routes.STATION_PAGE -> EXPLORE
-            Routes.PREMIUM, Routes.PREMIUM_MANAGEMENT -> PROFILE
+        fun fromRoute(route: String?): NavigationTab? = when {
+            route == null -> null
+            route.startsWith("map/station/") -> MAP
+            route.startsWith("station/") -> EXPLORE
+            route == Routes.STATION_PAGE -> EXPLORE
+            route == Routes.MAP_STATION_PAGE -> MAP
+            route == Routes.PREMIUM || route == Routes.PREMIUM_MANAGEMENT -> PROFILE
             else -> entries.firstOrNull { it.route == route }
         }
     }
