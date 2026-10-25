@@ -50,6 +50,32 @@ func (q *Queries) CreateImportRun(ctx context.Context, arg CreateImportRunParams
 	return id, err
 }
 
+const createImportRunIfAbsent = `-- name: CreateImportRunIfAbsent :execrows
+INSERT INTO official_import_runs (id, source_url, source_checksum, parser_version)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (source_url, source_checksum, parser_version) DO NOTHING
+`
+
+type CreateImportRunIfAbsentParams struct {
+	ID             pgtype.UUID `json:"id"`
+	SourceUrl      string      `json:"source_url"`
+	SourceChecksum string      `json:"source_checksum"`
+	ParserVersion  string      `json:"parser_version"`
+}
+
+func (q *Queries) CreateImportRunIfAbsent(ctx context.Context, arg CreateImportRunIfAbsentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createImportRunIfAbsent,
+		arg.ID,
+		arg.SourceUrl,
+		arg.SourceChecksum,
+		arg.ParserVersion,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createRevision = `-- name: CreateRevision :one
 INSERT INTO official_revisions
     (id, import_run_id, survey_start, survey_end, supersedes_revision_id)
@@ -264,13 +290,14 @@ func (q *Queries) FindConflictingStationPrice(ctx context.Context, arg FindConfl
 	return items, nil
 }
 
-const finishImportRun = `-- name: FinishImportRun :exec
+const finishImportRun = `-- name: FinishImportRun :execrows
 UPDATE official_import_runs
 SET status = $1,
     row_counts = $2::jsonb,
     error_summary = $3::jsonb,
     finished_at = now()
 WHERE id = $4
+    AND status = 'running'
 `
 
 type FinishImportRunParams struct {
@@ -280,14 +307,17 @@ type FinishImportRunParams struct {
 	ID           pgtype.UUID `json:"id"`
 }
 
-func (q *Queries) FinishImportRun(ctx context.Context, arg FinishImportRunParams) error {
-	_, err := q.db.Exec(ctx, finishImportRun,
+func (q *Queries) FinishImportRun(ctx context.Context, arg FinishImportRunParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishImportRun,
 		arg.Status,
 		arg.RowCounts,
 		arg.ErrorSummary,
 		arg.ID,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getCurrentPointer = `-- name: GetCurrentPointer :one
@@ -305,6 +335,42 @@ func (q *Queries) GetCurrentPointer(ctx context.Context, arg GetCurrentPointerPa
 	var revision_id pgtype.UUID
 	err := row.Scan(&revision_id)
 	return revision_id, err
+}
+
+const getImportRunByID = `-- name: GetImportRunByID :one
+SELECT id, source_url, source_checksum, parser_version, status,
+    row_counts, error_summary, started_at, finished_at
+FROM official_import_runs
+WHERE id = $1
+`
+
+type GetImportRunByIDRow struct {
+	ID             pgtype.UUID        `json:"id"`
+	SourceUrl      string             `json:"source_url"`
+	SourceChecksum string             `json:"source_checksum"`
+	ParserVersion  string             `json:"parser_version"`
+	Status         string             `json:"status"`
+	RowCounts      []byte             `json:"row_counts"`
+	ErrorSummary   []byte             `json:"error_summary"`
+	StartedAt      pgtype.Timestamptz `json:"started_at"`
+	FinishedAt     pgtype.Timestamptz `json:"finished_at"`
+}
+
+func (q *Queries) GetImportRunByID(ctx context.Context, id pgtype.UUID) (GetImportRunByIDRow, error) {
+	row := q.db.QueryRow(ctx, getImportRunByID, id)
+	var i GetImportRunByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.SourceUrl,
+		&i.SourceChecksum,
+		&i.ParserVersion,
+		&i.Status,
+		&i.RowCounts,
+		&i.ErrorSummary,
+		&i.StartedAt,
+		&i.FinishedAt,
+	)
+	return i, err
 }
 
 const getImportRunByIdentity = `-- name: GetImportRunByIdentity :one
@@ -451,6 +517,36 @@ func (q *Queries) GetRevisionByRun(ctx context.Context, importRunID pgtype.UUID)
 	return i, err
 }
 
+const getRevisionRowBySourceRow = `-- name: GetRevisionRowBySourceRow :one
+SELECT id, revision_id, station_id, fuel_product, unit, amount_milli_brl,
+    raw_price_text, collected_on, source_row
+FROM official_station_prices
+WHERE revision_id = $1
+    AND source_row = $2
+`
+
+type GetRevisionRowBySourceRowParams struct {
+	RevisionID pgtype.UUID `json:"revision_id"`
+	SourceRow  int32       `json:"source_row"`
+}
+
+func (q *Queries) GetRevisionRowBySourceRow(ctx context.Context, arg GetRevisionRowBySourceRowParams) (OfficialStationPrice, error) {
+	row := q.db.QueryRow(ctx, getRevisionRowBySourceRow, arg.RevisionID, arg.SourceRow)
+	var i OfficialStationPrice
+	err := row.Scan(
+		&i.ID,
+		&i.RevisionID,
+		&i.StationID,
+		&i.FuelProduct,
+		&i.Unit,
+		&i.AmountMilliBrl,
+		&i.RawPriceText,
+		&i.CollectedOn,
+		&i.SourceRow,
+	)
+	return i, err
+}
+
 const latestPublishedRevision = `-- name: LatestPublishedRevision :one
 SELECT r.id, r.survey_start, r.survey_end, r.published_at,
     r.supersedes_revision_id, run.source_url, run.source_checksum,
@@ -488,6 +584,79 @@ func (q *Queries) LatestPublishedRevision(ctx context.Context) (LatestPublishedR
 		&i.ParserVersion,
 	)
 	return i, err
+}
+
+const lockRevision = `-- name: LockRevision :one
+SELECT id, import_run_id, survey_start, survey_end, published_at,
+    supersedes_revision_id, status
+FROM official_revisions
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) LockRevision(ctx context.Context, id pgtype.UUID) (OfficialRevision, error) {
+	row := q.db.QueryRow(ctx, lockRevision, id)
+	var i OfficialRevision
+	err := row.Scan(
+		&i.ID,
+		&i.ImportRunID,
+		&i.SurveyStart,
+		&i.SurveyEnd,
+		&i.PublishedAt,
+		&i.SupersedesRevisionID,
+		&i.Status,
+	)
+	return i, err
+}
+
+const publishStagingRevision = `-- name: PublishStagingRevision :execrows
+UPDATE official_revisions
+SET status = 'published', published_at = now()
+WHERE id = $1
+    AND status = 'staging'
+`
+
+func (q *Queries) PublishStagingRevision(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, publishStagingRevision, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const rejectStagingRevision = `-- name: RejectStagingRevision :execrows
+UPDATE official_revisions
+SET status = $1
+WHERE id = $2
+    AND status = 'staging'
+`
+
+type RejectStagingRevisionParams struct {
+	Status string      `json:"status"`
+	ID     pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) RejectStagingRevision(ctx context.Context, arg RejectStagingRevisionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, rejectStagingRevision, arg.Status, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const retireStagingRevision = `-- name: RetireStagingRevision :execrows
+UPDATE official_revisions
+SET status = 'superseded'
+WHERE id = $1
+    AND status = 'staging'
+`
+
+func (q *Queries) RetireStagingRevision(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, retireStagingRevision, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setRevisionPublished = `-- name: SetRevisionPublished :exec
@@ -728,6 +897,27 @@ func (q *Queries) StationPriceHistory(ctx context.Context, arg StationPriceHisto
 		return nil, err
 	}
 	return items, nil
+}
+
+const switchCurrentRevision = `-- name: SwitchCurrentRevision :execrows
+INSERT INTO official_current_revisions (survey_start, survey_end, revision_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (survey_start, survey_end)
+DO UPDATE SET revision_id = EXCLUDED.revision_id, switched_at = now()
+`
+
+type SwitchCurrentRevisionParams struct {
+	SurveyStart pgtype.Date `json:"survey_start"`
+	SurveyEnd   pgtype.Date `json:"survey_end"`
+	RevisionID  pgtype.UUID `json:"revision_id"`
+}
+
+func (q *Queries) SwitchCurrentRevision(ctx context.Context, arg SwitchCurrentRevisionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, switchCurrentRevision, arg.SurveyStart, arg.SurveyEnd, arg.RevisionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const upsertCurrentPointer = `-- name: UpsertCurrentPointer :exec

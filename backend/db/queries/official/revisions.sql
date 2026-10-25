@@ -6,6 +6,11 @@ INSERT INTO official_import_runs (id, source_url, source_checksum, parser_versio
 VALUES (@id, @source_url, @source_checksum, @parser_version)
 RETURNING id;
 
+-- name: CreateImportRunIfAbsent :execrows
+INSERT INTO official_import_runs (id, source_url, source_checksum, parser_version)
+VALUES (@id, @source_url, @source_checksum, @parser_version)
+ON CONFLICT (source_url, source_checksum, parser_version) DO NOTHING;
+
 -- name: GetImportRunByIdentity :one
 SELECT id, source_url, source_checksum, parser_version, status,
     row_counts, error_summary, started_at, finished_at
@@ -14,13 +19,20 @@ WHERE source_url = @source_url
     AND source_checksum = @source_checksum
     AND parser_version = @parser_version;
 
--- name: FinishImportRun :exec
+-- name: GetImportRunByID :one
+SELECT id, source_url, source_checksum, parser_version, status,
+    row_counts, error_summary, started_at, finished_at
+FROM official_import_runs
+WHERE id = @id;
+
+-- name: FinishImportRun :execrows
 UPDATE official_import_runs
 SET status = @status,
     row_counts = @row_counts::jsonb,
     error_summary = @error_summary::jsonb,
     finished_at = now()
-WHERE id = @id;
+WHERE id = @id
+    AND status = 'running';
 
 -- name: CreateRevision :one
 INSERT INTO official_revisions
@@ -40,6 +52,13 @@ SELECT id, import_run_id, survey_start, survey_end, published_at,
 FROM official_revisions
 WHERE import_run_id = @import_run_id;
 
+-- name: LockRevision :one
+SELECT id, import_run_id, survey_start, survey_end, published_at,
+    supersedes_revision_id, status
+FROM official_revisions
+WHERE id = @id
+FOR UPDATE;
+
 -- name: SetRevisionPublished :exec
 UPDATE official_revisions
 SET status = 'published', published_at = now()
@@ -49,6 +68,24 @@ WHERE id = @id;
 UPDATE official_revisions
 SET status = @status
 WHERE id = @id;
+
+-- name: PublishStagingRevision :execrows
+UPDATE official_revisions
+SET status = 'published', published_at = now()
+WHERE id = @id
+    AND status = 'staging';
+
+-- name: RetireStagingRevision :execrows
+UPDATE official_revisions
+SET status = 'superseded'
+WHERE id = @id
+    AND status = 'staging';
+
+-- name: RejectStagingRevision :execrows
+UPDATE official_revisions
+SET status = @status
+WHERE id = @id
+    AND status = 'staging';
 
 -- name: GetLatestPublishedRevisionForWindow :one
 SELECT id, import_run_id, survey_start, survey_end, published_at,
@@ -89,10 +126,23 @@ WHERE revision_id = @revision_id
     AND source_row <> @source_row
     AND amount_milli_brl <> @amount_milli_brl;
 
+-- name: GetRevisionRowBySourceRow :one
+SELECT id, revision_id, station_id, fuel_product, unit, amount_milli_brl,
+    raw_price_text, collected_on, source_row
+FROM official_station_prices
+WHERE revision_id = @revision_id
+    AND source_row = @source_row;
+
 -- name: CountRevisionRows :one
 SELECT count(*) FROM official_station_prices WHERE revision_id = @revision_id;
 
 -- name: UpsertCurrentPointer :exec
+INSERT INTO official_current_revisions (survey_start, survey_end, revision_id)
+VALUES (@survey_start, @survey_end, @revision_id)
+ON CONFLICT (survey_start, survey_end)
+DO UPDATE SET revision_id = EXCLUDED.revision_id, switched_at = now();
+
+-- name: SwitchCurrentRevision :execrows
 INSERT INTO official_current_revisions (survey_start, survey_end, revision_id)
 VALUES (@survey_start, @survey_end, @revision_id)
 ON CONFLICT (survey_start, survey_end)
