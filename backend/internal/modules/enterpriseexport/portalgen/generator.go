@@ -432,6 +432,9 @@ func Generate(opts Options) (Result, error) {
 		return Result{}, err
 	}
 	cards := buildInsights(latest, previous, latestSummaries, previousSummaries, latestCoverage, observations, municipalityStations, published)
+	if official != nil {
+		cards = append(cards, buildOfficialInsights(official)...)
+	}
 	if err := g.generateCuriosidades(cards, period, published, combinedHash); err != nil {
 		return Result{}, err
 	}

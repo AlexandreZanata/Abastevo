@@ -11,6 +11,9 @@
 #   PORTAL_RELEASE_ROOT private new directory (default: mktemp)
 #   PORTAL_SITE_URL     origin bound in the artifact manifest (default:
 #                       https://portal.example)
+#   PORTAL_OFFICIAL_ONLY=1  artifacts are official-only slices (changes the
+#                       home-page probes from /consultar/ to /fiscalizacao/
+#                       and asserts price routes stay absent)
 #   PORTAL_HTTP_PORT    loopback port (default: 18080)
 #   PORTAL_KEEP=1       keep the release root after the rehearsal
 set -euo pipefail
@@ -21,7 +24,15 @@ cd "$ROOT"
 ARTIFACT_A="${PORTAL_ARTIFACT_A:?PORTAL_ARTIFACT_A is required}"
 ARTIFACT_B="${PORTAL_ARTIFACT_B:-}"
 SITE_URL="${PORTAL_SITE_URL:-https://portal.example}"
+OFFICIAL_ONLY="${PORTAL_OFFICIAL_ONLY:-0}"
 HTTP_PORT="${PORTAL_HTTP_PORT:-18080}"
+MODE_FLAGS=()
+if [[ "$OFFICIAL_ONLY" == "1" ]]; then
+    MODE_FLAGS=(--official-only)
+    HOME_PAGE="/fiscalizacao/"
+else
+    HOME_PAGE="/consultar/"
+fi
 ORIGIN="http://127.0.0.1:${HTTP_PORT}"
 CADDY_IMAGE='caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
 CADDYFILE="$ROOT/infra/caddy/portal-rehearsal.Caddyfile"
@@ -61,7 +72,7 @@ docker run --rm -v "$CADDYFILE:/etc/caddy/Caddyfile:ro" "$CADDY_IMAGE" \
     caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1
 
 release_hash() {
-    "$BIN" verify --root "$RELEASE_ROOT" --site-url "$SITE_URL" | sed -n 's/^current=\([^ ]*\).*/\1/p'
+    "$BIN" verify --root "$RELEASE_ROOT" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" | sed -n 's/^current=\([^ ]*\).*/\1/p'
 }
 
 wait_http() {
@@ -126,7 +137,7 @@ assert_gzip() {
 }
 
 log "promoting candidate A"
-"$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "" >/dev/null
+"$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "" "${MODE_FLAGS[@]}" >/dev/null
 A_HASH="$(release_hash)"
 [[ -n "$A_HASH" ]] || refuse "candidate A did not become current"
 
@@ -138,21 +149,25 @@ docker run --rm -d --name "$NAME" \
     "$CADDY_IMAGE" >/dev/null
 wait_http
 
-assert_status "consultar" 200 "$ORIGIN/consultar/"
-fetch "$ORIGIN/consultar/" "$WORK/consultar.html" "$WORK/consultar.headers"
-assert_header "consultar type" "$WORK/consultar.headers" Content-Type text/html
-assert_header "consultar cache" "$WORK/consultar.headers" Cache-Control "public, max-age=0, must-revalidate"
-assert_header "consultar nosniff" "$WORK/consultar.headers" X-Content-Type-Options nosniff
-assert_header "consultar robots" "$WORK/consultar.headers" X-Robots-Tag noindex
-assert_gzip "consultar" "$ORIGIN/consultar/" text/html
+assert_status "home" 200 "$ORIGIN$HOME_PAGE"
+fetch "$ORIGIN$HOME_PAGE" "$WORK/home.html" "$WORK/home.headers"
+assert_header "home type" "$WORK/home.headers" Content-Type text/html
+assert_header "home cache" "$WORK/home.headers" Cache-Control "public, max-age=0, must-revalidate"
+assert_header "home nosniff" "$WORK/home.headers" X-Content-Type-Options nosniff
+assert_header "home robots" "$WORK/home.headers" X-Robots-Tag noindex
+assert_gzip "home" "$ORIGIN$HOME_PAGE" text/html
 assert_status "missing page" 404 "$ORIGIN/nao-existe/"
 fetch "$ORIGIN/nao-existe/" "$WORK/404.html" "$WORK/404.headers"
 assert_body "404" "$WORK/404.html" "Página não encontrada"
 assert_status "no API proxy" 404 "$ORIGIN/v1/health/live"
 assert_status "no health proxy" 404 "$ORIGIN/health/live"
+if [[ "$OFFICIAL_ONLY" == "1" ]]; then
+    assert_status "no price route" 404 "$ORIGIN/consultar/"
+    assert_status "no price index" 404 "$ORIGIN/precos/"
+fi
 
-CSS_PATH="$(sed -n 's/.*href="\(\/assets\/[^"]*\.css\)".*/\1/p' "$WORK/consultar.html" | head -1)"
-[[ -n "$CSS_PATH" ]] || refuse "consultar has no stylesheet"
+CSS_PATH="$(sed -n 's/.*href="\(\/assets\/[^"]*\.css\)".*/\1/p' "$WORK/home.html" | head -1)"
+[[ -n "$CSS_PATH" ]] || refuse "home has no stylesheet"
 assert_status "css" 200 "$ORIGIN$CSS_PATH"
 fetch "$ORIGIN$CSS_PATH" "$WORK/css" "$WORK/css.headers" -H 'Accept-Encoding: gzip'
 assert_header "css cache" "$WORK/css.headers" Cache-Control "public, max-age=31536000, immutable"
@@ -160,41 +175,59 @@ assert_gzip "css" "$ORIGIN$CSS_PATH" text/css
 
 if [[ -n "$ARTIFACT_B" ]]; then
     log "promoting candidate B with fence"
-    "$BIN" promote --artifact "$ARTIFACT_B" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$A_HASH" >/dev/null
+    "$BIN" promote --artifact "$ARTIFACT_B" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$A_HASH" "${MODE_FLAGS[@]}" >/dev/null
     B_HASH="$(release_hash)"
     [[ -n "$B_HASH" && "$B_HASH" != "$A_HASH" ]] || refuse "candidate B did not switch"
     assert_status "B sitemap" 200 "$ORIGIN/sitemap.xml"
-    fetch "$ORIGIN/consultar/" "$WORK/consultar-b.html" "$WORK/consultar-b.headers"
-    grep -q 'portal\.[a-f0-9]*\.js' "$WORK/consultar-b.html" || refuse "B search script missing"
-    JS_PATH="$(sed -n 's/.*src="\(\/assets\/portal\.[a-f0-9]*\.js\)".*/\1/p' "$WORK/consultar-b.html" | head -1)"
-    [[ -n "$JS_PATH" ]] || refuse "B script path missing"
-    assert_gzip "js" "$ORIGIN$JS_PATH" javascript
+    fetch "$ORIGIN$HOME_PAGE" "$WORK/home-b.html" "$WORK/home-b.headers"
+    if [[ "$OFFICIAL_ONLY" != "1" ]]; then
+        grep -q 'portal\.[a-f0-9]*\.js' "$WORK/home-b.html" || refuse "B search script missing"
+        JS_PATH="$(sed -n 's/.*src="\(\/assets\/portal\.[a-f0-9]*\.js\)".*/\1/p' "$WORK/home-b.html" | head -1)"
+        [[ -n "$JS_PATH" ]] || refuse "B script path missing"
+        assert_gzip "js" "$ORIGIN$JS_PATH" javascript
+    fi
+    # Cross-release asset retention is not implemented: an asset unique to
+    # B must stop being served after the rollback to A. Assets identical in
+    # both releases are shared by content hash, which is correct and stays.
+    B_ASSET="$(grep -o '/assets/[^"]*' "$WORK/home-b.html" | while read -r ref; do
+        rel="${ref#/}"
+        grep -q "\"path\": *\"$rel\"" "$ARTIFACT_A/portal-manifest.json" || { echo "$ref"; break; }
+    done)"
+    if [[ -z "$B_ASSET" ]]; then
+        log "B shares all assets with A by content hash: retention probe skipped"
+    fi
 
     log "rolling back to candidate A"
-    "$BIN" rollback --root "$RELEASE_ROOT" --target "$A_HASH" --site-url "$SITE_URL" >/dev/null
+    "$BIN" rollback --root "$RELEASE_ROOT" --target "$A_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
     assert_status "A sitemap after rollback" 404 "$ORIGIN/sitemap.xml"
+    if [[ -n "$B_ASSET" ]]; then
+        assert_status "B-only asset not retained" 404 "$ORIGIN$B_ASSET"
+    fi
 
     log "corrupting current A and proving safe rollback to B"
     CORRUPT="$(find "$RELEASE_ROOT/releases/$(echo "$A_HASH" | sed 's/^sha256://')" -type f -name '*.html' -print -quit)"
     [[ -n "$CORRUPT" ]] || refuse "no release page to corrupt"
     printf 'corrupt' >"$CORRUPT"
-    if "$BIN" verify --root "$RELEASE_ROOT" --site-url "$SITE_URL" >/dev/null 2>&1; then
+    if "$BIN" verify --root "$RELEASE_ROOT" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null 2>&1; then
         refuse "corrupt current passed verification"
     fi
-    "$BIN" rollback --root "$RELEASE_ROOT" --target "$B_HASH" --site-url "$SITE_URL" >/dev/null
+    "$BIN" rollback --root "$RELEASE_ROOT" --target "$B_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
     assert_status "B sitemap after corrupt rollback" 200 "$ORIGIN/sitemap.xml"
 
     log "re-promoting A and withdrawing A to B"
-    "$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$B_HASH" >/dev/null
-    "$BIN" withdraw --root "$RELEASE_ROOT" --fallback "$B_HASH" --site-url "$SITE_URL" >/dev/null
+    "$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$B_HASH" "${MODE_FLAGS[@]}" >/dev/null
+    "$BIN" withdraw --root "$RELEASE_ROOT" --fallback "$B_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
     assert_status "B sitemap after withdraw to B" 200 "$ORIGIN/sitemap.xml"
-    if "$BIN" rollback --root "$RELEASE_ROOT" --target "$A_HASH" --site-url "$SITE_URL" >/dev/null 2>&1; then
+    if "$BIN" rollback --root "$RELEASE_ROOT" --target "$A_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null 2>&1; then
         refuse "withdrawn A rolled back"
+    fi
+    if "$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null 2>&1; then
+        refuse "withdrawn A re-promoted"
     fi
 
     log "withdrawing the current release without fallback"
-    "$BIN" withdraw --root "$RELEASE_ROOT" --site-url "$SITE_URL" >/dev/null
-    assert_status "withdrawn portal" 404 "$ORIGIN/consultar/"
+    "$BIN" withdraw --root "$RELEASE_ROOT" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "withdrawn portal" 404 "$ORIGIN$HOME_PAGE"
 fi
 
 if [[ "$KEEP" == "1" ]]; then

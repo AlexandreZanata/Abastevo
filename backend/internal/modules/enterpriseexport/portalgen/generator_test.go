@@ -980,3 +980,33 @@ func TestGenerateOfficialOnlyRequiresOfficialDataset(t *testing.T) {
 		t.Fatal("official-only generation accepted a snapshot without official records")
 	}
 }
+
+func TestOfficialInsightsAdmittedFactsOnly(t *testing.T) {
+	snapshot := writeFixture(t)
+	writeOfficialFixture(t, snapshot)
+	out := filepath.Join(t.TempDir(), "portal")
+	if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out}); err != nil {
+		t.Fatal(err)
+	}
+	page := readPortal(t, out, "curiosidades/index.html")
+	for _, want := range []string{
+		"Quantos registros oficiais há nesta edição",
+		"A edição 2025 publica 3 registros: 1 vinculados, 1 sem vínculo e 1 com vínculo ambíguo.",
+		"O que cobre a fiscalização publicada",
+		"O que significa o vínculo de um registro",
+		"Multa não prova adulteração, culpa ou definitividade",
+		"Vínculo não prova operação histórica no local",
+		"Decisão de associação da revisão sobre o CNPJ integral",
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("curiosidades missing %q", want)
+		}
+	}
+	for _, forbidden := range []string{
+		"pior posto", "campeã de multas", "ranking de postos", "culpada", "sonegador",
+	} {
+		if strings.Contains(strings.ToLower(page), forbidden) {
+			t.Errorf("official insights contain a prohibited verdict: %q", forbidden)
+		}
+	}
+}

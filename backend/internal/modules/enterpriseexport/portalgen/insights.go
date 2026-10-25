@@ -271,3 +271,49 @@ func valueOr(value, fallback string) string {
 	}
 	return value
 }
+
+// buildOfficialInsights answers the approved official-records questions from
+// the frozen export manifest: event counts with denominators, coverage
+// (edition/period/clock), and the meaning of association states. It states
+// no guilt, current quality, interdiction or station ranking: a fine is one
+// historical event, and absence from the slice is not a clean certificate.
+func buildOfficialInsights(official *officialDataset) []insightCard {
+	if official == nil {
+		return nil
+	}
+	manifest := official.Manifest
+	census := manifest.AssociationCensus
+	return []insightCard{
+		{
+			Question: "Quantos registros oficiais há nesta edição",
+			Answer: fmt.Sprintf(
+				"A edição %s publica %d %s: %d vinculados, %d sem vínculo e %d com vínculo ambíguo.",
+				valueOr(manifest.SourcePeriod, manifest.Edition),
+				manifest.Rows, plural(manifest.Rows, "registro", "registros"),
+				census.Linked, census.Unmatched, census.Ambiguous),
+			Caveat:     "Multa não prova adulteração, culpa ou definitividade; ausência neste recorte não é certidão negativa.",
+			Formula:    "Contagem dos eventos publicados na revisão, por estado de associação; fonte ANP.",
+			SourceHref: manifest.SourceURL,
+		},
+		{
+			Question: "O que cobre a fiscalização publicada",
+			Answer: fmt.Sprintf(
+				"Retrato anual da edição %s, extração %s (precisão %s). Não é o histórico completo de cada empresa nem a situação atual.",
+				valueOr(manifest.SourcePeriod, manifest.Edition),
+				valueOr(manifest.SourceClockValue, "não informada"),
+				valueOr(manifest.SourceClockPrecision, "não informada")),
+			Caveat:     "Registros posteriores à extração não aparecem; uma fonte mais nova exige nova revisão.",
+			Formula:    "Edição anual mais mês de extração da fonte; relógio da fonte, não da publicação Abastevo.",
+			SourceHref: manifest.SourceURL,
+		},
+		{
+			Question: "O que significa o vínculo de um registro",
+			Answer: fmt.Sprintf(
+				"Vinculado indica empresa atual na data da decisão (%s); sem vínculo ou ambíguo indicam que nenhuma empresa única pôde ser afirmada. Vínculo não prova operação histórica no local.",
+				valueOr(manifest.AssociationDecisionDay, "data da decisão")),
+			Caveat:     "A associação congela na revisão publicada; mudanças posteriores no cadastro exigem nova revisão.",
+			Formula:    "Decisão de associação da revisão sobre o CNPJ integral e o cadastro vigente.",
+			SourceHref: manifest.SourceURL,
+		},
+	}
+}

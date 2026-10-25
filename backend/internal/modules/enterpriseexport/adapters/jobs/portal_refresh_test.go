@@ -545,3 +545,107 @@ func TestRefreshOfficialOnlyWithdrawsWithoutFallback(t *testing.T) {
 		t.Fatalf("official-only withdrawal receipt = %+v", refresh)
 	}
 }
+
+// linkRefreshOfficial rewrites the export candidate's official files so the
+// single record is linked to the snapshot station, simulating a Directory
+// change accepted into a new revision. Census, payload hash and the state
+// pin move together; a partial edit is a test bug, not a product path.
+func linkRefreshOfficial(t *testing.T, exportRoot string, revision, stationID string) {
+	t.Helper()
+	state, ok := LoadState(exportRoot)
+	if !ok {
+		t.Fatal("export state missing")
+	}
+	payloadPath := filepath.Join(state.CandidateDir, "official-records.jsonl")
+	raw, err := os.ReadFile(payloadPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var record map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(string(raw))), &record); err != nil {
+		t.Fatal(err)
+	}
+	record["association_state"] = "linked"
+	record["association_reason"] = "exact current cnpj; historical business window unknown"
+	record["station_id"] = stationID
+	record["revision_id"] = revision
+	payload, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload = append(payload, '\n')
+	if err := os.WriteFile(payloadPath, payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(payload)
+	manifestPath := filepath.Join(state.CandidateDir, "official-records-manifest.json")
+	manifestRaw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest map[string]any
+	if err := json.Unmarshal(manifestRaw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest["revision_id"] = revision
+	manifest["payload_sha256"] = hex.EncodeToString(sum[:])
+	manifest["association_census"] = map[string]any{"total": 1, "linked": 1, "unmatched": 0, "ambiguous": 0, "wrong_branch": 0, "succession_review": 0}
+	remanifested, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(manifestPath, append(remanifested, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if state.Official == nil {
+		t.Fatal("export state has no official pin")
+	}
+	state.Official.RevisionID = revision
+	state.Official.Linked = 1
+	state.Official.Unmatched = 0
+	state.Official.PayloadSHA256 = hex.EncodeToString(sum[:])
+	if err := WriteState(exportRoot, state); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRefreshRebuildsOnAssociationChange(t *testing.T) {
+	exportRoot, portalRoot, handler, _ := refreshFixture(t)
+	handler.Status = func(context.Context) (SourceStatus, error) {
+		return SourceStatus{HasPublished: true, RevisionID: refreshOfficialA, Status: "published"}, nil
+	}
+	writeRefreshExport(t, exportRoot, "unmatched", "sha256:"+strings.Repeat("e", 64), "6000", refreshOfficialA)
+	if err := runRefresh(t, handler); err != nil {
+		t.Fatal(err)
+	}
+	first := refreshCurrent(t, portalRoot)
+	// A Directory change accepted into revision B links the record: the new
+	// release must carry the link, and the link states the decision day,
+	// never historical operation.
+	linkRefreshOfficial(t, exportRoot, refreshOfficialB, refreshStationID)
+	handler.Status = func(context.Context) (SourceStatus, error) {
+		return SourceStatus{HasPublished: true, RevisionID: refreshOfficialB, Status: "published"}, nil
+	}
+	if err := runRefresh(t, handler); err != nil {
+		t.Fatal(err)
+	}
+	second := refreshCurrent(t, portalRoot)
+	if second.ContentSHA256 == first.ContentSHA256 || second.OfficialRevisionID != refreshOfficialB {
+		t.Fatalf("association change not released: %+v", second)
+	}
+	matches, err := filepath.Glob(filepath.Join(portalRoot, "current", "fiscalizacao", "registro", "*", "index.html"))
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("record pages = %v, %v", matches, err)
+	}
+	record, err := os.ReadFile(matches[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(record)
+	if !strings.Contains(body, "Vinculado a posto") || !strings.Contains(body, "/postos/"+refreshStationID+"/") {
+		t.Error("linked association missing from the rebuilt release")
+	}
+	if !strings.Contains(body, "não é histórico de propriedade") {
+		t.Error("link states historical operation instead of the decision day")
+	}
+}
