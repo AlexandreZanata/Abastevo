@@ -48,7 +48,7 @@ marked (`ANPFUEL_TEST_DATABASE_URL=postgres://anpfuel:anpfuel@127.0.0.1:5434/anp
 ```sh
 go test -count=1 -run 'TestPAY21|TestSandboxHarness' ./internal/modules/payments/adapters/
 go test -tags=sandbox -count=1 -run 'TestSandbox' ./internal/modules/payments/adapters/
-ANPFUEL_SANDBOX_STRIPE_SECRET='sk_live_synthetic' ... go test -tags=sandbox -count=1 -run 'TestSandboxStripeCustomerCheckoutAndRecovery' ./internal/modules/payments/adapters/
+ANPFUEL_SANDBOX_STRIPE_SECRET='<live-looking test value>' ... go test -tags=sandbox -count=1 -run 'TestSandboxStripeCustomerCheckoutAndRecovery' ./internal/modules/payments/adapters/
 ANPFUEL_TEST_DATABASE_URL=<local disposable DSN> \
   go test -race -tags=integration -count=1 ./internal/modules/payments/... ./internal/modules/subscription/...
 ANPFUEL_TEST_DATABASE_URL=<local disposable DSN> \
