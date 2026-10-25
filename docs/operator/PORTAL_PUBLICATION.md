@@ -64,6 +64,23 @@ HTTP origins, paths with `..`, price/registry/PMQC public slices, missing
 rights references and missing source pins are rejected. The scope is an
 operator declaration; the script cannot authenticate the approver or ownership.
 
+## Publication modes
+
+`scope.publication_mode` is `full` or `official-only`. When absent it is
+inferred from `source_slices`: exactly `["official-sanctions"]` selects
+official-only, anything else selects full. The mode is checked against the
+candidate manifest (`official_only`): a mode mismatch fails the gate.
+
+- **full:** home page is `/consultar/` (must be `index,follow`); the full
+  route set applies.
+- **official-only:** home page is `/fiscalizacao/` (must be `index,follow`
+  for a public candidate); only fiscalizacao/metodologia/404/assets/robots/
+  sitemap/manifest families may exist (exact allowlist in `portalcheck`).
+
+External approval stays separate from the local result: exit `3`
+(`READY_FOR_EXECUTION_APPROVAL`) still requires execution approval and
+external ownership verification before any mutation.
+
 ## Local preflight
 
 ```sh
@@ -94,15 +111,26 @@ source scope. It writes `preflight.json` and always records
    `current`; keep the previous release for rollback. Configure the public edge
    without the preview `X-Robots-Tag: noindex`, with HSTS/TLS, cache headers,
    sitemap/robots indexability and the CDN policy.
-4. Run the public smoke with the exact content hash:
+4. Run the public smoke with the exact content hash and the matching mode
+   and topology:
 
 ```sh
 bash infra/scripts/smoke_portal_public.sh \
   --origin https://<approved-origin> \
   --expected-sha sha256:<candidate> \
-  --pages /consultar/,/fiscalizacao/,/metodologia/ \
+  --mode full|official-only \
+  --topology dedicated|shared \
   --out <smoke-summary.txt>
 ```
+
+   Defaults differ per mode (`official-only` checks `/fiscalizacao/` and
+   `/metodologia/` and refuses served price routes); `--pages` overrides.
+   `--topology` is required and has no generic acceptance:
+
+   | Topology | Requirement |
+   | --- | --- |
+   | `dedicated` static host | `/v1/*` and `/health/*` must be absent (404): the host serves no API. |
+   | `shared` host | `/health/live` must stay 200: the existing API is preserved. |
 
 5. Only after smoke PASS, publish/refresh `sitemap.xml` and indexability, then
    purge the CDN if selected. Record the exact release, source pin, counts,
@@ -127,11 +155,38 @@ self-tested but not run against a public origin because none is approved.
 - ESP-16 capacity was local loopback only; no CDN or VPS-direct campaign was
   run. Public capacity remains OWED.
 
-## Rollback
+## Rollback, withdrawal reasons and the serving pointer
 
-Keep the prior public release root and its content hash. On failure: stop
-promotion, switch `current` back to the last safe release, restore the previous
-edge/indexability state, and run the public smoke against the rollback hash.
-If the official source is withdrawn, use the publisher's `withdraw` path
-(fallback or 404) and remove/rebuild affected sitemap entries. Cross-release
-retention of old content-addressed JS/sitemap remains OWED.
+Three different operations, three different meanings:
+
+- **Operational rollback** (`portalrelease rollback --target <hash>`):
+  return to a still-valid recorded release. Refused for withdrawn or
+  revoked content.
+- **Service pause** (`portalrelease withdraw` without fallback, reason
+  empty or `operator-pause`): the content stays eligible for a future
+  release; the pointer is removed (404) until republication.
+- **Invalid-content withdrawal** (`portalrelease withdraw
+  --reason revoked-source`): the release's official revision/lease is
+  recorded as revoked in `state.json` and can never be served again by
+  any artifact or hash. Unknown reasons are refused, and there is no
+  administrative path that clears a revocation.
+
+`Promote` refuses a withdrawn artifact (`ErrReleaseWithdrawn`) and
+revoked official content (`ErrOfficialRevoked`) before any copy or
+pointer switch; the marks stay in history across restarts.
+
+**Serving-pointer contract.** The private `current` pointer governs
+promotion; it never serves traffic directly. Whatever serves HTTP (edge
+config, static root, `serve/current` copy) is a separate pointer owned
+by the same maintenance step. A withdrawal or a failure between steps
+must never leave withdrawn content served: withdraw/unpoint first,
+verify the 404, then switch fallback or repromote, repoint, and verify
+the expected hash. Test interruptions on the real path at each
+authorized execution; local rehearsals do not prove the live edge.
+
+**Staging access posture.** `noindex` means not indexable; it does not
+mean private. A staging route answers anonymous GET unless an access
+control is applied. If staging must be restricted, prepare an
+edge-compatible control (client allowlist or basic-auth at the edge,
+scoped to the staging consumers) without committing secrets and without
+interrupting the API: NOT_APPLIED by default, recorded per execution.

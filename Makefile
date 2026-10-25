@@ -90,7 +90,7 @@ preflight-portal-publication:
 	python3 infra/scripts/load/publication_preflight.py --artifact "$${PORTAL_PUBLICATION_ARTIFACT:?}" --scope "$${PORTAL_PUBLICATION_SCOPE:?}" --out "$${PORTAL_PUBLICATION_OUT:-/tmp/portal-preflight.json}"
 
 smoke-portal-public:
-	bash infra/scripts/smoke_portal_public.sh --origin "$${PORTAL_PUBLIC_ORIGIN:?}" --expected-sha "$${PORTAL_EXPECTED_CONTENT_SHA256:?}" --out "$${PORTAL_SMOKE_OUT:-/tmp/portal-smoke.txt}"
+	bash infra/scripts/smoke_portal_public.sh --origin "$${PORTAL_PUBLIC_ORIGIN:?}" --expected-sha "$${PORTAL_EXPECTED_CONTENT_SHA256:?}" --mode "$${PORTAL_SMOKE_MODE:-full}" --topology "$${PORTAL_SMOKE_TOPOLOGY:?}" --out "$${PORTAL_SMOKE_OUT:-/tmp/portal-smoke.txt}"
 
 check-compat:
 	bash scripts/check-compat.sh

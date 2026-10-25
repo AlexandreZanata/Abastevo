@@ -141,3 +141,49 @@ Standing rollback: restore the edge backup + reload, `withdraw` (or
 None for this phase. The next authorized staging step is a second
 official-only release (replay promote/smoke/rollback); the next
 portal-scope decision stays with rights/public-origin approval.
+
+## Addendum 2026-10-25 — review corrections (history preserved above)
+
+A review reproduced three defects in the tooling this phase relied on; the
+recorded rollback drill exercised the first one. Nothing above is deleted;
+what follows corrects the interpretation and records the remaining work.
+
+1. **Withdrawn releases could be re-promoted.** `Promote` only checked the
+   withdrawal mark when the hash was already current, so withdraw →
+   repromote of the same artifact succeeded. The drill above therefore did
+   **not** prove a valid rollback: it proved the resurrection path. Fixed
+   in this branch: `Promote` refuses withdrawn content
+   (`ErrReleaseWithdrawn`) before any copy/switch and preserves the mark;
+   `revoked-source` withdrawals additionally record the official
+   revision/lease identity, and any artifact carrying it is refused by
+   promote, rollback and fallback (`ErrOfficialRevoked`). A valid
+   operational rollback is A → B → A across two candidates, with fallback
+   to a safe release or 404 on withdrawal. The staging A → B → A drill is
+   OWED on the next explicitly authorized staging execution (no VPS
+   mutation under a local correction prompt).
+2. **Staging access posture.** `noindex` means not indexable; it does not
+   mean private. The staging route answered anonymous GET during this
+   review. No access control is applied; an edge-compatible control scoped
+   to staging consumers is prepared in the runbook (NOT_APPLIED, no
+   secrets, API untouched).
+3. **API history is not static history.** The seven editions are readable
+   through revision-pinned API leases; the static route presents the
+   current 2025 edition only. Do not cite API coverage as static coverage.
+4. **Obligation ledger for the portal line.** Implemented locally,
+   accepted with real data, running in staging, integrated, published and
+   externally dependent are different states:
+
+   | Obligation | State |
+   | --- | --- |
+   | ESP-00–ESP-06, ESP-08–ESP-11, ESP-13–ESP-15, ESP-17 | LOCAL_DONE |
+   | ESP-07 real prices (880 over-precision rows) | BLOCKED_OVER_PRECISION |
+   | ESP-12 official insights/downloads | PARTIAL (price slice only) |
+   | ESP-11 live association revalidation/rebound | OWED |
+   | ESP-16 public capacity | OWED (local loopback only) |
+   | ESP-18 public publication | BLOCKED_EXTERNAL_AUTHORIZATION |
+   | ESP-STAGING-01 continuous operation | BLOCKED until the staging A → B → A drill and the corrections above ship |
+
+It is therefore false that only ESP-18 remains: the table above owns the
+rest. Continuous-operation readiness for ESP-STAGING-01 stays blocked
+until the authorized staging drill replays promote/smoke/withdraw with
+two valid candidates under the fixed publisher.

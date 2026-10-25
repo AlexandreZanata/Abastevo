@@ -111,7 +111,18 @@ absolute private path distinct from the export root. The worker schedules
 enqueues an export build; a successful new export state enqueues a refresh
 immediately. The periodic job recovers lost hooks.
 
-The refresh reads the durable export candidate, generates a portal candidate,
+### Official-only refresh scope
+
+`ANPFUEL_ENTERPRISE_PORTAL_OFFICIAL_ONLY=true` restricts the whole refresh
+pipeline to the admitted official-records slice: generation, verification,
+promotion, rollback and withdrawal all run in official-only mode, and an
+official-only refresh can never emit the full portal or widen sources. It
+requires a published official revision (refuses without one) and withdraws to
+404 instead of falling back to a full release. Build official-only candidates
+with the maintained `cmd/portalexport` command (read-only repeatable-read
+transaction over `ExportPin`/`BuildOfficialExport`, verified with
+`portalcheck --official-only`); one-off uncommitted helpers are not a
+substitute.The refresh reads the durable export candidate, generates a portal candidate,
 verifies it, and promotes it with an expected-current fence. If the export state
 and source pin are unchanged, or the generated content hash already equals the
 current release, it records a no-op and leaves the release untouched. A failed
@@ -226,7 +237,10 @@ because it is a publication candidate; the preview edge header blocks indexing.
 ### Release backup and recovery
 
 The release root is private and reproducible; back up `state.json`, `releases/`
-and the `current` symlink together. Restore into a new private root, run
+and the `current` symlink together. The private `current` pointer governs
+promotion only: whatever serves HTTP (edge config, static root, a serve copy)
+is a separate pointer owned by the same maintenance step — see the
+serving-pointer contract in the [publication gate](PORTAL_PUBLICATION.md#rollback-withdrawal-reasons-and-the-serving-pointer). Restore into a new private root, run
 `portalrelease verify --root <restored> --site-url <origin>`, then rehearse
 rollback across the restored releases before switching any preview. The ESP-17
 rehearsal verified the archive hash, restored current A, switched to B and back

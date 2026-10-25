@@ -1,5 +1,11 @@
 # Current execution state
 
+- Enterprise portal review corrections 2026-10-25: IN_PROGRESS / LOCAL_ONLY on `codex/enterprise-static-portal`.
+  Three reproduced defects, no VPS/publication/merge: (1) withdrawn releases could be re-promoted — fixed with pre-copy refusal preserving the mark plus revoked-source identity (`ErrReleaseWithdrawn`/`ErrOfficialRevoked`); the STAGING-01 drill exercised the defect, corrected by addendum without deleting history; staging A → B → A drill OWED.
+  (2) preflight/smoke are mode-aware (official-only home `/fiscalizacao/`, manifest cross-check) with required dedicated|shared topology and generator→preflight integration tests; approval stays external.
+  (3) official-only verification enforces an exact file allowlist (export CSV/JSONL and unexpected roots refused even when manifested).
+  (4) maintained `cmd/portalexport` replaces the uncommitted helper (read-only REPEATABLE READ over ExportPin/BuildOfficialExport; real-PostGIS no-op/second-version/refusal green); `Refresh`/config/worker propagate `OfficialOnly` (official-only withdraw goes 404, never full fallback); serve/current pointer contract in the runbook.
+  (5) obligation ledger corrected: ESP-07 real prices BLOCKED_OVER_PRECISION, ESP-12 PARTIAL, ESP-11 revalidation OWED, ESP-16 public capacity OWED, ESP-18 public BLOCKED; staging noindex != private (anonymous GET documented). Next: full local validation, atomic commits.
 - Enterprise portal ESP-STAGING-01 2026-10-25: STAGING_DONE / NOT_PUBLIC on `codex/enterprise-static-portal` after ESP-18 `f1591b82`.
   [Evidence](../backend/evidence/enterprise-static/ESP-STAGING-01.md). User-authorized scope: real FQ-07 2016–2025 via staging API plus official-only `/fiscalizacao` on `https://teste.abastevo.com.br`; no synthetics.
   Implemented `portalgen`/`portalcheck`/`portalrelease --official-only` (admitted slice only, delinked station hrefs, mode-mismatch refusal); `enterpriseexport` suites green.
