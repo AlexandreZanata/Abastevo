@@ -321,8 +321,12 @@ func TestGenerateFixturePages(t *testing.T) {
 	for _, page := range []string{
 		"consultar/index.html", "precos/index.html", "precos/uf/SP/index.html",
 		"precos/uf/SP/municipio/3550308/index.html", "postos/" + stA + "/index.html",
+		"metodologia/index.html", "404.html",
 	} {
 		html := readPortal(t, out, page)
+		if !strings.Contains(html, "/assets/portal.") || !strings.Contains(html, ".css") {
+			t.Errorf("%s lacks the shared stylesheet", page)
+		}
 		if strings.Contains(html, "<script") || strings.Contains(html, "/v1/") ||
 			strings.Contains(html, "fetch(") || strings.Contains(html, "mais barato") ||
 			strings.Contains(html, "preço atual") {
@@ -503,6 +507,11 @@ func TestSearchScriptIsEmbeddedAndReferenced(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("search script missing from portal manifest")
+	}
+	for _, page := range []string{"consultar/index.html", "metodologia/index.html", "404.html"} {
+		if !strings.Contains(readPortal(t, out, page), match[1]) {
+			t.Errorf("%s does not reference the search script", page)
+		}
 	}
 }
 

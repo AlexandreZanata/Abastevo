@@ -1128,20 +1128,13 @@ func (g *generator) generateDownloads(files []downloadFile, manifest downloadFil
 }
 
 func (g *generator) generateStatic(period, published, inputHash string) error {
-	metodologia := pageBase{
-		Title: "Metodologia e fontes", Description: "Fontes, datas, amostra, cálculos derivados, correções, direitos e limites da publicação.",
-		ActiveNav: "metodologia", Indexable: g.indexable, Period: period, PublishedAt: published, InputHash: inputHash,
-		Breadcrumbs: []crumb{{Label: "Metodologia", Current: true}},
-	}
+	metodologia := g.base("Metodologia e fontes", "Fontes, datas, amostra, cálculos derivados, correções, direitos e limites da publicação.", "metodologia", period, published, inputHash, []crumb{{Label: "Metodologia", Current: true}})
 	if err := g.writePage("metodologia/index.html", "metodologia", metodologia); err != nil {
 		return err
 	}
 	g.addSitemapRoute("/metodologia/")
-	notFound := pageBase{
-		Title: "Página não encontrada", Description: "A página ou o posto solicitado não existe neste portal estático.",
-		ActiveNav: "", Indexable: false, Period: period, PublishedAt: published, InputHash: inputHash,
-		Breadcrumbs: []crumb{{Label: "Página não encontrada", Current: true}},
-	}
+	notFound := g.base("Página não encontrada", "A página ou o posto solicitado não existe neste portal estático.", "", period, published, inputHash, []crumb{{Label: "Página não encontrada", Current: true}})
+	notFound.Indexable = false
 	return g.writePage("404.html", "notfound", notFound)
 }
 
