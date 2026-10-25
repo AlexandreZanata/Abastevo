@@ -1,16 +1,24 @@
 # Current execution state
 
 - Stripe/Asaas payment PAY-22 2026-10-25: INTEGRATION_PENDING.
-  `codex/payments-stripe-asaas` fast-forward merged into `dev` (isolated
-  worktree, no conflicts, no foreign code) and pushed `721582b8..6e5e8518`
-  without force. Cumulative protected PR `AlexandreZanata/Abastevo#150`
-  (dev → main, ready) carries 56 commits (maps, Android test-only,
-  PAY-00–21). [PAY-22 evidence](../backend/evidence/payments/PAY-22.md):
-  `make quick-verify` ok plus race payments/subscription/api suites PASS
-  on the exact head; two secret-scan findings fixed in new commits.
-  Remote Quick verification queued at PR creation; merge awaits green CI
-  via guarded finish. No other work branch touched.
-  Next: guarded merge on green CI, then PAY-23 after authorization.
+  `codex/payments-stripe-asaas` fast-forward merged into `dev` in the
+  isolated `pay22-dev` worktree (no conflicts, no foreign code; the
+  occupied local `dev` branch at `5c9f5204` untouched, all work in
+  detached worktrees plus a separate `pay22-full` clone for the helper).
+  Pushed `721582b8..6e5e8518` without force; cumulative protected PR
+  `AlexandreZanata/Abastevo#150` (dev → main, ready) carries 56 commits
+  (maps, Android Premium behavior/UI, PAY-00–21). Candidate corrections
+  after review: Pix concurrent root cause (lenient order double vs
+  durable timestamps) fixed with deterministic rendezvous regression
+  plus PostGIS proof (`dbff7917`, repro 50/50 green); Stripe 401 mapping
+  and PAY-21 harness rework around real/operator resources (`c9ea4aa4`,
+  `8313283b`, PENDING kept); worker dispatcher maps completed
+  (`d149e092`, remainder byte-identical to pristine dev). Android
+  Premium suites re-run on the candidate: 20 tests, 0 failures.
+  [PAY-22 evidence](../backend/evidence/payments/PAY-22.md). Remote CI
+  on the corrected head pending; merge awaits green CI via guarded
+  finish. No other work branch touched.
+  Next: push corrections, refresh PR #150, guarded merge on green CI.
 
 - Stripe/Asaas payment PAY-21 2026-10-25: PENDING on
   `codex/payments-stripe-asaas`, parent PAY-20 `45e90604`. No sandbox
