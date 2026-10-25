@@ -136,12 +136,14 @@ class MapViewModel @Inject constructor(
 
     fun syncCameraFromEngine(): MapCamera? {
         if (disposed || !_state.value.ready) return null
-        val center = engine.currentCenter() ?: return _state.value.camera
         val current = _state.value.camera ?: defaultCamera
-        val dLat = kotlin.math.abs(center.latitude - current.latitude)
-        val dLon = kotlin.math.abs(center.longitude - current.longitude)
-        if (dLat >= 0.0005 || dLon >= 0.0005) {
-            val updated = current.copy(latitude = center.latitude, longitude = center.longitude)
+        val native = engine.currentCamera() ?: engine.currentCenter()?.let {
+            current.copy(latitude = it.latitude, longitude = it.longitude)
+        } ?: return _state.value.camera
+        val dLat = kotlin.math.abs(native.latitude - current.latitude)
+        val dLon = kotlin.math.abs(native.longitude - current.longitude)
+        if (dLat >= 0.0005 || dLon >= 0.0005 || native.zoom != current.zoom) {
+            val updated = native.copy(zoom = native.zoom.coerceIn(1, 20))
             _state.update { it.copy(camera = updated) }
             return updated
         }
@@ -158,12 +160,9 @@ class MapViewModel @Inject constructor(
 
     fun onHostStop() {
         if (disposed) return
-        val camera = _state.value.camera ?: return
-        engine.currentCenter()?.let {
-            val saved = camera.copy(latitude = it.latitude, longitude = it.longitude)
-            cameraStore.save(saved)
-            _state.update { state -> state.copy(camera = saved) }
-        }
+        val camera = syncCameraFromEngine() ?: return
+        cameraStore.save(camera)
+        _state.update { it.copy(camera = camera) }
     }
 
     fun dispose() {

@@ -34,7 +34,8 @@ LICENSE_NAMES = {
 }
 URL = re.compile(rb"https?://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]{4,200}")
 SECRET = re.compile(
-    rb"(AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|sk-[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,})"
+    rb"(AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|github_"
+    rb"pat_[A-Za-z0-9_]{40,}|sk-[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,})"
 )
 
 RESOLUTIONS = {

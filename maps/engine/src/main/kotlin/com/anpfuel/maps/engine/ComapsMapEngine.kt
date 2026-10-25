@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
+import app.organicmaps.sdk.util.Config
 import app.organicmaps.sdk.Framework
 import app.organicmaps.sdk.MapViewHelper
 import app.organicmaps.sdk.OrganicMaps
@@ -51,11 +52,18 @@ class ComapsMapEngine(
     private var overlayGeneration = 0L
     private val readyCallbacks = MapReadyCallbacks()
     private var searchGeneration = 0L
+    @Volatile
+    private var lastViewport: MapCamera? = null
 
     @Synchronized
     override fun initialize(context: Context, onReady: () -> Unit): Boolean {
         readyCallbacks.add(onReady)
         if (initialized) {
+            appContext?.let { app ->
+                if (Looper.myLooper() == Looper.getMainLooper()) {
+                    syncStorageAndReloadOnMain(app, forceReload = false)
+                }
+            }
             installPlacePageListener()
             readyCallbacks.take().forEach { it() }
             return true
@@ -83,11 +91,13 @@ class ComapsMapEngine(
             "${app.packageName}.mapfileprovider",
             locationFactory,
         )
+        runCatching { Config.setStoragePath(canonicalStorageRoot(app)) }
         organicMaps = engine
         return try {
             engine.init {
                 initialized = true
                 initializing = false
+                syncStorageAndReloadOnMain(app, forceReload = false)
                 val callbacks = readyCallbacks.take()
                 if (callbacks.isNotEmpty()) installPlacePageListener()
                 callbacks.forEach { it() }
@@ -103,30 +113,175 @@ class ComapsMapEngine(
 
     override fun newMapView(context: Context): View {
         check(initialized) { "Map surface requested before native initialization" }
-        return MapViewHelper.create(context, checkNotNull(organicMaps).locationHelper)
+        return MapViewHelper.create(context, checkNotNull(organicMaps).locationHelper) {
+            lastViewport?.let { vp ->
+                if (initialized) {
+                    Framework.nativeZoomToPoint(vp.latitude, vp.longitude, vp.zoom, false)
+                    Framework.nativeSetViewportCenter(vp.latitude, vp.longitude, vp.zoom)
+                    Framework.nativeSetSearchViewport(vp.latitude, vp.longitude, vp.zoom)
+                }
+            }
+        }
     }
 
     override fun setViewport(latitude: Double, longitude: Double, zoom: Int) {
+        val clampedZoom = zoom.coerceIn(1, 20)
+        lastViewport = MapCamera(latitude, longitude, clampedZoom)
         if (initialized) {
-            Framework.nativeSetViewportCenter(latitude, longitude, zoom)
+            Framework.nativeZoomToPoint(latitude, longitude, clampedZoom, false)
+            Framework.nativeSetViewportCenter(latitude, longitude, clampedZoom)
+            Framework.nativeSetSearchViewport(latitude, longitude, clampedZoom)
         }
+    }
+
+    private fun liveScreenCenter(): MapCenter? {
+        if (!initialized) return null
+        val screenCenter = try {
+            Framework.nativeGetScreenRectCenter()
+        } catch (_: Exception) {
+            null
+        }
+        if (
+            screenCenter != null &&
+            screenCenter.size == 2 &&
+            !screenCenter[0].isNaN() &&
+            !screenCenter[1].isNaN() &&
+            (kotlin.math.abs(screenCenter[0]) > 1e-6 || kotlin.math.abs(screenCenter[1]) > 1e-6)
+        ) {
+            return MapCenter(screenCenter[0], screenCenter[1])
+        }
+        return null
     }
 
     override fun currentCenter(): MapCenter? {
         if (!initialized) return null
-        val center = Framework.nativeGetParsedCenterLatLon() ?: return null
-        if (center.size != 2 || center[0].isNaN() || center[1].isNaN()) return null
-        return MapCenter(center[0], center[1])
+        liveScreenCenter()?.let { return it }
+        val parsed = try {
+            Framework.nativeGetParsedCenterLatLon()
+        } catch (_: Exception) {
+            null
+        }
+        if (
+            parsed != null &&
+            parsed.size == 2 &&
+            !parsed[0].isNaN() &&
+            !parsed[1].isNaN() &&
+            (kotlin.math.abs(parsed[0]) > 1e-6 || kotlin.math.abs(parsed[1]) > 1e-6)
+        ) {
+            return MapCenter(parsed[0], parsed[1])
+        }
+        return lastViewport?.let { MapCenter(it.latitude, it.longitude) }
+    }
+
+    override fun currentCamera(): MapCamera? {
+        if (!initialized) return null
+        val live = liveScreenCenter()
+        if (live != null) {
+            val scale = try {
+                Framework.nativeGetDrawScale()
+            } catch (_: Exception) {
+                0
+            }
+            val zoom = if (scale in 1..20) scale else (lastViewport?.zoom ?: 13)
+            return MapCamera(live.latitude, live.longitude, zoom).also { lastViewport = it }
+        }
+        return lastViewport ?: currentCenter()?.let { MapCamera(it.latitude, it.longitude, 13) }
     }
 
     override fun recenter(): Boolean {
         if (!initialized) return false
         val position = organicMaps?.locationHelper?.myPosition ?: return false
-        Framework.nativeSetViewportCenter(position.lat, position.lon, 15)
+        setViewport(position.lat, position.lon, 15)
         return true
     }
 
     override fun isInitialized(): Boolean = initialized
+
+    override fun suspendMapReads(): Boolean {
+        if (!initialized) return true
+        check(Looper.myLooper() == Looper.getMainLooper()) { "Native map storage requires Main" }
+        val empty = File(checkNotNull(appContext).filesDir, "map-publication-idle").apply { mkdirs() }
+        Framework.nativeChangeWritableDir(empty.canonicalPath + File.separator)
+        return true
+    }
+
+    override fun reloadMaps(): Boolean {
+        if (!initialized) return false
+        val app = appContext ?: return false
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            return syncStorageAndReloadOnMain(app, forceReload = true)
+        }
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var ok = false
+        Handler(Looper.getMainLooper()).post {
+            try {
+                ok = syncStorageAndReloadOnMain(app, forceReload = true)
+            } finally {
+                latch.countDown()
+            }
+        }
+        latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+        return ok
+    }
+
+    override fun writableDir(): String? {
+        if (!initialized) return null
+        return try {
+            Framework.nativeGetWritableDir()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun <T> callOnMain(block: () -> T): T {
+        if (Looper.myLooper() == Looper.getMainLooper()) return block()
+        val task = java.util.concurrent.FutureTask(java.util.concurrent.Callable { block() })
+        Handler(Looper.getMainLooper()).post(task)
+        return try {
+            task.get(5, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (error: Exception) {
+            task.cancel(false)
+            throw error
+        }
+    }
+
+    override fun isDownloadedMapAtScreenCenter(): Boolean =
+        initialized && callOnMain { Framework.nativeIsDownloadedMapAtScreenCenter() }
+
+    override fun downloadedMapsCount(): Int =
+        if (!initialized) 0 else callOnMain {
+            app.organicmaps.sdk.downloader.MapManager.nativeGetDownloadedCount()
+        }
+
+    private fun canonicalStorageRoot(app: Context): String {
+        val canonical = runCatching { app.filesDir.canonicalFile }.getOrElse { app.filesDir.absoluteFile }
+        val path = canonical.path
+        return if (path.endsWith(File.separator)) path else "$path${File.separator}"
+    }
+
+    private fun syncStorageAndReloadOnMain(app: Context, forceReload: Boolean): Boolean {
+        if (!initialized) return false
+        return try {
+            val desiredRoot = canonicalStorageRoot(app)
+            Config.setStoragePath(desiredRoot)
+            val currentDir = Framework.nativeGetWritableDir().orEmpty()
+            val currentCanonical = runCatching { File(currentDir).canonicalFile.path }
+                .getOrElse { File(currentDir).absolutePath }
+            val desiredCanonical = desiredRoot.trimEnd(File.separatorChar)
+            if (currentCanonical != desiredCanonical || forceReload) {
+                // This JNI call removes/re-registers ALL local maps. ReloadWorldMaps
+                // only reloads world overview files and misses regional packages.
+                Framework.nativeChangeWritableDir(desiredRoot)
+            }
+            lastViewport?.let { vp ->
+                Framework.nativeSetSearchViewport(vp.latitude, vp.longitude, vp.zoom)
+            }
+            true
+        } catch (error: Exception) {
+            Log.e("ComapsMapEngine", "failed to synchronize storage root and reload maps", error)
+            false
+        }
+    }
 
     override fun search(
         context: Context,
@@ -157,7 +312,20 @@ class ComapsMapEngine(
         }
         searchListener = listener
         SearchEngine.INSTANCE.addListener(listener)
-        return SearchEngine.INSTANCE.search(context, query, false, timestamp, false, 0.0, 0.0)
+        val center = currentCenter()
+        val zoom = lastViewport?.zoom ?: 13
+        if (center != null) {
+            runCatching { Framework.nativeSetSearchViewport(center.latitude, center.longitude, zoom) }
+        }
+        return SearchEngine.INSTANCE.search(
+            context,
+            query,
+            false,
+            timestamp,
+            center != null,
+            center?.latitude ?: 0.0,
+            center?.longitude ?: 0.0,
+        )
     }
 
     override fun buildCarRoute(

@@ -76,7 +76,7 @@ class MapDownloadsViewModelTest {
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), cfg) {
             override suspend fun fetchEnvelope(): ByteArray = fetch?.invoke() ?: error("no fetch stub")
         }
-        val repository = object : MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient()) {
+        val repository = object : MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher) {
             override suspend fun importManifest(envelopeJson: String, trustedKeys: Map<String, ByteArray>) =
                 throw UnsupportedOperationException("unused in ViewModel test")
         }
@@ -120,7 +120,7 @@ class MapDownloadsViewModelTest {
     @Test fun `check imports envelope and shows the catalog`() = runTest {
         val store = FakeStore()
         // Real repository path: import writes Room rows the UI then lists.
-        val realRepo = MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient())
+        val realRepo = MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val manifest = catalogManifest()
         val kp = java.security.KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
         val rawPub = kp.public.encoded.let { it.copyOfRange(it.size - 32, it.size) }
@@ -146,7 +146,7 @@ class MapDownloadsViewModelTest {
         val kp = java.security.KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
         val rawPub = kp.public.encoded.let { it.copyOfRange(it.size - 32, it.size) }
         val envelope = signEnvelope(manifest, kp)
-        val realRepo = MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient())
+        val realRepo = MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
             override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
         }
@@ -171,7 +171,7 @@ class MapDownloadsViewModelTest {
         val kp = java.security.KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
         val rawPub = kp.public.encoded.let { it.copyOfRange(it.size - 32, it.size) }
         val envelope = signEnvelope(manifest, kp)
-        val realRepo = MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient())
+        val realRepo = MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
             override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
         }
@@ -221,7 +221,7 @@ class MapDownloadsViewModelTest {
         val work = FakeWork()
         val viewModel = MapDownloadsViewModel(config(), object : MapDistribution(okhttp3.OkHttpClient(), config()) {
             override suspend fun fetchEnvelope(): ByteArray = error("must not fetch")
-        }, MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient()), store, work)
+        }, MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher), store, work)
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("g1", viewModel.ui.value.activeGeneration)
         viewModel.activateActive()
@@ -236,7 +236,7 @@ class MapDownloadsViewModelTest {
         val kp = java.security.KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
         val rawPub = kp.public.encoded.let { it.copyOfRange(it.size - 32, it.size) }
         val envelope = signEnvelope(manifest, kp)
-        val realRepo = MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient())
+        val realRepo = MapPackageRepository(store, File("/tmp"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
             override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
         }

@@ -17,8 +17,14 @@ interface MapEngine {
     fun newMapView(context: Context): View
     fun setViewport(latitude: Double, longitude: Double, zoom: Int)
     fun currentCenter(): MapCenter?
+    fun currentCamera(): MapCamera? = null
     fun recenter(): Boolean
     fun isInitialized(): Boolean
+    fun reloadMaps(): Boolean = false
+    fun suspendMapReads(): Boolean = false
+    fun writableDir(): String? = null
+    fun isDownloadedMapAtScreenCenter(): Boolean = false
+    fun downloadedMapsCount(): Int = 0
 
     fun search(context: Context, query: String, onResult: (List<MapSearchResult>) -> Unit): Boolean
     fun buildCarRoute(

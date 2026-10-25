@@ -15,9 +15,9 @@ android {
         // Map distribution origin/region/keys are build-time operational
         // config; empty means "not configured" (UI shows the pending state,
         // never a fake download). Keys are public verification keys only.
-        buildConfigField("String", "MAP_DIST_BASE_URL", "\"${providers.gradleProperty("mapDistBaseUrl").orElse("")}\"")
-        buildConfigField("String", "MAP_DIST_REGION", "\"${providers.gradleProperty("mapDistRegion").orElse("")}\"")
-        buildConfigField("String", "MAP_DIST_KEYS", "\"${providers.gradleProperty("mapDistKeys").orElse("")}\"")
+        buildConfigField("String", "MAP_DIST_BASE_URL", "\"${providers.gradleProperty("mapDistBaseUrl").orElse("").get()}\"")
+        buildConfigField("String", "MAP_DIST_REGION", "\"${providers.gradleProperty("mapDistRegion").orElse("").get()}\"")
+        buildConfigField("String", "MAP_DIST_KEYS", "\"${providers.gradleProperty("mapDistKeys").orElse("").get()}\"")
         minSdk = libs.versions.minSdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"

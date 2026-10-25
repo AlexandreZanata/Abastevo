@@ -43,6 +43,10 @@ class MapRouteInstrumentedTest {
 
     @Test
     fun productionMapTabInitializesOnceAndSurvivesLifecycle() {
+        val externalMapIntent = android.content.Intent(
+            android.content.Intent.ACTION_VIEW, android.net.Uri.parse("anpfuel://map"),
+        ).setPackage(compose.activity.packageName)
+        assertTrue("Android must resolve the external map link", externalMapIntent.resolveActivity(compose.activity.packageManager) != null)
         val mapTab = string(R.string.nav_map)
         compose.waitUntil(timeoutMillis = 15_000) {
             try {

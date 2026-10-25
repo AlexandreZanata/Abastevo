@@ -3,6 +3,7 @@ package app.organicmaps.sdk;
 import android.content.Context;
 import android.content.ContextWrapper;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 import app.organicmaps.sdk.location.LocationHelper;
@@ -12,6 +13,14 @@ public final class MapViewHelper {
   private MapViewHelper() {}
 
   public static MapView create(@NonNull Context context, @NonNull LocationHelper helper) {
+    return create(context, helper, null);
+  }
+
+  public static MapView create(
+      @NonNull Context context,
+      @NonNull LocationHelper helper,
+      @Nullable Runnable onRenderingReady
+  ) {
     Context host = context;
     while (!(host instanceof LifecycleOwner) && host instanceof ContextWrapper) {
       Context base = ((ContextWrapper) host).getBaseContext();
@@ -23,6 +32,12 @@ public final class MapViewHelper {
     }
     MapView view = new LifecycleMapView(context, (LifecycleOwner) host);
     view.getMap().setLocationHelper(helper);
+    if (onRenderingReady != null) {
+      view.getMap().setMapRenderingListener(new MapRenderingListener() {
+        @Override public void onRenderingCreated() { onRenderingReady.run(); }
+        @Override public void onRenderingRestored() { onRenderingReady.run(); }
+      });
+    }
     return view;
   }
 

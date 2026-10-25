@@ -32,6 +32,11 @@ class LicenseInventoryTest(unittest.TestCase):
 
 
 class AuditAdmissionTest(unittest.TestCase):
+    def test_detector_still_recognizes_constructed_token_pattern(self):
+        prefix = b"github_" + b"pat_"
+        self.assertIsNotNone(audit.SECRET.fullmatch(prefix + b"0" * 40))
+        self.assertIsNone(audit.SECRET.fullmatch(prefix + b"0" * 39))
+
     def clean(self):
         return {'license_files_missing': [], 'submodules_total': 193,
                 'submodules_clean': 193, 'endpoint_decision': {'unclassified': []},

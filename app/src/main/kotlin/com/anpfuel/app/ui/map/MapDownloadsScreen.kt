@@ -1,5 +1,8 @@
 package com.anpfuel.app.ui.map
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,7 +42,7 @@ fun MapDownloadsScreen(
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     Column(
-        modifier.fillMaxSize().padding(16.dp),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -129,7 +132,7 @@ fun MapDownloadsScreen(
                         val downloadLabel = stringResource(R.string.map_download)
                         Button(
                             onClick = { viewModel.download() },
-                            modifier = Modifier.heightIn(min = 48.dp).semantics {
+                            modifier = Modifier.testTag("map-download-start").heightIn(min = 48.dp).semantics {
                                 contentDescription = downloadLabel
                             },
                         ) {
@@ -140,7 +143,7 @@ fun MapDownloadsScreen(
                     val checkUpdateLabel = stringResource(R.string.map_check_update)
                     Button(
                         onClick = { viewModel.checkForUpdate() },
-                        modifier = Modifier.heightIn(min = 48.dp).semantics {
+                        modifier = Modifier.testTag("map-download-update").heightIn(min = 48.dp).semantics {
                             contentDescription = checkUpdateLabel
                         },
                     ) {
@@ -149,7 +152,7 @@ fun MapDownloadsScreen(
                 }
             }
         }
-        Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
+        Button(onClick = onBack, modifier = Modifier.testTag("map-download-back").heightIn(min = 48.dp)) {
             Text(stringResource(R.string.map_downloads_ok))
         }
     }
