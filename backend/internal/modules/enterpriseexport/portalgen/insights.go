@@ -283,14 +283,23 @@ func buildOfficialInsights(official *officialDataset) []insightCard {
 	}
 	manifest := official.Manifest
 	census := manifest.AssociationCensus
+	// Same grouping as the fiscalizacao index: wrong-branch and
+	// succession-review decisions export as unmatched, so they count as
+	// unlinked here too. Linked + unlinked + ambiguous always equals Rows.
+	unlinked := census.Unmatched + census.WrongBranch + census.SuccessionReview
+	detail := ""
+	if census.WrongBranch+census.SuccessionReview > 0 {
+		detail = fmt.Sprintf(" (inclui %d wrong_branch e %d em revisão de sucessão, exportados como sem vínculo)",
+			census.WrongBranch, census.SuccessionReview)
+	}
 	return []insightCard{
 		{
 			Question: "Quantos registros oficiais há nesta edição",
 			Answer: fmt.Sprintf(
-				"A edição %s publica %d %s: %d vinculados, %d sem vínculo e %d com vínculo ambíguo.",
+				"A edição %s publica %d %s: %d vinculados, %d sem vínculo%s e %d com vínculo ambíguo.",
 				valueOr(manifest.SourcePeriod, manifest.Edition),
 				manifest.Rows, plural(manifest.Rows, "registro", "registros"),
-				census.Linked, census.Unmatched, census.Ambiguous),
+				census.Linked, unlinked, detail, census.Ambiguous),
 			Caveat:     "Multa não prova adulteração, culpa ou definitividade; ausência neste recorte não é certidão negativa.",
 			Formula:    "Contagem dos eventos publicados na revisão, por estado de associação; fonte ANP.",
 			SourceHref: manifest.SourceURL,
