@@ -16,7 +16,11 @@
   and app 537 tests PASS; lint/release size PASS. Unsigned release 78,121,062
   bytes / 74.50 MiB SHA-256 `5937649c…deabdd`, local proof config empty. Staging
   data/distribution origin/keys, opening-hours contract, MAP-21–33 and
-  production/G09 remain PENDING. No push/PR/merge/deploy.
+  production/G09 remain PENDING. Gate states: MINIMUM_MAP_GATE LOCAL_PASS /
+  STAGING_PENDING, OFFLINE_GATE PARTIAL (public station/price overlay only),
+  PERFORMANCE_GATE NOT_STARTED, DELIVERY_GATE NOT_STARTED /
+  INTEGRATION_PENDING. MAP-21 operational events and MAP-22–33 remain
+  unimplemented in this batch. No push/PR/merge/deploy.
 
 - Map review remediation 2026-10-25: bounded repairs LOCAL_DONE /
   INTEGRATION_PENDING on `codex/map-ev-implementation`; inherited Antigravity
