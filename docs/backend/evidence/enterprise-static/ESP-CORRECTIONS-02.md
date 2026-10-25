@@ -1,7 +1,8 @@
 # ESP second-review corrections — publication, freeze, pause and assets
 
-Status: LOCAL_DONE / INTEGRATION_PENDING
+Status: LOCAL_DONE
 Validation: PASS
+Integration: INTEGRATION_PENDING
 Date: 2026-10-25
 Branch: `codex/enterprise-static-portal`
 Validated code head: `7fd5c414` (documentation commit follows)
