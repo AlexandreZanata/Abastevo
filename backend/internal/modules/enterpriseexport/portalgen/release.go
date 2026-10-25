@@ -28,6 +28,7 @@ var (
 	ErrReleaseState       = errors.New("portal release: state unavailable")
 	ErrReleaseUnavailable = errors.New("portal release: release unavailable")
 	ErrReleaseWithdrawn   = errors.New("portal release: release withdrawn")
+	ErrOfficialRevoked    = errors.New("portal release: official revision revoked")
 	ErrNoCurrentRelease   = errors.New("portal release: no current release")
 )
 
@@ -50,6 +51,22 @@ type ReleaseState struct {
 	Previous      string    `json:"previous,omitempty"`
 	Releases      []Release `json:"releases"`
 	UpdatedAt     string    `json:"updated_at"`
+	// RevokedOfficial records official revision/lease identities withdrawn
+	// as invalid source content. A revoked identity can never be served
+	// again by any artifact or hash; only an operator-pause withdrawal
+	// (Reason "") leaves the content eligible for a future release.
+	RevokedOfficial []OfficialRevocation `json:"revoked_official,omitempty"`
+}
+
+// OfficialRevocation is the retained identity of source content withdrawn as
+// invalid. It survives restarts in state.json; there is no administrative
+// path that clears it.
+type OfficialRevocation struct {
+	RevisionID  string `json:"revision_id"`
+	LeaseID     string `json:"lease_id"`
+	Edition     string `json:"edition,omitempty"`
+	Reason      string `json:"reason"`
+	WithdrawnAt string `json:"withdrawn_at"`
 }
 
 type PromoteOptions struct {
@@ -76,6 +93,11 @@ type WithdrawOptions struct {
 	SiteURL      string
 	Now          func() time.Time
 	OfficialOnly bool
+	// Reason distinguishes an operational pause ("", "operator-pause":
+	// content stays eligible) from an invalid-content withdrawal
+	// ("revoked-source": the official revision/lease is recorded as
+	// revoked and can never be served again). Unknown reasons refuse.
+	Reason string
 }
 
 // copyFileHook is the bounded copy boundary. Tests replace it to inject
@@ -128,10 +150,19 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 	if opts.Fence && current != opts.ExpectedCurrent {
 		return ReleaseState{}, ErrReleaseFence
 	}
+	// A withdrawn release can never be served again: refuse before any
+	// copy or pointer switch, and preserve the withdrawal mark in history.
+	// Revoked official content is refused by any artifact or hash.
+	if existing, ok := findRelease(state, content); ok && existing.Withdrawn {
+		return ReleaseState{}, ErrReleaseWithdrawn
+	}
+	if revokedOfficial(state, releaseMeta) {
+		return ReleaseState{}, ErrOfficialRevoked
+	}
 	if current == content {
 		release, ok := findRelease(state, content)
 		if release.Withdrawn {
-			return ReleaseState{}, ErrReleaseState
+			return ReleaseState{}, ErrReleaseWithdrawn
 		}
 		if err := verifyRelease(opts.RootDir, content, opts.SiteURL, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, ErrReleaseUnavailable
@@ -247,6 +278,9 @@ func Rollback(opts RollbackOptions) (ReleaseState, error) {
 	if !ok || release.Withdrawn {
 		return ReleaseState{}, ErrReleaseWithdrawn
 	}
+	if revokedOfficial(state, release) {
+		return ReleaseState{}, ErrOfficialRevoked
+	}
 	if opts.Target == current {
 		if err := verifyRelease(opts.RootDir, current, opts.SiteURL, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, ErrReleaseUnavailable
@@ -272,6 +306,11 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 	if opts.RootDir == "" || opts.SiteURL == "" {
 		return ReleaseState{}, fmt.Errorf("portal release: root and site URL are required")
 	}
+	switch opts.Reason {
+	case "", "operator-pause", "revoked-source":
+	default:
+		return ReleaseState{}, fmt.Errorf("portal release: unknown withdrawal reason %q", opts.Reason)
+	}
 	unlock, err := lockRelease(opts.RootDir)
 	if err != nil {
 		return ReleaseState{}, err
@@ -292,9 +331,19 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 	if !exists {
 		return ReleaseState{}, ErrNoCurrentRelease
 	}
+	withdrawnAt := now().UTC().Format(time.RFC3339)
 	for i := range state.Releases {
 		if state.Releases[i].ContentSHA256 == current {
 			state.Releases[i].Withdrawn = true
+			// Invalid source content revokes its official identity: no
+			// artifact or hash carrying this revision/lease may be served
+			// again. An operational pause records no revocation.
+			if opts.Reason == "revoked-source" {
+				if state.Releases[i].OfficialRevisionID == "" || state.Releases[i].OfficialLeaseID == "" {
+					return ReleaseState{}, fmt.Errorf("portal release: revoked-source requires an official pin")
+				}
+				state = recordRevocation(state, state.Releases[i], opts.Reason, withdrawnAt)
+			}
 		}
 	}
 	if opts.Fallback != "" {
@@ -304,6 +353,9 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 		release, ok := findRelease(state, opts.Fallback)
 		if !ok || release.Withdrawn {
 			return ReleaseState{}, ErrReleaseWithdrawn
+		}
+		if revokedOfficial(state, release) {
+			return ReleaseState{}, ErrOfficialRevoked
 		}
 		if err := verifyRelease(opts.RootDir, opts.Fallback, opts.SiteURL, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, ErrReleaseUnavailable
@@ -452,6 +504,37 @@ func findRelease(state ReleaseState, content string) (Release, bool) {
 		}
 	}
 	return Release{}, false
+}
+
+// revokedOfficial reports whether the candidate's official revision/lease
+// was withdrawn as invalid source content. Candidates without an official
+// pin are never revoked.
+func revokedOfficial(state ReleaseState, meta Release) bool {
+	if meta.OfficialRevisionID == "" || meta.OfficialLeaseID == "" {
+		return false
+	}
+	for _, revoked := range state.RevokedOfficial {
+		if revoked.RevisionID == meta.OfficialRevisionID && revoked.LeaseID == meta.OfficialLeaseID {
+			return true
+		}
+	}
+	return false
+}
+
+// recordRevocation appends the release's official identity to the revoked
+// list, preserving history across restarts. Duplicates converge.
+func recordRevocation(state ReleaseState, release Release, reason, at string) ReleaseState {
+	revocation := OfficialRevocation{
+		RevisionID: release.OfficialRevisionID, LeaseID: release.OfficialLeaseID,
+		Edition: release.OfficialEdition, Reason: reason, WithdrawnAt: at,
+	}
+	for _, existing := range state.RevokedOfficial {
+		if existing.RevisionID == revocation.RevisionID && existing.LeaseID == revocation.LeaseID {
+			return state
+		}
+	}
+	state.RevokedOfficial = append(state.RevokedOfficial, revocation)
+	return state
 }
 
 func ensurePrivateRoot(root string) error {

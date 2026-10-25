@@ -72,14 +72,15 @@ func rollback(args []string) {
 
 func withdraw(args []string) {
 	fs := flag.NewFlagSet("withdraw", flag.ExitOnError)
-	var root, fallback, siteURL string
+	var root, fallback, siteURL, reason string
 	var officialOnly bool
 	fs.StringVar(&root, "root", "", "private release root")
 	fs.StringVar(&fallback, "fallback", "", "optional safe release content hash")
 	fs.StringVar(&siteURL, "site-url", "", "origin used by the artifact manifest")
 	fs.BoolVar(&officialOnly, "official-only", false, "require an official-only release")
+	fs.StringVar(&reason, "reason", "", "operator-pause (default) or revoked-source")
 	fs.Parse(args)
-	state, err := portalgen.Withdraw(portalgen.WithdrawOptions{RootDir: root, Fallback: fallback, SiteURL: siteURL, OfficialOnly: officialOnly})
+	state, err := portalgen.Withdraw(portalgen.WithdrawOptions{RootDir: root, Fallback: fallback, SiteURL: siteURL, OfficialOnly: officialOnly, Reason: reason})
 	if err != nil {
 		fatal(err)
 	}
