@@ -248,10 +248,14 @@ func (t redirectTransport) RoundTrip(request *http.Request) (*http.Response, err
 func TestStripeConstructorEmitsNoRawLogs(t *testing.T) {
 	const syntheticID = "synthetic_identifier_leak_probe_12345"
 	const syntheticSecret = "sk_test_synthetic_leak_probe_67890"
+	const syntheticEmail = "leak.probe.synthetic@example.invalid"
+	const syntheticClient = "Synthetic Leak Probe Client"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{
-			"type": "invalid_request_error", "message": "revoked for " + syntheticID,
+			"type": "invalid_request_error",
+			"message": "revoked for " + syntheticID + "; contact " + syntheticEmail +
+				" for client " + syntheticClient,
 		}})
 	}))
 	t.Cleanup(server.Close)
@@ -283,7 +287,7 @@ func TestStripeConstructorEmitsNoRawLogs(t *testing.T) {
 	capturedOut, _ := io.ReadAll(outReader)
 	capturedErr, _ := io.ReadAll(errReader)
 	combined := string(capturedOut) + string(capturedErr)
-	for _, marker := range []string{syntheticID, syntheticSecret, "invalid_request_error"} {
+	for _, marker := range []string{syntheticID, syntheticSecret, syntheticEmail, syntheticClient, "invalid_request_error"} {
 		if strings.Contains(combined, marker) {
 			t.Fatalf("raw SDK emission contains %q in %q", marker, combined)
 		}
