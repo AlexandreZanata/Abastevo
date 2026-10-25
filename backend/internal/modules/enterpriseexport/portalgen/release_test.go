@@ -293,3 +293,158 @@ func TestReleaseStoresOfficialPin(t *testing.T) {
 		t.Fatalf("official release metadata = %+v", current)
 	}
 }
+
+func releaseCandidateWithJS(t *testing.T, marker, script string) string {
+	t.Helper()
+	snapshot := writeFixtureWith(t, func(stations *[]enterpriseexport.Station, prices *[]enterpriseexport.Price) {
+		(*stations)[0].DisplayName = marker
+	})
+	js := filepath.Join(t.TempDir(), "search.js")
+	if err := os.WriteFile(js, []byte(script), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "artifact")
+	if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out, SearchScriptPath: js}); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+func TestRetainAssetsAcrossReleases(t *testing.T) {
+	root := releaseRoot(t)
+	first := releaseCandidateWithJS(t, "Posto Alfa", "globalThis.__searchA=1;\n")
+	second := releaseCandidateWithJS(t, "Posto Alfa Revisado", "globalThis.__searchB=2;\n")
+	firstState := promoteFixture(t, first, root)
+	secondState := promoteFixture(t, second, root)
+	hashes := map[string]string{
+		first:  strings.TrimPrefix(firstState.Current, "sha256:"),
+		second: strings.TrimPrefix(secondState.Current, "sha256:"),
+	}
+	summary, err := RetainAssets(root, 2, 100<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.Releases != 2 || summary.Files == 0 {
+		t.Fatalf("retained summary = %+v", summary)
+	}
+	// Each release's unique script is served from the retained store with
+	// byte-identical content, sharing inodes with the release copy (no
+	// second copy of the bytes).
+	for _, artifact := range []string{first, second} {
+		manifest, err := readPortalManifest(artifact)
+		if err != nil {
+			t.Fatal(err)
+		}
+		releaseDir := filepath.Join(root, ReleaseDir, hashes[artifact])
+		for _, file := range manifest.Files {
+			if !strings.HasSuffix(file.Path, ".js") {
+				continue
+			}
+			original, err := os.ReadFile(filepath.Join(releaseDir, filepath.FromSlash(file.Path)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Find this exact script in the retained store.
+			found := false
+			entries, err := os.ReadDir(filepath.Join(root, RetainedDir, "assets"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, entry := range entries {
+				if !strings.HasSuffix(entry.Name(), ".js") {
+					continue
+				}
+				candidate, err := os.ReadFile(filepath.Join(root, RetainedDir, "assets", entry.Name()))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(candidate) == string(original) {
+					found = true
+					a, _ := os.Stat(filepath.Join(releaseDir, filepath.FromSlash(file.Path)))
+					b, _ := os.Stat(filepath.Join(root, RetainedDir, "assets", entry.Name()))
+					if !os.SameFile(a, b) {
+						t.Error("retained asset is a copy, not a hardlink")
+					}
+				}
+			}
+			if !found {
+				t.Errorf("unique script of %s missing from retained store", file.Path)
+			}
+		}
+	}
+	// Pages are never retained: only the current release serves HTML.
+	var htmlFiles []string
+	_ = filepath.Walk(filepath.Join(root, RetainedDir), func(path string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() && strings.HasSuffix(path, ".html") {
+			htmlFiles = append(htmlFiles, path)
+		}
+		return nil
+	})
+	if len(htmlFiles) != 0 {
+		t.Fatalf("retained pages: %v", htmlFiles)
+	}
+}
+
+func TestRetainAssetsKeepLimitAndBudget(t *testing.T) {
+	root := releaseRoot(t)
+	first := releaseCandidateWithJS(t, "Posto Alfa", "globalThis.__searchA=1;\n")
+	second := releaseCandidateWithJS(t, "Posto Alfa Revisado", "globalThis.__searchB=2;\n")
+	promoteFixture(t, first, root)
+	promoteFixture(t, second, root)
+	summary, err := RetainAssets(root, 1, 100<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.Releases != 1 {
+		t.Fatalf("retained summary = %+v, want only the newest release", summary)
+	}
+	// A budget smaller than the newest release alone fails closed and
+	// keeps the previous store untouched.
+	if _, err := RetainAssets(root, 2, 1); err == nil {
+		t.Fatal("impossible budget accepted")
+	}
+	entries, err := os.ReadDir(filepath.Join(root, RetainedDir, "assets"))
+	if err != nil || len(entries) == 0 {
+		t.Fatalf("previous retained store lost: %v %v", entries, err)
+	}
+}
+
+func TestWithdrawPurgesRetainedAssets(t *testing.T) {
+	root := releaseRoot(t)
+	first := releaseCandidateWithJS(t, "Posto Alfa", "globalThis.__searchA=1;\n")
+	second := releaseCandidateWithJS(t, "Posto Alfa Revisado", "globalThis.__searchB=2;\n")
+	promoteFixture(t, first, root)
+	promoteFixture(t, second, root)
+	if _, err := RetainAssets(root, 2, 100<<20); err != nil {
+		t.Fatal(err)
+	}
+	// Withdrawing the current release purges its exclusive assets; the
+	// shared stylesheet referenced by the live release stays.
+	if _, err := Withdraw(WithdrawOptions{RootDir: root, SiteURL: "https://portal.example"}); err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := readPortalManifest(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withdrawnJS := ""
+	sharedCSS := ""
+	for _, file := range manifest.Files {
+		base := filepath.Base(file.Path)
+		switch {
+		case strings.HasSuffix(base, ".js"):
+			withdrawnJS = base
+		case strings.HasSuffix(base, ".css"):
+			sharedCSS = base
+		}
+	}
+	if withdrawnJS == "" || sharedCSS == "" {
+		t.Fatal("fixture lacks distinct JS/CSS assets")
+	}
+	if _, err := os.Stat(filepath.Join(root, RetainedDir, "assets", withdrawnJS)); !os.IsNotExist(err) {
+		t.Errorf("withdrawn exclusive asset still retained: %s", withdrawnJS)
+	}
+	if _, err := os.Stat(filepath.Join(root, RetainedDir, "assets", sharedCSS)); err != nil {
+		t.Errorf("shared asset purged with the withdrawal: %s", sharedCSS)
+	}
+}

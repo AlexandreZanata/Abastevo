@@ -187,3 +187,22 @@ It is therefore false that only ESP-18 remains: the table above owns the
 rest. Continuous-operation readiness for ESP-STAGING-01 stays blocked
 until the authorized staging drill replays promote/smoke/withdraw with
 two valid candidates under the fixed publisher.
+
+## Addendum 2026-10-25 (2) — retention acceptance vs 404 rehearsal
+
+The rollback drill above proved withdrawal semantics (404 + no
+resurrection), not asset retention: after the switch the old release's
+exclusive assets were simply unserved. Retention acceptance now exists
+separately and locally: `portalrelease retain` rebuilds a hardlinked
+`retained/` asset store from the newest non-withdrawn releases within a
+byte budget (unit tests: byte-exact hardlinks, keep limit, budget
+fail-closed, no pages retained, withdraw purges exclusive assets), and
+the Caddy rehearsal proves over HTTP that a rolled-back release keeps
+serving its retained assets while pages come from the current release
+with no mixing, in both full and official-only modes.
+
+Operational diff for the next authorized staging execution: run `retain`
+after every promote/rollback in the same step, map the edge `/assets/*`
+to the retained store (pages stay on `serve/current`), and re-run the
+retention assertions; the current staging serve copy predates retention
+and must be re-cut through this path, not patched in place.

@@ -140,6 +140,7 @@ log "promoting candidate A"
 "$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "" "${MODE_FLAGS[@]}" >/dev/null
 A_HASH="$(release_hash)"
 [[ -n "$A_HASH" ]] || refuse "candidate A did not become current"
+"$BIN" retain --root "$RELEASE_ROOT" --keep 2 --max-bytes 104857600 >/dev/null
 
 log "starting isolated Caddy on $ORIGIN"
 docker run --rm -d --name "$NAME" \
@@ -178,6 +179,7 @@ if [[ -n "$ARTIFACT_B" ]]; then
     "$BIN" promote --artifact "$ARTIFACT_B" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$A_HASH" "${MODE_FLAGS[@]}" >/dev/null
     B_HASH="$(release_hash)"
     [[ -n "$B_HASH" && "$B_HASH" != "$A_HASH" ]] || refuse "candidate B did not switch"
+    "$BIN" retain --root "$RELEASE_ROOT" --keep 2 --max-bytes 104857600 >/dev/null
     assert_status "B sitemap" 200 "$ORIGIN/sitemap.xml"
     fetch "$ORIGIN$HOME_PAGE" "$WORK/home-b.html" "$WORK/home-b.headers"
     if [[ "$OFFICIAL_ONLY" != "1" ]]; then
@@ -186,22 +188,32 @@ if [[ -n "$ARTIFACT_B" ]]; then
         [[ -n "$JS_PATH" ]] || refuse "B script path missing"
         assert_gzip "js" "$ORIGIN$JS_PATH" javascript
     fi
-    # Cross-release asset retention is not implemented: an asset unique to
-    # B must stop being served after the rollback to A. Assets identical in
-    # both releases are shared by content hash, which is correct and stays.
-    B_ASSET="$(grep -o '/assets/[^"]*' "$WORK/home-b.html" | while read -r ref; do
-        rel="${ref#/}"
-        grep -q "\"path\": *\"$rel\"" "$ARTIFACT_A/portal-manifest.json" || { echo "$ref"; break; }
-    done)"
+    # Cross-release asset retention: an asset unique to B keeps being
+    # served from the retained store after the rollback to A, while pages
+    # come from A (no version mixing). Assets identical in both releases
+    # are shared by content hash, which is correct and stays.
+    B_ASSET=""
+    if [[ "$OFFICIAL_ONLY" != "1" ]]; then
+        B_ASSET="$(grep -o '/assets/[^"]*' "$WORK/home-b.html" | while read -r ref; do
+            rel="${ref#/}"
+            grep -q "\"path\": *\"$rel\"" "$ARTIFACT_A/portal-manifest.json" || { echo "$ref"; break; }
+        done)"
+    fi
     if [[ -z "$B_ASSET" ]]; then
-        log "B shares all assets with A by content hash: retention probe skipped"
+        log "B shares all assets with A by content hash: retention HTTP probe skipped (publisher unit tests cover byte-exact retention)"
     fi
 
     log "rolling back to candidate A"
     "$BIN" rollback --root "$RELEASE_ROOT" --target "$A_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
     assert_status "A sitemap after rollback" 404 "$ORIGIN/sitemap.xml"
     if [[ -n "$B_ASSET" ]]; then
-        assert_status "B-only asset not retained" 404 "$ORIGIN$B_ASSET"
+        assert_status "B-only asset retained" 200 "$ORIGIN$B_ASSET"
+        fetch "$ORIGIN/precos/" "$WORK/precos-a.html" "$WORK/precos-a.headers"
+        grep -q "Posto Alfa" "$WORK/precos-a.html" || refuse "rollback serves mixed content"
+        if grep -q "Revisado" "$WORK/precos-a.html"; then
+            refuse "rollback mixes B content into A pages"
+        fi
+        log "rollback serves A pages with retained B assets: no mixing"
     fi
 
     log "corrupting current A and proving safe rollback to B"
@@ -228,6 +240,11 @@ if [[ -n "$ARTIFACT_B" ]]; then
     log "withdrawing the current release without fallback"
     "$BIN" withdraw --root "$RELEASE_ROOT" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
     assert_status "withdrawn portal" 404 "$ORIGIN$HOME_PAGE"
+    # Withdrawal purges the retained store too: withdrawn assets must not
+    # survive through retention.
+    if [[ -n "$B_ASSET" ]]; then
+        assert_status "withdrawn asset purged" 404 "$ORIGIN$B_ASSET"
+    fi
 fi
 
 if [[ "$KEEP" == "1" ]]; then

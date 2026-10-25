@@ -2,6 +2,7 @@ package portalgen
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -20,6 +22,10 @@ const (
 	ReleasePointer     = "current"
 	ReleaseDir         = "releases"
 	ReleaseStateFile   = "state.json"
+	// RetainedDir holds hardlinked copies of previous releases' assets so
+	// cached old pages keep loading correct dependencies across switches.
+	// Pages are never retained: only the current release serves HTML.
+	RetainedDir = "retained"
 )
 
 var (
@@ -345,6 +351,10 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 				state = recordRevocation(state, state.Releases[i], opts.Reason, withdrawnAt)
 			}
 		}
+	}
+	// Withdrawn content must not survive through the retained asset store.
+	if err := purgeWithdrawnAssets(opts.RootDir, state); err != nil {
+		return ReleaseState{}, err
 	}
 	if opts.Fallback != "" {
 		if opts.Fallback == current {
@@ -762,4 +772,183 @@ func inside(parent, child string) bool {
 		return false
 	}
 	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)))
+}
+
+// RetainedSummary reports one asset-retention rebuild.
+type RetainedSummary struct {
+	Releases int
+	Files    int
+	Bytes    int64
+}
+
+// RetainAssets rebuilds the retained asset store from the newest `keep`
+// non-withdrawn releases (by promotion time, newest first), hardlinking
+// their verified assets/* files so cached old pages keep loading correct
+// dependencies after switches and rollbacks. Releases are included newest
+// first while the running total fits maxBytes; if even the newest release
+// alone exceeds maxBytes the previous store is kept and an error is
+// returned. Withdrawn releases never contribute. Pages, sitemaps, robots
+// and manifests are never retained: only the current release serves HTML.
+// The rebuild is atomic (tmp directory renamed over retained/) and the
+// previous store survives any failure.
+func RetainAssets(root string, keep int, maxBytes int64) (RetainedSummary, error) {
+	var summary RetainedSummary
+	if keep <= 0 {
+		return summary, fmt.Errorf("portal release: retain keep must be positive")
+	}
+	if maxBytes <= 0 {
+		return summary, fmt.Errorf("portal release: retain max bytes must be positive")
+	}
+	unlock, err := lockRelease(root)
+	if err != nil {
+		return summary, err
+	}
+	defer unlock()
+	state, ok := LoadReleaseState(root)
+	if !ok {
+		return summary, ErrReleaseState
+	}
+	type candidate struct {
+		content string
+		at      string
+	}
+	candidates := make([]candidate, 0, len(state.Releases))
+	for _, release := range state.Releases {
+		if release.Withdrawn {
+			continue
+		}
+		candidates = append(candidates, candidate{content: release.ContentSHA256, at: release.PromotedAt})
+	}
+	sort.SliceStable(candidates, func(i, j int) bool { return candidates[i].at > candidates[j].at })
+	tmp, err := os.MkdirTemp(root, ".retained-*.tmp")
+	if err != nil {
+		return summary, err
+	}
+	keepTmp := true
+	defer func() {
+		if keepTmp {
+			_ = os.RemoveAll(tmp)
+		}
+	}()
+	assetsDir := filepath.Join(tmp, "assets")
+	if err := os.MkdirAll(assetsDir, 0o700); err != nil {
+		return summary, err
+	}
+	linked := map[string]bool{}
+	var total int64
+	included := 0
+	for _, cand := range candidates {
+		if included >= keep {
+			break
+		}
+		releaseDir := releasePath(root, cand.content)
+		manifest, err := readPortalManifest(releaseDir)
+		if err != nil {
+			return summary, fmt.Errorf("portal release: retained manifest unreadable: %w", err)
+		}
+		var releaseBytes int64
+		var assets []FileDigest
+		for _, file := range manifest.Files {
+			if !strings.HasPrefix(file.Path, "assets/") {
+				continue
+			}
+			body, err := os.ReadFile(filepath.Join(releaseDir, filepath.FromSlash(file.Path)))
+			if err != nil {
+				return summary, fmt.Errorf("portal release: retained asset unreadable %s: %w", file.Path, err)
+			}
+			sum := sha256.Sum256(body)
+			if "sha256:"+hex.EncodeToString(sum[:]) != file.SHA256 || int64(len(body)) != file.Bytes {
+				return summary, fmt.Errorf("portal release: retained asset failed verification %s", file.Path)
+			}
+			assets = append(assets, file)
+			releaseBytes += file.Bytes
+		}
+		if total+releaseBytes > maxBytes {
+			if included == 0 {
+				return summary, fmt.Errorf("portal release: newest release exceeds the retention budget")
+			}
+			break
+		}
+		for _, file := range assets {
+			if linked[file.Path] {
+				continue
+			}
+			dst := filepath.Join(tmp, filepath.FromSlash(file.Path))
+			if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
+				return summary, err
+			}
+			// Remove-then-link keeps reruns idempotent across retries.
+			_ = os.Remove(dst)
+			if err := os.Link(filepath.Join(releaseDir, filepath.FromSlash(file.Path)), dst); err != nil {
+				return summary, fmt.Errorf("portal release: retained asset link %s: %w", file.Path, err)
+			}
+			if err := os.Chmod(dst, 0o600); err != nil {
+				return summary, err
+			}
+			linked[file.Path] = true
+			summary.Files++
+			total += file.Bytes
+		}
+		included++
+	}
+	retained := filepath.Join(root, RetainedDir)
+	_ = os.RemoveAll(retained + ".prev")
+	if _, err := os.Stat(retained); err == nil {
+		if err := os.Rename(retained, retained+".prev"); err != nil {
+			return summary, err
+		}
+	}
+	if err := os.Rename(tmp, retained); err != nil {
+		if _, serr := os.Stat(retained + ".prev"); serr == nil {
+			_ = os.Rename(retained+".prev", retained)
+		}
+		return summary, err
+	}
+	_ = os.RemoveAll(retained + ".prev")
+	keepTmp = false
+	summary.Releases = included
+	summary.Bytes = total
+	return summary, nil
+}
+
+// purgeWithdrawnAssets removes retained files no longer referenced by any
+// non-withdrawn release, so withdrawn content cannot be reintroduced
+// through the retained store. Shared assets referenced by a live release
+// stay. It runs inside the withdrawal lock before the state write.
+func purgeWithdrawnAssets(root string, state ReleaseState) error {
+	live := map[string]bool{}
+	for _, release := range state.Releases {
+		if release.Withdrawn {
+			continue
+		}
+		manifest, err := readPortalManifest(releasePath(root, release.ContentSHA256))
+		if err != nil {
+			return fmt.Errorf("portal release: live manifest unreadable during purge: %w", err)
+		}
+		for _, file := range manifest.Files {
+			if strings.HasPrefix(file.Path, "assets/") {
+				live[file.Path] = true
+			}
+		}
+	}
+	retained := filepath.Join(root, RetainedDir, "assets")
+	entries, err := os.ReadDir(retained)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		rel := "assets/" + entry.Name()
+		if !live[rel] {
+			if err := os.Remove(filepath.Join(retained, entry.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

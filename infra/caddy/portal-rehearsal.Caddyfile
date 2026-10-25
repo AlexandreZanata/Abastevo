@@ -1,6 +1,9 @@
 # Isolated static-portal rehearsal only. No API proxy, no shared edge,
 # no production TLS/DNS and no repository credentials. The publisher
-# switches /srv/portal/current atomically between verified releases.
+# switches /srv/portal/current atomically between verified releases, while
+# /assets/* is served from the retained store (/srv/portal/retained) so
+# cached old pages keep loading correct dependencies across switches.
+# Pages, sitemaps and robots always come from the current release.
 {
 	admin off
 }
@@ -20,6 +23,20 @@
 
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	# Retained assets outlive the current release; everything else serves
+	# from current. The handle duplicates the asset headers because
+	# top-level header matchers do not apply inside it.
+	handle /assets/* {
+		root * /srv/portal/retained
+		encode gzip
+		header {
+			X-Content-Type-Options nosniff
+			X-Robots-Tag "noindex, nofollow"
+			Cache-Control "public, max-age=31536000, immutable"
+		}
+		file_server
+	}
 
 	@documents path /consultar/ /consultar/* /precos/ /precos/* /postos/* /fiscalizacao/ /fiscalizacao/* /curiosidades/ /curiosidades/* /dados/ /dados/* /metodologia/
 	header @documents Cache-Control "public, max-age=0, must-revalidate"

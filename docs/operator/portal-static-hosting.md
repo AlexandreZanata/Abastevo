@@ -260,9 +260,23 @@ publisher and its fence.
 If the current release is corrupt, use `portalrelease rollback` to a verified
 previous release; if the state is corrupt or missing, restore the backed-up
 root; if the official source is withdrawn, use `withdraw` (fallback or 404).
-Cross-release retention of old content-addressed JS/sitemap is not implemented;
-an old page requesting a removed asset can 404. That retention/versioned-asset
-policy and public preview/VPS handoff remain OWED.
+Public preview/VPS handoff remain OWED.
+
+### Cross-release asset retention
+
+Implemented in the publisher (unit-tested) and rehearsed over HTTP:
+`portalrelease retain --root <root> --keep 2 --max-bytes 104857600`
+rebuilds `retained/` from the newest non-withdrawn releases, hardlinking
+their hash-verified `assets/*` (no second copy of the bytes, no pages).
+The edge serves `/assets/*` from the retained store and everything else
+from `current`, so a cached old page loads its exact dependencies after a
+switch or rollback with no version mixing. `withdraw` purges the
+withdrawn release's exclusive assets, so retired content cannot return
+through retention; shared assets stay while referenced. Budgets fail
+closed (an over-budget rebuild keeps the previous store). Run `retain`
+after every promote/rollback in the same maintenance step; the rehearsal
+script does this and asserts retained-200 after rollback plus purged-404
+after withdrawal.
 
 ## Limitations
 
@@ -276,8 +290,8 @@ policy and public preview/VPS handoff remain OWED.
 - ESP-16 measured local loopback only. CDN and VPS-direct campaigns, real
   network/TLS, real mobile devices and production capacity remain OWED.
 - ESP-17's preview uses a local internal CA and headless Chrome, not public TLS,
-  a real device/screen reader or a shared preview edge. Cross-release asset
-  retention and public preview handoff remain OWED; see above.
+  a real device/screen reader or a shared preview edge. Public preview
+  handoff remains OWED; see above.
 - Real price publication remains blocked by ESP-07/rights; the rehearsal proves
   the selected event-level official artifact plus the synthetic price fixture.
 - No API, database, source or shared edge is contacted by the publisher or the

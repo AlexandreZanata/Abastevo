@@ -26,6 +26,8 @@ func main() {
 		rollback(os.Args[2:])
 	case "withdraw":
 		withdraw(os.Args[2:])
+	case "retain":
+		retain(os.Args[2:])
 	case "verify":
 		verify(os.Args[2:])
 	default:
@@ -101,6 +103,22 @@ func verify(args []string) {
 	}
 	fmt.Printf("current=%s pages=%d files=%d bytes=%d promoted_at=%s\n",
 		release.ContentSHA256, release.Pages, release.Files, release.Bytes, release.PromotedAt)
+}
+
+func retain(args []string) {
+	fs := flag.NewFlagSet("retain", flag.ExitOnError)
+	var root string
+	var keep int
+	var maxBytes int64
+	fs.StringVar(&root, "root", "", "private release root")
+	fs.IntVar(&keep, "keep", 2, "newest non-withdrawn releases whose assets are retained")
+	fs.Int64Var(&maxBytes, "max-bytes", 100<<20, "retained asset byte budget")
+	fs.Parse(args)
+	summary, err := portalgen.RetainAssets(root, keep, maxBytes)
+	if err != nil {
+		fatal(err)
+	}
+	fmt.Printf("retained releases=%d files=%d bytes=%d\n", summary.Releases, summary.Files, summary.Bytes)
 }
 
 func fatal(err error) {
