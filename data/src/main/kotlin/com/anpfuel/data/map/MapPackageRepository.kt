@@ -16,7 +16,7 @@ class MapDownloadException(message: String, cause: Throwable? = null) : Exceptio
 
 class MapStorageException(message: String) : Exception(message)
 
-class MapPackageRepository(
+open class MapPackageRepository(
     private val store: MapPackageStore,
     private val filesRoot: File,
     private val http: OkHttpClient,
@@ -45,7 +45,7 @@ class MapPackageRepository(
         return verified
     }
 
-    suspend fun downloadMissing(
+    open suspend fun downloadMissing(
         generation: String,
         baseUrl: String,
         onProgress: (packageId: String, downloaded: Long, total: Long) -> Unit = { _, _, _ -> },
@@ -64,13 +64,39 @@ class MapPackageRepository(
         return allReady || store.packages(generation).all { it.status == PACKAGE_READY }
     }
 
-    suspend fun activate(generation: String): Boolean {
+    open suspend fun activate(generation: String): Boolean {
         val packages = store.packages(generation)
         if (packages.isEmpty() || packages.any { it.status != PACKAGE_READY }) return false
+        // Verify every final file still matches before flipping the active flag;
+        // a missing/corrupt file fails closed and preserves the prior generation.
+        for (pkg in packages) {
+            val file = finalFile(generation, pkg)
+            if (!file.isFile || file.length() != pkg.bytes || sha256(file) != pkg.sha256) {
+                store.updatePackage(pkg.generation, pkg.packageId, PACKAGE_FAILED, file.length(), pkg.etag, "missing-final", clock())
+                return false
+            }
+        }
         store.activate(generation, clock())
         val active = store.activeGeneration() ?: return false
         cleanInactive(active.generation)
         return true
+    }
+
+    /**
+     * Returns the verified final files for the active generation. These live
+     * under `filesDir` (the SDK's internal storage candidate), so the native
+     * `StoragePathManager.findMapsStorage` recursive `.mwm` scan discovers
+     * them without an adb-seeded directory or probe fixture.
+     */
+    suspend fun activeMapFiles(): List<File> {
+        val active = store.activeGeneration() ?: return emptyList()
+        return store.packages(active.generation).map { finalFile(active.generation, it) }
+    }
+
+    /** Mimics the SDK's recursive `.mwm` discovery for activation proof. */
+    fun containsNativeMapData(): Boolean {
+        val root = filesRoot
+        return root.walkTopDown().any { it.isFile && it.extension == "mwm" }
     }
 
     suspend fun deleteGeneration(generation: String): Boolean {
