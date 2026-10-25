@@ -26,7 +26,8 @@ class QuickPathSelection(unittest.TestCase):
 
     def test_existing_code_and_document_selection_is_preserved(self):
         for path in ['backend/internal/sample.go', 'infra/docker/Dockerfile',
-                     'tools/station-prep/src/lib.rs', 'app/src/main/Sample.kt']:
+                     'tools/station-prep/src/lib.rs', 'app/src/main/Sample.kt',
+                     'maps/engine/src/main/MapEngine.kt']:
             with self.subTest(path=path):
                 result = classify(path)
                 self.assertEqual((0, '0'), (result.returncode, result.stdout.strip()))

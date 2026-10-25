@@ -91,7 +91,7 @@ else
         case "$f" in
             *.md|*.mdc|docs/*|.cursor/*|README*|ROADMAP*|TRADEMARKS*|LICENSE*|.gitignore)
                 ;;
-            .dockerignore|backend/*|contracts/*|infra/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|tools/*)
+            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|tools/*)
                 DOCS_ONLY=0
                 ;;
             *)
@@ -170,7 +170,7 @@ else
     MOBILE_CHANGED=0
     while IFS= read -r f || [[ -n "$f" ]]; do
         case "$f" in
-            domain/*|application/*|data/*|app/*|iosApp/*|shared/*|gradle/*|settings.gradle.kts|build.gradle.kts|gradle.properties)
+            domain/*|application/*|data/*|app/*|maps/*|iosApp/*|shared/*|gradle/*|settings.gradle.kts|build.gradle.kts|gradle.properties)
                 MOBILE_CHANGED=1
                 break
                 ;;

@@ -101,8 +101,9 @@ native endpoint strings. Resource admission is hash-pinned in `resource-admissio
 assets, Code2000/KhmerOS excluded, full notices embedded. Missing SDK localized
 entries inherit explicit base/default fallbacks; existing translations remain.
 The runtime scan expands compressed Java/JNI entries and fails on unknown
-endpoints, credential patterns or license gaps. Public source-offer publication
-remains a distribution obligation.
+endpoints, credential patterns or license gaps. The distributed build input now carries a [source-access offer](../vendor/SOURCE_OFFER.md),
+exact submodule pins, notices and SBOM. Any later public app/map distribution
+must preserve and fulfill its own corresponding source/data obligations.
 
 ## Accepted artifact and test matrix
 

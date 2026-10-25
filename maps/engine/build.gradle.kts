@@ -16,7 +16,19 @@ val localProps = Properties().apply {
     }
 }
 val pinnedCandidateRevision = "d2ec37881ede4e22"
-val defaultCandidate = "/data/dev/artifacts/abastevo-map-engine/$pinnedCandidateRevision"
+val bundledCandidate = rootProject.layout.buildDirectory.dir("comaps/$pinnedCandidateRevision").get().asFile
+val configuredSdkDir = providers.gradleProperty("comapsSdkDir").orNull
+    ?: localProps.getProperty("comaps.sdk.dir")
+    ?: localProps.getProperty("comapsSdkDir")
+    ?: providers.environmentVariable("COMAPS_SDK_DIR").orNull
+if (configuredSdkDir == null) {
+    providers.exec {
+        commandLine("python3", rootProject.file("scripts/maps/provision-comaps-aar.py"),
+            "--aar", rootProject.file("maps/engine/vendor/sdk-release.aar"),
+            "--output", bundledCandidate)
+    }.result.get().assertNormalExitValue()
+}
+val defaultCandidate = bundledCandidate.absolutePath
 val comapsSdkDir = (
     providers.gradleProperty("comapsSdkDir").orNull
         ?: localProps.getProperty("comaps.sdk.dir")

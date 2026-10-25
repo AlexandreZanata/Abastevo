@@ -100,7 +100,7 @@ func TestEnterpriseExportBuildIsIsolated(t *testing.T) {
 	handlers := map[string]jobs.Handler{}
 	for _, kind := range []string{
 		"evidence-sweep", "account-erasure-reconcile",
-		"privacy-training-reconcile", "privacy-training-sweep",
+		"privacy-training-reconcile", "privacy-training-sweep", "payment-inbox",
 		enterprisejobs.BuildKind,
 	} {
 		handlers[kind] = dispatcherHandler(kind)
@@ -109,8 +109,8 @@ func TestEnterpriseExportBuildIsIsolated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(dispatchers) != 6 {
-		t.Fatalf("dispatchers = %d, want general + four safety + export build", len(dispatchers))
+	if len(dispatchers) != 7 {
+		t.Fatalf("dispatchers = %d, want general + four safety + payment inbox + export build", len(dispatchers))
 	}
 	excluded := false
 	for _, kind := range dispatchers[0].ExcludedKinds {
@@ -121,8 +121,8 @@ func TestEnterpriseExportBuildIsIsolated(t *testing.T) {
 	if !excluded {
 		t.Fatal("general dispatcher can claim the export build")
 	}
-	if dispatchers[5].Kind != enterprisejobs.BuildKind {
-		t.Fatalf("dedicated dispatcher = %+v", dispatchers[5])
+	if dispatchers[6].Kind != enterprisejobs.BuildKind {
+		t.Fatalf("dedicated dispatcher = %+v", dispatchers[6])
 	}
 }
 
@@ -130,7 +130,7 @@ func TestEnterprisePortalRefreshIsIsolated(t *testing.T) {
 	handlers := map[string]jobs.Handler{}
 	for _, kind := range []string{
 		"evidence-sweep", "account-erasure-reconcile",
-		"privacy-training-reconcile", "privacy-training-sweep",
+		"privacy-training-reconcile", "privacy-training-sweep", "payment-inbox",
 		enterprisejobs.RefreshKind,
 	} {
 		handlers[kind] = dispatcherHandler(kind)
@@ -139,8 +139,8 @@ func TestEnterprisePortalRefreshIsIsolated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(dispatchers) != 6 {
-		t.Fatalf("dispatchers = %d, want general + four safety + refresh", len(dispatchers))
+	if len(dispatchers) != 7 {
+		t.Fatalf("dispatchers = %d, want general + four safety + payment inbox + refresh", len(dispatchers))
 	}
 	excluded := false
 	for _, kind := range dispatchers[0].ExcludedKinds {
@@ -151,7 +151,7 @@ func TestEnterprisePortalRefreshIsIsolated(t *testing.T) {
 	if !excluded {
 		t.Fatal("general dispatcher can claim the portal refresh")
 	}
-	if dispatchers[5].Kind != enterprisejobs.RefreshKind {
-		t.Fatalf("dedicated refresh dispatcher = %+v", dispatchers[5])
+	if dispatchers[6].Kind != enterprisejobs.RefreshKind {
+		t.Fatalf("dedicated refresh dispatcher = %+v", dispatchers[6])
 	}
 }
