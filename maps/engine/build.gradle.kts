@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 val comapsSdkDir = providers.gradleProperty("comapsSdkDir").orNull
@@ -54,6 +56,9 @@ dependencies {
     implementation("androidx.customview:customview:1.1.0")
     implementation("androidx.media:media:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
+    implementation(libs.hilt.android)
+    implementation(libs.hilt.navigation.compose)
+    ksp(libs.hilt.compiler)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.kotlinx.coroutines.test)
