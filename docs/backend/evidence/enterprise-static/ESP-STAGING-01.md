@@ -206,3 +206,17 @@ after every promote/rollback in the same step, map the edge `/assets/*`
 to the retained store (pages stay on `serve/current`), and re-run the
 retention assertions; the current staging serve copy predates retention
 and must be re-cut through this path, not patched in place.
+
+## Addendum 2026-10-25 (3) — second-review correction of this contract
+
+The retention contract in Addendum (2) is superseded operationally:
+`promote`, `rollback`, `refresh` and `withdraw` now prepare and verify the
+retained store automatically, so `retain` is a repair command rather than a
+mandatory post-step. The current release is mandatory even beyond `keep`;
+the store is an immutable generation selected by an atomic symlink, with
+crash recovery and failed-switch preservation. Pause recovery for identical
+source bytes and the serialized official publication/frozen-revision rules
+are recorded in [ESP-CORRECTIONS-02](ESP-CORRECTIONS-02.md). The staging
+serve copy still predates this correction and must be re-cut through the
+publisher when staging work is authorized; no staging execution is claimed
+here.
