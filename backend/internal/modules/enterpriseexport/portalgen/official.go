@@ -223,7 +223,7 @@ func containsCPF(value string) bool {
 	return true
 }
 
-func loadOfficialDataset(dir string, stations map[string]enterpriseexport.Station) (*officialDataset, error) {
+func loadOfficialDataset(dir string, stations map[string]enterpriseexport.Station, requireStations bool) (*officialDataset, error) {
 	manifestPath := filepath.Join(dir, "official-records-manifest.json")
 	payloadPath := filepath.Join(dir, "official-records.jsonl")
 	rawManifest, err := os.ReadFile(manifestPath)
@@ -292,7 +292,10 @@ func loadOfficialDataset(dir string, stations map[string]enterpriseexport.Statio
 			if record.StationID == "" || !isUUID(record.StationID) {
 				return nil, fmt.Errorf("portalgen: linked official record without station")
 			}
-			if _, ok := stations[record.StationID]; !ok {
+			// Station presence is only required when station pages are
+			// rendered. Official-only output delinks records, so the
+			// snapshot may omit station rows.
+			if _, ok := stations[record.StationID]; !ok && requireStations {
 				return nil, fmt.Errorf("portalgen: linked official station absent from snapshot")
 			}
 			linked++
@@ -362,7 +365,7 @@ func officialAssociation(state string) string {
 	}
 }
 
-func officialView(record officialRecord, stations map[string]enterpriseexport.Station) officialRecordView {
+func officialView(record officialRecord, stations map[string]enterpriseexport.Station, linkStations bool) officialRecordView {
 	view := officialRecordView{
 		RecordID: officialRecordID(record.NativeKey), NativeKey: record.NativeKey,
 		CNPJ: cnpjBR(record.SubjectCNPJ), Status: record.Status,
@@ -388,7 +391,7 @@ func officialView(record officialRecord, stations map[string]enterpriseexport.St
 		view.ReportYear = strconv.Itoa(int(*record.ReportYear))
 	}
 	if record.AssociationState == "linked" {
-		if station, ok := stations[record.StationID]; ok {
+		if station, ok := stations[record.StationID]; ok && linkStations {
 			view.StationName = station.DisplayName
 			view.StationHref = "/postos/" + record.StationID + "/"
 		}
@@ -405,7 +408,7 @@ func (g *generator) generateOfficial(official *officialDataset, stations map[str
 	pin := official.Manifest.pin()
 	views := make([]officialRecordView, 0, len(official.Records))
 	for _, record := range official.Records {
-		views = append(views, officialView(record, stations))
+		views = append(views, officialView(record, stations, !g.opts.OfficialOnly))
 	}
 	for page := 1; page <= official.Pages; page++ {
 		start := (page - 1) * officialPageSize
@@ -481,7 +484,7 @@ func officialStationViews(dataset *officialDataset, stationID string, stations m
 		if i >= officialStationCap {
 			break
 		}
-		views = append(views, officialView(record, stations))
+		views = append(views, officialView(record, stations, true))
 	}
 	return views, len(records)
 }

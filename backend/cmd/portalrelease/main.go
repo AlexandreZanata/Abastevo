@@ -36,16 +36,17 @@ func main() {
 func promote(args []string) {
 	fs := flag.NewFlagSet("promote", flag.ExitOnError)
 	var artifact, root, siteURL, expected string
-	var fence bool
+	var fence, officialOnly bool
 	fs.StringVar(&artifact, "artifact", "", "verified portal candidate directory")
 	fs.StringVar(&root, "root", "", "private release root")
 	fs.StringVar(&siteURL, "site-url", "", "origin used by the artifact manifest")
 	fs.BoolVar(&fence, "fence", false, "require the current release to equal --expect-current")
 	fs.StringVar(&expected, "expect-current", "", "expected current content hash")
+	fs.BoolVar(&officialOnly, "official-only", false, "require an official-only candidate")
 	fs.Parse(args)
 	state, err := portalgen.Promote(portalgen.PromoteOptions{
 		ArtifactDir: artifact, RootDir: root, SiteURL: siteURL,
-		Fence: fence, ExpectedCurrent: expected,
+		Fence: fence, ExpectedCurrent: expected, OfficialOnly: officialOnly,
 	})
 	if err != nil {
 		fatal(err)
@@ -56,11 +57,13 @@ func promote(args []string) {
 func rollback(args []string) {
 	fs := flag.NewFlagSet("rollback", flag.ExitOnError)
 	var root, target, siteURL string
+	var officialOnly bool
 	fs.StringVar(&root, "root", "", "private release root")
 	fs.StringVar(&target, "target", "", "release content hash")
 	fs.StringVar(&siteURL, "site-url", "", "origin used by the artifact manifest")
+	fs.BoolVar(&officialOnly, "official-only", false, "require an official-only release")
 	fs.Parse(args)
-	state, err := portalgen.Rollback(portalgen.RollbackOptions{RootDir: root, Target: target, SiteURL: siteURL})
+	state, err := portalgen.Rollback(portalgen.RollbackOptions{RootDir: root, Target: target, SiteURL: siteURL, OfficialOnly: officialOnly})
 	if err != nil {
 		fatal(err)
 	}
@@ -70,11 +73,13 @@ func rollback(args []string) {
 func withdraw(args []string) {
 	fs := flag.NewFlagSet("withdraw", flag.ExitOnError)
 	var root, fallback, siteURL string
+	var officialOnly bool
 	fs.StringVar(&root, "root", "", "private release root")
 	fs.StringVar(&fallback, "fallback", "", "optional safe release content hash")
 	fs.StringVar(&siteURL, "site-url", "", "origin used by the artifact manifest")
+	fs.BoolVar(&officialOnly, "official-only", false, "require an official-only release")
 	fs.Parse(args)
-	state, err := portalgen.Withdraw(portalgen.WithdrawOptions{RootDir: root, Fallback: fallback, SiteURL: siteURL})
+	state, err := portalgen.Withdraw(portalgen.WithdrawOptions{RootDir: root, Fallback: fallback, SiteURL: siteURL, OfficialOnly: officialOnly})
 	if err != nil {
 		fatal(err)
 	}
@@ -84,10 +89,12 @@ func withdraw(args []string) {
 func verify(args []string) {
 	fs := flag.NewFlagSet("verify", flag.ExitOnError)
 	var root, siteURL string
+	var officialOnly bool
 	fs.StringVar(&root, "root", "", "private release root")
 	fs.StringVar(&siteURL, "site-url", "", "origin used by the artifact manifest")
+	fs.BoolVar(&officialOnly, "official-only", false, "require an official-only release")
 	fs.Parse(args)
-	release, _, err := portalgen.CurrentRelease(root, siteURL)
+	release, _, err := portalgen.CurrentRelease(root, siteURL, officialOnly)
 	if err != nil {
 		fatal(err)
 	}

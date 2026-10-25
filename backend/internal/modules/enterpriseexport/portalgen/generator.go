@@ -40,6 +40,11 @@ type Options struct {
 	Indexable        bool
 	SiteURL          string
 	SearchScriptPath string
+	// OfficialOnly emits only the admitted official-records slice
+	// (fiscalizacao pages, metodologia and 404): no price, station,
+	// search, insight or download routes. It fails closed when the
+	// snapshot carries no official dataset.
+	OfficialOnly bool
 }
 
 type Result struct {
@@ -63,20 +68,22 @@ type Manifest struct {
 	Pages              int          `json:"pages"`
 	Files              []FileDigest `json:"files"`
 	OfficialRecords    *officialPin `json:"official_records,omitempty"`
+	OfficialOnly       bool         `json:"official_only"`
 	ContentSHA256      string       `json:"content_sha256"`
 }
 
 type pageBase struct {
-	Title       string
-	Description string
-	ActiveNav   string
-	Indexable   bool
-	Period      string
-	PublishedAt string
-	InputHash   string
-	CSSURL      string
-	ScriptURL   string
-	Breadcrumbs []crumb
+	Title        string
+	Description  string
+	ActiveNav    string
+	Indexable    bool
+	OfficialOnly bool
+	Period       string
+	PublishedAt  string
+	InputHash    string
+	CSSURL       string
+	ScriptURL    string
+	Breadcrumbs  []crumb
 }
 
 type crumb struct {
@@ -333,11 +340,41 @@ func Generate(opts Options) (Result, error) {
 			return Result{}, fmt.Errorf("portalgen: price has unknown revision")
 		}
 	}
-	official, err := loadOfficialDataset(opts.SnapshotDir, stations)
+	official, err := loadOfficialDataset(opts.SnapshotDir, stations, !opts.OfficialOnly)
 	if err != nil {
 		return Result{}, err
 	}
 	combinedHash := combinedInputHash(manifest.ContentSHA256, official)
+	if opts.OfficialOnly {
+		if official == nil {
+			return Result{}, fmt.Errorf("portalgen: official-only output requires an official dataset")
+		}
+		officialPublished := publicationLabel(manifest.BuiltAt)
+		if err := g.generateOfficial(official, stations, "", officialPublished, combinedHash); err != nil {
+			return Result{}, err
+		}
+		if err := g.generateStatic("", officialPublished, combinedHash); err != nil {
+			return Result{}, err
+		}
+		if err := g.writeSitemap(manifest.BuiltAt); err != nil {
+			return Result{}, err
+		}
+		if err := g.writeRobots(); err != nil {
+			return Result{}, err
+		}
+		officialManifest, err := g.writeManifest(manifest, projection, official, combinedHash)
+		if err != nil {
+			return Result{}, err
+		}
+		if err := os.Rename(tmp, opts.OutputDir); err != nil {
+			return Result{}, err
+		}
+		success = true
+		return Result{
+			Pages: g.pages, Files: len(g.files) + 1, Bytes: g.bytes,
+			ContentSHA256: officialManifest.ContentSHA256,
+		}, nil
+	}
 	latest := latestRevision(snapshot.Revisions)
 	observations, err := latestObservations(snapshot, latest, stations)
 	if err != nil {
@@ -786,6 +823,7 @@ func (g *generator) writeManifest(exportManifest enterpriseexport.Manifest, proj
 		MetricsVersion: projection.MetricsVersion,
 		PublishedAt:    exportManifest.BuiltAt,
 		Pages:          g.pages, Files: files,
+		OfficialOnly: g.opts.OfficialOnly,
 	}
 	if official != nil {
 		pin := official.Manifest.pin()
@@ -823,10 +861,12 @@ func manifestContentDigest(manifest Manifest) (string, error) {
 		Pages              int          `json:"pages"`
 		Files              []FileDigest `json:"files"`
 		OfficialRecords    *officialPin `json:"official_records,omitempty"`
+		OfficialOnly       bool         `json:"official_only"`
 	}{
 		SchemaVersion: manifest.SchemaVersion, InputContentSHA256: manifest.InputContentSHA256,
 		MetricsVersion: manifest.MetricsVersion, PublishedAt: manifest.PublishedAt,
 		Pages: manifest.Pages, Files: manifest.Files, OfficialRecords: manifest.OfficialRecords,
+		OfficialOnly: manifest.OfficialOnly,
 	})
 	if err != nil {
 		return "", err
@@ -843,7 +883,8 @@ func digestBytes(data []byte) string {
 func (g *generator) base(title, description, active, period, published, inputHash string, crumbs []crumb) pageBase {
 	return pageBase{
 		Title: title, Description: description, ActiveNav: active,
-		Indexable: g.indexable, Period: period, PublishedAt: published,
+		Indexable: g.indexable, OfficialOnly: g.opts.OfficialOnly,
+		Period: period, PublishedAt: published,
 		InputHash: inputHash, CSSURL: g.cssURL, ScriptURL: g.scriptURL, Breadcrumbs: crumbs,
 	}
 }

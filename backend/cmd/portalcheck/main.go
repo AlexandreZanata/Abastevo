@@ -14,6 +14,7 @@ func main() {
 	var artifact, compare, siteURL string
 	var maxFiles int
 	var maxBytes, maxHTML, maxScript, maxShard int64
+	var officialOnly bool
 	flag.StringVar(&artifact, "artifact", "", "portal candidate directory")
 	flag.StringVar(&compare, "compare", "", "second candidate for reproducible comparison")
 	flag.StringVar(&siteURL, "site-url", "", "expected public origin (optional)")
@@ -22,6 +23,7 @@ func main() {
 	flag.Int64Var(&maxHTML, "max-html-gzip", 0, "maximum gzip bytes per HTML page (default 100 KiB)")
 	flag.Int64Var(&maxScript, "max-script-gzip", 0, "maximum gzip bytes per script (default 100 KiB)")
 	flag.Int64Var(&maxShard, "max-shard-gzip", 0, "maximum gzip bytes per search shard (default 250 KiB)")
+	flag.BoolVar(&officialOnly, "official-only", false, "require an official-only artifact (no price/station/search/download routes)")
 	flag.Parse()
 	if artifact == "" {
 		fmt.Fprintln(os.Stderr, "portalcheck: --artifact is required")
@@ -30,6 +32,7 @@ func main() {
 	result, err := portalgen.Verify(artifact, portalgen.VerifyOptions{
 		SiteURL: siteURL, CompareDir: compare, MaxFiles: maxFiles, MaxBytes: maxBytes,
 		MaxHTMLGzipBytes: maxHTML, MaxScriptGzipBytes: maxScript, MaxShardGzipBytes: maxShard,
+		OfficialOnly: officialOnly,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "portalcheck:", err)

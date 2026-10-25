@@ -15,13 +15,18 @@ const templates = `
   <a class="skip" href="#conteudo">Pular para o conteúdo</a>
   <header class="site-header">
     <div class="wrap header-inner">
-      <a class="brand" href="/consultar/">abastevo</a>
+      <a class="brand" href="{{if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}">abastevo</a>
       <nav class="portal-nav" aria-label="Navegação do portal">
+        {{if .OfficialOnly}}
+        <a href="/fiscalizacao/" {{if eq .ActiveNav "fiscalizacao"}}aria-current="page"{{end}}>Fiscalização</a>
+        <a href="/metodologia/" {{if eq .ActiveNav "metodologia"}}aria-current="page"{{end}}>Metodologia</a>
+        {{else}}
         <a href="/consultar/" {{if eq .ActiveNav "consultar"}}aria-current="page"{{end}}>Consultar</a>
         <a href="/precos/" {{if eq .ActiveNav "precos"}}aria-current="page"{{end}}>Preços</a>
         <a href="/metodologia/" {{if eq .ActiveNav "metodologia"}}aria-current="page"{{end}}>Metodologia</a>
         <a href="/curiosidades/" {{if eq .ActiveNav "curiosidades"}}aria-current="page"{{end}}>Curiosidades</a>
         <a href="/fiscalizacao/" {{if eq .ActiveNav "fiscalizacao"}}aria-current="page"{{end}}>Fiscalização</a>
+        {{end}}
       </nav>
     </div>
   </header>
@@ -30,10 +35,17 @@ const templates = `
 {{define "foot"}}
   <footer class="footer">
     <div class="wrap">
+      {{if .OfficialOnly}}
+      <p><strong>Fonte:</strong> ANP — multas aplicadas. Cálculo e exibição: Abastevo.</p>
+      <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Recorte oficial de fiscalização, event-level.</p>
+      <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; multa não prova adulteração, culpa ou definitividade.</p>
+      <p><a href="/fiscalizacao/">Fiscalização</a> · <a href="/metodologia/">Metodologia e fontes</a></p>
+      {{else}}
       <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo.</p>
       <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Pesquisa: {{if .Period}}{{.Period}}{{else}}sem pesquisa publicada{{end}}</p>
       <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; não é preço ao vivo.</p>
       <p><a href="/dados/">Baixar dados públicos</a> · <a href="/curiosidades/">Perguntas aprovadas</a></p>
+      {{end}}
     </div>
   </footer>
   {{if .ScriptURL}}<script type="module" src="{{.ScriptURL}}" defer></script>{{end}}
@@ -304,7 +316,7 @@ const templates = `
       <td><a href="/fiscalizacao/registro/{{.RecordID}}/">Abrir</a></td>
     </tr>{{end}}</tbody>
   </table></div>{{else}}<div class="notice"><strong>Sem registros oficiais nesta edição.</strong></div>{{end}}
-  <div class="links">{{if .PrevHref}}<a href="{{.PrevHref}}">Página anterior</a>{{end}}{{if .NextHref}}<a href="{{.NextHref}}">Próxima página</a>{{end}}<a href="/metodologia/">Metodologia e fontes</a><a href="/consultar/">Consultar preços</a></div>
+  <div class="links">{{if .PrevHref}}<a href="{{.PrevHref}}">Página anterior</a>{{end}}{{if .NextHref}}<a href="{{.NextHref}}">Próxima página</a>{{end}}<a href="/metodologia/">Metodologia e fontes</a>{{if .OfficialOnly}}{{else}}<a href="/consultar/">Consultar preços</a>{{end}}</div>
   {{else}}
   <p class="eyebrow">Registros oficiais</p>
   <h1>Fiscalização — ainda não disponível</h1>
@@ -318,7 +330,7 @@ const templates = `
     <li>Nenhum CPF, documento interno, foto de usuário ou score de risco.</li>
   </ul>
   <p>A indisponibilidade deste recorte não desabilita a consulta de preços, o resumo regional ou a metodologia.</p>
-  <div class="links"><a href="/consultar/">Consultar preços</a><a href="/metodologia/">Metodologia e fontes</a></div>
+  <div class="links">{{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar preços</a>{{end}}<a href="/metodologia/">Metodologia e fontes</a></div>
   {{end}}
 </main>
 {{template "foot" .}}{{end}}
@@ -329,7 +341,7 @@ const templates = `
   <h1>{{.Record.Status}}</h1>
   <p class="lead">CNPJ {{.Record.CNPJ}} · {{.Record.AssociationLabel}}</p>
   <div class="grid summary-grid">
-    <section class="card"><h2>Vínculo</h2>{{if .Record.StationHref}}<p><a href="{{.Record.StationHref}}">{{.Record.StationName}}</a></p>{{else}}<p>Sem vínculo de posto.</p>{{end}}<p class="muted">{{.Record.AssociationReason}}</p><p class="muted">Vínculo de empresa atual na data da decisão; não é histórico de propriedade.</p></section>
+    <section class="card"><h2>Vínculo</h2>{{if .Record.StationHref}}<p><a href="{{.Record.StationHref}}">{{.Record.StationName}}</a></p>{{else}}<p>{{.Record.AssociationLabel}}.</p>{{end}}<p class="muted">{{.Record.AssociationReason}}</p><p class="muted">Vínculo de empresa atual na data da decisão; não é histórico de propriedade.</p></section>
     <section class="card"><h2>Fonte e datas</h2><p>Edição {{.Manifest.Edition}} · período {{.Manifest.SourcePeriod}}</p><p>Extração: {{if .Record.ExtractionMonth}}{{.Record.ExtractionMonth}}{{else}}não informada{{end}}</p><p>Publicação Abastevo: {{.PublishedAt}}</p><p class="muted">Fonte: ANP — multas aplicadas.</p></section>
   </div>
   <h2>Dados do registro</h2>
@@ -346,7 +358,7 @@ const templates = `
   </div>
   <div class="notice"><strong>Limites do registro</strong><p>Uma multa ou ação não prova adulteração, interdição atual ou culpa definitiva. O vencimento não é a data da ocorrência nem prova de propriedade. Ausência de registro não é certidão negativa. O vínculo é a decisão de empresa atual na data indicada, não um histórico de propriedade.</p></div>
   <div class="source"><p><strong>Fonte:</strong> ANP — multas aplicadas. {{if .Record.SourceURL}}<a href="{{.Record.SourceURL}}">Página oficial da fonte</a>.{{end}}</p><p class="muted source-url">Revisão {{.Record.RevisionID}} · lease {{.Record.LeaseID}} · checksum {{.Record.SourceChecksum}} · publicação {{.Manifest.PublishedAt}}.</p></div>
-  <div class="links"><a href="/fiscalizacao/">Voltar à fiscalização</a><a href="/metodologia/">Metodologia e fontes</a><a href="/consultar/">Consultar preços</a></div>
+  <div class="links"><a href="/fiscalizacao/">Voltar à fiscalização</a><a href="/metodologia/">Metodologia e fontes</a>{{if .OfficialOnly}}{{else}}<a href="/consultar/">Consultar preços</a>{{end}}</div>
 </main>
 {{template "foot" .}}{{end}}
 
@@ -355,8 +367,8 @@ const templates = `
   <p class="eyebrow">404</p>
   <h1>Página não encontrada</h1>
   <p class="lead">A página ou o posto solicitado não existe neste portal estático.</p>
-  <div class="notice"><strong>O que fazer</strong><p>Volte à consulta para navegar pelos estados e postos com observação. Um UUID desconhecido não é redirecionado para outro posto.</p></div>
-  <div class="links"><a href="/consultar/">Consultar preços</a><a href="/metodologia/">Metodologia e fontes</a></div>
+  <div class="notice"><strong>O que fazer</strong><p>Volte à {{if .OfficialOnly}}fiscalização{{else}}consulta{{end}} para navegar {{if .OfficialOnly}}pelos registros oficiais{{else}}pelos estados e postos com observação{{end}}. Um UUID desconhecido não é redirecionado para outro posto.</p></div>
+  <div class="links">{{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar preços</a>{{end}}<a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
 `

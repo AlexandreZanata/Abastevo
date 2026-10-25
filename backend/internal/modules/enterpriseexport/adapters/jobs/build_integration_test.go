@@ -412,7 +412,7 @@ func TestRefreshPromotesBuiltCandidateAndCorrection(t *testing.T) {
 	if err := refresh.Handle(ctx, platformjobs.Job{}); err != nil {
 		t.Fatal(err)
 	}
-	first, _, err := portalgen.CurrentRelease(portalRoot, "https://portal.example")
+	first, _, err := portalgen.CurrentRelease(portalRoot, "https://portal.example", false)
 	if err != nil || first.ContentSHA256 == "" {
 		t.Fatalf("first refresh = %+v %v", first, err)
 	}
@@ -430,7 +430,7 @@ func TestRefreshPromotesBuiltCandidateAndCorrection(t *testing.T) {
 	if err := refresh.Handle(ctx, platformjobs.Job{}); err != nil {
 		t.Fatal(err)
 	}
-	second, releases, err := portalgen.CurrentRelease(portalRoot, "https://portal.example")
+	second, releases, err := portalgen.CurrentRelease(portalRoot, "https://portal.example", false)
 	if err != nil || second.ContentSHA256 == first.ContentSHA256 {
 		t.Fatalf("correction refresh = %+v %v", second, err)
 	}

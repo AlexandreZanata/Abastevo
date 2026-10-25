@@ -73,6 +73,10 @@ type VerifyOptions struct {
 	MaxHTMLGzipBytes   int64
 	MaxScriptGzipBytes int64
 	MaxShardGzipBytes  int64
+	// OfficialOnly requires an official-only artifact (fiscalizacao pages,
+	// metodologia and 404 only) and refuses any price, station, search,
+	// insight or download route.
+	OfficialOnly bool
 }
 
 type VerifyResult struct {
@@ -145,6 +149,9 @@ func verifyOne(dir string, opts VerifyOptions) (VerifyResult, Manifest, error) {
 		manifest.MetricsVersion != analytics.MetricsVersion || manifest.Pages <= 0 ||
 		len(manifest.Files) == 0 || !validSHA256Prefix(manifest.ContentSHA256) {
 		return VerifyResult{}, Manifest{}, fmt.Errorf("portalcheck: invalid portal manifest fields")
+	}
+	if opts.OfficialOnly != manifest.OfficialOnly {
+		return VerifyResult{}, Manifest{}, fmt.Errorf("portalcheck: official-only mode mismatch")
 	}
 	if _, err := time.Parse(time.RFC3339, manifest.PublishedAt); err != nil {
 		return VerifyResult{}, Manifest{}, fmt.Errorf("portalcheck: invalid publication time")
@@ -231,17 +238,23 @@ func verifyOne(dir string, opts VerifyOptions) (VerifyResult, Manifest, error) {
 	if pageCount != manifest.Pages {
 		return VerifyResult{}, Manifest{}, fmt.Errorf("portalcheck: page count mismatch")
 	}
-	if err := checkSearchArtifacts(dir, files); err != nil {
-		return VerifyResult{}, Manifest{}, err
-	}
-	if err := checkDownloadArtifacts(dir, files); err != nil {
-		return VerifyResult{}, Manifest{}, err
+	if opts.OfficialOnly {
+		if err := checkOfficialOnlyScope(files); err != nil {
+			return VerifyResult{}, Manifest{}, err
+		}
+	} else {
+		if err := checkSearchArtifacts(dir, files); err != nil {
+			return VerifyResult{}, Manifest{}, err
+		}
+		if err := checkDownloadArtifacts(dir, files); err != nil {
+			return VerifyResult{}, Manifest{}, err
+		}
 	}
 	result, err := checkBudgetsAndHTML(dir, files, manifest, opts)
 	if err != nil {
 		return VerifyResult{}, Manifest{}, err
 	}
-	if err := checkOfficialPages(dir, files, manifest.OfficialRecords); err != nil {
+	if err := checkOfficialPages(dir, files, manifest.OfficialRecords, opts.OfficialOnly); err != nil {
 		return VerifyResult{}, Manifest{}, err
 	}
 	result.Pages = manifest.Pages
@@ -289,6 +302,20 @@ func walkArtifact(dir string) ([]string, error) {
 	})
 	sort.Strings(out)
 	return out, err
+}
+
+// checkOfficialOnlyScope refuses any price, station, search, insight or
+// download route in an official-only artifact. Only fiscalizacao pages,
+// metodologia, 404, shared assets, robots, sitemap and the manifest may exist.
+func checkOfficialOnlyScope(files map[string]FileDigest) error {
+	for _, prefix := range []string{"precos/", "postos/", "dados/", "consultar/", "curiosidades/"} {
+		for path := range files {
+			if strings.HasPrefix(path, prefix) {
+				return fmt.Errorf("portalcheck: official-only artifact contains %s", path)
+			}
+		}
+	}
+	return nil
 }
 
 func safeRelPath(path string) error {
@@ -689,15 +716,21 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 	if err := checkMixedVersionAssets(dir, files); err != nil {
 		return VerifyResult{}, err
 	}
-	consultar, err := os.ReadFile(filepath.Join(dir, "consultar", "index.html"))
-	if err != nil {
-		return VerifyResult{}, fmt.Errorf("portalcheck: consultar page unavailable")
+	initialPage := filepath.Join(dir, "consultar", "index.html")
+	initialMissing := "portalcheck: consultar page unavailable"
+	if opts.OfficialOnly {
+		initialPage = filepath.Join(dir, "fiscalizacao", "index.html")
+		initialMissing = "portalcheck: fiscalizacao page unavailable"
 	}
-	initial, err := gzipSize(consultar)
+	initialBody, err := os.ReadFile(initialPage)
+	if err != nil {
+		return VerifyResult{}, fmt.Errorf("%s", initialMissing)
+	}
+	initial, err := gzipSize(initialBody)
 	if err != nil {
 		return VerifyResult{}, err
 	}
-	for _, ref := range assetRef.FindAllSubmatch(consultar, -1) {
+	for _, ref := range assetRef.FindAllSubmatch(initialBody, -1) {
 		body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(strings.TrimPrefix(string(ref[1]), "/"))))
 		if err != nil {
 			return VerifyResult{}, fmt.Errorf("portalcheck: initial asset unavailable")
@@ -872,7 +905,7 @@ func checkOfficialPin(pin *officialPin) error {
 	return nil
 }
 
-func checkOfficialPages(dir string, files map[string]FileDigest, pin *officialPin) error {
+func checkOfficialPages(dir string, files map[string]FileDigest, pin *officialPin, officialOnly bool) error {
 	records := 0
 	indexes := 0
 	for path := range files {
@@ -906,15 +939,19 @@ func checkOfficialPages(dir string, files map[string]FileDigest, pin *officialPi
 		}
 		linked := bytes.Contains(body, []byte("Vinculado a posto"))
 		unlinked := bytes.Contains(body, []byte("Sem vínculo de posto")) || bytes.Contains(body, []byte("Vínculo ambíguo"))
+		hasStationHref := bytes.Contains(body, []byte("href=\"/postos/"))
+		if officialOnly && hasStationHref {
+			return fmt.Errorf("portalcheck: official-only page links a station page")
+		}
 		switch {
 		case linked && unlinked:
 			return fmt.Errorf("portalcheck: contradictory official association")
 		case linked:
-			if !bytes.Contains(body, []byte("href=\"/postos/")) {
+			if !officialOnly && !hasStationHref {
 				return fmt.Errorf("portalcheck: linked official page lacks station link")
 			}
 		case unlinked:
-			if bytes.Contains(body, []byte("href=\"/postos/")) {
+			if hasStationHref {
 				return fmt.Errorf("portalcheck: unlinked official page has station link")
 			}
 		default:

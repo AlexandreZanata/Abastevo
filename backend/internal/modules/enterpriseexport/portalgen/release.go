@@ -59,20 +59,23 @@ type PromoteOptions struct {
 	ExpectedCurrent string
 	Fence           bool
 	Now             func() time.Time
+	OfficialOnly    bool
 }
 
 type RollbackOptions struct {
-	RootDir string
-	Target  string
-	SiteURL string
-	Now     func() time.Time
+	RootDir      string
+	Target       string
+	SiteURL      string
+	Now          func() time.Time
+	OfficialOnly bool
 }
 
 type WithdrawOptions struct {
-	RootDir  string
-	Fallback string
-	SiteURL  string
-	Now      func() time.Time
+	RootDir      string
+	Fallback     string
+	SiteURL      string
+	Now          func() time.Time
+	OfficialOnly bool
 }
 
 // copyFileHook is the bounded copy boundary. Tests replace it to inject
@@ -101,7 +104,7 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 		now = time.Now
 	}
 
-	verified, err := Verify(opts.ArtifactDir, VerifyOptions{SiteURL: opts.SiteURL})
+	verified, err := Verify(opts.ArtifactDir, VerifyOptions{SiteURL: opts.SiteURL, OfficialOnly: opts.OfficialOnly})
 	if err != nil {
 		return ReleaseState{}, fmt.Errorf("portal release: candidate verification: %w", err)
 	}
@@ -130,7 +133,7 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 		if release.Withdrawn {
 			return ReleaseState{}, ErrReleaseState
 		}
-		if err := verifyRelease(opts.RootDir, content, opts.SiteURL); err != nil {
+		if err := verifyRelease(opts.RootDir, content, opts.SiteURL, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, ErrReleaseUnavailable
 		}
 		release.ContentSHA256 = content
@@ -160,7 +163,7 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 	targetName := releaseName(content)
 	releasePath := filepath.Join(opts.RootDir, ReleaseDir, targetName)
 	if _, err := os.Stat(releasePath); err == nil {
-		if err := verifyRelease(opts.RootDir, content, opts.SiteURL); err != nil {
+		if err := verifyRelease(opts.RootDir, content, opts.SiteURL, opts.OfficialOnly); err != nil {
 			if current == content {
 				return ReleaseState{}, ErrReleaseUnavailable
 			}
@@ -185,7 +188,7 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 		if err := copyArtifact(opts.ArtifactDir, tmp); err != nil {
 			return ReleaseState{}, err
 		}
-		if err := verifyReleaseDir(tmp, opts.SiteURL, content); err != nil {
+		if err := verifyReleaseDir(tmp, opts.SiteURL, content, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, fmt.Errorf("portal release: copied artifact verification: %w", err)
 		}
 		if err := os.Rename(tmp, releasePath); err != nil {
@@ -245,12 +248,12 @@ func Rollback(opts RollbackOptions) (ReleaseState, error) {
 		return ReleaseState{}, ErrReleaseWithdrawn
 	}
 	if opts.Target == current {
-		if err := verifyRelease(opts.RootDir, current, opts.SiteURL); err != nil {
+		if err := verifyRelease(opts.RootDir, current, opts.SiteURL, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, ErrReleaseUnavailable
 		}
 		return state, nil
 	}
-	if err := verifyRelease(opts.RootDir, opts.Target, opts.SiteURL); err != nil {
+	if err := verifyRelease(opts.RootDir, opts.Target, opts.SiteURL, opts.OfficialOnly); err != nil {
 		return ReleaseState{}, ErrReleaseUnavailable
 	}
 	if err := switchCurrent(opts.RootDir, releaseName(opts.Target)); err != nil {
@@ -302,7 +305,7 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 		if !ok || release.Withdrawn {
 			return ReleaseState{}, ErrReleaseWithdrawn
 		}
-		if err := verifyRelease(opts.RootDir, opts.Fallback, opts.SiteURL); err != nil {
+		if err := verifyRelease(opts.RootDir, opts.Fallback, opts.SiteURL, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, ErrReleaseUnavailable
 		}
 		if err := switchCurrent(opts.RootDir, releaseName(opts.Fallback)); err != nil {
@@ -350,7 +353,7 @@ func CurrentReleaseHeader(root string) (Release, ReleaseState, error) {
 	return release, state, nil
 }
 
-func CurrentRelease(root, siteURL string) (Release, ReleaseState, error) {
+func CurrentRelease(root, siteURL string, officialOnly bool) (Release, ReleaseState, error) {
 	state, ok := LoadReleaseState(root)
 	if !ok {
 		return Release{}, ReleaseState{}, ErrReleaseState
@@ -369,7 +372,7 @@ func CurrentRelease(root, siteURL string) (Release, ReleaseState, error) {
 	if !ok || release.Withdrawn {
 		return Release{}, ReleaseState{}, ErrReleaseWithdrawn
 	}
-	if err := verifyRelease(root, current, siteURL); err != nil {
+	if err := verifyRelease(root, current, siteURL, officialOnly); err != nil {
 		return Release{}, ReleaseState{}, ErrReleaseUnavailable
 	}
 	return release, state, nil
@@ -554,12 +557,12 @@ func releaseMetadata(manifest Manifest) Release {
 	}
 }
 
-func verifyRelease(root, content, siteURL string) error {
-	return verifyReleaseDir(releasePath(root, content), siteURL, content)
+func verifyRelease(root, content, siteURL string, officialOnly bool) error {
+	return verifyReleaseDir(releasePath(root, content), siteURL, content, officialOnly)
 }
 
-func verifyReleaseDir(path, siteURL, expected string) error {
-	result, err := Verify(path, VerifyOptions{SiteURL: siteURL})
+func verifyReleaseDir(path, siteURL, expected string, officialOnly bool) error {
+	result, err := Verify(path, VerifyOptions{SiteURL: siteURL, OfficialOnly: officialOnly})
 	if err != nil {
 		return err
 	}

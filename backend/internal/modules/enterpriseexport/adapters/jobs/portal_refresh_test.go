@@ -218,7 +218,7 @@ func runRefresh(t *testing.T, handler Refresh) error {
 
 func refreshCurrent(t *testing.T, portalRoot string) portalgen.Release {
 	t.Helper()
-	release, _, err := portalgen.CurrentRelease(portalRoot, "https://portal.example")
+	release, _, err := portalgen.CurrentRelease(portalRoot, "https://portal.example", false)
 	if err != nil {
 		t.Fatal(err)
 	}

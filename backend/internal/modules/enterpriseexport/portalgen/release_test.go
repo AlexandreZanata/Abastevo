@@ -41,7 +41,7 @@ func promoteFixture(t *testing.T, artifact, root string) ReleaseState {
 
 func currentFixture(t *testing.T, root string) Release {
 	t.Helper()
-	release, _, err := CurrentRelease(root, "https://portal.example")
+	release, _, err := CurrentRelease(root, "https://portal.example", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestPromoteSwitchRollbackWithdraw(t *testing.T) {
 	if err != nil || state.Current != "" {
 		t.Fatalf("withdraw current = %+v %v", state, err)
 	}
-	if _, _, err := CurrentRelease(root, "https://portal.example"); !errors.Is(err, ErrNoCurrentRelease) {
+	if _, _, err := CurrentRelease(root, "https://portal.example", false); !errors.Is(err, ErrNoCurrentRelease) {
 		t.Fatal("current survived withdrawal", err)
 	}
 	for _, path := range []string{root, filepath.Join(root, ReleaseDir)} {
@@ -236,7 +236,7 @@ func TestCorruptCurrentRollsBack(t *testing.T) {
 	if err := os.WriteFile(target, []byte("corrupt"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := CurrentRelease(root, "https://portal.example"); !errors.Is(err, ErrReleaseUnavailable) {
+	if _, _, err := CurrentRelease(root, "https://portal.example", false); !errors.Is(err, ErrReleaseUnavailable) {
 		t.Fatal("corrupt current accepted", err)
 	}
 	state, err := Rollback(RollbackOptions{RootDir: root, Target: firstHash, SiteURL: "https://portal.example"})

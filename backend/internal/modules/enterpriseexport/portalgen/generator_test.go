@@ -901,3 +901,82 @@ func TestRealOfficialSnapshotPages(t *testing.T) {
 	}
 	checkPortalLinks(t, out)
 }
+
+func TestGenerateOfficialOnly(t *testing.T) {
+	snapshot := writeFixture(t)
+	writeOfficialFixture(t, snapshot)
+	out := filepath.Join(t.TempDir(), "official-only")
+	result, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out, OfficialOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// fiscalizacao index + 3 records + metodologia + 404 = 6 pages;
+	// 6 HTML + 1 CSS + robots + manifest = 9 files.
+	if result.Pages != 6 || result.Files != 9 {
+		t.Fatalf("result = %+v, want 6 pages and 9 files", result)
+	}
+	for _, page := range []string{
+		"fiscalizacao/index.html",
+		"fiscalizacao/registro/" + officialRecordID("f1") + "/index.html",
+		"fiscalizacao/registro/" + officialRecordID("f2") + "/index.html",
+		"fiscalizacao/registro/" + officialRecordID("f3") + "/index.html",
+		"metodologia/index.html", "404.html",
+		"robots.txt", "portal-manifest.json",
+	} {
+		if _, err := os.Stat(filepath.Join(out, page)); err != nil {
+			t.Errorf("missing %s: %v", page, err)
+		}
+	}
+	for _, dir := range []string{"precos", "postos", "dados", "consultar", "curiosidades"} {
+		if _, err := os.Stat(filepath.Join(out, dir)); !os.IsNotExist(err) {
+			t.Errorf("official-only artifact must not contain %s", dir)
+		}
+	}
+	manifestRaw, err := os.ReadFile(filepath.Join(out, "portal-manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest Manifest
+	if err := json.Unmarshal(manifestRaw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if !manifest.OfficialOnly || manifest.OfficialRecords == nil {
+		t.Fatalf("manifest = %+v, want official-only with official pin", manifest)
+	}
+	index := readPortal(t, out, "fiscalizacao/index.html")
+	for _, want := range []string{"Fiscalização — multas aplicadas", "Edição 2025", `href="/fiscalizacao/"`, `href="/metodologia/"`} {
+		if !strings.Contains(index, want) {
+			t.Errorf("official-only index missing %q", want)
+		}
+	}
+	for _, forbidden := range []string{`href="/consultar/"`, `href="/precos/"`, `href="/dados/"`, `href="/curiosidades/"`, `href="/postos/`} {
+		if strings.Contains(index, forbidden) {
+			t.Errorf("official-only index links a price route: %q", forbidden)
+		}
+	}
+	verified, err := Verify(out, VerifyOptions{OfficialOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified.Pages != 6 || verified.SitemapURLs != 0 {
+		t.Fatalf("verified = %+v, want 6 pages and no sitemap", verified)
+	}
+	linked := readPortal(t, out, "fiscalizacao/registro/"+officialRecordID("f1")+"/index.html")
+	if !strings.Contains(linked, "Vinculado a posto") {
+		t.Error("official-only linked record lost its association state")
+	}
+	if strings.Contains(linked, `href="/postos/`) {
+		t.Error("official-only linked record links a station page")
+	}
+	if _, err := Verify(out, VerifyOptions{}); err == nil || !strings.Contains(err.Error(), "official-only mode mismatch") {
+		t.Fatalf("full-mode verify accepted an official-only artifact: %v", err)
+	}
+}
+
+func TestGenerateOfficialOnlyRequiresOfficialDataset(t *testing.T) {
+	snapshot := writeFixture(t)
+	out := filepath.Join(t.TempDir(), "official-only-empty")
+	if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out, OfficialOnly: true}); err == nil {
+		t.Fatal("official-only generation accepted a snapshot without official records")
+	}
+}
