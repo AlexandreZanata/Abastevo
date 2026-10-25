@@ -48,6 +48,7 @@ data class MapOverlayPreparation(
     val clusters: List<MapOverlayCluster>,
     val rejected: Int,
     val duplicates: Int,
+    val unpinned: List<MapOverlayMarker> = emptyList(),
 )
 
 data class MapOverlayLabels(
@@ -72,7 +73,7 @@ private val CANONICAL_UUID = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 private const val METERS_PER_DEGREE = 111_320.0
 private const val EARTH_RADIUS_METERS = 6_371_000.0
 
-internal fun prepareOverlay(
+fun prepareOverlay(
     markers: List<MapOverlayMarker>,
     radiusMeters: Double = 60.0,
     generation: Long = System.currentTimeMillis(),
@@ -99,14 +100,22 @@ internal fun prepareOverlay(
         }
     }
     if (unique.isEmpty()) return MapOverlayPreparation(emptyList(), rejected, duplicates)
+    // B-BR-MAP-01: unknown/city-centroid never become exact pins. They stay
+    // reachable through the accessible list with an explicit warning.
+    val (pinnable, unpinned) = unique.values.partition {
+        it.locationQuality == MapStationLocationQuality.REVIEWED
+    }
+    if (pinnable.isEmpty()) {
+        return MapOverlayPreparation(emptyList(), rejected, duplicates, unpinned = unpinned.toList())
+    }
 
-    val meanLatitude = unique.values.sumOf { it.latitude } / unique.size
+    val meanLatitude = pinnable.sumOf { it.latitude } / pinnable.size
     val latStep = radiusMeters / METERS_PER_DEGREE
     val lonStep = radiusMeters / (METERS_PER_DEGREE * cos(Math.toRadians(meanLatitude)).coerceAtLeast(0.1))
     val clustersByCell = HashMap<Pair<Long, Long>, MutableList<MutableCluster>>()
     val clusters = mutableListOf<MutableCluster>()
 
-    for (marker in unique.values) {
+    for (marker in pinnable) {
         val cell = cellOf(marker.latitude, marker.longitude, latStep, lonStep)
         var nearest: MutableCluster? = null
         var nearestDistance = Double.MAX_VALUE
@@ -136,14 +145,16 @@ internal fun prepareOverlay(
         },
         rejected = rejected,
         duplicates = duplicates,
+        unpinned = unpinned.toList(),
     )
 }
 
 fun overlayListItems(
     clusters: List<MapOverlayCluster>,
     labels: MapOverlayLabels = MapOverlayLabels(),
-): List<MapOverlayListItem> = clusters
-    .flatMap { it.markers }
+    unpinned: List<MapOverlayMarker> = emptyList(),
+): List<MapOverlayListItem> = (clusters
+    .flatMap { it.markers } + unpinned)
     .distinctBy { it.uuid }
     .sortedWith(compareBy({ it.title.lowercase(Locale.ROOT) }, { it.uuid }))
     .map { marker ->

@@ -28,7 +28,11 @@ class OverlayKmlTest {
     fun `kml starts with the xml declaration and keeps canonical markers`() {
         val preparation = prepareOverlay(
             listOf(
-                marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", title = "Posto & Cia <centro>"),
+                marker(
+                    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    title = "Posto & Cia <centro>",
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
                 marker(
                     "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
                     latitude = -25.43,
@@ -47,7 +51,7 @@ class OverlayKmlTest {
 
         assertTrue(kml.startsWith("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"))
         assertTrue(kml.contains("<name>ABASTEVO:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa</name>"))
-        assertTrue(kml.contains("<description>Posto &amp; Cia &lt;centro&gt; - Fuel - Location unknown</description>"))
+        assertTrue(kml.contains("<description>Posto &amp; Cia &lt;centro&gt; - Fuel - Reviewed location</description>"))
         assertTrue(kml.contains("<styleUrl>#placemark-orange</styleUrl>"))
         assertTrue(kml.contains("<mwm:icon>Gas</mwm:icon>"))
         assertTrue(kml.contains("<styleUrl>#placemark-teal</styleUrl>"))
@@ -82,8 +86,18 @@ class OverlayKmlTest {
 
         val coLocated = prepareOverlay(
             listOf(
-                marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", title = "Posto"),
-                marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", title = "Recarga", fuel = false, charging = true),
+                marker(
+                    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    title = "Posto",
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
+                marker(
+                    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                    title = "Recarga",
+                    fuel = false,
+                    charging = true,
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
             ),
             radiusMeters = 60.0,
             generation = 8,
@@ -95,17 +109,37 @@ class OverlayKmlTest {
             setOf("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"),
             coLocated.clusters.single().markers.map { it.uuid }.toSet(),
         )
-        assertEquals(2, overlayListItems(coLocated.clusters).size)
+        assertEquals(2, overlayListItems(coLocated.clusters, unpinned = coLocated.unpinned).size)
     }
 
     @Test
     fun `nearby markers cluster while far markers stay single`() {
         val preparation = prepareOverlay(
             listOf(
-                marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", latitude = -25.4200, longitude = -49.2700),
-                marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", latitude = -25.4201, longitude = -49.2701),
-                marker("cccccccc-cccc-4ccc-8ccc-cccccccccccc", latitude = -25.4202, longitude = -49.2702),
-                marker("dddddddd-dddd-4ddd-8ddd-dddddddddddd", latitude = -25.4300, longitude = -49.2800),
+                marker(
+                    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    latitude = -25.4200,
+                    longitude = -49.2700,
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
+                marker(
+                    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                    latitude = -25.4201,
+                    longitude = -49.2701,
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
+                marker(
+                    "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+                    latitude = -25.4202,
+                    longitude = -49.2702,
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
+                marker(
+                    "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+                    latitude = -25.4300,
+                    longitude = -49.2800,
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
             ),
             radiusMeters = 60.0,
             generation = 9,
@@ -116,7 +150,7 @@ class OverlayKmlTest {
         assertTrue(preparation.clusters[0].isCluster)
         assertEquals("c9-0", preparation.clusters[0].id)
         assertFalse(preparation.clusters[1].isCluster)
-        assertEquals(4, overlayListItems(preparation.clusters).size)
+        assertEquals(4, overlayListItems(preparation.clusters, unpinned = preparation.unpinned).size)
     }
 
     @Test
@@ -137,8 +171,16 @@ class OverlayKmlTest {
     fun `cluster kml uses the cluster title and information icon`() {
         val preparation = prepareOverlay(
             listOf(
-                marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
-                marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", latitude = -25.4201, longitude = -49.2701),
+                marker(
+                    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
+                marker(
+                    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                    latitude = -25.4201,
+                    longitude = -49.2701,
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
             ),
             radiusMeters = 60.0,
             generation = 10,
@@ -178,7 +220,7 @@ class OverlayKmlTest {
             radiusMeters = 1.0,
             generation = 11,
         )
-        val items = overlayListItems(preparation.clusters)
+        val items = overlayListItems(preparation.clusters, unpinned = preparation.unpinned)
 
         assertEquals(3, items.size)
         val central = items.single { it.uuid == "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }

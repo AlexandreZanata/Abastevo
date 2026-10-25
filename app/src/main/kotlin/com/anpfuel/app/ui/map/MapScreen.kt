@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
@@ -16,6 +17,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +32,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.maps.engine.MapHost
+import com.anpfuel.maps.engine.MapOverlayList
 
 @Composable
 private fun RealMapHost(modifier: Modifier = Modifier) {
@@ -37,12 +40,10 @@ private fun RealMapHost(modifier: Modifier = Modifier) {
 }
 
 /**
- * MAP-17 minimal map shell: fourth tab content with real native host.
- *
- * Order is Explorar | Comunidade | Mapa | Perfil. The shell owns the
- * ANP/Comunidade selector, filter/search/download entries, loading/error/
- * no-package states and OSM attribution. It never shows a fake map, WebView
- * or external shortcut.
+ * MAP-17 shell + MAP-18 markers: fourth tab with real native host, source
+ * selector, accessible marker list and functional entries. Pins come from
+ * canonical UUIDs; unknown/city-centroid stay list-only. No technical
+ * cluster IDs reach the UI.
  */
 @Composable
 fun MapScreen(
@@ -51,13 +52,21 @@ fun MapScreen(
     onOpenDownloads: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: MapScreenViewModel = hiltViewModel(),
+    discovery: MapDiscoveryViewModel? = null,
     mapContent: @Composable (Modifier) -> Unit = { RealMapHost(modifier = it) },
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     var showFilters by remember { mutableStateOf(false) }
+    var showList by remember { mutableStateOf(false) }
+
+    // Initial viewport loads markers once the engine is ready. Panning
+    // triggers new bounded queries in the full MAP-20 journey; the shell
+    // keeps one deterministic load for the minimum gate.
+    LaunchedEffect(discovery, ui.source) {
+        discovery?.onViewport(-25.42, -49.27, 10_000)
+    }
 
     Column(modifier.fillMaxSize()) {
-        // Top ANP/Community selector: permanent, theme-aware, 48dp targets.
         Row(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -107,9 +116,7 @@ fun MapScreen(
                     }
                 }
                 else -> {
-                    // Real native host; browsing never requires GPS.
                     mapContent(Modifier.fillMaxSize())
-                    // OSM attribution stays visible over the map.
                     Surface(
                         modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
                         shape = MaterialTheme.shapes.small,
@@ -147,7 +154,25 @@ fun MapScreen(
             }
         }
 
-        // Functional entries: filters dialog, search navigation, downloads navigation.
+        // MAP-18 accessible equivalent: real stations with distinct fuel/
+        // electric pictograms, 48dp targets and TalkBack descriptions.
+        val disc = discovery?.ui?.collectAsStateWithLifecycle()?.value
+        if (disc != null && disc.listItems.isNotEmpty()) {
+            TextButton(
+                onClick = { showList = !showList },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) {
+                Text(if (showList) "Hide list" else "Show list (${disc.listItems.size})")
+            }
+            if (showList) {
+                MapOverlayList(
+                    items = disc.listItems,
+                    onSelect = { discovery?.onSelection(it) },
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp),
+                )
+            }
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,

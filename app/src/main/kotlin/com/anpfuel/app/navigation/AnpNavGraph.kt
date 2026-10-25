@@ -129,6 +129,7 @@ fun AnpNavGraph(
                 navDeepLink { uriPattern = "anpfuel://map" },
             ),
         ) {
+            val discovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel = hiltViewModel()
             com.anpfuel.app.ui.map.MapScreen(
                 onOpenStation = { stationKey, fuel ->
                     // Map origin keeps the MAP tab selected on return.
@@ -141,6 +142,7 @@ fun AnpNavGraph(
                 },
                 onOpenSearch = { navController.navigate(Routes.STATIONS) },
                 onOpenDownloads = { navController.navigate("map/downloads") },
+                discovery = discovery,
             )
         }
         composable("map/downloads") {
