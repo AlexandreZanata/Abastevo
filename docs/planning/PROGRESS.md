@@ -23,7 +23,11 @@
   locally after the README-prescribed `chmod 755` on pinned preparers
   (earlier failures reproduced identically on pristine dev and PR-base
   main and root-caused to binary permissions, not code; no quality
-  code touched). Remote CI on the corrected head
+  code touched). CI `test` failure root-caused to the missing Room v25
+  export (parallel debug/release KSP raced creating it); the
+  machine-generated `25.json` is committed (`dcc7c143`), full
+  `./gradlew test` passes locally, intermediates 19–24 stay owed by the
+  owning front. Remote CI on the corrected head
   pending; merge awaits green CI via guarded finish. No other work
   branch touched.
   Next: push corrections, refresh PR #150, guarded merge on green CI.
