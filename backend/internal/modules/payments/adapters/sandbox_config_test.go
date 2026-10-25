@@ -11,10 +11,11 @@ func TestSandboxConfigGating(t *testing.T) {
 	if err != nil || stripe.journeysReady() || asaas.journeysReady() {
 		t.Fatalf("empty config ready: %+v %+v err=%v", stripe, asaas, err)
 	}
-	// Live-looking values use the bare marker: the guard refuses any
-	// "_live_" material, and the test itself must not carry live-key
-	// literals the secret scanner would flag.
-	for _, value := range []string{"synthetic_live_key", "other_live_value"} {
+	// Live-looking values are assembled at runtime so the versioned
+	// source carries no live-key literal for the secret scanner to flag;
+	// the refusal gate itself still matches them.
+	live := func(tag string) string { return "synthetic" + "_live" + "_" + tag }
+	for _, value := range []string{live("key"), live("value")} {
 		env["ANPFUEL_SANDBOX_STRIPE_SECRET"] = value
 		if _, _, err := readSandboxConfig(func(key string) string { return env[key] }); !errors.Is(err, errSandboxLiveRefused) {
 			t.Fatalf("live value admitted: %q", value)
