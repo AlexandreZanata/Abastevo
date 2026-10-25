@@ -175,7 +175,11 @@ type Config struct {
 	EnterprisePortalRoot           string
 	EnterprisePortalSiteURL        string
 	EnterprisePortalIndexable      bool
-	EnterprisePortalSearchScript   string
+	// EnterprisePortalOfficialOnly restricts refresh generation,
+	// verification, promotion and withdrawal to the admitted
+	// official-records slice. It can never widen to the full portal.
+	EnterprisePortalOfficialOnly bool
+	EnterprisePortalSearchScript string
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
@@ -277,6 +281,13 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE must be boolean")
 		}
 		cfg.EnterprisePortalIndexable = enabled
+	}
+	if raw, present := getenv("ANPFUEL_ENTERPRISE_PORTAL_OFFICIAL_ONLY"); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_OFFICIAL_ONLY must be boolean")
+		}
+		cfg.EnterprisePortalOfficialOnly = enabled
 	}
 	cfg.EnterprisePortalRoot, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_ROOT")
 	cfg.EnterprisePortalSiteURL, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL")

@@ -896,6 +896,7 @@ func run() error {
 			handlers[enterprisejobs.RefreshKind] = enterprisejobs.Refresh{
 				ExportRoot: cfg.EnterpriseExportRoot, PortalRoot: cfg.EnterprisePortalRoot,
 				SiteURL: cfg.EnterprisePortalSiteURL, Indexable: cfg.EnterprisePortalIndexable,
+				OfficialOnly:     cfg.EnterprisePortalOfficialOnly,
 				SearchScriptPath: cfg.EnterprisePortalSearchScript,
 				Status:           qualitySourceStatus(raw),
 			}

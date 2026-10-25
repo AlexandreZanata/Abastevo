@@ -13,7 +13,7 @@ func TestEnterprisePortalRefreshDefaultsAndValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.EnterprisePortalRefreshEnabled || cfg.EnterprisePortalRoot != "" || cfg.EnterprisePortalSiteURL != "" || cfg.EnterprisePortalIndexable || cfg.EnterprisePortalSearchScript != "" {
+	if cfg.EnterprisePortalRefreshEnabled || cfg.EnterprisePortalRoot != "" || cfg.EnterprisePortalSiteURL != "" || cfg.EnterprisePortalIndexable || cfg.EnterprisePortalOfficialOnly || cfg.EnterprisePortalSearchScript != "" {
 		t.Fatalf("defaults = %+v", cfg)
 	}
 	base := map[string]string{
@@ -86,11 +86,27 @@ func TestEnterprisePortalRefreshDefaultsAndValidation(t *testing.T) {
 			v["ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE"] = "yes"
 			return v
 		}()},
+		{"bad official-only", func() map[string]string {
+			v := without("ANPFUEL_ENTERPRISE_PORTAL_REFRESH_ENABLED")
+			v["ANPFUEL_ENTERPRISE_PORTAL_OFFICIAL_ONLY"] = "yes"
+			return v
+		}()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := loadWith(tc.values); err == nil {
 				t.Fatal("invalid portal refresh config accepted")
 			}
 		})
+	}
+	official, err := loadWith(func() map[string]string {
+		v := map[string]string{}
+		for k, val := range base {
+			v[k] = val
+		}
+		v["ANPFUEL_ENTERPRISE_PORTAL_OFFICIAL_ONLY"] = "true"
+		return v
+	}())
+	if err != nil || !official.EnterprisePortalOfficialOnly {
+		t.Fatalf("official-only config = %+v, %v", official, err)
 	}
 }

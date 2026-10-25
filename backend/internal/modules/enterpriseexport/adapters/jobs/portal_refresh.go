@@ -81,14 +81,20 @@ type Refresh struct {
 	SiteURL          string
 	SearchScriptPath string
 	Indexable        bool
-	MaxPages         int
-	MaxBytes         int64
-	Now              func() time.Time
-	Status           func(context.Context) (SourceStatus, error)
-	Generate         func(portalgen.Options) (portalgen.Result, error)
-	Promote          func(portalgen.PromoteOptions) (portalgen.ReleaseState, error)
-	Current          func(root, siteURL string) (portalgen.Release, portalgen.ReleaseState, error)
-	Withdraw         func(portalgen.WithdrawOptions) (portalgen.ReleaseState, error)
+	// OfficialOnly restricts the pipeline to the admitted official-records
+	// slice: generation, verification, promotion, rollback and withdrawal
+	// all run in official-only mode, and withdrawal never falls back to a
+	// full release. An official-only refresh can never emit the full portal
+	// or widen the source scope.
+	OfficialOnly bool
+	MaxPages     int
+	MaxBytes     int64
+	Now          func() time.Time
+	Status       func(context.Context) (SourceStatus, error)
+	Generate     func(portalgen.Options) (portalgen.Result, error)
+	Promote      func(portalgen.PromoteOptions) (portalgen.ReleaseState, error)
+	Current      func(root, siteURL string, officialOnly bool) (portalgen.Release, portalgen.ReleaseState, error)
+	Withdraw     func(portalgen.WithdrawOptions) (portalgen.ReleaseState, error)
 }
 
 func (Refresh) Kind() string { return RefreshKind }
@@ -163,6 +169,9 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 			return r.recordNoop(refresh, now, payload, state, current, "awaiting-export")
 		}
 	}
+	if r.OfficialOnly && state.Official == nil {
+		return r.fail(refresh, now, payload, state, fmt.Errorf("enterprise portal refresh: official-only refresh requires a published official revision"))
+	}
 	if (refresh.LastOutcome == "released" || refresh.LastOutcome == "noop") &&
 		state.ContentSHA256 == refresh.ExportContentSHA256 &&
 		sameRefreshPin(refresh, state.Official) &&
@@ -180,7 +189,7 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 	generated, err := r.generate(portalgen.Options{
 		SnapshotDir: state.CandidateDir, OutputDir: candidate,
 		Indexable: r.Indexable, SiteURL: r.SiteURL, SearchScriptPath: r.SearchScriptPath,
-		MaxPages: r.MaxPages, MaxBytes: r.MaxBytes,
+		MaxPages: r.MaxPages, MaxBytes: r.MaxBytes, OfficialOnly: r.OfficialOnly,
 	})
 	if err != nil {
 		_ = os.RemoveAll(candidate)
@@ -214,7 +223,7 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 	}
 	promoted, err := r.promote(portalgen.PromoteOptions{
 		ArtifactDir: candidate, RootDir: r.PortalRoot, SiteURL: r.SiteURL,
-		Fence: true, ExpectedCurrent: current.ContentSHA256,
+		Fence: true, ExpectedCurrent: current.ContentSHA256, OfficialOnly: r.OfficialOnly,
 	})
 	if err != nil {
 		_ = os.RemoveAll(candidate)
@@ -251,7 +260,9 @@ func (r Refresh) current() (portalgen.Release, portalgen.ReleaseState, error) {
 	var releases portalgen.ReleaseState
 	var err error
 	if r.Current != nil {
-		current, releases, err = r.Current(r.PortalRoot, r.SiteURL)
+		current, releases, err = r.Current(r.PortalRoot, r.SiteURL, r.OfficialOnly)
+	} else if r.OfficialOnly {
+		current, releases, err = portalgen.CurrentRelease(r.PortalRoot, r.SiteURL, true)
 	} else {
 		current, releases, err = portalgen.CurrentReleaseHeader(r.PortalRoot)
 	}
@@ -285,9 +296,15 @@ func (r Refresh) withdrawRelease(opts portalgen.WithdrawOptions) (portalgen.Rele
 }
 
 func (r Refresh) withdraw(refresh RefreshState, now time.Time, payload RefreshPayload, state State, current portalgen.Release, releases portalgen.ReleaseState) error {
-	fallback := safeRefreshFallback(releases, current)
+	// An official-only pipeline must never fall back to a full release:
+	// withdrawal removes the pointer (404) instead of serving wider scope.
+	fallback := ""
+	if !r.OfficialOnly {
+		fallback = safeRefreshFallback(releases, current)
+	}
 	if _, err := r.withdrawRelease(portalgen.WithdrawOptions{
 		RootDir: r.PortalRoot, Fallback: fallback, SiteURL: r.SiteURL,
+		OfficialOnly: r.OfficialOnly,
 	}); err != nil {
 		return r.fail(refresh, now, payload, state, err)
 	}

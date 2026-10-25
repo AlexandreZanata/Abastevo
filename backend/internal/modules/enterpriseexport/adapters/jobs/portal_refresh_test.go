@@ -477,3 +477,71 @@ func TestRefreshPriceOnlyExportWithoutOfficialSource(t *testing.T) {
 		t.Fatalf("price-only receipt = %+v", refresh)
 	}
 }
+
+func TestRefreshOfficialOnlyPropagatesMode(t *testing.T) {
+	exportRoot, portalRoot, handler, _ := refreshFixture(t)
+	handler.OfficialOnly = true
+	writeRefreshExport(t, exportRoot, "a", "sha256:"+strings.Repeat("a", 64), "6000", refreshOfficialA)
+	var sawOfficialOnly *bool
+	wrapped := handler
+	wrapped.Generate = func(opts portalgen.Options) (portalgen.Result, error) {
+		flag := opts.OfficialOnly
+		sawOfficialOnly = &flag
+		return portalgen.Generate(opts)
+	}
+	if err := runRefresh(t, wrapped); err != nil {
+		t.Fatal(err)
+	}
+	if sawOfficialOnly == nil || !*sawOfficialOnly {
+		t.Fatal("official-only refresh generated a full portal")
+	}
+	release, _, err := portalgen.CurrentRelease(portalRoot, "https://portal.example", true)
+	if err != nil {
+		t.Fatalf("official-only current rejected: %v", err)
+	}
+	if release.OfficialRevisionID != refreshOfficialA {
+		t.Fatalf("official release = %+v", release)
+	}
+	for _, dir := range []string{"precos", "postos", "dados", "consultar", "curiosidades"} {
+		if _, err := os.Stat(filepath.Join(portalRoot, "current", dir)); !os.IsNotExist(err) {
+			t.Fatalf("official-only release serves %s", dir)
+		}
+	}
+	if _, _, err := portalgen.CurrentRelease(portalRoot, "https://portal.example", true); err != nil {
+		t.Fatalf("official-only current rejected: %v", err)
+	}
+}
+
+func TestRefreshOfficialOnlyRequiresPublishedOfficial(t *testing.T) {
+	exportRoot, _, handler, _ := refreshFixture(t)
+	handler.OfficialOnly = true
+	writeRefreshExport(t, exportRoot, "a", "sha256:"+strings.Repeat("a", 64), "6000", "")
+	if err := runRefresh(t, handler); err == nil {
+		t.Fatal("official-only refresh accepted an export without official records")
+	}
+}
+
+func TestRefreshOfficialOnlyWithdrawsWithoutFallback(t *testing.T) {
+	exportRoot, portalRoot, handler, _ := refreshFixture(t)
+	handler.OfficialOnly = true
+	handler.Status = func(context.Context) (SourceStatus, error) {
+		return SourceStatus{HasPublished: true, RevisionID: refreshOfficialA}, nil
+	}
+	writeRefreshExport(t, exportRoot, "a", "sha256:"+strings.Repeat("a", 64), "6000", refreshOfficialA)
+	if err := runRefresh(t, handler); err != nil {
+		t.Fatal(err)
+	}
+	handler.Status = func(context.Context) (SourceStatus, error) { return SourceStatus{HasPublished: false}, nil }
+	if err := runRefresh(t, handler); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := portalgen.CurrentReleaseHeader(portalRoot); !errors.Is(err, portalgen.ErrNoCurrentRelease) {
+		t.Fatalf("withdrawn official-only release still current: %v", err)
+	}
+	// A full release must never become the fallback of an official-only
+	// withdrawal: the outcome above is 404 (no current), never wider scope.
+	refresh, _ := loadRefreshState(portalRoot)
+	if refresh.LastOutcome != "withdrawn" {
+		t.Fatalf("official-only withdrawal receipt = %+v", refresh)
+	}
+}
