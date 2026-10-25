@@ -269,3 +269,118 @@ func TestRetainedHTTPReadersSurviveTransitions(t *testing.T) {
 		t.Fatalf("readers observed broken transitions: %v", failures)
 	}
 }
+
+func TestWithdrawKeepsCurrentAssetsUntilPointerMoves(t *testing.T) {
+	root := releaseRoot(t)
+	first := releaseCandidateWithJS(t, "Withdraw A", "globalThis.__withdrawA=1;\n")
+	second := releaseCandidateWithJS(t, "Withdraw B", "globalThis.__withdrawB=2;\n")
+	firstState := promoteFixture(t, first, root)
+	secondState := promoteFixture(t, second, root)
+	original := publishRetainedGenerationHook
+	defer func() { publishRetainedGenerationHook = original }()
+	calls := 0
+	publishRetainedGenerationHook = func(root, generation string) error {
+		calls++
+		if calls == 1 {
+			for _, asset := range append(releaseJSAssets(t, first), releaseJSAssets(t, second)...) {
+				if _, err := os.Stat(retainedAssetPath(t, root, asset)); err != nil {
+					t.Errorf("transition store missing asset %s while current is still served: %v", asset, err)
+				}
+			}
+		}
+		return original(root, generation)
+	}
+	state, err := Withdraw(WithdrawOptions{RootDir: root, Fallback: firstState.Current, SiteURL: "https://portal.example"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 {
+		t.Fatalf("withdraw retained rebuilds = %d, want transition + purge", calls)
+	}
+	if state.Current != firstState.Current || state.Previous != secondState.Current {
+		t.Fatalf("withdraw state = %+v", state)
+	}
+	for _, asset := range releaseJSAssets(t, first) {
+		if _, err := os.Stat(retainedAssetPath(t, root, asset)); err != nil {
+			t.Fatalf("fallback asset missing after withdraw: %s: %v", asset, err)
+		}
+	}
+	for _, asset := range releaseJSAssets(t, second) {
+		if _, err := os.Stat(retainedAssetPath(t, root, asset)); !os.IsNotExist(err) {
+			t.Fatalf("withdrawn asset still served after purge: %s", asset)
+		}
+	}
+	if _, _, err := CurrentRelease(root, "https://portal.example", false); err != nil {
+		t.Fatalf("fallback unavailable after withdraw: %v", err)
+	}
+}
+
+func TestWithdrawPurgeFailureLeavesServingFallback(t *testing.T) {
+	root := releaseRoot(t)
+	first := releaseCandidateWithJS(t, "Purge A", "globalThis.__purgeA=1;\n")
+	second := releaseCandidateWithJS(t, "Purge B", "globalThis.__purgeB=2;\n")
+	firstState := promoteFixture(t, first, root)
+	promoteFixture(t, second, root)
+	original := publishRetainedGenerationHook
+	defer func() { publishRetainedGenerationHook = original }()
+	calls := 0
+	publishRetainedGenerationHook = func(root, generation string) error {
+		calls++
+		if calls == 2 {
+			return errors.New("synthetic purge failure")
+		}
+		return original(root, generation)
+	}
+	if _, err := Withdraw(WithdrawOptions{RootDir: root, Fallback: firstState.Current, SiteURL: "https://portal.example"}); err == nil {
+		t.Fatal("withdraw hid a failed retention purge")
+	}
+	state, ok := LoadReleaseState(root)
+	if !ok || state.Current != firstState.Current {
+		t.Fatalf("committed withdrawal state = %+v", state)
+	}
+	for _, asset := range releaseJSAssets(t, first) {
+		if _, err := os.Stat(retainedAssetPath(t, root, asset)); err != nil {
+			t.Fatalf("serving fallback asset lost after purge failure: %s: %v", asset, err)
+		}
+	}
+	if _, _, err := CurrentRelease(root, "https://portal.example", false); err != nil {
+		t.Fatalf("fallback unavailable after purge failure: %v", err)
+	}
+	if _, err := RetainAssets(root, 2, 100<<20); err != nil {
+		t.Fatalf("repair retain: %v", err)
+	}
+	for _, asset := range releaseJSAssets(t, second) {
+		if _, err := os.Stat(retainedAssetPath(t, root, asset)); !os.IsNotExist(err) {
+			t.Fatalf("repair retain kept withdrawn asset %s", asset)
+		}
+	}
+}
+
+func TestRollbackKeepsCurrentAssetsUntilPointerMoves(t *testing.T) {
+	root := releaseRoot(t)
+	first := releaseCandidateWithJS(t, "Switch A", "globalThis.__switchA=1;\n")
+	second := releaseCandidateWithJS(t, "Switch B", "globalThis.__switchB=2;\n")
+	firstState := promoteFixture(t, first, root)
+	promoteFixture(t, second, root)
+	original := publishRetainedGenerationHook
+	defer func() { publishRetainedGenerationHook = original }()
+	publishRetainedGenerationHook = func(root, generation string) error {
+		for _, asset := range append(releaseJSAssets(t, first), releaseJSAssets(t, second)...) {
+			if _, err := os.Stat(retainedAssetPath(t, root, asset)); err != nil {
+				t.Errorf("transition store missing %s while the previous current is still served: %v", asset, err)
+			}
+		}
+		return original(root, generation)
+	}
+	if _, err := Rollback(RollbackOptions{RootDir: root, Target: firstState.Current, SiteURL: "https://portal.example", RetainKeep: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if got := currentFixture(t, root); got.ContentSHA256 != firstState.Current {
+		t.Fatalf("rollback current = %+v", got)
+	}
+	for _, asset := range releaseJSAssets(t, first) {
+		if _, err := os.Stat(retainedAssetPath(t, root, asset)); err != nil {
+			t.Fatalf("rollback target asset missing: %s: %v", asset, err)
+		}
+	}
+}

@@ -277,7 +277,11 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 		return ReleaseState{}, err
 	}
 
-	if _, err := rebuildRetained(opts.RootDir, state, []string{content}, opts.RetainKeep, opts.RetainMaxBytes, true); err != nil {
+	transitionRequired := []string{content}
+	if current != "" && current != content {
+		transitionRequired = append(transitionRequired, current)
+	}
+	if _, err := rebuildRetained(opts.RootDir, state, transitionRequired, opts.RetainKeep, opts.RetainMaxBytes, true); err != nil {
 		return ReleaseState{}, fmt.Errorf("portal release: asset preparation: %w", err)
 	}
 	if err := switchCurrent(opts.RootDir, targetName); err != nil {
@@ -340,7 +344,11 @@ func Rollback(opts RollbackOptions) (ReleaseState, error) {
 	if err := verifyRelease(opts.RootDir, opts.Target, opts.SiteURL, opts.OfficialOnly); err != nil {
 		return ReleaseState{}, ErrReleaseUnavailable
 	}
-	if _, err := rebuildRetained(opts.RootDir, state, []string{opts.Target}, opts.RetainKeep, opts.RetainMaxBytes, true); err != nil {
+	transitionRequired := []string{opts.Target}
+	if current != "" && current != opts.Target {
+		transitionRequired = append(transitionRequired, current)
+	}
+	if _, err := rebuildRetained(opts.RootDir, state, transitionRequired, opts.RetainKeep, opts.RetainMaxBytes, true); err != nil {
 		return ReleaseState{}, fmt.Errorf("portal release: asset preparation: %w", err)
 	}
 	if err := switchCurrent(opts.RootDir, releaseName(opts.Target)); err != nil {
@@ -420,14 +428,14 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 			return ReleaseState{}, ErrReleaseUnavailable
 		}
 	}
-	// Prepare the post-withdrawal asset store before changing the pointer:
-	// withdrawn content never survives, shared assets of the fallback stay,
-	// and a failed rebuild leaves the previous pointer untouched.
-	var required []string
+	// First store both the still-current release and the fallback, so the
+	// retired page keeps its dependencies during the pointer move and a
+	// failed switch leaves a complete serving set behind.
+	transitionRequired := []string{current}
 	if fallback != "" {
-		required = append(required, fallback)
+		transitionRequired = append(transitionRequired, fallback)
 	}
-	if _, err := rebuildRetained(opts.RootDir, state, required, defaultRetainKeep, defaultRetainMaxBytes, false); err != nil {
+	if _, err := rebuildRetained(opts.RootDir, state, transitionRequired, defaultRetainKeep, defaultRetainMaxBytes, false); err != nil {
 		return ReleaseState{}, err
 	}
 	if fallback != "" {
@@ -446,6 +454,16 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 	state.UpdatedAt = now().UTC().Format(time.RFC3339)
 	if err := writeReleaseState(opts.RootDir, state); err != nil {
 		return ReleaseState{}, err
+	}
+	// The pointer no longer selects withdrawn content. Purge it from the
+	// retained generation and drop older generations; a failure here is
+	// surfaced for a repair `retain`, never a served broken fallback.
+	var finalRequired []string
+	if fallback != "" {
+		finalRequired = append(finalRequired, fallback)
+	}
+	if _, err := rebuildRetained(opts.RootDir, state, finalRequired, defaultRetainKeep, defaultRetainMaxBytes, false); err != nil {
+		return ReleaseState{}, fmt.Errorf("portal release: withdrawal committed but retained purge failed; run portalrelease retain: %w", err)
 	}
 	return state, nil
 }
