@@ -1,5 +1,10 @@
 # Current execution state
 
+- Enterprise portal ESP-STAGING-01 2026-10-25: STAGING_DONE / NOT_PUBLIC on `codex/enterprise-static-portal` after ESP-18 `f1591b82`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-STAGING-01.md). User-authorized scope: real FQ-07 2016–2025 via staging API plus official-only `/fiscalizacao` on `https://teste.abastevo.com.br`; no synthetics.
+  Implemented `portalgen`/`portalcheck`/`portalrelease --official-only` (admitted slice only, delinked station hrefs, mode-mismatch refusal); `enterpriseexport` suites green.
+  Staging: pre-ingest backup verified; 7/7 sanction discovery+import jobs done, seven VERIFIED revisions, current 2025 lease (3,375 rows); candidate `460d8b9f…` (3,394 pages) promoted; additive noindex edge locations; smoke PASS (manifest hash, no price links, API/health intact); withdraw→404→repromote→200 rollback drill PASS.
+  Linked records show association state without station pages; price/registry/PMQC rights still pending; ESP-18 public still blocked; no merge/pilot/G09 claim. Next: second official-only release replay or rights-gated full portal decision.
 - Enterprise portal ESP-18 2026-10-25: BLOCKED_EXTERNAL_AUTHORIZATION /
   NOT_PUBLISHED on `codex/enterprise-static-portal` after ESP-17 `103dcf6b`.
   [Evidence](../backend/evidence/enterprise-static/ESP-18.md).
