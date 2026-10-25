@@ -68,10 +68,15 @@ class MapManifestVerifierTest {
         }
         assertTrue(PlatformEd25519Verifier.verify(keyPair.public, msg, freshSig))
         assertEquals(64, freshSig.size)
-        // Mutated signature must fail closed even without JNI.
+        // Mutated signature must fail closed even without JNI (platform throws,
+        // Monocypher returns false).
         val mutated = freshSig.copyOf().also { it[0] = (it[0].toInt() xor 1).toByte() }
-        assertFalse(PlatformEd25519Verifier.verify(keyPair.public, msg, mutated))
-        assertFalse(MonocypherEd25519.verifyRaw(ByteArray(32), msg, mutated).let { it && false })
+        try {
+            assertFalse(PlatformEd25519Verifier.verify(keyPair.public, msg, mutated))
+        } catch (_: MapSignatureException) {
+            // Fail-closed via exception is also accepted.
+        }
+        assertFalse(MonocypherEd25519.verifyRaw(ByteArray(32), msg, mutated))
     }
 
     @Test fun `altered message key and signature are rejected`() {
