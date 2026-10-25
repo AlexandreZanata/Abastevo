@@ -246,7 +246,7 @@ func (s *Store) CreateOrder(ctx context.Context, order domain.Order) error {
 	if err := order.Amount.Positive(); err != nil {
 		return err
 	}
-	if len(order.Capabilities) == 0 {
+	if len(order.Capabilities) == 0 && order.Family != domain.EnterpriseFamily {
 		return domain.ErrInvalid
 	}
 	if order.QuotedAt.IsZero() || order.ExpiresAt.IsZero() || !order.ExpiresAt.After(order.QuotedAt) {
@@ -259,6 +259,7 @@ func (s *Store) CreateOrder(ctx context.Context, order domain.Order) error {
 		ID:             id,
 		AccountID:      accountID,
 		OfferID:        order.OfferID,
+		Family:         order.Family,
 		CatalogVersion: order.CatalogVersion,
 		Channel:        string(order.Channel),
 		AmountCentavos: order.Amount.Centavos,
@@ -1455,7 +1456,7 @@ func (s *Store) EnsurePixAutoCycleOrder(ctx context.Context, input app.PixAutoCy
 	now := time.Now().UTC()
 	rows, err := q.InsertPaymentOrder(ctx, qpay.InsertPaymentOrderParams{
 		ID: orderUID, AccountID: accountID, OfferID: input.OfferID,
-		CatalogVersion: input.CatalogVersion, Channel: string(domain.ChannelPixAutomatic),
+		Family: input.Family, CatalogVersion: input.CatalogVersion, Channel: string(domain.ChannelPixAutomatic),
 		AmountCentavos: input.Amount.Centavos, Currency: "BRL", Capabilities: input.Capabilities,
 		State: string(domain.OrderPending), QuotedAt: stamp(input.SettledAt),
 		ExpiresAt: stamp(input.SettledAt.Add(domain.QuoteTTL)),
@@ -2045,8 +2046,9 @@ func (s *Store) BillingHistory(ctx context.Context, accountID string, limit int)
 			OrderID: uuidText(row.OrderID), OfferID: row.OfferID,
 			Channel: domain.Channel(row.Channel), Amount: domain.BRL(row.AmountCentavos),
 			OrderState: row.OrderState, OrderedAt: row.OrderedAt.Time,
-			SettlementID: uuidText(row.SettlementID), SettlementState: textValue(row.SettlementState),
-			SettledAt: row.SettledAt.Time, GrantID: uuidText(row.GrantID),
+			SettlementID: uuidText(row.SettlementID), RemotePaymentID: textValue(row.RemotePaymentID),
+			SettlementState: textValue(row.SettlementState),
+			SettledAt:       row.SettledAt.Time, GrantID: uuidText(row.GrantID),
 			GrantStart: row.StartAt.Time, GrantEnd: row.EndAt.Time,
 			GrantState: textValue(row.GrantState),
 		}
@@ -2170,7 +2172,7 @@ func domainOrder(row qpay.PaymentOrder) (domain.Order, error) {
 	}
 	order := domain.Order{
 		ID: uuidText(row.ID), AccountID: uuidText(row.AccountID), OfferID: row.OfferID,
-		CatalogVersion: row.CatalogVersion, Channel: domain.Channel(row.Channel),
+		Family: row.Family, CatalogVersion: row.CatalogVersion, Channel: domain.Channel(row.Channel),
 		Term: domain.TermMonthly, Amount: domain.BRL(row.AmountCentavos),
 		Capabilities: append([]string(nil), row.Capabilities...),
 		State:        domain.OrderState(row.State), QuotedAt: row.QuotedAt.Time, ExpiresAt: row.ExpiresAt.Time,

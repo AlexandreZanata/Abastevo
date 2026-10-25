@@ -35,6 +35,7 @@ type SettlementVerifier interface {
 type PixAutoCycleOrderInput struct {
 	AccountID            string
 	OfferID              string
+	Family               string
 	CatalogVersion       string
 	Capabilities         []string
 	Amount               domain.Money

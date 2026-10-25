@@ -65,6 +65,7 @@ type BillingHistoryRow struct {
 	OrderState      string
 	OrderedAt       time.Time
 	SettlementID    string
+	RemotePaymentID string
 	SettlementState string
 	SettledAt       time.Time
 	GrantID         string

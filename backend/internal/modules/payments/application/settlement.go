@@ -96,7 +96,7 @@ func (s *SettlementService) Settle(ctx context.Context, candidate SettlementCand
 			return domain.ErrBinding
 		}
 		orderID, err = s.Store.EnsurePixAutoCycleOrder(ctx, PixAutoCycleOrderInput{
-			AccountID: mandate.AccountID, OfferID: mandate.OfferID,
+			AccountID: mandate.AccountID, OfferID: mandate.OfferID, Family: initial.Family,
 			CatalogVersion: initial.CatalogVersion, Capabilities: initial.Capabilities,
 			Amount: mandate.Value, Environment: candidate.Environment, Merchant: candidate.Merchant,
 			RemotePaymentID: candidate.RemotePaymentID, RemoteSubscriptionID: candidate.RemoteSubscriptionID,
@@ -119,8 +119,8 @@ func (s *SettlementService) Settle(ctx context.Context, candidate SettlementCand
 		return domain.ErrBinding
 	}
 	offer, ok := s.Catalog.Offers[order.OfferID]
-	if !ok || !offer.Price.Equal(candidate.Amount) || len(offer.Capabilities) == 0 ||
-		!offer.Channels[candidate.Channel] || !sameStrings(offer.Capabilities, order.Capabilities) {
+	if !ok || !offer.Price.Equal(candidate.Amount) || !sameStrings(offer.Capabilities, order.Capabilities) ||
+		!offer.Channels[candidate.Channel] || !capabilitiesAdmit(offer, order) {
 		return domain.ErrBinding
 	}
 	attempt, err := s.Store.AttemptForOrder(ctx, order.ID)
@@ -190,4 +190,15 @@ func settlementUUID(provider domain.Provider, remoteID string) string {
 	encoded := hex.EncodeToString(raw)
 	return encoded[0:8] + "-" + encoded[8:12] + "-" + encoded[12:16] + "-" +
 		encoded[16:20] + "-" + encoded[20:32]
+}
+
+// capabilitiesAdmit enforces capability-target isolation: capability lists must
+// match, and only an approved enterprise offer may settle a period with no app
+// capabilities. Premium periods always carry capabilities.
+func capabilitiesAdmit(offer domain.Offer, order domain.Order) bool {
+	if len(offer.Capabilities) != 0 || len(order.Capabilities) != 0 {
+		return len(offer.Capabilities) != 0 && len(order.Capabilities) != 0
+	}
+	return offer.Enterprise && offer.Family == domain.EnterpriseFamily &&
+		order.Family == domain.EnterpriseFamily
 }

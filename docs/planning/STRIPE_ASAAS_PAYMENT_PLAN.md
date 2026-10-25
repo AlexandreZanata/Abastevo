@@ -234,6 +234,11 @@ above the limit; disputes revoke only matched unexpired paid periods; unmatched
 money becomes an explicit hold for review; stale replays and concurrent refunds
 cannot duplicate provider writes. Runtime wiring and provider proof remain
 PAY-19/PAY-21.
+PAY-17 is LOCAL_DONE: enterprise billing binds one exact approved offer to a
+single accountable payer and its own account target, with no app capabilities
+and no team/station/organization privilege; unapproved offers are refused on
+every channel without side effects; provider invoice/receipt references are
+owner-scoped; the fiscal engine stays explicitly frozen with no tax construction.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
@@ -318,6 +323,8 @@ that a nonexistent command or endpoint is available.
   LOCAL_DONE; bounded reservation, canonical verification, revocation rules and
   operator fences tested.
 - **PAY-17:** Enterprise single-payer billing and capability-target isolation.
+  LOCAL_DONE; binding policy, cross-channel refusal, approved self-purchase and
+  no-capability grant isolation tested; fiscal workflow frozen.
 - **PAY-18:** adversarial matrix, privacy/restore and bounded performance acceptance.
 - **PAY-19:** actual API/worker composition and regressions with MAP/ESP/PRM.
 - **PAY-20:** deployment/configuration packaging, preflight and operations runbook.

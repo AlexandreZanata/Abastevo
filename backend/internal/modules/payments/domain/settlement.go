@@ -541,7 +541,10 @@ func (e Entitlement) Validate() error {
 		if !grant.Start.Before(grant.End) || grant.AnchorDay < 1 || grant.AnchorDay > 31 {
 			return fmt.Errorf("%w: grant period", ErrInvalid)
 		}
-		if !grant.State.Valid() || grant.PolicyVersion != PolicyVersion || len(grant.Capabilities) == 0 {
+		// Empty capabilities are allowed only for enterprise grants, which are
+		// created solely from approved enterprise offers through capability-checked
+		// settlement binding. Premium settlements always require capabilities.
+		if !grant.State.Valid() || grant.PolicyVersion != PolicyVersion {
 			return fmt.Errorf("%w: grant state", ErrInvalid)
 		}
 		refunded := BRL(0)

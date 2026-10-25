@@ -422,3 +422,68 @@ func ValidateFundingSources(contracts []Contract) error {
 	}
 	return nil
 }
+
+const (
+	EnterpriseBound        = "enterprise-bound"
+	EnterpriseMismatch     = "enterprise-mismatch"
+	EnterpriseUnavailable  = "enterprise-unavailable"
+	EnterpriseForeignPayer = "foreign-payer"
+	EnterpriseQuantity     = "quantity-unsupported"
+	EnterpriseCapabilities = "enterprise-capabilities"
+)
+
+// EnterpriseFamily is the only product family allowed to carry an enterprise
+// billing binding. Premium and Enterprise remain independent: an enterprise
+// binding never grants premium capabilities and never spans accounts.
+const EnterpriseFamily = "enterprise"
+
+type EnterpriseBindingRequest struct {
+	Offer     Offer
+	AccountID string
+	PayerID   string
+	Quantity  int
+	// Approved records that the catalog admitted this exact offer for sale.
+	// Frozen catalog validation still refuses to admit one; approval can only
+	// arrive through an explicit catalog change, never through this decision.
+	Approved bool
+}
+
+type EnterpriseBindingDecision struct {
+	Allowed bool
+	Reason  string
+}
+
+// DecideEnterpriseBinding binds an exact enterprise offer to one billed
+// entity: the authenticated payer must be the billed account, exactly one
+// accountable unit is allowed, the offer must be catalog-approved with a real
+// price and monthly term, and it must carry no app capabilities. It never
+// approves a sale by itself; catalog admission owns that gate.
+func DecideEnterpriseBinding(request EnterpriseBindingRequest) (EnterpriseBindingDecision, error) {
+	structural := request.Offer
+	structural.SaleEnabled = false
+	if err := structural.Validate(); err != nil {
+		return EnterpriseBindingDecision{}, err
+	}
+	if !validText(request.AccountID, MaxText) || !validText(request.PayerID, MaxText) {
+		return EnterpriseBindingDecision{}, fmt.Errorf("%w: enterprise identity", ErrInvalid)
+	}
+	if !request.Offer.Enterprise || request.Offer.Family != EnterpriseFamily {
+		return EnterpriseBindingDecision{Reason: EnterpriseMismatch}, nil
+	}
+	if !request.Approved {
+		return EnterpriseBindingDecision{Reason: EnterpriseUnavailable}, nil
+	}
+	if err := request.Offer.Price.Positive(); err != nil {
+		return EnterpriseBindingDecision{Reason: EnterpriseUnavailable}, nil
+	}
+	if request.PayerID != request.AccountID {
+		return EnterpriseBindingDecision{Reason: EnterpriseForeignPayer}, nil
+	}
+	if request.Quantity != 1 {
+		return EnterpriseBindingDecision{Reason: EnterpriseQuantity}, nil
+	}
+	if len(request.Offer.Capabilities) != 0 {
+		return EnterpriseBindingDecision{Reason: EnterpriseCapabilities}, nil
+	}
+	return EnterpriseBindingDecision{Allowed: true, Reason: EnterpriseBound}, nil
+}

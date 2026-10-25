@@ -1108,3 +1108,89 @@ func TestDecidePlanChangeRefusals(t *testing.T) {
 		t.Fatalf("zero time err=%v", err)
 	}
 }
+
+func approvedEnterpriseOffer() Offer {
+	return Offer{
+		ID: "enterprise.regional_brief.approved", Family: "enterprise", Term: TermMonthly,
+		Price: BRL(9900), Capabilities: []string{},
+		Channels:    map[Channel]bool{ChannelCard: true, ChannelPixManual: true, ChannelPixAutomatic: true},
+		SaleEnabled: true,
+		Enterprise:  true,
+	}
+}
+
+func TestDecideEnterpriseBindingApprovesExactSelfPurchase(t *testing.T) {
+	decision, err := DecideEnterpriseBinding(EnterpriseBindingRequest{
+		Offer: approvedEnterpriseOffer(), AccountID: "11111111-1111-4111-8111-111111111111",
+		PayerID: "11111111-1111-4111-8111-111111111111", Quantity: 1, Approved: true,
+	})
+	if err != nil || !decision.Allowed || decision.Reason != EnterpriseBound {
+		t.Fatalf("decision=%+v err=%v", decision, err)
+	}
+}
+
+func TestDecideEnterpriseBindingRefusals(t *testing.T) {
+	approved := approvedEnterpriseOffer()
+	account := "11111111-1111-4111-8111-111111111111"
+	other := "22222222-2222-4222-8222-222222222222"
+	withCaps := approved
+	withCaps.Capabilities = []string{"cloud.sync"}
+	wrongFamily := approved
+	wrongFamily.Family = "premium"
+	premiumOffer := validOffer()
+	cases := []struct {
+		name    string
+		request EnterpriseBindingRequest
+		reason  string
+		wantErr error
+	}{
+		{"foreign-payer", EnterpriseBindingRequest{Offer: approved, AccountID: account, PayerID: other, Quantity: 1, Approved: true}, EnterpriseForeignPayer, nil},
+		{"entity-substitution", EnterpriseBindingRequest{Offer: approved, AccountID: other, PayerID: other, Quantity: 1, Approved: true}, "", nil},
+		{"zero-quantity", EnterpriseBindingRequest{Offer: approved, AccountID: account, PayerID: account, Quantity: 0, Approved: true}, EnterpriseQuantity, nil},
+		{"seat-override", EnterpriseBindingRequest{Offer: approved, AccountID: account, PayerID: account, Quantity: 5, Approved: true}, EnterpriseQuantity, nil},
+		{"unapproved", EnterpriseBindingRequest{Offer: enterpriseOffer(), AccountID: account, PayerID: account, Quantity: 1, Approved: false}, EnterpriseUnavailable, nil},
+		{"unapproved-approved-flag", EnterpriseBindingRequest{Offer: approved, AccountID: account, PayerID: account, Quantity: 1, Approved: false}, EnterpriseUnavailable, nil},
+		{"wrong-family", EnterpriseBindingRequest{Offer: wrongFamily, AccountID: account, PayerID: account, Quantity: 1, Approved: true}, EnterpriseMismatch, nil},
+		{"premium-offer", EnterpriseBindingRequest{Offer: premiumOffer, AccountID: account, PayerID: account, Quantity: 1, Approved: true}, EnterpriseMismatch, nil},
+		{"capabilities-leak", EnterpriseBindingRequest{Offer: withCaps, AccountID: account, PayerID: account, Quantity: 1, Approved: true}, "", ErrInvalid},
+		{"bad-identity", EnterpriseBindingRequest{Offer: approved, AccountID: "", PayerID: account, Quantity: 1, Approved: true}, "", ErrInvalid},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			decision, err := DecideEnterpriseBinding(tc.request)
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("err=%v want %v", err, tc.wantErr)
+				}
+				return
+			}
+			if tc.reason == "" {
+				// entity-substitution is equivalent to a self purchase of another
+				// account: allowed only when payer and billed entity coincide.
+				if err != nil || !decision.Allowed {
+					t.Fatalf("decision=%+v err=%v", decision, err)
+				}
+				return
+			}
+			if err != nil || decision.Allowed || decision.Reason != tc.reason {
+				t.Fatalf("decision=%+v err=%v", decision, err)
+			}
+		})
+	}
+}
+
+func TestEnterpriseOfferNeverCarriesAppCapabilities(t *testing.T) {
+	for _, capability := range PremiumCapabilityList() {
+		candidate := approvedEnterpriseOffer()
+		candidate.Capabilities = []string{capability}
+		if _, err := DecideEnterpriseBinding(EnterpriseBindingRequest{
+			Offer: candidate, AccountID: "11111111-1111-4111-8111-111111111111",
+			PayerID: "11111111-1111-4111-8111-111111111111", Quantity: 1, Approved: true,
+		}); err == nil {
+			t.Fatalf("premium capability %q accepted on enterprise offer", capability)
+		}
+	}
+	if got := approvedEnterpriseOffer(); len(got.Capabilities) != 0 {
+		t.Fatal("approved enterprise fixture must carry no app capabilities")
+	}
+}

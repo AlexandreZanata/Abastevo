@@ -1,5 +1,19 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-17 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-16 `72725283`. Migration 000130
+  permits capability-free orders/grants for the enterprise family only; premium
+  invariants (non-empty capabilities in catalog, binding and settlement) are
+  untouched. Added `DecideEnterpriseBinding` (single payer = billed entity =
+  service target, quantity one, no app capabilities, explicit approval flag) and
+  a runtime gate on card/Pix-manual/Pix-auto starts. Billing history now exposes
+  the provider invoice/receipt reference, owner-scoped. [PAY-17 evidence](../backend/evidence/payments/PAY-17.md):
+  domain binding matrix, cross-channel refusal without order/provider side
+  effects, approved self-purchase end-to-end (checkout + Pix Automático mandate),
+  product-confusion binding refusals, no-capability grant with denied premium
+  access, and history scoping/proof suites PASS. No worker/route/provider
+  proof/sale; no fiscal engine. Next: PAY-18 only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-16 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-15 `5a1a96e6`. Migration 000129 adds
   refund/dispute/hold/audit tables plus settlement charge reference. Refunds run

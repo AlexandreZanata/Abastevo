@@ -268,6 +268,7 @@ type PaymentOrder struct {
 	Revision       int64              `json:"revision"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Family         string             `json:"family"`
 }
 
 type PaymentPixAutoEligibility struct {

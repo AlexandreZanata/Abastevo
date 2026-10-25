@@ -48,6 +48,13 @@ func (s *Service) Start(ctx context.Context, principal Principal, request StartR
 	if err != nil {
 		return Checkout{}, err
 	}
+	offer, ok := s.Catalog.Offers[quote.OfferID]
+	if !ok {
+		return Checkout{}, domain.ErrBinding
+	}
+	if err := AuthorizeEnterprisePurchase(principal.AccountID, principal.AccountID, quote, offer); err != nil {
+		return Checkout{}, err
+	}
 	orderID := checkoutOrderID(principal.AccountID, request.OperationID)
 	order, err := s.Store.GetOrder(ctx, orderID)
 	if err == nil {

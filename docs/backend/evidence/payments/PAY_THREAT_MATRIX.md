@@ -48,7 +48,7 @@ case cannot be fully accepted without separately authorized live verification.
 | CAT-02 | Catalog/price/terms change after quote is detected; a stale quote cannot be silently repriced or sold. | OPEN | PAY-03, PAY-04 | none |
 | CAT-03 | Rounding, overflow, negative, zero, unsupported precision and milli-BRL/cents mixing are refused or exact. | OPEN | PAY-01, PAY-03 | none |
 | CAT-04 | Expired quote cannot create a provider charge or grant access. | OPEN | PAY-03, PAY-06, PAY-07 | none |
-| CAT-05 | Unimplemented Enterprise service, seat/team quantity or arbitrary target is refused. | OPEN | PAY-01, PAY-17 | none |
+| CAT-05 | Unimplemented Enterprise service, seat/team quantity or arbitrary target is refused. | CLOSED_LOCAL | PAY-01, PAY-17 | none |
 
 ## Remote writes and ambiguous outcomes
 
@@ -118,7 +118,7 @@ case cannot be fully accepted without separately authorized live verification.
 | BND-03 | Protected billing retention is separated from account erasure without losing legitimate financial obligations. | CLOSED_LOCAL | PAY-15, PAY-16, PAY-20 | none |
 | BND-04 | Payment never changes community trust and cannot buy safety/trust privileges. | OPEN | PAY-03, PAY-10, PAY-17 | none |
 | BND-05 | Disabling sales, expiry or provider outage preserves free data, export and legitimate paid-through access. | OPEN | PAY-10, PAY-15 | none |
-| BND-06 | Enterprise payer/customer identity grants no team, tenant, station or cross-account privilege. | OPEN | PAY-17 | none |
+| BND-06 | Enterprise payer/customer identity grants no team, tenant, station or cross-account privilege. | CLOSED_LOCAL | PAY-17 | none |
 | BND-07 | No Android map/charging, MAP ingestion, static portal, app purchase UI or unrelated shared-edge regression. | OPEN | PAY-19, PAY-22, PAY-23 | none |
 
 ## Existing PRM reuse candidates
@@ -135,6 +135,18 @@ evidence was not rerun at PAY-00.
 | PRM-04 | Reconciliation, refresh leases and retired purchase chains. | REUSE_OPEN | PAY-10, PAY-11, PAY-13 | Preserve Play behavior; web sources get their own freshness/lifecycle rules. |
 | PRM-05 | Account deletion purges/retires provider material. | REUSE_OPEN | PAY-15 | Migration `000075` trigger; extend without replaying financial writes. |
 | PRM-06 | Free status/export remains available when payments are disabled. | REUSE_OPEN | PAY-10, PAY-15 | Preserve `Export` independence from provider configuration. |
+
+## PAY-17 local closure
+
+- CAT-05: unapproved enterprise offers are refused on card, manual Pix and Pix
+  Automático entry points with no order and no provider call; foreign payer,
+  entity substitution, quantity/seat overrides and cross-family confusion are
+  refused with distinct reasons.
+- BND-06: approved enterprise bindings carry zero app capabilities; settled
+  enterprise periods grant nothing, premium access stays denied, and no
+  team/tenant/station/org schema was introduced.
+- Fiscal workflow stays explicitly frozen: no tax engine, fiscal document or
+  CNPJ handling was built.
 
 ## PAY-16 local closure
 

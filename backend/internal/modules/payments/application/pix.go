@@ -52,6 +52,13 @@ func (s *PixService) Start(ctx context.Context, principal Principal, request Pix
 	if err != nil {
 		return PixOrder{}, err
 	}
+	offer, ok := s.Catalog.Offers[quote.OfferID]
+	if !ok {
+		return PixOrder{}, domain.ErrBinding
+	}
+	if err := AuthorizeEnterprisePurchase(principal.AccountID, principal.AccountID, quote, offer); err != nil {
+		return PixOrder{}, err
+	}
 	orderID := pixOrderID(principal.AccountID, request.OperationID)
 	order, err := s.Store.GetOrder(ctx, orderID)
 	if err == nil {

@@ -829,7 +829,7 @@ func (q *Queries) GetPaymentOperationForUpdate(ctx context.Context, id pgtype.UU
 }
 
 const getPaymentOrder = `-- name: GetPaymentOrder :one
-SELECT id, account_id, offer_id, catalog_version, channel, amount_centavos, currency, capabilities, state, quoted_at, expires_at, paid_at, settlement_id, revision, created_at, updated_at FROM payment_orders WHERE id=$1::uuid
+SELECT id, account_id, offer_id, catalog_version, channel, amount_centavos, currency, capabilities, state, quoted_at, expires_at, paid_at, settlement_id, revision, created_at, updated_at, family FROM payment_orders WHERE id=$1::uuid
 `
 
 func (q *Queries) GetPaymentOrder(ctx context.Context, id pgtype.UUID) (PaymentOrder, error) {
@@ -852,12 +852,13 @@ func (q *Queries) GetPaymentOrder(ctx context.Context, id pgtype.UUID) (PaymentO
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Family,
 	)
 	return i, err
 }
 
 const getPaymentOrderForUpdate = `-- name: GetPaymentOrderForUpdate :one
-SELECT id, account_id, offer_id, catalog_version, channel, amount_centavos, currency, capabilities, state, quoted_at, expires_at, paid_at, settlement_id, revision, created_at, updated_at FROM payment_orders WHERE id=$1::uuid FOR UPDATE
+SELECT id, account_id, offer_id, catalog_version, channel, amount_centavos, currency, capabilities, state, quoted_at, expires_at, paid_at, settlement_id, revision, created_at, updated_at, family FROM payment_orders WHERE id=$1::uuid FOR UPDATE
 `
 
 func (q *Queries) GetPaymentOrderForUpdate(ctx context.Context, id pgtype.UUID) (PaymentOrder, error) {
@@ -880,6 +881,7 @@ func (q *Queries) GetPaymentOrderForUpdate(ctx context.Context, id pgtype.UUID) 
 		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Family,
 	)
 	return i, err
 }
@@ -1804,9 +1806,10 @@ func (q *Queries) InsertPaymentOperatorAction(ctx context.Context, arg InsertPay
 
 const insertPaymentOrder = `-- name: InsertPaymentOrder :execrows
 INSERT INTO payment_orders(
- id,account_id,offer_id,catalog_version,channel,amount_centavos,currency,capabilities,state,quoted_at,expires_at
+ id,account_id,offer_id,family,catalog_version,channel,amount_centavos,currency,capabilities,state,quoted_at,expires_at
 ) VALUES(
- $1::uuid,$2::uuid,$3,$4,$5,$6::bigint,$7,$8::text[],$9,$10::timestamptz,$11::timestamptz
+ $1::uuid,$2::uuid,$3,$4,$5,$6,
+ $7::bigint,$8,$9::text[],$10,$11::timestamptz,$12::timestamptz
 )
 ON CONFLICT (id) DO NOTHING
 `
@@ -1815,6 +1818,7 @@ type InsertPaymentOrderParams struct {
 	ID             pgtype.UUID        `json:"id"`
 	AccountID      pgtype.UUID        `json:"account_id"`
 	OfferID        string             `json:"offer_id"`
+	Family         string             `json:"family"`
 	CatalogVersion string             `json:"catalog_version"`
 	Channel        string             `json:"channel"`
 	AmountCentavos int64              `json:"amount_centavos"`
@@ -1830,6 +1834,7 @@ func (q *Queries) InsertPaymentOrder(ctx context.Context, arg InsertPaymentOrder
 		arg.ID,
 		arg.AccountID,
 		arg.OfferID,
+		arg.Family,
 		arg.CatalogVersion,
 		arg.Channel,
 		arg.AmountCentavos,
@@ -2326,7 +2331,7 @@ func (q *Queries) ListPaymentBillingExitSources(ctx context.Context, exitID pgty
 
 const listPaymentBillingHistory = `-- name: ListPaymentBillingHistory :many
 SELECT o.id AS order_id,o.offer_id,o.channel,o.amount_centavos,o.state AS order_state,
-       o.created_at AS ordered_at,s.id AS settlement_id,s.state AS settlement_state,
+       o.created_at AS ordered_at,s.id AS settlement_id,s.remote_payment_id,s.state AS settlement_state,
        s.settled_at,g.id AS grant_id,g.start_at,g.end_at,g.state AS grant_state
 FROM payment_orders o
 LEFT JOIN payment_settlements s ON s.order_id=o.id AND s.outcome='GRANTED'
@@ -2349,6 +2354,7 @@ type ListPaymentBillingHistoryRow struct {
 	OrderState      string             `json:"order_state"`
 	OrderedAt       pgtype.Timestamptz `json:"ordered_at"`
 	SettlementID    pgtype.UUID        `json:"settlement_id"`
+	RemotePaymentID pgtype.Text        `json:"remote_payment_id"`
 	SettlementState pgtype.Text        `json:"settlement_state"`
 	SettledAt       pgtype.Timestamptz `json:"settled_at"`
 	GrantID         pgtype.UUID        `json:"grant_id"`
@@ -2374,6 +2380,7 @@ func (q *Queries) ListPaymentBillingHistory(ctx context.Context, arg ListPayment
 			&i.OrderState,
 			&i.OrderedAt,
 			&i.SettlementID,
+			&i.RemotePaymentID,
 			&i.SettlementState,
 			&i.SettledAt,
 			&i.GrantID,

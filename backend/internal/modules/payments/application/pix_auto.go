@@ -55,6 +55,13 @@ func (s *PixAutoService) Start(ctx context.Context, principal Principal, request
 	if err != nil {
 		return PixAutoAuthorization{}, err
 	}
+	offer, ok := s.Catalog.Offers[quote.OfferID]
+	if !ok {
+		return PixAutoAuthorization{}, domain.ErrBinding
+	}
+	if err := AuthorizeEnterprisePurchase(principal.AccountID, principal.AccountID, quote, offer); err != nil {
+		return PixAutoAuthorization{}, err
+	}
 	orderID := pixAutoOrderID(principal.AccountID, request.OperationID)
 	existing, err := s.Store.MandateForAccount(ctx, principal.AccountID, request.OfferID)
 	if err == nil && existing.OrderID != orderID && !pixAutoTerminal(existing.Status) &&

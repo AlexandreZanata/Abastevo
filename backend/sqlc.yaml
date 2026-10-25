@@ -328,6 +328,7 @@ sql:
       - db/migrations/000127_payment_source_switches.sql
       - db/migrations/000128_payment_billing_exits.sql
       - db/migrations/000129_payment_refunds_disputes.sql
+      - db/migrations/000130_payment_enterprise_capabilities.sql
     gen:
       go:
         package: payments

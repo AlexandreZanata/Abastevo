@@ -16,9 +16,10 @@ WHERE account_id=sqlc.arg(account_id)::uuid AND provider=sqlc.arg(provider) AND 
 
 -- name: InsertPaymentOrder :execrows
 INSERT INTO payment_orders(
- id,account_id,offer_id,catalog_version,channel,amount_centavos,currency,capabilities,state,quoted_at,expires_at
+ id,account_id,offer_id,family,catalog_version,channel,amount_centavos,currency,capabilities,state,quoted_at,expires_at
 ) VALUES(
- sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(catalog_version),sqlc.arg(channel),sqlc.arg(amount_centavos)::bigint,sqlc.arg(currency),sqlc.arg(capabilities)::text[],sqlc.arg(state),sqlc.arg(quoted_at)::timestamptz,sqlc.arg(expires_at)::timestamptz
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(offer_id),sqlc.arg(family),sqlc.arg(catalog_version),sqlc.arg(channel),
+ sqlc.arg(amount_centavos)::bigint,sqlc.arg(currency),sqlc.arg(capabilities)::text[],sqlc.arg(state),sqlc.arg(quoted_at)::timestamptz,sqlc.arg(expires_at)::timestamptz
 )
 ON CONFLICT (id) DO NOTHING;
 
@@ -465,7 +466,7 @@ ORDER BY created_at,id;
 
 -- name: ListPaymentBillingHistory :many
 SELECT o.id AS order_id,o.offer_id,o.channel,o.amount_centavos,o.state AS order_state,
-       o.created_at AS ordered_at,s.id AS settlement_id,s.state AS settlement_state,
+       o.created_at AS ordered_at,s.id AS settlement_id,s.remote_payment_id,s.state AS settlement_state,
        s.settled_at,g.id AS grant_id,g.start_at,g.end_at,g.state AS grant_state
 FROM payment_orders o
 LEFT JOIN payment_settlements s ON s.order_id=o.id AND s.outcome='GRANTED'

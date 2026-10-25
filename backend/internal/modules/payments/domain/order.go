@@ -53,6 +53,7 @@ type Order struct {
 	ID             string
 	AccountID      string
 	OfferID        string
+	Family         string
 	CatalogVersion string
 	Channel        Channel
 	Term           Term
@@ -91,6 +92,7 @@ func NewOrder(id, accountID string, quote Quote, now time.Time) (Order, error) {
 		ID:             id,
 		AccountID:      accountID,
 		OfferID:        quote.OfferID,
+		Family:         quote.Family,
 		CatalogVersion: quote.CatalogVersion,
 		Channel:        quote.Channel,
 		Term:           quote.Term,
