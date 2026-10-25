@@ -15,9 +15,13 @@
   `8313283b`, PENDING kept); worker dispatcher maps completed
   (`d149e092`, remainder byte-identical to pristine dev). Android
   Premium suites re-run on the candidate: 20 tests, 0 failures.
-  [PAY-22 evidence](../backend/evidence/payments/PAY-22.md). Remote CI
-  on the corrected head pending; merge awaits green CI via guarded
-  finish. No other work branch touched.
+  [PAY-22 evidence](../backend/evidence/payments/PAY-22.md). Follow-up
+  corrections: provider credential failures reclassified as recoverable
+  (`ErrProviderUnauthorized`, no conflict marking, single-convergence
+  proof on PostGIS with real adapters) and Stripe SDK raw log emission
+  silenced with capture-test proof. Remote CI on the corrected head
+  pending; merge awaits green CI via guarded finish. No other work
+  branch touched.
   Next: push corrections, refresh PR #150, guarded merge on green CI.
 
 - Stripe/Asaas payment PAY-21 2026-10-25: PENDING on

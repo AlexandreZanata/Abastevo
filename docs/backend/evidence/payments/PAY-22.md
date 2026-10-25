@@ -79,6 +79,44 @@ pristine dev `721582b8` (verified side by side): Rust preparer fixture
 rejections and a private-source requirement owned by other fronts — no
 payments behavior involved, not fixed here, not hidden.
 
+## Provider credential classification correction
+
+Review reproduced with local HTTP transport: Stripe 401/403 mapped to
+`domain.ErrUnauthorized`, which `SettlementService.Process` and
+`LifecycleService.Process` mark as `CONFLICT` — a server credential
+failure looked like a financial binding conflict and destroyed
+recoverability.
+
+Correction: rejected provider credentials map to the new
+`app.ErrProviderUnauthorized`, preserved like unavailable/ambiguous
+everywhere (settlement verify/settle, lifecycle, dispute
+verify/record/update, refund reserve/settle, checkout and Pix create
+paths, cycle failures, unconfigured-dispute-provider fan-out), while
+user/owner/operator refusals stay terminal `domain.ErrUnauthorized`.
+Stored diagnoses remain static sentinel strings; inbox rows stay
+pending with empty `last_error`.
+
+Proof (`provider_auth_integration_test.go`, real adapters against local
+401 transport plus real PostGIS and real services): 401 grants nothing
+and revokes nothing; events stay pending; fixing the credential
+converges exactly once with no duplicate; duplicates, divergent
+binding and user proof refusals stay terminal. Also covers the
+`verifierFor` split (unconfigured provider preserves, unknown provider
+conflicts) and the empty-body Stripe 401 nuance (stays ambiguous,
+still preserved, never conflict).
+
+## Stripe SDK logger correction
+
+`NewStripeProvider` used the SDK default logger, which prints provider
+error content (resource identifiers) to stderr — reproduced as
+`[ERROR] Request error from Stripe (status 401): {...}` leaking a
+synthetic identifier. The production constructor now pins
+`LevelNull`; operational signals stay structured error codes returned
+to callers. Pinned by a test capturing real stdout/stderr/log output
+of the production constructor against a failing double (fails on the
+default logger, passes silenced). No `log`/`slog` calls exist in our
+adapters.
+
 ## Batch description corrections
 
 - Android contributes behavior and UI (cached Premium skeleton,
