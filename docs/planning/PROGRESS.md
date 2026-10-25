@@ -1,5 +1,17 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-22 2026-10-25: INTEGRATION_PENDING.
+  `codex/payments-stripe-asaas` fast-forward merged into `dev` (isolated
+  worktree, no conflicts, no foreign code) and pushed `721582b8..6e5e8518`
+  without force. Cumulative protected PR `AlexandreZanata/Abastevo#150`
+  (dev → main, ready) carries 56 commits (maps, Android test-only,
+  PAY-00–21). [PAY-22 evidence](../backend/evidence/payments/PAY-22.md):
+  `make quick-verify` ok plus race payments/subscription/api suites PASS
+  on the exact head; two secret-scan findings fixed in new commits.
+  Remote Quick verification queued at PR creation; merge awaits green CI
+  via guarded finish. No other work branch touched.
+  Next: guarded merge on green CI, then PAY-23 after authorization.
+
 - Stripe/Asaas payment PAY-21 2026-10-25: PENDING on
   `codex/payments-stripe-asaas`, parent PAY-20 `45e90604`. No sandbox
   credentials were supplied, so per the phase contract no provider API
