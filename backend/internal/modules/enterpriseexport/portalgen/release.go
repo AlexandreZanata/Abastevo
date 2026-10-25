@@ -27,6 +27,13 @@ const (
 	// cached old pages keep loading correct dependencies across switches.
 	// Pages are never retained: only the current release serves HTML.
 	RetainedDir = "retained"
+	// Retained generations are immutable asset trees. The retained path is
+	// an atomically replaced symlink to one complete generation, so readers
+	// never observe a missing root between two renames.
+	retainedGenerationsDir   = "retained-generations"
+	retainedGenerationPrefix = "gen-"
+	retainedPendingPrefix    = ".pending-"
+	retainedCompleteMarker   = ".complete"
 )
 
 const (
@@ -131,6 +138,10 @@ type WithdrawOptions struct {
 // ENOSPC, corruption or a pause between complete copy and pointer switch.
 var copyFileHook = copyFile
 
+// publishRetainedGenerationHook is the atomic store boundary. Tests replace
+// it to prove that a failed switch leaves the previous generation serving.
+var publishRetainedGenerationHook = publishRetainedGeneration
+
 func Promote(opts PromoteOptions) (ReleaseState, error) {
 	if opts.ArtifactDir == "" || opts.RootDir == "" || opts.SiteURL == "" {
 		return ReleaseState{}, fmt.Errorf("portal release: artifact, root and site URL are required")
@@ -208,7 +219,7 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 		if release.PromotedAt == "" {
 			release.PromotedAt = now().UTC().Format(time.RFC3339)
 		}
-		if _, err := rebuildRetained(opts.RootDir, state, []string{content}, opts.RetainKeep, opts.RetainMaxBytes); err != nil {
+		if _, err := rebuildRetained(opts.RootDir, state, []string{content}, opts.RetainKeep, opts.RetainMaxBytes, true); err != nil {
 			return ReleaseState{}, fmt.Errorf("portal release: asset preparation: %w", err)
 		}
 		if state.Current != content || !ok || wasWithdrawn {
@@ -266,7 +277,7 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 		return ReleaseState{}, err
 	}
 
-	if _, err := rebuildRetained(opts.RootDir, state, []string{content}, opts.RetainKeep, opts.RetainMaxBytes); err != nil {
+	if _, err := rebuildRetained(opts.RootDir, state, []string{content}, opts.RetainKeep, opts.RetainMaxBytes, true); err != nil {
 		return ReleaseState{}, fmt.Errorf("portal release: asset preparation: %w", err)
 	}
 	if err := switchCurrent(opts.RootDir, targetName); err != nil {
@@ -321,7 +332,7 @@ func Rollback(opts RollbackOptions) (ReleaseState, error) {
 		if err := verifyRelease(opts.RootDir, current, opts.SiteURL, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, ErrReleaseUnavailable
 		}
-		if _, err := rebuildRetained(opts.RootDir, state, []string{current}, opts.RetainKeep, opts.RetainMaxBytes); err != nil {
+		if _, err := rebuildRetained(opts.RootDir, state, []string{current}, opts.RetainKeep, opts.RetainMaxBytes, true); err != nil {
 			return ReleaseState{}, fmt.Errorf("portal release: asset preparation: %w", err)
 		}
 		return state, nil
@@ -329,7 +340,7 @@ func Rollback(opts RollbackOptions) (ReleaseState, error) {
 	if err := verifyRelease(opts.RootDir, opts.Target, opts.SiteURL, opts.OfficialOnly); err != nil {
 		return ReleaseState{}, ErrReleaseUnavailable
 	}
-	if _, err := rebuildRetained(opts.RootDir, state, []string{opts.Target}, opts.RetainKeep, opts.RetainMaxBytes); err != nil {
+	if _, err := rebuildRetained(opts.RootDir, state, []string{opts.Target}, opts.RetainKeep, opts.RetainMaxBytes, true); err != nil {
 		return ReleaseState{}, fmt.Errorf("portal release: asset preparation: %w", err)
 	}
 	if err := switchCurrent(opts.RootDir, releaseName(opts.Target)); err != nil {
@@ -416,7 +427,7 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 	if fallback != "" {
 		required = append(required, fallback)
 	}
-	if _, err := rebuildRetained(opts.RootDir, state, required, defaultRetainKeep, defaultRetainMaxBytes); err != nil {
+	if _, err := rebuildRetained(opts.RootDir, state, required, defaultRetainKeep, defaultRetainMaxBytes, false); err != nil {
 		return ReleaseState{}, err
 	}
 	if fallback != "" {
@@ -880,13 +891,13 @@ func RetainAssets(root string, keep int, maxBytes int64) (RetainedSummary, error
 		}
 		required = append(required, current)
 	}
-	return rebuildRetained(root, state, required, keep, maxBytes)
+	return rebuildRetained(root, state, required, keep, maxBytes, true)
 }
 
 // rebuildRetained materializes a complete retained store and switches it
 // into place only after every required asset has been verified and linked.
 // The caller holds the release lock.
-func rebuildRetained(root string, state ReleaseState, required []string, keep int, maxBytes int64) (RetainedSummary, error) {
+func rebuildRetained(root string, state ReleaseState, required []string, keep int, maxBytes int64, retainPrevious bool) (RetainedSummary, error) {
 	var summary RetainedSummary
 	if keep == 0 {
 		keep = defaultRetainKeep
@@ -925,7 +936,14 @@ func rebuildRetained(root string, state ReleaseState, required []string, keep in
 	sort.SliceStable(optional, func(i, j int) bool { return optional[i].promoted > optional[j].promoted })
 	candidates = append(candidates, optional...)
 
-	tmp, err := os.MkdirTemp(root, ".retained-*.tmp")
+	generations := filepath.Join(root, retainedGenerationsDir)
+	if err := os.MkdirAll(generations, 0o700); err != nil {
+		return summary, err
+	}
+	if _, err := recoverRetained(root); err != nil {
+		return summary, err
+	}
+	tmp, err := os.MkdirTemp(generations, retainedPendingPrefix)
 	if err != nil {
 		return summary, err
 	}
@@ -1007,25 +1025,233 @@ func rebuildRetained(root string, state ReleaseState, required []string, keep in
 			return summary, err
 		}
 	}
-	retained := filepath.Join(root, RetainedDir)
-	_ = os.RemoveAll(retained + ".prev")
-	if _, err := os.Stat(retained); err == nil {
-		if err := os.Rename(retained, retained+".prev"); err != nil {
-			return summary, err
-		}
-	}
-	if err := os.Rename(tmp, retained); err != nil {
-		if _, serr := os.Stat(retained + ".prev"); serr == nil {
-			_ = os.Rename(retained+".prev", retained)
-		}
+	if err := os.WriteFile(filepath.Join(tmp, retainedCompleteMarker), []byte("complete\n"), 0o600); err != nil {
 		return summary, err
 	}
-	_ = os.RemoveAll(retained + ".prev")
+	if err := syncDir(tmp); err != nil {
+		return summary, err
+	}
+	genBase, err := newRetainedGenerationName()
+	if err != nil {
+		return summary, err
+	}
+	genPath := filepath.Join(generations, genBase)
+	if err := os.Rename(tmp, genPath); err != nil {
+		return summary, err
+	}
 	keepTmp = false
+	if err := syncDir(generations); err != nil {
+		return summary, err
+	}
+	previous, _ := currentRetainedGeneration(root)
+	if err := publishRetainedGenerationHook(root, genBase); err != nil {
+		_ = os.RemoveAll(genPath)
+		return summary, fmt.Errorf("portal release: retained store switch: %w", err)
+	}
+	keepGenerations := []string{genBase}
+	if retainPrevious && previous != "" && previous != genBase {
+		keepGenerations = append(keepGenerations, previous)
+	}
+	cleanupRetainedGenerations(root, keepGenerations...)
 	summary.Releases = included
 	summary.Files = len(chosen)
 	summary.Bytes = total
 	return summary, nil
+}
+
+func newRetainedGenerationName() (string, error) {
+	suffix, err := randomSuffix()
+	if err != nil {
+		return "", err
+	}
+	return retainedGenerationPrefix + suffix, nil
+}
+
+func validRetainedGenerationName(name string) bool {
+	if !strings.HasPrefix(name, retainedGenerationPrefix) || filepath.Base(name) != name {
+		return false
+	}
+	suffix := strings.TrimPrefix(name, retainedGenerationPrefix)
+	if suffix == "" {
+		return false
+	}
+	_, err := hex.DecodeString(suffix)
+	return err == nil
+}
+
+// publishRetainedGeneration atomically replaces the retained symlink. It is
+// safe over an existing symlink or an absent path, never over a directory.
+func publishRetainedGeneration(root, genBase string) error {
+	if !validRetainedGenerationName(genBase) {
+		return fmt.Errorf("portal release: invalid retained generation")
+	}
+	genDir := filepath.Join(root, retainedGenerationsDir, genBase)
+	if info, err := os.Stat(genDir); err != nil || !info.IsDir() {
+		return fmt.Errorf("portal release: retained generation unavailable")
+	}
+	if !completeRetainedGeneration(genDir) {
+		return fmt.Errorf("portal release: retained generation incomplete")
+	}
+	random, err := randomSuffix()
+	if err != nil {
+		return err
+	}
+	tmp := filepath.Join(root, ".retained-link-"+random)
+	if err := os.Symlink(filepath.Join(retainedGenerationsDir, genBase), tmp); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, filepath.Join(root, RetainedDir)); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return syncDir(root)
+}
+
+func completeRetainedGeneration(path string) bool {
+	info, err := os.Lstat(filepath.Join(path, retainedCompleteMarker))
+	if err != nil || !info.Mode().IsRegular() {
+		return false
+	}
+	info, err = os.Lstat(filepath.Join(path, "assets"))
+	return err == nil && info.IsDir()
+}
+
+func retainedGenerationTarget(target string) (string, bool) {
+	if target == "" || filepath.IsAbs(target) {
+		return "", false
+	}
+	clean := filepath.Clean(target)
+	if filepath.Dir(clean) != retainedGenerationsDir {
+		return "", false
+	}
+	base := filepath.Base(clean)
+	if !validRetainedGenerationName(base) {
+		return "", false
+	}
+	return base, true
+}
+
+// recoverRetained returns the currently linked complete generation, repairs
+// a missing link from the newest complete generation, and migrates the legacy
+// directory store once. It never deletes the only recoverable generation.
+func recoverRetained(root string) (string, error) {
+	generations := filepath.Join(root, retainedGenerationsDir)
+	if err := os.MkdirAll(generations, 0o700); err != nil {
+		return "", err
+	}
+	entries, err := os.ReadDir(generations)
+	if err != nil {
+		return "", err
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), retainedPendingPrefix) {
+			_ = os.RemoveAll(filepath.Join(generations, entry.Name()))
+		}
+	}
+	if rootEntries, err := os.ReadDir(root); err == nil {
+		for _, entry := range rootEntries {
+			if strings.HasPrefix(entry.Name(), ".retained-link-") {
+				_ = os.Remove(filepath.Join(root, entry.Name()))
+			}
+		}
+	}
+	retainedPath := filepath.Join(root, RetainedDir)
+	info, err := os.Lstat(retainedPath)
+	switch {
+	case os.IsNotExist(err):
+	case err != nil:
+		return "", err
+	case info.Mode()&os.ModeSymlink != 0:
+		target, err := os.Readlink(retainedPath)
+		if err != nil {
+			return "", err
+		}
+		if base, ok := retainedGenerationTarget(target); ok && completeRetainedGeneration(filepath.Join(generations, base)) {
+			return base, nil
+		}
+		if err := os.Remove(retainedPath); err != nil {
+			return "", err
+		}
+	case info.IsDir():
+		if err := os.WriteFile(filepath.Join(retainedPath, retainedCompleteMarker), []byte("complete\n"), 0o600); err != nil {
+			return "", err
+		}
+		genBase, err := newRetainedGenerationName()
+		if err != nil {
+			return "", err
+		}
+		if err := os.Rename(retainedPath, filepath.Join(generations, genBase)); err != nil {
+			return "", err
+		}
+		if err := syncDir(generations); err != nil {
+			return "", err
+		}
+		if err := publishRetainedGeneration(root, genBase); err != nil {
+			return "", err
+		}
+		return genBase, nil
+	default:
+		return "", fmt.Errorf("portal release: retained path has unsupported type")
+	}
+	entries, err = os.ReadDir(generations)
+	if err != nil {
+		return "", err
+	}
+	var newest string
+	var newestAt time.Time
+	for _, entry := range entries {
+		if !entry.IsDir() || !validRetainedGenerationName(entry.Name()) {
+			continue
+		}
+		path := filepath.Join(generations, entry.Name())
+		if !completeRetainedGeneration(path) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if newest == "" || info.ModTime().After(newestAt) {
+			newest = entry.Name()
+			newestAt = info.ModTime()
+		}
+	}
+	if newest == "" {
+		return "", nil
+	}
+	if err := publishRetainedGeneration(root, newest); err != nil {
+		return "", err
+	}
+	return newest, nil
+}
+
+func cleanupRetainedGenerations(root string, keep ...string) {
+	generations := filepath.Join(root, retainedGenerationsDir)
+	entries, err := os.ReadDir(generations)
+	if err != nil {
+		return
+	}
+	kept := map[string]bool{}
+	for _, name := range keep {
+		kept[name] = true
+	}
+	for _, entry := range entries {
+		if kept[entry.Name()] {
+			continue
+		}
+		if entry.IsDir() && (validRetainedGenerationName(entry.Name()) || strings.HasPrefix(entry.Name(), retainedPendingPrefix)) {
+			_ = os.RemoveAll(filepath.Join(generations, entry.Name()))
+		}
+	}
+	_ = syncDir(generations)
+}
+
+func currentRetainedGeneration(root string) (string, bool) {
+	target, err := os.Readlink(filepath.Join(root, RetainedDir))
+	if err != nil {
+		return "", false
+	}
+	return retainedGenerationTarget(target)
 }
 
 // verifiedReleaseAssets returns the manifest's safe asset paths after

@@ -374,7 +374,11 @@ func TestRetainAssetsAcrossReleases(t *testing.T) {
 	}
 	// Pages are never retained: only the current release serves HTML.
 	var htmlFiles []string
-	_ = filepath.Walk(filepath.Join(root, RetainedDir), func(path string, info os.FileInfo, err error) error {
+	retainedRoot, err := filepath.EvalSymlinks(filepath.Join(root, RetainedDir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = filepath.Walk(retainedRoot, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() && strings.HasSuffix(path, ".html") {
 			htmlFiles = append(htmlFiles, path)
 		}

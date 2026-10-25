@@ -264,19 +264,27 @@ Public preview/VPS handoff remain OWED.
 
 ### Cross-release asset retention
 
-Implemented in the publisher (unit-tested) and rehearsed over HTTP:
-`portalrelease retain --root <root> --keep 2 --max-bytes 104857600`
-rebuilds `retained/` from the newest non-withdrawn releases, hardlinking
-their hash-verified `assets/*` (no second copy of the bytes, no pages).
-The edge serves `/assets/*` from the retained store and everything else
-from `current`, so a cached old page loads its exact dependencies after a
-switch or rollback with no version mixing. `withdraw` purges the
-withdrawn release's exclusive assets, so retired content cannot return
-through retention; shared assets stay while referenced. Budgets fail
-closed (an over-budget rebuild keeps the previous store). Run `retain`
-after every promote/rollback in the same maintenance step; the rehearsal
-script does this and asserts retained-200 after rollback plus purged-404
-after withdrawal.
+Promotion, rollback, refresh and withdrawal prepare and verify the retained
+asset store before switching the serving pointer; `retained` never exposes a
+page whose assets are still missing. `portalrelease retain --root <root>
+--keep 2 --max-bytes 104857600` remains a repair/rebuild command.
+The store contains the mandatory current release plus the newest
+non-withdrawn releases within `keep`; a rollback target older than the
+history window is still mandatory, so promotion ordering cannot break the
+served page. Assets are hash-verified, safe `assets/...` paths, hardlinked
+once when shared, and counted once. Budgets fail closed before the pointer
+changes; the previous store stays intact.
+`retained` is an atomically replaced symlink to an immutable generation
+under `retained-generations/`; readers never observe the asset root missing
+between two renames. A failed switch keeps the previous generation, an
+interrupted build is cleaned on the next operation, and a missing link is
+recovered from the newest complete generation. The edge serves `/assets/*`
+from `retained` and everything else from `current`, so a cached old page
+loads its exact dependencies after a switch or rollback with no version
+mixing. `withdraw` rebuilds the store without the withdrawn release's
+exclusive assets and removes older generations, so retired content cannot
+return through retention or an old generation; shared assets stay while
+referenced.
 
 ## Limitations
 

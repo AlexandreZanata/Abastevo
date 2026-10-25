@@ -164,16 +164,21 @@ Three different operations, three different meanings:
   revoked content.
 - **Service pause** (`portalrelease withdraw` without fallback, reason
   empty or `operator-pause`): the content stays eligible for a future
-  release; the pointer is removed (404) until republication.
+  release; the pointer is removed (404) until the authoritative source is
+  published again. A later `promote` of the same verified content clears
+  the pause; rollback by itself never resurrects it.
 - **Invalid-content withdrawal** (`portalrelease withdraw
   --reason revoked-source`): the release's official revision/lease is
   recorded as revoked in `state.json` and can never be served again by
   any artifact or hash. Unknown reasons are refused, and there is no
   administrative path that clears a revocation.
 
-`Promote` refuses a withdrawn artifact (`ErrReleaseWithdrawn`) and
-revoked official content (`ErrOfficialRevoked`) before any copy or
-pointer switch; the marks stay in history across restarts.
+`Promote` refuses revoked content (`ErrOfficialRevoked`), legacy
+withdrawals without a reason, and paused content whose official identity
+was revoked (`ErrReleaseWithdrawn`) before any copy or pointer switch. A
+pause (`operator-pause`) remains recoverable only through `promote`;
+unknown reasons are refused and the marks stay in history across
+restarts.
 
 **Serving-pointer contract.** The private `current` pointer governs
 promotion; it never serves traffic directly. Whatever serves HTTP (edge

@@ -226,7 +226,7 @@ func TestRetentionRejectsConflictingSharedPaths(t *testing.T) {
 	if err := writeReleaseState(root, state); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := rebuildRetained(root, state, []string{secondContent}, 2, 100<<20); err == nil {
+	if _, err := rebuildRetained(root, state, []string{secondContent}, 2, 100<<20, true); err == nil {
 		t.Fatal("conflicting shared asset path was accepted")
 	}
 	if _, err := os.Stat(filepath.Join(root, RetainedDir)); !os.IsNotExist(err) {

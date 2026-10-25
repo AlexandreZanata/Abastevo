@@ -140,7 +140,6 @@ log "promoting candidate A"
 "$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "" "${MODE_FLAGS[@]}" >/dev/null
 A_HASH="$(release_hash)"
 [[ -n "$A_HASH" ]] || refuse "candidate A did not become current"
-"$BIN" retain --root "$RELEASE_ROOT" --keep 2 --max-bytes 104857600 >/dev/null
 
 log "starting isolated Caddy on $ORIGIN"
 docker run --rm -d --name "$NAME" \
@@ -179,7 +178,6 @@ if [[ -n "$ARTIFACT_B" ]]; then
     "$BIN" promote --artifact "$ARTIFACT_B" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$A_HASH" "${MODE_FLAGS[@]}" >/dev/null
     B_HASH="$(release_hash)"
     [[ -n "$B_HASH" && "$B_HASH" != "$A_HASH" ]] || refuse "candidate B did not switch"
-    "$BIN" retain --root "$RELEASE_ROOT" --keep 2 --max-bytes 104857600 >/dev/null
     assert_status "B sitemap" 200 "$ORIGIN/sitemap.xml"
     fetch "$ORIGIN$HOME_PAGE" "$WORK/home-b.html" "$WORK/home-b.headers"
     if [[ "$OFFICIAL_ONLY" != "1" ]]; then
@@ -226,16 +224,18 @@ if [[ -n "$ARTIFACT_B" ]]; then
     "$BIN" rollback --root "$RELEASE_ROOT" --target "$B_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
     assert_status "B sitemap after corrupt rollback" 200 "$ORIGIN/sitemap.xml"
 
-    log "re-promoting A and withdrawing A to B"
+    log "repairing A, pausing it to B, then recovering the same source"
     "$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$B_HASH" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "repaired A home" 200 "$ORIGIN$HOME_PAGE"
     "$BIN" withdraw --root "$RELEASE_ROOT" --fallback "$B_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
     assert_status "B sitemap after withdraw to B" 200 "$ORIGIN/sitemap.xml"
     if "$BIN" rollback --root "$RELEASE_ROOT" --target "$A_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null 2>&1; then
-        refuse "withdrawn A rolled back"
+        refuse "paused A rolled back without a source recovery"
     fi
-    if "$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null 2>&1; then
-        refuse "withdrawn A re-promoted"
-    fi
+    "$BIN" promote --artifact "$ARTIFACT_A" --root "$RELEASE_ROOT" --site-url "$SITE_URL" --fence --expect-current "$B_HASH" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "recovered A home" 200 "$ORIGIN$HOME_PAGE"
+    "$BIN" withdraw --root "$RELEASE_ROOT" --fallback "$B_HASH" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null
+    assert_status "B sitemap after second pause" 200 "$ORIGIN/sitemap.xml"
 
     log "withdrawing the current release without fallback"
     "$BIN" withdraw --root "$RELEASE_ROOT" --site-url "$SITE_URL" "${MODE_FLAGS[@]}" >/dev/null

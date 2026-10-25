@@ -120,7 +120,7 @@ func retain(args []string) {
 	var keep int
 	var maxBytes int64
 	fs.StringVar(&root, "root", "", "private release root")
-	fs.IntVar(&keep, "keep", 2, "newest non-withdrawn releases whose assets are retained")
+	fs.IntVar(&keep, "keep", 2, "non-current releases whose assets are retained (current is mandatory)")
 	fs.Int64Var(&maxBytes, "max-bytes", 100<<20, "retained asset byte budget")
 	fs.Parse(args)
 	summary, err := portalgen.RetainAssets(root, keep, maxBytes)
