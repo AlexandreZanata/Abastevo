@@ -358,6 +358,8 @@ that a nonexistent command or endpoint is available.
   kill-switch and staging example/runbook tested with no migration or live
   activation; operator proofs and sandbox proof remain gated.
 - **PAY-21:** actual Stripe test-mode and Asaas sandbox end-to-end acceptance.
+  PENDING: gated sandbox harness, no-leak guard and fault fixtures tested;
+  no credentials supplied, no provider touched, no sandbox row closed.
 - **PAY-22:** final coordinated dev integration, protected PR/CI and guarded merge.
 - **PAY-23:** scoped VPS test-mode deployment and explicit production handoff.
 

@@ -1,5 +1,17 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-21 2026-10-25: PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-20 `45e90604`. No sandbox
+  credentials were supplied, so per the phase contract no provider API
+  was touched and no sandbox row closes. Landed: gated sandbox harness
+  (`-tags=sandbox`, skips without creds, refuses live keys, logs counts
+  only), no-leak guard, and sandbox-relevant fault fixtures (retry
+  windows, decline terminality, revocation, overdue, reversal closure).
+  [PAY-21 evidence](../backend/evidence/payments/PAY-21.md): fixtures,
+  harness gates and full backend/static/secret suites PASS; real journeys
+  enumerated and awaiting credentials. Next: supply credentials and run
+  the harness; PAY-22 only after authorization.
+
 - Stripe/Asaas payment PAY-20 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-19 `4ef85fe3`. Secure operations
   packaging: owner proofs verify one live session per action, switch records

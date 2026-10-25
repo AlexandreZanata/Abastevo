@@ -3826,7 +3826,9 @@ evidence and commit topic.
   owner proofs, per-source switch merchants, portal admission, kill-switch
   and staging example/runbook pass with no migration or live activation;
   operator proofs and sandbox proof remain gated.
-- **PAY-21:** Prove actual provider sandbox journeys.
+- **PAY-21:** Prove actual provider sandbox journeys. PENDING:
+  gated harness, no-leak guard and fault fixtures pass; real journeys
+  await supplied test credentials, no sandbox row closed.
 - **PAY-22:** Integrate batch and validate protected CI.
 - **PAY-23:** Validate scoped VPS test deployment and activation handoff.
 
