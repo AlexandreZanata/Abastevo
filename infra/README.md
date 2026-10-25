@@ -102,7 +102,10 @@ production obligations. ESP-16 adds the local capacity/browser harness
 concurrent switch/rollback drill; its measurements are loopback-only and do not
 stand in for CDN or VPS-direct campaigns. ESP-17 adds the isolated HTTPS
 preview/accessibility/backup rehearsal (`make check-preview-probe`,
-`make preview-portal`).
+`make preview-portal`). ESP-18 adds the public publication gate and read-only
+smoke (`make check-publication-gate`); the portal is **not published** and
+requires an explicit named scope/approval. See
+[publication gate](../docs/operator/PORTAL_PUBLICATION.md).
 
 ## Encrypted off-host backups (P08-T03)
 

@@ -244,7 +244,9 @@ policy and public preview/VPS handoff remain OWED.
 
 - Production host/CDN/TLS/DNS, shared-edge routing, cache purge, multi-host
   locking, disk quotas and capacity remain OWED to ESP-14's deployment scope and
-  ESP-18. The current flock is single-host.
+  ESP-18. The current flock is single-host. See the
+  [public portal publication gate](PORTAL_PUBLICATION.md); the portal is not
+  publicly released.
 - Automatic refresh is composed and tested locally but disabled by default; no
   production activation or source schedule was changed.
 - ESP-16 measured local loopback only. CDN and VPS-direct campaigns, real
