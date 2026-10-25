@@ -26,9 +26,4 @@ include(":app")
 include(":domain")
 include(":application")
 include(":data")
-// The production map tab always ships the accepted native engine.
-// Fall back to the versioned MAP-14 candidate when the property is absent.
-if (providers.gradleProperty("comapsSdkDir").isPresent ||
-    file("/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22").isDirectory) {
-    include(":maps:engine")
-}
+include(":maps:engine")

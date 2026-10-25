@@ -6,10 +6,65 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-val defaultCandidate = "/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22"
-val comapsSdkDir = providers.gradleProperty("comapsSdkDir").orNull
-    ?: if (file(defaultCandidate).isDirectory) defaultCandidate
-    else error("comapsSdkDir Gradle property is required for :maps:engine")
+import java.security.MessageDigest
+import java.util.Properties
+
+val localProps = Properties().apply {
+    val lp = rootProject.file("local.properties")
+    if (lp.isFile) {
+        lp.inputStream().use { load(it) }
+    }
+}
+val pinnedCandidateRevision = "d2ec37881ede4e22"
+val defaultCandidate = "/data/dev/artifacts/abastevo-map-engine/$pinnedCandidateRevision"
+val comapsSdkDir = (
+    providers.gradleProperty("comapsSdkDir").orNull
+        ?: localProps.getProperty("comaps.sdk.dir")
+        ?: localProps.getProperty("comapsSdkDir")
+        ?: providers.environmentVariable("COMAPS_SDK_DIR").orNull
+        ?: defaultCandidate
+    ).trim()
+
+val sdkRoot = file(comapsSdkDir)
+if (!sdkRoot.isDirectory) {
+    error(
+        """
+        CoMaps Android SDK candidate ($pinnedCandidateRevision) was not found at: $comapsSdkDir
+        Provision the verified MAP-14 candidate unpack directory and configure one of:
+          1. -PcomapsSdkDir=/path/to/abastevo-map-engine/$pinnedCandidateRevision
+          2. comaps.sdk.dir=/path/to/abastevo-map-engine/$pinnedCandidateRevision in local.properties
+          3. COMAPS_SDK_DIR=/path/to/abastevo-map-engine/$pinnedCandidateRevision environment variable
+        See docs/backend/evidence/maps/MAP-14.md for candidate provenance and SHA-256 digests.
+        """.trimIndent()
+    )
+}
+
+fun verifyCandidateSha256(relativePath: String, expectedSha256: String) {
+    val target = sdkRoot.resolve(relativePath)
+    if (!target.isFile) {
+        error("CoMaps SDK candidate is incomplete: missing $relativePath under $comapsSdkDir (see docs/backend/evidence/maps/MAP-14.md)")
+    }
+    val digest = MessageDigest.getInstance("SHA-256")
+    target.inputStream().use { input ->
+        val buf = ByteArray(64 * 1024)
+        while (true) {
+            val read = input.read(buf)
+            if (read <= 0) break
+            digest.update(buf, 0, read)
+        }
+    }
+    val actual = digest.digest().joinToString("") { "%02x".format(it) }
+    if (!actual.equals(expectedSha256, ignoreCase = true)) {
+        error(
+            "CoMaps SDK candidate SHA-256 mismatch for $relativePath: expected $expectedSha256, got $actual " +
+                "(candidate revision $pinnedCandidateRevision)"
+        )
+    }
+}
+
+verifyCandidateSha256("classes.jar", "074122f4de6c6c8c930bd5fae50be0626c527abb8498dae36f0176ce20ee3ca8")
+verifyCandidateSha256("jni/arm64-v8a/liborganicmaps.so", "df51c422e3e6163e7079a53875933232577bb939396738cf05c0edb8cc509f21")
+verifyCandidateSha256("jni/armeabi-v7a/liborganicmaps.so", "c911390d5906f97f82ec4876e56f90dbe05d9d24487897f81907a40b89dc1788")
 
 android {
     namespace = "app.organicmaps.sdk"

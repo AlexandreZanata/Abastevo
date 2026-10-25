@@ -35,12 +35,12 @@ class MapPackageRecoveryTest {
 
     @AfterEach fun stop() { server.shutdown() }
 
-    private fun manifest(generation: String = "gen-1"): String = """
+    private fun manifest(generation: String = "gen-1", bytes: ByteArray = packageBytes): String = """
         {
           "format":"abastevo.native-map-manifest-v1","version":1,"generation":"$generation",
           "engine":{"name":"comaps","upstream_sha":"4587b8ad4d12c9f59982709fdaf03cc925948827","generator_sha":"4587b8ad4d12c9f59982709fdaf03cc925948827","format_version":"261004"},
           "region":{"id":"brazil-parana-east","name":"Parana East","overview":"world","bbox":{"min_lon_deg":-50.0,"min_lat_deg":-26.0,"max_lon_deg":-48.0,"max_lat_deg":-24.0}},
-          "packages":[{"id":"region","role":"REGION","path":"region.mwm","bytes":${packageBytes.size},"sha256":"$packageSha"}],
+          "packages":[{"id":"region","role":"REGION","path":"region.mwm","bytes":${bytes.size},"sha256":"${sha(bytes)}"}],
           "dependencies":[],
           "sources":[{"id":"osm","license":"ODbL-1.0","attribution":"OpenStreetMap contributors","sha256":"${"a".repeat(64)}"}],
           "rights":{"license":"ODbL-1.0","attribution":"OpenStreetMap contributors","commercial":true,"offline":true,"redistribution":true},
@@ -139,26 +139,25 @@ class MapPackageRecoveryTest {
         assertEquals("gen-1", store.active?.generation)
     }
 
-    @Test fun `cancellation leaves part file for resume`() {
+    @Test fun `cancellation leaves part file for resume`() = runBlocking {
         val store = store()
         val repository = repo(store)
-        runBlocking { repository.importManifestWithPlatformKeys(envelope(manifest()), mapOf("k1" to keyPair.public)) }
+        val largeBytes = ByteArray(1024 * 1024) { 7 }
+        repository.importManifestWithPlatformKeys(envelope(manifest(bytes = largeBytes)), mapOf("k1" to keyPair.public))
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 // Slow stream so cancellation interrupts mid-body.
-                val body = Buffer().write(ByteArray(1024 * 1024) { 7 })
+                val body = Buffer().write(largeBytes)
                 return MockResponse().setResponseCode(200).setBody(body).throttleBody(64 * 1024, 50, java.util.concurrent.TimeUnit.MILLISECONDS)
             }
         }
         server.start()
         val base = server.url("/").toString().trimEnd('/')
-        val job: Job = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        val job: Job = launch(kotlinx.coroutines.Dispatchers.IO) {
             repository.downloadMissing("gen-1", base)
         }
-        runBlocking {
-            delay(150)
-            job.cancelAndJoin()
-        }
+        delay(150)
+        job.cancelAndJoin()
         val part = File(root, "map-packages/gen-1/region.mwm.part")
         // Cancellation must not delete the resume state nor activate anything.
         assertTrue(part.exists() || store.packages.single().status != PACKAGE_READY)

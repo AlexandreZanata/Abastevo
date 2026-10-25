@@ -25,9 +25,13 @@ class MapServerDecodeTest {
     @AfterEach fun stop() { server.shutdown() }
 
     private fun stagingFixture(): String {
-        val captured = Path.of("/tmp/staging-stations.json").toFile()
-        if (captured.isFile) return captured.readText()
-        return Path.of("contracts/testdata/map/stations-staging-sample.json").toFile().readText()
+        val candidates = listOf(
+            Path.of("/tmp/staging-stations.json").toFile(),
+            Path.of("contracts/testdata/map/stations-staging-sample.json").toFile(),
+            Path.of("../contracts/testdata/map/stations-staging-sample.json").toFile(),
+        )
+        return candidates.firstOrNull { it.isFile }?.readText()
+            ?: error("Missing stations-staging-sample.json fixture")
     }
 
     @Test fun `real backend json decodes with canonical ids`() {
