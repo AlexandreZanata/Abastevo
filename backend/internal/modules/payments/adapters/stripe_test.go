@@ -493,3 +493,93 @@ func TestStripeCancelRenewalKeepsPaidThrough(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func stripeInvoiceWithPayment(invoiceID, paymentIntentID string) map[string]any {
+	body := stripeInvoice(invoiceID, nil)
+	body["payments"] = map[string]any{
+		"object": "list", "url": "/v1/invoices/" + invoiceID + "/payments", "has_more": false,
+		"data": []map[string]any{{
+			"id": "ip_synthetic", "object": "invoice_payment", "status": "paid",
+			"amount_paid": 1234, "amount_requested": 1234, "currency": "brl",
+			"payment": map[string]any{
+				"type":           "payment_intent",
+				"payment_intent": map[string]any{"id": paymentIntentID, "object": "payment_intent"},
+			},
+		}},
+	}
+	return body
+}
+
+func TestStripeRefundCreateFindAndDispute(t *testing.T) {
+	provider := stripeTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/invoices/in_refund":
+			_ = json.NewEncoder(w).Encode(stripeInvoiceWithPayment("in_refund", "pi_refund"))
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/refunds":
+			if r.Header.Get("Idempotency-Key") != "op_refund_1" {
+				t.Fatalf("idempotency = %q", r.Header.Get("Idempotency-Key"))
+			}
+			if err := r.ParseForm(); err != nil {
+				t.Fatal(err)
+			}
+			if r.Form.Get("amount") != "500" || r.Form.Get("payment_intent") != "pi_refund" ||
+				r.Form.Get("metadata[refund_id]") != "refund_local_1" {
+				t.Fatalf("refund form = %v", r.Form)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "re_test_1", "object": "refund", "amount": 500, "currency": "brl",
+				"status": "succeeded", "created": 1700000000,
+				"payment_intent": map[string]any{"id": "pi_refund"},
+				"metadata":       map[string]string{"refund_id": "refund_local_1"},
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/refunds":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"object": "list", "url": "/v1/refunds", "has_more": false,
+				"data": []map[string]any{{
+					"id": "re_test_1", "object": "refund", "amount": 500, "currency": "brl",
+					"status": "succeeded", "created": 1700000000,
+					"payment_intent": map[string]any{"id": "pi_refund"},
+					"metadata":       map[string]string{"refund_id": "refund_local_1"},
+				}},
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/disputes/dp_test_1":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "dp_test_1", "object": "dispute", "amount": 1234, "currency": "brl",
+				"livemode": false, "status": "lost", "created": 1700000000,
+				"charge":               map[string]any{"id": "ch_test_1"},
+				"payment_intent":       map[string]any{"id": "pi_test_1"},
+				"is_charge_refundable": false,
+			})
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	request := app.RefundProviderRequest{
+		RefundID: "refund_local_1", RemotePaymentID: "in_refund",
+		Amount: domain.BRL(500), IdempotencyKey: "op_refund_1",
+		Metadata: map[string]string{"refund_id": "refund_local_1"},
+	}
+	created, err := provider.CreateRefund(context.Background(), request)
+	if err != nil || created.ID != "re_test_1" || created.State != domain.RefundSucceeded {
+		t.Fatalf("created=%+v err=%v", created, err)
+	}
+	found, ok, complete, err := provider.FindRefund(context.Background(), request)
+	if err != nil || !ok || !complete || found.ID != "re_test_1" {
+		t.Fatalf("found=%+v ok=%v complete=%v err=%v", found, ok, complete, err)
+	}
+	event := app.InboxRecord{InboxEvent: app.InboxEvent{
+		Provider: domain.ProviderStripe, Environment: domain.EnvironmentTest,
+		Merchant: "acct_synthetic", EventID: "evt_dp", EventType: "charge.dispute.closed",
+		ResourceType: "dispute", ResourceID: "dp_test_1",
+	}, State: "PENDING", ReceivedAt: time.Now().UTC()}
+	fact, err := provider.VerifyDispute(context.Background(), event)
+	if err != nil || fact.RemoteDisputeID != "dp_test_1" || fact.RemoteChargeID != "pi_test_1" ||
+		fact.State != domain.DisputeLost || !fact.Amount.Equal(domain.BRL(1234)) {
+		t.Fatalf("fact=%+v err=%v", fact, err)
+	}
+	ignored := event
+	ignored.EventType = "charge.succeeded"
+	if _, err := provider.VerifyDispute(context.Background(), ignored); !errors.Is(err, app.ErrIgnored) {
+		t.Fatalf("non-dispute err=%v", err)
+	}
+}

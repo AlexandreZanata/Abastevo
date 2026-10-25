@@ -704,6 +704,7 @@ func (s *Store) RecordSettlement(ctx context.Context, input SettlementInput) (Se
 		AccountID: accountID, OfferID: orderRow.OfferID, Channel: string(settlement.Channel),
 		Provider: string(settlement.Provider), Environment: string(settlement.Environment),
 		Merchant: settlement.MerchantID, RemotePaymentID: settlement.RemotePaymentID,
+		RemoteChargeID: nullableText(settlement.RemoteChargeID),
 		ProviderStatus: settlement.ProviderStatus, AmountCentavos: settlement.Amount.Centavos,
 		Outcome: settlementOutcome(result.Excess), SettledAt: stamp(settlement.SettledAt),
 	})

@@ -513,9 +513,9 @@ func TestMigrationUpgradeReplayAndPostGIS(t *testing.T) {
 		t.Fatal(err)
 	}
 	applied, err := migrate.Apply(ctx, dsn, target)
-	if err != nil || len(applied) != 6 || applied[0] != "000123" || applied[1] != "000124" ||
+	if err != nil || len(applied) != 7 || applied[0] != "000123" || applied[1] != "000124" ||
 		applied[2] != "000125" || applied[3] != "000126" || applied[4] != "000127" ||
-		applied[5] != "000128" {
+		applied[5] != "000128" || applied[6] != "000129" {
 		t.Fatalf("upgrade applied=%v err=%v", applied, err)
 	}
 	again, err := migrate.Apply(ctx, dsn, target)
@@ -546,6 +546,15 @@ func TestMigrationUpgradeReplayAndPostGIS(t *testing.T) {
 	}
 	if err := pool.QueryRow(ctx, "SELECT to_regclass('payment_billing_exits') IS NOT NULL").Scan(&exists); err != nil || !exists {
 		t.Fatalf("billing exit table exists=%v err=%v", exists, err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT to_regclass('payment_refunds') IS NOT NULL").Scan(&exists); err != nil || !exists {
+		t.Fatalf("refund table exists=%v err=%v", exists, err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT to_regclass('payment_disputes') IS NOT NULL").Scan(&exists); err != nil || !exists {
+		t.Fatalf("dispute table exists=%v err=%v", exists, err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT to_regclass('payment_provider_holds') IS NOT NULL").Scan(&exists); err != nil || !exists {
+		t.Fatalf("provider hold table exists=%v err=%v", exists, err)
 	}
 }
 

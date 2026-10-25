@@ -419,12 +419,142 @@ func (q *Queries) GetPaymentCycleByKey(ctx context.Context, arg GetPaymentCycleB
 	return i, err
 }
 
+const getPaymentDispute = `-- name: GetPaymentDispute :one
+SELECT id, account_id, offer_id, grant_id, settlement_id, provider, environment, merchant, remote_dispute_id, remote_payment_id, remote_charge_id, amount_centavos, state, opened_at, updated_at, resolved_at, last_event_at FROM payment_disputes WHERE id=$1::uuid
+`
+
+func (q *Queries) GetPaymentDispute(ctx context.Context, id pgtype.UUID) (PaymentDispute, error) {
+	row := q.db.QueryRow(ctx, getPaymentDispute, id)
+	var i PaymentDispute
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.GrantID,
+		&i.SettlementID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.RemoteDisputeID,
+		&i.RemotePaymentID,
+		&i.RemoteChargeID,
+		&i.AmountCentavos,
+		&i.State,
+		&i.OpenedAt,
+		&i.UpdatedAt,
+		&i.ResolvedAt,
+		&i.LastEventAt,
+	)
+	return i, err
+}
+
+const getPaymentDisputeByRemote = `-- name: GetPaymentDisputeByRemote :one
+SELECT id, account_id, offer_id, grant_id, settlement_id, provider, environment, merchant, remote_dispute_id, remote_payment_id, remote_charge_id, amount_centavos, state, opened_at, updated_at, resolved_at, last_event_at FROM payment_disputes
+WHERE provider=$1 AND environment=$2 AND merchant=$3
+  AND remote_dispute_id=$4
+`
+
+type GetPaymentDisputeByRemoteParams struct {
+	Provider        string `json:"provider"`
+	Environment     string `json:"environment"`
+	Merchant        string `json:"merchant"`
+	RemoteDisputeID string `json:"remote_dispute_id"`
+}
+
+func (q *Queries) GetPaymentDisputeByRemote(ctx context.Context, arg GetPaymentDisputeByRemoteParams) (PaymentDispute, error) {
+	row := q.db.QueryRow(ctx, getPaymentDisputeByRemote,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteDisputeID,
+	)
+	var i PaymentDispute
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.GrantID,
+		&i.SettlementID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.RemoteDisputeID,
+		&i.RemotePaymentID,
+		&i.RemoteChargeID,
+		&i.AmountCentavos,
+		&i.State,
+		&i.OpenedAt,
+		&i.UpdatedAt,
+		&i.ResolvedAt,
+		&i.LastEventAt,
+	)
+	return i, err
+}
+
 const getPaymentGrantByOrder = `-- name: GetPaymentGrantByOrder :one
 SELECT id, order_id, settlement_id, remote_payment_id, account_id, offer_id, source, paid_centavos, currency, start_at, end_at, anchor_day, policy_version, capabilities, state, created_at, revoked_at FROM payment_grants WHERE order_id=$1::uuid
 `
 
 func (q *Queries) GetPaymentGrantByOrder(ctx context.Context, orderID pgtype.UUID) (PaymentGrant, error) {
 	row := q.db.QueryRow(ctx, getPaymentGrantByOrder, orderID)
+	var i PaymentGrant
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.SettlementID,
+		&i.RemotePaymentID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Source,
+		&i.PaidCentavos,
+		&i.Currency,
+		&i.StartAt,
+		&i.EndAt,
+		&i.AnchorDay,
+		&i.PolicyVersion,
+		&i.Capabilities,
+		&i.State,
+		&i.CreatedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getPaymentGrantBySettlement = `-- name: GetPaymentGrantBySettlement :one
+SELECT id, order_id, settlement_id, remote_payment_id, account_id, offer_id, source, paid_centavos, currency, start_at, end_at, anchor_day, policy_version, capabilities, state, created_at, revoked_at FROM payment_grants WHERE settlement_id=$1::uuid
+`
+
+func (q *Queries) GetPaymentGrantBySettlement(ctx context.Context, settlementID pgtype.UUID) (PaymentGrant, error) {
+	row := q.db.QueryRow(ctx, getPaymentGrantBySettlement, settlementID)
+	var i PaymentGrant
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.SettlementID,
+		&i.RemotePaymentID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Source,
+		&i.PaidCentavos,
+		&i.Currency,
+		&i.StartAt,
+		&i.EndAt,
+		&i.AnchorDay,
+		&i.PolicyVersion,
+		&i.Capabilities,
+		&i.State,
+		&i.CreatedAt,
+		&i.RevokedAt,
+	)
+	return i, err
+}
+
+const getPaymentGrantForUpdate = `-- name: GetPaymentGrantForUpdate :one
+SELECT id, order_id, settlement_id, remote_payment_id, account_id, offer_id, source, paid_centavos, currency, start_at, end_at, anchor_day, policy_version, capabilities, state, created_at, revoked_at FROM payment_grants WHERE id=$1::uuid FOR UPDATE
+`
+
+func (q *Queries) GetPaymentGrantForUpdate(ctx context.Context, id pgtype.UUID) (PaymentGrant, error) {
+	row := q.db.QueryRow(ctx, getPaymentGrantForUpdate, id)
 	var i PaymentGrant
 	err := row.Scan(
 		&i.ID,
@@ -817,8 +947,247 @@ func (q *Queries) GetPaymentPixAutoInstruction(ctx context.Context, arg GetPayme
 	return i, err
 }
 
+const getPaymentProviderHold = `-- name: GetPaymentProviderHold :one
+SELECT id, provider, environment, merchant, remote_hold_id, remote_payment_id, amount_centavos, reason, state, observed_at, reviewed_at, reviewed_by, review_reason FROM payment_provider_holds WHERE id=$1::uuid
+`
+
+func (q *Queries) GetPaymentProviderHold(ctx context.Context, id pgtype.UUID) (PaymentProviderHold, error) {
+	row := q.db.QueryRow(ctx, getPaymentProviderHold, id)
+	var i PaymentProviderHold
+	err := row.Scan(
+		&i.ID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.RemoteHoldID,
+		&i.RemotePaymentID,
+		&i.AmountCentavos,
+		&i.Reason,
+		&i.State,
+		&i.ObservedAt,
+		&i.ReviewedAt,
+		&i.ReviewedBy,
+		&i.ReviewReason,
+	)
+	return i, err
+}
+
+const getPaymentProviderHoldByRemote = `-- name: GetPaymentProviderHoldByRemote :one
+SELECT id, provider, environment, merchant, remote_hold_id, remote_payment_id, amount_centavos, reason, state, observed_at, reviewed_at, reviewed_by, review_reason FROM payment_provider_holds
+WHERE provider=$1 AND environment=$2 AND merchant=$3
+  AND remote_hold_id=$4
+`
+
+type GetPaymentProviderHoldByRemoteParams struct {
+	Provider     string `json:"provider"`
+	Environment  string `json:"environment"`
+	Merchant     string `json:"merchant"`
+	RemoteHoldID string `json:"remote_hold_id"`
+}
+
+func (q *Queries) GetPaymentProviderHoldByRemote(ctx context.Context, arg GetPaymentProviderHoldByRemoteParams) (PaymentProviderHold, error) {
+	row := q.db.QueryRow(ctx, getPaymentProviderHoldByRemote,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteHoldID,
+	)
+	var i PaymentProviderHold
+	err := row.Scan(
+		&i.ID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.RemoteHoldID,
+		&i.RemotePaymentID,
+		&i.AmountCentavos,
+		&i.Reason,
+		&i.State,
+		&i.ObservedAt,
+		&i.ReviewedAt,
+		&i.ReviewedBy,
+		&i.ReviewReason,
+	)
+	return i, err
+}
+
+const getPaymentRefund = `-- name: GetPaymentRefund :one
+SELECT id, account_id, offer_id, order_id, grant_id, settlement_id, provider, environment, merchant, operation_key, remote_payment_id, remote_refund_id, amount_centavos, state, reason, requested_by, approved_by, requested_at, updated_at, resolved_at, last_error FROM payment_refunds WHERE id=$1::uuid
+`
+
+func (q *Queries) GetPaymentRefund(ctx context.Context, id pgtype.UUID) (PaymentRefund, error) {
+	row := q.db.QueryRow(ctx, getPaymentRefund, id)
+	var i PaymentRefund
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.OrderID,
+		&i.GrantID,
+		&i.SettlementID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.OperationKey,
+		&i.RemotePaymentID,
+		&i.RemoteRefundID,
+		&i.AmountCentavos,
+		&i.State,
+		&i.Reason,
+		&i.RequestedBy,
+		&i.ApprovedBy,
+		&i.RequestedAt,
+		&i.UpdatedAt,
+		&i.ResolvedAt,
+		&i.LastError,
+	)
+	return i, err
+}
+
+const getPaymentRefundByOperation = `-- name: GetPaymentRefundByOperation :one
+SELECT id, account_id, offer_id, order_id, grant_id, settlement_id, provider, environment, merchant, operation_key, remote_payment_id, remote_refund_id, amount_centavos, state, reason, requested_by, approved_by, requested_at, updated_at, resolved_at, last_error FROM payment_refunds
+WHERE account_id=$1::uuid AND provider=$2
+  AND environment=$3 AND merchant=$4
+  AND operation_key=$5
+`
+
+type GetPaymentRefundByOperationParams struct {
+	AccountID    pgtype.UUID `json:"account_id"`
+	Provider     string      `json:"provider"`
+	Environment  string      `json:"environment"`
+	Merchant     string      `json:"merchant"`
+	OperationKey string      `json:"operation_key"`
+}
+
+func (q *Queries) GetPaymentRefundByOperation(ctx context.Context, arg GetPaymentRefundByOperationParams) (PaymentRefund, error) {
+	row := q.db.QueryRow(ctx, getPaymentRefundByOperation,
+		arg.AccountID,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.OperationKey,
+	)
+	var i PaymentRefund
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.OrderID,
+		&i.GrantID,
+		&i.SettlementID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.OperationKey,
+		&i.RemotePaymentID,
+		&i.RemoteRefundID,
+		&i.AmountCentavos,
+		&i.State,
+		&i.Reason,
+		&i.RequestedBy,
+		&i.ApprovedBy,
+		&i.RequestedAt,
+		&i.UpdatedAt,
+		&i.ResolvedAt,
+		&i.LastError,
+	)
+	return i, err
+}
+
+const getPaymentRefundByRemote = `-- name: GetPaymentRefundByRemote :one
+SELECT id, account_id, offer_id, order_id, grant_id, settlement_id, provider, environment, merchant, operation_key, remote_payment_id, remote_refund_id, amount_centavos, state, reason, requested_by, approved_by, requested_at, updated_at, resolved_at, last_error FROM payment_refunds
+WHERE provider=$1 AND environment=$2 AND merchant=$3
+  AND remote_refund_id=$4
+`
+
+type GetPaymentRefundByRemoteParams struct {
+	Provider       string      `json:"provider"`
+	Environment    string      `json:"environment"`
+	Merchant       string      `json:"merchant"`
+	RemoteRefundID pgtype.Text `json:"remote_refund_id"`
+}
+
+func (q *Queries) GetPaymentRefundByRemote(ctx context.Context, arg GetPaymentRefundByRemoteParams) (PaymentRefund, error) {
+	row := q.db.QueryRow(ctx, getPaymentRefundByRemote,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteRefundID,
+	)
+	var i PaymentRefund
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.OrderID,
+		&i.GrantID,
+		&i.SettlementID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.OperationKey,
+		&i.RemotePaymentID,
+		&i.RemoteRefundID,
+		&i.AmountCentavos,
+		&i.State,
+		&i.Reason,
+		&i.RequestedBy,
+		&i.ApprovedBy,
+		&i.RequestedAt,
+		&i.UpdatedAt,
+		&i.ResolvedAt,
+		&i.LastError,
+	)
+	return i, err
+}
+
+const getPaymentSettlementByCharge = `-- name: GetPaymentSettlementByCharge :one
+SELECT id, order_id, attempt_id, account_id, offer_id, channel, provider, environment, merchant, remote_payment_id, provider_status, authority, amount_centavos, currency, state, outcome, settled_at, created_at, remote_charge_id FROM payment_settlements
+WHERE provider=$1 AND environment=$2 AND merchant=$3
+  AND remote_charge_id=$4
+`
+
+type GetPaymentSettlementByChargeParams struct {
+	Provider       string      `json:"provider"`
+	Environment    string      `json:"environment"`
+	Merchant       string      `json:"merchant"`
+	RemoteChargeID pgtype.Text `json:"remote_charge_id"`
+}
+
+func (q *Queries) GetPaymentSettlementByCharge(ctx context.Context, arg GetPaymentSettlementByChargeParams) (PaymentSettlement, error) {
+	row := q.db.QueryRow(ctx, getPaymentSettlementByCharge,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteChargeID,
+	)
+	var i PaymentSettlement
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.AttemptID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.Channel,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.RemotePaymentID,
+		&i.ProviderStatus,
+		&i.Authority,
+		&i.AmountCentavos,
+		&i.Currency,
+		&i.State,
+		&i.Outcome,
+		&i.SettledAt,
+		&i.CreatedAt,
+		&i.RemoteChargeID,
+	)
+	return i, err
+}
+
 const getPaymentSettlementByID = `-- name: GetPaymentSettlementByID :one
-SELECT id, order_id, attempt_id, account_id, offer_id, channel, provider, environment, merchant, remote_payment_id, provider_status, authority, amount_centavos, currency, state, outcome, settled_at, created_at FROM payment_settlements WHERE id=$1::uuid
+SELECT id, order_id, attempt_id, account_id, offer_id, channel, provider, environment, merchant, remote_payment_id, provider_status, authority, amount_centavos, currency, state, outcome, settled_at, created_at, remote_charge_id FROM payment_settlements WHERE id=$1::uuid
 `
 
 func (q *Queries) GetPaymentSettlementByID(ctx context.Context, id pgtype.UUID) (PaymentSettlement, error) {
@@ -843,12 +1212,13 @@ func (q *Queries) GetPaymentSettlementByID(ctx context.Context, id pgtype.UUID) 
 		&i.Outcome,
 		&i.SettledAt,
 		&i.CreatedAt,
+		&i.RemoteChargeID,
 	)
 	return i, err
 }
 
 const getPaymentSettlementByOrder = `-- name: GetPaymentSettlementByOrder :one
-SELECT id, order_id, attempt_id, account_id, offer_id, channel, provider, environment, merchant, remote_payment_id, provider_status, authority, amount_centavos, currency, state, outcome, settled_at, created_at FROM payment_settlements
+SELECT id, order_id, attempt_id, account_id, offer_id, channel, provider, environment, merchant, remote_payment_id, provider_status, authority, amount_centavos, currency, state, outcome, settled_at, created_at, remote_charge_id FROM payment_settlements
 WHERE order_id=$1::uuid AND outcome='GRANTED'
 `
 
@@ -874,12 +1244,13 @@ func (q *Queries) GetPaymentSettlementByOrder(ctx context.Context, orderID pgtyp
 		&i.Outcome,
 		&i.SettledAt,
 		&i.CreatedAt,
+		&i.RemoteChargeID,
 	)
 	return i, err
 }
 
 const getPaymentSettlementByRemote = `-- name: GetPaymentSettlementByRemote :one
-SELECT id, order_id, attempt_id, account_id, offer_id, channel, provider, environment, merchant, remote_payment_id, provider_status, authority, amount_centavos, currency, state, outcome, settled_at, created_at FROM payment_settlements
+SELECT id, order_id, attempt_id, account_id, offer_id, channel, provider, environment, merchant, remote_payment_id, provider_status, authority, amount_centavos, currency, state, outcome, settled_at, created_at, remote_charge_id FROM payment_settlements
 WHERE provider=$1 AND environment=$2 AND merchant=$3
   AND remote_payment_id=$4
 `
@@ -918,6 +1289,7 @@ func (q *Queries) GetPaymentSettlementByRemote(ctx context.Context, arg GetPayme
 		&i.Outcome,
 		&i.SettledAt,
 		&i.CreatedAt,
+		&i.RemoteChargeID,
 	)
 	return i, err
 }
@@ -1191,6 +1563,80 @@ func (q *Queries) InsertPaymentCycle(ctx context.Context, arg InsertPaymentCycle
 	return result.RowsAffected(), nil
 }
 
+const insertPaymentDispute = `-- name: InsertPaymentDispute :one
+INSERT INTO payment_disputes(
+ id,account_id,offer_id,grant_id,settlement_id,provider,environment,merchant,
+ remote_dispute_id,remote_payment_id,remote_charge_id,amount_centavos,state,opened_at,last_event_at
+) VALUES(
+ $1::uuid,$2::uuid,$3,$4::uuid,
+ $5::uuid,$6,$7,$8,
+ $9,$10,$11,
+ $12::bigint,$13,$14::timestamptz,
+ $15::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_dispute_id) DO NOTHING
+RETURNING id, account_id, offer_id, grant_id, settlement_id, provider, environment, merchant, remote_dispute_id, remote_payment_id, remote_charge_id, amount_centavos, state, opened_at, updated_at, resolved_at, last_event_at
+`
+
+type InsertPaymentDisputeParams struct {
+	ID              pgtype.UUID        `json:"id"`
+	AccountID       pgtype.UUID        `json:"account_id"`
+	OfferID         string             `json:"offer_id"`
+	GrantID         pgtype.UUID        `json:"grant_id"`
+	SettlementID    pgtype.UUID        `json:"settlement_id"`
+	Provider        string             `json:"provider"`
+	Environment     string             `json:"environment"`
+	Merchant        string             `json:"merchant"`
+	RemoteDisputeID string             `json:"remote_dispute_id"`
+	RemotePaymentID pgtype.Text        `json:"remote_payment_id"`
+	RemoteChargeID  pgtype.Text        `json:"remote_charge_id"`
+	AmountCentavos  int64              `json:"amount_centavos"`
+	State           string             `json:"state"`
+	OpenedAt        pgtype.Timestamptz `json:"opened_at"`
+	LastEventAt     pgtype.Timestamptz `json:"last_event_at"`
+}
+
+func (q *Queries) InsertPaymentDispute(ctx context.Context, arg InsertPaymentDisputeParams) (PaymentDispute, error) {
+	row := q.db.QueryRow(ctx, insertPaymentDispute,
+		arg.ID,
+		arg.AccountID,
+		arg.OfferID,
+		arg.GrantID,
+		arg.SettlementID,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteDisputeID,
+		arg.RemotePaymentID,
+		arg.RemoteChargeID,
+		arg.AmountCentavos,
+		arg.State,
+		arg.OpenedAt,
+		arg.LastEventAt,
+	)
+	var i PaymentDispute
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.GrantID,
+		&i.SettlementID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.RemoteDisputeID,
+		&i.RemotePaymentID,
+		&i.RemoteChargeID,
+		&i.AmountCentavos,
+		&i.State,
+		&i.OpenedAt,
+		&i.UpdatedAt,
+		&i.ResolvedAt,
+		&i.LastEventAt,
+	)
+	return i, err
+}
+
 const insertPaymentGrant = `-- name: InsertPaymentGrant :execrows
 INSERT INTO payment_grants(
  id,order_id,settlement_id,remote_payment_id,account_id,offer_id,source,paid_centavos,currency,
@@ -1322,6 +1768,40 @@ func (q *Queries) InsertPaymentOperation(ctx context.Context, arg InsertPaymentO
 	return err
 }
 
+const insertPaymentOperatorAction = `-- name: InsertPaymentOperatorAction :exec
+INSERT INTO payment_operator_actions(
+ id,actor,action,target_id,account_id,reason,amount_centavos,result
+) VALUES(
+ $1::uuid,$2,$3,$4::uuid,
+ $5::uuid,$6,$7::bigint,$8
+)
+`
+
+type InsertPaymentOperatorActionParams struct {
+	ID             pgtype.UUID `json:"id"`
+	Actor          string      `json:"actor"`
+	Action         string      `json:"action"`
+	TargetID       pgtype.UUID `json:"target_id"`
+	AccountID      pgtype.UUID `json:"account_id"`
+	Reason         string      `json:"reason"`
+	AmountCentavos pgtype.Int8 `json:"amount_centavos"`
+	Result         string      `json:"result"`
+}
+
+func (q *Queries) InsertPaymentOperatorAction(ctx context.Context, arg InsertPaymentOperatorActionParams) error {
+	_, err := q.db.Exec(ctx, insertPaymentOperatorAction,
+		arg.ID,
+		arg.Actor,
+		arg.Action,
+		arg.TargetID,
+		arg.AccountID,
+		arg.Reason,
+		arg.AmountCentavos,
+		arg.Result,
+	)
+	return err
+}
+
 const insertPaymentOrder = `-- name: InsertPaymentOrder :execrows
 INSERT INTO payment_orders(
  id,account_id,offer_id,catalog_version,channel,amount_centavos,currency,capabilities,state,quoted_at,expires_at
@@ -1404,14 +1884,155 @@ func (q *Queries) InsertPaymentPixAutoCycleAttempt(ctx context.Context, arg Inse
 	return err
 }
 
+const insertPaymentProviderHold = `-- name: InsertPaymentProviderHold :one
+INSERT INTO payment_provider_holds(
+ id,provider,environment,merchant,remote_hold_id,remote_payment_id,amount_centavos,
+ reason,state,observed_at
+) VALUES(
+ $1::uuid,$2,$3,$4,
+ $5,$6,$7::bigint,
+ $8,'OPEN',$9::timestamptz
+)
+ON CONFLICT (provider,environment,merchant,remote_hold_id) DO NOTHING
+RETURNING id, provider, environment, merchant, remote_hold_id, remote_payment_id, amount_centavos, reason, state, observed_at, reviewed_at, reviewed_by, review_reason
+`
+
+type InsertPaymentProviderHoldParams struct {
+	ID              pgtype.UUID        `json:"id"`
+	Provider        string             `json:"provider"`
+	Environment     string             `json:"environment"`
+	Merchant        string             `json:"merchant"`
+	RemoteHoldID    string             `json:"remote_hold_id"`
+	RemotePaymentID pgtype.Text        `json:"remote_payment_id"`
+	AmountCentavos  pgtype.Int8        `json:"amount_centavos"`
+	Reason          string             `json:"reason"`
+	ObservedAt      pgtype.Timestamptz `json:"observed_at"`
+}
+
+func (q *Queries) InsertPaymentProviderHold(ctx context.Context, arg InsertPaymentProviderHoldParams) (PaymentProviderHold, error) {
+	row := q.db.QueryRow(ctx, insertPaymentProviderHold,
+		arg.ID,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.RemoteHoldID,
+		arg.RemotePaymentID,
+		arg.AmountCentavos,
+		arg.Reason,
+		arg.ObservedAt,
+	)
+	var i PaymentProviderHold
+	err := row.Scan(
+		&i.ID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.RemoteHoldID,
+		&i.RemotePaymentID,
+		&i.AmountCentavos,
+		&i.Reason,
+		&i.State,
+		&i.ObservedAt,
+		&i.ReviewedAt,
+		&i.ReviewedBy,
+		&i.ReviewReason,
+	)
+	return i, err
+}
+
+const insertPaymentRefund = `-- name: InsertPaymentRefund :one
+INSERT INTO payment_refunds(
+ id,account_id,offer_id,order_id,grant_id,settlement_id,provider,environment,merchant,
+ operation_key,remote_payment_id,remote_refund_id,amount_centavos,state,reason,
+ requested_by,approved_by,requested_at
+) VALUES(
+ $1::uuid,$2::uuid,$3,$4::uuid,
+ $5::uuid,$6::uuid,$7,$8,
+ $9,$10,$11,$12,
+ $13::bigint,$14,$15,
+ $16,$17,$18::timestamptz
+)
+ON CONFLICT (account_id,provider,environment,merchant,operation_key) DO NOTHING
+RETURNING id, account_id, offer_id, order_id, grant_id, settlement_id, provider, environment, merchant, operation_key, remote_payment_id, remote_refund_id, amount_centavos, state, reason, requested_by, approved_by, requested_at, updated_at, resolved_at, last_error
+`
+
+type InsertPaymentRefundParams struct {
+	ID              pgtype.UUID        `json:"id"`
+	AccountID       pgtype.UUID        `json:"account_id"`
+	OfferID         string             `json:"offer_id"`
+	OrderID         pgtype.UUID        `json:"order_id"`
+	GrantID         pgtype.UUID        `json:"grant_id"`
+	SettlementID    pgtype.UUID        `json:"settlement_id"`
+	Provider        string             `json:"provider"`
+	Environment     string             `json:"environment"`
+	Merchant        string             `json:"merchant"`
+	OperationKey    string             `json:"operation_key"`
+	RemotePaymentID string             `json:"remote_payment_id"`
+	RemoteRefundID  pgtype.Text        `json:"remote_refund_id"`
+	AmountCentavos  int64              `json:"amount_centavos"`
+	State           string             `json:"state"`
+	Reason          string             `json:"reason"`
+	RequestedBy     string             `json:"requested_by"`
+	ApprovedBy      pgtype.Text        `json:"approved_by"`
+	RequestedAt     pgtype.Timestamptz `json:"requested_at"`
+}
+
+func (q *Queries) InsertPaymentRefund(ctx context.Context, arg InsertPaymentRefundParams) (PaymentRefund, error) {
+	row := q.db.QueryRow(ctx, insertPaymentRefund,
+		arg.ID,
+		arg.AccountID,
+		arg.OfferID,
+		arg.OrderID,
+		arg.GrantID,
+		arg.SettlementID,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.OperationKey,
+		arg.RemotePaymentID,
+		arg.RemoteRefundID,
+		arg.AmountCentavos,
+		arg.State,
+		arg.Reason,
+		arg.RequestedBy,
+		arg.ApprovedBy,
+		arg.RequestedAt,
+	)
+	var i PaymentRefund
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OfferID,
+		&i.OrderID,
+		&i.GrantID,
+		&i.SettlementID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.OperationKey,
+		&i.RemotePaymentID,
+		&i.RemoteRefundID,
+		&i.AmountCentavos,
+		&i.State,
+		&i.Reason,
+		&i.RequestedBy,
+		&i.ApprovedBy,
+		&i.RequestedAt,
+		&i.UpdatedAt,
+		&i.ResolvedAt,
+		&i.LastError,
+	)
+	return i, err
+}
+
 const insertPaymentSettlement = `-- name: InsertPaymentSettlement :execrows
 INSERT INTO payment_settlements(
  id,order_id,attempt_id,account_id,offer_id,channel,provider,environment,merchant,
- remote_payment_id,provider_status,authority,amount_centavos,currency,state,outcome,settled_at
+ remote_payment_id,remote_charge_id,provider_status,authority,amount_centavos,currency,state,outcome,settled_at
 ) VALUES(
  $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5,$6,$7,
- $8,$9,$10,$11,'provider_verified',
- $12::bigint,'BRL','SETTLED',$13,$14::timestamptz
+ $8,$9,$10,$11,$12,'provider_verified',
+ $13::bigint,'BRL','SETTLED',$14,$15::timestamptz
 )
 ON CONFLICT (id) DO NOTHING
 `
@@ -1427,6 +2048,7 @@ type InsertPaymentSettlementParams struct {
 	Environment     string             `json:"environment"`
 	Merchant        string             `json:"merchant"`
 	RemotePaymentID string             `json:"remote_payment_id"`
+	RemoteChargeID  pgtype.Text        `json:"remote_charge_id"`
 	ProviderStatus  string             `json:"provider_status"`
 	AmountCentavos  int64              `json:"amount_centavos"`
 	Outcome         string             `json:"outcome"`
@@ -1445,6 +2067,7 @@ func (q *Queries) InsertPaymentSettlement(ctx context.Context, arg InsertPayment
 		arg.Environment,
 		arg.Merchant,
 		arg.RemotePaymentID,
+		arg.RemoteChargeID,
 		arg.ProviderStatus,
 		arg.AmountCentavos,
 		arg.Outcome,
@@ -1929,6 +2552,102 @@ func (q *Queries) ListPaymentPixAutoInstructions(ctx context.Context, arg ListPa
 	return items, nil
 }
 
+const listPaymentRefundsForGrant = `-- name: ListPaymentRefundsForGrant :many
+SELECT id, account_id, offer_id, order_id, grant_id, settlement_id, provider, environment, merchant, operation_key, remote_payment_id, remote_refund_id, amount_centavos, state, reason, requested_by, approved_by, requested_at, updated_at, resolved_at, last_error FROM payment_refunds
+WHERE grant_id=$1::uuid
+ORDER BY requested_at,id
+`
+
+func (q *Queries) ListPaymentRefundsForGrant(ctx context.Context, grantID pgtype.UUID) ([]PaymentRefund, error) {
+	rows, err := q.db.Query(ctx, listPaymentRefundsForGrant, grantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentRefund
+	for rows.Next() {
+		var i PaymentRefund
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.OfferID,
+			&i.OrderID,
+			&i.GrantID,
+			&i.SettlementID,
+			&i.Provider,
+			&i.Environment,
+			&i.Merchant,
+			&i.OperationKey,
+			&i.RemotePaymentID,
+			&i.RemoteRefundID,
+			&i.AmountCentavos,
+			&i.State,
+			&i.Reason,
+			&i.RequestedBy,
+			&i.ApprovedBy,
+			&i.RequestedAt,
+			&i.UpdatedAt,
+			&i.ResolvedAt,
+			&i.LastError,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPaymentRefundsForSettlement = `-- name: ListPaymentRefundsForSettlement :many
+SELECT id, account_id, offer_id, order_id, grant_id, settlement_id, provider, environment, merchant, operation_key, remote_payment_id, remote_refund_id, amount_centavos, state, reason, requested_by, approved_by, requested_at, updated_at, resolved_at, last_error FROM payment_refunds
+WHERE settlement_id=$1::uuid
+ORDER BY requested_at,id
+`
+
+func (q *Queries) ListPaymentRefundsForSettlement(ctx context.Context, settlementID pgtype.UUID) ([]PaymentRefund, error) {
+	rows, err := q.db.Query(ctx, listPaymentRefundsForSettlement, settlementID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentRefund
+	for rows.Next() {
+		var i PaymentRefund
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.OfferID,
+			&i.OrderID,
+			&i.GrantID,
+			&i.SettlementID,
+			&i.Provider,
+			&i.Environment,
+			&i.Merchant,
+			&i.OperationKey,
+			&i.RemotePaymentID,
+			&i.RemoteRefundID,
+			&i.AmountCentavos,
+			&i.State,
+			&i.Reason,
+			&i.RequestedBy,
+			&i.ApprovedBy,
+			&i.RequestedAt,
+			&i.UpdatedAt,
+			&i.ResolvedAt,
+			&i.LastError,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingPaymentInbox = `-- name: ListPendingPaymentInbox :many
 SELECT provider, environment, merchant, event_id, payload_hash, event_type, resource_type, resource_id, state, attempts, received_at, processed_at, last_error, resource_status FROM payment_inbox
 WHERE provider=$1 AND environment=$2
@@ -2086,6 +2805,37 @@ type MarkPaymentOrderPaidParams struct {
 
 func (q *Queries) MarkPaymentOrderPaid(ctx context.Context, arg MarkPaymentOrderPaidParams) (int64, error) {
 	result, err := q.db.Exec(ctx, markPaymentOrderPaid, arg.PaidAt, arg.SettlementID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markPaymentSettlementRefunded = `-- name: MarkPaymentSettlementRefunded :execrows
+UPDATE payment_settlements SET state=$1
+WHERE id=$2::uuid AND state IN ('SETTLED','PARTIALLY_REFUNDED')
+`
+
+type MarkPaymentSettlementRefundedParams struct {
+	State string      `json:"state"`
+	ID    pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) MarkPaymentSettlementRefunded(ctx context.Context, arg MarkPaymentSettlementRefundedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markPaymentSettlementRefunded, arg.State, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markPaymentSettlementReversed = `-- name: MarkPaymentSettlementReversed :execrows
+UPDATE payment_settlements SET state='REVERSED'
+WHERE id=$1::uuid AND state IN ('SETTLED','PARTIALLY_REFUNDED','REFUNDED')
+`
+
+func (q *Queries) MarkPaymentSettlementReversed(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markPaymentSettlementReversed, id)
 	if err != nil {
 		return 0, err
 	}
@@ -2342,6 +3092,96 @@ func (q *Queries) UpdatePaymentBillingExit(ctx context.Context, arg UpdatePaymen
 		arg.LastEventAt,
 		arg.LastError,
 		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updatePaymentDisputeState = `-- name: UpdatePaymentDisputeState :execrows
+UPDATE payment_disputes
+SET state=$1,updated_at=clock_timestamp(),
+    resolved_at=$2::timestamptz,last_event_at=$3::timestamptz
+WHERE id=$4::uuid AND state=$5
+`
+
+type UpdatePaymentDisputeStateParams struct {
+	State         string             `json:"state"`
+	ResolvedAt    pgtype.Timestamptz `json:"resolved_at"`
+	LastEventAt   pgtype.Timestamptz `json:"last_event_at"`
+	ID            pgtype.UUID        `json:"id"`
+	PreviousState string             `json:"previous_state"`
+}
+
+func (q *Queries) UpdatePaymentDisputeState(ctx context.Context, arg UpdatePaymentDisputeStateParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updatePaymentDisputeState,
+		arg.State,
+		arg.ResolvedAt,
+		arg.LastEventAt,
+		arg.ID,
+		arg.PreviousState,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updatePaymentProviderHold = `-- name: UpdatePaymentProviderHold :execrows
+UPDATE payment_provider_holds
+SET state=$1,reviewed_at=$2::timestamptz,
+    reviewed_by=$3,review_reason=$4
+WHERE id=$5::uuid AND state='OPEN'
+`
+
+type UpdatePaymentProviderHoldParams struct {
+	State        string             `json:"state"`
+	ReviewedAt   pgtype.Timestamptz `json:"reviewed_at"`
+	ReviewedBy   pgtype.Text        `json:"reviewed_by"`
+	ReviewReason string             `json:"review_reason"`
+	ID           pgtype.UUID        `json:"id"`
+}
+
+func (q *Queries) UpdatePaymentProviderHold(ctx context.Context, arg UpdatePaymentProviderHoldParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updatePaymentProviderHold,
+		arg.State,
+		arg.ReviewedAt,
+		arg.ReviewedBy,
+		arg.ReviewReason,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updatePaymentRefundState = `-- name: UpdatePaymentRefundState :execrows
+UPDATE payment_refunds
+SET state=$1,remote_refund_id=COALESCE($2,remote_refund_id),
+    updated_at=clock_timestamp(),resolved_at=$3::timestamptz,
+    last_error=$4
+WHERE id=$5::uuid AND state=$6
+`
+
+type UpdatePaymentRefundStateParams struct {
+	State          string             `json:"state"`
+	RemoteRefundID pgtype.Text        `json:"remote_refund_id"`
+	ResolvedAt     pgtype.Timestamptz `json:"resolved_at"`
+	LastError      string             `json:"last_error"`
+	ID             pgtype.UUID        `json:"id"`
+	PreviousState  string             `json:"previous_state"`
+}
+
+func (q *Queries) UpdatePaymentRefundState(ctx context.Context, arg UpdatePaymentRefundStateParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updatePaymentRefundState,
+		arg.State,
+		arg.RemoteRefundID,
+		arg.ResolvedAt,
+		arg.LastError,
+		arg.ID,
+		arg.PreviousState,
 	)
 	if err != nil {
 		return 0, err

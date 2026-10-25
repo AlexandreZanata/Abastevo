@@ -426,3 +426,63 @@ func TestAsaasPixAutoAuthorizationContract(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAsaasRefundCreateFindAndDispute(t *testing.T) {
+	provider := asaasTestProvider(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v3/payments/pay_refund/refund":
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			if body["value"] != 12.34 || body["description"] != "op_refund_1" {
+				t.Fatalf("refund body=%v", body)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "pay_refund", "customer": "cus_synthetic", "status": "REFUND_REQUESTED",
+				"value": 12.34, "dueDate": "2026-10-26",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v3/payments/pay_refund/refunds":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{{
+					"dateCreated": "2026-10-24 12:00:00", "status": "DONE",
+					"value": 12.34, "description": "op_refund_1",
+				}},
+				"totalCount": 1, "hasMore": false,
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v3/payments/pay_dispute":
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "pay_dispute", "customer": "cus_synthetic", "status": "CHARGEBACK_DISPUTE",
+				"value": 12.34, "dueDate": "2026-10-26",
+			})
+		default:
+			t.Fatalf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	request := app.RefundProviderRequest{
+		RefundID: "refund_local_1", RemotePaymentID: "pay_refund",
+		Amount: domain.BRL(1234), IdempotencyKey: "op_refund_1",
+	}
+	created, err := provider.CreateRefund(context.Background(), request)
+	if err != nil || created.State != domain.RefundSucceeded {
+		t.Fatalf("created=%+v err=%v", created, err)
+	}
+	found, ok, complete, err := provider.FindRefund(context.Background(), request)
+	if err != nil || !ok || !complete || found.State != domain.RefundSucceeded {
+		t.Fatalf("found=%+v ok=%v complete=%v err=%v", found, ok, complete, err)
+	}
+	event := app.InboxRecord{InboxEvent: app.InboxEvent{
+		Provider: domain.ProviderAsaas, Environment: domain.EnvironmentTest,
+		Merchant: "merchant_1", EventID: "evt_cb", EventType: "PAYMENT_CHARGEBACK_DISPUTE",
+		ResourceType: "payment", ResourceID: "pay_dispute",
+	}, State: "PENDING", ReceivedAt: time.Now().UTC()}
+	fact, err := provider.VerifyDispute(context.Background(), event)
+	if err != nil || fact.RemotePaymentID != "pay_dispute" || fact.State != domain.DisputeUnderReview {
+		t.Fatalf("fact=%+v err=%v", fact, err)
+	}
+	ignored := event
+	ignored.EventType = "PAYMENT_CREATED"
+	if _, err := provider.VerifyDispute(context.Background(), ignored); !errors.Is(err, app.ErrIgnored) {
+		t.Fatalf("non-dispute err=%v", err)
+	}
+}

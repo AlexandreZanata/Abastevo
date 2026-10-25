@@ -133,6 +133,26 @@ type PaymentCycle struct {
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }
 
+type PaymentDispute struct {
+	ID              pgtype.UUID        `json:"id"`
+	AccountID       pgtype.UUID        `json:"account_id"`
+	OfferID         string             `json:"offer_id"`
+	GrantID         pgtype.UUID        `json:"grant_id"`
+	SettlementID    pgtype.UUID        `json:"settlement_id"`
+	Provider        string             `json:"provider"`
+	Environment     string             `json:"environment"`
+	Merchant        string             `json:"merchant"`
+	RemoteDisputeID string             `json:"remote_dispute_id"`
+	RemotePaymentID pgtype.Text        `json:"remote_payment_id"`
+	RemoteChargeID  pgtype.Text        `json:"remote_charge_id"`
+	AmountCentavos  int64              `json:"amount_centavos"`
+	State           string             `json:"state"`
+	OpenedAt        pgtype.Timestamptz `json:"opened_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	ResolvedAt      pgtype.Timestamptz `json:"resolved_at"`
+	LastEventAt     pgtype.Timestamptz `json:"last_event_at"`
+}
+
 type PaymentGrant struct {
 	ID              pgtype.UUID        `json:"id"`
 	OrderID         pgtype.UUID        `json:"order_id"`
@@ -219,6 +239,18 @@ type PaymentOperation struct {
 	CompletedAt  pgtype.Timestamptz `json:"completed_at"`
 }
 
+type PaymentOperatorAction struct {
+	ID             pgtype.UUID        `json:"id"`
+	Actor          string             `json:"actor"`
+	Action         string             `json:"action"`
+	TargetID       pgtype.UUID        `json:"target_id"`
+	AccountID      pgtype.UUID        `json:"account_id"`
+	Reason         string             `json:"reason"`
+	AmountCentavos pgtype.Int8        `json:"amount_centavos"`
+	Result         string             `json:"result"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type PaymentOrder struct {
 	ID             pgtype.UUID        `json:"id"`
 	AccountID      pgtype.UUID        `json:"account_id"`
@@ -269,6 +301,46 @@ type PaymentPixAutoInstruction struct {
 	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
 }
 
+type PaymentProviderHold struct {
+	ID              pgtype.UUID        `json:"id"`
+	Provider        string             `json:"provider"`
+	Environment     string             `json:"environment"`
+	Merchant        string             `json:"merchant"`
+	RemoteHoldID    string             `json:"remote_hold_id"`
+	RemotePaymentID pgtype.Text        `json:"remote_payment_id"`
+	AmountCentavos  pgtype.Int8        `json:"amount_centavos"`
+	Reason          string             `json:"reason"`
+	State           string             `json:"state"`
+	ObservedAt      pgtype.Timestamptz `json:"observed_at"`
+	ReviewedAt      pgtype.Timestamptz `json:"reviewed_at"`
+	ReviewedBy      pgtype.Text        `json:"reviewed_by"`
+	ReviewReason    string             `json:"review_reason"`
+}
+
+type PaymentRefund struct {
+	ID              pgtype.UUID        `json:"id"`
+	AccountID       pgtype.UUID        `json:"account_id"`
+	OfferID         string             `json:"offer_id"`
+	OrderID         pgtype.UUID        `json:"order_id"`
+	GrantID         pgtype.UUID        `json:"grant_id"`
+	SettlementID    pgtype.UUID        `json:"settlement_id"`
+	Provider        string             `json:"provider"`
+	Environment     string             `json:"environment"`
+	Merchant        string             `json:"merchant"`
+	OperationKey    string             `json:"operation_key"`
+	RemotePaymentID string             `json:"remote_payment_id"`
+	RemoteRefundID  pgtype.Text        `json:"remote_refund_id"`
+	AmountCentavos  int64              `json:"amount_centavos"`
+	State           string             `json:"state"`
+	Reason          string             `json:"reason"`
+	RequestedBy     string             `json:"requested_by"`
+	ApprovedBy      pgtype.Text        `json:"approved_by"`
+	RequestedAt     pgtype.Timestamptz `json:"requested_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	ResolvedAt      pgtype.Timestamptz `json:"resolved_at"`
+	LastError       string             `json:"last_error"`
+}
+
 type PaymentSettlement struct {
 	ID              pgtype.UUID        `json:"id"`
 	OrderID         pgtype.UUID        `json:"order_id"`
@@ -288,6 +360,7 @@ type PaymentSettlement struct {
 	Outcome         string             `json:"outcome"`
 	SettledAt       pgtype.Timestamptz `json:"settled_at"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	RemoteChargeID  pgtype.Text        `json:"remote_charge_id"`
 }
 
 type PaymentSourceSwitch struct {

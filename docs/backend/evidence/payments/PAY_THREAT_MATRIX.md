@@ -136,6 +136,17 @@ evidence was not rerun at PAY-00.
 | PRM-05 | Account deletion purges/retires provider material. | REUSE_OPEN | PAY-15 | Migration `000075` trigger; extend without replaying financial writes. |
 | PRM-06 | Free status/export remains available when payments are disabled. | REUSE_OPEN | PAY-10, PAY-15 | Preserve `Export` independence from provider configuration. |
 
+## PAY-16 local closure
+
+- AUTH-04 (refund part, local): duplicate refund intents converge on one local
+  row and one provider write; lost-reply reconciliation finds the remote refund
+  before any second write. Broader command/webhook dedupe stays with its owners.
+- B-BR-PAY-16/17: only verified original-route refunds adjust paid periods;
+  pending disputes and unmatched holds never revoke; confirmed losses and
+  cumulative full refunds revoke only matched unexpired grants.
+- Actual provider fee balances, MED event names and retry windows remain
+  PAY-21 sandbox proof; runtime routes/workers remain PAY-19.
+
 ## PAY-15 local closure
 
 - BND-03: account deletion keeps `payment_billing_exits` and existing

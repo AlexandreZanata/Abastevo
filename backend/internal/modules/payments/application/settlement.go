@@ -148,8 +148,9 @@ func (s *SettlementService) Settle(ctx context.Context, candidate SettlementCand
 		OrderID: order.ID, AttemptID: attempt.ID, AccountID: order.AccountID,
 		OfferID: order.OfferID, Channel: candidate.Channel, Provider: candidate.Provider,
 		Environment: candidate.Environment, MerchantID: candidate.Merchant,
-		RemotePaymentID: candidate.RemotePaymentID, ProviderStatus: candidate.ProviderStatus,
-		Amount: candidate.Amount, Status: domain.SettlementSettled,
+		RemotePaymentID: candidate.RemotePaymentID, RemoteChargeID: candidate.RemoteChargeID,
+		ProviderStatus: candidate.ProviderStatus,
+		Amount:         candidate.Amount, Status: domain.SettlementSettled,
 		Authority: domain.AuthorityProviderVerified, SettledAt: candidate.SettledAt,
 	}
 	_, err = s.Store.RecordSettlement(ctx, SettlementInput{Offer: offer, Settlement: settlement})

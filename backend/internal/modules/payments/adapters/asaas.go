@@ -320,6 +320,179 @@ func (p *AsaasProvider) VerifySettlement(ctx context.Context, event app.InboxRec
 	}, nil
 }
 
+func (p *AsaasProvider) CreateRefund(ctx context.Context, request app.RefundProviderRequest) (app.RefundProviderResult, error) {
+	if !validAsaasID(request.RemotePaymentID) || request.Amount.Centavos <= 0 {
+		return app.RefundProviderResult{}, domain.ErrInvalid
+	}
+	body := map[string]any{
+		"value":       json.Number(request.Amount.String()),
+		"description": refundDescription(request),
+	}
+	var payment asaasPayment
+	if err := p.do(ctx, http.MethodPost, "/v3/payments/"+url.PathEscape(request.RemotePaymentID)+"/refund", body, &payment); err != nil {
+		return app.RefundProviderResult{}, err
+	}
+	if payment.ID != request.RemotePaymentID {
+		return app.RefundProviderResult{}, domain.ErrBinding
+	}
+	result, found, complete, err := p.FindRefund(ctx, request)
+	if err != nil {
+		return app.RefundProviderResult{}, err
+	}
+	if found {
+		return result, nil
+	}
+	if !complete {
+		return app.RefundProviderResult{}, app.ErrAmbiguous
+	}
+	return app.RefundProviderResult{
+		ID: request.RefundID, State: domain.RefundPending, RawStatus: payment.Status,
+		Amount: request.Amount, At: time.Now().UTC(),
+	}, nil
+}
+
+func (p *AsaasProvider) FindRefund(ctx context.Context, request app.RefundProviderRequest) (app.RefundProviderResult, bool, bool, error) {
+	if !validAsaasID(request.RemotePaymentID) {
+		return app.RefundProviderResult{}, false, false, domain.ErrInvalid
+	}
+	var list asaasRefundList
+	query := url.Values{"limit": {"100"}}
+	if err := p.do(ctx, http.MethodGet, "/v3/payments/"+url.PathEscape(request.RemotePaymentID)+"/refunds?"+query.Encode(), nil, &list); err != nil {
+		return app.RefundProviderResult{}, false, false, err
+	}
+	var matches []asaasRefund
+	for _, refund := range list.Data {
+		if refund.Description != refundDescription(request) {
+			continue
+		}
+		amount, err := parseBRLMinor(refund.Value)
+		if err != nil {
+			return app.RefundProviderResult{}, false, false, domain.ErrBinding
+		}
+		if request.Amount.Centavos > 0 && amount != request.Amount.Centavos {
+			return app.RefundProviderResult{}, false, false, domain.ErrBinding
+		}
+		matches = append(matches, refund)
+	}
+	if len(matches) > 1 {
+		return app.RefundProviderResult{}, false, false, domain.ErrConflict
+	}
+	if len(matches) == 1 {
+		return mapAsaasRefund(request, matches[0]), true, true, nil
+	}
+	return app.RefundProviderResult{}, false, !list.HasMore && list.TotalCount <= len(list.Data), nil
+}
+
+func (p *AsaasProvider) VerifyDispute(ctx context.Context, event app.InboxRecord) (app.DisputeFact, error) {
+	switch event.EventType {
+	case "PAYMENT_CHARGEBACK_REQUESTED", "PAYMENT_CHARGEBACK_DISPUTE", "PAYMENT_AWAITING_CHARGEBACK_REVERSAL":
+	default:
+		return app.DisputeFact{}, app.ErrIgnored
+	}
+	if event.ResourceType != "payment" || !validAsaasID(event.ResourceID) {
+		return app.DisputeFact{}, domain.ErrBinding
+	}
+	payment, err := p.RetrieveAsaasPayment(ctx, event.ResourceID)
+	if err != nil {
+		return app.DisputeFact{}, err
+	}
+	if payment.ID != event.ResourceID {
+		return app.DisputeFact{}, domain.ErrBinding
+	}
+	amount, err := parseBRLMinor(payment.Value)
+	if err != nil || amount <= 0 {
+		return app.DisputeFact{}, domain.ErrBinding
+	}
+	state := domain.DisputePending
+	switch payment.Status {
+	case "CHARGEBACK_REQUESTED":
+		state = domain.DisputePending
+	case "CHARGEBACK_DISPUTE", "AWAITING_CHARGEBACK_REVERSAL":
+		state = domain.DisputeUnderReview
+	default:
+		if payment.Chargeback == nil {
+			return app.DisputeFact{}, domain.ErrBinding
+		}
+		switch payment.Chargeback.Status {
+		case "REQUESTED":
+			state = domain.DisputePending
+		case "IN_DISPUTE":
+			state = domain.DisputeUnderReview
+		case "DISPUTE_LOST":
+			state = domain.DisputeLost
+		case "REVERSED", "DONE":
+			state = domain.DisputeClosed
+		default:
+			return app.DisputeFact{}, app.ErrIgnored
+		}
+	}
+	opened := event.ReceivedAt.UTC()
+	if opened.IsZero() {
+		opened = time.Now().UTC()
+	}
+	return app.DisputeFact{
+		Provider: domain.ProviderAsaas, Environment: p.Environment, Merchant: event.Merchant,
+		RemoteDisputeID: "chargeback:" + payment.ID, RemotePaymentID: payment.ID,
+		Amount: domain.BRL(amount), State: state,
+		OpenedAt: opened, LastEventAt: opened,
+	}, nil
+}
+
+func refundDescription(request app.RefundProviderRequest) string {
+	if request.IdempotencyKey != "" {
+		return request.IdempotencyKey
+	}
+	return "refund:" + request.RefundID
+}
+
+func mapAsaasRefund(request app.RefundProviderRequest, refund asaasRefund) app.RefundProviderResult {
+	state := domain.RefundPending
+	switch refund.Status {
+	case "DONE":
+		state = domain.RefundSucceeded
+	case "PENDING", "AWAITING_CRITICAL_ACTION_AUTHORIZATION", "AWAITING_CUSTOMER_EXTERNAL_AUTHORIZATION":
+		state = domain.RefundPending
+	case "CANCELLED":
+		state = domain.RefundFailed
+	default:
+		state = domain.RefundPending
+	}
+	at := time.Now().UTC()
+	if parsed, err := time.ParseInLocation("2006-01-02 15:04:05", refund.DateCreated, time.UTC); err == nil {
+		at = parsed.UTC()
+	}
+	return app.RefundProviderResult{
+		ID: request.RefundID, State: state, RawStatus: refund.Status,
+		Amount: request.Amount, At: at,
+	}
+}
+
+type asaasRefund struct {
+	DateCreated string      `json:"dateCreated"`
+	Status      string      `json:"status"`
+	Value       json.Number `json:"value"`
+	Description string      `json:"description"`
+}
+
+type asaasRefundList struct {
+	Data       []asaasRefund `json:"data"`
+	TotalCount int           `json:"totalCount"`
+	HasMore    bool          `json:"hasMore"`
+}
+
+type asaasChargeback struct {
+	Status string `json:"status"`
+	Value  string `json:"value"`
+}
+
+func (p *AsaasProvider) RetrieveAsaasPayment(ctx context.Context, paymentID string) (asaasPayment, error) {
+	var payment asaasPayment
+	if err := p.do(ctx, http.MethodGet, "/v3/payments/"+url.PathEscape(paymentID), nil, &payment); err != nil {
+		return asaasPayment{}, err
+	}
+	return payment, nil
+}
+
 func (p *AsaasProvider) GetQR(ctx context.Context, paymentID string) (app.PixQR, error) {
 	if !validAsaasID(paymentID) {
 		return app.PixQR{}, domain.ErrInvalid
@@ -523,14 +696,15 @@ type asaasCustomerList struct {
 }
 
 type asaasPayment struct {
-	ID                string      `json:"id"`
-	Customer          string      `json:"customer"`
-	Subscription      string      `json:"subscription"`
-	Status            string      `json:"status"`
-	ExternalReference string      `json:"externalReference"`
-	Value             json.Number `json:"value"`
-	DueDate           string      `json:"dueDate"`
-	PaymentDate       string      `json:"paymentDate"`
+	ID                string           `json:"id"`
+	Customer          string           `json:"customer"`
+	Subscription      string           `json:"subscription"`
+	Status            string           `json:"status"`
+	ExternalReference string           `json:"externalReference"`
+	Value             json.Number      `json:"value"`
+	DueDate           string           `json:"dueDate"`
+	PaymentDate       string           `json:"paymentDate"`
+	Chargeback        *asaasChargeback `json:"chargeback"`
 }
 
 type asaasPaymentList struct {

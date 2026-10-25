@@ -128,7 +128,9 @@ func (p *StripeProvider) VerifySettlement(ctx context.Context, event app.InboxRe
 	if event.EventType != "invoice.paid" || event.ResourceType != "invoice" {
 		return app.SettlementCandidate{}, app.ErrIgnored
 	}
-	invoice, err := p.Client.V1Invoices.Retrieve(ctx, event.ResourceID, nil)
+	invoice, err := p.Client.V1Invoices.Retrieve(ctx, event.ResourceID, &stripe.InvoiceRetrieveParams{
+		Expand: []*string{stripe.String("payments")},
+	})
 	if err != nil {
 		return app.SettlementCandidate{}, stripeError(err)
 	}
@@ -169,13 +171,228 @@ func (p *StripeProvider) VerifySettlement(ctx context.Context, event app.InboxRe
 	if settledAt.IsZero() {
 		settledAt = time.Now().UTC()
 	}
+	chargeID := ""
+	if invoice.Payments != nil {
+		for _, payment := range invoice.Payments.Data {
+			if payment == nil || payment.Payment == nil {
+				continue
+			}
+			if payment.Payment.PaymentIntent != nil && payment.Payment.PaymentIntent.ID != "" {
+				chargeID = payment.Payment.PaymentIntent.ID
+				break
+			}
+			if payment.Payment.Charge != nil && payment.Payment.Charge.ID != "" {
+				chargeID = payment.Payment.Charge.ID
+				break
+			}
+		}
+	}
 	return app.SettlementCandidate{
 		OrderID: orderID, Provider: domain.ProviderStripe, Environment: p.Environment,
 		Merchant: event.Merchant, Channel: domain.ChannelCard,
 		CustomerID: invoice.Customer.ID, RemotePaymentID: invoice.ID,
+		RemoteChargeID: chargeID,
 		ProviderStatus: string(invoice.Status), Amount: domain.BRL(invoice.AmountPaid),
 		SettledAt: settledAt,
 	}, nil
+}
+
+func (p *StripeProvider) CreateRefund(ctx context.Context, request app.RefundProviderRequest) (app.RefundProviderResult, error) {
+	if p == nil || p.Client == nil || request.RefundID == "" || request.Amount.Centavos <= 0 {
+		return app.RefundProviderResult{}, domain.ErrInvalid
+	}
+	target, err := p.stripeRefundTarget(ctx, request.RemotePaymentID, request.RemoteChargeID)
+	if err != nil {
+		return app.RefundProviderResult{}, err
+	}
+	params := &stripe.RefundCreateParams{
+		Amount:   stripe.Int64(request.Amount.Centavos),
+		Currency: stripe.String("brl"),
+		Metadata: map[string]string{"refund_id": request.RefundID},
+	}
+	if target.paymentIntent != "" {
+		params.PaymentIntent = stripe.String(target.paymentIntent)
+	} else {
+		params.Charge = stripe.String(target.charge)
+	}
+	params.SetIdempotencyKey(request.IdempotencyKey)
+	refund, err := p.Client.V1Refunds.Create(ctx, params)
+	if err != nil {
+		return app.RefundProviderResult{}, stripeError(err)
+	}
+	return mapStripeRefund(refund)
+}
+
+func (p *StripeProvider) FindRefund(ctx context.Context, request app.RefundProviderRequest) (app.RefundProviderResult, bool, bool, error) {
+	if p == nil || p.Client == nil || request.RefundID == "" {
+		return app.RefundProviderResult{}, false, false, domain.ErrInvalid
+	}
+	target, err := p.stripeRefundTarget(ctx, request.RemotePaymentID, request.RemoteChargeID)
+	if err != nil {
+		return app.RefundProviderResult{}, false, false, err
+	}
+	params := &stripe.RefundListParams{Limit: stripe.Int64(100)}
+	if target.paymentIntent != "" {
+		params.PaymentIntent = stripe.String(target.paymentIntent)
+	} else {
+		params.Charge = stripe.String(target.charge)
+	}
+	list := p.Client.V1Refunds.List(ctx, params)
+	var matches []*stripe.Refund
+	for _, refund := range list.Data() {
+		if refund == nil || refund.Metadata["refund_id"] != request.RefundID {
+			continue
+		}
+		matches = append(matches, refund)
+	}
+	if err := list.Err(); err != nil {
+		return app.RefundProviderResult{}, false, false, stripeError(err)
+	}
+	if len(matches) > 1 {
+		return app.RefundProviderResult{}, false, false, domain.ErrConflict
+	}
+	if len(matches) == 1 {
+		result, err := mapStripeRefund(matches[0])
+		if err != nil {
+			return app.RefundProviderResult{}, false, false, err
+		}
+		if err := validRefundAmount(result.Amount, request.Amount); err != nil {
+			return app.RefundProviderResult{}, false, false, err
+		}
+		return result, true, true, nil
+	}
+	return app.RefundProviderResult{}, false, !list.Meta().HasMore, nil
+}
+
+func (p *StripeProvider) VerifyDispute(ctx context.Context, event app.InboxRecord) (app.DisputeFact, error) {
+	if p == nil || p.Client == nil {
+		return app.DisputeFact{}, domain.ErrUnavailable
+	}
+	switch event.EventType {
+	case "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed":
+	default:
+		return app.DisputeFact{}, app.ErrIgnored
+	}
+	if event.ResourceType != "dispute" || event.ResourceID == "" {
+		return app.DisputeFact{}, domain.ErrBinding
+	}
+	dispute, err := p.Client.V1Disputes.Retrieve(ctx, event.ResourceID, nil)
+	if err != nil {
+		return app.DisputeFact{}, stripeError(err)
+	}
+	if dispute == nil || dispute.ID == "" || dispute.Amount <= 0 ||
+		string(dispute.Currency) != "brl" ||
+		dispute.Livemode != (p.Environment == domain.EnvironmentProduction) {
+		return app.DisputeFact{}, domain.ErrBinding
+	}
+	chargeID := ""
+	if dispute.PaymentIntent != nil {
+		chargeID = dispute.PaymentIntent.ID
+	} else if dispute.Charge != nil {
+		chargeID = dispute.Charge.ID
+	}
+	if chargeID == "" {
+		return app.DisputeFact{}, domain.ErrBinding
+	}
+	state := domain.DisputePending
+	switch dispute.Status {
+	case stripe.DisputeStatusNeedsResponse, stripe.DisputeStatusWarningNeedsResponse,
+		stripe.DisputeStatusUnderReview, stripe.DisputeStatusWarningUnderReview:
+		state = domain.DisputePending
+	case stripe.DisputeStatusWon:
+		state = domain.DisputeWon
+	case stripe.DisputeStatusLost:
+		state = domain.DisputeLost
+	case stripe.DisputeStatusPrevented, stripe.DisputeStatusWarningClosed:
+		state = domain.DisputeClosed
+	default:
+		return app.DisputeFact{}, app.ErrIgnored
+	}
+	opened := event.ReceivedAt.UTC()
+	if dispute.Created > 0 {
+		opened = time.Unix(dispute.Created, 0).UTC()
+	}
+	return app.DisputeFact{
+		Provider: domain.ProviderStripe, Environment: p.Environment, Merchant: event.Merchant,
+		RemoteDisputeID: dispute.ID, RemoteChargeID: chargeID,
+		Amount: domain.BRL(dispute.Amount), State: state,
+		OpenedAt: opened, LastEventAt: opened,
+	}, nil
+}
+
+type stripeRefundTarget struct {
+	paymentIntent string
+	charge        string
+}
+
+// stripeRefundTarget resolves the canonical original-route reference for a
+// stored invoice id: the invoice's payment intent, else its charge.
+func (p *StripeProvider) stripeRefundTarget(ctx context.Context, invoiceID, chargeID string) (stripeRefundTarget, error) {
+	if chargeID != "" {
+		return stripeRefundTarget{charge: chargeID}, nil
+	}
+	if invoiceID == "" {
+		return stripeRefundTarget{}, domain.ErrInvalid
+	}
+	invoice, err := p.Client.V1Invoices.Retrieve(ctx, invoiceID, &stripe.InvoiceRetrieveParams{
+		Expand: []*string{stripe.String("payments")},
+	})
+	if err != nil {
+		return stripeRefundTarget{}, stripeError(err)
+	}
+	if invoice == nil || invoice.ID != invoiceID || string(invoice.Currency) != "brl" ||
+		invoice.Livemode != (p.Environment == domain.EnvironmentProduction) {
+		return stripeRefundTarget{}, domain.ErrBinding
+	}
+	if invoice.Payments != nil {
+		for _, payment := range invoice.Payments.Data {
+			if payment == nil || payment.Payment == nil {
+				continue
+			}
+			if payment.Payment.PaymentIntent != nil && payment.Payment.PaymentIntent.ID != "" {
+				return stripeRefundTarget{paymentIntent: payment.Payment.PaymentIntent.ID}, nil
+			}
+			if payment.Payment.Charge != nil && payment.Payment.Charge.ID != "" {
+				return stripeRefundTarget{charge: payment.Payment.Charge.ID}, nil
+			}
+		}
+	}
+	return stripeRefundTarget{}, domain.ErrUnavailable
+}
+
+func mapStripeRefund(refund *stripe.Refund) (app.RefundProviderResult, error) {
+	if refund == nil || refund.ID == "" || refund.Amount <= 0 || string(refund.Currency) != "brl" {
+		return app.RefundProviderResult{}, domain.ErrBinding
+	}
+	state := domain.RefundPending
+	switch refund.Status {
+	case stripe.RefundStatusSucceeded:
+		state = domain.RefundSucceeded
+	case stripe.RefundStatusPending, stripe.RefundStatusRequiresAction:
+		state = domain.RefundPending
+	case stripe.RefundStatusFailed, stripe.RefundStatusCanceled:
+		state = domain.RefundFailed
+	default:
+		return app.RefundProviderResult{}, app.ErrIgnored
+	}
+	at := time.Now().UTC()
+	if refund.Created > 0 {
+		at = time.Unix(refund.Created, 0).UTC()
+	}
+	return app.RefundProviderResult{
+		ID: refund.ID, State: state, RawStatus: string(refund.Status),
+		Amount: domain.BRL(refund.Amount), At: at,
+	}, nil
+}
+
+func validRefundAmount(actual, expected domain.Money) error {
+	if expected.Centavos <= 0 {
+		return nil
+	}
+	if !actual.Equal(expected) {
+		return domain.ErrBinding
+	}
+	return nil
 }
 
 func (p *StripeProvider) VerifyLifecycle(ctx context.Context, event app.InboxRecord) (app.LifecycleFact, error) {

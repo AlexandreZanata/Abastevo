@@ -53,6 +53,7 @@ type Settlement struct {
 	Environment     Environment
 	MerchantID      string
 	RemotePaymentID string
+	RemoteChargeID  string
 	ProviderStatus  string
 	Amount          Money
 	Status          SettlementStatus
@@ -202,6 +203,12 @@ func canTransitionRefund(from, to RefundState) bool {
 	return refundAllowed[from][to]
 }
 
+// RefundTransitionAllowed exposes the frozen refund state machine for
+// persistence and application layers.
+func RefundTransitionAllowed(from, to RefundState) bool {
+	return canTransitionRefund(from, to)
+}
+
 type Refund struct {
 	ID          string
 	GrantID     string
@@ -246,6 +253,12 @@ func (s DisputeState) Valid() bool {
 
 func canTransitionDispute(from, to DisputeState) bool {
 	return disputeAllowed[from][to]
+}
+
+// DisputeTransitionAllowed exposes the frozen dispute state machine for
+// persistence and application layers.
+func DisputeTransitionAllowed(from, to DisputeState) bool {
+	return canTransitionDispute(from, to)
 }
 
 type Dispute struct {

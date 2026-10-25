@@ -21,6 +21,7 @@ type SettlementCandidate struct {
 	Channel              domain.Channel
 	CustomerID           string
 	RemotePaymentID      string
+	RemoteChargeID       string
 	RemoteSubscriptionID string
 	ProviderStatus       string
 	Amount               domain.Money

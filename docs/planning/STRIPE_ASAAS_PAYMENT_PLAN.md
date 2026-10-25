@@ -228,6 +228,12 @@ proof-protected billing-exit intent; account deletion records cancellation befor
 mutation, retains minimal financial records, never refunds automatically and
 leaves uncertain provider cancellation visible. Runtime worker/routes remain
 PAY-19.
+PAY-16 is LOCAL_DONE: refunds execute only on the verified original route under
+entitlement-locked reservation with operator proof/reason/audit and dual approval
+above the limit; disputes revoke only matched unexpired paid periods; unmatched
+money becomes an explicit hold for review; stale replays and concurrent refunds
+cannot duplicate provider writes. Runtime wiring and provider proof remain
+PAY-19/PAY-21.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
@@ -309,6 +315,8 @@ that a nonexistent command or endpoint is available.
   proof-protected cancel/status/export, durable delete-before-mutation intent and
   retained billing tombstone tested.
 - **PAY-16:** full/partial refunds, disputes/MED and restricted operator recovery.
+  LOCAL_DONE; bounded reservation, canonical verification, revocation rules and
+  operator fences tested.
 - **PAY-17:** Enterprise single-payer billing and capability-target isolation.
 - **PAY-18:** adversarial matrix, privacy/restore and bounded performance acceptance.
 - **PAY-19:** actual API/worker composition and regressions with MAP/ESP/PRM.

@@ -1,5 +1,16 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-16 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-15 `5a1a96e6`. Migration 000129 adds
+  refund/dispute/hold/audit tables plus settlement charge reference. Refunds run
+  only on the original route under entitlement locks, with fresh operator proof,
+  reason/audit and amount-dependent dual approval; disputes revoke only matched
+  unexpired grants; unmatched money becomes an explicit reviewable hold.
+  [PAY-16 evidence](../backend/evidence/payments/PAY-16.md): adapter contract and
+  PostGIS concurrency/lost-reply/insufficient-balance/duplicate/reversed/no-payment-
+  hold suites PASS. No worker/route/provider proof/sale. Next: PAY-17 only after
+  maintainer authorization.
+
 - Stripe/Asaas payment PAY-15 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-14 `a9b2903f`. Migration 000128 adds
   durable billing-exit intents and per-source cancellation records. Owner
