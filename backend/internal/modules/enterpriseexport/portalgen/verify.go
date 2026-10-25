@@ -304,15 +304,36 @@ func walkArtifact(dir string) ([]string, error) {
 	return out, err
 }
 
-// checkOfficialOnlyScope refuses any price, station, search, insight or
-// download route in an official-only artifact. Only fiscalizacao pages,
-// metodologia, 404, shared assets, robots, sitemap and the manifest may exist.
+// officialOnlyAllowed matches every file family the official-only slice may
+// contain: fiscalizacao pages, metodologia, 404, shared content-addressed
+// assets, robots, sitemap and the manifest. Anything else — including export
+// CSV/JSONL, price/station/search/download routes and unexpected roots — is
+// refused even when correctly listed and hashed in the manifest.
+var officialOnlyAllowed = []*regexp.Regexp{
+	regexp.MustCompile(`^fiscalizacao/(index\.html|pagina/[0-9]+/index\.html|registro/[0-9a-f]{24}/index\.html)$`),
+	regexp.MustCompile(`^(metodologia/index\.html|404\.html|robots\.txt|sitemap\.xml|portal-manifest\.json)$`),
+	regexp.MustCompile(`^assets/portal\.[0-9a-f]{8}\.(css|js)$`),
+}
+
+// checkOfficialOnlyScope enforces the exact official-only file allowlist.
 func checkOfficialOnlyScope(files map[string]FileDigest) error {
-	for _, prefix := range []string{"precos/", "postos/", "dados/", "consultar/", "curiosidades/"} {
-		for path := range files {
-			if strings.HasPrefix(path, prefix) {
-				return fmt.Errorf("portalcheck: official-only artifact contains %s", path)
+	for path := range files {
+		allowed := false
+		for _, pattern := range officialOnlyAllowed {
+			if pattern.MatchString(path) {
+				allowed = true
+				break
 			}
+		}
+		if !allowed {
+			return fmt.Errorf("portalcheck: official-only artifact contains %s", path)
+		}
+		lower := strings.ToLower(path)
+		if strings.HasSuffix(lower, ".csv") || strings.HasSuffix(lower, ".jsonl") {
+			return fmt.Errorf("portalcheck: official-only artifact contains export data %s", path)
+		}
+		if strings.Contains(lower, "official-records") {
+			return fmt.Errorf("portalcheck: official-only artifact contains export manifest %s", path)
 		}
 	}
 	return nil

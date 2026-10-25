@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -397,4 +398,84 @@ func TestVerifyOfficialSitemapCensus(t *testing.T) {
 	if strings.Contains(sitemap, "/fiscalizacao/pagina/") {
 		t.Error("single-page official index emitted pagination")
 	}
+}
+
+func TestVerifyOfficialOnlyFileAllowlist(t *testing.T) {
+	newOfficialOnly := func(t *testing.T) string {
+		t.Helper()
+		snapshot := writeFixture(t)
+		writeOfficialFixture(t, snapshot)
+		out := filepath.Join(t.TempDir(), "official-only")
+		if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out, OfficialOnly: true}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Verify(out, VerifyOptions{OfficialOnly: true}); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	addManifestedFile := func(t *testing.T, out, path string, data []byte) {
+		t.Helper()
+		full := filepath.Join(out, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		manifest, err := readPortalManifest(out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		manifest.Files = append(manifest.Files, FileDigest{Path: path, SHA256: fmt.Sprintf("sha256:%x", sum), Bytes: int64(len(data))})
+		sort.Slice(manifest.Files, func(i, j int) bool { return manifest.Files[i].Path < manifest.Files[j].Path })
+		manifest.ContentSHA256, err = manifestContentDigest(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(out, "portal-manifest.json"), raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		name string
+		path string
+		data []byte
+	}{
+		{"root price CSV", "price-export.csv", []byte("amount_milli_brl\n5990\n")},
+		{"nested data CSV", "dados/precos.csv", []byte("amount_milli_brl\n5990\n")},
+		{"unexpected script root", "static/extra.js", []byte("console.log(1)\n")},
+		{"export JSONL copy", "official-records-copy.jsonl", []byte("{}\n")},
+		{"export manifest copy", "official-records-manifest-copy.json", []byte("{}\n")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := newOfficialOnly(t)
+			addManifestedFile(t, out, tc.path, tc.data)
+			if _, err := Verify(out, VerifyOptions{OfficialOnly: true}); err == nil {
+				t.Fatalf("official-only verifier accepted manifested %s", tc.path)
+			}
+		})
+	}
+	t.Run("mixed mode full artifact", func(t *testing.T) {
+		snapshot := writeFixture(t)
+		writeOfficialFixture(t, snapshot)
+		out := filepath.Join(t.TempDir(), "full")
+		if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Verify(out, VerifyOptions{OfficialOnly: true}); err == nil {
+			t.Fatal("official-only verifier accepted a full portal artifact")
+		}
+	})
+	t.Run("mixed mode official-only artifact", func(t *testing.T) {
+		out := newOfficialOnly(t)
+		if _, err := Verify(out, VerifyOptions{}); err == nil {
+			t.Fatal("full verifier accepted an official-only artifact")
+		}
+	})
 }
