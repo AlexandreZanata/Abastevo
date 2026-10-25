@@ -55,7 +55,10 @@ func sandboxCredentials(t *testing.T) (sandboxStripe, sandboxAsaas, bool) {
 		merchant: os.Getenv("ANPFUEL_SANDBOX_ASAAS_MERCHANT"),
 	}
 	for _, value := range []string{stripe.secret, stripe.price, stripe.merchant, stripe.portal, asaas.key, asaas.merchant} {
-		if strings.HasPrefix(value, "sk_live_") || strings.HasPrefix(value, "rk_live_") {
+		// Live-looking material is refused before any network use. The
+		// pattern is split so the guard itself never carries a live-key
+		// literal the secret scanner could mistake for a credential.
+		if strings.Contains(value, "_live_") {
 			t.Fatal("live credentials are refused by the sandbox harness")
 		}
 	}
