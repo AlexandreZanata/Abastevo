@@ -64,6 +64,31 @@ the downloads screen wiring; no ENGINE_GATE claim.
   same-generation re-import, which keeps the active flag; any other active
   re-import is refused.
 
+## Business rules and use cases (post-review remediation)
+
+- `B-BR-MAP-ACTIVATE-ATOMIC-01`: Activating a generation must be atomic across
+  all package files in `<nativeRoot>/<dataVersion>/` and the Room
+  `map_generation` active flip. All candidate `.publish-part` files are staged
+  and SHA-256-verified before any live `.mwm` is touched; existing live files
+  are backed up in `<nativeRoot>/<dataVersion>/.rollback/` prior to rename. If
+  any file rename or `store.activate` fails, or if the process terminates
+  before Room commits the new generation, the rollback journal restores the
+  previous active generation's exact native bytes without marking the previous
+  generation corrupt or requiring re-download.
+- `B-BR-MAP-IO-BOUND-01`: All `MapPackageRepository` file reads, copies, and
+  SHA-256 computations execute on `ioDispatcher` (`Dispatchers.IO`) with
+  cooperative coroutine cancellation. UI availability polling (`publishedState`)
+  reuses verified file stamps `(length, lastModified, sampleSha256, fullSha256)`
+  after full verification at activation/first-read boundaries so multi-megabyte
+  `.mwm` files are not re-hashed on the main thread or on every UI poll.
+  `MapDistribution.fetchEnvelope` enforces the 1 MiB ceiling while reading the
+  response stream (even when `Content-Length` is omitted) and cancels the
+  underlying HTTP call on coroutine cancellation.
+- `BUC-MAP-15-02`: Activate a multi-package generation and preserve/recover the
+  previously active native generation across mid-set swap failure, Room commit
+  failure, process crash/restart, concurrent activations, and active reader
+  leases.
+
 ## Implementation
 
 - `data/local/map/MapPackageEntities.kt`, `dao/MapPackageDao.kt`,

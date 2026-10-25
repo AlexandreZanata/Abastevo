@@ -6,11 +6,20 @@ import com.anpfuel.domain.map.MapContractException
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -52,6 +61,13 @@ internal fun checkResumeRange(contentRange: String?, resumedFrom: Long, totalByt
     if (start != resumedFrom || total != totalBytes) throw MapDownloadException("package-range-mismatch")
 }
 
+private data class VerifiedFileStamp(
+    val length: Long,
+    val lastModified: Long,
+    val sampleSha256: String,
+    val fullSha256: String,
+)
+
 open class MapPackageRepository(
     private val store: MapPackageStore,
     private val filesRoot: File,
@@ -60,15 +76,92 @@ open class MapPackageRepository(
     private val freeBytes: (File) -> Long = { it.usableSpace },
     private val reserveBytes: Long = 32L * 1024 * 1024,
     private val nativeRoot: File = filesRoot,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val onGenerationActivated: suspend (generation: String, dataVersion: String) -> Unit = { _, _ -> },
 ) {
     private val publishMutex = Mutex()
+    private val leaseLock = Any()
+    private val generationLeases = mutableMapOf<String, Int>()
+    private val verifiedStamps = ConcurrentHashMap<String, VerifiedFileStamp>()
+    private val fullHashCounter = AtomicInteger(0)
+    private val activationListeners = CopyOnWriteArrayList<suspend (generation: String, dataVersion: String) -> Unit>()
+
+    internal var publishRenameHook: ((packageId: String, tmp: File, dst: File) -> Unit)? = null
+
+    fun registerActivationListener(
+        listener: suspend (generation: String, dataVersion: String) -> Unit,
+    ): AutoCloseable {
+        activationListeners.add(listener)
+        return AutoCloseable { activationListeners.remove(listener) }
+    }
+
+    fun acquireGenerationLease(generation: String) {
+        synchronized(leaseLock) {
+            generationLeases[generation] = (generationLeases[generation] ?: 0) + 1
+        }
+    }
+
+    fun releaseGenerationLease(generation: String) {
+        synchronized(leaseLock) {
+            val current = generationLeases[generation] ?: return
+            if (current <= 1) {
+                generationLeases.remove(generation)
+            } else {
+                generationLeases[generation] = current - 1
+            }
+        }
+    }
+
+    fun hasGenerationLease(generation: String): Boolean = synchronized(leaseLock) {
+        (generationLeases[generation] ?: 0) > 0
+    }
+
+    private fun leasedGenerationsSnapshot(): Set<String> = synchronized(leaseLock) {
+        generationLeases.filterValues { it > 0 }.keys.toSet()
+    }
+
+    suspend fun <T> withActiveGenerationLease(
+        block: suspend (generation: String, files: List<File>) -> T,
+    ): T? = withContext(ioDispatcher) {
+        val activeGen = publishMutex.withLock {
+            recoverUncommittedPublishLocked()
+            val active = store.activeGeneration() ?: return@withLock null
+            acquireGenerationLease(active.generation)
+            active.generation
+        } ?: return@withContext null
+        try {
+            val files = activeMapFiles()
+            if (files.isEmpty()) return@withContext null
+            block(activeGen, files)
+        } finally {
+            releaseGenerationLease(activeGen)
+        }
+    }
+
+    suspend fun reclaimRetiredGenerations() = withContext(ioDispatcher) {
+        publishMutex.withLock {
+            recoverUncommittedPublishLocked()
+            val active = store.activeGeneration() ?: return@withLock
+            if (!isNativeDataVersion(active.dataVersion)) return@withLock
+            val activePackages = store.packages(active.generation)
+            cleanInactiveLocked(
+                activeGeneration = active.generation,
+                activeVersion = active.dataVersion,
+                expectedPaths = activePackages.mapNotNullTo(mutableSetOf()) {
+                    publishedName(active.dataVersion, it.fileName)
+                },
+            )
+        }
+    }
+
+    internal fun fullSha256ComputationCount(): Int = fullHashCounter.get()
 
     open suspend fun importManifestWithPlatformKeys(
         envelopeJson: String,
         trustedKeys: Map<String, java.security.PublicKey>,
-    ): VerifiedMapManifest {
+    ): VerifiedMapManifest = withContext(ioDispatcher) {
         val verified = MapManifestVerifier.verify(envelopeJson, trustedKeys)
-        return insertVerified(verified)
+        insertVerified(verified)
     }
 
     /**
@@ -79,9 +172,9 @@ open class MapPackageRepository(
     open suspend fun importManifest(
         envelopeJson: String,
         trustedKeys: Map<String, ByteArray>,
-    ): VerifiedMapManifest {
+    ): VerifiedMapManifest = withContext(ioDispatcher) {
         val verified = MapManifestVerifier.verify(envelopeJson, trustedKeys)
-        return insertVerified(verified)
+        insertVerified(verified)
     }
 
     private suspend fun insertVerified(verified: VerifiedMapManifest): VerifiedMapManifest {
@@ -111,42 +204,50 @@ open class MapPackageRepository(
         generation: String,
         baseUrl: String,
         onProgress: (packageId: String, downloaded: Long, total: Long) -> Unit = { _, _, _ -> },
-    ): Boolean {
+    ): Boolean = withContext(ioDispatcher) {
         val packages = store.packages(generation)
         if (packages.isEmpty()) throw MapDownloadException("unknown-generation")
         var allReady = true
         for (pkg in packages) {
             coroutineContext.ensureActive()
-            if (pkg.status == PACKAGE_READY && finalFile(generation, pkg).let { it.isFile && it.length() == pkg.bytes && sha256(it) == pkg.sha256 }) {
+            if (pkg.status == PACKAGE_READY && finalFile(generation, pkg).let {
+                    it.isFile && it.length() == pkg.bytes && sha256(it) == pkg.sha256
+                }
+            ) {
                 continue
             }
             allReady = false
-            downloadPackage(generation, pkg, baseUrl, onProgress) || return false
+            downloadPackage(generation, pkg, baseUrl, onProgress) || return@withContext false
         }
-        return allReady || store.packages(generation).all { it.status == PACKAGE_READY }
+        allReady || store.packages(generation).all { it.status == PACKAGE_READY }
     }
 
-    open suspend fun activate(generation: String): Boolean {
+    open suspend fun activate(generation: String): Boolean = withContext(ioDispatcher) {
         val packages = store.packages(generation)
-        if (packages.isEmpty() || packages.any { it.status != PACKAGE_READY }) return false
+        if (packages.isEmpty() || packages.any { it.status != PACKAGE_READY }) return@withContext false
         val manifestVersion = store.generation(generation)?.dataVersion.orEmpty()
         if (!isNativeDataVersion(manifestVersion)) throw MapDownloadException("unsupported-data-version")
-        return publishMutex.withLock {
+        publishMutex.withLock {
+            recoverUncommittedPublishLocked()
             // Re-verify under the mutex: a concurrent activation may have
             // recycled this staging area after the pre-check above.
             val fresh = store.packages(generation)
             if (fresh.isEmpty() || fresh.any { it.status != PACKAGE_READY }) return@withLock false
             for (pkg in fresh) {
+                coroutineContext.ensureActive()
+                publishedName(manifestVersion, pkg.fileName)
+                    ?: throw MapDownloadException("unsupported-package-layout")
                 val file = finalFile(generation, pkg)
                 if (!file.isFile || file.length() != pkg.bytes || sha256(file) != pkg.sha256) {
                     store.updatePackage(pkg.generation, pkg.packageId, PACKAGE_FAILED, file.length(), pkg.etag, "missing-final", clock())
                     return@withLock false
                 }
             }
-            publishPackages(generation, manifestVersion, fresh)
-            store.activate(generation, clock())
+            publishAndActivateTransactionalLocked(generation, manifestVersion, fresh)
             val active = store.activeGeneration() ?: return@withLock false
-            cleanInactive(
+            if (active.generation != generation) return@withLock false
+            notifyGenerationActivated(generation, manifestVersion)
+            cleanInactiveLocked(
                 active.generation,
                 manifestVersion,
                 fresh.mapNotNullTo(mutableSetOf()) { publishedName(manifestVersion, it.fileName) },
@@ -160,11 +261,11 @@ open class MapPackageRepository(
      * `<dataVersion>/` layout the SDK scans. Empty when nothing active is
      * fully published.
      */
-    suspend fun activeMapFiles(): List<File> {
-        val state = publishedState() ?: return emptyList()
-        if (!state.complete) return emptyList()
+    suspend fun activeMapFiles(): List<File> = withContext(ioDispatcher) {
+        val state = publishedState() ?: return@withContext emptyList()
+        if (!state.complete) return@withContext emptyList()
         val versionDir = nativeRoot.resolve(state.version)
-        return store.packages(state.generation).mapNotNull {
+        store.packages(state.generation).mapNotNull {
             publishedName(state.version, it.fileName)?.let { name -> versionDir.resolve(name) }
         }
     }
@@ -178,21 +279,31 @@ open class MapPackageRepository(
         val complete: Boolean get() = expected > 0 && published == expected
     }
 
-    /** Read-only publish check: no writes, safe to call from UI refresh. */
-    open suspend fun publishedState(): MapPublishedState? {
-        val active = store.activeGeneration() ?: return null
+    /**
+     * Checks published files of the active generation on [ioDispatcher].
+     * Reuses verified stamps for unchanged files during UI polling while
+     * recovering any uncommitted crash state first.
+     */
+    open suspend fun publishedState(forceVerify: Boolean = false): MapPublishedState? = withContext(ioDispatcher) {
+        publishMutex.withLock {
+            recoverUncommittedPublishLocked()
+        }
+        val active = store.activeGeneration() ?: return@withContext null
         if (!isNativeDataVersion(active.dataVersion)) {
-            return MapPublishedState(active.generation, active.dataVersion, 0, 0)
+            return@withContext MapPublishedState(active.generation, active.dataVersion, 0, 0)
         }
         val packages = store.packages(active.generation)
         val versionDir = nativeRoot.resolve(active.dataVersion)
         var ok = 0
         for (pkg in packages) {
+            coroutineContext.ensureActive()
             val name = publishedName(active.dataVersion, pkg.fileName) ?: continue
             val file = versionDir.resolve(name)
-            if (file.isFile && file.length() == pkg.bytes && sha256(file) == pkg.sha256) ok++
+            if (isFileVerified(file, pkg.bytes, pkg.sha256, forceVerify)) {
+                ok++
+            }
         }
-        return MapPublishedState(active.generation, active.dataVersion, packages.size, ok)
+        MapPublishedState(active.generation, active.dataVersion, packages.size, ok)
     }
 
     /** Mimics the SDK's version-directory `.mwm` discovery for activation proof. */
@@ -204,11 +315,14 @@ open class MapPackageRepository(
         } == true
     }
 
-    suspend fun deleteGeneration(generation: String): Boolean {
-        if (store.activeGeneration()?.generation == generation) return false
-        store.deleteInactive(generation)
-        generationDir(generation).deleteRecursively()
-        return true
+    suspend fun deleteGeneration(generation: String): Boolean = withContext(ioDispatcher) {
+        publishMutex.withLock {
+            if (store.activeGeneration()?.generation == generation) return@withLock false
+            if (hasGenerationLease(generation)) return@withLock false
+            store.deleteInactive(generation)
+            generationDir(generation).deleteRecursively()
+            true
+        }
     }
 
     private suspend fun downloadPackage(
@@ -243,8 +357,14 @@ open class MapPackageRepository(
             }
             .build()
         store.updatePackage(pkg.generation, pkg.packageId, PACKAGE_DOWNLOADING, part.length(), pkg.etag, null, clock())
+        val call = http.newCall(request)
+        val completionHandle = coroutineContext[Job]?.invokeOnCompletion { cause ->
+            if (cause is CancellationException) {
+                call.cancel()
+            }
+        }
         try {
-            http.newCall(request).execute().use { response ->
+            call.execute().use { response ->
                 if (response.code == 416) {
                     part.delete()
                     store.updatePackage(pkg.generation, pkg.packageId, PACKAGE_FAILED, 0, pkg.etag, "range-mismatch", clock())
@@ -295,6 +415,8 @@ open class MapPackageRepository(
                 store.updatePackage(pkg.generation, pkg.packageId, PACKAGE_READY, pkg.bytes, etag, null, clock())
                 return true
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (error: MapStorageException) {
             store.updatePackage(pkg.generation, pkg.packageId, PACKAGE_FAILED, part.length(), pkg.etag, error.message, clock())
             throw error
@@ -310,8 +432,11 @@ open class MapPackageRepository(
             store.updatePackage(pkg.generation, pkg.packageId, PACKAGE_FAILED, part.length(), pkg.etag, error.message, clock())
             throw error
         } catch (error: IOException) {
+            coroutineContext.ensureActive()
             store.updatePackage(pkg.generation, pkg.packageId, PACKAGE_FAILED, part.length(), pkg.etag, "network", clock())
             throw error
+        } finally {
+            completionHandle?.dispose()
         }
     }
 
@@ -320,71 +445,219 @@ open class MapPackageRepository(
      * `.publish-part` and only a verified rename makes them visible. A crash
      * mid-copy can never present a partial file as published.
      */
-    private fun atomicPublish(source: File, destination: File) {
+    private suspend fun atomicPublish(source: File, destination: File) {
         destination.parentFile?.mkdirs()
         val tmp = File(destination.parent, "${destination.name}.publish-part")
         tmp.delete()
-        source.copyTo(tmp, overwrite = true)
+        copyFileCancellable(source, tmp)
         if (!tmp.renameTo(destination)) {
             tmp.delete()
             throw MapStorageException("map-publish-failed")
         }
     }
 
-    private suspend fun publishPackages(generation: String, version: String, packages: List<MapPackageEntity>) {
+    private data class StagedPublishItem(
+        val pkg: MapPackageEntity,
+        val tmp: File,
+        val dst: File,
+    )
+
+    /**
+     * Stages all candidate files first, journals pre-existing native files in
+     * `<versionDir>/.rollback`, swaps all files into place, and commits the
+     * Room active generation. Any failure during file swap or Room activation
+     * restores the backed-up native files immediately.
+     */
+    private suspend fun publishAndActivateTransactionalLocked(
+        generation: String,
+        version: String,
+        packages: List<MapPackageEntity>,
+    ) {
         val versionDir = nativeRoot.resolve(version).apply { mkdirs() }
-        for (pkg in packages) {
-            val name = publishedName(version, pkg.fileName)
-                ?: throw MapDownloadException("unsupported-package-layout")
-            val src = finalFile(generation, pkg)
-            val dst = versionDir.resolve(name)
-            if (dst.isFile && dst.length() == pkg.bytes && sha256(dst) == pkg.sha256) continue
-            val tmp = File(versionDir, "${dst.name}.publish-part")
-            tmp.delete()
-            src.copyTo(tmp, overwrite = true)
-            if (tmp.length() != pkg.bytes || sha256(tmp) != pkg.sha256) {
+        // Step 1: Stage and verify all .publish-part files before modifying any live .mwm file.
+        val staged = mutableListOf<StagedPublishItem>()
+        try {
+            for (pkg in packages) {
+                coroutineContext.ensureActive()
+                val name = publishedName(version, pkg.fileName)
+                    ?: throw MapDownloadException("unsupported-package-layout")
+                val src = finalFile(generation, pkg)
+                val dst = versionDir.resolve(name)
+                val tmp = File(versionDir, "${dst.name}.publish-part")
                 tmp.delete()
-                throw MapDownloadException("package-publish-mismatch")
+                copyFileCancellable(src, tmp)
+                if (tmp.length() != pkg.bytes || sha256(tmp) != pkg.sha256) {
+                    tmp.delete()
+                    throw MapDownloadException("package-publish-mismatch")
+                }
+                staged += StagedPublishItem(pkg, tmp, dst)
             }
-            if (!tmp.renameTo(dst)) {
-                tmp.delete()
-                throw MapStorageException("map-publish-failed")
+        } catch (t: Throwable) {
+            staged.forEach { it.tmp.delete() }
+            throw t
+        }
+
+        // Step 2: Record rollback journal of existing files in versionDir before renaming.
+        val rollbackDir = versionDir.resolve(".rollback")
+        rollbackDir.deleteRecursively()
+        val backupDir = rollbackDir.resolve("backup").apply { mkdirs() }
+        val createdNames = mutableListOf<String>()
+        try {
+            rollbackDir.resolve("generation.txt").writeText(generation)
+            for (item in staged) {
+                if (item.dst.isFile) {
+                    copyFileCancellable(item.dst, backupDir.resolve(item.dst.name))
+                } else {
+                    createdNames += item.dst.name
+                }
+            }
+            rollbackDir.resolve("created.txt").writeText(createdNames.joinToString("\n"))
+        } catch (t: Throwable) {
+            staged.forEach { it.tmp.delete() }
+            rollbackDir.deleteRecursively()
+            throw t
+        }
+
+        // Step 3: Rename all staged files and commit Room activation; rollback on any failure.
+        try {
+            for (item in staged) {
+                publishRenameHook?.invoke(item.pkg.packageId, item.tmp, item.dst)
+                if (!item.tmp.renameTo(item.dst)) {
+                    throw MapStorageException("map-publish-failed")
+                }
+            }
+            store.activate(generation, clock())
+        } catch (t: Throwable) {
+            staged.forEach { it.tmp.delete() }
+            restoreRollbackLocked(versionDir, rollbackDir)
+            throw t
+        }
+
+        // Step 4: Room committed; remove rollback journal and record verified stamps.
+        rollbackDir.deleteRecursively()
+        for (item in staged) {
+            recordVerifiedStamp(item.dst, item.pkg.sha256)
+        }
+    }
+
+    private suspend fun recoverUncommittedPublishLocked() {
+        val root = nativeRoot
+        if (!root.isDirectory) return
+        val active = store.activeGeneration()
+        root.listFiles()?.forEach { versionDir ->
+            if (!versionDir.isDirectory || !isNativeDataVersion(versionDir.name)) return@forEach
+            val rollbackDir = versionDir.resolve(".rollback")
+            if (!rollbackDir.isDirectory) return@forEach
+            val uncommittedGen = rollbackDir.resolve("generation.txt")
+                .takeIf { it.isFile }
+                ?.readText()
+                ?.trim()
+            if (uncommittedGen == null || active?.generation != uncommittedGen) {
+                restoreRollbackLocked(versionDir, rollbackDir)
+            } else {
+                // Room committed the activation before process death; clean up journal & parts.
+                versionDir.listFiles()?.forEach { child ->
+                    if (child.isFile && child.name.endsWith(".publish-part")) {
+                        child.delete()
+                    }
+                }
+                rollbackDir.deleteRecursively()
             }
         }
     }
 
-    private suspend fun cleanInactive(
+    private suspend fun restoreRollbackLocked(versionDir: File, rollbackDir: File) {
+        verifiedStamps.clear()
+        val backupDir = rollbackDir.resolve("backup")
+        val backedUpNames = mutableSetOf<String>()
+        if (backupDir.isDirectory) {
+            backupDir.listFiles()?.forEach { backupFile ->
+                if (!backupFile.isFile) return@forEach
+                backedUpNames += backupFile.name
+                val target = versionDir.resolve(backupFile.name)
+                val restoreTmp = versionDir.resolve("${backupFile.name}.restore-part")
+                restoreTmp.delete()
+                copyFileCancellable(backupFile, restoreTmp)
+                if (!restoreTmp.renameTo(target)) {
+                    copyFileCancellable(backupFile, target)
+                    restoreTmp.delete()
+                }
+            }
+        }
+        val createdFile = rollbackDir.resolve("created.txt")
+        if (createdFile.isFile) {
+            createdFile.readLines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && it !in backedUpNames }
+                .forEach { createdName ->
+                    versionDir.resolve(createdName).delete()
+                }
+        }
+        versionDir.listFiles()?.forEach { child ->
+            if (child.isFile && (child.name.endsWith(".publish-part") || child.name.endsWith(".restore-part"))) {
+                child.delete()
+            }
+        }
+        rollbackDir.deleteRecursively()
+    }
+
+    private suspend fun notifyGenerationActivated(generation: String, dataVersion: String) {
+        onGenerationActivated(generation, dataVersion)
+        for (listener in activationListeners) {
+            listener(generation, dataVersion)
+        }
+    }
+
+    private suspend fun cleanInactiveLocked(
         activeGeneration: String,
         activeVersion: String,
         expectedPaths: Set<String>,
     ) {
-        // Staging retention minimum: keep the active generation and any
-        // generation with a non-terminal (PENDING/DOWNLOADING) package so a
-        // concurrent download is never deleted. Terminal inactive staging is
-        // recycled after publication; re-activation re-downloads.
+        val leasedGens = leasedGenerationsSnapshot()
+        val leasedVersions = mutableSetOf<String>()
+        val leasedSameVersionFiles = mutableSetOf<String>()
+        for (leasedGen in leasedGens) {
+            val v = store.generation(leasedGen)?.dataVersion.orEmpty()
+            if (isNativeDataVersion(v)) {
+                leasedVersions += v
+                if (v == activeVersion) {
+                    store.packages(leasedGen).forEach { pkg ->
+                        publishedName(v, pkg.fileName)?.let { leasedSameVersionFiles += it }
+                    }
+                }
+            }
+        }
+
+        // Staging retention: keep the active generation, any leased generation,
+        // and any generation with a non-terminal (PENDING/DOWNLOADING) package
+        // so a concurrent download is never deleted.
         val root = filesRoot.resolve("map-packages")
         if (root.isDirectory) {
             root.listFiles()?.forEach { dir ->
-                if (!dir.isDirectory || dir.name == activeGeneration) return@forEach
+                if (!dir.isDirectory || dir.name == activeGeneration || dir.name in leasedGens) return@forEach
                 val pkgs = store.packages(dir.name)
                 val inProgress = pkgs.any { it.status == PACKAGE_PENDING || it.status == PACKAGE_DOWNLOADING }
                 if (pkgs.isEmpty() || !inProgress) dir.deleteRecursively()
             }
         }
-        // Native version dirs: drop versions that are not active. Only
-        // numeric directory names are ever touched.
+        // Native version dirs: drop versions that are neither active nor leased.
         nativeRoot.listFiles()?.forEach { dir ->
-            if (dir.isDirectory && isNativeDataVersion(dir.name) && dir.name != activeVersion) {
+            if (dir.isDirectory && isNativeDataVersion(dir.name) &&
+                dir.name != activeVersion && dir.name !in leasedVersions
+            ) {
                 dir.deleteRecursively()
             }
         }
-        // Stale files inside the active version dir (never directories, never
-        // anything outside the numeric dir).
+        // Stale files inside the active version dir (keep active + leased files).
+        val retainedNames = expectedPaths + leasedSameVersionFiles
         val versionDir = nativeRoot.resolve(activeVersion)
         if (versionDir.isDirectory) {
             versionDir.walkTopDown().filter { it.isFile }.forEach { file ->
                 val relative = file.relativeTo(versionDir).invariantSeparatorsPath
-                if (relative !in expectedPaths) file.delete()
+                if (relative !in retainedNames) {
+                    verifiedStamps.remove(file.absolutePath)
+                    file.delete()
+                }
             }
         }
     }
@@ -406,11 +679,91 @@ open class MapPackageRepository(
         return generationDir(generation).resolve(name)
     }
 
-    private fun sha256(file: File): String {
+    private suspend fun copyFileCancellable(source: File, destination: File) {
+        destination.parentFile?.mkdirs()
+        source.inputStream().use { input ->
+            FileOutputStream(destination, false).use { output ->
+                val buffer = ByteArray(256 * 1024)
+                while (true) {
+                    coroutineContext.ensureActive()
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    output.write(buffer, 0, read)
+                }
+                output.fd.sync()
+            }
+        }
+    }
+
+    private suspend fun isFileVerified(
+        file: File,
+        expectedBytes: Long,
+        expectedSha256: String,
+        forceVerify: Boolean,
+    ): Boolean {
+        if (!file.isFile) return false
+        val length = file.length()
+        if (length != expectedBytes) return false
+        val key = file.absolutePath
+        val lastModified = file.lastModified()
+        if (!forceVerify) {
+            val cached = verifiedStamps[key]
+            if (cached != null &&
+                cached.length == length &&
+                cached.lastModified == lastModified &&
+                cached.fullSha256 == expectedSha256 &&
+                cached.sampleSha256 == sampleSha256(file, length)
+            ) {
+                return true
+            }
+        }
+        val actualSha = sha256(file)
+        if (actualSha != expectedSha256) {
+            verifiedStamps.remove(key)
+            return false
+        }
+        recordVerifiedStamp(file, actualSha)
+        return true
+    }
+
+    private fun recordVerifiedStamp(file: File, fullSha256: String) {
+        if (!file.isFile) return
+        val length = file.length()
+        val lastModified = file.lastModified()
+        val sample = sampleSha256(file, length)
+        verifiedStamps[file.absolutePath] = VerifiedFileStamp(
+            length = length,
+            lastModified = lastModified,
+            sampleSha256 = sample,
+            fullSha256 = fullSha256,
+        )
+    }
+
+    private fun sampleSha256(file: File, length: Long): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val chunkSize = 4096
+        RandomAccessFile(file, "r").use { raf ->
+            val head = ByteArray(minOf(length, chunkSize.toLong()).toInt())
+            val headRead = raf.read(head)
+            if (headRead > 0) digest.update(head, 0, headRead)
+            if (length > chunkSize) {
+                val tailOffset = maxOf(chunkSize.toLong(), length - chunkSize)
+                raf.seek(tailOffset)
+                val tail = ByteArray((length - tailOffset).toInt())
+                val tailRead = raf.read(tail)
+                if (tailRead > 0) digest.update(tail, 0, tailRead)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    private suspend fun sha256(file: File): String {
+        fullHashCounter.incrementAndGet()
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input ->
             val buffer = ByteArray(256 * 1024)
             while (true) {
+                coroutineContext.ensureActive()
                 val read = input.read(buffer)
                 if (read < 0) break
                 digest.update(buffer, 0, read)
