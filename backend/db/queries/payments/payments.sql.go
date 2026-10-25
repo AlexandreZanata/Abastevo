@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimPaymentBillingExitSource = `-- name: ClaimPaymentBillingExitSource :execrows
+UPDATE payment_billing_exit_sources
+SET state='CANCELING',lease_until=$1::timestamptz,
+    attempts=attempts+1,updated_at=clock_timestamp()
+WHERE id=$2::uuid AND state IN ('PENDING','CANCELING')
+  AND (lease_until IS NULL OR lease_until<=clock_timestamp())
+  AND attempts<20
+`
+
+type ClaimPaymentBillingExitSourceParams struct {
+	LeaseUntil pgtype.Timestamptz `json:"lease_until"`
+	ID         pgtype.UUID        `json:"id"`
+}
+
+func (q *Queries) ClaimPaymentBillingExitSource(ctx context.Context, arg ClaimPaymentBillingExitSourceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, claimPaymentBillingExitSource, arg.LeaseUntil, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const claimPaymentSourceSwitch = `-- name: ClaimPaymentSourceSwitch :execrows
 UPDATE payment_source_switches
 SET state='CANCELING',worker_id=$1,lease_until=$2::timestamptz,
@@ -65,6 +87,30 @@ func (q *Queries) GetActivePaymentGrantEnd(ctx context.Context, arg GetActivePay
 	var end_at pgtype.Timestamptz
 	err := row.Scan(&end_at)
 	return end_at, err
+}
+
+const getLatestPaymentBillingExit = `-- name: GetLatestPaymentBillingExit :one
+SELECT id, account_id, operation_key, reason, state, requested_at, last_event_at, last_error, created_at, updated_at FROM payment_billing_exits
+WHERE account_id=$1::uuid
+ORDER BY requested_at DESC,id DESC LIMIT 1
+`
+
+func (q *Queries) GetLatestPaymentBillingExit(ctx context.Context, accountID pgtype.UUID) (PaymentBillingExit, error) {
+	row := q.db.QueryRow(ctx, getLatestPaymentBillingExit, accountID)
+	var i PaymentBillingExit
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OperationKey,
+		&i.Reason,
+		&i.State,
+		&i.RequestedAt,
+		&i.LastEventAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getOpenPaymentSourceSwitch = `-- name: GetOpenPaymentSourceSwitch :one
@@ -192,6 +238,56 @@ func (q *Queries) GetPaymentAttemptForUpdate(ctx context.Context, id pgtype.UUID
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CompletedAt,
+	)
+	return i, err
+}
+
+const getPaymentBillingExitByID = `-- name: GetPaymentBillingExitByID :one
+SELECT id, account_id, operation_key, reason, state, requested_at, last_event_at, last_error, created_at, updated_at FROM payment_billing_exits WHERE id=$1::uuid
+`
+
+func (q *Queries) GetPaymentBillingExitByID(ctx context.Context, id pgtype.UUID) (PaymentBillingExit, error) {
+	row := q.db.QueryRow(ctx, getPaymentBillingExitByID, id)
+	var i PaymentBillingExit
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OperationKey,
+		&i.Reason,
+		&i.State,
+		&i.RequestedAt,
+		&i.LastEventAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPaymentBillingExitByOperation = `-- name: GetPaymentBillingExitByOperation :one
+SELECT id, account_id, operation_key, reason, state, requested_at, last_event_at, last_error, created_at, updated_at FROM payment_billing_exits
+WHERE account_id=$1::uuid AND operation_key=$2
+`
+
+type GetPaymentBillingExitByOperationParams struct {
+	AccountID    pgtype.UUID `json:"account_id"`
+	OperationKey string      `json:"operation_key"`
+}
+
+func (q *Queries) GetPaymentBillingExitByOperation(ctx context.Context, arg GetPaymentBillingExitByOperationParams) (PaymentBillingExit, error) {
+	row := q.db.QueryRow(ctx, getPaymentBillingExitByOperation, arg.AccountID, arg.OperationKey)
+	var i PaymentBillingExit
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OperationKey,
+		&i.Reason,
+		&i.State,
+		&i.RequestedAt,
+		&i.LastEventAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -921,6 +1017,117 @@ func (q *Queries) InsertPaymentAttempt(ctx context.Context, arg InsertPaymentAtt
 	return err
 }
 
+const insertPaymentBillingExit = `-- name: InsertPaymentBillingExit :one
+INSERT INTO payment_billing_exits(
+ id,account_id,operation_key,reason,state,requested_at,last_event_at
+) VALUES(
+ $1::uuid,$2::uuid,$3,$4,
+ $5,$6::timestamptz,$7::timestamptz
+)
+ON CONFLICT (account_id,operation_key) DO NOTHING
+RETURNING id, account_id, operation_key, reason, state, requested_at, last_event_at, last_error, created_at, updated_at
+`
+
+type InsertPaymentBillingExitParams struct {
+	ID           pgtype.UUID        `json:"id"`
+	AccountID    pgtype.UUID        `json:"account_id"`
+	OperationKey string             `json:"operation_key"`
+	Reason       string             `json:"reason"`
+	State        string             `json:"state"`
+	RequestedAt  pgtype.Timestamptz `json:"requested_at"`
+	LastEventAt  pgtype.Timestamptz `json:"last_event_at"`
+}
+
+func (q *Queries) InsertPaymentBillingExit(ctx context.Context, arg InsertPaymentBillingExitParams) (PaymentBillingExit, error) {
+	row := q.db.QueryRow(ctx, insertPaymentBillingExit,
+		arg.ID,
+		arg.AccountID,
+		arg.OperationKey,
+		arg.Reason,
+		arg.State,
+		arg.RequestedAt,
+		arg.LastEventAt,
+	)
+	var i PaymentBillingExit
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.OperationKey,
+		&i.Reason,
+		&i.State,
+		&i.RequestedAt,
+		&i.LastEventAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const insertPaymentBillingExitSource = `-- name: InsertPaymentBillingExitSource :one
+INSERT INTO payment_billing_exit_sources(
+ id,exit_id,account_id,source,local_id,remote_id,offer_id,provider,environment,merchant,
+ state,last_event_at
+) VALUES(
+ $1::uuid,$2::uuid,$3::uuid,$4,$5,
+ $6,$7,$8,$9,
+ $10,'PENDING',$11::timestamptz
+)
+ON CONFLICT (exit_id,source,local_id) DO NOTHING
+RETURNING id, exit_id, account_id, source, local_id, remote_id, offer_id, provider, environment, merchant, state, attempts, lease_until, last_error, last_event_at, created_at, updated_at
+`
+
+type InsertPaymentBillingExitSourceParams struct {
+	ID          pgtype.UUID        `json:"id"`
+	ExitID      pgtype.UUID        `json:"exit_id"`
+	AccountID   pgtype.UUID        `json:"account_id"`
+	Source      string             `json:"source"`
+	LocalID     string             `json:"local_id"`
+	RemoteID    string             `json:"remote_id"`
+	OfferID     string             `json:"offer_id"`
+	Provider    string             `json:"provider"`
+	Environment string             `json:"environment"`
+	Merchant    string             `json:"merchant"`
+	LastEventAt pgtype.Timestamptz `json:"last_event_at"`
+}
+
+func (q *Queries) InsertPaymentBillingExitSource(ctx context.Context, arg InsertPaymentBillingExitSourceParams) (PaymentBillingExitSource, error) {
+	row := q.db.QueryRow(ctx, insertPaymentBillingExitSource,
+		arg.ID,
+		arg.ExitID,
+		arg.AccountID,
+		arg.Source,
+		arg.LocalID,
+		arg.RemoteID,
+		arg.OfferID,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.LastEventAt,
+	)
+	var i PaymentBillingExitSource
+	err := row.Scan(
+		&i.ID,
+		&i.ExitID,
+		&i.AccountID,
+		&i.Source,
+		&i.LocalID,
+		&i.RemoteID,
+		&i.OfferID,
+		&i.Provider,
+		&i.Environment,
+		&i.Merchant,
+		&i.State,
+		&i.Attempts,
+		&i.LeaseUntil,
+		&i.LastError,
+		&i.LastEventAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertPaymentCustomer = `-- name: InsertPaymentCustomer :execrows
 INSERT INTO payment_customers(account_id,provider,environment,merchant,remote_customer_id)
 VALUES($1::uuid,$2,$3,$4,$5)
@@ -1407,6 +1614,213 @@ func (q *Queries) ListActivePaymentMandates(ctx context.Context, arg ListActiveP
 	return items, nil
 }
 
+const listPaymentBillingCardsForAccount = `-- name: ListPaymentBillingCardsForAccount :many
+SELECT id, account_id, offer_id, source, environment, merchant, provider, remote_subscription_id, remote_customer_id, provider_status, cancel_at_period_end, last_event_at, created_at, updated_at FROM payment_contracts
+WHERE account_id=$1::uuid
+  AND provider_status NOT IN ('canceled','incomplete_expired')
+  AND cancel_at_period_end=false
+ORDER BY created_at,id
+`
+
+func (q *Queries) ListPaymentBillingCardsForAccount(ctx context.Context, accountID pgtype.UUID) ([]PaymentContract, error) {
+	rows, err := q.db.Query(ctx, listPaymentBillingCardsForAccount, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentContract
+	for rows.Next() {
+		var i PaymentContract
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.OfferID,
+			&i.Source,
+			&i.Environment,
+			&i.Merchant,
+			&i.Provider,
+			&i.RemoteSubscriptionID,
+			&i.RemoteCustomerID,
+			&i.ProviderStatus,
+			&i.CancelAtPeriodEnd,
+			&i.LastEventAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPaymentBillingExitSources = `-- name: ListPaymentBillingExitSources :many
+SELECT id, exit_id, account_id, source, local_id, remote_id, offer_id, provider, environment, merchant, state, attempts, lease_until, last_error, last_event_at, created_at, updated_at FROM payment_billing_exit_sources
+WHERE exit_id=$1::uuid
+ORDER BY created_at,id
+`
+
+func (q *Queries) ListPaymentBillingExitSources(ctx context.Context, exitID pgtype.UUID) ([]PaymentBillingExitSource, error) {
+	rows, err := q.db.Query(ctx, listPaymentBillingExitSources, exitID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentBillingExitSource
+	for rows.Next() {
+		var i PaymentBillingExitSource
+		if err := rows.Scan(
+			&i.ID,
+			&i.ExitID,
+			&i.AccountID,
+			&i.Source,
+			&i.LocalID,
+			&i.RemoteID,
+			&i.OfferID,
+			&i.Provider,
+			&i.Environment,
+			&i.Merchant,
+			&i.State,
+			&i.Attempts,
+			&i.LeaseUntil,
+			&i.LastError,
+			&i.LastEventAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPaymentBillingHistory = `-- name: ListPaymentBillingHistory :many
+SELECT o.id AS order_id,o.offer_id,o.channel,o.amount_centavos,o.state AS order_state,
+       o.created_at AS ordered_at,s.id AS settlement_id,s.state AS settlement_state,
+       s.settled_at,g.id AS grant_id,g.start_at,g.end_at,g.state AS grant_state
+FROM payment_orders o
+LEFT JOIN payment_settlements s ON s.order_id=o.id AND s.outcome='GRANTED'
+LEFT JOIN payment_grants g ON g.settlement_id=s.id
+WHERE o.account_id=$1::uuid
+ORDER BY o.created_at DESC,o.id DESC
+LIMIT $2::int
+`
+
+type ListPaymentBillingHistoryParams struct {
+	AccountID  pgtype.UUID `json:"account_id"`
+	LimitCount int32       `json:"limit_count"`
+}
+
+type ListPaymentBillingHistoryRow struct {
+	OrderID         pgtype.UUID        `json:"order_id"`
+	OfferID         string             `json:"offer_id"`
+	Channel         string             `json:"channel"`
+	AmountCentavos  int64              `json:"amount_centavos"`
+	OrderState      string             `json:"order_state"`
+	OrderedAt       pgtype.Timestamptz `json:"ordered_at"`
+	SettlementID    pgtype.UUID        `json:"settlement_id"`
+	SettlementState pgtype.Text        `json:"settlement_state"`
+	SettledAt       pgtype.Timestamptz `json:"settled_at"`
+	GrantID         pgtype.UUID        `json:"grant_id"`
+	StartAt         pgtype.Timestamptz `json:"start_at"`
+	EndAt           pgtype.Timestamptz `json:"end_at"`
+	GrantState      pgtype.Text        `json:"grant_state"`
+}
+
+func (q *Queries) ListPaymentBillingHistory(ctx context.Context, arg ListPaymentBillingHistoryParams) ([]ListPaymentBillingHistoryRow, error) {
+	rows, err := q.db.Query(ctx, listPaymentBillingHistory, arg.AccountID, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPaymentBillingHistoryRow
+	for rows.Next() {
+		var i ListPaymentBillingHistoryRow
+		if err := rows.Scan(
+			&i.OrderID,
+			&i.OfferID,
+			&i.Channel,
+			&i.AmountCentavos,
+			&i.OrderState,
+			&i.OrderedAt,
+			&i.SettlementID,
+			&i.SettlementState,
+			&i.SettledAt,
+			&i.GrantID,
+			&i.StartAt,
+			&i.EndAt,
+			&i.GrantState,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPaymentBillingMandatesForAccount = `-- name: ListPaymentBillingMandatesForAccount :many
+SELECT id, account_id, offer_id, order_id, environment, merchant, provider, remote_authorization_id, remote_subscription_id, contract_id, remote_customer_id, status, frequency, value_centavos, start_date, finish_date, consent_version, consent_at, last_event_at, created_at, updated_at, payment_creation_mode, retry_policy, cancel_requested_at, cancel_reason, cancelled_at FROM payment_mandates
+WHERE account_id=$1::uuid AND status IN ('CREATED','ACTIVE')
+ORDER BY created_at,id
+`
+
+func (q *Queries) ListPaymentBillingMandatesForAccount(ctx context.Context, accountID pgtype.UUID) ([]PaymentMandate, error) {
+	rows, err := q.db.Query(ctx, listPaymentBillingMandatesForAccount, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentMandate
+	for rows.Next() {
+		var i PaymentMandate
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.OfferID,
+			&i.OrderID,
+			&i.Environment,
+			&i.Merchant,
+			&i.Provider,
+			&i.RemoteAuthorizationID,
+			&i.RemoteSubscriptionID,
+			&i.ContractID,
+			&i.RemoteCustomerID,
+			&i.Status,
+			&i.Frequency,
+			&i.ValueCentavos,
+			&i.StartDate,
+			&i.FinishDate,
+			&i.ConsentVersion,
+			&i.ConsentAt,
+			&i.LastEventAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PaymentCreationMode,
+			&i.RetryPolicy,
+			&i.CancelRequestedAt,
+			&i.CancelReason,
+			&i.CancelledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPaymentGrantsForEntitlement = `-- name: ListPaymentGrantsForEntitlement :many
 SELECT id, order_id, settlement_id, remote_payment_id, account_id, offer_id, source, paid_centavos, currency, start_at, end_at, anchor_day, policy_version, capabilities, state, created_at, revoked_at FROM payment_grants
 WHERE account_id=$1::uuid AND offer_id=$2
@@ -1765,6 +2179,34 @@ func (q *Queries) ResolvePaymentAttempt(ctx context.Context, arg ResolvePaymentA
 	return result.RowsAffected(), nil
 }
 
+const resolvePaymentBillingExitSource = `-- name: ResolvePaymentBillingExitSource :execrows
+UPDATE payment_billing_exit_sources
+SET state=$1,last_error=$2,
+    last_event_at=$3::timestamptz,lease_until=NULL,
+    updated_at=clock_timestamp()
+WHERE id=$4::uuid AND state='CANCELING'
+`
+
+type ResolvePaymentBillingExitSourceParams struct {
+	State       string             `json:"state"`
+	LastError   string             `json:"last_error"`
+	LastEventAt pgtype.Timestamptz `json:"last_event_at"`
+	ID          pgtype.UUID        `json:"id"`
+}
+
+func (q *Queries) ResolvePaymentBillingExitSource(ctx context.Context, arg ResolvePaymentBillingExitSourceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, resolvePaymentBillingExitSource,
+		arg.State,
+		arg.LastError,
+		arg.LastEventAt,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resolvePaymentOperation = `-- name: ResolvePaymentOperation :execrows
 UPDATE payment_operations
 SET state=$1,remote_id=$2,lease_until=$3::timestamptz,
@@ -1873,6 +2315,33 @@ func (q *Queries) TakeoverPaymentOperation(ctx context.Context, arg TakeoverPaym
 		arg.LeaseUntil,
 		arg.ID,
 		arg.PreviousGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updatePaymentBillingExit = `-- name: UpdatePaymentBillingExit :execrows
+UPDATE payment_billing_exits
+SET state=$1,last_event_at=$2::timestamptz,
+    last_error=$3,updated_at=clock_timestamp()
+WHERE id=$4::uuid
+`
+
+type UpdatePaymentBillingExitParams struct {
+	State       string             `json:"state"`
+	LastEventAt pgtype.Timestamptz `json:"last_event_at"`
+	LastError   string             `json:"last_error"`
+	ID          pgtype.UUID        `json:"id"`
+}
+
+func (q *Queries) UpdatePaymentBillingExit(ctx context.Context, arg UpdatePaymentBillingExitParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updatePaymentBillingExit,
+		arg.State,
+		arg.LastEventAt,
+		arg.LastError,
+		arg.ID,
 	)
 	if err != nil {
 		return 0, err

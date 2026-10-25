@@ -18,6 +18,7 @@ func testStatusService(t *testing.T) (*Service, *fakeClock) {
 		t.Fatal(err)
 	}
 	svc.RequestErasure = func(_ context.Context, _ string, _ []string) error { return nil }
+	svc.RequestBillingExit = func(_ context.Context, _ string) error { return nil }
 	svc.Verifier = &oidc.Verifier{
 		Clock:    func() time.Time { return time.Unix(1_700_000_000, 0) },
 		Issuers:  map[string]string{"google": "https://accounts.google.com", "apple": "https://appleid.apple.com"},

@@ -14,6 +14,7 @@ func TestSignupDeletionCannotRefundAdmission(t *testing.T) {
 	svc := testKeyService()
 	ctx := context.Background()
 	svc.RequestErasure = func(context.Context, string, []string) error { return nil }
+	svc.RequestBillingExit = func(context.Context, string) error { return nil }
 	for i := 0; i < domain.MaxKeyAccountsPerHour; i++ {
 		acc, err := svc.CreateKeyAccount(ctx, fmt.Sprintf("cycleuser%d", i))
 		if err != nil {

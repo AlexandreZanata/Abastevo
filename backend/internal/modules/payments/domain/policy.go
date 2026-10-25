@@ -42,6 +42,7 @@ var (
 	ErrStale              = errors.New("payments: stale")
 	ErrBusy               = errors.New("payments: busy")
 	ErrUnavailable        = errors.New("payments: unavailable")
+	ErrUnauthorized       = errors.New("payments: unauthorized")
 	ErrNotFound           = errors.New("payments: not found")
 )
 

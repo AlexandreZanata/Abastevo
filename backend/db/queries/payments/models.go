@@ -61,6 +61,39 @@ type PaymentAttempt struct {
 	CompletedAt pgtype.Timestamptz `json:"completed_at"`
 }
 
+type PaymentBillingExit struct {
+	ID           pgtype.UUID        `json:"id"`
+	AccountID    pgtype.UUID        `json:"account_id"`
+	OperationKey string             `json:"operation_key"`
+	Reason       string             `json:"reason"`
+	State        string             `json:"state"`
+	RequestedAt  pgtype.Timestamptz `json:"requested_at"`
+	LastEventAt  pgtype.Timestamptz `json:"last_event_at"`
+	LastError    string             `json:"last_error"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PaymentBillingExitSource struct {
+	ID          pgtype.UUID        `json:"id"`
+	ExitID      pgtype.UUID        `json:"exit_id"`
+	AccountID   pgtype.UUID        `json:"account_id"`
+	Source      string             `json:"source"`
+	LocalID     string             `json:"local_id"`
+	RemoteID    string             `json:"remote_id"`
+	OfferID     string             `json:"offer_id"`
+	Provider    string             `json:"provider"`
+	Environment string             `json:"environment"`
+	Merchant    string             `json:"merchant"`
+	State       string             `json:"state"`
+	Attempts    int32              `json:"attempts"`
+	LeaseUntil  pgtype.Timestamptz `json:"lease_until"`
+	LastError   string             `json:"last_error"`
+	LastEventAt pgtype.Timestamptz `json:"last_event_at"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type PaymentContract struct {
 	ID                   pgtype.UUID        `json:"id"`
 	AccountID            pgtype.UUID        `json:"account_id"`

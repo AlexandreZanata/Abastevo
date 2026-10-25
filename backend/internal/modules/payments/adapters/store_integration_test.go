@@ -17,6 +17,7 @@ import (
 	"time"
 
 	migrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	accountadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
@@ -512,8 +513,9 @@ func TestMigrationUpgradeReplayAndPostGIS(t *testing.T) {
 		t.Fatal(err)
 	}
 	applied, err := migrate.Apply(ctx, dsn, target)
-	if err != nil || len(applied) != 5 || applied[0] != "000123" || applied[1] != "000124" ||
-		applied[2] != "000125" || applied[3] != "000126" || applied[4] != "000127" {
+	if err != nil || len(applied) != 6 || applied[0] != "000123" || applied[1] != "000124" ||
+		applied[2] != "000125" || applied[3] != "000126" || applied[4] != "000127" ||
+		applied[5] != "000128" {
 		t.Fatalf("upgrade applied=%v err=%v", applied, err)
 	}
 	again, err := migrate.Apply(ctx, dsn, target)
@@ -541,6 +543,9 @@ func TestMigrationUpgradeReplayAndPostGIS(t *testing.T) {
 	}
 	if err := pool.QueryRow(ctx, "SELECT to_regclass('payment_source_switches') IS NOT NULL").Scan(&exists); err != nil || !exists {
 		t.Fatalf("source switch table exists=%v err=%v", exists, err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT to_regclass('payment_billing_exits') IS NOT NULL").Scan(&exists); err != nil || !exists {
+		t.Fatalf("billing exit table exists=%v err=%v", exists, err)
 	}
 }
 
@@ -668,5 +673,22 @@ func TestCapacityExcessIsRecordedWithoutGrant(t *testing.T) {
 		count(t, pool, "SELECT count(*) FROM payment_grants") != 2 ||
 		count(t, pool, "SELECT count(*) FROM payment_settlements WHERE outcome='EXCESS'") != 1 {
 		t.Fatal("excess settlement not recorded distinctly")
+	}
+}
+
+func TestBillingExitRetainedAfterAccountDeletion(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	owner := seedOwner(t, pool)
+	now := time.Now().UTC()
+	exit, sources, replay, err := store.CreateBillingExit(context.Background(), owner, "account-deletion", "ACCOUNT_DELETION", now)
+	if err != nil || replay || exit.ID == "" || len(sources) != 0 || exit.State != "DONE" {
+		t.Fatalf("exit=%+v sources=%d replay=%v err=%v", exit, len(sources), replay, err)
+	}
+	if _, err := accountadapters.NewPGStore(pool).DeleteAccount(context.Background(), owner, now.Unix()); err != nil {
+		t.Fatal(err)
+	}
+	if count(t, pool, "SELECT count(*) FROM payment_billing_exits WHERE id=$1", exit.ID) != 1 {
+		t.Fatal("billing exit was erased or cascaded with account deletion")
 	}
 }

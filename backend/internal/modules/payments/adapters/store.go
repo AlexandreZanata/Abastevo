@@ -1756,6 +1756,331 @@ func (s *Store) ConsumeSourceSwitch(ctx context.Context, id string) error {
 	return nil
 }
 
+func (s *Store) CreateBillingExit(ctx context.Context, accountID, operationKey, reason string, at time.Time) (app.BillingExit, []app.BillingExitSource, bool, error) {
+	if s == nil || s.Pool == nil {
+		return app.BillingExit{}, nil, false, domain.ErrUnavailable
+	}
+	uid, err := toUUID(accountID)
+	if err != nil || !validText(operationKey) || at.IsZero() ||
+		(reason != app.BillingExitOwnerRequest && reason != app.BillingExitAccountDeletion) {
+		return app.BillingExit{}, nil, false, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return app.BillingExit{}, nil, false, domain.ErrUnavailable
+	}
+	defer rollback(tx)
+	q := qpay.New(tx)
+	if existing, err := q.GetPaymentBillingExitByOperation(ctx, qpay.GetPaymentBillingExitByOperationParams{
+		AccountID: uid, OperationKey: operationKey,
+	}); err == nil {
+		sources, err := q.ListPaymentBillingExitSources(ctx, existing.ID)
+		if err != nil {
+			return app.BillingExit{}, nil, false, dbError(err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return app.BillingExit{}, nil, false, domain.ErrUnavailable
+		}
+		return billingExitRecord(existing), billingExitSourceRecords(sources), true, nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return app.BillingExit{}, nil, false, dbError(err)
+	}
+	id, err := newID()
+	if err != nil {
+		return app.BillingExit{}, nil, false, domain.ErrUnavailable
+	}
+	exitUID, _ := toUUID(id)
+	row, err := q.InsertPaymentBillingExit(ctx, qpay.InsertPaymentBillingExitParams{
+		ID: exitUID, AccountID: uid, OperationKey: operationKey, Reason: reason,
+		State: "PENDING", RequestedAt: stamp(at), LastEventAt: stamp(at),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		existing, err := q.GetPaymentBillingExitByOperation(ctx, qpay.GetPaymentBillingExitByOperationParams{
+			AccountID: uid, OperationKey: operationKey,
+		})
+		if err != nil {
+			return app.BillingExit{}, nil, false, dbError(err)
+		}
+		sources, err := q.ListPaymentBillingExitSources(ctx, existing.ID)
+		if err != nil {
+			return app.BillingExit{}, nil, false, dbError(err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return app.BillingExit{}, nil, false, domain.ErrUnavailable
+		}
+		return billingExitRecord(existing), billingExitSourceRecords(sources), true, nil
+	}
+	if err != nil {
+		return app.BillingExit{}, nil, false, dbError(err)
+	}
+	sources, err := billingSourcesTx(ctx, q, uid)
+	if err != nil {
+		return app.BillingExit{}, nil, false, err
+	}
+	records := make([]app.BillingExitSource, 0, len(sources))
+	for _, source := range sources {
+		sourceID, err := newID()
+		if err != nil {
+			return app.BillingExit{}, nil, false, domain.ErrUnavailable
+		}
+		sourceUID, _ := toUUID(sourceID)
+		sourceRow, err := q.InsertPaymentBillingExitSource(ctx, qpay.InsertPaymentBillingExitSourceParams{
+			ID: sourceUID, ExitID: exitUID, AccountID: uid, Source: string(source.Source),
+			LocalID: source.LocalID, RemoteID: source.RemoteID, OfferID: source.OfferID,
+			Provider: string(source.Provider), Environment: string(source.Environment),
+			Merchant: source.Merchant, LastEventAt: stamp(at),
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return app.BillingExit{}, nil, false, dbError(err)
+		}
+		records = append(records, billingExitSourceRecord(sourceRow))
+	}
+	state := "DONE"
+	if len(records) > 0 {
+		state = "PENDING"
+	}
+	if _, err := q.UpdatePaymentBillingExit(ctx, qpay.UpdatePaymentBillingExitParams{
+		State: state, LastEventAt: stamp(at), LastError: "", ID: exitUID,
+	}); err != nil {
+		return app.BillingExit{}, nil, false, dbError(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return app.BillingExit{}, nil, false, domain.ErrUnavailable
+	}
+	row.State = state
+	return billingExitRecord(row), records, false, nil
+}
+
+func (s *Store) LatestBillingExit(ctx context.Context, accountID string) (app.BillingExit, bool, error) {
+	if s == nil || s.Pool == nil {
+		return app.BillingExit{}, false, domain.ErrUnavailable
+	}
+	uid, err := toUUID(accountID)
+	if err != nil {
+		return app.BillingExit{}, false, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetLatestPaymentBillingExit(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.BillingExit{}, false, nil
+	}
+	if err != nil {
+		return app.BillingExit{}, false, dbError(err)
+	}
+	return billingExitRecord(row), true, nil
+}
+
+func (s *Store) BillingExit(ctx context.Context, id string) (app.BillingExit, error) {
+	if s == nil || s.Pool == nil {
+		return app.BillingExit{}, domain.ErrUnavailable
+	}
+	uid, err := toUUID(id)
+	if err != nil {
+		return app.BillingExit{}, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	row, err := qpay.New(s.Pool).GetPaymentBillingExitByID(ctx, uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.BillingExit{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return app.BillingExit{}, dbError(err)
+	}
+	return billingExitRecord(row), nil
+}
+
+func (s *Store) BillingExitSources(ctx context.Context, exitID string) ([]app.BillingExitSource, error) {
+	if s == nil || s.Pool == nil {
+		return nil, domain.ErrUnavailable
+	}
+	uid, err := toUUID(exitID)
+	if err != nil {
+		return nil, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	rows, err := qpay.New(s.Pool).ListPaymentBillingExitSources(ctx, uid)
+	if err != nil {
+		return nil, dbError(err)
+	}
+	return billingExitSourceRecords(rows), nil
+}
+
+func (s *Store) UpdateBillingExit(ctx context.Context, exit app.BillingExit) error {
+	if s == nil || s.Pool == nil {
+		return domain.ErrUnavailable
+	}
+	uid, err := toUUID(exit.ID)
+	if err != nil || (exit.State != "PENDING" && exit.State != "DONE" && exit.State != "REVIEW") ||
+		exit.LastEventAt.IsZero() || len(exit.LastError) > 500 {
+		return domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	rows, err := qpay.New(s.Pool).UpdatePaymentBillingExit(ctx, qpay.UpdatePaymentBillingExitParams{
+		State: exit.State, LastEventAt: stamp(exit.LastEventAt),
+		LastError: exit.LastError, ID: uid,
+	})
+	if err != nil {
+		return dbError(err)
+	}
+	if rows != 1 {
+		return domain.ErrStale
+	}
+	return nil
+}
+
+func (s *Store) ClaimBillingExitSource(ctx context.Context, id string, leaseUntil time.Time) (bool, error) {
+	if s == nil || s.Pool == nil {
+		return false, domain.ErrUnavailable
+	}
+	uid, err := toUUID(id)
+	if err != nil || leaseUntil.IsZero() {
+		return false, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	rows, err := qpay.New(s.Pool).ClaimPaymentBillingExitSource(ctx, qpay.ClaimPaymentBillingExitSourceParams{
+		LeaseUntil: stamp(leaseUntil), ID: uid,
+	})
+	if err != nil {
+		return false, dbError(err)
+	}
+	return rows == 1, nil
+}
+
+func (s *Store) ResolveBillingExitSource(ctx context.Context, source app.BillingExitSource) error {
+	if s == nil || s.Pool == nil {
+		return domain.ErrUnavailable
+	}
+	uid, err := toUUID(source.ID)
+	if err != nil || (source.State != "DONE" && source.State != "PENDING" && source.State != "REVIEW") ||
+		source.LastEventAt.IsZero() || len(source.LastError) > 500 {
+		return domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	rows, err := qpay.New(s.Pool).ResolvePaymentBillingExitSource(ctx, qpay.ResolvePaymentBillingExitSourceParams{
+		State: source.State, LastError: source.LastError,
+		LastEventAt: stamp(source.LastEventAt), ID: uid,
+	})
+	if err != nil {
+		return dbError(err)
+	}
+	if rows != 1 {
+		return domain.ErrStale
+	}
+	return nil
+}
+
+func (s *Store) BillingSources(ctx context.Context, accountID string) ([]app.BillingSource, error) {
+	if s == nil || s.Pool == nil {
+		return nil, domain.ErrUnavailable
+	}
+	uid, err := toUUID(accountID)
+	if err != nil {
+		return nil, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	return billingSourcesTx(ctx, qpay.New(s.Pool), uid)
+}
+
+func billingSourcesTx(ctx context.Context, q *qpay.Queries, accountID pgtype.UUID) ([]app.BillingSource, error) {
+	contracts, err := q.ListPaymentBillingCardsForAccount(ctx, accountID)
+	if err != nil {
+		return nil, dbError(err)
+	}
+	mandates, err := q.ListPaymentBillingMandatesForAccount(ctx, accountID)
+	if err != nil {
+		return nil, dbError(err)
+	}
+	sources := make([]app.BillingSource, 0, len(contracts)+len(mandates))
+	for _, contract := range contracts {
+		sources = append(sources, app.BillingSource{
+			Source: domain.ChannelCard, LocalID: uuidText(contract.ID),
+			RemoteID: contract.RemoteSubscriptionID, OfferID: contract.OfferID,
+			Provider: domain.ProviderStripe, Environment: domain.Environment(contract.Environment),
+			Merchant: contract.Merchant,
+		})
+	}
+	for _, mandate := range mandates {
+		sources = append(sources, app.BillingSource{
+			Source: domain.ChannelPixAutomatic, LocalID: uuidText(mandate.ID),
+			RemoteID: mandate.RemoteAuthorizationID, OfferID: mandate.OfferID,
+			Provider: domain.ProviderAsaas, Environment: domain.Environment(mandate.Environment),
+			Merchant: mandate.Merchant,
+		})
+	}
+	return sources, nil
+}
+
+func (s *Store) BillingHistory(ctx context.Context, accountID string, limit int) ([]app.BillingHistoryRow, error) {
+	if s == nil || s.Pool == nil {
+		return nil, domain.ErrUnavailable
+	}
+	uid, err := toUUID(accountID)
+	if err != nil || limit < 1 || limit > 100 {
+		return nil, domain.ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+	rows, err := qpay.New(s.Pool).ListPaymentBillingHistory(ctx, qpay.ListPaymentBillingHistoryParams{
+		AccountID: uid, LimitCount: int32(limit),
+	})
+	if err != nil {
+		return nil, dbError(err)
+	}
+	result := make([]app.BillingHistoryRow, 0, len(rows))
+	for _, row := range rows {
+		item := app.BillingHistoryRow{
+			OrderID: uuidText(row.OrderID), OfferID: row.OfferID,
+			Channel: domain.Channel(row.Channel), Amount: domain.BRL(row.AmountCentavos),
+			OrderState: row.OrderState, OrderedAt: row.OrderedAt.Time,
+			SettlementID: uuidText(row.SettlementID), SettlementState: textValue(row.SettlementState),
+			SettledAt: row.SettledAt.Time, GrantID: uuidText(row.GrantID),
+			GrantStart: row.StartAt.Time, GrantEnd: row.EndAt.Time,
+			GrantState: textValue(row.GrantState),
+		}
+		result = append(result, item)
+	}
+	return result, nil
+}
+
+func billingExitRecord(row qpay.PaymentBillingExit) app.BillingExit {
+	return app.BillingExit{
+		ID: uuidText(row.ID), AccountID: uuidText(row.AccountID), OperationKey: row.OperationKey,
+		Reason: row.Reason, State: row.State, RequestedAt: row.RequestedAt.Time,
+		LastEventAt: row.LastEventAt.Time, LastError: row.LastError,
+	}
+}
+
+func billingExitSourceRecord(row qpay.PaymentBillingExitSource) app.BillingExitSource {
+	return app.BillingExitSource{
+		ID: uuidText(row.ID), ExitID: uuidText(row.ExitID), AccountID: uuidText(row.AccountID),
+		Source:  domain.Channel(row.Source),
+		LocalID: row.LocalID, RemoteID: row.RemoteID, OfferID: row.OfferID,
+		Provider: domain.Provider(row.Provider), Environment: domain.Environment(row.Environment),
+		Merchant: row.Merchant, State: row.State, Attempts: int(row.Attempts),
+		LastError: row.LastError, LastEventAt: row.LastEventAt.Time,
+	}
+}
+
+func billingExitSourceRecords(rows []qpay.PaymentBillingExitSource) []app.BillingExitSource {
+	records := make([]app.BillingExitSource, 0, len(rows))
+	for _, row := range rows {
+		records = append(records, billingExitSourceRecord(row))
+	}
+	return records
+}
+
 func sourceSwitchRecord(row qpay.PaymentSourceSwitch) app.SourceSwitchRecord {
 	record := app.SourceSwitchRecord{
 		ID: uuidText(row.ID), AccountID: uuidText(row.AccountID), OfferID: row.OfferID,

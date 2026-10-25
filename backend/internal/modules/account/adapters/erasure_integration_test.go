@@ -24,6 +24,7 @@ func TestAccountErasureRecoversWithoutSessionOnSQL(t *testing.T) {
 	ctx := context.Background()
 	store := svc.Store.(*PGStore)
 	svc.RequestErasure = func(context.Context, string, []string) error { return errors.New("queue unavailable") }
+	svc.RequestBillingExit = func(context.Context, string) error { return nil }
 	acc, err := svc.CreateKeyAccount(ctx, "recoveryowner")
 	if err != nil {
 		t.Fatal(err)
@@ -115,6 +116,7 @@ func TestAccountErasureBindingFreeRecoveryOnSQL(t *testing.T) {
 	ctx := context.Background()
 	store := svc.Store.(*PGStore)
 	svc.RequestErasure = func(context.Context, string, []string) error { return errors.New("dispatch down") }
+	svc.RequestBillingExit = func(context.Context, string) error { return nil }
 	acc, err := svc.CreateKeyAccount(ctx, "bindingfreeowner")
 	if err != nil {
 		t.Fatal(err)

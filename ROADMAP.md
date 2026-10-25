@@ -3718,8 +3718,8 @@ Document-free FQ-11 review is LOCAL_DONE / INTEGRATION_PENDING ([evidence](docs/
 
 ## Stripe and Asaas payments
 
-Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–14 are
-LOCAL_DONE / INTEGRATION_PENDING; PAY-15–23 remain planned.
+Status: **IMPLEMENTATION_IN_PROGRESS / LOCAL_ONLY**, 2026-10-24. PAY-00–15 are
+LOCAL_DONE / INTEGRATION_PENDING; PAY-16–23 remain planned.
 Selected methods: Stripe cards, Asaas conventional Pix and Pix Automático,
 independently activated.
 Google Play is LATER. Reuse PRM subscription/account/jobs; no Stage D team/tenant
@@ -3758,7 +3758,9 @@ with [evidence](docs/backend/evidence/payments/PAY-12.md), and PAY-13
 [provider-owned cycles](backend/internal/modules/payments/application/pix_auto_cycles.go)
 with [evidence](docs/backend/evidence/payments/PAY-13.md), and PAY-14
 [cross-provider switch fence](backend/internal/modules/payments/application/switch.go)
-with [evidence](docs/backend/evidence/payments/PAY-14.md), are local only. The
+with [evidence](docs/backend/evidence/payments/PAY-14.md), and PAY-15
+[billing exits](backend/internal/modules/payments/application/billing_exit.go)
+with [evidence](docs/backend/evidence/payments/PAY-15.md), are local only. The
 checklist owns dependencies, steps, risk checks, shared-path coordination,
 evidence and commit topic.
 
@@ -3798,7 +3800,10 @@ evidence and commit topic.
 - **PAY-14:** Fence plan changes and cross-provider switching. LOCAL_DONE;
   next-term target validation, confirmed old-source cancellation, stale-quote
   and concurrent switch/excess tests pass; provider proof remains PAY-21.
-- **PAY-15:** Complete cancellation and account exits.
+- **PAY-15:** Complete cancellation and account exits. LOCAL_DONE; owner
+  cancel/status/history/export, durable delete-before-mutation billing intent,
+  account-hook ordering and retained financial tombstone pass; worker/provider
+  proof remains PAY-19/PAY-21.
 - **PAY-16:** Complete refunds disputes and financial recovery.
 - **PAY-17:** Complete single-payer Enterprise billing.
 - **PAY-18:** Close adversarial privacy and performance acceptance.

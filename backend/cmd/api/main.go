@@ -76,6 +76,8 @@ import (
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
+	payadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/adapters"
+	paymentsapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/application"
 	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
 	privacyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
@@ -272,6 +274,12 @@ func run() error {
 	// profile handler gets the canonical reader as a closure so
 	// modules never cross-read. Anonymous; no badge without a grant.
 	accountStore := accountadapters.NewPGStore(pool.Underlying())
+	// PAY-15: account deletion records a durable billing-exit intent before the
+	// account row changes. Provider cancellation/replay is wired at PAY-19; the
+	// pending source rows remain visible until then.
+	billingExit := &paymentsapp.BillingExitService{
+		Store: payadapters.NewStore(pool.Underlying()), Clock: time.Now,
+	}
 	profileadapters.Handler{
 		Store: profileadapters.Store{Q: dbstationprofile.New(pool.Underlying())},
 		Representation: func(ctx context.Context, stationID, cnpj string) (bool, error) {
@@ -459,6 +467,7 @@ func run() error {
 		KeyGen:      accountdomain.GenerateAccountKey,
 		IDGen:       newUUID,
 	}
+	accountService.RequestBillingExit = billingExit.RequestAccountExit
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
 	// Station/fuel feedback (P14-T03). Same closure rule: session
 	// ownership, account liveness and station existence arrive as

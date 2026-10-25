@@ -128,7 +128,8 @@ func freshLinkService(t *testing.T) *linkService {
 		RequestErasure: func(_ context.Context, _ string, _ []string) error {
 			return nil
 		},
-		Verifier: verifier,
+		RequestBillingExit: func(_ context.Context, _ string) error { return nil },
+		Verifier:           verifier,
 		CodeGen: func() (string, error) {
 			genMu.Lock()
 			defer genMu.Unlock()

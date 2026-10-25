@@ -390,3 +390,86 @@ SELECT end_at
 FROM payment_grants
 WHERE account_id=sqlc.arg(account_id)::uuid AND offer_id=sqlc.arg(offer_id) AND state='ACTIVE'
 ORDER BY end_at DESC LIMIT 1;
+
+-- name: InsertPaymentBillingExit :one
+INSERT INTO payment_billing_exits(
+ id,account_id,operation_key,reason,state,requested_at,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(operation_key),sqlc.arg(reason),
+ sqlc.arg(state),sqlc.arg(requested_at)::timestamptz,sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (account_id,operation_key) DO NOTHING
+RETURNING *;
+
+-- name: GetPaymentBillingExitByOperation :one
+SELECT * FROM payment_billing_exits
+WHERE account_id=sqlc.arg(account_id)::uuid AND operation_key=sqlc.arg(operation_key);
+
+-- name: GetPaymentBillingExitByID :one
+SELECT * FROM payment_billing_exits WHERE id=sqlc.arg(id)::uuid;
+
+-- name: GetLatestPaymentBillingExit :one
+SELECT * FROM payment_billing_exits
+WHERE account_id=sqlc.arg(account_id)::uuid
+ORDER BY requested_at DESC,id DESC LIMIT 1;
+
+-- name: UpdatePaymentBillingExit :execrows
+UPDATE payment_billing_exits
+SET state=sqlc.arg(state),last_event_at=sqlc.arg(last_event_at)::timestamptz,
+    last_error=sqlc.arg(last_error),updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid;
+
+-- name: InsertPaymentBillingExitSource :one
+INSERT INTO payment_billing_exit_sources(
+ id,exit_id,account_id,source,local_id,remote_id,offer_id,provider,environment,merchant,
+ state,last_event_at
+) VALUES(
+ sqlc.arg(id)::uuid,sqlc.arg(exit_id)::uuid,sqlc.arg(account_id)::uuid,sqlc.arg(source),sqlc.arg(local_id),
+ sqlc.arg(remote_id),sqlc.arg(offer_id),sqlc.arg(provider),sqlc.arg(environment),
+ sqlc.arg(merchant),'PENDING',sqlc.arg(last_event_at)::timestamptz
+)
+ON CONFLICT (exit_id,source,local_id) DO NOTHING
+RETURNING *;
+
+-- name: ListPaymentBillingExitSources :many
+SELECT * FROM payment_billing_exit_sources
+WHERE exit_id=sqlc.arg(exit_id)::uuid
+ORDER BY created_at,id;
+
+-- name: ClaimPaymentBillingExitSource :execrows
+UPDATE payment_billing_exit_sources
+SET state='CANCELING',lease_until=sqlc.arg(lease_until)::timestamptz,
+    attempts=attempts+1,updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND state IN ('PENDING','CANCELING')
+  AND (lease_until IS NULL OR lease_until<=clock_timestamp())
+  AND attempts<20;
+
+-- name: ResolvePaymentBillingExitSource :execrows
+UPDATE payment_billing_exit_sources
+SET state=sqlc.arg(state),last_error=sqlc.arg(last_error),
+    last_event_at=sqlc.arg(last_event_at)::timestamptz,lease_until=NULL,
+    updated_at=clock_timestamp()
+WHERE id=sqlc.arg(id)::uuid AND state='CANCELING';
+
+-- name: ListPaymentBillingCardsForAccount :many
+SELECT * FROM payment_contracts
+WHERE account_id=sqlc.arg(account_id)::uuid
+  AND provider_status NOT IN ('canceled','incomplete_expired')
+  AND cancel_at_period_end=false
+ORDER BY created_at,id;
+
+-- name: ListPaymentBillingMandatesForAccount :many
+SELECT * FROM payment_mandates
+WHERE account_id=sqlc.arg(account_id)::uuid AND status IN ('CREATED','ACTIVE')
+ORDER BY created_at,id;
+
+-- name: ListPaymentBillingHistory :many
+SELECT o.id AS order_id,o.offer_id,o.channel,o.amount_centavos,o.state AS order_state,
+       o.created_at AS ordered_at,s.id AS settlement_id,s.state AS settlement_state,
+       s.settled_at,g.id AS grant_id,g.start_at,g.end_at,g.state AS grant_state
+FROM payment_orders o
+LEFT JOIN payment_settlements s ON s.order_id=o.id AND s.outcome='GRANTED'
+LEFT JOIN payment_grants g ON g.settlement_id=s.id
+WHERE o.account_id=sqlc.arg(account_id)::uuid
+ORDER BY o.created_at DESC,o.id DESC
+LIMIT sqlc.arg(limit_count)::int;

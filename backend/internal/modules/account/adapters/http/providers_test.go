@@ -60,7 +60,8 @@ func newProviderHandler(t *testing.T) *providerFixture {
 		RequestErasure: func(_ context.Context, _ string, _ []string) error {
 			return nil
 		},
-		Verifier: verifier,
+		RequestBillingExit: func(_ context.Context, _ string) error { return nil },
+		Verifier:           verifier,
 		CodeGen: func() (string, error) {
 			mu.Lock()
 			defer mu.Unlock()

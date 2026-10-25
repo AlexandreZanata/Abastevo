@@ -1,5 +1,16 @@
 # Current execution state
 
+- Stripe/Asaas payment PAY-15 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/payments-stripe-asaas`, parent PAY-14 `a9b2903f`. Migration 000128 adds
+  durable billing-exit intents and per-source cancellation records. Owner
+  cancel/status/history/export use fresh proof for sensitive operations; account
+  deletion records the exit before mutation, retains minimal financial rows,
+  never refunds and keeps uncertain provider cancellation visible. The API
+  composition records the intent; provider execution/reconciliation remains
+  PAY-19. [PAY-15 evidence](../backend/evidence/payments/PAY-15.md): account/
+  PostGIS exit, outage, stale-replay, proof and retention suites PASS. No
+  worker/route/provider proof/sale. Next: PAY-16 only after maintainer authorization.
+
 - Stripe/Asaas payment PAY-14 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/payments-stripe-asaas`, parent PAY-13 `5ba72b33`. Migration 000127 adds
   durable switch intents and leases. Stripe card renewal uses confirmed

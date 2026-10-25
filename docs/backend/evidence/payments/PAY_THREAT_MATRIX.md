@@ -103,7 +103,7 @@ case cannot be fully accepted without separately authorized live verification.
 |---|---|---|---|---|
 | REC-01 | Missed, paused or reordered webhooks are repaired by bounded reconciliation, not per-read provider polling. | OPEN | PAY-08, PAY-09, PAY-10 | sandbox |
 | REC-02 | Dead job, provider outage, 429 and bounded retry/backoff preserve unrelated safety work and do not duplicate writes. | OPEN | PAY-04, PAY-13, PAY-18 | sandbox |
-| REC-03 | Deleted/deactivating account stops future billing and cannot auto-refund or keep unnoticed billing. | OPEN | PAY-15 | sandbox |
+| REC-03 | Deleted/deactivating account stops future billing and cannot auto-refund or keep unnoticed billing. | CLOSED_LOCAL | PAY-15 | sandbox |
 | REC-04 | Revoked/rotated provider key is diagnosed safely; maintenance, cancellation and existing access remain operable. | OPEN | PAY-05, PAY-18 | none |
 | REC-05 | Database restore/stale outbox cannot replay a charge/refund or resurrect deleted ownership. | OPEN | PAY-04, PAY-18 | none |
 | REC-06 | Refund with insufficient provider balance or a lost reply stays pending/failed; no blind second refund. | OPEN | PAY-16 | sandbox |
@@ -115,7 +115,7 @@ case cannot be fully accepted without separately authorized live verification.
 |---|---|---|---|---|
 | BND-01 | No PAN/CVV/raw card form, secret or provider credential enters handlers, logs, tests, fixtures or storage. | OPEN | PAY-02, PAY-06, PAY-18 | none |
 | BND-02 | No customer PII, raw QR, payment URL, signature or token appears in logs/artifacts; retention is reviewed. | OPEN | PAY-05, PAY-18, PAY-20 | none |
-| BND-03 | Protected billing retention is separated from account erasure without losing legitimate financial obligations. | OPEN | PAY-15, PAY-16, PAY-20 | none |
+| BND-03 | Protected billing retention is separated from account erasure without losing legitimate financial obligations. | CLOSED_LOCAL | PAY-15, PAY-16, PAY-20 | none |
 | BND-04 | Payment never changes community trust and cannot buy safety/trust privileges. | OPEN | PAY-03, PAY-10, PAY-17 | none |
 | BND-05 | Disabling sales, expiry or provider outage preserves free data, export and legitimate paid-through access. | OPEN | PAY-10, PAY-15 | none |
 | BND-06 | Enterprise payer/customer identity grants no team, tenant, station or cross-account privilege. | OPEN | PAY-17 | none |
@@ -135,6 +135,15 @@ evidence was not rerun at PAY-00.
 | PRM-04 | Reconciliation, refresh leases and retired purchase chains. | REUSE_OPEN | PAY-10, PAY-11, PAY-13 | Preserve Play behavior; web sources get their own freshness/lifecycle rules. |
 | PRM-05 | Account deletion purges/retires provider material. | REUSE_OPEN | PAY-15 | Migration `000075` trigger; extend without replaying financial writes. |
 | PRM-06 | Free status/export remains available when payments are disabled. | REUSE_OPEN | PAY-10, PAY-15 | Preserve `Export` independence from provider configuration. |
+
+## PAY-15 local closure
+
+- BND-03: account deletion keeps `payment_billing_exits` and existing
+  order/settlement/grant rows; a real PostGIS test verifies the exit survives the
+  deleted account status and no cascade removes financial evidence.
+- REC-03: deletion records a durable billing-exit intent before mutation; owner
+  cancel/status/history/export and provider-outage/stale-replay paths are tested.
+  Actual provider cancellation and worker execution remain PAY-19/PAY-21.
 
 ## PAY-14 local closure
 

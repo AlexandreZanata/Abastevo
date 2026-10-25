@@ -144,6 +144,7 @@ func TestSelfDeleteAcknowledgesDurableIntentWhenDispatchFails(t *testing.T) {
 	f := newProviderHandler(t)
 	sess := f.signup(t, "dispatch-down@example.invalid", "482916")
 	svcOf(t, f).RequestErasure = func(context.Context, string, []string) error { return errors.New("queue down") }
+	svcOf(t, f).RequestBillingExit = func(context.Context, string) error { return nil }
 	rec := f.call(t, "POST", "/v1/accounts/deletion", deleteBody(sess))
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "erasure_requested") {
 		t.Fatalf("durable intent not acknowledged: %d %s", rec.Code, rec.Body.String())

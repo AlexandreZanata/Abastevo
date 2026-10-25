@@ -326,6 +326,7 @@ sql:
       - db/migrations/000125_payment_mandates.sql
       - db/migrations/000126_pix_auto_cycles.sql
       - db/migrations/000127_payment_source_switches.sql
+      - db/migrations/000128_payment_billing_exits.sql
     gen:
       go:
         package: payments

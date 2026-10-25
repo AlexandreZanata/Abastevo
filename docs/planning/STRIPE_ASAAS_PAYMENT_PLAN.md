@@ -223,6 +223,11 @@ are durably fenced; the old card/Pix Automático source must be confirmed stoppe
 before a new source may start, unknown cancellation blocks activation, and
 immediate/prorated changes are refused. Provider proof and runtime wiring remain
 PAY-21/PAY-19.
+PAY-15 is LOCAL_DONE: owner cancel/status/history/export use a durable,
+proof-protected billing-exit intent; account deletion records cancellation before
+mutation, retains minimal financial records, never refunds automatically and
+leaves uncertain provider cancellation visible. Runtime worker/routes remain
+PAY-19.
 
 No default fabricated price or Enterprise seats. No coupons/trials/zero-price
 grants/installments/wallet credit unless explicitly specified. Distinguish provider
@@ -300,7 +305,9 @@ that a nonexistent command or endpoint is available.
 - **PAY-14:** plan/term changes and cross-provider funding-source fences.
   LOCAL_DONE; next-term changes, confirmed old-source cancellation, stale-quote
   and concurrency fences tested.
-- **PAY-15:** cancellation, account exit/deletion and recovery.
+- **PAY-15:** cancellation, account exit/deletion and recovery. LOCAL_DONE;
+  proof-protected cancel/status/export, durable delete-before-mutation intent and
+  retained billing tombstone tested.
 - **PAY-16:** full/partial refunds, disputes/MED and restricted operator recovery.
 - **PAY-17:** Enterprise single-payer billing and capability-target isolation.
 - **PAY-18:** adversarial matrix, privacy/restore and bounded performance acceptance.
