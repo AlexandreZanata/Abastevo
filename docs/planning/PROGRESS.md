@@ -293,6 +293,279 @@
   Checks: worktree/ref ancestry, diff check, scoped links/registry/DAG and secret
   scan. Next: PAY-01 offers/lifecycle policy only after maintainer authorization.
 
+- Enterprise portal second-review corrections 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on `codex/enterprise-static-portal`; validated code head `7fd5c414` (this evidence commit follows). [Second-review evidence](../backend/evidence/enterprise-static/ESP-CORRECTIONS-02.md).
+  The earlier follow-up entry below was too broad: the four additional RED scenarios were real and are now closed with maintained regressions, not only external decisions.
+  (1) Official publication is serialized per survey window (advisory lock even without a pointer row + revision row lock): concurrent first publications/corrections publish once, stale finishes retire `superseded`, duplicate finishes converge, Stage is frozen on every terminal status, divergent restage is refused, run/revision/pointer/counts are checked, persisted windows are validated on resume, and cancellation/transaction rollback leave no partial state. Migration 000131 retained and status compatibility asserted.
+  (2) Operational pause (`operator-pause`) is distinct from invalid-content revocation (`revoked-source`): the same eligible source/bytes recover through Promote/Refresh in full and official-only modes, including restart and failure preservation, while revoked identity stays refused by any hash.
+  (3) The current release is mandatory in the retained store beyond `keep`, budgets fail before the pointer moves, nested/safe asset paths and unique-byte accounting are enforced, and promote/rollback/refresh/withdraw prepare assets automatically.
+  (4) `retained` is an atomic symlink to an immutable generation with completeness marker: failed switches keep the previous store, missing links recover the newest complete generation, legacy directories migrate recoverably, withdrawal purges retired generations, and concurrent HTTP readers survive transitions.
+  Commits: `6e34f223`, `aafb492b`, `c958c866`, `3235d9ad`, `471c1f2d`, `7fd5c414`. Verification: real disposable PostGIS `-race -tags=integration` official + enterpriseexport suites PASS; unit/race portalgen+jobs PASS; build/vet/staticcheck/sqlc/gofmt/diff CHECK PASS; local Caddy full and official-only rehearsals PASS (A→B→A, retained asset after rollback, corrupt rollback, pause/recover, withdraw fallback/404).
+  Scope remains LOCAL_ONLY: no VPS/staging data/third-party/push/PR/merge/wiki/publication, and no precision/rights/public-scope approval. Branch is based on `bf32027d`; `dev` has three later Android-only commits with no ESP overlap and was not blindly merged. Remaining: integration/remote checks, authorized staging drill, precision policy, rights/clarification/public scope and G09 certification.
+- Enterprise portal follow-up corrections 2026-10-25: LOCAL_ONLY / NO_PUBLIC_EXECUTION on `codex/enterprise-static-portal` (49 ahead / 43 behind origin/dev at fetch; snapshot only, nothing incorporated).
+  All three follow-up RED reproduced via overlay, then fixed with maintained regressions (no assertions weakened): (1) automatic withdrawal classifies reason from source state — only `Status=withdrawn` revokes (`ErrOfficialRevoked` by any hash), outage pauses; full + official-only + restart + recovery covered.
+  (2) atomic import begin (single tx + advisory lock): identical retries converge, orphans adopted with supersession from persisted state, cancel persists nothing, stale finish retires as `superseded` (new append-only migration 000131, coordinated past dev's 000122-130) instead of repointing; race/concurrency green on real PostGIS.
+  (3) official insights reconcile every state (wrong_branch/succession_review grouped as unlinked with explanation; inconsistent census refused).
+  (4) real cross-release asset retention: hardlinked `retained/` store with keep/byte budgets, withdraw purge, `/assets/*` edge mapping; Caddy rehearsals green (retained-200 after rollback, no mixing, purged-404 after withdraw); prior 404-rehearsal distinguished from retention acceptance.
+  (5) backup/restore proves canonical content digests (rows, raw text, runs, revisions, pointers) from per-execution private dumps.
+  (6) S-ESP-03 aligned to indeterminate (menu without selection): table/section now `RIGHTS_PENDING`, S-ESP-04 preserved, gates needed no change (enforcement never admitted).
+  Publication scope still EMPTY: no origin/rights/approval invented, no VPS/third-party/PR/merge. Commits: reason classification, atomic begin, insights census, retention, backup proof, rights alignment. Remaining externals: precision policy, clarification answers, public scope, authorized staging A→B→A drill.
+  Historical note: the "all fixed" scope of this entry is corrected by the second-review entry above; the four uncovered publication/freeze/pause/asset scenarios were real and are now closed.
+- Enterprise portal Prompt-2 delivery prep 2026-10-25: LOCAL_ONLY / NO_PUBLIC_EXECUTION on `codex/enterprise-static-portal` (42 ahead / 36 behind origin/dev at fetch; counts are a snapshot, nothing incorporated).
+  Publication scope fields are EMPTY, so no origin/rights/approval was invented and no public step ran; STAGING-01 is not claimed as the full portal.
+  [ESP-07 addendum](../backend/evidence/enterprise-static/ESP-07.md): registered edition re-fetched byte-identical and re-imported (19,609 staged / 880 over-precision / needs-review); all 880 are IEEE-754 storage noise collapsing to 46 exact 2-decimal values (0 genuine decimals) — no parser bug, no rounding implemented; exact float-noise admission policy proposed with golden vectors, owner decision pending; real-data replay/outage/backup-restore/export-noop proven (`TestManualRealWeeklyRecovery`); retry-path defect fixed (identical retries crashed on run identity → now converge/resume, `TestFailedBytesConvergeWithoutNewRevision`, `TestRunningAttemptResumesSameRevision`, `TestConcurrentIdenticalBeginConverges`, race green).
+  [Rights re-examination](../product/ENTERPRISE_SOURCE_ADMISSION.md): current primaries re-fetched (registry PDF unchanged + OCR without license; prices metadata URL 404s with no dataset license; enforcement DOCX unchanged menu without selection; fines CC BY re-verified; PMQC DOCX unchanged without license) — no status change, clarification draft recorded unsent.
+  Functional: admitted official insights added to curiosidades (counts/formulas, no guilt verdicts); association-change rebuild proven; historical static navigation stays pending (scope not approved); PMQC/FQ-06 not blockers nor done.
+  Pipeline: full+official-only Caddy rehearsals green (A→B→A, withdraw→404, resurrection refused, asset-retention probe); target capacity campaign OWED with predeclared limits/stops, never against ANP.
+  Integration: origin/dev tip is active payments work (migrations 000123–130 our branch lacks) with payments/MAP branches ahead in other worktrees — NO blind merge, NO PR without delivery authorization; zero file overlap in ESP areas; primary checkout and other worktrees untouched.
+  Commits: retry-convergence fix, rights addendum, insights/rehearsal. Limits: real revision switch OWED behind precision policy; public origin/rights/approval/window/CDN all missing. Next: owner decisions (precision policy, clarification answers, public scope), then final candidate + authorized staging drill.
+- Enterprise portal review corrections 2026-10-25: IN_PROGRESS / LOCAL_ONLY on `codex/enterprise-static-portal`.
+  Three reproduced defects, no VPS/publication/merge: (1) withdrawn releases could be re-promoted — fixed with pre-copy refusal preserving the mark plus revoked-source identity (`ErrReleaseWithdrawn`/`ErrOfficialRevoked`); the STAGING-01 drill exercised the defect, corrected by addendum without deleting history; staging A → B → A drill OWED.
+  (2) preflight/smoke are mode-aware (official-only home `/fiscalizacao/`, manifest cross-check) with required dedicated|shared topology and generator→preflight integration tests; approval stays external.
+  (3) official-only verification enforces an exact file allowlist (export CSV/JSONL and unexpected roots refused even when manifested).
+  (4) maintained `cmd/portalexport` replaces the uncommitted helper (read-only REPEATABLE READ over ExportPin/BuildOfficialExport; real-PostGIS no-op/second-version/refusal green); `Refresh`/config/worker propagate `OfficialOnly` (official-only withdraw goes 404, never full fallback); serve/current pointer contract in the runbook.
+  (5) obligation ledger corrected: ESP-07 real prices BLOCKED_OVER_PRECISION, ESP-12 PARTIAL, ESP-11 revalidation OWED, ESP-16 public capacity OWED, ESP-18 public BLOCKED; staging noindex != private (anonymous GET documented). Next: full local validation, atomic commits.
+- Enterprise portal ESP-STAGING-01 2026-10-25: STAGING_DONE / NOT_PUBLIC on `codex/enterprise-static-portal` after ESP-18 `f1591b82`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-STAGING-01.md). User-authorized scope: real FQ-07 2016–2025 via staging API plus official-only `/fiscalizacao` on `https://teste.abastevo.com.br`; no synthetics.
+  Implemented `portalgen`/`portalcheck`/`portalrelease --official-only` (admitted slice only, delinked station hrefs, mode-mismatch refusal); `enterpriseexport` suites green.
+  Staging: pre-ingest backup verified; 7/7 sanction discovery+import jobs done, seven VERIFIED revisions, current 2025 lease (3,375 rows); candidate `460d8b9f…` (3,394 pages) promoted; additive noindex edge locations; smoke PASS (manifest hash, no price links, API/health intact); withdraw→404→repromote→200 rollback drill PASS.
+  Linked records show association state without station pages; price/registry/PMQC rights still pending; ESP-18 public still blocked; no merge/pilot/G09 claim. Next: second official-only release replay or rights-gated full portal decision.
+- Enterprise portal ESP-18 2026-10-25: BLOCKED_EXTERNAL_AUTHORIZATION /
+  NOT_PUBLISHED on `codex/enterprise-static-portal` after ESP-17 `103dcf6b`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-18.md).
+  [Runbook](../operator/PORTAL_PUBLICATION.md). Implemented the local public
+  preflight, read-only public smoke and publication/rollback runbook;
+  `make check-publication-gate` PASS. No public release was executed: no named
+  public origin/host/root/CDN/TLS/ownership/approval/window; candidate B
+  (`914d8b9f…`) is internally valid at the `https://portal.example` placeholder
+  but its sitemap/robots use that origin and it contains price/station/download
+  pages whose S-ESP-01/02/05 public rights are `RIGHTS_PENDING` (only official
+  S-ESP-04 is admitted; B's official census is 3,375 unmatched). Preflight
+  correctly returns FAILED_LOCAL_GATE; public smoke self-tests PASS but was not
+  run. No VPS/DNS/CDN/shared edge/API/DB/ANP mutation, no app/API/G09
+  certification, no merge/publication. Next: owner approval/rights and an
+  official-only candidate rebuilt at the approved origin.
+- Enterprise portal ESP-17 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-16 `a6c3758e`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-17.md). Found and fixed
+  missing shared CSS/search script on `metodologia`/`404` (raw `pageBase` →
+  `g.base`), with regression tests. Added isolated HTTPS preview (Caddy internal
+  CA, localhost:18443, HTTP 308, HSTS/cache/noindex, no API), preview probe
+  (metadata/landmarks/labels/links, JS-disabled state/station navigation,
+  keyboard skip/focus order, 200% mobile reflow, screenshots) and release-root
+  backup/restore rehearsal. New A/B artifacts `7c37f485…`/`914d8b9f…`; preview
+  A→B→A, 0 probe failures/warnings, backup SHA `a99a3ee9…`. No public
+  TLS/DNS/CDN, shared preview edge, real device/screen reader, cross-release
+  asset retention or production claim; real prices remain OWED. No
+  VPS/publication/merge. Next: ESP-18.
+- Enterprise portal ESP-16 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-15 `71e4f92b`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-16.md). Added a frozen
+  local capacity/browser harness: pinned Caddy container, separate pinned
+  Python generator container, gzip open-loop driver, Caddy CPU/mem/net/block
+  sampling, headless-Chrome FCP/LCP/CLS/same-origin/API probe and fail-closed
+  report; `make check-portal-capacity` + `make portal-capacity`. Baseline
+  real-official 2025 full artifact (`75bc8a1a…`): 3,000/3,000 requests,
+  100.03 req/s, p95 1.47 ms, 0 errors/drops, 6.46% CPU, 26.64 MiB Caddy,
+  browser FCP/LCP 16–184 ms, CLS 0. Concurrent switch A→B and rollback under
+  load: 100.03 req/s, p95 1.25 ms, 0 errors, final current restored; browser
+  FCP/LCP 20–108 ms. No CDN/VPS-direct campaign; real prices, old-asset
+  cross-release retention and production capacity remain OWED. No
+  VPS/publication/merge. Next: ESP-17.
+- Enterprise portal ESP-15 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-14 `43574f7a`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-15.md). Added default-off
+  automatic refresh: fine/official publication → export build (`ObservedAt`) →
+  durable `enterprise-portal-refresh` → generate/verify/promote with current
+  fence; 15-minute recovery schedule, dedicated dispatcher, no-op/restart/
+  orphan recovery, failed-build preservation, private receipt and withdrawal of
+  a release whose FQ revision is no longer published. Real 2025 official slice
+  (3,375 all-unmatched records) over the synthetic price fixture: 3,401 pages/
+  3,411 files/15,881,532 bytes, content `ccd42669…`; correction created a second
+  release, withdrawal removed the current official release. Unit/race,
+  PostGIS integration, real refresh and fine after-publish hook tests PASS;
+  build/vet/staticcheck/sqlc/gofmt/diff PASS. No production activation; real
+  prices, multi-edition FQ, live fine revalidation and prod hosting remain OWED.
+  No VPS/publication/merge. Next: ESP-16.
+- Enterprise portal ESP-14 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-13 `06e871e9`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-14.md). Added an atomic
+  private portal publisher (`portalrelease`: flock/fence, complete copy +
+  second verify, content-addressed releases, atomic `current` symlink,
+  rollback/withdraw/stale-state reconcile), a pinned loopback Caddy rehearsal
+  with security/immutable/noindex headers, gzip and a real 404, and the
+  isolated `rehearse-portal.sh` script. Real ESP-13 A/B artifacts: promote,
+  switch, rollback, corrupt-current recovery, withdraw-to-fallback and
+  withdraw-to-404 all PASS; headers/compression/API-independence checked.
+  Unit/race and integration enterpriseexport PASS; build/vet/staticcheck/sqlc/
+  gofmt/diff PASS. Production host/CDN/TLS/DNS/shared edge, multi-host locking,
+  real prices and auto-refresh remain OWED. No VPS/publication/merge. Next:
+  ESP-15.
+- Enterprise portal ESP-13 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-11 `af615284`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-13.md). Portal artifacts
+  now use `enterprise-portal-v2`: official-pin-bound manifest digest,
+  content-addressed CSS/JS, indexable sitemap + robots, and `portalcheck`
+  verification of manifest/file digests, public-field/JSON/search/CSV
+  allowlists, CPF/private-key/raw-HTML rejection, link/sitemap completeness,
+  gzip/page/file/byte budgets and two-build reproducibility. Real 2025 official
+  slice (3,375 all-unmatched records) over the synthetic station/price fixture:
+  noindex 3,409 pages/3,419 files/15,231,739 bytes; indexable + real search JS
+  3,409 pages/3,421 files/15,932,636 bytes, sitemap 3,408 URLs/466,272 bytes;
+  reproducible compare PASS; max HTML gzip 10,023 B, shard 376 B. Unit/race,
+  integration, real official portal, vet/staticcheck/sqlc/gofmt/diff PASS.
+  Real prices remain blocked by ESP-07/rights; multi-edition FQ and live fine
+  revalidation remain OWED. No VPS/publication/merge. Next: ESP-14.
+- Enterprise data/static portal ESP-11 2026-10-24: LOCAL_DONE (event-level) /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-11.md).
+  Merged FQ-PORTAL-READY; real FQ-07 seven-file acceptance 35,911=35,612+293
+  CPF+6 metadata, 35,612 unmatched/zero links; 2025 export 3,375 rows.
+  `/fiscalizacao/` event-level index/pagination/detail and linked station
+  sections; only `linked` shows a station, unmatched/ambiguous never. Real 2025
+  portal candidate: 3,409 pages/3,419 files/15.2 MB; synthetic linked/ambiguous
+  case covered. Builder provider/state, FQ pin reconcile and no-published gate
+  tested. FQ-06, live fine-link revalidation/rebound, multi-edition snapshot and
+  real FQ+price same-DB deployment remain OWED; real prices still ESP-07-blocked.
+  Next: ESP-13 artifacts.
+
+- Fuel-quality portal readiness 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
+  local `codex/fq-portal-ready` worktree from `origin/dev 721582b8`; commits
+  `424d71b7`, `9795a36e` plus this evidence commit. [Evidence](../backend/evidence/fuel-quality/FQ-PORTAL-READY.md).
+  Seven verified FQ-07 fine resources accepted through the real Rust→worker→
+  PostGIS→FQ-08 read path: 35,911 input = 35,612 accepted + 293 CPF + 6 metadata;
+  35,612 explicit unmatched company decisions, zero links/identity writes in the
+  empty Directory. Added a read-only frozen official-record export port
+  (`ExportPin`/`ExportSanctions`, revision-sealed keyset cursor) and
+  `BuildOfficialExport` JSONL/manifest with payload SHA-256; real exports total
+  35,612 rows. Tests: quality integration/race, seven-file `qualitysource`
+  PASS, build/vet/staticcheck/sqlc/diff. No FQ-06, portal page, map, VPS,
+  production activation or `main` merge claimed. Fine-association live
+  revalidation/rebound remains OWED; event-level ESP-11 can consume the frozen
+  snapshot without station claims.
+
+- Enterprise data/static portal ESP-12 2026-10-24: LOCAL_DONE / PARTIAL;
+  official-record insights were blocked at that checkpoint; ESP-11 event-level
+  now unblocks them, but they are not included in this batch.
+  [Evidence](../backend/evidence/enterprise-static/ESP-12.md).
+  `/curiosidades/` has six approved deterministic questions with formulas,
+  sample-change explanation and exclusion census; `/dados/` exports latest
+  station/price/summary CSVs plus a hashed manifest, with safe spreadsheet text,
+  attribution and no private fields. Fixture 18 pages/28 files; download census
+  7/8/8; Go/race, Portalgen 8 tests + 5 subtests, real PostGIS build→portal and
+  static checks PASS. No official records, API, source activation or publication.
+  Real prices remain blocked by ESP-07/rights. Next: ESP-13 artifacts; ESP-11
+  remains the gating phase.
+
+- Enterprise data/static portal ESP-10 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-10.md).
+  Accent-insensitive name and numeric/alphanumeric CNPJ search over one immutable
+  regional shard per UF (`sem-uf` when absent), 80-char/50-result bounds, city
+  filter, abort/fallback for missing or version-mismatched shards and no national
+  locator. `search.ts` is emitted by the landing build and embedded by
+  `portalgen --search-js`; HTML directory works without JS. Landing suite 60/60;
+  Go/portalgen tests, real PostGIS build→portal, typecheck/build/check and
+  static checks PASS. Synthetic 6,000-station shard: SP 346,084 B / 23,639 gzip
+  vs national 1,020,084 / 70,029. Real-source search remains blocked by ESP-07.
+  Next: ESP-11 official-record pages.
+
+- Enterprise data/static portal ESP-09 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-09.md).
+  `portalgen` verifies one export candidate (manifest/JSONL/analytics hash) and
+  writes deterministic station, price, state/municipality, methodology, gated
+  fiscalization, 404, CSS, robots and portal-manifest pages. Exact prices,
+  periods, history gaps, status, sample/insufficient states, no JS/API, noindex
+  preview, page/byte budgets and local links are tested; real PostGIS
+  build→generate PASS. Real price publication remains blocked by ESP-07
+  over-precision/rights. Next: ESP-10 static search.
+
+- Enterprise data/static portal ESP-08 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-08.md).
+  [Routes/editorial contract](../product/ENTERPRISE_PORTAL_ROUTES_AND_EDITORIAL.md)
+  freezes canonical `/postos/{uuid}/`, `/consultar/`, `/precos/`,
+  `/metodologia/`, gated `/fiscalizacao/`, field allowlists, empty/stale/error
+  states, sample/period wording, attribution and no-JS accessibility. Labelled
+  synthetic prototype under `landing/prototype/` with active/suspended, missing
+  week, insufficient sample, derived summary and gated fiscalization. Landing
+  prototype tests 9/9, full suite 54/54, typecheck/build/check PASS; not in
+  `dist/` or sitemap. Next: ESP-09 generated catalog/price/history pages.
+
+- Enterprise data/static portal ESP-07 2026-10-24: LOCAL_DONE /
+  SYNTHETIC_SLICE_ACCEPTED; real source `BLOCKED_OVER_PRECISION`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-07.md). Synthetic
+  Directory/Official/export/analytics/build chain passes unit/race/PostGIS.
+  Real weekly `revendas_lpc_2026_10_11-2026_10_17.xlsx` (1,875,300 bytes,
+  SHA-256 `e148758e…aaa6d6`) parsed 20,489 rows; import created 7,708 stations
+  and staged 19,609 prices, but 880 over-precision rows (4.29%) correctly kept
+  the revision `needs-review` (limit 1%). Fixed lost CNPJ leading zeros, dot
+  decimal and GLP/DIESEL station labels; no rounding policy invented. No real
+  edition published/exported. Next: ESP-08 routes/templates with labelled
+  synthetic data; real VPS price publication remains blocked.
+
+- Enterprise data/static portal ESP-06 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-06.md).
+  Durable after-publication build intent, private file-lock/state workspace,
+  latest-window coalescing, atomic candidate/state/analytics, Directory
+  fingerprint and Official pin reconciliation, period/fingerprint dedupe and
+  default-off worker schedule. Real PostGIS tests cover correction coalescing,
+  no-op, busy lock, cancellation, lost-notification reconcile and hook
+  failure/publication retention. Build has a dedicated dispatcher; no migration,
+  public route or activation. Next: ESP-07 local data acceptance.
+
+- Enterprise data/static portal ESP-05 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-05.md).
+  One regional pricing analyst buyer, one sample-comparison decision and one
+  Regional Fuel Price Brief frozen; five-station municipal sample rule,
+  Abastevo-derived label, unmeasured costs, `RIGHTS_PENDING` redistribution and
+  `DEMAND_UNVALIDATED`. No implementation, customer, price, contract or
+  deployment. Next: ESP-06 bounded export orchestration.
+
+- Enterprise data/static portal ESP-04 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-04.md).
+  Pure `enterpriseexport/analytics` metrics: per-revision census/coverage,
+  national/state/municipality summaries with sample hash, national/state
+  cheapest rankings with explicit ties/cutoff/population, station history with
+  gaps and summary change only for matching samples. Golden tests cover ties,
+  missing units/periods/identity, sample changes, exclusion reconciliation and
+  input-order independence. No DB/network/clock dependency, migration, route or
+  artifact publication. Next: ESP-05 enterprise offering boundary.
+
+- Enterprise data/static portal ESP-03 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-03.md).
+  Directory/Official now expose bounded export ports; `enterpriseexport` writes
+  deterministic stations/revisions/prices JSONL plus a pinned manifest and
+  content hash into a private candidate dir. Active-identifier-only CNPJ,
+  sourced status, reviewed coordinates, current-revision-only prices and
+  superseded/staging exclusion are covered by real PostGIS tests. A
+  repeatable-read snapshot proves a concurrent correction cannot mix into one
+  build; no DB write, migration, dependency, route or publication. Next: ESP-04
+  deterministic analytics.
+
+- Enterprise data/static portal ESP-02 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Evidence](../backend/evidence/enterprise-static/ESP-02.md).
+  Official discovery now accepts the observed current/legacy weekly filename
+  shapes, dedupes by bounded content SHA-256 (unreliable ETag), keeps the daily
+  two-week scope with an operator correction sweep capped at five weeks, and
+  supersedes only the same survey window. `StationCurrentPrices` uses the latest
+  station window plus its current pointer, so an older correction cannot become
+  current. Unit/race + real-PostGIS Official/read/jobs suites PASS; sqlc stable;
+  no migration, dependency, schedule or source activation. Next: ESP-03 export.
+
+- Enterprise data/static portal ESP-01 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING. [Source admission register](../product/ENTERPRISE_SOURCE_ADMISSION.md)
+  and [evidence](../backend/evidence/enterprise-static/ESP-01.md). Six ANP
+  profiles frozen with fields/keys/clocks/coverage/retention/quotas; rights split
+  into `RIGHTS_PENDING` (registry, prices, PMQC), `ADMITTED` CC BY (enforcement,
+  fines, still runtime/association blocked) and `NOT_ADMITTED` (registry API).
+  Observed weekly filename variant breaks current discovery; historical series is
+  semester ZIP; FQ-06 live stream and safe fine links remain OWED. No source,
+  schema, job, route or deployment enabled. Next: ESP-02 bounded discovery.
+
+- Enterprise data/static portal ESP-00 2026-10-24: LOCAL_DONE /
+  INTEGRATION_PENDING on `codex/enterprise-static-portal` (isolated worktree),
+  replayed onto maintained dev `721582b8`; planning commit `b1a2bde6` preserved.
+  [Evidence](../backend/evidence/enterprise-static/ESP-00.md). Actual baseline,
+  V1/V2 scope, MAP component split, FQ-06/07/08 runtime/safe-link OWED and
+  unaccepted MAP-08 work boundary recorded. Docs only; no source, schema, job,
+  API or hosting change. Next: ESP-01 source/rights/public-field admission.
 - Map/EV execution 2026-10-24: MAP-00–07 LOCAL_DONE / INTEGRATION_PENDING;
   MAP-08 IN_PROGRESS/BLOCKED; engine spike PASS but adapter pending. Commits
   `34750fe1..5cf02a73` on maintained dev after `01c1f068`; no PR/merge/wiki.
@@ -362,6 +635,19 @@
   source activation, phone installation, push/PR/merge, deploy or release claim.
   [Earlier detailed progress](history/MAP_ENGINE_PROGRESS_BEFORE_ACCEPTANCE_20261024.md)
   preserves the superseded checkpoints and all outstanding product obligations.
+
+- Enterprise data/static portal planning 2026-10-24: PLANNING_LOCAL_DONE /
+  IMPLEMENTATION_PLANNED / LOCAL_ONLY. Planning commit `b1a2bde6` was preserved
+  from its old local-dev parent and replayed onto maintained dev `721582b8` in
+  ESP worktree branch `codex/enterprise-static-portal`; the map worktree remains
+  untouched. [ESP-00–18 plan](ENTERPRISE_DATA_STATIC_PORTAL_PLAN.md),
+  [rules/use cases](../product/ENTERPRISE_DATA_STATIC_PORTAL_CONTRACT.md) and
+  [continuation prompt](ENTERPRISE_DATA_STATIC_PORTAL_PROMPT.md) define existing
+  ANP/FQ reuse, analytics, static search/pages, versioned publication, correction
+  recovery and measured VPS/CDN capacity. Next: ESP-00 actual baseline/scope
+  reconciliation and component split with the map. No source activation,
+  D implementation, VPS/load/deployment or release acceptance.
+
 - Fuel/electric map planning 2026-10-24: PLANNING_LOCAL_DONE /
   IMPLEMENTATION_PLANNED, isolated from occupied checkouts at `b90a0cd1`.
   [MAP-00–33](MAP_EV_EXECUTION_PLAN.md), [phase registry](MAP_EV_PHASES.json),

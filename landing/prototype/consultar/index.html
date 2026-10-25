@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Consultar preços de combustíveis | abastevo</title>
+  <meta name="description" content="Protótipo sintético da consulta pública de preços da pesquisa ANP: fonte, período, amostra e status do posto, sem chamadas de API.">
+  <link rel="stylesheet" href="../assets/prototype.css">
+</head>
+<body>
+  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="../consultar/">abastevo</a>
+      <nav class="portal-nav" aria-label="Navegação do portal">
+        <a href="../consultar/" aria-current="page">Consultar</a>
+        <a href="../precos/">Preços</a>
+        <a href="../metodologia/">Metodologia</a>
+        <a href="../fiscalizacao/">Fiscalização</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="conteudo" class="wrap">
+    <p class="eyebrow">Consulta pública</p>
+    <h1>Consultar preços de combustíveis</h1>
+    <p class="lead">Preços encontrados na pesquisa da ANP, com período, fonte e amostra. Não é preço ao vivo.</p>
+
+    <p class="synthetic" role="note">Protótipo com dados sintéticos. Nenhum preço real é publicado nesta página.</p>
+
+    <form class="form-row" action="/consultar/" method="get" role="search">
+      <div>
+        <label for="q">Posto, CNPJ ou marca</label>
+        <input id="q" name="q" type="search" maxlength="100" placeholder="Ex.: Posto Sintético A ou 04.218.406/0001-04">
+      </div>
+      <div>
+        <label for="uf">UF</label>
+        <select id="uf" name="uf">
+          <option value="">Todas</option>
+          <option value="SP" selected>SP</option>
+          <option value="MG">MG</option>
+        </select>
+      </div>
+      <div>
+        <label for="municipio">Município</label>
+        <select id="municipio" name="municipio">
+          <option value="">Todos</option>
+          <option value="3550308" selected>São Paulo</option>
+          <option value="3509502">Campinas</option>
+          <option value="3552205">Santos</option>
+        </select>
+      </div>
+      <button class="button" type="submit">Consultar</button>
+    </form>
+    <p class="muted">A busca instantânea usa índices estáticos por região. Sem JavaScript, os cartões e links abaixo continuam disponíveis.</p>
+
+    <h2>Resultados da amostra</h2>
+    <p class="muted">Pesquisa ANP de 04/10/2026 a 10/10/2026 · publicação Abastevo em 24/10/2026.</p>
+    <div class="grid cards">
+      <article class="card">
+        <h3><a href="../postos/00000000-0000-4000-8000-000000000001/">Posto Sintético A</a></h3>
+        <p class="muted">CNPJ 04.218.406/0001-04 · São Paulo/SP</p>
+        <p><span class="status">Ativo (informado pela fonte)</span></p>
+        <p class="price">R$ 5,899</p>
+        <p>Gasolina comum · L · coleta em 08/10/2026</p>
+        <p class="muted">Fonte: ANP. Exibição Abastevo.</p>
+      </article>
+      <article class="card">
+        <h3><a href="../postos/00000000-0000-4000-8000-000000000002/">Posto Sintético B</a></h3>
+        <p class="muted">CNPJ 11.222.333/0001-81 · Campinas/SP</p>
+        <p><span class="status status-suspended">Suspenso (informado pela fonte)</span></p>
+        <p class="price">R$ 3,799</p>
+        <p>Etanol hidratado · L · coleta em 08/10/2026</p>
+        <p class="muted">O status é informado pela fonte; não é um score de qualidade.</p>
+      </article>
+    </div>
+
+    <h2>Município sem preço nesta pesquisa</h2>
+    <div class="notice">
+      <strong>Santos/SP — Sem preço ANP nesta pesquisa.</strong>
+      <p>O município pode não ter sido amostrado ou os postos podem não ter uma observação válida no período. A ausência não significa preço zero nem que o posto não venda o combustível.</p>
+      <p><a href="../metodologia/">Entenda a amostra e as datas</a></p>
+    </div>
+
+    <div class="notice" style="margin-top: 1.5rem;">
+      <strong>Dados datados, não “ao vivo”.</strong>
+      <p>Última publicação Abastevo: 24/10/2026. Fonte: pesquisa ANP de 04/10/2026 a 10/10/2026. Se a atualização parar, a data continua visível.</p>
+    </div>
+
+    <div class="links">
+      <a href="../precos/">Ver resumo por região</a>
+      <a href="../metodologia/">Metodologia e fontes</a>
+      <a href="../fiscalizacao/">Fiscalização (indisponível neste protótipo)</a>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo.</p>
+      <p>Não afiliado à ANP. Código aberto sob licença MIT. Protótipo com dados sintéticos.</p>
+    </div>
+  </footer>
+</body>
+</html>

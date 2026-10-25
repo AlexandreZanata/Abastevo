@@ -56,9 +56,12 @@ func TestParseProduct(t *testing.T) {
 		{"additived", "GASOLINA ADITIVADA", GasolineAdditived},
 		{"ethanol", "ETANOL", Ethanol},
 		{"diesel s500 plain", "OLEO DIESEL S500", DieselS500},
+		{"diesel s500 station label", "DIESEL S500", DieselS500},
 		{"diesel s10 accented", "ÓLEO DIESEL S10", DieselS10},
+		{"diesel s10 station label", "DIESEL S10", DieselS10},
 		{"cng", "GNV", CNG},
 		{"lpg", "GLP P13", LPGP13},
+		{"lpg station label", "GLP", LPGP13},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

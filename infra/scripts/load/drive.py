@@ -74,18 +74,18 @@ class Recorder:
             raise ValueError("cannot write samples: %s" % err)
 
 
-def run_request(recorder, url, deadline_s, expect, abandoned):
+def run_request(recorder, url, deadline_s, expect, abandoned, gzip_encoding=False):
     """One attempt: semantic check first, then status class, else censored."""
     scheduled_ns = recorder.scheduled()
     started_ns = recorder.start(scheduled_ns)
     status, size, completed_ns = "cancel", 0, None
     try:
         try:
-            code, body = fetch_body(url, deadline_s)
+            code, body, network_bytes = fetch_body(url, deadline_s, gzip_encoding)
             if expect is not None and expect.encode() not in body:
-                status, size = "wrong", len(body)
+                status, size = "wrong", network_bytes
             else:
-                status, size = code, len(body)
+                status, size = code, network_bytes
             completed_ns = time.monotonic_ns()
         except (socket.timeout, TimeoutError):
             status, size = "timeout", 0
@@ -101,21 +101,40 @@ def run_request(recorder, url, deadline_s, expect, abandoned):
         recorder.finish(scheduled_ns, started_ns, completed_ns, status, size)
 
 
-def fetch_body(url, deadline_s):
+def fetch_body(url, deadline_s, gzip_encoding=False):
+    import gzip as gzip_module
+    headers = {"Accept-Encoding": "gzip"} if gzip_encoding else {}
+    request = urllib.request.Request(url, headers=headers)
+
+    def decode(raw, encoding):
+        if "gzip" in encoding.lower():
+            try:
+                return gzip_module.decompress(raw)
+            except Exception:
+                return raw
+        return raw
+
     try:
-        with urllib.request.urlopen(url, timeout=deadline_s) as response:
-            return str(response.status), response.read()
+        with urllib.request.urlopen(request, timeout=deadline_s) as response:
+            raw = response.read()
+            return (str(response.status),
+                    decode(raw, response.headers.get("Content-Encoding", "")),
+                    len(raw))
     except urllib.error.HTTPError as err:
         try:
-            return str(err.code), err.read()
+            raw = err.read()
+            return (str(err.code),
+                    decode(raw, err.headers.get("Content-Encoding", "")),
+                    len(raw))
         except Exception:
-            return str(err.code), b""
+            return str(err.code), b"", 0
 
 
 recorder = None
 
 
-def drive(urls, mode, clients, rate, duration_s, deadline_s, out, expect, telemetry):
+def drive(urls, mode, clients, rate, duration_s, deadline_s, out, expect, telemetry,
+          gzip_encoding=False):
     # pylint: disable=global-statement
     global recorder
     origin_ns = time.monotonic_ns()
@@ -127,7 +146,9 @@ def drive(urls, mode, clients, rate, duration_s, deadline_s, out, expect, teleme
 
     def spawn(url):
         thread = threading.Thread(
-            target=run_request, args=(recorder, url, deadline_s, expect, abandoned), daemon=True)
+            target=run_request,
+            args=(recorder, url, deadline_s, expect, abandoned, gzip_encoding),
+            daemon=True)
         thread.start()
         threads.append(thread)
 
@@ -178,10 +199,11 @@ def drive(urls, mode, clients, rate, duration_s, deadline_s, out, expect, teleme
     dropped = sum(1 for r in recorder.rows if r[3] == "drop")
     manifest = (
         "wall_start=%s mode=%s clients=%d rate=%s duration_s=%.1f deadline_ms=%d "
-        "telemetry=%s scheduled=%d max_inflight=%d max_sched_lag_ms=%.2f "
-        "dropped=%d generator_limited=%s out=%s" % (
+        "telemetry=%s accept_encoding=%s scheduled=%d max_inflight=%d "
+        "max_sched_lag_ms=%.2f dropped=%d generator_limited=%s out=%s" % (
             wall_start, mode, clients, rate if mode == "open" else "-",
             duration_s, int(deadline_s * 1000), telemetry,
+            "gzip" if gzip_encoding else "identity",
             scheduled, recorder.max_inflight, recorder.max_lag,
             dropped, "yes" if dropped else "no", out))
     print(manifest)
@@ -195,9 +217,12 @@ def parse_args(argv):
         flag = argv[pos]
         if flag == "--self-test":
             return {"self_test": True}
-        if flag in ("--url", "--urls-file", "--mode", "--clients", "--rate",
-                    "--duration", "--deadline-ms", "--out", "--expect-substring",
-                    "--telemetry"):
+        if flag == "--gzip":
+            args["gzip"] = True
+            pos += 1
+        elif flag in ("--url", "--urls-file", "--mode", "--clients", "--rate",
+                      "--duration", "--deadline-ms", "--out", "--expect-substring",
+                      "--telemetry"):
             if pos + 1 >= len(argv):
                 raise ValueError("%s needs a value" % flag)
             args[flag[2:]] = argv[pos + 1]
@@ -243,7 +268,8 @@ def main(argv):
               deadline_s=float(args["deadline-ms"]) / 1000.0,
               out=args["out"],
               expect=args.get("expect-substring"),
-              telemetry=args.get("telemetry", "off"))
+              telemetry=args.get("telemetry", "off"),
+              gzip_encoding=args.get("gzip", False))
     except ValueError as err:
         print("REFUSED: %s" % err, file=sys.stderr)
         return 2
@@ -258,6 +284,14 @@ def self_test():
 
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802
+            if self.path == "/gzip":
+                import gzip as gzip_module
+                body = gzip_module.compress(b"must-appear-gzip" * 256)
+                self.send_response(200)
+                self.send_header("Content-Encoding", "gzip")
+                self.end_headers()
+                self.wfile.write(body)
+                return
             if self.path == "/slow":
                 time.sleep(0.30)
                 body = b"ok"
@@ -306,6 +340,12 @@ def self_test():
     check("closed fast reconciles", fast["reconcile"] and fast["errors"] == 0,
           str({k: fast[k] for k in ("offered", "errors", "reconcile")}))
     check("closed fast all successful", fast["successful"] == fast["offered"] > 0)
+    drive([base + "/gzip"], "closed", 1, 0, 0.4, 2.0, tmp + "/gzip-check.csv",
+          "must-appear-gzip", "off", True)
+    gzip_run = summarize_csv(tmp + "/gzip-check.csv")
+    check("gzip semantic body and network bytes",
+          gzip_run["successful"] == gzip_run["offered"] > 0 and
+          gzip_run["successful_bytes"] < gzip_run["offered"] * len(b"must-appear-gzip" * 256))
 
     # Slow endpoint under a short deadline: timeouts are failures, counted.
     drive([base + "/slow"], "closed", 2, 0, 0.6, 0.1, tmp + "/slow.csv", None, "off")

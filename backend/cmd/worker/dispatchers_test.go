@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	enterprisejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/adapters/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 )
 
@@ -92,5 +93,65 @@ func TestWorkerNativeSlotsAreExplicitAndIndependent(t *testing.T) {
 	delete(handlers, "quality-import")
 	if _, e := workerDispatchers(nil, handlers, "quality-import"); e == nil {
 		t.Fatal("missing enabled native handler accepted")
+	}
+}
+
+func TestEnterpriseExportBuildIsIsolated(t *testing.T) {
+	handlers := map[string]jobs.Handler{}
+	for _, kind := range []string{
+		"evidence-sweep", "account-erasure-reconcile",
+		"privacy-training-reconcile", "privacy-training-sweep",
+		enterprisejobs.BuildKind,
+	} {
+		handlers[kind] = dispatcherHandler(kind)
+	}
+	dispatchers, err := workerDispatchers(nil, handlers, enterprisejobs.BuildKind)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dispatchers) != 6 {
+		t.Fatalf("dispatchers = %d, want general + four safety + export build", len(dispatchers))
+	}
+	excluded := false
+	for _, kind := range dispatchers[0].ExcludedKinds {
+		if kind == enterprisejobs.BuildKind {
+			excluded = true
+		}
+	}
+	if !excluded {
+		t.Fatal("general dispatcher can claim the export build")
+	}
+	if dispatchers[5].Kind != enterprisejobs.BuildKind {
+		t.Fatalf("dedicated dispatcher = %+v", dispatchers[5])
+	}
+}
+
+func TestEnterprisePortalRefreshIsIsolated(t *testing.T) {
+	handlers := map[string]jobs.Handler{}
+	for _, kind := range []string{
+		"evidence-sweep", "account-erasure-reconcile",
+		"privacy-training-reconcile", "privacy-training-sweep",
+		enterprisejobs.RefreshKind,
+	} {
+		handlers[kind] = dispatcherHandler(kind)
+	}
+	dispatchers, err := workerDispatchers(nil, handlers, enterprisejobs.RefreshKind)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dispatchers) != 6 {
+		t.Fatalf("dispatchers = %d, want general + four safety + refresh", len(dispatchers))
+	}
+	excluded := false
+	for _, kind := range dispatchers[0].ExcludedKinds {
+		if kind == enterprisejobs.RefreshKind {
+			excluded = true
+		}
+	}
+	if !excluded {
+		t.Fatal("general dispatcher can claim the portal refresh")
+	}
+	if dispatchers[5].Kind != enterprisejobs.RefreshKind {
+		t.Fatalf("dedicated refresh dispatcher = %+v", dispatchers[5])
 	}
 }

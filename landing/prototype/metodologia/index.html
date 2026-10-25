@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Metodologia e fontes | abastevo</title>
+  <meta name="description" content="Protótipo sintético da metodologia: fontes ANP, datas, amostra, cálculos derivados, correções, direitos pendentes e limites da publicação.">
+  <link rel="stylesheet" href="../assets/prototype.css">
+</head>
+<body>
+  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="../consultar/">abastevo</a>
+      <nav class="portal-nav" aria-label="Navegação do portal">
+        <a href="../consultar/">Consultar</a>
+        <a href="../precos/">Preços</a>
+        <a href="../metodologia/" aria-current="page">Metodologia</a>
+        <a href="../fiscalizacao/">Fiscalização</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="conteudo" class="wrap">
+    <p class="eyebrow">Transparência</p>
+    <h1>Metodologia e fontes</h1>
+    <p class="lead">Como os preços, resumos e lacunas são construídos — e o que este portal não afirma.</p>
+    <p class="synthetic" role="note">Protótipo com dados sintéticos. As regras abaixo são o contrato editorial; os números são exemplos.</p>
+
+    <h2>Fontes</h2>
+    <ul>
+      <li><strong>Cadastro de postos:</strong> dados cadastrais de revendedores da ANP, reutilizados pelo Directory. O CNPJ completo e o UUID canônico são preservados; um CNPJ inválido não é inventado.</li>
+      <li><strong>Preços:</strong> Levantamento de Preços de Combustíveis da ANP, arquivo de posto por semana. O período e a data de coleta vêm da fonte.</li>
+      <li><strong>Fiscalização e multas:</strong> fatos oficiais separados, ainda não admitidos neste protótipo. Não há score de risco.</li>
+      <li><strong>Direitos:</strong> a redistribuição pública de preços/cadastro está pendente de uma licença compatível registrada. O protótipo não publica linhas reais.</li>
+    </ul>
+
+    <h2>Datas e relógios</h2>
+    <ul>
+      <li><strong>Coleta:</strong> data em que a ANP coletou o preço.</li>
+      <li><strong>Pesquisa:</strong> semana de referência (início e fim).</li>
+      <li><strong>Publicação Abastevo:</strong> quando o arquivo estático foi gerado.</li>
+      <li><strong>Última verificação da fonte:</strong> separada da publicação; uma geração nova não rejuvenece a fonte.</li>
+    </ul>
+    <p>Um preço é sempre “encontrado na pesquisa de [período]”. Não é preço ao vivo e não garante disponibilidade atual.</p>
+
+    <h2>Amostra e rankings</h2>
+    <ul>
+      <li>A pesquisa é amostral; não cobre todos os postos nem todos os dias.</li>
+      <li>Rankings são “menores preços encontrados nesta amostra e período”, com contagem de postos, empates e exclusões.</li>
+      <li>Um município só recebe resumo quando tem pelo menos 5 postos com preço; abaixo disso, mostramos amostra insuficiente.</li>
+      <li>Semana ausente é lacuna, nunca preço zero. Um mínimo histórico não é uma oferta atual.</li>
+    </ul>
+
+    <h2>Dados oficiais e cálculos Abastevo</h2>
+    <p>“Fonte: ANP” identifica o fato oficial. “Cálculo Abastevo” identifica mínimo, máximo, dispersão, médias e rankings derivados. Um resumo derivado não é uma estatística oficial da ANP e não é calculado pela média das médias municipais.</p>
+
+    <h2>Correções e retiradas</h2>
+    <p>Uma correção da fonte gera uma nova revisão; páginas, resumos e índices são reconstruídos a partir dela. Registros retirados não voltam por rollback. O portal não promete apagar cópias já baixadas por terceiros.</p>
+
+    <h2>Privacidade e independência</h2>
+    <p>Nenhuma consulta chama a API do Abastevo, a API da ANP ou o banco. O navegador baixa apenas arquivos estáticos públicos. Não publicamos CPF, fotos de usuários, GPS de colaboradores, documentos internos ou dados de conta. Pagamento ou patrocínio não altera a ordem dos preços nem os fatos oficiais.</p>
+
+    <h2>Bloqueios atuais</h2>
+    <ul>
+      <li>A edição real mais recente encontrada tem preços com mais de três casas decimais; a política de precisão monetária precisa ser decidida antes de publicar preços reais.</li>
+      <li>A fiscalização depende da aceitação do fluxo oficial e da associação segura ao posto; até lá, a página explica a ausência e não inventa registros.</li>
+      <li>O protótipo é sintético e não é indexável.</li>
+    </ul>
+
+    <div class="source">
+      <p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença MIT.</p>
+    </div>
+
+    <div class="links">
+      <a href="../consultar/">Consultar</a>
+      <a href="../precos/">Resumo por região</a>
+      <a href="../fiscalizacao/">Fiscalização</a>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo.</p>
+      <p>Não afiliado à ANP. Código aberto sob licença MIT. Protótipo com dados sintéticos.</p>
+    </div>
+  </footer>
+</body>
+</html>

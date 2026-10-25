@@ -63,6 +63,16 @@ func testFineFileRustPostGISRecoveryCorrectionAndCleanup(t *testing.T, period st
 	original := append([]byte{}, raw...)
 	job := makeJob(raw)
 	im := FineFileImport{Pool: p, Publish: adapters.NewPublisher(p), Serial: adapters.NativeSourceSerial(p)}
+	hookCalls := 0
+	hookRevisions := map[string]int{}
+	im.AfterPublish = func(_ context.Context, revisionID string) error {
+		if revisionID == "" {
+			t.Fatal("empty after-publish revision")
+		}
+		hookCalls++
+		hookRevisions[revisionID]++
+		return nil
+	}
 	cleanupFailure := false
 	closed := 0
 	im.Fetch = func(context.Context, string) (FileArtifact, error) {
@@ -166,6 +176,9 @@ func testFineFileRustPostGISRecoveryCorrectionAndCleanup(t *testing.T, period st
 	}
 	if e = p.QueryRow(ctx, "SELECT count(*) FROM quality_links").Scan(&n); e != nil || n != 0 {
 		t.Fatal("raw native import invented station association", n, e)
+	}
+	if hookCalls < 2 || len(hookRevisions) != 2 {
+		t.Fatalf("after-publish hooks = %d/%v, want original + correction revisions", hookCalls, hookRevisions)
 	}
 }
 

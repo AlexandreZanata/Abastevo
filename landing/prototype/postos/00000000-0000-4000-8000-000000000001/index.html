@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Posto Sintético A — pesquisa ANP | abastevo</title>
+  <meta name="description" content="Protótipo sintético do detalhe do posto com preços datados da pesquisa ANP, histórico, fonte, status informado e lacunas explícitas.">
+  <link rel="stylesheet" href="../../assets/prototype.css">
+</head>
+<body>
+  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="../../consultar/">abastevo</a>
+      <nav class="portal-nav" aria-label="Navegação do portal">
+        <a href="../../consultar/">Consultar</a>
+        <a href="../../precos/">Preços</a>
+        <a href="../../metodologia/">Metodologia</a>
+        <a href="../../fiscalizacao/">Fiscalização</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="conteudo" class="wrap">
+    <p class="eyebrow">Detalhe do posto</p>
+    <h1>Posto Sintético A</h1>
+    <p class="lead">São Paulo/SP · CNPJ 04.218.406/0001-04 · <span class="status">Ativo (informado pela fonte)</span></p>
+    <p class="synthetic" role="note">Protótipo com dados sintéticos. Nenhum preço real é publicado nesta página.</p>
+
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); margin-top: 1rem;">
+      <section class="card" aria-labelledby="identidade">
+        <h2 id="identidade">Identidade e endereço</h2>
+        <p>Rua Sintética, 100 · Vila Exemplo · São Paulo/SP · CEP 00000-000</p>
+        <p class="muted">Localização: revisada. Coordenadas não são exibidas nesta versão; o portal não usa mapa nem geocodificação.</p>
+        <p class="muted">Identificador canônico: 00000000-0000-4000-8000-000000000001.</p>
+        <p class="muted">O status acima é informado pela fonte e não é um score de qualidade, confiança ou segurança.</p>
+      </section>
+      <section class="card" aria-labelledby="pesquisa">
+        <h2 id="pesquisa">Pesquisa de origem</h2>
+        <p>ANP — Levantamento de Preços de Combustíveis</p>
+        <p>Período: 04/10/2026 a 10/10/2026</p>
+        <p>Publicação Abastevo: 24/10/2026</p>
+        <p class="muted">Preços encontrados na amostra; não é preço ao vivo.</p>
+      </section>
+    </div>
+
+    <h2>Preços encontrados nesta pesquisa</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>Observações mais recentes por combustível e unidade, com data de coleta</caption>
+        <thead>
+          <tr>
+            <th scope="col">Combustível</th>
+            <th scope="col">Unidade</th>
+            <th scope="col">Condição</th>
+            <th scope="col" class="num">Preço</th>
+            <th scope="col">Coleta</th>
+            <th scope="col">Fonte</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Gasolina comum</td>
+            <td>L</td>
+            <td>À vista</td>
+            <td class="num">R$ 5,899</td>
+            <td>08/10/2026</td>
+            <td>ANP</td>
+          </tr>
+          <tr>
+            <td>Etanol hidratado</td>
+            <td>L</td>
+            <td>À vista</td>
+            <td class="num">R$ 3,799</td>
+            <td>08/10/2026</td>
+            <td>ANP</td>
+          </tr>
+          <tr>
+            <td>Diesel S10</td>
+            <td>L</td>
+            <td>À vista</td>
+            <td class="num">R$ 6,099</td>
+            <td>09/10/2026</td>
+            <td>ANP</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Histórico por pesquisa</h2>
+    <div class="table-wrap">
+      <table>
+        <caption>Gasolina comum · L · uma linha por pesquisa; lacunas não são preço zero</caption>
+        <thead>
+          <tr>
+            <th scope="col">Período da pesquisa</th>
+            <th scope="col" class="num">Preço</th>
+            <th scope="col">Coleta</th>
+            <th scope="col">Situação</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>04/10/2026 a 10/10/2026</td>
+            <td class="num">R$ 5,899</td>
+            <td>08/10/2026</td>
+            <td>Observação publicada</td>
+          </tr>
+          <tr>
+            <td>27/09/2026 a 03/10/2026</td>
+            <td class="num">R$ 5,799</td>
+            <td>01/10/2026</td>
+            <td>Observação publicada</td>
+          </tr>
+          <tr>
+            <td>20/09/2026 a 26/09/2026</td>
+            <td class="num">—</td>
+            <td>—</td>
+            <td>Sem observação nesta pesquisa</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="notice">
+      <strong>Como ler estes dados</strong>
+      <p>A pesquisa da ANP é amostral. A ausência de uma semana não significa preço zero. Um preço histórico não é uma oferta atual. Comparações entre semanas só são feitas quando o combustível, a unidade e a amostra são compatíveis.</p>
+    </div>
+
+    <div class="source">
+      <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. <a href="https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/levantamento-de-precos-de-combustiveis-ultimas-semanas-pesquisadas">Página oficial da pesquisa</a>.</p>
+      <p class="muted">Revisão sintética: rev-sintetica-001 · checksum: sha256:sintetico-esp08 · exibição Abastevo.</p>
+    </div>
+
+    <div class="links">
+      <a href="../../consultar/">Voltar à consulta</a>
+      <a href="../../precos/">Resumo por região</a>
+      <a href="../../metodologia/">Metodologia e fontes</a>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo.</p>
+      <p>Não afiliado à ANP. Código aberto sob licença MIT. Protótipo com dados sintéticos.</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,39 @@
+# Isolated local HTTPS preview. Caddy's internal CA only; no public DNS,
+# no shared edge, no API proxy. The preview edge always forces noindex.
+{
+	admin off
+}
+
+https://localhost:18443 {
+	tls internal
+
+	root * /srv/portal/current
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=3600"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		X-Robots-Tag "noindex, nofollow"
+	}
+
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	@documents path /consultar/ /consultar/* /precos/ /precos/* /postos/* /fiscalizacao/ /fiscalizacao/* /curiosidades/ /curiosidades/* /dados/ /dados/* /metodologia/
+	header @documents Cache-Control "public, max-age=0, must-revalidate"
+
+	file_server {
+		precompressed
+	}
+
+	handle_errors {
+		respond "Página não encontrada" 404
+	}
+}
+
+http://localhost:18082 {
+	redir https://localhost:18443{uri} 308
+}

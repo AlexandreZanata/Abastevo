@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	official "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/official"
 	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
@@ -332,4 +334,252 @@ func TestConflictingDuplicateQuarantined(t *testing.T) {
 	if err != nil || !fin.Published {
 		t.Fatalf("finish = %+v, %v", fin, err)
 	}
+}
+
+func TestOlderWeekCorrectionKeepsNewerWindowCurrent(t *testing.T) {
+	im, pool := freshImporter(t)
+	ctx := context.Background()
+	st := makeStation(t, pool, "Posto A")
+	week2Start := time.Date(2025, 1, 13, 0, 0, 0, 0, time.UTC)
+	week2End := time.Date(2025, 1, 19, 0, 0, 0, 0, time.UTC)
+
+	publish := func(checksum string, start, end time.Time, row domain.PriceRow) string {
+		t.Helper()
+		run, err := im.BeginRun(ctx, domain.ImportKey{
+			SourceURL:      "https://www.gov.br/anp/" + checksum + ".xlsx",
+			SourceChecksum: checksum, ParserVersion: "esp02-test",
+		}, start, end)
+		if err != nil || run.NoOp {
+			t.Fatalf("begin %s = %+v, %v", checksum, run, err)
+		}
+		var tally domain.QuarantineTally
+		if _, err := im.StageBatch(ctx, run.RevisionID, []domain.PriceRow{row}, &tally); err != nil {
+			t.Fatalf("stage %s: %v", checksum, err)
+		}
+		fin, err := im.FinishRun(ctx, run.RunID, run.RevisionID, &tally)
+		if err != nil || !fin.Published {
+			t.Fatalf("finish %s = %+v, %v", checksum, fin, err)
+		}
+		return run.RevisionID
+	}
+
+	week1 := publish("sha256:w1a", weekStart, weekEnd, priceRow(st, 8, 5999))
+	week2Row := priceRow(st, 8, 6199)
+	week2Row.CollectedOn = time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
+	week2 := publish("sha256:w2", week2Start, week2End, week2Row)
+	week1Corrected := publish("sha256:w1b", weekStart, weekEnd, priceRow(st, 8, 5799))
+
+	cur1, err := im.CurrentRevision(ctx, weekStart, weekEnd)
+	if err != nil || cur1 != week1Corrected {
+		t.Errorf("week1 pointer = %q, %v; want correction %q", cur1, err, week1Corrected)
+	}
+	cur2, err := im.CurrentRevision(ctx, week2Start, week2End)
+	if err != nil || cur2 != week2 {
+		t.Errorf("week2 pointer = %q, %v; want %q", cur2, err, week2)
+	}
+
+	var supersedes string
+	if err := pool.QueryRow(ctx,
+		"SELECT supersedes_revision_id::text FROM official_revisions WHERE id = $1",
+		week1Corrected).Scan(&supersedes); err != nil {
+		t.Fatal(err)
+	}
+	if supersedes != week1 {
+		t.Errorf("correction supersedes %q, want the same week %q", supersedes, week1)
+	}
+
+	stationUUID, err := mustUUID(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := official.New(pool).StationCurrentPrices(ctx, official.StationCurrentPricesParams{
+		StationID: stationUUID, Fuel: "",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("current rows = %d, want the newest week only", len(rows))
+	}
+	if uuidString(rows[0].RevisionID) != week2 || rows[0].AmountMilliBrl != 6199 {
+		t.Errorf("current row = %s/%d, want week2 %s/6199",
+			uuidString(rows[0].RevisionID), rows[0].AmountMilliBrl, week2)
+	}
+}
+
+func TestFailedBytesConvergeWithoutNewRevision(t *testing.T) {
+	im, pool := freshImporter(t)
+	ctx := context.Background()
+	st := makeStation(t, pool, "Posto A")
+	key := domain.ImportKey{SourceURL: "https://www.gov.br/anp/w1.xlsx", SourceChecksum: "sha256:aaa", ParserVersion: "p02-t04"}
+	first, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil || first.NoOp {
+		t.Fatalf("begin = %+v, %v", first, err)
+	}
+	var tally domain.QuarantineTally
+	if _, err := im.StageBatch(ctx, first.RevisionID, []domain.PriceRow{priceRow(st, 8, 5999)}, &tally); err != nil {
+		t.Fatalf("stage: %v", err)
+	}
+	tally.Add("over-precision", "synthetic-noise")
+	fin, err := im.FinishRun(ctx, first.RunID, first.RevisionID, &tally)
+	if err != nil || fin.Published {
+		t.Fatalf("finish = %+v, %v", fin, err)
+	}
+	// An identical retry converges on the recorded verdict instead of
+	// crashing on the run identity or opening a duplicate revision.
+	again, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil {
+		t.Fatalf("retry begin: %v", err)
+	}
+	if !again.NoOp {
+		t.Errorf("failed bytes opened a duplicate revision: %+v", again)
+	}
+	var revisions int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM official_revisions").Scan(&revisions); err != nil {
+		t.Fatal(err)
+	}
+	if revisions != 1 {
+		t.Errorf("revisions = %d, want exactly the failed one", revisions)
+	}
+}
+
+func TestRunningAttemptResumesSameRevision(t *testing.T) {
+	im, _ := freshImporter(t)
+	ctx := context.Background()
+	key := domain.ImportKey{SourceURL: "https://www.gov.br/anp/w1.xlsx", SourceChecksum: "sha256:aaa", ParserVersion: "p02-t04"}
+	first, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil || first.NoOp {
+		t.Fatalf("begin = %+v, %v", first, err)
+	}
+	// A second attempt while the first is still running resumes the same
+	// run and staging revision instead of failing on the identity.
+	again, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil {
+		t.Fatalf("resume begin: %v", err)
+	}
+	if again.NoOp || again.RunID != first.RunID || again.RevisionID != first.RevisionID {
+		t.Errorf("resume diverged: first=%+v again=%+v", first, again)
+	}
+}
+
+func TestConcurrentIdenticalBeginConverges(t *testing.T) {
+	im, _ := freshImporter(t)
+	ctx := context.Background()
+	key := domain.ImportKey{SourceURL: "https://www.gov.br/anp/w1.xlsx", SourceChecksum: "sha256:aaa", ParserVersion: "p02-t04"}
+	const racers = 4
+	results := make(chan BeginResult, racers)
+	errs := make(chan error, racers)
+	var wg sync.WaitGroup
+	for i := 0; i < racers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			res, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+			results <- res
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(results)
+	close(errs)
+	seen := map[string]bool{}
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent begin: %v", err)
+		}
+	}
+	for res := range results {
+		if res.NoOp {
+			t.Fatalf("concurrent begin took no-op: %+v", res)
+		}
+		seen[res.RevisionID] = true
+	}
+	if len(seen) != 1 {
+		t.Errorf("concurrent identical begins opened %d revisions", len(seen))
+	}
+}
+
+func TestCancelledBeginPersistsNothing(t *testing.T) {
+	im, pool := freshImporter(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	key := domain.ImportKey{SourceURL: "https://www.gov.br/anp/w1.xlsx", SourceChecksum: "sha256:aaa", ParserVersion: "p02-t04"}
+	if _, err := im.BeginRun(ctx, key, weekStart, weekEnd); err == nil {
+		t.Fatal("cancelled begin accepted")
+	}
+	var runs, revisions int
+	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM official_import_runs").Scan(&runs); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM official_revisions").Scan(&revisions); err != nil {
+		t.Fatal(err)
+	}
+	if runs != 0 || revisions != 0 {
+		t.Errorf("cancelled begin persisted runs=%d revisions=%d", runs, revisions)
+	}
+}
+
+func TestStaleFinishKeepsPublishedFacts(t *testing.T) {
+	im, pool := freshImporter(t)
+	ctx := context.Background()
+	st := makeStation(t, pool, "Posto A")
+	oldKey := domain.ImportKey{SourceURL: "https://www.gov.br/anp/w1.xlsx", SourceChecksum: "sha256:aaa", ParserVersion: "p02-t04"}
+	stale, err := im.BeginRun(ctx, oldKey, weekStart, weekEnd)
+	if err != nil || stale.NoOp {
+		t.Fatalf("stale begin = %+v, %v", stale, err)
+	}
+	var tally domain.QuarantineTally
+	if _, err := im.StageBatch(ctx, stale.RevisionID, []domain.PriceRow{priceRow(st, 8, 5999)}, &tally); err != nil {
+		t.Fatalf("stale stage: %v", err)
+	}
+	// A correction publishes first: the window moves on.
+	newKey := domain.ImportKey{SourceURL: "https://www.gov.br/anp/w1.xlsx", SourceChecksum: "sha256:bbb", ParserVersion: "p02-t04"}
+	fresh, err := im.BeginRun(ctx, newKey, weekStart, weekEnd)
+	if err != nil || fresh.NoOp {
+		t.Fatalf("fresh begin = %+v, %v", fresh, err)
+	}
+	var freshTally domain.QuarantineTally
+	if _, err := im.StageBatch(ctx, fresh.RevisionID, []domain.PriceRow{priceRow(st, 8, 6099)}, &freshTally); err != nil {
+		t.Fatalf("fresh stage: %v", err)
+	}
+	fin, err := im.FinishRun(ctx, fresh.RunID, fresh.RevisionID, &freshTally)
+	if err != nil || !fin.Published {
+		t.Fatalf("fresh finish = %+v, %v", fin, err)
+	}
+	// The obsolete competitor finishes late: it must retire as superseded
+	// without touching the published facts or the pointer.
+	late, err := im.FinishRun(ctx, stale.RunID, stale.RevisionID, &tally)
+	if err != nil {
+		t.Fatalf("stale finish errored instead of retiring: %v", err)
+	}
+	if late.Published {
+		t.Fatal("stale finish published over newer facts")
+	}
+	cur, err := im.CurrentRevision(ctx, weekStart, weekEnd)
+	if err != nil || cur != fresh.RevisionID {
+		t.Errorf("pointer = %q, %v; want %q", cur, err, fresh.RevisionID)
+	}
+	var status string
+	if err := pool.QueryRow(ctx, "SELECT status FROM official_revisions WHERE id=$1", mustUUIDOrFail(t, stale.RevisionID)).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if status != domain.RevisionSuperseded {
+		t.Errorf("stale revision status = %q, want superseded", status)
+	}
+	var published int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM official_revisions WHERE status='published'").Scan(&published); err != nil {
+		t.Fatal(err)
+	}
+	if published != 1 {
+		t.Errorf("published revisions = %d, want exactly the newer one", published)
+	}
+}
+
+func mustUUIDOrFail(t *testing.T, id string) any {
+	t.Helper()
+	uid, err := mustUUID(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return uid
 }
