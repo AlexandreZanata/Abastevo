@@ -1160,4 +1160,5 @@
     <string name="map_downloads_size_summary">Tamanho: %1$d KiB em %2$d pacotes</string>
     <string name="map_downloads_depends_on">Depende de: %1$s</string>
     <string name="map_downloads_ok">OK</string>
+    <string name="map_hours_unknown">Horários não informados pela fonte.</string>
 </resources>

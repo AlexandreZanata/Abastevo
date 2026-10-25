@@ -84,6 +84,7 @@ data class MapDiscoveryUi(
     val viewportRadiusMeters: Int = 10_000,
     val chargingSnapshotPresent: Boolean = true,
     val chargingError: String? = null,
+    val cityLocationUnknown: Boolean = false,
 )
 
 /**
@@ -123,6 +124,7 @@ class MapDiscoveryViewModel @Inject constructor(
     private var lastNullStations: List<ServerStation> = emptyList()
     private var lastNullCharging: List<ChargingPlace> = emptyList()
     private var overlayLabels: MapOverlayLabels = MapOverlayLabels()
+    private var lastPreferredMunicipalityCode: String? = null
 
     init {
         engine.setOnOverlaySelected(::onNativeSelection)
@@ -130,6 +132,12 @@ class MapDiscoveryViewModel @Inject constructor(
             viewModelScope.launch {
                 loadPreferredMunicipality()
             }
+        }
+    }
+
+    fun refreshPreferredMunicipality() {
+        if (userPreferences != null && catalog != null) {
+            viewModelScope.launch { loadPreferredMunicipality() }
         }
     }
 
@@ -155,12 +163,9 @@ class MapDiscoveryViewModel @Inject constructor(
                 it.name.equals(cityName, ignoreCase = true) && it.state.equals(state.abbreviation, ignoreCase = true)
             }?.ibgeCode
             ?: return
-        _ui.update {
-            it.copy(
-                municipalityCode = code,
-                municipalityName = cityName,
-            )
-        }
+        if (lastPreferredMunicipalityCode == code) return
+        lastPreferredMunicipalityCode = code
+        onSelectCity(code, cityName)
     }
 
     fun setOverlayLabels(labels: MapOverlayLabels) {
@@ -193,6 +198,35 @@ class MapDiscoveryViewModel @Inject constructor(
         } else if (moveViewport && knownCity != null) {
             engine.setViewport(knownCity.latitude, knownCity.longitude, 13)
             onViewport(knownCity.latitude, knownCity.longitude, _ui.value.viewportRadiusMeters)
+        } else if (moveViewport) {
+            loadCityStations(normalizedCode)
+        }
+    }
+
+    private fun loadCityStations(code: String) {
+        fetchJob?.cancel()
+        val gen = ++generation
+        _ui.update { it.copy(loading = true, error = null, generation = gen) }
+        fetchJob = viewModelScope.launch {
+            try {
+                val page = stations.listInMunicipality(code, 100, null)
+                if (gen != generation) return@launch
+                val reviewed = page.items.firstOrNull {
+                    it.locationQuality == StationLocationQuality.REVIEWED && it.latitude != null && it.longitude != null
+                }
+                _ui.update { it.copy(cityLocationUnknown = reviewed == null) }
+                pushMarkers(
+                    page.items.mapNotNull { it.toMarker() }, gen,
+                    page.items.filter { it.latitude == null || it.longitude == null },
+                )
+                if (reviewed != null) {
+                    engine.setViewport(checkNotNull(reviewed.latitude), checkNotNull(reviewed.longitude), 13)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (gen == generation) _ui.update { it.copy(loading = false, error = e.message ?: "city-unavailable") }
+            }
         }
     }
 
@@ -207,6 +241,7 @@ class MapDiscoveryViewModel @Inject constructor(
                 loading = true,
                 error = null,
                 generation = gen,
+                cityLocationUnknown = false,
                 viewportLatitude = latitude,
                 viewportLongitude = longitude,
                 viewportRadiusMeters = boundedRadius,

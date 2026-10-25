@@ -1147,4 +1147,5 @@
     <string name="map_downloads_size_summary">大小：%1$d KiB（%2$d 个分包）</string>
     <string name="map_downloads_depends_on">依赖于：%1$s</string>
     <string name="map_downloads_ok">确定</string>
+    <string name="map_hours_unknown">来源未提供营业时间。</string>
 </resources>

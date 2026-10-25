@@ -158,7 +158,7 @@ fun MapFiltersDialog(
                         FilterChip(
                             selected = fuelProduct == product,
                             onClick = { fuelProduct = product },
-                            label = { Text(product.name) },
+                            label = { Text(localizedMapProductLabel(product.name)) },
                             modifier = Modifier.heightIn(min = 48.dp).testTag("map-filter-product-${product.name}"),
                         )
                     }
@@ -184,7 +184,7 @@ fun MapFiltersDialog(
                         FilterChip(
                             selected = connector == conn,
                             onClick = { connector = conn },
-                            label = { Text(conn.name) },
+                            label = { Text(localizedMapProductLabel(conn.name)) },
                             modifier = Modifier.heightIn(min = 48.dp).testTag("map-filter-connector-${conn.name}"),
                         )
                     }
@@ -237,11 +237,12 @@ fun MapFiltersDialog(
                     FilterChip(
                         selected = access == ChargingAccess.PUBLIC,
                         onClick = { access = ChargingAccess.PUBLIC },
-                        label = { Text(ChargingAccess.PUBLIC.name) },
+                        label = { Text(stringResource(R.string.charging_explore_public_only)) },
                         modifier = Modifier.heightIn(min = 48.dp).testTag("map-filter-access-PUBLIC"),
                     )
                 }
 
+                Text(stringResource(R.string.map_hours_unknown), style = MaterialTheme.typography.bodySmall)
                 Text(
                     stringResource(R.string.map_filter_unknown_kept_note),
                     style = MaterialTheme.typography.bodySmall,

@@ -1166,4 +1166,5 @@
     <string name="map_downloads_size_summary">Size: %1$d KiB in %2$d packages</string>
     <string name="map_downloads_depends_on">Depends on: %1$s</string>
     <string name="map_downloads_ok">OK</string>
+    <string name="map_hours_unknown">Opening hours are not provided by this source.</string>
 </resources>

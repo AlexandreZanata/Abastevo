@@ -13,6 +13,7 @@ object Routes {
     const val EXPLORE = "home"
     const val COMMUNITY = "community"
     const val MAP = "map"
+    const val MAP_CITY = "map/city"
     const val PROFILE = "profile"
     const val GAMES = "games"
     const val LOCATION = "location"

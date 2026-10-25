@@ -1147,4 +1147,5 @@
     <string name="map_downloads_size_summary">Размер: %1$d КиБ в %2$d пакетах</string>
     <string name="map_downloads_depends_on">Зависит от: %1$s</string>
     <string name="map_downloads_ok">ОК</string>
+    <string name="map_hours_unknown">Источник не сообщает часы работы.</string>
 </resources>

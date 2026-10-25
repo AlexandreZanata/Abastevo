@@ -1,5 +1,9 @@
 package com.anpfuel.app.ui.map
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -92,6 +96,7 @@ fun MapBottomSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     routeError: Boolean = false,
+    onSelectSource: (MapPriceSource) -> Unit = {},
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val marker = ui.marker ?: return
@@ -105,12 +110,26 @@ fun MapBottomSheet(
         MapStationLocationQuality.CITY_CENTROID -> stringResource(R.string.map_location_city_centroid)
         MapStationLocationQuality.UNKNOWN -> stringResource(R.string.map_location_unknown)
     }
-    ModalBottomSheet(onDismissRequest = onDismiss, modifier = modifier) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = modifier,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 48.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp).heightIn(min = 48.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(marker.title, style = MaterialTheme.typography.titleLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MapPriceSource.entries.forEach { source ->
+                    FilterChip(
+                        selected = ui.source == source,
+                        onClick = { onSelectSource(source) },
+                        label = { Text(stringResource(if (source == MapPriceSource.ANP) R.string.map_source_anp else R.string.map_source_community)) },
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("map-sheet-source-${source.name.lowercase(Locale.ROOT)}"),
+                    )
+                }
+            }
             Text(
                 when {
                     marker.fuel && marker.charging -> stringResource(R.string.map_filter_fuel_charging)

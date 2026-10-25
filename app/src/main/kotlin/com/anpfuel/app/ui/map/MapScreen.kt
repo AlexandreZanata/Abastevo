@@ -69,6 +69,8 @@ fun MapScreen(
     onOpenDownloads: () -> Unit,
     onReportStation: (stationId: String, fuel: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
+    onOpenCity: (() -> Unit)? = null,
+    periodContent: @Composable (() -> Unit) -> Unit = {},
     viewModel: MapScreenViewModel = hiltViewModel(),
     discovery: MapDiscoveryViewModel? = null,
     sheet: MapSheetViewModel? = null,
@@ -102,6 +104,7 @@ fun MapScreen(
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshAvailability()
+                discovery?.refreshPreferredMunicipality()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -185,13 +188,23 @@ fun MapScreen(
             if (discUi != null) {
                 FilterChip(
                     selected = false,
-                    onClick = { showFilters = true },
+                    onClick = { onOpenCity?.invoke() ?: run { showFilters = true } },
                     label = { Text(discUi.municipalityName) },
                     modifier = Modifier
                         .heightIn(min = 48.dp)
                         .testTag("map-city-chip"),
                 )
             }
+        }
+
+        if (ui.source == MapPriceSource.ANP) {
+            periodContent { viewModel.refreshAvailability() }
+        }
+        if (discUi?.cityLocationUnknown == true) {
+            Text(
+                "${discUi.municipalityName}: ${stringResource(R.string.map_location_unknown)}",
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
         }
 
         // MAP-20 search: city/name/address with bounded debounced queries.
@@ -505,6 +518,7 @@ fun MapScreen(
                 sheet.clear()
             },
             routeError = routeError,
+            onSelectSource = { viewModel.selectSource(it) },
         )
     }
 }

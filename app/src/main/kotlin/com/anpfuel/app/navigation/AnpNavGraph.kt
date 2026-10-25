@@ -132,6 +132,10 @@ fun AnpNavGraph(
             val discovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel = hiltViewModel()
             val sheet: com.anpfuel.app.ui.map.MapSheetViewModel = hiltViewModel()
             com.anpfuel.app.ui.map.MapScreen(
+                onOpenCity = { navController.navigate(Routes.MAP_CITY) },
+                periodContent = { changed ->
+                    com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction(onWeekChanged = changed)
+                },
                 onOpenStation = { stationKey, fuel ->
                     // Map origin keeps the MAP tab selected on return.
                     try {
@@ -166,6 +170,12 @@ fun AnpNavGraph(
                 },
                 discovery = discovery,
                 sheet = sheet,
+            )
+        }
+        composable(Routes.MAP_CITY) {
+            LocationPickerScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToHome = { navController.popBackStack() },
             )
         }
         composable("map/downloads") {

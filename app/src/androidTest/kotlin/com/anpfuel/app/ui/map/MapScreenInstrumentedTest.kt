@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.anpfuel.data.local.map.MapGenerationEntity
@@ -107,24 +108,23 @@ class MapScreenInstrumentedTest {
         // In ANP mode, charging shows anp-no-tariff message and "Show Community" button.
         compose.onNodeWithTag("map-sheet-switch-community").assertIsDisplayed()
         compose.onNodeWithTag("map-sheet-switch-community").performClick()
-        // Wait for 100ms debounce + lookup completion.
-        compose.mainClock.advanceTimeBy(250)
+        compose.waitUntil(5_000) { sheetVm.ui.value.price?.source == MapPriceSource.COMMUNITY }
         compose.waitForIdle()
         compose.onNodeWithText("CCS2 2.45 kWh", substring = true).assertIsDisplayed()
 
         // Clicking top ANP chip switches back to ANP and shows Show Community button again.
-        compose.onNodeWithTag("map-source-anp").performClick()
-        compose.waitForIdle()
+        compose.onNodeWithTag("map-sheet-source-anp").performClick()
+        compose.waitUntil(5_000) { sheetVm.ui.value.absentReason == "anp-no-tariff" }
         compose.onNodeWithTag("map-sheet-switch-community").assertIsDisplayed()
 
         // Clicking top Community chip reloads Community price on the same UUID.
-        compose.onNodeWithTag("map-source-community").performClick()
-        compose.mainClock.advanceTimeBy(250)
+        compose.onNodeWithTag("map-sheet-source-community").performClick()
+        compose.waitUntil(5_000) { sheetVm.ui.value.price?.source == MapPriceSource.COMMUNITY }
         compose.waitForIdle()
         compose.onNodeWithText("CCS2 2.45 kWh", substring = true).assertIsDisplayed()
 
         // Clicking Report on a charging-only station passes CHARGING (not GASOLINE_REGULAR).
-        compose.onNodeWithTag("map-sheet-report").performClick()
+        compose.onNodeWithTag("map-sheet-report").performScrollTo().performClick()
         compose.waitForIdle()
         org.junit.Assert.assertEquals("CHARGING", reportedProduct)
     }
@@ -206,10 +206,7 @@ class MapScreenInstrumentedTest {
                 mapContent = { Box(Modifier.size(10.dp)) },
             )
         }
-        // Wait for initial 300ms viewport debounce.
-        compose.mainClock.advanceTimeBy(500)
-        compose.waitForIdle()
-
+        compose.waitUntil(5_000) { discoveryVm.ui.value.clusters.size == 1 }
         val clusterId = discoveryVm.ui.value.clusters.single().id
         compose.onNodeWithTag("map-cluster-expand-$clusterId").performClick()
         compose.waitForIdle()
@@ -217,26 +214,27 @@ class MapScreenInstrumentedTest {
 
         // Select 2nd member (Posto Beta).
         compose.onNodeWithTag("map-cluster-member-$bId").performClick()
-        compose.mainClock.advanceTimeBy(200)
-        compose.waitForIdle()
+        compose.waitUntil(5_000) { sheetVm.ui.value.marker?.uuid == bId }
         compose.onNodeWithText("Posto Beta").assertIsDisplayed()
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(5_000) { discoveryVm.ui.value.selectedUuid == null }
 
         // Expand again and select last member (Posto Gamma).
         compose.onNodeWithTag("map-cluster-expand-$clusterId").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("map-cluster-member-$cId").performClick()
-        compose.mainClock.advanceTimeBy(200)
-        compose.waitForIdle()
+        compose.waitUntil(5_000) { sheetVm.ui.value.marker?.uuid == cId }
         compose.onNodeWithText("Posto Gamma").assertIsDisplayed()
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(5_000) { discoveryVm.ui.value.selectedUuid == null }
 
         // Open accessible list and select coordinate-less station: sheet opens with route unavailable and profile enabled.
         compose.onNodeWithTag("map-list-toggle").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Posto Sem Coordenada", substring = true).performClick()
-        compose.mainClock.advanceTimeBy(200)
-        compose.waitForIdle()
-        compose.onNodeWithTag("map-sheet-route-unavailable").assertIsDisplayed()
-        compose.onNodeWithTag("map-sheet-profile").performClick()
+        compose.waitUntil(5_000) { sheetVm.ui.value.marker?.uuid == unpinnedId }
+        compose.onNodeWithTag("map-sheet-route-unavailable").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("map-sheet-profile").performScrollTo().performClick()
         compose.waitForIdle()
         org.junit.Assert.assertEquals(unpinnedId, openedProfileUuid)
     }

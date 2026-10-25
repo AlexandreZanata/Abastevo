@@ -503,4 +503,20 @@ class MapDiscoveryViewModelTest {
         assertTrue(result.places.any { it.name == "Eletroposto Curitiba 121" })
         assertTrue(result.places.none { it.name == "Eletroposto Curitiba 122" })
     }
+    @Test fun `a city outside the shortcuts uses the national scoped directory without fabricating pins`() = runTest {
+        val gateway = io.mockk.mockk<ServerStationGateway>()
+        val id = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+        val townStation = station(id, lat = null, lon = null, quality = StationLocationQuality.UNKNOWN)
+        io.mockk.coEvery { gateway.listInMunicipality("5103403", 100, null) } returns ServerStationPage(listOf(townStation), null)
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, FakeEngine())
+        vm.onSelectCity("5103403", "Cuiabá")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("5103403", vm.ui.value.municipalityCode)
+        assertTrue(vm.ui.value.cityLocationUnknown)
+        assertTrue(vm.ui.value.clusters.isEmpty())
+        vm.onSelection(id)
+        assertEquals(id, vm.ui.value.selectedMarker?.uuid)
+        assertEquals(false, vm.ui.value.selectedMarker?.canRouteByCoordinates)
+    }
+
 }
