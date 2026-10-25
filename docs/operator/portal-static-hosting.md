@@ -137,6 +137,56 @@ seconds. `observed_at` is the local source/build detection time and is **not**
 the ANP publication delay; the source clock is recorded separately and no ANP
 delay is inferred. The receipt is private and never served by the static root.
 
+## Capacity and browser drill (ESP-16)
+
+The capacity harness is an isolated local drill, not a CDN/VPS/production
+capacity claim. It requires an already verified release root with a current
+portal (ESP-13/14/15), a pinned Caddy image and the local Python/Node/Chrome
+toolchain. It never contacts the API, database, ANP or the shared edge.
+
+```sh
+# self-tests for the driver, stats, report and browser probe
+make check-portal-capacity
+
+# baseline: 100 req/s open-loop for 30 s, gzip, 32 clients
+PORTAL_RELEASE_ROOT=/path/to/release-root PORTAL_SITE_URL=https://portal.example make portal-capacity
+
+# concurrent update: atomic promote then fence-protected rollback
+PORTAL_RELEASE_ROOT=/path/to/release-root PORTAL_SITE_URL=https://portal.example PORTAL_UPDATE_ARTIFACT=/path/to/second-verified-candidate PORTAL_UPDATE_AT_SECONDS=8 PORTAL_ROLLBACK_AT_SECONDS=16 make portal-capacity
+```
+
+The script freezes `workload.json` before the run with host CPU/memory/disk,
+artifact content hash, images, browser version, URL mix, rates and budgets. It
+starts the pinned Caddy container and a separate pinned Python generator
+container on a private Docker network, samples Caddy CPU/memory/network/block
+I/O, runs the existing qualified open-loop driver with gzip, then runs a
+headless Chrome probe for `/consultar/`, a station page and `/fiscalizacao/`
+with cold cache on desktop and mobile CPU-throttled viewports.
+
+Predeclared defaults:
+
+| Metric | Budget |
+| --- | ---: |
+| p95 / p99 | 50 ms / 100 ms |
+| errors | 1% |
+| achieved rate | 90 req/s at 100 offered |
+| Caddy CPU / memory | 80% / 256 MiB |
+| browser FCP / LCP / CLS | 1500 ms / 2500 ms / 0.1 |
+
+`portal_report.py` fails closed on a breached budget, drops, timeouts,
+semantic mismatches, generator limitation, external/API browser resources or
+errors. The trap stops/removes the Caddy/generator containers and the private
+network; the release root is not modified by the baseline. The update scenario
+intentionally promotes the second artifact, then rolls back to the original
+content hash; its load mix excludes JS/sitemap across the switch so the drill
+tests the atomic HTML/CSS/shard/CSV path without pretending old assets are
+retained. Results stay private under `PORTAL_RESULTS_DIR` (default
+`/tmp/abastevo-portal-capacity-*`).
+
+The measured numbers in ESP-16 evidence are **local loopback only**: no CDN,
+TLS, real network latency, real mobile device or VPS-direct campaign. Those
+campaigns and any production capacity statement remain OWED.
+
 ## Limitations
 
 - Production host/CDN/TLS/DNS, shared-edge routing, cache purge, multi-host
@@ -144,6 +194,8 @@ delay is inferred. The receipt is private and never served by the static root.
   ESP-18. The current flock is single-host.
 - Automatic refresh is composed and tested locally but disabled by default; no
   production activation or source schedule was changed.
+- ESP-16 measured local loopback only. CDN and VPS-direct campaigns, real
+  network/TLS, real mobile devices and production capacity remain OWED.
 - Real price publication remains blocked by ESP-07/rights; the rehearsal proves
   the selected event-level official artifact plus the synthetic price fixture.
 - No API, database, source or shared edge is contacted by the publisher or the

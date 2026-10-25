@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-rust check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 test-portal-release rehearse-portal help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-rust check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 test-portal-release rehearse-portal check-portal-capacity portal-capacity help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -67,6 +67,15 @@ test-portal-release:
 rehearse-portal:
 	bash infra/scripts/rehearse-portal.sh
 
+check-portal-capacity:
+	python3 infra/scripts/load/stats.py --self-test
+	python3 infra/scripts/load/drive.py --self-test
+	python3 infra/scripts/load/portal_report.py --self-test
+	node infra/scripts/load/browser_probe.mjs --self-test
+
+portal-capacity:
+	bash infra/scripts/load/portal_capacity.sh
+
 check-compat:
 	bash scripts/check-compat.sh
 
@@ -100,6 +109,8 @@ help:
 	@echo "  test-rehearse   local release rehearsal, real disposable DB (P09-T01)"
 	@echo "  test-portal-release  portal publisher/verifier tests (ESP-14)"
 	@echo "  rehearse-portal isolated static portal Caddy rehearsal (ESP-14)"
+	@echo "  check-portal-capacity  capacity harness self-tests (ESP-16)"
+	@echo "  portal-capacity      bounded portal load/browser campaign (ESP-16)"
 	@echo "  check-compat    contract + frozen deltas + runbooks gate (P09-T02)"
 	@echo "  test-compat     compat gate failure-behavior harness (P09-T02)"
 	@echo "  check-g09       G09 readiness gate, refuses open blockers (P09-T03)"
