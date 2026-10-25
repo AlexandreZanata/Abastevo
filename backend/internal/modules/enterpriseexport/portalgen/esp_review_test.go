@@ -63,7 +63,7 @@ func espPromote(t *testing.T, artifact, root string) ReleaseState {
 	return state
 }
 
-func TestESPReviewWithdrawnArtifactCannotBePromoted(t *testing.T) {
+func TestESPReviewPauseRecoversOnlyThroughPromote(t *testing.T) {
 	root := releaseRoot(t)
 	first := releaseCandidate(t, "Review Alfa")
 	second := releaseCandidate(t, "Review Beta")
@@ -75,7 +75,8 @@ func TestESPReviewWithdrawnArtifactCannotBePromoted(t *testing.T) {
 	if state, err := Rollback(RollbackOptions{RootDir: root, Target: firstHash, SiteURL: "https://portal.example"}); err != nil || state.Current != firstHash {
 		t.Fatalf("operational rollback A = %+v %v", state, err)
 	}
-	// Withdraw A as an operational pause: history keeps the mark.
+	// Withdraw A as an operational pause: history keeps the mark and the
+	// reason, but records no revocation.
 	if _, err := Withdraw(WithdrawOptions{RootDir: root, SiteURL: "https://portal.example"}); err != nil {
 		t.Fatal(err)
 	}
@@ -87,29 +88,37 @@ func TestESPReviewWithdrawnArtifactCannotBePromoted(t *testing.T) {
 	for _, release := range persisted.Releases {
 		if release.ContentSHA256 == firstHash && release.Withdrawn {
 			found = true
+			if release.WithdrawalReason != withdrawalPause {
+				t.Fatalf("pause reason = %q", release.WithdrawalReason)
+			}
 		}
 	}
 	if !found {
 		t.Fatal("withdrawal mark missing from persisted history")
 	}
-	// Resurrection refused with no current release.
-	if _, err := Promote(PromoteOptions{ArtifactDir: first, RootDir: root, SiteURL: "https://portal.example"}); !errors.Is(err, ErrReleaseWithdrawn) {
-		t.Fatalf("withdrawn artifact promoted with no current: %v", err)
+	if len(persisted.RevokedOfficial) != 0 {
+		t.Fatalf("operational pause recorded a revocation: %+v", persisted.RevokedOfficial)
 	}
-	// Resurrection refused with another current release.
+	// Rollback and fallback never resurrect a paused release by themselves.
 	espPromote(t, second, root)
-	if _, err := Promote(PromoteOptions{ArtifactDir: first, RootDir: root, SiteURL: "https://portal.example"}); !errors.Is(err, ErrReleaseWithdrawn) {
-		t.Fatalf("withdrawn artifact promoted over another current: %v", err)
-	}
-	// Resurrection refused through rollback and fallback paths.
 	if _, err := Rollback(RollbackOptions{RootDir: root, Target: firstHash, SiteURL: "https://portal.example"}); !errors.Is(err, ErrReleaseWithdrawn) {
-		t.Fatalf("rollback resurrected a withdrawn release: %v", err)
+		t.Fatalf("rollback resurrected a paused release: %v", err)
 	}
 	if _, err := Withdraw(WithdrawOptions{RootDir: root, Fallback: firstHash, SiteURL: "https://portal.example"}); !errors.Is(err, ErrReleaseWithdrawn) {
-		t.Fatalf("withdraw fallback resurrected a withdrawn release: %v", err)
+		t.Fatalf("withdraw fallback resurrected a paused release: %v", err)
 	}
 	if got := currentFixture(t, root); got.ContentSHA256 != secondHash {
 		t.Fatalf("current changed during refusal = %+v", got)
+	}
+	// The explicit publisher recovery path accepts the same source content
+	// once its authoritative caller decides it is publishable again.
+	recovered, err := Promote(PromoteOptions{ArtifactDir: first, RootDir: root, SiteURL: "https://portal.example"})
+	if err != nil || recovered.Current != firstHash {
+		t.Fatalf("paused source did not recover = %+v %v", recovered, err)
+	}
+	release, _, err := CurrentRelease(root, "https://portal.example", false)
+	if err != nil || release.Withdrawn || release.WithdrawalReason != "" {
+		t.Fatalf("recovered release still paused = %+v %v", release, err)
 	}
 }
 

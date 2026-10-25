@@ -28,6 +28,16 @@ const (
 	RetainedDir = "retained"
 )
 
+const (
+	// withdrawalPause marks a temporary operational withdrawal. The same
+	// source content may be served again once the authoritative source is
+	// published; nothing about the official identity is revoked.
+	withdrawalPause = "operator-pause"
+	// withdrawalRevoked marks invalid source content. Its official
+	// revision/lease identity can never be served again by any hash.
+	withdrawalRevoked = "revoked-source"
+)
+
 var (
 	ErrReleaseBusy        = errors.New("portal release: another promotion holds the lock")
 	ErrReleaseFence       = errors.New("portal release: current release changed")
@@ -49,6 +59,7 @@ type Release struct {
 	OfficialEdition        string `json:"official_edition,omitempty"`
 	OfficialSourceChecksum string `json:"official_source_checksum,omitempty"`
 	Withdrawn              bool   `json:"withdrawn,omitempty"`
+	WithdrawalReason       string `json:"withdrawal_reason,omitempty"`
 }
 
 type ReleaseState struct {
@@ -156,10 +167,10 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 	if opts.Fence && current != opts.ExpectedCurrent {
 		return ReleaseState{}, ErrReleaseFence
 	}
-	// A withdrawn release can never be served again: refuse before any
-	// copy or pointer switch, and preserve the withdrawal mark in history.
-	// Revoked official content is refused by any artifact or hash.
-	if existing, ok := findRelease(state, content); ok && existing.Withdrawn {
+	// A revoked release can never be served again. An operational pause
+	// stays eligible: the same source content may be promoted once the
+	// authoritative source is published again, clearing the pause mark.
+	if existing, ok := findRelease(state, content); ok && existing.Withdrawn && !recoverablePause(state, existing) {
 		return ReleaseState{}, ErrReleaseWithdrawn
 	}
 	if revokedOfficial(state, releaseMeta) {
@@ -167,13 +178,15 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 	}
 	if current == content {
 		release, ok := findRelease(state, content)
-		if release.Withdrawn {
+		if release.Withdrawn && !recoverablePause(state, release) {
 			return ReleaseState{}, ErrReleaseWithdrawn
 		}
 		if err := verifyRelease(opts.RootDir, content, opts.SiteURL, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, ErrReleaseUnavailable
 		}
 		release.ContentSHA256 = content
+		release.Withdrawn = false
+		release.WithdrawalReason = ""
 		release.Pages = verified.Pages
 		release.Files = verified.Files
 		release.Bytes = verified.Bytes
@@ -338,17 +351,22 @@ func Withdraw(opts WithdrawOptions) (ReleaseState, error) {
 		return ReleaseState{}, ErrNoCurrentRelease
 	}
 	withdrawnAt := now().UTC().Format(time.RFC3339)
+	reason := withdrawalPause
+	if opts.Reason == withdrawalRevoked {
+		reason = withdrawalRevoked
+	}
 	for i := range state.Releases {
 		if state.Releases[i].ContentSHA256 == current {
 			state.Releases[i].Withdrawn = true
+			state.Releases[i].WithdrawalReason = reason
 			// Invalid source content revokes its official identity: no
 			// artifact or hash carrying this revision/lease may be served
 			// again. An operational pause records no revocation.
-			if opts.Reason == "revoked-source" {
+			if reason == withdrawalRevoked {
 				if state.Releases[i].OfficialRevisionID == "" || state.Releases[i].OfficialLeaseID == "" {
 					return ReleaseState{}, fmt.Errorf("portal release: revoked-source requires an official pin")
 				}
-				state = recordRevocation(state, state.Releases[i], opts.Reason, withdrawnAt)
+				state = recordRevocation(state, state.Releases[i], reason, withdrawnAt)
 			}
 		}
 	}
@@ -519,6 +537,13 @@ func findRelease(state ReleaseState, content string) (Release, bool) {
 // revokedOfficial reports whether the candidate's official revision/lease
 // was withdrawn as invalid source content. Candidates without an official
 // pin are never revoked.
+// recoverablePause reports whether a withdrawal is an operational pause for
+// content whose official identity is still valid. Legacy withdrawals without
+// a persisted reason fail closed, and a revocation always wins.
+func recoverablePause(state ReleaseState, release Release) bool {
+	return release.Withdrawn && release.WithdrawalReason == withdrawalPause && !revokedOfficial(state, release)
+}
+
 func revokedOfficial(state ReleaseState, meta Release) bool {
 	if meta.OfficialRevisionID == "" || meta.OfficialLeaseID == "" {
 		return false
