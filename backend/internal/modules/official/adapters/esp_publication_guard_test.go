@@ -481,3 +481,32 @@ func TestOfficialSupersededStatusMigrationApplied(t *testing.T) {
 		t.Fatalf("official revision status constraint lacks superseded: %s", definition)
 	}
 }
+
+func TestCancelledFinishPersistsNothing(t *testing.T) {
+	im, pool := freshImporter(t)
+	station := makeStation(t, pool, "Review station")
+	begin := beginAndStage(t, im, "sha256:cancelled-finish", station, 8, 5999)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	var tally domain.QuarantineTally
+	if _, err := im.FinishRun(ctx, begin.RunID, begin.RevisionID, &tally); err == nil {
+		t.Fatal("cancelled finish was accepted")
+	}
+	if status := revisionStatus(t, pool, begin.RevisionID); status != domain.RevisionStaging {
+		t.Fatalf("cancelled finish changed revision to %q", status)
+	}
+	var runStatus string
+	if err := pool.QueryRow(context.Background(), "SELECT status FROM official_import_runs WHERE id=$1", mustUUIDOrFail(t, begin.RunID)).Scan(&runStatus); err != nil {
+		t.Fatal(err)
+	}
+	if runStatus != domain.RunRunning {
+		t.Fatalf("cancelled finish changed run to %q", runStatus)
+	}
+	var pointers int
+	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM official_current_revisions").Scan(&pointers); err != nil {
+		t.Fatal(err)
+	}
+	if pointers != 0 {
+		t.Fatalf("cancelled finish left %d pointers", pointers)
+	}
+}
