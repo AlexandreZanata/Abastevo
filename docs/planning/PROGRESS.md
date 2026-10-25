@@ -1,5 +1,19 @@
 # Current execution state
 
+- Enterprise portal ESP-16 2026-10-25: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/enterprise-static-portal` after ESP-15 `71e4f92b`.
+  [Evidence](../backend/evidence/enterprise-static/ESP-16.md). Added a frozen
+  local capacity/browser harness: pinned Caddy container, separate pinned
+  Python generator container, gzip open-loop driver, Caddy CPU/mem/net/block
+  sampling, headless-Chrome FCP/LCP/CLS/same-origin/API probe and fail-closed
+  report; `make check-portal-capacity` + `make portal-capacity`. Baseline
+  real-official 2025 full artifact (`75bc8a1a…`): 3,000/3,000 requests,
+  100.03 req/s, p95 1.47 ms, 0 errors/drops, 6.46% CPU, 26.64 MiB Caddy,
+  browser FCP/LCP 16–184 ms, CLS 0. Concurrent switch A→B and rollback under
+  load: 100.03 req/s, p95 1.25 ms, 0 errors, final current restored; browser
+  FCP/LCP 20–108 ms. No CDN/VPS-direct campaign; real prices, old-asset
+  cross-release retention and production capacity remain OWED. No
+  VPS/publication/merge. Next: ESP-17.
 - Enterprise portal ESP-15 2026-10-24: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/enterprise-static-portal` after ESP-14 `43574f7a`.
   [Evidence](../backend/evidence/enterprise-static/ESP-15.md). Added default-off
