@@ -554,6 +554,13 @@
     <string name="map_no_package">Sin paquete sin conexión</string>
     <string name="map_download">Descargar</string>
     <string name="map_attribution">© Colaboradores de OpenStreetMap</string>
+    <string name="map_search_hint">Buscar estaciones…</string>
+    <string name="map_filter_service">Servicio</string>
+    <string name="map_filter_fuel">Combustible</string>
+    <string name="map_filter_charging">Recarga</string>
+    <string name="map_city_code">Código de ciudad</string>
+    <string name="map_apply">Aplicar</string>
+    <string name="map_no_results">Sin resultados</string>
     <string name="nav_profile">Perfil</string>
     <string name="nav_update_price">Actualizar precio</string>
     <string name="a11y_nav_update_price">Actualizar el precio del combustible con una foto</string>

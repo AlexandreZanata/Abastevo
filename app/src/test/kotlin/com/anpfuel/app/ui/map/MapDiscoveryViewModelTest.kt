@@ -35,12 +35,18 @@ class MapDiscoveryViewModelTest {
     ) : ServerStationGateway {
         var lastRadius: Int? = null
         var calls = 0
+        var lastSearch: Pair<String, String>? = null
         override suspend fun list(limit: Int, cursor: String?): ServerStationPage =
             ServerStationPage(emptyList(), null)
         override suspend fun listInMunicipality(municipalityCode: String, limit: Int, cursor: String?): ServerStationPage =
             ServerStationPage(emptyList(), null)
-        override suspend fun search(municipalityCode: String, query: String, limit: Int, cursor: String?): ServerStationPage =
-            ServerStationPage(emptyList(), null)
+        override suspend fun search(municipalityCode: String, query: String, limit: Int, cursor: String?): ServerStationPage {
+            calls++
+            lastSearch = municipalityCode to query
+            if (delayMs > 0) kotlinx.coroutines.delay(delayMs)
+            val filtered = stations.filter { it.displayName.contains(query, ignoreCase = true) }
+            return ServerStationPage(filtered, null)
+        }
         override suspend fun nearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int): List<NearbyServerStation> {
             calls++
             lastRadius = radiusMeters
@@ -226,5 +232,61 @@ class MapDiscoveryViewModelTest {
         val second = vm.ui.value.clusters.map { it.markers.map { m -> m.uuid }.sorted() }.sortedBy { it.firstOrNull() }
         assertEquals(first, second)
         assertEquals(50, vm.ui.value.listItems.size)
+    }
+
+    @Test fun `search by city and name is bounded with stale discard`() = runTest {
+        val gateway = FakeGateway(
+            stations = listOf(
+                station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name = "Posto Central Curitiba"),
+                station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name = "Recarga Norte"),
+            ),
+        )
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onSearch("4106902", "Central")
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("4106902" to "Central", gateway.lastSearch)
+        assertEquals(1, vm.ui.value.listItems.size)
+        assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", vm.ui.value.listItems.single().uuid)
+        // Short queries never hit the wire.
+        val before = gateway.calls
+        vm.onSearch("4106902", "x")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(before, gateway.calls)
+    }
+
+    @Test fun `service filters keep unknown metadata visible`() = runTest {
+        val gateway = FakeGateway(
+            stations = listOf(
+                station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name = "Posto"),
+            ),
+        )
+        val chargingPlace = com.anpfuel.domain.charging.ChargingPlace(
+            id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            entityKey = "a".repeat(64),
+            externalId = "ext-1",
+            name = "Recarga",
+            country = "BR",
+            latitude = "-25.4201",
+            longitude = "-49.2701",
+            publicAccess = com.anpfuel.domain.charging.ChargingAccess.PUBLIC,
+            reportedPoints = 2,
+            groups = emptyList(),
+        )
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { listOf(chargingPlace) }, engine)
+        vm.onViewport(-25.42, -49.27)
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2, vm.ui.value.listItems.size)
+        // Filter to fuel only: charging hidden, fuel stays, unknown power not excluded elsewhere.
+        vm.onServiceFilter(showFuel = true, showCharging = false)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, vm.ui.value.listItems.size)
+        assertEquals(com.anpfuel.maps.engine.MapStationType.FUEL, vm.ui.value.listItems.single().type)
+        // At least one service always stays visible.
+        vm.onServiceFilter(showFuel = false, showCharging = false)
+        assertTrue(vm.ui.value.showFuel || vm.ui.value.showCharging)
     }
 }

@@ -89,14 +89,38 @@ fun MapScreen(
                 selected = ui.source == MapPriceSource.ANP,
                 onClick = { viewModel.selectSource(MapPriceSource.ANP) },
                 label = { Text(stringResource(R.string.map_source_anp)) },
-                modifier = Modifier.semantics { contentDescription = "ANP prices" },
+                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "ANP prices" },
             )
             FilterChip(
                 selected = ui.source == MapPriceSource.COMMUNITY,
                 onClick = { viewModel.selectSource(MapPriceSource.COMMUNITY) },
                 label = { Text(stringResource(R.string.map_source_community)) },
-                modifier = Modifier.semantics { contentDescription = "Community prices" },
+                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = "Community prices" },
             )
+        }
+
+        // MAP-20 search: city/name/address with bounded debounced queries.
+        var query by remember { mutableStateOf("") }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.material3.OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text(stringResource(R.string.map_search_hint)) },
+                singleLine = true,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics {
+                    contentDescription = "Search stations"
+                },
+            )
+            TextButton(
+                onClick = { discovery?.onSearch("4106902", query) },
+                modifier = Modifier.size(width = 96.dp, height = 48.dp),
+            ) {
+                Text(stringResource(R.string.map_search))
+            }
         }
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -213,9 +237,13 @@ fun MapScreen(
     }
 
     if (showFilters) {
+        val disc = discovery?.ui?.collectAsStateWithLifecycle()?.value
         MapFiltersDialog(
             source = ui.source,
+            showFuel = disc?.showFuel ?: true,
+            showCharging = disc?.showCharging ?: true,
             onSelectSource = { viewModel.selectSource(it); showFilters = false },
+            onServiceFilter = { f, c -> discovery?.onServiceFilter(f, c) },
             onDismiss = { showFilters = false },
         )
     }

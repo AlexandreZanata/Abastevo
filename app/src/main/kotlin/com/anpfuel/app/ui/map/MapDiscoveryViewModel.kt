@@ -32,12 +32,16 @@ data class MapDiscoveryUi(
     val loading: Boolean = false,
     val error: String? = null,
     val generation: Long = 0,
+    val showFuel: Boolean = true,
+    val showCharging: Boolean = true,
+    val searchQuery: String = "",
 )
 
 /**
- * MAP-18 viewport discovery: bounded nearby queries with debounce and stale
- * discard. Canonical UUIDs are the stable identity; proximity never merges
- * records. Unknown/city-centroid stay list-only via `prepareOverlay`.
+ * MAP-18 viewport discovery + MAP-20 search/filters: bounded nearby/search
+ * queries with debounce and stale discard. Canonical UUIDs are the stable
+ * identity; proximity never merges records. Unknown/city-centroid stay
+ * list-only via `prepareOverlay`. Unknown metadata is shown, never excluded.
  */
 @HiltViewModel
 class MapDiscoveryViewModel @Inject constructor(
@@ -50,13 +54,15 @@ class MapDiscoveryViewModel @Inject constructor(
 
     private var fetchJob: Job? = null
     private var generation = 0L
+    private var lastMarkers: List<MapOverlayMarker> = emptyList()
+    private var lastNullStations: List<ServerStation> = emptyList()
 
     init {
         engine.setOnOverlaySelected(::onNativeSelection)
     }
 
     fun onViewport(latitude: Double, longitude: Double, radiusMeters: Int = 10_000) {
-        val boundedRadius = radiusMeters.coerceIn(500, 50_000)
+        val boundedRadius = radiusMeters.coerceIn(100, 15_000)
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
             delay(300)
@@ -71,6 +77,8 @@ class MapDiscoveryViewModel @Inject constructor(
                 )
                 if (gen != generation) return@launch
                 val fuelMarkers = nearby.mapNotNull { it.station.toMarker() }
+                // Stations without coordinates stay list-only with explicit warning.
+                val nullCoords = nearby.map { it.station }.filter { it.latitude == null }
                 // Charging snapshot is offline Room; failures never block fuel pins.
                 val chargeMarkers = try {
                     charging.list(100).mapNotNull { it.toMarker() }
@@ -78,7 +86,7 @@ class MapDiscoveryViewModel @Inject constructor(
                     emptyList()
                 }
                 if (gen != generation) return@launch
-                pushMarkers(fuelMarkers + chargeMarkers, gen)
+                pushMarkers(fuelMarkers + chargeMarkers, gen, nullCoords)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -86,6 +94,50 @@ class MapDiscoveryViewModel @Inject constructor(
                 _ui.update { it.copy(loading = false, error = e.message ?: "discovery-failed") }
             }
         }
+    }
+
+    /**
+     * MAP-20 search by city/name/address. Bounded, debounced, stale-safe.
+     * Unknown metadata is preserved; it never excludes a station.
+     */
+    fun onSearch(municipalityCode: String, query: String, limit: Int = 50) {
+        val q = query.trim()
+        if (q.length < 2) {
+            _ui.update { it.copy(searchQuery = q) }
+            return
+        }
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
+            delay(300)
+            val gen = ++generation
+            _ui.update { it.copy(loading = true, error = null, generation = gen, searchQuery = q) }
+            try {
+                val page = stations.search(municipalityCode, q, limit.coerceIn(1, 100), null)
+                if (gen != generation) return@launch
+                val markers = page.items.mapNotNull { it.toMarker() }
+                val nullCoords = page.items.filter { it.latitude == null }
+                pushMarkers(markers, gen, nullCoords)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (gen != generation) return@launch
+                _ui.update { it.copy(loading = false, error = e.message ?: "search-failed") }
+            }
+        }
+    }
+
+    fun onServiceFilter(showFuel: Boolean, showCharging: Boolean) {
+        val fuel = showFuel || !showCharging
+        val charge = showCharging || !showFuel
+        _ui.update { it.copy(showFuel = fuel, showCharging = charge) }
+        val gen = ++generation
+        val filtered = lastMarkers.filter {
+            (it.fuel && fuel) || (it.charging && charge)
+        }
+        // Null-coords fuel stations respect the fuel filter; charging nulls
+        // are snapshot-based and follow the charging flag.
+        val nullFiltered = if (fuel) lastNullStations else emptyList()
+        pushMarkers(filtered, gen, nullFiltered, preserveLast = false)
     }
 
     fun onSelection(uuid: String) {
@@ -121,14 +173,35 @@ class MapDiscoveryViewModel @Inject constructor(
         }
     }
 
-    private fun pushMarkers(markers: List<MapOverlayMarker>, gen: Long) {
-        val preparation = prepareOverlay(markers, radiusMeters = 60.0, generation = gen)
+    private fun pushMarkers(
+        markers: List<MapOverlayMarker>,
+        gen: Long,
+        nullCoordsStations: List<ServerStation> = emptyList(),
+        preserveLast: Boolean = true,
+    ) {
+        if (preserveLast) {
+            lastMarkers = markers
+            lastNullStations = nullCoordsStations
+        }
+        val uiState = _ui.value
+        val filtered = markers.filter {
+            (it.fuel && uiState.showFuel) || (it.charging && uiState.showCharging)
+        }
+        val preparation = prepareOverlay(filtered, radiusMeters = 60.0, generation = gen)
         engine.setOverlayMarkers(
-            // Only pin-eligible markers reach the native KML; unpinned stay
-            // list-only. `prepareOverlay` already split them.
             preparation.clusters.flatMap { it.markers },
         )
-        val items = overlayListItems(preparation.clusters, unpinned = preparation.unpinned)
+        val nullItems = nullCoordsStations.map { s ->
+            com.anpfuel.maps.engine.MapOverlayListItem(
+                uuid = s.stationId.lowercase(),
+                title = s.displayName,
+                type = com.anpfuel.maps.engine.MapStationType.FUEL,
+                typeLabel = "Fuel",
+                locationLabel = "Location unknown",
+                contentDescription = "${s.displayName}, Fuel, Location unknown",
+            )
+        }
+        val items = overlayListItems(preparation.clusters, unpinned = preparation.unpinned) + nullItems
         _ui.update { prev ->
             val preserved = prev.selectedUuid?.takeIf { sel ->
                 items.any { it.uuid == sel } || preparation.clusters.any { c -> c.markers.any { it.uuid == sel } }

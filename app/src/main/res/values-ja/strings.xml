@@ -554,6 +554,13 @@
     <string name="map_no_package">オフラインパッケージなし</string>
     <string name="map_download">ダウンロード</string>
     <string name="map_attribution">© OpenStreetMap 投稿者</string>
+    <string name="map_search_hint">スタンドを検索…</string>
+    <string name="map_filter_service">サービス</string>
+    <string name="map_filter_fuel">燃料</string>
+    <string name="map_filter_charging">充電</string>
+    <string name="map_city_code">都市コード</string>
+    <string name="map_apply">適用</string>
+    <string name="map_no_results">結果なし</string>
     <string name="nav_profile">プロフィール</string>
     <string name="nav_update_price">価格を更新</string>
     <string name="a11y_nav_update_price">写真撮影で燃料価格を更新</string>

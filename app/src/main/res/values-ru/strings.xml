@@ -554,6 +554,13 @@
     <string name="map_no_package">Нет офлайн-пакета</string>
     <string name="map_download">Скачать</string>
     <string name="map_attribution">© Участники OpenStreetMap</string>
+    <string name="map_search_hint">Поиск станций…</string>
+    <string name="map_filter_service">Услуга</string>
+    <string name="map_filter_fuel">Топливо</string>
+    <string name="map_filter_charging">Зарядка</string>
+    <string name="map_city_code">Код города</string>
+    <string name="map_apply">Применить</string>
+    <string name="map_no_results">Нет результатов</string>
     <string name="nav_profile">Профиль</string>
     <string name="nav_update_price">Обновить цену</string>
     <string name="a11y_nav_update_price">Обновить цену топлива с помощью фото</string>

@@ -554,6 +554,13 @@
     <string name="map_no_package">无离线包</string>
     <string name="map_download">下载</string>
     <string name="map_attribution">© OpenStreetMap 贡献者</string>
+    <string name="map_search_hint">搜索站点…</string>
+    <string name="map_filter_service">服务</string>
+    <string name="map_filter_fuel">燃油</string>
+    <string name="map_filter_charging">充电</string>
+    <string name="map_city_code">城市代码</string>
+    <string name="map_apply">应用</string>
+    <string name="map_no_results">无结果</string>
     <string name="nav_profile">个人资料</string>
     <string name="nav_update_price">更新价格</string>
     <string name="a11y_nav_update_price">通过拍照更新燃料价格</string>

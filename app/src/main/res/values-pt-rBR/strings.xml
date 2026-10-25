@@ -28,6 +28,13 @@
     <string name="map_no_package">Sem pacote offline</string>
     <string name="map_download">Baixar</string>
     <string name="map_attribution">© Colaboradores do OpenStreetMap</string>
+    <string name="map_search_hint">Buscar postos…</string>
+    <string name="map_filter_service">Serviço</string>
+    <string name="map_filter_fuel">Combustível</string>
+    <string name="map_filter_charging">Recarga</string>
+    <string name="map_city_code">Código da cidade</string>
+    <string name="map_apply">Aplicar</string>
+    <string name="map_no_results">Sem resultados</string>
     <string name="nav_profile">Perfil</string>
     <string name="nav_update_price">Atualizar preço</string>
     <string name="a11y_nav_update_price">Atualizar preço de combustível com foto</string>
