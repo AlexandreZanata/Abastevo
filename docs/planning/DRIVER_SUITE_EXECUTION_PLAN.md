@@ -97,7 +97,7 @@ Evidence: `docs/backend/evidence/driver-suite/DRV-02.md`. A later relevant chang
 Gate: **DRIVER_FOUNDATION_GATE**; apply the scope/disposition rules in section 6. Local result: PASS on 2026-10-26 (LOCAL_DONE / INTEGRATION_PENDING); not production or full-suite acceptance.
 ### DRV-03 — Implement exact earnings and result rules
 
-Status: PLANNED. Dependency: DRV-02 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-03](../backend/evidence/driver-suite/DRV-03.md). Dependency: DRV-02 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `domain driver; backend metrics pure rules`. Rules: B-BR-DRV-02, B-BR-DRV-04, B-BR-DRV-05, B-BR-DRV-12, B-BR-DRV-15.
 

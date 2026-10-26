@@ -1,5 +1,7 @@
 # Current execution state
 
+- DRV-03 LOCAL_DONE / INTEGRATION_PENDING at `97b42c60`: exact earned/cash/recorded/modeled rules, twelve shared production vectors, Go/Kotlin negative and weighted-money tests PASS. [Evidence](../backend/evidence/driver-suite/DRV-03.md). Isolated driver PR #152; next DRV-04; no main/dev push or merge.
+
 - DRV-02 completion review 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING at
   behavior `29f6c4fe`, manual oracle `566c3516`. [Evidence](../backend/evidence/driver-suite/DRV-02.md).
   Preserved owner-reviewed legacy repair; fixed post-read owner/login/consent
