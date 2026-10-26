@@ -747,4 +747,32 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("ALTER TABLE `map_generation` ADD COLUMN `data_version` TEXT NOT NULL DEFAULT ''")
         }
     }
+
+    val MIGRATION_27_28: Migration = object : Migration(27, 28) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Append-only: MAP-25 private, owner-scoped favorites, saved trips,
+            // id-only tombstones and import receipts. No existing table is touched.
+            db.execSQL(
+                "CREATE TABLE `map_saved_place` (`place_id` TEXT NOT NULL, `owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `kind` TEXT NOT NULL, `name` TEXT NOT NULL, `lat_micro` INTEGER NOT NULL, `lon_micro` INTEGER NOT NULL, `station_id` TEXT, `source_kind` TEXT NOT NULL, `source_id` TEXT, `note` TEXT, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `place_id`))",
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_map_saved_place_station` ON `map_saved_place` (`owner_account`, `origin`, `station_id`)",
+            )
+            db.execSQL(
+                "CREATE TABLE `map_saved_trip` (`trip_id` TEXT NOT NULL, `owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `state` TEXT NOT NULL, `kind` TEXT NOT NULL, `name` TEXT NOT NULL, `avoid` TEXT NOT NULL, `source_id` TEXT, `note` TEXT, `point_count` INTEGER NOT NULL, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `trip_id`))",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_map_saved_trip_owner` ON `map_saved_trip` (`owner_account`, `origin`, `state`)",
+            )
+            db.execSQL(
+                "CREATE TABLE `map_saved_trip_point` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `trip_id` TEXT NOT NULL, `seq` INTEGER NOT NULL, `lat_micro` INTEGER NOT NULL, `lon_micro` INTEGER NOT NULL, `elevation_cm` INTEGER, `time_millis` INTEGER, PRIMARY KEY(`owner_account`, `origin`, `trip_id`, `seq`), FOREIGN KEY(`owner_account`, `origin`, `trip_id`) REFERENCES `map_saved_trip`(`owner_account`, `origin`, `trip_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            )
+            db.execSQL(
+                "CREATE TABLE `map_saved_tombstone` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `record_id` TEXT NOT NULL, `deleted_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `record_id`))",
+            )
+            db.execSQL(
+                "CREATE TABLE `map_saved_import` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `content_sha256` TEXT NOT NULL, `imported_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `content_sha256`))",
+            )
+        }
+    }
 }

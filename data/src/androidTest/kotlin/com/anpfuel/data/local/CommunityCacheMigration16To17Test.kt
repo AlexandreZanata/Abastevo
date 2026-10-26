@@ -52,6 +52,7 @@ class CommunityCacheMigration16To17Test {
                 AnpFuelDatabaseMigrations.MIGRATION_24_25,
                 AnpFuelDatabaseMigrations.MIGRATION_25_26,
                 AnpFuelDatabaseMigrations.MIGRATION_26_27,
+                AnpFuelDatabaseMigrations.MIGRATION_27_28,
             )
             val first = Room.databaseBuilder(context, AnpFuelDatabase::class.java, name)
                 .addMigrations(*chain).build()

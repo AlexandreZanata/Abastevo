@@ -56,8 +56,13 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.entity.LedgerErasedEntity::class,
         com.anpfuel.data.local.map.MapGenerationEntity::class,
         com.anpfuel.data.local.map.MapPackageEntity::class,
+        com.anpfuel.data.local.saved.SavedPlaceEntity::class,
+        com.anpfuel.data.local.saved.SavedTripEntity::class,
+        com.anpfuel.data.local.saved.SavedTripPointEntity::class,
+        com.anpfuel.data.local.saved.SavedTombstoneEntity::class,
+        com.anpfuel.data.local.saved.SavedImportEntity::class,
     ],
-    version = 27,
+    version = 28,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
@@ -101,4 +106,6 @@ abstract class AnpFuelDatabase : RoomDatabase() {
     abstract fun ledgerErasedDao(): com.anpfuel.data.local.dao.LedgerErasedDao
 
     abstract fun mapPackageDao(): com.anpfuel.data.local.dao.MapPackageDao
+
+    abstract fun savedDao(): com.anpfuel.data.local.saved.SavedDao
 }
