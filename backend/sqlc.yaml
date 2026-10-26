@@ -242,6 +242,7 @@ sql:
       - db/migrations/000082_cloud_compaction.sql
       - db/migrations/000083_cloud_snapshots.sql
       - db/migrations/000084_cloud_restores.sql
+      - db/migrations/000138_cloud_driver_consent.sql
     gen:
       go:
         package: cloudsync
