@@ -1,5 +1,15 @@
 # Current execution state
 
+- DRV-08 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 84dfd74d,
+  behavior 4026df2a. [Evidence](../backend/evidence/driver-suite/DRV-08.md).
+  Durable private shifts, monotonic recovery gaps, version-fenced receipts,
+  aggregate distance observations and owner/vehicle scoping were added by
+  migration 000134 after 000133. Real disposable PostGIS: 16 adapter tests plus
+  17 driver domain tests PASS under -race, including two-device start, replay,
+  stale pause, rollback, overlap and soft-erasure cases. Full backend unit,
+  vet, staticcheck, sqlc and formatting checks PASS. No HTTP/Premium/cloud/GPS/
+  mobile admission; DRV-09 next. No push/PR/merge in this commit.
+
 - DRV-03–07 batch: LOCAL_DONE / INTEGRATION_PENDING, isolated driver PR #152
   (`driver-suite/drv-00-02` → `dev`, base `507d915e`). Exact money, shifts,
   distance quality, cost allocation and private earnings storage are delivered;

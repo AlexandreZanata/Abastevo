@@ -163,7 +163,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-07.md`. A later relevant change invalidates affected evidence.
 ### DRV-08 — Persist shifts and distance histories
 
-Status: PLANNED. Dependency: DRV-07 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-08](../backend/evidence/driver-suite/DRV-08.md). Dependency: DRV-07 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `backend driver storage; vehicle read port; PostgreSQL`. Rules: B-BR-DRV-06, B-BR-DRV-07, B-BR-DRV-08, B-BR-DRV-17.
 

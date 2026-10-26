@@ -3936,4 +3936,11 @@ records PostGIS/Kotlin/Android checks and the inherited global coverage failure
 (pure dev 80.31%, batch 81.81%, unchanged minimum 90%; owned driver 93.48%).
 Delivery targets only driver PR #152 → dev, preserving other construction
 fronts. No main merge, public endpoint, driver hub, live GPS collector, signed
-cloud activation or production claim. DRV-08–35 remain PLANNED.
+cloud activation or production claim. DRV-09–35 remain PLANNED.
+
+Durable movement continuation (2026-10-26): DRV-08 is LOCAL_DONE /
+INTEGRATION_PENDING at behavior `4026df2a`. [Evidence](docs/backend/evidence/driver-suite/DRV-08.md)
+records migration 000134, owner-fenced shift/version receipts, recovery gaps and
+aggregate distance observations, proven by 16 real disposable PostGIS adapter
+tests plus domain checks under `-race`. No HTTP, mobile, GPS, cloud or
+production admission is implied; DRV-09–35 remain PLANNED.
