@@ -1,5 +1,17 @@
 # Current execution state
 
+- MAP national stations Phase 1 2026-10-26: PARTIAL / A1.a BLOCKED.
+  Branch `codex/map-national-stations-plan`; private VPS root
+  `/opt/abastevo-temp/map-national-20261026` (mode 700); no data in Git and no
+  DB/deploy/app change. A1.b/A1.c/A1.d/B1 done: registry 45,808 rows (45,688
+  accepted), OSM 2026-10-25 PBF 2,098,807,156 B, `prepare_osm` 7m14s /
+  875,904 KiB RSS / 363,382,865 elements / 28,565 fuel POIs / 5 valid CNPJ
+  (46 raw tags), reviews Curitiba 68/280, Sorriso 1/24, Sao Paulo 290/1,235,
+  CNEFE PR/MT/SP 31,061,064 rows, RFB 73,809,386 rows, Overture 2026-10-21.0
+  62,091 fuel places. A1.a stopped on repeated HTTP 429 for AC/MANCIO LIMA
+  after 12 municipalities (1,958 rows / 1,935 valid points); no 401/403, no
+  credential request, no retry after STOP. Evidence in
+  `inputs/SOURCES.md` and `inputs/phase1-report.md`; Phase 2 not started.
 - Landing LH09 / portal shared chrome 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   User-authorized branch `codex/landing-portal-visual` from `origin/main` (dev
   carries unrelated open PR #151) with a PR to main. Uber-style light-only home
