@@ -278,3 +278,75 @@ Action-panel tested source SHA-256:
 - ActionCardButton: `926cb788160b9b5c7154d97fd258d41dc339ab7c3b3f65a258192d96155da413`.
 - AnpNavGraph: `e9636271ca131d4a48d356cd5ec4953c716a26a48535d7536210759550a09bb7`.
 - MapScreenInstrumentedTest: `9090b24cc5e566ffb65f580c4c3945ec33b38c58cd06ccfc4c11461536d52d61`.
+
+## Follow-up: minimal action-panel collapse control
+
+Parent: `e64b655f`. Status: LOCAL_DONE / INTEGRATION_PENDING. Validation: PASS.
+
+- B-BR-MAP-UI-14: a themed 48 dp chevron button remains visible over the map.
+  `<` hides the action container and its list/cluster content; `>` restores it.
+  The complete OpenStreetMap attribution stays visible in either state.
+- B-BR-MAP-UI-15: default expanded state preserves existing access. The local
+  expanded/collapsed choice survives Compose saved-state restoration. Hiding the
+  panel does not change filters, source, selection, saved data or map lifecycle.
+  Existing measured overlay inset also shrinks/expands with the panel.
+- BUC: browse -> press `<` -> browse a clearer map with the small restore control
+  and attribution -> press `>` -> use the same action cards and callbacks.
+
+Scope: UI only, existing PR #154, no backend/dependency/permission changes.
+Verify hide/show, restoration, callback preservation, credit visibility, 48 dp
+hit area, measured inset shrink/grow, existing native suite, APK/lint/diff/secrets.
+
+### Collapse-control results
+
+- A 48 dp Material FilledTonalIconButton sits to the left of attribution. It shows
+  a left chevron while expanded and a right chevron while collapsed. Hiding removes
+  the full action/list container from layout and semantics, leaving only the small
+  restore button and full attribution. The map stays composed underneath.
+- `rememberSaveable` preserves the local expanded choice through saved-state
+  restoration. Default expanded behavior and every existing action callback stay
+  intact. No global preference or account/backend storage was introduced.
+- Hide/show accessibility labels are localized in all eight supported locales;
+  the existing skeleton includes the new 48 dp control placeholder.
+- Debug app/test APK builds and Android lint **PASS** (`BUILD SUCCESSFUL in
+  2m 39s`), zero errors, same 284 warnings / two informational findings.
+- Full `MapScreenInstrumentedTest`: **13/13 PASS in 52.674 s** on the isolated
+  API30 emulator. The new case verifies hide/show semantics, absent hidden actions,
+  full credit visibility, reduced overlay height, localized action descriptions,
+  48 dp target, saved-state restoration and functional Download after reopening.
+  The inset regression additionally verifies shrink on collapse and exact return
+  to the expanded inset. Existing light/dark/200% font, city/fuel/source/cluster
+  tests remain green.
+- Four native component captures were reviewed. These are synthetic UI fixtures,
+  not new physical-phone/native-engine/data acceptance. Earlier screenshots remain
+  evidence for their respective checkpoints; current captures are linked below.
+- Final diff and secret-surface review **PASS**. No dependency, permission, engine,
+  backend, source/fuel filtering or private-data path changed. No aggregate JVM
+  repeat for unchanged domain/data. Existing release/runtime obligations remain.
+- Task-owned emulator was stopped after capture extraction and its temporary AVD/
+  home removed after process exit. Original occupied checkout/emulator preserved.
+
+```sh
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug \
+  --offline --max-workers=1 --no-parallel --console=plain
+adb -s emulator-5556 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s emulator-5556 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb -s emulator-5556 shell am instrument -w \
+  -e class com.anpfuel.app.ui.map.MapScreenInstrumentedTest \
+  com.anpfuel.app.debug.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+[Native result](map-ui-refinement-20261026/native-tests-collapse.txt),
+[collapsed](map-ui-refinement-20261026/collapse/collapsed.png),
+[expanded dark](map-ui-refinement-20261026/collapse/expanded-dark.png),
+[expanded light](map-ui-refinement-20261026/collapse/expanded-light.png),
+[200% font](map-ui-refinement-20261026/collapse/expanded-large-font.png).
+
+Collapse-control APK SHA-256:
+`37601e60b1e5a8e740465324e05e7c3f15d7d267a6ce6bac85f9d733c95382f6`.
+
+Collapse-control tested source SHA-256:
+
+- MapBottomControls: `9feb9ceefeb2317461d7b5ce0f35f7939b3e09df2518d659fc6bcf38eaab2887`.
+- MapScreenSkeleton: `e3b8df92b348557f93b4180f1975136eb9a79430a2bd41489dd3fe6da690e8db`.
+- MapScreenInstrumentedTest: `879e57524a99c11e2aa9b1db935ff536d7da281034980335aee8b8d3ef5a14e3`.

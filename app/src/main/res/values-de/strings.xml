@@ -1221,4 +1221,6 @@
     <string name="map_filter_source">Preisquelle</string>
     <string name="map_controls_expand">Kartendetails anzeigen</string>
     <string name="map_controls_collapse">Kartendetails ausblenden</string>
+    <string name="map_actions_hide">Kartenaktionen ausblenden</string>
+    <string name="map_actions_show">Kartenaktionen anzeigen</string>
 </resources>

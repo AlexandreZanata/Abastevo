@@ -1,5 +1,16 @@
 # Current execution state
 
+- Map panel-collapse follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
+  dev `e64b655f`, existing PR #154. A visible 48 dp chevron hides/reopens the action
+  container; attribution remains visible and saved-state restoration retains the
+  local choice. Existing overlay measurement updates recenter inset in both states.
+  APKs/lint (zero errors), API30 native 13/13 (including restore, callback, geometry
+  and 200% font), reviewed captures, diff/secret checks PASS. New hide/show labels
+  cover eight locales. [Evidence/previews](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md#follow-up-minimal-action-panel-collapse-control).
+  Original occupied checkout/emulator preserved; no new physical/16 KB, deployment
+  or release acceptance. Next: normal dev push/update of #154; leave PR open for
+  current-head CI/review without merge.
+
 - Map action-panel follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
   dev `c04e8ac4`, existing PR #154. OpenStreetMap attribution is a separate map
   overlay above/right of the action panel. Filters/Search/Download/Saved reuse

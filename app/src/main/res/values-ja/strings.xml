@@ -1221,4 +1221,6 @@
     <string name="map_filter_source">価格の情報源</string>
     <string name="map_controls_expand">地図の詳細を表示</string>
     <string name="map_controls_collapse">地図の詳細を非表示</string>
+    <string name="map_actions_hide">地図の操作を非表示</string>
+    <string name="map_actions_show">地図の操作を表示</string>
 </resources>

@@ -87,8 +87,13 @@ fun MapScreenSkeleton(modifier: Modifier = Modifier) {
                 }
             }
             Spacer(Modifier.weight(1f))
-            SkeletonGroup(Modifier.align(Alignment.End).padding(bottom = 8.dp)) {
-                SkeletonLine(width = 196.dp, height = 18.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SkeletonGroup { SkeletonLine(width = 48.dp, height = 48.dp) }
+                SkeletonGroup { SkeletonLine(width = 196.dp, height = 18.dp) }
             }
             Surface(
                 modifier = Modifier.fillMaxWidth(),
