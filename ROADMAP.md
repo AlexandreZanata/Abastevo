@@ -72,6 +72,13 @@ native artwork retains its named obligation. [MAP-21](docs/backend/evidence/maps
 is LOCAL_DONE / INTEGRATION_PENDING; [MAP-22](docs/backend/evidence/maps/MAP-22.md)
 adds locally proven offline route planning; [MAP-23](docs/backend/evidence/maps/MAP-23.md)
 is LOCAL_DONE / INTEGRATION_PENDING with explicit foreground guidance/local voice on the owned phone;
+[MAP-24](docs/backend/evidence/maps/MAP-24.md), [MAP-25](docs/backend/evidence/maps/MAP-25.md),
+[MAP-26](docs/backend/evidence/maps/MAP-26.md), [MAP-27](docs/backend/evidence/maps/MAP-27.md)
+and [MAP-28](docs/backend/evidence/maps/MAP-28.md) are LOCAL_DONE / INTEGRATION_PENDING;
+[MAP-29](docs/backend/evidence/maps/MAP-29.md) has the declared local proxy budgets PASS
+but **PERFORMANCE_GATE PARTIAL** because frame pacing/content time, current-head network,
+PostGIS load/EXPLAIN, API 26, clean ARMv7 runtime, physical battery and national capacity
+remain OWED. Synthetic charging/UI fixtures are not live coverage; no arrival guarantee.
 [prepared pictograms](docs/assets/map-icons/README.md) remain admitted assets.
 No deployment or remote delivery is inferred from these local checks.
 

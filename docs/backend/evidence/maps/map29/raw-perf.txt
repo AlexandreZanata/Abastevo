@@ -1,0 +1,67 @@
+# host Linux pop-os 7.2.6-76070206-generic #202609141300~1792433904~24.04~141c6f5 SMP PREEMPT_DYNAMIC Mon O x86_64 x86_64 x86_64 GNU/Linux
+# date 2026-10-26T18:26:04Z
+google/sdk_gphone16k_x86_64/emu64xa16k:15/AE3A.240806.043/12960925:userdebug/dev-keys
+16384
+x86_64
+d1e9b2ce81cc10335b6b082a64d78a8241390f42c262e2832f400c981b200a3e  /data/local/tmp/Brazil_Parana_East.mwm
+77a35c16fad64252fe7dffadb8e966e8e3af906354b14df2edc1809b3e22e4a5  /data/local/tmp/World.mwm
+d42a71b10c5637814468929dc4c72c2fc20f2996ce9877d697bd3dd4dc143626  /data/local/tmp/WorldCoasts.mwm
+== PERF RUN 1
+
+OK (1 test)
+
+
+--------- beginning of main
+10-26 14:26:06.671  6179  6195 D MapPerf : engineInitMs=1149 pssAfterInitKb=314296
+10-26 14:26:07.083  6179  6195 D MapPerf : routeMs[0]=410 distance=1800
+10-26 14:26:07.169  6179  6195 D MapPerf : routeMs[1]=86 distance=1800
+10-26 14:26:07.244  6179  6195 D MapPerf : routeMs[2]=75 distance=1800
+10-26 14:26:07.258  6179  6195 D MapPerf : pssAfterRoutesKb=351481
+10-26 14:26:07.561  6179  6195 D MapPerf : cancelMs=0 callbacksAfterCancel=0
+10-26 14:26:07.574  6179  6195 D MapPerf : pssAfterCancelKb=351578
+== PERF RUN 2
+
+OK (1 test)
+
+
+--------- beginning of main
+10-26 14:26:09.845  6255  6270 D MapPerf : engineInitMs=752 pssAfterInitKb=316469
+10-26 14:26:10.194  6255  6270 D MapPerf : routeMs[0]=347 distance=1800
+10-26 14:26:10.281  6255  6270 D MapPerf : routeMs[1]=87 distance=1800
+10-26 14:26:10.354  6255  6270 D MapPerf : routeMs[2]=72 distance=1800
+10-26 14:26:10.369  6255  6270 D MapPerf : pssAfterRoutesKb=350505
+10-26 14:26:10.671  6255  6270 D MapPerf : cancelMs=0 callbacksAfterCancel=0
+10-26 14:26:10.684  6255  6270 D MapPerf : pssAfterCancelKb=350664
+== PERF RUN 3
+
+OK (1 test)
+
+
+--------- beginning of main
+10-26 14:26:12.952  6327  6342 D MapPerf : engineInitMs=754 pssAfterInitKb=315523
+10-26 14:26:13.171  6327  6342 D MapPerf : routeMs[0]=217 distance=1800
+10-26 14:26:13.250  6327  6342 D MapPerf : routeMs[1]=78 distance=1800
+10-26 14:26:13.324  6327  6342 D MapPerf : routeMs[2]=74 distance=1800
+10-26 14:26:13.337  6327  6342 D MapPerf : pssAfterRoutesKb=349163
+10-26 14:26:13.639  6327  6342 D MapPerf : cancelMs=0 callbacksAfterCancel=0
+10-26 14:26:13.653  6327  6342 D MapPerf : pssAfterCancelKb=349163
+== COLD START 1
+Status: ok
+LaunchState: COLD
+TotalTime: 1218
+WaitTime: 1221
+== COLD START 2
+Status: ok
+LaunchState: COLD
+TotalTime: 1384
+WaitTime: 1392
+== COLD START 3
+Status: ok
+LaunchState: WARM
+TotalTime: 1305
+WaitTime: 1321
+== COLD START 4 (retry after warm sample)
+Status: ok
+LaunchState: COLD
+TotalTime: 1242
+WaitTime: 1247

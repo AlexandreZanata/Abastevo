@@ -1,0 +1,64 @@
+# MAP-29 static compatibility evidence
+# date 2026-10-26T18:27:33Z
+# source HEAD d766dbb4041c0262e9b5c467f1def9628565f0d7
+# java
+# openjdk version "21" 2023-09-19 LTS
+# OpenJDK Runtime Environment Temurin-21+35 (build 21+35-LTS)
+# OpenJDK 64-Bit Server VM Temurin-21+35 (build 21+35-LTS, mixed mode, sharing)
+# gradle
+# Gradle 8.10.2
+# Kotlin:        1.9.24
+# apk
+78396538 bytes
+fabbb6199a83f3f0fc7b647c3b3a8ea7486b8886b1fc9053a4177b80f41745ed  app/build/outputs/apk/release/app-release-unsigned.apk
+# aapt
+package: name='com.anpfuel.app' versionCode='4' versionName='3.1.0' platformBuildVersionName='15' platformBuildVersionCode='35' compileSdkVersion='35' compileSdkVersionCodename='15'
+sdkVersion:'26'
+targetSdkVersion:'35'
+native-code: 'arm64-v8a' 'armeabi-v7a'
+# zipalign
+PASS
+# packaged native libs and LOAD alignment
+lib/arm64-v8a/libandroidx.graphics.path.so 10096
+lib/arm64-v8a/libdatastore_shared_counter.so 7112
+lib/arm64-v8a/libmonocypher_ed25519.so 80824
+lib/arm64-v8a/liborganicmaps.so 14675128
+lib/armeabi-v7a/libandroidx.graphics.path.so 7252
+lib/armeabi-v7a/libdatastore_shared_counter.so 4416
+lib/armeabi-v7a/libmonocypher_ed25519.so 85008
+lib/armeabi-v7a/liborganicmaps.so 10499284
+== /tmp/map29-libs/lib/arm64-v8a/libandroidx.graphics.path.so
+align=0x4000
+align=0x4000
+align=0x4000
+== /tmp/map29-libs/lib/arm64-v8a/libdatastore_shared_counter.so
+align=0x4000
+align=0x4000
+align=0x4000
+== /tmp/map29-libs/lib/arm64-v8a/libmonocypher_ed25519.so
+align=0x4000
+align=0x4000
+== /tmp/map29-libs/lib/arm64-v8a/liborganicmaps.so
+align=0x4000
+align=0x4000
+align=0x4000
+== /tmp/map29-libs/lib/armeabi-v7a/libandroidx.graphics.path.so
+align=0x4000
+align=0x4000
+align=0x4000
+== /tmp/map29-libs/lib/armeabi-v7a/libdatastore_shared_counter.so
+align=0x4000
+align=0x4000
+== /tmp/map29-libs/lib/armeabi-v7a/libmonocypher_ed25519.so
+align=0x4000
+align=0x4000
+== /tmp/map29-libs/lib/armeabi-v7a/liborganicmaps.so
+align=0x4000
+align=0x4000
+align=0x4000
+# no mwm assets
+NONE
+# pinned engine candidate
+071120e96b1c27be14d166183dd96b37751119fc4da45c74cb76a3647e0ee66a  /tmp/abastevo-pr150-integration-20261025/build/comaps/7ad828883c4aca8a/classes.jar
+bb2aed7bdbc26e52fc90d0cfc0cf05e01b2e7aab96119b7f2e1d01533ba1c45b  /tmp/abastevo-pr150-integration-20261025/build/comaps/7ad828883c4aca8a/jni/arm64-v8a/liborganicmaps.so
+7d61b573c6a15bcb1bd7de463ec420a02b716f88c872099ff7d8e901f3fba842  /tmp/abastevo-pr150-integration-20261025/build/comaps/7ad828883c4aca8a/jni/armeabi-v7a/liborganicmaps.so

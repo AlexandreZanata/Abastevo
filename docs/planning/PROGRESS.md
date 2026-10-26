@@ -1,5 +1,41 @@
 # Current execution state
 
+- MAP-29 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING, **PERFORMANCE_GATE
+  PARTIAL**. Versioned local proxy matrix and raw sanitized samples:
+  release universal APK 78,396,538 bytes (74.76 MiB, 16 KB LOAD alignment and
+  zipalign PASS), engine init 1149/752/754 ms, real 1.8 km route 75–410 ms,
+  PSS 349–351 MiB, cancel 0 ms with no stale callback, cold start
+  1218/1384/1242 ms on the owned API35/16 KB translated ARM emulator. MAP-27/28
+  real-engine/UI/accessibility tests and targeted domain/application/data/app
+  suites plus lint PASS. Frame pacing/content time, network bytes, PostGIS
+  load/EXPLAIN, API26, clean ARMv7 runtime, physical battery and national
+  capacity remain OWED; no PASS/national/SLA claim.
+  [MAP-29 evidence](../backend/evidence/maps/MAP-29.md). No PR/merge/deploy.
+
+- MAP-28 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. EV section in the
+  existing native route sheet (vehicle/SOC/reserve/consumption/target/PHEV
+  share, comma/dot parsing, typed unknowns), primary/alternative/arrival/cost/
+  provenance, failure replan from the failed charger arrival SOC with stale-result
+  invalidation, MAP-25 save and Saved→Map reopen via private `map/plan/{tripId}`.
+  Real native/app UI flow with synthetic Room/vehicle fixtures, saved-plan
+  reopen, 200% font/320 dp semantics, ViewModel/reopen tests and lint PASS.
+  Only one emulator/profile: two-account/two-device backup, manual TalkBack and
+  airplane-mode process-death journey remain OWED; no live/charger guarantee.
+  [MAP-28 evidence](../backend/evidence/maps/MAP-28.md). No PR/merge/deploy.
+
+- MAP-27 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Typed charging
+  candidates, real native road legs, bounded corridor/Room lookup, reserve and
+  target exactness, site/equipment/connector failure scopes, duplicate-site
+  refusal, reachable fallback from the failed-primary arrival SOC (no failed
+  charge), hours/timezone/tariff/power/access/provenance gaps, budget/
+  cancellation/generation limits. Independent failure vector 60,000 Wh/30%/
+  10%/180 Wh/km gives 900 bp at 20 km (below reserve) and 1,200 bp at 10 km
+  (reachable). Domain 9/9, application 10/10, router 3/3, mapper 3/3 and a real
+  native route/primary/alternative/replan instrumentation proof PASS.
+  Synthetic charging fixtures only; no live/national coverage or arrival
+  guarantee. [MAP-27 evidence](../backend/evidence/maps/MAP-27.md).
+  No PR/merge/deploy.
+
 - MAP-26 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Pure Kotlin EV
   energy model (usable energy, PHEV electric-portion scope, segments with an
   explicit margin, reach, arrival SOC, charging-time lower bound, sum-first
