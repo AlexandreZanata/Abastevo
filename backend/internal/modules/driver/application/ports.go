@@ -129,3 +129,19 @@ type MaintenanceStore interface {
 	EraseMaintenance(context.Context, string, string, int64, int64) error
 	EraseMaintenanceOwner(context.Context, string, int64) error
 }
+
+type SaveReconciliation struct {
+	OperationID                    string
+	ExpectedVersion, ExpectedEpoch int64
+	Decision                       domain.ReconciliationDecision
+}
+type ReconciliationReceipt struct {
+	ID       string
+	Version  int64
+	Replayed bool
+}
+type ReconciliationStore interface {
+	SaveReconciliation(context.Context, string, SaveReconciliation) (ReconciliationReceipt, error)
+	GetReconciliation(context.Context, string, string, int64) (domain.ReconciliationDecision, error)
+	ListReconciliations(context.Context, string, string, int) ([]domain.ReconciliationDecision, error)
+}

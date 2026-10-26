@@ -20,10 +20,13 @@ import (
 // OwnershipPort must check live account/vehicle ownership in this transaction.
 // Its owner implementation lives in cloudsync, not in driver SQL. Nil denies.
 type OwnershipPort func(context.Context, pgx.Tx, string, string) (bool, error)
+type PaidPort func(context.Context, pgx.Tx, string) error
+
 type Store struct {
 	pool      *pgxpool.Pool
 	ownership OwnershipPort
 	ledger    LedgerCostPort
+	paid      PaidPort
 }
 
 var _ app.EarningsStore = (*Store)(nil)
@@ -33,6 +36,17 @@ func New(pool *pgxpool.Pool, ownership OwnershipPort) *Store {
 }
 func NewWithLedger(pool *pgxpool.Pool, ownership OwnershipPort, ledger LedgerCostPort) *Store {
 	return &Store{pool: pool, ownership: ownership, ledger: ledger}
+}
+
+// SetPaid installs the transaction-bound Premium capability port. Nil keeps
+// private-storage tests and retained reads local; hosted composition must set it.
+func (s *Store) SetPaid(paid PaidPort) { s.paid = paid }
+
+func (s *Store) requirePaid(ctx context.Context, tx pgx.Tx, owner string) error {
+	if s.paid == nil {
+		return nil
+	}
+	return s.paid(ctx, tx, owner)
 }
 func uid(s string) pgtype.UUID { var v pgtype.UUID; _ = v.Scan(s); return v }
 func uuid(v pgtype.UUID) string {
@@ -152,6 +166,9 @@ func (s *Store) commitReceipt(ctx context.Context, tx pgx.Tx, query *q.Queries, 
 		if e := query.SaveDriverCommand(ctx, q.SaveDriverCommandParams{AccountID: uid(owner), OperationID: uid(operation), RequestSha256: digest, RecordID: uid(receipt.ID), Revision: receipt.Revision, Epoch: receipt.Epoch}); e != nil {
 			return app.Receipt{}, storageError(ctx, e)
 		}
+	}
+	if e := s.requirePaid(ctx, tx, owner); e != nil {
+		return app.Receipt{}, e
 	}
 	if e := s.authorize(ctx, tx, owner, vehicle); e != nil {
 		return app.Receipt{}, e
@@ -500,7 +517,7 @@ func (s *Store) EraseOwner(ctx context.Context, owner string, expectedEpoch int6
 	if _, e = query.AdvanceDriverEpoch(ctx, uid(owner)); e != nil {
 		return storageError(ctx, e)
 	}
-	for _, remove := range []func(context.Context, pgtype.UUID) error{query.DeleteDriverOwnerEarnings, query.DeleteDriverOwnerCommands, query.DeleteDriverOwnerTombstones} {
+	for _, remove := range []func(context.Context, pgtype.UUID) error{query.DeleteDriverOwnerEarnings, query.DeleteDriverOwnerCommands, query.DeleteDriverOwnerTombstones, query.DeleteDriverOwnerReconciliations, query.DeleteDriverOwnerReconciliationCommands} {
 		if e = remove(ctx, uid(owner)); e != nil {
 			return storageError(ctx, e)
 		}

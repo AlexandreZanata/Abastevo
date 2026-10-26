@@ -151,6 +151,9 @@ func (s *Store) SaveCostProfile(ctx context.Context, owner string, in app.SaveCo
 		if command.RequestSha256 != digest {
 			return app.CostProfileReceipt{}, domain.ErrConflict
 		}
+		if e = s.requirePaid(ctx, tx, owner); e != nil {
+			return app.CostProfileReceipt{}, e
+		}
 		return app.CostProfileReceipt{Vehicle: uuid(command.VehicleID), Version: command.Version, Replayed: true}, nil
 	} else if !errors.Is(e, pgx.ErrNoRows) {
 		return app.CostProfileReceipt{}, storageError(ctx, e)
@@ -225,6 +228,9 @@ func (s *Store) SaveCostProfile(ctx context.Context, owner string, in app.SaveCo
 		AccountID: uid(owner), OperationID: uid(in.OperationID), RequestSha256: digest, VehicleID: uid(profile.Vehicle), Version: profile.Version,
 	}); e != nil {
 		return app.CostProfileReceipt{}, storageError(ctx, e)
+	}
+	if e = s.requirePaid(ctx, tx, owner); e != nil {
+		return app.CostProfileReceipt{}, e
 	}
 	if e = s.authorize(ctx, tx, owner, profile.Vehicle); e != nil {
 		return app.CostProfileReceipt{}, e
@@ -409,6 +415,9 @@ func (s *Store) SaveMaintenance(ctx context.Context, owner string, in app.SaveMa
 		if command.RequestSha256 != digest {
 			return app.MaintenanceReceipt{}, domain.ErrConflict
 		}
+		if e = s.requirePaid(ctx, tx, owner); e != nil {
+			return app.MaintenanceReceipt{}, e
+		}
 		return app.MaintenanceReceipt{ScheduleID: uuid(command.ScheduleID), Version: command.Version, Replayed: true}, nil
 	} else if !errors.Is(e, pgx.ErrNoRows) {
 		return app.MaintenanceReceipt{}, storageError(ctx, e)
@@ -449,6 +458,9 @@ func (s *Store) SaveMaintenance(ctx context.Context, owner string, in app.SaveMa
 		AccountID: uid(owner), OperationID: uid(in.OperationID), RequestSha256: digest, ScheduleID: uid(schedule.ID), Version: schedule.Version,
 	}); e != nil {
 		return app.MaintenanceReceipt{}, storageError(ctx, e)
+	}
+	if e = s.requirePaid(ctx, tx, owner); e != nil {
+		return app.MaintenanceReceipt{}, e
 	}
 	if e = s.authorize(ctx, tx, owner, schedule.Vehicle); e != nil {
 		return app.MaintenanceReceipt{}, e

@@ -226,6 +226,37 @@ type DriverMaintenanceTombstone struct {
 	ErasedAt            pgtype.Timestamptz `json:"erased_at"`
 }
 
+type DriverReconciliationCommand struct {
+	AccountID     pgtype.UUID `json:"account_id"`
+	OperationID   pgtype.UUID `json:"operation_id"`
+	RequestSha256 string      `json:"request_sha256"`
+	DecisionID    pgtype.UUID `json:"decision_id"`
+	Version       int64       `json:"version"`
+}
+
+type DriverReconciliationDecision struct {
+	AccountID        pgtype.UUID        `json:"account_id"`
+	ID               pgtype.UUID        `json:"id"`
+	Version          int64              `json:"version"`
+	Kind             string             `json:"kind"`
+	Platform         string             `json:"platform"`
+	FromAt           pgtype.Timestamptz `json:"from_at"`
+	ToAt             pgtype.Timestamptz `json:"to_at"`
+	PrimaryID        pgtype.UUID        `json:"primary_id"`
+	PrimaryRevision  int64              `json:"primary_revision"`
+	PayoutSourceHash pgtype.Text        `json:"payout_source_hash"`
+	ContentSha256    string             `json:"content_sha256"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
+type DriverReconciliationRecord struct {
+	AccountID      pgtype.UUID `json:"account_id"`
+	DecisionID     pgtype.UUID `json:"decision_id"`
+	Version        int64       `json:"version"`
+	RecordID       pgtype.UUID `json:"record_id"`
+	RecordRevision int64       `json:"record_revision"`
+}
+
 type DriverShift struct {
 	AccountID              pgtype.UUID        `json:"account_id"`
 	ID                     pgtype.UUID        `json:"id"`

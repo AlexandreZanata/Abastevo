@@ -389,7 +389,7 @@ func TestDriverDistancePersistenceOverlapAndReplay(t *testing.T) {
 func TestDriverMovementSchemaAndUpgrade(t *testing.T) {
 	ctx := context.Background()
 	p, dsn := freshDriverDB(t, migrationCopy(t, false))
-	for _, table := range []string{"driver_shifts", "driver_shift_gaps", "driver_shift_commands", "driver_distance_observations", "driver_distance_commands", "driver_cost_profiles", "driver_cost_profile_items", "driver_maintenance_schedules"} {
+	for _, table := range []string{"driver_shifts", "driver_shift_gaps", "driver_shift_commands", "driver_distance_observations", "driver_distance_commands", "driver_cost_profiles", "driver_cost_profile_items", "driver_maintenance_schedules", "driver_reconciliation_decisions"} {
 		var exists bool
 		if e := p.QueryRow(ctx, "SELECT to_regclass($1) IS NULL", table).Scan(&exists); e != nil || !exists {
 			t.Fatal("private table absent before upgrade", table, e)
@@ -398,7 +398,7 @@ func TestDriverMovementSchemaAndUpgrade(t *testing.T) {
 	if _, e := migrate.Apply(ctx, dsn, migrations.Files); e != nil {
 		t.Fatal(e)
 	}
-	for _, table := range []string{"driver_shifts", "driver_shift_gaps", "driver_shift_commands", "driver_distance_observations", "driver_distance_commands", "driver_cost_profiles", "driver_cost_profile_items", "driver_cost_commands", "driver_cost_owner_state", "driver_cost_tombstones", "driver_maintenance_schedules", "driver_maintenance_commands", "driver_maintenance_owner_state", "driver_maintenance_tombstones"} {
+	for _, table := range []string{"driver_shifts", "driver_shift_gaps", "driver_shift_commands", "driver_distance_observations", "driver_distance_commands", "driver_cost_profiles", "driver_cost_profile_items", "driver_cost_commands", "driver_cost_owner_state", "driver_cost_tombstones", "driver_maintenance_schedules", "driver_maintenance_commands", "driver_maintenance_owner_state", "driver_maintenance_tombstones", "driver_reconciliation_decisions", "driver_reconciliation_records", "driver_reconciliation_commands"} {
 		var exists bool
 		if e := p.QueryRow(ctx, "SELECT to_regclass($1) IS NOT NULL", table).Scan(&exists); e != nil || !exists {
 			t.Fatal("private table absent after upgrade", table, e)
@@ -409,7 +409,7 @@ func TestDriverMovementSchemaAndUpgrade(t *testing.T) {
 		t.Fatal("active shift index", e)
 	}
 	var triggers int
-	if e := p.QueryRow(ctx, "SELECT count(*) FROM pg_trigger WHERE tgname IN ('driver_erase_deleted_owner','driver_erase_deleted_owner_movement','driver_erase_deleted_owner_cost')").Scan(&triggers); e != nil || triggers != 3 {
+	if e := p.QueryRow(ctx, "SELECT count(*) FROM pg_trigger WHERE tgname IN ('driver_erase_deleted_owner','driver_erase_deleted_owner_movement','driver_erase_deleted_owner_cost','driver_erase_deleted_owner_reconciliation')").Scan(&triggers); e != nil || triggers != 4 {
 		t.Fatal("erasure triggers", triggers, e)
 	}
 }

@@ -156,6 +156,9 @@ func (s *Store) ApplyShift(ctx context.Context, owner string, in app.ApplyShift)
 		if in.Create != nil && (shift.Origin != in.Create.Origin || shift.Vehicle != in.Create.Vehicle || shift.Timezone != in.Create.Timezone) {
 			return domain.ShiftTransition{}, domain.ErrConflict
 		}
+		if e = s.requirePaid(ctx, tx, owner); e != nil {
+			return domain.ShiftTransition{}, e
+		}
 		if e = s.authorize(ctx, tx, owner, shift.Vehicle); e != nil {
 			return domain.ShiftTransition{}, e
 		}
@@ -245,6 +248,9 @@ func (s *Store) ApplyShift(ctx context.Context, owner string, in app.ApplyShift)
 		if e = query.PruneDriverShiftCommands(ctx, q.PruneDriverShiftCommandsParams{AccountID: uid(owner), ShiftID: uid(transition.Shift.ID), AcceptedVersion: pruneAt}); e != nil {
 			return domain.ShiftTransition{}, storageError(ctx, e)
 		}
+	}
+	if e = s.requirePaid(ctx, tx, owner); e != nil {
+		return domain.ShiftTransition{}, e
 	}
 	if e = s.authorize(ctx, tx, owner, transition.Shift.Vehicle); e != nil {
 		return domain.ShiftTransition{}, e
@@ -381,6 +387,9 @@ func (s *Store) SaveDistance(ctx context.Context, owner string, in app.SaveDista
 		if row.ContentSha256 != content {
 			return app.DistanceReceipt{}, domain.ErrConflict
 		}
+		if e = s.requirePaid(ctx, tx, owner); e != nil {
+			return app.DistanceReceipt{}, e
+		}
 		return app.DistanceReceipt{ID: uuid(row.ID), ContentHash: row.ContentSha256, Replayed: true}, nil
 	} else if !errors.Is(e, pgx.ErrNoRows) {
 		return app.DistanceReceipt{}, storageError(ctx, e)
@@ -392,6 +401,9 @@ func (s *Store) SaveDistance(ctx context.Context, owner string, in app.SaveDista
 		}
 		if e = query.SaveDriverDistanceCommand(ctx, q.SaveDriverDistanceCommandParams{AccountID: uid(owner), OperationID: uid(in.OperationID), RequestSha256: digest, RecordID: existing.ID}); e != nil {
 			return app.DistanceReceipt{}, storageError(ctx, e)
+		}
+		if e = s.requirePaid(ctx, tx, owner); e != nil {
+			return app.DistanceReceipt{}, e
 		}
 		if e = s.authorize(ctx, tx, owner, record.VehicleID); e != nil {
 			return app.DistanceReceipt{}, e
@@ -418,6 +430,9 @@ func (s *Store) SaveDistance(ctx context.Context, owner string, in app.SaveDista
 	}
 	if e = query.SaveDriverDistanceCommand(ctx, q.SaveDriverDistanceCommandParams{AccountID: uid(owner), OperationID: uid(in.OperationID), RequestSha256: digest, RecordID: uid(record.ID)}); e != nil {
 		return app.DistanceReceipt{}, storageError(ctx, e)
+	}
+	if e = s.requirePaid(ctx, tx, owner); e != nil {
+		return app.DistanceReceipt{}, e
 	}
 	if e = s.authorize(ctx, tx, owner, record.VehicleID); e != nil {
 		return app.DistanceReceipt{}, e
