@@ -336,7 +336,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-20.md`. A later relevant change invalidates affected evidence.
 ### DRV-21 — Deliver explicit GPS distance as an optional mode
 
-Status: PLANNED. Dependency: DRV-20 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: IN_PROGRESS / explicit FGS slice; field/battery acceptance pending. Evidence: [DRV-18..22](../backend/evidence/driver-suite/DRV-18-22.md). Dependency: DRV-20 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `Android platform FGS/location; shared MAP lifecycle ports`. Rules: B-BR-DRV-09, B-BR-DRV-10, B-BR-DRV-20.
 

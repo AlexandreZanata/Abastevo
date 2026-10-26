@@ -3957,7 +3957,7 @@ four-tab navigation regression on an owned API35 emulator. DRV-17 is LOCAL_DONE 
 [evidence](docs/backend/evidence/driver-suite/DRV-17.md) records quick
 refuel/charge entry, separate charge fees, exact units and the existing
 consumption/energy unknown semantics on JVM and an owned API35 emulator.
-DRV-18–22 are IN_PROGRESS at behavior `3517820b` (local shift/earnings/payout/cost slice; GPS and reconciliation not implemented). DRV-21/22 remain open; DRV-23–35 remain PLANNED.
+DRV-18–21 are IN_PROGRESS at behavior `313e5c63` (local shift/earnings/payout/cost slice plus explicit GPS foreground recorder). DRV-22 reconciliation and DRV-23–35 remain PLANNED; runtime GPS/battery/field proof is owed.
 
 Durable movement continuation (2026-10-26): DRV-08 is LOCAL_DONE /
 INTEGRATION_PENDING at behavior `4026df2a`. [Evidence](docs/backend/evidence/driver-suite/DRV-08.md)

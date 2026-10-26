@@ -1,5 +1,12 @@
 # Current execution state
 
+- DRV-21 2026-10-26: IN_PROGRESS / explicit FGS slice, behavior 313e5c63.
+  [Evidence](../backend/evidence/driver-suite/DRV-18-22.md). Added
+  DriverGpsService (visible notification, GPS provider/2 s, explicit start/stop,
+  START_NOT_STICKY, local distance row) and updated the static location guard to
+  allow only this service. Runtime permission UX, process-death/battery/
+  coexistence and Play policy proof remain open. No field/device acceptance.
+
 - DRV-18..22 2026-10-26: IN_PROGRESS (local slice only), parent c78b0f89,
   behavior 3517820b, merge c4266814. [Evidence](../backend/evidence/driver-suite/DRV-18-22.md).
   Added Room schema 31 (shift odometers, payouts, cost settings, GPS table) and
