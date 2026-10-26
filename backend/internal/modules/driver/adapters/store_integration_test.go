@@ -119,7 +119,7 @@ func earning(t *testing.T, vehicle string) app.SaveEarning {
 }
 func driverCount(t *testing.T, p *pgxpool.Pool, table string) int {
 	t.Helper()
-	allowed := map[string]bool{"driver_earnings": true, "driver_earning_revisions": true, "driver_earning_adjustments": true, "driver_earning_commands": true, "driver_earning_tombstones": true, "driver_earning_owner_state": true}
+	allowed := map[string]bool{"driver_earnings": true, "driver_earning_revisions": true, "driver_earning_adjustments": true, "driver_earning_commands": true, "driver_earning_tombstones": true, "driver_earning_owner_state": true, "driver_shifts": true, "driver_shift_gaps": true, "driver_shift_commands": true, "driver_distance_observations": true, "driver_distance_commands": true}
 	if !allowed[table] {
 		t.Fatal("test table not allowlisted")
 	}
@@ -540,7 +540,7 @@ func migrationCopy(t *testing.T, include133 bool) fstest.MapFS {
 	}
 	out := fstest.MapFS{}
 	for _, entry := range entries {
-		if !strings.HasSuffix(entry.Name(), ".sql") || (!include133 && strings.HasPrefix(entry.Name(), "000133_")) {
+		if !strings.HasSuffix(entry.Name(), ".sql") || (!include133 && (strings.HasPrefix(entry.Name(), "000133_") || strings.HasPrefix(entry.Name(), "000134_"))) {
 			continue
 		}
 		b, e := fs.ReadFile(migrations.Files, entry.Name())
@@ -585,8 +585,8 @@ func TestDriverUpgradeFailureRecoveryAndConcurrentMigrators(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
-	if total != 1 {
-		t.Fatal("migration not once", total)
+	if total != 2 {
+		t.Fatal("migrations not applied exactly once", total)
 	}
 	var legacy bool
 	if e := p.QueryRow(ctx, "SELECT (payload->>'synthetic_legacy')::boolean FROM ledger_records WHERE account_id=$1 AND id=$2", owner, id).Scan(&legacy); e != nil || !legacy {

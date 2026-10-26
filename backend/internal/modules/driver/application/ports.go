@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/domain"
+	"time"
 )
 
 var ErrDenied = errors.New("driver: owner or vehicle denied")
@@ -64,4 +65,32 @@ type EarningsStore interface {
 	ListRevisions(context.Context, string, string, int64, int) (RevisionPage, error)
 	EraseRecord(context.Context, string, string, int64, int64) error
 	EraseOwner(context.Context, string, int64) error
+}
+
+type ShiftStart struct {
+	ID, Origin, Vehicle, Timezone string
+}
+type ApplyShift struct {
+	ShiftID string
+	Create  *ShiftStart
+	Command domain.ShiftCommand
+	Policy  domain.ClockPolicy
+}
+type SaveDistance struct {
+	OperationID string
+	Record      domain.DistanceRecord
+}
+type DistanceReceipt struct {
+	ID, ContentHash string
+	Replayed        bool
+}
+type ShiftStore interface {
+	ApplyShift(context.Context, string, ApplyShift) (domain.ShiftTransition, error)
+	GetShift(context.Context, string, string) (domain.Shift, error)
+	CurrentShift(context.Context, string) (domain.Shift, error)
+}
+type DistanceStore interface {
+	SaveDistance(context.Context, string, SaveDistance) (DistanceReceipt, error)
+	GetDistance(context.Context, string, string) (domain.DistanceRecord, error)
+	ListDistances(context.Context, string, string, time.Time, time.Time, int) ([]domain.DistanceRecord, error)
 }

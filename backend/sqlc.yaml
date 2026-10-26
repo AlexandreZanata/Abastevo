@@ -358,6 +358,7 @@ sql:
     schema:
       - db/migrations/000020_accounts.sql
       - db/migrations/000133_driver_earnings.sql
+      - db/migrations/000134_driver_shifts_distance.sql
     gen:
       go:
         package: driver

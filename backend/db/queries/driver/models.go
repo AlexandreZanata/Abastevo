@@ -43,6 +43,36 @@ type AccountSessionFamily struct {
 	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type DriverDistanceCommand struct {
+	AccountID     pgtype.UUID        `json:"account_id"`
+	OperationID   pgtype.UUID        `json:"operation_id"`
+	RequestSha256 string             `json:"request_sha256"`
+	RecordID      pgtype.UUID        `json:"record_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+type DriverDistanceObservation struct {
+	AccountID           pgtype.UUID        `json:"account_id"`
+	ID                  pgtype.UUID        `json:"id"`
+	Origin              string             `json:"origin"`
+	VehicleID           pgtype.UUID        `json:"vehicle_id"`
+	Segment             string             `json:"segment"`
+	Basis               string             `json:"basis"`
+	FromAt              pgtype.Timestamptz `json:"from_at"`
+	ToAt                pgtype.Timestamptz `json:"to_at"`
+	Timezone            string             `json:"timezone"`
+	Metres              pgtype.Int8        `json:"metres"`
+	Complete            bool               `json:"complete"`
+	HasGap              bool               `json:"has_gap"`
+	Quality             string             `json:"quality"`
+	QualityVersion      pgtype.Int4        `json:"quality_version"`
+	QualityNote         pgtype.Text        `json:"quality_note"`
+	StartOdometerMetres pgtype.Int8        `json:"start_odometer_metres"`
+	EndOdometerMetres   pgtype.Int8        `json:"end_odometer_metres"`
+	ContentSha256       string             `json:"content_sha256"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+}
+
 type DriverEarning struct {
 	AccountID      pgtype.UUID        `json:"account_id"`
 	ID             pgtype.UUID        `json:"id"`
@@ -105,4 +135,46 @@ type DriverEarningTombstone struct {
 	Platform       string      `json:"platform"`
 	SourceHash     string      `json:"source_hash"`
 	ErasedRevision int64       `json:"erased_revision"`
+}
+
+type DriverShift struct {
+	AccountID              pgtype.UUID        `json:"account_id"`
+	ID                     pgtype.UUID        `json:"id"`
+	Origin                 string             `json:"origin"`
+	VehicleID              pgtype.UUID        `json:"vehicle_id"`
+	Timezone               string             `json:"timezone"`
+	State                  string             `json:"state"`
+	Version                int64              `json:"version"`
+	LastBootID             pgtype.Text        `json:"last_boot_id"`
+	LastElapsedMillis      pgtype.Int8        `json:"last_elapsed_millis"`
+	LastUtcMillis          pgtype.Int8        `json:"last_utc_millis"`
+	ActiveMillis           int64              `json:"active_millis"`
+	ManuallyReviewedMillis int64              `json:"manually_reviewed_millis"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
+}
+
+type DriverShiftCommand struct {
+	AccountID       pgtype.UUID        `json:"account_id"`
+	ShiftID         pgtype.UUID        `json:"shift_id"`
+	OperationID     pgtype.UUID        `json:"operation_id"`
+	Fingerprint     string             `json:"fingerprint"`
+	AcceptedVersion int64              `json:"accepted_version"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+type DriverShiftGap struct {
+	AccountID             pgtype.UUID        `json:"account_id"`
+	ShiftID               pgtype.UUID        `json:"shift_id"`
+	ID                    pgtype.UUID        `json:"id"`
+	Reason                string             `json:"reason"`
+	PreviousBootID        string             `json:"previous_boot_id"`
+	PreviousElapsedMillis int64              `json:"previous_elapsed_millis"`
+	PreviousUtcMillis     int64              `json:"previous_utc_millis"`
+	NextBootID            string             `json:"next_boot_id"`
+	NextElapsedMillis     int64              `json:"next_elapsed_millis"`
+	NextUtcMillis         int64              `json:"next_utc_millis"`
+	Reviewed              bool               `json:"reviewed"`
+	ReviewedWorkMillis    pgtype.Int8        `json:"reviewed_work_millis"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
 }
