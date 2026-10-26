@@ -42,9 +42,9 @@ class DriverFoundationRegressionTest {
         coEvery { getVehicle.invoke(id) } returns car
         coEvery { list.invoke(id) } returns emptyList()
         every { efficiency.current(any()) } returns null
-        coEvery { save.invoke(any(), any(), any()) } answers {
+        coEvery { save.invoke(any(), any(), any(), any()) } answers {
             val draft = firstArg<LedgerDraft>()
-            StoredLedgerDraft(draft, secondArg(), rows.size.toLong()).also { rows[draft.recordId] = it }
+            StoredLedgerDraft(draft, secondArg(), rows.size.toLong(), odometerEvidence = arg(3)).also { rows[draft.recordId] = it }
         }
         coEvery { get.invoke(any(), any()) } answers { rows[secondArg<String>()] }
         vm = LedgerEntriesViewModel(list, get, save, mockk(), mockk(), mockk(), mockk(), efficiency, getVehicle)

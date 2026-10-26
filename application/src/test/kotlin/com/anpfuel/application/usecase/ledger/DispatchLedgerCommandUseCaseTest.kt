@@ -185,4 +185,16 @@ class DispatchLedgerCommandUseCaseTest {
         coVerify(exactly = 0) { gateway.submit(any(), any(), any(), any(), any()) }
     }
 
+    @Test fun `obsolete queued body is held rather than sent over a local correction`() = runTest {
+        every { sessions.load() } returns session()
+        coEvery { commands.listPending(any(),any()) } returns listOf(command())
+        val drafts = mockk<com.anpfuel.domain.repository.LedgerDraftStore>()
+        coEvery { drafts.find(any(),any(),any(),any()) } returns null
+        val guarded = DispatchLedgerCommandUseCase(commands,gateway,sessions,"https://api.example.test", drafts=drafts)
+        assertEquals(LedgerDispatchOutcome.REFUSED,guarded.invoke(null))
+        coVerify(exactly=0) { gateway.submit(any(),any(),any(),any(),any()) }
+        coVerify(exactly=1) { commands.markConflict(scope,"op-1","ledger.local-record-changed") }
+        coVerify(exactly=0) { commands.acknowledge(any(),any()) }
+    }
+
 }

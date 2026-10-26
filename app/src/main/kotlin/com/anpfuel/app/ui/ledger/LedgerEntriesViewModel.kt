@@ -37,6 +37,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.text.DecimalFormatSymbols
 import com.anpfuel.domain.premium.LedgerDistance
+import com.anpfuel.domain.premium.LegacyOdometerReview
+import com.anpfuel.domain.premium.OdometerEvidence
+import com.anpfuel.domain.premium.OdometerReviewChoice
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +47,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 data class LedgerEntryFormState(
     val entryId: String? = null,
@@ -65,6 +69,11 @@ data class LedgerEntryFormState(
     val stationInput: String = "",
     val noteInput: String = "",
     val validationErrorKey: LedgerEntryValidationError? = null,
+    val odometerNeedsReview: Boolean = false,
+    val originalOdometerValue: Long? = null,
+    val reviewBaseHash: String? = null,
+    val metresReviewKm: String? = null,
+    val kilometresReviewKm: String? = null,
 )
 
 enum class LedgerEntryValidationError {
@@ -75,6 +84,8 @@ enum class LedgerEntryValidationError {
     RATE_INVALID,
     SOC_INVALID,
     ODOMETER_INVALID,
+    ODOMETER_REVIEW_REQUIRED,
+    ODOMETER_REVIEW_FAILED,
     STATION_INVALID,
     FUEL_UNAVAILABLE,
     CHARGE_UNAVAILABLE,
@@ -122,6 +133,7 @@ class LedgerEntriesViewModel @Inject constructor(
 
     private var vehicle: Vehicle? = null
     private var inputLocale: Locale = Locale.getDefault()
+    private var editingRow: LedgerEntryRow? = null
 
     fun load(vehicleId: DomainId, locale: Locale) {
         inputLocale = locale
@@ -191,14 +203,27 @@ class LedgerEntriesViewModel @Inject constructor(
     }
 
     fun startEdit(row: LedgerEntryRow) {
+        editingRow = row
         viewModelScope.launch {
             val stored = getDraftUseCase(row.dataset, row.recordId) ?: return@launch
             val draft = stored.draft
+            val needsReview = LegacyOdometerReview.value(draft) != null && stored.odometerEvidence != OdometerEvidence.VERIFIED_METRES
+            fun preview(choice: OdometerReviewChoice): String? = try {
+                LedgerDistance.kilometresInput(LegacyOdometerReview.preview(draft, choice).correctedMetres,
+                    DecimalFormatSymbols.getInstance(inputLocale).decimalSeparator)
+            } catch (_: PremiumValidationException) { null }
+            val odoInput = if (needsReview) "" else LegacyOdometerReview.value(draft)?.let {
+                LedgerDistance.kilometresInput(it, DecimalFormatSymbols.getInstance(inputLocale).decimalSeparator)
+            }.orEmpty()
             _uiState.update {
                 it.copy(
                     showForm = true,
                     form = when (draft) {
                         is RefuelDraft -> LedgerEntryFormState(
+                            odometerNeedsReview = needsReview, originalOdometerValue = LegacyOdometerReview.value(draft),
+                            reviewBaseHash = LegacyOdometerReview.fingerprint(draft),
+                            metresReviewKm = preview(OdometerReviewChoice.AS_METRES),
+                            kilometresReviewKm = preview(OdometerReviewChoice.AS_KILOMETRES),
                             entryId = draft.id, dataset = LedgerDataset.REFUEL,
                             dateInput = draft.occurredAt.atZone(ZoneId.systemDefault()).toLocalDate().toString(),
                             timeInput = draft.occurredAt.atZone(ZoneId.systemDefault()).toLocalTime()
@@ -207,22 +232,30 @@ class LedgerEntriesViewModel @Inject constructor(
                             totalInput = centavosToInput(draft.totalCentavos),
                             unitPriceInput = draft.unitPriceMilli?.let { milliToInput(it) }.orEmpty(),
                             fill = draft.fill,
-                            odometerInput = draft.odometerMetres?.let { LedgerDistance.kilometresInput(it, DecimalFormatSymbols.getInstance(inputLocale).decimalSeparator) }.orEmpty(),
+                            odometerInput = odoInput,
                             stationInput = draft.stationId.orEmpty(),
                             noteInput = draft.note.orEmpty(),
                         )
                         is ExpenseDraft -> LedgerEntryFormState(
+                            odometerNeedsReview = needsReview, originalOdometerValue = LegacyOdometerReview.value(draft),
+                            reviewBaseHash = LegacyOdometerReview.fingerprint(draft),
+                            metresReviewKm = preview(OdometerReviewChoice.AS_METRES),
+                            kilometresReviewKm = preview(OdometerReviewChoice.AS_KILOMETRES),
                             entryId = draft.id, dataset = LedgerDataset.EXPENSE,
                             dateInput = draft.occurredAt.atZone(ZoneId.systemDefault()).toLocalDate().toString(),
                             timeInput = draft.occurredAt.atZone(ZoneId.systemDefault()).toLocalTime()
                                 .format(DateTimeFormatter.ofPattern("HH:mm")),
                             totalInput = centavosToInput(draft.amountCentavos),
                             category = draft.category,
-                            odometerInput = draft.odometerMetres?.let { LedgerDistance.kilometresInput(it, DecimalFormatSymbols.getInstance(inputLocale).decimalSeparator) }.orEmpty(),
+                            odometerInput = odoInput,
                             noteInput = draft.note.orEmpty(),
                         )
                     is ChargeDraft -> LedgerEntryFormState(
-                        entryId = draft.id, dataset = LedgerDataset.CHARGE,
+                        odometerNeedsReview = needsReview, originalOdometerValue = LegacyOdometerReview.value(draft),
+                            reviewBaseHash = LegacyOdometerReview.fingerprint(draft),
+                            metresReviewKm = preview(OdometerReviewChoice.AS_METRES),
+                            kilometresReviewKm = preview(OdometerReviewChoice.AS_KILOMETRES),
+                            entryId = draft.id, dataset = LedgerDataset.CHARGE,
                         dateInput = draft.occurredAt.atZone(ZoneId.systemDefault()).toLocalDate().toString(),
                         timeInput = draft.occurredAt.atZone(ZoneId.systemDefault()).toLocalTime()
                             .format(DateTimeFormatter.ofPattern("HH:mm")),
@@ -233,11 +266,31 @@ class LedgerEntriesViewModel @Inject constructor(
                         tariffIdInput = draft.tariffId.orEmpty(),
                         tariffRevisionInput = draft.tariffRevision.orEmpty(),
                         context = stored.context,
-                        odometerInput = draft.odometerMetres?.let { LedgerDistance.kilometresInput(it, DecimalFormatSymbols.getInstance(inputLocale).decimalSeparator) }.orEmpty(),
+                        odometerInput = odoInput,
                         noteInput = draft.note.orEmpty(),
                     )
                     },
                 )
+            }
+        }
+    }
+
+    fun reviewOdometer(choice: OdometerReviewChoice) {
+        val form = _uiState.value.form
+        val row = editingRow ?: return
+        val hash = form.reviewBaseHash ?: return
+        if (!form.odometerNeedsReview || _uiState.value.isSaving) return
+        _uiState.update { it.copy(isSaving = true) }
+        viewModelScope.launch {
+            try {
+                saveDraftUseCase.reviewOdometer(form.dataset, row.recordId, hash, choice)
+                startEdit(row)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                failForm(LedgerEntryValidationError.ODOMETER_REVIEW_FAILED)
+            } finally {
+                _uiState.update { it.copy(isSaving = false) }
             }
         }
     }
@@ -295,6 +348,7 @@ class LedgerEntriesViewModel @Inject constructor(
             return
         }
         val form = _uiState.value.form
+        if (form.odometerNeedsReview) { failForm(LedgerEntryValidationError.ODOMETER_REVIEW_REQUIRED); return }
         val vehicleId = _uiState.value.vehicleId ?: return
         val currentVehicle = vehicle ?: return
         val occurred = parseOccurred(form) ?: run {
@@ -315,7 +369,7 @@ class LedgerEntriesViewModel @Inject constructor(
                     // Session context rides the draft only; command payloads
                     // never carry it (backend parity, no auto-post surface).
                     val draftContext = if (form.dataset == LedgerDataset.CHARGE) form.context else null
-                    saveDraftUseCase(draft, revision, draftContext)
+                    saveDraftUseCase(draft, revision, draftContext, OdometerEvidence.VERIFIED_METRES)
                     _uiState.update {
                         it.copy(
                             showForm = false,

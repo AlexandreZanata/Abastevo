@@ -216,7 +216,7 @@ private fun MonthlyIndicatorCard(row: MonthlyVehicleIndicators, locale: Locale) 
                     )
                 } else {
                     Text(
-                        text = stringResource(R.string.monthly_energy_unavailable, row.energyMeasured.unknown),
+                        text = stringResource(R.string.monthly_energy_unavailable, displayUnknown(row.energyMeasured.unknown)),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -227,7 +227,7 @@ private fun MonthlyIndicatorCard(row: MonthlyVehicleIndicators, locale: Locale) 
                     )
                 } else {
                     Text(
-                        text = stringResource(R.string.monthly_energy_reference_unavailable, row.energyReference.unknown),
+                        text = stringResource(R.string.monthly_energy_reference_unavailable, displayUnknown(row.energyReference.unknown)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -239,13 +239,15 @@ private fun MonthlyIndicatorCard(row: MonthlyVehicleIndicators, locale: Locale) 
                     )
                 } else {
                     Text(
-                        text = stringResource(R.string.monthly_energy_comparison_unknown, row.energyComparison.unknown),
+                        text = stringResource(R.string.monthly_energy_comparison_unknown, displayUnknown(row.energyComparison.unknown)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-            if (row.measured.unknown.isEmpty()) {
+            if (row.windowNote.hasUnverifiedOdometer) {
+                Text(stringResource(R.string.monthly_review_required))
+            } else if (row.measured.unknown.isEmpty()) {
                 Text(
                     text = stringResource(
                         R.string.monthly_measured,
@@ -289,11 +291,11 @@ private fun MonthlyIndicatorCard(row: MonthlyVehicleIndicators, locale: Locale) 
                 )
             } else {
                 Text(
-                    text = stringResource(R.string.monthly_comparison_unknown, row.comparisonUnknown),
+                    text = stringResource(R.string.monthly_comparison_unknown, displayUnknown(row.comparisonUnknown)),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            Text(
+            if (!row.windowNote.hasUnverifiedOdometer) Text(
                 text = stringResource(
                     R.string.monthly_window,
                     row.windowNote.recordCount,
@@ -313,6 +315,10 @@ private fun MonthlyIndicatorCard(row: MonthlyVehicleIndicators, locale: Locale) 
         }
     }
 }
+
+@Composable
+private fun displayUnknown(reason: String): String = if (reason.contains("odometer-unit-unverified"))
+    stringResource(R.string.monthly_review_required) else reason
 
 @Composable
 private fun categoryLabel(category: com.anpfuel.domain.premium.ExpenseCategory): String = stringResource(

@@ -120,6 +120,7 @@ fun LedgerEntriesScreen(
         onFillChanged = viewModel::onFillChanged,
         onCategoryChanged = viewModel::onCategoryChanged,
         onOdometerChanged = viewModel::onOdometerChanged,
+        onReviewOdometer = viewModel::reviewOdometer,
         onStationChanged = viewModel::onStationChanged,
         onNoteChanged = viewModel::onNoteChanged,
         onSaveDraft = viewModel::saveDraft,
@@ -180,6 +181,7 @@ internal fun LedgerEntriesContent(
     onDismissError: () -> Unit,
     onOpenMonthly: () -> Unit,
     modifier: Modifier = Modifier,
+    onReviewOdometer: (com.anpfuel.domain.premium.OdometerReviewChoice) -> Unit = {},
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -304,6 +306,7 @@ internal fun LedgerEntriesContent(
             onStationChanged = onStationChanged,
             onNoteChanged = onNoteChanged,
             onSave = onSaveDraft,
+            onReviewOdometer = onReviewOdometer,
         )
     }
 
@@ -475,6 +478,7 @@ private fun LedgerEntryCard(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(text = entrySummaryText(row, locale), style = MaterialTheme.typography.titleMedium)
+            if (row.odometerNeedsReview) Text(stringResource(R.string.ledger_review_entry), style = MaterialTheme.typography.bodySmall)
             Text(
                 text = stringResource(stateRes),
                 style = MaterialTheme.typography.bodySmall,
@@ -552,6 +556,7 @@ private fun LedgerEntryFormDialog(
     onStationChanged: (String) -> Unit,
     onNoteChanged: (String) -> Unit,
     onSave: () -> Unit,
+    onReviewOdometer: (com.anpfuel.domain.premium.OdometerReviewChoice) -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -733,8 +738,25 @@ private fun LedgerEntryFormDialog(
                         supportingText = errorText(LedgerEntryValidationError.UNIT_PRICE_INVALID, form),
                     )
                 }
+                if (form.odometerNeedsReview) {
+                    Text(stringResource(R.string.ledger_review_required))
+                    form.originalOdometerValue?.let { Text(stringResource(R.string.ledger_review_saved, it)) }
+                    form.metresReviewKm?.let { km ->
+                        TextButton(onClick = { onReviewOdometer(com.anpfuel.domain.premium.OdometerReviewChoice.AS_METRES) }, enabled = !isSaving) {
+                            Text(stringResource(R.string.ledger_review_metres, km))
+                        }
+                    }
+                    form.kilometresReviewKm?.let { km ->
+                        TextButton(onClick = { onReviewOdometer(com.anpfuel.domain.premium.OdometerReviewChoice.AS_KILOMETRES) }, enabled = !isSaving) {
+                            Text(stringResource(R.string.ledger_review_kilometres, km))
+                        }
+                    }
+                    errorText(LedgerEntryValidationError.ODOMETER_REVIEW_FAILED,form)?.invoke()
+                    errorText(LedgerEntryValidationError.ODOMETER_REVIEW_REQUIRED,form)?.invoke()
+                }
                 OutlinedTextField(
                     value = form.odometerInput,
+                    enabled = !form.odometerNeedsReview && !isSaving,
                     onValueChange = onOdometerChanged,
                     label = { Text(text = stringResource(R.string.ledger_entry_odometer)) },
                     singleLine = true,
@@ -789,6 +811,8 @@ private fun errorText(key: LedgerEntryValidationError, form: LedgerEntryFormStat
         LedgerEntryValidationError.TOTAL_INVALID -> R.string.ledger_entry_validation_total
         LedgerEntryValidationError.UNIT_PRICE_INVALID -> R.string.ledger_entry_validation_unit_price
         LedgerEntryValidationError.ODOMETER_INVALID -> R.string.ledger_entry_validation_odometer
+        LedgerEntryValidationError.ODOMETER_REVIEW_REQUIRED -> R.string.ledger_review_required
+        LedgerEntryValidationError.ODOMETER_REVIEW_FAILED -> R.string.ledger_review_failed
         LedgerEntryValidationError.STATION_INVALID -> R.string.ledger_entry_validation_station
         LedgerEntryValidationError.FUEL_UNAVAILABLE -> R.string.ledger_entry_fuel_unavailable
         LedgerEntryValidationError.CHARGE_UNAVAILABLE -> R.string.ledger_entry_charge_unavailable

@@ -36,6 +36,7 @@ class DispatchLedgerCommandUseCase(
     private val syncScope: LedgerSyncScope? = null,
     private val acks: LedgerSyncAckStore? = null,
     private val erasures: com.anpfuel.domain.repository.LedgerErasureLog? = null,
+    private val drafts: com.anpfuel.domain.repository.LedgerDraftStore? = null,
 ) {
 
     companion object {
@@ -66,6 +67,13 @@ class DispatchLedgerCommandUseCase(
         }
         if (sessions.load()?.accountId != session.accountId) return LedgerDispatchOutcome.REFUSED
         return try {
+            if (!next.delete && drafts != null) {
+                val current = drafts.find(ownerScope.accountId, origin, com.anpfuel.domain.premium.LedgerDataset.parse(next.dataset), next.recordId)
+                if (current == null || current.draft.bodyJson() != next.payloadJson) {
+                    outbox.markConflict(ownerScope, next.operationId, "ledger.local-record-changed")
+                    return LedgerDispatchOutcome.REFUSED
+                }
+            }
             val receipt = gateway.submit(ownerScope, next, attempt, session.familyId, session.accessToken)
             if (receipt.operationId != next.operationId) {
                 throw LedgerSyncDenied("ledger.invalid-receipt")
