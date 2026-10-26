@@ -1,8 +1,10 @@
 package com.anpfuel.application.usecase.ledger
 
 import com.anpfuel.application.portable.AuthSessionStore
+import com.anpfuel.domain.premium.LedgerDataset
 import com.anpfuel.domain.premium.PremiumCommand
 import com.anpfuel.domain.premium.PremiumOwnerScope
+import com.anpfuel.domain.repository.LedgerDraftStore
 import com.anpfuel.domain.repository.LedgerSyncConflict
 import com.anpfuel.domain.repository.LedgerSyncDenied
 import com.anpfuel.domain.repository.LedgerSyncGateway
@@ -36,7 +38,7 @@ class DispatchLedgerCommandUseCase(
     private val syncScope: LedgerSyncScope? = null,
     private val acks: LedgerSyncAckStore? = null,
     private val erasures: com.anpfuel.domain.repository.LedgerErasureLog? = null,
-    private val drafts: com.anpfuel.domain.repository.LedgerDraftStore? = null,
+    private val drafts: LedgerDraftStore? = null,
 ) {
 
     companion object {
@@ -67,14 +69,26 @@ class DispatchLedgerCommandUseCase(
         }
         if (sessions.load()?.accountId != session.accountId) return LedgerDispatchOutcome.REFUSED
         return try {
-            if (!next.delete && drafts != null) {
-                val current = drafts.find(ownerScope.accountId, origin, com.anpfuel.domain.premium.LedgerDataset.parse(next.dataset), next.recordId)
-                if (current == null || current.draft.bodyJson() != next.payloadJson) {
+            val draftDataset = LedgerDataset.entries.firstOrNull { it.wire == next.dataset }
+            val current = if (!next.delete && drafts != null && draftDataset != null) {
+                drafts.find(ownerScope.accountId, origin, draftDataset, next.recordId)
+            } else null
+            // The current-record read can suspend too. Revalidate before any
+            // conflict mutation or transport, and use the live session token.
+            if (!enabled() || syncScope?.isDeviceEnabled() == false || syncScope?.isDatasetEnabled(next.dataset) == false) {
+                return LedgerDispatchOutcome.DONE
+            }
+            val liveSession = sessions.load()
+            if (liveSession == null || liveSession.accountId != session.accountId || liveSession.familyId != session.familyId) {
+                return LedgerDispatchOutcome.REFUSED
+            }
+            if (!next.delete && drafts != null && draftDataset != null) {
+                if (current == null || current.expectedRevision != next.expectedRevision || current.draft.bodyJson() != next.payloadJson) {
                     outbox.markConflict(ownerScope, next.operationId, "ledger.local-record-changed")
                     return LedgerDispatchOutcome.REFUSED
                 }
             }
-            val receipt = gateway.submit(ownerScope, next, attempt, session.familyId, session.accessToken)
+            val receipt = gateway.submit(ownerScope, next, attempt, liveSession.familyId, liveSession.accessToken)
             if (receipt.operationId != next.operationId) {
                 throw LedgerSyncDenied("ledger.invalid-receipt")
             }

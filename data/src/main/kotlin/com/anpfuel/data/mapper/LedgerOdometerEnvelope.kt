@@ -11,7 +11,8 @@ internal object LedgerOdometerEnvelope {
 
     fun read(body: String): Proof = try {
         val meta = JSONObject(body).optJSONObject(KEY)
-        if (meta == null || meta.optInt("version", -1) != 1) Proof(OdometerEvidence.UNVERIFIED)
+        val version = meta?.opt("version")
+        if (meta == null || (version != 1 && version != 1L)) Proof(OdometerEvidence.UNVERIFIED)
         else {
             val evidence = OdometerEvidence.valueOf(meta.getString("evidence"))
             val rec = meta.optJSONObject("review")?.let {

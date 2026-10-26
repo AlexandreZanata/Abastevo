@@ -31,4 +31,13 @@ class LedgerOdometerEnvelopeTest {
         assertEquals(receipt,LedgerOdometerEnvelope.read(body).receipt)
         assertFalse(body.contains("old-private-note"))
     }
+    @Test fun `malformed version cannot certify the units of an otherwise readable record`() {
+        for (version in listOf<Any>(1.5, "1", true)) {
+            val meta = JSONObject().put("version", version).put("evidence", "VERIFIED_METRES")
+            val raw = JSONObject(draft.bodyJson()).put("_abastevo_odometer", meta).toString()
+            assertEquals(OdometerEvidence.UNVERIFIED, LedgerOdometerEnvelope.read(raw).evidence, "version $version")
+            assertEquals(draft, LedgerDraftCodec.decode(LedgerDataset.EXPENSE, raw))
+        }
+    }
+
 }

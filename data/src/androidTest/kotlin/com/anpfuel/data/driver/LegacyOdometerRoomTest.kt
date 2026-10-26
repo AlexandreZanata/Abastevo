@@ -136,4 +136,39 @@ class LegacyOdometerRoomTest {
         store.delete("a",origin,fresh.dataset,fresh.id)
         assertEquals(1,store.list("a",origin).size)
     }
+    @Test fun explicit_correction_can_restore_original_number_without_replaying_old_review() = runBlocking {
+        val store = LedgerDraftStoreImpl(db.ledgerDraftDao())
+        val original = store.save("a", origin, fill, 2, 1, LedgerSessionContext.HOME, OdometerEvidence.UNVERIFIED)
+        val hash = LegacyOdometerReview.fingerprint(fill)
+        val reviewed = store.reviewOdometer("a", origin, fill.dataset, fill.id, hash, OdometerReviewChoice.AS_KILOMETRES, 10)
+        val corrected = (reviewed.draft as RefuelDraft).copy(odometerMetres = fill.odometerMetres)
+        store.save("a", origin, corrected, reviewed.expectedRevision, 20, reviewed.context, OdometerEvidence.VERIFIED_METRES)
+        db.close(); db = open()
+        val restored = LedgerDraftStoreImpl(db.ledgerDraftDao())
+        val row = restored.find("a", origin, fill.dataset, fill.id)!!
+        assertEquals(original.draft, row.draft)
+        assertEquals(original.expectedRevision, row.expectedRevision)
+        assertEquals(original.context, row.context)
+        assertEquals(1, restored.list("a", origin).size)
+        val envelope = JSONObject(db.ledgerDraftDao().findByRecord("a", origin, "refuel", fill.id)!!.bodyJson)
+            .getJSONObject("_abastevo_odometer")
+        assertEquals(1, envelope.getInt("version"))
+        assertEquals(10000L, envelope.getJSONObject("review").getLong("original"))
+        expect("stale-odometer-review") {
+            restored.reviewOdometer("a", origin, fill.dataset, fill.id, hash, OdometerReviewChoice.AS_KILOMETRES, 30)
+        }
+        assertEquals(fill, restored.find("a", origin, fill.dataset, fill.id)!!.draft)
+    }
+
+    @Test fun malformed_proof_version_keeps_raw_purchase_but_does_not_certify_units() = runBlocking {
+        val raw = seed()
+        for (version in listOf<Any>(1.5, "1", true)) {
+            val meta = JSONObject().put("version", version).put("evidence", "VERIFIED_METRES")
+            db.ledgerDraftDao().upsert(raw.copy(bodyJson = JSONObject(fill.bodyJson()).put("_abastevo_odometer", meta).toString()))
+            val stored = LedgerDraftStoreImpl(db.ledgerDraftDao()).find("a", origin, fill.dataset, fill.id)!!
+            assertEquals(OdometerEvidence.UNVERIFIED, stored.odometerEvidence)
+            assertEquals(fill, stored.draft)
+        }
+    }
+
 }
