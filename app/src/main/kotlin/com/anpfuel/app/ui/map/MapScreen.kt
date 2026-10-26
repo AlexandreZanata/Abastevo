@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -25,11 +26,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,6 +48,7 @@ private fun RealMapHost(
     modifier: Modifier = Modifier,
     onViewportChanged: ((latitude: Double, longitude: Double, radiusMeters: Int) -> Unit)? = null,
     onReady: ((Boolean) -> Unit)? = null,
+    recenterBottomInset: Dp = 164.dp,
 ) {
     MapHost(
         modifier = modifier,
@@ -58,7 +60,7 @@ private fun RealMapHost(
         waitingForFixMessage = stringResource(R.string.map_host_waiting_fix),
         onViewportChanged = onViewportChanged,
         onReady = onReady,
-        recenterBottomInset = 152.dp,
+        recenterBottomInset = recenterBottomInset,
     )
 }
 
@@ -88,14 +90,11 @@ fun MapScreen(
     planner: NativeRouteViewModel? = null,
     saved: SavedViewModel? = null,
     guidance: GuidanceViewModel = hiltViewModel(),
-    mapContent: @Composable (Modifier) -> Unit = {
-        RealMapHost(
-            modifier = it,
-            onViewportChanged = { lat, lon, radius -> discovery?.onViewport(lat, lon, radius) },
-            onReady = onMapReady,
-        )
-    },
+    onBottomOverlayInsetChanged: (Dp) -> Unit = {},
+    mapContent: (@Composable (Modifier) -> Unit)? = null,
 ) {
+    val density = LocalDensity.current
+    var bottomOverlayInset by remember { mutableStateOf(164.dp) }
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val discUi = discovery?.ui?.collectAsStateWithLifecycle()?.value
     var showRoute by remember { mutableStateOf(false) }
@@ -198,7 +197,16 @@ fun MapScreen(
 
 
     Box(modifier.fillMaxSize()) {
-        mapContent(Modifier.fillMaxSize())
+        if (mapContent != null) {
+            mapContent(Modifier.fillMaxSize())
+        } else {
+            RealMapHost(
+                modifier = Modifier.fillMaxSize(),
+                onViewportChanged = { lat, lon, radius -> discovery?.onViewport(lat, lon, radius) },
+                onReady = onMapReady,
+                recenterBottomInset = bottomOverlayInset,
+            )
+        }
 
         if (mapReady) {
             Column(
@@ -227,22 +235,22 @@ fun MapScreen(
                 )
 
                 Spacer(Modifier.weight(1f))
+                // Reserve a 48 dp recenter target, its 16 dp inset and 8 dp clearance.
+                Spacer(Modifier.height(72.dp))
 
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                    tonalElevation = 2.dp,
+                MapBottomControls(
+                    onFilters = { showFilters = true },
+                    onSearch = onOpenSearch,
+                    onDownloads = onOpenDownloads,
+                    onSaved = onOpenSaved.takeIf { saved != null },
+                    modifier = Modifier.onSizeChanged { size ->
+                        val inset = with(density) { size.height.toDp() } + 16.dp
+                        if (bottomOverlayInset != inset) {
+                            bottomOverlayInset = inset
+                            onBottomOverlayInsetChanged(inset)
+                        }
+                    }.padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-                        Text(
-                            stringResource(R.string.map_attribution),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                        )
                 // B-BR-MAP-CLUSTER-01: Accessible cluster expansion controls and member chooser.
                 val multiClusters = discUi?.clusters?.filter { it.isCluster }.orEmpty()
                 if (multiClusters.isNotEmpty()) {
@@ -335,52 +343,8 @@ fun MapScreen(
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    TextButton(
-                        onClick = { showFilters = true },
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-filters"),
-                    ) {
-                        Text(
-                            stringResource(R.string.map_filters),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                    TextButton(
-                        onClick = onOpenSearch,
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-search"),
-                    ) {
-                        Text(stringResource(R.string.map_search))
-                    }
-                    TextButton(
-                        onClick = onOpenDownloads,
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-downloads"),
-                    ) {
-                        Text(
-                            stringResource(R.string.map_download),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                    if (saved != null) TextButton(
-                        onClick = onOpenSaved,
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-saved"),
-                    ) {
-                        Text(
-                            stringResource(R.string.map25_open_saved),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
                 }
-                    }
-                }
+
             }
         } else {
             MapScreenSkeleton()

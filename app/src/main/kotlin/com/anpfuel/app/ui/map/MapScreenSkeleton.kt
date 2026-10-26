@@ -17,8 +17,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.ui.components.SkeletonButton
@@ -32,6 +34,7 @@ import com.anpfuel.app.ui.components.SkeletonLine
  */
 @Composable
 fun MapScreenSkeleton(modifier: Modifier = Modifier) {
+    val columns = if (LocalDensity.current.fontScale > 1.3f) 1 else 2
     val surface = MaterialTheme.colorScheme.surfaceContainerLow
     val road = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
     val park = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f)
@@ -84,6 +87,9 @@ fun MapScreenSkeleton(modifier: Modifier = Modifier) {
                 }
             }
             Spacer(Modifier.weight(1f))
+            SkeletonGroup(Modifier.align(Alignment.End).padding(bottom = 8.dp)) {
+                SkeletonLine(width = 196.dp, height = 18.dp)
+            }
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -91,11 +97,10 @@ fun MapScreenSkeleton(modifier: Modifier = Modifier) {
                 tonalElevation = 2.dp,
             ) {
                 SkeletonGroup(Modifier.padding(12.dp)) {
-                    SkeletonLine(width = 132.dp, height = 20.dp)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SkeletonButton(Modifier.weight(1f))
-                        SkeletonButton(Modifier.weight(1f))
-                        SkeletonButton(Modifier.weight(1f))
+                    repeat(4 / columns) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            repeat(columns) { SkeletonButton(Modifier.weight(1f)) }
+                        }
                     }
                 }
             }

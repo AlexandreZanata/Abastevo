@@ -1,5 +1,16 @@
 # Current execution state
 
+- Map action-panel follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
+  dev `c04e8ac4`, existing PR #154. OpenStreetMap attribution is a separate map
+  overlay above/right of the action panel. Filters/Search/Download/Saved reuse
+  shared action cards in an adaptive grid; measured overlay height and reserved
+  clearance keep recenter accessible. Updated skeleton; existing callbacks kept.
+  APKs/lint (zero errors), full API30 UI 12/12, light/dark/200% captures,
+  diff and secret checks PASS. [Evidence/previews](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md#follow-up-map-attribution-and-standard-action-cards).
+  Original occupied checkout and emulator preserved; no new physical/16 KB or
+  staging/release acceptance. Next: normal dev push/update of #154; current-head
+  CI/review pending, leave PR open without merge.
+
 - Map city/fuel follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
   remote dev `cb111741`, existing PR #154. City aligns to the header start and
   truncates visually with ellipsis; the fuel field reuses the shared vehicle

@@ -97,6 +97,7 @@ fun AnpNavGraph(
     val isMapRoute = currentRoute == Routes.MAP || currentRoute == Routes.MAP_PLAN
     var mapHostStarted by rememberSaveable { mutableStateOf(isMapRoute) }
     var mapReady by remember { mutableStateOf(false) }
+    var mapBottomOverlayInset by remember { mutableStateOf(164.dp) }
     LaunchedEffect(isMapRoute) {
         if (isMapRoute) mapHostStarted = true
     }
@@ -138,7 +139,7 @@ fun AnpNavGraph(
                     },
                     onReady = { mapReady = it },
                     active = isMapRoute,
-                    recenterBottomInset = 164.dp,
+                    recenterBottomInset = mapBottomOverlayInset,
                 )
             }
             if (!isMapRoute) {
@@ -201,7 +202,7 @@ fun AnpNavGraph(
                 navDeepLink { uriPattern = "anpfuel://map" },
             ),
         ) {
-            MapDestination(navController, mapDiscovery, mapReady)
+            MapDestination(navController, mapDiscovery, mapReady, onBottomOverlayInsetChanged = { mapBottomOverlayInset = it })
         }
         composable(
             route = Routes.MAP_PLAN,
@@ -211,7 +212,7 @@ fun AnpNavGraph(
             val trip by planViewModel.trip.collectAsStateWithLifecycle()
             val tripId = entry.arguments?.getString("tripId").orEmpty()
             androidx.compose.runtime.LaunchedEffect(tripId) { planViewModel.load(tripId) }
-            MapDestination(navController, mapDiscovery, mapReady, trip)
+            MapDestination(navController, mapDiscovery, mapReady, trip, onBottomOverlayInsetChanged = { mapBottomOverlayInset = it })
         }
         composable("map/saved") {
             com.anpfuel.app.ui.map.SavedScreen(
@@ -563,6 +564,7 @@ private fun MapDestination(
     discovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel,
     mapReady: Boolean,
     initialPlan: com.anpfuel.domain.map.saved.SavedTrip? = null,
+    onBottomOverlayInsetChanged: (androidx.compose.ui.unit.Dp) -> Unit,
 ) {
         val sheet: com.anpfuel.app.ui.map.MapSheetViewModel = hiltViewModel()
         com.anpfuel.app.ui.map.MapScreen(
@@ -570,6 +572,7 @@ private fun MapDestination(
         mapReady = mapReady,
         discovery = discovery,
         mapContent = {},
+        onBottomOverlayInsetChanged = onBottomOverlayInsetChanged,
             onOpenCity = { navController.navigate(Routes.MAP_CITY) },
             periodContent = { changed ->
                 com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction(onWeekChanged = changed)

@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasAnyAncestor
@@ -299,6 +301,84 @@ class MapScreenInstrumentedTest {
         org.junit.Assert.assertTrue(layouts.single().isLineEllipsized(0))
         label.assert(hasText(longCity))
         compose.onNodeWithTag("map-controls-toggle").assertIsDisplayed()
+    }
+
+    @Test fun attributionIsSeparateAndStandardActionCardsWorkInBothThemesAndLargeText() {
+        val presentation = androidx.compose.runtime.mutableStateOf(false to 1f)
+        val calls = mutableListOf<String>()
+        compose.setContent {
+            val baseDensity = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density, presentation.value.second),
+            ) {
+                com.anpfuel.app.ui.theme.AnpFuelTheme(darkTheme = presentation.value.first, dynamicColor = false) {
+                    MapBottomControls(
+                        onFilters = { calls += "filters" },
+                        onSearch = { calls += "search" },
+                        onDownloads = { calls += "downloads" },
+                        onSaved = { calls += "saved" },
+                        modifier = Modifier.width(360.dp),
+                    )
+                }
+            }
+        }
+        listOf(false to 1f, true to 1f, true to 2f).forEachIndexed { index, mode ->
+            compose.runOnIdle { presentation.value = mode }
+            val attribution = compose.onNodeWithTag("map-attribution").assertIsDisplayed().getUnclippedBoundsInRoot()
+            val panel = compose.onNodeWithTag("map-action-panel").getUnclippedBoundsInRoot()
+            org.junit.Assert.assertTrue(attribution.bottom <= panel.top)
+            compose.onNode(hasTestTag("map-attribution") and hasAnyAncestor(hasTestTag("map-action-panel"))).assertDoesNotExist()
+            listOf("filters", "search", "downloads", "saved").forEach { action ->
+                val node = compose.onNodeWithTag("map-open-$action").performScrollTo().assertIsDisplayed()
+                val bounds = node.getUnclippedBoundsInRoot()
+                org.junit.Assert.assertTrue(bounds.bottom - bounds.top >= 48.dp)
+                node.performClick()
+                compose.onNodeWithTag("map-attribution").assertIsDisplayed()
+            }
+            org.junit.Assert.assertEquals(listOf("filters", "search", "downloads", "saved"), calls)
+            calls.clear()
+            compose.onNodeWithTag("map-open-filters").performScrollTo()
+            val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+            val directory = java.io.File(context.getExternalFilesDir(null), "map-panel-ui-20261026").apply { mkdirs() }
+            java.io.FileOutputStream(java.io.File(directory, "panel-$index.png")).use { output ->
+                compose.onNodeWithTag("map-bottom-overlay").captureToImage().asAndroidBitmap()
+                    .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output)
+            }
+        }
+    }
+
+    @Test fun recenterInsetTracksMeasuredBottomPanelWhenFontSizeChanges() {
+        val fontScale = androidx.compose.runtime.mutableStateOf(1f)
+        var measuredInset = 0.dp
+        compose.setContent {
+            val baseDensity = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density, fontScale.value),
+            ) {
+                MapScreen(
+                    modifier = Modifier.testTag("tested-map-screen"),
+                    guidance = testGuidance(),
+                    onOpenStation = { _, _ -> },
+                    onOpenSearch = {},
+                    onOpenDownloads = {},
+                    onBottomOverlayInsetChanged = { measuredInset = it },
+                    viewModel = MapScreenViewModel(emptyStore()),
+                    mapContent = { Box(Modifier.size(10.dp)) },
+                )
+            }
+        }
+        compose.waitForIdle()
+        val normalInset = measuredInset
+        val overlay = compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot()
+        org.junit.Assert.assertTrue(normalInset >= (overlay.bottom - overlay.top) + 16.dp)
+        compose.runOnIdle { fontScale.value = 2f }
+        compose.waitForIdle()
+        org.junit.Assert.assertTrue(measuredInset > normalInset)
+        val root = compose.onNodeWithTag("tested-map-screen").getUnclippedBoundsInRoot()
+        val header = compose.onNodeWithTag("map-controls-card").getUnclippedBoundsInRoot()
+        val recenterTop = root.bottom - measuredInset - 48.dp
+        org.junit.Assert.assertTrue(recenterTop >= header.bottom + 8.dp)
+        compose.onNodeWithTag("map-open-downloads").performScrollTo().assertIsDisplayed()
     }
 
     private fun selectFuelFromSharedDialog(product: com.anpfuel.domain.valueobject.FuelProduct) {
