@@ -1,16 +1,17 @@
 # Source access for the pinned native build input
 
-This directory distributes the exact MAP-14 admitted development dependency,
+This directory distributes the MAP-22 privacy revision of the MAP-14 development dependency,
 not an Abastevo application release or a map-data package.
 
-- AAR: `sdk-release.aar`, 40,064,390 bytes.
-- SHA-256: `d2ec37881ede4e2288e1a929f01a1eabab193e7a6d518c76ff4342f085f2b10c`.
+- AAR: `sdk-release.aar`, 40,063,602 bytes.
+- SHA-256: `9cdd3cda00e1025a4ba986bd385f07cf013b0584b41c9c14091ba2b4277c352c`.
 - Corresponding upstream source: [CoMaps commit 4587b8ad4d12c9f59982709fdaf03cc925948827](https://github.com/comaps/comaps/tree/4587b8ad4d12c9f59982709fdaf03cc925948827).
 - All recursively pinned submodule commits are preserved in `submodules.txt`;
   their repository URLs come from the upstream `.gitmodules` at those commits.
   `sbom.cdx.json` identifies the shipped components and selected notices.
 - Abastevo's source modifications are supplied in
-  [ndk-r28-lld.patch](../upstream/ndk-r28-lld.patch). The owned host/adapter
+  [ndk-r28-lld.patch](../upstream/ndk-r28-lld.patch) and
+  [private-diagnostics.patch](../upstream/private-diagnostics.patch). The owned host/adapter
   source is in this repository under `maps/engine/src/`.
 - The full license texts and component notices are retained in the AAR under
   `assets/abastevo-map-licenses/`, alongside its Android resources. The core
@@ -24,7 +25,7 @@ Retrieve the corresponding source without an account or payment:
 git clone https://github.com/comaps/comaps.git comaps-source
 git -C comaps-source checkout 4587b8ad4d12c9f59982709fdaf03cc925948827
 git -C comaps-source submodule update --init --recursive
-# Apply this repository's maps/engine/upstream/ndk-r28-lld.patch once.
+# Apply both patches in maps/engine/upstream/ (ndk-r28-lld and private-diagnostics).
 ```
 
 The build/preparation commands, toolchain versions, admitted resource hashes,

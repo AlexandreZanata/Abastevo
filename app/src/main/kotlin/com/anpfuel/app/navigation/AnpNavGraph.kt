@@ -170,6 +170,7 @@ fun AnpNavGraph(
                 },
                 discovery = discovery,
                 sheet = sheet,
+                planner = hiltViewModel(),
             )
         }
         composable(Routes.MAP_CITY) {

@@ -202,7 +202,7 @@ fun MapBottomSheet(
             }
             if (routeError) {
                 Text(
-                    stringResource(R.string.map_sheet_route_failed),
+                    stringResource(R.string.map22_error),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.testTag("map-sheet-route-error"),

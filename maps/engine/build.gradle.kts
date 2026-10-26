@@ -7,7 +7,7 @@ plugins {
 }
 
 import java.security.MessageDigest
-val pinnedCandidateRevision = "d2ec37881ede4e22"
+val pinnedCandidateRevision = "9cdd3cda00e1025a"
 val comapsSdkDir = rootProject.extra["comapsSdkDirResolved"] as String
 
 val sdkRoot = file(comapsSdkDir)
@@ -47,9 +47,9 @@ fun verifyCandidateSha256(relativePath: String, expectedSha256: String) {
     }
 }
 
-verifyCandidateSha256("classes.jar", "074122f4de6c6c8c930bd5fae50be0626c527abb8498dae36f0176ce20ee3ca8")
-verifyCandidateSha256("jni/arm64-v8a/liborganicmaps.so", "df51c422e3e6163e7079a53875933232577bb939396738cf05c0edb8cc509f21")
-verifyCandidateSha256("jni/armeabi-v7a/liborganicmaps.so", "c911390d5906f97f82ec4876e56f90dbe05d9d24487897f81907a40b89dc1788")
+verifyCandidateSha256("classes.jar", "d856d1ed9d5cc7eac0ca74210d447eb59a3f5232bee9b97e2e2f29d076c02ec9")
+verifyCandidateSha256("jni/arm64-v8a/liborganicmaps.so", "bb2aed7bdbc26e52fc90d0cfc0cf05e01b2e7aab96119b7f2e1d01533ba1c45b")
+verifyCandidateSha256("jni/armeabi-v7a/liborganicmaps.so", "7d61b573c6a15bcb1bd7de463ec420a02b716f88c872099ff7d8e901f3fba842")
 
 android {
     namespace = "app.organicmaps.sdk"
@@ -80,6 +80,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":domain"))
     implementation(files("$comapsSdkDir/classes.jar"))
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

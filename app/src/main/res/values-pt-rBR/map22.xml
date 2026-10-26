@@ -1,0 +1,27 @@
+<resources>
+  <string name="map22_title">Rota offline</string>
+  <string name="map22_origin">Origem</string>
+  <string name="map22_destination">Destino</string>
+  <string name="map22_stop">Adicionar parada</string>
+  <string name="map22_current">Posição atual</string>
+  <string name="map22_center">Usar centro do mapa</string>
+  <string name="map22_coordinates">Usar coordenadas</string>
+  <string name="map22_latitude">Latitude (ponto decimal)</string>
+  <string name="map22_longitude">Longitude (ponto decimal)</string>
+  <string name="map22_unselected">Não selecionado</string>
+  <string name="map22_search_hint">Buscar local / endereço offline</string>
+  <string name="map22_avoid">Evitar</string>
+  <string name="map22_tolls">Pedágios</string>
+  <string name="map22_motorways">Rodovias expressas</string>
+  <string name="map22_ferries">Balsas</string>
+  <string name="map22_unpaved">Vias não pavimentadas</string>
+  <string name="map22_fix_error">Sem posição recente e precisa. Confira permissão e GPS ou escolha um ponto no mapa.</string>
+  <string name="map22_error">Rota indisponível. Confira os pontos, restrições e mapas baixados.</string>
+  <string name="map22_preview">Calcular prévia</string>
+  <string name="map22_show">Mostrar no mapa</string>
+  <string name="map22_approximate">Referências do mapa e do posto podem ser aproximadas. Confira a entrada real e o acesso viário.</string>
+  <string name="map22_estimate">%1$s m · %2$d s estimados, sem trânsito ao vivo</string>
+  <string name="map22_warnings">O motor nativo retornou avisos viários. Confira antes de iniciar.</string>
+  <string name="map22_move_up">Mover parada para cima</string>
+  <string name="map22_move_down">Mover parada para baixo</string>
+</resources>

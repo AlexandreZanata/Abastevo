@@ -1,0 +1,31 @@
+{
+  "upstream_sha": "4587b8ad4d12c9f59982709fdaf03cc925948827",
+  "ndk": "28.2.13676358",
+  "cmake": "3.22.1",
+  "min_sdk": 26,
+  "java_debug": false,
+  "engine_gate": "NOT_EVALUATED_BY_STATIC_BUILDER",
+  "resource_admission": "PASS",
+  "licenses": "LOCAL_SOURCE_ADMISSION_PASS",
+  "runtime_16kb_acceptance": "NOT_EVALUATED_BY_STATIC_BUILDER",
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "aar_sha256": "9cdd3cda00e1025a4ba986bd385f07cf013b0584b41c9c14091ba2b4277c352c",
+  "aar_bytes": 40063602,
+  "native": [
+    {
+      "path": "jni/arm64-v8a/liborganicmaps.so",
+      "abi": "arm64-v8a",
+      "bytes": 14675128,
+      "sha256": "bb2aed7bdbc26e52fc90d0cfc0cf05e01b2e7aab96119b7f2e1d01533ba1c45b"
+    },
+    {
+      "path": "jni/armeabi-v7a/liborganicmaps.so",
+      "abi": "armeabi-v7a",
+      "bytes": 10499284,
+      "sha256": "7d61b573c6a15bcb1bd7de463ec420a02b716f88c872099ff7d8e901f3fba842"
+    }
+  ]
+}

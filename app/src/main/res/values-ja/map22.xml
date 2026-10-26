@@ -1,0 +1,27 @@
+<resources>
+  <string name="map22_title">オフライン経路</string>
+  <string name="map22_origin">出発地</string>
+  <string name="map22_destination">目的地</string>
+  <string name="map22_stop">経由地を追加</string>
+  <string name="map22_current">現在地</string>
+  <string name="map22_center">地図の中心を使う</string>
+  <string name="map22_coordinates">座標を使う</string>
+  <string name="map22_latitude">緯度（小数点）</string>
+  <string name="map22_longitude">経度（小数点）</string>
+  <string name="map22_unselected">未選択</string>
+  <string name="map22_search_hint">場所・住所をオフライン検索</string>
+  <string name="map22_avoid">回避</string>
+  <string name="map22_tolls">有料道路</string>
+  <string name="map22_motorways">高速道路</string>
+  <string name="map22_ferries">フェリー</string>
+  <string name="map22_unpaved">未舗装道路</string>
+  <string name="map22_fix_error">新しく正確な現在地がありません。権限とGPSを確認するか、地図上の点を選択してください。</string>
+  <string name="map22_error">経路を利用できません。地点、通行制限、ダウンロード済み地図を確認してください。</string>
+  <string name="map22_preview">経路を計算</string>
+  <string name="map22_show">地図に表示</string>
+  <string name="map22_approximate">地図や施設の参照位置は概算の場合があります。実際の入口と道路からのアクセスを確認してください。</string>
+  <string name="map22_estimate">推定 %1$s m · %2$d 秒、リアルタイム交通情報なし</string>
+  <string name="map22_warnings">ネイティブエンジンから道路に関する警告があります。開始前に確認してください。</string>
+  <string name="map22_move_up">経由地を上へ移動</string>
+  <string name="map22_move_down">経由地を下へ移動</string>
+</resources>

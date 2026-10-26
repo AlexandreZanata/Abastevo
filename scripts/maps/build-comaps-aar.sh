@@ -41,12 +41,15 @@ ndk="$sdk_dir/ndk/28.2.13676358"
 [[ -n "${JAVA_HOME:-}" && -x "$JAVA_HOME/bin/javac" ]] || { echo "JAVA_HOME must point to a complete JDK 21" >&2; exit 2; }
 "$JAVA_HOME/bin/javac" -version 2>&1 | grep -Eq '^javac 21([.]|$)' || { echo "JDK 21 required" >&2; exit 2; }
 patch_file="$repo_root/maps/engine/upstream/ndk-r28-lld.patch"
-if git -C "$source_dir" apply --check "$patch_file" 2>/dev/null; then
-  git -C "$source_dir" apply "$patch_file"
-elif ! git -C "$source_dir" apply --reverse --check "$patch_file" 2>/dev/null; then
-  echo "Source differs from the recorded patch; preserve local changes and reconcile them first" >&2
-  exit 2
-fi
+privacy_patch="$repo_root/maps/engine/upstream/private-diagnostics.patch"
+for applied_patch in "$patch_file" "$privacy_patch"; do
+  if git -C "$source_dir" apply --check "$applied_patch" 2>/dev/null; then
+    git -C "$source_dir" apply "$applied_patch"
+  elif ! git -C "$source_dir" apply --reverse --check "$applied_patch" 2>/dev/null; then
+    echo "Source differs from the recorded patch; preserve local changes and reconcile them first" >&2
+    exit 2
+  fi
+done
 submodules=$(git -C "$source_dir" submodule status --recursive)
 if grep -Eq '^[-+U]' <<< "$submodules"; then
   echo "Initialize all pinned submodules; mismatched revisions are refused" >&2
@@ -79,7 +82,7 @@ python3 "$repo_root/scripts/maps/prepare-comaps-assets.py" \
 python3 "$repo_root/scripts/maps/verify-comaps-aar.py" \
   --aar "$work_dir/admitted.aar" --abi "$abi" --ndk "$ndk" --output "$output_dir"
 cp "$work_dir/build.log" "$work_dir/submodules.txt" "$work_dir/runtime-source.diff" "$output_dir/"
-cp "$patch_file" "$output_dir/"
+cp "$patch_file" "$privacy_patch" "$output_dir/"
 cp "$source_dir/LICENSE" "$source_dir/NOTICE" "$output_dir/"
 if [[ -f "$source_dir/data/copyright.html" ]]; then cp "$source_dir/data/copyright.html" "$output_dir/"; fi
 printf 'Candidate ready: -PcomapsSdkDir=%s\nThis builder checks static inputs only; consult the versioned MAP-14 acceptance receipt for runtime/gate status.\n' "$(realpath "$output_dir")"

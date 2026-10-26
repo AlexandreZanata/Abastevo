@@ -18,7 +18,7 @@ val configuredMapSdk = providers.gradleProperty("comapsSdkDir").orNull
     ?: mapLocalProperties.getProperty("comaps.sdk.dir")
     ?: mapLocalProperties.getProperty("comapsSdkDir")
     ?: providers.environmentVariable("COMAPS_SDK_DIR").orNull
-val resolvedMapSdk = configuredMapSdk ?: layout.buildDirectory.dir("comaps/d2ec37881ede4e22").get().asFile.absolutePath
+val resolvedMapSdk = configuredMapSdk ?: layout.buildDirectory.dir("comaps/9cdd3cda00e1025a").get().asFile.absolutePath
 if (configuredMapSdk == null) {
     providers.exec {
         commandLine("python3", rootProject.file("scripts/maps/provision-comaps-aar.py"),

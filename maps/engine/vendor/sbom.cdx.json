@@ -5626,13 +5626,13 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "d2ec37881ede4e2288e1a929f01a1eabab193e7a6d518c76ff4342f085f2b10c"
+          "content": "9cdd3cda00e1025a4ba986bd385f07cf013b0584b41c9c14091ba2b4277c352c"
         }
       ],
       "properties": [
         {
           "name": "abastevo:bytes",
-          "value": "40064390"
+          "value": "40063602"
         }
       ]
     },
@@ -5642,13 +5642,13 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "074122f4de6c6c8c930bd5fae50be0626c527abb8498dae36f0176ce20ee3ca8"
+          "content": "d856d1ed9d5cc7eac0ca74210d447eb59a3f5232bee9b97e2e2f29d076c02ec9"
         }
       ],
       "properties": [
         {
           "name": "abastevo:bytes",
-          "value": "368848"
+          "value": "368317"
         }
       ]
     },
@@ -5658,13 +5658,13 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "df51c422e3e6163e7079a53875933232577bb939396738cf05c0edb8cc509f21"
+          "content": "bb2aed7bdbc26e52fc90d0cfc0cf05e01b2e7aab96119b7f2e1d01533ba1c45b"
         }
       ],
       "properties": [
         {
           "name": "abastevo:bytes",
-          "value": "14675096"
+          "value": "14675128"
         }
       ]
     },
@@ -5674,13 +5674,13 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "c911390d5906f97f82ec4876e56f90dbe05d9d24487897f81907a40b89dc1788"
+          "content": "7d61b573c6a15bcb1bd7de463ec420a02b716f88c872099ff7d8e901f3fba842"
         }
       ],
       "properties": [
         {
           "name": "abastevo:bytes",
-          "value": "10499236"
+          "value": "10499284"
         }
       ]
     }

@@ -1,5 +1,13 @@
 # Current execution state
 
+- MAP-22 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Native offline
+  search/car route/stops/options/preview, one-way detour, missing-neighbor refusal,
+  cancellation and real Map-tab rendering PASS on owned 16 KB ARM64 emulator.
+  Two-ABI privacy revision `9cdd3cda00e1025a` removes SDK GPS/route log payloads;
+  source/resource/license audit and affected JVM/lint checks PASS.
+  [MAP-22 evidence](../backend/evidence/maps/MAP-22.md). Next: MAP-23 explicit
+  foreground guidance/local voice. New protected PR remains pending until batch end.
+
 - MAP-21 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Dated operational
   events, exact replay receipts, owner-fenced FIFO/outbox, connected replay and
   startup recovery implemented. Real PostGIS/race + Go HTTP/Kotlin wire proof,

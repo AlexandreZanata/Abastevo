@@ -146,3 +146,16 @@ as proof or treat this design choice as an already implemented verifier.
 Room/download implementation is also an engineering task, not a pending human
 choice: reuse the current database and add the next append-only migration after
 checking the actual schema head, with crash/disk-full/cancellation tests.
+
+## MAP-22 privacy revision
+
+The current build input is `9cdd3cda00e1025a4ba986bd385f07cf013b0584b41c9c14091ba2b4277c352c`.
+It retains the same source/submodule/resource pins and adds
+[private-diagnostics.patch](private-diagnostics.patch): native and Java SDK
+log sinks suppress GPS, route and exception payloads, including native assertion
+fallbacks. Generic SDK diagnostics, native assertion source points and route error codes remain available.
+The builder applies both recorded patches; actual release AARs for both ABIs are
+verified/admitted before merge. No resource/endpoint/license gate is bypassed.
+See MAP-22 evidence for this revision's actual runtime matrix; the earlier MAP-14
+comparison and acceptance above describe the prior artifact, not a new clean-clone
+comparison or production certification.

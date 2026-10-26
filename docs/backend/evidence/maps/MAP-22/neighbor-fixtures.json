@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Brazil_Parana_East.mwm",
+    "bytes": 86360029,
+    "sha1_base64": "YvAmb3q4ziBfKgbWgj/K0a1qbwo=",
+    "sha256": "b01a9c09acc1895336c64b7af9ff5771abcad2e8535dd7f57c55695b4803386e",
+    "source": "https://cdn-fi-1.comaps.app/maps/2026.06.28/261004/Brazil_Parana_East.mwm",
+    "license": "ODbL-1.0",
+    "role": "local unshipped runtime fixture only"
+  },
+  {
+    "name": "Brazil_Parana_West.mwm",
+    "bytes": 117513367,
+    "sha1_base64": "TIEi1UCmo6CDOOHIZMXkNF/1SYk=",
+    "sha256": "6362eabe58614728129dab28590c69f6c55454262b97fff453b1b3c1ece9c92c",
+    "source": "https://cdn-fi-1.comaps.app/maps/2026.06.28/261004/Brazil_Parana_West.mwm",
+    "license": "ODbL-1.0",
+    "role": "local unshipped runtime fixture only"
+  }
+]

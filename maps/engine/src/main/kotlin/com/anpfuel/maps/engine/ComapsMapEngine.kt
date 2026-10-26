@@ -18,7 +18,6 @@ import app.organicmaps.sdk.bookmarks.data.MapObject
 import app.organicmaps.sdk.location.AndroidNativeProvider
 import app.organicmaps.sdk.location.BaseLocationProvider
 import app.organicmaps.sdk.location.LocationProviderFactory
-import app.organicmaps.sdk.routing.RoutingController
 import app.organicmaps.sdk.search.SearchEngine
 import app.organicmaps.sdk.search.SearchListener
 import app.organicmaps.sdk.search.SearchResult
@@ -39,11 +38,12 @@ class ComapsMapEngine(
     private var organicMaps: OrganicMaps? = null
     private var initializing = false
     private var initialized = false
+    @Volatile private var renderingReady = false
     private var appContext: Context? = null
     private var overlayListener: ((MapOverlaySelection) -> Unit)? = null
     private var placePageListener: PlacePageActivationListener? = null
     private var searchListener: SearchListener? = null
-    private var routingContainer: RoutingController.Container? = null
+    private val routePlanner = ComapsRoutePlanner { initialized }
     private var overlayCategory = -1L
     private var overlayClusters: List<MapOverlayCluster> = emptyList()
     private var overlayMarkers: List<MapOverlayMarker> = emptyList()
@@ -113,7 +113,8 @@ class ComapsMapEngine(
 
     override fun newMapView(context: Context): View {
         check(initialized) { "Map surface requested before native initialization" }
-        return MapViewHelper.create(context, checkNotNull(organicMaps).locationHelper) {
+        renderingReady = false
+        return MapViewHelper.create(context, checkNotNull(organicMaps).locationHelper, {
             lastViewport?.let { vp ->
                 if (initialized) {
                     Framework.nativeZoomToPoint(vp.latitude, vp.longitude, vp.zoom, false)
@@ -121,8 +122,11 @@ class ComapsMapEngine(
                     Framework.nativeSetSearchViewport(vp.latitude, vp.longitude, vp.zoom)
                 }
             }
-        }
+        }, { renderingReady = true })
     }
+
+    override fun isRenderingReady(): Boolean = renderingReady
+
 
     override fun setViewport(latitude: Double, longitude: Double, zoom: Int) {
         val clampedZoom = zoom.coerceIn(1, 20)
@@ -328,50 +332,15 @@ class ComapsMapEngine(
         )
     }
 
-    override fun buildCarRoute(
-        startLatitude: Double,
-        startLongitude: Double,
-        endLatitude: Double,
-        endLongitude: Double,
-        onResult: (MapRouteInfo?) -> Unit,
-    ): Boolean {
-        if (!initialized) return false
-        cancelRoute()
-        val controller = RoutingController.get()
-        val container = object : RoutingController.Container {
-            override fun showRoutePlan(show: Boolean, completionListener: Runnable?) {
-                completionListener?.run()
-            }
+    override fun buildRoute(request: com.anpfuel.domain.routing.NativeRouteRequest, onResult: (com.anpfuel.domain.routing.NativeRouteResult) -> Unit): Boolean = routePlanner.buildRoute(request, onResult)
 
-            override fun onBuiltRoute() {
-                if (routingContainer !== this) return
-                val info = Framework.nativeGetRouteFollowingInfo()
-                if (info == null) {
-                    onResult(null)
-                } else {
-                    onResult(MapRouteInfo(info.distToTarget.mDistance, info.distToTarget.mUnits.name, info.totalTimeInSeconds))
-                }
-            }
-
-            override fun onCommonBuildError(lastResultCode: Int, lastMissingMaps: Array<String>) {
-                if (routingContainer !== this) return
-                routingContainer = null
-                onResult(null)
-            }
-
-            override fun onDrivingOptionsBuildError() {
-                if (routingContainer !== this) return
-                routingContainer = null
-                onResult(null)
-            }
+    override fun buildCarRoute(startLatitude: Double, startLongitude: Double, endLatitude: Double, endLongitude: Double, onResult: (MapRouteInfo?) -> Unit): Boolean =
+        buildRoute(com.anpfuel.domain.routing.NativeRouteRequest(listOf(
+            com.anpfuel.domain.routing.RoutePoint(startLatitude,startLongitude,"Start"),
+            com.anpfuel.domain.routing.RoutePoint(endLatitude,endLongitude,"Destination"),
+        ))) { result ->
+            onResult((result as? com.anpfuel.domain.routing.NativeRouteResult.Ready)?.preview?.let { MapRouteInfo(it.distanceMeters,"Meters",it.seconds) })
         }
-        routingContainer = container
-        controller.attach(container)
-        val start = MapObject.createMapObject(FeatureId.EMPTY, MapObject.POI, "Start", "", startLatitude, startLongitude)
-        val end = MapObject.createMapObject(FeatureId.EMPTY, MapObject.POI, "Destination", "", endLatitude, endLongitude)
-        controller.prepare(start, end)
-        return true
-    }
 
     override fun setOverlayMarkers(markers: List<MapOverlayMarker>): Boolean {
         if (!initialized || markers.isEmpty()) return false
@@ -470,13 +439,7 @@ class ComapsMapEngine(
         if (initialized) SearchEngine.INSTANCE.cancel()
     }
 
-    override fun cancelRoute() {
-        routingContainer = null
-        if (initialized) {
-            RoutingController.get().detach()
-            Framework.nativeCloseRouting()
-        }
-    }
+    override fun cancelRoute() = routePlanner.cancelRoute()
 
     @Synchronized
     override fun release() {

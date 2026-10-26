@@ -21,6 +21,11 @@ public final class MapViewHelper {
       @NonNull LocationHelper helper,
       @Nullable Runnable onRenderingReady
   ) {
+    return create(context, helper, onRenderingReady, null);
+  }
+
+  public static MapView create(@NonNull Context context, @NonNull LocationHelper helper,
+      @Nullable Runnable onRenderingReady, @Nullable Runnable onRenderingInitialized) {
     Context host = context;
     while (!(host instanceof LifecycleOwner) && host instanceof ContextWrapper) {
       Context base = ((ContextWrapper) host).getBaseContext();
@@ -35,7 +40,19 @@ public final class MapViewHelper {
     if (onRenderingReady != null) {
       view.getMap().setMapRenderingListener(new MapRenderingListener() {
         @Override public void onRenderingCreated() { onRenderingReady.run(); }
-        @Override public void onRenderingRestored() { onRenderingReady.run(); }
+        @Override public void onRenderingRestored() {
+          onRenderingReady.run();
+          if (onRenderingInitialized != null) onRenderingInitialized.run();
+        }
+        @Override public void onRenderingInitializationFinished() {
+          // Native context initialization can finish after onRenderingCreated.
+          // Queue through the View so viewport work stays on Android Main.
+          view.post(() -> {
+            if (!view.isAttachedToWindow()) return;
+            onRenderingReady.run();
+            if (onRenderingInitialized != null) onRenderingInitialized.run();
+          });
+        }
       });
     }
     return view;

@@ -1,0 +1,27 @@
+<resources>
+  <string name="map22_title">Offline-Route</string>
+  <string name="map22_origin">Start</string>
+  <string name="map22_destination">Ziel</string>
+  <string name="map22_stop">Zwischenstopp hinzufügen</string>
+  <string name="map22_current">Aktuelle Position</string>
+  <string name="map22_center">Kartenmitte verwenden</string>
+  <string name="map22_coordinates">Koordinaten verwenden</string>
+  <string name="map22_latitude">Breitengrad (Dezimalpunkt)</string>
+  <string name="map22_longitude">Längengrad (Dezimalpunkt)</string>
+  <string name="map22_unselected">Nicht ausgewählt</string>
+  <string name="map22_search_hint">Ort / Adresse offline suchen</string>
+  <string name="map22_avoid">Vermeiden</string>
+  <string name="map22_tolls">Maut</string>
+  <string name="map22_motorways">Autobahnen</string>
+  <string name="map22_ferries">Fähren</string>
+  <string name="map22_unpaved">Unbefestigte Straßen</string>
+  <string name="map22_fix_error">Keine aktuelle genaue Position. Prüfen Sie Berechtigung und GPS oder wählen Sie einen Kartenpunkt.</string>
+  <string name="map22_error">Route nicht verfügbar. Prüfen Sie Punkte, Einschränkungen und heruntergeladene Karten.</string>
+  <string name="map22_preview">Vorschau berechnen</string>
+  <string name="map22_show">Auf Karte anzeigen</string>
+  <string name="map22_approximate">Karten- und Stationsreferenzen können ungenau sein. Prüfen Sie die tatsächliche Einfahrt und den Straßenzugang.</string>
+  <string name="map22_estimate">%1$s m · %2$d s geschätzt, ohne Live-Verkehr</string>
+  <string name="map22_warnings">Der native Kern meldet Straßenwarnungen. Vor dem Start prüfen.</string>
+  <string name="map22_move_up">Zwischenstopp nach oben</string>
+  <string name="map22_move_down">Zwischenstopp nach unten</string>
+</resources>

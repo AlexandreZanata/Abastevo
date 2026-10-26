@@ -12,13 +12,15 @@ data class MapCenter(val latitude: Double, val longitude: Double)
 data class MapCamera(val latitude: Double, val longitude: Double, val zoom: Int)
 
 /** Narrow Abastevo-owned surface over the pinned native map core. */
-interface MapEngine {
+interface MapEngine : com.anpfuel.domain.routing.NativeRoutePlanner {
+    override fun buildRoute(request: com.anpfuel.domain.routing.NativeRouteRequest, onResult: (com.anpfuel.domain.routing.NativeRouteResult) -> Unit): Boolean = false
     fun initialize(context: Context, onReady: () -> Unit): Boolean
     fun newMapView(context: Context): View
     fun setViewport(latitude: Double, longitude: Double, zoom: Int)
     fun currentCenter(): MapCenter?
     fun currentCamera(): MapCamera? = null
     fun recenter(): Boolean
+    fun isRenderingReady(): Boolean = isInitialized()
     fun isInitialized(): Boolean
     fun reloadMaps(): Boolean = false
     fun suspendMapReads(): Boolean = false
@@ -38,6 +40,6 @@ interface MapEngine {
     fun overlayClusters(): List<MapOverlayCluster>
     fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit)
     fun cancelSearch()
-    fun cancelRoute()
+    override fun cancelRoute()
     fun release()
 }

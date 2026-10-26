@@ -69,7 +69,8 @@ now proves the real app download/activation/native-registration/offline-search
 flow and host lifecycle on the phone. The inherited [minimum local proof](docs/backend/evidence/maps/MAP-20_MINIMUM_LOCAL_20261025.md)
 sets MAP-20 to LOCAL_PASS, with staging/production still PENDING. MAP-18 combined
 native artwork retains its named obligation. [MAP-21](docs/backend/evidence/maps/MAP-21.md)
-is LOCAL_DONE / INTEGRATION_PENDING; MAP-22/23 are the selected continuation;
+is LOCAL_DONE / INTEGRATION_PENDING; [MAP-22](docs/backend/evidence/maps/MAP-22.md)
+adds locally proven offline route planning; MAP-23 is the selected continuation;
 [prepared pictograms](docs/assets/map-icons/README.md) remain admitted assets.
 No deployment or remote delivery is inferred from these local checks.
 
