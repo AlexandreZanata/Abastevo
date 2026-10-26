@@ -11,6 +11,9 @@ import com.anpfuel.data.local.entity.DriverEarningEntity
 import com.anpfuel.data.local.entity.DriverEarningRevisionEntity
 import com.anpfuel.data.local.entity.DriverCostSettingEntity
 import com.anpfuel.data.local.entity.DriverGpsObservationEntity
+import com.anpfuel.data.local.entity.DriverGoalEntity
+import com.anpfuel.data.local.entity.DriverMaintenanceEntity
+import com.anpfuel.data.local.entity.DriverReconciliationEntity
 import com.anpfuel.data.local.entity.DriverLocalCommandEntity
 import com.anpfuel.data.local.entity.DriverPayoutEntity
 import com.anpfuel.data.local.entity.DriverShiftEntity
@@ -122,6 +125,27 @@ abstract class DriverLocalDao {
 
     @Query("SELECT * FROM driver_gps_observation WHERE owner_account=:owner AND origin=:origin AND shift_id=:shiftId ORDER BY created_at_millis DESC LIMIT 1")
     abstract suspend fun latestGpsObservation(owner: String, origin: String, shiftId: String): DriverGpsObservationEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun upsertReconciliation(row: DriverReconciliationEntity)
+
+    @Query("SELECT * FROM driver_reconciliation WHERE owner_account=:owner AND origin=:origin AND vehicle_id=:vehicleId ORDER BY day DESC")
+    abstract suspend fun listReconciliations(owner: String, origin: String, vehicleId: String): List<DriverReconciliationEntity>
+
+    @Query("SELECT * FROM driver_reconciliation WHERE owner_account=:owner AND origin=:origin AND vehicle_id=:vehicleId AND day=:day LIMIT 1")
+    abstract suspend fun findReconciliation(owner: String, origin: String, vehicleId: String, day: String): DriverReconciliationEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun upsertGoal(goal: DriverGoalEntity)
+
+    @Query("SELECT * FROM driver_goal WHERE owner_account=:owner AND origin=:origin AND vehicle_id=:vehicleId ORDER BY period")
+    abstract suspend fun listGoals(owner: String, origin: String, vehicleId: String): List<DriverGoalEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun upsertMaintenance(item: DriverMaintenanceEntity)
+
+    @Query("SELECT * FROM driver_maintenance WHERE owner_account=:owner AND origin=:origin AND vehicle_id=:vehicleId ORDER BY kind")
+    abstract suspend fun listMaintenance(owner: String, origin: String, vehicleId: String): List<DriverMaintenanceEntity>
 
     @Query("SELECT * FROM driver_local_command WHERE owner_account=:owner AND origin=:origin AND operation_id=:operationId LIMIT 1")
     abstract suspend fun findCommand(owner: String, origin: String, operationId: String): DriverLocalCommandEntity?

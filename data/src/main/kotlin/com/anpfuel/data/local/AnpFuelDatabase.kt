@@ -71,8 +71,11 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.entity.DriverPayoutEntity::class,
         com.anpfuel.data.local.entity.DriverCostSettingEntity::class,
         com.anpfuel.data.local.entity.DriverGpsObservationEntity::class,
+        com.anpfuel.data.local.entity.DriverReconciliationEntity::class,
+        com.anpfuel.data.local.entity.DriverGoalEntity::class,
+        com.anpfuel.data.local.entity.DriverMaintenanceEntity::class,
     ],
-    version = 31,
+    version = 32,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {

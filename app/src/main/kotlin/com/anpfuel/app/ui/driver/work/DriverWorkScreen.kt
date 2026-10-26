@@ -1,5 +1,9 @@
 package com.anpfuel.app.ui.driver.work
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.ui.components.AnpScaffold
@@ -44,6 +50,13 @@ fun DriverWorkScreen(
     viewModel: DriverWorkViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) viewModel.startGps() }
+    val startGps = {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            viewModel.startGps()
+        } else permission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
     LaunchedEffect(vehicleId) { viewModel.load(vehicleId) }
     AnpScaffold(
         modifier = modifier.fillMaxSize(), containerColor = MaterialTheme.colorScheme.background,
@@ -63,10 +76,14 @@ fun DriverWorkScreen(
                         }
                     }
                 }
-                ShiftCard(state, vehicleId, viewModel)
+                ShiftCard(state, vehicleId, viewModel, startGps, viewModel::stopGps)
                 EarningsCard(vehicleId, viewModel)
                 PayoutCard(vehicleId, viewModel)
                 CostCard(vehicleId, state, viewModel)
+                ReconciliationCard(vehicleId, state, viewModel)
+                ResultCard(state, viewModel)
+                GoalCard(vehicleId, state, viewModel)
+                MaintenanceCard(vehicleId, state, viewModel)
                 SummaryCard(state)
             }
         }
@@ -74,7 +91,7 @@ fun DriverWorkScreen(
 }
 
 @Composable
-private fun ShiftCard(state: DriverWorkState, vehicleId: String, vm: DriverWorkViewModel) {
+private fun ShiftCard(state: DriverWorkState, vehicleId: String, vm: DriverWorkViewModel, onStartGps: () -> Unit, onStopGps: () -> Unit) {
     var startKm by remember { mutableStateOf("") }
     var endKm by remember { mutableStateOf("") }
     val shift = state.shift
@@ -92,8 +109,8 @@ private fun ShiftCard(state: DriverWorkState, vehicleId: String, vm: DriverWorkV
                     onEnd = { vm.end(vehicleId, endKm) }, state = shift.state,
                 )
                 OutlinedTextField(endKm, { endKm = it }, label = { Text("Hodômetro final (km)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-                OutlinedButton(onClick = vm::startGps, modifier = Modifier.fillMaxWidth()) { Text("Ligar GPS opcional") }
-                OutlinedButton(onClick = vm::stopGps, modifier = Modifier.fillMaxWidth()) { Text("Parar GPS opcional") }
+                OutlinedButton(onClick = onStartGps, modifier = Modifier.fillMaxWidth()) { Text("Ligar GPS opcional") }
+                OutlinedButton(onClick = onStopGps, modifier = Modifier.fillMaxWidth()) { Text("Parar GPS opcional") }
                 state.gaps.filter { !it.reviewed }.forEach { gap ->
                     OutlinedButton(onClick = { vm.reviewGap(vehicleId, gap.gapId) }, modifier = Modifier.fillMaxWidth()) {
                         Text("Revisar lacuna: ${gap.reason}")
@@ -173,6 +190,85 @@ private fun SummaryCard(state: DriverWorkState) {
             Text("Repasses: R$ ${"%.2f".format(Locale("pt", "BR"), payouts / 100.0)}")
             Text("Distâncias registradas: ${state.distances.size}")
             Text("O repasse não duplica o ganho.")
+        }
+    }
+}
+
+@Composable
+private fun ReconciliationCard(vehicleId: String, state: DriverWorkState, vm: DriverWorkViewModel) {
+    var basis by remember { mutableStateOf("ODOMETER") }
+    var odo by remember { mutableStateOf("") }
+    var gps by remember { mutableStateOf("") }
+    var paid by remember { mutableStateOf("") }
+    var personal by remember { mutableStateOf("") }
+    Card(modifier = Modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Conciliação de distância", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(basis, { basis = it }, label = { Text("Base: ODOMETER ou GPS_ESTIMATE") }, singleLine = true)
+            OutlinedTextField(odo, { odo = it }, label = { Text("Odomêtro (km)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            OutlinedTextField(gps, { gps = it }, label = { Text("GPS (km, opcional)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            OutlinedTextField(paid, { paid = it }, label = { Text("Km pagos") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            OutlinedTextField(personal, { personal = it }, label = { Text("Km pessoais") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            Button(onClick = { vm.saveReconciliation(vehicleId, basis, odo, gps, paid, personal) }, modifier = Modifier.fillMaxWidth()) { Text("Salvar conciliação") }
+            state.reconciliations.firstOrNull()?.let {
+                Text("Última: total ${it.odometerMetres ?: it.gpsMetres ?: 0} m · pagos ${it.paidMetres ?: 0} m · vazios ${it.emptyMetres ?: 0} m · ${if (it.complete) "completa" else "incompleta"}")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResultCard(state: DriverWorkState, vm: DriverWorkViewModel) {
+    val result = vm.recordedResult()
+    Card(modifier = Modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Resultado registrado", style = MaterialTheme.typography.titleMedium)
+            Text("Ganhos: R$ ${"%.2f".format(Locale("pt", "BR"), state.earnings.sumOf { it.netCentavos ?: 0L } / 100.0)}")
+            Text("Custo configurado (estimado): R$ ${"%.2f".format(Locale("pt", "BR"), (state.cost?.monthlyAmountCentavos ?: 0L) / 100.0)}")
+            Text("Resultado estimado: R$ ${"%.2f".format(Locale("pt", "BR"), result / 100.0)}")
+            Text("R\$/km: ${vm.perKm(result) ?: "indisponível sem distância conciliada"}")
+            Text("Repasses não entram como ganho.")
+        }
+    }
+}
+
+@Composable
+private fun GoalCard(vehicleId: String, state: DriverWorkState, vm: DriverWorkViewModel) {
+    var period by remember { mutableStateOf("DAILY") }
+    var target by remember { mutableStateOf("") }
+    Card(modifier = Modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Metas", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(period, { period = it }, label = { Text("DAILY ou WEEKLY") }, singleLine = true)
+            OutlinedTextField(target, { target = it }, label = { Text("Meta (R$)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            Button(onClick = { vm.saveGoal(vehicleId, period, "RESULT", target) }, modifier = Modifier.fillMaxWidth()) { Text("Salvar meta") }
+            state.goals.firstOrNull()?.let { Text("${it.period}: R$ ${"%.2f".format(Locale("pt", "BR"), it.targetCentavos / 100.0)} · progresso usa resultado local") }
+        }
+    }
+}
+
+@Composable
+private fun MaintenanceCard(vehicleId: String, state: DriverWorkState, vm: DriverWorkViewModel) {
+    var kind by remember { mutableStateOf("OIL") }
+    var interval by remember { mutableStateOf("") }
+    var days by remember { mutableStateOf("") }
+    var baseline by remember { mutableStateOf("") }
+    var serviceKm by remember { mutableStateOf("") }
+    Card(modifier = Modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Manutenção", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(kind, { kind = it }, label = { Text("Tipo (OIL, TIRES, ...)") }, singleLine = true)
+            OutlinedTextField(interval, { interval = it }, label = { Text("Intervalo (km)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            OutlinedTextField(days, { days = it }, label = { Text("Intervalo (dias)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            OutlinedTextField(baseline, { baseline = it }, label = { Text("Km atual/base") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            Button(onClick = { vm.saveMaintenance(vehicleId, kind, interval, days, baseline) }, modifier = Modifier.fillMaxWidth()) { Text("Salvar plano") }
+            state.maintenance.forEach { item ->
+                Text("${item.kind}: próximo ${item.nextDueKm ?: "-"} km / ${item.nextDueDay ?: "-"}")
+            }
+            OutlinedTextField(serviceKm, { serviceKm = it }, label = { Text("Km do serviço realizado") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+            state.maintenance.firstOrNull()?.let { item ->
+                OutlinedButton(onClick = { vm.markService(vehicleId, item, serviceKm) }, modifier = Modifier.fillMaxWidth()) { Text("Marcar serviço realizado") }
+            }
         }
     }
 }

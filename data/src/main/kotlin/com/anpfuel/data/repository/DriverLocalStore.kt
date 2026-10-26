@@ -7,6 +7,9 @@ import com.anpfuel.data.local.entity.DriverEarningEntity
 import com.anpfuel.data.local.entity.DriverEarningRevisionEntity
 import com.anpfuel.data.local.entity.DriverCostSettingEntity
 import com.anpfuel.data.local.entity.DriverGpsObservationEntity
+import com.anpfuel.data.local.entity.DriverGoalEntity
+import com.anpfuel.data.local.entity.DriverMaintenanceEntity
+import com.anpfuel.data.local.entity.DriverReconciliationEntity
 import com.anpfuel.data.local.entity.DriverLocalCommandEntity
 import com.anpfuel.data.local.entity.DriverPayoutEntity
 import com.anpfuel.data.local.entity.DriverShiftEntity
@@ -92,4 +95,13 @@ class DriverLocalStore @Inject constructor(
     suspend fun saveGpsObservation(observation: DriverGpsObservationEntity) { dao.upsertGpsObservation(observation) }
     suspend fun latestGpsObservation(owner: String, origin: String, shiftId: String): DriverGpsObservationEntity? =
         dao.latestGpsObservation(owner, origin, shiftId)
+    suspend fun saveReconciliation(row: DriverReconciliationEntity) { dao.upsertReconciliation(row) }
+    suspend fun listReconciliations(owner: String, origin: String, vehicleId: String): List<DriverReconciliationEntity> =
+        dao.listReconciliations(owner, origin, vehicleId)
+    suspend fun saveGoal(goal: DriverGoalEntity) { dao.upsertGoal(goal) }
+    suspend fun listGoals(owner: String, origin: String, vehicleId: String): List<DriverGoalEntity> =
+        dao.listGoals(owner, origin, vehicleId)
+    suspend fun saveMaintenance(item: DriverMaintenanceEntity) { dao.upsertMaintenance(item) }
+    suspend fun listMaintenance(owner: String, origin: String, vehicleId: String): List<DriverMaintenanceEntity> =
+        dao.listMaintenance(owner, origin, vehicleId)
 }

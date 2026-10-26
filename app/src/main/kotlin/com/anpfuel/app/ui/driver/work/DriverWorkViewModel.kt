@@ -9,7 +9,10 @@ import com.anpfuel.data.local.entity.DriverCostSettingEntity
 import com.anpfuel.data.local.entity.DriverDistanceEntity
 import com.anpfuel.data.local.entity.DriverEarningEntity
 import com.anpfuel.data.local.entity.DriverEarningRevisionEntity
+import com.anpfuel.data.local.entity.DriverGoalEntity
 import com.anpfuel.data.local.entity.DriverLocalCommandEntity
+import com.anpfuel.data.local.entity.DriverMaintenanceEntity
+import com.anpfuel.data.local.entity.DriverReconciliationEntity
 import com.anpfuel.data.local.entity.DriverPayoutEntity
 import com.anpfuel.data.local.entity.DriverShiftEntity
 import com.anpfuel.data.local.entity.DriverShiftGapEntity
@@ -36,6 +39,9 @@ data class DriverWorkState(
     val payouts: List<DriverPayoutEntity> = emptyList(),
     val distances: List<DriverDistanceEntity> = emptyList(),
     val cost: DriverCostSettingEntity? = null,
+    val reconciliations: List<DriverReconciliationEntity> = emptyList(),
+    val goals: List<DriverGoalEntity> = emptyList(),
+    val maintenance: List<DriverMaintenanceEntity> = emptyList(),
     val message: String? = null,
     val activeMillis: Long = 0,
 )
@@ -61,6 +67,9 @@ class DriverWorkViewModel @Inject constructor(
                 payouts = store.listPayouts(owner, origin),
                 distances = store.listDistances(owner, origin, vehicleId),
                 cost = store.findCostSetting(owner, origin, vehicleId),
+                reconciliations = store.listReconciliations(owner, origin, vehicleId),
+                goals = store.listGoals(owner, origin, vehicleId),
+                maintenance = store.listMaintenance(owner, origin, vehicleId),
                 activeMillis = shift?.activeMillis ?: 0,
             )
         }
@@ -178,6 +187,69 @@ class DriverWorkViewModel @Inject constructor(
         }
     }
 
+
+    fun saveReconciliation(vehicleId: String, basis: String, odometerKm: String, gpsKm: String, paidKm: String, personalKm: String) {
+        val odo = parseKm(odometerKm) ?: return fail("Odômetro inválido.")
+        val gps = gpsKm.takeIf { it.isNotBlank() }?.let { parseKm(it) ?: return fail("GPS inválido.") }
+        val paid = parseKm(paidKm) ?: return fail("Km pago inválido.")
+        val personal = personalKm.takeIf { it.isNotBlank() }?.let { parseKm(it) ?: return fail("Km pessoal inválido.") }
+        val empty = if (personal != null && paid <= odo && (paid + personal) <= odo) odo - paid - personal else null
+        viewModelScope.launch {
+            store.saveReconciliation(DriverReconciliationEntity(
+                owner, origin, vehicleId, LocalDate.now().toString(), basis, odo, gps, paid, empty, personal,
+                empty != null, System.currentTimeMillis(),
+            ))
+            load(vehicleId)
+        }
+    }
+
+    fun saveGoal(vehicleId: String, period: String, metric: String, targetInput: String) {
+        val target = parseMoney(targetInput) ?: return fail("Meta inválida.")
+        viewModelScope.launch {
+            store.saveGoal(DriverGoalEntity(owner, origin, vehicleId, UUID.randomUUID().toString(), period, metric, target, true, System.currentTimeMillis()))
+            load(vehicleId)
+        }
+    }
+
+    fun saveMaintenance(vehicleId: String, kind: String, intervalKmInput: String, intervalDaysInput: String, baselineKmInput: String) {
+        val intervalKm = intervalKmInput.takeIf { it.isNotBlank() }?.let { parseKm(it) ?: return fail("Intervalo inválido.") }
+        val intervalDays = intervalDaysInput.takeIf { it.isNotBlank() }?.toLongOrNull() ?: if (intervalDaysInput.isBlank()) null else return fail("Dias inválidos.")
+        val baseline = baselineKmInput.takeIf { it.isNotBlank() }?.let { parseKm(it) ?: return fail("Base inválida.") }
+        if (intervalKm == null && intervalDays == null) return fail("Informe km ou dias.")
+        val today = LocalDate.now()
+        viewModelScope.launch {
+            store.saveMaintenance(DriverMaintenanceEntity(
+                owner, origin, vehicleId, UUID.randomUUID().toString(), kind, intervalKm, intervalDays,
+                baseline, today.toString(), baseline?.let { intervalKm?.let { km -> it + km } }, intervalDays?.let { today.plusDays(it).toString() },
+                baseline, today.toString(), System.currentTimeMillis(),
+            ))
+            load(vehicleId)
+        }
+    }
+
+    fun markService(vehicleId: String, item: DriverMaintenanceEntity, kmInput: String) {
+        val km = kmInput.takeIf { it.isNotBlank() }?.let { parseKm(it) } ?: item.lastServiceKm
+        val today = LocalDate.now()
+        viewModelScope.launch {
+            store.saveMaintenance(item.copy(lastServiceKm = km ?: item.lastServiceKm, lastServiceDay = today.toString(),
+                nextDueKm = km?.let { v -> item.intervalKm?.let { v + it } } ?: item.nextDueKm,
+                nextDueDay = item.intervalDays?.let { today.plusDays(it).toString() } ?: item.nextDueDay,
+                updatedAtMillis = System.currentTimeMillis()))
+            load(vehicleId)
+        }
+    }
+
+    fun recordedResult(): Long {
+        val earned = state.value.earnings.sumOf { it.netCentavos ?: 0L }
+        val cost = state.value.cost?.let { recordedCost(it.monthlyAmountCentavos, it.personalFractionPercent) } ?: 0L
+        return recordedResult(earned, cost)
+    }
+
+    fun perKm(result: Long): String? {
+        val metres = state.value.reconciliations.firstOrNull()?.let { it.odometerMetres ?: it.gpsMetres } ?: return null
+        return perKm(result, metres)
+    }
+
     private fun fail(message: String) { state.value = state.value.copy(message = message) }
     fun clearMessage() { state.value = state.value.copy(message = null) }
 
@@ -188,5 +260,13 @@ class DriverWorkViewModel @Inject constructor(
         fun parseKm(raw: String): Long? = try {
             BigDecimal(raw.trim().replace(".", "").replace(',', '.')).movePointRight(3).longValueExact()
         } catch (_: Exception) { null }
+        fun recordedCost(monthlyCentavos: Long?, personalPercent: Int): Long =
+            monthlyCentavos?.let { it * (100 - personalPercent) / 100 } ?: 0L
+        fun recordedResult(earned: Long, cost: Long): Long = earned - cost
+        fun perKm(result: Long, metres: Long?): String? {
+            if (metres == null || metres <= 0) return null
+            val km = metres / 1000
+            return if (km <= 0) null else (result / km).toString()
+        }
     }
 }

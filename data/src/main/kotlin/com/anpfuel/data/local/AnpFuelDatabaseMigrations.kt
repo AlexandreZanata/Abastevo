@@ -827,4 +827,11 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_gps_owner_shift` ON `driver_gps_observation` (`owner_account`, `origin`, `shift_id`)")
         }
     }
+    val MIGRATION_31_32: Migration = object : Migration(31, 32) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_reconciliation` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `day` TEXT NOT NULL, `basis` TEXT NOT NULL, `odometer_metres` INTEGER, `gps_metres` INTEGER, `paid_metres` INTEGER, `empty_metres` INTEGER, `personal_metres` INTEGER, `complete` INTEGER NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `day`))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_goal` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `goal_id` TEXT NOT NULL, `period` TEXT NOT NULL, `metric` TEXT NOT NULL, `target_centavos` INTEGER NOT NULL, `active` INTEGER NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `goal_id`))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_maintenance` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `item_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `interval_km` INTEGER, `interval_days` INTEGER, `baseline_km` INTEGER, `baseline_day` TEXT, `next_due_km` INTEGER, `next_due_day` TEXT, `last_service_km` INTEGER, `last_service_day` TEXT, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `item_id`))")
+        }
+    }
 }

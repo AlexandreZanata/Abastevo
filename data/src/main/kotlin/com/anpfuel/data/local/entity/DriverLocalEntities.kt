@@ -209,3 +209,50 @@ data class DriverGpsObservationEntity(
     @ColumnInfo(name = "has_gap") val hasGap: Boolean,
     @ColumnInfo(name = "created_at_millis") val createdAtMillis: Long,
 )
+
+@Entity(tableName = "driver_reconciliation", primaryKeys = ["owner_account", "origin", "vehicle_id", "day"])
+data class DriverReconciliationEntity(
+    @ColumnInfo(name = "owner_account") val ownerAccount: String,
+    @ColumnInfo(name = "origin") val origin: String,
+    @ColumnInfo(name = "vehicle_id") val vehicleId: String,
+    @ColumnInfo(name = "day") val day: String,
+    @ColumnInfo(name = "basis") val basis: String,
+    @ColumnInfo(name = "odometer_metres") val odometerMetres: Long?,
+    @ColumnInfo(name = "gps_metres") val gpsMetres: Long?,
+    @ColumnInfo(name = "paid_metres") val paidMetres: Long?,
+    @ColumnInfo(name = "empty_metres") val emptyMetres: Long?,
+    @ColumnInfo(name = "personal_metres") val personalMetres: Long?,
+    @ColumnInfo(name = "complete") val complete: Boolean,
+    @ColumnInfo(name = "updated_at_millis") val updatedAtMillis: Long,
+)
+
+@Entity(tableName = "driver_goal", primaryKeys = ["owner_account", "origin", "vehicle_id", "goal_id"])
+data class DriverGoalEntity(
+    @ColumnInfo(name = "owner_account") val ownerAccount: String,
+    @ColumnInfo(name = "origin") val origin: String,
+    @ColumnInfo(name = "vehicle_id") val vehicleId: String,
+    @ColumnInfo(name = "goal_id") val goalId: String,
+    @ColumnInfo(name = "period") val period: String,
+    @ColumnInfo(name = "metric") val metric: String,
+    @ColumnInfo(name = "target_centavos") val targetCentavos: Long,
+    @ColumnInfo(name = "active") val active: Boolean,
+    @ColumnInfo(name = "updated_at_millis") val updatedAtMillis: Long,
+)
+
+@Entity(tableName = "driver_maintenance", primaryKeys = ["owner_account", "origin", "vehicle_id", "item_id"])
+data class DriverMaintenanceEntity(
+    @ColumnInfo(name = "owner_account") val ownerAccount: String,
+    @ColumnInfo(name = "origin") val origin: String,
+    @ColumnInfo(name = "vehicle_id") val vehicleId: String,
+    @ColumnInfo(name = "item_id") val itemId: String,
+    @ColumnInfo(name = "kind") val kind: String,
+    @ColumnInfo(name = "interval_km") val intervalKm: Long?,
+    @ColumnInfo(name = "interval_days") val intervalDays: Long?,
+    @ColumnInfo(name = "baseline_km") val baselineKm: Long?,
+    @ColumnInfo(name = "baseline_day") val baselineDay: String?,
+    @ColumnInfo(name = "next_due_km") val nextDueKm: Long?,
+    @ColumnInfo(name = "next_due_day") val nextDueDay: String?,
+    @ColumnInfo(name = "last_service_km") val lastServiceKm: Long?,
+    @ColumnInfo(name = "last_service_day") val lastServiceDay: String?,
+    @ColumnInfo(name = "updated_at_millis") val updatedAtMillis: Long,
+)
