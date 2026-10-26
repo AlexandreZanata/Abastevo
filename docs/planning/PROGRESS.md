@@ -1,5 +1,14 @@
 # Current execution state
 
+- MAP-26 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Pure Kotlin EV
+  energy model (usable energy, PHEV electric-portion scope, segments with an
+  explicit margin, reach, arrival SOC, charging-time lower bound, sum-first
+  calibration), conservative rounding and Known/Unknown results. 53 vectors
+  from an independent Python/Fractions oracle plus monotonic/property tests and
+  mutation checks PASS. No backend/UI/device change; no feasibility claim.
+  [MAP-26 evidence](../backend/evidence/maps/MAP-26.md). MAP-27–33 excluded;
+  no PR/merge/deploy.
+
 - MAP-25 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING (cloud backup cases
   not delivered). Owner-scoped private favorites and saved route plans (Room v28),
   strict KML/GPX/KMZ exchange (XXE/bomb/traversal/limit refusal, all-or-nothing,
