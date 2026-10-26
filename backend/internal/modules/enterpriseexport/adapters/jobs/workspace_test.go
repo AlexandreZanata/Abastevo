@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,7 +21,8 @@ func TestStateRoundTripAndValidity(t *testing.T) {
 		t.Fatal(err)
 	}
 	manifest := map[string]any{
-		"content_sha256": "sha256:test",
+		"content_sha256":      "sha256:test",
+		"public_field_policy": enterpriseexport.PublicFieldPolicy,
 		"files": []map[string]any{
 			{"name": "stations.jsonl"},
 			{"name": "revisions.jsonl"},
@@ -59,6 +61,29 @@ func TestStateRoundTripAndValidity(t *testing.T) {
 	}
 	if loaded.Valid() {
 		t.Fatal("state with a missing payload is valid")
+	}
+}
+
+func TestStateBuiltUnderOlderPublicFieldPolicyIsInvalid(t *testing.T) {
+	candidate := filepath.Join(t.TempDir(), "export-old-policy")
+	if err := os.MkdirAll(candidate, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(map[string]any{
+		"content_sha256": "sha256:old", "public_field_policy": "esp-01",
+		"files": []map[string]any{{"name": "stations.jsonl"}},
+	})
+	if err := os.WriteFile(filepath.Join(candidate, "manifest.json"), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"stations.jsonl", "analytics-v1.json"} {
+		if err := os.WriteFile(filepath.Join(candidate, name), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	state := State{SchemaVersion: StateSchemaVersion, CandidateDir: candidate, ContentSHA256: "sha256:old", AnalyticsSHA256: "sha256:a"}
+	if state.Valid() {
+		t.Fatal("a snapshot built under an older public field policy is reused")
 	}
 }
 
