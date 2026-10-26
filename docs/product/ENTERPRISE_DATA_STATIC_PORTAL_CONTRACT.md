@@ -38,6 +38,11 @@ are excluded from this increment. Public files cannot protect a paid dataset.
   and derived analytics have separate ownership and versioned provenance.
   Public exports use a field allowlist; raw documents and internal artifacts
   are never automatically copied into the public document root.
+  Allowlisted free text is minimized too (public field policy `esp-02`,
+  2026-10-26): a station display name loses every standalone CPF-shaped token
+  (11 digits or `NNN.NNN.NNN-NN`, as in MEI legal names) before export, and a
+  name left empty falls back to `Posto <CNPJ>`. The portal privacy check keeps
+  refusing any CPF-shaped value that still reaches an artifact.
 - **04 — Exact identity and time:** Match the full establishment identity
   through Directory/FQ. Preserve historical operator context, current-company
   association and proven site history as distinct concepts. A CNPJ root,

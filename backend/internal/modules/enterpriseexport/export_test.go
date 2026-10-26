@@ -94,7 +94,7 @@ func (f *fakePrices) ExportPrices(_ context.Context, revisionID, afterID string,
 func fixtureSources() (*fakeStations, *fakePrices) {
 	stations := &fakeStations{rows: []directoryapp.ExportStation{
 		{ID: "00000000-0000-4000-8000-000000000001", DisplayName: "A", CNPJ: "04218406000104", Status: "active", LocationQuality: "reviewed", Coordinates: &directoryapp.LatLon{Lat: -15.8, Lon: -47.9}, Address: map[string]string{"street": "Rua A", "raw": "drop me"}, CurrentRevisionID: "00000000-0000-4000-8000-0000000000d1"},
-		{ID: "00000000-0000-4000-8000-000000000002", DisplayName: "B", Status: "suspended", LocationQuality: "unknown"},
+		{ID: "00000000-0000-4000-8000-000000000002", DisplayName: "B 12345678909", Status: "suspended", LocationQuality: "unknown"},
 		{ID: "00000000-0000-4000-8000-000000000003", DisplayName: "C", Status: "revoked", LocationQuality: "unknown"},
 	}}
 	prices := &fakePrices{
@@ -165,6 +165,9 @@ func TestBuildManifestAndFiles(t *testing.T) {
 	}
 	if strings.Contains(string(stations), "drop me") || strings.Contains(string(stations), `"raw"`) {
 		t.Error("internal address field exported")
+	}
+	if strings.Contains(string(stations), "12345678909") || !strings.Contains(string(stations), `"display_name":"B"`) {
+		t.Error("CPF-shaped display name token exported")
 	}
 	prices, err := os.ReadFile(filepath.Join(output, "prices.jsonl"))
 	if err != nil {
@@ -286,5 +289,21 @@ func TestContentHashIgnoresOperationalPageSize(t *testing.T) {
 	}
 	if a.ContentSHA256 != b.ContentSHA256 {
 		t.Errorf("page size changed content hash: %s vs %s", a.ContentSHA256, b.ContentSHA256)
+	}
+}
+
+func TestPublicDisplayNameMinimizesCPFShapedTokens(t *testing.T) {
+	for _, tc := range []struct{ name, cnpj, want string }{
+		{"JOAO DA SILVA 12345678909", "11222333000181", "JOAO DA SILVA"},
+		{"MARIA SOUZA 123.456.789-09 COMBUSTIVEIS", "11222333000181", "MARIA SOUZA COMBUSTIVEIS"},
+		{"12345678909", "11222333000181", "Posto 11222333000181"},
+		{"  ", "", ""},
+		{"POSTO BR 163 KM 12345", "", "POSTO BR 163 KM 12345"},
+		{"AUTO POSTO 04218406000104", "", "AUTO POSTO 04218406000104"},
+		{"POSTO A1234567890B", "", "POSTO A1234567890B"},
+	} {
+		if got := publicDisplayName(tc.name, tc.cnpj); got != tc.want {
+			t.Errorf("publicDisplayName(%q) = %q, want %q", tc.name, got, tc.want)
+		}
 	}
 }
