@@ -3893,3 +3893,17 @@ Front B — public static consultation and operational handoff:
 Local data, static-artifact and real-preview gates are distinct. A completed
 plan/build or a 16 GB host does not prove thousands of concurrent users, current
 legal status, national coverage, enabled ingestion, public deployment or G09.
+
+
+## Individual app-driver suite — DRV (planning, 2026-10-26)
+
+[Complete DRV-00–35 execution plan](docs/planning/DRIVER_SUITE_EXECUTION_PLAN.md)
+and [selected product contract](docs/product/DRIVER_SUITE_CONTRACT.md): 36 phases,
+108 bounded tasks. Owner confirmed the professional suite remains Premium.
+Reuse PRM/MEX/EE ledger/metrics/cloud and MAP ports; first repair km/metres and
+financial display, then add private shifts/earnings/distance/cost allocation,
+manual and explicitly initiated GPS work, maintenance/goals/reports/import,
+real backend/mobile/privacy/performance/field acceptance and protected delivery.
+No runtime, sale, platform API, device, VPS, public release or integration was
+executed by creating this plan. Existing PAY/ESP/MAP obligations stay with their
+owning fronts; no raw GPS cloud inclusion or passenger data is introduced.

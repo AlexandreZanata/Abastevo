@@ -1,5 +1,16 @@
 # Current execution state
 
+- Driver suite planning 2026-10-26: PLANNED / IMPLEMENTATION_NOT_STARTED.
+  Owner confirmed professional Premium. [DRV-00–35](DRIVER_SUITE_EXECUTION_PLAN.md)
+  defines 36 phases/108 tasks for existing financial-unit repair plus real
+  private shifts/earnings/distance/cost/report mobile journeys. [Contract](../product/DRIVER_SUITE_CONTRACT.md)
+  explicitly amends named prior exclusions without changing financial-v1,
+  free/public behavior or raw-GPS cloud exclusions. [Planning validation](DRIVER_SUITE_PLAN_VALIDATION.md)
+  checks identifiers, dependencies, links and 20 synthetic worked vectors only.
+  Isolated planning source f1e1d0db; foreign-dirty primary/MAP checkouts preserved.
+  No runtime/device/provider/VPS/push/PR/merge/wiki/production change.
+  Next, only on implementation request: DRV-00 → DRV-01 → DRV-02.
+
 - MAP-23 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Explicit foreground
   guidance with native follow/progress, private owner-bound recovery, local TTS
   only and real guidance UI PASS on the owned phone `VKCQGAUCGYAMR4W4`
