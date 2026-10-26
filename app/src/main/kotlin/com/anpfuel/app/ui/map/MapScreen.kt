@@ -2,9 +2,12 @@ package com.anpfuel.app.ui.map
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -12,8 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,6 +33,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,6 +50,7 @@ import com.anpfuel.maps.engine.MapOverlayMarker
 private fun RealMapHost(
     modifier: Modifier = Modifier,
     onViewportChanged: ((latitude: Double, longitude: Double, radiusMeters: Int) -> Unit)? = null,
+    onReady: ((Boolean) -> Unit)? = null,
 ) {
     MapHost(
         modifier = modifier,
@@ -56,6 +61,8 @@ private fun RealMapHost(
         gpsOffMessage = stringResource(R.string.map_host_gps_off),
         waitingForFixMessage = stringResource(R.string.map_host_waiting_fix),
         onViewportChanged = onViewportChanged,
+        onReady = onReady,
+        recenterBottomInset = 152.dp,
     )
 }
 
@@ -66,6 +73,7 @@ private fun RealMapHost(
  * canonical UUIDs with REVIEWED coordinates; unknown/city-centroid and
  * coordinate-less stations stay list-only and remain selectable by UUID.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MapScreen(
     onOpenStation: (stationKey: String, fuel: String) -> Unit,
@@ -76,6 +84,8 @@ fun MapScreen(
     modifier: Modifier = Modifier,
     initialPlan: SavedTrip? = null,
     onOpenCity: (() -> Unit)? = null,
+    mapReady: Boolean = true,
+    onMapReady: (Boolean) -> Unit = {},
     periodContent: @Composable (() -> Unit) -> Unit = {},
     viewModel: MapScreenViewModel = hiltViewModel(),
     discovery: MapDiscoveryViewModel? = null,
@@ -87,6 +97,7 @@ fun MapScreen(
         RealMapHost(
             modifier = it,
             onViewportChanged = { lat, lon, radius -> discovery?.onViewport(lat, lon, radius) },
+            onReady = onMapReady,
         )
     },
 ) {
@@ -193,296 +204,328 @@ fun MapScreen(
     val communityLabel = stringResource(R.string.map_source_community)
     val searchHintLabel = stringResource(R.string.map_search_hint)
 
-    Column(modifier.fillMaxSize().statusBarsPadding()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FilterChip(
-                selected = ui.source == MapPriceSource.ANP,
-                onClick = { viewModel.selectSource(MapPriceSource.ANP) },
-                label = { Text(anpLabel) },
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .testTag("map-source-anp")
-                    .semantics { contentDescription = anpLabel },
-            )
-            FilterChip(
-                selected = ui.source == MapPriceSource.COMMUNITY,
-                onClick = { viewModel.selectSource(MapPriceSource.COMMUNITY) },
-                label = { Text(communityLabel) },
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .testTag("map-source-community")
-                    .semantics { contentDescription = communityLabel },
-            )
-            if (planner != null) TextButton(onClick = { showRoute = true }, modifier = Modifier.heightIn(min = 48.dp).testTag("native-route-open")) { Text(stringResource(R.string.map22_title)) }
-            if (discUi != null) {
-                FilterChip(
-                    selected = false,
-                    onClick = { onOpenCity?.invoke() ?: run { showFilters = true } },
-                    label = { Text(discUi.municipalityName) },
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .testTag("map-city-chip"),
-                )
-            }
-        }
+    Box(modifier.fillMaxSize()) {
+        mapContent(Modifier.fillMaxSize())
 
-        if (ui.source == MapPriceSource.ANP) {
-            periodContent { viewModel.refreshAvailability() }
-        }
-        if (discUi?.cityLocationUnknown == true) {
-            Text(
-                "${discUi.municipalityName}: ${stringResource(R.string.map_location_unknown)}",
-                modifier = Modifier.padding(horizontal = 8.dp),
-            )
-        }
-
-        // MAP-20 search: city/name/address with bounded debounced queries.
-        var query by remember { mutableStateOf("") }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            androidx.compose.material3.OutlinedTextField(
-                value = query,
-                onValueChange = { newValue ->
-                    query = newValue
-                    if (newValue.trim().length < 2 && !discUi?.searchQuery.isNullOrEmpty()) {
-                        discovery?.onSearch(discUi?.municipalityCode ?: "4106902", newValue)
-                    }
-                },
-                placeholder = { Text(searchHintLabel) },
-                singleLine = true,
+        if (mapReady) {
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 48.dp)
-                    .semantics { contentDescription = searchHintLabel }
-                    .testTag("map-search-field"),
-            )
-            TextButton(
-                onClick = {
-                    discovery?.onSearch(discUi?.municipalityCode ?: "4106902", query)
-                },
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .testTag("map-search-submit"),
+                    .fillMaxSize()
+                    .statusBarsPadding(),
             ) {
-                Text(stringResource(R.string.map_search))
-            }
-        }
-
-        if (discUi?.offlineCached == true) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
-                tonalElevation = 1.dp,
-                shape = MaterialTheme.shapes.small,
-            ) {
-                Text(
-                    stringResource(R.string.server_station_cached),
-                    style = MaterialTheme.typography.labelMedium,
+                Surface(
                     modifier = Modifier
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                        .testTag("map-offline-cache-banner"),
-                )
-            }
-        }
-
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            when {
-                ui.loading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Text(
-                                stringResource(R.string.map_loading),
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
-                        }
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                    tonalElevation = 2.dp,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = ui.source == MapPriceSource.ANP,
+                        onClick = { viewModel.selectSource(MapPriceSource.ANP) },
+                        label = { Text(anpLabel) },
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .testTag("map-source-anp")
+                            .semantics { contentDescription = anpLabel },
+                    )
+                    FilterChip(
+                        selected = ui.source == MapPriceSource.COMMUNITY,
+                        onClick = { viewModel.selectSource(MapPriceSource.COMMUNITY) },
+                        label = { Text(communityLabel) },
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .testTag("map-source-community")
+                            .semantics { contentDescription = communityLabel },
+                    )
+                    if (planner != null) TextButton(onClick = { showRoute = true }, modifier = Modifier.heightIn(min = 48.dp).testTag("native-route-open")) { Text(stringResource(R.string.map22_title)) }
+                    if (discUi != null) {
+                        FilterChip(
+                            selected = false,
+                            onClick = { onOpenCity?.invoke() ?: run { showFilters = true } },
+                            label = { Text(discUi.municipalityName) },
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .testTag("map-city-chip"),
+                        )
                     }
                 }
-                ui.error != null -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                stringResource(R.string.map_unavailable),
-                                style = MaterialTheme.typography.titleMedium,
+
+                if (ui.source == MapPriceSource.ANP) {
+                    periodContent { viewModel.refreshAvailability() }
+                }
+                if (discUi?.cityLocationUnknown == true) {
+                    Text(
+                        "${discUi.municipalityName}: ${stringResource(R.string.map_location_unknown)}",
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                }
+
+                // MAP-20 search: city/name/address with bounded debounced queries.
+                var query by remember { mutableStateOf("") }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = query,
+                        onValueChange = { newValue ->
+                            query = newValue
+                            if (newValue.trim().length < 2 && !discUi?.searchQuery.isNullOrEmpty()) {
+                                discovery?.onSearch(discUi?.municipalityCode ?: "4106902", newValue)
+                            }
+                        },
+                        placeholder = { Text(searchHintLabel) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp)
+                            .semantics { contentDescription = searchHintLabel }
+                            .testTag("map-search-field"),
+                    )
+                    TextButton(
+                        onClick = {
+                            discovery?.onSearch(discUi?.municipalityCode ?: "4106902", query)
+                        },
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .testTag("map-search-submit"),
+                    ) {
+                        Text(
+                            stringResource(R.string.map_search),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                }
+
+                if (discUi?.offlineCached == true) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+                        tonalElevation = 1.dp,
+                        shape = MaterialTheme.shapes.small,
+                    ) {
+                        Text(
+                            stringResource(R.string.server_station_cached),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .testTag("map-offline-cache-banner"),
+                        )
+                    }
+                }
+                        if (ui.loading) {
+                            androidx.compose.material3.LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                             )
-                            TextButton(
-                                onClick = { viewModel.retry() },
-                                modifier = Modifier.heightIn(min = 48.dp),
+                        }
+                        if (ui.error != null) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Text(stringResource(R.string.map_retry))
+                                Text(
+                                    stringResource(R.string.map_unavailable),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                TextButton(
+                                    onClick = { viewModel.retry() },
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) { Text(stringResource(R.string.map_retry)) }
+                            }
+                        }
+                        if (ui.noPackage) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    stringResource(R.string.map_no_package),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Button(
+                                    onClick = onOpenDownloads,
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) { Text(stringResource(R.string.map_download)) }
                             }
                         }
                     }
                 }
-                else -> {
-                    mapContent(Modifier.fillMaxSize())
-                    Surface(
-                        modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
-                        shape = MaterialTheme.shapes.small,
-                        tonalElevation = 1.dp,
-                    ) {
+
+                Spacer(Modifier.weight(1f))
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                    tonalElevation = 2.dp,
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
                         Text(
                             stringResource(R.string.map_attribution),
                             style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                         )
-                    }
-                }
-            }
-
-            if (ui.noPackage && !ui.loading) {
-                Surface(
-                    modifier = Modifier.align(Alignment.TopCenter).padding(8.dp),
-                    tonalElevation = 3.dp,
-                    shape = MaterialTheme.shapes.small,
-                ) {
+                // B-BR-MAP-CLUSTER-01: Accessible cluster expansion controls and member chooser.
+                val multiClusters = discUi?.clusters?.filter { it.isCluster }.orEmpty()
+                if (multiClusters.isNotEmpty()) {
                     Row(
-                        modifier = Modifier.padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            stringResource(R.string.map_no_package),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Button(onClick = onOpenDownloads) {
-                            Text(stringResource(R.string.map_download))
+                        multiClusters.forEach { cluster ->
+                            FilterChip(
+                                selected = discUi?.expandedClusterId == cluster.id,
+                                onClick = { discovery?.onClusterExpanded(cluster.id) },
+                                label = { Text(stringResource(R.string.map_cluster_expand, cluster.count)) },
+                                modifier = Modifier
+                                    .heightIn(min = 48.dp)
+                                    .testTag("map-cluster-expand-${cluster.id}"),
+                            )
                         }
                     }
                 }
-            }
-        }
 
-        // B-BR-MAP-CLUSTER-01: Accessible cluster expansion controls and member chooser.
-        val multiClusters = discUi?.clusters?.filter { it.isCluster }.orEmpty()
-        if (multiClusters.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                multiClusters.forEach { cluster ->
-                    FilterChip(
-                        selected = discUi?.expandedClusterId == cluster.id,
-                        onClick = { discovery?.onClusterExpanded(cluster.id) },
-                        label = { Text(stringResource(R.string.map_cluster_expand, cluster.count)) },
+                if (discUi != null && discUi.expandedClusterId != null && discUi.selectedMembers.size > 1) {
+                    Surface(
+                        tonalElevation = 2.dp,
                         modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .testTag("map-cluster-expand-${cluster.id}"),
-                    )
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .testTag("map-cluster-chooser"),
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    stringResource(R.string.map_cluster_title, discUi.selectedMembers.size),
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                TextButton(
+                                    onClick = { discovery?.dismissClusterExpansion() },
+                                    modifier = Modifier
+                                        .heightIn(min = 48.dp)
+                                        .testTag("map-cluster-dismiss"),
+                                ) {
+                                    Text(stringResource(R.string.action_dismiss))
+                                }
+                            }
+                            discUi.selectedMembers.forEach { member ->
+                                TextButton(
+                                    onClick = { discovery?.onSelection(member.uuid) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 48.dp)
+                                        .testTag("map-cluster-member-${member.uuid}"),
+                                ) {
+                                    Text(member.title)
+                                }
+                            }
+                        }
+                    }
                 }
-            }
-        }
 
-        if (discUi != null && discUi.expandedClusterId != null && discUi.selectedMembers.size > 1) {
-            Surface(
-                tonalElevation = 2.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                    .testTag("map-cluster-chooser"),
-            ) {
-                Column(modifier = Modifier.padding(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                // MAP-18 accessible equivalent: real stations with distinct fuel/
+                // electric pictograms, 48dp targets and TalkBack descriptions.
+                if (discUi != null && discUi.listItems.isNotEmpty()) {
+                    TextButton(
+                        onClick = { showList = !showList },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .testTag("map-list-toggle"),
                     ) {
                         Text(
-                            stringResource(R.string.map_cluster_title, discUi.selectedMembers.size),
-                            style = MaterialTheme.typography.titleSmall,
+                            if (showList) {
+                                stringResource(R.string.action_dismiss)
+                            } else {
+                                stringResource(R.string.map_list_toggle, discUi.listItems.size)
+                            }
                         )
-                        TextButton(
-                            onClick = { discovery?.dismissClusterExpansion() },
-                            modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .testTag("map-cluster-dismiss"),
-                        ) {
-                            Text(stringResource(R.string.action_dismiss))
-                        }
                     }
-                    discUi.selectedMembers.forEach { member ->
-                        TextButton(
-                            onClick = { discovery?.onSelection(member.uuid) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                .testTag("map-cluster-member-${member.uuid}"),
-                        ) {
-                            Text(member.title)
-                        }
+                    if (showList) {
+                        MapOverlayList(
+                            items = discUi.listItems,
+                            onSelect = { discovery?.onSelection(it) },
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp).testTag("map-overlay-list"),
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(
+                        onClick = { showFilters = true },
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-filters"),
+                    ) {
+                        Text(
+                            stringResource(R.string.map_filters),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                    TextButton(
+                        onClick = onOpenSearch,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-search"),
+                    ) {
+                        Text(stringResource(R.string.map_search))
+                    }
+                    TextButton(
+                        onClick = onOpenDownloads,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-downloads"),
+                    ) {
+                        Text(
+                            stringResource(R.string.map_download),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                    if (saved != null) TextButton(
+                        onClick = onOpenSaved,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-saved"),
+                    ) {
+                        Text(
+                            stringResource(R.string.map25_open_saved),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                }
                     }
                 }
             }
-        }
-
-        // MAP-18 accessible equivalent: real stations with distinct fuel/
-        // electric pictograms, 48dp targets and TalkBack descriptions.
-        if (discUi != null && discUi.listItems.isNotEmpty()) {
-            TextButton(
-                onClick = { showList = !showList },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .testTag("map-list-toggle"),
-            ) {
-                Text(
-                    if (showList) {
-                        stringResource(R.string.action_dismiss)
-                    } else {
-                        stringResource(R.string.map_list_toggle, discUi.listItems.size)
-                    }
-                )
-            }
-            if (showList) {
-                MapOverlayList(
-                    items = discUi.listItems,
-                    onSelect = { discovery?.onSelection(it) },
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp).testTag("map-overlay-list"),
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            TextButton(
-                onClick = { showFilters = true },
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-filters"),
-            ) {
-                Text(stringResource(R.string.map_filters))
-            }
-            TextButton(
-                onClick = onOpenSearch,
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-search"),
-            ) {
-                Text(stringResource(R.string.map_search))
-            }
-            TextButton(
-                onClick = onOpenDownloads,
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-downloads"),
-            ) {
-                Text(stringResource(R.string.map_downloads))
-            }
-            if (saved != null) TextButton(
-                onClick = onOpenSaved,
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-saved"),
-            ) {
-                Text(stringResource(R.string.map25_open_saved))
-            }
+        } else {
+            MapScreenSkeleton()
         }
     }
 
