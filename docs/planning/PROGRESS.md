@@ -1,5 +1,14 @@
 # Current execution state
 
+- DRV-15 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 27a0fc95,
+  behavior 24aa536a. [Evidence](../backend/evidence/driver-suite/DRV-15.md).
+  Explicit per-dataset cloud consent (migration 000138), four driver datasets,
+  strict derived-payload validation, two-device pull/snapshot/restore,
+  conflict/replay, foreign refusal and erasure epoch/old-snapshot purge. Full
+  cloudsync/driver tests under -race, backend unit, vet/staticcheck/sqlc PASS.
+  No Android client/UI or driver_shifts registration; no push/PR/merge in this
+  checkpoint.
+
 - DRV-14 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent b5957f53,
   behavior 72f8bd46. [Evidence](../backend/evidence/driver-suite/DRV-14.md).
   PENDING/SYNCED/CONFLICT outbox, 29→30 lease migration, owner/guest-isolated

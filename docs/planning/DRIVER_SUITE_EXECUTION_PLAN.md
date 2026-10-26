@@ -256,7 +256,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-14.md`. A later relevant change invalidates affected evidence.
 ### DRV-15 — Complete sync, conflict and private restoration
 
-Status: PLANNED. Dependency: DRV-14 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-15](../backend/evidence/driver-suite/DRV-15.md). Dependency: DRV-14 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `existing cloudsync/backup/free-exit; Android data/UI`. Rules: B-BR-DRV-17, B-BR-DRV-18.
 

@@ -3947,7 +3947,10 @@ earning/shift/cost/report journey, restart/stale/erasure checks. DRV-13 is LOCAL
 isolation on an owned API35 emulator. DRV-14 is LOCAL_DONE / INTEGRATION_PENDING at behavior `72f8bd46`;
 [evidence](docs/backend/evidence/driver-suite/DRV-14.md) records the durable
 outbox/leases/backoff and shared Go→Kotlin wire fixtures on an owned API35
-emulator. DRV-15–35 remain PLANNED.
+emulator. DRV-15 is LOCAL_DONE / INTEGRATION_PENDING at behavior `24aa536a`;
+[evidence](docs/backend/evidence/driver-suite/DRV-15.md) records explicit
+driver-dataset consent, two-device sync/restore, conflicts, foreign refusal and
+erasure-epoch snapshot purge on real PostGIS. DRV-16–35 remain PLANNED.
 
 Durable movement continuation (2026-10-26): DRV-08 is LOCAL_DONE /
 INTEGRATION_PENDING at behavior `4026df2a`. [Evidence](docs/backend/evidence/driver-suite/DRV-08.md)

@@ -112,6 +112,7 @@ building blocks for later export/report phases.
 | Reconciliation | Account; private versions | Owner earnings epoch; deleted with target/owner | Get/list decisions | Excluded |
 | Reports | Account/vehicle/window; private snapshots | Account soft/physical erase + 400-day cleanup | Signed build/get; stale refusal | Excluded |
 | Local driver state | Owner/origin Room partition | Owner/origin delete; device storage lifecycle | Local-only drafts/records/revisions/commands | Excluded |
+| Driver cloud datasets | Owner/family/device; explicit consent | Cloud erasure epoch/tombstone; foreign refusal | Encrypted transport snapshot/restore | Opt-in only |
 
 The current cloud manifest allowlist remains vehicles/favorites/preferences and
 `backupExcluded` keeps professional datasets out. No reader claims complete
@@ -155,3 +156,12 @@ metres/centavos/seconds and a unit version, and contain no GPS/location/start
 fields. The local command table is not a cloud opt-in or dispatcher; DRV-14 owns
 dispatch/replay. Existing ledger/map/vehicle/session tables are untouched by
 migration 28→29. Legacy odometer repair remains the existing ledger-draft flow.
+
+## DRV-15 driver cloud datasets
+
+Explicit per-dataset consent registers `driver_earnings`, `driver_distance`,
+`driver_costs` and `driver_maintenance` in cloudsync. Payloads are normalized
+driver-domain records; raw GPS/traces, credentials, tokens, passengers and
+unknown fields are refused. Snapshots/restores use the existing owner/device,
+revision conflict, cursor/epoch and tombstone controls. `driver_shifts` remains
+unregistered in this batch. Android import/UI mapping is still pending.
