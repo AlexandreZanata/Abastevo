@@ -12,6 +12,8 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.platform.testTag
@@ -371,6 +373,13 @@ class MapScreenInstrumentedTest {
         val normalInset = measuredInset
         val overlay = compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot()
         org.junit.Assert.assertTrue(normalInset >= (overlay.bottom - overlay.top) + 16.dp)
+        compose.onNodeWithTag("map-actions-toggle").performClick()
+        compose.waitForIdle()
+        org.junit.Assert.assertTrue(measuredInset < normalInset)
+        compose.onNodeWithTag("map-attribution").assertIsDisplayed()
+        compose.onNodeWithTag("map-actions-toggle").performClick()
+        compose.waitForIdle()
+        org.junit.Assert.assertEquals(normalInset, measuredInset)
         compose.runOnIdle { fontScale.value = 2f }
         compose.waitForIdle()
         org.junit.Assert.assertTrue(measuredInset > normalInset)
@@ -379,6 +388,48 @@ class MapScreenInstrumentedTest {
         val recenterTop = root.bottom - measuredInset - 48.dp
         org.junit.Assert.assertTrue(recenterTop >= header.bottom + 8.dp)
         compose.onNodeWithTag("map-open-downloads").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun minimalToggleHidesActionsAndRestoresSavedStateWithoutLosingCallbacks() {
+        val restoration = StateRestorationTester(compose)
+        var downloads = 0
+        restoration.setContent {
+            com.anpfuel.app.ui.theme.AnpFuelTheme(darkTheme = true, dynamicColor = false) {
+                MapBottomControls(
+                    onFilters = {},
+                    onSearch = {},
+                    onDownloads = { downloads++ },
+                    onSaved = {},
+                    modifier = Modifier.width(360.dp),
+                )
+            }
+        }
+        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val expanded = compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot()
+        val toggle = compose.onNodeWithTag("map-actions-toggle").assertIsDisplayed()
+        val toggleBounds = toggle.getUnclippedBoundsInRoot()
+        org.junit.Assert.assertTrue(toggleBounds.right - toggleBounds.left >= 48.dp)
+        org.junit.Assert.assertTrue(toggleBounds.bottom - toggleBounds.top >= 48.dp)
+        toggle.assert(hasContentDescription(context.getString(com.anpfuel.app.R.string.map_actions_hide))).performClick()
+        compose.onNodeWithTag("map-action-panel").assertDoesNotExist()
+        listOf("filters", "search", "downloads", "saved").forEach { action ->
+            compose.onNodeWithTag("map-open-$action").assertDoesNotExist()
+        }
+        compose.onNodeWithTag("map-attribution").assertIsDisplayed()
+        val collapsed = compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot()
+        org.junit.Assert.assertTrue(collapsed.bottom - collapsed.top < expanded.bottom - expanded.top)
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithTag("map-action-panel").assertDoesNotExist()
+        compose.onNodeWithTag("map-attribution").assertIsDisplayed()
+        val directory = java.io.File(context.getExternalFilesDir(null), "map-panel-collapse-20261026").apply { mkdirs() }
+        java.io.FileOutputStream(java.io.File(directory, "collapsed.png")).use { output ->
+            compose.onNodeWithTag("map-bottom-overlay").captureToImage().asAndroidBitmap()
+                .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output)
+        }
+        compose.onNodeWithTag("map-actions-toggle")
+            .assert(hasContentDescription(context.getString(com.anpfuel.app.R.string.map_actions_show))).performClick()
+        compose.onNodeWithTag("map-open-downloads").performScrollTo().assertIsDisplayed().performClick()
+        org.junit.Assert.assertEquals(1, downloads)
     }
 
     private fun selectFuelFromSharedDialog(product: com.anpfuel.domain.valueobject.FuelProduct) {

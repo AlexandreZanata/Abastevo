@@ -1269,4 +1269,6 @@
     <string name="driver_hub_quick_charge">Recarga rápida</string>
     <string name="ledger_entry_charge_fees">Taxas da recarga (R$)</string>
     <string name="ledger_entry_validation_fees">Informe um valor de taxas válido.</string>
+    <string name="map_actions_hide">Hide map actions</string>
+    <string name="map_actions_show">Show map actions</string>
 </resources>

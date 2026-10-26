@@ -1221,4 +1221,6 @@
     <string name="map_filter_source">Fuente de precios</string>
     <string name="map_controls_expand">Mostrar detalles del mapa</string>
     <string name="map_controls_collapse">Ocultar detalles del mapa</string>
+    <string name="map_actions_hide">Ocultar acciones del mapa</string>
+    <string name="map_actions_show">Mostrar acciones del mapa</string>
 </resources>

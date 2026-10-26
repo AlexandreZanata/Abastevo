@@ -1221,4 +1221,6 @@
     <string name="map_filter_source">Источник цен</string>
     <string name="map_controls_expand">Показать сведения о карте</string>
     <string name="map_controls_collapse">Скрыть сведения о карте</string>
+    <string name="map_actions_hide">Скрыть действия карты</string>
+    <string name="map_actions_show">Показать действия карты</string>
 </resources>

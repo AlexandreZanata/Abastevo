@@ -1221,4 +1221,6 @@
     <string name="map_filter_source">价格来源</string>
     <string name="map_controls_expand">显示地图详情</string>
     <string name="map_controls_collapse">隐藏地图详情</string>
+    <string name="map_actions_hide">隐藏地图操作</string>
+    <string name="map_actions_show">显示地图操作</string>
 </resources>
