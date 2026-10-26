@@ -1,4 +1,4 @@
-# Private individual-driver datasets — DRV-07/08
+# Private individual-driver datasets — DRV-07/08/09
 
 Status: private storage implemented; hosted HTTP/mobile/signed cloud admission
 is disabled until DRV-10–16. No production rollout or import adapter is implied.
@@ -83,3 +83,33 @@ GPS trace, latitude/longitude, import payload or provider credential is stored.
 Read/list ports are private storage building blocks. Signed export, backup,
 restore/epoch admission, report snapshots and cloud opt-in remain DRV-11–16/28
 obligations; this registry does not claim them complete.
+
+## DRV-09 cost and maintenance additions
+
+Migration 000135 adds versioned `driver_cost_profiles`/items, versioned
+`driver_maintenance_schedules`, operation receipts, owner epoch state and
+tombstones. Actual cost items reference an existing ledger record/revision
+through a transaction-bound ledger port; the driver module never writes
+`ledger_records` and stores no second refuel/expense ledger. Zero centavos and
+NULL remain distinct; the same holds for maintenance baseline/next-due values.
+A maintenance schedule carries the explicit odometer segment/reset context.
+
+Record erasure keeps `(vehicle, version)`/`(schedule, version)` tombstones and
+blocks stale recreation. Owner erasure advances the dataset epoch and clears
+private profiles/schedules/commands/tombstones. Soft account deletion erases
+these rows; physical deletion cascades. Get/list ports are owner-scoped storage
+building blocks for later export/report phases.
+
+## Dataset ownership registry
+
+| Dataset | Owner/retention | Record erase | Read/export boundary | Cloud backup |
+| --- | --- | --- | --- | --- |
+| Earnings | Account; private | Tombstone + owner epoch | Scoped pages/revisions | Excluded |
+| Shifts | Account; private | Account soft/physical erase | Current/get only; full-history export remains DRV-11/15 | Excluded |
+| Distance | Account; private | Account soft/physical erase | Get/list aggregate observations | Excluded |
+| Cost profiles | Account/vehicle; private versions | Tombstone + owner epoch | Get/list versions | Excluded |
+| Maintenance | Account/vehicle; private versions | Tombstone + owner epoch | Get/list versions | Excluded |
+
+The current cloud manifest allowlist remains vehicles/favorites/preferences and
+`backupExcluded` keeps professional datasets out. No reader claims complete
+movement export or movement record-tombstone coverage in this phase.

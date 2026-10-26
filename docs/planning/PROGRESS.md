@@ -1,5 +1,15 @@
 # Current execution state
 
+- DRV-09 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent babf66a7,
+  behavior 9241b869. [Evidence](../backend/evidence/driver-suite/DRV-09.md).
+  Versioned private cost profiles/items and maintenance schedules, exact
+  transaction-bound ledger links, zero-versus-unknown values, odometer segment/
+  reset context, owner epochs and record tombstones were added by migration
+  000135 after 000134. Real disposable PostGIS: 21 adapter tests plus 19 driver
+  domain tests PASS under -race, including concurrent ledger fencing and soft
+  erasure. Full backend unit, vet, staticcheck, sqlc and formatting PASS. No
+  HTTP/Premium/cloud/GPS/mobile admission; DRV-10 next. No push/PR/merge here.
+
 - DRV-08 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 84dfd74d,
   behavior 4026df2a. [Evidence](../backend/evidence/driver-suite/DRV-08.md).
   Durable private shifts, monotonic recovery gaps, version-fenced receipts,

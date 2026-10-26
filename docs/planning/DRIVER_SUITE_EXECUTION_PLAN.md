@@ -176,7 +176,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-08.md`. A later relevant change invalidates affected evidence.
 ### DRV-09 — Persist cost profiles, maintenance and links
 
-Status: PLANNED. Dependency: DRV-08 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-09](../backend/evidence/driver-suite/DRV-09.md). Dependency: DRV-08 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `backend driver; existing ledger port; dataset registry`. Rules: B-BR-DRV-13, B-BR-DRV-14, B-BR-DRV-18.
 
