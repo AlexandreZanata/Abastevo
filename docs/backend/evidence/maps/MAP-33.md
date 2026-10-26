@@ -51,6 +51,8 @@ Gate: DELIVERY_GATE source integration closed; PERFORMANCE_GATE remains PARTIAL
   SHA `bbd96568`.
 - This post-merge evidence/progress note is a docs-only follow-up on retained `dev`; it does
   not change the merged application code and does not reopen the merged PR.
+- Full MAP-00–33/gate inventory, including the still-PARTIAL MAP-18 native combined artwork:
+  [MAP_BATCH_INVENTORY](MAP_BATCH_INVENTORY.md).
 
 Staging/production/release certification is not part of this delivery. MAP-29 remains
 PERFORMANCE_GATE PARTIAL, MAP-30 EXTERNAL_PENDING, MAP-32 STAGING_PENDING, and the four
