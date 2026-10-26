@@ -149,13 +149,28 @@ checking the actual schema head, with crash/disk-full/cancellation tests.
 
 ## MAP-22 privacy revision
 
-The current build input is `9cdd3cda00e1025a4ba986bd385f07cf013b0584b41c9c14091ba2b4277c352c`.
-It retains the same source/submodule/resource pins and adds
+The MAP-22 build input was `9cdd3cda00e1025a4ba986bd385f07cf013b0584b41c9c14091ba2b4277c352c`.
+It retained the same source/submodule/resource pins and added
 [private-diagnostics.patch](private-diagnostics.patch): native and Java SDK
 log sinks suppress GPS, route and exception payloads, including native assertion
 fallbacks. Generic SDK diagnostics, native assertion source points and route error codes remain available.
-The builder applies both recorded patches; actual release AARs for both ABIs are
+See MAP-22 evidence for that revision's actual runtime matrix.
+
+## MAP-23 explicit-guidance revision
+
+The current build input is `7ad828883c4aca8afc46601ea98ed340db5056cbc61df2e1896d8916d98d6837`
+(40,063,612 bytes; `classes.jar`
+`071120e96b1c27be14d166183dd96b37751119fc4da45c74cb76a3647e0ee66a`;
+`arm64-v8a` `bb2aed7bdbc26e52fc90d0cfc0cf05e01b2e7aab96119b7f2e1d01533ba1c45b`;
+`armeabi-v7a` `7d61b573c6a15bcb1bd7de463ec420a02b716f88c872099ff7d8e901f3fba842`).
+It retains the same source/submodule/resource pins and adds
+[explicit-guidance-voice.patch](explicit-guidance-voice.patch): the SDK no
+longer auto-initializes Android TTS at startup and exposes
+`TtsPlayer.configureNativeNotifications` so the host enables native turn
+instruction text only during explicit foreground guidance. No cloud voice or
+background tracking is added.
+The builder applies all three recorded patches; actual release AARs for both ABIs are
 verified/admitted before merge. No resource/endpoint/license gate is bypassed.
-See MAP-22 evidence for this revision's actual runtime matrix; the earlier MAP-14
+See MAP-23 evidence for this revision's actual runtime matrix; the earlier MAP-14
 comparison and acceptance above describe the prior artifact, not a new clean-clone
 comparison or production certification.

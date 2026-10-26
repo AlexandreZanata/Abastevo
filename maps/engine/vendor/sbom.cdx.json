@@ -5626,13 +5626,13 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "9cdd3cda00e1025a4ba986bd385f07cf013b0584b41c9c14091ba2b4277c352c"
+          "content": "7ad828883c4aca8afc46601ea98ed340db5056cbc61df2e1896d8916d98d6837"
         }
       ],
       "properties": [
         {
           "name": "abastevo:bytes",
-          "value": "40063602"
+          "value": "40063612"
         }
       ]
     },
@@ -5642,13 +5642,13 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "d856d1ed9d5cc7eac0ca74210d447eb59a3f5232bee9b97e2e2f29d076c02ec9"
+          "content": "071120e96b1c27be14d166183dd96b37751119fc4da45c74cb76a3647e0ee66a"
         }
       ],
       "properties": [
         {
           "name": "abastevo:bytes",
-          "value": "368317"
+          "value": "368336"
         }
       ]
     },
