@@ -271,7 +271,7 @@ Evidence: `docs/backend/evidence/driver-suite/DRV-15.md`. A later relevant chang
 Gate: **DRIVER_SYNC_GATE**; apply the scope/disposition rules in section 6.
 ### DRV-16 — Build the mobile driver entry and Premium states
 
-Status: PLANNED. Dependency: DRV-15 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-16](../backend/evidence/driver-suite/DRV-16.md). Dependency: DRV-15 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `app navigation/profile/vehicle; existing design system`. Rules: B-BR-DRV-01, B-BR-DRV-20.
 

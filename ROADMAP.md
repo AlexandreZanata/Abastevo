@@ -3950,7 +3950,11 @@ outbox/leases/backoff and shared Go→Kotlin wire fixtures on an owned API35
 emulator. DRV-15 is LOCAL_DONE / INTEGRATION_PENDING at behavior `24aa536a`;
 [evidence](docs/backend/evidence/driver-suite/DRV-15.md) records explicit
 driver-dataset consent, two-device sync/restore, conflicts, foreign refusal and
-erasure-epoch snapshot purge on real PostGIS. DRV-16–35 remain PLANNED.
+erasure-epoch snapshot purge on real PostGIS. DRV-16 is LOCAL_DONE / INTEGRATION_PENDING at behavior `d1db75ab`;
+[evidence](docs/backend/evidence/driver-suite/DRV-16.md) records the mobile
+driver hub, Premium/offline/lapse/signed-out states, retained-data actions and
+four-tab navigation regression on an owned API35 emulator. DRV-17–35 remain
+PLANNED.
 
 Durable movement continuation (2026-10-26): DRV-08 is LOCAL_DONE /
 INTEGRATION_PENDING at behavior `4026df2a`. [Evidence](docs/backend/evidence/driver-suite/DRV-08.md)

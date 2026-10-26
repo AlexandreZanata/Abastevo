@@ -1,5 +1,14 @@
 # Current execution state
 
+- DRV-16 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent efdcce26,
+  behavior d1db75ab. [Evidence](../backend/evidence/driver-suite/DRV-16.md).
+  Real driver hub route from Perfil/Veículos, VERIFIED/OFFLINE/LAPSED/
+  UNAVAILABLE/SIGNED_OUT states, retained vehicle/ledger/export actions,
+  actionable first-use/error states and four-tab navigation regression. JVM
+  route/state tests, app unit/compile PASS; owned API35 emulator 10/10
+  instrumentation PASS; static guards PASS. Shift form intentionally deferred
+  to DRV-18; no push/PR/merge.
+
 - DRV-15 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 27a0fc95,
   behavior 24aa536a. [Evidence](../backend/evidence/driver-suite/DRV-15.md).
   Explicit per-dataset cloud consent (migration 000138), four driver datasets,
