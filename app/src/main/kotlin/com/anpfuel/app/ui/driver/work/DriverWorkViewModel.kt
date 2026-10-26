@@ -125,6 +125,12 @@ class DriverWorkViewModel @Inject constructor(
         }
     }
 
+    fun startGps() {
+        val id = state.value.shift?.shiftId ?: return fail("Inicie um turno antes do GPS.")
+        DriverGpsService.start(context, id)
+    }
+    fun stopGps() = DriverGpsService.stop(context)
+
     fun reviewGap(vehicleId: String, gapId: String) {
         val row = state.value.shift ?: return
         viewModelScope.launch {

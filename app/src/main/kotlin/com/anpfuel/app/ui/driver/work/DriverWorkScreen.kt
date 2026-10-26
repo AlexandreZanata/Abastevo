@@ -92,6 +92,8 @@ private fun ShiftCard(state: DriverWorkState, vehicleId: String, vm: DriverWorkV
                     onEnd = { vm.end(vehicleId, endKm) }, state = shift.state,
                 )
                 OutlinedTextField(endKm, { endKm = it }, label = { Text("Hodômetro final (km)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                OutlinedButton(onClick = vm::startGps, modifier = Modifier.fillMaxWidth()) { Text("Ligar GPS opcional") }
+                OutlinedButton(onClick = vm::stopGps, modifier = Modifier.fillMaxWidth()) { Text("Parar GPS opcional") }
                 state.gaps.filter { !it.reviewed }.forEach { gap ->
                     OutlinedButton(onClick = { vm.reviewGap(vehicleId, gap.gapId) }, modifier = Modifier.fillMaxWidth()) {
                         Text("Revisar lacuna: ${gap.reason}")
