@@ -8,7 +8,11 @@ class DriverBoundaryTest {
     private val w = DriverWindow("owner", "car", "BRL", 1, 1000)
     private val clock = DriverClock("boot", 0, 100000)
     private val policy = DriverClockPolicy(60000, 1000)
-    private fun refuses(work: () -> Unit) { assertThrows(RuntimeException::class.java) { work() } }
+    private fun refuses(work: () -> Unit) {
+        val failure = assertThrows(RuntimeException::class.java) { work() }
+        assertTrue(failure is IllegalArgumentException || failure is IllegalStateException || failure is java.time.DateTimeException || failure is ArithmeticException,
+            "Expected a declared validation/transition failure, not an implementation crash: ${failure.javaClass.name}")
+    }
     @Test fun `money boundaries unknown denominator and incompatible sources cannot certify a result`() {
         refuses { DriverEarnings("DETAILED", gross = DRIVER_MAX_AMOUNT, fees = 0, tips = DRIVER_MAX_AMOUNT, bonus = 0, refund = 0).earned() }
         refuses { DriverEarnings("DETAILED", gross = 1, fees = -1, tips = 0, bonus = 0, refund = 0).earned() }

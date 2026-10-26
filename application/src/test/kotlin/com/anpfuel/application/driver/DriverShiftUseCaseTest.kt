@@ -36,6 +36,10 @@ class DriverShiftUseCaseTest {
                 DriverShiftCommand("start-$index", DriverShiftAction.START, 0, DriverClock("boot", 0, 100000)), policy) }
         } }.awaitAll()
         assertEquals(1, results.count { it.isSuccess })
+        results.filter { it.isFailure }.forEach {
+            assertTrue(it.exceptionOrNull() is IllegalStateException)
+            assertEquals("driver-active-shift-conflict", it.exceptionOrNull()?.message)
+        }
         assertEquals(1, authority.rows.size)
         val foreignOrigin = DriverShiftUseCase(authority, sessions, "other-origin")
         assertTrue(runCatching { foreignOrigin.invoke(DriverShift("different", "a", "other-origin", "car", "UTC"),
