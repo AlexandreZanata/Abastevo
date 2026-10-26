@@ -42,4 +42,11 @@ func TestEarningRecordCanonicalPrecisionAndOwnedValues(t *testing.T) {
 			t.Fatal("invalid record admitted")
 		}
 	}
+	boundary := validRecord()
+	boundary.From = time.Date(1, 1, 1, 0, 0, 0, 0, time.FixedZone("offset", 14*3600))
+	boundary.To = boundary.From.Add(time.Hour)
+	if _, e := boundary.Normalize(); e == nil {
+		t.Fatal("UTC year zero slipped through local-year validation")
+	}
+
 }

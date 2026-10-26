@@ -47,14 +47,14 @@ func (r EarningRecord) Normalize() (EarningRecord, error) {
 	if _, e := time.LoadLocation(r.Timezone); e != nil {
 		return r, ErrInvalid
 	}
+	r.From = r.From.UTC()
+	r.To = r.To.UTC()
 	if r.From.Year() < 1 || r.From.Year() > 9999 || r.To.Year() < 1 || r.To.Year() > 9999 || !r.To.After(r.From) || r.From.Nanosecond()%1000 != 0 || r.To.Nanosecond()%1000 != 0 {
 		return r, ErrInvalid
 	}
 	if _, e := r.Money.Earned(); e != nil {
 		return r, e
 	}
-	r.From = r.From.UTC()
-	r.To = r.To.UTC()
 	return r, nil
 }
 func Digest(value any) (string, error) {
