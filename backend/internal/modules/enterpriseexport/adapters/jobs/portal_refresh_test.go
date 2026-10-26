@@ -720,3 +720,38 @@ func TestRefreshRetriesTransientFailureEveryAttempt(t *testing.T) {
 		t.Fatalf("transient failure was coalesced: generations=%d", generations)
 	}
 }
+
+func TestRefreshRegeneratesWhenGenerationInputsChange(t *testing.T) {
+	exportRoot, portalRoot, handler, _ := refreshFixture(t)
+	writeRefreshExport(t, exportRoot, "a", "sha256:"+strings.Repeat("a", 64), "6000", "")
+	generations := 0
+	counting := func(h Refresh) Refresh {
+		h.Generate = func(opts portalgen.Options) (portalgen.Result, error) {
+			generations++
+			return portalgen.Generate(opts)
+		}
+		return h
+	}
+	if err := runRefresh(t, counting(handler)); err != nil {
+		t.Fatal(err)
+	}
+	if err := runRefresh(t, counting(handler)); err != nil || generations != 1 {
+		t.Fatalf("unchanged inputs regenerated: generations=%d err=%v", generations, err)
+	}
+	js2 := filepath.Join(t.TempDir(), "search-v2.js")
+	if err := os.WriteFile(js2, []byte("globalThis.__refresh = 2;\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	handler.SearchScriptPath = js2
+	before := refreshCurrent(t, portalRoot)
+	if err := runRefresh(t, counting(handler)); err != nil || generations != 2 {
+		t.Fatalf("new search script did not regenerate: generations=%d err=%v", generations, err)
+	}
+	if refreshCurrent(t, portalRoot).ContentSHA256 == before.ContentSHA256 {
+		t.Fatal("new search script never reached the released portal")
+	}
+	handler.LandingURL = "https://landing.example"
+	if err := runRefresh(t, counting(handler)); err != nil || generations != 3 {
+		t.Fatalf("new landing origin did not regenerate: generations=%d err=%v", generations, err)
+	}
+}

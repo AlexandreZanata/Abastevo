@@ -1,9 +1,12 @@
 package portalgen
 
 import (
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -378,6 +381,34 @@ func buildSearchIndexes(snapshot enterpriseexport.Snapshot, observations []obser
 		return nil, searchIndex{}, err
 	}
 	return append(files, file), index, nil
+}
+
+// GeneratorRevision names the generator's output contract; bump it when
+// pure Go changes alter the emitted files without touching templates/assets.
+const GeneratorRevision = "2026-10-26-search-v2"
+
+// GenerationKey identifies every non-data input of a generation: generator
+// revision, templates, embedded assets, the search script bytes and the
+// options that shape output. Refresh compares it so code or asset changes
+// reach the portal even when the source data is unchanged.
+func GenerationKey(opts Options) (string, error) {
+	hash := sha256.New()
+	css, err := embeddedAssets.ReadFile("assets/portal.css")
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(hash, "%s\x00%s\x00%s\x00%t\x00%t\x00%d\x00%d\x00", GeneratorRevision, opts.SiteURL, strings.TrimRight(opts.LandingURL, "/"), opts.Indexable, opts.OfficialOnly, opts.MaxPages, opts.MaxBytes)
+	hash.Write([]byte(templates))
+	hash.Write(css)
+	hash.Write(ibgeMunicipalitiesRaw)
+	if opts.SearchScriptPath != "" {
+		script, err := os.ReadFile(opts.SearchScriptPath)
+		if err != nil {
+			return "", fmt.Errorf("portalgen: search script: %w", err)
+		}
+		hash.Write(script)
+	}
+	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 // fuelOrder lists fuels the way drivers look for them; the first one is the
