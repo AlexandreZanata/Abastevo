@@ -1,6 +1,7 @@
 # Driver suite — full Android execution plan
 
-Date: 2026-10-26. Execution: DRV-00–02 LOCAL_DONE / INTEGRATION_PENDING; DRV-03–35 PLANNED.
+Date: 2026-10-26. Execution: DRV-00–07 LOCAL_DONE / INTEGRATION_PENDING; DRV-08–35 PLANNED.
+Batch quality: inherited global domain coverage gate remains below 90%; see [DRV-03–07 acceptance](../backend/evidence/driver-suite/DRV-03-07_ACCEPTANCE.md). No merge/readiness certification.
 36 bounded phases; 108 uniquely identified implementation tasks. Execution status is recorded per phase below; unstarted tasks remain PLANNED.
 Canonical behavior: [driver contract](../product/DRIVER_SUITE_CONTRACT.md).
 User decision: complete professional suite stays Premium. The original planning commit did not implement runtime behavior. Later scoped foundation implementation is recorded below; it does not deliver the complete suite or authorize sale/deploy/publication.
@@ -149,7 +150,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-06.md`. A later relevant change invalidates affected evidence.
 ### DRV-07 — Persist private earnings and import identities
 
-Status: PLANNED. Dependency: DRV-06 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-07](../backend/evidence/driver-suite/DRV-07.md). Dependency: DRV-06 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `proposed backend driver module; append-only SQL; sqlc`. Rules: B-BR-DRV-04, B-BR-DRV-05, B-BR-DRV-17.
 
@@ -580,4 +581,4 @@ An authorized field protocol fixes participants' consent, actual devices/candida
 
 This document plus product contract, planned numeric fixtures and planning validation are the canonical English sources. The Portuguese package is a generated reading/handoff aid, not a second runtime authority. Track precise task IDs and evidence per phase rather than creating 108 remote issues during a planning-only request. Do not import unrelated MAP dirty work or close PRM/PAY/ESP obligations.
 
-Next authorized implementation, when requested: DRV-00 → DRV-01 → DRV-02 only, one bounded task at a time, then checkpoint. Reconfirm current source at that time; do not begin all 108 tasks by interpreting this plan as implementation permission.
+Initial implementation authorization covered DRV-00–02. The subsequent owner-selected batch DRV-03–07 is implemented locally and targets the isolated driver PR #152. Stop at this checkpoint; DRV-08–35 require another request. Reconfirm source/base and unresolved gates before continuation; the plan does not authorize all remaining tasks.

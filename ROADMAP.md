@@ -3911,6 +3911,17 @@ owning fronts; no raw GPS cloud inclusion or passenger data is introduced.
 Driver foundation execution checkpoint (2026-10-26): DRV-00–02 are
 LOCAL_DONE / INTEGRATION_PENDING; [DRV-02 acceptance](docs/backend/evidence/driver-suite/DRV-02.md)
 records real legacy review, unchanged financial corpus and explicit test-only
-earnings/time reference checks. Full driver earnings/shifts/GPS and DRV-03–35
-remain PLANNED; local foundation acceptance is not suite delivery or production
+earnings/time reference checks. At that initial checkpoint, DRV-03–35 remained planned; the later source
+continuation below supersedes that phase state. Full hosted/mobile driver
+journeys and live GPS remain future scope; local foundation acceptance is not suite delivery or production
 certification. Other construction fronts are preserved.
+
+Driver-only continuation (2026-10-26): DRV-03–07 are LOCAL_DONE /
+INTEGRATION_PENDING: exact earnings/results, clock-safe shifts, distinct
+distance/quality, dated cost allocation and actual private earnings persistence.
+[Batch acceptance](docs/backend/evidence/driver-suite/DRV-03-07_ACCEPTANCE.md)
+records PostGIS/Kotlin/Android checks and the inherited global coverage failure
+(pure dev 80.31%, batch 81.81%, unchanged minimum 90%; owned driver 93.48%).
+Delivery targets only driver PR #152 → dev, preserving other construction
+fronts. No main merge, public endpoint, driver hub, live GPS collector, signed
+cloud activation or production claim. DRV-08–35 remain PLANNED.

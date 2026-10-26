@@ -1,5 +1,17 @@
 # Current execution state
 
+- DRV-03–07 batch: LOCAL_DONE / INTEGRATION_PENDING, isolated driver PR #152
+  (`driver-suite/drv-00-02` → `dev`, base `507d915e`). Exact money, shifts,
+  distance quality, cost allocation and private earnings storage are delivered;
+  [batch evidence](../backend/evidence/driver-suite/DRV-03-07_ACCEPTANCE.md) records
+  real PostGIS/Android proofs and the inherited global coverage blocker.
+  API26 found an unavailable BigInteger method; checked compatible conversion
+  now passes the same two runtime tests. No threshold waiver or aggregate PASS.
+  Final publication/check receipt belongs to PR metadata; no merge/deploy/wiki.
+  Stop at DRV-07; DRV-08 onward require another request. Other fronts preserved.
+
+- DRV-07 LOCAL_DONE / INTEGRATION_PENDING at `7d830547`: private earnings, source identity and revision persistence. [Evidence](../backend/evidence/driver-suite/DRV-07.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-08 (not authorized); no main/dev push or merge.
+
 - DRV-06 LOCAL_DONE / INTEGRATION_PENDING at `d21e5a34`: vehicle cost profiles and exact allocation. [Evidence](../backend/evidence/driver-suite/DRV-06.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-07; no main/dev push or merge.
 
 - DRV-05 LOCAL_DONE / INTEGRATION_PENDING at `fadfca59`: distance sources, partitions and gps quality. [Evidence](../backend/evidence/driver-suite/DRV-05.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-06; no main/dev push or merge.
