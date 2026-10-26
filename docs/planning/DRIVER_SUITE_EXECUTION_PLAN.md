@@ -189,7 +189,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-09.md`. A later relevant change invalidates affected evidence.
 ### DRV-10 — Implement signed commands and reconciliation
 
-Status: PLANNED. Dependency: DRV-09 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-10](../backend/evidence/driver-suite/DRV-10.md). Dependency: DRV-09 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `backend driver application; existing auth/replay/subscription ports`. Rules: B-BR-DRV-01, B-BR-DRV-05, B-BR-DRV-17.
 

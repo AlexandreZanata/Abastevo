@@ -1,5 +1,15 @@
 # Current execution state
 
+- DRV-10 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent fd176a8a
+  behavior 0c98c0b4. [Evidence](../backend/evidence/driver-suite/DRV-10.md).
+  Signed command service, transactional professional capability hook, versioned
+  summary/detail and payout/earnings decisions, and retained reads after lapse
+  were added by migration 000136 after 000135. Real disposable PostGIS: 24
+  adapter tests plus 19 driver domain and one application test group PASS under
+  -race, including concurrent duplicate saves, cancellation after writes and
+  stale epochs. No HTTP/identity wiring/cloud/mobile admission; DRV-11 next.
+  No push/PR/merge here.
+
 - DRV-09 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent babf66a7,
   behavior 9241b869. [Evidence](../backend/evidence/driver-suite/DRV-09.md).
   Versioned private cost profiles/items and maintenance schedules, exact

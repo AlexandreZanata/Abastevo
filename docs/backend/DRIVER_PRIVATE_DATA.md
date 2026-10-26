@@ -1,4 +1,4 @@
-# Private individual-driver datasets — DRV-07/08/09
+# Private individual-driver datasets — DRV-07/08/09/10
 
 Status: private storage implemented; hosted HTTP/mobile/signed cloud admission
 is disabled until DRV-10–16. No production rollout or import adapter is implied.
@@ -109,7 +109,27 @@ building blocks for later export/report phases.
 | Distance | Account; private | Account soft/physical erase | Get/list aggregate observations | Excluded |
 | Cost profiles | Account/vehicle; private versions | Tombstone + owner epoch | Get/list versions | Excluded |
 | Maintenance | Account/vehicle; private versions | Tombstone + owner epoch | Get/list versions | Excluded |
+| Reconciliation | Account; private versions | Owner earnings epoch; deleted with target/owner | Get/list decisions | Excluded |
 
 The current cloud manifest allowlist remains vehicles/favorites/preferences and
 `backupExcluded` keeps professional datasets out. No reader claims complete
 movement export or movement record-tombstone coverage in this phase.
+
+## DRV-10 signed command boundary
+
+Migration 000136 adds append-only reconciliation decisions, counterpart records
+and exact operation receipts. A decision names the primary/counterpart earning
+revisions, platform, window and—for payout reconciliation—an opaque payout
+source hash. It shares the earnings owner epoch; owner erasure and soft account
+deletion clear decisions/commands. No source identifier, passenger field or raw
+payout payload is stored.
+
+`CommandService` requires a verified signed principal (owner/origin/contributor/
+key) before accessing storage. Hosted mutations additionally recheck the live
+professional capability inside the same transaction through `Store.SetPaid`;
+reads/export and erasure remain available after a lapse. The actual identity
+verifier, subscription wiring and HTTP/OpenAPI admission remain DRV-11/12.
+
+Decisions are persisted but not yet consumed by a report/import projection;
+therefore this phase makes no non-duplicated-total claim. That consumption and
+its UI are DRV-11/19.
