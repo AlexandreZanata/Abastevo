@@ -1,9 +1,15 @@
 package com.anpfuel.app.ui.map
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.platform.testTag
@@ -188,12 +194,13 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithTag("map-filter-city-search").performClick()
         org.junit.Assert.assertTrue(opened)
         compose.onNodeWithTag("map-filter-source-community").performScrollTo().performClick()
+        selectFuelFromSharedDialog(com.anpfuel.domain.valueobject.FuelProduct.DIESEL_S10)
         compose.onNodeWithTag("map-filter-cancel").performClick()
         org.junit.Assert.assertTrue(dismissed)
         org.junit.Assert.assertFalse(applied)
     }
 
-    @Test fun everyFuelHasItsSharedIconAndCanBeSelectedWithoutHorizontalScrolling() {
+    @Test fun everyFuelCanBeSelectedThroughTheSharedModalWithoutApplyingTheDraft() {
         var selected: com.anpfuel.domain.valueobject.FuelProduct? = null
         compose.setContent {
             MapFiltersDialog(
@@ -206,11 +213,10 @@ class MapScreenInstrumentedTest {
                 onApplyExtendedFilters = { _, _, product, _, _, _, _ -> selected = product },
             )
         }
+        compose.onNodeWithTag("map-filter-fuel-picker").assertDoesNotExist()
         com.anpfuel.domain.valueobject.FuelProduct.entries.forEach { product ->
-            compose.onNodeWithTag("map-filter-product-${product.name}")
-                .performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
-            compose.onNodeWithTag("map-filter-product-icon-${product.name}", useUnmergedTree = true)
-                .assertExists()
+            selectFuelFromSharedDialog(product)
+            org.junit.Assert.assertNull(selected)
         }
         compose.onNodeWithTag("map-filter-apply").performClick()
         org.junit.Assert.assertEquals(com.anpfuel.domain.valueobject.FuelProduct.entries.last(), selected)
@@ -237,7 +243,7 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithTag("map-filter-apply").assertIsDisplayed()
         compose.onNodeWithTag("map-filter-cancel").assertIsDisplayed()
         com.anpfuel.domain.valueobject.FuelProduct.entries.forEach { product ->
-            compose.onNodeWithTag("map-filter-product-${product.name}").performScrollTo().assertIsDisplayed()
+            selectFuelFromSharedDialog(product)
         }
         compose.onNodeWithTag("map-filter-access-PUBLIC").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("map-filter-apply").assertIsDisplayed()
@@ -261,6 +267,53 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithTag("map-controls-toggle").performClick()
         compose.onNodeWithTag("map-source-community").assertDoesNotExist()
         compose.onNodeWithTag("test-native-map").assertExists()
+    }
+
+    @Test fun cityStartsAtTheLeftAndLongNamesAreVisuallyEllipsized() {
+        val city = androidx.compose.runtime.mutableStateOf("Sorriso")
+        compose.setContent {
+            MapControlsCard(
+                ui = MapScreenUi(),
+                municipalityName = city.value,
+                cityLocationUnknown = false,
+                offlineCached = false,
+                onOpenCity = {},
+                onSelectSource = {},
+                onSearch = {},
+                onClearSearch = {},
+                onRetry = {},
+                onOpenDownloads = {},
+                onOpenRoute = null,
+                periodContent = {},
+                modifier = Modifier.width(320.dp),
+            )
+        }
+        val label = compose.onNodeWithTag("map-city-label", useUnmergedTree = true)
+        val cardLeft = compose.onNodeWithTag("map-controls-card").getUnclippedBoundsInRoot().left
+        org.junit.Assert.assertTrue(label.getUnclippedBoundsInRoot().left - cardLeft <= 48.dp)
+        val longCity = "Vila Bela da Santíssima Trindade — a very long municipality name"
+        compose.runOnIdle { city.value = longCity }
+        val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        label.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { action -> action(layouts) }
+        org.junit.Assert.assertEquals(1, layouts.single().lineCount)
+        org.junit.Assert.assertTrue(layouts.single().isLineEllipsized(0))
+        label.assert(hasText(longCity))
+        compose.onNodeWithTag("map-controls-toggle").assertIsDisplayed()
+    }
+
+    private fun selectFuelFromSharedDialog(product: com.anpfuel.domain.valueobject.FuelProduct) {
+        val label = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+            .targetContext.getString(com.anpfuel.app.mapper.FuelProductI18n.toStringRes(product))
+        compose.onNodeWithTag("map-filter-fuel-selector").performScrollTo().performClick()
+        compose.onNode(
+            hasText(label) and hasAnyAncestor(hasTestTag("map-filter-fuel-picker")),
+        ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("fuel-selector-icon-${product.name}", useUnmergedTree = true).assertExists()
+        compose.onNode(
+            hasText(label) and hasAnyAncestor(hasTestTag("map-filter-fuel-picker")),
+        ).performClick()
+        compose.onNodeWithTag("map-filter-fuel-picker").assertDoesNotExist()
+        compose.onNodeWithTag("map-filter-fuel-selector").assert(hasText(label))
     }
 
     @Test fun clusterExpandAllowsSelectingSecondAndLastMemberAndUnpinnedDisablesRoute() {

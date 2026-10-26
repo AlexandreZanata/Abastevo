@@ -124,3 +124,76 @@ empty-data/fixture-location/offline-package obligations remain unchanged; no
 source/data completeness, staging deployment, release or production claim.
 Rollback is a new commit reverting this presentation change; no schema/data
 recovery is needed. Wiki publication waits for a separately authorized merge.
+
+## Follow-up: left-aligned city and shared fuel selector
+
+Parent: `cb111741`. Status: LOCAL_DONE / INTEGRATION_PENDING. Validation: PASS.
+
+- B-BR-MAP-UI-09: city icon/name align to the start of the header container.
+  Long names use one visual line with end ellipsis, while keeping the full name
+  available to accessibility. Source and expansion controls keep their space.
+- B-BR-MAP-UI-10: fuel uses the existing full-width
+  `FuelProductSelectorButton` and `FuelProductSelectorDialog`, as in VehicleForm.
+  A single current value replaces adjacent fuel chips. The shared modal retains
+  all eight named/icons options; selecting updates the filter draft only.
+- BUC: open filters -> press the current fuel field -> select a fuel in the
+  standard modal -> return to the field -> Apply, or Cancel to discard the draft.
+
+Scope remains presentation only. Reuse the clean isolated worktree and existing
+PR #154; original occupied checkout stays untouched. Verify city alignment and
+actual ellipsis, all fuel choices through the shared modal, 200% font, affected
+native regressions, APK compilation, lint, diff and secret surface before push.
+
+### Follow-up results
+
+- Reused the existing VehicleForm fuel button and modal directly. The only shared
+  component API addition is an optional Modifier (unchanged default behavior),
+  plus stable icon semantics tags for the existing eight-option regression.
+- Debug app/test APKs and Android lint PASS (`BUILD SUCCESSFUL in 9m 58s`),
+  zero errors; the report retains 284 warnings / two informational findings.
+- `MapScreenInstrumentedTest`: **10/10 PASS in 83.052 s**, isolated Android 11
+  API30 emulator with existing ARM translation and KVM, no source ABI/runtime
+  configuration changes. Every fuel is selected through the standard modal,
+  reflected in the field, and withheld from the apply callback until Apply.
+  Outer Cancel still discards the changed fuel/source draft. The 200% dark-font
+  case repeats all eight modal selections and electric/footer reachability.
+- City regression measures the short name's start offset within 48 dp of the
+  header edge and verifies actual `TextLayoutResult.isLineEllipsized(0)` for a
+  long name at 320 dp width, one line, full accessible text and visible controls.
+- The connected API35 16 KB emulator first returned DeadObjectException before
+  starting instrumentation, then an ART native crash; other system apps also
+  reported ART failures. These attempts are not accepted as passing evidence.
+  The existing emulator was preserved. An isolated temporary API30 image already
+  installed in the SDK was used for the completed suite; no dependency added.
+  The temporary emulator was stopped and its task-owned AVD/home removed afterward.
+- The physical phone was disconnected for this revision. No current phone or
+  16 KB runtime acceptance is claimed; prior phone evidence above belongs to its
+  original checkpoint. No test was skipped; the failed runtime attempts are explicitly retained here.
+- No domain/data/backend/engine implementation changed, so the previous 92 app /
+  37 engine JVM baseline was not repeated for these presentation-only edits.
+- Diff and secret-surface review PASS; origin/dev parent was verified before work.
+  Deliver as a new commit to PR #154, preserving prior commits, without merge.
+
+```sh
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug \
+  --offline --max-workers=1 --no-parallel --console=plain
+adb -s emulator-5556 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s emulator-5556 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb -s emulator-5556 shell am instrument -w \
+  -e class com.anpfuel.app.ui.map.MapScreenInstrumentedTest \
+  com.anpfuel.app.debug.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+[Follow-up native runner output](map-ui-refinement-20261026/native-tests-followup.txt).
+The earlier screenshots document the first checkpoint; the shared selector modal
+supersedes their adjacent fuel chips in this follow-up.
+
+Follow-up APK SHA-256:
+`4db036586e9be226be22f4f2a7c3c0795dd9a2400746bd25d21b902d6a5e32ac`.
+
+Follow-up tested source SHA-256:
+
+- MapControlsCard: `0032240794ca09c9dbdf47e6ef4cb4d2968c7427d88f1f5637f1ea3d073c78aa`.
+- MapFiltersDialog: `777223358188723ec45adcdc56e8c80e1d92f5d34dc3b78d9e09e875c93818a5`.
+- FuelProductSelector: `af6e6e91400e55d96efc734cde204f2d61ab59b98bb14bf6dd50d8e7eff1588e`.
+- MapScreenInstrumentedTest: `75bbd965299428a4698932ad44f25ce273849ff00d0350a277854f483db41fff`.

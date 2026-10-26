@@ -3,6 +3,7 @@ package com.anpfuel.app.ui.map
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -75,16 +76,19 @@ internal fun MapControlsCard(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(
                     onClick = onOpenCity,
+                    contentPadding = PaddingValues(horizontal = 4.dp),
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-city-chip"),
                 ) {
-                    Icon(Icons.Default.LocationOn, null, Modifier.size(18.dp))
-                    Text(
-                        municipalityName ?: stringResource(R.string.map_city_label),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.titleSmall,
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.LocationOn, null, Modifier.size(18.dp))
+                        Text(
+                            municipalityName ?: stringResource(R.string.map_city_label),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(1f).padding(start = 4.dp).testTag("map-city-label"),
+                        )
+                    }
                 }
                 FuelProductIcon(ui.selectedFuelProduct, size = 20.dp)
                 Text(sourceLabel, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 6.dp))

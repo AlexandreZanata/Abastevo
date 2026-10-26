@@ -1,5 +1,16 @@
 # Current execution state
 
+- Map city/fuel follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
+  remote dev `cb111741`, existing PR #154. City aligns to the header start and
+  truncates visually with ellipsis; the fuel field reuses the shared vehicle
+  selector/modal instead of adjacent chips, retaining Apply/Cancel drafts.
+  Debug app/test APKs, lint (zero errors), diff/secret review and API30 native
+  10/10 PASS, including actual city text-layout assertions and eight choices at
+  200% font. Physical phone disconnected; API35 16 KB emulator attempts crashed
+  and are not accepted. [Evidence](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md#follow-up-left-aligned-city-and-shared-fuel-selector).
+  Original occupied checkout/dev preserved. Next: normal push/update of #154;
+  current-head CI/review pending, no merge or staging change.
+
 - Map UI refinement 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from remote
   dev parent `6a689e58`; delivery target [PR #154](https://github.com/AlexandreZanata/Abastevo/pull/154),
   `dev` -> `main`. Compact expandable map controls; grouped filter sheet with all

@@ -48,7 +48,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
-import com.anpfuel.app.ui.components.FuelProductIcon
+import com.anpfuel.app.ui.components.FuelProductSelectorButton
+import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.domain.charging.ChargingAccess
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingCurrent
@@ -84,6 +85,7 @@ fun MapFiltersDialog(
     var fuel by rememberSaveable { mutableStateOf(showFuel) }
     var charging by rememberSaveable { mutableStateOf(showCharging) }
     var fuelProduct by rememberSaveable { mutableStateOf(selectedFuelProduct) }
+    var fuelPickerOpen by rememberSaveable { mutableStateOf(false) }
     var connector by rememberSaveable { mutableStateOf(selectedConnector) }
     var current by rememberSaveable { mutableStateOf(selectedCurrent) }
     var access by rememberSaveable { mutableStateOf(selectedAccess) }
@@ -170,29 +172,14 @@ fun MapFiltersDialog(
                 }
                 if (fuel) {
                     MapFilterSection(stringResource(R.string.map_filter_fuel_product)) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            FuelProduct.entries.forEach { product ->
-                                FilterChip(
-                                    selected = fuelProduct == product,
-                                    onClick = { fuelProduct = product },
-                                    label = { Text(localizedMapProductLabel(product.name)) },
-                                    leadingIcon = {
-                                        FuelProductIcon(
-                                            product = product,
-                                            size = 24.dp,
-                                            contentDescription = null,
-                                            modifier = Modifier.testTag("map-filter-product-icon-${product.name}"),
-                                        )
-                                    },
-                                    modifier = Modifier.heightIn(min = 48.dp).testTag("map-filter-product-${product.name}"),
-                                )
-                            }
-                        }
+                        FuelProductSelectorButton(
+                            selected = fuelProduct,
+                            onClick = { fuelPickerOpen = true },
+                            modifier = Modifier.testTag("map-filter-fuel-selector"),
+                        )
                     }
                 }
+
                 if (charging) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     MapFilterSection(stringResource(R.string.map_filter_connector)) {
@@ -320,6 +307,18 @@ fun MapFiltersDialog(
             }
         }
     }
+    if (fuel && fuelPickerOpen) {
+        FuelProductSelectorDialog(
+            selected = fuelProduct,
+            onSelect = { product ->
+                fuelProduct = product
+                fuelPickerOpen = false
+            },
+            onDismiss = { fuelPickerOpen = false },
+            modifier = Modifier.testTag("map-filter-fuel-picker"),
+        )
+    }
+
 }
 
 @Composable
