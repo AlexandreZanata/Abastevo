@@ -1,5 +1,14 @@
 # Current execution state
 
+- DRV-02 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent d4223b5c.
+  [Evidence](../backend/evidence/driver-suite/DRV-02.md): legacy odometer units
+  are UNVERIFIED until an owner-reviewed, CAS-fenced, receipt-backed choice;
+  derived consumption/cost/km blocked meanwhile, purchases kept; local envelope
+  never sent. Real Room 6/6 and Compose 5/5 on owned emulator-5568; Go+Kotlin
+  unit oracle (19 rows) and unchanged financial-v1 PASS; final Gradle matrix PASS.
+  **DRIVER_FOUNDATION_GATE: PASS locally** (DRV-00/01/02), not production or
+  full-suite acceptance. DRV-03–35 not started.
+
 - DRV-01 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent e9f1ce25.
   [Evidence](../backend/evidence/driver-suite/DRV-01.md): real form RED→GREEN,
   exact km/metres with localized edit, BRL/km from rational centavos and

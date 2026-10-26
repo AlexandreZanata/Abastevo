@@ -82,7 +82,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-01.md`. A later relevant change invalidates affected evidence.
 ### DRV-02 — Review legacy units and freeze the financial oracle
 
-Status: PLANNED. Dependency: DRV-01 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-02](../backend/evidence/driver-suite/DRV-02.md). Dependency: DRV-01 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `existing ledger/metrics; versioned fixtures; repair specification`. Rules: B-BR-DRV-02, B-BR-DRV-03, B-BR-DRV-21.
 
@@ -94,7 +94,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 
 Evidence: `docs/backend/evidence/driver-suite/DRV-02.md`. A later relevant change invalidates affected evidence.
 
-Gate: **DRIVER_FOUNDATION_GATE**; apply the scope/disposition rules in section 6.
+Gate: **DRIVER_FOUNDATION_GATE**; apply the scope/disposition rules in section 6. Local result: PASS on 2026-10-26 (LOCAL_DONE / INTEGRATION_PENDING); not production or full-suite acceptance.
 ### DRV-03 — Implement exact earnings and result rules
 
 Status: PLANNED. Dependency: DRV-02 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
