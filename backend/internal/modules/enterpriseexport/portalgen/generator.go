@@ -180,9 +180,11 @@ type consultarPage struct {
 
 type precosPage struct {
 	pageBase
-	National []summaryRow
-	Rankings []rankingView
-	States   []stateLink
+	National      []summaryRow
+	Rankings      []rankingView
+	States        []stateLink
+	SearchRelease string
+	SearchFuels   []searchFuel
 }
 
 type statePage struct {
@@ -266,16 +268,21 @@ type observation struct {
 }
 
 type generator struct {
-	opts          Options
-	outDir        string
-	tmpl          *template.Template
-	files         map[string]FileDigest
-	pages         int
-	bytes         int64
-	indexable     bool
-	siteURL       string
-	cssURL        string
-	scriptURL     string
+	opts      Options
+	outDir    string
+	tmpl      *template.Template
+	files     map[string]FileDigest
+	pages     int
+	bytes     int64
+	indexable bool
+	siteURL   string
+	cssURL    string
+	scriptURL string
+	// searchRelease/searchFuels/searchFiscal describe the v2 search index
+	// of a full build; empty in official-only builds.
+	searchRelease string
+	searchFuels   []searchFuel
+	searchFiscal  bool
 	sitemapRoutes []string
 	hasSitemap    bool
 }
@@ -441,6 +448,16 @@ func Generate(opts Options) (Result, error) {
 			return Result{}, err
 		}
 		if err := g.writeAsset("dados/busca/"+release+"/"+shard.UF+".json", shard.Data); err != nil {
+			return Result{}, err
+		}
+	}
+	indexes, searchIdx, err := buildSearchIndexes(snapshot, observations, fiscalSearchRows(official, stations, true), release)
+	if err != nil {
+		return Result{}, err
+	}
+	g.searchRelease, g.searchFuels, g.searchFiscal = release, searchIdx.Fuels, searchIdx.Fiscal
+	for _, file := range indexes {
+		if err := g.writeAsset("dados/busca/"+release+"/"+file.Path, file.Data); err != nil {
 			return Result{}, err
 		}
 	}
@@ -686,7 +703,7 @@ func geography(observations []observation) (map[string]int, map[string]int, map[
 			}
 			municipalityState[code] = station.State
 			if municipalityName[code] == "" {
-				if name := strings.TrimSpace(station.Address["municipio"]); name != "" {
+				if name := municipalityLabel(code, station.Address["municipio"]); name != "" {
 					municipalityName[code] = name
 				}
 			}
@@ -973,6 +990,7 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 	data := precosPage{
 		pageBase: g.base("Preços por região", "Resumo derivado da pesquisa ANP por região, com amostra, mínimo, máximo, dispersão e vínculo com a metodologia.", "precos", period, published, inputHash, []crumb{{Label: "Preços", Current: true}}),
 		National: summaryRows(summaries, analytics.LevelNational, "BR", false), Rankings: views, States: stateLinks,
+		SearchRelease: g.searchRelease, SearchFuels: g.searchFuels,
 	}
 	if err := g.writePage("precos/index.html", "precos", data); err != nil {
 		return err

@@ -35,8 +35,11 @@ const (
 	// staging 2026-10-26 (SP, 8,381 stations, 461,000 gzip bytes); UUIDs
 	// and CNPJs dominate and do not compress. ESP-10's 250 KiB came from
 	// synthetic names.
-	DefaultMaxShardGzip   = int64(512 << 10)
-	DefaultMaxFilesMargin = 1_000
+	DefaultMaxShardGzip = int64(512 << 10)
+	// DefaultMaxFilesMargin covers non-page files: assets, downloads and
+	// the national search index (4,087 prefix + 5,503 city shards measured
+	// on the real 2026-10-26 build).
+	DefaultMaxFilesMargin = 20_000
 )
 
 var (
@@ -56,17 +59,28 @@ var (
 	}
 	searchStationKeys = map[string]bool{
 		"i": true, "n": true, "s": true, "c": true, "m": true,
-		"mn": true, "u": true, "st": true, "sl": true, "p": true,
+		"mn": true, "u": true, "st": true, "sl": true, "p": true, "f": true,
 	}
-	cpfTextPattern  = regexp.MustCompile(`(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2})([^0-9A-Za-z]|$)`)
-	rawScriptTag    = regexp.MustCompile(`<script\b[^>]*>`)
-	allowedScript   = regexp.MustCompile(`^<script type="module" src="/assets/portal\.[0-9a-f]{8}\.js" defer>$`)
-	unsafeAttribute = regexp.MustCompile(`(?i)<[^>]*\sonerror\s*=`)
-	unsafeURL       = regexp.MustCompile(`(?i)(?:href|src)="\s*javascript:`)
-	assetRef        = regexp.MustCompile(`(?:href|src)="(/assets/[^"]+)"`)
-	htmlRef         = regexp.MustCompile(`(?:href|src)="([^"]+)"`)
-	metaRobots      = regexp.MustCompile(`<meta name="robots" content="([^"]+)">`)
-	shaPrefixName   = regexp.MustCompile(`^portal\.([0-9a-f]{8})\.(css|js)$`)
+	searchPriceKeys = map[string]bool{
+		"i": true, "n": true, "c": true, "m": true, "mn": true, "u": true, "v": true, "d": true,
+	}
+	searchFiscalKeys = map[string]bool{
+		"r": true, "c": true, "st": true, "a": true, "d": true, "i": true, "n": true,
+		"m": true, "mn": true, "u": true,
+	}
+	searchMunicipalityKeys = map[string]bool{"m": true, "n": true, "s": true, "u": true, "k": true}
+	searchPrefixKey        = regexp.MustCompile(`^(n-[a-z0-9]{3}|c-[0-9a-z]{3})$`)
+	municipalityCodeShape  = regexp.MustCompile(`^[0-9]{7}$`)
+	fiscalRecordIDShape    = regexp.MustCompile(`^[0-9a-f]{24}$`)
+	cpfTextPattern         = regexp.MustCompile(`(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2})([^0-9A-Za-z]|$)`)
+	rawScriptTag           = regexp.MustCompile(`<script\b[^>]*>`)
+	allowedScript          = regexp.MustCompile(`^<script type="module" src="/assets/portal\.[0-9a-f]{8}\.js" defer>$`)
+	unsafeAttribute        = regexp.MustCompile(`(?i)<[^>]*\sonerror\s*=`)
+	unsafeURL              = regexp.MustCompile(`(?i)(?:href|src)="\s*javascript:`)
+	assetRef               = regexp.MustCompile(`(?:href|src)="(/assets/[^"]+)"`)
+	htmlRef                = regexp.MustCompile(`(?:href|src)="([^"]+)"`)
+	metaRobots             = regexp.MustCompile(`<meta name="robots" content="([^"]+)">`)
+	shaPrefixName          = regexp.MustCompile(`^portal\.([0-9a-f]{8})\.(css|js)$`)
 )
 
 type VerifyOptions struct {
@@ -537,6 +551,9 @@ func checkSearchArtifacts(dir string, files map[string]FileDigest) error {
 			continue
 		}
 		parts := strings.Split(path, "/")
+		if len(parts) == 5 || (len(parts) == 4 && (parts[3] == "indice.json" || parts[3] == "fiscalizacao.json")) {
+			continue // v2 index families, checked by checkSearchIndexes
+		}
 		if len(parts) != 4 || parts[3] == "all.json" || parts[3] == "nacional.json" {
 			return fmt.Errorf("portalcheck: invalid search shard path")
 		}
@@ -569,45 +586,8 @@ func checkSearchArtifacts(dir string, files map[string]FileDigest) error {
 			return fmt.Errorf("portalcheck: mixed search release")
 		}
 		for _, raw := range decoded.Stations {
-			var row map[string]json.RawMessage
-			if err := json.Unmarshal(raw, &row); err != nil {
-				return fmt.Errorf("portalcheck: invalid search row")
-			}
-			for key := range row {
-				if !searchStationKeys[key] {
-					return fmt.Errorf("portalcheck: search row key %q not allowed", key)
-				}
-			}
-			for _, required := range []string{"i", "n", "s"} {
-				if len(row[required]) == 0 {
-					return fmt.Errorf("portalcheck: search row missing %s", required)
-				}
-			}
-			var id, name, searchName, cnpj, uf string
-			if err := json.Unmarshal(row["i"], &id); err != nil || !isUUID(id) {
-				return fmt.Errorf("portalcheck: invalid search station id")
-			}
-			if err := json.Unmarshal(row["n"], &name); err != nil || strings.TrimSpace(name) == "" {
-				return fmt.Errorf("portalcheck: invalid search station name")
-			}
-			if err := json.Unmarshal(row["s"], &searchName); err != nil || strings.TrimSpace(searchName) == "" {
-				return fmt.Errorf("portalcheck: invalid search station key")
-			}
-			if raw, ok := row["c"]; ok {
-				if err := json.Unmarshal(raw, &cnpj); err != nil {
-					return fmt.Errorf("portalcheck: invalid search CNPJ")
-				}
-				if cnpj != "" {
-					parsed, err := kernel.ParseCNPJ(cnpj)
-					if err != nil || parsed.Normalized() != cnpj {
-						return fmt.Errorf("portalcheck: invalid search CNPJ")
-					}
-				}
-			}
-			if raw, ok := row["u"]; ok {
-				if err := json.Unmarshal(raw, &uf); err != nil || (uf != "" && uf != "sem-uf" && !isUF(uf)) {
-					return fmt.Errorf("portalcheck: invalid search UF")
-				}
+			if err := checkSearchStationRow(raw); err != nil {
+				return err
 			}
 		}
 		shards++
@@ -621,6 +601,50 @@ func checkSearchArtifacts(dir string, files map[string]FileDigest) error {
 	}
 	if !bytes.Contains(consultar, []byte(`data-release="`+release+`"`)) || !bytes.Contains(consultar, []byte(`data-shard-base="/dados/busca/"`)) {
 		return fmt.Errorf("portalcheck: search release reference mismatch")
+	}
+	return checkSearchIndexes(dir, files, release)
+}
+
+func checkSearchStationRow(raw json.RawMessage) error {
+	var row map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &row); err != nil {
+		return fmt.Errorf("portalcheck: invalid search row")
+	}
+	for key := range row {
+		if !searchStationKeys[key] {
+			return fmt.Errorf("portalcheck: search row key %q not allowed", key)
+		}
+	}
+	for _, required := range []string{"i", "n", "s"} {
+		if len(row[required]) == 0 {
+			return fmt.Errorf("portalcheck: search row missing %s", required)
+		}
+	}
+	var id, name, searchName, cnpj, uf string
+	if err := json.Unmarshal(row["i"], &id); err != nil || !isUUID(id) {
+		return fmt.Errorf("portalcheck: invalid search station id")
+	}
+	if err := json.Unmarshal(row["n"], &name); err != nil || strings.TrimSpace(name) == "" {
+		return fmt.Errorf("portalcheck: invalid search station name")
+	}
+	if err := json.Unmarshal(row["s"], &searchName); err != nil || strings.TrimSpace(searchName) == "" {
+		return fmt.Errorf("portalcheck: invalid search station key")
+	}
+	if raw, ok := row["c"]; ok {
+		if err := json.Unmarshal(raw, &cnpj); err != nil {
+			return fmt.Errorf("portalcheck: invalid search CNPJ")
+		}
+		if cnpj != "" {
+			parsed, err := kernel.ParseCNPJ(cnpj)
+			if err != nil || parsed.Normalized() != cnpj {
+				return fmt.Errorf("portalcheck: invalid search CNPJ")
+			}
+		}
+	}
+	if raw, ok := row["u"]; ok {
+		if err := json.Unmarshal(raw, &uf); err != nil || (uf != "" && uf != "sem-uf" && !isUF(uf)) {
+			return fmt.Errorf("portalcheck: invalid search UF")
+		}
 	}
 	return nil
 }
@@ -1088,4 +1112,135 @@ func isHexString(value string) bool {
 	}
 	_, err := hex.DecodeString(value)
 	return err == nil
+}
+
+// checkSearchIndexes verifies the v2 search families of one release:
+// indice.json, p/<key>.json, m/<code>.json, precos/<fuel>.json and the
+// optional fiscalizacao.json. Every row is decoded strictly against its
+// public key allowlist; identities must match their paths.
+func checkSearchIndexes(dir string, files map[string]FileDigest, release string) error {
+	prefix := "dados/busca/" + release + "/"
+	var index searchIndex
+	if err := decodeStrictFile(dir, prefix+"indice.json", &index); err != nil {
+		return fmt.Errorf("portalcheck: search index: %w", err)
+	}
+	if index.Schema != SearchIndexSchema || index.Release != release || index.PrefixLength != searchPrefixLength {
+		return fmt.Errorf("portalcheck: search index identity mismatch")
+	}
+	fuels := map[string]bool{}
+	for _, fuel := range index.Fuels {
+		fuels[fuel.Code] = true
+	}
+	cities := map[string]string{}
+	for _, city := range index.Municipalities {
+		if !municipalityCodeShape.MatchString(city.Code) || !isUF(city.UF) || strings.TrimSpace(city.Name) == "" || city.Stations < 1 {
+			return fmt.Errorf("portalcheck: invalid search municipality")
+		}
+		cities[city.Code] = city.UF
+	}
+	seenCities, seenFuels, fiscal := 0, 0, false
+	for path := range files {
+		if !strings.HasPrefix(path, prefix) || path == prefix+"indice.json" {
+			continue
+		}
+		rel := strings.TrimPrefix(path, prefix)
+		parts := strings.Split(rel, "/")
+		switch {
+		case len(parts) == 1 && rel == "fiscalizacao.json":
+			var shard searchFiscalShard
+			if err := decodeStrictFile(dir, path, &shard); err != nil || shard.Schema != SearchFiscalSchema || shard.Release != release || shard.Count != len(shard.Records) {
+				return fmt.Errorf("portalcheck: invalid fiscal search file")
+			}
+			for _, row := range shard.Records {
+				if !fiscalRecordIDShape.MatchString(row.RecordID) || (row.StationID != "" && !isUUID(row.StationID)) || (row.UF != "" && !isUF(row.UF)) {
+					return fmt.Errorf("portalcheck: invalid fiscal search row")
+				}
+				if _, ok := files["fiscalizacao/registro/"+row.RecordID+"/index.html"]; !ok {
+					return fmt.Errorf("portalcheck: fiscal search row without record page")
+				}
+			}
+			fiscal = true
+		case len(parts) == 1:
+			// UF shards are checked by checkSearchArtifacts.
+		case len(parts) == 2 && parts[0] == "p":
+			key := strings.TrimSuffix(parts[1], ".json")
+			var shard searchPrefixShard
+			if !searchPrefixKey.MatchString(key) || decodeStrictFile(dir, path, &shard) != nil ||
+				shard.Schema != SearchPrefixSchema || shard.Release != release || shard.Key != key || shard.Count != len(shard.Stations) || shard.Count == 0 {
+				return fmt.Errorf("portalcheck: invalid prefix search file %s", rel)
+			}
+			if err := checkStationRows(shard.Stations); err != nil {
+				return err
+			}
+		case len(parts) == 2 && parts[0] == "m":
+			code := strings.TrimSuffix(parts[1], ".json")
+			var shard searchShard
+			if decodeStrictFile(dir, path, &shard) != nil || shard.Schema != SearchSchema || shard.Release != release ||
+				shard.Municipality != code || cities[code] == "" || shard.UF != cities[code] || shard.Count != len(shard.Stations) {
+				return fmt.Errorf("portalcheck: invalid city search file %s", rel)
+			}
+			if err := checkStationRows(shard.Stations); err != nil {
+				return err
+			}
+			seenCities++
+		case len(parts) == 2 && parts[0] == "precos":
+			fuel := strings.TrimSuffix(parts[1], ".json")
+			var shard searchPriceShard
+			if !fuels[fuel] || decodeStrictFile(dir, path, &shard) != nil || shard.Schema != SearchPricesSchema ||
+				shard.Release != release || shard.Fuel != fuel || shard.Count != len(shard.Rows) {
+				return fmt.Errorf("portalcheck: invalid price search file %s", rel)
+			}
+			for _, row := range shard.Rows {
+				if !isUUID(row.ID) || row.Milli <= 0 || (row.UF != "" && !isUF(row.UF)) {
+					return fmt.Errorf("portalcheck: invalid price search row")
+				}
+			}
+			seenFuels++
+		default:
+			return fmt.Errorf("portalcheck: unexpected search file %s", rel)
+		}
+	}
+	if seenCities != len(cities) || seenFuels != len(fuels) || fiscal != index.Fiscal {
+		return fmt.Errorf("portalcheck: search index census mismatch")
+	}
+	return nil
+}
+
+// checkStationRows validates strictly decoded station rows (the struct is
+// the key allowlist) without re-encoding each row.
+func checkStationRows(rows []searchStation) error {
+	for _, row := range rows {
+		if !isUUID(row.ID) || strings.TrimSpace(row.Name) == "" || strings.TrimSpace(row.SearchName) == "" {
+			return fmt.Errorf("portalcheck: invalid search station row")
+		}
+		if row.CNPJ != "" {
+			parsed, err := kernel.ParseCNPJ(row.CNPJ)
+			if err != nil || parsed.Normalized() != row.CNPJ {
+				return fmt.Errorf("portalcheck: invalid search CNPJ")
+			}
+		}
+		if row.UF != "" && row.UF != "sem-uf" && !isUF(row.UF) {
+			return fmt.Errorf("portalcheck: invalid search UF")
+		}
+	}
+	return nil
+}
+
+// decodeStrictFile decodes one JSON document into target, refusing unknown
+// keys (the public allowlist is the struct) and trailing data.
+func decodeStrictFile(dir, path string, target any) error {
+	body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
+	if err != nil {
+		return err
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return fmt.Errorf("trailing data")
+	}
+	return nil
 }
