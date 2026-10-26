@@ -41,6 +41,7 @@ object ChargingCommunityModule {
         gateway: ChargingObservationGateway,
         pending: ChargingPendingStore,
         sessions: AuthSessionStore,
+        scheduler: com.anpfuel.data.worker.ChargingObservationScheduler,
         @Named("apiOrigin") environment: ApiEnvironment,
-    ): ChargingCommunityUseCase = ChargingCommunityUseCase(gateway, pending, sessions, environment.origin)
+    ): ChargingCommunityUseCase = ChargingCommunityUseCase(gateway, pending, sessions, environment.origin, scheduler::enqueue)
 }

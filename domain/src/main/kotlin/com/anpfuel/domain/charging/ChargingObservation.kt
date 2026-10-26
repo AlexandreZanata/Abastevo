@@ -21,12 +21,14 @@ data class ChargingObservationDraft(
     val condition: ChargingCondition,
     val observedDay: String,
     val note: String,
+    val operational: ChargingOperationalEvent? = null,
 ) {
     init {
         if (placeId != null) require(CANONICAL_ID.matches(placeId))
         require(priceMilliBrlPerKwh == null || priceMilliBrlPerKwh in 1..10_000_000)
         require(observedDay.matches(DAY)) { "invalid day" }
         LocalDate.parse(observedDay)
+        if (operational != null) require(placeId != null)
         require(note.length <= 1024 && note.none { it.isISOControl() })
     }
 
@@ -45,6 +47,7 @@ data class CommunityChargingObservation(
     val note: String,
     val helpful: Long,
     val notHelpful: Long,
+    val operational: ChargingOperationalEvent? = null,
 )
 
 data class OwnedChargingObservation(
@@ -56,6 +59,7 @@ data class OwnedChargingObservation(
     val observedDay: String,
     val note: String,
     val revision: Long,
+    val operational: ChargingOperationalEvent? = null,
 )
 
 data class ChargingTally(val helpful: Long, val notHelpful: Long)
@@ -69,8 +73,10 @@ sealed class ChargingObservationException(message: String, cause: Throwable? = n
 }
 
 interface ChargingObservationGateway {
+    suspend fun targets(placeId: String): List<ChargingConnectionGroup> = emptyList()
     suspend fun history(placeId: String, limit: Int): List<CommunityChargingObservation>
     suspend fun mine(familyId: String, accessToken: String, limit: Int): List<OwnedChargingObservation>
+    suspend fun mineAt(familyId: String, accessToken: String, placeId: String, limit: Int): List<OwnedChargingObservation> = mine(familyId, accessToken, limit).filter { it.placeId == placeId }
     suspend fun submit(familyId: String, accessToken: String, id: String, draft: ChargingObservationDraft): String
     suspend fun correct(
         familyId: String,
@@ -80,6 +86,10 @@ interface ChargingObservationGateway {
         draft: ChargingObservationDraft,
     ): Long
     suspend fun withdraw(familyId: String, accessToken: String, id: String, expectedRevision: Long): Long
+    suspend fun correctOperation(familyId: String, accessToken: String, id: String, expectedRevision: Long,
+        draft: ChargingObservationDraft, operationId: String): Long = correct(familyId, accessToken, id, expectedRevision, draft)
+    suspend fun withdrawOperation(familyId: String, accessToken: String, id: String, expectedRevision: Long,
+        operationId: String): Long = withdraw(familyId, accessToken, id, expectedRevision)
     suspend fun vote(
         familyId: String,
         accessToken: String,
@@ -94,4 +104,20 @@ interface ChargingObservationGateway {
         reason: ChargingReportReason,
         detail: String,
     )
+}
+
+/** Dated contributor claim. Never a live availability guarantee. */
+enum class ChargingOperationalStatus { WORKED, DID_NOT_WORK, IN_USE, ACCESS_RESTRICTED }
+enum class ChargingTargetScope { SITE, EQUIPMENT, CONNECTOR }
+data class ChargingOperationalEvent(
+    val event: ChargingOperationalStatus,
+    val targetScope: ChargingTargetScope,
+    val connectionGroupId: String?,
+    val observedAt: String,
+) {
+    init {
+        java.time.Instant.parse(observedAt)
+        if (targetScope == ChargingTargetScope.SITE) require(connectionGroupId == null)
+        else require(connectionGroupId != null && java.util.UUID.fromString(connectionGroupId).toString() == connectionGroupId)
+    }
 }

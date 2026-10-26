@@ -71,13 +71,13 @@ WHERE profile_id = @profile::text ORDER BY stored_at DESC LIMIT 1;
 SELECT id FROM charging_batches WHERE profile_id = @profile::text AND (@revision::text = '' OR source_revision = @revision::text) ORDER BY stored_at DESC LIMIT 1;
 
 -- name: CreateChargingObservation :one
-INSERT INTO charging_observations(id,account_id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note)
-VALUES(@id::uuid,@account_id::uuid,sqlc.narg(place_id)::uuid,@connector_code,sqlc.narg(price)::int,@condition,@observed_day::date,@note)
+INSERT INTO charging_observations(id,account_id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note,operational_event,operational_scope,operational_group_id,operational_observed_at)
+VALUES(@id::uuid,@account_id::uuid,sqlc.narg(place_id)::uuid,@connector_code,sqlc.narg(price)::int,@condition,@observed_day::date,@note,sqlc.narg(operational_event)::text,sqlc.narg(operational_scope)::text,sqlc.narg(operational_group_id)::uuid,sqlc.narg(operational_observed_at)::timestamptz)
 ON CONFLICT DO NOTHING RETURNING id, revision;
 
 -- name: CorrectChargingObservation :one
 UPDATE charging_observations SET connector_code = @connector_code,price_milli_brl_per_kwh = sqlc.narg(price)::int,
- condition = @condition,observed_day = @observed_day::date,note = @note,revision=revision+1,updated_at=clock_timestamp()
+ condition = @condition,observed_day = @observed_day::date,note = @note,operational_event=sqlc.narg(operational_event)::text, operational_scope=sqlc.narg(operational_scope)::text, operational_group_id=sqlc.narg(operational_group_id)::uuid, operational_observed_at=sqlc.narg(operational_observed_at)::timestamptz,revision=revision+1,updated_at=clock_timestamp()
 WHERE account_id = @account_id::uuid AND id = @id::uuid AND NOT deleted AND revision = @expected::bigint
 RETURNING revision;
 
@@ -108,7 +108,7 @@ ON CONFLICT (account_id, observation_id) DO NOTHING RETURNING id;
 UPDATE charging_observations SET hidden_at = clock_timestamp() WHERE id = @id::uuid AND hidden_at IS NULL;
 
 -- name: ObservationProjection :many
-SELECT o.id,o.connector_code,o.price_milli_brl_per_kwh,o.condition,o.observed_day,o.note,
+SELECT o.id,o.connector_code,o.price_milli_brl_per_kwh,o.condition,o.observed_day,o.note,o.operational_event,o.operational_scope,o.operational_group_id,o.operational_observed_at,
  (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = o.id AND choice = 'HELPFUL' AND deleted_at IS NULL) AS helpful,
  (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = o.id AND choice = 'NOT_HELPFUL' AND deleted_at IS NULL) AS not_helpful
 FROM charging_observations o
@@ -117,9 +117,10 @@ WHERE o.place_id = @place_id::uuid AND NOT o.deleted AND o.hidden_at IS NULL
 ORDER BY o.observed_day DESC, o.id::text LIMIT @limit_plus_one::int;
 
 -- name: ObservationsForAccount :many
-SELECT id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note,revision
+SELECT id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note,revision,operational_event,operational_scope,operational_group_id,operational_observed_at
 FROM charging_observations
 WHERE account_id = @account_id::uuid AND NOT deleted
+ AND (sqlc.narg(place_filter)::uuid IS NULL OR place_id = sqlc.narg(place_filter)::uuid)
 ORDER BY observed_day DESC, id::text LIMIT @limit_plus_one::int;
 
 -- name: ObservationOwner :one
@@ -127,3 +128,17 @@ SELECT account_id, hidden_at FROM charging_observations WHERE id = @id::uuid AND
 
 -- name: HelpfulnessSubmissionExists :one
 SELECT id FROM charging_helpfulness_votes WHERE account_id = @account_id::uuid AND client_submission_id = @submission_id;
+
+-- name: ChargingObservationByID :one
+SELECT * FROM charging_observations WHERE id = @id::uuid FOR UPDATE;
+
+-- name: OperationalChargingGroup :one
+SELECT id,place_id,connector_code,reported_quantity FROM charging_connection_groups WHERE id = @id::uuid FOR SHARE;
+
+-- name: ChargingCommandReceipt :one
+SELECT kind,target_id,request_sha256,result_revision FROM charging_observation_commands
+WHERE account_id = @account_id::uuid AND operation_id = @operation_id::uuid;
+
+-- name: RecordChargingCommand :exec
+INSERT INTO charging_observation_commands(account_id,operation_id,target_id,kind,request_sha256,result_revision)
+VALUES(@account_id::uuid,@operation_id::uuid,@target_id::uuid,@kind,@request_sha256,@result_revision::bigint);

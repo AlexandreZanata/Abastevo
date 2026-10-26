@@ -1,6 +1,9 @@
 package com.anpfuel.data.local.preferences
 
 import android.content.SharedPreferences
+import java.io.IOException
+import com.anpfuel.data.remote.charging.encodeOperational
+import com.anpfuel.data.remote.charging.decodeOperational
 import com.anpfuel.domain.charging.ChargingCondition
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingObservationDraft
@@ -16,30 +19,40 @@ import org.json.JSONObject
 /**
  * EE-22 durable pending community operations, partitioned by account and
  * origin. Only explicit draft fields are stored; no GPS, route or home
- * context exists. A corrupt/oversized entry is dropped on read instead of
- * crashing the screen; the write path always logs the actual server error.
+ * context exists. Corrupt, oversized or failed writes refuse visibly without
+ * silently erasing the queue. No payload is logged.
  */
 @Singleton
 class ChargingPendingStoreImpl @Inject constructor(
     @Named("auth") private val prefs: SharedPreferences,
 ) : ChargingPendingStore {
 
+    private val unflushed = mutableSetOf<String>()
+
+    @Synchronized
     override fun load(accountId: String, origin: String): List<PendingChargingOperation> {
-        val raw = prefs.getString(key(accountId, origin), null) ?: return emptyList()
-        return try {
-            ChargingPendingCodec.decode(raw)
-        } catch (_: Exception) {
-            emptyList()
+        val storageKey = key(accountId, origin)
+        val raw = prefs.getString(storageKey, null) ?: return emptyList()
+        if (storageKey in unflushed) {
+            if (!prefs.edit().putString(storageKey, raw).commit()) throw IOException("charging.pending-storage")
+            unflushed.remove(storageKey)
         }
+        return ChargingPendingCodec.decode(raw)
     }
 
+    @Synchronized
     override fun save(accountId: String, origin: String, operations: List<PendingChargingOperation>) {
         require(operations.size <= MAX_PENDING)
-        prefs.edit().putString(key(accountId, origin), ChargingPendingCodec.encode(operations)).commit()
+        val encoded = ChargingPendingCodec.encode(operations)
+        require(encoded.length <= 64 * 1024)
+        val storageKey = key(accountId, origin)
+        unflushed.add(storageKey)
+        if (!prefs.edit().putString(storageKey, encoded).commit()) throw IOException("charging.pending-storage")
+        unflushed.remove(storageKey)
     }
 
     override fun clear(accountId: String, origin: String) {
-        prefs.edit().remove(key(accountId, origin)).commit()
+        if (!prefs.edit().remove(key(accountId, origin)).commit()) throw IOException("charging.pending-storage")
     }
 
     private fun key(accountId: String, origin: String): String = "charging_pending|$accountId|$origin"
@@ -70,6 +83,7 @@ object ChargingPendingCodec {
                         .put("observed_day", draft.observedDay)
                         .put("note", draft.note)
                         .apply {
+                            draft.operational?.let { put("operational", encodeOperational(it)) }
                             draft.placeId?.let { put("place_id", it) }
                             draft.priceMilliBrlPerKwh?.let { put("price_milli_brl_per_kwh", it) }
                         },
@@ -99,6 +113,7 @@ object ChargingPendingCodec {
                     condition = ChargingCondition.valueOf(objectDraft.getString("condition")),
                     observedDay = objectDraft.getString("observed_day"),
                     note = objectDraft.optString("note", ""),
+                    operational = decodeOperational(objectDraft),
                 )
             } else {
                 null

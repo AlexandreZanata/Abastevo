@@ -1,0 +1,18 @@
+<resources>
+    <string name="map21_retry">Retry pending</string>
+    <string name="map21_discard">Discard local command</string>
+    <string name="map21_discard_warning">Discarding only removes this local retry. A report already accepted by the server remains published until you withdraw it.</string>
+    <string name="map21_dated">Dated community observation. Live availability is unavailable; this does not guarantee access or operation now.</string>
+    <string name="map21_no_event">Price / experience only</string>
+    <string name="map21_time">Observed instant (UTC, YYYY-MM-DDTHH:MM:SSZ)</string>
+    <string name="map21_reference">Source reference, not a physical equipment identifier. Equipment scope requires exactly one reported unit.</string>
+    <string name="map21_no_target">No eligible source reference available. Use site scope.</string>
+    <string name="map21_worked">Worked</string>
+    <string name="map21_did_not_work">Did not work</string>
+    <string name="map21_in_use">Was in use</string>
+    <string name="map21_restricted">Access was restricted</string>
+    <string name="map21_site">Site</string>
+    <string name="map21_equipment">Single-unit reference</string>
+    <string name="map21_connector">Connector group</string>
+<string name="map21_full">The queue has 50 pending commands. Retry or discard a pending command before adding another.</string>
+</resources>

@@ -27,6 +27,7 @@ type Observation struct {
 	Condition     string
 	ObservedDay   string
 	Note          string
+	Operational   *OperationalEvent
 }
 
 // ValidateObservation checks shapes and bounds. Unknown connectors,
@@ -55,5 +56,6 @@ func ValidateObservation(o Observation) error {
 	if !utf8.ValidString(o.Note) || len(o.Note) > 1024 {
 		return ErrInvalidObservation
 	}
-	return nil
+	_, err := operationalShape(o.Operational, o.PlaceID)
+	return err
 }

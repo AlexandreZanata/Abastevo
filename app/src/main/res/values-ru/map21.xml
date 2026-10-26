@@ -1,0 +1,18 @@
+<resources>
+  <string name="map21_retry">Повторить ожидающие команды</string>
+  <string name="map21_discard">Удалить локальную команду</string>
+  <string name="map21_discard_warning">Удаляется только локальная попытка. Уже принятый сервером отзыв остается опубликованным, пока вы его не отзовете.</string>
+  <string name="map21_dated">Датированное наблюдение сообщества. Данных в реальном времени нет; доступ и работа сейчас не гарантируются.</string>
+  <string name="map21_no_event">Только цена / опыт</string>
+  <string name="map21_time">Время наблюдения (UTC, ГГГГ-MM-ДДTHH:MM:SSZ)</string>
+  <string name="map21_reference">Ссылка источника без физического идентификатора. Для оборудования нужна ровно одна указанная единица.</string>
+  <string name="map21_no_target">Подходящая ссылка источника недоступна. Выберите объект целиком.</string>
+  <string name="map21_worked">Работало</string>
+  <string name="map21_did_not_work">Не работало</string>
+  <string name="map21_in_use">Было занято</string>
+  <string name="map21_restricted">Доступ был ограничен</string>
+  <string name="map21_site">Объект</string>
+  <string name="map21_equipment">Ссылка на одну единицу</string>
+  <string name="map21_connector">Группа разъемов</string>
+  <string name="map21_full">В очереди 50 команд. Повторите или удалите одну перед добавлением новой.</string>
+</resources>

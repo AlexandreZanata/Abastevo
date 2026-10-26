@@ -39,12 +39,15 @@ class ChargingCommunityUseCaseTest {
 
     private class FakeGateway : ChargingObservationGateway {
         val submitted = mutableListOf<String>()
+        var onSubmit: () -> Unit = {}
+        var onHistory: () -> Unit = {}
         var failSubmitOnce = false
         var conflictCorrect = false
-        override suspend fun history(placeId: String, limit: Int) = emptyList<CommunityChargingObservation>()
+        override suspend fun history(placeId: String, limit: Int): List<CommunityChargingObservation> { onHistory(); return emptyList() }
         override suspend fun mine(familyId: String, accessToken: String, limit: Int) = emptyList<OwnedChargingObservation>()
         override suspend fun submit(familyId: String, accessToken: String, id: String, draft: ChargingObservationDraft): String {
             submitted += id
+            onSubmit()
             if (failSubmitOnce) {
                 failSubmitOnce = false
                 throw ChargingObservationException.Unavailable("lost reply")
@@ -121,5 +124,71 @@ class ChargingCommunityUseCaseTest {
         val pending = store.load("acct", "https://api.example.test")
         assertEquals(PendingChargingKind.CORRECT, pending.single().kind)
         assertEquals("conflict", pending.single().lastError)
+    }
+
+    @Test fun `full outbox refuses new command without dropping oldest`() = runTest {
+        val gateway = FakeGateway(); val store = MemoryStore()
+        val queued = (1..50).map { PendingChargingOperation(java.util.UUID.randomUUID().toString(), PendingChargingKind.SUBMIT, null, null, draft, it.toLong()) }
+        store.save("acct", "https://api.example.test", queued)
+        val result = useCase(gateway, store, sessions(session)).save(draft)
+        assertTrue(result is ChargingSaveOutcome.Refused)
+        assertEquals(queued, store.load("acct", "https://api.example.test"))
+        assertTrue(gateway.submitted.isEmpty())
+    }
+
+    @Test fun `FIFO parks after first outage and keeps remaining commands`() = runTest {
+        val gateway = FakeGateway().apply { failSubmitOnce = true }; val store = MemoryStore()
+        val queued = (1..3).map { PendingChargingOperation(java.util.UUID.randomUUID().toString(), PendingChargingKind.SUBMIT, null, null, draft, it.toLong()) }
+        store.save("acct", "https://api.example.test", queued)
+        val uc = useCase(gateway, store, sessions(session))
+        assertTrue(uc.retryPending() is ChargingSaveOutcome.Offline)
+        assertEquals(listOf(queued.first().operationId), gateway.submitted)
+        assertEquals(queued.map { it.operationId }, store.load("acct", "https://api.example.test").map { it.operationId })
+        assertTrue(uc.retryPending() is ChargingSaveOutcome.Saved)
+        assertEquals(listOf(queued.first().operationId) + queued.map { it.operationId }, gateway.submitted)
+    }
+
+    @Test fun `worker for former owner never drains new owners queue`() = runTest {
+        val gateway=FakeGateway();val store=MemoryStore()
+        val uc=useCase(gateway, store, sessions(session.copy(accountId="new-account")))
+        assertTrue(uc.retryPending("acct") is ChargingSaveOutcome.SignedOut)
+        assertTrue(gateway.submitted.isEmpty())
+    }
+
+    @Test fun `storage failure sends nothing`() = runTest {
+        val gateway=FakeGateway()
+        val broken=object : ChargingPendingStore {
+            override fun load(accountId: String, origin: String)=emptyList<PendingChargingOperation>()
+            override fun save(accountId: String, origin: String, operations: List<PendingChargingOperation>) { throw java.io.IOException("disk full") }
+            override fun clear(accountId: String, origin: String)=Unit
+        }
+        try { ChargingCommunityUseCase(gateway,broken,sessions(session),"https://api.example.test").save(draft); throw AssertionError("storage failure hidden") }
+        catch (_:java.io.IOException) { }
+        assertTrue(gateway.submitted.isEmpty())
+    }
+
+    @Test fun `startup repairs commit to scheduler crash window without sending inline`() = runTest {
+        val gateway=FakeGateway();val store=MemoryStore();val auth=sessions(session)
+        val operation=PendingChargingOperation(java.util.UUID.randomUUID().toString(),PendingChargingKind.SUBMIT,null,null,draft,1)
+        store.save("acct","https://api.example.test",listOf(operation))
+        val scheduled=mutableListOf<String>()
+        ChargingCommunityUseCase(gateway,store,auth,"https://api.example.test",scheduled::add).recoverPendingSchedule()
+        assertEquals(listOf("acct"),scheduled);assertTrue(gateway.submitted.isEmpty())
+        auth.clear()
+        ChargingCommunityUseCase(gateway,store,auth,"https://api.example.test",scheduled::add).recoverPendingSchedule()
+        assertEquals(1,scheduled.size)
+    }
+
+    @Test fun `account change during response retains former owners command and hides receipts`() = runTest {
+        val gateway=FakeGateway();val store=MemoryStore();val auth=sessions(session)
+        gateway.onSubmit={auth.save(session.copy(accountId="new-owner"))}
+        val uc=useCase(gateway,store,auth)
+        assertTrue(uc.save(draft) is ChargingSaveOutcome.SignedOut)
+        assertEquals(1,store.load("acct","https://api.example.test").size)
+        assertTrue(uc.pendingForCurrentOwner().isEmpty())
+        auth.save(session)
+        gateway.onHistory={auth.save(session.copy(accountId="new-owner"))}
+        val snapshot=uc.snapshot(place)
+        assertTrue(snapshot.pending.isEmpty());assertTrue(snapshot.mine.isEmpty())
     }
 }

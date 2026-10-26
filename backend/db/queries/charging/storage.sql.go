@@ -68,6 +68,35 @@ func (q *Queries) ChargingBatchCoverage(ctx context.Context, batchID pgtype.UUID
 	return i, err
 }
 
+const chargingCommandReceipt = `-- name: ChargingCommandReceipt :one
+SELECT kind,target_id,request_sha256,result_revision FROM charging_observation_commands
+WHERE account_id = $1::uuid AND operation_id = $2::uuid
+`
+
+type ChargingCommandReceiptParams struct {
+	AccountID   pgtype.UUID `json:"account_id"`
+	OperationID pgtype.UUID `json:"operation_id"`
+}
+
+type ChargingCommandReceiptRow struct {
+	Kind           string      `json:"kind"`
+	TargetID       pgtype.UUID `json:"target_id"`
+	RequestSha256  string      `json:"request_sha256"`
+	ResultRevision int64       `json:"result_revision"`
+}
+
+func (q *Queries) ChargingCommandReceipt(ctx context.Context, arg ChargingCommandReceiptParams) (ChargingCommandReceiptRow, error) {
+	row := q.db.QueryRow(ctx, chargingCommandReceipt, arg.AccountID, arg.OperationID)
+	var i ChargingCommandReceiptRow
+	err := row.Scan(
+		&i.Kind,
+		&i.TargetID,
+		&i.RequestSha256,
+		&i.ResultRevision,
+	)
+	return i, err
+}
+
 const chargingGroupsForPlace = `-- name: ChargingGroupsForPlace :many
 SELECT id,entity_key,external_id,connector_code,raw_connector_code,current,power_w,reported_quantity
 FROM charging_connection_groups WHERE place_id = $1::uuid ORDER BY entity_key
@@ -111,6 +140,34 @@ func (q *Queries) ChargingGroupsForPlace(ctx context.Context, placeID pgtype.UUI
 		return nil, err
 	}
 	return items, nil
+}
+
+const chargingObservationByID = `-- name: ChargingObservationByID :one
+SELECT id, account_id, place_id, connector_code, price_milli_brl_per_kwh, condition, observed_day, note, revision, deleted, updated_at, hidden_at, operational_event, operational_scope, operational_group_id, operational_observed_at FROM charging_observations WHERE id = $1::uuid FOR UPDATE
+`
+
+func (q *Queries) ChargingObservationByID(ctx context.Context, id pgtype.UUID) (ChargingObservation, error) {
+	row := q.db.QueryRow(ctx, chargingObservationByID, id)
+	var i ChargingObservation
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.PlaceID,
+		&i.ConnectorCode,
+		&i.PriceMilliBrlPerKwh,
+		&i.Condition,
+		&i.ObservedDay,
+		&i.Note,
+		&i.Revision,
+		&i.Deleted,
+		&i.UpdatedAt,
+		&i.HiddenAt,
+		&i.OperationalEvent,
+		&i.OperationalScope,
+		&i.OperationalGroupID,
+		&i.OperationalObservedAt,
+	)
+	return i, err
 }
 
 const chargingPlaceDetail = `-- name: ChargingPlaceDetail :one
@@ -220,20 +277,24 @@ func (q *Queries) ChargingPlacePage(ctx context.Context, arg ChargingPlacePagePa
 
 const correctChargingObservation = `-- name: CorrectChargingObservation :one
 UPDATE charging_observations SET connector_code = $1,price_milli_brl_per_kwh = $2::int,
- condition = $3,observed_day = $4::date,note = $5,revision=revision+1,updated_at=clock_timestamp()
-WHERE account_id = $6::uuid AND id = $7::uuid AND NOT deleted AND revision = $8::bigint
+ condition = $3,observed_day = $4::date,note = $5,operational_event=$6::text, operational_scope=$7::text, operational_group_id=$8::uuid, operational_observed_at=$9::timestamptz,revision=revision+1,updated_at=clock_timestamp()
+WHERE account_id = $10::uuid AND id = $11::uuid AND NOT deleted AND revision = $12::bigint
 RETURNING revision
 `
 
 type CorrectChargingObservationParams struct {
-	ConnectorCode string      `json:"connector_code"`
-	Price         pgtype.Int4 `json:"price"`
-	Condition     string      `json:"condition"`
-	ObservedDay   pgtype.Date `json:"observed_day"`
-	Note          string      `json:"note"`
-	AccountID     pgtype.UUID `json:"account_id"`
-	ID            pgtype.UUID `json:"id"`
-	Expected      int64       `json:"expected"`
+	ConnectorCode         string             `json:"connector_code"`
+	Price                 pgtype.Int4        `json:"price"`
+	Condition             string             `json:"condition"`
+	ObservedDay           pgtype.Date        `json:"observed_day"`
+	Note                  string             `json:"note"`
+	OperationalEvent      pgtype.Text        `json:"operational_event"`
+	OperationalScope      pgtype.Text        `json:"operational_scope"`
+	OperationalGroupID    pgtype.UUID        `json:"operational_group_id"`
+	OperationalObservedAt pgtype.Timestamptz `json:"operational_observed_at"`
+	AccountID             pgtype.UUID        `json:"account_id"`
+	ID                    pgtype.UUID        `json:"id"`
+	Expected              int64              `json:"expected"`
 }
 
 func (q *Queries) CorrectChargingObservation(ctx context.Context, arg CorrectChargingObservationParams) (int64, error) {
@@ -243,6 +304,10 @@ func (q *Queries) CorrectChargingObservation(ctx context.Context, arg CorrectCha
 		arg.Condition,
 		arg.ObservedDay,
 		arg.Note,
+		arg.OperationalEvent,
+		arg.OperationalScope,
+		arg.OperationalGroupID,
+		arg.OperationalObservedAt,
 		arg.AccountID,
 		arg.ID,
 		arg.Expected,
@@ -264,20 +329,24 @@ func (q *Queries) CountAccountObservations(ctx context.Context, accountID pgtype
 }
 
 const createChargingObservation = `-- name: CreateChargingObservation :one
-INSERT INTO charging_observations(id,account_id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note)
-VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5::int,$6,$7::date,$8)
+INSERT INTO charging_observations(id,account_id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note,operational_event,operational_scope,operational_group_id,operational_observed_at)
+VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5::int,$6,$7::date,$8,$9::text,$10::text,$11::uuid,$12::timestamptz)
 ON CONFLICT DO NOTHING RETURNING id, revision
 `
 
 type CreateChargingObservationParams struct {
-	ID            pgtype.UUID `json:"id"`
-	AccountID     pgtype.UUID `json:"account_id"`
-	PlaceID       pgtype.UUID `json:"place_id"`
-	ConnectorCode string      `json:"connector_code"`
-	Price         pgtype.Int4 `json:"price"`
-	Condition     string      `json:"condition"`
-	ObservedDay   pgtype.Date `json:"observed_day"`
-	Note          string      `json:"note"`
+	ID                    pgtype.UUID        `json:"id"`
+	AccountID             pgtype.UUID        `json:"account_id"`
+	PlaceID               pgtype.UUID        `json:"place_id"`
+	ConnectorCode         string             `json:"connector_code"`
+	Price                 pgtype.Int4        `json:"price"`
+	Condition             string             `json:"condition"`
+	ObservedDay           pgtype.Date        `json:"observed_day"`
+	Note                  string             `json:"note"`
+	OperationalEvent      pgtype.Text        `json:"operational_event"`
+	OperationalScope      pgtype.Text        `json:"operational_scope"`
+	OperationalGroupID    pgtype.UUID        `json:"operational_group_id"`
+	OperationalObservedAt pgtype.Timestamptz `json:"operational_observed_at"`
 }
 
 type CreateChargingObservationRow struct {
@@ -295,6 +364,10 @@ func (q *Queries) CreateChargingObservation(ctx context.Context, arg CreateCharg
 		arg.Condition,
 		arg.ObservedDay,
 		arg.Note,
+		arg.OperationalEvent,
+		arg.OperationalScope,
+		arg.OperationalGroupID,
+		arg.OperationalObservedAt,
 	)
 	var i CreateChargingObservationRow
 	err := row.Scan(&i.ID, &i.Revision)
@@ -406,7 +479,7 @@ func (q *Queries) ObservationOwner(ctx context.Context, id pgtype.UUID) (Observa
 }
 
 const observationProjection = `-- name: ObservationProjection :many
-SELECT o.id,o.connector_code,o.price_milli_brl_per_kwh,o.condition,o.observed_day,o.note,
+SELECT o.id,o.connector_code,o.price_milli_brl_per_kwh,o.condition,o.observed_day,o.note,o.operational_event,o.operational_scope,o.operational_group_id,o.operational_observed_at,
  (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = o.id AND choice = 'HELPFUL' AND deleted_at IS NULL) AS helpful,
  (SELECT count(*) FROM charging_helpfulness_votes WHERE observation_id = o.id AND choice = 'NOT_HELPFUL' AND deleted_at IS NULL) AS not_helpful
 FROM charging_observations o
@@ -422,14 +495,18 @@ type ObservationProjectionParams struct {
 }
 
 type ObservationProjectionRow struct {
-	ID                  pgtype.UUID `json:"id"`
-	ConnectorCode       string      `json:"connector_code"`
-	PriceMilliBrlPerKwh pgtype.Int4 `json:"price_milli_brl_per_kwh"`
-	Condition           string      `json:"condition"`
-	ObservedDay         pgtype.Date `json:"observed_day"`
-	Note                string      `json:"note"`
-	Helpful             int64       `json:"helpful"`
-	NotHelpful          int64       `json:"not_helpful"`
+	ID                    pgtype.UUID        `json:"id"`
+	ConnectorCode         string             `json:"connector_code"`
+	PriceMilliBrlPerKwh   pgtype.Int4        `json:"price_milli_brl_per_kwh"`
+	Condition             string             `json:"condition"`
+	ObservedDay           pgtype.Date        `json:"observed_day"`
+	Note                  string             `json:"note"`
+	OperationalEvent      pgtype.Text        `json:"operational_event"`
+	OperationalScope      pgtype.Text        `json:"operational_scope"`
+	OperationalGroupID    pgtype.UUID        `json:"operational_group_id"`
+	OperationalObservedAt pgtype.Timestamptz `json:"operational_observed_at"`
+	Helpful               int64              `json:"helpful"`
+	NotHelpful            int64              `json:"not_helpful"`
 }
 
 func (q *Queries) ObservationProjection(ctx context.Context, arg ObservationProjectionParams) ([]ObservationProjectionRow, error) {
@@ -448,6 +525,10 @@ func (q *Queries) ObservationProjection(ctx context.Context, arg ObservationProj
 			&i.Condition,
 			&i.ObservedDay,
 			&i.Note,
+			&i.OperationalEvent,
+			&i.OperationalScope,
+			&i.OperationalGroupID,
+			&i.OperationalObservedAt,
 			&i.Helpful,
 			&i.NotHelpful,
 		); err != nil {
@@ -462,30 +543,36 @@ func (q *Queries) ObservationProjection(ctx context.Context, arg ObservationProj
 }
 
 const observationsForAccount = `-- name: ObservationsForAccount :many
-SELECT id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note,revision
+SELECT id,place_id,connector_code,price_milli_brl_per_kwh,condition,observed_day,note,revision,operational_event,operational_scope,operational_group_id,operational_observed_at
 FROM charging_observations
 WHERE account_id = $1::uuid AND NOT deleted
-ORDER BY observed_day DESC, id::text LIMIT $2::int
+ AND ($2::uuid IS NULL OR place_id = $2::uuid)
+ORDER BY observed_day DESC, id::text LIMIT $3::int
 `
 
 type ObservationsForAccountParams struct {
 	AccountID    pgtype.UUID `json:"account_id"`
+	PlaceFilter  pgtype.UUID `json:"place_filter"`
 	LimitPlusOne int32       `json:"limit_plus_one"`
 }
 
 type ObservationsForAccountRow struct {
-	ID                  pgtype.UUID `json:"id"`
-	PlaceID             pgtype.UUID `json:"place_id"`
-	ConnectorCode       string      `json:"connector_code"`
-	PriceMilliBrlPerKwh pgtype.Int4 `json:"price_milli_brl_per_kwh"`
-	Condition           string      `json:"condition"`
-	ObservedDay         pgtype.Date `json:"observed_day"`
-	Note                string      `json:"note"`
-	Revision            int64       `json:"revision"`
+	ID                    pgtype.UUID        `json:"id"`
+	PlaceID               pgtype.UUID        `json:"place_id"`
+	ConnectorCode         string             `json:"connector_code"`
+	PriceMilliBrlPerKwh   pgtype.Int4        `json:"price_milli_brl_per_kwh"`
+	Condition             string             `json:"condition"`
+	ObservedDay           pgtype.Date        `json:"observed_day"`
+	Note                  string             `json:"note"`
+	Revision              int64              `json:"revision"`
+	OperationalEvent      pgtype.Text        `json:"operational_event"`
+	OperationalScope      pgtype.Text        `json:"operational_scope"`
+	OperationalGroupID    pgtype.UUID        `json:"operational_group_id"`
+	OperationalObservedAt pgtype.Timestamptz `json:"operational_observed_at"`
 }
 
 func (q *Queries) ObservationsForAccount(ctx context.Context, arg ObservationsForAccountParams) ([]ObservationsForAccountRow, error) {
-	rows, err := q.db.Query(ctx, observationsForAccount, arg.AccountID, arg.LimitPlusOne)
+	rows, err := q.db.Query(ctx, observationsForAccount, arg.AccountID, arg.PlaceFilter, arg.LimitPlusOne)
 	if err != nil {
 		return nil, err
 	}
@@ -502,6 +589,10 @@ func (q *Queries) ObservationsForAccount(ctx context.Context, arg ObservationsFo
 			&i.ObservedDay,
 			&i.Note,
 			&i.Revision,
+			&i.OperationalEvent,
+			&i.OperationalScope,
+			&i.OperationalGroupID,
+			&i.OperationalObservedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -511,6 +602,29 @@ func (q *Queries) ObservationsForAccount(ctx context.Context, arg ObservationsFo
 		return nil, err
 	}
 	return items, nil
+}
+
+const operationalChargingGroup = `-- name: OperationalChargingGroup :one
+SELECT id,place_id,connector_code,reported_quantity FROM charging_connection_groups WHERE id = $1::uuid FOR SHARE
+`
+
+type OperationalChargingGroupRow struct {
+	ID               pgtype.UUID `json:"id"`
+	PlaceID          pgtype.UUID `json:"place_id"`
+	ConnectorCode    string      `json:"connector_code"`
+	ReportedQuantity pgtype.Int4 `json:"reported_quantity"`
+}
+
+func (q *Queries) OperationalChargingGroup(ctx context.Context, id pgtype.UUID) (OperationalChargingGroupRow, error) {
+	row := q.db.QueryRow(ctx, operationalChargingGroup, id)
+	var i OperationalChargingGroupRow
+	err := row.Scan(
+		&i.ID,
+		&i.PlaceID,
+		&i.ConnectorCode,
+		&i.ReportedQuantity,
+	)
+	return i, err
 }
 
 const recordChargingBatch = `-- name: RecordChargingBatch :one
@@ -547,6 +661,32 @@ func (q *Queries) RecordChargingBatch(ctx context.Context, arg RecordChargingBat
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const recordChargingCommand = `-- name: RecordChargingCommand :exec
+INSERT INTO charging_observation_commands(account_id,operation_id,target_id,kind,request_sha256,result_revision)
+VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5,$6::bigint)
+`
+
+type RecordChargingCommandParams struct {
+	AccountID      pgtype.UUID `json:"account_id"`
+	OperationID    pgtype.UUID `json:"operation_id"`
+	TargetID       pgtype.UUID `json:"target_id"`
+	Kind           string      `json:"kind"`
+	RequestSha256  string      `json:"request_sha256"`
+	ResultRevision int64       `json:"result_revision"`
+}
+
+func (q *Queries) RecordChargingCommand(ctx context.Context, arg RecordChargingCommandParams) error {
+	_, err := q.db.Exec(ctx, recordChargingCommand,
+		arg.AccountID,
+		arg.OperationID,
+		arg.TargetID,
+		arg.Kind,
+		arg.RequestSha256,
+		arg.ResultRevision,
+	)
+	return err
 }
 
 const reportObservation = `-- name: ReportObservation :one

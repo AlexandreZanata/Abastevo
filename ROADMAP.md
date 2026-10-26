@@ -66,8 +66,10 @@ selection, ARM64 16 KB execution and ARM32 Vulkan lifecycle, 74.19 MiB APK
 under the existing 80 MiB ceiling. Failed ARM32 OpenGL-emulator profiles remain
 unaccepted. The [2026-10-25 remediation checkpoint](docs/backend/evidence/maps/MAP-15_20_REMEDIATION_20261025.md)
 now proves the real app download/activation/native-registration/offline-search
-flow and host lifecycle on the phone. MAP-18 native artwork and MAP-20 minimum
-product acceptance remain PARTIAL with named data/contract obligations;
+flow and host lifecycle on the phone. The inherited [minimum local proof](docs/backend/evidence/maps/MAP-20_MINIMUM_LOCAL_20261025.md)
+sets MAP-20 to LOCAL_PASS, with staging/production still PENDING. MAP-18 combined
+native artwork retains its named obligation. [MAP-21](docs/backend/evidence/maps/MAP-21.md)
+is LOCAL_DONE / INTEGRATION_PENDING; MAP-22/23 are the selected continuation;
 [prepared pictograms](docs/assets/map-icons/README.md) remain admitted assets.
 No deployment or remote delivery is inferred from these local checks.
 

@@ -1,0 +1,18 @@
+<resources>
+  <string name="map21_retry">Réessayer les commandes en attente</string>
+  <string name="map21_discard">Supprimer la commande locale</string>
+  <string name="map21_discard_warning">Cette action supprime seulement cette tentative locale. Un signalement déjà accepté par le serveur reste publié tant que vous ne le retirez pas.</string>
+  <string name="map21_dated">Observation communautaire datée. Disponibilité en direct indisponible ; accès et fonctionnement actuels non garantis.</string>
+  <string name="map21_no_event">Prix / expérience uniquement</string>
+  <string name="map21_time">Instant observé (UTC, AAAA-MM-DDTHH:MM:SSZ)</string>
+  <string name="map21_reference">Référence de la source, sans identification physique. Le matériel exige exactement une unité déclarée.</string>
+  <string name="map21_no_target">Aucune référence admissible disponible. Utilisez le site.</string>
+  <string name="map21_worked">A fonctionné</string>
+  <string name="map21_did_not_work">Ne fonctionnait pas</string>
+  <string name="map21_in_use">Était utilisé</string>
+  <string name="map21_restricted">Accès restreint</string>
+  <string name="map21_site">Site</string>
+  <string name="map21_equipment">Référence à une unité unique</string>
+  <string name="map21_connector">Groupe de connecteurs</string>
+  <string name="map21_full">La file contient 50 commandes en attente. Réessayez ou supprimez une commande avant tout ajout.</string>
+</resources>

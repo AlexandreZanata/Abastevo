@@ -64,6 +64,9 @@ func (h HistoryHandler) history(w http.ResponseWriter, r *http.Request) {
 		if item.PriceMilliBRL != nil {
 			entry["price_milli_brl_per_kwh"] = *item.PriceMilliBRL
 		}
+		if item.Operational != nil {
+			entry["operational"] = item.Operational
+		}
 		wire = append(wire, entry)
 	}
 	body, _ := json.Marshal(map[string]any{"items": wire})

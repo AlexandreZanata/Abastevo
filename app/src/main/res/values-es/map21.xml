@@ -1,0 +1,18 @@
+<resources>
+  <string name="map21_retry">Reintentar pendientes</string>
+  <string name="map21_discard">Descartar comando local</string>
+  <string name="map21_discard_warning">Descartar solo elimina este reintento local. Un informe ya aceptado por el servidor sigue publicado hasta que lo retires.</string>
+  <string name="map21_dated">Observación comunitaria fechada. Disponibilidad en vivo no disponible; no garantiza acceso ni funcionamiento ahora.</string>
+  <string name="map21_no_event">Solo precio / experiencia</string>
+  <string name="map21_time">Instante observado (UTC, AAAA-MM-DDTHH:MM:SSZ)</string>
+  <string name="map21_reference">Referencia de la fuente, sin identificación física. Equipo requiere exactamente una unidad informada.</string>
+  <string name="map21_no_target">No hay referencia elegible disponible. Usa el lugar.</string>
+  <string name="map21_worked">Funcionó</string>
+  <string name="map21_did_not_work">No funcionó</string>
+  <string name="map21_in_use">Estaba en uso</string>
+  <string name="map21_restricted">El acceso estaba restringido</string>
+  <string name="map21_site">Lugar</string>
+  <string name="map21_equipment">Referencia de unidad única</string>
+  <string name="map21_connector">Grupo de conectores</string>
+  <string name="map21_full">La cola tiene 50 comandos pendientes. Reintenta o descarta uno antes de añadir otro.</string>
+</resources>

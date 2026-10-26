@@ -38,6 +38,9 @@ import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.OfflineBanner
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
+import com.anpfuel.domain.charging.*
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.anpfuel.domain.charging.ChargingCondition
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingReportReason
@@ -54,6 +57,8 @@ fun ChargingCommunityScreen(
     viewModel: ChargingCommunityViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
+    var discard by remember { mutableStateOf<String?>(null) }
     var reportTarget by remember { mutableStateOf<CommunityChargingObservation?>(null) }
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -83,6 +88,7 @@ fun ChargingCommunityScreen(
                                         "withdrawn" -> R.string.charging_community_withdrawn
                                         "conflict" -> R.string.charging_community_conflict
                                         "refused" -> R.string.charging_community_refused
+                                        "queue-full" -> R.string.map21_full
                                         "voted" -> R.string.charging_community_voted
                                         "reported" -> R.string.charging_community_reported
                                         "self" -> R.string.charging_community_self
@@ -120,7 +126,9 @@ fun ChargingCommunityScreen(
                         modifier = Modifier.semantics { heading() },
                     )
                 }
-                items(state.pending, key = { it.operationId }) { pending -> PendingRow(pending) }
+                items(state.pending, key = { it.operationId }) { pending -> PendingRow(pending)
+                    Row { TextButton(onClick = viewModel::retry) { Text(stringResource(R.string.map21_retry)) }; TextButton(onClick = { discard = pending.operationId }) { Text(stringResource(R.string.map21_discard)) } }
+                }
             }
             if (state.mine.isNotEmpty()) {
                 item {
@@ -161,6 +169,10 @@ fun ChargingCommunityScreen(
             }
         }
     }
+    discard?.let { id -> AlertDialog(onDismissRequest = { discard = null },
+        title = { Text(stringResource(R.string.map21_discard)) }, text = { Text(stringResource(R.string.map21_discard_warning)) },
+        confirmButton = { TextButton(onClick = { viewModel.discard(id); discard = null }) { Text(stringResource(R.string.map21_discard)) } },
+        dismissButton = { TextButton(onClick = { discard = null }) { Text(stringResource(R.string.action_back)) } }) }
     reportTarget?.let { target ->
         AlertDialog(
             onDismissRequest = { reportTarget = null },
@@ -244,6 +256,27 @@ private fun CommunityForm(state: ChargingCommunityUiState, viewModel: ChargingCo
                             )
                         },
                     )
+                }
+            }
+            Text(stringResource(R.string.map21_dated))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = state.form.event == null, onClick = { viewModel.setEvent(null) }, label = { Text(stringResource(R.string.map21_no_event)) })
+                ChargingOperationalStatus.entries.forEach { event -> FilterChip(selected = state.form.event == event,
+                    onClick = { viewModel.setEvent(event) }, label = { Text(eventLabel(event)) }) }
+            }
+            if (state.form.event != null) {
+                OutlinedTextField(value = state.form.eventTime, onValueChange = viewModel::setEventTime,
+                    label = { Text(stringResource(R.string.map21_time)) }, modifier = Modifier.fillMaxWidth())
+                FlowRow {
+                    ChargingTargetScope.entries.forEach { scope -> FilterChip(selected = state.form.scope == scope,
+                        onClick = { viewModel.setScope(scope) }, label = { Text(scopeLabel(scope)) }) }
+                }
+                if (state.form.scope != ChargingTargetScope.SITE) {
+                    Text(stringResource(R.string.map21_reference))
+                    val eligible = state.groups.filter { state.form.scope != ChargingTargetScope.EQUIPMENT || it.reportedQuantity == 1L }
+                    if (eligible.isEmpty()) Text(stringResource(R.string.map21_no_target))
+                    eligible.forEachIndexed { index, group -> FilterChip(selected = state.form.groupId == group.id,
+                        onClick = { viewModel.setGroup(group) }, label = { Text("${index + 1} · ${group.connector.name} · ${group.externalId}") }) }
                 }
             }
             OutlinedTextField(
@@ -333,8 +366,9 @@ private fun OwnedRow(
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = "${owned.connector.name} · ${owned.condition.name} · ${owned.observedDay}")
             owned.priceMilliBrlPerKwh?.let {
-                Text(text = stringResource(R.string.charging_community_price_value, it / 1000.0))
+                Text(text = stringResource(R.string.charging_community_price_value, java.math.BigDecimal(it).movePointLeft(3)))
             }
+            owned.operational?.let { OperationalLabel(it) }
             if (owned.note.isNotBlank()) Text(text = owned.note)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onEdit, enabled = !busy) {
@@ -362,8 +396,9 @@ private fun HistoryRow(
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = "${observation.connector.name} · ${observation.condition.name} · ${observation.observedDay}")
             observation.priceMilliBrlPerKwh?.let {
-                Text(text = stringResource(R.string.charging_community_price_value, it / 1000.0))
+                Text(text = stringResource(R.string.charging_community_price_value, java.math.BigDecimal(it).movePointLeft(3)))
             }
+            observation.operational?.let { OperationalLabel(it) }
             if (observation.note.isNotBlank()) Text(text = observation.note)
             Text(
                 text = stringResource(R.string.charging_community_tally, observation.helpful, observation.notHelpful),
@@ -383,4 +418,20 @@ private fun HistoryRow(
             HorizontalDivider()
         }
     }
+}
+
+@Composable private fun eventLabel(event: ChargingOperationalStatus): String = stringResource(when(event) {
+    ChargingOperationalStatus.WORKED -> R.string.map21_worked
+    ChargingOperationalStatus.DID_NOT_WORK -> R.string.map21_did_not_work
+    ChargingOperationalStatus.IN_USE -> R.string.map21_in_use
+    ChargingOperationalStatus.ACCESS_RESTRICTED -> R.string.map21_restricted
+})
+@Composable private fun scopeLabel(scope: ChargingTargetScope): String = stringResource(when(scope) {
+    ChargingTargetScope.SITE -> R.string.map21_site
+    ChargingTargetScope.EQUIPMENT -> R.string.map21_equipment
+    ChargingTargetScope.CONNECTOR -> R.string.map21_connector
+})
+@Composable private fun OperationalLabel(event: ChargingOperationalEvent) {
+    Text("${eventLabel(event.event)} · ${scopeLabel(event.targetScope)} · ${event.observedAt}")
+    Text(stringResource(R.string.map21_dated), style = MaterialTheme.typography.bodySmall)
 }

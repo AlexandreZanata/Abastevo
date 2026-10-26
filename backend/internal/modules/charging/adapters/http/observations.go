@@ -52,14 +52,15 @@ func (h CommandsHandler) principal(r *http.Request, s session) (string, error) {
 
 func (h CommandsHandler) submit(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Session     session `json:"session"`
-		ID          string  `json:"id"`
-		PlaceID     *string `json:"place_id"`
-		Connector   string  `json:"connector_code"`
-		Price       *int64  `json:"price_milli_brl_per_kwh"`
-		Condition   string  `json:"condition"`
-		ObservedDay string  `json:"observed_day"`
-		Note        string  `json:"note"`
+		Session     session                          `json:"session"`
+		ID          string                           `json:"id"`
+		PlaceID     *string                          `json:"place_id"`
+		Connector   string                           `json:"connector_code"`
+		Price       *int64                           `json:"price_milli_brl_per_kwh"`
+		Condition   string                           `json:"condition"`
+		ObservedDay string                           `json:"observed_day"`
+		Note        string                           `json:"note"`
+		Operational *chargingdomain.OperationalEvent `json:"operational"`
 	}
 	if httpapi.DecodeJSON(mustRead(r), &body) != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-command", "command refused", nil)
@@ -73,7 +74,7 @@ func (h CommandsHandler) submit(w http.ResponseWriter, r *http.Request) {
 	id, err := h.Store.Submit(r.Context(), owner, chargingdomain.Observation{
 		ID: body.ID, PlaceID: body.PlaceID, ConnectorCode: body.Connector,
 		PriceMilliBRL: body.Price, Condition: body.Condition,
-		ObservedDay: body.ObservedDay, Note: body.Note,
+		ObservedDay: body.ObservedDay, Note: body.Note, Operational: body.Operational,
 	})
 	if err != nil {
 		writeStoreError(w, r, err)
@@ -84,13 +85,17 @@ func (h CommandsHandler) submit(w http.ResponseWriter, r *http.Request) {
 
 func (h CommandsHandler) correct(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Session     session `json:"session"`
-		Connector   string  `json:"connector_code"`
-		Price       *int64  `json:"price_milli_brl_per_kwh"`
-		Condition   string  `json:"condition"`
-		ObservedDay string  `json:"observed_day"`
-		Note        string  `json:"note"`
-		Expected    int64   `json:"expected_revision"`
+		Session     session                          `json:"session"`
+		Connector   string                           `json:"connector_code"`
+		Price       *int64                           `json:"price_milli_brl_per_kwh"`
+		Condition   string                           `json:"condition"`
+		ObservedDay string                           `json:"observed_day"`
+		Note        string                           `json:"note"`
+		Operational *chargingdomain.OperationalEvent `json:"operational"`
+		Expected    int64                            `json:"expected_revision"`
+		PlaceID     *string                          `json:"place_id"`
+		ID          string                           `json:"id"`
+		OperationID string                           `json:"operation_id"`
 	}
 	if httpapi.DecodeJSON(mustRead(r), &body) != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-command", "command refused", nil)
@@ -101,11 +106,11 @@ func (h CommandsHandler) correct(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, r, http.StatusUnauthorized, "charging.unauthorized", "authentication required", nil)
 		return
 	}
-	revision, err := h.Store.Correct(r.Context(), owner, chargingdomain.Observation{
-		ID: chi.URLParam(r, "id"), ConnectorCode: body.Connector,
+	revision, err := h.Store.CorrectCommand(r.Context(), owner, chargingdomain.Observation{
+		ID: chi.URLParam(r, "id"), PlaceID: body.PlaceID, ConnectorCode: body.Connector,
 		PriceMilliBRL: body.Price, Condition: body.Condition,
-		ObservedDay: body.ObservedDay, Note: body.Note,
-	}, body.Expected)
+		ObservedDay: body.ObservedDay, Note: body.Note, Operational: body.Operational,
+	}, body.Expected, body.OperationID)
 	if err != nil {
 		writeStoreError(w, r, err)
 		return
@@ -115,8 +120,9 @@ func (h CommandsHandler) correct(w http.ResponseWriter, r *http.Request) {
 
 func (h CommandsHandler) withdraw(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Session  session `json:"session"`
-		Expected int64   `json:"expected_revision"`
+		Session     session `json:"session"`
+		Expected    int64   `json:"expected_revision"`
+		OperationID string  `json:"operation_id"`
 	}
 	if httpapi.DecodeJSON(mustRead(r), &body) != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-command", "command refused", nil)
@@ -127,7 +133,7 @@ func (h CommandsHandler) withdraw(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, r, http.StatusUnauthorized, "charging.unauthorized", "authentication required", nil)
 		return
 	}
-	revision, err := h.Store.Withdraw(r.Context(), owner, chi.URLParam(r, "id"), body.Expected)
+	revision, err := h.Store.WithdrawCommand(r.Context(), owner, chi.URLParam(r, "id"), body.Expected, body.OperationID)
 	if err != nil {
 		writeStoreError(w, r, err)
 		return
@@ -139,6 +145,7 @@ func (h CommandsHandler) mine(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Session session `json:"session"`
 		Limit   int     `json:"limit"`
+		PlaceID string  `json:"place_id"`
 	}
 	if httpapi.DecodeJSON(mustRead(r), &body) != nil {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-command", "command refused", nil)
@@ -156,7 +163,7 @@ func (h CommandsHandler) mine(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, r, http.StatusUnauthorized, "charging.unauthorized", "authentication required", nil)
 		return
 	}
-	items, err := prepared.Mine(r.Context(), h.Store.Pool, owner, body.Limit)
+	items, err := prepared.MineForPlace(r.Context(), h.Store.Pool, owner, body.PlaceID, body.Limit)
 	if err != nil {
 		writeStoreError(w, r, err)
 		return
@@ -171,6 +178,9 @@ func (h CommandsHandler) mine(w http.ResponseWriter, r *http.Request) {
 		}
 		if item.PriceMilliBRL != nil {
 			entry["price_milli_brl_per_kwh"] = *item.PriceMilliBRL
+		}
+		if item.Operational != nil {
+			entry["operational"] = item.Operational
 		}
 		wire = append(wire, entry)
 	}

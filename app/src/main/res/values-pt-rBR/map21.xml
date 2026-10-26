@@ -1,0 +1,18 @@
+<resources>
+    <string name="map21_retry">Reenviar pendências</string>
+    <string name="map21_discard">Descartar comando local</string>
+    <string name="map21_discard_warning">Descartar remove apenas esta tentativa local. Um relato já aceito pelo servidor continua publicado até você retirá-lo.</string>
+    <string name="map21_dated">Observação comunitária datada. Disponibilidade ao vivo indisponível; não garante acesso ou funcionamento agora.</string>
+    <string name="map21_no_event">Somente preço / experiência</string>
+    <string name="map21_time">Instante observado (UTC, AAAA-MM-DDTHH:MM:SSZ)</string>
+    <string name="map21_reference">Referência da fonte, sem identificação física. Equipamento exige exatamente uma unidade informada.</string>
+    <string name="map21_no_target">Nenhuma referência elegível disponível. Use o local.</string>
+    <string name="map21_worked">Funcionou</string>
+    <string name="map21_did_not_work">Não funcionou</string>
+    <string name="map21_in_use">Estava em uso</string>
+    <string name="map21_restricted">Acesso estava restrito</string>
+    <string name="map21_site">Local</string>
+    <string name="map21_equipment">Referência de unidade única</string>
+    <string name="map21_connector">Grupo de conectores</string>
+<string name="map21_full">A fila tem 50 comandos pendentes. Reenvie ou descarte um comando antes de adicionar outro.</string>
+</resources>

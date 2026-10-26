@@ -1,5 +1,12 @@
 # Current execution state
 
+- MAP-21 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Dated operational
+  events, exact replay receipts, owner-fenced FIFO/outbox, connected replay and
+  startup recovery implemented. Real PostGIS/race + Go HTTP/Kotlin wire proof,
+  four owned 16 KB emulator worker tests and Android/lint/static checks PASS.
+  [MAP-21 evidence](../backend/evidence/maps/MAP-21.md). Next: MAP-22 native
+  planning/stops; MAP-23 explicit guidance follows. No new PR/rollout yet.
+
 - MAP-21–23 selected continuation 2026-10-25: IN_PROGRESS, new protected PR
   pending. Owner merged PR 150 at `eee1b33f`; maintained remote dev matches
   main, including the CI worker-serialization correction `e848bf26`. This

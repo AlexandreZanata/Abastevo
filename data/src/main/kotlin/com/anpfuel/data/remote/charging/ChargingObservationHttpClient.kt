@@ -1,5 +1,8 @@
 package com.anpfuel.data.remote.charging
 
+import com.anpfuel.domain.charging.ChargingOperationalEvent
+import com.anpfuel.domain.charging.ChargingOperationalStatus
+import com.anpfuel.domain.charging.ChargingTargetScope
 import com.anpfuel.domain.charging.ChargingCondition
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingObservationDraft
@@ -47,6 +50,8 @@ class ChargingObservationHttpClient(
     baseUrl: String,
 ) : ChargingObservationGateway {
 
+    private val snapshots = ChargingSnapshotHttpClient(http, baseUrl)
+    override suspend fun targets(placeId: String) = snapshots.placeDetail(placeId).groups
     private val origin = baseUrl.toHttpUrl()
     private val client = http.newBuilder().followRedirects(false).followSslRedirects(false)
         .retryOnConnectionFailure(false).callTimeout(20, TimeUnit.SECONDS).build()
@@ -66,6 +71,7 @@ class ChargingObservationHttpClient(
                 condition = condition(row.getString("condition")),
                 observedDay = day(row.getString("observed_day")),
                 note = note(row.optString("note", "")),
+                operational = decodeOperational(row),
                 helpful = count(row, "helpful"),
                 notHelpful = count(row, "not_helpful"),
             )
@@ -73,7 +79,11 @@ class ChargingObservationHttpClient(
     }
 
     override suspend fun mine(familyId: String, accessToken: String, limit: Int): List<OwnedChargingObservation> {
-        val body = JSONObject().put("session", session(familyId, accessToken)).put("limit", limit)
+        return mineInternal(familyId, accessToken, limit, null)
+    }
+    override suspend fun mineAt(familyId: String, accessToken: String, placeId: String, limit: Int) = mineInternal(familyId, accessToken, limit, id(placeId))
+    private suspend fun mineInternal(familyId: String, accessToken: String, limit: Int, placeId: String?): List<OwnedChargingObservation> {
+        val body = JSONObject().put("session", session(familyId, accessToken)).put("limit", limit).apply { placeId?.let { put("place_id", it) } }
         val root = call("POST", route("v1/charging/observations/mine"), body.toString())
         val items = root.optJSONArray("items") ?: throw sdkInvalid()
         return (0 until items.length()).map { index ->
@@ -86,6 +96,7 @@ class ChargingObservationHttpClient(
                 condition = condition(row.getString("condition")),
                 observedDay = day(row.getString("observed_day")),
                 note = note(row.optString("note", "")),
+                operational = decodeOperational(row),
                 revision = positive(row, "revision"),
             )
         }
@@ -105,17 +116,25 @@ class ChargingObservationHttpClient(
         expectedRevision: Long,
         draft: ChargingObservationDraft,
     ): Long {
-        id(id)
+        return correctOperation(familyId, accessToken, id, expectedRevision, draft, UUID.randomUUID().toString())
+    }
+
+    override suspend fun correctOperation(familyId: String, accessToken: String, id: String, expectedRevision: Long, draft: ChargingObservationDraft, operationId: String): Long {
+        id(id); id(operationId)
         require(expectedRevision > 0)
-        val body = base(familyId, accessToken, id, draft).put("expected_revision", expectedRevision)
+        val body = base(familyId, accessToken, id, draft).put("expected_revision", expectedRevision).put("operation_id", operationId)
         val root = call("PUT", route("v1/charging/observations/$id"), body.toString())
         return positive(root, "revision")
     }
 
     override suspend fun withdraw(familyId: String, accessToken: String, id: String, expectedRevision: Long): Long {
-        id(id)
+        return withdrawOperation(familyId, accessToken, id, expectedRevision, UUID.randomUUID().toString())
+    }
+
+    override suspend fun withdrawOperation(familyId: String, accessToken: String, id: String, expectedRevision: Long, operationId: String): Long {
+        id(id); id(operationId)
         require(expectedRevision > 0)
-        val body = JSONObject().put("session", session(familyId, accessToken)).put("expected_revision", expectedRevision)
+        val body = JSONObject().put("session", session(familyId, accessToken)).put("expected_revision", expectedRevision).put("operation_id", operationId)
         val root = call("DELETE", route("v1/charging/observations/$id"), body.toString())
         return positive(root, "revision")
     }
@@ -159,6 +178,7 @@ class ChargingObservationHttpClient(
             .put("condition", draft.condition.name)
             .put("observed_day", draft.observedDay)
             .put("note", draft.note).apply {
+                draft.operational?.let { put("operational", encodeOperational(it)) }
                 if (draft.placeId != null) put("place_id", draft.placeId)
                 if (draft.priceMilliBrlPerKwh != null) put("price_milli_brl_per_kwh", draft.priceMilliBrlPerKwh)
             }
@@ -266,4 +286,14 @@ class ChargingObservationHttpClient(
             throw e
         }
     }
+}
+
+internal fun encodeOperational(event: ChargingOperationalEvent): JSONObject = JSONObject()
+    .put("event", event.event.name).put("target_scope", event.targetScope.name)
+    .put("observed_at", event.observedAt).apply { event.connectionGroupId?.let { put("connection_group_id", it) } }
+internal fun decodeOperational(row: JSONObject): ChargingOperationalEvent? {
+    val item = row.optJSONObject("operational") ?: return null
+    return ChargingOperationalEvent(ChargingOperationalStatus.valueOf(item.getString("event")),
+        ChargingTargetScope.valueOf(item.getString("target_scope")),
+        if (item.isNull("connection_group_id")) null else item.getString("connection_group_id"), item.getString("observed_at"))
 }
