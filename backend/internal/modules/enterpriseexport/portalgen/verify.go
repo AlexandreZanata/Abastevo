@@ -27,11 +27,15 @@ import (
 )
 
 const (
-	MaxSitemapURLs        = 50_000
-	MaxSitemapBytes       = int64(50 << 20)
-	DefaultMaxHTMLGzip    = int64(100 << 10)
-	DefaultMaxScriptGzip  = int64(100 << 10)
-	DefaultMaxShardGzip   = int64(250 << 10)
+	MaxSitemapURLs       = 50_000
+	MaxSitemapBytes      = int64(50 << 20)
+	DefaultMaxHTMLGzip   = int64(100 << 10)
+	DefaultMaxScriptGzip = int64(100 << 10)
+	// DefaultMaxShardGzip fits the largest real regional shard measured on
+	// staging 2026-10-26 (SP, 8,381 stations, 461,000 gzip bytes); UUIDs
+	// and CNPJs dominate and do not compress. ESP-10's 250 KiB came from
+	// synthetic names.
+	DefaultMaxShardGzip   = int64(512 << 10)
 	DefaultMaxFilesMargin = 1_000
 )
 
@@ -209,7 +213,7 @@ func verifyOne(dir string, opts VerifyOptions) (VerifyResult, Manifest, error) {
 		maxBytes = defaultMaxBytes
 	}
 	if manifest.Pages > defaultMaxPages || len(files)+1 > maxFiles || totalBytes > maxBytes {
-		return VerifyResult{}, Manifest{}, fmt.Errorf("portalcheck: file/byte/page budget exceeded")
+		return VerifyResult{}, Manifest{}, &BudgetError{Msg: "portalcheck: file/byte/page budget exceeded"}
 	}
 	onDisk, err := walkArtifact(dir)
 	if err != nil {
@@ -675,7 +679,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 				return VerifyResult{}, err
 			}
 			if compressed > maxHTML {
-				return VerifyResult{}, fmt.Errorf("portalcheck: HTML gzip budget exceeded by %s", path)
+				return VerifyResult{}, &BudgetError{Msg: fmt.Sprintf("portalcheck: HTML gzip budget exceeded by %s", path)}
 			}
 			if compressed > result.LargestHTMLGzipBytes {
 				result.LargestHTMLGzipBytes = compressed
@@ -698,7 +702,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 				return VerifyResult{}, err
 			}
 			if compressed > maxScript {
-				return VerifyResult{}, fmt.Errorf("portalcheck: JavaScript gzip budget exceeded by %s", path)
+				return VerifyResult{}, &BudgetError{Msg: fmt.Sprintf("portalcheck: JavaScript gzip budget exceeded by %s", path)}
 			}
 			if compressed > result.LargestScriptGzipBytes {
 				result.LargestScriptGzipBytes = compressed
@@ -709,7 +713,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 				return VerifyResult{}, err
 			}
 			if compressed > maxShard {
-				return VerifyResult{}, fmt.Errorf("portalcheck: search shard gzip budget exceeded by %s", path)
+				return VerifyResult{}, &BudgetError{Msg: fmt.Sprintf("portalcheck: search shard gzip budget exceeded by %s", path)}
 			}
 			if compressed > result.LargestShardGzipBytes {
 				result.LargestShardGzipBytes = compressed
@@ -725,7 +729,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 		case path == "sitemap.xml":
 			sitemapSeen = true
 			if int64(len(body)) > MaxSitemapBytes {
-				return VerifyResult{}, fmt.Errorf("portalcheck: sitemap bytes budget exceeded")
+				return VerifyResult{}, &BudgetError{Msg: "portalcheck: sitemap bytes budget exceeded"}
 			}
 		}
 	}

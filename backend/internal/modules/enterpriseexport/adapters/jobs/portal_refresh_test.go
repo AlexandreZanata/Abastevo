@@ -674,3 +674,49 @@ func TestRefreshPropagatesLandingURL(t *testing.T) {
 		t.Fatal("refreshed release lost the shared landing header/footer links")
 	}
 }
+
+func TestRefreshCoalescesDeterministicBudgetFailure(t *testing.T) {
+	exportRoot, _, handler, _ := refreshFixture(t)
+	writeRefreshExport(t, exportRoot, "a", "sha256:"+strings.Repeat("a", 64), "6000", "")
+	generations := 0
+	handler.Generate = func(portalgen.Options) (portalgen.Result, error) {
+		generations++
+		return portalgen.Result{}, &portalgen.BudgetError{Msg: "portalgen: page budget exceeded"}
+	}
+	for attempt := 0; attempt < 3; attempt++ {
+		err := runRefresh(t, handler)
+		var budget *portalgen.BudgetError
+		if !errors.As(err, &budget) {
+			t.Fatalf("attempt %d: budget failure not reported: %v", attempt, err)
+		}
+	}
+	if generations != 1 {
+		t.Fatalf("identical export and budget regenerated %d times", generations)
+	}
+	handler.MaxPages = 123456
+	if err := runRefresh(t, handler); err == nil || generations != 2 {
+		t.Fatalf("changed budget did not retry generation: generations=%d err=%v", generations, err)
+	}
+	writeRefreshExport(t, exportRoot, "b", "sha256:"+strings.Repeat("b", 64), "6500", "")
+	if err := runRefresh(t, handler); err == nil || generations != 3 {
+		t.Fatalf("new export did not retry generation: generations=%d err=%v", generations, err)
+	}
+}
+
+func TestRefreshRetriesTransientFailureEveryAttempt(t *testing.T) {
+	exportRoot, _, handler, _ := refreshFixture(t)
+	writeRefreshExport(t, exportRoot, "a", "sha256:"+strings.Repeat("a", 64), "6000", "")
+	generations := 0
+	handler.Generate = func(portalgen.Options) (portalgen.Result, error) {
+		generations++
+		return portalgen.Result{}, errors.New("synthetic disk failure")
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if err := runRefresh(t, handler); err == nil {
+			t.Fatal("transient failure accepted")
+		}
+	}
+	if generations != 2 {
+		t.Fatalf("transient failure was coalesced: generations=%d", generations)
+	}
+}

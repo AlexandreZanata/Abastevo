@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -566,8 +567,8 @@ func TestRegionalSearchShardIsBounded(t *testing.T) {
 	if len(sp) >= len(national) || spGzip >= nationalGzip {
 		t.Errorf("regional shard is not smaller than the national locator")
 	}
-	if spGzip > 250*1024 {
-		t.Errorf("regional SP gzip shard exceeds 250 KiB: %d", spGzip)
+	if int64(spGzip) > DefaultMaxShardGzip {
+		t.Errorf("regional SP gzip shard exceeds the shard budget: %d", spGzip)
 	}
 }
 
@@ -1045,5 +1046,25 @@ func TestLandingURLSharedChrome(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "invalid landing URL") {
 			t.Errorf("LandingURL %q accepted: %v", bad, err)
 		}
+	}
+}
+
+func TestGenerationBudgetErrorsAreTyped(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "portal")
+	_, err := Generate(Options{SnapshotDir: writeFixture(t), OutputDir: out, MaxPages: 1})
+	var budget *BudgetError
+	if !errors.As(err, &budget) || err.Error() != "portalgen: page budget exceeded" {
+		t.Fatalf("page budget breach not typed: %v", err)
+	}
+}
+
+func TestDefaultBudgetsFitMeasuredNationalScale(t *testing.T) {
+	// Real staging edition 2026-10-26: 52,578 pages (48,750 stations) and a
+	// 461,000-byte gzip SP shard (8,381 stations).
+	if defaultMaxPages < 52_578*3/2 {
+		t.Fatalf("page budget %d lacks headroom over the measured national portal", defaultMaxPages)
+	}
+	if DefaultMaxShardGzip < 461_000 {
+		t.Fatalf("shard budget %d is below the measured real SP shard", DefaultMaxShardGzip)
 	}
 }

@@ -70,6 +70,9 @@ type RefreshState struct {
 	GenerationSeconds        int64  `json:"generation_seconds,omitempty"`
 	ExportToReleaseSeconds   int64  `json:"export_to_release_seconds,omitempty"`
 	ObservedToReleaseSeconds int64  `json:"observed_to_release_seconds,omitempty"`
+	// FailedBudget is the budget key of a deterministic budget failure for
+	// ExportContentSHA256; identical inputs are not regenerated.
+	FailedBudget string `json:"failed_budget,omitempty"`
 }
 
 // Refresh turns the latest durable export candidate into a verified portal
@@ -181,6 +184,12 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 		sameRefreshPin(refresh, state.Official) &&
 		current.ContentSHA256 != "" && current.ContentSHA256 == refresh.PortalContentSHA256 {
 		return r.recordNoop(refresh, now, payload, state, current, "noop")
+	}
+	if refresh.LastOutcome == "failed" && refresh.FailedBudget != "" &&
+		refresh.FailedBudget == r.budgetKey() &&
+		state.ContentSHA256 == refresh.ExportContentSHA256 && sameRefreshPin(refresh, state.Official) {
+		// Same snapshot, same budgets: regenerating would fail identically.
+		return r.fail(refresh, now, payload, state, &portalgen.BudgetError{Msg: refresh.LastError})
 	}
 	candidate, err := refreshCandidateDir(r.PortalRoot, now)
 	if err != nil {
@@ -342,12 +351,21 @@ func (r Refresh) withdraw(refresh RefreshState, now time.Time, payload RefreshPa
 	return writeRefreshState(r.PortalRoot, refresh)
 }
 
+func (r Refresh) budgetKey() string {
+	return portalgen.BudgetKey(r.MaxPages, r.MaxBytes)
+}
+
 func (r Refresh) fail(refresh RefreshState, now time.Time, payload RefreshPayload, state State, cause error) error {
 	trigger, observed := refreshObservation(payload, state, now)
 	refresh.SchemaVersion = RefreshStateSchema
 	refresh.LastAttemptAt = now.UTC().Format(time.RFC3339)
 	refresh.LastOutcome = "failed"
 	refresh.LastError = truncateRefreshError(cause.Error())
+	refresh.FailedBudget = ""
+	var budget *portalgen.BudgetError
+	if errors.As(cause, &budget) {
+		refresh.FailedBudget = r.budgetKey()
+	}
 	refresh.Trigger = trigger
 	refresh.ObservedAt = observed
 	if state.SchemaVersion != "" {

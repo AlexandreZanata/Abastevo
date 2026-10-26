@@ -25,12 +25,36 @@ import (
 var embeddedAssets embed.FS
 
 const (
-	SchemaVersion     = "enterprise-portal-v2"
-	defaultMaxPages   = 50_000
+	SchemaVersion = "enterprise-portal-v2"
+	// defaultMaxPages leaves ~1.9x headroom over the real national portal
+	// measured on staging 2026-10-26 (52,578 pages, 48,750 stations).
+	defaultMaxPages   = 100_000
 	defaultMaxBytes   = int64(2 << 30)
 	maxRankingPerPage = 20
 	minMunicipality   = 5
 )
+
+// BudgetError reports a page, byte or size budget breach. Generation and
+// verification are deterministic, so the same snapshot under the same
+// budgets always fails the same way; callers may coalesce retries.
+type BudgetError struct {
+	Msg string
+}
+
+func (e *BudgetError) Error() string { return e.Msg }
+
+// BudgetKey identifies the effective generation and verification budgets
+// for the given overrides (zero selects the defaults).
+func BudgetKey(maxPages int, maxBytes int64) string {
+	if maxPages <= 0 {
+		maxPages = defaultMaxPages
+	}
+	if maxBytes <= 0 {
+		maxBytes = defaultMaxBytes
+	}
+	return fmt.Sprintf("pages=%d;bytes=%d;html-gzip=%d;script-gzip=%d;shard-gzip=%d",
+		maxPages, maxBytes, DefaultMaxHTMLGzip, DefaultMaxScriptGzip, DefaultMaxShardGzip)
+}
 
 type Options struct {
 	SnapshotDir      string
@@ -679,7 +703,7 @@ func geography(observations []observation) (map[string]int, map[string]int, map[
 
 func (g *generator) writePage(rel, templateName string, data any) error {
 	if g.pages+1 > g.opts.MaxPages {
-		return fmt.Errorf("portalgen: page budget exceeded")
+		return &BudgetError{Msg: "portalgen: page budget exceeded"}
 	}
 	clean := filepath.Clean("/" + rel)
 	rel = strings.TrimPrefix(clean, "/")
@@ -695,7 +719,7 @@ func (g *generator) writePage(rel, templateName string, data any) error {
 		return err
 	}
 	if g.bytes+int64(buf.Len()) > g.opts.MaxBytes {
-		return fmt.Errorf("portalgen: byte budget exceeded")
+		return &BudgetError{Msg: "portalgen: byte budget exceeded"}
 	}
 	if err := os.WriteFile(full, buf.Bytes(), 0o600); err != nil {
 		return err
@@ -708,7 +732,7 @@ func (g *generator) writePage(rel, templateName string, data any) error {
 
 func (g *generator) writeAsset(rel string, data []byte) error {
 	if g.bytes+int64(len(data)) > g.opts.MaxBytes {
-		return fmt.Errorf("portalgen: byte budget exceeded")
+		return &BudgetError{Msg: "portalgen: byte budget exceeded"}
 	}
 	full := filepath.Join(g.outDir, rel)
 	if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
@@ -849,7 +873,7 @@ func (g *generator) writeManifest(exportManifest enterpriseexport.Manifest, proj
 	}
 	encoded = append(encoded, '\n')
 	if g.bytes+int64(len(encoded)) > g.opts.MaxBytes {
-		return Manifest{}, fmt.Errorf("portalgen: byte budget exceeded")
+		return Manifest{}, &BudgetError{Msg: "portalgen: byte budget exceeded"}
 	}
 	if err := os.WriteFile(filepath.Join(g.outDir, "portal-manifest.json"), encoded, 0o600); err != nil {
 		return Manifest{}, err
