@@ -89,8 +89,12 @@ its viewport on actual graphics readiness.
   proofs only, no private credentials/contributor traces. No new external library.
 
 Logs: `/tmp/map22-{domain-red,engine,app,private-runtime,controlled-camera,
- cross-runtime,exit,builder-tests}.log`. The earlier interpolation OOM and UI
-camera failures remain diagnostic history; only the repaired matrix is accepted.
+  cross-runtime,exit,builder-tests}.log` plus `/tmp/map22-arm32-runtime.log`.
+Posterior ARMv7 runtime: the same five native adapter tests PASS through the
+ARMv7 bridge on the isolated API30 emulator (`codex-map22-api30`); this does
+not prove all ARM32 graphics paths nor a clean-source comparison. The earlier
+interpolation OOM and UI camera failures remain diagnostic history; only the
+repaired matrix is accepted.
 
 ## Remaining boundaries
 

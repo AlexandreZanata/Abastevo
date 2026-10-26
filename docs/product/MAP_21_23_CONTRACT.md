@@ -73,3 +73,15 @@ never starts tracking at boot. Logout/account switch stops owner guidance.
 BUC-MAP23: emulator replay -> progress/maneuver -> wrong turn/reroute -> GPS loss
 -> recovery -> stop from app/notification -> location/audio/native resources
 released; no TTS, permission and lifecycle failures tested independently.
+
+MAP-23 technical boundary (2026-10-26): car guidance accepts only finite fixes
+with reported accuracy >0 and <=50 m, monotonic age 0..15 seconds and positive UTC
+sample time. Poor/stale fixes never advance native progress or speech. Guidance
+requires precise foreground location, enabled GPS and visible notifications
+(API33 notification grant and enabled channel); planning remains permission-free.
+Rerouting beyond 60 seconds surfaces a recoverable failure instead of pretending
+success. Session/owner changes synchronously fence new fixes and stop resources.
+SDK TTS auto-initialization is removed; the host initializes local voice only after
+explicit service start. Native track recording is disabled before feeding fixes;
+no track save or trace serialization is introduced. Recovery saves only the private
+owner-bound planning request, never the sampled stream, and requires explicit resume.
