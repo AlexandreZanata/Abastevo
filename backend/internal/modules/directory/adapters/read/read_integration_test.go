@@ -523,3 +523,93 @@ func TestCommunityFirstNominalSearchDisambiguatesAddressOnlyStations(t *testing.
 		}
 	}
 }
+
+// searchTracer records the station search statement Reader.Search sends.
+type searchTracer struct {
+	mu   sync.Mutex
+	sql  string
+	args []any
+}
+
+func (s *searchTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	if strings.Contains(data.SQL, "FROM directory_stations") && strings.Contains(data.SQL, "LIMIT") && strings.Contains(data.SQL, "ILIKE") {
+		s.mu.Lock()
+		s.sql, s.args = data.SQL, data.Args
+		s.mu.Unlock()
+	}
+	return ctx
+}
+
+func (s *searchTracer) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+// TestSearchPageUsesPrimaryKeyOrder pins the national-scale list plan: a page
+// must walk the primary key instead of sorting every station (staging seq
+// scanned 48,750 rows per page and saturated PostgreSQL under load).
+func TestSearchPageUsesPrimaryKeyOrder(t *testing.T) {
+	base := freshPool(t)
+	ctx := context.Background()
+	if _, err := base.Exec(ctx, `INSERT INTO directory_stations (id, display_name, address, municipality_code, state)
+		SELECT gen_random_uuid(), 'Posto ' || g, '{}'::jsonb, '3550308', 'SP' FROM generate_series(1, 2000) AS g`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := base.Exec(ctx, "ANALYZE directory_stations"); err != nil {
+		t.Fatal(err)
+	}
+	tracer := &searchTracer{}
+	config := base.Config().Copy()
+	config.ConnConfig.Tracer = tracer
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	r := NewReader(pool)
+	seen, pages := 0, 0
+	last, after := "", ""
+	for {
+		page, next, err := r.Search(ctx, application.SearchFilter{Limit: 100, AfterID: after})
+		if err != nil {
+			t.Fatal(err)
+		}
+		pages++
+		for _, st := range page {
+			if st.ID <= last {
+				t.Fatalf("lexical UUID order broken: %s after %s", st.ID, last)
+			}
+			last = st.ID
+			seen++
+		}
+		if pages == 2 {
+			// Explain the exact statement and arguments of a cursor page.
+			tracer.mu.Lock()
+			query, args := tracer.sql, tracer.args
+			tracer.mu.Unlock()
+			if query == "" {
+				t.Fatal("search statement not captured")
+			}
+			var plan strings.Builder
+			rows, err := base.Query(ctx, "EXPLAIN "+query, args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for rows.Next() {
+				var line string
+				if err := rows.Scan(&line); err != nil {
+					t.Fatal(err)
+				}
+				plan.WriteString(line + "\n")
+			}
+			rows.Close()
+			if !strings.Contains(plan.String(), "directory_stations_pkey") || strings.Contains(plan.String(), "Sort") {
+				t.Fatalf("search page does not walk the primary key:\n%s", plan.String())
+			}
+		}
+		if next == "" {
+			break
+		}
+		after = next
+	}
+	if seen != 2000 {
+		t.Fatalf("keyset walk saw %d stations, want 2000", seen)
+	}
+}

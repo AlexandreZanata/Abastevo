@@ -542,8 +542,10 @@ FROM directory_stations
 WHERE ($1::text = '' OR state = $1)
     AND ($2::text = '' OR municipality_code = $2)
     AND ($3::text = '' OR display_name ILIKE '%' || $3 || '%')
-    AND ($4::text = '' OR id::text > $4::text)
-ORDER BY id::text ASC
+    -- uuid order equals the lexical order of its canonical lowercase text,
+    -- so the primary key serves pages without sorting every station.
+    AND ($4::text = '' OR id > NULLIF($4::text, '')::uuid)
+ORDER BY id ASC
 LIMIT $5::int
 `
 
