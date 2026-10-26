@@ -1265,4 +1265,8 @@
     <string name="driver_hub_open_vehicles">Gerenciar veículos</string>
     <string name="driver_hub_retained_note">Leitura, correção e exportação dos dados mantidos permanecem disponíveis.</string>
     <string name="driver_hub_no_reputation">Premium não altera reputação, confiança nem a ordenação da comunidade.</string>
+    <string name="driver_hub_quick_refuel">Abastecimento rápido</string>
+    <string name="driver_hub_quick_charge">Recarga rápida</string>
+    <string name="ledger_entry_charge_fees">Taxas da recarga (R$)</string>
+    <string name="ledger_entry_validation_fees">Informe um valor de taxas válido.</string>
 </resources>

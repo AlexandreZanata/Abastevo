@@ -56,6 +56,7 @@ data class LedgerEntryFormState(
     val timeInput: String = "",
     val quantityInput: String = "",
     val totalInput: String = "",
+    val feesInput: String = "",
     val unitPriceInput: String = "",
     val rateInput: String = "",
     val socStartInput: String = "",
@@ -90,6 +91,7 @@ enum class LedgerEntryValidationError {
     FUEL_UNAVAILABLE,
     CHARGE_UNAVAILABLE,
     TARIFF_INVALID,
+    FEES_INVALID,
 }
 
 data class LedgerEntriesUiState(
@@ -261,6 +263,7 @@ class LedgerEntriesViewModel @Inject constructor(
                             .format(DateTimeFormatter.ofPattern("HH:mm")),
                         quantityInput = draft.energyWh?.let { whToKwhInput(it) }.orEmpty(),
                         totalInput = draft.totalCentavos?.let { centavosToInput(it) }.orEmpty(),
+                        feesInput = draft.feesCentavos?.let { centavosToInput(it) }.orEmpty(),
                         socStartInput = draft.socStart?.toString().orEmpty(),
                         socEndInput = draft.socEnd?.toString().orEmpty(),
                         tariffIdInput = draft.tariffId.orEmpty(),
@@ -307,6 +310,7 @@ class LedgerEntriesViewModel @Inject constructor(
     fun onTimeChanged(value: String) = updateForm { copy(timeInput = value) }
     fun onQuantityChanged(value: String) = updateForm { copy(quantityInput = value) }
     fun onTotalChanged(value: String) = updateForm { copy(totalInput = value) }
+    fun onFeesChanged(value: String) = updateForm { copy(feesInput = value) }
     fun onUnitPriceChanged(value: String) = updateForm { copy(unitPriceInput = value) }
     fun onRateChanged(value: String) = updateForm { copy(rateInput = value) }
     fun onSocStartChanged(value: String) = updateForm { copy(socStartInput = value) }
@@ -505,6 +509,12 @@ class LedgerEntriesViewModel @Inject constructor(
                         return null
                     }
                 }
+                val fees = form.feesInput.ifBlank { null }?.let {
+                    parseCentavos(it) ?: run {
+                        failForm(LedgerEntryValidationError.FEES_INVALID)
+                        return null
+                    }
+                }
                 val odo = if (form.odometerInput.isBlank()) {
                     null
                 } else {
@@ -514,7 +524,7 @@ class LedgerEntriesViewModel @Inject constructor(
                     id = id, vehicleId = vehicle.id.value, occurredAt = occurred,
                     timezone = timezone, energyWh = energy, totalCentavos = total,
                     socStart = socStart, socEnd = socEnd, odometerMetres = odo,
-                    feesCentavos = null, tariffId = tariffId?.trim(), tariffRevision = tariffRevision,
+                    feesCentavos = fees, tariffId = tariffId?.trim(), tariffRevision = tariffRevision,
                     note = form.noteInput.ifBlank { null },
                 )
             }

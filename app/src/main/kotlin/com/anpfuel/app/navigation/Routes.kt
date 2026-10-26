@@ -31,10 +31,17 @@ object Routes {
     const val PRIVACY = "privacy"
     const val VEHICLES = "vehicles"
     const val VEHICLE_ENTRIES = "vehicle-entries/{vehicleId}"
+    const val VEHICLE_ENTRIES_ACTION = "vehicle-entries/{vehicleId}?action={action}"
 
     fun vehicleEntries(vehicleId: String): String {
         require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
         return "vehicle-entries/$vehicleId"
+    }
+
+    fun vehicleEntriesAction(vehicleId: String, action: String): String {
+        require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
+        require(action == "refuel" || action == "charge")
+        return "vehicle-entries/$vehicleId?action=$action"
     }
 
     const val CHARGING_EXPLORE = "charging-explore/{vehicleId}"

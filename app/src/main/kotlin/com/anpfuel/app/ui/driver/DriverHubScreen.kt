@@ -45,6 +45,8 @@ fun DriverHubScreen(
     onOpenVehicles: () -> Unit,
     onOpenEntries: (String) -> Unit,
     onOpenMonthly: (String) -> Unit,
+    onOpenRefuel: (String) -> Unit,
+    onOpenCharge: (String) -> Unit,
     onOpenPremium: () -> Unit,
     onSignIn: () -> Unit,
     modifier: Modifier = Modifier,
@@ -54,7 +56,7 @@ fun DriverHubScreen(
     LaunchedEffect(Unit) { viewModel.refresh() }
     DriverHubContent(
         state = state, onNavigateBack = onNavigateBack, onOpenVehicles = onOpenVehicles,
-        onOpenEntries = onOpenEntries, onOpenMonthly = onOpenMonthly,
+        onOpenEntries = onOpenEntries, onOpenMonthly = onOpenMonthly, onOpenRefuel = onOpenRefuel, onOpenCharge = onOpenCharge,
         onOpenPremium = onOpenPremium, onSignIn = onSignIn, onRetry = viewModel::refresh, modifier = modifier,
     )
 }
@@ -67,6 +69,8 @@ internal fun DriverHubContent(
     onOpenVehicles: () -> Unit,
     onOpenEntries: (String) -> Unit,
     onOpenMonthly: (String) -> Unit,
+    onOpenRefuel: (String) -> Unit,
+    onOpenCharge: (String) -> Unit,
     onOpenPremium: () -> Unit,
     onSignIn: () -> Unit,
     onRetry: () -> Unit,
@@ -131,6 +135,12 @@ internal fun DriverHubContent(
                             Text(vehicle.displayName, style = MaterialTheme.typography.titleMedium)
                             Button(onClick = { onOpenEntries(vehicle.id.value) }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(R.string.driver_hub_open_entries))
+                            }
+                            Button(onClick = { onOpenRefuel(vehicle.id.value) }, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.driver_hub_quick_refuel))
+                            }
+                            Button(onClick = { onOpenCharge(vehicle.id.value) }, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.driver_hub_quick_charge))
                             }
                             OutlinedButton(onClick = { onOpenMonthly(vehicle.id.value) }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(R.string.driver_hub_open_export))

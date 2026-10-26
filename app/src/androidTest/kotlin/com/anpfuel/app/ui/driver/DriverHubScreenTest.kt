@@ -24,13 +24,13 @@ class DriverHubScreenTest {
         fuelProduct = FuelProduct.GASOLINE_REGULAR, priceSource = VehiclePriceSource.cheapest(),
     )
 
-    private fun render(state: DriverHubUiState, onVehicles: () -> Unit = {}, onPremium: () -> Unit = {}, onSignIn: () -> Unit = {}, onRetry: () -> Unit = {}, onEntries: (String) -> Unit = {}, onMonthly: (String) -> Unit = {}) {
+    private fun render(state: DriverHubUiState, onVehicles: () -> Unit = {}, onPremium: () -> Unit = {}, onSignIn: () -> Unit = {}, onRetry: () -> Unit = {}, onEntries: (String) -> Unit = {}, onMonthly: (String) -> Unit = {}, onRefuel: (String) -> Unit = {}, onCharge: (String) -> Unit = {}) {
         compose.setContent {
             AnpFuelTheme(dynamicColor = false) {
                 DriverHubContent(
                     state = state, onNavigateBack = {}, onOpenVehicles = onVehicles,
                     onOpenEntries = onEntries, onOpenMonthly = onMonthly,
-                    onOpenPremium = onPremium, onSignIn = onSignIn, onRetry = onRetry,
+                    onOpenPremium = onPremium, onSignIn = onSignIn, onRetry = onRetry, onOpenRefuel = onRefuel, onOpenCharge = onCharge,
                 )
             }
         }
@@ -47,16 +47,21 @@ class DriverHubScreenTest {
     }
 
     @Test fun verifiedVehicleActionsAreConcrete() {
-        var entries = ""; var monthly = ""; var vehicles = false
+        var entries = ""; var monthly = ""; var vehicles = false; var refuel = ""; var charge = ""
         render(
             DriverHubUiState(loading = false, access = DriverHubAccess.VERIFIED, vehicles = listOf(vehicle)),
             onVehicles = { vehicles = true }, onEntries = { entries = it }, onMonthly = { monthly = it },
+            onRefuel = { refuel = it }, onCharge = { charge = it },
         )
         compose.onNodeWithText(text(com.anpfuel.app.R.string.driver_hub_open_entries)).performClick()
         compose.onNodeWithText(text(com.anpfuel.app.R.string.driver_hub_open_export)).performClick()
         compose.onNodeWithText(text(com.anpfuel.app.R.string.driver_hub_open_vehicles)).performClick()
+        compose.onNodeWithText(text(com.anpfuel.app.R.string.driver_hub_quick_refuel)).performClick()
+        compose.onNodeWithText(text(com.anpfuel.app.R.string.driver_hub_quick_charge)).performClick()
         assertEquals(vehicle.id.value, entries)
         assertEquals(vehicle.id.value, monthly)
+        assertEquals(vehicle.id.value, refuel)
+        assertEquals(vehicle.id.value, charge)
         assertTrue(vehicles)
     }
 

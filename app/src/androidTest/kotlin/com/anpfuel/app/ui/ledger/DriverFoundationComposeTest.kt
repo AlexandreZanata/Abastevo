@@ -122,7 +122,7 @@ class DriverFoundationComposeTest {
                     onGapBeforeChanged = {}, onGapNoteChanged = {}, onConfirmGap = {}, onRequestReset = {},
                     onConfirmReset = {}, onDismissReset = {}, onDismissForm = {}, onDatasetChanged = {},
                     onDateChanged = {}, onTimeChanged = {}, onQuantityChanged = {}, onTotalChanged = {},
-                    onUnitPriceChanged = {}, onRateChanged = {}, onSocStartChanged = {}, onSocEndChanged = {},
+                    onUnitPriceChanged = {}, onRateChanged = {}, onFeesChanged = {}, onSocStartChanged = {}, onSocEndChanged = {},
                     onTariffIdChanged = {}, onTariffRevisionChanged = {}, onContextChanged = {}, onFillChanged = {},
                     onCategoryChanged = {}, onOdometerChanged = {}, onStationChanged = {}, onNoteChanged = {},
                     onSaveDraft = onSave, onEstimateChanged = {}, onSaveEstimate = {}, onClearEstimate = {},

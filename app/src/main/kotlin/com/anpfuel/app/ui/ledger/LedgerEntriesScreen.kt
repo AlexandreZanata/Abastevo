@@ -69,6 +69,7 @@ fun LedgerEntriesScreen(
     vehicleId: String,
     onNavigateBack: () -> Unit,
     onOpenMonthly: (String) -> Unit = {},
+    initialDataset: LedgerDataset? = null,
     modifier: Modifier = Modifier,
     viewModel: LedgerEntriesViewModel = hiltViewModel(),
 ) {
@@ -77,6 +78,13 @@ fun LedgerEntriesScreen(
 
     LaunchedEffect(vehicleId) {
         viewModel.load(DomainId.from(vehicleId), locale)
+    }
+    var initialStarted by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(initialDataset, uiState.isLoading) {
+        if (!initialStarted && initialDataset != null && !uiState.isLoading) {
+            initialStarted = true
+            viewModel.startAdd(initialDataset)
+        }
     }
 
     LedgerEntriesContent(
@@ -112,6 +120,7 @@ fun LedgerEntriesScreen(
         onTotalChanged = viewModel::onTotalChanged,
         onUnitPriceChanged = viewModel::onUnitPriceChanged,
         onRateChanged = viewModel::onRateChanged,
+        onFeesChanged = viewModel::onFeesChanged,
         onSocStartChanged = viewModel::onSocStartChanged,
         onSocEndChanged = viewModel::onSocEndChanged,
         onTariffIdChanged = viewModel::onTariffIdChanged,
@@ -164,6 +173,7 @@ internal fun LedgerEntriesContent(
     onTotalChanged: (String) -> Unit,
     onUnitPriceChanged: (String) -> Unit,
     onRateChanged: (String) -> Unit,
+    onFeesChanged: (String) -> Unit,
     onSocStartChanged: (String) -> Unit,
     onSocEndChanged: (String) -> Unit,
     onTariffIdChanged: (String) -> Unit,
@@ -295,6 +305,7 @@ internal fun LedgerEntriesContent(
             onTotalChanged = onTotalChanged,
                         onUnitPriceChanged = onUnitPriceChanged,
                         onRateChanged = onRateChanged,
+                        onFeesChanged = onFeesChanged,
                         onSocStartChanged = onSocStartChanged,
                         onSocEndChanged = onSocEndChanged,
                         onTariffIdChanged = onTariffIdChanged,
@@ -545,6 +556,7 @@ private fun LedgerEntryFormDialog(
     onTotalChanged: (String) -> Unit,
     onUnitPriceChanged: (String) -> Unit,
     onRateChanged: (String) -> Unit,
+    onFeesChanged: (String) -> Unit,
     onSocStartChanged: (String) -> Unit,
     onSocEndChanged: (String) -> Unit,
     onTariffIdChanged: (String) -> Unit,
@@ -659,6 +671,15 @@ private fun LedgerEntryFormDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    OutlinedTextField(
+                        value = form.feesInput,
+                        onValueChange = onFeesChanged,
+                        label = { Text(text = stringResource(R.string.ledger_entry_charge_fees)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = form.validationErrorKey == LedgerEntryValidationError.FEES_INVALID,
+                        supportingText = errorText(LedgerEntryValidationError.FEES_INVALID, form),
+                    )
                     OutlinedTextField(
                         value = form.socStartInput,
                         onValueChange = onSocStartChanged,
@@ -817,6 +838,7 @@ private fun errorText(key: LedgerEntryValidationError, form: LedgerEntryFormStat
         LedgerEntryValidationError.FUEL_UNAVAILABLE -> R.string.ledger_entry_fuel_unavailable
         LedgerEntryValidationError.CHARGE_UNAVAILABLE -> R.string.ledger_entry_charge_unavailable
         LedgerEntryValidationError.TARIFF_INVALID -> R.string.ledger_entry_validation_tariff
+        LedgerEntryValidationError.FEES_INVALID -> R.string.ledger_entry_validation_fees
         LedgerEntryValidationError.RATE_INVALID -> R.string.ledger_entry_validation_rate
         LedgerEntryValidationError.SOC_INVALID -> R.string.ledger_entry_validation_soc
     }
@@ -888,6 +910,7 @@ private fun LedgerEntriesPreview() {
             onTotalChanged = {},
             onUnitPriceChanged = {},
             onRateChanged = {},
+            onFeesChanged = {},
             onSocStartChanged = {},
             onSocEndChanged = {},
             onTariffIdChanged = {},

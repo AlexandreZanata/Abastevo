@@ -73,6 +73,16 @@ class RoutesTest {
         )
     }
     @Test
+    fun quickEntryRouteCarriesOnlyVehicleAndAction() {
+        val id = "22222222-2222-4222-8222-222222222222"
+        assertEquals("vehicle-entries/$id?action=refuel", Routes.vehicleEntriesAction(id, "refuel"))
+        assertEquals("vehicle-entries/$id?action=charge", Routes.vehicleEntriesAction(id, "charge"))
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException::class.java) {
+            Routes.vehicleEntriesAction(id, "../auth")
+        }
+    }
+
+    @Test
     fun stationPageBindsIdentityAndFuelWithoutAccountSecrets() {
         assertEquals("station/04218406000104?fuelProduct=ETHANOL", Routes.stationPage("04218406000104", FuelProduct.ETHANOL))
         org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException::class.java) {
