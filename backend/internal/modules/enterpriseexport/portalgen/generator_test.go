@@ -1010,3 +1010,40 @@ func TestOfficialInsightsAdmittedFactsOnly(t *testing.T) {
 		}
 	}
 }
+
+func TestLandingURLSharedChrome(t *testing.T) {
+	snapshot := writeFixture(t)
+	out := filepath.Join(t.TempDir(), "with-landing")
+	if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out, LandingURL: "https://abastevo.example/"}); err != nil {
+		t.Fatal(err)
+	}
+	page := readPortal(t, out, "consultar/index.html")
+	for _, want := range []string{
+		`href="https://abastevo.example/guias/"`, `href="https://abastevo.example/como-usar/"`,
+		`href="https://abastevo.example/privacidade/"`, `<a class="brand" href="https://abastevo.example/"`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("landing chrome missing %s", want)
+		}
+	}
+	checkPortalLinks(t, out)
+	if _, err := Verify(out, VerifyOptions{}); err != nil {
+		t.Fatal(err)
+	}
+
+	alone := filepath.Join(t.TempDir(), "self-contained")
+	if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: alone}); err != nil {
+		t.Fatal(err)
+	}
+	if page := readPortal(t, alone, "consultar/index.html"); strings.Contains(page, "/guias/") || strings.Contains(page, "/privacidade/") {
+		t.Error("self-contained portal links to landing pages")
+	}
+	checkPortalLinks(t, alone)
+
+	for _, bad := range []string{"javascript:alert(1)", "https://abastevo.example/sub", "https://u:p@abastevo.example", "ftp://abastevo.example", "https://abastevo.example/?q=1"} {
+		_, err := Generate(Options{SnapshotDir: snapshot, OutputDir: filepath.Join(t.TempDir(), "bad"), LandingURL: bad})
+		if err == nil || !strings.Contains(err.Error(), "invalid landing URL") {
+			t.Errorf("LandingURL %q accepted: %v", bad, err)
+		}
+	}
+}

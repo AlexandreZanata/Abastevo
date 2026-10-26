@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import app.organicmaps.sdk.location.TrackRecorder
+import com.anpfuel.domain.routing.GuidancePolicy
 import com.anpfuel.domain.routing.NativeRouteRequest
 import com.anpfuel.domain.routing.NativeRouteResult
 import com.anpfuel.domain.routing.NavigationFix
@@ -56,7 +57,8 @@ class GuidanceEngineInstrumentedTest {
         }
         assertTrue(latch.await(60, TimeUnit.SECONDS))
         assertTrue("preview expected: ${result.get()}", result.get() is NativeRouteResult.Ready)
-
+        val preview = (result.get() as NativeRouteResult.Ready).preview
+        val midpoint = preview.geometry[midpointIndex(preview)]
         var started = false
         instrumentation.runOnMainSync { started = engine.startGuidance(request) }
         assertTrue("guidance start", started)
@@ -72,11 +74,44 @@ class GuidanceEngineInstrumentedTest {
         instrumentation.runOnMainSync { feed = engine.feedGuidanceFix(fix, now) }
         assertTrue("feed expected", feed != null)
         assertFalse(feed!!.rerouteRecoverable)
-        instrumentation.runOnMainSync {
-            assertFalse("trace started while feeding", TrackRecorder.nativeIsTrackRecordingEnabled())
-            engine.stopGuidance()
-            assertFalse(engine.isGuiding())
-            engine.cancelRoute()
+        try {
+            val baseElapsed = SystemClock.elapsedRealtimeNanos()
+            val replaySeconds = 150L
+            val baseMillis = System.currentTimeMillis() - replaySeconds * 1_000L
+            var offFeed: GuidanceFeed? = null
+            var sawOffRoute = false
+            var sawRecoverable = false
+            // Fresh 1 Hz replay beside the road for >60 s. A single 61 s-old fix is
+            // rejected by NavigationFixPolicy and cannot start the timeout.
+            for (index in 0..replaySeconds.toInt()) {
+                val simulatedNow = baseElapsed + index * 1_000_000_000L
+                val offRoute = NavigationFix(
+                    midpoint.latitude, midpoint.longitude + 0.003 + index * 0.00005, 5f,
+                    baseMillis + index * 1_000L, simulatedNow,
+                    speedMetersPerSecond = 5f, bearingDegrees = 0f,
+                )
+                instrumentation.runOnMainSync { offFeed = engine.feedGuidanceFix(offRoute, simulatedNow) }
+                val state = offFeed?.progress?.nativeState
+                if (state == "OffRoute" || state == "RouteRebuilding" || state == "RouteNeedsRebuild") {
+                    sawOffRoute = true
+                }
+                if (offFeed?.rerouteRecoverable == true) {
+                    sawRecoverable = true
+                    android.util.Log.d("GuidanceOffRoute", "recoverable at index=$index state=$state")
+                }
+            }
+            assertTrue("native guidance must report off-route/rebuild", sawOffRoute)
+            assertTrue("off-route beyond timeout must surface recoverable failure", sawRecoverable)
+        } finally {
+            instrumentation.runOnMainSync {
+                assertFalse("trace started while feeding", TrackRecorder.nativeIsTrackRecordingEnabled())
+                engine.stopGuidance()
+                assertFalse(engine.isGuiding())
+                engine.cancelRoute()
+            }
         }
     }
+
+    private fun midpointIndex(preview: com.anpfuel.domain.routing.NativeRoutePreview): Int =
+        (preview.geometry.size / 2).coerceIn(0, preview.geometry.lastIndex)
 }

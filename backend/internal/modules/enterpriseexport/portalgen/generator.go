@@ -45,6 +45,10 @@ type Options struct {
 	// search, insight or download routes. It fails closed when the
 	// snapshot carries no official dataset.
 	OfficialOnly bool
+	// LandingURL is the optional landing origin (scheme and host only). When
+	// set, the shared header and footer link back to landing pages with
+	// absolute URLs; when empty the artifact stays fully self-contained.
+	LandingURL string
 }
 
 type Result struct {
@@ -78,6 +82,7 @@ type pageBase struct {
 	ActiveNav    string
 	Indexable    bool
 	OfficialOnly bool
+	Landing      string
 	Period       string
 	PublishedAt  string
 	InputHash    string
@@ -264,11 +269,12 @@ func Generate(opts Options) (Result, error) {
 		opts.MaxBytes = defaultMaxBytes
 	}
 	siteURL := strings.TrimRight(opts.SiteURL, "/")
-	if siteURL != "" {
-		parsed, err := url.Parse(siteURL)
-		if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
-			return Result{}, fmt.Errorf("portalgen: invalid site URL")
-		}
+	if siteURL != "" && !validOrigin(siteURL) {
+		return Result{}, fmt.Errorf("portalgen: invalid site URL")
+	}
+	opts.LandingURL = strings.TrimRight(opts.LandingURL, "/")
+	if opts.LandingURL != "" && !validOrigin(opts.LandingURL) {
+		return Result{}, fmt.Errorf("portalgen: invalid landing URL")
 	}
 	if opts.Indexable && siteURL == "" {
 		return Result{}, fmt.Errorf("portalgen: indexable output requires a site URL")
@@ -878,6 +884,14 @@ func manifestContentDigest(manifest Manifest) (string, error) {
 	return "sha256:" + hex.EncodeToString(sum[:]), nil
 }
 
+// validOrigin accepts only an http(s) scheme and host, without credentials,
+// path, query or fragment.
+func validOrigin(raw string) bool {
+	parsed, err := url.Parse(raw)
+	return err == nil && (parsed.Scheme == "https" || parsed.Scheme == "http") && parsed.Host != "" &&
+		parsed.User == nil && parsed.RawQuery == "" && parsed.Fragment == "" && (parsed.Path == "" || parsed.Path == "/")
+}
+
 func digestBytes(data []byte) string {
 	sum := sha256.Sum256(data)
 	return "sha256:" + hex.EncodeToString(sum[:])
@@ -886,7 +900,7 @@ func digestBytes(data []byte) string {
 func (g *generator) base(title, description, active, period, published, inputHash string, crumbs []crumb) pageBase {
 	return pageBase{
 		Title: title, Description: description, ActiveNav: active,
-		Indexable: g.indexable, OfficialOnly: g.opts.OfficialOnly,
+		Indexable: g.indexable, OfficialOnly: g.opts.OfficialOnly, Landing: g.opts.LandingURL,
 		Period: period, PublishedAt: published,
 		InputHash: inputHash, CSSURL: g.cssURL, ScriptURL: g.scriptURL, Breadcrumbs: crumbs,
 	}

@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.locale.AppLocaleHolder
@@ -24,6 +25,7 @@ import com.anpfuel.domain.routing.*
 @Composable
 fun NativeRouteSheet(viewModel:NativeRouteViewModel, onDismiss:()->Unit, onDownloads:()->Unit,
     onSavePlan: ((String, List<Pair<Double, Double>>, Set<String>) -> Unit)? = null, savedMessage: String? = null,
+    evTrip: EvTripViewModel = hiltViewModel(),
     guidance: @Composable (NativeRoutePreview, NativeRouteRequest) -> Unit = { _,_ -> }) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
     val context=LocalContext.current
@@ -56,6 +58,12 @@ fun NativeRouteSheet(viewModel:NativeRouteViewModel, onDismiss:()->Unit, onDownl
     DisposableEffect(viewModel) { onDispose { cancelPosition();viewModel.stopSearch() } }
     ModalBottomSheet(onDismissRequest={if(state.building) viewModel.cancel(); onDismiss()}) {
         Column(Modifier.fillMaxWidth().heightIn(max=620.dp).verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
+                TextButton(
+                    onClick={if(state.building) viewModel.cancel(); onDismiss()},
+                    modifier=Modifier.heightIn(min=48.dp).testTag("native-route-close"),
+                ) { Text(stringResource(R.string.action_dismiss)) }
+            }
             Text(stringResource(R.string.map22_title),style=MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.map22_approximate),style=MaterialTheme.typography.bodySmall)
             Text("${stringResource(R.string.map22_origin)}: ${state.origin?.label ?: stringResource(R.string.map22_unselected)}")
@@ -102,6 +110,20 @@ fun NativeRouteSheet(viewModel:NativeRouteViewModel, onDismiss:()->Unit, onDownl
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 Button(onClick={viewModel.build(java.util.Locale.forLanguageTag(AppLocaleHolder.localeTag).language)},enabled=!state.building,modifier=Modifier.testTag("native-route-build")) {Text(stringResource(R.string.map22_preview))}
                 OutlinedButton(onClick=viewModel::cancel) {Text(stringResource(R.string.map_cancel))}
+            }
+            val evOrigin = state.origin
+            val evDestination = state.destination
+            if (evOrigin != null && evDestination != null) {
+                EvTripSection(
+                    origin = evOrigin,
+                    waypoints = state.stops,
+                    destination = evDestination,
+                    avoid = state.avoid,
+                    savedMessage = savedMessage,
+                    onSavePlan = onSavePlan,
+                    onDownloads = onDownloads,
+                    viewModel = evTrip,
+                )
             }
             state.preview?.let { preview ->
                 Text(stringResource(R.string.map22_estimate,java.text.NumberFormat.getNumberInstance().format(preview.distanceMeters),preview.seconds),modifier=Modifier.testTag("native-route-preview"))

@@ -545,6 +545,19 @@ class MapDiscoveryViewModelTest {
                 allPlaces.drop(offset).take(limit)
             override suspend fun findPlace(placeId: String, profile: String, generation: Long) =
                 allPlaces.firstOrNull { it.placeId == placeId }
+            override suspend fun readPlacesInBounds(
+                profile: String,
+                generation: Long,
+                minLatitude: Double,
+                maxLatitude: Double,
+                minLongitude: Double,
+                maxLongitude: Double,
+                limit: Int,
+            ) = allPlaces.filter {
+                it.latitude?.toDoubleOrNull()?.let { lat -> lat in minLatitude..maxLatitude } == true &&
+                    it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
+            }.take(limit)
+
             override suspend fun countPlaces(generation: Long) = allPlaces.size.toLong()
             override suspend fun estimatedBytes(generation: Long) = 1024L
         }

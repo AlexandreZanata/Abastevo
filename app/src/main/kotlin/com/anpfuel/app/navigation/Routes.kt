@@ -14,6 +14,11 @@ object Routes {
     const val COMMUNITY = "community"
     const val MAP = "map"
     const val MAP_CITY = "map/city"
+    const val MAP_PLAN = "map/plan/{tripId}"
+    fun mapPlan(tripId: String): String {
+        require(java.util.UUID.fromString(tripId).toString() == tripId)
+        return "map/plan/$tripId"
+    }
     const val PROFILE = "profile"
     const val GAMES = "games"
     const val LOCATION = "location"

@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.domain.map.saved.SavedTrip
+import com.anpfuel.domain.routing.RoadAvoidance
+import com.anpfuel.domain.routing.RoutePoint
 import com.anpfuel.maps.engine.MapHost
 import com.anpfuel.maps.engine.MapOverlayLabels
 import com.anpfuel.maps.engine.MapOverlayList
@@ -71,6 +74,7 @@ fun MapScreen(
     onOpenSaved: () -> Unit = {},
     onReportStation: (stationId: String, fuel: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
+    initialPlan: SavedTrip? = null,
     onOpenCity: (() -> Unit)? = null,
     periodContent: @Composable (() -> Unit) -> Unit = {},
     viewModel: MapScreenViewModel = hiltViewModel(),
@@ -91,6 +95,17 @@ fun MapScreen(
     var showRoute by remember { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(showRoute) {
         if (showRoute) guidance.refreshResume()
+    }
+    androidx.compose.runtime.LaunchedEffect(initialPlan?.id, planner) {
+        val plan = initialPlan ?: return@LaunchedEffect
+        val activePlanner = planner ?: return@LaunchedEffect
+        activePlanner.restorePlan(
+            plan.points.map { point ->
+                RoutePoint(point.point.latitude, point.point.longitude, plan.name)
+            },
+            plan.avoid.mapNotNull { name -> RoadAvoidance.entries.firstOrNull { it.name == name } }.toSet(),
+        )
+        showRoute = true
     }
     val savedUi = saved?.ui?.collectAsStateWithLifecycle()?.value
     if (showRoute && planner != null) NativeRouteSheet(

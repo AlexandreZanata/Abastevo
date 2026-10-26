@@ -129,55 +129,22 @@ fun AnpNavGraph(
                 navDeepLink { uriPattern = "anpfuel://map" },
             ),
         ) {
-            val discovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel = hiltViewModel()
-            val sheet: com.anpfuel.app.ui.map.MapSheetViewModel = hiltViewModel()
-            com.anpfuel.app.ui.map.MapScreen(
-                onOpenCity = { navController.navigate(Routes.MAP_CITY) },
-                periodContent = { changed ->
-                    com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction(onWeekChanged = changed)
-                },
-                onOpenStation = { stationKey, fuel ->
-                    // Map origin keeps the MAP tab selected on return.
-                    try {
-                        if (fuel == "CHARGING") {
-                            navController.navigate(Routes.mapChargingCommunity(stationKey))
-                        } else {
-                            val product = com.anpfuel.domain.valueobject.FuelProduct.valueOf(fuel)
-                            navController.navigate(Routes.mapStationPage(stationKey, product))
-                        }
-                    } catch (_: Exception) {
-                        navController.navigate(Routes.STATIONS)
-                    }
-                },
-                onOpenSearch = { navController.navigate(Routes.STATIONS) },
-                onOpenDownloads = { navController.navigate("map/downloads") },
-                onOpenSaved = { navController.navigate("map/saved") },
-                onReportStation = { stationId, fuel ->
-                    try {
-                        if (fuel == "CHARGING") {
-                            navController.navigate(Routes.mapChargingCommunity(stationId))
-                        } else {
-                            require(com.anpfuel.domain.discovery.StationPageIdentity.parse(stationId) != null)
-                            val wireFuel = runCatching {
-                                com.anpfuel.data.mapper.WireFuelMapper.toWire(
-                                    com.anpfuel.domain.valueobject.FuelProduct.valueOf(fuel),
-                                )
-                            }.getOrDefault(fuel)
-                            navController.navigate(Routes.capture(stationId, wireFuel))
-                        }
-                    } catch (_: Exception) {
-                        navController.navigate(Routes.CAPTURE)
-                    }
-                },
-                discovery = discovery,
-                sheet = sheet,
-                planner = hiltViewModel(),
-                saved = hiltViewModel(),
-            )
+            MapDestination(navController)
+        }
+        composable(
+            route = Routes.MAP_PLAN,
+            arguments = listOf(navArgument("tripId") { type = NavType.StringType }),
+        ) { entry ->
+            val planViewModel: com.anpfuel.app.ui.map.MapPlanViewModel = hiltViewModel()
+            val trip by planViewModel.trip.collectAsStateWithLifecycle()
+            val tripId = entry.arguments?.getString("tripId").orEmpty()
+            androidx.compose.runtime.LaunchedEffect(tripId) { planViewModel.load(tripId) }
+            MapDestination(navController, trip)
         }
         composable("map/saved") {
             com.anpfuel.app.ui.map.SavedScreen(
                 onBack = { navController.popBackStack() },
+                onOpenTrip = { navController.navigate(Routes.mapPlan(it)) },
             )
         }
         composable(Routes.MAP_CITY) {
@@ -514,4 +481,57 @@ fun AnpNavGraph(
         }
     }
 }
+}
+
+@Composable
+private fun MapDestination(
+    navController: NavHostController,
+    initialPlan: com.anpfuel.domain.map.saved.SavedTrip? = null,
+) {
+        val discovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel = hiltViewModel()
+        val sheet: com.anpfuel.app.ui.map.MapSheetViewModel = hiltViewModel()
+        com.anpfuel.app.ui.map.MapScreen(
+        initialPlan = initialPlan,
+            onOpenCity = { navController.navigate(Routes.MAP_CITY) },
+            periodContent = { changed ->
+                com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction(onWeekChanged = changed)
+            },
+            onOpenStation = { stationKey, fuel ->
+                // Map origin keeps the MAP tab selected on return.
+                try {
+                    if (fuel == "CHARGING") {
+                        navController.navigate(Routes.mapChargingCommunity(stationKey))
+                    } else {
+                        val product = com.anpfuel.domain.valueobject.FuelProduct.valueOf(fuel)
+                        navController.navigate(Routes.mapStationPage(stationKey, product))
+                    }
+                } catch (_: Exception) {
+                    navController.navigate(Routes.STATIONS)
+                }
+            },
+            onOpenSearch = { navController.navigate(Routes.STATIONS) },
+            onOpenDownloads = { navController.navigate("map/downloads") },
+            onOpenSaved = { navController.navigate("map/saved") },
+            onReportStation = { stationId, fuel ->
+                try {
+                    if (fuel == "CHARGING") {
+                        navController.navigate(Routes.mapChargingCommunity(stationId))
+                    } else {
+                        require(com.anpfuel.domain.discovery.StationPageIdentity.parse(stationId) != null)
+                        val wireFuel = runCatching {
+                            com.anpfuel.data.mapper.WireFuelMapper.toWire(
+                                com.anpfuel.domain.valueobject.FuelProduct.valueOf(fuel),
+                            )
+                        }.getOrDefault(fuel)
+                        navController.navigate(Routes.capture(stationId, wireFuel))
+                    }
+                } catch (_: Exception) {
+                    navController.navigate(Routes.CAPTURE)
+                }
+            },
+            discovery = discovery,
+            sheet = sheet,
+            planner = hiltViewModel(),
+            saved = hiltViewModel(),
+        )
 }

@@ -1,7 +1,7 @@
 {
   "generator": "built-in image_gen",
   "generatedDate": "2026-10-12",
-  "role": "Six unique-color action/persona scenes and four reusable flat-style decorations; hero landscape archived and no longer emitted",
+  "role": "Six unique-color action/persona scenes and four reusable flat-style decorations; hero landscape archived and no longer emitted; owner-supplied open-data scene added 2026-10-26",
   "screen": "Unmodified authentic explore-light derivatives; app provenance retained",
   "optimization": "ImageMagick resize and WebP method 6 only; action scenes quality 82, hero/reusable assets quality 80; original alpha retained. 4K export is a Lanczos resize, not native generation.",
   "sources": [
@@ -71,6 +71,13 @@
       "master": "docs/assets/landing/illustrated-20261012/masters/car-native.png",
       "nativeDimensions": "1536x1024",
       "sha256": "06c0780347c457cfe87f6f743a8ae4c9dfe24d5b3984a9a299e968ca1545b16f"
+    },
+    {
+      "name": "open-data",
+      "master": "docs/assets/landing/open-data-20261026/open-data.png",
+      "sha256": "7026b3dbc42c725815ec8cb44262490e3dc46788ee5d4bc6718fb1383ebfda5f",
+      "accent": "#E0A100",
+      "nativeDimensions": "1448x1086"
     }
   ],
   "outputs": [
@@ -213,6 +220,20 @@
       "bytes": 20184,
       "width": 640,
       "role": "car"
+    },
+    {
+      "file": "open-data-scene-320w.88ac7060.webp",
+      "sha256": "88ac7060484fec832aaf3e14ea47fc7e2388ac8a8ef3e0e0e4f839683721906d",
+      "bytes": 12556,
+      "width": 320,
+      "role": "open-data"
+    },
+    {
+      "file": "open-data-scene-640w.107a308d.webp",
+      "sha256": "107a308d094fc4dcf68070a2121cc89e65477f5ede2ea9642468dc760422f9e8",
+      "bytes": 30160,
+      "width": 640,
+      "role": "open-data"
     }
   ],
   "export4k": {

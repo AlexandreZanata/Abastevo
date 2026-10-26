@@ -47,6 +47,21 @@ class NativeRouteViewModelTest {
         vm.build("en");vm.manual(RouteInputSlot.ORIGIN,"NaN","0","bad");vm.point(RouteInputSlot.ORIGIN,start);vm.point(RouteInputSlot.DESTINATION,start);vm.build("en")
         verify(exactly=0){engine.buildRoute(any(),any())};assertNull(vm.ui.value.preview)
     }
+    @Test fun `saved plan restores points and avoid without a native route`()=runTest {
+        val engine=mockk<MapEngine>(relaxed=true)
+        val saved=SavedStateHandle()
+        val vm=NativeRouteViewModel(engine,saved)
+        val via=RoutePoint(-25.425,-49.265,"saved via")
+        vm.restorePlan(listOf(start,via,end),setOf(RoadAvoidance.TOLL))
+        assertEquals(start,vm.ui.value.origin)
+        assertEquals(end,vm.ui.value.destination)
+        assertEquals(listOf(via),vm.ui.value.stops)
+        assertEquals(setOf(RoadAvoidance.TOLL),vm.ui.value.avoid)
+        val restored=NativeRouteViewModel(engine,saved)
+        assertEquals(start,restored.ui.value.origin)
+        assertEquals(listOf(via),restored.ui.value.stops)
+        verify(exactly=0){engine.buildRoute(any(),any())}
+    }
     @Test fun `timeout cancels native work and configuration restores only planning inputs`()=runTest {
         val engine=mockk<MapEngine>(relaxed=true);every{engine.buildRoute(any(),any())}returns true
         val saved=SavedStateHandle();val vm=NativeRouteViewModel(engine,saved)

@@ -304,3 +304,12 @@ referenced.
   the selected event-level official artifact plus the synthetic price fixture.
 - No API, database, source or shared edge is contacted by the publisher or the
   rehearsal.
+
+## Shared landing header and footer
+
+`portalgen --landing-url <origin>` (scheme and host only) renders the same top
+bar and footer as the landing home, with absolute links back to landing pages
+(`/como-usar/`, `/guias/`, `/privacidade/`, `/termos/`, `/excluir-conta/`).
+Without it the artifact stays fully self-contained and shows only portal links.
+Brand fonts and logo are loaded from the landing's `/assets/` on a shared
+origin; a portal served alone falls back to system fonts.
