@@ -1218,4 +1218,7 @@
     <string name="ev_invalid_target">Saisissez un objectif de charge supérieur à la réserve et jusqu’à 100.</string>
     <string name="ev_invalid_phev_share">Saisissez la part électrique de 1 à 100.</string>
     <string name="map25_open">Ouvrir</string>
+    <string name="map_filter_source">Source des prix</string>
+    <string name="map_controls_expand">Afficher les détails de la carte</string>
+    <string name="map_controls_collapse">Masquer les détails de la carte</string>
 </resources>

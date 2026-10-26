@@ -2,8 +2,6 @@ package com.anpfuel.app.ui.map
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,9 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -73,7 +69,6 @@ private fun RealMapHost(
  * canonical UUIDs with REVIEWED coordinates; unknown/city-centroid and
  * coordinate-less stations stay list-only and remain selectable by UUID.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MapScreen(
     onOpenStation: (stationKey: String, fuel: String) -> Unit,
@@ -129,6 +124,7 @@ fun MapScreen(
         GuidanceControls(preview = preview, request = request, viewModel = guidance)
     }
     var showFilters by remember { mutableStateOf(false) }
+    var showFilterLocation by remember { mutableStateOf(false) }
     var showList by remember { mutableStateOf(false) }
     var routeError by remember(discUi?.selectedUuid) { mutableStateOf(false) }
 
@@ -200,9 +196,6 @@ fun MapScreen(
         }
     }
 
-    val anpLabel = stringResource(R.string.map_source_anp)
-    val communityLabel = stringResource(R.string.map_source_community)
-    val searchHintLabel = stringResource(R.string.map_search_hint)
 
     Box(modifier.fillMaxSize()) {
         mapContent(Modifier.fillMaxSize())
@@ -213,160 +206,25 @@ fun MapScreen(
                     .fillMaxSize()
                     .statusBarsPadding(),
             ) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                    tonalElevation = 2.dp,
-                ) {
-                    Column(
-                        modifier = Modifier.padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(
-                        selected = ui.source == MapPriceSource.ANP,
-                        onClick = { viewModel.selectSource(MapPriceSource.ANP) },
-                        label = { Text(anpLabel) },
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .testTag("map-source-anp")
-                            .semantics { contentDescription = anpLabel },
-                    )
-                    FilterChip(
-                        selected = ui.source == MapPriceSource.COMMUNITY,
-                        onClick = { viewModel.selectSource(MapPriceSource.COMMUNITY) },
-                        label = { Text(communityLabel) },
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .testTag("map-source-community")
-                            .semantics { contentDescription = communityLabel },
-                    )
-                    if (planner != null) TextButton(onClick = { showRoute = true }, modifier = Modifier.heightIn(min = 48.dp).testTag("native-route-open")) { Text(stringResource(R.string.map22_title)) }
-                    if (discUi != null) {
-                        FilterChip(
-                            selected = false,
-                            onClick = { onOpenCity?.invoke() ?: run { showFilters = true } },
-                            label = { Text(discUi.municipalityName) },
-                            modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .testTag("map-city-chip"),
-                        )
-                    }
-                }
-
-                if (ui.source == MapPriceSource.ANP) {
-                    periodContent { viewModel.refreshAvailability() }
-                }
-                if (discUi?.cityLocationUnknown == true) {
-                    Text(
-                        "${discUi.municipalityName}: ${stringResource(R.string.map_location_unknown)}",
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                    )
-                }
-
-                // MAP-20 search: city/name/address with bounded debounced queries.
-                var query by remember { mutableStateOf("") }
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    androidx.compose.material3.OutlinedTextField(
-                        value = query,
-                        onValueChange = { newValue ->
-                            query = newValue
-                            if (newValue.trim().length < 2 && !discUi?.searchQuery.isNullOrEmpty()) {
-                                discovery?.onSearch(discUi?.municipalityCode ?: "4106902", newValue)
-                            }
-                        },
-                        placeholder = { Text(searchHintLabel) },
-                        singleLine = true,
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 48.dp)
-                            .semantics { contentDescription = searchHintLabel }
-                            .testTag("map-search-field"),
-                    )
-                    TextButton(
-                        onClick = {
-                            discovery?.onSearch(discUi?.municipalityCode ?: "4106902", query)
-                        },
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .testTag("map-search-submit"),
-                    ) {
-                        Text(
-                            stringResource(R.string.map_search),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                }
-
-                if (discUi?.offlineCached == true) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
-                        tonalElevation = 1.dp,
-                        shape = MaterialTheme.shapes.small,
-                    ) {
-                        Text(
-                            stringResource(R.string.server_station_cached),
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                .testTag("map-offline-cache-banner"),
-                        )
-                    }
-                }
-                        if (ui.loading) {
-                            androidx.compose.material3.LinearProgressIndicator(
-                                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-                            )
+                MapControlsCard(
+                    ui = ui,
+                    municipalityName = discUi?.municipalityName,
+                    cityLocationUnknown = discUi?.cityLocationUnknown == true,
+                    offlineCached = discUi?.offlineCached == true,
+                    onOpenCity = { onOpenCity?.invoke() ?: run { showFilters = true } },
+                    onSelectSource = viewModel::selectSource,
+                    onSearch = { query -> discovery?.onSearch(discUi?.municipalityCode ?: "4106902", query) },
+                    onClearSearch = {
+                        if (!discUi?.searchQuery.isNullOrEmpty()) {
+                            discovery?.onSearch(discUi?.municipalityCode ?: "4106902", "")
                         }
-                        if (ui.error != null) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(
-                                    stringResource(R.string.map_unavailable),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                TextButton(
-                                    onClick = { viewModel.retry() },
-                                    modifier = Modifier.heightIn(min = 48.dp),
-                                ) { Text(stringResource(R.string.map_retry)) }
-                            }
-                        }
-                        if (ui.noPackage) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    stringResource(R.string.map_no_package),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Button(
-                                    onClick = onOpenDownloads,
-                                    modifier = Modifier.heightIn(min = 48.dp),
-                                ) { Text(stringResource(R.string.map_download)) }
-                            }
-                        }
-                    }
-                }
+                    },
+                    onRetry = viewModel::retry,
+                    onOpenDownloads = onOpenDownloads,
+                    onOpenRoute = if (planner != null) { { showRoute = true } } else null,
+                    periodContent = { periodContent { viewModel.refreshAvailability() } },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                )
 
                 Spacer(Modifier.weight(1f))
 
@@ -378,7 +236,7 @@ fun MapScreen(
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
                     tonalElevation = 2.dp,
                 ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
+                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
                         Text(
                             stringResource(R.string.map_attribution),
                             style = MaterialTheme.typography.labelSmall,
@@ -478,8 +336,8 @@ fun MapScreen(
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     TextButton(
                         onClick = { showFilters = true },
@@ -534,7 +392,7 @@ fun MapScreen(
             source = ui.source,
             showFuel = discUi?.showFuel ?: true,
             showCharging = discUi?.showCharging ?: true,
-            onSelectSource = { viewModel.selectSource(it); showFilters = false },
+            onSelectSource = viewModel::selectSource,
             onServiceFilter = { f, c -> discovery?.onServiceFilter(f, c) },
             onDismiss = { showFilters = false },
             selectedFuelProduct = ui.selectedFuelProduct,
@@ -542,11 +400,8 @@ fun MapScreen(
             selectedCurrent = discUi?.current,
             selectedAccess = discUi?.access,
             selectedMinPowerKw = discUi?.minPowerKw,
-            selectedCityCode = discUi?.municipalityCode ?: "4106902",
-            availableCities = discUi?.availableCities ?: DEFAULT_MAP_CITIES,
-            onSelectCity = { city ->
-                discovery?.onSelectCity(city.ibgeCode, city.name)
-            },
+            cityLabel = discUi?.municipalityName.orEmpty(),
+            onOpenCity = { showFilterLocation = true },
             onApplyExtendedFilters = { f, c, product, conn, cur, acc, power ->
                 viewModel.selectFuelProduct(product)
                 discovery?.onApplyFilters(
@@ -561,6 +416,26 @@ fun MapScreen(
                 )
             },
         )
+    }
+
+    if (showFilterLocation) {
+        // Reuse the actual location page/catalog while keeping filter drafts composed.
+        val locationPicker: com.anpfuel.app.ui.location.LocationPickerViewModel =
+            hiltViewModel(key = "map-filter-location")
+        LaunchedEffect(locationPicker) { locationPicker.loadStates() }
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showFilterLocation = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            com.anpfuel.app.ui.location.LocationPickerScreen(
+                onNavigateBack = { showFilterLocation = false },
+                onNavigateToHome = {
+                    discovery?.refreshPreferredMunicipality()
+                    showFilterLocation = false
+                },
+                viewModel = locationPicker,
+            )
+        }
     }
 
     // MAP-19 sheet with source truth and real actions.

@@ -1,5 +1,16 @@
 # Current execution state
 
+- Map UI refinement 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from remote
+  dev parent `6a689e58`; delivery target [PR #154](https://github.com/AlexandreZanata/Abastevo/pull/154),
+  `dev` -> `main`. Compact expandable map controls; grouped filter sheet with all
+  fuel icons and pinned Apply/Cancel; actual state/municipality location search
+  preserves filter drafts. App JVM 92/92, engine 37/37 (cached), final APKs,
+  phone 9/9 (including dark/200% font), lint (zero errors), diff and secret review
+  PASS. [Evidence/screenshots/tested fingerprints](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md).
+  Final debug APK installed without clearing data. Original occupied checkout/dev
+  preserved; no staging change or merge. New-head CI remains pending publication;
+  next: normal push/update of PR #154, leave open for current-head CI/review.
+
 - Map UI isolation 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/map-ui` (parent `fe6ca851`). Native map moved to the shell and kept
   alive across tabs; no engine/surface reinit on return; tab transitions are

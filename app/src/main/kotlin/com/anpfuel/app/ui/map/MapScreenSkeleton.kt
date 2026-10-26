@@ -66,7 +66,7 @@ fun MapScreenSkeleton(modifier: Modifier = Modifier) {
             Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(8.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -76,12 +76,11 @@ fun MapScreenSkeleton(modifier: Modifier = Modifier) {
             ) {
                 SkeletonGroup(Modifier.padding(12.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SkeletonLine(modifier = Modifier.width(74.dp), height = 36.dp)
-                        SkeletonLine(modifier = Modifier.width(94.dp), height = 36.dp)
-                        SkeletonLine(modifier = Modifier.width(82.dp), height = 36.dp)
+                        SkeletonLine(modifier = Modifier.weight(1f), height = 24.dp)
+                        SkeletonLine(modifier = Modifier.width(72.dp), height = 24.dp)
                     }
-                    SkeletonLine(width = 196.dp, height = 40.dp)
-                    SkeletonLine(height = 48.dp)
+                    SkeletonLine(height = 56.dp)
+                    SkeletonLine(width = 132.dp, height = 12.dp)
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -93,7 +92,6 @@ fun MapScreenSkeleton(modifier: Modifier = Modifier) {
             ) {
                 SkeletonGroup(Modifier.padding(12.dp)) {
                     SkeletonLine(width = 132.dp, height = 20.dp)
-                    SkeletonLine(height = 36.dp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         SkeletonButton(Modifier.weight(1f))
                         SkeletonButton(Modifier.weight(1f))
