@@ -70,8 +70,7 @@ Other namespaces were snapshotted before and after; Sorrimobi health stayed
 
 - Measured, not changed: registry `load_publish` stages one row per round
   trip (164 s/day, inside its 18 min bound).
-- Public API `/v1/stations/{id}` still returns the 7 CPF-shaped legal names
-  (Directory read projection; separate task).
+- ~~Public API returns 7 CPF-shaped legal names~~ fixed below (B-BR-017).
 - SP search shard stays 461 KB gzip; reducing it needs a shard redesign.
 - Indexable national sitemaps would exceed 50,000 URLs (production only).
 - Nearby still returns no pins: national coordinates belong to the separate
@@ -79,3 +78,29 @@ Other namespaces were snapshotted before and after; Sorrimobi health stayed
 - Rollback: restore the private nginx/deployment/cronjob backups, delete
   `abastevo-temp-web`, restore the DB dump only if data must be reverted;
   migrations untouched.
+
+## Addendum — search v2, CPF in public reads, incident (same day)
+
+Owner request: smart search without UF/city selects, national search by
+name/CNPJ, search on fiscalizacao and a fuel/order explorer on precos, plus
+the CPF fix in the public API. Delivered on `codex/portal-smart-search`:
+
+- B-BR-017 `kernel.PublicStationName` on every public read (Directory
+  detail/search/by-CNPJ/official anchors, community feed, station profile,
+  quality) and the export; PostGIS test pins detail, by-CNPJ and search.
+- Search v2 files (index with IBGE city names, prefix shards, city, fuel,
+  fiscal) and one combobox client; city names replace "Município 2100055"
+  on every portal page. Real build: largest prefix shard 92 KB gzip,
+  gasoline 230 KB, index 88 KB; local browser checks of the three pages.
+- Refresh receipts carry `portalgen.GenerationKey`, so generator, asset or
+  search-script changes regenerate even with unchanged data.
+
+Incident (staging only): the search-v2 images came from a branch rebased on
+`main` bbd96568, which added migration 000132; the images were rolled out
+before migrating. With `maxSurge=0` the old pod stopped and the new one
+refused the older schema: API unavailable ~6 min until `rollout undo`.
+Recovery: verified `pg_dump` (`db-before-000132.dump`), migration Job
+`applied [000132]` (additive), immediate roll forward (old image unready
+~1 min after the migration). Lesson for automated delivery: migrate (and
+check schema compatibility) before rolling app images, keep a surge pod
+or a readiness gate, and roll back automatically on failed readiness.
