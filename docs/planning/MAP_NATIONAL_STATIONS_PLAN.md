@@ -186,6 +186,11 @@ RFB address overriding a stale registry address only when CNPJ equal.
 
 ### B3 — Apply (after D1/D2) and coverage report
 
+File-only coverage and apply-plan preparation is implemented in
+`prepare_national_coverage`; see
+[MAP_NATIONAL_APPLY_GATE](MAP_NATIONAL_APPLY_GATE.md). The actual database apply
+remains gated by D1/D2 and explicit authorization.
+
 Same backup/dry-run/apply/smoke/rollback as A3. Publish `coverage.json`:
 stations per tier per UF and the remaining L5 list for community
 contribution (existing contribution flows, no GPS requirement).

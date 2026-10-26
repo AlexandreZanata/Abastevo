@@ -107,6 +107,21 @@ not invent an official limit where the publisher does not state one.
   L4 candidates and 43,002 L5 decisions in 10.12 s / 679,240 KiB peak RSS;
   396/424 addresses came from RFB. Deterministic reruns were byte-identical.
 
+## Coverage and apply preparation (`prepare_national_coverage`)
+
+- File-only: no database, network, clock or deployment. It reads the A2/B2
+  outputs and the prepared registry; 256 MiB per file, 200,000 decisions and
+  10,000 combined map assertions.
+- It reconciles one final tier per registry station, requires B2 to cover every
+  A2 L5 station and forbids B2 from publishing an A2 non-L5 station. It builds
+  one combined L2 corpus and one `abastevo.map-prepared-v1` envelope; the
+  envelope must pass the Go `mapcontract` validation before any staging load.
+- The apply plan contains `station-review`/`map-load` commands with
+  `<STAGING_DSN>` placeholders only. No credential is read, logged or stored.
+- 2026-10-26 sample: 45,688 stations, 926 published (2.03%), 1,760 candidates,
+  43,002 no point; 361 L1 reviews and 565 L2 assertions ready; envelope valid.
+  L3 1,574 (D1) and L4 186 (D2) remain blocked.
+
 ## Stop conditions for any worker
 
 Stop and report, do not raise limits or retry blindly, when:

@@ -1,5 +1,15 @@
 # Current execution state
 
+- MAP national stations Phase 3 coverage/apply prep 2026-10-26: LOCAL_DONE /
+  INTEGRATION_PENDING. New `prepare_national_coverage` reconciles A2/B2 into
+  one final tier per station, writes per-UF coverage, merges L2 assertions and
+  builds a `map-load` prepared envelope; `station-review`/`map-load` commands
+  are emitted with `<STAGING_DSN>` placeholders. Sample: 45,688 stations, 926
+  published (2.03%), 1,760 candidates, 43,002 no point; 361 reviews and 565 map
+  assertions ready; envelope validated by Go `mapcontract`. L3 1,574 (D1) and
+  L4 186 (D2) remain blocked; A1.a remains blocked by 429. No DB/deploy/app
+  change. Apply gate documented in
+  [MAP_NATIONAL_APPLY_GATE](MAP_NATIONAL_APPLY_GATE.md).
 - MAP national stations Phase 2 B2 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   New `prepare_open_geocode` (`open_geocode.rs` + bin) consumes A2 L5 decisions,
   registry, OSM, CNEFE and RFB address extracts. It tries OSM CNPJ/address L2,
@@ -11,7 +21,8 @@
   (Londrina/PR, Cuiaba/MT, Ribeirao Preto/SP) with 985,846 CNEFE points and 424
   RFB addresses produced 186 L4 candidates and 43,002 L5 in 10.12 s / 679,240
   KiB; 396/424 addresses came from RFB; deterministic reruns. No DB/deploy/app
-  change; B3 and Phase 3 not started.
+  change. At B2 closure B3/Phase 3 had not started; coverage/apply prep is
+  recorded above.
 - MAP national stations Phase 2 A2 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   Branch `codex/map-national-stations-plan`; new `prepare_national_matches`
   (`national_match.rs` + bin) joins ANP API pages, OSM references and prepared
