@@ -66,8 +66,12 @@ object DatabaseModule {
                 AnpFuelDatabaseMigrations.MIGRATION_25_26,
                 AnpFuelDatabaseMigrations.MIGRATION_26_27,
                 AnpFuelDatabaseMigrations.MIGRATION_27_28,
+                AnpFuelDatabaseMigrations.MIGRATION_28_29,
             )
             .build()
+
+    @Provides
+    fun provideDriverLocalDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.DriverLocalDao = database.driverLocalDao()
 
     @Provides
     fun provideSurveyWeekDao(database: AnpFuelDatabase): SurveyWeekDao =
