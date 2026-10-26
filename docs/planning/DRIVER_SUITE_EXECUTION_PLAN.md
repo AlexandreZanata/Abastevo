@@ -1,9 +1,9 @@
 # Driver suite — full Android execution plan
 
-Date: 2026-10-26. Status: PLANNED / IMPLEMENTATION_NOT_STARTED_BY_THIS_PLAN.
+Date: 2026-10-26. Execution: DRV-00–02 LOCAL_DONE / INTEGRATION_PENDING; DRV-03–35 PLANNED.
 36 bounded phases; 108 uniquely identified implementation tasks. Execution status is recorded per phase below; unstarted tasks remain PLANNED.
 Canonical behavior: [driver contract](../product/DRIVER_SUITE_CONTRACT.md).
-User decision: complete professional suite stays Premium. This planning change does not implement, charge, deploy, push, open a PR or merge anything.
+User decision: complete professional suite stays Premium. The original planning commit did not implement runtime behavior. Later scoped foundation implementation is recorded below; it does not deliver the complete suite or authorize sale/deploy/publication.
 
 ## 1. Baseline and actual gap
 
@@ -88,7 +88,7 @@ Owners/targets to verify: `existing ledger/metrics; versioned fixtures; repair s
 
 - **DRV-02-T01 — Classify legacy provenance safely.** Delivery and mandatory acceptance: Separate proven metres, proven UI-km error and ambiguous rows; preserve originals and block misleading derived results.
 - **DRV-02-T02 — Design an owner-reviewed repair.** Delivery and mandatory acceptance: Preview/dry-run, reversible versioned correction, exact retry, cancellation and concurrent edits; no blanket multiplication.
-- **DRV-02-T03 — Freeze cross-language worked examples.** Delivery and mandatory acceptance: Execute unchanged financial-v1 plus new independent unit/earnings/time vectors; no rewritten golden to hide a defect.
+- **DRV-02-T03 — Freeze cross-language worked examples.** Delivery and mandatory acceptance: Execute unchanged financial-v1 plus new independent unit/earnings/time vectors; no rewritten golden to hide a defect. Current unit/consumption vectors use real runtime consumers; future earnings/time vectors use explicitly test-only manual references in Go and Kotlin until their implementation phases.
 
 Exit: All three task acceptance clauses pass with appropriate immediate risk checks, actual storage/HTTP/native execution where affected, and documented recovery. No compile-only closure.
 

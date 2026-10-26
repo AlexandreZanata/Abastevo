@@ -1,5 +1,16 @@
 # Current execution state
 
+- DRV-02 completion review 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING at
+  behavior `29f6c4fe`, manual oracle `566c3516`. [Evidence](../backend/evidence/driver-suite/DRV-02.md).
+  Preserved owner-reviewed legacy repair; fixed post-read owner/login/consent
+  races, revision drift, gap/reset transport and malformed proof coercion.
+  Final application 479 + affected data 25/app 30 tests, build/lint PASS;
+  actual Room 8/8, Compose 5/5 on own API35/16KB emulator, then shut down.
+  Added 15 manual gain/time reference rows executed in Go/Kotlin; runtime
+  earnings/shifts remain future work. Original financial goldens unchanged.
+  Foundation gate PASS locally; DRV-03–35 PLANNED. Isolated maintained dev;
+  other branches/checkouts preserved, no push/PR/merge/wiki/deploy.
+
 - DRV-02 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent d4223b5c.
   [Evidence](../backend/evidence/driver-suite/DRV-02.md): legacy odometer units
   are UNVERIFIED until an owner-reviewed, CAS-fenced, receipt-backed choice;

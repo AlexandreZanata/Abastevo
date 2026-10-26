@@ -3907,3 +3907,10 @@ real backend/mobile/privacy/performance/field acceptance and protected delivery.
 No runtime, sale, platform API, device, VPS, public release or integration was
 executed by creating this plan. Existing PAY/ESP/MAP obligations stay with their
 owning fronts; no raw GPS cloud inclusion or passenger data is introduced.
+
+Driver foundation execution checkpoint (2026-10-26): DRV-00–02 are
+LOCAL_DONE / INTEGRATION_PENDING; [DRV-02 acceptance](docs/backend/evidence/driver-suite/DRV-02.md)
+records real legacy review, unchanged financial corpus and explicit test-only
+earnings/time reference checks. Full driver earnings/shifts/GPS and DRV-03–35
+remain PLANNED; local foundation acceptance is not suite delivery or production
+certification. Other construction fronts are preserved.
