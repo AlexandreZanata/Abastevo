@@ -1,5 +1,14 @@
 # Current execution state
 
+- DRV-22..25 2026-10-26: IN_PROGRESS / local slice, parent 3fd99ee9,
+  behavior 757eb61f. [Evidence](../backend/evidence/driver-suite/DRV-22-25.md).
+  Room schema 32 adds reconciliation, goals and maintenance; work screen adds
+  basis/odometer/GPS/paid km reconciliation, local result/per-km, daily/weekly
+  goals and km/day maintenance plans with service advance. JVM calculations,
+  Room 31→32 migration on API35, app/data compile and static guards PASS.
+  Break-even, cost-window coverage, reserve/vehicle reset, Compose/accessibility
+  and field GPS/battery proof remain open; no five-phase acceptance.
+
 - DRV-21 2026-10-26: IN_PROGRESS / explicit FGS slice, behavior 313e5c63.
   [Evidence](../backend/evidence/driver-suite/DRV-18-22.md). Added
   DriverGpsService (visible notification, GPS provider/2 s, explicit start/stop,

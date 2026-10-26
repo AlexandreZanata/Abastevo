@@ -351,7 +351,7 @@ Evidence: `docs/backend/evidence/driver-suite/DRV-21.md`. A later relevant chang
 Gate: **DRIVER_LOCATION_GATE**; apply the scope/disposition rules in section 6.
 ### DRV-22 — Deliver distance reconciliation and financial coverage
 
-Status: PLANNED. Dependency: DRV-21 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: IN_PROGRESS / local reconciliation slice; coverage acceptance pending. Evidence: [DRV-22..25](../backend/evidence/driver-suite/DRV-22-25.md). Dependency: DRV-21 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `app distance review; metrics/ledger observed windows`. Rules: B-BR-DRV-08, B-BR-DRV-11, B-BR-DRV-12, B-BR-DRV-15.
 
@@ -392,7 +392,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-24.md`. A later relevant change invalidates affected evidence.
 ### DRV-25 — Deliver maintenance and vehicle continuity
 
-Status: PLANNED. Dependency: DRV-24 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: IN_PROGRESS / local maintenance slice; continuity acceptance pending. Evidence: [DRV-22..25](../backend/evidence/driver-suite/DRV-22-25.md). Dependency: DRV-24 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `driver maintenance; existing expenses/vehicle segments`. Rules: B-BR-DRV-13, B-BR-DRV-14, B-BR-DRV-16.
 
