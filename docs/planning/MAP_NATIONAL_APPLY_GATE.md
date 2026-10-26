@@ -25,6 +25,16 @@ deployment or app was changed. See
   - `/opt/abastevo-temp/map-national-20261026/work/phase2-open-geocode-20261026/`
   - `/opt/abastevo-temp/map-national-20261026/work/phase3-coverage-20261026/`
 
+## Static overlay served (2026-10-26)
+
+- `backend/cmd/mapoverlay` built release
+  `phase3-coverage-sample-20261026-5e8d5a74` from the active generation and the
+  latest official week: 565 assertions, 19 UFs, 102 with prices.
+- `/dados/mapa/current/manifest.json` and per-UF files are served by the staging
+  web tier with immutable caching; the staging edge returned `200`.
+- See [MAP_NATIONAL_STATIC_OVERLAY_RECEIPT](MAP_NATIONAL_STATIC_OVERLAY_RECEIPT.md)
+  and the [operator guide](../operator/map-static-overlay.md).
+
 ## Still blocked
 
 - 1,574 L3 `ANP` points need owner decision D1.

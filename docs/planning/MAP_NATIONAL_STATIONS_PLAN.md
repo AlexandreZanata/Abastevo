@@ -201,7 +201,9 @@ contribution (existing contribution flows, no GPS requirement).
 - Add a static, release-addressed per-UF overlay (`/dados/mapa/<release>/<UF>.json`
   or PMTiles) built after each import, served by the staging web tier with
   `immutable` caching (same pattern as portal search shards), so the CDN
-  absorbs map traffic and the DB only answers price taps.
+  absorbs map traffic and the DB only answers price taps. Implemented for
+  staging in [map-static-overlay](../operator/map-static-overlay.md); receipt:
+  [MAP_NATIONAL_STATIC_OVERLAY_RECEIPT](MAP_NATIONAL_STATIC_OVERLAY_RECEIPT.md).
 - Price on tap: `/v1/stations/{id}/prices` (official week + date + unit +
   condition), absence explicit. Optional: embed the latest official week's
   prices per station in the UF overlay (~20k stations x 5 fuels) to make taps

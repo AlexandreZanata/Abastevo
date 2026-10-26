@@ -1,5 +1,18 @@
 # Current execution state
 
+- MAP national stations Phase 4 static overlay 2026-10-26: SERVED on staging /
+  INTEGRATION_PENDING. New `mapoverlay` builds a release-addressed per-UF JSON
+  overlay from the active generation and the latest official week. Release
+  `phase3-coverage-sample-20261026-5e8d5a74`: 565 assertions, 19 UFs, 102 with
+  prices (week 2026-10-18..2026-10-24); manifest SHA-256 `1856ce2c...`. The
+  staging web tier serves `/dados/mapa/*` with immutable caching; the edge
+  returned 200 for `current/manifest.json` and `current/PR.json`. The generator
+  is read-only against PostgreSQL; no production change. The first web rollout
+  hit the namespace CPU quota; deleting the temporary overlay pod freed it and
+  the rollout completed. Receipt:
+  [MAP_NATIONAL_STATIC_OVERLAY_RECEIPT](MAP_NATIONAL_STATIC_OVERLAY_RECEIPT.md);
+  operator guide: [map-static-overlay](../operator/map-static-overlay.md). B3
+  (D2), D1 and A1.a remain blocked.
 - MAP national stations Phase 3 A3 staging apply 2026-10-26: APPLIED on staging
   only / B3 BLOCKED by D2. Namespace `abastevo-temp` on `sorrimobi-vps`; no
   production change. `station-review` applied 361 L1 reviews, 0 failed
