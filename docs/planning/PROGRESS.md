@@ -1,5 +1,22 @@
 # Current execution state
 
+- DRV-11 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 568ae322,
+  behavior 470e1d26. [Evidence](../backend/evidence/driver-suite/DRV-11.md).
+  Revisioned DAY/WEEK/MONTH/CUSTOM projections, exact cost/distance coverage,
+  stale report refusal, private snapshots, signed HTTP earnings/report routes,
+  owner cursors, no-store, feature flag and bounded worker cleanup (migration
+  000137). Real PostGIS/HTTP/worker/application/domain checks PASS under -race;
+  full backend unit, vet, staticcheck, sqlc, OpenAPI lint and golden vectors
+  PASS. No mobile/provider/staging acceptance. No push/PR/merge.
+
+- DRV-12 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 470e1d26,
+  behavior 69bdb374. [Evidence](../backend/evidence/driver-suite/DRV-12.md).
+  Real signed HTTP chain: earning save/replay/erase, shift start, cost save,
+  report build/get, correction/stale, foreign-owner denial; snapshot restart,
+  soft erasure and expiry cleanup. 51 top-level PASS under -race, full backend
+  unit/build/vet/staticcheck/sqlc/gofmt/OpenAPI PASS. Command HTTP is limited
+  to earning/shift/cost and erasure; no provider/staging/mobile claim.
+
 - DRV-10 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent fd176a8a
   behavior 0c98c0b4. [Evidence](../backend/evidence/driver-suite/DRV-10.md).
   Signed command service, transactional professional capability hook, versioned

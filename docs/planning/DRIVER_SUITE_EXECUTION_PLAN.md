@@ -202,7 +202,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-10.md`. A later relevant change invalidates affected evidence.
 ### DRV-11 — Expose versioned reports and private HTTP
 
-Status: PLANNED. Dependency: DRV-10 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-11](../backend/evidence/driver-suite/DRV-11.md). Dependency: DRV-10 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `backend metrics/driver/http; OpenAPI; API composition`. Rules: B-BR-DRV-12, B-BR-DRV-15, B-BR-DRV-17.
 
@@ -215,7 +215,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-11.md`. A later relevant change invalidates affected evidence.
 ### DRV-12 — Accept the real backend chain
 
-Status: PLANNED. Dependency: DRV-11 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-12](../backend/evidence/driver-suite/DRV-12.md). Dependency: DRV-11 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `Go process/HTTP/PostGIS; cross-language fixtures`. Rules: B-BR-DRV-01, B-BR-DRV-17, B-BR-DRV-18, B-BR-DRV-21.
 

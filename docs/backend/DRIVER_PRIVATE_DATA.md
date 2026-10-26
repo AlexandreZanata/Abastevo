@@ -1,4 +1,4 @@
-# Private individual-driver datasets — DRV-07/08/09/10
+# Private individual-driver datasets — DRV-07/08/09/10/11
 
 Status: private storage implemented; hosted HTTP/mobile/signed cloud admission
 is disabled until DRV-10–16. No production rollout or import adapter is implied.
@@ -110,6 +110,7 @@ building blocks for later export/report phases.
 | Cost profiles | Account/vehicle; private versions | Tombstone + owner epoch | Get/list versions | Excluded |
 | Maintenance | Account/vehicle; private versions | Tombstone + owner epoch | Get/list versions | Excluded |
 | Reconciliation | Account; private versions | Owner earnings epoch; deleted with target/owner | Get/list decisions | Excluded |
+| Reports | Account/vehicle/window; private snapshots | Account soft/physical erase + 400-day cleanup | Signed build/get; stale refusal | Excluded |
 
 The current cloud manifest allowlist remains vehicles/favorites/preferences and
 `backupExcluded` keeps professional datasets out. No reader claims complete
@@ -133,3 +134,13 @@ verifier, subscription wiring and HTTP/OpenAPI admission remain DRV-11/12.
 Decisions are persisted but not yet consumed by a report/import projection;
 therefore this phase makes no non-duplicated-total claim. That consumption and
 its UI are DRV-11/19.
+
+## DRV-11 report snapshots
+
+Migration 000137 adds owner/vehicle/window/timezone/platform/basis snapshots with
+a SHA256 source revision, increasing version and private JSON payload. They are
+erased on account soft/physical deletion and by the bounded worker cleanup.
+Report generation is Premium (`professional.report`); retained reads remain free
+after lapse but refuse a stale source revision. The driver routes are mounted
+behind `ANPFUEL_DRIVER_ENABLED` (default false); disabled routes return 404
+without storage access. No snapshot is included in cloud backup or public data.

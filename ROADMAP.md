@@ -3936,7 +3936,13 @@ records PostGIS/Kotlin/Android checks and the inherited global coverage failure
 (pure dev 80.31%, batch 81.81%, unchanged minimum 90%; owned driver 93.48%).
 Delivery targets only driver PR #152 → dev, preserving other construction
 fronts. No main merge, public endpoint, driver hub, live GPS collector, signed
-cloud activation or production claim. DRV-11–35 remain PLANNED.
+cloud activation or production claim. DRV-11 is LOCAL_DONE / INTEGRATION_PENDING at behavior `470e1d26`;
+[evidence](docs/backend/evidence/driver-suite/DRV-11.md) records revisioned
+projections, private HTTP/snapshots, owner cursors and feature-gated worker
+cleanup. DRV-12 is LOCAL_DONE / INTEGRATION_PENDING at behavior `69bdb374`;
+[evidence](docs/backend/evidence/driver-suite/DRV-12.md) records the signed HTTP
+earning/shift/cost/report journey, restart/stale/erasure checks. DRV-13–35
+remain PLANNED.
 
 Durable movement continuation (2026-10-26): DRV-08 is LOCAL_DONE /
 INTEGRATION_PENDING at behavior `4026df2a`. [Evidence](docs/backend/evidence/driver-suite/DRV-08.md)
@@ -3953,4 +3959,10 @@ records signed command/principal checks, transactional capability lapse,
 retained reads, versioned reconciliation decisions and cancellation/rollback,
 proven by 24 real PostGIS adapter tests plus application/domain checks under
 `-race`. HTTP/identity wiring and report consumption remain future work.
-DRV-11–35 remain PLANNED.
+DRV-11 is LOCAL_DONE / INTEGRATION_PENDING at behavior `470e1d26`;
+[evidence](docs/backend/evidence/driver-suite/DRV-11.md) records revisioned
+projections, private HTTP/snapshots, owner cursors and feature-gated worker
+cleanup. DRV-12 is LOCAL_DONE / INTEGRATION_PENDING at behavior `69bdb374`;
+[evidence](docs/backend/evidence/driver-suite/DRV-12.md) records the signed HTTP
+earning/shift/cost/report journey, restart/stale/erasure checks. DRV-13–35
+remain PLANNED.
