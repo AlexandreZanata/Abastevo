@@ -1,5 +1,7 @@
 # Current execution state
 
+- DRV-04 LOCAL_DONE / INTEGRATION_PENDING at `6a66f414`: shifts, clock recovery and multiapp time. [Evidence](../backend/evidence/driver-suite/DRV-04.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-05; no main/dev push or merge.
+
 - DRV-03 LOCAL_DONE / INTEGRATION_PENDING at `97b42c60`: exact earned/cash/recorded/modeled rules, twelve shared production vectors, Go/Kotlin negative and weighted-money tests PASS. [Evidence](../backend/evidence/driver-suite/DRV-03.md). Isolated driver PR #152; next DRV-04; no main/dev push or merge.
 
 - DRV-02 completion review 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING at

@@ -110,7 +110,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-03.md`. A later relevant change invalidates affected evidence.
 ### DRV-04 — Model shifts, clocks and overlapping online time
 
-Status: PLANNED. Dependency: DRV-03 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-04](../backend/evidence/driver-suite/DRV-04.md). Dependency: DRV-03 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `domain/application driver session ports`. Rules: B-BR-DRV-06, B-BR-DRV-07.
 
