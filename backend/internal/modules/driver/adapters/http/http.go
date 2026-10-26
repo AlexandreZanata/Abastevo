@@ -27,6 +27,7 @@ type ReportService interface {
 
 type Handler struct {
 	Earnings     EarningsPageStore
+	Commands     CommandStore
 	Reports      ReportService
 	Sessions     func(context.Context, string, string) (string, error)
 	SignedOwner  func(*http.Request, string) (string, string, error)
@@ -109,6 +110,7 @@ func (h Handler) write(w http.ResponseWriter, r *http.Request, v any) {
 
 func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/driver/earnings", h.earnings)
+	r.Post("/v1/driver/commands", h.commands)
 	r.Post("/v1/driver/reports/build", h.reportBuild)
 	r.Post("/v1/driver/reports/get", h.reportGet)
 }

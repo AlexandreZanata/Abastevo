@@ -13,9 +13,10 @@ var ErrErased = errors.New("driver: erased or obsolete epoch")
 var ErrUnavailable = errors.New("driver: storage unavailable")
 
 type SaveEarning struct {
-	OperationID                     string
-	ExpectedRevision, ExpectedEpoch int64
-	Record                          domain.EarningRecord
+	OperationID      string               `json:"operation_id"`
+	ExpectedRevision int64                `json:"expected_revision"`
+	ExpectedEpoch    int64                `json:"expected_epoch"`
+	Record           domain.EarningRecord `json:"record"`
 }
 type SaveAdjustment struct {
 	OperationID, SourceHash string
@@ -23,9 +24,10 @@ type SaveAdjustment struct {
 	Adjustment              domain.Adjustment
 }
 type Receipt struct {
-	ID              string
-	Revision, Epoch int64
-	Replayed        bool
+	ID       string `json:"id"`
+	Revision int64  `json:"revision"`
+	Epoch    int64  `json:"epoch"`
+	Replayed bool   `json:"replayed"`
 }
 type StoredAdjustment struct {
 	SourceHash string
@@ -68,21 +70,25 @@ type EarningsStore interface {
 }
 
 type ShiftStart struct {
-	ID, Origin, Vehicle, Timezone string
+	ID       string `json:"id"`
+	Origin   string `json:"origin"`
+	Vehicle  string `json:"vehicle_id"`
+	Timezone string `json:"timezone"`
 }
 type ApplyShift struct {
-	ShiftID string
-	Create  *ShiftStart
-	Command domain.ShiftCommand
-	Policy  domain.ClockPolicy
+	ShiftID string              `json:"shift_id"`
+	Create  *ShiftStart         `json:"create,omitempty"`
+	Command domain.ShiftCommand `json:"command"`
+	Policy  domain.ClockPolicy  `json:"policy"`
 }
 type SaveDistance struct {
 	OperationID string
 	Record      domain.DistanceRecord
 }
 type DistanceReceipt struct {
-	ID, ContentHash string
-	Replayed        bool
+	ID          string `json:"id"`
+	ContentHash string `json:"content_hash"`
+	Replayed    bool   `json:"replayed"`
 }
 type ShiftStore interface {
 	ApplyShift(context.Context, string, ApplyShift) (domain.ShiftTransition, error)
@@ -101,9 +107,9 @@ type SaveCostProfile struct {
 	Profile                        domain.VehicleCostProfile
 }
 type CostProfileReceipt struct {
-	Vehicle  string
-	Version  int64
-	Replayed bool
+	Vehicle  string `json:"vehicle_id"`
+	Version  int64  `json:"version"`
+	Replayed bool   `json:"replayed"`
 }
 type CostProfileStore interface {
 	SaveCostProfile(context.Context, string, SaveCostProfile) (CostProfileReceipt, error)
@@ -118,9 +124,9 @@ type SaveMaintenance struct {
 	Schedule                       domain.MaintenanceSchedule
 }
 type MaintenanceReceipt struct {
-	ScheduleID string
-	Version    int64
-	Replayed   bool
+	ScheduleID string `json:"schedule_id"`
+	Version    int64  `json:"version"`
+	Replayed   bool   `json:"replayed"`
 }
 type MaintenanceStore interface {
 	SaveMaintenance(context.Context, string, SaveMaintenance) (MaintenanceReceipt, error)
@@ -136,9 +142,9 @@ type SaveReconciliation struct {
 	Decision                       domain.ReconciliationDecision
 }
 type ReconciliationReceipt struct {
-	ID       string
-	Version  int64
-	Replayed bool
+	ID       string `json:"id"`
+	Version  int64  `json:"version"`
+	Replayed bool   `json:"replayed"`
 }
 type ReconciliationStore interface {
 	SaveReconciliation(context.Context, string, SaveReconciliation) (ReconciliationReceipt, error)

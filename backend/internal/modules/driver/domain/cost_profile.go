@@ -7,14 +7,23 @@ import (
 )
 
 type ProfileCost struct {
-	ID, Kind, Provenance, LedgerSourceID, From, Until string
-	SourceRevision                                    int64
-	Amount                                            *int64
+	ID             string `json:"id"`
+	Kind           string `json:"kind"`
+	Provenance     string `json:"provenance"`
+	LedgerSourceID string `json:"ledger_source_id,omitempty"`
+	From           string `json:"from"`
+	Until          string `json:"until,omitempty"`
+	SourceRevision int64  `json:"source_revision,omitempty"`
+	Amount         *int64 `json:"amount,omitempty"`
 }
 type VehicleCostProfile struct {
-	Vehicle, Ownership, Timezone, From, Until string
-	Version                                   int64
-	Costs                                     []ProfileCost
+	Vehicle   string        `json:"vehicle_id"`
+	Ownership string        `json:"ownership"`
+	Timezone  string        `json:"timezone"`
+	From      string        `json:"from"`
+	Until     string        `json:"until,omitempty"`
+	Version   int64         `json:"version"`
+	Costs     []ProfileCost `json:"costs"`
 }
 type ProfileBuckets struct {
 	Operating, Capital, Modeled []ProfileCost

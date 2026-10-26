@@ -5993,6 +5993,39 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/driver/commands:
+    post:
+      tags:
+      - premium
+      summary: Apply a signed private driver command
+      description: Owner derives from a live account session plus exact-body signed key. Hosted mutations require live professional.write; erasure remains a retained-data exit. All responses are no-store without ETags.
+      operationId: driverCommands
+      x-implementation-status: source-local-done-feature-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverCommandRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/driver/earnings:
     post:
       tags:
@@ -6110,6 +6143,15 @@ components:
         type: string
         format: uuid
   schemas:
+    DriverCommandRequest:
+      type: object
+      additionalProperties: false
+      required: [family_id, access_token, kind, payload]
+      properties:
+        family_id: {type: string, format: uuid}
+        access_token: {type: string, minLength: 1, maxLength: 512}
+        kind: {type: string, enum: [EARNING_SAVE, EARNING_ERASE, SHIFT_APPLY, COST_SAVE, COST_ERASE]}
+        payload: {type: object}
     DriverMoney:
       type: object
       additionalProperties: false

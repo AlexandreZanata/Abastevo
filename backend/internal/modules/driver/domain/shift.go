@@ -210,9 +210,9 @@ func (s Shift) CompleteWorkSeconds() *int64 {
 }
 
 type ShiftTransition struct {
-	Shift    Shift
-	Receipt  ShiftReceipt
-	Replayed bool
+	Shift    Shift        `json:"shift"`
+	Receipt  ShiftReceipt `json:"receipt"`
+	Replayed bool         `json:"replayed"`
 }
 
 func (s Shift) Apply(cmd ShiftCommand, policy ClockPolicy) (ShiftTransition, error) {

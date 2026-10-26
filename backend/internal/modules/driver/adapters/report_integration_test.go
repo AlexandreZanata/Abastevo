@@ -12,6 +12,7 @@ import (
 	cloud "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/cloudsync/adapters"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/domain"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestDriverReportRevisionSnapshotAndStale(t *testing.T) {
@@ -90,5 +91,56 @@ func TestDriverReportRevisionSnapshotAndStale(t *testing.T) {
 	}
 	if got, e := service.Get(ctx, owner, req); e != nil || got.Revision != fresh.Revision {
 		t.Fatal("fresh snapshot", got, e)
+	}
+}
+
+func TestDriverReportSnapshotRestartExpiryAndAccountErasure(t *testing.T) {
+	ctx := context.Background()
+	p, dsn := freshDriverDB(t, migrations.Files)
+	owner := seedDriverOwner(t, p)
+	car := seedDriverVehicle(t, p, owner)
+	store := New(p, cloud.RequireDriverOwnedVehicle)
+	if _, e := store.Save(ctx, owner, earning(t, car)); e != nil {
+		t.Fatal(e)
+	}
+	req := app.ReportRequest{VehicleID: car, Timezone: "UTC", Period: "DAY", Anchor: "2026-10-26", Basis: "ODOMETER"}
+	service := &app.ReportService{Store: store, Snapshots: NewReportStore(p), Paid: func(context.Context, string) error { return nil }}
+	if _, e := service.Build(ctx, owner, req); e != nil {
+		t.Fatal(e)
+	}
+	p.Close()
+	restarted, e := pgxpool.New(ctx, dsn)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer restarted.Close()
+	restartedStore := New(restarted, cloud.RequireDriverOwnedVehicle)
+	restartedReports := &app.ReportService{Store: restartedStore, Snapshots: NewReportStore(restarted), Paid: func(context.Context, string) error { return nil }}
+	if _, e := restartedReports.Get(ctx, owner, req); e != nil {
+		t.Fatal("restart", e)
+	}
+	if _, e := restarted.Exec(ctx, "UPDATE accounts SET status='deleted' WHERE id=$1", owner); e != nil {
+		t.Fatal(e)
+	}
+	if driverCount(t, restarted, "driver_report_snapshots") != 0 {
+		t.Fatal("soft deletion retained snapshots")
+	}
+	owner2 := seedDriverOwner(t, restarted)
+	car2 := seedDriverVehicle(t, restarted, owner2)
+	store2 := New(restarted, cloud.RequireDriverOwnedVehicle)
+	if _, e := store2.Save(ctx, owner2, earning(t, car2)); e != nil {
+		t.Fatal(e)
+	}
+	req2 := req
+	req2.VehicleID = car2
+	reports2 := &app.ReportService{Store: store2, Snapshots: NewReportStore(restarted), Paid: func(context.Context, string) error { return nil }}
+	if _, e := reports2.Build(ctx, owner2, req2); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := NewReportStore(restarted).DeleteExpiredReportSnapshots(ctx, time.Now().Add(time.Hour), 100); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := reports2.Get(ctx, owner2, req2); !errors.Is(e, app.ErrNotFound) {
+		t.Fatal("expired snapshot readable", e)
 	}
 }

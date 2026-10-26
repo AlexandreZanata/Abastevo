@@ -942,7 +942,7 @@ func run() error {
 		return nil
 	}
 	driverhttp.Handler{
-		Earnings: driverStore, Reports: driverReports,
+		Earnings: driverStore, Commands: driverStore, Reports: driverReports,
 		Sessions: func(ctx context.Context, family, access string) (string, error) {
 			return premiumHTTP.Sessions(ctx, family, access)
 		},
