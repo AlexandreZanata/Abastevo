@@ -1,0 +1,17 @@
+<resources>
+  <string name="map23_title">Явное ведение</string>
+  <string name="map23_start">Начать ведение</string>
+  <string name="map23_stop">Остановить ведение</string>
+  <string name="map23_next">Следующий манёвр</string>
+  <string name="map23_recalculating">Перестроение маршрута…</string>
+  <string name="map23_reroute_failed">Перестроение недоступно. Ведение приостановлено; можно остановить или повторить.</string>
+  <string name="map23_gps_poor">Слабый GPS. Ожидание точной позиции; прогресс приостановлен.</string>
+  <string name="map23_gps_lost">Сигнал GPS потерян.</string>
+  <string name="map23_voice_unavailable">Локальный голос недоступен. Только текстовые манёвры.</string>
+  <string name="map23_resume">Продолжить последнее ведение</string>
+  <string name="map23_no_permission">Для ведения требуется точное разрешение на местоположение.</string>
+  <string name="map23_gps_off">GPS отключён.</string>
+  <string name="map23_notification_blocked">Уведомления заблокированы. Ведению нужно видимое уведомление.</string>
+  <string name="map23_stop_action">Стоп</string>
+  <string name="map23_notification_title">Ведение активно</string>
+</resources>

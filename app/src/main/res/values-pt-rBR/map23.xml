@@ -1,0 +1,17 @@
+<resources>
+  <string name="map23_title">Navegação explícita</string>
+  <string name="map23_start">Iniciar navegação</string>
+  <string name="map23_stop">Parar navegação</string>
+  <string name="map23_next">Próxima manobra</string>
+  <string name="map23_recalculating">Recalculando rota…</string>
+  <string name="map23_reroute_failed">Recálculo indisponível. Navegação pausada; você pode parar ou tentar de novo.</string>
+  <string name="map23_gps_poor">GPS fraco. Aguardando posição precisa; progresso pausado.</string>
+  <string name="map23_gps_lost">Sinal GPS perdido.</string>
+  <string name="map23_voice_unavailable">Voz local indisponível. Somente manobras em texto.</string>
+  <string name="map23_resume">Retomar última navegação</string>
+  <string name="map23_no_permission">Permissão de localização precisa é necessária para navegar.</string>
+  <string name="map23_gps_off">GPS está desligado.</string>
+  <string name="map23_notification_blocked">Notificações bloqueadas. A navegação precisa de notificação visível.</string>
+  <string name="map23_stop_action">Parar</string>
+  <string name="map23_notification_title">Navegação ativa</string>
+</resources>

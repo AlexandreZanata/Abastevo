@@ -1,0 +1,17 @@
+<resources>
+  <string name="map23_title">Explicit guidance</string>
+  <string name="map23_start">Start guidance</string>
+  <string name="map23_stop">Stop guidance</string>
+  <string name="map23_next">Next maneuver</string>
+  <string name="map23_recalculating">Recalculating route…</string>
+  <string name="map23_reroute_failed">Reroute unavailable. Guidance paused; you can stop or retry.</string>
+  <string name="map23_gps_poor">Poor GPS. Waiting for an accurate fix; progress paused.</string>
+  <string name="map23_gps_lost">GPS signal lost.</string>
+  <string name="map23_voice_unavailable">Local voice unavailable. Text maneuvers only.</string>
+  <string name="map23_resume">Resume last guidance</string>
+  <string name="map23_no_permission">Precise location permission is required for guidance.</string>
+  <string name="map23_gps_off">GPS is disabled.</string>
+  <string name="map23_notification_blocked">Notifications are blocked. Guidance needs a visible notification.</string>
+  <string name="map23_stop_action">Stop</string>
+  <string name="map23_notification_title">Guidance active</string>
+</resources>

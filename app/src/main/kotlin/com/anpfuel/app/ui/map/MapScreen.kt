@@ -76,6 +76,7 @@ fun MapScreen(
     discovery: MapDiscoveryViewModel? = null,
     sheet: MapSheetViewModel? = null,
     planner: NativeRouteViewModel? = null,
+    guidance: GuidanceViewModel = hiltViewModel(),
     mapContent: @Composable (Modifier) -> Unit = {
         RealMapHost(
             modifier = it,
@@ -86,7 +87,16 @@ fun MapScreen(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val discUi = discovery?.ui?.collectAsStateWithLifecycle()?.value
     var showRoute by remember { mutableStateOf(false) }
-    if (showRoute && planner != null) NativeRouteSheet(planner, onDismiss = { showRoute = false }, onDownloads = { showRoute = false; onOpenDownloads() })
+    androidx.compose.runtime.LaunchedEffect(showRoute) {
+        if (showRoute) guidance.refreshResume()
+    }
+    if (showRoute && planner != null) NativeRouteSheet(
+        planner,
+        onDismiss = { showRoute = false },
+        onDownloads = { showRoute = false; onOpenDownloads() },
+    ) { preview, request ->
+        GuidanceControls(preview = preview, request = request, viewModel = guidance)
+    }
     var showFilters by remember { mutableStateOf(false) }
     var showList by remember { mutableStateOf(false) }
     var routeError by remember(discUi?.selectedUuid) { mutableStateOf(false) }

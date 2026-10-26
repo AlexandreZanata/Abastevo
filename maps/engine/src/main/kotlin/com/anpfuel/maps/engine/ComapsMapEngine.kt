@@ -21,8 +21,18 @@ import app.organicmaps.sdk.location.LocationProviderFactory
 import app.organicmaps.sdk.search.SearchEngine
 import app.organicmaps.sdk.search.SearchListener
 import app.organicmaps.sdk.search.SearchResult
+import app.organicmaps.sdk.sound.TtsPlayer
+import app.organicmaps.sdk.location.NavigationFixBridge
+import app.organicmaps.sdk.location.TrackRecorder
+import app.organicmaps.sdk.routing.RoutingInfo
 import app.organicmaps.sdk.util.ConnectionState
 import app.organicmaps.sdk.widget.placepage.PlacePageData
+import com.anpfuel.domain.routing.GuidancePolicy
+import com.anpfuel.domain.routing.NativeRouteRequest
+import com.anpfuel.domain.routing.NativeRouteResult
+import com.anpfuel.domain.routing.NavigationFix
+import com.anpfuel.domain.routing.NavigationFixPolicy
+import com.anpfuel.domain.routing.NavigationProgress
 import java.io.File
 
 /**
@@ -54,6 +64,12 @@ class ComapsMapEngine(
     private var searchGeneration = 0L
     @Volatile
     private var lastViewport: MapCamera? = null
+    private var lastReadyRequest: NativeRouteRequest? = null
+    private var guidanceRequest: NativeRouteRequest? = null
+    private var guiding = false
+    private var guidanceGeneration = 0L
+    private var rerouteStartNanos: Long? = null
+    private var lastProgress: NavigationProgress? = null
 
     @Synchronized
     override fun initialize(context: Context, onReady: () -> Unit): Boolean {
@@ -202,6 +218,7 @@ class ComapsMapEngine(
     override fun isInitialized(): Boolean = initialized
 
     override fun suspendMapReads(): Boolean {
+        if (guiding) return false
         if (!initialized) return true
         check(Looper.myLooper() == Looper.getMainLooper()) { "Native map storage requires Main" }
         val empty = File(checkNotNull(appContext).filesDir, "map-publication-idle").apply { mkdirs() }
@@ -210,6 +227,7 @@ class ComapsMapEngine(
     }
 
     override fun reloadMaps(): Boolean {
+        if (guiding) return false
         if (!initialized) return false
         val app = appContext ?: return false
         if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -332,7 +350,149 @@ class ComapsMapEngine(
         )
     }
 
-    override fun buildRoute(request: com.anpfuel.domain.routing.NativeRouteRequest, onResult: (com.anpfuel.domain.routing.NativeRouteResult) -> Unit): Boolean = routePlanner.buildRoute(request, onResult)
+    override fun buildRoute(request: NativeRouteRequest, onResult: (NativeRouteResult) -> Unit): Boolean {
+        val accepted = routePlanner.buildRoute(request) { result ->
+            if (result is NativeRouteResult.Ready) {
+                lastReadyRequest = request
+            }
+            onResult(result)
+        }
+        return accepted
+    }
+
+    override fun startGuidance(request: NativeRouteRequest): Boolean {
+        check(Looper.myLooper() == Looper.getMainLooper()) { "Guidance requires Main" }
+        request.validate()
+        if (!initialized) return false
+        if (guiding) return false
+        val ready = lastReadyRequest ?: return false
+        if (!GuidancePolicy.sameRoute(ready, request)) return false
+        return try {
+            // Never record a trace while guiding; the service owns no saved track.
+            runCatching {
+                if (TrackRecorder.nativeIsTrackRecordingEnabled()) {
+                    TrackRecorder.nativeStopTrackRecording()
+                }
+            }
+            Framework.nativeFollowRoute()
+            runCatching {
+                if (TrackRecorder.nativeIsTrackRecordingEnabled()) {
+                    TrackRecorder.nativeStopTrackRecording()
+                }
+            }
+            val locale = GuidancePolicy.nativeLocaleFor(request.language) ?: "en"
+            TtsPlayer.configureNativeNotifications(locale, true)
+            guidanceRequest = request
+            guiding = true
+            guidanceGeneration++
+            rerouteStartNanos = null
+            lastProgress = null
+            true
+        } catch (_: Exception) {
+            guiding = false
+            guidanceRequest = null
+            false
+        }
+    }
+
+    override fun feedGuidanceFix(fix: NavigationFix, nowNanos: Long): GuidanceFeed? {
+        check(Looper.myLooper() == Looper.getMainLooper()) { "Guidance requires Main" }
+        if (!guiding) return null
+        if (!NavigationFixPolicy.accepts(fix, nowNanos)) {
+            return GuidanceFeed(progress = lastProgress, notifications = emptyList(), rerouteRecoverable = false)
+        }
+        return try {
+            runCatching {
+                if (TrackRecorder.nativeIsTrackRecordingEnabled()) {
+                    TrackRecorder.nativeStopTrackRecording()
+                }
+            }
+            NavigationFixBridge.forward(
+                fix.timeMillis,
+                fix.latitude,
+                fix.longitude,
+                fix.accuracyMeters,
+                fix.altitudeMeters,
+                fix.speedMetersPerSecond,
+                fix.bearingDegrees,
+            )
+            val info = Framework.nativeGetRouteFollowingInfo()
+            val notifications = Framework.nativeGenerateNotifications(true).orEmpty().toList()
+            val progress = info?.toNavigationProgress(notifications)
+            val state = info?.routingSessionState
+            val offRoute = state == RoutingInfo.RoutingSessionState.OffRoute ||
+                state == RoutingInfo.RoutingSessionState.RouteRebuilding ||
+                state == RoutingInfo.RoutingSessionState.RouteNeedsRebuild
+            if (offRoute) {
+                val started = rerouteStartNanos ?: nowNanos.also { rerouteStartNanos = it }
+                if (GuidancePolicy.isRerouteExpired(started, nowNanos)) {
+                    return GuidanceFeed(progress = progress ?: lastProgress, notifications = notifications, rerouteRecoverable = true)
+                }
+            } else {
+                rerouteStartNanos = null
+            }
+            if (progress != null) lastProgress = progress
+            GuidanceFeed(progress = progress ?: lastProgress, notifications = notifications, rerouteRecoverable = false)
+        } catch (_: Exception) {
+            GuidanceFeed(progress = lastProgress, notifications = emptyList(), rerouteRecoverable = false)
+        }
+    }
+
+    override fun guidanceProgress(): NavigationProgress? {
+        if (!guiding) return null
+        if (Looper.myLooper() != Looper.getMainLooper()) return lastProgress
+        return try {
+            Framework.nativeGetRouteFollowingInfo()?.toNavigationProgress(emptyList())?.also { lastProgress = it }
+                ?: lastProgress
+        } catch (_: Exception) {
+            lastProgress
+        }
+    }
+
+    override fun stopGuidance() {
+        guidanceGeneration++
+        guiding = false
+        guidanceRequest = null
+        rerouteStartNanos = null
+        lastProgress = null
+        if (!initialized) return
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            runCatching { TtsPlayer.configureNativeNotifications("en", false) }
+            runCatching { Framework.nativeDisableFollowing() }
+            runCatching { Framework.nativeCloseRouting() }
+            runCatching { Framework.nativeRemoveRoutePoints() }
+        } else {
+            val latch = java.util.concurrent.CountDownLatch(1)
+            Handler(Looper.getMainLooper()).post {
+                try {
+                    runCatching { TtsPlayer.configureNativeNotifications("en", false) }
+                    runCatching { Framework.nativeDisableFollowing() }
+                    runCatching { Framework.nativeCloseRouting() }
+                    runCatching { Framework.nativeRemoveRoutePoints() }
+                } finally {
+                    latch.countDown()
+                }
+            }
+            runCatching { latch.await(5, java.util.concurrent.TimeUnit.SECONDS) }
+        }
+    }
+
+    override fun isGuiding(): Boolean = guiding
+
+    private fun RoutingInfo.toNavigationProgress(notifications: List<String>): NavigationProgress {
+        val remaining = try { distToTarget.meters() } catch (_: Exception) { 0.0 }
+        val turn = try { distToTurn.meters() } catch (_: Exception) { 0.0 }
+        return NavigationProgress(
+            remainingMeters = remaining,
+            seconds = totalTimeInSeconds,
+            turnMeters = turn,
+            completionPercent = completionPercent,
+            direction = try { carDirection.name } catch (_: Exception) { "UNKNOWN" },
+            nextStreet = nextStreet.orEmpty(),
+            nativeState = try { routingSessionState.name } catch (_: Exception) { "UNKNOWN" },
+            notifications = notifications,
+        )
+    }
 
     override fun buildCarRoute(startLatitude: Double, startLongitude: Double, endLatitude: Double, endLongitude: Double, onResult: (MapRouteInfo?) -> Unit): Boolean =
         buildRoute(com.anpfuel.domain.routing.NativeRouteRequest(listOf(
@@ -448,6 +608,9 @@ class ComapsMapEngine(
         overlayGeneration++
         cancelSearch()
         cancelRoute()
+        // Full teardown owns guidance too; ViewModel disposal must avoid this while guiding.
+        runCatching { stopGuidance() }
+        lastReadyRequest = null
         clearOverlayListeners()
         placePageListener?.let { Framework.nativeRemovePlacePageActivationListener(it) }
         placePageListener = null

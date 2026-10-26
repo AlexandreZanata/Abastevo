@@ -11,6 +11,13 @@ data class MapCenter(val latitude: Double, val longitude: Double)
 
 data class MapCamera(val latitude: Double, val longitude: Double, val zoom: Int)
 
+/** Explicit foreground guidance feed result; poor fixes never advance progress. */
+data class GuidanceFeed(
+    val progress: com.anpfuel.domain.routing.NavigationProgress?,
+    val notifications: List<String> = emptyList(),
+    val rerouteRecoverable: Boolean = false,
+)
+
 /** Narrow Abastevo-owned surface over the pinned native map core. */
 interface MapEngine : com.anpfuel.domain.routing.NativeRoutePlanner {
     override fun buildRoute(request: com.anpfuel.domain.routing.NativeRouteRequest, onResult: (com.anpfuel.domain.routing.NativeRouteResult) -> Unit): Boolean = false
@@ -41,5 +48,13 @@ interface MapEngine : com.anpfuel.domain.routing.NativeRoutePlanner {
     fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit)
     fun cancelSearch()
     override fun cancelRoute()
+    fun startGuidance(request: com.anpfuel.domain.routing.NativeRouteRequest): Boolean = false
+    fun feedGuidanceFix(
+        fix: com.anpfuel.domain.routing.NavigationFix,
+        nowNanos: Long,
+    ): GuidanceFeed? = null
+    fun guidanceProgress(): com.anpfuel.domain.routing.NavigationProgress? = null
+    fun stopGuidance() = Unit
+    fun isGuiding(): Boolean = false
     fun release()
 }

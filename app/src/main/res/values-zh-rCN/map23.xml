@@ -1,0 +1,17 @@
+<resources>
+  <string name="map23_title">显式导航</string>
+  <string name="map23_start">开始导航</string>
+  <string name="map23_stop">停止导航</string>
+  <string name="map23_next">下一个动作</string>
+  <string name="map23_recalculating">正在重新规划路线…</string>
+  <string name="map23_reroute_failed">无法重新规划。导航已暂停；可以停止或重试。</string>
+  <string name="map23_gps_poor">GPS 信号弱。等待精确定位；进度已暂停。</string>
+  <string name="map23_gps_lost">GPS 信号丢失。</string>
+  <string name="map23_voice_unavailable">本地语音不可用。仅文字指引。</string>
+  <string name="map23_resume">恢复上次导航</string>
+  <string name="map23_no_permission">导航需要精确位置权限。</string>
+  <string name="map23_gps_off">GPS 已关闭。</string>
+  <string name="map23_notification_blocked">通知被阻止。导航需要可见通知。</string>
+  <string name="map23_stop_action">停止</string>
+  <string name="map23_notification_title">导航进行中</string>
+</resources>

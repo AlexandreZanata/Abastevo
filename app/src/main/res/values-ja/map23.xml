@@ -1,0 +1,17 @@
+<resources>
+  <string name="map23_title">明示ガイダンス</string>
+  <string name="map23_start">ガイダンス開始</string>
+  <string name="map23_stop">ガイダンス停止</string>
+  <string name="map23_next">次の操作</string>
+  <string name="map23_recalculating">ルート再計算中…</string>
+  <string name="map23_reroute_failed">再計算できません。ガイダンスを一時停止中。停止または再試行できます。</string>
+  <string name="map23_gps_poor">GPSが弱いです。正確な位置を待機中。進行を一時停止。</string>
+  <string name="map23_gps_lost">GPS信号を喪失。</string>
+  <string name="map23_voice_unavailable">ローカル音声は利用不可。テキスト案内のみ。</string>
+  <string name="map23_resume">前回のガイダンスを再開</string>
+  <string name="map23_no_permission">ガイダンスには正確な位置情報の許可が必要です。</string>
+  <string name="map23_gps_off">GPSが無効です。</string>
+  <string name="map23_notification_blocked">通知がブロックされています。ガイダンスには表示中の通知が必要です。</string>
+  <string name="map23_stop_action">停止</string>
+  <string name="map23_notification_title">ガイダンス実行中</string>
+</resources>

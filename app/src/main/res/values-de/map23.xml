@@ -1,0 +1,17 @@
+<resources>
+  <string name="map23_title">Explizite Führung</string>
+  <string name="map23_start">Führung starten</string>
+  <string name="map23_stop">Führung stoppen</string>
+  <string name="map23_next">Nächstes Manöver</string>
+  <string name="map23_recalculating">Route wird neu berechnet…</string>
+  <string name="map23_reroute_failed">Neuberechnung nicht verfügbar. Führung pausiert; stoppen oder erneut versuchen.</string>
+  <string name="map23_gps_poor">Schwaches GPS. Warte auf genaue Position; Fortschritt pausiert.</string>
+  <string name="map23_gps_lost">GPS-Signal verloren.</string>
+  <string name="map23_voice_unavailable">Lokale Stimme nicht verfügbar. Nur Textmanöver.</string>
+  <string name="map23_resume">Letzte Führung fortsetzen</string>
+  <string name="map23_no_permission">Genaue Standortberechtigung ist für die Führung erforderlich.</string>
+  <string name="map23_gps_off">GPS ist deaktiviert.</string>
+  <string name="map23_notification_blocked">Benachrichtigungen sind blockiert. Führung braucht eine sichtbare Benachrichtigung.</string>
+  <string name="map23_stop_action">Stopp</string>
+  <string name="map23_notification_title">Führung aktiv</string>
+</resources>

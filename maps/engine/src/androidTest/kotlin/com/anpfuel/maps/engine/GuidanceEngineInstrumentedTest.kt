@@ -1,0 +1,82 @@
+package com.anpfuel.maps.engine
+
+import android.content.Context
+import android.os.SystemClock
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import app.organicmaps.sdk.location.TrackRecorder
+import com.anpfuel.domain.routing.NativeRouteRequest
+import com.anpfuel.domain.routing.NativeRouteResult
+import com.anpfuel.domain.routing.NavigationFix
+import com.anpfuel.domain.routing.RoutePoint
+import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/** MAP-23 native guidance proof: no trace, binding, progress, MWM fence, stop. */
+@RunWith(AndroidJUnit4::class)
+class GuidanceEngineInstrumentedTest {
+    @get:Rule val compose = createComposeRule()
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+
+    private class FakeStore : MapCameraStore {
+        override fun load(): MapCamera? = MapCamera(-25.4295, -49.2719, 15)
+        override fun save(camera: MapCamera) = Unit
+    }
+
+    @Test fun guidanceDisablesTrackBindsPreviewFeedsProgressAndStops() {
+        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        assertTrue("admitted regional fixture is required", File(appContext.filesDir, "261004/Brazil_Parana_East.mwm").isFile)
+        val engine = ComapsMapEngine()
+        compose.setContent { MapHost(engine, cameraStore = FakeStore()) }
+        compose.waitForIdle()
+        // Wait for native readiness via polling on the main thread.
+        var ready = false
+        for (attempt in 1..90) {
+            instrumentation.runOnMainSync { ready = engine.isInitialized() && engine.isRenderingReady() }
+            if (ready) break
+            Thread.sleep(1000)
+        }
+        assertTrue("map surface ready", ready)
+        val start = RoutePoint(-25.4295, -49.2719, "Synthetic origin")
+        val destination = RoutePoint(-25.4222, -49.2640, "Synthetic destination")
+        val request = NativeRouteRequest(listOf(start, destination), emptySet(), "en")
+        val result = AtomicReference<NativeRouteResult>()
+        val latch = CountDownLatch(1)
+        instrumentation.runOnMainSync {
+            assertTrue(engine.buildRoute(request) { result.set(it); latch.countDown() })
+        }
+        assertTrue(latch.await(60, TimeUnit.SECONDS))
+        assertTrue("preview expected: ${result.get()}", result.get() is NativeRouteResult.Ready)
+
+        var started = false
+        instrumentation.runOnMainSync { started = engine.startGuidance(request) }
+        assertTrue("guidance start", started)
+        instrumentation.runOnMainSync { assertTrue(engine.isGuiding()) }
+        instrumentation.runOnMainSync {
+            assertFalse("navigation must not record a trace", TrackRecorder.nativeIsTrackRecordingEnabled())
+            assertFalse("MWM swap must refuse while guiding", engine.suspendMapReads())
+        }
+
+        val now = SystemClock.elapsedRealtimeNanos()
+        val fix = NavigationFix(-25.4295, -49.2719, 5f, System.currentTimeMillis(), now)
+        var feed: GuidanceFeed? = null
+        instrumentation.runOnMainSync { feed = engine.feedGuidanceFix(fix, now) }
+        assertTrue("feed expected", feed != null)
+        assertFalse(feed!!.rerouteRecoverable)
+        instrumentation.runOnMainSync {
+            assertFalse("trace started while feeding", TrackRecorder.nativeIsTrackRecordingEnabled())
+            engine.stopGuidance()
+            assertFalse(engine.isGuiding())
+            engine.cancelRoute()
+        }
+    }
+}
