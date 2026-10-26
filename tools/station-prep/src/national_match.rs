@@ -219,6 +219,23 @@ pub struct InputSet {
     pub invalid_registry_cnpj: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct RegistryInput {
+    pub rows: HashMap<String, RegistryRecord>,
+    pub sha256: String,
+    pub bytes: u64,
+    pub parsed_rows: usize,
+    pub duplicates: usize,
+    pub invalid_cnpj: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct OsmInput {
+    pub places: Vec<OsmPlace>,
+    pub sha256: String,
+    pub bytes: u64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct MapIdentities {
     pub station_uuid: Option<String>,
@@ -401,11 +418,17 @@ impl PointStatus {
     }
 }
 
-struct OsmIndex {
+pub(crate) struct OsmIndex {
     grid: HashMap<(i32, i32), Vec<usize>>,
     cnpj: HashMap<String, Vec<usize>>,
     address: HashMap<(String, String), Vec<usize>>,
     points: Vec<Option<(f64, f64)>>,
+}
+
+impl OsmIndex {
+    pub(crate) fn point(&self, index: usize) -> Option<(f64, f64)> {
+        self.points.get(index).copied().flatten()
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -545,60 +568,80 @@ pub fn load_inputs(
         return profile("API directory has no JSON files");
     }
 
-    let osm_raw = read_bounded(osm_path, MAX_OSM_FILE_BYTES)?;
-    let osm_sha256 = sha256_hex(&osm_raw);
-    let mut osm = Vec::new();
-    for line in osm_raw.split(|byte| *byte == b'\n') {
-        if line.iter().all(|byte| byte.is_ascii_whitespace()) {
-            continue;
-        }
-        if osm.len() >= MAX_OSM_REFERENCES {
-            return limit(format!("OSM references exceed {}", MAX_OSM_REFERENCES));
-        }
-        osm.push(serde_json::from_slice::<OsmPlace>(line).map_err(json_error)?);
-    }
-
-    let registry_raw = read_bounded(registry_path, MAX_REGISTRY_FILE_BYTES)?;
-    let registry_sha256 = sha256_hex(&registry_raw);
-    let mut registry = HashMap::new();
-    let mut registry_rows = 0usize;
-    let mut registry_duplicates = 0usize;
-    let mut invalid_registry_cnpj = 0usize;
-    for line in registry_raw.split(|byte| *byte == b'\n') {
-        if line.iter().all(|byte| byte.is_ascii_whitespace()) {
-            continue;
-        }
-        if registry_rows >= MAX_REGISTRY_ROWS {
-            return limit(format!("registry rows exceed {}", MAX_REGISTRY_ROWS));
-        }
-        registry_rows += 1;
-        let record = serde_json::from_slice::<RegistryRecord>(line).map_err(json_error)?;
-        let Ok(cnpj) = normalize_cnpj(&record.source_key) else {
-            invalid_registry_cnpj += 1;
-            continue;
-        };
-        if registry.insert(cnpj, record).is_some() {
-            registry_duplicates += 1;
-        }
-    }
+    let osm_input = load_osm(osm_path)?;
+    let registry_input = load_registry(registry_path)?;
 
     Ok(InputSet {
         api_records,
         api_files,
         api_sha256: sha256_hex(&api_seed),
-        osm,
-        osm_sha256,
-        osm_bytes: osm_raw.len() as u64,
-        registry,
-        registry_sha256,
-        registry_bytes: registry_raw.len() as u64,
-        registry_rows,
-        registry_duplicates,
-        invalid_registry_cnpj,
+        osm: osm_input.places,
+        osm_sha256: osm_input.sha256,
+        osm_bytes: osm_input.bytes,
+        registry: registry_input.rows,
+        registry_sha256: registry_input.sha256,
+        registry_bytes: registry_input.bytes,
+        registry_rows: registry_input.parsed_rows,
+        registry_duplicates: registry_input.duplicates,
+        invalid_registry_cnpj: registry_input.invalid_cnpj,
     })
 }
 
-fn osm_point(place: &OsmPlace) -> Option<(f64, f64)> {
+pub fn load_osm(path: &Path) -> Result<OsmInput, MatchError> {
+    let raw = read_bounded(path, MAX_OSM_FILE_BYTES)?;
+    let sha256 = sha256_hex(&raw);
+    let mut places = Vec::new();
+    for line in raw.split(|byte| *byte == b'\n') {
+        if line.iter().all(|byte| byte.is_ascii_whitespace()) {
+            continue;
+        }
+        if places.len() >= MAX_OSM_REFERENCES {
+            return limit(format!("OSM references exceed {}", MAX_OSM_REFERENCES));
+        }
+        places.push(serde_json::from_slice::<OsmPlace>(line).map_err(json_error)?);
+    }
+    Ok(OsmInput {
+        places,
+        sha256,
+        bytes: raw.len() as u64,
+    })
+}
+
+pub fn load_registry(path: &Path) -> Result<RegistryInput, MatchError> {
+    let raw = read_bounded(path, MAX_REGISTRY_FILE_BYTES)?;
+    let sha256 = sha256_hex(&raw);
+    let mut rows = HashMap::new();
+    let mut parsed_rows = 0usize;
+    let mut duplicates = 0usize;
+    let mut invalid_cnpj = 0usize;
+    for line in raw.split(|byte| *byte == b'\n') {
+        if line.iter().all(|byte| byte.is_ascii_whitespace()) {
+            continue;
+        }
+        if parsed_rows >= MAX_REGISTRY_ROWS {
+            return limit(format!("registry rows exceed {}", MAX_REGISTRY_ROWS));
+        }
+        parsed_rows += 1;
+        let record = serde_json::from_slice::<RegistryRecord>(line).map_err(json_error)?;
+        let Ok(cnpj) = normalize_cnpj(&record.source_key) else {
+            invalid_cnpj += 1;
+            continue;
+        };
+        if rows.insert(cnpj, record).is_some() {
+            duplicates += 1;
+        }
+    }
+    Ok(RegistryInput {
+        rows,
+        sha256,
+        bytes: raw.len() as u64,
+        parsed_rows,
+        duplicates,
+        invalid_cnpj,
+    })
+}
+
+pub(crate) fn osm_point(place: &OsmPlace) -> Option<(f64, f64)> {
     let lat = place
         .latitude_deg
         .as_deref()
@@ -626,7 +669,7 @@ fn cell(lat: f64, lon: f64) -> (i32, i32) {
     )
 }
 
-fn normalize_osm_cnpj(raw: &str) -> Option<String> {
+pub(crate) fn normalize_osm_cnpj(raw: &str) -> Option<String> {
     let first = raw.split(';').next().unwrap_or(raw).trim();
     let without_country = first
         .strip_prefix("BR")
@@ -635,7 +678,7 @@ fn normalize_osm_cnpj(raw: &str) -> Option<String> {
     normalize_cnpj(without_country).ok()
 }
 
-fn osm_address(place: &OsmPlace) -> Option<(String, String)> {
+pub(crate) fn osm_address(place: &OsmPlace) -> Option<(String, String)> {
     let street = place.tags.get("addr:street")?;
     let number = place.tags.get("addr:housenumber")?;
     let street = normalize_street(street);
@@ -646,7 +689,7 @@ fn osm_address(place: &OsmPlace) -> Option<(String, String)> {
     Some((street, number))
 }
 
-fn osm_city(place: &OsmPlace) -> Option<String> {
+pub(crate) fn osm_city(place: &OsmPlace) -> Option<String> {
     place
         .tags
         .get("addr:city")
@@ -654,7 +697,7 @@ fn osm_city(place: &OsmPlace) -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
-fn registry_address(record: &RegistryRecord) -> Option<(String, String)> {
+pub(crate) fn registry_address(record: &RegistryRecord) -> Option<(String, String)> {
     let street = normalize_street(&record.address_normalized.street);
     let number = normalize_number(&record.address_normalized.number);
     if street.is_empty() || number.is_empty() {
@@ -743,7 +786,7 @@ fn name_tokens(value: &str) -> BTreeSet<String> {
         .collect()
 }
 
-fn compatible_name_or_brand(registry: &RegistryRecord, place: &OsmPlace) -> bool {
+pub(crate) fn compatible_name_or_brand(registry: &RegistryRecord, place: &OsmPlace) -> bool {
     let registry_brand = registry.brand_raw.trim();
     let osm_brand = place
         .tags
@@ -784,7 +827,7 @@ fn deterministic_uuid(seed: &str) -> String {
     )
 }
 
-fn build_index(osm: &[OsmPlace]) -> OsmIndex {
+pub(crate) fn build_index(osm: &[OsmPlace]) -> OsmIndex {
     let mut grid: HashMap<(i32, i32), Vec<usize>> = HashMap::new();
     let mut cnpj: HashMap<String, Vec<usize>> = HashMap::new();
     let mut address: HashMap<(String, String), Vec<usize>> = HashMap::new();
@@ -843,14 +886,14 @@ fn grid_candidates(index: &OsmIndex, point: (f64, f64)) -> Vec<usize> {
     candidates
 }
 
-fn cnpj_candidates(index: &OsmIndex, cnpj: &str) -> Vec<usize> {
+pub(crate) fn cnpj_candidates(index: &OsmIndex, cnpj: &str) -> Vec<usize> {
     let mut candidates = index.cnpj.get(cnpj).cloned().unwrap_or_default();
     candidates.sort_unstable();
     candidates.dedup();
     candidates
 }
 
-fn address_candidates(index: &OsmIndex, address: &(String, String)) -> Vec<usize> {
+pub(crate) fn address_candidates(index: &OsmIndex, address: &(String, String)) -> Vec<usize> {
     let mut candidates = index.address.get(address).cloned().unwrap_or_default();
     candidates.sort_unstable();
     candidates.dedup();
@@ -961,7 +1004,7 @@ fn review_row(
     }
 }
 
-fn map_assertion(
+pub(crate) fn map_assertion(
     registry: &RegistryRecord,
     place: &OsmPlace,
     point: (f64, f64),
