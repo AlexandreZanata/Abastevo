@@ -106,6 +106,9 @@ func TestDriverDatasetSyncConflictForeignAndErasure(t *testing.T) {
 	if rows, e := foreignStore.Snapshot(ctx, foreign, app.SnapshotQuery{Dataset: "driver_earnings"}, 10); e != nil || len(rows.Records) != 0 {
 		t.Fatal("foreign driver snapshot", rows, e)
 	}
+	if _, e := foreignStore.PreviewRestore(ctx, foreign, snapshotID); e == nil {
+		t.Fatal("foreign driver restore preview leaked")
+	}
 	epoch, e := store.Erase(ctx, p, "driver_earnings", "")
 	if e != nil || epoch <= 1 {
 		t.Fatal("driver erase", epoch, e)
