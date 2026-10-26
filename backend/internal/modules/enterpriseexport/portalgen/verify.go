@@ -61,26 +61,18 @@ var (
 		"i": true, "n": true, "s": true, "c": true, "m": true,
 		"mn": true, "u": true, "st": true, "sl": true, "p": true, "f": true,
 	}
-	searchPriceKeys = map[string]bool{
-		"i": true, "n": true, "c": true, "m": true, "mn": true, "u": true, "v": true, "d": true,
-	}
-	searchFiscalKeys = map[string]bool{
-		"r": true, "c": true, "st": true, "a": true, "d": true, "i": true, "n": true,
-		"m": true, "mn": true, "u": true,
-	}
-	searchMunicipalityKeys = map[string]bool{"m": true, "n": true, "s": true, "u": true, "k": true}
-	searchPrefixKey        = regexp.MustCompile(`^(n-[a-z0-9]{3}|c-[0-9a-z]{3})$`)
-	municipalityCodeShape  = regexp.MustCompile(`^[0-9]{7}$`)
-	fiscalRecordIDShape    = regexp.MustCompile(`^[0-9a-f]{24}$`)
-	cpfTextPattern         = regexp.MustCompile(`(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2})([^0-9A-Za-z]|$)`)
-	rawScriptTag           = regexp.MustCompile(`<script\b[^>]*>`)
-	allowedScript          = regexp.MustCompile(`^<script type="module" src="/assets/portal\.[0-9a-f]{8}\.js" defer>$`)
-	unsafeAttribute        = regexp.MustCompile(`(?i)<[^>]*\sonerror\s*=`)
-	unsafeURL              = regexp.MustCompile(`(?i)(?:href|src)="\s*javascript:`)
-	assetRef               = regexp.MustCompile(`(?:href|src)="(/assets/[^"]+)"`)
-	htmlRef                = regexp.MustCompile(`(?:href|src)="([^"]+)"`)
-	metaRobots             = regexp.MustCompile(`<meta name="robots" content="([^"]+)">`)
-	shaPrefixName          = regexp.MustCompile(`^portal\.([0-9a-f]{8})\.(css|js)$`)
+	searchPrefixKey       = regexp.MustCompile(`^(n-[a-z0-9]{3}|c-[0-9a-z]{3})$`)
+	municipalityCodeShape = regexp.MustCompile(`^[0-9]{7}$`)
+	fiscalRecordIDShape   = regexp.MustCompile(`^[0-9a-f]{24}$`)
+	cpfTextPattern        = regexp.MustCompile(`(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2})([^0-9A-Za-z]|$)`)
+	rawScriptTag          = regexp.MustCompile(`<script\b[^>]*>`)
+	allowedScript         = regexp.MustCompile(`^<script type="module" src="/assets/portal\.[0-9a-f]{8}\.js" defer>$`)
+	unsafeAttribute       = regexp.MustCompile(`(?i)<[^>]*\sonerror\s*=`)
+	unsafeURL             = regexp.MustCompile(`(?i)(?:href|src)="\s*javascript:`)
+	assetRef              = regexp.MustCompile(`(?:href|src)="(/assets/[^"]+)"`)
+	htmlRef               = regexp.MustCompile(`(?:href|src)="([^"]+)"`)
+	metaRobots            = regexp.MustCompile(`<meta name="robots" content="([^"]+)">`)
+	shaPrefixName         = regexp.MustCompile(`^portal\.([0-9a-f]{8})\.(css|js)$`)
 )
 
 type VerifyOptions struct {
