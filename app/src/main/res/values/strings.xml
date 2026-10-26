@@ -1166,5 +1166,10 @@
     <string name="map_downloads_size_summary">Size: %1$d KiB in %2$d packages</string>
     <string name="map_downloads_depends_on">Depends on: %1$s</string>
     <string name="map_downloads_ok">OK</string>
+    <string name="map_downloads_wifi_only">Wi-Fi only</string>
+    <string name="map_downloads_wifi_any">Wi-Fi or mobile data</string>
+    <string name="map_downloads_delete">Delete</string>
+    <string name="map_downloads_in_use">In use by navigation; stop guidance and try again</string>
+    <string name="map_downloads_stored">Stored: %1$s</string>
     <string name="map_hours_unknown">Opening hours are not provided by this source.</string>
 </resources>

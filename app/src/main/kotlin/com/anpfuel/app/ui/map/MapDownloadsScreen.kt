@@ -61,7 +61,7 @@ fun MapDownloadsScreen(
             }
             ui.error != null -> {
                 val retryDesc = stringResource(R.string.map_retry)
-                Text(ui.error ?: "")
+                Text(if (ui.error == "in-use") stringResource(R.string.map_downloads_in_use) else ui.error ?: "")
                 TextButton(
                     onClick = { viewModel.retry() },
                     modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = retryDesc },
@@ -71,6 +71,10 @@ fun MapDownloadsScreen(
                 }
             }
             else -> {
+                Text(
+                    if (ui.wifiOnly) stringResource(R.string.map_downloads_wifi_only)
+                    else stringResource(R.string.map_downloads_wifi_any),
+                )
                 if (ui.activeGeneration != null) {
                     Text(stringResource(R.string.map_downloads_active_generation, ui.activeGeneration ?: ""))
                     if (ui.published) {
@@ -148,6 +152,25 @@ fun MapDownloadsScreen(
                         },
                     ) {
                         Text(checkUpdateLabel)
+                    }
+                }
+                if (ui.inactiveGenerations.isNotEmpty()) {
+                    val deleteLabel = stringResource(R.string.map_downloads_delete)
+                    ui.inactiveGenerations.forEach { generation ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                stringResource(R.string.map_downloads_stored, generation),
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(
+                                onClick = { viewModel.deleteInactive(generation) },
+                                modifier = Modifier.heightIn(min = 48.dp).semantics {
+                                    contentDescription = deleteLabel
+                                },
+                            ) {
+                                Text(deleteLabel)
+                            }
+                        }
                     }
                 }
             }

@@ -1146,6 +1146,11 @@
     <string name="map_downloads_update_generation">更新: %1$s</string>
     <string name="map_downloads_size_summary">サイズ: %1$d KiB (%2$d パッケージ)</string>
     <string name="map_downloads_depends_on">依存: %1$s</string>
+    <string name="map_downloads_wifi_only">Wi-Fiのみ</string>
+    <string name="map_downloads_wifi_any">Wi-Fiまたはモバイルデータ</string>
+    <string name="map_downloads_delete">削除</string>
+    <string name="map_downloads_in_use">ナビゲーションで使用中。ガイダンス停止後に再試行</string>
+    <string name="map_downloads_stored">保存済み: %1$s</string>
     <string name="map_downloads_ok">OK</string>
     <string name="map_hours_unknown">データ提供元に営業時間の情報がありません。</string>
 </resources>

@@ -33,6 +33,8 @@ import com.anpfuel.domain.routing.RoutePoint
 import com.anpfuel.maps.engine.MapEngine
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /**
  * Explicit foreground navigation: the single continuous GPS owner during
@@ -43,17 +45,22 @@ import javax.inject.Inject
 class GuidanceService : Service() {
     @Inject lateinit var engine: MapEngine
     @Inject lateinit var sessions: AuthSessionStore
+    @Inject lateinit var mapRepository: com.anpfuel.data.map.MapPackageRepository
+    @Inject lateinit var mapStore: com.anpfuel.data.map.MapPackageStore
 
     private lateinit var recovery: GuidanceRecoveryStore
     private lateinit var voice: LocalGuidanceVoice
     private var run: GuidanceRun? = null
     private var activeOwner = ""
     private var activeRequest: NativeRouteRequest? = null
+    private var leasedGeneration: String? = null
+    private val leaseEpoch = java.util.concurrent.atomic.AtomicInteger()
     private var locationManager: LocationManager? = null
     private var listener: LocationListener? = null
     private var lastFixNanos: Long = 0L
     private var gpsLostPosted = false
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val ioScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -190,9 +197,25 @@ class GuidanceService : Service() {
         activeRequest = request
         lastFixNanos = 0L
         gpsLostPosted = false
+        // Hold the active map generation while navigating: deletion/update must
+        // refuse or postpone instead of unmapping files under native readers.
+        val epoch = leaseEpoch.incrementAndGet()
+        ioScope.launch {
+            try {
+                val active = mapStore.activeGeneration()?.generation
+                if (active != null) {
+                    mapRepository.acquireGenerationLease(active)
+                    // A stop that raced this lookup must not leave the lease behind.
+                    if (leaseEpoch.get() == epoch) leasedGeneration = active
+                    else mapRepository.releaseGenerationLease(active)
+                }
+            } catch (_: Exception) {
+            }
+        }
         if (!recovery.save(owner, request)) {
             next.stop()
             run = null
+            leaseEpoch.incrementAndGet()
             GuidanceServiceState.update { it.copy(active = false, error = "storage-failed") }
             runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             stopSelf()
@@ -333,6 +356,11 @@ class GuidanceService : Service() {
         runCatching { run?.stop() }
         run = null
         activeRequest = null
+        leaseEpoch.incrementAndGet()
+        leasedGeneration?.let { leased ->
+            leasedGeneration = null
+            runCatching { mapRepository.releaseGenerationLease(leased) }
+        }
         // Explicit stop invalidates callbacks, audio, location, native and recovery.
         recovery.clear()
         mainHandler.post {
@@ -350,6 +378,12 @@ class GuidanceService : Service() {
         runCatching { stopLocationUpdates() }
         runCatching { run?.stop() }
         run = null
+        leaseEpoch.incrementAndGet()
+        leasedGeneration?.let { leased ->
+            leasedGeneration = null
+            runCatching { mapRepository.releaseGenerationLease(leased) }
+        }
+        ioScope.cancel()
         super.onDestroy()
     }
 

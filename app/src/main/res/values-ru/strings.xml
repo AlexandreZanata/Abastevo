@@ -1146,6 +1146,11 @@
     <string name="map_downloads_update_generation">Обновление: %1$s</string>
     <string name="map_downloads_size_summary">Размер: %1$d КиБ в %2$d пакетах</string>
     <string name="map_downloads_depends_on">Зависит от: %1$s</string>
+    <string name="map_downloads_wifi_only">Только Wi-Fi</string>
+    <string name="map_downloads_wifi_any">Wi-Fi или мобильные данные</string>
+    <string name="map_downloads_delete">Удалить</string>
+    <string name="map_downloads_in_use">Используется навигацией; остановите ведение и повторите</string>
+    <string name="map_downloads_stored">Сохранено: %1$s</string>
     <string name="map_downloads_ok">ОК</string>
     <string name="map_hours_unknown">Источник не сообщает часы работы.</string>
 </resources>

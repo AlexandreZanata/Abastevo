@@ -44,6 +44,35 @@
   Isolated planning source f1e1d0db; foreign-dirty primary/MAP checkouts preserved.
   No runtime/device/provider/VPS/push/PR/merge/wiki/production change.
   Next, only on implementation request: DRV-00 → DRV-01 → DRV-02.
+- MAP-26 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Pure Kotlin EV
+  energy model (usable energy, PHEV electric-portion scope, segments with an
+  explicit margin, reach, arrival SOC, charging-time lower bound, sum-first
+  calibration), conservative rounding and Known/Unknown results. 53 vectors
+  from an independent Python/Fractions oracle plus monotonic/property tests and
+  mutation checks PASS. No backend/UI/device change; no feasibility claim.
+  [MAP-26 evidence](../backend/evidence/maps/MAP-26.md). MAP-27–33 excluded;
+  no PR/merge/deploy.
+
+- MAP-25 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING (cloud backup cases
+  not delivered). Owner-scoped private favorites and saved route plans (Room v28),
+  strict KML/GPX/KMZ exchange (XXE/bomb/traversal/limit refusal, all-or-nothing,
+  idempotent import, tombstones), Saved screen and an explicit recorder service.
+  Real Room 9/9 + migration + exchange 2/2, UI 3/3 and recorder service on the
+  owned 16 KB emulator; two defects found and fixed (lost discard on service
+  teardown; MapScreen tests broken since MAP-23). Signed backup/restore needs the
+  Android favorites sync client and is NOT claimed.
+  [MAP-25 evidence](../backend/evidence/maps/MAP-25.md). MAP-26 next.
+
+- MAP-24 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Wi-Fi-aware map
+  downloads, safe inactive-generation deletion, navigation generation lease and a
+  real airplane-mode clean-restart journey (real MWM, map render, native search,
+  route preview, guidance, missing-region refusal) with proof-server request
+  count 9 -> 9 PASS on the owned 16 KB emulator; offline-distribution suite
+  stabilised (HTTP/1.0 pooled-socket race, off-by-one request count) and extended
+  with an interrupted-update resume test. OFFLINE_GATE PASS for this regional
+  journey only; one unexplained first-run process crash is disclosed.
+  [MAP-24 evidence](../backend/evidence/maps/MAP-24.md). MAP-25 next; MAP-27–33
+  excluded; no PR/merge/deploy.
 
 - MAP-23 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Explicit foreground
   guidance with native follow/progress, private owner-bound recovery, local TTS

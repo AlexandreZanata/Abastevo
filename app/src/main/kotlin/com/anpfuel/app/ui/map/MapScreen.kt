@@ -68,6 +68,7 @@ fun MapScreen(
     onOpenStation: (stationKey: String, fuel: String) -> Unit,
     onOpenSearch: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onOpenSaved: () -> Unit = {},
     onReportStation: (stationId: String, fuel: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     onOpenCity: (() -> Unit)? = null,
@@ -76,6 +77,7 @@ fun MapScreen(
     discovery: MapDiscoveryViewModel? = null,
     sheet: MapSheetViewModel? = null,
     planner: NativeRouteViewModel? = null,
+    saved: SavedViewModel? = null,
     guidance: GuidanceViewModel = hiltViewModel(),
     mapContent: @Composable (Modifier) -> Unit = {
         RealMapHost(
@@ -90,10 +92,13 @@ fun MapScreen(
     androidx.compose.runtime.LaunchedEffect(showRoute) {
         if (showRoute) guidance.refreshResume()
     }
+    val savedUi = saved?.ui?.collectAsStateWithLifecycle()?.value
     if (showRoute && planner != null) NativeRouteSheet(
         planner,
         onDismiss = { showRoute = false },
         onDownloads = { showRoute = false; onOpenDownloads() },
+        onSavePlan = saved?.let { vm -> { name, points, avoid -> vm.saveRoutePlan(name, points, avoid) } },
+        savedMessage = savedUi?.message,
     ) { preview, request ->
         GuidanceControls(preview = preview, request = request, viewModel = guidance)
     }
@@ -119,6 +124,7 @@ fun MapScreen(
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshAvailability()
                 discovery?.refreshPreferredMunicipality()
+                saved?.refresh()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -456,6 +462,12 @@ fun MapScreen(
             ) {
                 Text(stringResource(R.string.map_downloads))
             }
+            if (saved != null) TextButton(
+                onClick = onOpenSaved,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-saved"),
+            ) {
+                Text(stringResource(R.string.map25_open_saved))
+            }
         }
     }
 
@@ -519,6 +531,8 @@ fun MapScreen(
                 } else { routeError=true }
             },
             onReport = { uuid -> onReportStation(uuid, targetFuel) },
+            isFavorite = activeMarker?.uuid?.let { it in (savedUi?.favoriteStationIds ?: emptySet()) } ?: false,
+            onToggleFavorite = if (saved != null && activeMarker != null) ({ saved.toggleFavorite(activeMarker) }) else null,
             onSwitchToCommunity = {
                 viewModel.selectSource(MapPriceSource.COMMUNITY)
                 if (discUi?.selectedUuid == null && activeMarker != null) {

@@ -66,6 +66,12 @@ def proof_handler(inputs, public_key_output):
         def log_message(self, *_args):
             pass
 
+        def end_headers(self):
+            # Close every response: an HTTP/1.0 reply without this let OkHttp pool a
+            # socket the server then dropped, failing the next request intermittently.
+            self.send_header("Connection", "close")
+            super().end_headers()
+
         def do_GET(self):
             with lock:
                 state["requests"].append(self.path)

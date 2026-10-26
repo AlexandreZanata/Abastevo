@@ -1146,6 +1146,11 @@
     <string name="map_downloads_update_generation">Mise à jour : %1$s</string>
     <string name="map_downloads_size_summary">Taille : %1$d Kio en %2$d paquets</string>
     <string name="map_downloads_depends_on">Dépend de : %1$s</string>
+    <string name="map_downloads_wifi_only">Wi-Fi uniquement</string>
+    <string name="map_downloads_wifi_any">Wi-Fi ou données mobiles</string>
+    <string name="map_downloads_delete">Supprimer</string>
+    <string name="map_downloads_in_use">Utilisé par la navigation ; arrêtez le guidage et réessayez</string>
+    <string name="map_downloads_stored">Enregistré : %1$s</string>
     <string name="map_downloads_ok">OK</string>
     <string name="map_hours_unknown">Les horaires ne sont pas fournis par la source.</string>
 </resources>
