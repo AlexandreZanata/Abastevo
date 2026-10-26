@@ -1,5 +1,15 @@
 # Current execution state
 
+- MAP-25 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING (cloud backup cases
+  not delivered). Owner-scoped private favorites and saved route plans (Room v28),
+  strict KML/GPX/KMZ exchange (XXE/bomb/traversal/limit refusal, all-or-nothing,
+  idempotent import, tombstones), Saved screen and an explicit recorder service.
+  Real Room 9/9 + migration + exchange 2/2, UI 3/3 and recorder service on the
+  owned 16 KB emulator; two defects found and fixed (lost discard on service
+  teardown; MapScreen tests broken since MAP-23). Signed backup/restore needs the
+  Android favorites sync client and is NOT claimed.
+  [MAP-25 evidence](../backend/evidence/maps/MAP-25.md). MAP-26 next.
+
 - MAP-24 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Wi-Fi-aware map
   downloads, safe inactive-generation deletion, navigation generation lease and a
   real airplane-mode clean-restart journey (real MWM, map render, native search,

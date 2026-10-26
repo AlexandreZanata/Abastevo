@@ -151,6 +151,7 @@ fun AnpNavGraph(
                 },
                 onOpenSearch = { navController.navigate(Routes.STATIONS) },
                 onOpenDownloads = { navController.navigate("map/downloads") },
+                onOpenSaved = { navController.navigate("map/saved") },
                 onReportStation = { stationId, fuel ->
                     try {
                         if (fuel == "CHARGING") {
@@ -171,6 +172,12 @@ fun AnpNavGraph(
                 discovery = discovery,
                 sheet = sheet,
                 planner = hiltViewModel(),
+                saved = hiltViewModel(),
+            )
+        }
+        composable("map/saved") {
+            com.anpfuel.app.ui.map.SavedScreen(
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.MAP_CITY) {

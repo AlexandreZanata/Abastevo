@@ -23,6 +23,7 @@ import com.anpfuel.domain.routing.*
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
 @Composable
 fun NativeRouteSheet(viewModel:NativeRouteViewModel, onDismiss:()->Unit, onDownloads:()->Unit,
+    onSavePlan: ((String, List<Pair<Double, Double>>, Set<String>) -> Unit)? = null, savedMessage: String? = null,
     guidance: @Composable (NativeRoutePreview, NativeRouteRequest) -> Unit = { _,_ -> }) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
     val context=LocalContext.current
@@ -107,6 +108,15 @@ fun NativeRouteSheet(viewModel:NativeRouteViewModel, onDismiss:()->Unit, onDownl
                 if(preview.warnings) Text(stringResource(R.string.map22_warnings))
                 preview.maneuvers.forEach { step -> Text(step.instruction) }
                 Button(onClick=onDismiss) {Text(stringResource(R.string.map22_show))}
+                if(onSavePlan!=null) {
+                    val planName=stringResource(R.string.map25_route_default_name)
+                    OutlinedButton(onClick={
+                        val plan=listOfNotNull(state.origin)+state.stops+listOfNotNull(state.destination)
+                        onSavePlan("$planName ${state.origin?.label.orEmpty()} → ${state.destination?.label.orEmpty()}".take(120),plan.map { it.latitude to it.longitude },state.avoid.map { it.name }.toSet())
+                    },modifier=Modifier.testTag("native-route-save")) {Text(stringResource(R.string.map25_save_route))}
+                    if(savedMessage=="trip-saved") Text(stringResource(R.string.map25_msg_trip_saved),modifier=Modifier.testTag("native-route-saved"))
+                    else if(savedMessage!=null && savedMessage!="favorite-saved" && savedMessage!="favorite-removed") Text(stringResource(R.string.map25_msg_error))
+                }
                 viewModel.request(java.util.Locale.forLanguageTag(AppLocaleHolder.localeTag).language)?.let { guidance(preview,it) }
             }
         }
