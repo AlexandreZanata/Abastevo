@@ -361,6 +361,7 @@ sql:
       - db/migrations/000134_driver_shifts_distance.sql
       - db/migrations/000135_driver_cost_maintenance.sql
       - db/migrations/000136_driver_reconciliation.sql
+      - db/migrations/000137_driver_report_snapshots.sql
     gen:
       go:
         package: driver

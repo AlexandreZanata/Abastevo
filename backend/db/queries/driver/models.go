@@ -257,6 +257,22 @@ type DriverReconciliationRecord struct {
 	RecordRevision int64       `json:"record_revision"`
 }
 
+type DriverReportSnapshot struct {
+	AccountID      pgtype.UUID        `json:"account_id"`
+	ID             pgtype.UUID        `json:"id"`
+	VehicleID      pgtype.UUID        `json:"vehicle_id"`
+	Period         string             `json:"period"`
+	FromDay        pgtype.Date        `json:"from_day"`
+	ToDay          pgtype.Date        `json:"to_day"`
+	Timezone       string             `json:"timezone"`
+	Platform       string             `json:"platform"`
+	Basis          string             `json:"basis"`
+	SourceRevision string             `json:"source_revision"`
+	Version        int64              `json:"version"`
+	Payload        []byte             `json:"payload"`
+	GeneratedAt    pgtype.Timestamptz `json:"generated_at"`
+}
+
 type DriverShift struct {
 	AccountID              pgtype.UUID        `json:"account_id"`
 	ID                     pgtype.UUID        `json:"id"`
