@@ -43,6 +43,53 @@ type AccountSessionFamily struct {
 	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type DriverCostCommand struct {
+	AccountID     pgtype.UUID `json:"account_id"`
+	OperationID   pgtype.UUID `json:"operation_id"`
+	RequestSha256 string      `json:"request_sha256"`
+	VehicleID     pgtype.UUID `json:"vehicle_id"`
+	Version       int64       `json:"version"`
+}
+
+type DriverCostOwnerState struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Epoch     int64       `json:"epoch"`
+}
+
+type DriverCostProfile struct {
+	AccountID     pgtype.UUID        `json:"account_id"`
+	VehicleID     pgtype.UUID        `json:"vehicle_id"`
+	Version       int64              `json:"version"`
+	Ownership     string             `json:"ownership"`
+	Timezone      string             `json:"timezone"`
+	FromDay       pgtype.Date        `json:"from_day"`
+	UntilDay      pgtype.Date        `json:"until_day"`
+	ContentSha256 string             `json:"content_sha256"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+}
+
+type DriverCostProfileItem struct {
+	AccountID      pgtype.UUID `json:"account_id"`
+	VehicleID      pgtype.UUID `json:"vehicle_id"`
+	Version        int64       `json:"version"`
+	CostID         string      `json:"cost_id"`
+	Kind           string      `json:"kind"`
+	Provenance     string      `json:"provenance"`
+	LedgerSourceID pgtype.UUID `json:"ledger_source_id"`
+	SourceRevision pgtype.Int8 `json:"source_revision"`
+	FromDay        pgtype.Date `json:"from_day"`
+	UntilDay       pgtype.Date `json:"until_day"`
+	AmountCentavos pgtype.Int8 `json:"amount_centavos"`
+}
+
+type DriverCostTombstone struct {
+	AccountID           pgtype.UUID        `json:"account_id"`
+	VehicleID           pgtype.UUID        `json:"vehicle_id"`
+	Version             int64              `json:"version"`
+	ErasedContentSha256 string             `json:"erased_content_sha256"`
+	ErasedAt            pgtype.Timestamptz `json:"erased_at"`
+}
+
 type DriverDistanceCommand struct {
 	AccountID     pgtype.UUID        `json:"account_id"`
 	OperationID   pgtype.UUID        `json:"operation_id"`
@@ -135,6 +182,48 @@ type DriverEarningTombstone struct {
 	Platform       string      `json:"platform"`
 	SourceHash     string      `json:"source_hash"`
 	ErasedRevision int64       `json:"erased_revision"`
+}
+
+type DriverMaintenanceCommand struct {
+	AccountID     pgtype.UUID `json:"account_id"`
+	OperationID   pgtype.UUID `json:"operation_id"`
+	RequestSha256 string      `json:"request_sha256"`
+	ScheduleID    pgtype.UUID `json:"schedule_id"`
+	Version       int64       `json:"version"`
+}
+
+type DriverMaintenanceOwnerState struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Epoch     int64       `json:"epoch"`
+}
+
+type DriverMaintenanceSchedule struct {
+	AccountID       pgtype.UUID        `json:"account_id"`
+	ID              pgtype.UUID        `json:"id"`
+	Version         int64              `json:"version"`
+	VehicleID       pgtype.UUID        `json:"vehicle_id"`
+	Timezone        string             `json:"timezone"`
+	Kind            string             `json:"kind"`
+	Basis           string             `json:"basis"`
+	EffectiveFrom   pgtype.Date        `json:"effective_from"`
+	EffectiveUntil  pgtype.Date        `json:"effective_until"`
+	IntervalMetres  pgtype.Int8        `json:"interval_metres"`
+	IntervalDays    pgtype.Int8        `json:"interval_days"`
+	OdometerSegment int64              `json:"odometer_segment"`
+	BaselineMetres  pgtype.Int8        `json:"baseline_metres"`
+	BaselineDay     pgtype.Date        `json:"baseline_day"`
+	NextDueMetres   pgtype.Int8        `json:"next_due_metres"`
+	NextDueDay      pgtype.Date        `json:"next_due_day"`
+	ContentSha256   string             `json:"content_sha256"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+type DriverMaintenanceTombstone struct {
+	AccountID           pgtype.UUID        `json:"account_id"`
+	ScheduleID          pgtype.UUID        `json:"schedule_id"`
+	Version             int64              `json:"version"`
+	ErasedContentSha256 string             `json:"erased_content_sha256"`
+	ErasedAt            pgtype.Timestamptz `json:"erased_at"`
 }
 
 type DriverShift struct {

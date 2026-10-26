@@ -119,7 +119,7 @@ func earning(t *testing.T, vehicle string) app.SaveEarning {
 }
 func driverCount(t *testing.T, p *pgxpool.Pool, table string) int {
 	t.Helper()
-	allowed := map[string]bool{"driver_earnings": true, "driver_earning_revisions": true, "driver_earning_adjustments": true, "driver_earning_commands": true, "driver_earning_tombstones": true, "driver_earning_owner_state": true, "driver_shifts": true, "driver_shift_gaps": true, "driver_shift_commands": true, "driver_distance_observations": true, "driver_distance_commands": true}
+	allowed := map[string]bool{"driver_earnings": true, "driver_earning_revisions": true, "driver_earning_adjustments": true, "driver_earning_commands": true, "driver_earning_tombstones": true, "driver_earning_owner_state": true, "driver_shifts": true, "driver_shift_gaps": true, "driver_shift_commands": true, "driver_distance_observations": true, "driver_distance_commands": true, "driver_cost_profiles": true, "driver_cost_profile_items": true, "driver_cost_commands": true, "driver_cost_owner_state": true, "driver_cost_tombstones": true, "driver_maintenance_schedules": true, "driver_maintenance_commands": true, "driver_maintenance_owner_state": true, "driver_maintenance_tombstones": true}
 	if !allowed[table] {
 		t.Fatal("test table not allowlisted")
 	}
@@ -540,7 +540,7 @@ func migrationCopy(t *testing.T, include133 bool) fstest.MapFS {
 	}
 	out := fstest.MapFS{}
 	for _, entry := range entries {
-		if !strings.HasSuffix(entry.Name(), ".sql") || (!include133 && (strings.HasPrefix(entry.Name(), "000133_") || strings.HasPrefix(entry.Name(), "000134_"))) {
+		if !strings.HasSuffix(entry.Name(), ".sql") || (!include133 && (strings.HasPrefix(entry.Name(), "000133_") || strings.HasPrefix(entry.Name(), "000134_") || strings.HasPrefix(entry.Name(), "000135_"))) {
 			continue
 		}
 		b, e := fs.ReadFile(migrations.Files, entry.Name())
@@ -585,7 +585,7 @@ func TestDriverUpgradeFailureRecoveryAndConcurrentMigrators(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
-	if total != 2 {
+	if total != 3 {
 		t.Fatal("migrations not applied exactly once", total)
 	}
 	var legacy bool

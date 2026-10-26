@@ -23,12 +23,18 @@ type OwnershipPort func(context.Context, pgx.Tx, string, string) (bool, error)
 type Store struct {
 	pool      *pgxpool.Pool
 	ownership OwnershipPort
+	ledger    LedgerCostPort
 }
 
 var _ app.EarningsStore = (*Store)(nil)
 
-func New(pool *pgxpool.Pool, ownership OwnershipPort) *Store { return &Store{pool, ownership} }
-func uid(s string) pgtype.UUID                               { var v pgtype.UUID; _ = v.Scan(s); return v }
+func New(pool *pgxpool.Pool, ownership OwnershipPort) *Store {
+	return NewWithLedger(pool, ownership, nil)
+}
+func NewWithLedger(pool *pgxpool.Pool, ownership OwnershipPort, ledger LedgerCostPort) *Store {
+	return &Store{pool: pool, ownership: ownership, ledger: ledger}
+}
+func uid(s string) pgtype.UUID { var v pgtype.UUID; _ = v.Scan(s); return v }
 func uuid(v pgtype.UUID) string {
 	b := v.Bytes
 	return hex.EncodeToString(b[0:4]) + "-" + hex.EncodeToString(b[4:6]) + "-" + hex.EncodeToString(b[6:8]) + "-" + hex.EncodeToString(b[8:10]) + "-" + hex.EncodeToString(b[10:16])

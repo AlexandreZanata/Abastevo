@@ -84,6 +84,23 @@ func (p VehicleCostProfile) Validate() error {
 	}
 	return nil
 }
+func (p VehicleCostProfile) Normalize() (VehicleCostProfile, error) {
+	out := p
+	out.Costs = make([]ProfileCost, len(p.Costs))
+	for i, c := range p.Costs {
+		out.Costs[i] = c
+		if c.Amount != nil {
+			n := *c.Amount
+			out.Costs[i].Amount = &n
+		}
+	}
+	sort.Slice(out.Costs, func(i, j int) bool { return out.Costs[i].ID < out.Costs[j].ID })
+	if e := out.Validate(); e != nil {
+		return out, e
+	}
+	return out, nil
+}
+
 func (p VehicleCostProfile) At(day string) (ProfileBuckets, error) {
 	out := ProfileBuckets{}
 	if p.Validate() != nil {

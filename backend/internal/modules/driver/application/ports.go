@@ -94,3 +94,38 @@ type DistanceStore interface {
 	GetDistance(context.Context, string, string) (domain.DistanceRecord, error)
 	ListDistances(context.Context, string, string, time.Time, time.Time, int) ([]domain.DistanceRecord, error)
 }
+
+type SaveCostProfile struct {
+	OperationID                    string
+	ExpectedVersion, ExpectedEpoch int64
+	Profile                        domain.VehicleCostProfile
+}
+type CostProfileReceipt struct {
+	Vehicle  string
+	Version  int64
+	Replayed bool
+}
+type CostProfileStore interface {
+	SaveCostProfile(context.Context, string, SaveCostProfile) (CostProfileReceipt, error)
+	GetCostProfile(context.Context, string, string, int64) (domain.VehicleCostProfile, error)
+	ListCostProfiles(context.Context, string, string, int64, int) ([]domain.VehicleCostProfile, error)
+	EraseCostProfile(context.Context, string, string, int64, int64) error
+	EraseCostOwner(context.Context, string, int64) error
+}
+type SaveMaintenance struct {
+	OperationID                    string
+	ExpectedVersion, ExpectedEpoch int64
+	Schedule                       domain.MaintenanceSchedule
+}
+type MaintenanceReceipt struct {
+	ScheduleID string
+	Version    int64
+	Replayed   bool
+}
+type MaintenanceStore interface {
+	SaveMaintenance(context.Context, string, SaveMaintenance) (MaintenanceReceipt, error)
+	GetMaintenance(context.Context, string, string, int64) (domain.MaintenanceSchedule, error)
+	ListMaintenance(context.Context, string, string, int64, int) ([]domain.MaintenanceSchedule, error)
+	EraseMaintenance(context.Context, string, string, int64, int64) error
+	EraseMaintenanceOwner(context.Context, string, int64) error
+}
