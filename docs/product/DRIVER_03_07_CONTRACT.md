@@ -104,3 +104,15 @@ the dataset as cloud-disabled until the actual signed backup/restore protocol is
 implemented; do not claim DRV-16 from a table. Real disposable PostGIS proves
 empty/132→133 migration, atomic rollback/recovery, duplicates/overlap races,
 foreign ownership, linked adjustment revision and restart. No persistent/VPS DB.
+
+### DRV-06 representation details before behavior
+
+Stable allocation bucket IDs use bounded ASCII so Go byte ordering and Kotlin
+ordering agree. Source amount can be explicitly unknown. DAY proration counts
+ISO civil dates in a declared IANA timezone (not 86400-second assumptions across
+DST); TIME proration uses explicit seconds. Both keep an unallocated remainder
+bucket and refuse overlapping subwindows. Actual cost-profile entries must link
+a ledger source/revision; principal is retained in the capital/cash bucket.
+Reserve replacement links are explicit one-to-one, same-window source links;
+replacing a reserve removes its entire modeled addition while keeping the
+realized ledger cost once. Unknown amounts remain unknown, never default zero.
