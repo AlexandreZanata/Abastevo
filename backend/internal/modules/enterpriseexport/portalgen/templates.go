@@ -13,46 +13,81 @@ const templates = `
 </head>
 <body>
   <a class="skip" href="#conteudo">Pular para o conteúdo</a>
-  <header class="site-header">
-    <div class="wrap header-inner">
-      <a class="brand" href="{{if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}">abastevo</a>
-      <nav class="portal-nav" aria-label="Navegação do portal">
-        {{if .OfficialOnly}}
-        <a href="/fiscalizacao/" {{if eq .ActiveNav "fiscalizacao"}}aria-current="page"{{end}}>Fiscalização</a>
-        <a href="/metodologia/" {{if eq .ActiveNav "metodologia"}}aria-current="page"{{end}}>Metodologia</a>
-        {{else}}
-        <a href="/consultar/" {{if eq .ActiveNav "consultar"}}aria-current="page"{{end}}>Consultar</a>
-        <a href="/precos/" {{if eq .ActiveNav "precos"}}aria-current="page"{{end}}>Preços</a>
-        <a href="/metodologia/" {{if eq .ActiveNav "metodologia"}}aria-current="page"{{end}}>Metodologia</a>
-        <a href="/curiosidades/" {{if eq .ActiveNav "curiosidades"}}aria-current="page"{{end}}>Curiosidades</a>
-        <a href="/fiscalizacao/" {{if eq .ActiveNav "fiscalizacao"}}aria-current="page"{{end}}>Fiscalização</a>
-        {{end}}
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="{{if .Landing}}{{.Landing}}/{{else if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}" aria-label="abastevo — início"><span class="brand-logo" aria-hidden="true"></span><span class="brand-wordmark">abastevo</span></a>
+      <nav class="topnav" aria-label="Navegação principal">
+        {{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar</a>{{end}}
+        {{if .Landing}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
+        <a href="{{.Landing}}/como-usar/">Como usar</a>
+        <a href="{{.Landing}}/guias/">Guias</a>{{else}}<a href="/metodologia/">Metodologia</a>{{end}}
       </nav>
+      <div class="topbar-actions">
+        <a class="topbar-link" href="https://github.com/AlexandreZanata/abastevo" target="_blank" rel="noopener" aria-label="Ver no GitHub — Projeto open source"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg><span class="hide-sm">GitHub</span></a>
+        {{if .OfficialOnly}}<a class="pill-light hide-sm" href="/fiscalizacao/">Fiscalização</a>{{else}}<a class="pill-light hide-sm" href="/consultar/">Consultar dados</a>{{end}}
+        <details class="nav-toggle">
+          <summary class="nav-button" aria-label="Abrir menu de navegação"><span aria-hidden="true"></span></summary>
+          <nav class="site-nav" aria-label="Menu">
+            {{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a>
+            <a href="/precos/">Preços</a>
+            <a href="/fiscalizacao/">Fiscalização</a>{{end}}
+            <a href="/metodologia/">Metodologia</a>
+            {{if .Landing}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
+            <a href="{{.Landing}}/como-usar/">Como usar</a>
+            <a href="{{.Landing}}/guias/">Guias</a>{{end}}
+          </nav>
+        </details>
+      </div>
     </div>
   </header>
+  <nav class="portal-nav" aria-label="Navegação do portal">
+    <div class="wrap portal-nav-inner">
+      {{if .OfficialOnly}}
+      <a href="/fiscalizacao/" {{if eq .ActiveNav "fiscalizacao"}}aria-current="page"{{end}}>Fiscalização</a>
+      <a href="/metodologia/" {{if eq .ActiveNav "metodologia"}}aria-current="page"{{end}}>Metodologia</a>
+      {{else}}
+      <a href="/consultar/" {{if eq .ActiveNav "consultar"}}aria-current="page"{{end}}>Consultar</a>
+      <a href="/precos/" {{if eq .ActiveNav "precos"}}aria-current="page"{{end}}>Preços</a>
+      <a href="/fiscalizacao/" {{if eq .ActiveNav "fiscalizacao"}}aria-current="page"{{end}}>Fiscalização</a>
+      <a href="/curiosidades/" {{if eq .ActiveNav "curiosidades"}}aria-current="page"{{end}}>Curiosidades</a>
+      <a href="/metodologia/" {{if eq .ActiveNav "metodologia"}}aria-current="page"{{end}}>Metodologia</a>
+      {{end}}
+    </div>
+  </nav>
 {{end}}
 
 {{define "foot"}}
   <footer class="footer">
     <div class="wrap">
-      {{if .OfficialOnly}}
-      <p><strong>Fonte:</strong> ANP — multas aplicadas. Cálculo e exibição: Abastevo.</p>
-      <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Recorte oficial de fiscalização, event-level.</p>
-      <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; multa não prova adulteração, culpa ou definitividade.</p>
-      <p><a href="/fiscalizacao/">Fiscalização</a> · <a href="/metodologia/">Metodologia e fontes</a></p>
-      {{else}}
-      <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo.</p>
-      <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Pesquisa: {{if .Period}}{{.Period}}{{else}}sem pesquisa publicada{{end}}</p>
-      <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; não é preço ao vivo.</p>
-      <p><a href="/dados/">Baixar dados públicos</a> · <a href="/curiosidades/">Perguntas aprovadas</a></p>
-      {{end}}
+      <div class="footer-top">
+        <a class="brand" href="{{if .Landing}}{{.Landing}}/{{else if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}" aria-label="abastevo — início"><span class="brand-logo" aria-hidden="true"></span><span class="brand-wordmark">abastevo</span></a>
+        <p class="footer-tagline">Projeto aberto e independente, sem afiliação à ANP ou a qualquer governo. Preços da comunidade e a referência semanal da ANP andam separados, sempre com fonte e data.</p>
+      </div>
+      <div class="footer-cols">
+        <nav aria-label="Produto"><h2>Produto</h2>{{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a><a href="/fiscalizacao/">Fiscalização</a>{{end}}<a href="/metodologia/">Metodologia</a></nav>
+        {{if .OfficialOnly}}{{else}}<nav aria-label="Dados"><h2>Dados</h2><a href="/precos/">Preços</a><a href="/dados/">Baixar dados públicos</a><a href="/curiosidades/">Perguntas aprovadas</a></nav>{{end}}
+        {{if .Landing}}<nav aria-label="Aprender"><h2>Aprender</h2><a href="{{.Landing}}/como-usar/">Como usar</a><a href="{{.Landing}}/guias/">Guias</a><a href="{{.Landing}}/#aplicativo">Aplicativo</a></nav>{{end}}
+        <nav aria-label="Projeto"><h2>Projeto</h2><a href="https://github.com/AlexandreZanata/abastevo">GitHub</a><a href="https://github.com/AlexandreZanata/abastevo/issues">Contato</a><a href="https://github.com/AlexandreZanata/abastevo/blob/main/TRADEMARKS.md">TRADEMARKS</a></nav>
+        {{if .Landing}}<nav aria-label="Privacidade"><h2>Privacidade</h2><a href="{{.Landing}}/privacidade/">Privacidade</a><a href="{{.Landing}}/excluir-conta/">Excluir conta</a><a href="{{.Landing}}/termos/">Termos</a></nav>{{end}}
+      </div>
+      <div class="footer-legal">
+        {{if .OfficialOnly}}
+        <p><strong>Fonte:</strong> ANP — multas aplicadas. Cálculo e exibição: Abastevo.</p>
+        <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Recorte oficial de fiscalização, event-level.</p>
+        <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; multa não prova adulteração, culpa ou definitividade.</p>
+        {{else}}
+        <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo.</p>
+        <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Pesquisa: {{if .Period}}{{.Period}}{{else}}sem pesquisa publicada{{end}}</p>
+        <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; não é preço ao vivo.</p>
+        {{end}}
+      </div>
     </div>
   </footer>
   {{if .ScriptURL}}<script type="module" src="{{.ScriptURL}}" defer></script>{{end}}
 </body>
 </html>{{end}}
 
-{{define "crumbs"}}{{if .Breadcrumbs}}<nav class="breadcrumbs" aria-label="Trilha de navegação">{{range $i, $c := .Breadcrumbs}}{{if $i}} · {{end}}{{if $c.Current}}<span aria-current="page">{{$c.Label}}</span>{{else}}<a href="{{$c.Href}}">{{$c.Label}}</a>{{end}}{{end}}</nav>{{end}}{{end}}
+{{define "crumbs"}}{{if gt (len .Breadcrumbs) 1}}<nav class="wrap breadcrumbs" aria-label="Trilha de navegação">{{range $i, $c := .Breadcrumbs}}{{if $i}} · {{end}}{{if $c.Current}}<span aria-current="page">{{$c.Label}}</span>{{else}}<a href="{{$c.Href}}">{{$c.Label}}</a>{{end}}{{end}}</nav>{{end}}{{end}}
 
 {{define "summary"}}{{if .}}<div class="table-wrap">
   <table>
@@ -91,7 +126,6 @@ const templates = `
 
 {{define "consultar"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <p class="eyebrow">Consulta pública</p>
   <h1>Consultar preços de combustíveis</h1>
   <p class="lead">Preços encontrados na pesquisa da ANP, com período, fonte e amostra. Não é preço ao vivo.</p>
   <form data-portal-search data-shard-base="/dados/busca/" data-release="{{.SearchRelease}}" data-result-limit="50" action="/consultar/" method="get" role="search">
@@ -126,7 +160,6 @@ const templates = `
 
 {{define "precos"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <p class="eyebrow">Resumo por região</p>
   <h1>Preços de combustíveis na pesquisa da ANP</h1>
   <p class="lead">Resumo derivado dos preços de posto da pesquisa mais recente. Não é uma estatística oficial da ANP nem um preço ao vivo.</p>
   <div class="notice"><strong>Leia a amostra antes do número.</strong><p>Mínimo, máximo e dispersão vêm dos postos com observação no período. A amostra não cobre todos os postos e um valor histórico não é uma oferta atual.</p></div>
@@ -141,7 +174,6 @@ const templates = `
 
 {{define "state"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <p class="eyebrow">Resumo estadual</p>
   <h1>Preços em {{.Name}} ({{.UF}})</h1>
   <p class="lead">Preços encontrados na pesquisa da ANP para os postos com identidade e observação neste estado.</p>
   <h2>Resumo por combustível</h2>
@@ -154,7 +186,6 @@ const templates = `
 
 {{define "municipality"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <p class="eyebrow">Resumo municipal</p>
   <h1>Preços em {{.Name}}</h1>
   <p class="lead">{{.UF}} · IBGE {{.Code}} · {{.Population}} {{plural .Population "posto" "postos"}} na amostra</p>
   {{if .Insufficient}}
@@ -172,7 +203,6 @@ const templates = `
 
 {{define "station"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <p class="eyebrow">Detalhe do posto</p>
   <h1>{{.Station.Name}}</h1>
   <p class="lead">{{.Station.Place}} · {{.Station.CNPJ}} · <span class="status">{{.Station.Status}}</span></p>
   <div class="grid summary-grid">
@@ -215,20 +245,18 @@ const templates = `
 
 {{define "curiosidades"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <p class="eyebrow">Perguntas aprovadas</p>
   <h1>Perguntas aprovadas sobre os dados</h1>
   <p class="lead">Respostas determinísticas sobre a amostra, os preços e a cobertura da pesquisa mais recente. Não são previsões nem conclusões geradas automaticamente.</p>
-  <div class="grid cards">
-    {{range .Cards}}<article class="card"><h2>{{.Question}}</h2><p>{{.Answer}}</p>{{if .Caveat}}<p class="muted">{{.Caveat}}</p>{{end}}<p class="muted">{{.Formula}} <a href="{{.SourceHref}}">Método e fonte</a></p></article>{{end}}
+  <div class="grid qa-grid">
+    {{range .Cards}}<article class="card qa-card"><h2>{{.Question}}</h2><p class="qa-answer">{{.Answer}}</p>{{if .Caveat}}<p class="qa-caveat">{{.Caveat}}</p>{{end}}<p class="qa-meta">{{.Formula}} <a href="{{.SourceHref}}">Método e fonte</a></p></article>{{end}}
   </div>
-  <div class="notice" style="margin-top: 1.5rem;"><strong>Impressão e dados abertos</strong><p>Esta página foi preparada para impressão; a navegação e os formulários não aparecem no papel. Os mesmos recortes estão disponíveis em CSV no <a href="{{.DownloadsHref}}">diretório de downloads</a>.</p></div>
+  <div class="notice"><strong>Impressão e dados abertos</strong><p>Esta página foi preparada para impressão; a navegação e os formulários não aparecem no papel. Os mesmos recortes estão disponíveis em CSV no <a href="{{.DownloadsHref}}">diretório de downloads</a>.</p></div>
   <div class="links"><a href="/dados/">Baixar dados públicos</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
 
 {{define "dados"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <p class="eyebrow">Dados públicos</p>
   <h1>Baixar dados públicos</h1>
   <p class="lead">CSV e manifesto derivados da pesquisa ANP mais recente. Amostra datada, sem preço ao vivo.</p>
   <p class="synthetic" role="note">Publicação candidata. A redistribuição de preços/cadastro depende de direitos compatíveis e da política de precisão monetária; os arquivos não são publicados por esta geração.</p>
@@ -247,41 +275,70 @@ const templates = `
 
 {{define "metodologia"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <p class="eyebrow">Transparência</p>
   <h1>Metodologia e fontes</h1>
   <p class="lead">Como os preços, resumos e lacunas são construídos — e o que este portal não afirma.</p>
-  <h2>Fontes</h2>
-  <ul>
-    <li><strong>Cadastro de postos:</strong> dados cadastrais de revendedores da ANP, reutilizados pelo Directory. UUID canônico e CNPJ completo são preservados; um CNPJ inválido não é inventado.</li>
-    <li><strong>Preços:</strong> Levantamento de Preços de Combustíveis da ANP, arquivo de posto por semana. Período e data de coleta vêm da fonte.</li>
-    <li><strong>Fiscalização e multas:</strong> fatos oficiais separados, ainda não admitidos. Não há score de risco.</li>
-  </ul>
-  <h2>Datas e relógios</h2>
-  <ul>
-    <li><strong>Coleta:</strong> data em que a ANP coletou o preço.</li>
-    <li><strong>Pesquisa:</strong> semana de referência (início e fim).</li>
-    <li><strong>Publicação Abastevo:</strong> quando o arquivo estático foi gerado.</li>
-    <li><strong>Última verificação da fonte:</strong> separada da publicação; uma geração nova não rejuvenece a fonte.</li>
-  </ul>
-  <p>Um preço é sempre “encontrado na pesquisa de [período]”. Não é preço ao vivo e não garante disponibilidade atual.</p>
-  <h2>Amostra e rankings</h2>
-  <ul>
-    <li>A pesquisa é amostral; não cobre todos os postos nem todos os dias.</li>
-    <li>Rankings são “menores preços encontrados nesta amostra e período”, com contagem de postos, empates e exclusões.</li>
-    <li>Um município só recebe ranking com pelo menos 5 postos com observação; abaixo disso, mostramos amostra insuficiente.</li>
-    <li>Semana ausente é lacuna, nunca preço zero. Um mínimo histórico não é uma oferta atual.</li>
-  </ul>
-  <h2>Dados oficiais e cálculos Abastevo</h2>
-  <p>“Fonte: ANP” identifica o fato oficial. “Cálculo Abastevo” identifica mínimo, máximo, dispersão, médias e rankings derivados. Um resumo derivado não é uma estatística oficial da ANP e não é calculado pela média das médias municipais.</p>
-  <h2>Correções e retiradas</h2>
-  <p>Uma correção da fonte gera uma nova revisão; páginas, resumos e índices são reconstruídos a partir dela. Registros retirados não voltam por rollback. O portal não promete apagar cópias já baixadas por terceiros.</p>
-  <h2>Privacidade e independência</h2>
-  <p>Nenhuma consulta chama a API do Abastevo, a API da ANP ou o banco. O navegador baixa apenas arquivos estáticos públicos. Não publicamos CPF, fotos de usuários, GPS de colaboradores, documentos internos ou dados de conta. Pagamento ou patrocínio não altera a ordem dos preços nem os fatos oficiais.</p>
-  <h2>Bloqueios atuais</h2>
-  <ul>
-    <li>A publicação pública de preços reais depende de direitos compatíveis e de uma política registrada de precisão monetária para preços com mais de três casas decimais.</li>
-    <li>A fiscalização depende da aceitação do fluxo oficial e da associação segura ao posto; até lá, a página explica a ausência e não inventa registros.</li>
-  </ul>
+  <div class="doc">
+  <section class="doc-section">
+    <h2>Fontes</h2>
+    <div class="doc-body">
+      <ul>
+        <li><strong>Cadastro de postos:</strong> dados cadastrais de revendedores da ANP, reutilizados pelo Directory. UUID canônico e CNPJ completo são preservados; um CNPJ inválido não é inventado.</li>
+        <li><strong>Preços:</strong> Levantamento de Preços de Combustíveis da ANP, arquivo de posto por semana. Período e data de coleta vêm da fonte.</li>
+        <li><strong>Fiscalização e multas:</strong> fatos oficiais separados, ainda não admitidos. Não há score de risco.</li>
+      </ul>
+    </div>
+  </section>
+  <section class="doc-section">
+    <h2>Datas e relógios</h2>
+    <div class="doc-body">
+      <ul>
+        <li><strong>Coleta:</strong> data em que a ANP coletou o preço.</li>
+        <li><strong>Pesquisa:</strong> semana de referência (início e fim).</li>
+        <li><strong>Publicação Abastevo:</strong> quando o arquivo estático foi gerado.</li>
+        <li><strong>Última verificação da fonte:</strong> separada da publicação; uma geração nova não rejuvenece a fonte.</li>
+      </ul>
+      <p>Um preço é sempre “encontrado na pesquisa de [período]”. Não é preço ao vivo e não garante disponibilidade atual.</p>
+    </div>
+  </section>
+  <section class="doc-section">
+    <h2>Amostra e rankings</h2>
+    <div class="doc-body">
+      <ul>
+        <li>A pesquisa é amostral; não cobre todos os postos nem todos os dias.</li>
+        <li>Rankings são “menores preços encontrados nesta amostra e período”, com contagem de postos, empates e exclusões.</li>
+        <li>Um município só recebe ranking com pelo menos 5 postos com observação; abaixo disso, mostramos amostra insuficiente.</li>
+        <li>Semana ausente é lacuna, nunca preço zero. Um mínimo histórico não é uma oferta atual.</li>
+      </ul>
+    </div>
+  </section>
+  <section class="doc-section">
+    <h2>Dados oficiais e cálculos Abastevo</h2>
+    <div class="doc-body">
+      <p>“Fonte: ANP” identifica o fato oficial. “Cálculo Abastevo” identifica mínimo, máximo, dispersão, médias e rankings derivados. Um resumo derivado não é uma estatística oficial da ANP e não é calculado pela média das médias municipais.</p>
+    </div>
+  </section>
+  <section class="doc-section">
+    <h2>Correções e retiradas</h2>
+    <div class="doc-body">
+      <p>Uma correção da fonte gera uma nova revisão; páginas, resumos e índices são reconstruídos a partir dela. Registros retirados não voltam por rollback. O portal não promete apagar cópias já baixadas por terceiros.</p>
+    </div>
+  </section>
+  <section class="doc-section">
+    <h2>Privacidade e independência</h2>
+    <div class="doc-body">
+      <p>Nenhuma consulta chama a API do Abastevo, a API da ANP ou o banco. O navegador baixa apenas arquivos estáticos públicos. Não publicamos CPF, fotos de usuários, GPS de colaboradores, documentos internos ou dados de conta. Pagamento ou patrocínio não altera a ordem dos preços nem os fatos oficiais.</p>
+    </div>
+  </section>
+  <section class="doc-section">
+    <h2>Bloqueios atuais</h2>
+    <div class="doc-body">
+      <ul>
+        <li>A publicação pública de preços reais depende de direitos compatíveis e de uma política registrada de precisão monetária para preços com mais de três casas decimais.</li>
+        <li>A fiscalização depende da aceitação do fluxo oficial e da associação segura ao posto; até lá, a página explica a ausência e não inventa registros.</li>
+      </ul>
+    </div>
+  </section>
+  </div>
   <div class="source">
     <p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença MIT.</p>
     <p class="muted source-url">Snapshot: {{.InputHash}} · versão dos cálculos: abastevo-metrics-v1 · publicação: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}}</p>
@@ -292,7 +349,6 @@ const templates = `
 {{define "fiscalizacao"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
   {{if .HasData}}
-  <p class="eyebrow">Registros oficiais</p>
   <h1>{{.Title}}</h1>
   <p class="lead">Multas aplicadas, event-level, da edição {{.Manifest.Edition}} ({{.Manifest.SourcePeriod}}). Não é score de risco, não prova adulteração e não declara culpa ou definitividade.</p>
   <div class="grid summary-grid">
@@ -318,7 +374,6 @@ const templates = `
   </table></div>{{else}}<div class="notice"><strong>Sem registros oficiais nesta edição.</strong></div>{{end}}
   <div class="links">{{if .PrevHref}}<a href="{{.PrevHref}}">Página anterior</a>{{end}}{{if .NextHref}}<a href="{{.NextHref}}">Próxima página</a>{{end}}<a href="/metodologia/">Metodologia e fontes</a>{{if .OfficialOnly}}{{else}}<a href="/consultar/">Consultar preços</a>{{end}}</div>
   {{else}}
-  <p class="eyebrow">Registros oficiais</p>
   <h1>Fiscalização — ainda não disponível</h1>
   <p class="lead">Este recorte depende da aceitação do fluxo oficial de fiscalização e da associação segura ao posto. Até lá, nenhum registro é exibido.</p>
   <div class="notice"><strong>Por que a página está vazia</strong><p>O adaptador oficial existe como contrato local, mas o fluxo ao vivo, a cobertura completa e a associação segura ao posto ainda não foram aceitos. Publicar uma lista parcial ou inventar registros seria pior do que dizer “ainda não disponível”.</p></div>
@@ -337,7 +392,6 @@ const templates = `
 
 {{define "fiscalizacaoRecord"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <p class="eyebrow">Registro oficial</p>
   <h1>{{.Record.Status}}</h1>
   <p class="lead">CNPJ {{.Record.CNPJ}} · {{.Record.AssociationLabel}}</p>
   <div class="grid summary-grid">
@@ -364,7 +418,6 @@ const templates = `
 
 {{define "notfound"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <p class="eyebrow">404</p>
   <h1>Página não encontrada</h1>
   <p class="lead">A página ou o posto solicitado não existe neste portal estático.</p>
   <div class="notice"><strong>O que fazer</strong><p>Volte à {{if .OfficialOnly}}fiscalização{{else}}consulta{{end}} para navegar {{if .OfficialOnly}}pelos registros oficiais{{else}}pelos estados e postos com observação{{end}}. Um UUID desconhecido não é redirecionado para outro posto.</p></div>

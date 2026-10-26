@@ -1,5 +1,16 @@
 # Current execution state
 
+- Landing LH09 / portal shared chrome 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
+  User-authorized branch `codex/landing-portal-visual` from `origin/main` (dev
+  carries unrelated open PR #151) with a PR to main. Uber-style light-only home
+  with hero search hand-off to `/consultar/?uf=..&q=..`, black explore band,
+  mirrored features and owner-supplied open-data art; portal pages share the
+  landing header/footer via `portalgen --landing-url`, editorial methodology and
+  approved-question cards. [Contract](../product/LANDING_CONTENT_CONTRACT.md#lh09-uber-style-home-amendment--2026-10-26).
+  Landing typecheck/build/check and 61/61 tests, enterpriseexport/portal cmd
+  race tests, vet, gofmt, secret scan and `git diff --check` passed locally.
+  No deployment, DNS or public portal publication; required Quick verification
+  and review gate the merge.
 - MAP-27–29 local batch: LOCAL_DONE / INTEGRATION_PENDING. Phase commits `805353b8`
   (MAP-27), `ae0699c5` (MAP-28) and `1a6a1add` (MAP-29) on `codex/map-ev-27-29`;
   no PR/remote CI/merge/wiki. Evidence/docs revisions after those commits do not change code.

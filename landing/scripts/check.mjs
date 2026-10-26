@@ -164,9 +164,13 @@ export function checkDist(options = {}) {
     }
 
     // Check internal local links / resources
+    // Portal routes are owned by the separately generated portal artifact
+    // (backend/cmd/portalgen) and merged at the static edge; not built here.
+    const portalRoutes = ['/consultar/', '/fiscalizacao/', '/metodologia/'];
     const srcMatches = Array.from(content.matchAll(/(?:src|href)="(\/[^"#?]+)"/g));
     for (const match of srcMatches) {
       const resourcePath = match[1];
+      if (portalRoutes.includes(resourcePath)) continue;
       let diskTarget;
       if (resourcePath === '/') {
         diskTarget = path.join(distDir, 'index.html');

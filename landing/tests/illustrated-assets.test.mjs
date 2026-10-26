@@ -8,8 +8,8 @@ test('illustrated scenes ship responsive bounded derivatives with distinct categ
   const art = JSON.parse(fs.readFileSync(path.join(root, 'static/assets/art/provenance.json'), 'utf8'));
   const html = fs.readFileSync(path.join(root, 'static/index.html'), 'utf8');
   const scenes = art.sources.filter(source => source.accent);
-  assert.equal(scenes.length, 6);
-  assert.equal(new Set(scenes.map(source => source.accent)).size, 6);
+  assert.equal(scenes.length, 7); // LH09 adds the owner-supplied open-data scene.
+  assert.equal(new Set(scenes.map(source => source.accent)).size, 7);
   for (const scene of scenes) {
     const outputs = art.outputs.filter(output => output.role === scene.name);
     assert.deepEqual(outputs.map(output => output.width), [320, 640]);
@@ -31,5 +31,5 @@ test('illustrated scenes ship responsive bounded derivatives with distinct categ
   assert.equal((html.match(/class="card-art card-art-/g) || []).length, 6);
   assert.doesNotMatch(html, /class="hero-stats"/); // Preserve the owner's OpenCode removal.
   assert.match(html, /Conheça o aplicativo/);
-  assert.match(html, /assets\/app\/explore-light-720w\.webp/);
+  assert.match(html, /assets\/app\/explore-dark-720w\.webp/); // LH09: real captures live in the gallery.
 });
