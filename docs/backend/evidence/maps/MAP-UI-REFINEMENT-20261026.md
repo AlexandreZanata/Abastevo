@@ -197,3 +197,84 @@ Follow-up tested source SHA-256:
 - MapFiltersDialog: `777223358188723ec45adcdc56e8c80e1d92f5d34dc3b78d9e09e875c93818a5`.
 - FuelProductSelector: `af6e6e91400e55d96efc734cde204f2d61ab59b98bb14bf6dd50d8e7eff1588e`.
 - MapScreenInstrumentedTest: `75bbd965299428a4698932ad44f25ce273849ff00d0350a277854f483db41fff`.
+
+## Follow-up: map attribution and standard action cards
+
+Parent: `c04e8ac4`. Status: LOCAL_DONE / INTEGRATION_PENDING. Validation: PASS.
+
+- B-BR-MAP-UI-11: keep the complete OpenStreetMap attribution visible in its own
+  small themed surface over the map, above/right of the action panel, outside
+  the action-card container and its scrollable content.
+- B-BR-MAP-UI-12: Filters/Search/Download/Saved reuse the existing
+  `ActionCardButton`, shared outlines/shapes and leading icons. Its optional
+  chevron stays enabled by default for existing callers; the compact map grid
+  omits it to preserve label width. Arrange actions in two equal-width columns
+  (one at large font), preserving the existing callbacks and tags.
+  Large text/expanded lists can scroll within a bounded panel, preserving map
+  space and reachable controls. Keep at least 48 dp action targets.
+- B-BR-MAP-UI-13: measure the complete bottom overlay and offset the existing
+  recenter control above it in both the persistent host and standalone screen.
+  Changing control geometry does not resize or reinitialize the native map.
+- BUC: browse Map -> read attribution on the map -> open Filters/Search/Downloads/
+  Saved through the same action-card pattern as other app fields -> return.
+
+Scope: presentation only, existing PR #154; original occupied checkout preserved.
+Verify attribution separation/geometry, action callbacks, large-font reachability,
+measured recenter offset, existing native map UI regression, APK/lint/diff/secrets.
+
+### Action-panel results
+
+- Reused `ActionCardButton` with an additive `showChevron` option, true by
+  default for existing callers. The compact map cards retain shared borders,
+  shapes, icon/label spacing and press feedback; map chevrons are omitted to
+  leave enough room for the labels. Two columns at normal font, one above 130%.
+- Separate attribution surface is right aligned above the action container,
+  outside its scroll area. The full localized OpenStreetMap text remains visible.
+- A scrollable panel is bounded to half the screen and available parent height.
+  The overlay reserves 72 dp above it for the 48 dp recenter target, 16 dp inset
+  and 8 dp clearance. Both map routes propagate the measured overlay inset into
+  the persistent host; the standalone fallback uses the same measured value.
+  The native map bounds/engine remain independent from panel measurements.
+- First-frame skeleton mirrors the separated credit placeholder and adaptive grid.
+- Final debug app/test APK compilation and lint **PASS**, `BUILD SUCCESSFUL in
+  8m 33s`, zero errors; the report retains 284 warnings / two informational items.
+- Full `MapScreenInstrumentedTest`: **12/12 PASS in 101.097 s** on the isolated
+  API30 emulator. All previous city/fuel/source/charging/cluster regressions pass.
+  New cases verify attribution ancestry and geometry, every callback and minimum
+  48 dp targets in light/dark/200% font, readable captures, measured inset growth,
+  and recenter clearance below the header at large font.
+- Native captures were visually reviewed in all three modes. These are synthetic
+  component fixtures, not a full native-map/data or physical-phone acceptance.
+  No device data was cleared, backend/engine implementation or dependency changed.
+- Diff and secret-surface checks **PASS**. The final source fingerprints below
+  identify the tested inputs; no aggregate JVM repeat for unchanged domain/data.
+- The temporary task-owned emulator was stopped and its AVD/home removed after
+  artifact extraction. The original emulator and occupied source checkout remain
+  untouched.
+
+```sh
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug \
+  --offline --max-workers=1 --no-parallel --console=plain
+adb -s emulator-5556 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s emulator-5556 install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb -s emulator-5556 shell am instrument -w \
+  -e class com.anpfuel.app.ui.map.MapScreenInstrumentedTest \
+  com.anpfuel.app.debug.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+[Native result](map-ui-refinement-20261026/native-tests-panel.txt),
+[light panel](map-ui-refinement-20261026/panel/panel-light.png),
+[dark panel](map-ui-refinement-20261026/panel/panel-dark.png),
+[200% font](map-ui-refinement-20261026/panel/panel-large-font.png).
+
+Action-panel APK SHA-256:
+`467d75719eb17cb97a05989ec7c20d51947893faa0ae9a59763649cf1cf382c3`.
+
+Action-panel tested source SHA-256:
+
+- MapBottomControls: `367dc582d94b16d6439dbeceb1e529f109c85e2b903515d523e645e3600c92b5`.
+- MapScreen: `67d0a2c98e4d1f9d21f620fdad1d47b1016930b0db5a1494bab4aa4d53ac6217`.
+- MapScreenSkeleton: `571c4bc08a1148f1844b1d49aa8903c046f228d138dfe3f4122fcb5e1ae4cf5b`.
+- ActionCardButton: `926cb788160b9b5c7154d97fd258d41dc339ab7c3b3f65a258192d96155da413`.
+- AnpNavGraph: `e9636271ca131d4a48d356cd5ec4953c716a26a48535d7536210759550a09bb7`.
+- MapScreenInstrumentedTest: `9090b24cc5e566ffb65f580c4c3945ec33b38c58cd06ccfc4c11461536d52d61`.
