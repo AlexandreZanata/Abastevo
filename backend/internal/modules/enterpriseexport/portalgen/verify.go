@@ -379,7 +379,7 @@ func checkPrivacy(dir string, files map[string]FileDigest) error {
 		if err != nil {
 			return fmt.Errorf("portalcheck: unreadable text artifact")
 		}
-		if cpfTextPattern.Match(body) {
+		if containsCPFShaped(body) {
 			return fmt.Errorf("portalcheck: CPF-shaped value in %s", path)
 		}
 		if strings.HasSuffix(path, ".html") {
@@ -396,16 +396,86 @@ func checkPrivacy(dir string, files map[string]FileDigest) error {
 	return nil
 }
 
+// checkHTMLPrivacy runs each expression only when its literal core is
+// present (a necessary condition), so the verdict equals the plain regex
+// scan while clean pages skip the backtracking matchers.
 func checkHTMLPrivacy(body []byte) error {
-	for _, tag := range rawScriptTag.FindAll(body, -1) {
-		if !allowedScript.Match(tag) {
-			return fmt.Errorf("portalcheck: unexpected script element")
+	if bytes.Contains(body, []byte("<script")) {
+		for _, tag := range rawScriptTag.FindAll(body, -1) {
+			if !allowedScript.Match(tag) {
+				return fmt.Errorf("portalcheck: unexpected script element")
+			}
 		}
 	}
-	if unsafeAttribute.Match(body) || unsafeURL.Match(body) {
+	if (containsFoldASCII(body, "onerror") && unsafeAttribute.Match(body)) ||
+		(containsFoldASCII(body, "javascript:") && unsafeURL.Match(body)) {
 		return fmt.Errorf("portalcheck: unsafe HTML attribute")
 	}
 	return nil
+}
+
+// containsFoldASCII reports whether body contains the lowercase ASCII
+// needle under ASCII case folding, the folding (?i) applies to it.
+func containsFoldASCII(body []byte, needle string) bool {
+	first, upper := needle[0], needle[0]-'a'+'A'
+	for i := 0; i+len(needle) <= len(body); i++ {
+		if body[i] != first && body[i] != upper {
+			continue
+		}
+		j := 1
+		for ; j < len(needle); j++ {
+			c := body[i+j]
+			if c >= 'A' && c <= 'Z' {
+				c += 'a' - 'A'
+			}
+			if c != needle[j] {
+				break
+			}
+		}
+		if j == len(needle) {
+			return true
+		}
+	}
+	return false
+}
+
+// containsCPFShaped is the linear equivalent of cpfTextPattern: a standalone
+// run of exactly 11 digits or NNN.NNN.NNN-NN, bounded by the text edges or a
+// byte that is not an ASCII letter or digit.
+func containsCPFShaped(body []byte) bool {
+	for i := 0; i < len(body); i++ {
+		if !isASCIIDigit(body[i]) || (i > 0 && isASCIIAlnum(body[i-1])) {
+			continue
+		}
+		if cpfShapeAt(body, i, "ddddddddddd") || cpfShapeAt(body, i, "ddd.ddd.ddd-dd") {
+			return true
+		}
+	}
+	return false
+}
+
+func cpfShapeAt(body []byte, start int, shape string) bool {
+	end := start + len(shape)
+	if end > len(body) || (end < len(body) && isASCIIAlnum(body[end])) {
+		return false
+	}
+	for k := 0; k < len(shape); k++ {
+		c := body[start+k]
+		if shape[k] == 'd' {
+			if !isASCIIDigit(c) {
+				return false
+			}
+		} else if c != shape[k] {
+			return false
+		}
+	}
+	return true
+}
+
+func isASCIIDigit(c byte) bool { return c >= '0' && c <= '9' }
+
+func isASCIIAlnum(c byte) bool {
+	return isASCIIDigit(c) || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
 func checkJSONKeys(body []byte, jsonl bool) error {
@@ -667,6 +737,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 	}
 	indexable := map[string]bool{}
 	sitemapSeen := false
+	sizer := newGzipSizer()
 	for path := range files {
 		body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
 		if err != nil {
@@ -674,7 +745,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 		}
 		switch {
 		case strings.HasSuffix(path, ".html"):
-			compressed, err := gzipSize(body)
+			compressed, err := sizer.size(body)
 			if err != nil {
 				return VerifyResult{}, err
 			}
@@ -697,7 +768,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 				return VerifyResult{}, err
 			}
 		case strings.HasSuffix(path, ".js"):
-			compressed, err := gzipSize(body)
+			compressed, err := sizer.size(body)
 			if err != nil {
 				return VerifyResult{}, err
 			}
@@ -708,7 +779,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 				result.LargestScriptGzipBytes = compressed
 			}
 		case strings.HasPrefix(path, "dados/busca/") && strings.HasSuffix(path, ".json"):
-			compressed, err := gzipSize(body)
+			compressed, err := sizer.size(body)
 			if err != nil {
 				return VerifyResult{}, err
 			}
@@ -719,7 +790,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 				result.LargestShardGzipBytes = compressed
 			}
 		case strings.HasSuffix(path, ".css"):
-			compressed, err := gzipSize(body)
+			compressed, err := sizer.size(body)
 			if err != nil {
 				return VerifyResult{}, err
 			}
@@ -760,7 +831,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 		if err != nil {
 			return VerifyResult{}, fmt.Errorf("portalcheck: initial asset unavailable")
 		}
-		compressed, err := gzipSize(body)
+		compressed, err := sizer.size(body)
 		if err != nil {
 			return VerifyResult{}, err
 		}
@@ -770,16 +841,41 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 	return result, nil
 }
 
+// gzipSizer measures default-level gzip sizes with one reused compressor
+// and a counting sink: same bytes as a fresh gzip.Writer per body, without
+// allocating the compressor state for every page.
+type gzipSizer struct {
+	count  byteCounter
+	writer *gzip.Writer
+}
+
+type byteCounter int64
+
+func (c *byteCounter) Write(p []byte) (int, error) {
+	*c += byteCounter(len(p))
+	return len(p), nil
+}
+
 func gzipSize(body []byte) (int64, error) {
-	var buffer bytes.Buffer
-	writer := gzip.NewWriter(&buffer)
-	if _, err := writer.Write(body); err != nil {
+	return newGzipSizer().size(body)
+}
+
+func newGzipSizer() *gzipSizer {
+	s := &gzipSizer{}
+	s.writer = gzip.NewWriter(&s.count)
+	return s
+}
+
+func (s *gzipSizer) size(body []byte) (int64, error) {
+	s.count = 0
+	s.writer.Reset(&s.count)
+	if _, err := s.writer.Write(body); err != nil {
 		return 0, err
 	}
-	if err := writer.Close(); err != nil {
+	if err := s.writer.Close(); err != nil {
 		return 0, err
 	}
-	return int64(buffer.Len()), nil
+	return int64(s.count), nil
 }
 
 func checkHTMLReferences(dir string, files map[string]FileDigest, path string, body []byte) error {
