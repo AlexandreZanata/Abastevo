@@ -352,3 +352,15 @@ sql:
         out: db/queries/charging
         sql_package: pgx/v5
         emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/driver
+    schema:
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000133_driver_earnings.sql
+    gen:
+      go:
+        package: driver
+        out: db/queries/driver
+        sql_package: pgx/v5
+        emit_json_tags: true

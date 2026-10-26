@@ -116,3 +116,25 @@ a ledger source/revision; principal is retained in the capital/cash bucket.
 Reserve replacement links are explicit one-to-one, same-window source links;
 replacing a reserve removes its entire modeled addition while keeping the
 realized ledger cost once. Unknown amounts remain unknown, never default zero.
+
+### DRV-07 mutation/erasure details before behavior
+
+Source identity is a lowercase SHA256 digest, not a raw provider/passenger ID.
+Same owner/platform/source digest and same normalized business body converge to
+the first accepted record ID even when concurrent importers propose different
+IDs. Changed source content requires its existing record ID and expected
+revision. Canonical UTC timestamps have PostgreSQL microsecond precision;
+sub-microsecond instants refuse rather than silently changing replay hashes.
+
+Owner-wide transaction serialization plus the vehicle/account port fence source
+and coverage races. Operation receipts bind exact action/body/revision/epoch.
+Immutable typed earning revisions retain the original normalized values;
+adjustments target an accepted earning revision and have unique source identity.
+An adjustment whose target was later corrected remains visible for explicit
+reconciliation, never silently reapplied as though it targeted the new value.
+
+Private scoped read/export and erase ports are part of this storage boundary.
+Record erasure keeps only owner-scoped ID/source/revision tombstones to block
+stale recreation; owner erasure increments a dataset epoch and clears private
+payloads/receipts. Soft account deletion triggers the same erasure; physical
+account deletion cascades. No signed cloud dataset admission is enabled here.
