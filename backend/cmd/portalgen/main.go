@@ -15,7 +15,7 @@ func main() {
 	var maxPages int
 	var maxBytes int64
 	var indexable bool
-	var searchJS, siteURL string
+	var searchJS, siteURL, landingURL string
 	var officialOnly bool
 	flag.StringVar(&snapshot, "snapshot", "", "frozen export candidate directory")
 	flag.StringVar(&out, "out", "", "new private portal output directory")
@@ -24,6 +24,7 @@ func main() {
 	flag.BoolVar(&indexable, "indexable", false, "allow indexing (candidate builds default to noindex)")
 	flag.StringVar(&siteURL, "site-url", "", "public origin for sitemap/robots (required with --indexable)")
 	flag.StringVar(&searchJS, "search-js", "", "compiled portal search JavaScript (optional)")
+	flag.StringVar(&landingURL, "landing-url", "", "landing origin for shared header/footer links (optional)")
 	flag.BoolVar(&officialOnly, "official-only", false, "emit only the admitted official-records slice (no price/station/search/download routes)")
 	flag.Parse()
 	if snapshot == "" || out == "" {
@@ -34,6 +35,7 @@ func main() {
 		SnapshotDir: snapshot, OutputDir: out,
 		MaxPages: maxPages, MaxBytes: maxBytes, Indexable: indexable,
 		SiteURL: siteURL, SearchScriptPath: searchJS, OfficialOnly: officialOnly,
+		LandingURL: landingURL,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "portalgen:", err)

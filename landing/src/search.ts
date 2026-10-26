@@ -40,6 +40,16 @@ export interface SearchShard {
 export interface SearchRuntime {
   document?: Document;
   fetch?: typeof fetch;
+  /** Query string used to prefill the form, e.g. `?uf=SP&q=alfa`. */
+  search?: string;
+}
+
+/** Reads a landing hand-off (`uf`, `q`); an unknown UF prefills nothing. */
+export function readSearchHandoff(search: string): { uf: string; query: string } | null {
+  const params = new URLSearchParams(search);
+  const uf = (params.get('uf') ?? '').trim().toUpperCase();
+  if (!VALID_UFS.has(uf)) return null;
+  return { uf, query: (params.get('q') ?? '').slice(0, MAX_QUERY) };
 }
 
 export function normalizeSearchText(value: string): string {
@@ -270,6 +280,14 @@ export function setupPortalSearch(runtime: SearchRuntime = {}): void {
       if (shard) render();
     }, 150);
   });
+
+  const search = runtime.search ?? (typeof location === 'undefined' ? '' : location.search);
+  const handoff = readSearchHandoff(search);
+  if (handoff) {
+    ufSelect.value = handoff.uf;
+    input.value = handoff.query;
+    void load();
+  }
 }
 
 if (typeof document !== 'undefined') {

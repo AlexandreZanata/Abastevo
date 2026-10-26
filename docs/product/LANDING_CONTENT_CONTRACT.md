@@ -312,3 +312,32 @@ typography/spacing and the existing authentic Android mockup. Header/foreground
 keep the standard container. Preserve six card artworks, current buttons/copy,
 source/date disclosures, prelaunch status and black/grayscale dark mode. The
 latest instruction supersedes the LH05/LH06 landscape presentation requirements.
+
+## LH08 minimal monochrome and light-only amendment — 2026-10-26
+
+The owner requested a minimal, professional black/white presentation with one
+green accent, borderless tiles, pill controls and a single quiet primary action,
+applied to the landing and to the generated static portal pages. The owner then
+removed dark mode: the site ships a single light theme with no theme toggle,
+no dark palette and no theme script. This supersedes the LH01/LH07 dark-mode
+requirements. Existing copy contracts, six card artworks, the authentic Android
+mockup, source/date disclosures and prelaunch status are preserved.
+
+## LH09 Uber-style home amendment — 2026-10-26
+
+The owner selected the Uber-style alternative as the main home: black top bar
+and footer, an illustrated road/car/city hero with a working search hand-off
+to `/consultar/?uf=..&q=..`, suggestion cards, a persona feature, a black
+open-data band and the authentic app gallery followed by Android/GitHub
+channels. The "O projeto" panel and the open-data map image were removed at the
+owner's request; independence, MIT and no-tracking statements moved to the
+footer. The real Android captures remain in the gallery instead of the hero.
+This supersedes the LH06/LH07 hero device requirement.
+
+LH09 follow-up (same day): the open-data band became a mirrored feature with the
+owner-supplied open-data scene ([brief](../assets/landing/open-data-20261026/BRIEF.md))
+and a three-item list. On desktop each feature's copy column, from title to
+buttons, matches the height of its art tile.
+The "Explore o que dá para fazer" cards then moved into a black band directly
+under the hero, with larger art, one short line each and an arrow; on phones
+they scroll horizontally with snap points.
