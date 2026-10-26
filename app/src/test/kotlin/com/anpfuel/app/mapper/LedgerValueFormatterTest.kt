@@ -25,4 +25,17 @@ class LedgerValueFormatterTest {
             assertNull(LedgerValueFormatter.efficiency(value,pt))
         }
     }
+    @Test fun `shared driver unit oracle display values render as frozen`() {
+        val rows = java.io.File("../contracts/testdata/driver-suite/driver-unit-v1.psv").readLines().drop(1).map { it.split('|') }
+        val displayed = rows.mapNotNull { (id, op, _, rawWant) ->
+            val want = rawWant.split(';').associate { it.substringBefore('=') to it.substringAfter('=', "") }
+            want["display_cost_per_km"]?.let { Triple(id, op, it to want) }
+        }
+        assertEquals(listOf("DRV-V02", "DRV-V04"), displayed.map { it.first })
+        for ((_, _, pair) in displayed) {
+            val (display, want) = pair
+            val internal = want.getValue("cost_per_km")
+            assertEquals("R$ $display", plain(LedgerValueFormatter.costPerKilometre(internal, pt)))
+        }
+    }
 }
