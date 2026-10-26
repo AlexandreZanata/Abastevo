@@ -649,3 +649,28 @@ func TestRefreshRebuildsOnAssociationChange(t *testing.T) {
 		t.Error("link states historical operation instead of the decision day")
 	}
 }
+
+func TestRefreshPropagatesLandingURL(t *testing.T) {
+	exportRoot, portalRoot, handler, _ := refreshFixture(t)
+	handler.LandingURL = "https://landing.example"
+	writeRefreshExport(t, exportRoot, "a", "sha256:"+strings.Repeat("a", 64), "6000", refreshOfficialA)
+	var sawLanding string
+	wrapped := handler
+	wrapped.Generate = func(opts portalgen.Options) (portalgen.Result, error) {
+		sawLanding = opts.LandingURL
+		return portalgen.Generate(opts)
+	}
+	if err := runRefresh(t, wrapped); err != nil {
+		t.Fatal(err)
+	}
+	if sawLanding != "https://landing.example" {
+		t.Fatalf("refresh generated without the landing chrome origin: %q", sawLanding)
+	}
+	page, err := os.ReadFile(filepath.Join(portalRoot, "current", "consultar", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(page), "https://landing.example") {
+		t.Fatal("refreshed release lost the shared landing header/footer links")
+	}
+}

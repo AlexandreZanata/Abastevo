@@ -81,7 +81,10 @@ type Refresh struct {
 	PortalRoot       string
 	SiteURL          string
 	SearchScriptPath string
-	Indexable        bool
+	// LandingURL is the optional landing origin for the shared portal
+	// header/footer; empty keeps the portal-only chrome.
+	LandingURL string
+	Indexable  bool
 	// OfficialOnly restricts the pipeline to the admitted official-records
 	// slice: generation, verification, promotion, rollback and withdrawal
 	// all run in official-only mode, and withdrawal never falls back to a
@@ -190,7 +193,7 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 	generated, err := r.generate(portalgen.Options{
 		SnapshotDir: state.CandidateDir, OutputDir: candidate,
 		Indexable: r.Indexable, SiteURL: r.SiteURL, SearchScriptPath: r.SearchScriptPath,
-		MaxPages: r.MaxPages, MaxBytes: r.MaxBytes, OfficialOnly: r.OfficialOnly,
+		LandingURL: r.LandingURL, MaxPages: r.MaxPages, MaxBytes: r.MaxBytes, OfficialOnly: r.OfficialOnly,
 	})
 	if err != nil {
 		_ = os.RemoveAll(candidate)

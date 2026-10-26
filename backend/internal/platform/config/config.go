@@ -188,6 +188,10 @@ type Config struct {
 	// official-records slice. It can never widen to the full portal.
 	EnterprisePortalOfficialOnly bool
 	EnterprisePortalSearchScript string
+	// EnterprisePortalLandingURL is the optional landing origin whose shared
+	// header/footer the refreshed portal pages link to (portalgen
+	// --landing-url). Empty keeps the portal-only chrome.
+	EnterprisePortalLandingURL string
 	// R2 is nil unless private storage is configured; upload issuance
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
@@ -304,6 +308,7 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	cfg.EnterprisePortalRoot, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_ROOT")
 	cfg.EnterprisePortalSiteURL, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL")
 	cfg.EnterprisePortalSearchScript, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS")
+	cfg.EnterprisePortalLandingURL, _ = getenv("ANPFUEL_ENTERPRISE_PORTAL_LANDING_URL")
 	if cfg.EnterprisePortalRefreshEnabled {
 		if !cfg.EnterpriseExportEnabled {
 			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_REFRESH_ENABLED requires ANPFUEL_ENTERPRISE_EXPORT_ENABLED")
@@ -314,9 +319,11 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		if cfg.EnterprisePortalSiteURL == "" {
 			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL is required when portal refresh is enabled")
 		}
-		parsed, err := url.Parse(cfg.EnterprisePortalSiteURL)
-		if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+		if !httpOrigin(cfg.EnterprisePortalSiteURL) {
 			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL must be an http(s) origin")
+		}
+		if cfg.EnterprisePortalLandingURL != "" && !httpOrigin(cfg.EnterprisePortalLandingURL) {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_LANDING_URL must be an http(s) origin")
 		}
 		if cfg.EnterprisePortalRoot == cfg.EnterpriseExportRoot {
 			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_PORTAL_ROOT must differ from the export root")
@@ -601,4 +608,12 @@ func validHostname(host string) bool {
 		}
 	}
 	return true
+}
+
+// httpOrigin reports whether raw is a bare http(s) origin: scheme and host
+// only, no credentials, query, fragment or path beyond "/".
+func httpOrigin(raw string) bool {
+	parsed, err := url.Parse(raw)
+	return err == nil && (parsed.Scheme == "https" || parsed.Scheme == "http") && parsed.Host != "" &&
+		parsed.User == nil && parsed.RawQuery == "" && parsed.Fragment == "" && (parsed.Path == "" || parsed.Path == "/")
 }
