@@ -91,6 +91,22 @@ not invent an official limit where the publisher does not state one.
   peak RSS. A 1M-point index test completed in 2.98-8.72 s in release mode with
   594,360 KiB peak RSS.
 
+## Open geocoder (`prepare_open_geocode`)
+
+- Local files only: no network, database, clock or native engine.
+- Hard bounds: 5,000,000 CNEFE points, 500,000 RFB address rows, 200,000 input
+  decisions, 10,000 map assertions, 2 GiB CNEFE extract, 256 MiB RFB/decisions
+  file, 1 GiB OSM/registry file. The default CNEFE ambiguity radius is 100 m.
+- Matching order: OSM CNPJ tag -> L2; unique OSM normalized street+number with
+  equal municipality and compatible name/brand -> L2; exact CNEFE
+  street+number+municipality with establishment evidence -> L4; otherwise L5.
+  RFB replaces a stale registry address only for the same CNPJ. L4 candidates
+  stay unpublished while owner decision D2 is open.
+- Real pilot (Londrina/PR, Cuiaba/MT, Ribeirao Preto/SP) on 2026-10-26:
+  985,846 CNEFE points, 424 RFB addresses and 43,188 A2 L5 inputs produced 186
+  L4 candidates and 43,002 L5 decisions in 10.12 s / 679,240 KiB peak RSS;
+  396/424 addresses came from RFB. Deterministic reruns were byte-identical.
+
 ## Stop conditions for any worker
 
 Stop and report, do not raise limits or retry blindly, when:

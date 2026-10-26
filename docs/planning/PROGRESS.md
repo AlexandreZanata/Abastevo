@@ -1,5 +1,17 @@
 # Current execution state
 
+- MAP national stations Phase 2 B2 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
+  New `prepare_open_geocode` (`open_geocode.rs` + bin) consumes A2 L5 decisions,
+  registry, OSM, CNEFE and RFB address extracts. It tries OSM CNPJ/address L2,
+  exact CNEFE establishment L4 (publish false while D2 is open) and L5 with
+  reasons; RFB overrides a stale registry address only for the same CNPJ. No
+  centroid, nearest-street or street-only match. Bounds: 5M CNEFE points, 500k
+  RFB rows, 200k decisions, 10k map assertions, 100 m ambiguity radius. Local
+  validation: `check-rust-fast.sh` PASS, 11 B2 tests PASS, real pilot
+  (Londrina/PR, Cuiaba/MT, Ribeirao Preto/SP) with 985,846 CNEFE points and 424
+  RFB addresses produced 186 L4 candidates and 43,002 L5 in 10.12 s / 679,240
+  KiB; 396/424 addresses came from RFB; deterministic reruns. No DB/deploy/app
+  change; B3 and Phase 3 not started.
 - MAP national stations Phase 2 A2 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   Branch `codex/map-national-stations-plan`; new `prepare_national_matches`
   (`national_match.rs` + bin) joins ANP API pages, OSM references and prepared
@@ -12,7 +24,8 @@
   `./cmd/station-review` PASS, 1M-point release test PASS (2.98-8.72 s under load, 594 MiB), and
   the Phase 1 VPS sample produced 361 L1 reviews / 565 L2 map assertions /
   1,574 L3 / 43,188 L5 in 1.48 s / 142,648 KiB with byte-identical reruns.
-  No DB/deploy/app change; B2 and Phase 3 are not started.
+  No DB/deploy/app change. At A2 closure B2 and Phase 3 had not started; B2 is
+  recorded above.
 - MAP national stations Phase 1 2026-10-26: PARTIAL / A1.a BLOCKED.
   Branch `codex/map-national-stations-plan`; private VPS root
   `/opt/abastevo-temp/map-national-20261026` (mode 700); no data in Git and no
