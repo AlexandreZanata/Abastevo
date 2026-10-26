@@ -1,5 +1,7 @@
 # Current execution state
 
+- DRV-06 LOCAL_DONE / INTEGRATION_PENDING at `d21e5a34`: vehicle cost profiles and exact allocation. [Evidence](../backend/evidence/driver-suite/DRV-06.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-07; no main/dev push or merge.
+
 - DRV-05 LOCAL_DONE / INTEGRATION_PENDING at `fadfca59`: distance sources, partitions and gps quality. [Evidence](../backend/evidence/driver-suite/DRV-05.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-06; no main/dev push or merge.
 
 - DRV-04 LOCAL_DONE / INTEGRATION_PENDING at `6a66f414`: shifts, clock recovery and multiapp time. [Evidence](../backend/evidence/driver-suite/DRV-04.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-05; no main/dev push or merge.

@@ -136,7 +136,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-05.md`. A later relevant change invalidates affected evidence.
 ### DRV-06 — Model vehicle cost profiles and allocation
 
-Status: PLANNED. Dependency: DRV-05 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-06](../backend/evidence/driver-suite/DRV-06.md). Dependency: DRV-05 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `existing vehicle/expense ports; domain driver`. Rules: B-BR-DRV-13, B-BR-DRV-14.
 
