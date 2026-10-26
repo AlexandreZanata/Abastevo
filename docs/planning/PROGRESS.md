@@ -1,5 +1,14 @@
 # Current execution state
 
+- DRV-13 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 6d665c3b,
+  behavior 062a4030. [Evidence](../backend/evidence/driver-suite/DRV-13.md).
+  Room schema 29 with owner/origin-scoped shift/gap, earning/revision, distance,
+  local command and draft tables; transactional writes, append-only 28→29
+  migration, owner A/B/guest isolation and exact integer-unit restart. Real
+  emulator API35: 4/4 instrumentation PASS; JVM migration/repair tests, full
+  data unit tests, app compile and mobile static guards PASS. No UI/GPS/sync/
+  cloud; DRV-14 next. No push/PR/merge.
+
 - DRV-11 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 568ae322,
   behavior 470e1d26. [Evidence](../backend/evidence/driver-suite/DRV-11.md).
   Revisioned DAY/WEEK/MONTH/CUSTOM projections, exact cost/distance coverage,

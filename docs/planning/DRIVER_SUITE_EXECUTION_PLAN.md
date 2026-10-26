@@ -230,7 +230,7 @@ Evidence: `docs/backend/evidence/driver-suite/DRV-12.md`. A later relevant chang
 Gate: **DRIVER_BACKEND_GATE**; apply the scope/disposition rules in section 6.
 ### DRV-13 — Add durable Android state and migrations
 
-Status: PLANNED. Dependency: DRV-12 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-13](../backend/evidence/driver-suite/DRV-13.md). Dependency: DRV-12 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `data Room/preferences; domain repositories; Hilt`. Rules: B-BR-DRV-02, B-BR-DRV-03, B-BR-DRV-18.
 

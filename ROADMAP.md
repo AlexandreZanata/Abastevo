@@ -3941,8 +3941,10 @@ cloud activation or production claim. DRV-11 is LOCAL_DONE / INTEGRATION_PENDING
 projections, private HTTP/snapshots, owner cursors and feature-gated worker
 cleanup. DRV-12 is LOCAL_DONE / INTEGRATION_PENDING at behavior `69bdb374`;
 [evidence](docs/backend/evidence/driver-suite/DRV-12.md) records the signed HTTP
-earning/shift/cost/report journey, restart/stale/erasure checks. DRV-13–35
-remain PLANNED.
+earning/shift/cost/report journey, restart/stale/erasure checks. DRV-13 is LOCAL_DONE / INTEGRATION_PENDING at behavior `062a4030`;
+[evidence](docs/backend/evidence/driver-suite/DRV-13.md) records Room schema 29,
+28→29 migration, transactional owner/origin state, restart and A/B/guest
+isolation on an owned API35 emulator. DRV-14–35 remain PLANNED.
 
 Durable movement continuation (2026-10-26): DRV-08 is LOCAL_DONE /
 INTEGRATION_PENDING at behavior `4026df2a`. [Evidence](docs/backend/evidence/driver-suite/DRV-08.md)
@@ -3964,5 +3966,7 @@ DRV-11 is LOCAL_DONE / INTEGRATION_PENDING at behavior `470e1d26`;
 projections, private HTTP/snapshots, owner cursors and feature-gated worker
 cleanup. DRV-12 is LOCAL_DONE / INTEGRATION_PENDING at behavior `69bdb374`;
 [evidence](docs/backend/evidence/driver-suite/DRV-12.md) records the signed HTTP
-earning/shift/cost/report journey, restart/stale/erasure checks. DRV-13–35
-remain PLANNED.
+earning/shift/cost/report journey, restart/stale/erasure checks. DRV-13 is LOCAL_DONE / INTEGRATION_PENDING at behavior `062a4030`;
+[evidence](docs/backend/evidence/driver-suite/DRV-13.md) records Room schema 29,
+28→29 migration, transactional owner/origin state, restart and A/B/guest
+isolation on an owned API35 emulator. DRV-14–35 remain PLANNED.

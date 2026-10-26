@@ -1,4 +1,4 @@
-# Private individual-driver datasets — DRV-07/08/09/10/11
+# Private individual-driver datasets — DRV-07/08/09/10/11/13
 
 Status: private storage implemented; hosted HTTP/mobile/signed cloud admission
 is disabled until DRV-10–16. No production rollout or import adapter is implied.
@@ -111,6 +111,7 @@ building blocks for later export/report phases.
 | Maintenance | Account/vehicle; private versions | Tombstone + owner epoch | Get/list versions | Excluded |
 | Reconciliation | Account; private versions | Owner earnings epoch; deleted with target/owner | Get/list decisions | Excluded |
 | Reports | Account/vehicle/window; private snapshots | Account soft/physical erase + 400-day cleanup | Signed build/get; stale refusal | Excluded |
+| Local driver state | Owner/origin Room partition | Owner/origin delete; device storage lifecycle | Local-only drafts/records/revisions/commands | Excluded |
 
 The current cloud manifest allowlist remains vehicles/favorites/preferences and
 `backupExcluded` keeps professional datasets out. No reader claims complete
@@ -144,3 +145,13 @@ Report generation is Premium (`professional.report`); retained reads remain free
 after lapse but refuse a stale source revision. The driver routes are mounted
 behind `ANPFUEL_DRIVER_ENABLED` (default false); disabled routes return 404
 without storage access. No snapshot is included in cloud backup or public data.
+
+## DRV-13 local Android state
+
+Room schema 29 stores owner/origin-scoped shift, gap, earning, immutable earning
+revision, distance, local command and draft rows. Reads always filter the exact
+owner+origin; guest is a separate blank-owner partition. Drafts retain integer
+metres/centavos/seconds and a unit version, and contain no GPS/location/start
+fields. The local command table is not a cloud opt-in or dispatcher; DRV-14 owns
+dispatch/replay. Existing ledger/map/vehicle/session tables are untouched by
+migration 28→29. Legacy odometer repair remains the existing ledger-draft flow.
