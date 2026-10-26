@@ -1,5 +1,16 @@
 # Current execution state
 
+- MAP-24 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Wi-Fi-aware map
+  downloads, safe inactive-generation deletion, navigation generation lease and a
+  real airplane-mode clean-restart journey (real MWM, map render, native search,
+  route preview, guidance, missing-region refusal) with proof-server request
+  count 9 -> 9 PASS on the owned 16 KB emulator; offline-distribution suite
+  stabilised (HTTP/1.0 pooled-socket race, off-by-one request count) and extended
+  with an interrupted-update resume test. OFFLINE_GATE PASS for this regional
+  journey only; one unexplained first-run process crash is disclosed.
+  [MAP-24 evidence](../backend/evidence/maps/MAP-24.md). MAP-25 next; MAP-27–33
+  excluded; no PR/merge/deploy.
+
 - MAP-23 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Explicit foreground
   guidance with native follow/progress, private owner-bound recovery, local TTS
   only and real guidance UI PASS on the owned phone `VKCQGAUCGYAMR4W4`

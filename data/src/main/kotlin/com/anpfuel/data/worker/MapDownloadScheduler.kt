@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
  * cancels or leaks private state into the download.
  */
 object MapDownloadScheduler {
-    fun request(generation: String, baseUrl: String) =
+    fun request(generation: String, baseUrl: String, requireUnmetered: Boolean = true) =
         OneTimeWorkRequestBuilder<MapDownloadWorker>()
             .setInputData(
                 Data.Builder()
@@ -25,7 +25,7 @@ object MapDownloadScheduler {
             )
             .setConstraints(
                 Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiredNetworkType(if (requireUnmetered) NetworkType.UNMETERED else NetworkType.CONNECTED)
                     .setRequiresStorageNotLow(true)
                     .build(),
             )
@@ -35,11 +35,11 @@ object MapDownloadScheduler {
 
     fun uniqueName(generation: String) = "${MapDownloadWorker.UNIQUE_PREFIX}$generation"
 
-    fun enqueue(workManager: WorkManager, generation: String, baseUrl: String) {
+    fun enqueue(workManager: WorkManager, generation: String, baseUrl: String, requireUnmetered: Boolean = true) {
         workManager.enqueueUniqueWork(
             uniqueName(generation),
             ExistingWorkPolicy.KEEP,
-            request(generation, baseUrl),
+            request(generation, baseUrl, requireUnmetered),
         )
     }
 

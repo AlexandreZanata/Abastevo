@@ -48,6 +48,9 @@ interface MapPackageDao {
     @Query("DELETE FROM map_generation WHERE generation = :generation AND active = 0")
     suspend fun deleteInactiveGeneration(generation: String)
 
+    @Query("SELECT generation FROM map_generation WHERE active = 0 ORDER BY generation")
+    suspend fun inactiveGenerations(): List<String>
+
     @Transaction
     suspend fun activateGeneration(generation: String, activatedAtMillis: Long) {
         deactivateAll()
