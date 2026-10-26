@@ -1,5 +1,16 @@
 # Current execution state
 
+- Staging landing + portal search + ingestion 2026-10-26: STAGING_DONE /
+  INTEGRATION_PENDING on `codex/vps-staging-landing-perf` from `main`
+  4eeccfbf, PR to main. Owner-authorized `teste.abastevo.com.br` scope,
+  namespace `abastevo-temp` only, noindex. Landing + same-origin portal search
+  live; Rust registry refresh and ANP weekly import (B-BR-002a float-noise,
+  owner-approved) running; eleven measured gaps fixed with tests (ingest load
+  wait, landing chrome, budgets, CPF minimization, verify 4.6x, promote 3.9x,
+  web tier OOM, list keyset). Load @300 req/s: 0 errors, p95 10 ms.
+  [Evidence](../backend/evidence/STAGING_LANDING_PORTAL_2026-10-26.md).
+  Next: review/merge; Directory CPF-name projection as its own task.
+
 - Landing LH09 / portal shared chrome 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   User-authorized branch `codex/landing-portal-visual` from `origin/main` (dev
   carries unrelated open PR #151) with a PR to main. Uber-style light-only home
