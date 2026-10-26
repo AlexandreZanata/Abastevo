@@ -1218,4 +1218,7 @@
     <string name="ev_invalid_target">Введите цель заряда выше резерва и до 100.</string>
     <string name="ev_invalid_phev_share">Введите электрическую долю от 1 до 100.</string>
     <string name="map25_open">Открыть</string>
+    <string name="map_filter_source">Источник цен</string>
+    <string name="map_controls_expand">Показать сведения о карте</string>
+    <string name="map_controls_collapse">Скрыть сведения о карте</string>
 </resources>

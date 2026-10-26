@@ -1218,4 +1218,7 @@
     <string name="ev_invalid_target">Ladeziel über der Reserve und bis 100 eingeben.</string>
     <string name="ev_invalid_phev_share">Elektrischen Anteil von 1 bis 100 eingeben.</string>
     <string name="map25_open">Öffnen</string>
+    <string name="map_filter_source">Preisquelle</string>
+    <string name="map_controls_expand">Kartendetails anzeigen</string>
+    <string name="map_controls_collapse">Kartendetails ausblenden</string>
 </resources>
