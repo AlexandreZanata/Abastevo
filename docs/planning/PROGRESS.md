@@ -1,5 +1,17 @@
 # Current execution state
 
+- MAP national stations Phase 3 A3 staging apply 2026-10-26: APPLIED on staging
+  only / B3 BLOCKED by D2. Namespace `abastevo-temp` on `sorrimobi-vps`; no
+  production change. `station-review` applied 361 L1 reviews, 0 failed
+  (reviewed revisions 0 -> 361). `map-load` published generation
+  `02ea6e7d-19ce-4942-a369-1aa7efdd03dd` ACTIVE, source revision
+  `phase3-coverage-sample-20261026`, 565 assertions (generations 0 -> 1). API
+  smoke exposed the active generation; the endpoint accepts ANP/COMMUNITY only,
+  so OSM assertions are stored but not served by this price endpoint. L3 1,574
+  (D1) and L4 186 (D2) were not applied; A1.a remains blocked by 429. Evidence:
+  `work/phase3-apply-*` and receipt hash `c580a8a3...`; see
+  [MAP_NATIONAL_APPLY_RECEIPT](MAP_NATIONAL_APPLY_RECEIPT.md). Temporary apply
+  pod deleted; rollback not needed.
 - MAP national stations Phase 3 coverage/apply prep 2026-10-26: LOCAL_DONE /
   INTEGRATION_PENDING. New `prepare_national_coverage` reconciles A2/B2 into
   one final tier per station, writes per-UF coverage, merges L2 assertions and
@@ -8,7 +20,8 @@
   published (2.03%), 1,760 candidates, 43,002 no point; 361 reviews and 565 map
   assertions ready; envelope validated by Go `mapcontract`. L3 1,574 (D1) and
   L4 186 (D2) remain blocked; A1.a remains blocked by 429. No DB/deploy/app
-  change. Apply gate documented in
+  change. At coverage closure no DB write had been made; the staging apply is
+  recorded above. Apply gate documented in
   [MAP_NATIONAL_APPLY_GATE](MAP_NATIONAL_APPLY_GATE.md).
 - MAP national stations Phase 2 B2 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   New `prepare_open_geocode` (`open_geocode.rs` + bin) consumes A2 L5 decisions,
