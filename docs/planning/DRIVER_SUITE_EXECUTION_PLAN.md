@@ -123,7 +123,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-04.md`. A later relevant change invalidates affected evidence.
 ### DRV-05 — Model distance observations and quality
 
-Status: PLANNED. Dependency: DRV-04 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-05](../backend/evidence/driver-suite/DRV-05.md). Dependency: DRV-04 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `domain distance rules; MAP location port contract`. Rules: B-BR-DRV-08, B-BR-DRV-09, B-BR-DRV-10.
 
