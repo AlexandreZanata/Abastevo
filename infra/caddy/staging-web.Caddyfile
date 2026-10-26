@@ -30,7 +30,9 @@
 }
 
 :8080 {
-	encode zstd gzip
+	# gzip only: zstd encoders hold large windows per concurrent response and
+	# OOM-killed a 128 MiB tier under load; the edge caches compressed bodies.
+	encode gzip
 
 	import security_headers
 
