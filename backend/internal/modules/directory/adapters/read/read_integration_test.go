@@ -613,3 +613,44 @@ func TestSearchPageUsesPrimaryKeyOrder(t *testing.T) {
 		t.Fatalf("keyset walk saw %d stations, want 2000", seen)
 	}
 }
+
+// TestPublicReadsMinimizeCPFShapedNames pins B-BR-017 on every Directory
+// read: the canonical row keeps the official text, responses never do.
+func TestPublicReadsMinimizeCPFShapedNames(t *testing.T) {
+	pool := freshPool(t)
+	ctx := context.Background()
+	repo := parent.NewRepository(pool)
+	st, err := repo.ResolveCNPJ(ctx, "11222333000181", "JOAO DA SILVA 12345678909", map[string]string{"municipio": "3550308"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE directory_stations SET municipality_code='3550308', state='SP' WHERE id=$1`, st.ID); err != nil {
+		t.Fatal(err)
+	}
+	var stored string
+	if err := pool.QueryRow(ctx, `SELECT display_name FROM directory_stations WHERE id=$1`, st.ID).Scan(&stored); err != nil || stored != "JOAO DA SILVA 12345678909" {
+		t.Fatalf("canonical name changed: %q %v", stored, err)
+	}
+	r := NewReader(pool)
+	check := func(where, got string) {
+		t.Helper()
+		if got != "JOAO DA SILVA" {
+			t.Fatalf("%s exposed %q", where, got)
+		}
+	}
+	detail, err := r.Detail(ctx, st.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("detail", detail.DisplayName)
+	byCNPJ, err := r.ByCNPJ(ctx, "11222333000181")
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("by-cnpj", byCNPJ.DisplayName)
+	found, _, err := r.Search(ctx, application.SearchFilter{Q: "joao", Limit: 10})
+	if err != nil || len(found) != 1 {
+		t.Fatalf("search = %d, %v", len(found), err)
+	}
+	check("search", found[0].DisplayName)
+}

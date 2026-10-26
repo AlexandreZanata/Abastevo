@@ -15,12 +15,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	officialapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
 )
 
@@ -249,7 +249,7 @@ func (b Builder) Build(ctx context.Context, opts Options) (Manifest, error) {
 			row := Station{
 				StationID:          station.ID,
 				CNPJ:               station.CNPJ,
-				DisplayName:        publicDisplayName(station.DisplayName, station.CNPJ),
+				DisplayName:        kernel.PublicStationName(station.DisplayName, station.CNPJ),
 				Address:            publicAddress(station.Address),
 				MunicipalityCode:   station.MunicipalityCode,
 				State:              station.State,
@@ -443,24 +443,6 @@ func (b Builder) Build(ctx context.Context, opts Options) (Manifest, error) {
 	}
 	success = true
 	return manifest, nil
-}
-
-// cpfShapedToken matches a standalone 11-digit or NNN.NNN.NNN-NN token, the
-// same shape the portal privacy check refuses.
-var cpfShapedToken = regexp.MustCompile(`(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2})([^0-9A-Za-z]|$)`)
-
-// publicDisplayName minimizes a station name for public exports (policy
-// esp-02): official MEI legal names often carry the owner's CPF, which is
-// never public. A name left empty falls back to the establishment CNPJ.
-func publicDisplayName(name, cnpj string) string {
-	for cpfShapedToken.MatchString(name) {
-		name = cpfShapedToken.ReplaceAllString(name, "$1$3")
-	}
-	name = strings.Join(strings.Fields(name), " ")
-	if name == "" && cnpj != "" {
-		return "Posto " + cnpj
-	}
-	return name
 }
 
 func publicAddress(in map[string]string) map[string]string {

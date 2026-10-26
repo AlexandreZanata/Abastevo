@@ -44,6 +44,7 @@ Status: planned v1. Existing Android BR-001…028 retain their meanings. New bac
 - **B-BR-014 Unknown location:** GIVEN an unverified station coordinate, WHEN validating proximity, THEN record UNKNOWN, never use a city centroid as a precise station position.
 - **B-BR-015 Quotas:** GIVEN exhausted write/media quota, WHEN submitting, THEN reject before granting expensive work; no accepted command may be silently dropped.
 - **B-BR-016 Retention:** GIVEN an expired personal-data record/object, WHEN cleanup runs, THEN purge its payload and record a minimal deletion outcome; replay after restore must not resurrect it.
+- **B-BR-017 Public station names carry no CPF (2026-10-26):** GIVEN an official station legal name (MEI names often end with the owner's CPF), WHEN any public read, export or portal renders it, THEN every standalone CPF-shaped token (11 digits or `NNN.NNN.NNN-NN`, bounded by non-alphanumerics) is removed and spaces collapse; a name left empty becomes `Posto <CNPJ>` (or `Posto` without a CNPJ). Canonical stored data is unchanged; one shared kernel function serves every surface (Directory, official anchors, community feed, station profile, quality, enterprise export policy `esp-02`).
 
 ## Observation state and related processes
 

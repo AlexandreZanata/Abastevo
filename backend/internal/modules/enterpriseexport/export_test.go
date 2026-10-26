@@ -291,19 +291,3 @@ func TestContentHashIgnoresOperationalPageSize(t *testing.T) {
 		t.Errorf("page size changed content hash: %s vs %s", a.ContentSHA256, b.ContentSHA256)
 	}
 }
-
-func TestPublicDisplayNameMinimizesCPFShapedTokens(t *testing.T) {
-	for _, tc := range []struct{ name, cnpj, want string }{
-		{"JOAO DA SILVA 12345678909", "11222333000181", "JOAO DA SILVA"},
-		{"MARIA SOUZA 123.456.789-09 COMBUSTIVEIS", "11222333000181", "MARIA SOUZA COMBUSTIVEIS"},
-		{"12345678909", "11222333000181", "Posto 11222333000181"},
-		{"  ", "", ""},
-		{"POSTO BR 163 KM 12345", "", "POSTO BR 163 KM 12345"},
-		{"AUTO POSTO 04218406000104", "", "AUTO POSTO 04218406000104"},
-		{"POSTO A1234567890B", "", "POSTO A1234567890B"},
-	} {
-		if got := publicDisplayName(tc.name, tc.cnpj); got != tc.want {
-			t.Errorf("publicDisplayName(%q) = %q, want %q", tc.name, got, tc.want)
-		}
-	}
-}

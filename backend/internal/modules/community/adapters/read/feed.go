@@ -2,6 +2,7 @@ package read
 
 import (
 	"context"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -78,7 +79,7 @@ func (r *Reader) Feed(ctx context.Context, f application.FeedFilter) ([]FeedItem
 		if row.ContributionObservationID.Valid && row.ContributionDecisionSequence > 0 && row.ContributionState == "VALIDATED" {
 			contribution = &ContributionReference{ObservationID: uuidString(row.ContributionObservationID), DecisionSequence: row.ContributionDecisionSequence}
 		}
-		items = append(items, FeedItem{Contribution: contribution, StationID: uuidString(row.StationID), StationName: row.DisplayName,
+		items = append(items, FeedItem{Contribution: contribution, StationID: uuidString(row.StationID), StationName: kernel.PublicStationName(row.DisplayName, ""),
 			FuelProduct: row.FuelProduct, Unit: row.Unit, AmountMilliBrl: row.AmountMilliBrl.Int64,
 			Currency: "BRL", Source: "COMMUNITY", Condition: "STANDARD", Confidence: confidence,
 			UpdatedAt: row.AnchorReceivedAt.Time, ExpiresAt: row.ExpiresAt.Time,
