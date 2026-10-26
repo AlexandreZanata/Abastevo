@@ -60,6 +60,10 @@ screens, 200% text, safe areas and all eight locales preserved; lint
    the Main thread, deadlocking `startForegroundService` (`ForegroundServiceDidNotStartInTime`).
    The service now calls the engine directly when already on Main. Proven by the
    passing foreground-service test on the phone.
+3. `scripts/check-mobile.sh` forbade any `requestLocationUpdates` (P16 one-shot
+   only), blocking the authorized MAP-23 foreground continuous GPS. The guard now
+   allowlists only `GuidanceService.kt` (`GPS_PROVIDER, 1000L`, foreground service,
+   no background permission) and still fails elsewhere. `make quick-verify` PASS.
 
 ## Executed evidence (owned phone, serial explicit)
 
