@@ -199,6 +199,41 @@ test('setupPortalSearch loads one shard, renders text results and falls back', a
   assert.match(fake.status.textContent, /indisponível/);
 });
 
+test('setupPortalSearch applies a landing hand-off and ignores unknown UFs', async () => {
+  const { setupPortalSearch, readSearchHandoff } = await searchModule();
+  assert.deepEqual(readSearchHandoff('?uf=sp&q=alfa'), { uf: 'SP', query: 'alfa' });
+  assert.equal(readSearchHandoff('?uf=BR&q=alfa'), null);
+  assert.equal(readSearchHandoff('?q=alfa'), null);
+  assert.equal(readSearchHandoff('?uf=SP&q=' + 'x'.repeat(200)).query.length, 80);
+
+  const fake = fakePortal();
+  const urls = [];
+  setupPortalSearch({
+    document: fake.doc,
+    search: '?uf=SP&q=alfa',
+    fetch: async (url) => {
+      urls.push(String(url));
+      return { ok: true, json: async () => shard([station()]) };
+    },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.deepEqual(urls, ['/dados/busca/rel/SP.json']);
+  assert.equal(fake.uf.value, 'SP');
+  assert.equal(fake.input.value, 'alfa');
+  assert.match(fake.status.textContent, /1 posto encontrado/);
+
+  const ignored = fakePortal();
+  let calls = 0;
+  setupPortalSearch({
+    document: ignored.doc,
+    search: '?uf=../../x&q=alfa',
+    fetch: async () => { calls += 1; return { ok: true, json: async () => shard([station()]) }; },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(calls, 0);
+  assert.equal(ignored.input.value, '');
+});
+
 test('search asset is fingerprintable and contains no unsafe HTML injection', async () => {
   const result = build({ projectRoot: root, outDir: path.join(root, '.test-search-dist-' + Date.now()) });
   try {
