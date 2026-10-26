@@ -103,20 +103,29 @@ if grep -rn "testInjected *= *true" "$ROOT/data/src/main" "$ROOT/app/src/main" 2
 fi
 pass "no test-injection hooks in release sources"
 
-# 5. No-background-tracking assertion (P16-T04, B-BR-L02/L04, MAP-23 exception):
+# 5. No-background-tracking assertion (P16-T04, B-BR-L02/L04, MAP-23/MAP-25 exceptions):
 # location-integrity browsing stays one-shot only. Continuous GPS is authorized
-# solely inside the explicit MAP-23 foreground service (GuidanceService, GPS
-# provider, foregroundServiceType=location, no background permission); it must
-# not appear elsewhere. Static only; energy/latency device matrices stay
+# solely inside two explicit user-started foreground services, each pinned to its
+# own file, GPS provider and interval, foregroundServiceType=location, no
+# background permission: MAP-23 GuidanceService and the MAP-25 TripRecordingService
+# (explicit start/stop, local-only, docs/product/MAP_25_CONTRACT.md B-BR-MAP25-05);
+# it must not appear elsewhere. Static only; energy/latency device matrices stay
 # release-horizon and are never claimed here.
 if grep -rn "ACCESS_BACKGROUND_LOCATION" "$ROOT/app/src/main" "$ROOT/data/src/main" 2>/dev/null; then
     fail "background location permission found in shipped sources"
 fi
-if grep -rn "requestLocationUpdates\|requestUpdates(" "$ROOT/data/src/main" "$ROOT/app/src/main" 2>/dev/null | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt"; then
+if grep -rn "requestLocationUpdates\|requestUpdates(" "$ROOT/data/src/main" "$ROOT/app/src/main" 2>/dev/null | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt" | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/map/TripRecordingService.kt"; then
     fail "continuous location polling found outside the explicit MAP-23 foreground service (one-shot only elsewhere)"
 fi
 if grep -rn "requestLocationUpdates" "$ROOT/app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt" 2>/dev/null | grep -v "GPS_PROVIDER, 1000L" | grep -v "removeUpdates"; then
     fail "unexpected continuous location source in GuidanceService"
+fi
+if grep -rn "requestLocationUpdates" "$ROOT/app/src/main/kotlin/com/anpfuel/app/ui/map/TripRecordingService.kt" 2>/dev/null | grep -v "GPS_PROVIDER, 2000L" | grep -v "removeUpdates"; then
+    fail "unexpected continuous location source in TripRecordingService"
+fi
+trip_block=$(awk '/TripRecordingService/ {found=1} found {print} found && /\/>/ {exit}' "$ROOT/app/src/main/AndroidManifest.xml")
+if ! echo "$trip_block" | grep -q 'android:exported="false"' || ! echo "$trip_block" | grep -q 'foregroundServiceType="location"'; then
+    fail "TripRecordingService must stay a non-exported location foreground service"
 fi
 if grep -rn "startUpdatingLocation\|allowsBackgroundLocationUpdates" "$ROOT/iosApp/Sources" 2>/dev/null; then
     fail "background location tracking found in shipped iOS sources (one-shot only)"
