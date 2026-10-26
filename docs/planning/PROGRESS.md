@@ -1,5 +1,17 @@
 # Current execution state
 
+- MAP-21–23 selected continuation 2026-10-25: IN_PROGRESS, new protected PR
+  pending. Owner merged PR 150 at `eee1b33f`; maintained remote dev matches
+  main, including the CI worker-serialization correction `e848bf26`. This
+  isolated clone inherited OpenCode minimum gate `b45a0a2c` and retained main's
+  atomic Official retry/terminal-verdict contract. Focused real PostGIS and
+  Rust suites and engine/data/app JVM suites PASS for that reconciliation.
+  [Contract](../product/MAP_21_23_CONTRACT.md). Implement only MAP-21 community
+  operational events, MAP-22 native offline routes/stops and MAP-23 explicit
+  foreground guidance/voice. MAP-24–33 excluded. No new staging data/source
+  admission, provider calls or release certification inferred. Previous PR 150
+  notes below are historical; its source integration is complete.
+
 - Cumulative PR #150 integration 2026-10-25: IN_PROGRESS / CI_PENDING.
   User authorized publishing the partial map, PAY and enterprise/static portal
   source union and merging protected dev -> main after current checks pass.
