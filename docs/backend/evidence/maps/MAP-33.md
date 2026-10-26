@@ -1,9 +1,9 @@
 # MAP-33 — Protected cumulative delivery
 
-Status: IN_PROGRESS / CI_PENDING (this record is committed before the final check/merge)
-Validation: local union PASS; remote checks/reviews and merge pending
-Integration: INTEGRATION_PENDING
-Gate: DELIVERY_GATE not yet closed
+Status: INTEGRATED / WIKI_SYNCED (source integration only; staging/production not)
+Validation: local union PASS; all required remote checks PASS; protected merge PASS
+Integration: INTEGRATED in `main` at `bbd96568`
+Gate: DELIVERY_GATE source integration closed; PERFORMANCE_GATE remains PARTIAL
 
 ## Source union
 
@@ -34,14 +34,25 @@ Gate: DELIVERY_GATE not yet closed
   `feadd9f34d60c26b57a2025e96a1b799c04b52c90da9d47c9784a430363536e0`, both ARM ABIs,
   16 KB LOAD alignment and size guard PASS.
 
-## Pending final controls
+## Final controls executed
 
-At record creation the remote PR #151 was open/ready and mergeable, with `Quick verification`,
-`fast`, `integration` and `test` in progress on the pre-record head. The final exact-head/base
-checks/reviews, the guarded merge and the post-merge ancestry/wiki status must be read and
-recorded after they complete. A missing/failed/skipped/cancelled required check blocks the
-merge; pending CI is not a merge. If the head changes, all affected checks must be rerun.
+- PR **#151** (existing `dev → main`; #150 not reused, #152 untouched) was ready and merged
+  with merge commit `bbd96568180563ced975b96f8f89f7a3c242522e` at
+  `2026-10-26T19:28:55Z`.
+- Exact checked head: `04e9a6b3f49c52616ecf04fc1b1e90e7a34c916e`. Required current-head
+  checks all succeeded: `Quick verification` 2m51s, `fast` 1m47s, `integration` ~11m52s,
+  `test` ~11m56s. No failed/skipped/cancelled required check; no review was requested and
+  none was present.
+- `git merge-base --is-ancestor 04e9a6b3 origin/main` is true; `main` and `dev` both pointed
+  at `bbd96568` immediately after the guarded merge. `dev` was retained and pushed.
+- Wiki publication from merged SHA `bbd96568`: commit
+  `3c08ac4ccb29e26f695e2399d777528c19da5630`, 778 owned pages, independently verified by a
+  fresh clone of `AlexandreZanata/Abastevo.wiki.git`; `wiki-manifest.json` records source
+  SHA `bbd96568`.
+- This post-merge evidence/progress note is a docs-only follow-up on retained `dev`; it does
+  not change the merged application code and does not reopen the merged PR.
 
-Post-merge record to append (not yet true): PR merge method/merge SHA, ancestry proof for the
-included head in `main`, retained/synchronized `dev`, and WIKI_PENDING/INTEGRATED separately.
-Staging/production/release certification is not part of this delivery.
+Staging/production/release certification is not part of this delivery. MAP-29 remains
+PERFORMANCE_GATE PARTIAL, MAP-30 EXTERNAL_PENDING, MAP-32 STAGING_PENDING, and the four
+opt-in Kotlin wire tests, two-account/two-device restore, manual TalkBack, API 26, clean ARMv7,
+physical 16 KB, frame pacing, physical battery and national capacity remain OWED.
