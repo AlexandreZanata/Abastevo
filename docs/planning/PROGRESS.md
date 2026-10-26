@@ -1,5 +1,14 @@
 # Current execution state
 
+- DRV-14 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent b5957f53,
+  behavior 72f8bd46. [Evidence](../backend/evidence/driver-suite/DRV-14.md).
+  PENDING/SYNCED/CONFLICT outbox, 29→30 lease migration, owner/guest-isolated
+  claims, expired-lease reuse, bounded backoff/retry-limit and exact shared
+  Go→Kotlin receipt/error fixtures. Android API35 7/7 instrumentation, Go
+  fixture test, JVM data tests, app compile and mobile static guards PASS.
+  Disk-full test not executed (explicit gap). No live dispatcher/cloud/UI.
+  No push/PR/merge in this checkpoint.
+
 - DRV-13 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 6d665c3b,
   behavior 062a4030. [Evidence](../backend/evidence/driver-suite/DRV-13.md).
   Room schema 29 with owner/origin-scoped shift/gap, earning/revision, distance,

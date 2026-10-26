@@ -243,7 +243,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-13.md`. A later relevant change invalidates affected evidence.
 ### DRV-14 — Implement durable commands and honest local state
 
-Status: PLANNED. Dependency: DRV-13 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-14](../backend/evidence/driver-suite/DRV-14.md). Dependency: DRV-13 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `application driver use cases; data command store/WorkManager`. Rules: B-BR-DRV-01, B-BR-DRV-17.
 
