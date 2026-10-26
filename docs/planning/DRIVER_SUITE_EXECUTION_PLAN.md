@@ -297,7 +297,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-17.md`. A later relevant change invalidates affected evidence.
 ### DRV-18 — Deliver manual shift control and recovery
 
-Status: PLANNED. Dependency: DRV-17 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: IN_PROGRESS / local slice; behavior acceptance pending. Evidence: [DRV-18..22](../backend/evidence/driver-suite/DRV-18-22.md). Dependency: DRV-17 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `app driver session/viewmodel; application clock/state ports`. Rules: B-BR-DRV-06, B-BR-DRV-07, B-BR-DRV-08, B-BR-DRV-20.
 
@@ -310,7 +310,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-18.md`. A later relevant change invalidates affected evidence.
 ### DRV-19 — Deliver earnings and payout entry
 
-Status: PLANNED. Dependency: DRV-18 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: IN_PROGRESS / local slice; behavior acceptance pending. Evidence: [DRV-18..22](../backend/evidence/driver-suite/DRV-18-22.md). Dependency: DRV-18 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `app driver earnings; application reconciliation`. Rules: B-BR-DRV-04, B-BR-DRV-05.
 
@@ -323,7 +323,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-19.md`. A later relevant change invalidates affected evidence.
 ### DRV-20 — Deliver expenses and vehicle cost setup
 
-Status: PLANNED. Dependency: DRV-19 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: IN_PROGRESS / local slice; behavior acceptance pending. Evidence: [DRV-18..22](../backend/evidence/driver-suite/DRV-18-22.md). Dependency: DRV-19 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `app vehicle/ledger/driver; domain allocations`. Rules: B-BR-DRV-13, B-BR-DRV-14.
 

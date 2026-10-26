@@ -1,5 +1,15 @@
 # Current execution state
 
+- DRV-18..22 2026-10-26: IN_PROGRESS (local slice only), parent c78b0f89,
+  behavior 3517820b, merge c4266814. [Evidence](../backend/evidence/driver-suite/DRV-18-22.md).
+  Added Room schema 31 (shift odometers, payouts, cost settings, GPS table) and
+  a local work screen for manual shift start/pause/resume/end/recovery,
+  earnings/payout entry, cost settings and a basic summary. Room 30→31
+  instrumentation, JVM migration/parsing, app/data compile and static guards
+  PASS. DRV-21 GPS/FGS and DRV-22 reconciliation are NOT implemented; behavior
+  UI tests for 18–20 remain open. Published to PR #152 for incremental review,
+  not as five-phase acceptance.
+
 - DRV-17 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent a6c2837d,
   behavior 24c85e5a. [Evidence](../backend/evidence/driver-suite/DRV-17.md).
   Hub quick refuel/charge routes into the real exact ledger forms, separate
