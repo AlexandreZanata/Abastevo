@@ -47,6 +47,7 @@ import com.anpfuel.app.ui.premium.PremiumManagementScreen
 import com.anpfuel.app.ui.premium.PremiumScreen
 import com.anpfuel.app.ui.privacy.PrivacyScreen
 import com.anpfuel.app.ui.profile.ProfileScreen
+import com.anpfuel.app.ui.driver.DriverHubScreen
 import com.anpfuel.app.ui.settings.SettingsScreen
 import com.anpfuel.app.ui.stations.StationsScreen
 import com.anpfuel.app.ui.vehicle.VehicleScreen
@@ -377,6 +378,17 @@ fun AnpNavGraph(
                 onOpenCharging = { vehicleId ->
                     navController.navigate(Routes.chargingExplore(vehicleId.value))
                 },
+                onOpenDriverHub = { navController.navigate(Routes.DRIVER_HUB) },
+            )
+        }
+        composable(Routes.DRIVER_HUB) {
+            DriverHubScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenVehicles = { navController.navigate(Routes.VEHICLES) },
+                onOpenEntries = { vehicleId -> navController.navigate(Routes.vehicleEntries(vehicleId)) },
+                onOpenMonthly = { vehicleId -> navController.navigate(Routes.monthlyIndicators(vehicleId)) },
+                onOpenPremium = { navController.navigate(Routes.PREMIUM) { launchSingleTop = true } },
+                onSignIn = { navController.navigate(Routes.AUTH) },
             )
         }
         composable(

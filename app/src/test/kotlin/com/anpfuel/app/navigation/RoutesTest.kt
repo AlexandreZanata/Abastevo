@@ -44,6 +44,13 @@ class RoutesTest {
     }
 
     @Test
+    fun driverHubRouteIsRegisteredConstant() {
+        assertEquals("driver-hub", Routes.DRIVER_HUB)
+        assertFalse(Routes.DRIVER_HUB.contains("{"))
+        assertFalse(Routes.DRIVER_HUB.contains("?"))
+    }
+
+    @Test
     fun contributionsRouteIsRegisteredConstant() {
         assertEquals("contributions", Routes.CONTRIBUTIONS)
     }
