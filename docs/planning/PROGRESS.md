@@ -11,6 +11,14 @@
   race tests, vet, gofmt, secret scan and `git diff --check` passed locally.
   No deployment, DNS or public portal publication; required Quick verification
   and review gate the merge.
+- MAP-33 cumulative delivery: IN_PROGRESS / CI_PENDING. Existing open
+  `dev → main` PR #151 updated (not PR #150; PR #152 driver is a separate front
+  and untouched). Source union includes `507d915e` and `4eeccfbf`; MAP-23
+  current phone proof, MAP-27/28 local real-engine/UI evidence, MAP-31 local
+  union and MAP-30/32 dispositions are included. Exact-head checks/reviews,
+  guarded merge, post-merge ancestry and wiki remain pending; no merge/deploy is
+  claimed by this entry. [MAP-33 evidence](../backend/evidence/maps/MAP-33.md).
+
 - MAP-32 local checkpoint: LOCAL_DONE (runbook + local restore rehearsal) /
   STAGING_PENDING. Frozen candidate manifest, staging-scoped apply/backup/
   rollback/smoke/stop-condition runbook; disposable PostGIS dump/restore matched
