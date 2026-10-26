@@ -68,6 +68,7 @@ private fun messageText(code: String?): String? = when (code) {
 @Composable
 fun SavedScreen(
     onBack: () -> Unit,
+    onOpenTrip: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: SavedViewModel = hiltViewModel(),
 ) {
@@ -204,6 +205,12 @@ fun SavedScreen(
             )
             Row(Modifier.fillMaxWidth().testTag("saved-trip-${trip.id}"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("${trip.name} · $kind · ${stringResource(R.string.map25_points, trip.pointCount)}", modifier = Modifier.weight(1f).padding(top = 12.dp))
+                if (trip.kind == SavedTripKind.ROUTE_PLAN) {
+                    TextButton(
+                        onClick = { onOpenTrip(trip.id) },
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("saved-open-trip"),
+                    ) { Text(stringResource(R.string.map25_open)) }
+                }
                 TextButton(onClick = { viewModel.prepareExport(ExchangeFormat.GPX, tripId = trip.id) }, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.map25_export_one))
                 }

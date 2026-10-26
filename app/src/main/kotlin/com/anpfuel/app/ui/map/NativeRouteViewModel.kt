@@ -100,6 +100,18 @@ class NativeRouteViewModel @Inject constructor(private val engine: MapEngine, pr
         }
         if(!accepted) { deadline?.cancel(); state.update { it.copy(building=false,error="not-ready") } }
     }
+    fun restorePlan(points: List<RoutePoint>, avoid: Set<RoadAvoidance>) {
+        val cleaned = points.distinctBy { it.latitude to it.longitude }
+        if (cleaned.size < 2) return
+        invalidate()
+        state.value = NativeRouteUi(
+            origin = cleaned.first(),
+            destination = cleaned.last(),
+            stops = cleaned.drop(1).dropLast(1),
+            avoid = avoid,
+        )
+        persist()
+    }
     fun fail(reason:String) { state.update { it.copy(error=reason) } }
     fun stopSearch() { ++searchGeneration;searchDeadline?.cancel();engine.cancelSearch();state.update { it.copy(searching=false,results=emptyList()) } }
     fun cancel() { invalidate();stopSearch() }
