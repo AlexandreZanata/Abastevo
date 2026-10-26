@@ -341,3 +341,26 @@ buttons, matches the height of its art tile.
 The "Explore o que dá para fazer" cards then moved into a black band directly
 under the hero, with larger art, one short line each and an arrow; on phones
 they scroll horizontally with snap points.
+
+
+## LH10 Learning pages shared UI — 2026-10-26
+
+Owner scope: align `/guias/` and `/como-usar/` with the existing home and
+consultation UI, then publish the static update to `teste.abastevo.com.br`.
+The learning hubs and their existing detail routes inherit the home header,
+footer, local fonts, neutral surfaces, spacing, buttons and keyboard focus.
+
+- **B-BR-LH10-01:** build learning chrome from the canonical home markup;
+  home-section links resolve through `/` from every nested learning route.
+- **B-BR-LH10-02:** keep educational claims, formulas, sources, canonical
+  URLs, tutorial chapters and availability statuses intact. Unpublished
+  chapters remain noninteractive. No new feature, tracking or dependency.
+- **BUC-LH10-01:** a reader opens either hub, chooses a guide/journey,
+  follows a published chapter and uses the same navigation/footer on every
+  learning route, including mobile and without JavaScript.
+- **Acceptance:** header/footer parity, working local and home-section
+  links, all 30 chapter entries/statuses, responsive cards/readable article
+  widths, existing metadata/noindex/CSP and content tests.
+- **Delivery boundary:** static landing files only, atomic release switch
+  with the old release retained. Portal data, API/worker images, migrations,
+  other namespaces and the production apex domain are outside this update.

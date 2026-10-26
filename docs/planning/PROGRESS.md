@@ -1,5 +1,16 @@
 # Current execution state
 
+- LH10 learning UI 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
+  Isolated `codex/learning-pages-ui` from the website staging candidate
+  `9e6da1ae` (PR #155); maintained dev has the independent map PR #154.
+  Guias/Como usar and 19 detail routes share the existing home header/footer
+  and neutral card UI. Typecheck/build/check and 68/68 landing tests PASS;
+  desktop/375 px browser review and native mobile menu PASS.
+  [Evidence](../release-evidence/learning-ui-20261026.md).
+  Next: static-only atomic publication to the owner-named staging domain,
+  then live verification and append this bounded commit to the existing
+  website delivery PR. No map PR merge, API rollout or apex deployment.
+
 - Staging landing + portal search + ingestion 2026-10-26: STAGING_DONE /
   INTEGRATION_PENDING on `codex/vps-staging-landing-perf` from `main`
   4eeccfbf, PR to main. Owner-authorized `teste.abastevo.com.br` scope,

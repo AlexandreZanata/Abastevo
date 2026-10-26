@@ -267,6 +267,16 @@ export function build(options = {}) {
       { srcRel: '404.html', destRel: '404.html' },
     ];
 
+    // The home owns the shared navigation and footer. Learning routes use the
+    // same markup and CSS; qualify home-section links for nested URLs.
+    const homeHtml = fs.readFileSync(path.join(staticDir, 'index.html'), 'utf8');
+    const sharedChrome = (tag) => {
+      const block = homeHtml.match(new RegExp(`<${tag}\\b[\\s\\S]*?</${tag}>`))?.[0];
+      if (!block) throw new Error(`Canonical home ${tag} missing`);
+      return block.replaceAll('href="#', 'href="/#');
+    };
+    const learningHeader = sharedChrome('header');
+    const learningFooter = sharedChrome('footer');
     const isPreview = process.env.PREVIEW === '1';
 
     for (const { srcRel, destRel } of htmlFiles) {
@@ -275,6 +285,13 @@ export function build(options = {}) {
         throw new Error(`Required HTML file missing: ${srcRel}`);
       }
       let html = fs.readFileSync(srcPath, 'utf8');
+      if (srcRel.startsWith('guias/') || srcRel.startsWith('como-usar/')) {
+        for (const marker of ['LEARNING_HEADER', 'LEARNING_FOOTER']) {
+          if (!html.includes(`<!-- ${marker} -->`)) throw new Error(`${srcRel}: missing ${marker}`);
+        }
+        html = html.replace('<!-- LEARNING_HEADER -->', learningHeader)
+          .replace('<!-- LEARNING_FOOTER -->', learningFooter);
+      }
 
       // Asset reference rewrites
       html = html.replaceAll('/assets/styles.css', `/assets/${fingerprintedCssName}`);
