@@ -63,6 +63,8 @@ fuel POIs in one fast deterministic pass.
 
 ### A1 — National input snapshots (parallel lanes, no DB writes)
 
+Worker limits and observed source behavior: [MAP_NATIONAL_SOURCE_LIMITS](MAP_NATIONAL_SOURCE_LIMITS.md).
+
 - **A1.a ANP API harvest (files only, no database).** Build the
   municipality list (UF + municipality name) from the registry CSV. For each
   pair fetch

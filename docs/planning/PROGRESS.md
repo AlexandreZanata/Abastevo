@@ -1,5 +1,18 @@
 # Current execution state
 
+- MAP national stations Phase 2 A2 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
+  Branch `codex/map-national-stations-plan`; new `prepare_national_matches`
+  (`national_match.rs` + bin) joins ANP API pages, OSM references and prepared
+  registry assertions with grid/CNPJ/address indexes, emits L1 reviews for
+  `station-review`, L2 `osm-mapped` map assertions, L3/L5 decisions and
+  deterministic outputs. `station-review` accepts the new
+  `ANP_REGISTRY_API+OSM_CNPJ` method. Source and worker limits are documented in
+  [MAP_NATIONAL_SOURCE_LIMITS](MAP_NATIONAL_SOURCE_LIMITS.md). Local validation:
+  `check-rust-fast.sh` PASS, full Rust crate tests PASS, Go
+  `./cmd/station-review` PASS, 1M-point release test PASS (2.98-8.72 s under load, 594 MiB), and
+  the Phase 1 VPS sample produced 361 L1 reviews / 565 L2 map assertions /
+  1,574 L3 / 43,188 L5 in 1.48 s / 142,648 KiB with byte-identical reruns.
+  No DB/deploy/app change; B2 and Phase 3 are not started.
 - MAP national stations Phase 1 2026-10-26: PARTIAL / A1.a BLOCKED.
   Branch `codex/map-national-stations-plan`; private VPS root
   `/opt/abastevo-temp/map-national-20261026` (mode 700); no data in Git and no
@@ -11,7 +24,8 @@
   62,091 fuel places. A1.a stopped on repeated HTTP 429 for AC/MANCIO LIMA
   after 12 municipalities (1,958 rows / 1,935 valid points); no 401/403, no
   credential request, no retry after STOP. Evidence in
-  `inputs/SOURCES.md` and `inputs/phase1-report.md`; Phase 2 not started.
+  `inputs/SOURCES.md` and `inputs/phase1-report.md`. Phase 2 had not started at
+  this closure; A2 is recorded above and B2 remains pending.
 - Landing LH09 / portal shared chrome 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   User-authorized branch `codex/landing-portal-visual` from `origin/main` (dev
   carries unrelated open PR #151) with a PR to main. Uber-style light-only home
