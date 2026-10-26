@@ -242,6 +242,22 @@ fun MapScreen(
             }
         }
 
+        if (discUi?.offlineCached == true) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+                tonalElevation = 1.dp,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(
+                    stringResource(R.string.server_station_cached),
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .testTag("map-offline-cache-banner"),
+                )
+            }
+        }
+
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
                 ui.loading -> {

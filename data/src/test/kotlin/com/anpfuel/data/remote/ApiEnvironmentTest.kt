@@ -60,4 +60,10 @@ class ApiEnvironmentTest {
             assertTrue(!env.origin.contains("-46.63"))
         }
     }
+
+    @Test
+    fun `local proof origin is fixed loopback http`() {
+        assertEquals("http://127.0.0.1:18080", ApiEnvironment.LOCAL_PROOF.origin)
+        assertEquals("http://127.0.0.1:18080/v1/stations", ApiEnvironment.LOCAL_PROOF.join("/v1/stations"))
+    }
 }

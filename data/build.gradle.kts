@@ -12,6 +12,9 @@ android {
     defaultConfig {
         buildConfigField("boolean", "QUALITY_CACHE_ENABLED", providers.gradleProperty("qualityCacheEnabled").orElse("true").get().toBooleanStrict().toString())
         buildConfigField("boolean", "QUALITY_OUTBOX_ENABLED", providers.gradleProperty("qualityOutboxEnabled").orElse("true").get().toBooleanStrict().toString())
+        // Debug-only loopback proof origin switch. Release builds and
+        // default debug builds keep the explicit staging origin.
+        buildConfigField("boolean", "MAP_API_LOCAL_PROOF", providers.gradleProperty("mapApiLocalProof").orElse("false").get().toBooleanStrict().toString())
         // Map distribution origin/region/keys are build-time operational
         // config; empty means "not configured" (UI shows the pending state,
         // never a fake download). Keys are public verification keys only.

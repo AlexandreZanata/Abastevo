@@ -1,11 +1,11 @@
 # MAP-20 — Discovery, accessibility and minimum gate
 
-Current assessment: [2026-10-25 remediation](MAP-15_20_REMEDIATION_20261025.md) supersedes earlier integration/acceptance claims. Historical evidence below is retained.
+Current assessment: [local real-data acceptance](MAP-20_MINIMUM_LOCAL_20261025.md) (2026-10-25) supersedes the earlier “no real pins/prices” blocker for **local proof only**. Staging/production data and distribution remain pending. Historical evidence below is retained.
 
-Status: PARTIAL / INTEGRATION_PENDING
-Validation: scoped checks PASS; full phase acceptance PARTIAL (JVM search/filters/decode + real-phone list/sheet/accessibility)
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: scoped local checks PASS, including real ANP/OSM → PostGIS → API → Kotlin → native pins → quick price → profile and offline restart
 Integration: INTEGRATION_PENDING
-Gate: MINIMUM_MAP_GATE PARTIAL (real list/profile/route proven; real pins/prices blocked by staging data, documented below — no fake PASS)
+Gate: MINIMUM_MAP_GATE LOCAL_PASS; STAGING PENDING; PRODUCTION PENDING
 
 Tested tree: `codex/map-ev-implementation` at MAP-18 plus MAP-19/20 changes.
 Date: 2026-10-25.
@@ -131,9 +131,11 @@ Blocked by external data/operations (reproduced above, not a code waiver):
 - Native route preview (`buildCarRoute`), offline search, and MAP-21–33 remain
   scoped to the next phases.
 
-Gate: **PARTIAL / INTEGRATION_PENDING**. Do not merge/publish/certify as
-complete. Next: populate staging coordinates/prices and distribution config for
-live gate sign-off, or proceed to MAP-21–33 local construction.
+Gate: **LOCAL_PASS / STAGING_PENDING / INTEGRATION_PENDING**. See the
+[local real-data record](MAP-20_MINIMUM_LOCAL_20261025.md) for the executed
+chain, 62 reviewed pins, 33 exact prices, native pin/sheet/profile screenshots,
+offline process-restart cache and APK hashes. Do not merge/publish/certify as a
+production gate. Next: staging distribution/data configuration and MAP-21–33.
 
 ## Completion behavior — 2026-10-25
 

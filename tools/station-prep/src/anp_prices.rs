@@ -139,14 +139,23 @@ pub fn parse_station_prices_xlsx(
             return Err(AnpPriceError::RowCap);
         }
         let locator = format!("{file_name}:{}", row.number);
-        let Some(cnpj) = normalize_cnpj(cells[0].trim()).ok() else {
+        let Some(cnpj) = source_cnpj(cells[0].trim()) else {
             quarantine.push(q(locator, reason::INVALID_CNPJ, "CNPJ is not valid", None));
             counts.quarantined += 1;
             continue;
         };
         let municipality = cells[8].trim().to_string();
-        let state = cells[9].trim().to_uppercase();
-        if municipality.is_empty() || state.len() != 2 {
+        let Some(state) = normalize_state(&cells[9]) else {
+            quarantine.push(q(
+                locator,
+                reason::MISSING_STATION_CONTEXT,
+                "municipality/state required",
+                Some(cnpj.clone()),
+            ));
+            counts.quarantined += 1;
+            continue;
+        };
+        if municipality.is_empty() {
             quarantine.push(q(
                 locator,
                 reason::MISSING_STATION_CONTEXT,
@@ -166,8 +175,8 @@ pub fn parse_station_prices_xlsx(
             counts.quarantined += 1;
             continue;
         };
-        let unit = cells[12].trim().to_uppercase();
-        if unit != expected_unit {
+        let unit = normalize_unit(&cells[12]);
+        if unit != Some(expected_unit) {
             quarantine.push(q(
                 locator,
                 reason::PRODUCT_UNIT_MISMATCH,
@@ -177,6 +186,7 @@ pub fn parse_station_prices_xlsx(
             counts.quarantined += 1;
             continue;
         }
+        let unit = unit.expect("unit checked above").to_string();
         let raw_price_text = cells[13].trim().to_string();
         let Some(amount_milli_brl) = parse_milli_brl(&raw_price_text) else {
             quarantine.push(q(
@@ -289,6 +299,24 @@ fn q(locator: String, reason: &'static str, detail: &str, key: Option<String>) -
     }
 }
 
+/// The official workbook has historical rows where Excel stored the CNPJ as
+/// a number, dropping leading zeros. Pad only short all-digit cells to 14
+/// characters and accept the result solely when the checksum validates.
+/// Alphanumeric and already-14-character values are never padded.
+fn source_cnpj(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if let Ok(cnpj) = normalize_cnpj(trimmed) {
+        return Some(cnpj);
+    }
+    if trimmed.bytes().all(|byte| byte.is_ascii_digit()) && (12..=13).contains(&trimmed.len()) {
+        let padded = format!("{trimmed:0>14}");
+        if let Ok(cnpj) = normalize_cnpj(&padded) {
+            return Some(cnpj);
+        }
+    }
+    None
+}
+
 fn pad(cells: &[String]) -> Vec<String> {
     let mut out = cells.to_vec();
     out.resize(15, String::new());
@@ -328,10 +356,68 @@ fn fold(value: &str) -> String {
             'Ó' | 'Ò' | 'Ô' | 'Õ' | 'Ö' | 'ó' | 'ò' | 'ô' | 'õ' | 'ö' => 'O',
             'Ú' | 'Ù' | 'Û' | 'Ü' | 'ú' | 'ù' | 'û' | 'ü' => 'U',
             'Ç' | 'ç' => 'C',
+            '³' => '3',
             other => other,
         })
         .collect::<String>()
         .to_uppercase()
+}
+
+/// The official station workbook carries the full state name in `ESTADO`
+/// while synthetic/fixture workbooks use the two-letter code. Both map to
+/// the same canonical UF; an unknown label is never guessed.
+fn normalize_state(raw: &str) -> Option<String> {
+    let folded = fold(raw);
+    if folded.len() == 2 {
+        return Some(folded);
+    }
+    let uf = match folded.as_str() {
+        "ACRE" => "AC",
+        "ALAGOAS" => "AL",
+        "AMAPA" => "AP",
+        "AMAZONAS" => "AM",
+        "BAHIA" => "BA",
+        "CEARA" => "CE",
+        "DISTRITO FEDERAL" => "DF",
+        "ESPIRITO SANTO" => "ES",
+        "GOIAS" => "GO",
+        "MARANHAO" => "MA",
+        "MATO GROSSO" => "MT",
+        "MATO GROSSO DO SUL" => "MS",
+        "MINAS GERAIS" => "MG",
+        "PARA" => "PA",
+        "PARAIBA" => "PB",
+        "PARANA" => "PR",
+        "PERNAMBUCO" => "PE",
+        "PIAUI" => "PI",
+        "RIO DE JANEIRO" => "RJ",
+        "RIO GRANDE DO NORTE" => "RN",
+        "RIO GRANDE DO SUL" => "RS",
+        "RONDONIA" => "RO",
+        "RORAIMA" => "RR",
+        "SANTA CATARINA" => "SC",
+        "SAO PAULO" => "SP",
+        "SERGIPE" => "SE",
+        "TOCANTINS" => "TO",
+        _ => return None,
+    };
+    Some(uf.to_string())
+}
+
+/// The official workbook states the unit as a money-per-quantity label
+/// (`R$ / litro`, `R$ / m³`, `R$ / 13 kg`). Map only those admitted labels
+/// to the frozen unit vocabulary; unknown labels quarantine the row.
+fn normalize_unit(raw: &str) -> Option<&'static str> {
+    let compact: String = fold(&raw.replace("R$", ""))
+        .chars()
+        .filter(|character| !character.is_whitespace() && *character != '$' && *character != '/')
+        .collect();
+    match compact.as_str() {
+        "L" | "LITRO" | "LITROS" => Some("L"),
+        "M3" => Some("M3"),
+        "KG" | "KG13" | "13KG" | "KG_13" => Some("KG_13"),
+        _ => None,
+    }
 }
 
 fn product(label: &str) -> Option<(&'static str, &'static str)> {
@@ -598,6 +684,55 @@ mod tests {
             .unwrap();
         assert_eq!(lpg.amount_milli_brl, 109990);
         assert_eq!(lpg.unit, "KG_13");
+    }
+
+    #[test]
+    fn accepts_official_state_and_unit_labels() {
+        let raw = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../contracts/testdata/map/anp-station-prices-real-layout-v1.xlsx"),
+        )
+        .expect("fixture");
+        let run = parse_station_prices_xlsx(
+            "real-layout.xlsx",
+            &raw,
+            &Limits::default(),
+            "2026-10-11",
+            "2026-10-17",
+            "survey-real-layout",
+            &|| false,
+        )
+        .expect("parse");
+        assert_eq!(run.counts.accepted, 3);
+        assert_eq!(run.counts.quarantined, 0);
+        let mut units: Vec<&str> = run.facts.iter().map(|fact| fact.unit.as_str()).collect();
+        units.sort_unstable();
+        assert_eq!(units, vec!["KG_13", "L", "M3"]);
+        assert!(run.facts.iter().all(|fact| fact.state == "PR"));
+        let gasoline = run
+            .facts
+            .iter()
+            .find(|fact| fact.product == "GASOLINE_REGULAR")
+            .expect("gasoline");
+        assert_eq!(gasoline.amount_milli_brl, 5999);
+        assert_eq!(gasoline.observed_at, "2026-10-17");
+    }
+
+    #[test]
+    fn short_numeric_cnpj_is_padded_only_when_the_checksum_matches() {
+        assert_eq!(
+            source_cnpj("2759173000113").as_deref(),
+            Some("02759173000113")
+        );
+        assert_eq!(
+            source_cnpj("01122233300000").as_deref(),
+            Some("01122233300000")
+        );
+        assert_eq!(source_cnpj("2759173000114"), None);
+        assert_eq!(
+            source_cnpj("12ABC34501DE35").as_deref(),
+            Some("12ABC34501DE35")
+        );
     }
 
     #[test]

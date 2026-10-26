@@ -1,5 +1,7 @@
 package com.anpfuel.data.di
 
+import com.anpfuel.data.BuildConfig
+
 import android.content.Context
 import com.anpfuel.data.remote.AnpFileDownloader
 import com.anpfuel.data.remote.AnpListingScraper
@@ -35,7 +37,12 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("apiOrigin")
-    fun provideApiEnvironment(): ApiEnvironment = ApiEnvironment.STAGING
+    fun provideApiEnvironment(): ApiEnvironment =
+        if (BuildConfig.DEBUG && BuildConfig.MAP_API_LOCAL_PROOF) {
+            ApiEnvironment.LOCAL_PROOF
+        } else {
+            ApiEnvironment.STAGING
+        }
 
     @Provides
     @Singleton

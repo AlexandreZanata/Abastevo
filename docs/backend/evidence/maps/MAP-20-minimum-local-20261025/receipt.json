@@ -1,0 +1,115 @@
+{
+  "task": "MAP-20 minimum map local real-data acceptance",
+  "date": "2026-10-25",
+  "state": "LOCAL_DONE",
+  "integration": "INTEGRATION_PENDING",
+  "minimum_map_gate": "LOCAL_PASS",
+  "staging": "PENDING",
+  "production": "PENDING",
+  "engine_artifact": {
+    "path": "/data/dev/artifacts/abastevo-map-engine/d2ec37881ede4e22",
+    "aar_sha256": "d2ec37881ede4e2288e1a929f01a1eabab193e7a6d518c76ff4342f085f2b10c",
+    "ceiling_bytes": 83886080
+  },
+  "sources": {
+    "anp_registry_csv": {
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/arquivos-dados-cadastrais-dos-revendedores-varejistas-de-combustiveis-automotivos/dados-cadastrais-revendedores-varejistas-combustiveis-automoveis.csv",
+      "fetched": "2026-10-25",
+      "bytes": 7899851,
+      "sha256": "46d38fbe402fbb15a8c8e73ae3d78f126d040230a5acc55d56077a2aecc1dabe",
+      "usage": "LOCAL_PROOF_ONLY; redistribution terms not re-admitted for public distribution"
+    },
+    "anp_price_xlsx": {
+      "url": "https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/2026/revendas_lpc_2026_10_11-2026_10_17.xlsx",
+      "fetched": "2026-10-25",
+      "bytes": 1875300,
+      "sha256": "e148758e496dfa3166210358185d05c27ac4cd8c20e5071979d5559e3faaa6d6",
+      "survey_period": "2026-10-11..2026-10-17",
+      "parser": "anp-station-prices-v1",
+      "accepted": 19561,
+      "quarantined": 928
+    },
+    "anp_api_curitiba": {
+      "url": "https://revendedoresapi.anp.gov.br/v1/combustivel?uf=PR&municipio=CURITIBA&numeroPagina=1&tamanhoPagina=5000",
+      "fetched": "2026-10-25",
+      "bytes": 412967,
+      "sha256": "687edec00adf428a18713f3992ac1c7fb09eca7b2fd7993282bff789f6b1dbd4",
+      "records": 348
+    },
+    "osm_curitiba_pbf": {
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors — ODbL 1.0",
+      "sha256": "3ab1872056d2f6c87f8d58595c626cfa25f1a4d82dd49468b9dad13e5faac266",
+      "references": 256
+    }
+  },
+  "prepared": {
+    "registry_stations": 45706,
+    "registry_quarantined": 85,
+    "registry_assertions_sha256": "3e81f24a3a5fac9c46fd452d24f77299f20694aa65e0de7dddfd4c89d986bf53",
+    "reviewed_locations": 62,
+    "review_rejected": 286,
+    "review_artifact_sha256": "2abe8c48439218870f86930d72f4eb860e4b0bed8194f1870603e3703c4598ea",
+    "officially_priced_reviewed_stations": 33,
+    "official_revision_id": "394ea0a5-8004-43b4-be3c-aef23669568b"
+  },
+  "native_map_inputs": {
+    "manifest_generation": "brazil-parana-east-20261024-1",
+    "engine_format_version": "261004",
+    "packages": [
+      {"id": "brazil-parana-east", "bytes": 10058648, "sha256": "d1e9b2ce81cc10335b6b082a64d78a8241390f42c262e2832f400c981b200a3e"},
+      {"id": "world", "bytes": 53519450, "sha256": "77a35c16fad64252fe7dffadb8e966e8e3af906354b14df2edc1809b3e22e4a5"},
+      {"id": "world-coasts", "bytes": 8489900, "sha256": "d42a71b10c5637814468929dc4c72c2fc20f2996ce9877d697bd3dd4dc143626"}
+    ]
+  },
+  "runtime_proof": {
+    "device": "anpfuel-16k AVD",
+    "api": 35,
+    "page_size_bytes": 16384,
+    "abi_bridge": "arm64-v8a on x86_64",
+    "ram_mib": 4096,
+    "graphics": "swiftshader OpenGLES3",
+    "vulkan_result": "REJECTED_EMULATOR_ARTIFACTS",
+    "gps": "denied; Curitiba city viewport used",
+    "authored_pins": 62,
+    "exact_prices": 33,
+    "offline_restart_proof": true,
+    "offline_banner": true,
+    "cached_price_label": true
+  },
+  "apks": {
+    "debug_proof": {
+      "bytes": 100294961,
+      "sha256": "793e278a7bbb410a959199d0cae4b9a45b6870dea979f1042b77cd4fdf6fae08",
+      "configuration": "local API proof + ephemeral MWM proof key; not a release artifact"
+    },
+    "release_unsigned": {
+      "bytes": 78121062,
+      "mib": 74.5,
+      "sha256": "5937649c14078bf82460376ee22656241ca80b804aea4566e0ef672f54deabdd",
+      "map_api_local_proof": false,
+      "map_dist_base_url": "",
+      "map_dist_keys": ""
+    }
+  },
+  "tests": {
+    "engine": {"tests": 32, "failures": 0},
+    "data": {"tests": 612, "failures": 0, "skipped": 2, "skipped_known_external": [
+      "TrainingConsentBackendInteropTest",
+      "AnpListingLiveCatalogValidationTest"
+    ]},
+    "app": {"tests": 537, "failures": 0},
+    "real_http_kotlin_decode": "PASS",
+    "lintDebug": "PASS",
+    "release_apk_size": "PASS",
+    "secret_scan": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "remaining": [
+    "staging reviewed geometry/prices and production distribution origin/keys",
+    "opening-hours contract",
+    "charging/OCM offline overlay acceptance",
+    "MAP-21–33, guided navigation, EV planning, performance gate",
+    "release signing, public pilot, G09"
+  ]
+}
