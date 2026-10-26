@@ -35,6 +35,8 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.text.DecimalFormatSymbols
+import com.anpfuel.domain.premium.LedgerDistance
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -119,8 +121,10 @@ class LedgerEntriesViewModel @Inject constructor(
     val uiState: StateFlow<LedgerEntriesUiState> = _uiState.asStateFlow()
 
     private var vehicle: Vehicle? = null
+    private var inputLocale: Locale = Locale.getDefault()
 
     fun load(vehicleId: DomainId, locale: Locale) {
+        inputLocale = locale
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null, vehicleId = vehicleId) }
             runCatching {
@@ -203,7 +207,7 @@ class LedgerEntriesViewModel @Inject constructor(
                             totalInput = centavosToInput(draft.totalCentavos),
                             unitPriceInput = draft.unitPriceMilli?.let { milliToInput(it) }.orEmpty(),
                             fill = draft.fill,
-                            odometerInput = draft.odometerMetres?.toString().orEmpty(),
+                            odometerInput = draft.odometerMetres?.let { LedgerDistance.kilometresInput(it, DecimalFormatSymbols.getInstance(inputLocale).decimalSeparator) }.orEmpty(),
                             stationInput = draft.stationId.orEmpty(),
                             noteInput = draft.note.orEmpty(),
                         )
@@ -214,7 +218,7 @@ class LedgerEntriesViewModel @Inject constructor(
                                 .format(DateTimeFormatter.ofPattern("HH:mm")),
                             totalInput = centavosToInput(draft.amountCentavos),
                             category = draft.category,
-                            odometerInput = draft.odometerMetres?.toString().orEmpty(),
+                            odometerInput = draft.odometerMetres?.let { LedgerDistance.kilometresInput(it, DecimalFormatSymbols.getInstance(inputLocale).decimalSeparator) }.orEmpty(),
                             noteInput = draft.note.orEmpty(),
                         )
                     is ChargeDraft -> LedgerEntryFormState(
@@ -229,7 +233,7 @@ class LedgerEntriesViewModel @Inject constructor(
                         tariffIdInput = draft.tariffId.orEmpty(),
                         tariffRevisionInput = draft.tariffRevision.orEmpty(),
                         context = stored.context,
-                        odometerInput = draft.odometerMetres?.toString().orEmpty(),
+                        odometerInput = draft.odometerMetres?.let { LedgerDistance.kilometresInput(it, DecimalFormatSymbols.getInstance(inputLocale).decimalSeparator) }.orEmpty(),
                         noteInput = draft.note.orEmpty(),
                     )
                     },
@@ -471,7 +475,7 @@ class LedgerEntriesViewModel @Inject constructor(
 
     private fun parseOdometer(form: LedgerEntryFormState): Long? {
         if (form.odometerInput.isBlank()) return null
-        return form.odometerInput.trim().toLongOrNull()?.takeIf { it >= 0 } ?: run {
+        return LedgerDistance.parseKilometres(form.odometerInput, if (form.dataset == LedgerDataset.CHARGE) 1_000_000_000L else com.anpfuel.domain.premium.PremiumBounds.MAX_DISTANCE_METRES) ?: run {
             failForm(LedgerEntryValidationError.ODOMETER_INVALID)
             null
         }
@@ -651,7 +655,7 @@ class LedgerEntriesViewModel @Inject constructor(
             return null
         }
         if (scaled.stripTrailingZeros().scale() > 0 || scaled <= BigDecimal.ZERO) return null
-        return scaled.toLong()
+        return try { scaled.longValueExact() } catch (_: ArithmeticException) { null }
     }
 
     internal fun parseCentavos(input: String): Long? {
@@ -661,7 +665,7 @@ class LedgerEntriesViewModel @Inject constructor(
             return null
         }
         if (scaled.stripTrailingZeros().scale() > 0 || scaled < BigDecimal.ZERO) return null
-        return scaled.toLong()
+        return try { scaled.longValueExact() } catch (_: ArithmeticException) { null }
     }
 
     internal fun parseKwhToWh(input: String): Long? {
@@ -675,7 +679,7 @@ class LedgerEntriesViewModel @Inject constructor(
         ) {
             return null
         }
-        return scaled.toLong()
+        return try { scaled.longValueExact() } catch (_: ArithmeticException) { null }
     }
 
     internal fun parseRateMilli(input: String): Long? {
@@ -685,7 +689,7 @@ class LedgerEntriesViewModel @Inject constructor(
             return null
         }
         if (scaled.stripTrailingZeros().scale() > 0 || scaled < BigDecimal.ZERO) return null
-        return scaled.toLong()
+        return try { scaled.longValueExact() } catch (_: ArithmeticException) { null }
     }
 
     private fun milliToInput(milli: Long): String =

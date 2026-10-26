@@ -110,8 +110,8 @@
     <string name="monthly_purchase">燃油: %1$s</string>
     <string name="monthly_expense">费用: %1$s</string>
     <string name="monthly_charge">充电: %1$s</string>
-    <string name="monthly_cost_per_km">燃油成本/公里: %1$s</string>
-    <string name="monthly_combined">综合成本/公里: %1$s</string>
+    <string name="monthly_cost_per_km">燃料购买费用/公里：%1$s</string>
+    <string name="monthly_combined">综合购买费用/公里：%1$s</string>
     <string name="monthly_measured">实测: %1$s km/L (%2$s)</string>
     <string name="monthly_estimated">预估油耗: %1$s km/L</string>
     <string name="monthly_comparison">与上月比: %1$s%%</string>

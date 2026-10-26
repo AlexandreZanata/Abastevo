@@ -110,8 +110,8 @@
     <string name="monthly_purchase">燃料: %1$s</string>
     <string name="monthly_expense">費用: %1$s</string>
     <string name="monthly_charge">充電: %1$s</string>
-    <string name="monthly_cost_per_km">燃料費/km: %1$s</string>
-    <string name="monthly_combined">合計コスト/km: %1$s</string>
+    <string name="monthly_cost_per_km">燃料購入費/km: %1$s</string>
+    <string name="monthly_combined">合計購入費/km: %1$s</string>
     <string name="monthly_measured">実測: %1$s km/L (%2$s)</string>
     <string name="monthly_estimated">推定燃費: %1$s km/L</string>
     <string name="monthly_comparison">前月比: %1$s%%</string>

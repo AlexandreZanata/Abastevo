@@ -110,8 +110,8 @@
     <string name="monthly_purchase">Carburant : %1$s</string>
     <string name="monthly_expense">Dépenses : %1$s</string>
     <string name="monthly_charge">Recharges : %1$s</string>
-    <string name="monthly_cost_per_km">Coût/km carburant : %1$s</string>
-    <string name="monthly_combined">Coût/km combiné : %1$s</string>
+    <string name="monthly_cost_per_km">Achats de carburant/km : %1$s</string>
+    <string name="monthly_combined">Achats combinés/km : %1$s</string>
     <string name="monthly_measured">Mesuré : %1$s km/L (%2$s)</string>
     <string name="monthly_estimated">Efficacité estimée : %1$s km/L</string>
     <string name="monthly_comparison">vs mois précédent : %1$s%%</string>

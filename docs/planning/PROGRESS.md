@@ -1,5 +1,12 @@
 # Current execution state
 
+- DRV-01 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent e9f1ce25.
+  [Evidence](../backend/evidence/driver-suite/DRV-01.md): real form RED→GREEN,
+  exact km/metres with localized edit, BRL/km from rational centavos and
+  overflow refusal. 18 focused tests, app debug build and final label/lint PASS.
+  No schema/backend/provider/device change. Next DRV-02 legacy owner review;
+  other primary/MAP branches preserved, no delivery/deploy authorized here.
+
 - DRV-00 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING in isolated planning
   clone, parent42250934/runtime f1e1d0db. [Evidence](../backend/evidence/driver-suite/DRV-00.md)
   freezes Premium, exact km/money, legacy review and manual/GPS/owner boundaries,

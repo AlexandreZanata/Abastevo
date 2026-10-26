@@ -221,8 +221,8 @@
     <string name="monthly_purchase">Fuel: %1$s</string>
     <string name="monthly_expense">Expenses: %1$s</string>
     <string name="monthly_charge">Charging: %1$s</string>
-    <string name="monthly_cost_per_km">Fuel cost/km: %1$s</string>
-    <string name="monthly_combined">Combined cost/km: %1$s</string>
+    <string name="monthly_cost_per_km">Fuel purchases/km: %1$s</string>
+    <string name="monthly_combined">Combined purchases/km: %1$s</string>
     <string name="monthly_measured">Measured: %1$s km/L (%2$s)</string>
     <string name="monthly_estimated">Estimated efficiency: %1$s km/L</string>
     <string name="monthly_comparison">vs previous month: %1$s%%</string>

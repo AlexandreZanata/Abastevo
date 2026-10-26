@@ -69,7 +69,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-00.md`. A later relevant change invalidates affected evidence.
 ### DRV-01 — Repair odometer units and financial display
 
-Status: PLANNED. Dependency: DRV-00 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-01](../backend/evidence/driver-suite/DRV-01.md). Dependency: DRV-00 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `app ledger/monthly; domain exact conversion; existing tests`. Rules: B-BR-DRV-02, B-BR-DRV-03, B-BR-DRV-11.
 

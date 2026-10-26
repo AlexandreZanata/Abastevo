@@ -36,6 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.PriceFormatter
+import com.anpfuel.app.mapper.LedgerValueFormatter
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.EmptyState
@@ -248,7 +249,7 @@ private fun MonthlyIndicatorCard(row: MonthlyVehicleIndicators, locale: Locale) 
                 Text(
                     text = stringResource(
                         R.string.monthly_measured,
-                        row.measured.kmPerUnit,
+                        LedgerValueFormatter.efficiency(row.measured.kmPerUnit, locale).orEmpty(),
                         money(row.measured.eligibleCostCentavos),
                     ),
                     style = MaterialTheme.typography.bodyMedium,
@@ -267,15 +268,17 @@ private fun MonthlyIndicatorCard(row: MonthlyVehicleIndicators, locale: Locale) 
                     )
                 }
             }
-            if (row.costPerKm.isNotEmpty()) {
+            val costPerKm = LedgerValueFormatter.costPerKilometre(row.costPerKm, locale)
+            if (costPerKm != null) {
                 Text(
-                    text = stringResource(R.string.monthly_cost_per_km, row.costPerKm),
+                    text = stringResource(R.string.monthly_cost_per_km, costPerKm),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            if (row.combinedUnknown.isEmpty()) {
+            val combinedCost = LedgerValueFormatter.costPerKilometre(row.combinedCentavosPerKm, locale)
+            if (row.combinedUnknown.isEmpty() && combinedCost != null) {
                 Text(
-                    text = stringResource(R.string.monthly_combined, row.combinedCentavosPerKm),
+                    text = stringResource(R.string.monthly_combined, combinedCost),
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }

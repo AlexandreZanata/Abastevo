@@ -110,8 +110,8 @@
     <string name="monthly_purchase">Топливо: %1$s</string>
     <string name="monthly_expense">Расходы: %1$s</string>
     <string name="monthly_charge">Зарядки: %1$s</string>
-    <string name="monthly_cost_per_km">Топливо/км: %1$s</string>
-    <string name="monthly_combined">Совместно/км: %1$s</string>
+    <string name="monthly_cost_per_km">Покупки топлива/км: %1$s</string>
+    <string name="monthly_combined">Суммарные покупки/км: %1$s</string>
     <string name="monthly_measured">Замерено: %1$s км/л (%2$s)</string>
     <string name="monthly_estimated">Оценка: %1$s км/л</string>
     <string name="monthly_comparison">к пред. месяцу: %1$s%%</string>
