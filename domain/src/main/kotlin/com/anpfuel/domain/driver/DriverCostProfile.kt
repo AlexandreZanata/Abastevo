@@ -19,7 +19,7 @@ object DriverAllocationRules {
         val amounts = mutableMapOf<String, Long>()
         val remainders = weights.map { w ->
             val (q, r) = (source.toBigInteger() * w.value.toBigInteger()).divideAndRemainder(denominator)
-            amounts[w.id] = q.longValueExact()
+            amounts[w.id] = q.driverLongExact()
             w.id to r
         }.sortedWith(compareByDescending<Pair<String, BigInteger>> { it.second }.thenBy { it.first })
         val remaining = source - amounts.values.sum()

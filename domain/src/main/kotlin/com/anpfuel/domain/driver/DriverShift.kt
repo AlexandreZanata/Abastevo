@@ -93,7 +93,7 @@ data class DriverShift(
             val wall = command.clock.utcMillis.toBigInteger() - previous.utcMillis.toBigInteger()
             if (mono < BigInteger.ZERO || wall < BigInteger.ZERO || (wall - mono).abs() > policy.wallToleranceMillis.toBigInteger()) return gap("clock-discontinuity")
             if (state == DriverShiftState.RUNNING && mono > policy.maximumCheckpointGapMillis.toBigInteger()) return gap("checkpoint-gap")
-            elapsed = mono.longValueExact()
+            elapsed = mono.driverLongExact()
         }
         val worked = if (state == DriverShiftState.RUNNING) Math.addExact(activeMillis, elapsed) else activeMillis
         val nextState = when (command.action) {

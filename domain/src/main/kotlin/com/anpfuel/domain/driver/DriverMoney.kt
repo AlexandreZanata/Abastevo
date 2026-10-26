@@ -6,7 +6,7 @@ const val DRIVER_MAX_AMOUNT = 1_000_000_000_000L
 const val DRIVER_MAX_ITEMS = 1000
 internal fun bounded(value: BigInteger): Long {
     require(value.abs() <= BigInteger.valueOf(DRIVER_MAX_AMOUNT)) { "driver-money-out-of-bounds" }
-    return value.longValueExact()
+    return value.driverLongExact()
 }
 internal fun amount(value: Long) { require(value in 0..DRIVER_MAX_AMOUNT) { "driver-money-out-of-bounds" } }
 internal fun signed(value: Long) { require(value in -DRIVER_MAX_AMOUNT..DRIVER_MAX_AMOUNT) { "driver-money-out-of-bounds" } }
