@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.view.View
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.contentDescription
@@ -53,6 +56,9 @@ fun MapHost(
     gpsOffMessage: String = "GPS off. Browsing stays available.",
     waitingForFixMessage: String = "Waiting for first fix.",
     onViewportChanged: ((latitude: Double, longitude: Double, radiusMeters: Int) -> Unit)? = null,
+    onReady: ((Boolean) -> Unit)? = null,
+    active: Boolean = true,
+    recenterBottomInset: Dp = 16.dp,
 ) {
     val vm: MapViewModel = hiltViewModel()
     MapHostContent(
@@ -65,6 +71,9 @@ fun MapHost(
         gpsOffMessage = gpsOffMessage,
         waitingForFixMessage = waitingForFixMessage,
         onViewportChanged = onViewportChanged,
+        onReady = onReady,
+        active = active,
+        recenterBottomInset = recenterBottomInset,
     )
 }
 
@@ -84,6 +93,9 @@ fun MapHost(
     gpsOffMessage: String = "GPS off. Browsing stays available.",
     waitingForFixMessage: String = "Waiting for first fix.",
     onViewportChanged: ((latitude: Double, longitude: Double, radiusMeters: Int) -> Unit)? = null,
+    onReady: ((Boolean) -> Unit)? = null,
+    active: Boolean = true,
+    recenterBottomInset: Dp = 16.dp,
 ) {
     val context = LocalContext.current
     val store = cameraStore ?: remember(context) { SharedPreferencesMapCameraStore(context) }
@@ -108,6 +120,9 @@ fun MapHost(
         gpsOffMessage = gpsOffMessage,
         waitingForFixMessage = waitingForFixMessage,
         onViewportChanged = onViewportChanged,
+        onReady = onReady,
+        active = active,
+        recenterBottomInset = recenterBottomInset,
     )
 }
 
@@ -122,6 +137,9 @@ private fun MapHostContent(
     gpsOffMessage: String = "GPS off. Browsing stays available.",
     waitingForFixMessage: String = "Waiting for first fix.",
     onViewportChanged: ((latitude: Double, longitude: Double, radiusMeters: Int) -> Unit)? = null,
+    onReady: ((Boolean) -> Unit)? = null,
+    active: Boolean = true,
+    recenterBottomInset: Dp = 16.dp,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -141,14 +159,26 @@ private fun MapHostContent(
         vm.onGpsState(isGpsEnabled(context))
         vm.ensureInitialized(context.applicationContext)
     }
-    LaunchedEffect(state.ready, state.camera) {
+    LaunchedEffect(state.ready) {
+        if (!state.ready) {
+            onReady?.invoke(false)
+            return@LaunchedEffect
+        }
+        var rendered = vm.isRenderingReady()
+        while (!rendered) {
+            kotlinx.coroutines.delay(120)
+            rendered = vm.isRenderingReady()
+        }
+        onReady?.invoke(true)
+    }
+    LaunchedEffect(state.ready, state.camera, active) {
         val cam = state.camera
-        if (state.ready && cam != null) {
+        if (active && state.ready && cam != null) {
             onViewportChanged?.invoke(cam.latitude, cam.longitude, vm.radiusForZoom(cam.zoom))
         }
     }
-    LaunchedEffect(vm, state.ready, onViewportChanged != null) {
-        if (state.ready && onViewportChanged != null) {
+    LaunchedEffect(vm, state.ready, onViewportChanged != null, active) {
+        if (active && state.ready && onViewportChanged != null) {
             while (true) {
                 kotlinx.coroutines.delay(600)
                 vm.syncCameraFromEngine()
@@ -188,12 +218,26 @@ private fun MapHostContent(
         }
         if (state.ready) {
             AndroidView(
-                factory = { vm.newMapView(it) },
+                factory = { ctx ->
+                    vm.newMapView(ctx).also { view ->
+                        view.visibility = if (active) View.VISIBLE else View.INVISIBLE
+                    }
+                },
+                update = { view ->
+                    view.visibility = if (active) View.VISIBLE else View.INVISIBLE
+                },
                 modifier = Modifier.fillMaxSize(),
             )
         }
         if (state.ready) {
-            Column(modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) {
+            Column(
+                modifier = Modifier.align(Alignment.BottomEnd).padding(
+                    start = 16.dp,
+                    top = 16.dp,
+                    end = 16.dp,
+                    bottom = recenterBottomInset,
+                ),
+            ) {
                 // Permission/GPS states never block browsing; they annotate recenter.
                 if (!state.hasLocationPermission && state.deniedForever) {
                     Surface(shape = MaterialTheme.shapes.small, tonalElevation = 3.dp) {

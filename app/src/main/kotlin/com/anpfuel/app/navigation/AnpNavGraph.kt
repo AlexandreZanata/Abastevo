@@ -1,11 +1,26 @@
 package com.anpfuel.app.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -17,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
+import com.anpfuel.app.R
 import com.anpfuel.app.capture.CaptureScreen
 import com.anpfuel.app.ui.auth.AuthRoute
 import com.anpfuel.app.ui.account.AccountScreen
@@ -77,6 +93,20 @@ fun AnpNavGraph(
             launchSingleTop = true
         }
     }
+    val mapDiscovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel = hiltViewModel()
+    val isMapRoute = currentRoute == Routes.MAP || currentRoute == Routes.MAP_PLAN
+    var mapHostStarted by rememberSaveable { mutableStateOf(isMapRoute) }
+    var mapReady by remember { mutableStateOf(false) }
+    LaunchedEffect(isMapRoute) {
+        if (isMapRoute) mapHostStarted = true
+    }
+    val mapRecenter = stringResource(R.string.map_recenter)
+    val mapInitError = stringResource(R.string.map_unavailable)
+    val mapRetry = stringResource(R.string.map_retry)
+    val mapLocationDenied = stringResource(R.string.map_host_location_denied)
+    val mapGpsOff = stringResource(R.string.map_host_gps_off)
+    val mapWaitingFix = stringResource(R.string.map_host_waiting_fix)
+    val tabRoutes = setOf(Routes.HOME, Routes.COMMUNITY, Routes.MAP, Routes.PROFILE)
 
     Scaffold(
         modifier = modifier,
@@ -88,13 +118,55 @@ fun AnpNavGraph(
             )
         },
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = startDestination,
-            // The shell already reserves the bottom bar and its system safe area.
-            // Consume that padding so child scaffolds do not reserve it again.
-            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
         ) {
+            if (mapHostStarted) {
+                com.anpfuel.maps.engine.MapHost(
+                    modifier = Modifier.matchParentSize(),
+                    recenterDescription = mapRecenter,
+                    initErrorMessage = mapInitError,
+                    retryLabel = mapRetry,
+                    locationDeniedMessage = mapLocationDenied,
+                    gpsOffMessage = mapGpsOff,
+                    waitingForFixMessage = mapWaitingFix,
+                    onViewportChanged = { lat, lon, radius ->
+                        mapDiscovery.onViewport(lat, lon, radius)
+                    },
+                    onReady = { mapReady = it },
+                    active = isMapRoute,
+                    recenterBottomInset = 164.dp,
+                )
+            }
+            if (!isMapRoute) {
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .background(MaterialTheme.colorScheme.background),
+                )
+            }
+            NavHost(
+                navController = navController,
+                startDestination = startDestination,
+                modifier = Modifier.fillMaxSize(),
+                enterTransition = {
+                    if (initialState.destination.route in tabRoutes && targetState.destination.route in tabRoutes) {
+                        EnterTransition.None
+                    } else {
+                        fadeIn()
+                    }
+                },
+                exitTransition = {
+                    if (initialState.destination.route in tabRoutes && targetState.destination.route in tabRoutes) {
+                        ExitTransition.None
+                    } else {
+                        fadeOut()
+                    }
+                },
+            ) {
         composable(Routes.ONBOARDING) {
             OnboardingScreen(
                 onNavigateToHome = {
@@ -129,7 +201,7 @@ fun AnpNavGraph(
                 navDeepLink { uriPattern = "anpfuel://map" },
             ),
         ) {
-            MapDestination(navController)
+            MapDestination(navController, mapDiscovery, mapReady)
         }
         composable(
             route = Routes.MAP_PLAN,
@@ -139,7 +211,7 @@ fun AnpNavGraph(
             val trip by planViewModel.trip.collectAsStateWithLifecycle()
             val tripId = entry.arguments?.getString("tripId").orEmpty()
             androidx.compose.runtime.LaunchedEffect(tripId) { planViewModel.load(tripId) }
-            MapDestination(navController, trip)
+            MapDestination(navController, mapDiscovery, mapReady, trip)
         }
         composable("map/saved") {
             com.anpfuel.app.ui.map.SavedScreen(
@@ -481,17 +553,23 @@ fun AnpNavGraph(
         }
     }
 }
+            }
+
 }
 
 @Composable
 private fun MapDestination(
     navController: NavHostController,
+    discovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel,
+    mapReady: Boolean,
     initialPlan: com.anpfuel.domain.map.saved.SavedTrip? = null,
 ) {
-        val discovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel = hiltViewModel()
         val sheet: com.anpfuel.app.ui.map.MapSheetViewModel = hiltViewModel()
         com.anpfuel.app.ui.map.MapScreen(
         initialPlan = initialPlan,
+        mapReady = mapReady,
+        discovery = discovery,
+        mapContent = {},
             onOpenCity = { navController.navigate(Routes.MAP_CITY) },
             periodContent = { changed ->
                 com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction(onWeekChanged = changed)
@@ -529,7 +607,6 @@ private fun MapDestination(
                     navController.navigate(Routes.CAPTURE)
                 }
             },
-            discovery = discovery,
             sheet = sheet,
             planner = hiltViewModel(),
             saved = hiltViewModel(),

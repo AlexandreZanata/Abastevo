@@ -111,6 +111,16 @@
   Isolated planning source f1e1d0db; foreign-dirty primary/MAP checkouts preserved.
   No runtime/device/provider/VPS/push/PR/merge/wiki/production change.
   Next, only on implementation request: DRV-00 → DRV-01 → DRV-02.
+- Map UI isolation 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/map-ui` (parent `fe6ca851`). Native map moved to the shell and kept
+  alive across tabs; no engine/surface reinit on return; tab transitions are
+  instant (no crossfade ghost); full-size map with overlay controls; skeleton
+  gates on the first rendered native frame; FlowRow filters and stable 48 dp
+  action bar; map screen instrumented tests 5/5, targeted unit/engine tests and
+  lint PASS. Installed locally on the authorized phone; not pushed/merged.
+  [Evidence](../backend/evidence/maps/MAP-UI-ISOLATION-20261026.md).
+  Staging `nearby` empty/data update remains separate.
+
 - Landing LH09 / portal shared chrome 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   User-authorized branch `codex/landing-portal-visual` from `origin/main` (dev
   carries unrelated open PR #151) with a PR to main. Uber-style light-only home

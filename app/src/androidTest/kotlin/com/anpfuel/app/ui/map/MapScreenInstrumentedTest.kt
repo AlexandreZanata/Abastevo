@@ -54,7 +54,7 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithText("Filters", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithTag("map-search-field", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithTag("map-search-submit", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithText("Downloads", ignoreCase = true).assertIsDisplayed()
+        compose.onNodeWithTag("map-open-downloads").assertIsDisplayed()
         // OSM attribution stays visible.
         compose.onNodeWithText("OpenStreetMap", substring = true, ignoreCase = true).assertExists()
     }
