@@ -1,5 +1,7 @@
 # MAP-29 — Measured performance, compatibility and operational budgets
 
+Phase commit: `1a6a1add` (this evidence commit; docs-only revisions after it do not change code).
+
 Status: LOCAL_DONE
 Validation: PASS for the declared local proxy budgets; **PERFORMANCE_GATE PARTIAL**
 Integration: INTEGRATION_PENDING

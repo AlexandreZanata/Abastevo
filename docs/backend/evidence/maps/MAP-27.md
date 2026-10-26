@@ -1,5 +1,7 @@
 # MAP-27 — Road-distance EV stops with a reachable alternative
 
+Phase commit: `805353b8` (this evidence commit; docs-only revisions after it do not change code).
+
 Status: LOCAL_DONE
 Validation: PASS (local/synthetic charging fixtures; no live or national coverage claim)
 Integration: INTEGRATION_PENDING

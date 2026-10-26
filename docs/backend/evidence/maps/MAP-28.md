@@ -1,5 +1,7 @@
 # MAP-28 — Electric journey from vehicle and map to saved plan
 
+Phase commit: `ae0699c5` (this evidence commit; docs-only revisions after it do not change code).
+
 Status: LOCAL_DONE
 Validation: PASS (real app/native flow with synthetic private fixtures; see limits)
 Integration: INTEGRATION_PENDING

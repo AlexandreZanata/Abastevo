@@ -1,5 +1,8 @@
 # Current execution state
 
+- MAP-27–29 local batch: LOCAL_DONE / INTEGRATION_PENDING. Phase commits `805353b8`
+  (MAP-27), `ae0699c5` (MAP-28) and `1a6a1add` (MAP-29) on `codex/map-ev-27-29`;
+  no PR/remote CI/merge/wiki. Evidence/docs revisions after those commits do not change code.
 - MAP-29 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING, **PERFORMANCE_GATE
   PARTIAL**. Versioned local proxy matrix and raw sanitized samples:
   release universal APK 78,396,538 bytes (74.76 MiB, 16 KB LOAD alignment and
