@@ -1,7 +1,7 @@
 # Driver suite — full Android execution plan
 
 Date: 2026-10-26. Status: PLANNED / IMPLEMENTATION_NOT_STARTED_BY_THIS_PLAN.
-36 bounded phases; 108 uniquely identified implementation tasks. All tasks below are PLANNED.
+36 bounded phases; 108 uniquely identified implementation tasks. Execution status is recorded per phase below; unstarted tasks remain PLANNED.
 Canonical behavior: [driver contract](../product/DRIVER_SUITE_CONTRACT.md).
 User decision: complete professional suite stays Premium. This planning change does not implement, charge, deploy, push, open a PR or merge anything.
 
@@ -56,7 +56,7 @@ Each phase evidence goes to `docs/backend/evidence/driver-suite/DRV-XX.md` with 
 
 ### DRV-00 — Reconcile the baseline and freeze driver boundaries
 
-Status: PLANNED. Dependency: Current audited source and selected planning request. Risk: docs/contract.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-00](../backend/evidence/driver-suite/DRV-00.md). Dependency: Current audited source and selected planning request. Risk: docs/contract.
 
 Owners/targets to verify: `docs/product; docs/planning; existing ledger/metrics/cloudsync/subscription`. Rules: B-BR-DRV-01, B-BR-DRV-20, B-BR-DRV-21.
 

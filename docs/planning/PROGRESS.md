@@ -1,5 +1,12 @@
 # Current execution state
 
+- DRV-00 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING in isolated planning
+  clone, parent42250934/runtime f1e1d0db. [Evidence](../backend/evidence/driver-suite/DRV-00.md)
+  freezes Premium, exact km/money, legacy review and manual/GPS/owner boundaries,
+  five driver scenarios and existing schema/limits. Remote main eee1b33f and
+  dev f1e1d0db verified; foreign primary/MAP edits preserved. Next DRV-01 RED
+  and actual existing-entry fixes; no DRV-03+, push/PR/merge/device/VPS.
+
 - Driver suite planning 2026-10-26: PLANNED / IMPLEMENTATION_NOT_STARTED.
   Owner confirmed professional Premium. [DRV-00–35](DRIVER_SUITE_EXECUTION_PLAN.md)
   defines 36 phases/108 tasks for existing financial-unit repair plus real
