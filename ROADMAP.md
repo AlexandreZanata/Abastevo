@@ -70,7 +70,8 @@ flow and host lifecycle on the phone. The inherited [minimum local proof](docs/b
 sets MAP-20 to LOCAL_PASS, with staging/production still PENDING. MAP-18 combined
 native artwork retains its named obligation. [MAP-21](docs/backend/evidence/maps/MAP-21.md)
 is LOCAL_DONE / INTEGRATION_PENDING; [MAP-22](docs/backend/evidence/maps/MAP-22.md)
-adds locally proven offline route planning; MAP-23 is the selected continuation;
+adds locally proven offline route planning; [MAP-23](docs/backend/evidence/maps/MAP-23.md)
+is LOCAL_DONE / INTEGRATION_PENDING with explicit foreground guidance/local voice on the owned phone;
 [prepared pictograms](docs/assets/map-icons/README.md) remain admitted assets.
 No deployment or remote delivery is inferred from these local checks.
 
