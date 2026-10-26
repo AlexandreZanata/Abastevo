@@ -382,6 +382,15 @@ fun AnpNavGraph(
                 onOpenDriverHub = { navController.navigate(Routes.DRIVER_HUB) },
             )
         }
+        composable(
+            route = Routes.DRIVER_WORK,
+            arguments = listOf(navArgument("vehicleId") { type = NavType.StringType }),
+        ) { entry ->
+            com.anpfuel.app.ui.driver.work.DriverWorkScreen(
+                vehicleId = entry.arguments?.getString("vehicleId").orEmpty(),
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
         composable(Routes.DRIVER_HUB) {
             DriverHubScreen(
                 onNavigateBack = { navController.popBackStack() },
@@ -390,6 +399,7 @@ fun AnpNavGraph(
                 onOpenMonthly = { vehicleId -> navController.navigate(Routes.monthlyIndicators(vehicleId)) },
                 onOpenRefuel = { vehicleId -> navController.navigate(Routes.vehicleEntriesAction(vehicleId, "refuel")) },
                 onOpenCharge = { vehicleId -> navController.navigate(Routes.vehicleEntriesAction(vehicleId, "charge")) },
+                onOpenWork = { vehicleId -> navController.navigate(Routes.driverWork(vehicleId)) },
                 onOpenPremium = { navController.navigate(Routes.PREMIUM) { launchSingleTop = true } },
                 onSignIn = { navController.navigate(Routes.AUTH) },
             )

@@ -816,4 +816,15 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("ALTER TABLE `driver_local_command` ADD COLUMN `lease_until_millis` INTEGER NOT NULL DEFAULT 0")
         }
     }
+    val MIGRATION_30_31: Migration = object : Migration(30, 31) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `driver_shift` ADD COLUMN `start_odometer_metres` INTEGER")
+            db.execSQL("ALTER TABLE `driver_shift` ADD COLUMN `end_odometer_metres` INTEGER")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_payout` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `payout_id` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `occurred_at_millis` INTEGER NOT NULL, `amount_centavos` INTEGER NOT NULL, `kind` TEXT NOT NULL, `source` TEXT NOT NULL, `note` TEXT, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `payout_id`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_payout_owner` ON `driver_payout` (`owner_account`, `origin`, `vehicle_id`, `occurred_at_millis`)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_cost_setting` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `ownership` TEXT NOT NULL, `monthly_amount_centavos` INTEGER, `personal_fraction_percent` INTEGER NOT NULL, `effective_from` TEXT NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_gps_observation` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `observation_id` TEXT NOT NULL, `shift_id` TEXT NOT NULL, `from_at_millis` INTEGER NOT NULL, `to_at_millis` INTEGER NOT NULL, `metres` INTEGER, `complete` INTEGER NOT NULL, `has_gap` INTEGER NOT NULL, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `observation_id`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_gps_owner_shift` ON `driver_gps_observation` (`owner_account`, `origin`, `shift_id`)")
+        }
+    }
 }

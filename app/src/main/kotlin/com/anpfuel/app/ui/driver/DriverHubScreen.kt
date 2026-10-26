@@ -47,6 +47,7 @@ fun DriverHubScreen(
     onOpenMonthly: (String) -> Unit,
     onOpenRefuel: (String) -> Unit,
     onOpenCharge: (String) -> Unit,
+    onOpenWork: (String) -> Unit = {},
     onOpenPremium: () -> Unit,
     onSignIn: () -> Unit,
     modifier: Modifier = Modifier,
@@ -56,7 +57,7 @@ fun DriverHubScreen(
     LaunchedEffect(Unit) { viewModel.refresh() }
     DriverHubContent(
         state = state, onNavigateBack = onNavigateBack, onOpenVehicles = onOpenVehicles,
-        onOpenEntries = onOpenEntries, onOpenMonthly = onOpenMonthly, onOpenRefuel = onOpenRefuel, onOpenCharge = onOpenCharge,
+        onOpenEntries = onOpenEntries, onOpenMonthly = onOpenMonthly, onOpenRefuel = onOpenRefuel, onOpenCharge = onOpenCharge, onOpenWork = onOpenWork,
         onOpenPremium = onOpenPremium, onSignIn = onSignIn, onRetry = viewModel::refresh, modifier = modifier,
     )
 }
@@ -71,6 +72,7 @@ internal fun DriverHubContent(
     onOpenMonthly: (String) -> Unit,
     onOpenRefuel: (String) -> Unit,
     onOpenCharge: (String) -> Unit,
+    onOpenWork: (String) -> Unit = {},
     onOpenPremium: () -> Unit,
     onSignIn: () -> Unit,
     onRetry: () -> Unit,
@@ -141,6 +143,9 @@ internal fun DriverHubContent(
                             }
                             Button(onClick = { onOpenCharge(vehicle.id.value) }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(R.string.driver_hub_quick_charge))
+                            }
+                            OutlinedButton(onClick = { onOpenWork(vehicle.id.value) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Turno e ganhos")
                             }
                             OutlinedButton(onClick = { onOpenMonthly(vehicle.id.value) }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(R.string.driver_hub_open_export))

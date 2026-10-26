@@ -22,6 +22,8 @@ data class DriverShiftEntity(
     @ColumnInfo(name = "last_utc_millis") val lastUtcMillis: Long?,
     @ColumnInfo(name = "active_millis") val activeMillis: Long,
     @ColumnInfo(name = "manually_reviewed_millis") val manuallyReviewedMillis: Long,
+    @ColumnInfo(name = "start_odometer_metres") val startOdometerMetres: Long? = null,
+    @ColumnInfo(name = "end_odometer_metres") val endOdometerMetres: Long? = null,
     @ColumnInfo(name = "created_at_millis") val createdAtMillis: Long,
     @ColumnInfo(name = "updated_at_millis") val updatedAtMillis: Long,
 )
@@ -155,4 +157,55 @@ data class DriverDraftEntity(
     @ColumnInfo(name = "duration_seconds") val durationSeconds: Long?,
     @ColumnInfo(name = "unit_version") val unitVersion: String,
     @ColumnInfo(name = "updated_at_millis") val updatedAtMillis: Long,
+)
+
+@Entity(
+    tableName = "driver_payout",
+    primaryKeys = ["owner_account", "origin", "payout_id"],
+    indices = [Index(value = ["owner_account", "origin", "vehicle_id", "occurred_at_millis"], name = "index_driver_payout_owner")],
+)
+data class DriverPayoutEntity(
+    @ColumnInfo(name = "owner_account") val ownerAccount: String,
+    @ColumnInfo(name = "origin") val origin: String,
+    @ColumnInfo(name = "payout_id") val payoutId: String,
+    @ColumnInfo(name = "vehicle_id") val vehicleId: String,
+    @ColumnInfo(name = "occurred_at_millis") val occurredAtMillis: Long,
+    @ColumnInfo(name = "amount_centavos") val amountCentavos: Long,
+    @ColumnInfo(name = "kind") val kind: String,
+    @ColumnInfo(name = "source") val source: String,
+    @ColumnInfo(name = "note") val note: String?,
+    @ColumnInfo(name = "created_at_millis") val createdAtMillis: Long,
+)
+
+@Entity(
+    tableName = "driver_cost_setting",
+    primaryKeys = ["owner_account", "origin", "vehicle_id"],
+)
+data class DriverCostSettingEntity(
+    @ColumnInfo(name = "owner_account") val ownerAccount: String,
+    @ColumnInfo(name = "origin") val origin: String,
+    @ColumnInfo(name = "vehicle_id") val vehicleId: String,
+    @ColumnInfo(name = "ownership") val ownership: String,
+    @ColumnInfo(name = "monthly_amount_centavos") val monthlyAmountCentavos: Long?,
+    @ColumnInfo(name = "personal_fraction_percent") val personalFractionPercent: Int,
+    @ColumnInfo(name = "effective_from") val effectiveFrom: String,
+    @ColumnInfo(name = "updated_at_millis") val updatedAtMillis: Long,
+)
+
+@Entity(
+    tableName = "driver_gps_observation",
+    primaryKeys = ["owner_account", "origin", "observation_id"],
+    indices = [Index(value = ["owner_account", "origin", "shift_id"], name = "index_driver_gps_owner_shift")],
+)
+data class DriverGpsObservationEntity(
+    @ColumnInfo(name = "owner_account") val ownerAccount: String,
+    @ColumnInfo(name = "origin") val origin: String,
+    @ColumnInfo(name = "observation_id") val observationId: String,
+    @ColumnInfo(name = "shift_id") val shiftId: String,
+    @ColumnInfo(name = "from_at_millis") val fromAtMillis: Long,
+    @ColumnInfo(name = "to_at_millis") val toAtMillis: Long,
+    @ColumnInfo(name = "metres") val metres: Long?,
+    @ColumnInfo(name = "complete") val complete: Boolean,
+    @ColumnInfo(name = "has_gap") val hasGap: Boolean,
+    @ColumnInfo(name = "created_at_millis") val createdAtMillis: Long,
 )

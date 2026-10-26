@@ -5,7 +5,10 @@ import com.anpfuel.data.local.entity.DriverDistanceEntity
 import com.anpfuel.data.local.entity.DriverDraftEntity
 import com.anpfuel.data.local.entity.DriverEarningEntity
 import com.anpfuel.data.local.entity.DriverEarningRevisionEntity
+import com.anpfuel.data.local.entity.DriverCostSettingEntity
+import com.anpfuel.data.local.entity.DriverGpsObservationEntity
 import com.anpfuel.data.local.entity.DriverLocalCommandEntity
+import com.anpfuel.data.local.entity.DriverPayoutEntity
 import com.anpfuel.data.local.entity.DriverShiftEntity
 import com.anpfuel.data.local.entity.DriverShiftGapEntity
 import javax.inject.Inject
@@ -70,4 +73,23 @@ class DriverLocalStore @Inject constructor(
 
     suspend fun findCommand(owner: String, origin: String, operationId: String): DriverLocalCommandEntity? =
         dao.findCommand(owner, origin, operationId)
+
+    suspend fun currentShift(owner: String, origin: String): DriverShiftEntity? = dao.currentShift(owner, origin)
+
+    suspend fun savePayout(payout: DriverPayoutEntity) { dao.upsertPayout(payout) }
+    suspend fun listPayouts(owner: String, origin: String): List<DriverPayoutEntity> = dao.listPayouts(owner, origin)
+
+    suspend fun saveCostSetting(setting: DriverCostSettingEntity) { dao.upsertCostSetting(setting) }
+    suspend fun findCostSetting(owner: String, origin: String, vehicleId: String): DriverCostSettingEntity? =
+        dao.findCostSetting(owner, origin, vehicleId)
+
+    suspend fun listEarnings(owner: String, origin: String, vehicleId: String): List<DriverEarningEntity> =
+        dao.listEarnings(owner, origin, vehicleId)
+    suspend fun overlapCount(owner: String, origin: String, vehicleId: String, platform: String, from: Long, to: Long): Int =
+        dao.countOverlappingEarnings(owner, origin, vehicleId, platform, from, to)
+    suspend fun listDistances(owner: String, origin: String, vehicleId: String): List<DriverDistanceEntity> =
+        dao.listDistances(owner, origin, vehicleId)
+    suspend fun saveGpsObservation(observation: DriverGpsObservationEntity) { dao.upsertGpsObservation(observation) }
+    suspend fun latestGpsObservation(owner: String, origin: String, shiftId: String): DriverGpsObservationEntity? =
+        dao.latestGpsObservation(owner, origin, shiftId)
 }

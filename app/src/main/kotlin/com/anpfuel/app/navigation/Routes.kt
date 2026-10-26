@@ -38,6 +38,13 @@ object Routes {
         return "vehicle-entries/$vehicleId"
     }
 
+    const val DRIVER_WORK = "driver-work/{vehicleId}"
+
+    fun driverWork(vehicleId: String): String {
+        require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
+        return "driver-work/$vehicleId"
+    }
+
     fun vehicleEntriesAction(vehicleId: String, action: String): String {
         require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
         require(action == "refuel" || action == "charge")

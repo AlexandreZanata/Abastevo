@@ -9,7 +9,10 @@ import com.anpfuel.data.local.entity.DriverDistanceEntity
 import com.anpfuel.data.local.entity.DriverDraftEntity
 import com.anpfuel.data.local.entity.DriverEarningEntity
 import com.anpfuel.data.local.entity.DriverEarningRevisionEntity
+import com.anpfuel.data.local.entity.DriverCostSettingEntity
+import com.anpfuel.data.local.entity.DriverGpsObservationEntity
 import com.anpfuel.data.local.entity.DriverLocalCommandEntity
+import com.anpfuel.data.local.entity.DriverPayoutEntity
 import com.anpfuel.data.local.entity.DriverShiftEntity
 import com.anpfuel.data.local.entity.DriverShiftGapEntity
 
@@ -89,6 +92,36 @@ abstract class DriverLocalDao {
 
     @Query("SELECT * FROM driver_draft WHERE owner_account=:owner AND origin=:origin ORDER BY updated_at_millis ASC")
     abstract suspend fun listDrafts(owner: String, origin: String): List<DriverDraftEntity>
+
+    @Query("SELECT * FROM driver_shift WHERE owner_account=:owner AND origin=:origin AND state<>'CLOSED' ORDER BY updated_at_millis DESC LIMIT 1")
+    abstract suspend fun currentShift(owner: String, origin: String): DriverShiftEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun upsertPayout(payout: DriverPayoutEntity)
+
+    @Query("SELECT * FROM driver_payout WHERE owner_account=:owner AND origin=:origin ORDER BY occurred_at_millis DESC")
+    abstract suspend fun listPayouts(owner: String, origin: String): List<DriverPayoutEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun upsertCostSetting(setting: DriverCostSettingEntity)
+
+    @Query("SELECT * FROM driver_cost_setting WHERE owner_account=:owner AND origin=:origin AND vehicle_id=:vehicleId LIMIT 1")
+    abstract suspend fun findCostSetting(owner: String, origin: String, vehicleId: String): DriverCostSettingEntity?
+
+    @Query("SELECT * FROM driver_earning WHERE owner_account=:owner AND origin=:origin AND vehicle_id=:vehicleId ORDER BY from_millis")
+    abstract suspend fun listEarnings(owner: String, origin: String, vehicleId: String): List<DriverEarningEntity>
+
+    @Query("SELECT count(*) FROM driver_earning WHERE owner_account=:owner AND origin=:origin AND vehicle_id=:vehicleId AND platform=:platform AND from_millis<:toMillis AND to_millis>:fromMillis")
+    abstract suspend fun countOverlappingEarnings(owner: String, origin: String, vehicleId: String, platform: String, fromMillis: Long, toMillis: Long): Int
+
+    @Query("SELECT * FROM driver_distance WHERE owner_account=:owner AND origin=:origin AND vehicle_id=:vehicleId ORDER BY from_millis")
+    abstract suspend fun listDistances(owner: String, origin: String, vehicleId: String): List<DriverDistanceEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun upsertGpsObservation(observation: DriverGpsObservationEntity)
+
+    @Query("SELECT * FROM driver_gps_observation WHERE owner_account=:owner AND origin=:origin AND shift_id=:shiftId ORDER BY created_at_millis DESC LIMIT 1")
+    abstract suspend fun latestGpsObservation(owner: String, origin: String, shiftId: String): DriverGpsObservationEntity?
 
     @Query("SELECT * FROM driver_local_command WHERE owner_account=:owner AND origin=:origin AND operation_id=:operationId LIMIT 1")
     abstract suspend fun findCommand(owner: String, origin: String, operationId: String): DriverLocalCommandEntity?
