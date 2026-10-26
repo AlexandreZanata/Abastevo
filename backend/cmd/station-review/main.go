@@ -28,10 +28,11 @@ import (
 )
 
 const (
-	reviewSchema   = "station-location-review-v1"
-	reviewMethod   = "ANP_REGISTRY_API+OSM_ADDRESS_NAME"
-	maxReviewRows  = 10000
-	maxEvidenceLen = 2000
+	reviewSchema     = "station-location-review-v1"
+	reviewMethod     = "ANP_REGISTRY_API+OSM_ADDRESS_NAME"
+	reviewMethodCNPJ = "ANP_REGISTRY_API+OSM_CNPJ"
+	maxReviewRows    = 10000
+	maxEvidenceLen   = 2000
 )
 
 type reviewRow struct {
@@ -338,7 +339,7 @@ func validateReview(row reviewRow) error {
 	if row.SchemaVersion != reviewSchema {
 		return fmt.Errorf("unsupported review schema")
 	}
-	if row.Method != reviewMethod {
+	if row.Method != reviewMethod && row.Method != reviewMethodCNPJ {
 		return fmt.Errorf("unsupported review method")
 	}
 	if strings.TrimSpace(row.Reviewer) == "" || strings.TrimSpace(row.Evidence) == "" {

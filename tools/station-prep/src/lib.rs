@@ -27,6 +27,7 @@ pub mod join;
 pub mod location_review;
 pub mod map_contract;
 pub mod municipality;
+pub mod national_match;
 pub mod osm_reference;
 pub mod output;
 pub mod pmqc;
