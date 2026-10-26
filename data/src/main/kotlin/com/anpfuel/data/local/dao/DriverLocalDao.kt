@@ -92,4 +92,31 @@ abstract class DriverLocalDao {
 
     @Query("SELECT * FROM driver_local_command WHERE owner_account=:owner AND origin=:origin AND operation_id=:operationId LIMIT 1")
     abstract suspend fun findCommand(owner: String, origin: String, operationId: String): DriverLocalCommandEntity?
+
+    @Query(
+        "SELECT * FROM driver_local_command WHERE owner_account=:owner AND origin=:origin " +
+            "AND operation_id=:operationId AND state='PENDING' AND next_eligible_millis<=:now " +
+            "AND lease_until_millis<=:now LIMIT 1",
+    )
+    abstract suspend fun findClaimable(owner: String, origin: String, operationId: String, now: Long): DriverLocalCommandEntity?
+
+    @Query(
+        "UPDATE driver_local_command SET lease_until_millis=:leaseUntil, updated_at_millis=:now " +
+            "WHERE owner_account=:owner AND origin=:origin AND operation_id=:operationId " +
+            "AND state='PENDING' AND next_eligible_millis<=:now AND lease_until_millis<=:now",
+    )
+    abstract suspend fun claim(owner: String, origin: String, operationId: String, now: Long, leaseUntil: Long): Int
+
+    @Query(
+        "UPDATE driver_local_command SET state=:state, lease_until_millis=0, last_error=:error, " +
+            "updated_at_millis=:now WHERE owner_account=:owner AND origin=:origin AND operation_id=:operationId",
+    )
+    abstract suspend fun settle(owner: String, origin: String, operationId: String, state: String, error: String?, now: Long): Int
+
+    @Query(
+        "UPDATE driver_local_command SET state=:state, attempts=:attempts, next_eligible_millis=:nextEligible, " +
+            "lease_until_millis=0, last_error=:error, updated_at_millis=:now " +
+            "WHERE owner_account=:owner AND origin=:origin AND operation_id=:operationId",
+    )
+    abstract suspend fun retry(owner: String, origin: String, operationId: String, state: String, attempts: Int, nextEligible: Long, error: String, now: Long): Int
 }

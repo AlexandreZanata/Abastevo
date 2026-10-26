@@ -809,4 +809,11 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_draft_owner_updated` ON `driver_draft` (`owner_account`, `origin`, `updated_at_millis`)")
         }
     }
+    val MIGRATION_29_30: Migration = object : Migration(29, 30) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // DRV-14 durable local outbox lease; existing queued rows remain
+            // PENDING and immediately claimable with a zero lease.
+            db.execSQL("ALTER TABLE `driver_local_command` ADD COLUMN `lease_until_millis` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
 }

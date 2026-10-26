@@ -134,6 +134,7 @@ data class DriverLocalCommandEntity(
     @ColumnInfo(name = "attempts") val attempts: Int,
     @ColumnInfo(name = "next_eligible_millis") val nextEligibleMillis: Long,
     @ColumnInfo(name = "last_error") val lastError: String?,
+    @ColumnInfo(name = "lease_until_millis") val leaseUntilMillis: Long = 0,
     @ColumnInfo(name = "updated_at_millis") val updatedAtMillis: Long,
 )
 
