@@ -11,6 +11,35 @@
   race tests, vet, gofmt, secret scan and `git diff --check` passed locally.
   No deployment, DNS or public portal publication; required Quick verification
   and review gate the merge.
+- MAP-32 local checkpoint: LOCAL_DONE (runbook + local restore rehearsal) /
+  STAGING_PENDING. Frozen candidate manifest, staging-scoped apply/backup/
+  rollback/smoke/stop-condition runbook; disposable PostGIS dump/restore matched
+  132 migrations and 163 public tables. The staging origin answered read-only,
+  but no health contract at `/`, `/health`, `/healthz`, `/v1/health` or
+  `/api/health` (all 404) and no authenticated operator/SSH/DB access was
+  available: no staging update or PASS. [MAP-32 evidence](../backend/evidence/maps/MAP-32.md).
+  Production/G09/store/pilot/payments/portal remain out of scope.
+
+- MAP-31 local checkpoint: LOCAL_DONE for the local source union;
+  external/device cases OWED. Kotlin 2,466 tests (0 failures, 4 explicit opt-in
+  skips), Rust 38 tests + fmt/clippy, Go unit race all green, real disposable
+  PostGIS integration all packages green after 132 migrations, backend
+  vet/gofmt/sqlc/staticcheck/govulncheck, Android lint and release size guard
+  PASS. Final APK 78,396,538 bytes / 74.76 MiB, SHA-256 `feadd9f3…`, both ARM
+  ABIs and 16 KB LOAD alignment. Phone guidance/off-route and EV real-engine,
+  emulator UI/accessibility, and local 132/163 restore also pass. The four
+  opt-in Go/API/TLS Kotlin wire tests, two-account/two-device restore, manual
+  TalkBack, API26/clean ARMv7, frame pacing, physical battery, national and
+  staging remain OWED. [MAP-31 evidence](../backend/evidence/maps/MAP-31.md).
+
+- MAP-30 local disposition: EXTERNAL_PENDING, no adapter delivered. AndroidX
+  Car App Library would be Apache-2.0 but no exact revision is admitted; no
+  closed map/Google-location SDK or external-intent substitute was added. No
+  authorized DHU/head unit/distribution surface was available, so host
+  lifecycle/start-stop/reconnect cannot be claimed; the phone remains fully
+  usable without a car host. iOS/CarPlay stays archived.
+  [MAP-30 evidence](../backend/evidence/maps/MAP-30.md).
+
 - MAP-27–29 local batch: LOCAL_DONE / INTEGRATION_PENDING. Phase commits `805353b8`
   (MAP-27), `ae0699c5` (MAP-28) and `1a6a1add` (MAP-29) on `codex/map-ev-27-29`;
   no PR/remote CI/merge/wiki. Evidence/docs revisions after those commits do not change code.
@@ -21,9 +50,11 @@
   PSS 349–351 MiB, cancel 0 ms with no stale callback, cold start
   1218/1384/1242 ms on the owned API35/16 KB translated ARM emulator. MAP-27/28
   real-engine/UI/accessibility tests and targeted domain/application/data/app
-  suites plus lint PASS. Frame pacing/content time, network bytes, PostGIS
-  load/EXPLAIN, API26, clean ARMv7 runtime, physical battery and national
-  capacity remain OWED; no PASS/national/SLA claim.
+  suites plus lint PASS. A physical 4 KB arm64 phone run added init 354–439 ms,
+  route 46–125 ms, PSS 275,743–277,633 KiB and cold start 1125–1250 ms (not a
+  16 KB proof). Frame pacing/content time, current-head network bytes,
+  PostGIS load/EXPLAIN, API26, clean ARMv7 runtime, physical battery and
+  national capacity remain OWED; no PASS/national/SLA claim.
   [MAP-29 evidence](../backend/evidence/maps/MAP-29.md). No PR/merge/deploy.
 
 - MAP-28 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. EV section in the

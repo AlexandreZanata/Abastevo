@@ -25,7 +25,7 @@ Reproduction recipe: `scripts/maps/measure-map29.sh`.
   endpoints; no real GPS/route trace in the receipt.
 - Release static candidate: universal unsigned APK `78,396,538 bytes` = **74.76 MiB**
   (78.40 MB), SHA-256
-  `fabbb6199a83f3f0fc7b647c3b3a8ea7486b8886b1fc9053a4177b80f41745ed`. Existing 80 MiB
+  `feadd9f34d60c26b57a2025e96a1b799c04b52c90da9d47c9784a430363536e0`. Existing 80 MiB
   ceiling unchanged. Debug runtime APK SHA-256 `18f283c6…`; test APK `bc04e1ed…`.
 - Source measured: parent `d766dbb4` plus the MAP-27–29 code. The exact tree is the phase
   commit carrying this file; evidence/docs were added after the measurements and do not change

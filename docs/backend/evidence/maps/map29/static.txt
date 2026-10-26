@@ -1,6 +1,8 @@
 # MAP-29 static compatibility evidence
-# date 2026-10-26T18:27:33Z
-# source HEAD d766dbb4041c0262e9b5c467f1def9628565f0d7
+# date 2026-10-26T19:10:03Z
+# source HEAD ec95fc4e66ae32bb838454f8df050d3dbcc75309
+# release build check
+app:verifyReleaseApkSize PASS (74.76 MB / 78396538 bytes)
 # java
 # openjdk version "21" 2023-09-19 LTS
 # OpenJDK Runtime Environment Temurin-21+35 (build 21+35-LTS)
@@ -10,7 +12,7 @@
 # Kotlin:        1.9.24
 # apk
 78396538 bytes
-fabbb6199a83f3f0fc7b647c3b3a8ea7486b8886b1fc9053a4177b80f41745ed  app/build/outputs/apk/release/app-release-unsigned.apk
+feadd9f34d60c26b57a2025e96a1b799c04b52c90da9d47c9784a430363536e0  app/build/outputs/apk/release/app-release-unsigned.apk
 # aapt
 package: name='com.anpfuel.app' versionCode='4' versionName='3.1.0' platformBuildVersionName='15' platformBuildVersionCode='35' compileSdkVersion='35' compileSdkVersionCodename='15'
 sdkVersion:'26'
@@ -27,32 +29,32 @@ lib/armeabi-v7a/libandroidx.graphics.path.so 7252
 lib/armeabi-v7a/libdatastore_shared_counter.so 4416
 lib/armeabi-v7a/libmonocypher_ed25519.so 85008
 lib/armeabi-v7a/liborganicmaps.so 10499284
-== /tmp/map29-libs/lib/arm64-v8a/libandroidx.graphics.path.so
+== /tmp/map29-final-libs/lib/arm64-v8a/libandroidx.graphics.path.so
 align=0x4000
 align=0x4000
 align=0x4000
-== /tmp/map29-libs/lib/arm64-v8a/libdatastore_shared_counter.so
+== /tmp/map29-final-libs/lib/arm64-v8a/libdatastore_shared_counter.so
 align=0x4000
 align=0x4000
 align=0x4000
-== /tmp/map29-libs/lib/arm64-v8a/libmonocypher_ed25519.so
+== /tmp/map29-final-libs/lib/arm64-v8a/libmonocypher_ed25519.so
 align=0x4000
 align=0x4000
-== /tmp/map29-libs/lib/arm64-v8a/liborganicmaps.so
-align=0x4000
-align=0x4000
-align=0x4000
-== /tmp/map29-libs/lib/armeabi-v7a/libandroidx.graphics.path.so
+== /tmp/map29-final-libs/lib/arm64-v8a/liborganicmaps.so
 align=0x4000
 align=0x4000
 align=0x4000
-== /tmp/map29-libs/lib/armeabi-v7a/libdatastore_shared_counter.so
+== /tmp/map29-final-libs/lib/armeabi-v7a/libandroidx.graphics.path.so
 align=0x4000
 align=0x4000
-== /tmp/map29-libs/lib/armeabi-v7a/libmonocypher_ed25519.so
+align=0x4000
+== /tmp/map29-final-libs/lib/armeabi-v7a/libdatastore_shared_counter.so
 align=0x4000
 align=0x4000
-== /tmp/map29-libs/lib/armeabi-v7a/liborganicmaps.so
+== /tmp/map29-final-libs/lib/armeabi-v7a/libmonocypher_ed25519.so
+align=0x4000
+align=0x4000
+== /tmp/map29-final-libs/lib/armeabi-v7a/liborganicmaps.so
 align=0x4000
 align=0x4000
 align=0x4000

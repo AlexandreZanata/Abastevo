@@ -78,7 +78,12 @@ and [MAP-28](docs/backend/evidence/maps/MAP-28.md) are LOCAL_DONE / INTEGRATION_
 [MAP-29](docs/backend/evidence/maps/MAP-29.md) has the declared local proxy budgets PASS
 but **PERFORMANCE_GATE PARTIAL** because frame pacing/content time, current-head network,
 PostGIS load/EXPLAIN, API 26, clean ARMv7 runtime, physical battery and national capacity
-remain OWED. Synthetic charging/UI fixtures are not live coverage; no arrival guarantee.
+remain OWED. [MAP-30](docs/backend/evidence/maps/MAP-30.md) is EXTERNAL_PENDING with no car
+adapter. [MAP-31](docs/backend/evidence/maps/MAP-31.md) passes the local source union but
+leaves external/live Kotlin wire, two-device restore, TalkBack and runtime gaps OWED.
+[MAP-32](docs/backend/evidence/maps/MAP-32.md) delivers the local runbook/restore rehearsal
+and is STAGING_PENDING; synthetic charging/UI fixtures are not live coverage and no arrival
+guarantee is made.
 [prepared pictograms](docs/assets/map-icons/README.md) remain admitted assets.
 No deployment or remote delivery is inferred from these local checks.
 
