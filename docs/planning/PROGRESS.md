@@ -83,9 +83,13 @@
 - MAP-23 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Explicit foreground
   guidance with native follow/progress, private owner-bound recovery, local TTS
   only and real guidance UI PASS on the owned phone `VKCQGAUCGYAMR4W4`
-  (Android 16/arm64, no emulator). Two-ABI explicit-guidance revision
-  `7ad828883c4aca8a` audited and vendored; JVM/lint, release 74.58 MiB and
-  phone route/guidance/service/voice proofs PASS at `31b31763`.
+  (Android 16/arm64, 4 KB). Two-ABI explicit-guidance revision
+  `7ad828883c4aca8a` audited and vendored; JVM/lint and release 74.58 MiB PASS
+  at `31b31763`. Current-head revalidation: GuidanceInstrumentedTest 3/3,
+  GuidanceServiceInstrumentedTest 1/1, GuidanceEngineInstrumentedTest 1/1 with
+  a fresh 1 Hz off-route replay reporting `RouteRebuilding` and
+  `rerouteRecoverable=true` after >60 s. Field wrong-turn timing, 16 KB phone
+  runtime, two-account/device and rendered TalkBack remain OWED.
   [MAP-23 evidence](../backend/evidence/maps/MAP-23.md). New protected PR pending.
   MAP-24–33 excluded.
 

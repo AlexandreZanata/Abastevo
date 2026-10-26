@@ -111,3 +111,29 @@ Process-death resume was proven as explicit-only (no auto GPS); full power-cycle
 and long wrong-turn (>60 s) field timing remain OWED beyond the synthetic
 reroute unit bound. Two-account/device manual and rendered accessibility beyond
 the automated Compose checks remain OWED.
+
+## 2026-10-26 current-head revalidation (phone, explicit serial)
+
+The current batch re-ran the guidance surface on the authorized physical phone
+`VKCQGAUCGYAMR4W4` (Android 16/API 36, arm64-v8a, 4 KB pages), with explicit
+`adb -s` serial and the admitted Parana/East fixture. No emulator result is
+substituted for this phone run, and no phone result is used as 16 KB runtime
+proof.
+
+- `GuidanceInstrumentedTest` 3/3 OK (altered route refused, poor fixes rejected,
+  locale/voice policy, offline English voice path).
+- `GuidanceServiceInstrumentedTest` 1/1 OK (real rendered host, foreground
+  service active, stop via notification action, recovery cleared).
+- `GuidanceEngineInstrumentedTest` 1/1 OK. Added a fresh 1 Hz synthetic replay
+  beside a real native route: the core reported `RouteRebuilding` and the
+  timeout path returned `rerouteRecoverable = true` at simulated index 80
+  (more than 60 s after the off-route state started). A single 61-second-old fix
+  would be rejected by `NavigationFixPolicy`; the replay therefore uses fresh
+  fixes at one-second simulated intervals. No trace was recorded.
+- The failure/stop path is cleaned up in `finally`; the earlier failing attempt
+  that left a guidance session open is not counted, and its process crash is
+  disclosed as test-harness instability rather than a passing result.
+
+Still OWED: real long wrong-turn field timing beyond the synthetic replay,
+physical 16 KB runtime (the phone has 4 KB pages), two-account/device manual
+traversal and rendered TalkBack beyond the Compose semantics tests.
