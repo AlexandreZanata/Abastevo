@@ -1,5 +1,14 @@
 # Current execution state
 
+- DRV-17 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent a6c2837d,
+  behavior 24c85e5a. [Evidence](../backend/evidence/driver-suite/DRV-17.md).
+  Hub quick refuel/charge routes into the real exact ledger forms, separate
+  charge fees field, fees/energy/total/SOC/tariff persistence, pt-BR and
+  double-tap/restart coverage, full-partial-full/GNV/mixed/PHEV unknown
+  regression. JVM ledger/domain/routes and full app unit/compile PASS; owned
+  API35 10/10 instrumentation PASS; static guards PASS. No new sync/GPS/shift;
+  no push/PR/merge.
+
 - DRV-16 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent efdcce26,
   behavior d1db75ab. [Evidence](../backend/evidence/driver-suite/DRV-16.md).
   Real driver hub route from Perfil/Veículos, VERIFIED/OFFLINE/LAPSED/

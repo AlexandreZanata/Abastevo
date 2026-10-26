@@ -3953,8 +3953,11 @@ driver-dataset consent, two-device sync/restore, conflicts, foreign refusal and
 erasure-epoch snapshot purge on real PostGIS. DRV-16 is LOCAL_DONE / INTEGRATION_PENDING at behavior `d1db75ab`;
 [evidence](docs/backend/evidence/driver-suite/DRV-16.md) records the mobile
 driver hub, Premium/offline/lapse/signed-out states, retained-data actions and
-four-tab navigation regression on an owned API35 emulator. DRV-17–35 remain
-PLANNED.
+four-tab navigation regression on an owned API35 emulator. DRV-17 is LOCAL_DONE / INTEGRATION_PENDING at behavior `24c85e5a`;
+[evidence](docs/backend/evidence/driver-suite/DRV-17.md) records quick
+refuel/charge entry, separate charge fees, exact units and the existing
+consumption/energy unknown semantics on JVM and an owned API35 emulator.
+DRV-18–35 remain PLANNED.
 
 Durable movement continuation (2026-10-26): DRV-08 is LOCAL_DONE /
 INTEGRATION_PENDING at behavior `4026df2a`. [Evidence](docs/backend/evidence/driver-suite/DRV-08.md)

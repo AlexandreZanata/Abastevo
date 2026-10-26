@@ -284,7 +284,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-16.md`. A later relevant change invalidates affected evidence.
 ### DRV-17 — Complete refuel and energy entry journeys
 
-Status: PLANNED. Dependency: DRV-16 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: LOCAL_DONE / INTEGRATION_PENDING. Evidence: [DRV-17](../backend/evidence/driver-suite/DRV-17.md). Dependency: DRV-16 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `existing app ledger/charge forms; monthly/domain ports`. Rules: B-BR-DRV-02, B-BR-DRV-11.
 
