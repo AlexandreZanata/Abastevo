@@ -17,6 +17,7 @@ class ChargingPendingCodecTest {
         condition = ChargingCondition.OFF_PEAK,
         observedDay = "2026-10-22",
         note = "note",
+        operational = com.anpfuel.domain.charging.ChargingOperationalEvent(com.anpfuel.domain.charging.ChargingOperationalStatus.WORKED, com.anpfuel.domain.charging.ChargingTargetScope.SITE, null, "2026-10-22T12:00:00Z"),
     )
 
     @Test fun `submit correction and withdraw survive restart exactly`() {

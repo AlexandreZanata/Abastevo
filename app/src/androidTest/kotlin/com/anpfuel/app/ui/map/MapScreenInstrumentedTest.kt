@@ -39,6 +39,7 @@ class MapScreenInstrumentedTest {
     @Test fun shellShowsSourceSelectorAndFunctionalEntries() {
         compose.setContent {
             MapScreen(
+                guidance = testGuidance(),
                 onOpenStation = { _, _ -> },
                 onOpenSearch = {},
                 onOpenDownloads = {},
@@ -62,6 +63,7 @@ class MapScreenInstrumentedTest {
         val vm = MapScreenViewModel(emptyStore())
         compose.setContent {
             MapScreen(
+                guidance = testGuidance(),
                 onOpenStation = { _, _ -> },
                 onOpenSearch = {},
                 onOpenDownloads = {},
@@ -96,6 +98,7 @@ class MapScreenInstrumentedTest {
         var reportedProduct: String? = null
         compose.setContent {
             MapScreen(
+                guidance = testGuidance(),
                 onOpenStation = { _, _ -> },
                 onOpenSearch = {},
                 onOpenDownloads = {},
@@ -236,6 +239,7 @@ class MapScreenInstrumentedTest {
 
         compose.setContent {
             MapScreen(
+                guidance = testGuidance(),
                 onOpenStation = { uuid, _ -> openedProfileUuid = uuid },
                 onOpenSearch = {},
                 onOpenDownloads = {},

@@ -66,8 +66,24 @@ selection, ARM64 16 KB execution and ARM32 Vulkan lifecycle, 74.19 MiB APK
 under the existing 80 MiB ceiling. Failed ARM32 OpenGL-emulator profiles remain
 unaccepted. The [2026-10-25 remediation checkpoint](docs/backend/evidence/maps/MAP-15_20_REMEDIATION_20261025.md)
 now proves the real app download/activation/native-registration/offline-search
-flow and host lifecycle on the phone. MAP-18 native artwork and MAP-20 minimum
-product acceptance remain PARTIAL with named data/contract obligations;
+flow and host lifecycle on the phone. The inherited [minimum local proof](docs/backend/evidence/maps/MAP-20_MINIMUM_LOCAL_20261025.md)
+sets MAP-20 to LOCAL_PASS, with staging/production still PENDING. MAP-18 combined
+native artwork retains its named obligation. [MAP-21](docs/backend/evidence/maps/MAP-21.md)
+is LOCAL_DONE / INTEGRATION_PENDING; [MAP-22](docs/backend/evidence/maps/MAP-22.md)
+adds locally proven offline route planning; [MAP-23](docs/backend/evidence/maps/MAP-23.md)
+is LOCAL_DONE / INTEGRATION_PENDING with explicit foreground guidance/local voice on the owned phone;
+[MAP-24](docs/backend/evidence/maps/MAP-24.md), [MAP-25](docs/backend/evidence/maps/MAP-25.md),
+[MAP-26](docs/backend/evidence/maps/MAP-26.md), [MAP-27](docs/backend/evidence/maps/MAP-27.md)
+and [MAP-28](docs/backend/evidence/maps/MAP-28.md) are LOCAL_DONE / INTEGRATION_PENDING;
+[MAP-29](docs/backend/evidence/maps/MAP-29.md) has the declared local proxy budgets PASS
+but **PERFORMANCE_GATE PARTIAL** because frame pacing/content time, current-head network,
+PostGIS load/EXPLAIN, API 26, clean ARMv7 runtime, physical battery and national capacity
+remain OWED. [MAP-30](docs/backend/evidence/maps/MAP-30.md) is EXTERNAL_PENDING with no car
+adapter. [MAP-31](docs/backend/evidence/maps/MAP-31.md) passes the local source union but
+leaves external/live Kotlin wire, two-device restore, TalkBack and runtime gaps OWED.
+[MAP-32](docs/backend/evidence/maps/MAP-32.md) delivers the local runbook/restore rehearsal
+and is STAGING_PENDING; synthetic charging/UI fixtures are not live coverage and no arrival
+guarantee is made.
 [prepared pictograms](docs/assets/map-icons/README.md) remain admitted assets.
 No deployment or remote delivery is inferred from these local checks.
 

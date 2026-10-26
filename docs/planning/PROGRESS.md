@@ -11,6 +11,153 @@
   race tests, vet, gofmt, secret scan and `git diff --check` passed locally.
   No deployment, DNS or public portal publication; required Quick verification
   and review gate the merge.
+- MAP-33 cumulative delivery: IN_PROGRESS / CI_PENDING. Existing open
+  `dev → main` PR #151 updated (not PR #150; PR #152 driver is a separate front
+  and untouched). Source union includes `507d915e` and `4eeccfbf`; MAP-23
+  current phone proof, MAP-27/28 local real-engine/UI evidence, MAP-31 local
+  union and MAP-30/32 dispositions are included. Exact-head checks/reviews,
+  guarded merge, post-merge ancestry and wiki remain pending; no merge/deploy is
+  claimed by this entry. [MAP-33 evidence](../backend/evidence/maps/MAP-33.md).
+
+- MAP-32 local checkpoint: LOCAL_DONE (runbook + local restore rehearsal) /
+  STAGING_PENDING. Frozen candidate manifest, staging-scoped apply/backup/
+  rollback/smoke/stop-condition runbook; disposable PostGIS dump/restore matched
+  132 migrations and 163 public tables. The staging origin answered read-only,
+  but no health contract at `/`, `/health`, `/healthz`, `/v1/health` or
+  `/api/health` (all 404) and no authenticated operator/SSH/DB access was
+  available: no staging update or PASS. [MAP-32 evidence](../backend/evidence/maps/MAP-32.md).
+  Production/G09/store/pilot/payments/portal remain out of scope.
+
+- MAP-31 local checkpoint: LOCAL_DONE for the local source union;
+  external/device cases OWED. Kotlin 2,466 tests (0 failures, 4 explicit opt-in
+  skips), Rust 38 tests + fmt/clippy, Go unit race all green, real disposable
+  PostGIS integration all packages green after 132 migrations, backend
+  vet/gofmt/sqlc/staticcheck/govulncheck, Android lint and release size guard
+  PASS. Final APK 78,396,538 bytes / 74.76 MiB, SHA-256 `feadd9f3…`, both ARM
+  ABIs and 16 KB LOAD alignment. Phone guidance/off-route and EV real-engine,
+  emulator UI/accessibility, and local 132/163 restore also pass. The four
+  opt-in Go/API/TLS Kotlin wire tests, two-account/two-device restore, manual
+  TalkBack, API26/clean ARMv7, frame pacing, physical battery, national and
+  staging remain OWED. [MAP-31 evidence](../backend/evidence/maps/MAP-31.md).
+
+- MAP-30 local disposition: EXTERNAL_PENDING, no adapter delivered. AndroidX
+  Car App Library would be Apache-2.0 but no exact revision is admitted; no
+  closed map/Google-location SDK or external-intent substitute was added. No
+  authorized DHU/head unit/distribution surface was available, so host
+  lifecycle/start-stop/reconnect cannot be claimed; the phone remains fully
+  usable without a car host. iOS/CarPlay stays archived.
+  [MAP-30 evidence](../backend/evidence/maps/MAP-30.md).
+
+- MAP-27–29 local batch: LOCAL_DONE / INTEGRATION_PENDING. Phase commits `805353b8`
+  (MAP-27), `ae0699c5` (MAP-28) and `1a6a1add` (MAP-29) on `codex/map-ev-27-29`;
+  no PR/remote CI/merge/wiki. Evidence/docs revisions after those commits do not change code.
+- MAP-29 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING, **PERFORMANCE_GATE
+  PARTIAL**. Versioned local proxy matrix and raw sanitized samples:
+  release universal APK 78,396,538 bytes (74.76 MiB, 16 KB LOAD alignment and
+  zipalign PASS), engine init 1149/752/754 ms, real 1.8 km route 75–410 ms,
+  PSS 349–351 MiB, cancel 0 ms with no stale callback, cold start
+  1218/1384/1242 ms on the owned API35/16 KB translated ARM emulator. MAP-27/28
+  real-engine/UI/accessibility tests and targeted domain/application/data/app
+  suites plus lint PASS. A physical 4 KB arm64 phone run added init 354–439 ms,
+  route 46–125 ms, PSS 275,743–277,633 KiB and cold start 1125–1250 ms (not a
+  16 KB proof). Frame pacing/content time, current-head network bytes,
+  PostGIS load/EXPLAIN, API26, clean ARMv7 runtime, physical battery and
+  national capacity remain OWED; no PASS/national/SLA claim.
+  [MAP-29 evidence](../backend/evidence/maps/MAP-29.md). No PR/merge/deploy.
+
+- MAP-28 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. EV section in the
+  existing native route sheet (vehicle/SOC/reserve/consumption/target/PHEV
+  share, comma/dot parsing, typed unknowns), primary/alternative/arrival/cost/
+  provenance, failure replan from the failed charger arrival SOC with stale-result
+  invalidation, MAP-25 save and Saved→Map reopen via private `map/plan/{tripId}`.
+  Real native/app UI flow with synthetic Room/vehicle fixtures, saved-plan
+  reopen, 200% font/320 dp semantics, ViewModel/reopen tests and lint PASS.
+  Only one emulator/profile: two-account/two-device backup, manual TalkBack and
+  airplane-mode process-death journey remain OWED; no live/charger guarantee.
+  [MAP-28 evidence](../backend/evidence/maps/MAP-28.md). No PR/merge/deploy.
+
+- MAP-27 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Typed charging
+  candidates, real native road legs, bounded corridor/Room lookup, reserve and
+  target exactness, site/equipment/connector failure scopes, duplicate-site
+  refusal, reachable fallback from the failed-primary arrival SOC (no failed
+  charge), hours/timezone/tariff/power/access/provenance gaps, budget/
+  cancellation/generation limits. Independent failure vector 60,000 Wh/30%/
+  10%/180 Wh/km gives 900 bp at 20 km (below reserve) and 1,200 bp at 10 km
+  (reachable). Domain 9/9, application 10/10, router 3/3, mapper 3/3 and a real
+  native route/primary/alternative/replan instrumentation proof PASS.
+  Synthetic charging fixtures only; no live/national coverage or arrival
+  guarantee. [MAP-27 evidence](../backend/evidence/maps/MAP-27.md).
+  No PR/merge/deploy.
+
+- MAP-26 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Pure Kotlin EV
+  energy model (usable energy, PHEV electric-portion scope, segments with an
+  explicit margin, reach, arrival SOC, charging-time lower bound, sum-first
+  calibration), conservative rounding and Known/Unknown results. 53 vectors
+  from an independent Python/Fractions oracle plus monotonic/property tests and
+  mutation checks PASS. No backend/UI/device change; no feasibility claim.
+  [MAP-26 evidence](../backend/evidence/maps/MAP-26.md). MAP-27–33 excluded;
+  no PR/merge/deploy.
+
+- MAP-25 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING (cloud backup cases
+  not delivered). Owner-scoped private favorites and saved route plans (Room v28),
+  strict KML/GPX/KMZ exchange (XXE/bomb/traversal/limit refusal, all-or-nothing,
+  idempotent import, tombstones), Saved screen and an explicit recorder service.
+  Real Room 9/9 + migration + exchange 2/2, UI 3/3 and recorder service on the
+  owned 16 KB emulator; two defects found and fixed (lost discard on service
+  teardown; MapScreen tests broken since MAP-23). Signed backup/restore needs the
+  Android favorites sync client and is NOT claimed.
+  [MAP-25 evidence](../backend/evidence/maps/MAP-25.md). MAP-26 next.
+
+- MAP-24 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Wi-Fi-aware map
+  downloads, safe inactive-generation deletion, navigation generation lease and a
+  real airplane-mode clean-restart journey (real MWM, map render, native search,
+  route preview, guidance, missing-region refusal) with proof-server request
+  count 9 -> 9 PASS on the owned 16 KB emulator; offline-distribution suite
+  stabilised (HTTP/1.0 pooled-socket race, off-by-one request count) and extended
+  with an interrupted-update resume test. OFFLINE_GATE PASS for this regional
+  journey only; one unexplained first-run process crash is disclosed.
+  [MAP-24 evidence](../backend/evidence/maps/MAP-24.md). MAP-25 next; MAP-27–33
+  excluded; no PR/merge/deploy.
+
+- MAP-23 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Explicit foreground
+  guidance with native follow/progress, private owner-bound recovery, local TTS
+  only and real guidance UI PASS on the owned phone `VKCQGAUCGYAMR4W4`
+  (Android 16/arm64, 4 KB). Two-ABI explicit-guidance revision
+  `7ad828883c4aca8a` audited and vendored; JVM/lint and release 74.58 MiB PASS
+  at `31b31763`. Current-head revalidation: GuidanceInstrumentedTest 3/3,
+  GuidanceServiceInstrumentedTest 1/1, GuidanceEngineInstrumentedTest 1/1 with
+  a fresh 1 Hz off-route replay reporting `RouteRebuilding` and
+  `rerouteRecoverable=true` after >60 s. Field wrong-turn timing, 16 KB phone
+  runtime, two-account/device and rendered TalkBack remain OWED.
+  [MAP-23 evidence](../backend/evidence/maps/MAP-23.md). New protected PR pending.
+  MAP-24–33 excluded.
+
+- MAP-22 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Native offline
+  search/car route/stops/options/preview, one-way detour, missing-neighbor refusal,
+  cancellation and real Map-tab rendering PASS on owned 16 KB ARM64 emulator.
+  Two-ABI privacy revision `9cdd3cda00e1025a` removes SDK GPS/route log payloads;
+  source/resource/license audit and affected JVM/lint checks PASS. Posterior ARMv7
+  bridge proof recorded in the evidence. [MAP-22 evidence](../backend/evidence/maps/MAP-22.md).
+  Next was MAP-23 explicit foreground guidance/local voice, now done above.
+
+- MAP-21 local checkpoint: LOCAL_DONE / INTEGRATION_PENDING. Dated operational
+  events, exact replay receipts, owner-fenced FIFO/outbox, connected replay and
+  startup recovery implemented. Real PostGIS/race + Go HTTP/Kotlin wire proof,
+  four owned 16 KB emulator worker tests and Android/lint/static checks PASS.
+  [MAP-21 evidence](../backend/evidence/maps/MAP-21.md). Next: MAP-22 native
+  planning/stops; MAP-23 explicit guidance follows. No new PR/rollout yet.
+
+- MAP-21–23 selected continuation 2026-10-25: IN_PROGRESS, new protected PR
+  pending. Owner merged PR 150 at `eee1b33f`; maintained remote dev matches
+  main, including the CI worker-serialization correction `e848bf26`. This
+  isolated clone inherited OpenCode minimum gate `b45a0a2c` and retained main's
+  atomic Official retry/terminal-verdict contract. Focused real PostGIS and
+  Rust suites and engine/data/app JVM suites PASS for that reconciliation.
+  [Contract](../product/MAP_21_23_CONTRACT.md). Implement only MAP-21 community
+  operational events, MAP-22 native offline routes/stops and MAP-23 explicit
+  foreground guidance/voice. MAP-24–33 excluded. No new staging data/source
+  admission, provider calls or release certification inferred. Previous PR 150
+  notes below are historical; its source integration is complete.
 
 - Cumulative PR #150 integration 2026-10-25: IN_PROGRESS / CI_PENDING.
   User authorized publishing the partial map, PAY and enterprise/static portal
@@ -620,6 +767,28 @@
   arm64/16KB, data gate MAP-09–13, device manual acceptance, staging or release
   claim. Next: fix MAP-08 generation/check/route, then MAP-09–13 and the
   Abastevo adapter/Compose map before MAP-15–33.
+- Map minimum local acceptance 2026-10-25: **MINIMUM_MAP_GATE LOCAL_PASS /
+  STAGING_PENDING / PRODUCTION_PENDING**, LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/map-ev-minimum-gate`. [Evidence](../backend/evidence/maps/MAP-20_MINIMUM_LOCAL_20261025.md),
+  [receipt](../backend/evidence/maps/MAP-20-minimum-local-20261025/receipt.json).
+  Real ANP registry (45,706 stations), real 2026-10-11..17 survey facts and the
+  ANP Curitiba API were combined with admitted OSM geometry under exact
+  address/number + ≤50 m review: 62 reviewed points and 33 exact priced
+  stations. A disposable PostGIS API fed the real app: 62 native fuel pins on
+  the admitted MWM, quick sheet `R$ 6,79 L` Standard for 2026-10-11..17,
+  no-price explicit state and existing profile route. Offline process restart
+  used the separate Room public-page/price cache with explicit cached banner and
+  price label. Native labels no longer expose UUID/cluster IDs; search is no
+  longer clobbered by camera sync. Engine 32, data 612 (2 known external skips)
+  and app 537 tests PASS; lint/release size PASS. Unsigned release 78,121,062
+  bytes / 74.50 MiB SHA-256 `5937649c…deabdd`, local proof config empty. Staging
+  data/distribution origin/keys, opening-hours contract, MAP-21–33 and
+  production/G09 remain PENDING. Gate states: MINIMUM_MAP_GATE LOCAL_PASS /
+  STAGING_PENDING, OFFLINE_GATE PARTIAL (public station/price overlay only),
+  PERFORMANCE_GATE NOT_STARTED, DELIVERY_GATE NOT_STARTED /
+  INTEGRATION_PENDING. MAP-21 operational events and MAP-22–33 remain
+  unimplemented in this batch. No push/PR/merge/deploy.
+
 - Map review remediation 2026-10-25: bounded repairs LOCAL_DONE /
   INTEGRATION_PENDING on `codex/map-ev-implementation`; inherited Antigravity
   commits `483cff59` and `2d51eef6` and unfinished native work preserved.

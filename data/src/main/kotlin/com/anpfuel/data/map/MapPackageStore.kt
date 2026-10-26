@@ -14,6 +14,7 @@ interface MapPackageStore {
     suspend fun insertGeneration(generation: MapGenerationEntity, packages: List<MapPackageEntity>)
     suspend fun generation(generation: String): MapGenerationEntity?
     suspend fun activeGeneration(): MapGenerationEntity?
+    suspend fun inactiveGenerations(): List<String> = emptyList()
     suspend fun packages(generation: String): List<MapPackageEntity>
     suspend fun updatePackage(
         generation: String,
@@ -35,6 +36,7 @@ class RoomMapPackageStore(private val dao: MapPackageDao) : MapPackageStore {
     }
     override suspend fun generation(generation: String) = dao.generation(generation)
     override suspend fun activeGeneration() = dao.activeGeneration()
+    override suspend fun inactiveGenerations() = dao.inactiveGenerations()
     override suspend fun packages(generation: String) = dao.packages(generation)
     override suspend fun updatePackage(
         generation: String,

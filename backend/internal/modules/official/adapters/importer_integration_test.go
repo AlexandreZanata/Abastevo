@@ -155,6 +155,62 @@ func TestSameBytesNoOp(t *testing.T) {
 	}
 }
 
+func TestTerminalFailedRunRequiresNewParserIdentity(t *testing.T) {
+	im, pool := freshImporter(t)
+	ctx := context.Background()
+	st := makeStation(t, pool, "Posto A")
+	key := domain.ImportKey{SourceURL: "https://www.gov.br/anp/retry.xlsx", SourceChecksum: "sha256:retry", ParserVersion: "p02-t04"}
+	first, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var q domain.QuarantineTally
+	if _, err := im.StageBatch(ctx, first.RevisionID, []domain.PriceRow{priceRow(st, 8, 5999)}, &q); err != nil {
+		t.Fatal(err)
+	}
+	q.Add("unknown-fuel-label", "row-99")
+	fin, err := im.FinishRun(ctx, first.RunID, first.RevisionID, &q)
+	if err != nil || fin.Published {
+		t.Fatalf("failed finish = %+v, %v", fin, err)
+	}
+	retry, err := im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil {
+		t.Fatalf("retry begin: %v", err)
+	}
+	if !retry.NoOp {
+		t.Fatal("terminal verdict reopened under identical source identity")
+	}
+	var runs, revisions int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM official_import_runs").Scan(&runs); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM official_revisions").Scan(&revisions); err != nil {
+		t.Fatal(err)
+	}
+	if runs != 1 || revisions != 1 {
+		t.Fatalf("terminal replay added rows: runs=%d revisions=%d", runs, revisions)
+	}
+	// The cumulative ESP contract preserves terminal verdicts. A genuinely
+	// corrected parser is a new import identity, with append-only history.
+	key.ParserVersion += "-corrected"
+	retry, err = im.BeginRun(ctx, key, weekStart, weekEnd)
+	if err != nil || retry.NoOp || retry.RunID == first.RunID || retry.RevisionID == first.RevisionID {
+		t.Fatalf("corrected parser did not create a distinct attempt: %+v, %v", retry, err)
+	}
+	var q2 domain.QuarantineTally
+	if _, err := im.StageBatch(ctx, retry.RevisionID, []domain.PriceRow{priceRow(st, 8, 5999)}, &q2); err != nil {
+		t.Fatal(err)
+	}
+	fin2, err := im.FinishRun(ctx, retry.RunID, retry.RevisionID, &q2)
+	if err != nil || !fin2.Published {
+		t.Fatalf("retry finish = %+v, %v", fin2, err)
+	}
+	cur, err := im.CurrentRevision(ctx, weekStart, weekEnd)
+	if err != nil || cur != retry.RevisionID {
+		t.Errorf("pointer = %q, %v; want %q", cur, err, retry.RevisionID)
+	}
+}
+
 func TestCorrectedBytesNewRevision(t *testing.T) {
 	im, pool := freshImporter(t)
 	ctx := context.Background()

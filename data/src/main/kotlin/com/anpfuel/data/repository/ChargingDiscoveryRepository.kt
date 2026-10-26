@@ -39,6 +39,15 @@ data class PlaceDetail(
     val savedAtMillis: Long,
 )
 
+/** MAP-27 bounded corridor row: identity and provenance travel with the place; no live claim. */
+data class CorridorRow(
+    val place: ChargingPlace,
+    val profile: String,
+    val sourceRevision: String,
+    val generation: Long,
+    val savedAtMillis: Long,
+)
+
 /**
  * EE-21 compatible discovery over EE-18 snapshot generations.
  *
@@ -133,6 +142,24 @@ class ChargingDiscoveryRepository @Inject constructor(
         val entity = dao.findPlace(placeId, profile, gen) ?: return null
         val place = runCatching { ChargingSnapshotMapper.toDomain(entity) }.getOrNull() ?: return null
         return PlaceDetail(place, profile, meta.sourceRevision, gen, meta.savedAtMillis)
+    }
+
+    suspend fun corridor(
+        profile: String,
+        generation: Long,
+        minLatitude: Double,
+        maxLatitude: Double,
+        minLongitude: Double,
+        maxLongitude: Double,
+        limit: Int,
+    ): List<CorridorRow> {
+        val meta = dao.findMeta(key(profile))?.takeIf { it.generation == generation } ?: return emptyList()
+        return dao.readPlacesInBounds(
+            profile, generation, minLatitude, maxLatitude, minLongitude, maxLongitude, limit.coerceIn(1, 500),
+        ).mapNotNull { entity ->
+            val place = runCatching { ChargingSnapshotMapper.toDomain(entity) }.getOrNull() ?: return@mapNotNull null
+            CorridorRow(place, profile, meta.sourceRevision, generation, meta.savedAtMillis)
+        }
     }
 
     suspend fun generationMeta(profile: String): StoredPackMeta? {

@@ -43,18 +43,31 @@ type ChargingHelpfulnessVote struct {
 }
 
 type ChargingObservation struct {
-	ID                  pgtype.UUID        `json:"id"`
-	AccountID           pgtype.UUID        `json:"account_id"`
-	PlaceID             pgtype.UUID        `json:"place_id"`
-	ConnectorCode       string             `json:"connector_code"`
-	PriceMilliBrlPerKwh pgtype.Int4        `json:"price_milli_brl_per_kwh"`
-	Condition           string             `json:"condition"`
-	ObservedDay         pgtype.Date        `json:"observed_day"`
-	Note                string             `json:"note"`
-	Revision            int64              `json:"revision"`
-	Deleted             bool               `json:"deleted"`
-	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
-	HiddenAt            pgtype.Timestamptz `json:"hidden_at"`
+	ID                    pgtype.UUID        `json:"id"`
+	AccountID             pgtype.UUID        `json:"account_id"`
+	PlaceID               pgtype.UUID        `json:"place_id"`
+	ConnectorCode         string             `json:"connector_code"`
+	PriceMilliBrlPerKwh   pgtype.Int4        `json:"price_milli_brl_per_kwh"`
+	Condition             string             `json:"condition"`
+	ObservedDay           pgtype.Date        `json:"observed_day"`
+	Note                  string             `json:"note"`
+	Revision              int64              `json:"revision"`
+	Deleted               bool               `json:"deleted"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+	HiddenAt              pgtype.Timestamptz `json:"hidden_at"`
+	OperationalEvent      pgtype.Text        `json:"operational_event"`
+	OperationalScope      pgtype.Text        `json:"operational_scope"`
+	OperationalGroupID    pgtype.UUID        `json:"operational_group_id"`
+	OperationalObservedAt pgtype.Timestamptz `json:"operational_observed_at"`
+}
+
+type ChargingObservationCommand struct {
+	AccountID      pgtype.UUID `json:"account_id"`
+	OperationID    pgtype.UUID `json:"operation_id"`
+	TargetID       pgtype.UUID `json:"target_id"`
+	Kind           string      `json:"kind"`
+	RequestSha256  string      `json:"request_sha256"`
+	ResultRevision int64       `json:"result_revision"`
 }
 
 type ChargingObservationReport struct {

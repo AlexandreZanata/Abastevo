@@ -33,6 +33,9 @@ class AnpFuelApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var qualityReportScheduler:com.anpfuel.data.worker.QualityReportWorkScheduler
 
+    @Inject
+    lateinit var chargingCommunity: com.anpfuel.application.usecase.charging.ChargingCommunityUseCase
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
@@ -58,6 +61,11 @@ class AnpFuelApplication : Application(), Configuration.Provider {
             com.anpfuel.data.worker.DirectorySyncWorker.maintainSchedule(this@AnpFuelApplication, preferenceStore)
         }
         qualityReportScheduler.maintain()
+        applicationScope.launch {
+            try { chargingCommunity.recoverPendingSchedule() }
+            catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) { /* Keep the queue intact; its screen exposes storage errors. */ }
+        }
 
         applicationScope.launch {
             syncWorkScheduler.schedulePeriodicSync()

@@ -1,6 +1,7 @@
 package com.anpfuel.maps.engine
 
 import android.content.Context
+import com.anpfuel.domain.ev.EvRoadRouter
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,6 +26,10 @@ object MapEngineModule {
     @Singleton
     fun provideMapCameraStore(@ApplicationContext context: Context): MapCameraStore =
         SharedPreferencesMapCameraStore(context)
+
+    @Provides
+    @Singleton
+    fun provideEvRoadRouter(engine: MapEngine): EvRoadRouter = NativeEvRoadRouter(engine)
 }
 
 /** Process-lifetime holder; Hilt singleton delegates here for testability. */

@@ -32,6 +32,7 @@ class MapDiscoveryViewModelTest {
     private class FakeGateway(
         var stations: List<ServerStation> = emptyList(),
         var delayMs: Long = 0,
+        var failNearby: Boolean = false,
     ) : ServerStationGateway {
         var lastRadius: Int? = null
         var calls = 0
@@ -51,6 +52,7 @@ class MapDiscoveryViewModelTest {
             calls++
             lastRadius = radiusMeters
             if (delayMs > 0) kotlinx.coroutines.delay(delayMs)
+            if (failNearby) throw java.io.IOException("offline")
             return stations.map { NearbyServerStation(it, 100.0) }
         }
         override suspend fun byCnpj(cnpj: String): ServerStation? = null
@@ -79,6 +81,19 @@ class MapDiscoveryViewModelTest {
         override fun cancelSearch() = Unit
         override fun cancelRoute() = Unit
         override fun release() = Unit
+    }
+
+    private class FakeStationCache : com.anpfuel.domain.repository.ServerStationCache {
+        val pages = mutableMapOf<String, com.anpfuel.domain.discovery.ServerStationPage>()
+        override suspend fun saveScopedPage(municipalityCode: String, page: com.anpfuel.domain.discovery.ServerStationPage) {
+            pages[municipalityCode] = page
+        }
+        override suspend fun loadScopedPage(municipalityCode: String) = pages[municipalityCode]
+        override suspend fun savePage(page: com.anpfuel.domain.discovery.ServerStationPage) = Unit
+        override suspend fun loadPage() = null
+        override suspend fun saveDetail(station: com.anpfuel.domain.discovery.ServerStation) = Unit
+        override suspend fun loadDetail(stationId: String) = null
+        override suspend fun clear() = Unit
     }
 
     private fun station(
@@ -383,6 +398,54 @@ class MapDiscoveryViewModelTest {
         assertEquals(3, vm.ui.value.selectedMembers.size)
     }
 
+    @Test fun `unchanged native viewport refresh does not replace an active search`() = runTest {
+        val gateway = FakeGateway(
+            stations = listOf(
+                station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name = "Posto Central"),
+                station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name = "Posto Bairro"),
+            ),
+        )
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, FakeEngine())
+        vm.onSearch("4106902", "Central")
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf("Posto Central"), vm.ui.value.listItems.map { it.title })
+        val callsAfterSearch = gateway.calls
+
+        vm.onViewport(-25.43, -49.28, 15_000)
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf("Posto Central"), vm.ui.value.listItems.map { it.title })
+        assertEquals(callsAfterSearch, gateway.calls, "viewport sync must not refetch while search is active")
+
+        vm.onSearch("4106902", "")
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("", vm.ui.value.searchQuery)
+        assertTrue(vm.ui.value.listItems.size == 2, "clearing search must return to nearby results")
+    }
+
+    @Test fun `offline viewport uses the last saved public map page and marks it cached`() = runTest {
+        val station = station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name = "Posto Offline")
+        val cache = FakeStationCache()
+        val gateway = FakeGateway(stations = listOf(station), failNearby = true)
+        val vm = MapDiscoveryViewModel(
+            gateway, ChargingMarkersSource { emptyList() }, FakeEngine(),
+            null, null, cache,
+        )
+        cache.saveScopedPage(
+            "map:4106902",
+            com.anpfuel.domain.discovery.ServerStationPage(listOf(station), null),
+        )
+        vm.onViewport(-25.42, -49.27, 10_000)
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf("Posto Offline"), vm.ui.value.listItems.map { it.title })
+        assertTrue(vm.ui.value.offlineCached)
+        assertEquals(null, vm.ui.value.error)
+    }
+
     @Test fun `clearing or shortening search during debounce or in-flight cancels prior query`() = runTest {
         val gateway = FakeGateway(
             stations = listOf(
@@ -399,19 +462,23 @@ class MapDiscoveryViewModelTest {
         vm.onSearch("4106902", "")
         advanceTimeBy(1_000)
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(0, gateway.calls)
+        // Clearing search returns to viewport mode, but the canceled search
+        // must never have reached the gateway.
+        org.junit.jupiter.api.Assertions.assertNull(gateway.lastSearch)
         assertEquals("", vm.ui.value.searchQuery)
-        assertTrue(vm.ui.value.listItems.isEmpty())
+        assertEquals(1, vm.ui.value.listItems.size)
 
         // Case 2: Clear search while network call is already in-flight (after debounce).
+        val callsBeforeCase2 = gateway.calls
+        val listBeforeCase2 = vm.ui.value.listItems.map { it.title }
         vm.onSearch("4106902", "Central")
         advanceTimeBy(350) // Past 300ms debounce, inside 300ms gateway delay.
-        assertEquals(1, gateway.calls)
+        assertEquals(callsBeforeCase2 + 1, gateway.calls)
         vm.onSearch("4106902", "c") // Shortened to < 2 chars while in-flight.
         advanceTimeBy(1_000)
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("c", vm.ui.value.searchQuery)
-        assertTrue(vm.ui.value.listItems.isEmpty(), "In-flight search must not overwrite cleared state")
+        assertEquals(listBeforeCase2, vm.ui.value.listItems.map { it.title }, "In-flight search must not overwrite cleared state")
     }
 
     @Test fun `charging markers source paginates beyond first 100 rows and preserves unknown power`() = runTest {
@@ -478,6 +545,19 @@ class MapDiscoveryViewModelTest {
                 allPlaces.drop(offset).take(limit)
             override suspend fun findPlace(placeId: String, profile: String, generation: Long) =
                 allPlaces.firstOrNull { it.placeId == placeId }
+            override suspend fun readPlacesInBounds(
+                profile: String,
+                generation: Long,
+                minLatitude: Double,
+                maxLatitude: Double,
+                minLongitude: Double,
+                maxLongitude: Double,
+                limit: Int,
+            ) = allPlaces.filter {
+                it.latitude?.toDoubleOrNull()?.let { lat -> lat in minLatitude..maxLatitude } == true &&
+                    it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
+            }.take(limit)
+
             override suspend fun countPlaces(generation: Long) = allPlaces.size.toLong()
             override suspend fun estimatedBytes(generation: Long) = 1024L
         }

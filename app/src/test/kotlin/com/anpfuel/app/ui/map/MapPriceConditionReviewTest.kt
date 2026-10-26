@@ -513,8 +513,11 @@ class MapPriceConditionReviewTest {
                 override suspend fun fetchEnvelope(): ByteArray = error("unused")
             }
             val downloadsVm = MapDownloadsViewModel(cfg, dist, repo, store, object : MapWorkControl {
-                override fun enqueue(generation: String) = Unit
+                override fun enqueue(generation: String, requireUnmetered: Boolean) = Unit
                 override fun cancel(generation: String) = Unit
+            }, object : com.anpfuel.domain.repository.UserPreferencesRepository {
+                override suspend fun getPreferences() = com.anpfuel.domain.model.UserPreferences()
+                override suspend fun savePreferences(preferences: com.anpfuel.domain.model.UserPreferences) = Unit
             })
             testScheduler.advanceUntilIdle()
             assertTrue(downloadsVm.ui.value.published)

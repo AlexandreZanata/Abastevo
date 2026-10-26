@@ -1,0 +1,18 @@
+<resources>
+  <string name="map21_retry">Ausstehende Befehle erneut senden</string>
+  <string name="map21_discard">Lokalen Befehl verwerfen</string>
+  <string name="map21_discard_warning">Dies entfernt nur den lokalen Wiederholungsversuch. Ein vom Server angenommener Bericht bleibt veröffentlicht, bis Sie ihn zurückziehen.</string>
+  <string name="map21_dated">Datierte Beobachtung der Community. Keine Live-Verfügbarkeit; aktueller Zugang und Betrieb sind nicht garantiert.</string>
+  <string name="map21_no_event">Nur Preis / Erfahrung</string>
+  <string name="map21_time">Beobachtungszeitpunkt (UTC, JJJJ-MM-DDTHH:MM:SSZ)</string>
+  <string name="map21_reference">Quellenreferenz ohne physische Identifikation. Eine Gerätereferenz erfordert genau eine gemeldete Einheit.</string>
+  <string name="map21_no_target">Keine geeignete Quellenreferenz verfügbar. Wählen Sie den Standort.</string>
+  <string name="map21_worked">Hat funktioniert</string>
+  <string name="map21_did_not_work">Hat nicht funktioniert</string>
+  <string name="map21_in_use">War belegt</string>
+  <string name="map21_restricted">Zugang war eingeschränkt</string>
+  <string name="map21_site">Standort</string>
+  <string name="map21_equipment">Referenz auf eine einzelne Einheit</string>
+  <string name="map21_connector">Anschlussgruppe</string>
+  <string name="map21_full">Die Warteschlange enthält 50 Befehle. Senden oder verwerfen Sie einen, bevor Sie einen weiteren hinzufügen.</string>
+</resources>

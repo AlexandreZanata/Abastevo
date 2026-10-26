@@ -1,0 +1,27 @@
+<resources>
+  <string name="map22_title">Маршрут без сети</string>
+  <string name="map22_origin">Откуда</string>
+  <string name="map22_destination">Куда</string>
+  <string name="map22_stop">Добавить остановку</string>
+  <string name="map22_current">Текущее положение</string>
+  <string name="map22_center">Использовать центр карты</string>
+  <string name="map22_coordinates">Использовать координаты</string>
+  <string name="map22_latitude">Широта (десятичная точка)</string>
+  <string name="map22_longitude">Долгота (десятичная точка)</string>
+  <string name="map22_unselected">Не выбрано</string>
+  <string name="map22_search_hint">Поиск места / адреса без сети</string>
+  <string name="map22_avoid">Избегать</string>
+  <string name="map22_tolls">Платные дороги</string>
+  <string name="map22_motorways">Автомагистрали</string>
+  <string name="map22_ferries">Паромы</string>
+  <string name="map22_unpaved">Грунтовые дороги</string>
+  <string name="map22_fix_error">Нет свежего точного положения. Проверьте разрешение и GPS или выберите точку на карте.</string>
+  <string name="map22_error">Маршрут недоступен. Проверьте точки, ограничения и загруженные карты.</string>
+  <string name="map22_preview">Рассчитать маршрут</string>
+  <string name="map22_show">Показать на карте</string>
+  <string name="map22_approximate">Точки карты и станций могут быть приблизительными. Проверьте фактический въезд и доступ с дороги.</string>
+  <string name="map22_estimate">%1$s м · примерно %2$d с, без текущих пробок</string>
+  <string name="map22_warnings">Ядро вернуло предупреждения о дорогах. Проверьте перед началом.</string>
+  <string name="map22_move_up">Переместить остановку вверх</string>
+  <string name="map22_move_down">Переместить остановку вниз</string>
+</resources>

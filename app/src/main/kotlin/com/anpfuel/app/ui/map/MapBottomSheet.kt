@@ -98,6 +98,8 @@ fun MapBottomSheet(
     modifier: Modifier = Modifier,
     routeError: Boolean = false,
     onSelectSource: (MapPriceSource) -> Unit = {},
+    isFavorite: Boolean = false,
+    onToggleFavorite: (() -> Unit)? = null,
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val marker = ui.marker ?: return
@@ -202,7 +204,7 @@ fun MapBottomSheet(
             }
             if (routeError) {
                 Text(
-                    stringResource(R.string.map_sheet_route_failed),
+                    stringResource(R.string.map22_error),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.testTag("map-sheet-route-error"),
@@ -225,6 +227,14 @@ fun MapBottomSheet(
                     onClick = { onReport(marker.uuid) },
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-sheet-report"),
                 ) { Text(stringResource(R.string.map_sheet_report)) }
+            }
+            if (onToggleFavorite != null) {
+                TextButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("map-sheet-favorite"),
+                ) {
+                    Text(stringResource(if (isFavorite) R.string.map25_favorite_remove else R.string.map25_favorite_add))
+                }
             }
         }
     }

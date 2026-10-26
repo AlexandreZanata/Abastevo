@@ -1,0 +1,27 @@
+<resources>
+  <string name="map22_title">离线路线</string>
+  <string name="map22_origin">起点</string>
+  <string name="map22_destination">终点</string>
+  <string name="map22_stop">添加途经点</string>
+  <string name="map22_current">当前位置</string>
+  <string name="map22_center">使用地图中心</string>
+  <string name="map22_coordinates">使用坐标</string>
+  <string name="map22_latitude">纬度（小数点）</string>
+  <string name="map22_longitude">经度（小数点）</string>
+  <string name="map22_unselected">未选择</string>
+  <string name="map22_search_hint">离线搜索地点 / 地址</string>
+  <string name="map22_avoid">避开</string>
+  <string name="map22_tolls">收费路段</string>
+  <string name="map22_motorways">高速公路</string>
+  <string name="map22_ferries">渡轮</string>
+  <string name="map22_unpaved">未铺装道路</string>
+  <string name="map22_fix_error">没有新近且准确的位置。请检查权限和GPS，或在地图上选择位置。</string>
+  <string name="map22_error">路线不可用。请检查途经点、通行限制及已下载地图。</string>
+  <string name="map22_preview">计算路线预览</string>
+  <string name="map22_show">在地图上显示</string>
+  <string name="map22_approximate">地图和站点参考位置可能不精确。请检查实际入口及道路通行条件。</string>
+  <string name="map22_estimate">预计 %1$s 米 · %2$d 秒，无实时路况</string>
+  <string name="map22_warnings">原生引擎返回道路警告。请在开始前检查。</string>
+  <string name="map22_move_up">上移途经点</string>
+  <string name="map22_move_down">下移途经点</string>
+</resources>

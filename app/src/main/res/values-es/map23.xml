@@ -1,0 +1,17 @@
+<resources>
+  <string name="map23_title">Guiado explícito</string>
+  <string name="map23_start">Iniciar guiado</string>
+  <string name="map23_stop">Detener guiado</string>
+  <string name="map23_next">Próxima maniobra</string>
+  <string name="map23_recalculating">Recalculando ruta…</string>
+  <string name="map23_reroute_failed">Recálculo no disponible. Guiado en pausa; puede detener o reintentar.</string>
+  <string name="map23_gps_poor">GPS débil. Esperando posición precisa; progreso en pausa.</string>
+  <string name="map23_gps_lost">Señal GPS perdida.</string>
+  <string name="map23_voice_unavailable">Voz local no disponible. Solo maniobras de texto.</string>
+  <string name="map23_resume">Reanudar último guiado</string>
+  <string name="map23_no_permission">Se requiere permiso de ubicación precisa para el guiado.</string>
+  <string name="map23_gps_off">GPS está desactivado.</string>
+  <string name="map23_notification_blocked">Notificaciones bloqueadas. El guiado necesita una notificación visible.</string>
+  <string name="map23_stop_action">Detener</string>
+  <string name="map23_notification_title">Guiado activo</string>
+</resources>

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +34,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.domain.map.saved.SavedTrip
+import com.anpfuel.domain.routing.RoadAvoidance
+import com.anpfuel.domain.routing.RoutePoint
 import com.anpfuel.maps.engine.MapHost
 import com.anpfuel.maps.engine.MapOverlayLabels
 import com.anpfuel.maps.engine.MapOverlayList
@@ -67,13 +71,18 @@ fun MapScreen(
     onOpenStation: (stationKey: String, fuel: String) -> Unit,
     onOpenSearch: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onOpenSaved: () -> Unit = {},
     onReportStation: (stationId: String, fuel: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
+    initialPlan: SavedTrip? = null,
     onOpenCity: (() -> Unit)? = null,
     periodContent: @Composable (() -> Unit) -> Unit = {},
     viewModel: MapScreenViewModel = hiltViewModel(),
     discovery: MapDiscoveryViewModel? = null,
     sheet: MapSheetViewModel? = null,
+    planner: NativeRouteViewModel? = null,
+    saved: SavedViewModel? = null,
+    guidance: GuidanceViewModel = hiltViewModel(),
     mapContent: @Composable (Modifier) -> Unit = {
         RealMapHost(
             modifier = it,
@@ -83,6 +92,31 @@ fun MapScreen(
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val discUi = discovery?.ui?.collectAsStateWithLifecycle()?.value
+    var showRoute by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(showRoute) {
+        if (showRoute) guidance.refreshResume()
+    }
+    androidx.compose.runtime.LaunchedEffect(initialPlan?.id, planner) {
+        val plan = initialPlan ?: return@LaunchedEffect
+        val activePlanner = planner ?: return@LaunchedEffect
+        activePlanner.restorePlan(
+            plan.points.map { point ->
+                RoutePoint(point.point.latitude, point.point.longitude, plan.name)
+            },
+            plan.avoid.mapNotNull { name -> RoadAvoidance.entries.firstOrNull { it.name == name } }.toSet(),
+        )
+        showRoute = true
+    }
+    val savedUi = saved?.ui?.collectAsStateWithLifecycle()?.value
+    if (showRoute && planner != null) NativeRouteSheet(
+        planner,
+        onDismiss = { showRoute = false },
+        onDownloads = { showRoute = false; onOpenDownloads() },
+        onSavePlan = saved?.let { vm -> { name, points, avoid -> vm.saveRoutePlan(name, points, avoid) } },
+        savedMessage = savedUi?.message,
+    ) { preview, request ->
+        GuidanceControls(preview = preview, request = request, viewModel = guidance)
+    }
     var showFilters by remember { mutableStateOf(false) }
     var showList by remember { mutableStateOf(false) }
     var routeError by remember(discUi?.selectedUuid) { mutableStateOf(false) }
@@ -105,6 +139,7 @@ fun MapScreen(
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshAvailability()
                 discovery?.refreshPreferredMunicipality()
+                saved?.refresh()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -158,7 +193,7 @@ fun MapScreen(
     val communityLabel = stringResource(R.string.map_source_community)
     val searchHintLabel = stringResource(R.string.map_search_hint)
 
-    Column(modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize().statusBarsPadding()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -185,6 +220,7 @@ fun MapScreen(
                     .testTag("map-source-community")
                     .semantics { contentDescription = communityLabel },
             )
+            if (planner != null) TextButton(onClick = { showRoute = true }, modifier = Modifier.heightIn(min = 48.dp).testTag("native-route-open")) { Text(stringResource(R.string.map22_title)) }
             if (discUi != null) {
                 FilterChip(
                     selected = false,
@@ -239,6 +275,22 @@ fun MapScreen(
                     .testTag("map-search-submit"),
             ) {
                 Text(stringResource(R.string.map_search))
+            }
+        }
+
+        if (discUi?.offlineCached == true) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
+                tonalElevation = 1.dp,
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text(
+                    stringResource(R.string.server_station_cached),
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .testTag("map-offline-cache-banner"),
+                )
             }
         }
 
@@ -425,6 +477,12 @@ fun MapScreen(
             ) {
                 Text(stringResource(R.string.map_downloads))
             }
+            if (saved != null) TextButton(
+                onClick = onOpenSaved,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-open-saved"),
+            ) {
+                Text(stringResource(R.string.map25_open_saved))
+            }
         }
     }
 
@@ -480,26 +538,16 @@ fun MapScreen(
             viewModel = sheet,
             onOpenProfile = { uuid -> onOpenStation(uuid, targetFuel) },
             onRoute = { uuid ->
-                // Explicit external interim: never counted as native guidance.
-                // Native preview (buildCarRoute) owns MAP-22; this keeps the
-                // minimum gate honest about what is proven.
                 val marker = activeMarker?.takeIf { it.uuid == uuid }
                     ?: discUi?.selectableByUuid?.get(uuid)
-                    ?: discUi?.clusters?.flatMap { it.markers }?.firstOrNull { it.uuid == uuid }
-                    ?: discUi?.selectedMembers?.firstOrNull { it.uuid == uuid }
-                if (marker != null && marker.canRouteByCoordinates) {
-                    try {
-                        routeError = false
-                        val uri = android.net.Uri.parse("geo:${marker.latitude},${marker.longitude}?q=${marker.latitude},${marker.longitude}(${android.net.Uri.encode(marker.title)})")
-                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
-                    } catch (_: Exception) {
-                        routeError = true
-                    }
-                } else {
-                    routeError = true
-                }
+                if (marker != null && marker.canRouteByCoordinates && planner != null) {
+                    planner.point(RouteInputSlot.DESTINATION, com.anpfuel.domain.routing.RoutePoint(marker.latitude,marker.longitude,marker.title))
+                    discovery?.clearSelection(); sheet.clear();routeError=false;showRoute=true
+                } else { routeError=true }
             },
             onReport = { uuid -> onReportStation(uuid, targetFuel) },
+            isFavorite = activeMarker?.uuid?.let { it in (savedUi?.favoriteStationIds ?: emptySet()) } ?: false,
+            onToggleFavorite = if (saved != null && activeMarker != null) ({ saved.toggleFavorite(activeMarker) }) else null,
             onSwitchToCommunity = {
                 viewModel.selectSource(MapPriceSource.COMMUNITY)
                 if (discUi?.selectedUuid == null && activeMarker != null) {

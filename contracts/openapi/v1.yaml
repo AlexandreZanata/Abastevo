@@ -2134,6 +2134,7 @@ paths:
                 condition: {type: string, enum: [STANDARD, OFF_PEAK, PEAK, MEMBER, UNKNOWN]}
                 observed_day: {type: string, format: date}
                 note: {type: string, maxLength: 1024}
+                operational: {$ref: '#/components/schemas/ChargingOperationalEvent'}
       responses:
         '201':
           description: Created or idempotently replayed.
@@ -2167,6 +2168,7 @@ paths:
               properties:
                 session: {type: object}
                 limit: {type: integer, minimum: 1, maximum: 100, default: 20}
+                place_id: {type: string, format: uuid, description: Optional place filter applied before the limit.}
       responses:
         '200':
           description: Owner-scoped observations only.
@@ -2204,12 +2206,16 @@ paths:
               required: [session, connector_code, condition, observed_day, expected_revision]
               properties:
                 session: {type: object}
+                id: {type: string, format: uuid, description: Compatibility field; route ID is authoritative.}
+                place_id: {type: string, format: uuid, description: Must match immutable report place.}
                 connector_code: {type: string, enum: [CCS2, TYPE2, CHADEMO, NACS, UNKNOWN]}
                 price_milli_brl_per_kwh: {type: integer, minimum: 1, maximum: 10000000}
                 condition: {type: string, enum: [STANDARD, OFF_PEAK, PEAK, MEMBER, UNKNOWN]}
                 observed_day: {type: string, format: date}
                 note: {type: string, maxLength: 1024}
+                operational: {$ref: '#/components/schemas/ChargingOperationalEvent'}
                 expected_revision: {type: integer, minimum: 1}
+                operation_id: {type: string, format: uuid, description: Stable command identity for exact lost-response replay.}
       responses:
         '200':
           description: New revision.
@@ -2245,6 +2251,7 @@ paths:
               properties:
                 session: {type: object}
                 expected_revision: {type: integer, minimum: 1}
+                operation_id: {type: string, format: uuid, description: Stable command identity for exact lost-response replay.}
       responses:
         '200':
           description: Withdrawn revision.
@@ -6004,6 +6011,16 @@ components:
         type: string
         format: uuid
   schemas:
+    ChargingOperationalEvent:
+      type: object
+      additionalProperties: false
+      required: [event, target_scope, observed_at]
+      description: Dated community observation, never a live availability guarantee. SITE has no group; CONNECTOR references a matching source group. EQUIPMENT requires that group to report exactly one unit. Future instants refuse.
+      properties:
+        event: {type: string, enum: [WORKED, DID_NOT_WORK, IN_USE, ACCESS_RESTRICTED]}
+        target_scope: {type: string, enum: [SITE, EQUIPMENT, CONNECTOR]}
+        connection_group_id: {type: string, format: uuid}
+        observed_at: {type: string, format: date-time}
     CloudVehicle:
       type: object
       additionalProperties: false

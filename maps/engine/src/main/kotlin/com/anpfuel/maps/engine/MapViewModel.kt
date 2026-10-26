@@ -168,6 +168,14 @@ class MapViewModel @Inject constructor(
     fun dispose() {
         if (disposed) return
         disposed = true
+        // Navigation owns its session in the foreground service; leaving a tab or
+        // recreating an Activity must not destroy guidance, preview cancellation
+        // must not stop it, and only explicit stop releases native following.
+        if (engine.isGuiding()) {
+            engine.cancelSearch()
+            engine.cancelRoute()
+            return
+        }
         engine.release()
     }
 

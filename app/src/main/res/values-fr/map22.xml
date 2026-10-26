@@ -1,0 +1,27 @@
+<resources>
+  <string name="map22_title">Itinéraire hors ligne</string>
+  <string name="map22_origin">Départ</string>
+  <string name="map22_destination">Destination</string>
+  <string name="map22_stop">Ajouter une étape</string>
+  <string name="map22_current">Position actuelle</string>
+  <string name="map22_center">Utiliser le centre de la carte</string>
+  <string name="map22_coordinates">Utiliser les coordonnées</string>
+  <string name="map22_latitude">Latitude (point décimal)</string>
+  <string name="map22_longitude">Longitude (point décimal)</string>
+  <string name="map22_unselected">Non sélectionné</string>
+  <string name="map22_search_hint">Rechercher un lieu / une adresse hors ligne</string>
+  <string name="map22_avoid">Éviter</string>
+  <string name="map22_tolls">Péages</string>
+  <string name="map22_motorways">Autoroutes</string>
+  <string name="map22_ferries">Ferries</string>
+  <string name="map22_unpaved">Routes non revêtues</string>
+  <string name="map22_fix_error">Aucune position récente et précise. Vérifiez les autorisations et le GPS ou choisissez un point sur la carte.</string>
+  <string name="map22_error">Itinéraire indisponible. Vérifiez les étapes, restrictions et cartes téléchargées.</string>
+  <string name="map22_preview">Calculer un aperçu</string>
+  <string name="map22_show">Afficher sur la carte</string>
+  <string name="map22_approximate">Les références peuvent être approximatives. Vérifiez le véritable accès et les voies autorisées.</string>
+  <string name="map22_estimate">%1$s m · %2$d s estimées, sans trafic en direct</string>
+  <string name="map22_warnings">Le moteur natif a renvoyé des avertissements routiers. Vérifiez avant de démarrer.</string>
+  <string name="map22_move_up">Monter cette étape</string>
+  <string name="map22_move_down">Descendre cette étape</string>
+</resources>

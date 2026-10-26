@@ -66,6 +66,20 @@ class ChargingDiscoveryRepositoryTest {
         override suspend fun findPlace(placeId: String, profile: String, generation: Long) =
             places.values.singleOrNull { it.placeId == placeId && it.profile == profile && it.generation == generation && !it.tombstone }
 
+        override suspend fun readPlacesInBounds(
+            profile: String,
+            generation: Long,
+            minLatitude: Double,
+            maxLatitude: Double,
+            minLongitude: Double,
+            maxLongitude: Double,
+            limit: Int,
+        ) = places.values.filter {
+            it.profile == profile && it.generation == generation && !it.tombstone &&
+                it.latitude?.toDoubleOrNull()?.let { lat -> lat in minLatitude..maxLatitude } == true &&
+                it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
+        }.sortedBy { it.placeId }.take(limit)
+
         override suspend fun countPlaces(generation: Long) =
             places.values.count { it.generation == generation && !it.tombstone }.toLong()
 

@@ -1,0 +1,33 @@
+diff --git a/android/sdk/src/main/java/app/organicmaps/sdk/OrganicMaps.java b/android/sdk/src/main/java/app/organicmaps/sdk/OrganicMaps.java
+index 5199842d5..b62d4dfe0 100644
+--- a/android/sdk/src/main/java/app/organicmaps/sdk/OrganicMaps.java
++++ b/android/sdk/src/main/java/app/organicmaps/sdk/OrganicMaps.java
+@@ -188,7 +188,7 @@ public final class OrganicMaps implements DefaultLifecycleObserver
+     initNativeStrings();
+     SearchEngine.INSTANCE.initialize();
+     BookmarkManager.loadBookmarks();
+-    TtsPlayer.INSTANCE.initialize(mContext);
++    // Abastevo owns local TTS explicitly during foreground guidance only.
+     RoutingController.get().initialize(mLocationHelper);
+ 
+     TrafficManager.INSTANCE.initialize();
+diff --git a/android/sdk/src/main/java/app/organicmaps/sdk/sound/TtsPlayer.java b/android/sdk/src/main/java/app/organicmaps/sdk/sound/TtsPlayer.java
+index 61bc1ffbc..fadbf768b 100644
+--- a/android/sdk/src/main/java/app/organicmaps/sdk/sound/TtsPlayer.java
++++ b/android/sdk/src/main/java/app/organicmaps/sdk/sound/TtsPlayer.java
+@@ -336,6 +336,15 @@ public enum TtsPlayer
+     return (isReady() && nativeAreTurnNotificationsEnabled());
+   }
+ 
++  /** Abastevo bridge: configure native text generation without initializing
++   * the SDK Android TTS player or changing the host's chosen local voice. */
++  public static void configureNativeNotifications(String locale, boolean enabled)
++  {
++    if (enabled)
++      nativeSetTurnNotificationsLocale(locale);
++    nativeEnableTurnNotifications(enabled);
++  }
++
+   public static void setEnabled(boolean enabled)
+   {
+     Config.TTS.setEnabled(enabled);

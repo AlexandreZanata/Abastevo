@@ -9,7 +9,7 @@ import stat
 import tempfile
 import zipfile
 
-AAR_SHA256 = 'd2ec37881ede4e2288e1a929f01a1eabab193e7a6d518c76ff4342f085f2b10c'
+AAR_SHA256 = '7ad828883c4aca8afc46601ea98ed340db5056cbc61df2e1896d8916d98d6837'
 
 
 def sha(data):

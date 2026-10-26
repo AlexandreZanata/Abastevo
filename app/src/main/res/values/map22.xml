@@ -1,0 +1,27 @@
+<resources>
+  <string name="map22_title">Offline route</string>
+  <string name="map22_origin">Origin</string>
+  <string name="map22_destination">Destination</string>
+  <string name="map22_stop">Add stop</string>
+  <string name="map22_current">Current position</string>
+  <string name="map22_center">Use map center</string>
+  <string name="map22_coordinates">Use coordinates</string>
+  <string name="map22_latitude">Latitude (decimal dot)</string>
+  <string name="map22_longitude">Longitude (decimal dot)</string>
+  <string name="map22_unselected">Not selected</string>
+  <string name="map22_search_hint">Search offline places / address</string>
+  <string name="map22_avoid">Avoid</string>
+  <string name="map22_tolls">Tolls</string>
+  <string name="map22_motorways">Motorways</string>
+  <string name="map22_ferries">Ferries</string>
+  <string name="map22_unpaved">Unpaved roads</string>
+  <string name="map22_fix_error">No recent accurate position. Check permission and GPS or choose a map point.</string>
+  <string name="map22_error">Route unavailable. Check checkpoints, restrictions and downloaded maps.</string>
+  <string name="map22_preview">Build preview</string>
+  <string name="map22_show">Show on map</string>
+  <string name="map22_approximate">Map and station references may be approximate. Check the actual entrance and road access.</string>
+  <string name="map22_estimate">%1$s m · %2$d s estimated, without live traffic</string>
+  <string name="map22_warnings">The native core returned road warnings. Review before starting.</string>
+  <string name="map22_move_up">Move stop up</string>
+  <string name="map22_move_down">Move stop down</string>
+</resources>

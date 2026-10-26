@@ -8,6 +8,7 @@ import com.anpfuel.application.usecase.charging.ChargingCommunitySnapshot
 import com.anpfuel.application.usecase.charging.ChargingCommunityUseCase
 import com.anpfuel.application.usecase.charging.ChargingSaveOutcome
 import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
+import com.anpfuel.domain.charging.*
 import com.anpfuel.domain.charging.ChargingCondition
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingObservationDraft
@@ -34,10 +35,15 @@ data class ChargingCommunityForm(
     val price: String = "",
     val note: String = "",
     val editingId: String? = null,
+    val event: ChargingOperationalStatus? = null,
+    val scope: ChargingTargetScope = ChargingTargetScope.SITE,
+    val groupId: String? = null,
+    val eventTime: String = java.time.Instant.now().toString(),
 )
 
 data class ChargingCommunityUiState(
     val loading: Boolean = true,
+    val groups: List<ChargingConnectionGroup> = emptyList(),
     val saving: Boolean = false,
     val offline: Boolean = false,
     val signedOut: Boolean = false,
@@ -71,18 +77,26 @@ class ChargingCommunityViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            runCatching { connectivity().collect { connected -> state.update { it.copy(offline = !connected) } } }
+            runCatching { connectivity().collect { connected ->
+                state.update { it.copy(offline = !connected) }
+                if (connected) { community.retryPending(); refresh() }
+            } }
         }
         refresh()
     }
 
     fun refresh() {
+        val owner = sessions.load()?.accountId
         val request = ++generation
+        state.update { it.copy(mine = emptyList(), pending = emptyList(), signedOut = owner == null, form = if (owner == null) ChargingCommunityForm() else it.form) }
         state.update { it.copy(loading = true) }
         viewModelScope.launch {
             try {
                 val snapshot = community.snapshot(placeId)
-                if (request != generation) return@launch
+                if (request != generation || sessions.load()?.accountId != owner) return@launch
+                val groups = try { community.targets(placeId) } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { state.value.groups }
+                if (request != generation || sessions.load()?.accountId != owner) return@launch
+                state.update { it.copy(groups = groups) }
                 apply(snapshot)
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -113,6 +127,13 @@ class ChargingCommunityViewModel @Inject constructor(
     fun setPrice(price: String) = state.update { it.copy(form = it.form.copy(price = price)) }
     fun setNote(note: String) = state.update { it.copy(form = it.form.copy(note = note)) }
 
+    fun setEvent(event: ChargingOperationalStatus?) = state.update { it.copy(form = it.form.copy(event = event)) }
+    fun setEventTime(value: String) = state.update { it.copy(form = it.form.copy(eventTime = value)) }
+    fun setScope(scope: ChargingTargetScope) = state.update { it.copy(form = it.form.copy(scope = scope, groupId = null)) }
+    fun setGroup(group: ChargingConnectionGroup) = state.update { it.copy(form = it.form.copy(groupId = group.id, connector = group.connector)) }
+    fun discard(id: String) { viewModelScope.launch { community.discard(id); refresh() } }
+    fun retry() { viewModelScope.launch { community.retryPending(); refresh() } }
+
     fun edit(observation: OwnedChargingObservation) {
         state.update {
             it.copy(
@@ -123,6 +144,10 @@ class ChargingCommunityViewModel @Inject constructor(
                     price = observation.priceMilliBrlPerKwh?.let { milli -> BigDecimal(milli).movePointLeft(3).stripTrailingZeros().toPlainString() }.orEmpty(),
                     note = observation.note,
                     editingId = observation.id,
+                    event = observation.operational?.event,
+                    scope = observation.operational?.targetScope ?: ChargingTargetScope.SITE,
+                    groupId = observation.operational?.connectionGroupId,
+                    eventTime = observation.operational?.observedAt ?: java.time.Instant.now().toString(),
                 ),
                 formError = null,
             )
@@ -151,6 +176,7 @@ class ChargingCommunityViewModel @Inject constructor(
                 condition = form.condition,
                 observedDay = form.day,
                 note = form.note,
+                operational = form.event?.let { ChargingOperationalEvent(it, form.scope, if (form.scope == ChargingTargetScope.SITE) null else form.groupId, form.eventTime) },
             )
         } catch (_: Exception) {
             state.update { it.copy(formError = "form") }
@@ -174,7 +200,7 @@ class ChargingCommunityViewModel @Inject constructor(
                         notice = when (outcome) {
                             is ChargingSaveOutcome.Offline -> "offline"
                             is ChargingSaveOutcome.Conflict -> "conflict"
-                            is ChargingSaveOutcome.Refused -> "refused"
+                            is ChargingSaveOutcome.Refused -> if (outcome.message == "queue-full") "queue-full" else "refused"
                             else -> "saved"
                         },
                         form = if (outcome is ChargingSaveOutcome.Saved) ChargingCommunityForm() else it.form,

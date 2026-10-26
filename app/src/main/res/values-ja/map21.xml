@@ -1,0 +1,18 @@
+<resources>
+  <string name="map21_retry">保留中のコマンドを再送</string>
+  <string name="map21_discard">ローカルコマンドを削除</string>
+  <string name="map21_discard_warning">ローカルの再試行だけを削除します。サーバーで受理された報告は、取り下げるまで公開されたままです。</string>
+  <string name="map21_dated">日時付きのコミュニティ報告です。リアルタイムの空き状況は不明で、現在の利用や動作を保証しません。</string>
+  <string name="map21_no_event">価格・体験のみ</string>
+  <string name="map21_time">観察日時 (UTC、YYYY-MM-DDTHH:MM:SSZ)</string>
+  <string name="map21_reference">情報源の参照で、実機の識別子ではありません。設備単位の参照には報告台数が1台である必要があります。</string>
+  <string name="map21_no_target">利用可能な参照がありません。施設全体を選択してください。</string>
+  <string name="map21_worked">動作した</string>
+  <string name="map21_did_not_work">動作しなかった</string>
+  <string name="map21_in_use">使用中だった</string>
+  <string name="map21_restricted">アクセスが制限されていた</string>
+  <string name="map21_site">施設</string>
+  <string name="map21_equipment">1台の設備への参照</string>
+  <string name="map21_connector">コネクターグループ</string>
+  <string name="map21_full">50件のコマンドが保留中です。再送または削除してから追加してください。</string>
+</resources>

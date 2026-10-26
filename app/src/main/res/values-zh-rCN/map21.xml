@@ -1,0 +1,18 @@
+<resources>
+  <string name="map21_retry">重试待处理命令</string>
+  <string name="map21_discard">丢弃本地命令</string>
+  <string name="map21_discard_warning">仅移除此本地重试。服务器已接受的报告会继续公开，直到您将其撤回。</string>
+  <string name="map21_dated">带日期的社区观察。无实时可用性数据，不保证当前可访问或正常工作。</string>
+  <string name="map21_no_event">仅价格 / 体验</string>
+  <string name="map21_time">观察时间（UTC，YYYY-MM-DDTHH:MM:SSZ）</string>
+  <string name="map21_reference">这是来源引用，不是实体设备标识。设备范围要求来源报告恰好一台设备。</string>
+  <string name="map21_no_target">没有符合条件的来源引用。请选择整个站点。</string>
+  <string name="map21_worked">曾正常工作</string>
+  <string name="map21_did_not_work">未正常工作</string>
+  <string name="map21_in_use">当时正在使用</string>
+  <string name="map21_restricted">当时访问受限</string>
+  <string name="map21_site">站点</string>
+  <string name="map21_equipment">单台设备引用</string>
+  <string name="map21_connector">接口组</string>
+  <string name="map21_full">队列中有50条待处理命令。添加前请重试或丢弃一条。</string>
+</resources>

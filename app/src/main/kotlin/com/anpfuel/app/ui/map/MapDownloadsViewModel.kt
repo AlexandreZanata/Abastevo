@@ -50,13 +50,15 @@ data class MapDownloadsUi(
     val downloading: Boolean = false,
     val error: String? = null,
     val retryable: Boolean = false,
+    val wifiOnly: Boolean = true,
+    val inactiveGenerations: List<String> = emptyList(),
 ) {
     val unconfigured: Boolean get() = missingUrl || missingRegion || missingKeys || keysInvalid
 }
 
 /** Enqueue/cancel seam over WorkManager unique work; faked in unit tests. */
 interface MapWorkControl {
-    fun enqueue(generation: String)
+    fun enqueue(generation: String, requireUnmetered: Boolean)
     fun cancel(generation: String)
 }
 
@@ -64,8 +66,8 @@ class WorkManagerControl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val config: MapDistributionConfig,
 ) : MapWorkControl {
-    override fun enqueue(generation: String) {
-        MapDownloadScheduler.enqueue(WorkManager.getInstance(context), generation, config.baseUrl)
+    override fun enqueue(generation: String, requireUnmetered: Boolean) {
+        MapDownloadScheduler.enqueue(WorkManager.getInstance(context), generation, config.baseUrl, requireUnmetered)
     }
 
     override fun cancel(generation: String) {
@@ -87,6 +89,7 @@ class MapDownloadsViewModel @Inject constructor(
     private val repository: MapPackageRepository,
     private val store: MapPackageStore,
     private val work: MapWorkControl,
+    private val preferences: com.anpfuel.domain.repository.UserPreferencesRepository,
 ) : ViewModel() {
     private val _ui = MutableStateFlow(MapDownloadsUi())
     val ui: StateFlow<MapDownloadsUi> = _ui.asStateFlow()
@@ -110,14 +113,17 @@ class MapDownloadsViewModel @Inject constructor(
         viewModelScope.launch {
             _ui.update { it.copy(loading = true, error = null, retryable = false) }
             try {
+                val wifiOnly = runCatching { preferences.getPreferences().autoSyncOnWifi }.getOrDefault(true)
                 val active = store.activeGeneration()
                 val published = repository.publishedState()?.complete == true
+                val inactive = runCatching { store.inactiveGenerations() }.getOrDefault(emptyList())
                 _ui.update {
                     val settled = it.candidateGeneration != null && it.candidateGeneration == active?.generation
                     it.copy(
                         loading = false, missingUrl = false, missingRegion = false,
                         missingKeys = false, keysInvalid = false,
                         activeGeneration = active?.generation, published = published,
+                        wifiOnly = wifiOnly, inactiveGenerations = inactive,
                         // An already-active candidate is current, not an update.
                         candidateGeneration = if (settled) null else it.candidateGeneration,
                         candidatePackages = if (settled) emptyList() else it.candidatePackages,
@@ -183,53 +189,59 @@ class MapDownloadsViewModel @Inject constructor(
     fun download() {
         val generation = _ui.value.candidateGeneration ?: return
         pollJob?.cancel()
-        work.enqueue(generation)
+        // Enqueue synchronously with the last refreshed Wi-Fi preference so the
+        // unique work exists even if observation is cancelled immediately after.
+        work.enqueue(generation, _ui.value.wifiOnly)
         pollJob = viewModelScope.launch {
-            _ui.update { it.copy(downloading = true, error = null, retryable = false) }
-            try {
-                while (true) {
-                    delay(500)
-                    val rows = store.packages(generation)
-                    _ui.update {
-                        it.copy(
-                            downloadedBytes = rows.sumOf { row -> row.downloadedBytes },
-                            candidatePackages = rows.map { row ->
-                                MapPackageUi(row.packageId, row.bytes, row.downloadedBytes, row.status, row.error)
-                            },
-                        )
-                    }
-                    val failed = rows.firstOrNull { it.status == PACKAGE_FAILED }
-                    if (failed != null) {
-                        _ui.update { it.copy(downloading = false, error = failed.error ?: "download-failed", retryable = true) }
-                        return@launch
-                    }
-                    if (rows.isNotEmpty() && rows.all { it.status == PACKAGE_READY }) {
-                        // The worker flips Room to active; observe the flip.
-                        var guard = 0
-                        while (guard++ < 40) {
-                            delay(500)
-                            val active = store.activeGeneration()
-                            if (active?.generation == generation) {
-                                _ui.update {
-                                    it.copy(
-                    downloading = false, activeGeneration = generation,
-                        published = repository.publishedState()?.complete == true,
-                        candidateGeneration = null, candidatePackages = emptyList(),
-                        candidateDependencies = emptyList(),
+            observeDownloadInner(generation)
+        }
+    }
+
+    private suspend fun observeDownloadInner(generation: String) {
+        _ui.update { it.copy(downloading = true, error = null, retryable = false) }
+        try {
+            while (true) {
+                delay(500)
+                val rows = store.packages(generation)
+                _ui.update {
+                    it.copy(
+                        downloadedBytes = rows.sumOf { row -> row.downloadedBytes },
+                        candidatePackages = rows.map { row ->
+                            MapPackageUi(row.packageId, row.bytes, row.downloadedBytes, row.status, row.error)
+                        },
                     )
-                                }
-                                return@launch
-                            }
-                        }
-                        _ui.update { it.copy(downloading = false, error = "activation-pending", retryable = true) }
-                        return@launch
-                    }
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                _ui.update { it.copy(downloading = false, error = "observe-failed", retryable = true) }
+                val failed = rows.firstOrNull { it.status == PACKAGE_FAILED }
+                if (failed != null) {
+                    _ui.update { it.copy(downloading = false, error = failed.error ?: "download-failed", retryable = true) }
+                    return
+                }
+                if (rows.isNotEmpty() && rows.all { it.status == PACKAGE_READY }) {
+                    // The worker flips Room to active; observe the flip.
+                    var guard = 0
+                    while (guard++ < 40) {
+                        delay(500)
+                        val active = store.activeGeneration()
+                        if (active?.generation == generation) {
+                            _ui.update {
+                                it.copy(
+                                    downloading = false, activeGeneration = generation,
+                                    published = repository.publishedState()?.complete == true,
+                                    candidateGeneration = null, candidatePackages = emptyList(),
+                                    candidateDependencies = emptyList(),
+                                )
+                            }
+                            return
+                        }
+                    }
+                    _ui.update { it.copy(downloading = false, error = "activation-pending", retryable = true) }
+                    return
+                }
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            _ui.update { it.copy(downloading = false, error = "observe-failed", retryable = true) }
         }
     }
 
@@ -257,6 +269,27 @@ class MapDownloadsViewModel @Inject constructor(
             checkForUpdate()
         } else {
             download()
+        }
+    }
+
+    /**
+     * Deletes a staged inactive generation. The repository refuses the active
+     * generation and any leased generation (route/navigation readers); refusal
+     * surfaces as an explicit in-use state, never silent navigation cancel.
+     */
+    fun deleteInactive(generation: String) {
+        viewModelScope.launch {
+            _ui.update { it.copy(error = null, retryable = false) }
+            try {
+                val removed = repository.deleteGeneration(generation)
+                if (!removed) {
+                    _ui.update { it.copy(error = "in-use", retryable = false) }
+                    return@launch
+                }
+                refresh()
+            } catch (_: Exception) {
+                _ui.update { it.copy(error = "delete-failed", retryable = true) }
+            }
         }
     }
 

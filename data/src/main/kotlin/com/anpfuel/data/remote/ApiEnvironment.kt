@@ -15,12 +15,15 @@ import java.net.URI
  * Route joining never produces a double `/v1`; origins containing a `/v1`
  * path are refused so clients cannot silently build `/v1/v1/...` URLs.
  */
-enum class ApiEnvironment(val origin: String) {
+enum class ApiEnvironment(val origin: String, private val localProof: Boolean = false) {
     PREVIEW("https://api.anpfuel.example.invalid"),
-    STAGING("https://teste.abastevo.com.br");
+    STAGING("https://teste.abastevo.com.br"),
+    // Debug-build loopback proof only. Release network security forbids
+    // cleartext, so an accidental release selection still fails closed.
+    LOCAL_PROOF("http://127.0.0.1:18080", localProof = true);
 
     init {
-        validateOrigin(origin)
+        if (localProof) validateLocalProofOrigin(origin) else validateOrigin(origin)
     }
 
     fun join(path: String): String {
@@ -31,6 +34,11 @@ enum class ApiEnvironment(val origin: String) {
     companion object {
         fun requireValidOrigin(value: String): String = validateOrigin(value)
     }
+}
+
+private fun validateLocalProofOrigin(value: String): String {
+    require(value == "http://127.0.0.1:18080") { "local proof origin must be the loopback proof address: $value" }
+    return value
 }
 
 private fun validateOrigin(value: String): String {

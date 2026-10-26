@@ -3,7 +3,8 @@
 Current assessment: [2026-10-25 remediation](MAP-15_20_REMEDIATION_20261025.md) supersedes earlier integration/acceptance claims. Historical evidence below is retained.
 
 Status: PARTIAL / INTEGRATION_PENDING
-Validation: scoped checks PASS; full phase acceptance PARTIAL (JVM clustering + discovery, real-phone list)
+Validation: scoped checks PASS; local real-data native pins PASS (2026-10-25);
+Abastevo-owned combined/electric native artwork remains PARTIAL
 Integration: INTEGRATION_PENDING
 
 Tested tree: `codex/map-ev-implementation` at `3ccb6988` plus MAP-18 changes.
@@ -34,6 +35,11 @@ Date: 2026-10-25. Prices and search remain MAP-19/20.
 - No `ABASTEVO_CLUSTER` in UI, no unknown/city-centroid pins, no native
   atlas/style changes (SDK `Gas`/`ChargingStation` symbols retained, so no
   admission update was needed).
+- 2026-10-25: KML station labels use the user-facing station name and clusters
+  use their count; the former `ABASTEVO:<uuid>`/`ABASTEVO_CLUSTER:<id>` labels
+  were removed. Selection now maps the exact rendered point back to the
+  canonical UUID, so identity is not exposed as map text. See the
+  [local MAP-20 acceptance](MAP-20_MINIMUM_LOCAL_20261025.md).
 
 ### Business Rules & Use Cases (Review Remediation)
 

@@ -24,6 +24,7 @@ type ProjectionItem struct {
 	Note          string
 	Helpful       int64
 	NotHelpful    int64
+	Operational   *chargingdomain.OperationalEvent
 }
 
 // Vote records one helpfulness vote (no self-votes: callers verify the
@@ -130,6 +131,7 @@ func Project(ctx context.Context, pool *pgxpool.Pool, placeID string, sinceDays 
 			price := int64(row.PriceMilliBrlPerKwh.Int32)
 			item.PriceMilliBRL = &price
 		}
+		item.Operational = operationalFromColumns(row.OperationalEvent, row.OperationalScope, row.OperationalGroupID, row.OperationalObservedAt)
 		out = append(out, item)
 	}
 	return out, nil
@@ -150,10 +152,14 @@ type OwnedObservation struct {
 	ObservedDay   string
 	Note          string
 	Revision      int64
+	Operational   *chargingdomain.OperationalEvent
 }
 
 // Mine returns up to limit owned observations, newest day first.
 func Mine(ctx context.Context, pool *pgxpool.Pool, accountID string, limit int) ([]OwnedObservation, error) {
+	return MineForPlace(ctx, pool, accountID, "", limit)
+}
+func MineForPlace(ctx context.Context, pool *pgxpool.Pool, accountID, placeID string, limit int) ([]OwnedObservation, error) {
 	if accountID == "" || limit < 1 || limit > 100 {
 		return nil, chargingdomain.ErrNotOwner
 	}
@@ -161,8 +167,15 @@ func Mine(ctx context.Context, pool *pgxpool.Pool, accountID string, limit int) 
 	if err != nil {
 		return nil, chargingdomain.ErrNotOwner
 	}
+	var place pgtype.UUID
+	if placeID != "" {
+		place, err = pgUUID(placeID)
+		if err != nil {
+			return nil, chargingdomain.ErrInvalidObservation
+		}
+	}
 	rows, err := charging.New(pool).ObservationsForAccount(ctx, charging.ObservationsForAccountParams{
-		AccountID: accountUUID, LimitPlusOne: int32(limit + 1),
+		AccountID: accountUUID, PlaceFilter: place, LimitPlusOne: int32(limit + 1),
 	})
 	if err != nil {
 		return nil, err
@@ -185,6 +198,7 @@ func Mine(ctx context.Context, pool *pgxpool.Pool, accountID string, limit int) 
 			price := int64(row.PriceMilliBrlPerKwh.Int32)
 			item.PriceMilliBRL = &price
 		}
+		item.Operational = operationalFromColumns(row.OperationalEvent, row.OperationalScope, row.OperationalGroupID, row.OperationalObservedAt)
 		out = append(out, item)
 	}
 	return out, nil

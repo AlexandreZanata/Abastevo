@@ -83,6 +83,30 @@ interface ChargingSnapshotDao {
     @Query("SELECT * FROM charging_snapshot_place WHERE profile = :profile AND generation = :generation AND tombstone = 0 ORDER BY place_id LIMIT :limit OFFSET :offset")
     suspend fun readPlaces(profile: String, generation: Long, limit: Int, offset: Int): List<ChargingSnapshotPlaceEntity>
 
+    /**
+     * MAP-27 bounded corridor prefilter. Latitude/longitude are stored as exact decimal text;
+     * the CAST exists only to bound the rows returned, never to claim a drivable distance.
+     * A room index is not added here: the snapshot is capped at 10,000 places and the caller
+     * asks for at most a few hundred rows.
+     */
+    @Query(
+        "SELECT * FROM charging_snapshot_place " +
+            "WHERE profile = :profile AND generation = :generation AND tombstone = 0 " +
+            "AND latitude IS NOT NULL AND longitude IS NOT NULL " +
+            "AND CAST(latitude AS REAL) BETWEEN :minLatitude AND :maxLatitude " +
+            "AND CAST(longitude AS REAL) BETWEEN :minLongitude AND :maxLongitude " +
+            "ORDER BY place_id LIMIT :limit",
+    )
+    suspend fun readPlacesInBounds(
+        profile: String,
+        generation: Long,
+        minLatitude: Double,
+        maxLatitude: Double,
+        minLongitude: Double,
+        maxLongitude: Double,
+        limit: Int,
+    ): List<ChargingSnapshotPlaceEntity>
+
     @Query("SELECT * FROM charging_snapshot_place WHERE place_id = :placeId AND profile = :profile AND generation = :generation AND tombstone = 0 LIMIT 1")
     suspend fun findPlace(placeId: String, profile: String, generation: Long): ChargingSnapshotPlaceEntity?
 
