@@ -55,6 +55,24 @@ Notes:
   `raw-perf.txt` and explicitly discarded; the three COLD samples are the evidence.
 - Static ELF alignment is not runtime execution. API 30/API 35 results are not API 26 proof.
 
+## Physical reference profile (4 KB, informational)
+
+The same `MapPerformanceInstrumentedTest` was run 3 times on the authorized phone
+`VKCQGAUCGYAMR4W4` (POCO/duchamp, Android 16/API 36, arm64-v8a, PAGE_SIZE 4096), with the
+admitted regional fixture and no network provider:
+
+| Metric | Samples | Same local budget | Result |
+|---|---|---|---|
+| Engine init | 439, 354, 363 ms | ≤ 15,000 ms | PASS (proxy) |
+| Real 1,800 m route | 125/46/51; 82/55/57; 85/59/64 ms | ≤ 5,000 ms | PASS |
+| Process PSS after routes | 276,902; 275,743; 277,633 KiB | ≤ 512 MiB | PASS (proxy) |
+| Cancel | 0, 0, 0 ms; 0 callbacks | ≤ 1,000 ms | PASS |
+| Cold app launch | 1250, 1210, 1125 ms | ≤ 4,000 ms | PASS |
+
+Raw: [raw-phone-perf.txt](map29/raw-phone-perf.txt). This is a **4 KB physical profile**, not a
+16 KB runtime proof; the emulator S2 remains the 16 KB profile. It also does not establish
+frame pacing, battery/GPS autonomy or low-end/national coverage.
+
 ## Functional regressions used
 
 - `EvTripRealEngineInstrumentedTest` OK (3.037 s), `EvTripUiInstrumentedTest` OK (20.339 s),

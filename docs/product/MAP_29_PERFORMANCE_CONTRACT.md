@@ -13,7 +13,8 @@ A result on an emulator is a proxy and is labelled as such.
   `Brazil_Parana_East.mwm`, World and WorldCoasts in app-private files; airplane/offline
   after installation; no external provider.
 - S3 low-resource/other-ABI profile: reported separately only if it actually executes. An
-  API 30/API 35 profile is never recorded as API 26 evidence.
+  API 30/API 35 profile is never recorded as API 26 evidence. A physical 4 KB arm64 profile
+  is recorded as an informational reference, not as 16 KB or battery proof.
 - S4 routing/planning: one 1.6 km real native route plus the MAP-27 planner bounded calls;
   cancellation and stale-callback checks.
 - S5 measured UI: the MAP-28 real flow (vehicle → map → plan → alternative → failure →
