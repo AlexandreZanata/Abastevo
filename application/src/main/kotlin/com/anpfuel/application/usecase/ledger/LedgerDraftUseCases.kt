@@ -32,11 +32,23 @@ class SaveLedgerDraftUseCase(
         draft: LedgerDraft,
         expectedRevision: Long,
         context: com.anpfuel.domain.premium.LedgerSessionContext? = null,
+        odometerEvidence: com.anpfuel.domain.premium.OdometerEvidence = com.anpfuel.domain.premium.OdometerEvidence.UNVERIFIED,
     ): StoredLedgerDraft {
         if (expectedRevision < 0) throw PremiumValidationException("invalid-revision")
         val accountId = sessions.load()?.accountId ?: "local"
-        return drafts.save(accountId, origin, draft, expectedRevision, nowMillis(), context)
+        return drafts.save(accountId, origin, draft, expectedRevision, nowMillis(), context, odometerEvidence)
     }
+    suspend fun reviewOdometer(
+        dataset: LedgerDataset, recordId: String, expectedBodySha256: String,
+        choice: com.anpfuel.domain.premium.OdometerReviewChoice,
+    ): StoredLedgerDraft {
+        if (!Regex("[0-9a-f]{64}").matches(expectedBodySha256)) throw PremiumValidationException("invalid-review-base")
+        val accountId = sessions.load()?.accountId ?: "local"
+        val reviewed = drafts.reviewOdometer(accountId, origin, dataset, recordId, expectedBodySha256, choice, nowMillis())
+        if ((sessions.load()?.accountId ?: "local") != accountId) throw PremiumValidationException("owner-scope-changed")
+        return reviewed
+    }
+
 }
 
 class EnqueueLedgerCommandUseCase(

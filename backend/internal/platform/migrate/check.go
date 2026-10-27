@@ -7,12 +7,17 @@ import (
 	"io/fs"
 )
 
-// Check verifies the complete expected schema ledger without applying DDL.
-// Missing, modified or unknown migrations make a binary incompatible; only
-// the explicit migrator may change the schema. Never disclose SQL/DSNs in
-// the public readiness result.
+// Check verifies the schema ledger against the embedded chain and the declared
+// compatibility floor without applying DDL. A newer additive schema is
+// accepted within the expand/contract window; missing or modified known
+// migrations remain incompatible. Only the explicit migrator may change the
+// schema. Never disclose SQL/DSNs in the public readiness result.
 func Check(ctx context.Context, pool *pgxpool.Pool, files fs.FS) error {
 	chain, err := loadMigrations(files)
+	if err != nil {
+		return err
+	}
+	min, err := loadMinSupported(files)
 	if err != nil {
 		return err
 	}
@@ -32,13 +37,5 @@ func Check(ctx context.Context, pool *pgxpool.Pool, files fs.FS) error {
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("migrate: ledger unavailable")
 	}
-	if len(recorded) != len(chain) {
-		return fmt.Errorf("migrate: incompatible schema")
-	}
-	for _, m := range chain {
-		if recorded[m.version] != m.checksum {
-			return fmt.Errorf("migrate: missing or modified migration %s", m.version)
-		}
-	}
-	return nil
+	return checkLedger(chain, min, recorded)
 }

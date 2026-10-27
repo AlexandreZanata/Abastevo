@@ -41,9 +41,25 @@ func datasetBit(dataset string) int32 {
 		return 2
 	case "preferences":
 		return 4
+	case "driver_earnings":
+		return 8
+	case "driver_distance":
+		return 16
+	case "driver_costs":
+		return 32
+	case "driver_maintenance":
+		return 64
 	}
 	return 0
 }
+func allDatasetMask() int32 {
+	var mask int32
+	for _, dataset := range domain.Datasets() {
+		mask |= datasetBit(dataset)
+	}
+	return mask
+}
+
 func normalizeBatch(b app.Batch) (app.Batch, error) {
 	if len(b.Commands) < 1 || len(b.Commands) > 50 || b.Epoch < 1 || b.ConsentRevision < 0 {
 		return b, domain.ErrInvalid

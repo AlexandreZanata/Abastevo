@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ledger_review_required">Vor dem Speichern die Einheit des alten Kilometerstands bestätigen.</string>
+    <string name="ledger_review_saved">Gespeicherte Zahl (Einheit ungeprüft): %1$d</string>
+    <string name="ledger_review_metres">%1$s km bestätigen (Zahl war in Metern)</string>
+    <string name="ledger_review_kilometres">%1$s km bestätigen (Zahl war in Kilometern)</string>
+    <string name="ledger_review_failed">Prüfung nicht gespeichert. Eintrag schließen und erneut öffnen.</string>
+    <string name="ledger_review_entry">Einheit des Kilometerstands prüfen</string>
+    <string name="monthly_review_required">Verbrauch und Kosten/km sind bis zur Prüfung alter Kilometerstände nicht verfügbar.</string>
+</resources>

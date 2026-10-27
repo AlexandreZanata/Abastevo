@@ -37,7 +37,7 @@ class BottomTabNavigationDeviceTest {
                 Column {
                     NavHost(controller, startDestination, Modifier.weight(1f)) {
                         listOf(
-                            Routes.HOME, Routes.COMMUNITY, Routes.PROFILE,
+                            Routes.HOME, Routes.COMMUNITY, Routes.MAP, Routes.PROFILE,
                             Routes.LOCATION, Routes.CONTRIBUTIONS,
                             Routes.SETTINGS, Routes.HELP, Routes.ONBOARDING,
                         ).forEach { route ->

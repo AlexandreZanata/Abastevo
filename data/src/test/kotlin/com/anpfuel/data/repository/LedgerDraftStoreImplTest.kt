@@ -24,6 +24,8 @@ class LedgerDraftStoreImplTest {
         Instant.parse("2026-03-15T10:30:00Z"), "UTC", 5000, ExpenseCategory.TOLLS, null, null,
     )
 
+    @org.junit.jupiter.api.BeforeEach fun prepare() { coEvery { dao.findByRecord(any(),any(),any(),any()) } returns null }
+
     @Test fun `save maps fields and decodes back`() = runTest {
         val captured = slot<LedgerDraftEntity>()
         coEvery { dao.upsert(capture(captured)) } returns Unit

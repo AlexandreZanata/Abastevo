@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ledger_review_required">Confirma la unidad de esta lectura anterior antes de guardar.</string>
+    <string name="ledger_review_saved">Número guardado (unidad sin confirmar): %1$d</string>
+    <string name="ledger_review_metres">Confirmar %1$s km (el número estaba en metros)</string>
+    <string name="ledger_review_kilometres">Confirmar %1$s km (el número estaba en kilómetros)</string>
+    <string name="ledger_review_failed">No se guardó la revisión. Cierra y abre el registro para comprobar sus valores actuales.</string>
+    <string name="ledger_review_entry">Revisar unidad del odómetro</string>
+    <string name="monthly_review_required">Consumo y coste/km no disponibles hasta revisar las lecturas anteriores.</string>
+</resources>

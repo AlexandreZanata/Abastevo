@@ -91,6 +91,11 @@
             android:foregroundServiceType="location" />
 
         <service
+            android:name=".ui.driver.work.DriverGpsService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <service
             android:name=".ui.map.TripRecordingService"
             android:exported="false"
             android:foregroundServiceType="location" />

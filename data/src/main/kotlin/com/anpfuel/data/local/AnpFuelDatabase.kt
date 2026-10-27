@@ -61,8 +61,21 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.saved.SavedTripPointEntity::class,
         com.anpfuel.data.local.saved.SavedTombstoneEntity::class,
         com.anpfuel.data.local.saved.SavedImportEntity::class,
+        com.anpfuel.data.local.entity.DriverShiftEntity::class,
+        com.anpfuel.data.local.entity.DriverShiftGapEntity::class,
+        com.anpfuel.data.local.entity.DriverEarningEntity::class,
+        com.anpfuel.data.local.entity.DriverEarningRevisionEntity::class,
+        com.anpfuel.data.local.entity.DriverDistanceEntity::class,
+        com.anpfuel.data.local.entity.DriverLocalCommandEntity::class,
+        com.anpfuel.data.local.entity.DriverDraftEntity::class,
+        com.anpfuel.data.local.entity.DriverPayoutEntity::class,
+        com.anpfuel.data.local.entity.DriverCostSettingEntity::class,
+        com.anpfuel.data.local.entity.DriverGpsObservationEntity::class,
+        com.anpfuel.data.local.entity.DriverReconciliationEntity::class,
+        com.anpfuel.data.local.entity.DriverGoalEntity::class,
+        com.anpfuel.data.local.entity.DriverMaintenanceEntity::class,
     ],
-    version = 28,
+    version = 32,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
@@ -80,6 +93,8 @@ abstract class AnpFuelDatabase : RoomDatabase() {
     abstract fun municipalityFtsDao(): MunicipalityFtsDao
 
     abstract fun vehicleDao(): VehicleDao
+
+    abstract fun driverLocalDao(): com.anpfuel.data.local.dao.DriverLocalDao
 
     abstract fun backendPriceCacheDao(): BackendPriceCacheDao
 

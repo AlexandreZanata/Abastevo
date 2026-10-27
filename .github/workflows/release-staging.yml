@@ -153,11 +153,11 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ needs.gate.outputs.sha }}
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: landing/package-lock.json
+      - name: Verify Node runtime
+        run: |
+          set -euo pipefail
+          node --version
+          node -e 'if (Number(process.versions.node.split(".")[0]) < 20) process.exit(1)'
       - name: Build landing for the staging origin
         run: |
           set -euo pipefail
@@ -317,6 +317,15 @@ jobs:
             printf '%s\n' "no migrations found" >&2
             exit 1
           fi
+          schema_min_supported="$(tr -d '[:space:]' < backend/db/migrations/schema_min_supported)"
+          if [[ ! "$schema_min_supported" =~ ^[0-9]{6}$ ]]; then
+            printf '%s\n' "invalid schema_min_supported declaration" >&2
+            exit 1
+          fi
+          if [[ "$schema_min_supported" > "$migrations_max" ]]; then
+            printf '%s\n' "schema_min_supported is newer than the migration chain" >&2
+            exit 1
+          fi
           test -s images/image-api.json
           test -s images/image-worker.json
           test -s images/image-migrate.json
@@ -326,13 +335,14 @@ jobs:
             --arg created_at "$created_at" \
             --arg landing_sha256 "$landing_sha256" \
             --arg migrations_max "$migrations_max" \
+            --arg schema_min_supported "$schema_min_supported" \
             --arg workflow_run_url "$WORKFLOW_RUN_URL" \
             --slurpfile api images/image-api.json \
             --slurpfile worker images/image-worker.json \
             --slurpfile migrate images/image-migrate.json \
-            '{schema: $schema, sha: $sha, created_at: $created_at, images: {api: $api[0].ref, worker: $worker[0].ref, migrate: $migrate[0].ref}, landing_sha256: $landing_sha256, migrations_max: $migrations_max, workflow_run_url: $workflow_run_url}' \
+            '{schema: $schema, sha: $sha, created_at: $created_at, images: {api: $api[0].ref, worker: $worker[0].ref, migrate: $migrate[0].ref}, landing_sha256: $landing_sha256, migrations_max: $migrations_max, schema_min_supported: $schema_min_supported, workflow_run_url: $workflow_run_url}' \
             > release-manifest.json
-          jq -e '.schema == "abastevo-release-manifest-v1" and (.sha | test("^[0-9a-f]{40}$")) and ((.images | keys) == ["api", "migrate", "worker"]) and ([.images[] | test("@sha256:[0-9a-f]{64}$")] | all) and (.landing_sha256 | test("^[0-9a-f]{64}$")) and (.migrations_max | test("^[0-9]{6}$"))' release-manifest.json > /dev/null
+          jq -e '.schema == "abastevo-release-manifest-v1" and (.sha | test("^[0-9a-f]{40}$")) and ((.images | keys) == ["api", "migrate", "worker"]) and ([.images[] | test("@sha256:[0-9a-f]{64}$")] | all) and (.landing_sha256 | test("^[0-9a-f]{64}$")) and (.migrations_max | test("^[0-9]{6}$")) and (.schema_min_supported | test("^[0-9]{6}$")) and (.schema_min_supported <= .migrations_max)' release-manifest.json > /dev/null
       - name: Sign release manifest keyless
         run: |
           set -euo pipefail
@@ -351,11 +361,20 @@ jobs:
           set -euo pipefail
           owner_lc="$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')"
           repository="ghcr.io/${owner_lc}/abastevo-release"
+          landing_sha256="$(jq -r '.landing_sha256' release-manifest.json)"
+          landing_digest="sha256:$(sha256sum landing-bundle/landing-dist.tar.gz | cut -d' ' -f1)"
+          if [[ "$landing_digest" != "sha256:${landing_sha256}" ]]; then
+            printf '%s\n' "landing archive does not match the signed manifest" >&2
+            exit 1
+          fi
           printf '%s' "$GH_TOKEN" | oras login ghcr.io --username "$ACTOR" --password-stdin
           oras push "${repository}:sha-${SHA}" \
             --artifact-type application/vnd.abastevo.release.v1+json \
             "release-manifest.json:application/vnd.abastevo.release.manifest.v1+json" \
-            "release-manifest.sigstore.json:application/vnd.dev.sigstore.bundle.v0.3+json"
+            "release-manifest.sigstore.json:application/vnd.dev.sigstore.bundle.v0.3+json" \
+            "landing-bundle/landing-dist.tar.gz:application/vnd.abastevo.landing.tar+gzip"
+          oras manifest fetch "${repository}:sha-${SHA}" \
+            | jq -e --arg digest "$landing_digest" '[.layers[] | select(.mediaType == "application/vnd.abastevo.landing.tar+gzip")] | length == 1 and .[0].digest == $digest' >/dev/null
           oras tag "${repository}:sha-${SHA}" staging
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
