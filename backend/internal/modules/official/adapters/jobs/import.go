@@ -3,7 +3,9 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -19,7 +21,7 @@ import (
 
 // ParserVersion versions the parse-normalize pipeline: same bytes under a
 // new version reprocess traceably instead of no-op.
-const ParserVersion = "anp-v1"
+const ParserVersion = "anp-v2"
 
 // Import fetches one discovered file and publishes it through the existing
 // pipeline: fetch, parse, kernel normalization, station resolution, staged
@@ -156,7 +158,16 @@ func normalizeRow(row anp.Row, tally *odomain.QuarantineTally) (normalizedRow, b
 		return out, false
 	}
 	rawPrice := row.Cells["PRECO"]
-	price, err := kernel.ParsePrice(product, unit, sourcePriceText(rawPrice))
+	priceText := sourcePriceText(rawPrice)
+	price, err := kernel.ParsePrice(product, unit, priceText)
+	if errors.Is(err, kernel.ErrOverPrecision) {
+		if exact, ok := admitFloatNoise(priceText); ok {
+			price, err = kernel.ParsePrice(product, unit, exact)
+			if err == nil {
+				tally.Admit("float-noise")
+			}
+		}
+	}
 	if err != nil {
 		tally.Add(kernel.QuarantineCode(err), row.Cells["CNPJ"])
 		return out, false
@@ -200,6 +211,43 @@ func sourcePriceText(text string) string {
 		return strings.Replace(text, ".", ",", 1)
 	}
 	return text
+}
+
+// admitFloatNoise implements B-BR-002a for comma-decimal workbook text with
+// more than three fraction digits: it returns the exact three-decimal text
+// only when the value is the float64 nearest a three-decimal amount, i.e.
+// IEEE-754 storage noise rather than a real sub-milli price. Text longer than
+// a float64 serialization (17 significant digits) is a real decimal and is
+// never admitted.
+func admitFloatNoise(text string) (string, bool) {
+	intPart, fracPart, found := strings.Cut(text, ",")
+	if !found || len(fracPart) <= 3 || !digitsOnly(intPart) || !digitsOnly(fracPart) {
+		return "", false
+	}
+	if len(strings.TrimLeft(intPart+fracPart, "0")) > 17 {
+		return "", false
+	}
+	v, err := strconv.ParseFloat(intPart+"."+fracPart, 64)
+	if err != nil || v <= 0 || v > float64(kernel.MaxMilliBRL)/1000 {
+		return "", false
+	}
+	m := int64(math.Round(v * 1000))
+	if float64(m)/1000 != v {
+		return "", false
+	}
+	return fmt.Sprintf("%d,%03d", m/1000, m%1000), true
+}
+
+func digitsOnly(text string) bool {
+	if text == "" {
+		return false
+	}
+	for _, r := range text {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func padSourceCNPJ(text string) string {

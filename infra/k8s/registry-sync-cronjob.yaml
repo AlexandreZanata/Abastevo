@@ -8,7 +8,9 @@ metadata:
   namespace: abastevo-temp
   labels: {app: abastevo-registry-sync}
 spec:
-  schedule: "0 3 * * *"
+  # Off the top of the hour: host-wide jobs cluster at :00, and the refresh
+  # refuses to start above the load reserve (it waits --budget-wait first).
+  schedule: "17 3 * * *"
   timeZone: America/Cuiaba
   concurrencyPolicy: Forbid
   suspend: true

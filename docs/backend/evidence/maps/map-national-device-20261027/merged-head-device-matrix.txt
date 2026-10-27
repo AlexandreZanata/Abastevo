@@ -1,0 +1,35 @@
+Device POCO 2311DRK48G (VKCQGAUCGYAMR4W4), 2026-10-27
+Tree: merge head b1b85f94 + MapDownloadWorkerTest fix ed4f685f
+Command: ANDROID_SERIAL=VKCQGAUCGYAMR4W4 ./gradlew --offline :app/:maps:engine/:data:connectedDebugAndroidTest (class filter below)
+
+== app (map, navigation, home, staging reads)
+PASS MapScreenInstrumentedTest 13/13
+PASS SavedPlacesDeviceTest 3/3
+SKIP MapOfflineJourneyInstrumentedTest 2 skipped by the test assumptions
+SKIP StagingAnonymousReadDeviceTest 1 skipped by the test assumption
+PASS StagingDirectorySyncDeviceTest 1/1, 3 skipped by the test assumptions
+FAIL MapRouteInstrumentedTest 0/1   productionMapTabInitializesOnceAndSurvivesLifecycle: recenter control never leaves the tree after switching tab (10 s timeout)
+FAIL NativeRouteScreenInstrumentedTest 0/1   native-route-open not found: the route button is only composed when the compact controls are expanded
+FAIL BottomTabNavigationDeviceTest 3/5   route "map" not in the nav graph (fixed by PR #157 test changes, not in this tree)
+FAIL HomeScreenTest 7/11   ambiguous "Community"/"ANP" text, missing tank-fill placeholder, hero contribution routes to capture
+FAIL TrainingConsentDeviceTest 1/3   no scrollable parent for the bundled terms
+
+== maps:engine (all classes)
+PASS MapHostInstrumentedTest 4/4
+PASS MapHostLifecycleInstrumentedTest 1/1
+PASS MapHostRealEngineInstrumentedTest 1/1
+PASS MapOverlayListAccessibilityTest 2/2
+PASS MapOverlayListInstrumentedTest 1/1
+FAIL GuidanceEngineInstrumentedTest 0/1   admitted regional fixture is required
+
+== data
+PASS MapDownloadWorkerTest 7/7 (with ed4f685f)
+PASS MapPersistenceInstrumentedTest 1/1
+PASS MapNativeLayoutInstrumentedTest 1/1
+
+== Control run on pure origin/dev 6f8b82b5 (same device, same day)
+FAIL MapRouteInstrumentedTest            identical timeout
+FAIL NativeRouteScreenInstrumentedTest   identical missing native-route-open
+=> both route failures predate the national merge; they come from the dev
+   persistent-host / compact-panel UI, whose own evidence ran only
+   MapScreenInstrumentedTest. No failure above touches pin tiers.

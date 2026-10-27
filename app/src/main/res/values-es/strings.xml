@@ -673,6 +673,9 @@
     <string name="server_station_quality_reviewed">Ubicación revisada</string>
     <string name="server_station_quality_centroid">Ubicación aproximada de la ciudad</string>
     <string name="server_station_quality_unknown">Ubicación sin verificar</string>
+    <string name="server_station_quality_osm_mapped">Mapeado por la comunidad de OpenStreetMap</string>
+    <string name="server_station_quality_anp_reported">Ubicación informada por la ANP</string>
+    <string name="server_station_quality_address_point">Ubicación aproximada por la dirección (IBGE)</string>
     <string name="server_station_unknown_location">Ubicación sin verificar; se muestra sin coordenadas.</string>
     <string name="server_station_cached">Se muestran los últimos datos de la caché sin conexión.</string>
     <string name="server_stations_unavailable">Directorio del servidor no disponible. La consulta oficial ANP sigue funcionando.</string>
@@ -1122,6 +1125,9 @@
     <string name="map_location_reviewed">Ubicación revisada</string>
     <string name="map_location_city_centroid">Ubicación aproximada de la ciudad</string>
     <string name="map_location_unknown">Ubicación desconocida</string>
+    <string name="map_location_osm_mapped">Mapeado por la comunidad de OpenStreetMap</string>
+    <string name="map_location_anp_reported">Ubicación informada por la ANP</string>
+    <string name="map_location_address_point">Ubicación aproximada por la dirección (IBGE)</string>
     <string name="map_sheet_source_label">Fuente: %1$s</string>
     <string name="map_sheet_location_label">Ubicación: %1$s</string>
     <string name="map_sheet_loading_price">Cargando precio…</string>

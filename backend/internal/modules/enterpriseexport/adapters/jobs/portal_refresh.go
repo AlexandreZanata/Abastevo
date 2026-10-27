@@ -70,6 +70,13 @@ type RefreshState struct {
 	GenerationSeconds        int64  `json:"generation_seconds,omitempty"`
 	ExportToReleaseSeconds   int64  `json:"export_to_release_seconds,omitempty"`
 	ObservedToReleaseSeconds int64  `json:"observed_to_release_seconds,omitempty"`
+	// FailedBudget is the budget key of a deterministic budget failure for
+	// ExportContentSHA256; identical inputs are not regenerated.
+	FailedBudget string `json:"failed_budget,omitempty"`
+	// GenerationKey is portalgen.GenerationKey of the released/noop build;
+	// a different key (new generator, assets, search script or options)
+	// regenerates even when export and source pins are unchanged.
+	GenerationKey string `json:"generation_key,omitempty"`
 }
 
 // Refresh turns the latest durable export candidate into a verified portal
@@ -81,7 +88,10 @@ type Refresh struct {
 	PortalRoot       string
 	SiteURL          string
 	SearchScriptPath string
-	Indexable        bool
+	// LandingURL is the optional landing origin for the shared portal
+	// header/footer; empty keeps the portal-only chrome.
+	LandingURL string
+	Indexable  bool
 	// OfficialOnly restricts the pipeline to the admitted official-records
 	// slice: generation, verification, promotion, rollback and withdrawal
 	// all run in official-only mode, and withdrawal never falls back to a
@@ -173,11 +183,26 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 	if r.OfficialOnly && state.Official == nil {
 		return r.fail(refresh, now, payload, state, fmt.Errorf("enterprise portal refresh: official-only refresh requires a published official revision"))
 	}
+	genOpts := portalgen.Options{
+		Indexable: r.Indexable, SiteURL: r.SiteURL, SearchScriptPath: r.SearchScriptPath,
+		LandingURL: r.LandingURL, MaxPages: r.MaxPages, MaxBytes: r.MaxBytes, OfficialOnly: r.OfficialOnly,
+	}
+	generationKey, err := portalgen.GenerationKey(genOpts)
+	if err != nil {
+		return r.fail(refresh, now, payload, state, err)
+	}
 	if (refresh.LastOutcome == "released" || refresh.LastOutcome == "noop") &&
+		refresh.GenerationKey == generationKey &&
 		state.ContentSHA256 == refresh.ExportContentSHA256 &&
 		sameRefreshPin(refresh, state.Official) &&
 		current.ContentSHA256 != "" && current.ContentSHA256 == refresh.PortalContentSHA256 {
 		return r.recordNoop(refresh, now, payload, state, current, "noop")
+	}
+	if refresh.LastOutcome == "failed" && refresh.FailedBudget != "" &&
+		refresh.FailedBudget == r.budgetKey() &&
+		state.ContentSHA256 == refresh.ExportContentSHA256 && sameRefreshPin(refresh, state.Official) {
+		// Same snapshot, same budgets: regenerating would fail identically.
+		return r.fail(refresh, now, payload, state, &portalgen.BudgetError{Msg: refresh.LastError})
 	}
 	candidate, err := refreshCandidateDir(r.PortalRoot, now)
 	if err != nil {
@@ -187,11 +212,8 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 		return r.fail(refresh, now, payload, state, err)
 	}
 	started := r.now()
-	generated, err := r.generate(portalgen.Options{
-		SnapshotDir: state.CandidateDir, OutputDir: candidate,
-		Indexable: r.Indexable, SiteURL: r.SiteURL, SearchScriptPath: r.SearchScriptPath,
-		MaxPages: r.MaxPages, MaxBytes: r.MaxBytes, OfficialOnly: r.OfficialOnly,
-	})
+	genOpts.SnapshotDir, genOpts.OutputDir = state.CandidateDir, candidate
+	generated, err := r.generate(genOpts)
 	if err != nil {
 		_ = os.RemoveAll(candidate)
 		return r.fail(refresh, now, payload, state, err)
@@ -219,6 +241,7 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 		refresh.PortalContentSHA256 = current.ContentSHA256
 		refresh.ReleasedAt = current.PromotedAt
 		refresh.GenerationSeconds = secondsBetweenTimes(started, portalBuilt)
+		refresh.GenerationKey = generationKey
 		fillRefreshSource(&refresh, state.Official, status)
 		return writeRefreshState(r.PortalRoot, refresh)
 	}
@@ -253,6 +276,7 @@ func (r Refresh) Handle(ctx context.Context, job platformjobs.Job) error {
 	refresh.GenerationSeconds = secondsBetweenTimes(started, portalBuilt)
 	refresh.ExportToReleaseSeconds = secondsBetween(state.BuiltAt, released)
 	refresh.ObservedToReleaseSeconds = secondsBetween(observed, released)
+	refresh.GenerationKey = generationKey
 	fillRefreshSource(&refresh, state.Official, status)
 	return writeRefreshState(r.PortalRoot, refresh)
 }
@@ -339,12 +363,21 @@ func (r Refresh) withdraw(refresh RefreshState, now time.Time, payload RefreshPa
 	return writeRefreshState(r.PortalRoot, refresh)
 }
 
+func (r Refresh) budgetKey() string {
+	return portalgen.BudgetKey(r.MaxPages, r.MaxBytes)
+}
+
 func (r Refresh) fail(refresh RefreshState, now time.Time, payload RefreshPayload, state State, cause error) error {
 	trigger, observed := refreshObservation(payload, state, now)
 	refresh.SchemaVersion = RefreshStateSchema
 	refresh.LastAttemptAt = now.UTC().Format(time.RFC3339)
 	refresh.LastOutcome = "failed"
 	refresh.LastError = truncateRefreshError(cause.Error())
+	refresh.FailedBudget = ""
+	var budget *portalgen.BudgetError
+	if errors.As(cause, &budget) {
+		refresh.FailedBudget = r.budgetKey()
+	}
 	refresh.Trigger = trigger
 	refresh.ObservedAt = observed
 	if state.SchemaVersion != "" {

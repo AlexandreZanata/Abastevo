@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 )
 
 // PublicProfile is the anonymous read DTO: station identity plus the
@@ -129,7 +130,7 @@ func ReadProfile(ctx context.Context, store ProfileStore, read StationReader, st
 		return PublicProfile{}, err
 	}
 	profile := PublicProfile{
-		StationID: stationID, DisplayName: display, LocationQuality: quality,
+		StationID: stationID, DisplayName: kernel.PublicStationName(display, ""), LocationQuality: quality,
 		Latitude: lat, Longitude: lon,
 		PolicyVersion: stored.PolicyVersion, Revision: stored.Revision,
 		Business: stored.Business, HasBadge: false,

@@ -251,9 +251,9 @@ func (r *Repository) StationPairDistanceM(ctx context.Context, a, b string) (flo
 }
 
 // RecordLocation appends one location revision. A missing point stays NULL
-// in storage; quality records why (unknown, city-centroid, reviewed).
+// in storage; quality records why (unknown, city-centroid or a pin tier).
 func (r *Repository) RecordLocation(ctx context.Context, rev domain.LocationRevision) (domain.LocationRevision, error) {
-	// Any spelled quality records; only reviewed ones may project later.
+	// Any spelled quality records; only pin tiers may project later.
 	if _, err := domain.ParseQuality(rev.Quality); err != nil {
 		return domain.LocationRevision{}, err
 	}
@@ -293,8 +293,9 @@ func (r *Repository) RecordLocation(ctx context.Context, rev domain.LocationRevi
 	return rev, nil
 }
 
-// ProjectLocation sets the reviewed projection from a stored revision.
-// Non-reviewed or point-less revisions fail in the domain before any write.
+// ProjectLocation sets the pin-tier projection from a stored revision.
+// Non-pin or point-less revisions fail in the domain before any write, and a
+// lower tier never replaces a higher current projection.
 func (r *Repository) ProjectLocation(ctx context.Context, stationID, revisionID string) (domain.Station, error) {
 	stationUUID, err := mustUUID(stationID)
 	if err != nil {
@@ -327,6 +328,13 @@ func (r *Repository) ProjectLocation(ctx context.Context, stationID, revisionID 
 	}
 	if err := rev.Projected(); err != nil {
 		return domain.Station{}, err
+	}
+	current, err := r.Station(ctx, stationID)
+	if err != nil {
+		return domain.Station{}, err
+	}
+	if !domain.MayReplace(current.CurrentQuality, found.Quality) {
+		return domain.Station{}, domain.ErrLowerTier
 	}
 	if err := q.UpdateStationProjection(ctx, directory.UpdateStationProjectionParams{
 		ID:         stationUUID,

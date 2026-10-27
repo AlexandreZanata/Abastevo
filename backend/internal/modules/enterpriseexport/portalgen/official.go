@@ -165,6 +165,9 @@ type fiscalizacaoPage struct {
 	Ambiguous  int
 	Total      int
 	SourceInfo string
+	// SearchRelease enables the record search when the build carries the
+	// fiscal search file (full builds only).
+	SearchRelease string
 }
 
 type fiscalizacaoRecordPage struct {
@@ -436,6 +439,9 @@ func (g *generator) generateOfficial(official *officialDataset, stations map[str
 			Linked: pin.AssociationCensus.Linked, Unmatched: pin.AssociationCensus.Unmatched + pin.AssociationCensus.WrongBranch + pin.AssociationCensus.SuccessionReview,
 			Ambiguous: pin.AssociationCensus.Ambiguous, Total: pin.Rows,
 			SourceInfo: valueOr(pin.SourcePeriod, pin.Edition),
+		}
+		if g.searchFiscal {
+			data.SearchRelease = g.searchRelease
 		}
 		path := "fiscalizacao/index.html"
 		if page > 1 {

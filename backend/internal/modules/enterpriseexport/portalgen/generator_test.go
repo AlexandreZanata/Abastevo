@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -161,8 +162,10 @@ func TestGenerateFixturePages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Pages != 18 || result.Files != 28 {
-		t.Fatalf("result = %+v, want 18 pages and 28 files", result)
+	// 28 page/asset/download files + 15 search index files: 10 prefix shards
+	// (7 name terms, 3 CNPJ prefixes), 2 cities, 2 fuels and indice.json.
+	if result.Pages != 18 || result.Files != 43 {
+		t.Fatalf("result = %+v, want 18 pages and 43 files", result)
 	}
 	for _, page := range []string{
 		"consultar/index.html", "precos/index.html", "precos/uf/SP/index.html",
@@ -188,9 +191,8 @@ func TestGenerateFixturePages(t *testing.T) {
 	consultar := readPortal(t, out, "consultar/index.html")
 	for _, want := range []string{
 		"São Paulo (SP)", "Minas Gerais (MG)", "5 postos", "1 posto",
-		`data-portal-search`, `data-release="fixture"`, `data-shard-base="/dados/busca/"`,
-		`<option value="SP">São Paulo</option>`, `<option value="sem-uf">Sem UF</option>`,
-		`data-search-query`, `data-search-status`,
+		`data-portal-finder`, `data-release="fixture"`, `data-shard-base="/dados/busca/"`,
+		`data-finder-input`, `data-finder-suggestions`, `data-finder-status`, `data-finder-results`,
 	} {
 		if !strings.Contains(consultar, want) {
 			t.Errorf("consultar missing %q", want)
@@ -338,7 +340,7 @@ func TestGenerateFixturePages(t *testing.T) {
 		t.Fatal(err)
 	}
 	if manifest.InputContentSHA256 != "sha256:fixture" || manifest.Pages != result.Pages ||
-		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 27 {
+		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 42 {
 		t.Errorf("portal manifest = %+v", manifest)
 	}
 }
@@ -566,8 +568,8 @@ func TestRegionalSearchShardIsBounded(t *testing.T) {
 	if len(sp) >= len(national) || spGzip >= nationalGzip {
 		t.Errorf("regional shard is not smaller than the national locator")
 	}
-	if spGzip > 250*1024 {
-		t.Errorf("regional SP gzip shard exceeds 250 KiB: %d", spGzip)
+	if int64(spGzip) > DefaultMaxShardGzip {
+		t.Errorf("regional SP gzip shard exceeds the shard budget: %d", spGzip)
 	}
 }
 
@@ -728,8 +730,10 @@ func TestOfficialRecordsPages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Pages != 21 || result.Files != 31 {
-		t.Fatalf("result = %+v, want 21 pages and 31 files", result)
+	// 31 page/asset/download files + 16 search index files (the 15 above
+	// plus fiscalizacao.json).
+	if result.Pages != 21 || result.Files != 47 {
+		t.Fatalf("result = %+v, want 21 pages and 47 files", result)
 	}
 	index := readPortal(t, out, "fiscalizacao/index.html")
 	indexLower := strings.ToLower(index)
@@ -1045,5 +1049,25 @@ func TestLandingURLSharedChrome(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "invalid landing URL") {
 			t.Errorf("LandingURL %q accepted: %v", bad, err)
 		}
+	}
+}
+
+func TestGenerationBudgetErrorsAreTyped(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "portal")
+	_, err := Generate(Options{SnapshotDir: writeFixture(t), OutputDir: out, MaxPages: 1})
+	var budget *BudgetError
+	if !errors.As(err, &budget) || err.Error() != "portalgen: page budget exceeded" {
+		t.Fatalf("page budget breach not typed: %v", err)
+	}
+}
+
+func TestDefaultBudgetsFitMeasuredNationalScale(t *testing.T) {
+	// Real staging edition 2026-10-26: 52,578 pages (48,750 stations) and a
+	// 461,000-byte gzip SP shard (8,381 stations).
+	if defaultMaxPages < 52_578*3/2 {
+		t.Fatalf("page budget %d lacks headroom over the measured national portal", defaultMaxPages)
+	}
+	if DefaultMaxShardGzip < 461_000 {
+		t.Fatalf("shard budget %d is below the measured real SP shard", DefaultMaxShardGzip)
 	}
 }

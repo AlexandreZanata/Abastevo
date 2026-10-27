@@ -3,6 +3,7 @@ package com.anpfuel.data.remote
 import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
+import com.anpfuel.domain.discovery.StationLocationQuality
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -82,6 +83,44 @@ class DirectoryStationJsonCodecTest {
         assertEquals(1, items.size)
         assertEquals(120.5, items[0].distanceMeters)
         assertEquals("d6c74c23-63db-4c24-a2e5-408cb23bad26", items[0].station.stationId)
+    }
+
+    @Test
+    fun `decodes every widened pin tier and tolerates an unrecognised future tier`() {
+        fun item(id: String, quality: String, coordinates: String) = """
+            {"station_id": "$id", "display_name": "Posto $quality", "location_quality": "$quality",
+             "coordinates": $coordinates}
+        """
+        val pin = """{"lat": -23.55, "lon": -46.63}"""
+        val payload = """
+        {
+          "items": [
+            ${item("11111111-1111-4111-8111-111111111111", "osm-mapped", pin)},
+            ${item("22222222-2222-4222-8222-222222222222", "anp-reported", pin)},
+            ${item("33333333-3333-4333-8333-333333333333", "address-point", pin)},
+            ${item("44444444-4444-4444-8444-444444444444", "drone-surveyed", pin)},
+            ${item("55555555-5555-4555-8555-555555555555", "city-centroid", "null")}
+          ],
+          "next_cursor": null
+        }
+        """.trimIndent()
+
+        val items = DirectoryStationJsonCodec.decodeList(payload).items
+
+        assertEquals(5, items.size)
+        assertEquals(
+            listOf(
+                StationLocationQuality.OSM_MAPPED,
+                StationLocationQuality.ANP_REPORTED,
+                StationLocationQuality.ADDRESS_POINT,
+                StationLocationQuality.UNKNOWN,
+                StationLocationQuality.CITY_CENTROID,
+            ),
+            items.map { it.locationQuality },
+        )
+        assertEquals(listOf(true, true, true, false, false), items.map { it.hasPin })
+        assertEquals(-23.55, items[2].latitude)
+        assertNull(items[4].latitude)
     }
 
     @Test

@@ -110,6 +110,9 @@ fun MapBottomSheet(
     }
     val locationQualityLabel = when (marker.locationQuality) {
         MapStationLocationQuality.REVIEWED -> stringResource(R.string.map_location_reviewed)
+        MapStationLocationQuality.OSM_MAPPED -> stringResource(R.string.map_location_osm_mapped)
+        MapStationLocationQuality.ANP_REPORTED -> stringResource(R.string.map_location_anp_reported)
+        MapStationLocationQuality.ADDRESS_POINT -> stringResource(R.string.map_location_address_point)
         MapStationLocationQuality.CITY_CENTROID -> stringResource(R.string.map_location_city_centroid)
         MapStationLocationQuality.UNKNOWN -> stringResource(R.string.map_location_unknown)
     }

@@ -22,7 +22,7 @@ func main() {
 	flag.Int64Var(&maxBytes, "max-bytes", 0, "maximum total bytes (default 2 GiB)")
 	flag.Int64Var(&maxHTML, "max-html-gzip", 0, "maximum gzip bytes per HTML page (default 100 KiB)")
 	flag.Int64Var(&maxScript, "max-script-gzip", 0, "maximum gzip bytes per script (default 100 KiB)")
-	flag.Int64Var(&maxShard, "max-shard-gzip", 0, "maximum gzip bytes per search shard (default 250 KiB)")
+	flag.Int64Var(&maxShard, "max-shard-gzip", 0, "maximum gzip bytes per search shard (default 512 KiB)")
 	flag.BoolVar(&officialOnly, "official-only", false, "require an official-only artifact (no price/station/search/download routes)")
 	flag.Parse()
 	if artifact == "" {

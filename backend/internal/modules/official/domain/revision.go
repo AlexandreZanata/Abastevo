@@ -94,6 +94,18 @@ type PriceRow struct {
 type QuarantineTally struct {
 	Counts  map[string]int64
 	Samples []string
+	// Admitted counts rows a documented source rule admitted (B-BR-002a
+	// float-noise). They stage normally and never count as quarantined;
+	// the run's review evidence records them apart.
+	Admitted map[string]int64
+}
+
+// Admit records one row a documented source rule admitted.
+func (q *QuarantineTally) Admit(ruleCode string) {
+	if q.Admitted == nil {
+		q.Admitted = map[string]int64{}
+	}
+	q.Admitted[ruleCode]++
 }
 
 // Add records one skipped row; samples stop growing at 20 entries.

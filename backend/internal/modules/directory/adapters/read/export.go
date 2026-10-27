@@ -80,7 +80,7 @@ func (r *ExportReader) ExportPage(ctx context.Context, afterID string, limit int
 			return nil, "", err
 		}
 		quality := row.CurrentQuality.String
-		if coords == nil || quality != domain.QualityReviewed {
+		if coords == nil || !domain.IsPin(quality) {
 			coords = nil
 			if quality == "" {
 				quality = domain.QualityUnknown

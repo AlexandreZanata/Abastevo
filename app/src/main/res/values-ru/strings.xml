@@ -673,6 +673,9 @@
     <string name="server_station_quality_reviewed">Проверенное местоположение</string>
     <string name="server_station_quality_centroid">Примерное местоположение в городе</string>
     <string name="server_station_quality_unknown">Местоположение не проверено</string>
+    <string name="server_station_quality_osm_mapped">Нанесено сообществом OpenStreetMap</string>
+    <string name="server_station_quality_anp_reported">Местоположение по данным ANP</string>
+    <string name="server_station_quality_address_point">Примерное местоположение по адресу (IBGE)</string>
     <string name="server_station_unknown_location">Местоположение не проверено · показано без координат.</string>
     <string name="server_station_cached">Показаны последние известные данные из офлайн-кэша.</string>
     <string name="server_stations_unavailable">Серверный каталог недоступен. Просмотр официальных данных ANP работает.</string>
@@ -1122,6 +1125,9 @@
     <string name="map_location_reviewed">Проверенные координаты</string>
     <string name="map_location_city_centroid">Примерное положение города</string>
     <string name="map_location_unknown">Координаты неизвестны</string>
+    <string name="map_location_osm_mapped">Нанесено сообществом OpenStreetMap</string>
+    <string name="map_location_anp_reported">Местоположение по данным ANP</string>
+    <string name="map_location_address_point">Примерное местоположение по адресу (IBGE)</string>
     <string name="map_sheet_source_label">Источник: %1$s</string>
     <string name="map_sheet_location_label">Координаты: %1$s</string>
     <string name="map_sheet_loading_price">Загрузка цены…</string>

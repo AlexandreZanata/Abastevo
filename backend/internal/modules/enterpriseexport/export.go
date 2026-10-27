@@ -20,13 +20,14 @@ import (
 	"time"
 
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	officialapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
 )
 
 const (
 	SchemaVersion     = "enterprise-export-v1"
 	ContentVersion    = "1"
-	PublicFieldPolicy = "esp-01"
+	PublicFieldPolicy = "esp-02"
 
 	defaultPageSize     = 500
 	defaultMaxStations  = 100_000
@@ -248,7 +249,7 @@ func (b Builder) Build(ctx context.Context, opts Options) (Manifest, error) {
 			row := Station{
 				StationID:          station.ID,
 				CNPJ:               station.CNPJ,
-				DisplayName:        station.DisplayName,
+				DisplayName:        kernel.PublicStationName(station.DisplayName, station.CNPJ),
 				Address:            publicAddress(station.Address),
 				MunicipalityCode:   station.MunicipalityCode,
 				State:              station.State,

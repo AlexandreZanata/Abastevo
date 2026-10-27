@@ -10,6 +10,7 @@ import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
 import com.anpfuel.domain.discovery.StationLocationQuality
+import com.anpfuel.domain.discovery.bestPinnedStation
 import com.anpfuel.domain.repository.MunicipalityCatalogRepository
 import com.anpfuel.domain.repository.ServerStationCache
 import com.anpfuel.domain.repository.ServerStationGateway
@@ -216,17 +217,16 @@ class MapDiscoveryViewModel @Inject constructor(
             try {
                 val page = stations.listInMunicipality(code, 100, null)
                 if (gen != generation) return@launch
-                val reviewed = page.items.firstOrNull {
-                    it.locationQuality == StationLocationQuality.REVIEWED && it.latitude != null && it.longitude != null
-                }
-                _ui.update { it.copy(cityLocationUnknown = reviewed == null, offlineCached = false) }
+                // Center on the best pin tier (reviewed > osm-mapped > anp-reported > address-point).
+                val pinned = page.items.bestPinnedStation()
+                _ui.update { it.copy(cityLocationUnknown = pinned == null, offlineCached = false) }
                 saveMapCache(code, page.items)
                 pushMarkers(
                     page.items.mapNotNull { it.toMarker() }, gen,
                     page.items.filter { it.latitude == null || it.longitude == null },
                 )
-                if (reviewed != null) {
-                    engine.setViewport(checkNotNull(reviewed.latitude), checkNotNull(reviewed.longitude), 13)
+                if (pinned != null) {
+                    engine.setViewport(checkNotNull(pinned.latitude), checkNotNull(pinned.longitude), 13)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -557,7 +557,7 @@ class MapDiscoveryViewModel @Inject constructor(
 
     /**
      * B-BR-MAP-UNPINNED-SELECT-01: Select any station by canonical UUID,
-     * whether pinned (REVIEWED), unpinned (CITY_CENTROID / UNKNOWN), or
+     * whether pinned (any pin tier), unpinned (CITY_CENTROID / UNKNOWN), or
      * coordinate-less (`hasValidCoordinates == false`).
      */
     fun onSelection(uuid: String) {
@@ -784,6 +784,9 @@ private fun ServerStation.toMarker(): MapOverlayMarker? {
         charging = false,
         locationQuality = when (locationQuality) {
             StationLocationQuality.REVIEWED -> MapStationLocationQuality.REVIEWED
+            StationLocationQuality.OSM_MAPPED -> MapStationLocationQuality.OSM_MAPPED
+            StationLocationQuality.ANP_REPORTED -> MapStationLocationQuality.ANP_REPORTED
+            StationLocationQuality.ADDRESS_POINT -> MapStationLocationQuality.ADDRESS_POINT
             StationLocationQuality.CITY_CENTROID -> MapStationLocationQuality.CITY_CENTROID
             StationLocationQuality.UNKNOWN -> MapStationLocationQuality.UNKNOWN
         },

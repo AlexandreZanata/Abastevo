@@ -12,6 +12,7 @@ import com.anpfuel.maps.engine.MapOverlayMarker
 import com.anpfuel.maps.engine.MapOverlaySelection
 import com.anpfuel.maps.engine.MapSearchResult
 import com.anpfuel.maps.engine.MapRouteInfo
+import com.anpfuel.maps.engine.MapStationLocationQuality
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -64,7 +65,10 @@ class MapDiscoveryViewModelTest {
         var listener: ((MapOverlaySelection) -> Unit)? = null
         override fun initialize(context: Context, onReady: () -> Unit) = true
         override fun newMapView(context: Context): View = throw UnsupportedOperationException()
-        override fun setViewport(latitude: Double, longitude: Double, zoom: Int) = Unit
+        val viewports = mutableListOf<Pair<Double, Double>>()
+        override fun setViewport(latitude: Double, longitude: Double, zoom: Int) {
+            viewports += latitude to longitude
+        }
         override fun currentCenter() = null
         override fun recenter() = false
         override fun isInitialized() = true
@@ -599,4 +603,49 @@ class MapDiscoveryViewModelTest {
         assertEquals(false, vm.ui.value.selectedMarker?.canRouteByCoordinates)
     }
 
+    @Test fun `every pin tier reaches the native overlay with its own tier`() = runTest {
+        val gateway = FakeGateway(
+            stations = listOf(
+                station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", lat = -25.40, quality = StationLocationQuality.REVIEWED),
+                station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", lat = -25.41, quality = StationLocationQuality.OSM_MAPPED),
+                station("cccccccc-cccc-4ccc-8ccc-cccccccccccc", lat = -25.42, quality = StationLocationQuality.ANP_REPORTED),
+                station("dddddddd-dddd-4ddd-8ddd-dddddddddddd", lat = -25.43, quality = StationLocationQuality.ADDRESS_POINT),
+                station("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", lat = -25.44, quality = StationLocationQuality.CITY_CENTROID),
+                station("ffffffff-ffff-4fff-8fff-ffffffffffff", lat = null, lon = null, quality = StationLocationQuality.OSM_MAPPED),
+            ),
+        )
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onViewport(-25.42, -49.27)
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(
+            mapOf(
+                "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" to MapStationLocationQuality.REVIEWED,
+                "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" to MapStationLocationQuality.OSM_MAPPED,
+                "cccccccc-cccc-4ccc-8ccc-cccccccccccc" to MapStationLocationQuality.ANP_REPORTED,
+                "dddddddd-dddd-4ddd-8ddd-dddddddddddd" to MapStationLocationQuality.ADDRESS_POINT,
+            ),
+            engine.markers.associate { it.uuid to it.locationQuality },
+        )
+        // City-centroid and coordinate-less stations stay list-only.
+        assertEquals(6, vm.ui.value.listItems.size)
+        assertTrue(engine.markers.all { it.canRouteByCoordinates })
+    }
+
+    @Test fun `city viewport centers on the best available pin tier`() = runTest {
+        val gateway = io.mockk.mockk<ServerStationGateway>()
+        val address = station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", lat = -15.60, lon = -56.10, quality = StationLocationQuality.ADDRESS_POINT)
+        val anp = station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", lat = -15.61, lon = -56.11, quality = StationLocationQuality.ANP_REPORTED)
+        val centroid = station("cccccccc-cccc-4ccc-8ccc-cccccccccccc", lat = -15.62, lon = -56.12, quality = StationLocationQuality.CITY_CENTROID)
+        io.mockk.coEvery { gateway.listInMunicipality("5103403", 100, null) } returns
+            ServerStationPage(listOf(centroid, address, anp), null)
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onSelectCity("5103403", "Cuiabá")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(false, vm.ui.value.cityLocationUnknown)
+        assertEquals(-15.61 to -56.11, engine.viewports.last())
+        assertEquals(setOf(address.stationId, anp.stationId), engine.markers.map { it.uuid }.toSet())
+    }
 }

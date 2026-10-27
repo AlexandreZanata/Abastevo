@@ -102,8 +102,8 @@ const projCitySQL = `SELECT id FROM %s
 WHERE ($1::text = '' OR state = $1)
     AND ($2::text = '' OR municipality_code = $2)
     AND ($3::text = '' OR display_name ILIKE '%%' || $3 || '%%')
-    AND ($4::text = '' OR id::text > $4::text)
-ORDER BY id::text ASC
+    AND ($4::text = '' OR id > NULLIF($4::text, '')::uuid)
+ORDER BY id ASC
 LIMIT $5::int`
 
 const projNearbySQL = `SELECT id FROM %s
@@ -126,14 +126,14 @@ func TestProjectionMirrors(t *testing.T) {
 	}
 	app := string(raw)
 	for _, fragment := range []string{
-		"municipality_code = @municipality", "ORDER BY id::text ASC", "ST_DWithin(current_point",
+		"municipality_code = @municipality", "ORDER BY id ASC", "ST_DWithin(current_point",
 	} {
 		if !strings.Contains(app, fragment) {
 			t.Fatalf("stations.sql lost fragment %q", fragment)
 		}
 	}
 	for _, fragment := range []string{
-		"municipality_code = $2", "ORDER BY id::text ASC", "ST_DWithin(current_point",
+		"municipality_code = $2", "ORDER BY id ASC", "ST_DWithin(current_point",
 	} {
 		if !strings.Contains(projCitySQL, fragment) && !strings.Contains(projNearbySQL, fragment) {
 			t.Fatalf("projection mirror lost predicate %q", fragment)

@@ -151,18 +151,19 @@ func writeOfficialSnapshot(ctx context.Context, provider enterprisejobs.Official
 	}
 	inputSum := sha256.Sum256([]byte("official-only|" + build.Pin.PayloadSHA256))
 	inputHash := "sha256:" + hex.EncodeToString(inputSum[:])
-	// The official-only candidate is published as of its lease, so an
-	// unchanged lease rebuilds the identical candidate at any time; the wall
-	// clock is only a fallback for a manifest without published_at.
-	builtAt := time.Now().UTC().Format(time.RFC3339)
-	var lease struct {
+	// The publication time is the official revision's, never the build
+	// clock: an unchanged lease must rebuild the identical candidate.
+	var officialManifest struct {
 		PublishedAt string `json:"published_at"`
 	}
-	if json.Unmarshal(build.Manifest, &lease) == nil {
-		if at, err := time.Parse(time.RFC3339, lease.PublishedAt); err == nil {
-			builtAt = at.UTC().Format(time.RFC3339)
-		}
+	if err := json.Unmarshal(build.Manifest, &officialManifest); err != nil {
+		return "", enterprisejobs.OfficialPin{}, fmt.Errorf("portalexport: official manifest unreadable")
 	}
+	published, err := time.Parse(time.RFC3339, officialManifest.PublishedAt)
+	if err != nil {
+		return "", enterprisejobs.OfficialPin{}, fmt.Errorf("portalexport: official manifest lacks a publication time")
+	}
+	builtAt := published.UTC().Format(time.RFC3339)
 	exportManifest := enterpriseexport.Manifest{
 		SchemaVersion: enterpriseexport.SchemaVersion, ContentVersion: enterpriseexport.ContentVersion,
 		PublicFieldPolicy: enterpriseexport.PublicFieldPolicy, BuiltAt: builtAt,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"strconv"
 	"strings"
 	"time"
@@ -777,7 +778,7 @@ func (r *Reader) walkEnforcementStations(ctx context.Context, lease Lease, filte
 				if !flush() {
 					return tx.Commit(ctx)
 				}
-				current = EnforcementStation{ID: id, DisplayName: row.DisplayName, Municipality: row.MunicipalityCode.String, State: row.State.String, Status: row.Status}
+				current = EnforcementStation{ID: id, DisplayName: kernel.PublicStationName(row.DisplayName, ""), Municipality: row.MunicipalityCode.String, State: row.State.String, Status: row.Status}
 			}
 			if allowed[i] {
 				current.RecordCount += row.RecordCount

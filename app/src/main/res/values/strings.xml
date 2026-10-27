@@ -683,6 +683,9 @@
     <string name="server_station_quality_reviewed">Reviewed location</string>
     <string name="server_station_quality_centroid">City approximate location</string>
     <string name="server_station_quality_unknown">Location not verified</string>
+    <string name="server_station_quality_osm_mapped">Mapped by the OpenStreetMap community</string>
+    <string name="server_station_quality_anp_reported">Location reported by ANP</string>
+    <string name="server_station_quality_address_point">Approximate location from address (IBGE)</string>
     <string name="server_station_unknown_location">Location not verified — shown without coordinates.</string>
     <string name="server_station_cached">Showing last known data (offline cache).</string>
     <string name="server_stations_unavailable">Server directory unavailable. Official ANP browsing still works.</string>
@@ -1141,6 +1144,9 @@
     <string name="map_location_reviewed">Reviewed location</string>
     <string name="map_location_city_centroid">Approximate city location</string>
     <string name="map_location_unknown">Location unknown</string>
+    <string name="map_location_osm_mapped">Mapped by the OpenStreetMap community</string>
+    <string name="map_location_anp_reported">Location reported by ANP</string>
+    <string name="map_location_address_point">Approximate location from address (IBGE)</string>
     <string name="map_sheet_source_label">Source: %1$s</string>
     <string name="map_sheet_location_label">Location: %1$s</string>
     <string name="map_sheet_loading_price">Loading price…</string>
