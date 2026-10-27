@@ -297,7 +297,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-17.md`. A later relevant change invalidates affected evidence.
 ### DRV-18 — Deliver manual shift control and recovery
 
-Status: IN_PROGRESS / local slice; behavior acceptance pending. Evidence: [DRV-18..22](../backend/evidence/driver-suite/DRV-18-22.md). Dependency: DRV-17 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: IN_PROGRESS / local slice plus recovery continuation; behavior acceptance pending (see section 10). Evidence: [DRV-18..22](../backend/evidence/driver-suite/DRV-18-22.md), [DRV-18 continuation](../backend/evidence/driver-suite/DRV-18-recovery-continuation.md). Dependency: DRV-17 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `app driver session/viewmodel; application clock/state ports`. Rules: B-BR-DRV-06, B-BR-DRV-07, B-BR-DRV-08, B-BR-DRV-20.
 
@@ -336,7 +336,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-20.md`. A later relevant change invalidates affected evidence.
 ### DRV-21 — Deliver explicit GPS distance as an optional mode
 
-Status: IN_PROGRESS / explicit FGS slice; field/battery acceptance pending. Evidence: [DRV-18..22](../backend/evidence/driver-suite/DRV-18-22.md). Dependency: DRV-20 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: IN_PROGRESS / explicit FGS slice with owner-bound lifecycle correction; quality, session-race, policy, field and battery acceptance pending (see section 10). Evidence: [DRV-18..22](../backend/evidence/driver-suite/DRV-18-22.md), [DRV-18 continuation](../backend/evidence/driver-suite/DRV-18-recovery-continuation.md), [GPS lifecycle contract](../product/DRV_21_GPS_LIFECYCLE_CONTRACT.md). Dependency: DRV-20 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `Android platform FGS/location; shared MAP lifecycle ports`. Rules: B-BR-DRV-09, B-BR-DRV-10, B-BR-DRV-20.
 
@@ -364,7 +364,7 @@ Exit: All three task acceptance clauses pass with appropriate immediate risk che
 Evidence: `docs/backend/evidence/driver-suite/DRV-22.md`. A later relevant change invalidates affected evidence.
 ### DRV-23 — Deliver the driver result dashboard
 
-Status: PLANNED. Dependency: DRV-22 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: IN_PROGRESS / local result and per-km slice only; coverage-aware acceptance pending (see section 10). Evidence: [DRV-22..25](../backend/evidence/driver-suite/DRV-22-25.md). Dependency: DRV-22 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `app driver reports; application exact presentation`. Rules: B-BR-DRV-12, B-BR-DRV-15.
 
@@ -379,7 +379,7 @@ Evidence: `docs/backend/evidence/driver-suite/DRV-23.md`. A later relevant chang
 Gate: **DRIVER_FINANCIAL_GATE**; apply the scope/disposition rules in section 6.
 ### DRV-24 — Deliver goals, budgets and break-even scenarios
 
-Status: PLANNED. Dependency: DRV-23 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
+Status: IN_PROGRESS / local daily and weekly goals slice only; break-even, manual offer and reminders pending (see section 10). Evidence: [DRV-22..25](../backend/evidence/driver-suite/DRV-22-25.md). Dependency: DRV-23 validated local checkpoint. Risk: critical money/privacy/lifecycle; apply changed-risk tests.
 
 Owners/targets to verify: `domain/application goals; app local alerts`. Rules: B-BR-DRV-15, B-BR-DRV-16.
 
@@ -582,3 +582,113 @@ An authorized field protocol fixes participants' consent, actual devices/candida
 This document plus product contract, planned numeric fixtures and planning validation are the canonical English sources. The Portuguese package is a generated reading/handoff aid, not a second runtime authority. Track precise task IDs and evidence per phase rather than creating 108 remote issues during a planning-only request. Do not import unrelated MAP dirty work or close PRM/PAY/ESP obligations.
 
 Initial implementation authorization covered DRV-00–02. The subsequent owner-selected batch DRV-03–07 is implemented locally and targets the isolated driver PR #152. Stop at this checkpoint; DRV-08–35 require another request. Reconfirm source/base and unresolved gates before continuation; the plan does not authorize all remaining tasks.
+
+## 10. Remaining work after the PR #152 integration (2026-10-27)
+
+PR #152 integrates the DRV-00–25 local source slices, including the uncommitted
+DRV-18/21 recovery and GPS lifecycle continuation, into maintained `dev`. That is
+INTEGRATED source with the backend `ANPFUEL_DRIVER_ENABLED` flag off by default.
+It is not acceptance. DRV-00–17 keep their recorded states. The current phase,
+the mobile driver journey DRV-18–25, closes only when every item below has real
+evidence in `docs/backend/evidence/driver-suite/DRV-XX.md`. The phase also needs
+the DRIVER_LOCATION_GATE (DRV-21) and the DRIVER_FINANCIAL_GATE (DRV-23).
+DRV-26–35 are not started and are out of this phase.
+
+Owner decisions are needed before implementing the dependent item. Record them
+in the task evidence and never invent them:
+
+- **D1 (DRV-18):** admit the shift checkpoint policy. The local values are a
+  60 s maximum gap and 1 s wall/monotonic tolerance, taken from test vectors.
+  The decision is to admit them, choose others, or keep them caller-supplied.
+- **D2 (DRV-21):** pin the Android target/API, the prominent location disclosure
+  and the Play foreground-service location declaration text.
+- **D3 (DRV-18/21):** list the auth, key, origin and entitlement events that
+  invalidate a driver session generation, per the
+  [session barrier contract](../product/DRV_SESSION_BARRIER_CONTRACT.md).
+
+### DRV-18 — manual shift control and recovery
+
+- [ ] T01: instrumented Compose/Room test covering vehicle, initial and final
+  odometer, and breaks with GPS permission denied.
+- [ ] T02: rotation, background, process kill and boot-id change each show gap
+  review, with no duplicate timer or automatic GPS restart.
+- [ ] T02: implement the session generation barrier (D3), so that a logout or
+  account change during a suspended Room commit cannot commit an old-owner
+  write. Also observe account changes while the screen is idle.
+- [ ] T03: a complete manual workday instrumented after restart, with two
+  shifts, a break, an overnight timezone/DST case and a personal-use correction
+  producing exact eligible duration and km.
+
+### DRV-19 — earnings and payout entry
+
+- [ ] T01–T03 behavior tests: detailed versus net-only basis offline; cash fare,
+  wallet, reimbursement and payout without double income; and a conflict preview
+  for overlapping import, summary and detail, with exact totals rebuilt after the
+  owner's choice.
+
+### DRV-20 — expenses and vehicle cost setup
+
+- [ ] T01: cost links without duplicate ledger rows.
+- [ ] T02: owned, rental and finance presets requiring owner values, dates and
+  work share.
+- [ ] T03: a preview of cash versus modeled deductions, plus edit and tombstone
+  rebuild with centavo-sum preservation.
+
+### DRV-21 — optional GPS (DRIVER_LOCATION_GATE)
+
+- [ ] T01: a pinned permission and store-policy design (D2). The manual mode
+  stays fully usable without permission.
+- [ ] T02: route the final observation through the reviewed GPS quality model
+  for accuracy, outliers, gaps and coverage, instead of always storing an
+  incomplete observation with a gap.
+- [ ] T02: enforce the bounded storage and retention rule.
+- [ ] T02: stop on permission loss or account change with no location callback
+  (D3).
+- [ ] T03: owned replay of GPS loss, notification dismissal, process failure and
+  concurrent MAP guidance, with no doubled km and no leaked listener.
+- [ ] T03: the physical battery and field cells stay separately FIELD_PROOF_OWED
+  (DRV-31/34) and do not block local source closure.
+
+### DRV-22 — distance reconciliation and coverage
+
+- [ ] T01/T02: instrumented odometer versus GPS (200 vs 190, never 390), and a
+  paid/empty partition that refuses excess or overlap.
+- [ ] T03: matched-window cost eligibility, so partial-month totals cannot pose
+  as full-month cost/km.
+
+### DRV-23 — driver result dashboard (DRIVER_FINANCIAL_GATE)
+
+- [ ] T01: day and shift indicators with explicit coverage, including R$/hour
+  time ratios.
+- [ ] T02: separate recorded and modeled results. BRL 450 − 200 = 250, and
+  +100 modeled gives a separate 150.
+- [ ] T03: render unknown as unknown, never zero. Correction and payout cannot
+  inflate income across multiple apps.
+- [ ] Gate: Go → Kotlin → real UI vectors agree.
+
+### DRV-24 — goals and break-even
+
+- [ ] T01: the goal basis is selectable and survives restart.
+- [ ] T02: break-even and a manual offer scenario (pickup, paid and empty-return
+  km, duration, fees). Missing inputs stay unknown, and a nonpositive
+  contribution refuses break-even.
+- [ ] T03: opt-in local reminders with quiet hours, dedup, cancel and permission
+  tests.
+
+### DRV-25 — maintenance and vehicle continuity
+
+- [ ] T02: service completion links one existing expense and reconciles the
+  reserve, and a refund or correction never double-subtracts.
+- [ ] T03: vehicle archive, lease change and odometer reset create new segments
+  that preserve prior reports and IDs.
+
+### Cross-cutting closure of this phase
+
+- [ ] Move the hard-coded Portuguese text in `app/.../ui/driver/**` into string
+  resources for all eight locales. Then run `:app:lintDebug` clean.
+- [ ] Accessibility on the driver screens: TalkBack labels, 200% font scale and
+  48 dp targets.
+- [ ] Remeasure global domain coverage. It was last 81.81% against the required
+  90%, so add meaningful tests until it passes. Do not weaken thresholds.
+- [ ] Per task, record a LOCAL_DONE checkpoint and evidence. When the phase
+  closes, deliver one PR from a new branch based on `dev` into `dev`.

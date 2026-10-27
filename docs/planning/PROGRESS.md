@@ -1,5 +1,23 @@
 # Current execution state
 
+- DRV-00..25 driver suite 2026-10-27: PR #152 integration into `dev`, local
+  slices only and `ANPFUEL_DRIVER_ENABLED` off by default. The open work that
+  closes DRV-18..25 is listed in
+  [DRIVER_SUITE_EXECUTION_PLAN section 10](DRIVER_SUITE_EXECUTION_PLAN.md#10-remaining-work-after-the-pr-152-integration-2026-10-27).
+  Owner decisions D1-D3 come first. DRV-26..35 are not started.
+
+- DRV-18/21 continuation: IN_PROGRESS / partial, on `driver-suite/drv-00-02`.
+  [Evidence](../backend/evidence/driver-suite/DRV-18-recovery-continuation.md).
+  After shift/GPS pause/end/recovery integration, focused JVM tests, APKs,
+  app lint and mobile static guard passed; combined synthetic screen/Room and
+  GPS instrumentation passed 8/8 on owned API35 6 GiB. Earlier failed and
+  crashed attempts remain recorded. The local 60 s/1 s checkpoint values come
+  from test vectors, not an admitted operational policy. Session/logout and
+  Room commit races, GPS account/permission changes without callback, quality,
+  field/battery, lifecycle, accessibility and complete workday remain open.
+  Last recorded global domain coverage was 81.81% versus the required 90%;
+  it was not remeasured. No DRV-18/21 acceptance or batch integration claim.
+
 - DRV-22..25 2026-10-26: IN_PROGRESS / local slice, parent 3fd99ee9,
   behavior 757eb61f. [Evidence](../backend/evidence/driver-suite/DRV-22-25.md).
   Room schema 32 adds reconciliation, goals and maintenance; work screen adds
