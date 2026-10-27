@@ -308,6 +308,29 @@ JOIN (
 ) AS s ON s.rn = 1 + (i % 1000)`, run.RevisionID); err != nil {
 		t.Fatalf("bulk insert: %v", err)
 	}
+	// A national table holds many weekly revisions, so the ranked revision is
+	// a fraction of it. Without other revisions the revision filter matches
+	// every row and index and sequential plans tie, which made the plan flaky.
+	other, err := im.BeginRun(ctx, domain.ImportKey{
+		SourceURL: "https://www.gov.br/anp/ranking.xlsx", SourceChecksum: "sha256:mex28-history", ParserVersion: "mex28-test",
+	}, bulkStart.AddDate(0, 0, -7), bulkEnd.AddDate(0, 0, -7))
+	if err != nil || other.NoOp {
+		t.Fatalf("history begin = %+v, %v", other, err)
+	}
+	if _, err := f.pool.Exec(ctx, `
+INSERT INTO official_station_prices
+    (id, revision_id, station_id, fuel_product, unit, amount_milli_brl,
+     raw_price_text, collected_on, source_row)
+SELECT gen_random_uuid(), $1::uuid, s.id, 'GASOLINE_REGULAR', 'L',
+    5000 + (i % 1000), 'synthetic', DATE '2000-01-01' + (i % 3650), 1000 + i
+FROM generate_series(0, 59999) AS i
+JOIN (
+    SELECT id, row_number() OVER () AS rn
+    FROM directory_stations
+    WHERE display_name LIKE 'Synthetic bulk %'
+) AS s ON s.rn = 1 + (i % 1000)`, other.RevisionID); err != nil {
+		t.Fatalf("history insert: %v", err)
+	}
 	if _, err := f.pool.Exec(ctx, "ANALYZE directory_stations"); err != nil {
 		t.Fatal(err)
 	}
