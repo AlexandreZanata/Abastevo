@@ -13,6 +13,8 @@ set -euo pipefail
 
 umask 077
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 log() {
     printf 'abastevo-deploy-agent: %s\n' "$*" >&2
 }
@@ -49,6 +51,60 @@ ABASTEVO_GITHUB_API="${ABASTEVO_GITHUB_API:-https://api.github.com}"
 ABASTEVO_WORKFLOW_PATH="${ABASTEVO_WORKFLOW_PATH:-.github/workflows/release-staging.yml}"
 ABASTEVO_MANIFEST_REPOSITORY="${ABASTEVO_MANIFEST_REPOSITORY:-ghcr.io/alexandrezanata/abastevo-release}"
 ABASTEVO_MANIFEST_TAG="${ABASTEVO_MANIFEST_TAG:-staging}"
+ABASTEVO_APPLY="${ABASTEVO_APPLY:-0}"
+ABASTEVO_API_CONTAINER="${ABASTEVO_API_CONTAINER:-api}"
+ABASTEVO_WORKER_CONTAINER="${ABASTEVO_WORKER_CONTAINER:-worker}"
+ABASTEVO_SURGE_RESOURCE_QUOTA="${ABASTEVO_SURGE_RESOURCE_QUOTA:-abastevo-temp-quota}"
+ABASTEVO_SURGE_CPU_MILLI="${ABASTEVO_SURGE_CPU_MILLI:-2000}"
+ABASTEVO_ALLOW_SURGE="${ABASTEVO_ALLOW_SURGE:-0}"
+ABASTEVO_ROLLOUT_TIMEOUT="${ABASTEVO_ROLLOUT_TIMEOUT:-300}"
+ABASTEVO_JOB_TIMEOUT="${ABASTEVO_JOB_TIMEOUT:-300}"
+ABASTEVO_DB_IMAGE="${ABASTEVO_DB_IMAGE:-postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677}"
+ABASTEVO_DB_SECRET="${ABASTEVO_DB_SECRET:-abastevo-temp-secrets}"
+ABASTEVO_BACKUP_KEEP="${ABASTEVO_BACKUP_KEEP:-7}"
+ABASTEVO_LANDING_KEEP="${ABASTEVO_LANDING_KEEP:-5}"
+ABASTEVO_SMOKE_BASE_URL="${ABASTEVO_SMOKE_BASE_URL:-}"
+ABASTEVO_SMOKE_TIMEOUT="${ABASTEVO_SMOKE_TIMEOUT:-10}"
+ABASTEVO_KUBECTL="${ABASTEVO_KUBECTL:-kubectl}"
+ABASTEVO_LIBDIR="${ABASTEVO_LIBDIR:-$SCRIPT_DIR}"
+ABASTEVO_LOCK_FILE="${ABASTEVO_LOCK_FILE:-$ABASTEVO_STATE_DIR/apply.lock}"
+
+COMMAND="${1:-plan}"
+BASELINE_SHA=""
+BASELINE_FLOOR_ARG=""
+case "$COMMAND" in
+    plan)
+        (( $# <= 1 )) || fail "plan takes no arguments"
+        ;;
+    baseline)
+        shift
+        while (( $# )); do
+            case "$1" in
+                --sha)
+                    [[ -n "${2:-}" ]] || fail "baseline --sha requires a value"
+                    BASELINE_SHA="$2"
+                    shift 2
+                    ;;
+                --floor)
+                    [[ -n "${2:-}" ]] || fail "baseline --floor requires a value"
+                    BASELINE_FLOOR_ARG="$2"
+                    shift 2
+                    ;;
+                *)
+                    fail "unknown baseline argument: $1"
+                    ;;
+            esac
+        done
+        [[ "$BASELINE_SHA" =~ ^[0-9a-f]{40}$ ]] \
+            || fail "baseline --sha must be a full 40-hex commit"
+        [[ -z "$BASELINE_FLOOR_ARG" || "$BASELINE_FLOOR_ARG" =~ ^[0-9]{6}$ ]] \
+            || fail "baseline --floor must be a six-digit migration version"
+        ABASTEVO_MANIFEST_TAG="sha-${BASELINE_SHA}"
+        ;;
+    *)
+        fail "usage: abastevo-deploy-agent [plan | baseline --sha <commit> [--floor <NNNNNN>]]"
+        ;;
+esac
 
 require_var ABASTEVO_NAMESPACE
 require_var ABASTEVO_API_DEPLOYMENT
@@ -72,10 +128,33 @@ require_absolute ABASTEVO_STATE_DIR
     || fail "ABASTEVO_MANIFEST_REPOSITORY must be a GHCR repository"
 [[ -n "$ABASTEVO_MANIFEST_TAG" && "$ABASTEVO_MANIFEST_TAG" != "latest" ]] \
     || fail "ABASTEVO_MANIFEST_TAG must be an immutable release tag, never latest"
+[[ "$ABASTEVO_APPLY" =~ ^[01]$ ]] \
+    || fail "ABASTEVO_APPLY must be 0 or 1"
 
 for tool in cosign oras curl jq sha256sum mktemp install date; do
     require_tool "$tool"
 done
+
+if [[ "$ABASTEVO_APPLY" == "1" || "$COMMAND" == "baseline" ]]; then
+    [[ -f "$ABASTEVO_LIBDIR/runtime/k8s.sh" ]] \
+        || fail "missing runtime adapter: $ABASTEVO_LIBDIR/runtime/k8s.sh"
+    # shellcheck source=infra/deploy/agent/runtime/k8s.sh
+    . "$ABASTEVO_LIBDIR/runtime/k8s.sh"
+fi
+
+if [[ "$ABASTEVO_APPLY" == "1" ]]; then
+    [[ -f "$ABASTEVO_LIBDIR/apply.sh" ]] \
+        || fail "missing apply orchestration: $ABASTEVO_LIBDIR/apply.sh"
+    # shellcheck source=infra/deploy/agent/apply.sh
+    . "$ABASTEVO_LIBDIR/apply.sh"
+fi
+
+if [[ "$COMMAND" == "baseline" ]]; then
+    [[ -f "$ABASTEVO_LIBDIR/baseline.sh" ]] \
+        || fail "missing baseline orchestration: $ABASTEVO_LIBDIR/baseline.sh"
+    # shellcheck source=infra/deploy/agent/baseline.sh
+    . "$ABASTEVO_LIBDIR/baseline.sh"
+fi
 
 owner="${ABASTEVO_GITHUB_REPOSITORY%%/*}"
 owner_lc="$(printf '%s' "$owner" | tr '[:upper:]' '[:lower:]')"
@@ -144,11 +223,17 @@ jq -e \
      and (.images.migrate | test("^ghcr\\.io/" + $owner + "/abastevo-migrate@sha256:[0-9a-f]{64}$"))
      and (.landing_sha256 | test("^[0-9a-f]{64}$"))
      and (.migrations_max | test("^[0-9]{6}$"))
+     and ((.schema_min_supported == null) or (.schema_min_supported | test("^[0-9]{6}$")))
+     and ((.schema_min_supported == null) or (.schema_min_supported <= .migrations_max))
      and (.workflow_run_url | startswith("https://github.com/" + $repo + "/actions/runs/"))' \
     "$manifest_file" >/dev/null \
     || fail "release manifest does not match abastevo-release-manifest-v1"
 
 release_sha="$(jq -r '.sha' "$manifest_file")"
+
+if [[ "$COMMAND" == "baseline" && "$release_sha" != "$BASELINE_SHA" ]]; then
+    fail "baseline release manifest does not match --sha"
+fi
 
 log "checking that the release commit is reachable from main"
 compare_url="${ABASTEVO_GITHUB_API}/repos/${ABASTEVO_GITHUB_REPOSITORY}/compare/main...${release_sha}"
@@ -165,6 +250,11 @@ case "$compare_status" in
     behind|identical) ;;
     *) fail "release commit is not reachable from main" ;;
 esac
+
+if [[ "$COMMAND" == "baseline" ]]; then
+    baseline_release
+    exit 0
+fi
 
 current_file="$ABASTEVO_STATE_DIR/current.json"
 if [[ -f "$current_file" ]]; then
@@ -226,8 +316,8 @@ else
     action="no-change"
 fi
 
-target_payload="$(jq '{sha, images, landing_sha256, migrations_max}' "$manifest_file")"
-current_payload="$(jq 'if . == null then null else {sha, images, landing_sha256, migrations_max} end' "$workdir/current.json")"
+target_payload="$(jq '{sha, images, landing_sha256, migrations_max, schema_min_supported}' "$manifest_file")"
+current_payload="$(jq 'if . == null then null else {sha, images, landing_sha256, migrations_max, schema_min_supported} end' "$workdir/current.json")"
 created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 receipt="$(jq -n \
@@ -290,3 +380,7 @@ chmod 0600 "$receipt_tmp"
 mv "$receipt_tmp" "$ABASTEVO_RECEIPT_DIR/$receipt_name"
 
 log "plan written: $receipt_name ($action)"
+
+if [[ "$ABASTEVO_APPLY" == "1" ]]; then
+    apply_release
+fi

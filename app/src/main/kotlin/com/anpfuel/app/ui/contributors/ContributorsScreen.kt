@@ -1,5 +1,6 @@
 package com.anpfuel.app.ui.contributors
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AssistChip
@@ -81,7 +82,11 @@ private fun defaultOpenLink(): (String) -> Unit {
     val context = LocalContext.current
     return { url ->
         if (ContributorLinkHosts.isAllowedUrl(url)) {
-            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+            } catch (_: ActivityNotFoundException) {
+                // No browser installed: the chip stays inert instead of crashing.
+            }
         }
     }
 }
@@ -127,7 +132,9 @@ fun ContributorsContent(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                items(state.items, key = { it.displayName + it.contributorSince }) { item ->
+                // The public API exposes no id and names are not unique; the
+                // position is stable because pages only append.
+                itemsIndexed(state.items, key = { index, _ -> "contributor:$index" }) { _, item ->
                     ContributorRow(item = item, onOpenLink = onOpenLink)
                 }
                 if (state.hasMore) {

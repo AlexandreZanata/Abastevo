@@ -76,6 +76,7 @@ fun VehicleScreen(
     onNavigateBack: () -> Unit,
     onOpenEntries: (DomainId) -> Unit = {},
     onOpenCharging: (DomainId) -> Unit = {},
+    onOpenDriverHub: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: VehicleViewModel = hiltViewModel(),
 ) {
@@ -115,6 +116,7 @@ fun VehicleScreen(
         onAddVehicle = viewModel::startAddVehicle,
         onOpenEntries = onOpenEntries,
         onOpenCharging = onOpenCharging,
+        onOpenDriverHub = onOpenDriverHub,
         onEditVehicle = { id -> viewModel.startEditVehicle(id, locale) },
         onRequestDeleteVehicle = viewModel::requestDeleteVehicle,
         onConfirmDeleteVehicle = viewModel::confirmDeleteVehicle,
@@ -147,6 +149,7 @@ internal fun VehicleContent(
     onNavigateBack: () -> Unit,
     onAddVehicle: () -> Unit,
     onOpenCharging: (DomainId) -> Unit,
+    onOpenDriverHub: () -> Unit,
     onEditVehicle: (DomainId) -> Unit,
     onRequestDeleteVehicle: (DomainId) -> Unit,
     onOpenEntries: (DomainId) -> Unit,
@@ -254,6 +257,12 @@ internal fun VehicleContent(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
+            androidx.compose.material3.OutlinedButton(
+                onClick = onOpenDriverHub,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            ) {
+                Text(stringResource(R.string.driver_hub_title))
+            }
             when {
                 uiState.isLoading -> VehicleLoadingSkeleton()
 
@@ -493,8 +502,9 @@ private fun VehicleListPreview() {
             onAddVehicle = {},
             onEditVehicle = {},
             onRequestDeleteVehicle = {},
-        onOpenEntries = {},
-        onOpenCharging = {},
+            onOpenEntries = {},
+            onOpenCharging = {},
+            onOpenDriverHub = {},
             onConfirmDeleteVehicle = {},
             onDismissDeleteConfirm = {},
             onDismissPremiumRequired = {},
@@ -528,8 +538,9 @@ private fun VehicleEmptyPreview() {
             onAddVehicle = {},
             onEditVehicle = {},
             onRequestDeleteVehicle = {},
-        onOpenEntries = {},
-        onOpenCharging = {},
+            onOpenEntries = {},
+            onOpenCharging = {},
+            onOpenDriverHub = {},
             onConfirmDeleteVehicle = {},
             onDismissDeleteConfirm = {},
             onDismissPremiumRequired = {},
