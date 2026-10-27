@@ -11,6 +11,42 @@
   PR #170 to `main`, merges only after #164. A1 reconciliation was published;
   remote integration remains pending.
 
+- A4 staff roles and audit read 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
+  Branch `codex/adm-a4-staff-roles` stacked on A3 PR #167 (base
+  `codex/adm-a3-contributors`; planning docs still in PR #161). STF-01…STF-06
+  and BUC-ADM-10/12 implemented with migration `000143`, code-frozen catalog,
+  assign/revoke routes, owner/public labels and `GET /v1/admin/audit`. Tested
+  revision: branch head before the evidence commit; `go test -race ./...`
+  133 ok / 0 fail, PostGIS staff/contributor/admin/entitlement/subscription/
+  cmd/api integration 20 ok, `make quick-verify` ok (153s), secret scan clean.
+  [Evidence](../../backend/evidence/admin/A4-STAFF-ROLES.md). PR #168 with
+  `--base codex/adm-a3-contributors`. Next: wait for review; A5 staging is
+  deferred until the user authorizes staging access.
+
+- A3 contributors 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING. Branch
+  `codex/adm-a3-contributors` stacked on A2 PR #166 (base
+  `codex/adm-a2-granted-tiers`; planning docs still in PR #161). CTB-01…CTB-14
+  and BUC-ADM-05…09/11 implemented with migration `000142`, GitHub snapshot
+  client, claims/profile/user/admin routes, public CORS list and erasure
+  trigger. Tested revision: branch head before the evidence commit;
+  `go test -race ./...` 131 ok / 0 fail, PostGIS contributor/admin/
+  entitlement/subscription/cmd/api integration 17 ok, `make quick-verify` ok
+  (41s), secret scan clean. [Evidence](../../backend/evidence/admin/A3-CONTRIBUTORS.md).
+  PR #167 with `--base codex/adm-a2-granted-tiers`. Next: wait for review; do
+  not start A4.
+
+- A2 granted tiers and capability projection 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-a2-granted-tiers` stacked on A1 PR
+  #164 (base `codex/adm-a1-admin-auth`; planning docs still in PR #161).
+  ENT-01…ENT-12 and BUC-ADM-02/03/04 implemented with migration `000141`,
+  tier catalog/golden JSON, admin grant endpoints, erasure trigger and
+  payments-unconfigured capability proof. Tested revision: branch head
+  before the evidence commit; `go test -race ./...` 128 ok / 0 fail,
+  PostGIS admin+entitlement+subscription+cmd/api integration ok,
+  `make quick-verify` ok (43s), secret scan clean.
+  [Evidence](../../backend/evidence/admin/A2-GRANTED-TIERS.md). PR #166 with
+  `--base codex/adm-a1-admin-auth`. Next: wait for review; do not start A3.
+
 - A1 admin key authentication, sessions and audit 2026-10-27: LOCAL_DONE /
   INTEGRATION_PENDING. Branch `codex/adm-a1-admin-auth` from `origin/main`
   `44b7b915`; stacked on planning PR #161 (contract/ADR/plan not yet on

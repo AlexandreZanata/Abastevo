@@ -158,6 +158,30 @@ paths:
                 existed: false
         '400':
           $ref: '#/components/responses/BadRequest'
+    get:
+      tags:
+      - community
+      summary: Public contributor list
+      description: Only consented PUBLIC profiles with an active CONTRIBUTOR grant. Server-built links; account ids, aliases, e-mails and reasons are never exposed. CORS is allowed only for ANPFUEL_PUBLIC_WEB_ORIGINS and only on this route. Cache-Control public, max-age=300.
+      operationId: listPublicContributors
+      parameters:
+      - name: cursor
+        in: query
+        schema: {type: string, maxLength: 4096}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 50}
+      responses:
+        '200':
+          description: Bounded contributor page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributorListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/contributors/me/keys/rotate:
     post:
       summary: Rotate to a new key with old and new proofs (anonymous).
@@ -6137,6 +6161,787 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/admin/accounts:
+    get:
+      tags:
+      - admin
+      summary: Search accounts (max 20)
+      description: Exact UUID, exact alias, alias prefix of at least 3 characters or exact e-mail hashed server-side. Parameters are never interpolated as wildcards.
+      operationId: adminSearchAccounts
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema: {type: string, minLength: 3, maxLength: 254}
+      responses:
+        '200':
+          description: Bounded search result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccountList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/accounts/{id}:
+    get:
+      tags:
+      - admin
+      summary: Account detail with grants and paid state
+      operationId: adminAccountDetail
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Account detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccountDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/accounts/{id}/grants:
+    post:
+      tags:
+      - admin
+      summary: Create or replace one granted tier
+      description: Requires X-Admin-CSRF, exact Origin, reason and Idempotency-Key. Capability strings are rejected as unknown fields.
+      operationId: adminCreateGrant
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminGrantCreateRequest'
+      responses:
+        '201':
+          description: Grant created (or replaced atomically).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGrantResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          description: Body exceeds the 16 KiB administrative cap.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/grants:
+    get:
+      tags:
+      - admin
+      summary: List grants
+      operationId: adminListGrants
+      parameters:
+      - name: tier
+        in: query
+        schema: {type: string, enum: [PRO, CONTRIBUTOR, ENTERPRISE]}
+      - name: state
+        in: query
+        schema: {type: string, enum: [ACTIVE, REVOKED]}
+      - name: cursor
+        in: query
+        schema: {type: string, maxLength: 4096}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100}
+      responses:
+        '200':
+          description: Bounded grant page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGrantList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/grants/{id}/revoke:
+    post:
+      tags:
+      - admin
+      summary: Revoke one active grant
+      description: Requires X-Admin-CSRF, exact Origin, reason and Idempotency-Key. Revoked grants are never reactivated.
+      operationId: adminRevokeGrant
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '200':
+          description: Grant revoked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGrant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          description: Body exceeds the 16 KiB administrative cap.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/contributor/claims:
+    post:
+      tags:
+      - accounts
+      summary: Open a contributor claim
+      description: Signed-in FREE account. Max 1 open claim and 3 claims per 24 hours. Returns the one-time gist code.
+      operationId: createContributorClaim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributorClaimCreateRequest'
+      responses:
+        '201':
+          description: Claim opened.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributorClaimCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/contributor/claims/read:
+    post:
+      tags:
+      - accounts
+      summary: Read own contributor claims
+      operationId: readContributorClaims
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributorSessionRequest'
+      responses:
+        '200':
+          description: Own claims.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributorClaimList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/contributor/claims/{id}/proof:
+    post:
+      tags:
+      - accounts
+      summary: Submit a public gist ownership proof
+      operationId: proveContributorClaim
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributorClaimProofRequest'
+      responses:
+        '200':
+          description: Claim with VERIFIED or UNVERIFIED proof.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributorClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/contributor/claims/{id}/withdraw:
+    post:
+      tags:
+      - accounts
+      summary: Withdraw a pending claim
+      operationId: withdrawContributorClaim
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributorSessionRequest'
+      responses:
+        '200':
+          description: Withdrawn claim.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributorClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/contributor/profile/read:
+    post:
+      tags:
+      - accounts
+      summary: Read own contributor profile and roles
+      operationId: readContributorProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributorSessionRequest'
+      responses:
+        '200':
+          description: Own profile (profile is null when absent) and roles.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributorProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/contributor/profile:
+    post:
+      tags:
+      - accounts
+      summary: Upsert own contributor profile
+      description: Requires contributor.profile. Default visibility is HIDDEN until saved with public_consent true. Max 10 edits per 24 hours.
+      operationId: upsertContributorProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContributorProfileRequest'
+      responses:
+        '200':
+          description: Saved profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributorProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/github/contributors:
+    get:
+      tags:
+      - admin
+      summary: GitHub contributors snapshot with link and claim state
+      description: Snapshot refresh is at most once per minute and cached for one hour. GitHub failure returns the cached snapshot with stale=true.
+      operationId: adminGitHubContributors
+      parameters:
+      - name: refresh
+        in: query
+        schema: {type: boolean}
+      responses:
+        '200':
+          description: Snapshot and per-login state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGitHubContributorsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/contributor-claims:
+    get:
+      tags:
+      - admin
+      summary: Contributor claims queue
+      operationId: adminListContributorClaims
+      parameters:
+      - name: state
+        in: query
+        schema: {type: string, enum: [PENDING, APPROVED, REJECTED, WITHDRAWN, EXPIRED]}
+      - name: cursor
+        in: query
+        schema: {type: string, maxLength: 4096}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100}
+      responses:
+        '200':
+          description: Bounded claim page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminContributorClaimList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/contributor-claims/{id}/approve:
+    post:
+      tags:
+      - admin
+      summary: Approve a claim and create the grant and link atomically
+      description: Requires X-Admin-CSRF, exact Origin, reason and Idempotency-Key. UNVERIFIED proof or a login absent from the snapshot requires override=true.
+      operationId: adminApproveContributorClaim
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminContributorClaimDecision'
+      responses:
+        '200':
+          description: Approved claim with grant and link.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminContributorApproval'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/contributor-claims/{id}/reject:
+    post:
+      tags:
+      - admin
+      summary: Reject a pending claim
+      operationId: adminRejectContributorClaim
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '200':
+          description: Rejected claim.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributorClaim'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/accounts/{id}/github-link:
+    post:
+      tags:
+      - admin
+      summary: Link an account directly to a GitHub login
+      description: The login must be present in the contributors snapshot unless override=true.
+      operationId: adminLinkGitHub
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminGitHubLinkRequest'
+      responses:
+        '201':
+          description: Link created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGitHubLinkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/contributor-profiles/{account_id}/hide:
+    post:
+      tags:
+      - admin
+      summary: Hide a contributor profile from the public list
+      operationId: adminHideContributorProfile
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '200':
+          description: Hidden profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributorProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/contributor-profiles/{account_id}/unhide:
+    post:
+      tags:
+      - admin
+      summary: Unhide a contributor profile
+      operationId: adminUnhideContributorProfile
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '200':
+          description: Unhidden profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContributorProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/roles:
+    get:
+      tags:
+      - admin
+      summary: Code-frozen staff role catalog
+      description: Roles are defined only in code; no endpoint creates, renames or edits a role.
+      operationId: adminStaffRoles
+      responses:
+        '200':
+          description: Staff role catalog.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffCatalog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/accounts/{id}/roles:
+    post:
+      tags:
+      - admin
+      summary: Assign one staff role
+      description: Requires X-Admin-CSRF, exact Origin, reason and Idempotency-Key. One ACTIVE assignment per account and role; roles grant no permission in v1.
+      operationId: adminAssignStaffRole
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffAssignRequest'
+      responses:
+        '201':
+          description: Assignment created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffAssignment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/role-assignments/{id}/revoke:
+    post:
+      tags:
+      - admin
+      summary: Revoke one active staff assignment
+      operationId: adminRevokeStaffRole
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '200':
+          description: Assignment revoked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffAssignment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/audit:
+    get:
+      tags:
+      - admin
+      summary: Read the append-only admin audit log
+      operationId: adminAuditList
+      parameters:
+      - name: action
+        in: query
+        schema: {type: string, maxLength: 128}
+      - name: target_id
+        in: query
+        schema: {type: string, maxLength: 128}
+      - name: cursor
+        in: query
+        schema: {type: string, maxLength: 4096}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100}
+      responses:
+        '200':
+          description: Bounded audit page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuditList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/driver/commands:
     post:
       tags:
@@ -8258,6 +9063,10 @@ components:
           - true
         payments_configured:
           type: boolean
+        tiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierStatus'
     AdminLoginRequest:
       type: object
       additionalProperties: false
@@ -8297,6 +9106,398 @@ components:
           type: string
           minLength: 10
           maxLength: 500
+    TierStatus:
+      type: object
+      additionalProperties: false
+      required: [tier, source, valid_until]
+      properties:
+        tier:
+          type: string
+          enum: [PRO, CONTRIBUTOR, ENTERPRISE]
+        source:
+          type: string
+          enum: [play, web, admin]
+        valid_until:
+          type: [string, 'null']
+          format: date-time
+    AdminAccountSummary:
+      type: object
+      additionalProperties: false
+      required: [account_id, alias, status, created_at]
+      properties:
+        account_id: {type: string, format: uuid}
+        alias: {type: string}
+        status: {type: string, enum: [active, suspended, deleted]}
+        created_at: {type: string, format: date-time}
+    AdminAccountList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/AdminAccountSummary'
+    AdminPaidSummary:
+      type: object
+      additionalProperties: false
+      required: [state, valid_until]
+      properties:
+        state: {type: string, enum: [ACTIVE, NONE]}
+        valid_until:
+          type: [string, 'null']
+          format: date-time
+    AdminGrant:
+      type: object
+      additionalProperties: false
+      required: [id, account_id, tier, policy_version, state, start_at, end_at, reason, created_at, revoked_at]
+      properties:
+        id: {type: string, format: uuid}
+        account_id: {type: string, format: uuid}
+        tier: {type: string, enum: [PRO, CONTRIBUTOR, ENTERPRISE]}
+        policy_version: {type: integer, minimum: 1}
+        state: {type: string, enum: [ACTIVE, REVOKED]}
+        start_at: {type: string, format: date-time}
+        end_at:
+          type: [string, 'null']
+          format: date-time
+        reason: {type: string, minLength: 10, maxLength: 500}
+        created_at: {type: string, format: date-time}
+        revoked_at:
+          type: [string, 'null']
+          format: date-time
+        revoke_reason: {type: string}
+    AdminAccountDetail:
+      type: object
+      additionalProperties: false
+      required: [account_id, alias, status, created_at, grants, paid]
+      properties:
+        account_id: {type: string, format: uuid}
+        alias: {type: string}
+        status: {type: string, enum: [active, suspended, deleted]}
+        created_at: {type: string, format: date-time}
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminGrant'
+        paid:
+          $ref: '#/components/schemas/AdminPaidSummary'
+    AdminGrantCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [tier, reason]
+      properties:
+        tier: {type: string, enum: [PRO, CONTRIBUTOR, ENTERPRISE]}
+        end_at:
+          type: [string, 'null']
+          format: date-time
+        reason: {type: string, minLength: 10, maxLength: 500}
+        replace: {type: boolean, default: false}
+    AdminGrantResponse:
+      type: object
+      additionalProperties: false
+      required: [grant, replaced]
+      properties:
+        grant:
+          $ref: '#/components/schemas/AdminGrant'
+        replaced:
+          oneOf:
+          - $ref: '#/components/schemas/AdminGrant'
+          - type: 'null'
+    AdminGrantList:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminGrant'
+        next_cursor: {type: string}
+    ContributorLink:
+      type: object
+      additionalProperties: false
+      required: [platform, handle, url]
+      properties:
+        platform: {type: string, enum: [github, gitlab, linkedin, x, instagram, youtube, bluesky]}
+        handle: {type: string}
+        url: {type: string}
+    ContributorPublicItem:
+      type: object
+      additionalProperties: false
+      required: [display_name, links, contributor_since, roles]
+      properties:
+        display_name: {type: string, minLength: 2, maxLength: 40}
+        links:
+          type: array
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/ContributorLink'
+        github_login: {type: string}
+        contributor_since: {type: string, pattern: '^[0-9]{4}-[0-9]{2}$'}
+        roles:
+          type: array
+          items: {type: string}
+    ContributorListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ContributorPublicItem'
+        next_cursor: {type: string}
+    ContributorSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [family_id, access_token]
+      properties:
+        family_id: {type: string, format: uuid}
+        access_token: {type: string}
+    ContributorClaimCreateRequest:
+      allOf:
+      - $ref: '#/components/schemas/ContributorSessionRequest'
+      - type: object
+        additionalProperties: false
+        required: [github_login, operation_id]
+        properties:
+          github_login: {type: string, minLength: 1, maxLength: 39}
+          operation_id: {type: string, format: uuid}
+    ContributorClaimCreated:
+      type: object
+      additionalProperties: false
+      required: [claim_id, code]
+      properties:
+        claim_id: {type: string, format: uuid}
+        code: {type: string, minLength: 1}
+    ContributorClaim:
+      type: object
+      additionalProperties: false
+      required: [claim_id, github_login, state, proof_status, override, created_at, expires_at, decision_reason]
+      properties:
+        claim_id: {type: string, format: uuid}
+        account_id: {type: string, format: uuid}
+        github_login: {type: string}
+        state: {type: string, enum: [PENDING, APPROVED, REJECTED, WITHDRAWN, EXPIRED]}
+        proof_status: {type: string, enum: [UNVERIFIED, VERIFIED]}
+        gist_id: {type: string}
+        code: {type: string}
+        override: {type: boolean}
+        decision_reason: {type: string}
+        created_at: {type: string, format: date-time}
+        expires_at: {type: string, format: date-time}
+        decided_at: {type: string, format: date-time}
+    ContributorClaimList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContributorClaim'
+    ContributorClaimProofRequest:
+      allOf:
+      - $ref: '#/components/schemas/ContributorSessionRequest'
+      - type: object
+        additionalProperties: false
+        required: [gist_id]
+        properties:
+          gist_id: {type: string, maxLength: 128}
+    ContributorProfileLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [platform, handle]
+      properties:
+        platform: {type: string, enum: [github, gitlab, linkedin, x, instagram, youtube, bluesky]}
+        handle: {type: string}
+    ContributorProfileRequest:
+      allOf:
+      - $ref: '#/components/schemas/ContributorSessionRequest'
+      - type: object
+        additionalProperties: false
+        required: [display_name, links, visibility, public_consent, show_roles_publicly]
+        properties:
+          display_name: {type: string, minLength: 2, maxLength: 40}
+          links:
+            type: array
+            maxItems: 2
+            items:
+              $ref: '#/components/schemas/ContributorProfileLinkRequest'
+          visibility: {type: string, enum: [PUBLIC, HIDDEN]}
+          public_consent: {type: boolean}
+          show_roles_publicly: {type: boolean}
+    ContributorProfile:
+      type: object
+      additionalProperties: false
+      required: [display_name, links, visibility, public_consent, show_roles_publicly, hidden_by_admin, created_at, updated_at]
+      properties:
+        account_id: {type: string, format: uuid}
+        display_name: {type: string}
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContributorLink'
+        visibility: {type: string, enum: [PUBLIC, HIDDEN]}
+        public_consent: {type: boolean}
+        show_roles_publicly: {type: boolean}
+        hidden_by_admin: {type: boolean}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+    ContributorProfileResponse:
+      type: object
+      additionalProperties: false
+      required: [profile, roles]
+      properties:
+        profile:
+          oneOf:
+          - $ref: '#/components/schemas/ContributorProfile'
+          - type: 'null'
+        roles:
+          type: array
+          items: {type: string}
+    AdminGitHubContributor:
+      type: object
+      additionalProperties: false
+      required: [login]
+      properties:
+        login: {type: string}
+        linked_account_id: {type: string, format: uuid}
+        claim_id: {type: string, format: uuid}
+        claim_state: {type: string, enum: [PENDING, APPROVED, REJECTED, WITHDRAWN, EXPIRED]}
+        claim_proof_status: {type: string, enum: [UNVERIFIED, VERIFIED]}
+    AdminGitHubContributorsResponse:
+      type: object
+      additionalProperties: false
+      required: [repo, fetched_at, stale, contributors]
+      properties:
+        repo: {type: string}
+        fetched_at: {type: string, format: date-time}
+        stale: {type: boolean}
+        contributors:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminGitHubContributor'
+    AdminContributorClaimList:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContributorClaim'
+        next_cursor: {type: string}
+    AdminContributorClaimDecision:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: {type: string, minLength: 10, maxLength: 500}
+        override: {type: boolean, default: false}
+    AdminContributorApproval:
+      type: object
+      additionalProperties: false
+      required: [claim, grant, login]
+      properties:
+        claim:
+          $ref: '#/components/schemas/ContributorClaim'
+        grant:
+          oneOf:
+          - $ref: '#/components/schemas/AdminGrant'
+          - type: 'null'
+        login: {type: string}
+    AdminGitHubLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [login, reason]
+      properties:
+        login: {type: string, minLength: 1, maxLength: 39}
+        reason: {type: string, minLength: 10, maxLength: 500}
+        override: {type: boolean, default: false}
+    AdminGitHubLinkResponse:
+      type: object
+      additionalProperties: false
+      required: [account_id, github_login]
+      properties:
+        account_id: {type: string, format: uuid}
+        github_login: {type: string}
+    StaffRole:
+      type: object
+      additionalProperties: false
+      required: [code, label]
+      properties:
+        code: {type: string, enum: [community_moderator, station_reviewer, contributor_curator, support_agent]}
+        label: {type: string}
+    StaffCatalog:
+      type: object
+      additionalProperties: false
+      required: [catalog_version, roles]
+      properties:
+        catalog_version: {type: string, enum: [staff-roles-v1]}
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffRole'
+    StaffAssignment:
+      type: object
+      additionalProperties: false
+      required: [id, account_id, role, label, state, start_at, end_at, reason, created_at, revoked_at]
+      properties:
+        id: {type: string, format: uuid}
+        account_id: {type: string, format: uuid}
+        role: {type: string, enum: [community_moderator, station_reviewer, contributor_curator, support_agent]}
+        label: {type: string}
+        state: {type: string, enum: [ACTIVE, REVOKED]}
+        start_at: {type: string, format: date-time}
+        end_at:
+          type: [string, 'null']
+          format: date-time
+        reason: {type: string, minLength: 10, maxLength: 500}
+        created_at: {type: string, format: date-time}
+        revoked_at:
+          type: [string, 'null']
+          format: date-time
+        revoke_reason: {type: string}
+    StaffAssignRequest:
+      type: object
+      additionalProperties: false
+      required: [role, reason]
+      properties:
+        role: {type: string, enum: [community_moderator, station_reviewer, contributor_curator, support_agent]}
+        end_at:
+          type: [string, 'null']
+          format: date-time
+        reason: {type: string, minLength: 10, maxLength: 500}
+    AdminAuditEvent:
+      type: object
+      additionalProperties: false
+      required: [id, at, action, target_type, target_id, reason, before, after, request_id, client_ip_hash]
+      properties:
+        id: {type: integer, minimum: 1}
+        at: {type: string, format: date-time}
+        session_id: {type: string, format: uuid}
+        action: {type: string}
+        target_type: {type: string}
+        target_id: {type: string}
+        reason: {type: string}
+        before: {}
+        after: {}
+        request_id: {type: string}
+        client_ip_hash: {type: string}
+    AdminAuditList:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAuditEvent'
+        next_cursor: {type: string}
     PremiumPurchaseReceipt:
       type: object
       additionalProperties: false

@@ -46,6 +46,10 @@ import (
 	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
+	contributoradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/adapters"
+	contributorhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/adapters/http"
+	contributorapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/application"
+	contributordomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/domain"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
 	directoryintake "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/intake"
@@ -55,6 +59,7 @@ import (
 	driveradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/adapters"
 	driverhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/adapters/http"
 	driverapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/application"
+	entitlementadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/entitlement/adapters"
 	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
 	evidencehttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/http"
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
@@ -88,6 +93,9 @@ import (
 	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/http"
 	qualitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
+	staffadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/staff/adapters"
+	staffhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/staff/adapters/http"
+	staffapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/staff/application"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
@@ -737,9 +745,50 @@ func run() error {
 		},
 	}
 	premiumHTTP.RegisterRoutes(router)
+	// Contributor claims, profiles and the consented public list (ADR-023).
+	// Admin-only routes are mounted below with the shared admin middleware.
+	entitlementStore := entitlementadapters.NewStore(pool.Underlying())
+	staffStore := staffadapters.NewStore(pool.Underlying())
+	contributorStore := contributoradapters.NewStore(pool.Underlying())
+	contributorService := &contributorapp.Service{
+		Store:  contributorStore,
+		GitHub: contributoradapters.NewGitHubClient(cfg.GitHubRepo, cfg.GitHubToken),
+		Grants: entitlementStore, Roles: staffStore, Repo: cfg.GitHubRepo, Clock: time.Now, NewID: newUUID,
+		RequireCapability: func(ctx context.Context, tx pgx.Tx, owner string) error {
+			if err := premiumStore.RequireCapability(ctx, tx, owner, "contributor.profile"); err != nil {
+				if errors.Is(err, subscriptiondomain.ErrDenied) {
+					return contributordomain.ErrForbidden
+				}
+				return contributordomain.ErrUnavailable
+			}
+			return nil
+		},
+	}
+	contributorhttp.UserHandler{
+		Service: contributorService,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			return accountService.ValidateAccess(ctx, family, access)
+		},
+	}.RegisterRoutes(router)
+	contributorhttp.PublicHandler{
+		Service: contributorService, CursorSecret: cfg.CursorSecret, AllowedOrigins: cfg.PublicWebOrigins,
+	}.RegisterRoutes(router)
 	// Optional administrative surface (ADR-023). No configured key hash means
 	// no route is mounted and every /v1/admin/* path stays 404.
-	registerAdminRoutes(router, cfg, pool.Underlying(), trustedProxies)
+	if adminSurface, ok := newAdminHandler(cfg, pool.Underlying(), trustedProxies); ok {
+		adminSurface.RegisterRoutes(router)
+		// Contributor admin mutations (approve/reject/link/hide) commit
+		// through the shared admin audit/idempotency helper.
+		contributorService.Runner = adminSurface.Service.Store
+		contributorAdmin := contributorhttp.AdminHandler{Service: contributorService, Admin: adminSurface}
+		staffService := &staffapp.Service{Store: staffStore, Runner: adminSurface.Service.Store, Clock: time.Now, NewID: newUUID}
+		staffAdmin := staffhttp.AdminHandler{Service: staffService, Admin: adminSurface}
+		router.Group(func(g chi.Router) {
+			g.Use(adminSurface.AdminMiddleware()...)
+			contributorAdmin.RegisterRoutes(g)
+			staffAdmin.RegisterRoutes(g)
+		})
+	}
 	// Free document-free quality participation; payment capabilities never enter.
 	qualityReportStore := &qualityadapters.ReportStore{ConsumeBudget: func(ctx context.Context, tx pgx.Tx, owner string) error {
 		digest := sha256.Sum256([]byte("quality-reports:" + owner))
@@ -797,17 +846,19 @@ func run() error {
 		}
 		return clouddomain.ErrUnavailable
 	}
-	cloudStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
+	// Without configured payment ports only admin grants unlock (ENT-10);
+	// Play and web rows keep unlocking nothing in that state.
+	requireCapability := func(ctx context.Context, tx pgx.Tx, owner, capability string) error {
 		if !premiumService.Configured() {
-			return clouddomain.ErrDenied
+			return premiumStore.RequireAdminCapability(ctx, tx, owner, capability)
 		}
-		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "cloud.sync"))
+		return premiumStore.RequireCapability(ctx, tx, owner, capability)
+	}
+	cloudStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
+		return mapCloudError(requireCapability(ctx, tx, owner, "cloud.sync"))
 	}
 	cloudStore.MultipleVehicles = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		if !premiumService.Configured() {
-			return clouddomain.ErrDenied
-		}
-		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "vehicles.multiple"))
+		return mapCloudError(requireCapability(ctx, tx, owner, "vehicles.multiple"))
 	}
 	cloudhttp.Handler{
 		Service: cloudStore, CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,
@@ -822,10 +873,7 @@ func run() error {
 	}.RegisterRoutes(router)
 	ledgerStore := ledgeradapters.NewStore(pool.Underlying())
 	ledgerStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		if !premiumService.Configured() {
-			return errors.New("ledger: capability required")
-		}
-		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
+		if err := requireCapability(ctx, tx, owner, "professional.write"); err != nil {
 			if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
 				return errors.New("ledger: authentication required")
 			}
@@ -861,10 +909,7 @@ func run() error {
 	}.RegisterRoutes(router)
 	alertsStore := alertsadapters.NewStore(pool.Underlying())
 	alertsStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		if !premiumService.Configured() {
-			return errors.New("alerts: capability required")
-		}
-		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
+		if err := requireCapability(ctx, tx, owner, "professional.write"); err != nil {
 			if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
 				return errors.New("alerts: authentication required")
 			}

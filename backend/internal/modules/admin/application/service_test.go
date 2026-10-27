@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/domain"
+	"github.com/jackc/pgx/v5"
 )
 
 type fakeStore struct {
@@ -86,4 +87,28 @@ func TestAuthenticate_ADM07RemovedHashInvalidatesSession(t *testing.T) {
 	if _, err := service.Authenticate(context.Background(), token); err == nil {
 		t.Fatal("session from a removed key hash accepted")
 	}
+}
+
+func (f *fakeStore) Mutate(context.Context, Mutation, func(context.Context, pgx.Tx) (MutationResult, []AuditEvent, error)) (MutationResult, error) {
+	return MutationResult{}, domain.ErrUnavailable
+}
+
+func (f *fakeStore) RunInTx(ctx context.Context, fn func(context.Context, pgx.Tx) error) error {
+	return fn(ctx, nil)
+}
+
+func (f *fakeStore) SearchAccounts(context.Context, string) ([]Account, error) {
+	return nil, domain.ErrUnavailable
+}
+
+func (f *fakeStore) GetAccountTx(context.Context, pgx.Tx, string) (Account, error) {
+	return Account{}, domain.ErrUnavailable
+}
+
+func (f *fakeStore) PaidSummaryTx(context.Context, pgx.Tx, string) (PaidSummary, error) {
+	return PaidSummary{}, domain.ErrUnavailable
+}
+
+func (f *fakeStore) ListAudit(context.Context, AuditFilter) ([]AuditRecord, error) {
+	return nil, domain.ErrUnavailable
 }

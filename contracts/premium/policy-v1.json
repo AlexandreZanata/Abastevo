@@ -49,5 +49,6 @@
   "cloud_max_commands_per_hour": 600,
   "cloud_max_receipts_per_account": 10000,
   "cloud_receipt_retention_days": 30,
-  "cloud_change_retention_days": 30
+  "cloud_change_retention_days": 30,
+  "tier_catalog_version": "tier-catalog-v1"
 }

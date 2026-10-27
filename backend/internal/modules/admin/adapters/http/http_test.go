@@ -15,9 +15,11 @@ import (
 
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/domain"
+	entdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/entitlement/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpserver"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 const (
@@ -362,4 +364,98 @@ func TestSession_ADM05_WhoAmI(t *testing.T) {
 	if dto["key_fingerprint"] != domain.Fingerprint(domain.HashKey(testKey)) || dto["expires_at"] == nil {
 		t.Fatalf("body=%v", dto)
 	}
+}
+
+func (f *fakeStore) Mutate(context.Context, app.Mutation, func(context.Context, pgx.Tx) (app.MutationResult, []app.AuditEvent, error)) (app.MutationResult, error) {
+	return app.MutationResult{}, domain.ErrUnavailable
+}
+
+func (f *fakeStore) RunInTx(ctx context.Context, fn func(context.Context, pgx.Tx) error) error {
+	return fn(ctx, nil)
+}
+
+func (f *fakeStore) SearchAccounts(context.Context, string) ([]app.Account, error) {
+	return nil, domain.ErrUnavailable
+}
+
+func (f *fakeStore) GetAccountTx(context.Context, pgx.Tx, string) (app.Account, error) {
+	return app.Account{}, domain.ErrUnavailable
+}
+
+func (f *fakeStore) PaidSummaryTx(context.Context, pgx.Tx, string) (app.PaidSummary, error) {
+	return app.PaidSummary{}, domain.ErrUnavailable
+}
+
+// TestGrant_ENT05_CapabilitiesFieldRejected covers the unknown-field rule:
+// clients never send capability strings.
+func TestGrant_ENT05_CapabilitiesFieldRejected(t *testing.T) {
+	body := `{"tier":"PRO","reason":"synthetic grant reason","capabilities":["cloud.sync"]}`
+	req := sessionRequest(http.MethodPost, "/v1/admin/accounts/33333333-3333-4333-8333-333333333333/grants", body)
+	if w := serve(t, testHandler(successStore(), nil), req); w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestSearchAccounts_BUCADM02_ShortQuery covers the 3-character minimum.
+func TestSearchAccounts_BUCADM02_ShortQuery(t *testing.T) {
+	req := sessionRequest(http.MethodGet, "/v1/admin/accounts?q=ab", "")
+	if w := serve(t, testHandler(successStore(), nil), req); w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestGrant_ENT02_ENT03_ErrorMapping covers the 409 codes used by the grant
+// endpoints.
+func TestGrant_ENT02_ENT03_ErrorMapping(t *testing.T) {
+	for _, tc := range []struct {
+		err  error
+		code int
+		body string
+	}{
+		{entdomain.ErrIneligible, http.StatusConflict, "entitlement.account-ineligible"},
+		{entdomain.ErrExists, http.StatusConflict, "entitlement.exists"},
+		{entdomain.ErrAlreadyRevoked, http.StatusConflict, "entitlement.already-revoked"},
+		{entdomain.ErrInvalid, http.StatusBadRequest, "entitlement.invalid"},
+		{entdomain.ErrNotFound, http.StatusNotFound, "admin.not-found"},
+	} {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodPost, "/v1/admin/grants/x/revoke", nil)
+		writeAdminServiceError(w, r, tc.err)
+		if w.Code != tc.code {
+			t.Fatalf("err=%v status=%d", tc.err, w.Code)
+		}
+		var payload struct {
+			Error struct {
+				Code string `json:"code"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil || payload.Error.Code != tc.body {
+			t.Fatalf("err=%v body=%s", tc.err, w.Body.String())
+		}
+	}
+}
+
+// TestGrant_ENT01_RequiresAdminSession proves no user proof or anonymous
+// request can create or revoke a grant.
+func TestGrant_ENT01_RequiresAdminSession(t *testing.T) {
+	handler := testHandler(successStore(), nil)
+	for _, tc := range []struct{ path, body string }{
+		{"/v1/admin/accounts/33333333-3333-4333-8333-333333333333/grants", `{"tier":"PRO","reason":"synthetic grant reason"}`},
+		{"/v1/admin/grants/44444444-4444-4444-8444-444444444444/revoke", `{"reason":"synthetic revoke reason"}`},
+	} {
+		req := httptest.NewRequest(http.MethodPost, tc.path, strings.NewReader(tc.body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", testOrigin)
+		req.Header.Set(csrfHeader, testCSRF)
+		req.Header.Set(idempotencyHeader, testMutation)
+		req.Header.Set("Authorization", "Bearer account-access-token")
+		req.RemoteAddr = "198.51.100.10:4321"
+		if w := serve(t, handler, req); w.Code != http.StatusUnauthorized {
+			t.Fatalf("%s status=%d body=%s", tc.path, w.Code, w.Body.String())
+		}
+	}
+}
+
+func (f *fakeStore) ListAudit(context.Context, app.AuditFilter) ([]app.AuditRecord, error) {
+	return nil, domain.ErrUnavailable
 }
