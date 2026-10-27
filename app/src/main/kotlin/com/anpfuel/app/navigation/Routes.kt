@@ -20,6 +20,7 @@ object Routes {
         return "map/plan/$tripId"
     }
     const val PROFILE = "profile"
+    const val CONTRIBUTORS = "contributors"
     const val GAMES = "games"
     const val LOCATION = "location"
     const val HISTORY = "history"

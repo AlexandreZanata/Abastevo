@@ -1,5 +1,16 @@
 # Current execution state
 
+- C1 app public contributors list 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-c1-app-contributors` from
+  `origin/main` `d4dcf716`. Anonymous cursor-paged list: domain model,
+  OkHttp client, mapper, use case, ViewModel states, ContributorsScreen,
+  Premium-accent entry as last Profile item + route. Tested revision:
+  branch head; domain 781 / data 629 / application 484 / app 561 unit
+  tests, 0 failures; lint/assemble/androidTest-compile green;
+  instrumented tests compile but need a device/CI run (attached device
+  refuses installs). [Evidence](../../backend/evidence/admin/C1-APP-CONTRIBUTORS.md).
+  PR to `main`. Next: C2 landing page, then C3 self-service.
+
 - CD-02 staging deploy planner 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Pull-based dry-run agent in `infra/deploy/agent/` verifies the signed
   `staging` manifest (keyless identity/issuer), checks main ancestry through

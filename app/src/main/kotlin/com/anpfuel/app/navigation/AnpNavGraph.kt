@@ -193,6 +193,14 @@ fun AnpNavGraph(
                 onOpenPremium = {
                     navController.navigate(Routes.PREMIUM) { launchSingleTop = true }
                 },
+                onOpenContributors = {
+                    navController.navigate(Routes.CONTRIBUTORS) { launchSingleTop = true }
+                },
+            )
+        }
+        composable(Routes.CONTRIBUTORS) {
+            com.anpfuel.app.ui.contributors.ContributorsScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         composable(Routes.GAMES) {

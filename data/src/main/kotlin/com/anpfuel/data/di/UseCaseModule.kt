@@ -998,4 +998,13 @@ object UseCaseModule {
             gateway = gateway,
             sessions = sessions,
         )
+
+    @Provides
+    @Singleton
+    fun provideGetContributorsUseCase(
+        gateway: com.anpfuel.domain.repository.ContributorsGateway,
+    ): com.anpfuel.application.usecase.contributor.GetContributorsUseCase =
+        com.anpfuel.application.usecase.contributor.GetContributorsUseCase(
+            gateway = gateway,
+        )
 }
