@@ -7,6 +7,25 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
 
+// dist is served at /admin/* with the prefix stripped (Caddy handle_path), so
+// every root-absolute reference must start with /admin/ and resolve to a dist
+// file once the prefix is removed.
+const MOUNT_PATH = '/admin';
+
+function resolveMounted(distDir, owner, resourcePath, errors) {
+  if (!resourcePath.startsWith(`${MOUNT_PATH}/`)) {
+    errors.push(`${owner} references ${resourcePath} outside ${MOUNT_PATH}/`);
+    return;
+  }
+  const stripped = resourcePath.slice(MOUNT_PATH.length);
+  const diskTarget = stripped.endsWith('/')
+    ? path.join(distDir, stripped, 'index.html')
+    : path.join(distDir, stripped);
+  if (!fs.existsSync(diskTarget)) {
+    errors.push(`${owner} references nonexistent local resource: ${resourcePath}`);
+  }
+}
+
 export function checkDist(options = {}) {
   const root = options.projectRoot || DEFAULT_ROOT;
   const distDir = options.distDir || path.join(root, 'dist');
@@ -54,25 +73,19 @@ export function checkDist(options = {}) {
     if (!content.match(/<title>[^<]+<\/title>/)) {
       errors.push(`${rel} is missing <title>`);
     }
+    for (const match of content.matchAll(/(?:src|href)="(\/[^"#?]*)"/g)) {
+      resolveMounted(distDir, rel, match[1], errors);
+    }
     if (rel !== '404.html') {
-      if (cssFile && !content.includes(`/assets/${cssFile}`)) {
+      if (cssFile && !content.includes(`"${MOUNT_PATH}/assets/${cssFile}"`)) {
         errors.push(`${rel} does not reference fingerprinted CSS`);
       }
-      if (adminCssFile && !content.includes(`/assets/${adminCssFile}`)) {
+      if (adminCssFile && !content.includes(`"${MOUNT_PATH}/assets/${adminCssFile}"`)) {
         errors.push(`${rel} does not reference fingerprinted admin CSS`);
       }
       const appJs = jsFiles.find((f) => f.startsWith('app.'));
-      if (appJs && !content.includes(`/assets/${appJs}`)) {
+      if (appJs && !content.includes(`"${MOUNT_PATH}/assets/${appJs}"`)) {
         errors.push(`${rel} does not reference fingerprinted app JS`);
-      }
-      for (const match of content.matchAll(/(?:src|href)="(\/[^"#?]+)"/g)) {
-        const resourcePath = match[1];
-        const diskTarget = resourcePath.endsWith('/')
-          ? path.join(distDir, resourcePath, 'index.html')
-          : path.join(distDir, resourcePath);
-        if (!fs.existsSync(diskTarget)) {
-          errors.push(`${rel} references nonexistent local resource: ${resourcePath}`);
-        }
       }
     }
   }
@@ -120,6 +133,9 @@ export function checkDist(options = {}) {
       errors.push(`CSS gzipped size (${gzipped.length} bytes) exceeds 25 KiB budget`);
     }
     const cssText = fs.readFileSync(path.join(assetsDir, cssFile), 'utf8');
+    for (const match of cssText.matchAll(/url\(\s*['"]?(\/[^)'"\s]+)['"]?\s*\)/g)) {
+      resolveMounted(distDir, `assets/${cssFile}`, match[1], errors);
+    }
     if (/https?:\/\/(?:fonts\.googleapis|fonts\.gstatic)/.test(cssText)) {
       errors.push('CSS references a remote font service');
     }

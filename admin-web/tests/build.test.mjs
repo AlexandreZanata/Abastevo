@@ -34,8 +34,8 @@ test('build: dist has pages, fingerprinted assets, noindex and fonts', () => {
     }
     // Fonts copied from landing, hash-verified
     const css = fs.readFileSync(path.join(outDir, 'assets', result.cssName), 'utf8');
-    const references = [...css.matchAll(/url\(['"]?(\/assets\/fonts\/[^)'"\s]+\.woff2)['"]?\)/g)];
-    assert.ok(references.length >= 4, 'expected font references in CSS');
+    const references = [...css.matchAll(/url\(['"]?\/admin(\/assets\/fonts\/[^)'"\s]+\.woff2)['"]?\)/g)];
+    assert.ok(references.length >= 4, 'expected font references under /admin/assets/fonts in CSS');
     for (const [, reference] of references) {
       const emitted = fs.readFileSync(path.join(outDir, reference));
       assert.equal(emitted.subarray(0, 4).toString(), 'wOF2', `${reference} must be WOFF2`);
@@ -43,6 +43,52 @@ test('build: dist has pages, fingerprinted assets, noindex and fonts', () => {
     for (const license of ['OFL-Manrope.txt', 'OFL-Source-Sans-3.txt']) {
       assert.match(fs.readFileSync(path.join(outDir, 'assets/fonts', license), 'utf8'), /SIL Open Font License/);
     }
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+// Pages are mounted under /admin/ and B3 serves dist with Caddy handle_path,
+// which strips the /admin prefix before the file lookup. A root-absolute
+// /assets/... reference would therefore resolve against the API origin root.
+const MOUNT = '/admin';
+
+function walk(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...walk(full));
+    else out.push(full);
+  }
+  return out;
+}
+
+test('build: every asset reference is mounted under /admin and resolves after the prefix is stripped', () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'adm-web-mount-'));
+  try {
+    build({ projectRoot: root, outDir });
+    const files = walk(outDir).filter((f) => f.endsWith('.html') || f.endsWith('.css'));
+    assert.ok(files.some((f) => f.endsWith('.css')), 'expected CSS in dist');
+    let checked = 0;
+    for (const file of files) {
+      const rel = path.relative(outDir, file);
+      const content = fs.readFileSync(file, 'utf8');
+      assert.doesNotMatch(content, /(?<![\w/])\/assets\//, `${rel} has a root-absolute /assets/ reference`);
+      const refs = [
+        ...content.matchAll(/(?:src|href)="(\/[^"#?]*)"/g),
+        ...content.matchAll(/url\(\s*['"]?(\/[^)'"\s]+)['"]?\s*\)/g),
+      ].map((match) => match[1]);
+      for (const ref of refs) {
+        assert.ok(ref.startsWith(`${MOUNT}/`), `${rel} references ${ref} outside ${MOUNT}/`);
+        const stripped = ref.slice(MOUNT.length);
+        const target = stripped.endsWith('/')
+          ? path.join(outDir, stripped, 'index.html')
+          : path.join(outDir, stripped);
+        assert.ok(fs.existsSync(target), `${rel} references ${ref}, missing ${stripped} in dist`);
+        checked += 1;
+      }
+    }
+    assert.ok(checked >= 10, `expected asset references to be checked, got ${checked}`);
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
   }

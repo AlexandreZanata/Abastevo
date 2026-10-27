@@ -21,3 +21,16 @@ test('check: fresh build passes the dist gate', () => {
     fs.rmSync(outDir, { recursive: true, force: true });
   }
 });
+
+test('check: rejects a root-absolute /assets/ reference that escapes the /admin mount', () => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'adm-web-check-mount-'));
+  try {
+    const result = build({ projectRoot: root, outDir });
+    const login = path.join(outDir, 'login/index.html');
+    const html = fs.readFileSync(login, 'utf8');
+    fs.writeFileSync(login, html.replace(`"/admin/assets/${result.cssName}"`, `"/assets/${result.cssName}"`));
+    assert.throws(() => checkDist({ projectRoot: root, distDir: outDir }), /outside \/admin\//);
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});

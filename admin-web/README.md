@@ -51,5 +51,10 @@ npm run check
 npm test
 ```
 
-`dist/` is served from the API origin at `/admin/*` (Front B3); the panel
-calls relative `/v1/admin/...` paths with `credentials: 'same-origin'`.
+`dist/` is served from the API origin at `/admin/*` (Front B3) with the
+`/admin` prefix stripped before the file lookup (Caddy `handle_path`). Every
+page and stylesheet therefore references `/admin/assets/...` (including the
+font URLs re-rooted from the landing stylesheet) while the files live at
+`dist/assets/`; `build` and `check` fail on any reference outside `/admin/`.
+The panel calls relative `/v1/admin/...` paths with
+`credentials: 'same-origin'`.
