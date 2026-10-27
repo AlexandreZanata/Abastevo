@@ -44,3 +44,21 @@ func (s *Store) RequireCapability(ctx context.Context, tx pgx.Tx, owner, capabil
 	}
 	return nil
 }
+
+// RequireAdminCapability is the check used while payment ports are not
+// configured: only admin grants unlock (ENT-10). Play and web payment rows
+// keep the pre-existing behavior of unlocking nothing in that state.
+func (s *Store) RequireAdminCapability(ctx context.Context, tx pgx.Tx, owner, capability string) error {
+	q := qsub.New(tx)
+	if err := s.authorize(ctx, q, app.Principal{AccountID: owner}, false, false); err != nil {
+		return err
+	}
+	adminCapabilities, _, _, err := adminGrants(ctx, tx, owner, time.Now())
+	if err != nil {
+		return domain.ErrUnavailable
+	}
+	if !slices.Contains(adminCapabilities, capability) {
+		return domain.ErrDenied
+	}
+	return nil
+}
