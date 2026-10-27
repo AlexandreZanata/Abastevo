@@ -1,5 +1,13 @@
 # Current execution state
 
+- MAP completion MC-B4 2026-10-27: LOCAL_DONE. Base `d9ed4579` plus this
+  task. Abuse, idempotency, ownership, quota, concurrent decision, concurrent
+  open-field and accepted-location projection are covered by unit tests and a
+  disposable PostGIS integration suite (`ok` 15.997 s). The municipality
+  polygon/distance rule lands with MC-A3; no raw contributor GPS is stored.
+  Evidence: [MC-B4](../backend/evidence/maps/map-completion/MC-B4.md).
+  Time: ~30 min.
+
 - MAP completion MC-B3 2026-10-27: LOCAL_DONE. Base `96952e07` plus this
   task. Signed correction routes (submit/mine/status/cancel), validation and
   quota/idempotency service, transactional decision+audit, accepted-location
