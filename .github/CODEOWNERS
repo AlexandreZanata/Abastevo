@@ -1,2 +1,6 @@
 # Default owners — required approval on pull requests to protected branches.
 * @AlexandreZanata
+
+# Release pipeline and future deploy-agent files require owner review.
+/.github/workflows/ @AlexandreZanata
+/infra/deploy/ @AlexandreZanata

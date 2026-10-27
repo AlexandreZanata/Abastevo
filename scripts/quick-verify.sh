@@ -63,6 +63,9 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     fi
 done < "$MANIFEST"
 
+echo "== release workflow guard =="
+bash "$ROOT/scripts/check-release-workflow.sh"
+
 # Collect changed files from working tree (tracked + untracked) and, when
 # available, the committed PR diff against origin/main. CI checkouts are clean,
 # so working-tree status alone would scan nothing; the PR diff covers that case.

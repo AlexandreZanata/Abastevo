@@ -1,5 +1,13 @@
 # Current execution state
 
+- CD-01 staging release artifacts 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
+  Phase 1 only: signed digest-pinned api/worker/migrate images, landing bundle,
+  SBOM/provenance, keyless manifest, workflow guard and CODEOWNERS. Local
+  actionlint v1.7.12, guard fixtures, manifest fixture and existing checks PASS;
+  real main run, anonymous GHCR pull and post-merge verification pending merge.
+  No VPS, deploy, production or Phase 2 work.
+  [CD-01 evidence](../backend/evidence/cd/CD-01.md).
+
 - Landing LH09 / portal shared chrome 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   User-authorized branch `codex/landing-portal-visual` from `origin/main` (dev
   carries unrelated open PR #151) with a PR to main. Uber-style light-only home
