@@ -134,3 +134,9 @@ FROM (
  UNION ALL SELECT 'g|'||g.gap_id::text FROM ledger_gaps g WHERE g.account_id=$1
  UNION ALL SELECT 's|'||s.vehicle_id::text||'|'||s.segment_no::text FROM ledger_segments s WHERE s.account_id=$1
 ) AS versions;
+
+-- name: LockDriverLedgerCosts :many
+SELECT dataset,id,vehicle_id,revision,voided,deleted,
+ COALESCE(CASE WHEN dataset='expense' THEN payload->>'amount_centavos'
+      ELSE payload->>'total_centavos' END,'')::text AS amount_text
+FROM ledger_records WHERE account_id=$1 AND id=$2 FOR SHARE;

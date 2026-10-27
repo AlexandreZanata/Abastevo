@@ -1,0 +1,322 @@
+{
+  "schema": "driver-suite-planning-oracles-v1",
+  "status": "PLANNED_NOT_RUNTIME_ACCEPTANCE",
+  "date": "2026-10-26",
+  "currency": "BRL",
+  "note": "Synthetic independent examples; preserve financial-v1 and implement real Go/Kotlin/UI consumers before claiming acceptance. Raw missing values are null, never zero. Allocation residual is a proposed contract to freeze before behavior.",
+  "vectors": [
+    {
+      "id": "DRV-V01",
+      "method": "localized-km-to-metres",
+      "inputs": {
+        "locale": "pt-BR",
+        "input_km": "12345,6"
+      },
+      "expected": {
+        "odometer_metres": 12345600,
+        "display_km": "12345,6"
+      }
+    },
+    {
+      "id": "DRV-V02",
+      "method": "full-to-full",
+      "inputs": {
+        "start_km": 10000,
+        "end_km": 10500,
+        "eligible_quantity_milli_l": 40000,
+        "eligible_cost_centavos": 26000
+      },
+      "expected": {
+        "distance_metres": 500000,
+        "km_per_l_rational": "25/2",
+        "centavos_per_km_rational": "52",
+        "display_brl_per_km": "0,52"
+      }
+    },
+    {
+      "id": "DRV-V03",
+      "method": "starting-full-excluded",
+      "inputs": {
+        "initial_quantity_milli_l": 50000,
+        "initial_total_centavos": 30000,
+        "partial_quantity_milli_l": 20000,
+        "partial_total_centavos": 12000,
+        "final_quantity_milli_l": 20000,
+        "final_total_centavos": 12400,
+        "distance_metres": 400000
+      },
+      "expected": {
+        "eligible_quantity_milli_l": 40000,
+        "eligible_cost_centavos": 24400,
+        "km_per_l_rational": "10",
+        "centavos_per_km_rational": "61"
+      }
+    },
+    {
+      "id": "DRV-V04",
+      "method": "actual-discount-authoritative",
+      "inputs": {
+        "actual_total_centavos": 23000,
+        "distance_metres": 400000
+      },
+      "expected": {
+        "centavos_per_km_rational": "115/2",
+        "display_brl_per_km": "0,58"
+      }
+    },
+    {
+      "id": "DRV-V05",
+      "method": "weighted-efficiency",
+      "inputs": {
+        "windows": [
+          {
+            "distance_metres": 100000,
+            "quantity_milli_l": 10000
+          },
+          {
+            "distance_metres": 900000,
+            "quantity_milli_l": 60000
+          }
+        ]
+      },
+      "expected": {
+        "km_per_l_rational": "100/7",
+        "not_unweighted_average": true
+      }
+    },
+    {
+      "id": "DRV-V06",
+      "method": "detailed-earned",
+      "inputs": {
+        "gross_centavos": 50000,
+        "fees_centavos": 10000,
+        "tips_centavos": 2000,
+        "bonus_centavos": 3000,
+        "refund_centavos": 0
+      },
+      "expected": {
+        "earned_net_centavos": 45000
+      }
+    },
+    {
+      "id": "DRV-V07",
+      "method": "inclusive-net-summary",
+      "inputs": {
+        "inclusive_net_centavos": 40000,
+        "included_tips_centavos": 3000,
+        "gross_known": false
+      },
+      "expected": {
+        "earned_net_centavos": 40000,
+        "gross_centavos": null,
+        "unknown": "gross-and-fee-components-unknown"
+      }
+    },
+    {
+      "id": "DRV-V08",
+      "method": "payout-is-not-earned-again",
+      "inputs": {
+        "earned_net_centavos": 45000,
+        "bank_payout_from_already_earned_centavos": 30000
+      },
+      "expected": {
+        "earned_net_centavos": 45000,
+        "bank_received_centavos": 30000,
+        "not_earned_total": 75000
+      }
+    },
+    {
+      "id": "DRV-V09",
+      "method": "recorded-complete-window",
+      "inputs": {
+        "earned_net_centavos": 45000,
+        "eligible_costs_centavos": [
+          13000,
+          2000,
+          5000
+        ],
+        "distance_metres": 200000,
+        "work_seconds": 28800,
+        "complete_window": true
+      },
+      "expected": {
+        "recorded_result_centavos": 25000,
+        "result_centavos_per_km_rational": "125",
+        "result_centavos_per_hour_rational": "3125"
+      }
+    },
+    {
+      "id": "DRV-V10",
+      "method": "separate-modeled-result",
+      "inputs": {
+        "recorded_result_centavos": 25000,
+        "additional_nonoverlapping_estimates_centavos": [
+          4000,
+          6000
+        ],
+        "distance_metres": 200000,
+        "work_seconds": 28800
+      },
+      "expected": {
+        "modeled_result_centavos": 15000,
+        "recorded_result_centavos_unchanged": 25000,
+        "modeled_centavos_per_km_rational": "75",
+        "modeled_centavos_per_hour_rational": "1875"
+      }
+    },
+    {
+      "id": "DRV-V11",
+      "method": "overlapping-platform-time",
+      "inputs": {
+        "app_a_seconds": 21600,
+        "app_b_seconds": 18000,
+        "overlap_seconds": 14400
+      },
+      "expected": {
+        "union_seconds": 25200,
+        "not_summed_seconds": 39600
+      }
+    },
+    {
+      "id": "DRV-V12",
+      "method": "paid-distance-partition",
+      "inputs": {
+        "work_distance_metres": 200000,
+        "paid_distance_metres": 120000,
+        "classification_complete": true
+      },
+      "expected": {
+        "empty_distance_metres": 80000,
+        "paid_percent_rational": "60"
+      }
+    },
+    {
+      "id": "DRV-V13",
+      "method": "distance-bases-do-not-sum",
+      "inputs": {
+        "odometer_distance_metres": 200000,
+        "gps_distance_metres": 190000,
+        "selected_basis": "odometer"
+      },
+      "expected": {
+        "selected_distance_metres": 200000,
+        "gps_gap_metres": 10000,
+        "not_distance_metres": 390000
+      }
+    },
+    {
+      "id": "DRV-V14",
+      "method": "phev-monetary-window",
+      "inputs": {
+        "fuel_cost_centavos": 15000,
+        "charge_cost_centavos": 4000,
+        "same_window_distance_metres": 500000,
+        "per_motor_distance_known": false
+      },
+      "expected": {
+        "centavos_per_km_rational": "38",
+        "liquid_km_per_l": null,
+        "electric_wh_per_km": null,
+        "unknown": "per-carrier-distance-unknown"
+      }
+    },
+    {
+      "id": "DRV-V15",
+      "method": "gnv-purchase-window",
+      "inputs": {
+        "purchase_quantity_milli_m3": 20000,
+        "purchase_total_centavos": 10000,
+        "matched_distance_metres": 200000,
+        "complete_money_window": true,
+        "consumption_method_admitted": false
+      },
+      "expected": {
+        "purchase_centavos_per_km_rational": "50",
+        "measured_km_per_m3": null,
+        "unknown": "unsupported-gnv-consumption-method"
+      }
+    },
+    {
+      "id": "DRV-V16",
+      "method": "centavo-residual-allocation",
+      "inputs": {
+        "source_centavos": 100,
+        "weights": [
+          1,
+          1,
+          1
+        ],
+        "stable_ids": [
+          "a",
+          "b",
+          "c"
+        ],
+        "residual_policy": "largest-remainder-then-stable-id"
+      },
+      "expected": {
+        "allocations_centavos": [
+          34,
+          33,
+          33
+        ],
+        "sum_centavos": 100
+      }
+    },
+    {
+      "id": "DRV-V17",
+      "method": "missing-denominator",
+      "inputs": {
+        "earned_centavos": 45000,
+        "distance_metres": null,
+        "work_seconds": 0
+      },
+      "expected": {
+        "income_per_km": null,
+        "income_per_hour": null,
+        "unknown": [
+          "distance-missing",
+          "time-nonpositive"
+        ]
+      }
+    },
+    {
+      "id": "DRV-V18",
+      "method": "break-even-scenario",
+      "inputs": {
+        "fixed_cost_centavos": 10000,
+        "net_revenue_centavos_per_km": 200,
+        "variable_cost_centavos_per_km": 150
+      },
+      "expected": {
+        "contribution_centavos_per_km": 50,
+        "break_even_distance_metres": 200000
+      }
+    },
+    {
+      "id": "DRV-V19",
+      "method": "unattainable-break-even",
+      "inputs": {
+        "fixed_cost_centavos": 10000,
+        "net_revenue_centavos_per_km": 100,
+        "variable_cost_centavos_per_km": 150
+      },
+      "expected": {
+        "break_even_distance_metres": null,
+        "unknown": "nonpositive-contribution-margin"
+      }
+    },
+    {
+      "id": "DRV-V20",
+      "method": "no-mandatory-cost-default",
+      "inputs": {
+        "earned_centavos": 45000,
+        "mandatory_cost_centavos": null,
+        "window_complete": false
+      },
+      "expected": {
+        "complete_operating_result_centavos": null,
+        "unknown": "cost-coverage-incomplete"
+      }
+    }
+  ]
+}

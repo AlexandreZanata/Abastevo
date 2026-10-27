@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"testing/fstest"
@@ -311,6 +312,12 @@ func TestPreviousSchemaUpgradeAddsMapTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	expected := []string{"000122", "000123", "000124", "000125", "000126", "000127", "000128", "000129", "000130", "000131", "000132"}
+	// Later append-only migrations follow in order.
+	for _, entry := range entries {
+		if !entry.IsDir() && entry.Name() > "000132_~" && strings.HasSuffix(entry.Name(), ".sql") {
+			expected = append(expected, entry.Name()[:6])
+		}
+	}
 	if !slices.Equal(applied, expected) {
 		t.Fatalf("applied %v", applied)
 	}

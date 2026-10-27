@@ -775,4 +775,63 @@ object AnpFuelDatabaseMigrations {
             )
         }
     }
+    val MIGRATION_28_29: Migration = object : Migration(28, 29) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Append-only DRV-13 owner/origin driver state. Existing ledger,
+            // map, vehicle and session rows are untouched.
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `driver_shift` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `shift_id` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `timezone` TEXT NOT NULL, `state` TEXT NOT NULL, `version` INTEGER NOT NULL, `last_boot_id` TEXT, `last_elapsed_millis` INTEGER, `last_utc_millis` INTEGER, `active_millis` INTEGER NOT NULL, `manually_reviewed_millis` INTEGER NOT NULL, `created_at_millis` INTEGER NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `shift_id`))",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_shift_owner_state` ON `driver_shift` (`owner_account`, `origin`, `state`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `driver_shift_gap` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `shift_id` TEXT NOT NULL, `gap_id` TEXT NOT NULL, `reason` TEXT NOT NULL, `previous_boot_id` TEXT NOT NULL, `previous_elapsed_millis` INTEGER NOT NULL, `previous_utc_millis` INTEGER NOT NULL, `next_boot_id` TEXT NOT NULL, `next_elapsed_millis` INTEGER NOT NULL, `next_utc_millis` INTEGER NOT NULL, `reviewed` INTEGER NOT NULL, `reviewed_work_millis` INTEGER, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `shift_id`, `gap_id`))",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_shift_gap_owner_shift` ON `driver_shift_gap` (`owner_account`, `origin`, `shift_id`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `driver_earning` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `record_id` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `platform` TEXT NOT NULL, `coverage` TEXT NOT NULL, `currency` TEXT NOT NULL, `from_millis` INTEGER NOT NULL, `to_millis` INTEGER NOT NULL, `timezone` TEXT NOT NULL, `basis` TEXT NOT NULL, `gross_centavos` INTEGER, `fees_centavos` INTEGER, `tips_centavos` INTEGER, `bonus_centavos` INTEGER, `refund_centavos` INTEGER, `net_centavos` INTEGER, `revision` INTEGER NOT NULL, `content_sha256` TEXT NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `record_id`))",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_earning_owner_window` ON `driver_earning` (`owner_account`, `origin`, `vehicle_id`, `from_millis`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `driver_earning_revision` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `record_id` TEXT NOT NULL, `revision` INTEGER NOT NULL, `body_json` TEXT NOT NULL, `content_sha256` TEXT NOT NULL, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `record_id`, `revision`))",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_earning_revision_owner_record` ON `driver_earning_revision` (`owner_account`, `origin`, `record_id`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `driver_distance` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `observation_id` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `segment` TEXT NOT NULL, `basis` TEXT NOT NULL, `from_millis` INTEGER NOT NULL, `to_millis` INTEGER NOT NULL, `timezone` TEXT NOT NULL, `metres` INTEGER, `complete` INTEGER NOT NULL, `has_gap` INTEGER NOT NULL, `quality` TEXT NOT NULL, `quality_version` INTEGER, `quality_note` TEXT, `start_odometer_metres` INTEGER, `end_odometer_metres` INTEGER, `content_sha256` TEXT NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `observation_id`))",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_distance_owner_window` ON `driver_distance` (`owner_account`, `origin`, `vehicle_id`, `from_millis`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `driver_local_command` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `operation_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `body_sha256` TEXT NOT NULL, `expected_revision` INTEGER NOT NULL, `state` TEXT NOT NULL, `attempts` INTEGER NOT NULL, `next_eligible_millis` INTEGER NOT NULL, `last_error` TEXT, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `operation_id`))",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_command_owner_state` ON `driver_local_command` (`owner_account`, `origin`, `state`, `next_eligible_millis`)")
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `driver_draft` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `draft_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `record_id` TEXT NOT NULL, `body_json` TEXT NOT NULL, `distance_metres` INTEGER, `amount_centavos` INTEGER, `duration_seconds` INTEGER, `unit_version` TEXT NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `draft_id`))",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_draft_owner_updated` ON `driver_draft` (`owner_account`, `origin`, `updated_at_millis`)")
+        }
+    }
+    val MIGRATION_29_30: Migration = object : Migration(29, 30) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // DRV-14 durable local outbox lease; existing queued rows remain
+            // PENDING and immediately claimable with a zero lease.
+            db.execSQL("ALTER TABLE `driver_local_command` ADD COLUMN `lease_until_millis` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+    val MIGRATION_30_31: Migration = object : Migration(30, 31) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `driver_shift` ADD COLUMN `start_odometer_metres` INTEGER")
+            db.execSQL("ALTER TABLE `driver_shift` ADD COLUMN `end_odometer_metres` INTEGER")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_payout` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `payout_id` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `occurred_at_millis` INTEGER NOT NULL, `amount_centavos` INTEGER NOT NULL, `kind` TEXT NOT NULL, `source` TEXT NOT NULL, `note` TEXT, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `payout_id`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_payout_owner` ON `driver_payout` (`owner_account`, `origin`, `vehicle_id`, `occurred_at_millis`)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_cost_setting` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `ownership` TEXT NOT NULL, `monthly_amount_centavos` INTEGER, `personal_fraction_percent` INTEGER NOT NULL, `effective_from` TEXT NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_gps_observation` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `observation_id` TEXT NOT NULL, `shift_id` TEXT NOT NULL, `from_at_millis` INTEGER NOT NULL, `to_at_millis` INTEGER NOT NULL, `metres` INTEGER, `complete` INTEGER NOT NULL, `has_gap` INTEGER NOT NULL, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `observation_id`))")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_driver_gps_owner_shift` ON `driver_gps_observation` (`owner_account`, `origin`, `shift_id`)")
+        }
+    }
+    val MIGRATION_31_32: Migration = object : Migration(31, 32) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_reconciliation` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `day` TEXT NOT NULL, `basis` TEXT NOT NULL, `odometer_metres` INTEGER, `gps_metres` INTEGER, `paid_metres` INTEGER, `empty_metres` INTEGER, `personal_metres` INTEGER, `complete` INTEGER NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `day`))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_goal` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `goal_id` TEXT NOT NULL, `period` TEXT NOT NULL, `metric` TEXT NOT NULL, `target_centavos` INTEGER NOT NULL, `active` INTEGER NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `goal_id`))")
+            db.execSQL("CREATE TABLE IF NOT EXISTS `driver_maintenance` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `item_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `interval_km` INTEGER, `interval_days` INTEGER, `baseline_km` INTEGER, `baseline_day` TEXT, `next_due_km` INTEGER, `next_due_day` TEXT, `last_service_km` INTEGER, `last_service_day` TEXT, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `item_id`))")
+        }
+    }
 }

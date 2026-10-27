@@ -56,6 +56,9 @@ import (
 	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
+	driveradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/adapters"
+	driverhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/adapters/http"
+	driverapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/application"
 	entitlementadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/entitlement/adapters"
 	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
 	evidencehttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/http"
@@ -939,6 +942,45 @@ func run() error {
 			}
 			return contributor, key, nil
 		},
+	}.RegisterRoutes(router)
+	driverStore := driveradapters.NewWithLedger(pool.Underlying(), cloudadapters.RequireDriverOwnedVehicle, ledgeradapters.RequireDriverLedgerCost)
+	driverStore.SetPaid(func(ctx context.Context, tx pgx.Tx, owner string) error {
+		if !premiumService.Configured() {
+			return driverapp.ErrDenied
+		}
+		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
+			return driverapp.ErrDenied
+		}
+		return nil
+	})
+	driverReports := &driverapp.ReportService{Store: driverStore, Snapshots: driveradapters.NewReportStore(pool.Underlying()), Now: time.Now}
+	driverReports.Paid = func(ctx context.Context, owner string) error {
+		if !premiumService.Configured() {
+			return driverapp.ErrDenied
+		}
+		tx, err := pool.Underlying().Begin(ctx)
+		if err != nil {
+			return driverapp.ErrUnavailable
+		}
+		defer tx.Rollback(ctx)
+		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.report"); err != nil {
+			return driverapp.ErrDenied
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return driverapp.ErrUnavailable
+		}
+		return nil
+	}
+	driverhttp.Handler{
+		Earnings: driverStore, Commands: driverStore, Reports: driverReports,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			return premiumHTTP.Sessions(ctx, family, access)
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			return premiumHTTP.SignedOwner(r, owner)
+		},
+		CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,
+		Enabled: func() bool { return cfg.DriverEnabled },
 	}.RegisterRoutes(router)
 	subscriptionhttp.ProviderHandler{Store: premiumStore, Environment: "production", PackageName: "com.anpfuel"}.RegisterRoutes(router)
 

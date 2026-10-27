@@ -69,6 +69,7 @@ fun LedgerEntriesScreen(
     vehicleId: String,
     onNavigateBack: () -> Unit,
     onOpenMonthly: (String) -> Unit = {},
+    initialDataset: LedgerDataset? = null,
     modifier: Modifier = Modifier,
     viewModel: LedgerEntriesViewModel = hiltViewModel(),
 ) {
@@ -77,6 +78,13 @@ fun LedgerEntriesScreen(
 
     LaunchedEffect(vehicleId) {
         viewModel.load(DomainId.from(vehicleId), locale)
+    }
+    var initialStarted by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(initialDataset, uiState.isLoading) {
+        if (!initialStarted && initialDataset != null && !uiState.isLoading) {
+            initialStarted = true
+            viewModel.startAdd(initialDataset)
+        }
     }
 
     LedgerEntriesContent(
@@ -112,6 +120,7 @@ fun LedgerEntriesScreen(
         onTotalChanged = viewModel::onTotalChanged,
         onUnitPriceChanged = viewModel::onUnitPriceChanged,
         onRateChanged = viewModel::onRateChanged,
+        onFeesChanged = viewModel::onFeesChanged,
         onSocStartChanged = viewModel::onSocStartChanged,
         onSocEndChanged = viewModel::onSocEndChanged,
         onTariffIdChanged = viewModel::onTariffIdChanged,
@@ -120,6 +129,7 @@ fun LedgerEntriesScreen(
         onFillChanged = viewModel::onFillChanged,
         onCategoryChanged = viewModel::onCategoryChanged,
         onOdometerChanged = viewModel::onOdometerChanged,
+        onReviewOdometer = viewModel::reviewOdometer,
         onStationChanged = viewModel::onStationChanged,
         onNoteChanged = viewModel::onNoteChanged,
         onSaveDraft = viewModel::saveDraft,
@@ -163,6 +173,7 @@ internal fun LedgerEntriesContent(
     onTotalChanged: (String) -> Unit,
     onUnitPriceChanged: (String) -> Unit,
     onRateChanged: (String) -> Unit,
+    onFeesChanged: (String) -> Unit,
     onSocStartChanged: (String) -> Unit,
     onSocEndChanged: (String) -> Unit,
     onTariffIdChanged: (String) -> Unit,
@@ -180,6 +191,7 @@ internal fun LedgerEntriesContent(
     onDismissError: () -> Unit,
     onOpenMonthly: () -> Unit,
     modifier: Modifier = Modifier,
+    onReviewOdometer: (com.anpfuel.domain.premium.OdometerReviewChoice) -> Unit = {},
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -293,6 +305,7 @@ internal fun LedgerEntriesContent(
             onTotalChanged = onTotalChanged,
                         onUnitPriceChanged = onUnitPriceChanged,
                         onRateChanged = onRateChanged,
+                        onFeesChanged = onFeesChanged,
                         onSocStartChanged = onSocStartChanged,
                         onSocEndChanged = onSocEndChanged,
                         onTariffIdChanged = onTariffIdChanged,
@@ -304,6 +317,7 @@ internal fun LedgerEntriesContent(
             onStationChanged = onStationChanged,
             onNoteChanged = onNoteChanged,
             onSave = onSaveDraft,
+            onReviewOdometer = onReviewOdometer,
         )
     }
 
@@ -475,6 +489,7 @@ private fun LedgerEntryCard(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(text = entrySummaryText(row, locale), style = MaterialTheme.typography.titleMedium)
+            if (row.odometerNeedsReview) Text(stringResource(R.string.ledger_review_entry), style = MaterialTheme.typography.bodySmall)
             Text(
                 text = stringResource(stateRes),
                 style = MaterialTheme.typography.bodySmall,
@@ -541,6 +556,7 @@ private fun LedgerEntryFormDialog(
     onTotalChanged: (String) -> Unit,
     onUnitPriceChanged: (String) -> Unit,
     onRateChanged: (String) -> Unit,
+    onFeesChanged: (String) -> Unit,
     onSocStartChanged: (String) -> Unit,
     onSocEndChanged: (String) -> Unit,
     onTariffIdChanged: (String) -> Unit,
@@ -552,6 +568,7 @@ private fun LedgerEntryFormDialog(
     onStationChanged: (String) -> Unit,
     onNoteChanged: (String) -> Unit,
     onSave: () -> Unit,
+    onReviewOdometer: (com.anpfuel.domain.premium.OdometerReviewChoice) -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -655,6 +672,15 @@ private fun LedgerEntryFormDialog(
                         )
                     }
                     OutlinedTextField(
+                        value = form.feesInput,
+                        onValueChange = onFeesChanged,
+                        label = { Text(text = stringResource(R.string.ledger_entry_charge_fees)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = form.validationErrorKey == LedgerEntryValidationError.FEES_INVALID,
+                        supportingText = errorText(LedgerEntryValidationError.FEES_INVALID, form),
+                    )
+                    OutlinedTextField(
                         value = form.socStartInput,
                         onValueChange = onSocStartChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_charge_soc_start)) },
@@ -733,8 +759,25 @@ private fun LedgerEntryFormDialog(
                         supportingText = errorText(LedgerEntryValidationError.UNIT_PRICE_INVALID, form),
                     )
                 }
+                if (form.odometerNeedsReview) {
+                    Text(stringResource(R.string.ledger_review_required))
+                    form.originalOdometerValue?.let { Text(stringResource(R.string.ledger_review_saved, it)) }
+                    form.metresReviewKm?.let { km ->
+                        TextButton(onClick = { onReviewOdometer(com.anpfuel.domain.premium.OdometerReviewChoice.AS_METRES) }, enabled = !isSaving) {
+                            Text(stringResource(R.string.ledger_review_metres, km))
+                        }
+                    }
+                    form.kilometresReviewKm?.let { km ->
+                        TextButton(onClick = { onReviewOdometer(com.anpfuel.domain.premium.OdometerReviewChoice.AS_KILOMETRES) }, enabled = !isSaving) {
+                            Text(stringResource(R.string.ledger_review_kilometres, km))
+                        }
+                    }
+                    errorText(LedgerEntryValidationError.ODOMETER_REVIEW_FAILED,form)?.invoke()
+                    errorText(LedgerEntryValidationError.ODOMETER_REVIEW_REQUIRED,form)?.invoke()
+                }
                 OutlinedTextField(
                     value = form.odometerInput,
+                    enabled = !form.odometerNeedsReview && !isSaving,
                     onValueChange = onOdometerChanged,
                     label = { Text(text = stringResource(R.string.ledger_entry_odometer)) },
                     singleLine = true,
@@ -789,10 +832,13 @@ private fun errorText(key: LedgerEntryValidationError, form: LedgerEntryFormStat
         LedgerEntryValidationError.TOTAL_INVALID -> R.string.ledger_entry_validation_total
         LedgerEntryValidationError.UNIT_PRICE_INVALID -> R.string.ledger_entry_validation_unit_price
         LedgerEntryValidationError.ODOMETER_INVALID -> R.string.ledger_entry_validation_odometer
+        LedgerEntryValidationError.ODOMETER_REVIEW_REQUIRED -> R.string.ledger_review_required
+        LedgerEntryValidationError.ODOMETER_REVIEW_FAILED -> R.string.ledger_review_failed
         LedgerEntryValidationError.STATION_INVALID -> R.string.ledger_entry_validation_station
         LedgerEntryValidationError.FUEL_UNAVAILABLE -> R.string.ledger_entry_fuel_unavailable
         LedgerEntryValidationError.CHARGE_UNAVAILABLE -> R.string.ledger_entry_charge_unavailable
         LedgerEntryValidationError.TARIFF_INVALID -> R.string.ledger_entry_validation_tariff
+        LedgerEntryValidationError.FEES_INVALID -> R.string.ledger_entry_validation_fees
         LedgerEntryValidationError.RATE_INVALID -> R.string.ledger_entry_validation_rate
         LedgerEntryValidationError.SOC_INVALID -> R.string.ledger_entry_validation_soc
     }
@@ -864,6 +910,7 @@ private fun LedgerEntriesPreview() {
             onTotalChanged = {},
             onUnitPriceChanged = {},
             onRateChanged = {},
+            onFeesChanged = {},
             onSocStartChanged = {},
             onSocEndChanged = {},
             onTariffIdChanged = {},

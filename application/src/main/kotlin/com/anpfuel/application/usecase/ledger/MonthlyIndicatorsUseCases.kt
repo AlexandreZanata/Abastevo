@@ -32,6 +32,7 @@ data class MonthlyWindowNote(
     val hasMissingOdometer: Boolean,
     val distanceMetres: Long,
     val hasMixedCarrier: Boolean,
+    val hasUnverifiedOdometer: Boolean = false,
 )
 
 data class MonthlyVehicleIndicators(
@@ -201,8 +202,11 @@ class GetMonthlyIndicatorsUseCase(
         val odos = ordered.mapNotNull { it.second.odometerMetres }
         val sharedOdos = (ordered.map { it.first to it.second.odometerMetres } + chargeOdos)
             .sortedBy { it.first }.mapNotNull { it.second }
-        val distance = if (sharedOdos.size >= 2) sharedOdos.last() - sharedOdos.first() else 0L
-        val measured = if (fills.isEmpty()) {
+        val unverifiedOdometer = rows.any { it.draft !is ExpenseDraft && com.anpfuel.domain.premium.LegacyOdometerReview.value(it.draft) != null && it.odometerEvidence != com.anpfuel.domain.premium.OdometerEvidence.VERIFIED_METRES }
+        val distance = if (!unverifiedOdometer && sharedOdos.size >= 2) sharedOdos.last() - sharedOdos.first() else 0L
+        val measured = if (unverifiedOdometer) {
+            PremiumConsumptionResult(unknown = "odometer-unit-unverified")
+        } else if (fills.isEmpty()) {
             PremiumConsumptionResult(unknown = "no-records")
         } else if (hasMixedCarrier) {
             PremiumConsumptionResult(unknown = "phev-shared-distance")
@@ -221,7 +225,9 @@ class GetMonthlyIndicatorsUseCase(
         } else {
             PremiumCostResult(unknown = measured.unknown)
         }
-        val combined = if (fills.isEmpty() && chargeSessions == 0) {
+        val combined = if (unverifiedOdometer) {
+            Triple("", "", "odometer-unit-unverified")
+        } else if (fills.isEmpty() && chargeSessions == 0) {
             Triple("", "", "no-records")
         } else if (missingOdo) {
             Triple("", "", "odometer-missing")
@@ -236,7 +242,9 @@ class GetMonthlyIndicatorsUseCase(
         // EE-23 energy bases: purchased sums are exact; measured needs an
         // unshared odometer distance; reference reuses the same engine over
         // the whole history; PHEV months refuse per-carrier ratios.
-        val energyMeasured = if (chargeSessions == 0 && fills.isEmpty()) {
+        val energyMeasured = if (unverifiedOdometer) {
+            com.anpfuel.domain.premium.PremiumEnergyResult(unknown = "odometer-unit-unverified")
+        } else if (chargeSessions == 0 && fills.isEmpty()) {
             // No movement at all: unknown basis, never a zero-filled ratio.
             com.anpfuel.domain.premium.PremiumEnergyResult(unknown = "no-records")
         } else {
@@ -266,7 +274,7 @@ class GetMonthlyIndicatorsUseCase(
             estimatedKmPerL = estimated,
             comparisonChangePercent = comparison.changePercent, comparisonUnknown = comparison.unknown,
             energyMeasured = energyMeasured, energyReference = energyReference, energyComparison = energyComparison,
-            windowNote = MonthlyWindowNote(rows.size, fills.size, missingOdo, distance, hasMixedCarrier),
+            windowNote = MonthlyWindowNote(rows.size, fills.size, missingOdo, distance, hasMixedCarrier, unverifiedOdometer),
         )
     }
 
@@ -277,6 +285,7 @@ class GetMonthlyIndicatorsUseCase(
     ): com.anpfuel.domain.premium.PremiumEnergyResult {
         val vehicleRows = all.filter { rowVehicle(it.draft) == vehicle.id.value }
         if (vehicleRows.isEmpty()) return com.anpfuel.domain.premium.PremiumEnergyResult(unknown = "no-records")
+        if (vehicleRows.any { it.draft !is ExpenseDraft && com.anpfuel.domain.premium.LegacyOdometerReview.value(it.draft) != null && it.odometerEvidence != com.anpfuel.domain.premium.OdometerEvidence.VERIFIED_METRES }) return com.anpfuel.domain.premium.PremiumEnergyResult(unknown = "odometer-unit-unverified")
         var purchased = 0L
         var cost = 0L
         var stated = 0

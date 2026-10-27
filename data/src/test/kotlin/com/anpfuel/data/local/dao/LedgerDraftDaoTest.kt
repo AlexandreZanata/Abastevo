@@ -32,6 +32,13 @@ class LedgerDraftDaoTest {
             }
         }
 
+        override suspend fun compareAndSetBody(owner: String, origin: String, dataset: String, recordId: String, expectedRevision: Long, expectedBody: String, replacementBody: String, nowMillis: Long, draftId: String): Int {
+            val row = findByRecord(owner,origin,dataset,recordId) ?: return 0
+            if (row.draftId != draftId || row.expectedRevision != expectedRevision || row.bodyJson != expectedBody) return 0
+            rows[row.draftId] = row.copy(bodyJson = replacementBody, updatedAtMillis = nowMillis)
+            return 1
+        }
+
         override suspend fun clearOwner(owner: String, origin: String) {
             rows.entries.removeIf { it.value.ownerAccount == owner && it.value.origin == origin }
         }

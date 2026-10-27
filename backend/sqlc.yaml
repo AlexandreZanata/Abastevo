@@ -243,6 +243,7 @@ sql:
       - db/migrations/000082_cloud_compaction.sql
       - db/migrations/000083_cloud_snapshots.sql
       - db/migrations/000084_cloud_restores.sql
+      - db/migrations/000138_cloud_driver_consent.sql
     gen:
       go:
         package: cloudsync
@@ -393,5 +394,21 @@ sql:
       go:
         package: contributor
         out: db/queries/contributor
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/driver
+    schema:
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000133_driver_earnings.sql
+      - db/migrations/000134_driver_shifts_distance.sql
+      - db/migrations/000135_driver_cost_maintenance.sql
+      - db/migrations/000136_driver_reconciliation.sql
+      - db/migrations/000137_driver_report_snapshots.sql
+    gen:
+      go:
+        package: driver
+        out: db/queries/driver
         sql_package: pgx/v5
         emit_json_tags: true
