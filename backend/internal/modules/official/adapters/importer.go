@@ -551,7 +551,11 @@ func (im *Importer) FinishRun(ctx context.Context, runID, revisionID string, q *
 	}
 	verdict := domain.ReviewGate(staged, q.Total(), prevTotal, hasPrev)
 	counts, _ := json.Marshal(map[string]int64{"staged": staged, "quarantined": q.Total()})
-	summary, _ := json.Marshal(map[string]any{"reasons": q.Counts, "samples": q.Samples})
+	evidence := map[string]any{"reasons": q.Counts, "samples": q.Samples}
+	if len(q.Admitted) > 0 {
+		evidence["admitted"] = q.Admitted
+	}
+	summary, _ := json.Marshal(evidence)
 	runStatus := domain.RunCompleted
 	revStatus := domain.RevisionPublished
 	if !verdict.Publish {

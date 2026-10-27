@@ -738,7 +738,7 @@ func BenchmarkTrafficPlans(b *testing.B) {
 				SELECT id FROM directory_stations
 				WHERE ($1::text = '' OR state = $1)
 				AND ($2::text = '' OR municipality_code = $2)
-				AND id::text > '' ORDER BY id::text LIMIT 21`, "SP", city).Scan(&plan)
+				ORDER BY id LIMIT 21`, "SP", city).Scan(&plan)
 		} else {
 			// EXECUTE takes literals, not parameters: city codes are
 			// digits by construction, anything else refuses loudly.
@@ -754,7 +754,7 @@ func BenchmarkTrafficPlans(b *testing.B) {
 				SELECT id FROM directory_stations
 				WHERE ($1::text = '' OR state = $1)
 				AND ($2::text = '' OR municipality_code = $2)
-				AND id::text > '' ORDER BY id::text LIMIT 21`); err != nil {
+				ORDER BY id LIMIT 21`); err != nil {
 				b.Fatalf("prepare: %v", err)
 			}
 			err = tx.QueryRow(ctx, `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) EXECUTE `+prepared+`('SP', '`+city+`')`).Scan(&plan)

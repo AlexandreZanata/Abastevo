@@ -151,10 +151,22 @@ func writeOfficialSnapshot(ctx context.Context, provider enterprisejobs.Official
 	}
 	inputSum := sha256.Sum256([]byte("official-only|" + build.Pin.PayloadSHA256))
 	inputHash := "sha256:" + hex.EncodeToString(inputSum[:])
-	now := time.Now().UTC().Format(time.RFC3339)
+	// The publication time is the official revision's, never the build
+	// clock: an unchanged lease must rebuild the identical candidate.
+	var officialManifest struct {
+		PublishedAt string `json:"published_at"`
+	}
+	if err := json.Unmarshal(build.Manifest, &officialManifest); err != nil {
+		return "", enterprisejobs.OfficialPin{}, fmt.Errorf("portalexport: official manifest unreadable")
+	}
+	published, err := time.Parse(time.RFC3339, officialManifest.PublishedAt)
+	if err != nil {
+		return "", enterprisejobs.OfficialPin{}, fmt.Errorf("portalexport: official manifest lacks a publication time")
+	}
+	builtAt := published.UTC().Format(time.RFC3339)
 	exportManifest := enterpriseexport.Manifest{
 		SchemaVersion: enterpriseexport.SchemaVersion, ContentVersion: enterpriseexport.ContentVersion,
-		PublicFieldPolicy: enterpriseexport.PublicFieldPolicy, BuiltAt: now,
+		PublicFieldPolicy: enterpriseexport.PublicFieldPolicy, BuiltAt: builtAt,
 		Scope:  enterpriseexport.Scope{PageSize: 500, MaxStations: 100000, MaxRevisions: 2000, MaxPrices: 5000000},
 		Counts: enterpriseexport.Counts{}, ContentSHA256: inputHash,
 	}

@@ -25,12 +25,36 @@ import (
 var embeddedAssets embed.FS
 
 const (
-	SchemaVersion     = "enterprise-portal-v2"
-	defaultMaxPages   = 50_000
+	SchemaVersion = "enterprise-portal-v2"
+	// defaultMaxPages leaves ~1.9x headroom over the real national portal
+	// measured on staging 2026-10-26 (52,578 pages, 48,750 stations).
+	defaultMaxPages   = 100_000
 	defaultMaxBytes   = int64(2 << 30)
 	maxRankingPerPage = 20
 	minMunicipality   = 5
 )
+
+// BudgetError reports a page, byte or size budget breach. Generation and
+// verification are deterministic, so the same snapshot under the same
+// budgets always fails the same way; callers may coalesce retries.
+type BudgetError struct {
+	Msg string
+}
+
+func (e *BudgetError) Error() string { return e.Msg }
+
+// BudgetKey identifies the effective generation and verification budgets
+// for the given overrides (zero selects the defaults).
+func BudgetKey(maxPages int, maxBytes int64) string {
+	if maxPages <= 0 {
+		maxPages = defaultMaxPages
+	}
+	if maxBytes <= 0 {
+		maxBytes = defaultMaxBytes
+	}
+	return fmt.Sprintf("pages=%d;bytes=%d;html-gzip=%d;script-gzip=%d;shard-gzip=%d",
+		maxPages, maxBytes, DefaultMaxHTMLGzip, DefaultMaxScriptGzip, DefaultMaxShardGzip)
+}
 
 type Options struct {
 	SnapshotDir      string
@@ -156,9 +180,11 @@ type consultarPage struct {
 
 type precosPage struct {
 	pageBase
-	National []summaryRow
-	Rankings []rankingView
-	States   []stateLink
+	National      []summaryRow
+	Rankings      []rankingView
+	States        []stateLink
+	SearchRelease string
+	SearchFuels   []searchFuel
 }
 
 type statePage struct {
@@ -242,16 +268,21 @@ type observation struct {
 }
 
 type generator struct {
-	opts          Options
-	outDir        string
-	tmpl          *template.Template
-	files         map[string]FileDigest
-	pages         int
-	bytes         int64
-	indexable     bool
-	siteURL       string
-	cssURL        string
-	scriptURL     string
+	opts      Options
+	outDir    string
+	tmpl      *template.Template
+	files     map[string]FileDigest
+	pages     int
+	bytes     int64
+	indexable bool
+	siteURL   string
+	cssURL    string
+	scriptURL string
+	// searchRelease/searchFuels/searchFiscal describe the v2 search index
+	// of a full build; empty in official-only builds.
+	searchRelease string
+	searchFuels   []searchFuel
+	searchFiscal  bool
 	sitemapRoutes []string
 	hasSitemap    bool
 }
@@ -417,6 +448,16 @@ func Generate(opts Options) (Result, error) {
 			return Result{}, err
 		}
 		if err := g.writeAsset("dados/busca/"+release+"/"+shard.UF+".json", shard.Data); err != nil {
+			return Result{}, err
+		}
+	}
+	indexes, searchIdx, err := buildSearchIndexes(snapshot, observations, fiscalSearchRows(official, stations, true), release)
+	if err != nil {
+		return Result{}, err
+	}
+	g.searchRelease, g.searchFuels, g.searchFiscal = release, searchIdx.Fuels, searchIdx.Fiscal
+	for _, file := range indexes {
+		if err := g.writeAsset("dados/busca/"+release+"/"+file.Path, file.Data); err != nil {
 			return Result{}, err
 		}
 	}
@@ -662,7 +703,7 @@ func geography(observations []observation) (map[string]int, map[string]int, map[
 			}
 			municipalityState[code] = station.State
 			if municipalityName[code] == "" {
-				if name := strings.TrimSpace(station.Address["municipio"]); name != "" {
+				if name := municipalityLabel(code, station.Address["municipio"]); name != "" {
 					municipalityName[code] = name
 				}
 			}
@@ -679,7 +720,7 @@ func geography(observations []observation) (map[string]int, map[string]int, map[
 
 func (g *generator) writePage(rel, templateName string, data any) error {
 	if g.pages+1 > g.opts.MaxPages {
-		return fmt.Errorf("portalgen: page budget exceeded")
+		return &BudgetError{Msg: "portalgen: page budget exceeded"}
 	}
 	clean := filepath.Clean("/" + rel)
 	rel = strings.TrimPrefix(clean, "/")
@@ -695,7 +736,7 @@ func (g *generator) writePage(rel, templateName string, data any) error {
 		return err
 	}
 	if g.bytes+int64(buf.Len()) > g.opts.MaxBytes {
-		return fmt.Errorf("portalgen: byte budget exceeded")
+		return &BudgetError{Msg: "portalgen: byte budget exceeded"}
 	}
 	if err := os.WriteFile(full, buf.Bytes(), 0o600); err != nil {
 		return err
@@ -708,7 +749,7 @@ func (g *generator) writePage(rel, templateName string, data any) error {
 
 func (g *generator) writeAsset(rel string, data []byte) error {
 	if g.bytes+int64(len(data)) > g.opts.MaxBytes {
-		return fmt.Errorf("portalgen: byte budget exceeded")
+		return &BudgetError{Msg: "portalgen: byte budget exceeded"}
 	}
 	full := filepath.Join(g.outDir, rel)
 	if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
@@ -849,7 +890,7 @@ func (g *generator) writeManifest(exportManifest enterpriseexport.Manifest, proj
 	}
 	encoded = append(encoded, '\n')
 	if g.bytes+int64(len(encoded)) > g.opts.MaxBytes {
-		return Manifest{}, fmt.Errorf("portalgen: byte budget exceeded")
+		return Manifest{}, &BudgetError{Msg: "portalgen: byte budget exceeded"}
 	}
 	if err := os.WriteFile(filepath.Join(g.outDir, "portal-manifest.json"), encoded, 0o600); err != nil {
 		return Manifest{}, err
@@ -949,6 +990,7 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 	data := precosPage{
 		pageBase: g.base("Preços por região", "Resumo derivado da pesquisa ANP por região, com amostra, mínimo, máximo, dispersão e vínculo com a metodologia.", "precos", period, published, inputHash, []crumb{{Label: "Preços", Current: true}}),
 		National: summaryRows(summaries, analytics.LevelNational, "BR", false), Rankings: views, States: stateLinks,
+		SearchRelease: g.searchRelease, SearchFuels: g.searchFuels,
 	}
 	if err := g.writePage("precos/index.html", "precos", data); err != nil {
 		return err

@@ -128,27 +128,16 @@ const templates = `
 <main id="conteudo" class="wrap">
   <h1>Consultar preços de combustíveis</h1>
   <p class="lead">Preços encontrados na pesquisa da ANP, com período, fonte e amostra. Não é preço ao vivo.</p>
-  <form data-portal-search data-shard-base="/dados/busca/" data-release="{{.SearchRelease}}" data-result-limit="50" action="/consultar/" method="get" role="search">
-    <div class="form-row">
-      <div>
-        <label for="portal-q">Posto, CNPJ ou marca</label>
-        <input id="portal-q" name="q" data-search-query type="search" maxlength="80" autocomplete="off" placeholder="Ex.: Posto Alfa ou 04.218.406/0001-04">
-      </div>
-      <div>
-        <label for="portal-uf">UF</label>
-        <select id="portal-uf" name="uf" data-search-uf>
-          <option value="">Selecione</option>
-          {{range .SearchStates}}<option value="{{.Code}}">{{.Name}}</option>{{end}}
-        </select>
-      </div>
-      <div>
-        <label for="portal-city">Município</label>
-        <select id="portal-city" name="municipio" data-search-city disabled><option value="">Todos</option></select>
-      </div>
+  <form class="finder-form" data-portal-finder data-shard-base="/dados/busca/" data-release="{{.SearchRelease}}" action="/consultar/" method="get" role="search">
+    <label for="portal-q">Buscar posto, CNPJ, cidade ou estado</label>
+    <div class="finder">
+      <input id="portal-q" name="q" data-finder-input type="search" maxlength="80" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="portal-suggestions" placeholder="Ex.: Shell, 04.218.406/0001-04, Sorriso ou Mato Grosso">
       <button class="button" type="submit">Buscar</button>
+      <ul id="portal-suggestions" class="suggestions" role="listbox" aria-label="Sugestões" data-finder-suggestions hidden></ul>
     </div>
-    <p class="muted" data-search-status role="status" aria-live="polite">Escolha uma UF e digite ao menos 2 caracteres.</p>
-    <ul class="station-list" data-search-results aria-label="Resultados da busca"></ul>
+    <div class="scope-chip" data-finder-scope hidden></div>
+    <p class="muted" data-finder-status role="status" aria-live="polite">Digite o nome do posto, parte do CNPJ, uma cidade ou um estado. A busca cobre todo o Brasil.</p>
+    <ul class="station-list" data-finder-results aria-label="Resultados da busca"></ul>
   </form>
   <noscript><p class="muted">A busca interativa requer JavaScript. Use a navegação por estado abaixo.</p></noscript>
   <h2>Estados com resumo</h2>
@@ -163,6 +152,17 @@ const templates = `
   <h1>Preços de combustíveis na pesquisa da ANP</h1>
   <p class="lead">Resumo derivado dos preços de posto da pesquisa mais recente. Não é uma estatística oficial da ANP nem um preço ao vivo.</p>
   <div class="notice"><strong>Leia a amostra antes do número.</strong><p>Mínimo, máximo e dispersão vêm dos postos com observação no período. A amostra não cobre todos os postos e um valor histórico não é uma oferta atual.</p></div>
+  {{if .SearchFuels}}<section class="explorer" data-portal-prices data-shard-base="/dados/busca/" data-release="{{.SearchRelease}}" aria-labelledby="explorar-precos">
+    <h2 id="explorar-precos">Explorar preços por combustível</h2>
+    <div class="form-row">
+      <div><label for="prices-fuel">Combustível</label><select id="prices-fuel" data-prices-fuel>{{range .SearchFuels}}<option value="{{.Code}}">{{.Label}} ({{.Count}} postos)</option>{{end}}</select></div>
+      <div><label for="prices-order">Ordem</label><select id="prices-order" data-prices-order><option value="asc">Menor preço primeiro</option><option value="desc">Maior preço primeiro</option></select></div>
+      <div class="finder"><label for="prices-q">Posto, CNPJ, cidade ou estado</label><input id="prices-q" data-finder-input type="search" maxlength="80" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="prices-suggestions" placeholder="Ex.: Sorriso, Paraná ou Ipiranga"><ul id="prices-suggestions" class="suggestions" role="listbox" aria-label="Sugestões" data-finder-suggestions hidden></ul></div>
+    </div>
+    <div class="scope-chip" data-finder-scope hidden></div>
+    <p class="muted" data-prices-status role="status" aria-live="polite">A busca interativa requer JavaScript; os resumos abaixo funcionam sem ela.</p>
+    <div class="table-wrap"><table data-prices-table hidden><caption>Preço de cada posto na pesquisa ANP mais recente; não é preço ao vivo</caption><thead><tr><th scope="col">Posto</th><th scope="col">Cidade/UF</th><th scope="col" class="num">Preço</th><th scope="col">Coleta</th></tr></thead><tbody data-prices-body></tbody></table></div>
+  </section>{{end}}
   <h2>Brasil</h2>
   {{template "summary" .National}}
   <h2>Menores preços encontrados na amostra</h2>
@@ -359,6 +359,13 @@ const templates = `
   </div>
   <div class="notice"><strong>Como ler um registro oficial</strong><p>O status é o texto da fonte. Uma multa ou ação não prova adulteração, interdição atual ou culpa definitiva. Ausência de registro não é certidão negativa. A data de vencimento não é a data da ocorrência nem prova de propriedade. O vínculo é a decisão de empresa atual na data indicada, não um histórico de propriedade.</p></div>
   {{if eq .Page 1}}<div class="source"><p><strong>Fonte:</strong> ANP — multas aplicadas. Edição {{.Manifest.Edition}} · período {{.Manifest.SourcePeriod}} · clock {{.Manifest.SourceClockValue}} ({{.Manifest.SourceClockPrecision}}).</p><p class="muted source-url">Revisão {{.Manifest.RevisionID}} · lease {{.Manifest.LeaseID}} · checksum {{.Manifest.SourceChecksum}} · política {{.Manifest.AssociationPolicy}}/{{.Manifest.AssociationScope}} · decisão {{.Manifest.AssociationDecisionDay}}.</p></div>{{end}}
+  {{if and .SearchRelease (eq .Page 1)}}<section class="explorer" data-portal-fiscal data-shard-base="/dados/busca/" data-release="{{.SearchRelease}}" aria-labelledby="buscar-registros">
+    <h2 id="buscar-registros">Buscar registros</h2>
+    <div class="finder"><label for="fiscal-q">Posto, CNPJ, cidade ou estado</label><input id="fiscal-q" data-finder-input type="search" maxlength="80" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="fiscal-suggestions" placeholder="Ex.: 04.218.406/0001-04, Cuiabá ou Bahia"><ul id="fiscal-suggestions" class="suggestions" role="listbox" aria-label="Sugestões" data-finder-suggestions hidden></ul></div>
+    <div class="scope-chip" data-finder-scope hidden></div>
+    <p class="muted" data-fiscal-status role="status" aria-live="polite">A busca interativa requer JavaScript; a lista paginada abaixo funciona sem ela.</p>
+    <ul class="station-list" data-fiscal-results aria-label="Registros encontrados"></ul>
+  </section>{{end}}
   <h2>Registros{{if gt .Pages 1}} — página {{.Page}} de {{.Pages}}{{end}}</h2>
   {{if .Records}}<div class="table-wrap"><table>
     <caption>Multas aplicadas; uma linha por evento; vínculo de posto apenas quando decidido com segurança</caption>

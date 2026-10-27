@@ -35,8 +35,8 @@ SELECT id FROM directory_stations
 WHERE ($1::text = '' OR state = $1)
     AND ($2::text = '' OR municipality_code = $2)
     AND ($3::text = '' OR display_name ILIKE '%' || $3 || '%')
-    AND ($4::text = '' OR id::text > $4)
-ORDER BY id::text ASC
+    AND ($4::text = '' OR id > NULLIF($4::text, '')::uuid)
+ORDER BY id ASC
 LIMIT $5::int`
 
 const benchMirrorNearbySQL = `EXPLAIN (ANALYZE, BUFFERS)
@@ -58,7 +58,7 @@ func TestBenchSQLMirrorsAppQueries(t *testing.T) {
 	}
 	app := string(raw)
 	for _, fragment := range []string{
-		"municipality_code = @municipality", "ORDER BY id::text ASC",
+		"municipality_code = @municipality", "ORDER BY id ASC",
 		"ST_DWithin(current_point", "ORDER BY distance_m ASC",
 	} {
 		if !strings.Contains(app, fragment) {

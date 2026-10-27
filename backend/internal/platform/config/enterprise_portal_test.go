@@ -13,7 +13,7 @@ func TestEnterprisePortalRefreshDefaultsAndValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.EnterprisePortalRefreshEnabled || cfg.EnterprisePortalRoot != "" || cfg.EnterprisePortalSiteURL != "" || cfg.EnterprisePortalIndexable || cfg.EnterprisePortalOfficialOnly || cfg.EnterprisePortalSearchScript != "" {
+	if cfg.EnterprisePortalRefreshEnabled || cfg.EnterprisePortalRoot != "" || cfg.EnterprisePortalSiteURL != "" || cfg.EnterprisePortalIndexable || cfg.EnterprisePortalOfficialOnly || cfg.EnterprisePortalSearchScript != "" || cfg.EnterprisePortalLandingURL != "" {
 		t.Fatalf("defaults = %+v", cfg)
 	}
 	base := map[string]string{
@@ -24,11 +24,12 @@ func TestEnterprisePortalRefreshDefaultsAndValidation(t *testing.T) {
 		"ANPFUEL_ENTERPRISE_PORTAL_SITE_URL":        "https://portal.example",
 		"ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE":       "true",
 		"ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS":       "/opt/abastevo/search.js",
+		"ANPFUEL_ENTERPRISE_PORTAL_LANDING_URL":     "https://landing.example",
 	}
 	cfg, err = loadWith(base)
 	if err != nil || !cfg.EnterprisePortalRefreshEnabled || cfg.EnterprisePortalRoot != "/var/lib/abastevo/portal" ||
 		cfg.EnterprisePortalSiteURL != "https://portal.example" || !cfg.EnterprisePortalIndexable ||
-		cfg.EnterprisePortalSearchScript != "/opt/abastevo/search.js" {
+		cfg.EnterprisePortalSearchScript != "/opt/abastevo/search.js" || cfg.EnterprisePortalLandingURL != "https://landing.example" {
 		t.Fatalf("enabled config = %+v, %v", cfg, err)
 	}
 	without := func(key string) map[string]string {
@@ -69,6 +70,16 @@ func TestEnterprisePortalRefreshDefaultsAndValidation(t *testing.T) {
 		{"site URL path", func() map[string]string {
 			v := without("ANPFUEL_ENTERPRISE_PORTAL_SITE_URL")
 			v["ANPFUEL_ENTERPRISE_PORTAL_SITE_URL"] = "https://portal.example/abastevo"
+			return v
+		}()},
+		{"bad landing URL", func() map[string]string {
+			v := without("ANPFUEL_ENTERPRISE_PORTAL_LANDING_URL")
+			v["ANPFUEL_ENTERPRISE_PORTAL_LANDING_URL"] = "javascript:alert(1)"
+			return v
+		}()},
+		{"landing URL path", func() map[string]string {
+			v := without("ANPFUEL_ENTERPRISE_PORTAL_LANDING_URL")
+			v["ANPFUEL_ENTERPRISE_PORTAL_LANDING_URL"] = "https://landing.example/home"
 			return v
 		}()},
 		{"relative search JS", func() map[string]string {

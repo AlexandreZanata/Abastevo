@@ -71,8 +71,10 @@ FROM directory_stations
 WHERE (@state::text = '' OR state = @state)
     AND (@municipality::text = '' OR municipality_code = @municipality)
     AND (@q::text = '' OR display_name ILIKE '%' || @q || '%')
-    AND (@after_id::text = '' OR id::text > @after_id::text)
-ORDER BY id::text ASC
+    -- uuid order equals the lexical order of its canonical lowercase text,
+    -- so the primary key serves pages without sorting every station.
+    AND (@after_id::text = '' OR id > NULLIF(@after_id::text, '')::uuid)
+ORDER BY id ASC
 LIMIT @limit_plus_one::int;
 
 -- name: NearbyStations :many

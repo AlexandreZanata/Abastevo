@@ -56,6 +56,11 @@ func (s State) Valid() bool {
 	if err := json.Unmarshal(raw, &manifest); err != nil || manifest.ContentSHA256 != s.ContentSHA256 {
 		return false
 	}
+	// A snapshot built under another public field policy must be rebuilt:
+	// a tightened allowlist cannot wait for the source data to change.
+	if manifest.PublicFieldPolicy != enterpriseexport.PublicFieldPolicy {
+		return false
+	}
 	for _, file := range manifest.Files {
 		if _, err := os.Stat(filepath.Join(s.CandidateDir, file.Name)); err != nil {
 			return false

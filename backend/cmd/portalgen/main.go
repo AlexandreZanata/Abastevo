@@ -19,7 +19,7 @@ func main() {
 	var officialOnly bool
 	flag.StringVar(&snapshot, "snapshot", "", "frozen export candidate directory")
 	flag.StringVar(&out, "out", "", "new private portal output directory")
-	flag.IntVar(&maxPages, "max-pages", 0, "maximum HTML pages (default 50000)")
+	flag.IntVar(&maxPages, "max-pages", 0, "maximum HTML pages (default 100000)")
 	flag.Int64Var(&maxBytes, "max-bytes", 0, "maximum output bytes (default 2 GiB)")
 	flag.BoolVar(&indexable, "indexable", false, "allow indexing (candidate builds default to noindex)")
 	flag.StringVar(&siteURL, "site-url", "", "public origin for sitemap/robots (required with --indexable)")

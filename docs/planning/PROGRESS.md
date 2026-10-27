@@ -76,6 +76,30 @@
   credential request, no retry after STOP. Evidence in
   `inputs/SOURCES.md` and `inputs/phase1-report.md`. Phase 2 had not started at
   this closure; A2 is recorded above and B2 remains pending.
+- LH10 learning UI 2026-10-26: STAGING_DONE / INTEGRATION_PENDING.
+  Isolated `codex/learning-pages-ui` from the website staging candidate
+  `9e6da1ae` (PR #155); maintained dev has the independent map PR #154.
+  Guias/Como usar and 19 detail routes share the existing home header/footer
+  and neutral card UI. Typecheck/build/check and 68/68 landing tests PASS;
+  desktop/375 px browser review and native mobile menu PASS.
+  [Evidence](../release-evidence/learning-ui-20261026.md).
+  Published `releases/lh10-3981322e-71f98ae2` to `teste.abastevo.com.br`:
+  21 HTML + new CSS verified by HTTPS hashes, noindex/CSP; 135 existing
+  files unchanged, old release retained, live hubs/footer visually checked.
+  Existing website PR #155 carries this UI; exact-head checks/review remain
+  pending. No map PR merge, API rollout or apex deployment.
+
+- Staging landing + portal search + ingestion 2026-10-26: STAGING_DONE /
+  INTEGRATION_PENDING on `codex/vps-staging-landing-perf` from `main`
+  4eeccfbf, PR to main. Owner-authorized `teste.abastevo.com.br` scope,
+  namespace `abastevo-temp` only, noindex. Landing + same-origin portal search
+  live; Rust registry refresh and ANP weekly import (B-BR-002a float-noise,
+  owner-approved) running; eleven measured gaps fixed with tests (ingest load
+  wait, landing chrome, budgets, CPF minimization, verify 4.6x, promote 3.9x,
+  web tier OOM, list keyset). Load @300 req/s: 0 errors, p95 10 ms.
+  [Evidence](../backend/evidence/STAGING_LANDING_PORTAL_2026-10-26.md).
+  Next: review/merge; Directory CPF-name projection as its own task.
+
 - Landing LH09 / portal shared chrome 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   User-authorized branch `codex/landing-portal-visual` from `origin/main` (dev
   carries unrelated open PR #151) with a PR to main. Uber-style light-only home
