@@ -89,6 +89,10 @@ optional enhancement: the HTML directory navigation remains usable without it.
 - `--store-state <prelaunch|published>`: State of Google Play Store listing. Default is `prelaunch`.
 - `--store-url <url>`: Verified Play Store URL. Required if `--store-state published`. Must match `https://play.google.com/store/apps/details?id=com.anpfuel`.
 - `--out-dir <path>`: Output directory (defaults to `dist`).
+- `--api-origin <url>` (or `ABASTEVO_API_ORIGIN` env): API origin baked into
+  `<meta name="abastevo-api">` for the `/contribuidores/` live list. Must be
+  an `https:` origin without path when set; empty (default) keeps the
+  enhancement disabled and the page fully static.
 
 ## Hosting & Response Policy
 

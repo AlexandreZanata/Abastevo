@@ -13,6 +13,9 @@
     <loc>{{CANONICAL_ORIGIN}}/termos/</loc>
   </url>
   <url>
+    <loc>{{CANONICAL_ORIGIN}}/contribuidores/</loc>
+  </url>
+  <url>
     <loc>{{CANONICAL_ORIGIN}}/guias/</loc>
   </url>
   <url>

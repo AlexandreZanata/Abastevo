@@ -11,6 +11,14 @@
   refuses installs). [Evidence](../../backend/evidence/admin/C1-APP-CONTRIBUTORS.md).
   PR #173 to `main`. Next: C2 landing page, then C3 self-service.
 
+- C2 landing contributors page 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-c2-landing-contributors` stacked
+  on C1. Static `/contribuidores/` shell + `contributors.ts` progressive
+  enhancement (meta-gated API origin, textContent-only cards, CTB-08 link
+  allowlist), per-path CSP, sitemap/llms entries. Tested revision: branch
+  head; landing gate green (69/69). [Evidence](../../backend/evidence/admin/C2-LANDING-CONTRIBUTORS.md).
+  PR stacked on #173. Next: C3 self-service.
+
 - CD-02 staging deploy planner 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Pull-based dry-run agent in `infra/deploy/agent/` verifies the signed
   `staging` manifest (keyless identity/issuer), checks main ancestry through
