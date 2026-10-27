@@ -1,6 +1,6 @@
 # A3 — Contributors
 
-Date: 2026-10-27. Branch `codex/adm-a3-contributors`, stacked on A2
+Date: 2026-10-27. Branch `codex/adm-a3-contributors`, PR #167, stacked on A2
 `codex/adm-a2-granted-tiers` (PR #166, not merged). Rules: B-BR-CTB-01…14,
 BUC-ADM-05…09/11. Planning documents remain in PR #161.
 

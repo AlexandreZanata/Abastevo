@@ -9,7 +9,8 @@
   `go test -race ./...` 131 ok / 0 fail, PostGIS contributor/admin/
   entitlement/subscription/cmd/api integration 17 ok, `make quick-verify` ok
   (41s), secret scan clean. [Evidence](../../backend/evidence/admin/A3-CONTRIBUTORS.md).
-  Next: push, open PR with `--base codex/adm-a2-granted-tiers`; do not start A4.
+  PR #167 with `--base codex/adm-a2-granted-tiers`. Next: wait for review; do
+  not start A4.
 
 - A2 granted tiers and capability projection 2026-10-27: LOCAL_DONE /
   INTEGRATION_PENDING. Branch `codex/adm-a2-granted-tiers` stacked on A1 PR
