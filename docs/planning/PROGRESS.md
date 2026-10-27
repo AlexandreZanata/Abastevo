@@ -8,8 +8,9 @@
   branch head; admin-web gate green (21/21); local integration proven
   against the fixed A4 backend on disposable PostGIS
   (approve/link/hide/assign/revoke/audit/logout, screenshots included).
-  [Evidence](../../backend/evidence/admin/B2-ADMIN-WEB.md). Next: B3 after
-  user authorization (serving + staging need infra decisions).
+  [Evidence](../../backend/evidence/admin/B2-ADMIN-WEB.md). PR #172 with
+  `--base codex/adm-b1-admin-web`. Next: B3 after user authorization
+  (serving + staging need infra decisions).
 
 - B1 admin web panel 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING. Branch
   `codex/adm-b1-admin-web` from `origin/main` `d4dcf716`. New `admin-web/`
