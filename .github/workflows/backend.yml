@@ -17,6 +17,8 @@ on:
       - scripts/tests/test-anp-source-census.py
       - scripts/tests/test-enforcement-privacy.py
       - .github/workflows/backend.yml
+      - .github/workflows/release-staging.yml
+      - scripts/check-release-workflow.sh
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
@@ -32,6 +34,8 @@ on:
       - scripts/tests/test-anp-source-census.py
       - scripts/tests/test-enforcement-privacy.py
       - .github/workflows/backend.yml
+      - .github/workflows/release-staging.yml
+      - scripts/check-release-workflow.sh
 
 env:
   # Pinned exact (matches backend/go.mod toolchain). Do not float back to
