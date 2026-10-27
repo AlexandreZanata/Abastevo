@@ -1,0 +1,196 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    abastevo.com/api-source-revision: 537193367af294167f75555a5f0b7ecb776076b1
+    abastevo.com/schema-version: '000120'
+    abastevo.com/source-revision: 537193367af294167f75555a5f0b7ecb776076b1
+    abastevo.com/worker-source-revision: 537193367af294167f75555a5f0b7ecb776076b1
+  name: abastevo-temp-api
+  namespace: abastevo-temp
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: abastevo-temp-api
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        abastevo.com/api-source-revision: 537193367af294167f75555a5f0b7ecb776076b1
+        abastevo.com/schema-version: '000120'
+        abastevo.com/source-revision: 537193367af294167f75555a5f0b7ecb776076b1
+        abastevo.com/worker-source-revision: 537193367af294167f75555a5f0b7ecb776076b1
+      labels:
+        app: abastevo-temp-api
+    spec:
+      containers:
+      - command:
+        - /api
+        env:
+        - name: GOMAXPROCS
+          value: '2'
+        - name: GOMEMLIMIT
+          value: 768MiB
+        - name: ANPFUEL_TRAINING_TERMS_DIGEST
+          value: 4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce
+        - name: ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS
+          value: '4'
+        envFrom:
+        - secretRef:
+            name: abastevo-temp-secrets
+        image: ${API_IMAGE}
+        imagePullPolicy: Never
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health/live
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: api
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health/ready
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: '1'
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/abastevo-tools
+          name: rst-compatible-binaries
+          readOnly: true
+      - command:
+        - /worker
+        env:
+        - name: ANPFUEL_METRICS_ADDR
+        - name: GOMAXPROCS
+          value: '1'
+        - name: GOMEMLIMIT
+          value: 384MiB
+        - name: ANPFUEL_TRAINING_TERMS_DIGEST
+          value: 4a9763192620d267311f49fd43c9f4502144fa3bf78edc04b4112982e87bf8ce
+        - name: ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS
+          value: '4'
+        - name: ANPFUEL_ANP_DISCOVERY_ENABLED
+          value: 'true'
+        - name: ANPFUEL_ENTERPRISE_EXPORT_ENABLED
+          value: 'true'
+        - name: ANPFUEL_ENTERPRISE_EXPORT_ROOT
+          value: ${EXPORT_ROOT}
+        - name: ANPFUEL_ENTERPRISE_PORTAL_REFRESH_ENABLED
+          value: 'true'
+        - name: ANPFUEL_ENTERPRISE_PORTAL_ROOT
+          value: ${PORTAL_ROOT}
+        - name: ANPFUEL_ENTERPRISE_PORTAL_SITE_URL
+          value: ${STAGING_SITE_URL}
+        - name: ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE
+          value: 'false'
+        - name: ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS
+          value: ${PORTAL_SEARCH_JS}
+        - name: ANPFUEL_ENTERPRISE_PORTAL_LANDING_URL
+          value: ${STAGING_LANDING_URL}
+        envFrom:
+        - secretRef:
+            name: abastevo-temp-secrets
+        image: ${WORKER_IMAGE}
+        imagePullPolicy: Never
+        name: worker
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/abastevo-tools
+          name: rst-compatible-binaries
+          readOnly: true
+        - mountPath: /var/lib/abastevo-enterprise
+          name: enterprise
+        - mountPath: /opt/abastevo-web
+          name: landing-web
+          readOnly: true
+      - env:
+        - name: GOMEMLIMIT
+          value: 384MiB
+        envFrom:
+        - secretRef:
+            name: abastevo-temp-secrets
+        image: ${PRIVATE_STORAGE_IMAGE}
+        imagePullPolicy: Never
+        name: private-storage
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - test -f /tmp/abastevo-storage-ready
+          failureThreshold: 3
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 50m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /data
+          name: dev-private-media
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - hostPath:
+          path: ${RST_COMPATIBLE_BINARIES_PATH}
+          type: Directory
+        name: rst-compatible-binaries
+      - hostPath:
+          path: ${PRIVATE_MEDIA_PATH}
+          type: Directory
+        name: dev-private-media
+      - hostPath:
+          path: ${ENTERPRISE_ROOT}
+          type: Directory
+        name: enterprise
+      - hostPath:
+          path: ${LANDING_ROOT}
+          type: Directory
+        name: landing-web
