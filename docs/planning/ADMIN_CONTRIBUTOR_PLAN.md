@@ -38,8 +38,8 @@ inventing a rule.
 6. **Secrets.** Never commit a key, hash of a real key, token, cookie, email,
    real account id or screenshot of real data. Fixtures use synthetic values.
    Before every commit run `git diff --check` and grep the diff for
-   `abv_admin_`, `ANPFUEL_ADMIN_KEY_SHA256=[0-9a-f]`, `ghp_`, `github_pat_`
-   and e-mail addresses (`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}`).
+   `abv_admin_`, `ANPFUEL_ADMIN_KEY_SHA256=[0-9a-f]`, GitHub token prefixes
+   (`ghp` or `github_pat` followed by an underscore) and e-mail addresses (`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}`).
 7. **Checks per PR (backend).** From `backend/`: `gofmt -l .` (empty),
    `go vet ./...`, `go test -race -count=1 ./...`, and the PostGIS integration
    suite for touched modules
