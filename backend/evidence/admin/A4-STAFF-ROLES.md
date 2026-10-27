@@ -84,3 +84,13 @@ or e-mail address.
 - Roles never change trust, moderation, ranking or feedback weight.
 - Admin web UI and staging validation remain later fronts/tasks.
 - Role labels are translated in code; the catalog is not runtime editable.
+
+## Review fixes (2026-10-27)
+
+- Owner profile read returns staff roles with or without a contributor
+  profile (STF-05; extended `TestReadProfile_STF05_NoProfileHasEmptyRoles`).
+- Staff admin errors from the shared mutation envelope map to
+  `409 admin.conflict` / `400 admin.invalid` / `401 admin.denied` instead of
+  `503` (`TestServiceError_STF`).
+- Reassigning a role whose assignment lapsed revokes the lapsed row as
+  `expired` with its own audit row (`TestAssign_STF02_ReassignAfterExpiry`).
