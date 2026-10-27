@@ -93,3 +93,7 @@ type Assignment struct {
 	RevokedAt        *time.Time `json:"revoked_at"`
 	RevokeReason     string     `json:"revoke_reason,omitempty"`
 }
+
+// ExpiredRevokeReason marks a lapsed ACTIVE assignment revoked because the
+// same role is assigned again.
+const ExpiredRevokeReason = "expired"
