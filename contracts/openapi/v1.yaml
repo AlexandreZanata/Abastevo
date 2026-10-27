@@ -8859,7 +8859,15 @@ components:
           example: SP
         location_quality:
           type: string
-          enum: [unknown, city-centroid, reviewed]
+          description: >
+            B-BR-MAP-02 ladder, best first: reviewed (ANP point confirmed by
+            an OSM fuel POI), osm-mapped (OSM POI bound by CNPJ tag or exact
+            address), anp-reported (official ANP point, unconfirmed) and
+            address-point (IBGE CNEFE establishment at the exact street and
+            number). Coordinates are present only for these pin tiers;
+            unknown and city-centroid never carry a point. Clients must treat
+            an unrecognised future value as unknown.
+          enum: [unknown, city-centroid, reviewed, osm-mapped, anp-reported, address-point]
           example: reviewed
         coordinates:
           type: [object, "null"]
@@ -9582,7 +9590,7 @@ components:
           type: string
         location_quality:
           type: string
-          enum: [unknown, city-centroid, reviewed]
+          enum: [unknown, city-centroid, reviewed, osm-mapped, anp-reported, address-point]
         coordinates:
           type: object
           properties:

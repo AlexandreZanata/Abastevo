@@ -10,16 +10,26 @@ import (
 // Location quality levels. Unknown is the default for missing or unverified
 // positions; city-centroid results are recorded for transparency but must
 // never establish a precise station position (B-BR-014).
+//
+// Pin tiers (B-BR-MAP-02, best first): reviewed (ANP point confirmed by an
+// OSM fuel POI), osm-mapped (OSM POI bound by CNPJ tag or exact address),
+// anp-reported (official ANP point without OSM confirmation) and
+// address-point (IBGE CNEFE establishment at the exact street and number).
+// Only reviewed counts as a precise site for community proximity rules.
 const (
 	QualityUnknown      = "unknown"
 	QualityCityCentroid = "city-centroid"
 	QualityReviewed     = "reviewed"
+	QualityOSMMapped    = "osm-mapped"
+	QualityANPReported  = "anp-reported"
+	QualityAddressPoint = "address-point"
 )
 
 var (
 	ErrUnknownQuality      = errors.New("directory: unknown location quality")
-	ErrLocationNotReviewed = errors.New("directory: only reviewed points project as current")
-	ErrMissingPoint        = errors.New("directory: reviewed location needs a point")
+	ErrLocationNotReviewed = errors.New("directory: only pin-tier points project as current")
+	ErrMissingPoint        = errors.New("directory: pin-tier location needs a point")
+	ErrLowerTier           = errors.New("directory: a lower location tier never replaces a higher one")
 	ErrUnknownStation      = errors.New("directory: unknown station")
 	ErrUnknownIdentifier   = errors.New("directory: unknown identifier")
 )
@@ -33,9 +43,38 @@ func ParseQuality(s string) (string, error) {
 		return QualityCityCentroid, nil
 	case QualityReviewed:
 		return QualityReviewed, nil
+	case QualityOSMMapped:
+		return QualityOSMMapped, nil
+	case QualityANPReported:
+		return QualityANPReported, nil
+	case QualityAddressPoint:
+		return QualityAddressPoint, nil
 	default:
 		return "", ErrUnknownQuality
 	}
+}
+
+// PinRanks orders the pin tiers; a higher rank is better evidence. Quality
+// values absent from the map rank 0 and are never pins. SQL that compares
+// tiers is generated from this map so the ladder has one source of truth.
+var PinRanks = map[string]int{
+	QualityReviewed:     4,
+	QualityOSMMapped:    3,
+	QualityANPReported:  2,
+	QualityAddressPoint: 1,
+}
+
+// PinRank returns the tier rank, 0 for qualities that never pin.
+func PinRank(quality string) int { return PinRanks[quality] }
+
+// IsPin reports whether a quality may carry a displayed map point.
+func IsPin(quality string) bool { return PinRank(quality) > 0 }
+
+// MayReplace reports whether next may become the projection over current:
+// only pin tiers project, a lower tier never replaces a higher one and an
+// equal tier may refresh its point.
+func MayReplace(current, next string) bool {
+	return IsPin(next) && PinRank(next) >= PinRank(current)
 }
 
 // Station is the canonical identity of a fuel station. Location lives in
@@ -79,10 +118,10 @@ type LocationRevision struct {
 }
 
 // Projected checks whether a revision may become the current projection:
-// reviewed quality with a concrete point. Anything else stays recorded
+// a pin-tier quality with a concrete point. Anything else stays recorded
 // history and fails here instead of silently projecting.
 func (r LocationRevision) Projected() error {
-	if r.Quality != QualityReviewed {
+	if !IsPin(r.Quality) {
 		return ErrLocationNotReviewed
 	}
 	if strings.TrimSpace(r.PointWKT) == "" {
