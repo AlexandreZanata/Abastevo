@@ -16,8 +16,8 @@ Read first: `AGENTS.md`, `docs/planning/FAST_EXECUTION.md`,
    a defensible point.
 2. Any free account can suggest a correction from the app; abuse cannot
    damage official data, other users or the service.
-3. The app shows the real base map (Brazil and the world, downloaded on
-   demand like CoMaps), draws stations with the two Abastevo SVG icons, keeps
+3. The app shows the real base map of **Brazil only**, self-generated and
+   downloaded on demand like CoMaps, at the best performance we can measure, draws stations with the two Abastevo SVG icons, keeps
    station points offline, and routes/guides to a station offline.
 4. Staging VPS runs all of it; every MAP phase ends in an explicit state;
    every map PR is ready for the final merge into `main`.
@@ -37,12 +37,13 @@ pinned at a city centroid or an invented point to reach a number.
 | D1, D2, D3 | Unchanged (ANP point = `anp-reported`; CNEFE exact number, species 6, level 1-3 = `address-point`; Overture evidence only). | Already applied and measured. |
 | D4 | Add tier `street-segment`, the lowest pin rank (below `address-point`; existing ranks shift up by one): IBGE CNEFE level 4 (face de quadra) when the exact street and number range match. Labeled "Localização aproximada pela quadra (IBGE)". | Official IBGE geometry, block-face precision; reduces L5 without inventing points. Must stay visibly approximate. |
 | D5 | ANP API points are validated against the IBGE municipal polygon (500 m buffer) and against shared-coordinate clusters; failures do not pin. | A wrong official point is worse than none. |
-| D6 | Base map: generate MWM ourselves with the pinned CoMaps toolchain (MAP-08). Batch W1 = `World`, `WorldCoasts`, all 23 `Brazil_*` regions and the South American neighbours. Batch W2 = remaining countries, continent by continent, only while the measured disk/time budget holds. | Self-generated packages keep ODbL attribution and our signature chain; a full planet does not fit 31 GB RAM in one run. |
+| D6 | Base map scope is **Brazil only**: generate MWM ourselves with the pinned CoMaps toolchain (MAP-08) for the 23 `Brazil_*` regions, plus `World` and `WorldCoasts` only as the low-zoom overview the engine needs. No neighbour or other-country packages. Base map regenerates monthly; station data stays weekly. | Self-generated packages keep ODbL attribution and our signature chain; Brazil-only keeps disk, generation time and egress small. |
+| D10 | Map packages are static files: Caddy (or any mirror) serves them immutable with Range; the API serves only the signed manifest. | The app already verifies every package SHA-256 against the signed manifest before activation (MAP-15/MAP-24), so re-hashing ~86 MB per response in a 1-CPU API container is wasted capacity. |
 | D7 | Station points ship offline as a signed package kind `station-overlay` per UF inside the map distribution. | One integrity chain (Ed25519) for map and points. |
 | D8 | Corrections never overwrite official facts. They create community assertions; location corrections reach `reviewed` only by a recorded review decision. | Keeps official/community distinct (AGENTS rule 12). |
 | D9 | Review happens through an operator CLI now and through the admin suite later (ADMIN_CONTRIBUTOR_PLAN A1/A4/B2). | Admin panel is not ready; the review port is built once. |
 
-If the user rejects D4 or D6-W2 in chat, skip those tasks and record
+If the user rejects D4 in chat, skip those tasks and record
 NOT_PLANNED with the reason; nothing else depends on them.
 
 ## 2. Tracks and order
@@ -231,24 +232,42 @@ correctly in the app.
 
 ## 6. Track C: real map in the app
 
-### MC-C1 Signed map distribution (W1)
+### MC-C1 Signed Brazil map distribution (D6)
 - Generate MWM with the pinned toolchain (`generator_tool` from
   `comaps-4587b8ad`, MAP-08) on the local workstation (16 cores, 31 GB RAM),
-  not on the shared VPS. Inputs: Geofabrik Brazil and South America extracts
-  (ODbL, recorded), CoMaps borders (`Brazil_*`: 23 regions).
+  not on the shared VPS. Input: the Geofabrik Brazil extract only (ODbL,
+  recorded) and CoMaps borders (`Brazil_*`: 23 regions); `World` and
+  `WorldCoasts` overview packages from the same toolchain.
+- Generate regions in parallel up to the measured RAM limit; record time,
+  peak RAM and size per region.
 - Build the `abastevo.map-distribution-v1` envelope (MAP-12) with a new
   **staging** Ed25519 key generated locally; private key kept outside Git and
   outside the VPS; public key pinned.
-- Upload to `/opt/abastevo-temp/map-dist/<generation>/`, mount read-only into
-  the API (`MapDistributionDir`/`MapDistributionKeys`), verify
-  `/v1/map/regions/{region}/manifest` and Range/ETag on staging.
-- Record time and size per region.
+- Upload to `/opt/abastevo-temp/map-dist/<generation>/`. The API mounts it
+  read-only (`MapDistributionDir`/`MapDistributionKeys`) for the manifest
+  route only; package bytes are served by Caddy (D10) from the same
+  generation directory: immutable `Cache-Control`, ETag, `Accept-Ranges`,
+  `206` resume, no compression of already-compressed MWM. Keep the URL shape
+  the app requests, or change the app downloader in the same task with tests.
+- Prove on staging: manifest ETag/304, full download, interrupted download
+  resumed with Range, tampered package refused by the app (digest check).
 
-### MC-C2 World (W2, D6)
-Continent batches after W1, each only if free disk on the VPS stays above
-100 GB and the batch fits the measured time; record what is published. The
-app lists only published regions; unpublished areas show "Mapa não
-disponível ainda", never a fake tile.
+### MC-C2 Brazil-only coverage and performance budgets
+- Outside Brazil the app shows only the `World` overview and the message
+  "Mapa detalhado disponível apenas no Brasil"; no fake tiles, no download
+  offer for other countries.
+- Budgets (measure on the POCO and staging, record in MAP-29 evidence; a miss
+  is a finding to fix or report, never a silent pass):
+  - map tab cold open to first rendered frame and warm return (MAP-29
+    declared budgets);
+  - pan/zoom frame pacing over dense São Paulo pins (no sustained jank);
+  - station pins for the viewport drawn from the offline overlay without
+    network;
+  - `/v1/stations/nearby` p95 ≤ 50 ms at 100 req/s for 60 s, 0 errors;
+  - package downloads use zero API CPU (static serving) and resume after a
+    cut;
+  - offline route to a station inside a downloaded region computed on the
+    device without network.
 
 ### MC-C3 App configuration
 `mapDistBaseUrl=https://teste.abastevo.com.br`, region catalog and public
@@ -257,7 +276,8 @@ secrets; still not hard-coded in source). Document in `backend/README.md` /
 mobile docs.
 
 ### MC-C4 On-demand download like CoMaps
-- Region lookup from bundled border polygons (`packed_polygons`): on first
+- Region lookup from bundled Brazil border polygons (`packed_polygons`,
+  `Brazil_*` only): on first
   location fix, offer the user's region; when the viewport enters an
   undownloaded region, show "Baixar <região> (N MB)"; honour the Wi-Fi
   preference (MAP-24); updates and deletion as in MAP-24.
@@ -307,7 +327,8 @@ and Manaus.
   `kubectl set image`, rollout, `/health/ready` 200.
 - MC-D3 Mount the map distribution, enable the CronJob (A7), and run the smoke
   set: nearby SP/Manaus/Sorriso, corrections submit/decide, manifest + Range,
-  overlay package; k6 100 req/s for 60 s with 0 failures.
+  overlay package, static package Range/resume; k6 100 req/s for 60 s with
+  0 failures.
 - MC-D4 Rollback recipe tested once per track (restore images, generation,
   symlink); never touch other namespaces or other projects' files.
 
