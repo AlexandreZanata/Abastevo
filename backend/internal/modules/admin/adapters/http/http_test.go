@@ -434,3 +434,24 @@ func TestGrant_ENT02_ENT03_ErrorMapping(t *testing.T) {
 		}
 	}
 }
+
+// TestGrant_ENT01_RequiresAdminSession proves no user proof or anonymous
+// request can create or revoke a grant.
+func TestGrant_ENT01_RequiresAdminSession(t *testing.T) {
+	handler := testHandler(successStore(), nil)
+	for _, tc := range []struct{ path, body string }{
+		{"/v1/admin/accounts/33333333-3333-4333-8333-333333333333/grants", `{"tier":"PRO","reason":"synthetic grant reason"}`},
+		{"/v1/admin/grants/44444444-4444-4444-8444-444444444444/revoke", `{"reason":"synthetic revoke reason"}`},
+	} {
+		req := httptest.NewRequest(http.MethodPost, tc.path, strings.NewReader(tc.body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", testOrigin)
+		req.Header.Set(csrfHeader, testCSRF)
+		req.Header.Set(idempotencyHeader, testMutation)
+		req.Header.Set("Authorization", "Bearer account-access-token")
+		req.RemoteAddr = "198.51.100.10:4321"
+		if w := serve(t, handler, req); w.Code != http.StatusUnauthorized {
+			t.Fatalf("%s status=%d body=%s", tc.path, w.Code, w.Body.String())
+		}
+	}
+}

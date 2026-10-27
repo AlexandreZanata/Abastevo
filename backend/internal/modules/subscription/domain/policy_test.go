@@ -91,3 +91,34 @@ func TestMultipleVehicleCapabilityUsesLiveVerifiedPremium(t *testing.T) {
 		}
 	}
 }
+
+// TestAdminGrant_ENT08_UnionOfSources proves web and admin capabilities merge
+// without losing either source or its tier metadata.
+func TestAdminGrant_ENT08_UnionOfSources(t *testing.T) {
+	now := time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
+	webUntil := now.Add(time.Hour)
+	adminUntil := now.Add(2 * time.Hour)
+	s := &Snapshot{
+		WebCapabilities:   []string{"cloud.sync"},
+		WebValidUntil:     webUntil,
+		AdminCapabilities: []string{"professional.write"},
+		AdminValidUntil:   adminUntil,
+		Tiers:             []TierStatus{{Tier: "PRO", Source: "admin", ValidUntil: &adminUntil}},
+	}
+	status := Evaluate(s, now, true)
+	if status.State != Active || status.Reason != "verified-web" {
+		t.Fatalf("status=%+v", status)
+	}
+	for _, capability := range []string{"cloud.sync", "professional.write"} {
+		found := false
+		for _, got := range status.Capabilities {
+			found = found || got == capability
+		}
+		if !found {
+			t.Fatalf("missing %s in %v", capability, status.Capabilities)
+		}
+	}
+	if len(status.Tiers) != 2 {
+		t.Fatalf("tiers=%+v", status.Tiers)
+	}
+}

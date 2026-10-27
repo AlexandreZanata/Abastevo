@@ -31,16 +31,16 @@ BUC-ADM-02/03/04. Planning documents remain in PR #161.
 
 | Rule / case | Test |
 |---|---|
-| ENT-01 admin-only mutations | routes mounted only inside `RequireSession`; grant store only called by admin application |
+| ENT-01 admin-only mutations | `adminhttp.TestGrant_ENT01_RequiresAdminSession`; routes mounted only inside `RequireSession` |
 | ENT-02 ineligible target | `entadapters.TestGrant_ENT02_IneligibleTarget`, `adminadapters.TestGrant_ENT02_AdminIneligible`, `adminhttp.TestGrant_ENT02_ENT03_ErrorMapping` |
 | ENT-03 duplicate/replace | `entadapters.TestGrant_ENT03_ConcurrentDuplicateActive`, `entadapters.TestGrant_ENT03_ReplaceRollbackKeepsOld`, `adminadapters.TestGrant_ENT02_ENT03_ReplaceAndAudit` |
 | ENT-04 end_at bounds | `entdomain.TestEndAt_ENT04`, `adminadapters.TestGrant_ENT04_EndAtBounds` |
 | ENT-05 catalog/no capabilities | `entdomain.TestCatalog_ENT05_MatchesGoldenAndPremium`, `TestCatalog_ENT05_DefensiveCopy`, `entadapters.TestGrant_ENT05_NoCapabilityColumn`, `adminhttp.TestGrant_ENT05_CapabilitiesFieldRejected` |
 | ENT-06 expiry | `entdomain.TestGrant_ENT06_ENT07_ActiveWindow`, `subadapters.TestAdminGrant_ENT06_ExpiryBoundary` |
 | ENT-07 revoke | `entdomain.TestGrant_ENT06_ENT07_ActiveWindow`, `adminadapters.TestGrant_ENT07_RevokeAgainConflicts`, `subadapters.TestAdminGrant_ENT07_RevokeThenCheckDenies` |
-| ENT-08 union | `adminGrants` + `mergeAdmin` after `mergeWeb`; admin-only and web tests |
-| ENT-09 status/tiers | `subadapters.TestAdminGrant_ENT10_PaymentsUnconfigured` (state/reason/capabilities/tiers JSON) |
-| ENT-10 payments unconfigured | `subadapters.TestAdminGrant_ENT10_PaymentsUnconfigured` (each PRO capability) |
+| ENT-08 union | `subdomain.TestAdminGrant_ENT08_UnionOfSources`; `adminGrants` + `mergeAdmin` after `mergeWeb` |
+| ENT-09 status/tiers | `subadapters.TestAdminGrant_ENT09_ENT10_PaymentsUnconfiguredAndTiers` (state/reason/capabilities/tiers JSON) |
+| ENT-10 payments unconfigured | `subadapters.TestAdminGrant_ENT09_ENT10_PaymentsUnconfiguredAndTiers` (each PRO capability) |
 | ENT-11 erasure | `entadapters.TestGrant_ENT11_ErasureRevokes` |
 | ENT-12 neutrality | `entdomain.TestNeutrality_ENT12_NoTrustRankingImports` |
 | BUC-ADM-02 search | `adminadapters.TestSearchAccounts_BUCADM02`, `adminhttp.TestSearchAccounts_BUCADM02_ShortQuery` |

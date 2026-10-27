@@ -14,9 +14,9 @@ import (
 	subdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/domain"
 )
 
-// TestAdminGrant_ENT10_PaymentsUnconfigured proves every PRO capability and
+// TestAdminGrant_ENT09_ENT10_PaymentsUnconfiguredAndTiers proves every PRO capability and
 // the status projection work from an admin grant with no payment ports.
-func TestAdminGrant_ENT10_PaymentsUnconfigured(t *testing.T) {
+func TestAdminGrant_ENT09_ENT10_PaymentsUnconfiguredAndTiers(t *testing.T) {
 	pool := freshDB(t)
 	store := NewStore(pool)
 	owner := seedOwner(t, pool)
