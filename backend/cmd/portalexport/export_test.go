@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	enterprisejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/adapters/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/portalgen"
@@ -119,5 +120,32 @@ func TestWriteOfficialSnapshotFailsClosed(t *testing.T) {
 	cfg := Config{SnapshotDir: filepath.Join(t.TempDir(), "snapshot"), PortalOut: "out", OfficialOnly: true}
 	if _, _, err := writeOfficialSnapshot(ctx, fakeOfficialProvider{err: errors.New("no published revision")}, cfg); err == nil {
 		t.Fatal("missing official lease accepted")
+	}
+}
+
+// TestWriteOfficialSnapshotIsTimeIndependent pins B-BR-ESP-11: the snapshot
+// publication time comes from the official revision, never the build clock,
+// so an unchanged lease always yields the same candidate content.
+func TestWriteOfficialSnapshotIsTimeIndependent(t *testing.T) {
+	ctx := context.Background()
+	read := func() []byte {
+		dir := filepath.Join(t.TempDir(), "snapshot")
+		cfg := Config{SnapshotDir: dir, PortalOut: filepath.Join(t.TempDir(), "portal"), OfficialOnly: true}
+		if _, _, err := writeOfficialSnapshot(ctx, fakeOfficialProvider{payload: fakePayload(), pin: fakePin()}, cfg); err != nil {
+			t.Fatal(err)
+		}
+		raw, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	first := read()
+	time.Sleep(1100 * time.Millisecond)
+	if second := read(); string(first) != string(second) {
+		t.Fatalf("snapshot manifest depends on the build clock:\n%s\n%s", first, second)
+	}
+	if !strings.Contains(string(first), `"built_at": "2026-10-24T21:55:16Z"`) {
+		t.Fatalf("snapshot built_at is not the official publication time: %s", first)
 	}
 }
