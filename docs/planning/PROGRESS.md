@@ -1,5 +1,14 @@
 # Current execution state
 
+- A5a staging script + local A4 run 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-a5a-staging-script` from A4
+  (`f5004a77`), PR stacked on #168. `scripts/tests/test-admin-staging.sh`
+  (`set +x`, secrets only in env/memory/piped stdin, PASS-only output) run
+  green (exit 0, 16 steps) against the local A4 stack on disposable PostGIS
+  with a memory-only test key. [Evidence](../../backend/evidence/admin/A5A-STAGING-LOCAL.md).
+  PR #171 with `--base codex/adm-a4-staff-roles`. Next: B2; A5b runs on real
+  staging with B3.
+
 - A4 staff roles and audit read 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Branch `codex/adm-a4-staff-roles` stacked on A3 PR #167 (base
   `codex/adm-a3-contributors`; planning docs still in PR #161). STF-01…STF-06

@@ -140,6 +140,7 @@ help:
 	@echo "  test-compat     compat gate failure-behavior harness (P09-T02)"
 	@echo "  check-g09       G09 readiness gate, refuses open blockers (P09-T03)"
 	@echo "  test-g09        G09 gate failure-behavior harness (P09-T03)"
+	@echo "  test-admin-staging  admin staging script guard harness, no network (A5a)"
 
 .PHONY: test-local-backend test-local-edge
 test-local-backend:
@@ -147,3 +148,7 @@ test-local-backend:
 
 test-local-edge:
 	bash scripts/tests/test-local-edge.sh
+
+.PHONY: test-admin-staging
+test-admin-staging:
+	bash scripts/tests/test-admin-staging-guard.sh
