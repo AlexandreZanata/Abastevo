@@ -27,6 +27,11 @@ not invent an official limit where the publisher does not state one.
   - never print or commit credentials; this API needs none.
 - Do not retry a stopped lane automatically. A new run needs an owner decision
   and a fresh observation window.
+- 2026-10-27: `uf=<UF>` without `municipio` returns the whole UF in pages of
+  5,000 (AC 193 records; the 60 records of the 9 harvested AC municipalities
+  were byte-identical). The national harvest used 29 requests at one per
+  5 s: 136 s, 45,807 records, 39,017 valid points, no 429. Prefer the UF
+  query; keep the per-municipality query for targeted refreshes only.
 
 ## OSM / Geofabrik
 
@@ -50,6 +55,12 @@ not invent an official limit where the publisher does not state one.
   CSV; do not load a full UF into memory.
 - Keep only the station municipalities' rows in a derived extract. The raw ZIPs
   stay in the private root, never in Git.
+
+- 2026-10-27: all 27 UF ZIPs (3.7 GB) downloaded in 86 s for the 24 missing
+  UFs. Use `NV_GEO_COORD` 1-3 (address level) and `COD_ESPECIE` 6 (other
+  establishments) only; levels 4-6 are face/locality/sector centroids and
+  species 3/4/5/8 are agro/school/health/religious rows. The national L5
+  extract kept 124,545 of 111,102,875 rows in 147 s with 5 workers.
 
 ## Receita Federal CNPJ - Estabelecimentos
 

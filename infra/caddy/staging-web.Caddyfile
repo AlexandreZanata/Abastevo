@@ -48,6 +48,20 @@ Disallow: /
 	@portalBare path /consultar /precos /fiscalizacao /curiosidades /dados /metodologia
 	redir @portalBare {path}/ 308
 
+	# Static map overlay releases are content-addressed and never change.
+	handle_path /dados/mapa/* {
+		root * /srv/portal/map
+		# current/ is an atomic symlink that moves on every release: short
+		# cache. Release directories are content-addressed: immutable.
+		@current path /current/*
+		header @current Cache-Control "public, max-age=300"
+		@release not path /current/*
+		header @release Cache-Control "public, max-age=31536000, immutable"
+		# Caddy 2.10.2 answers 206 to a plain GET with precompressed; the
+		# global gzip encoder plus the edge micro-cache serve these instead.
+		file_server
+	}
+
 	# Search shards are addressed by release, so they never change in place.
 	@portal path /consultar/* /precos/* /postos/* /fiscalizacao/* /curiosidades/* /dados/* /metodologia/* /portal-manifest.json
 	handle @portal {

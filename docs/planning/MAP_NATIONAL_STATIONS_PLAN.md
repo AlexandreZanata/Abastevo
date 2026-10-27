@@ -1,6 +1,9 @@
 # National fuel-station map plan (two fronts)
 
-Status: PLANNED (2026-10-26). Owner request: the most up-to-date open map of
+Status: **APPLIED on staging, national (2026-10-27)** / INTEGRATION_PENDING.
+A1-A3, B1-B3 and the Phase 4 overlay ran nationally with D1/D2/D3 decided;
+see [MAP_NATIONAL_FINAL_RECEIPT](MAP_NATIONAL_FINAL_RECEIPT.md). Originally
+PLANNED 2026-10-26. Owner request: the most up-to-date open map of
 Brazilian fuel stations, cheap to serve, where tapping a pin shows the
 station's exact ANP prices. This plan is written for execution by a less
 capable agent: every task names its inputs, commands, outputs, checks and a
@@ -43,9 +46,11 @@ proximity alone, and a lower tier never overwrites a higher one.
 | L4 | `address-point` *(new, decision D2)* | IBGE CNEFE 2022 establishment/address point with equal street + number + CEP/municipality, and name or category evidence | only if D2 = yes, styled "localização aproximada pelo endereço" |
 | L5 | `unknown` | nothing proven | **no pin**; listed in the city list with address |
 
-`city-centroid` stays forbidden as a pin. New values need an append-only
-migration widening the CHECK constraints plus the `map_contract.rs` and API
-contract update; until the owner decides D1/D2, only L1/L2/L5 ship.
+`city-centroid` stays forbidden as a pin. Migration `000139` widened the
+stored qualities (`osm-mapped`, `anp-reported`, `address-point`) and the
+OpenAPI station contract; `station-locate` applies the ladder (B-BR-MAP-02).
+D1 = yes, D2 = yes (exact number, CNEFE species 6, levels 1-3), D3 =
+evidence only were recorded on 2026-10-27.
 
 **Decisions owed by the owner (record in PROGRESS before Phase A3/B3):**
 
