@@ -21,6 +21,18 @@ func (s *Service) ReadProfile(ctx context.Context, accountID string) (ProfileRes
 	}
 	out := ProfileResult{Links: []domain.Link{}, Roles: []string{}}
 	err := s.Store.RunInTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		// STF-05: the owner sees their roles with or without a profile.
+		roles := []string{}
+		if s.Roles != nil {
+			labels, err := s.Roles.ActiveLabels(ctx, tx, accountID, s.now())
+			if err != nil {
+				return err
+			}
+			if labels != nil {
+				roles = labels
+			}
+		}
+		out.Roles = roles
 		profile, found, err := s.Store.GetProfile(ctx, tx, accountID)
 		if err != nil {
 			return err
@@ -31,13 +43,6 @@ func (s *Service) ReadProfile(ctx context.Context, accountID string) (ProfileRes
 		links, err := s.Store.ListLinks(ctx, tx, accountID)
 		if err != nil {
 			return err
-		}
-		roles := []string{}
-		if s.Roles != nil {
-			roles, err = s.Roles.ActiveLabels(ctx, tx, accountID, s.now())
-			if err != nil {
-				return err
-			}
 		}
 		out = ProfileResult{Profile: profile, Links: links, Roles: roles, Found: true}
 		return nil

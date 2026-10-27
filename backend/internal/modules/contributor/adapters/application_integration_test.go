@@ -341,6 +341,15 @@ func TestReadProfile_STF05_NoProfileHasEmptyRoles(t *testing.T) {
 	if err != nil || result.Found || result.Roles == nil {
 		t.Fatalf("read=%+v err=%v", result, err)
 	}
+	// STF-05: a role holder without a contributor profile still reads roles.
+	service.Roles = staffadapters.NewStore(pool)
+	if _, err := pool.Exec(context.Background(), `INSERT INTO staff_assignments(id,account_id,role,state,start_at,end_at,reason) VALUES($1,$2,'support_agent','ACTIVE',clock_timestamp()-interval '1 minute',NULL,'synthetic staff assignment')`, newID(t), accountID); err != nil {
+		t.Fatal(err)
+	}
+	result, err = service.ReadProfile(context.Background(), accountID)
+	if err != nil || result.Found || len(result.Roles) != 1 {
+		t.Fatalf("role holder read=%+v err=%v", result, err)
+	}
 }
 
 // TestLink_CTB06_ConcurrentUnique covers one login mapping to one account.
