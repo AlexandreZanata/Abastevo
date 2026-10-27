@@ -31,6 +31,9 @@ const (
 	globalBlockDuration = 15 * time.Minute
 )
 
+// globalBlockRow is the sentinel window that stores the global block.
+var globalBlockRow = time.Unix(0, 0).UTC()
+
 type Store struct {
 	Pool   *pgxpool.Pool
 	NewID  func() (string, error)
@@ -94,21 +97,28 @@ func (s *Store) Login(ctx context.Context, in app.LoginInput) (app.LoginResult, 
 	}
 	defer rollback(tx)
 	q := qadmin.New(tx)
-	globalStart := in.Now.Truncate(globalWindow)
-	ipStart := in.Now.Truncate(ipWindow)
-	global, err := q.LockLoginWindow(ctx, qadmin.LockLoginWindowParams{
-		Scope: "global", Subject: "global", WindowStart: stamp(globalStart),
+	// The sentinel row holds the global block and, being locked first,
+	// serializes every login so the trailing sums below are exact. Failures
+	// are stored per instant, so limits are trailing windows, not clock ones.
+	sentinel, err := q.LockLoginWindow(ctx, qadmin.LockLoginWindowParams{
+		Scope: "global", Subject: "global", WindowStart: stamp(globalBlockRow),
 	})
 	if err != nil {
 		return app.LoginResult{}, domain.ErrUnavailable
 	}
-	ip, err := q.LockLoginWindow(ctx, qadmin.LockLoginWindowParams{
-		Scope: "ip", Subject: in.IPHash, WindowStart: stamp(ipStart),
+	global, err := q.SumLoginFailures(ctx, qadmin.SumLoginFailuresParams{
+		Scope: "global", Subject: "global", Since: stamp(in.Now.Add(-globalWindow)),
 	})
 	if err != nil {
 		return app.LoginResult{}, domain.ErrUnavailable
 	}
-	if retry, blocked, err := s.loginLimit(ctx, q, global, ip, globalStart, ipStart, in.Now); err != nil {
+	ip, err := q.SumLoginFailures(ctx, qadmin.SumLoginFailuresParams{
+		Scope: "ip", Subject: in.IPHash, Since: stamp(in.Now.Add(-ipWindow)),
+	})
+	if err != nil {
+		return app.LoginResult{}, domain.ErrUnavailable
+	}
+	if retry, blocked, err := s.loginLimit(ctx, q, sentinel, global, ip, in.Now); err != nil {
 		return app.LoginResult{}, err
 	} else if blocked {
 		return app.LoginResult{}, &domain.RateLimitedError{RetryAfter: retry}
@@ -116,18 +126,25 @@ func (s *Store) Login(ctx context.Context, in app.LoginInput) (app.LoginResult, 
 
 	fingerprint, ok := in.Verify()
 	if !ok {
-		blockedUntil := in.Now.Add(globalBlockDuration)
-		if _, err := q.IncrementLoginFailures(ctx, qadmin.IncrementLoginFailuresParams{
-			GlobalLimit: globalFailureLimit, BlockedUntil: stamp(blockedUntil),
-			Scope: "global", Subject: "global", WindowStart: stamp(globalStart),
-		}); err != nil {
-			return app.LoginResult{}, domain.ErrUnavailable
+		failedAt := stamp(in.Now.UTC().Truncate(time.Microsecond))
+		for _, row := range []qadmin.LockLoginWindowParams{
+			{Scope: "global", Subject: "global", WindowStart: failedAt},
+			{Scope: "ip", Subject: in.IPHash, WindowStart: failedAt},
+		} {
+			if _, err := q.LockLoginWindow(ctx, row); err != nil {
+				return app.LoginResult{}, domain.ErrUnavailable
+			}
+			if err := q.AddLoginFailure(ctx, qadmin.AddLoginFailureParams(row)); err != nil {
+				return app.LoginResult{}, domain.ErrUnavailable
+			}
 		}
-		if _, err := q.IncrementLoginFailures(ctx, qadmin.IncrementLoginFailuresParams{
-			GlobalLimit: globalFailureLimit, BlockedUntil: stamp(blockedUntil),
-			Scope: "ip", Subject: in.IPHash, WindowStart: stamp(ipStart),
-		}); err != nil {
-			return app.LoginResult{}, domain.ErrUnavailable
+		if global.Failures+1 >= globalFailureLimit {
+			if err := q.BlockLoginWindow(ctx, qadmin.BlockLoginWindowParams{
+				BlockedUntil: stamp(in.Now.Add(globalBlockDuration)),
+				Scope:        "global", Subject: "global", WindowStart: stamp(globalBlockRow),
+			}); err != nil {
+				return app.LoginResult{}, domain.ErrUnavailable
+			}
 		}
 		if err := q.InsertAudit(ctx, qadmin.InsertAuditParams{
 			Action: "admin.login.failed", TargetType: "admin",
@@ -189,21 +206,21 @@ func (s *Store) Login(ctx context.Context, in app.LoginInput) (app.LoginResult, 
 	return app.LoginResult{Token: rawToken, CSRFToken: rawCSRF, Fingerprint: fingerprint, ExpiresAt: expires}, nil
 }
 
-func (s *Store) loginLimit(ctx context.Context, q *qadmin.Queries, global, ip qadmin.LockLoginWindowRow, globalStart, ipStart, now time.Time) (time.Duration, bool, error) {
-	if global.BlockedUntil.Valid && now.Before(global.BlockedUntil.Time) {
-		return retryAfter(global.BlockedUntil.Time, now), true, nil
+func (s *Store) loginLimit(ctx context.Context, q *qadmin.Queries, sentinel qadmin.LockLoginWindowRow, global, ip qadmin.SumLoginFailuresRow, now time.Time) (time.Duration, bool, error) {
+	if sentinel.BlockedUntil.Valid && now.Before(sentinel.BlockedUntil.Time) {
+		return retryAfter(sentinel.BlockedUntil.Time, now), true, nil
 	}
 	if global.Failures >= globalFailureLimit {
 		until := now.Add(globalBlockDuration)
 		if err := q.BlockLoginWindow(ctx, qadmin.BlockLoginWindowParams{
-			BlockedUntil: stamp(until), Scope: "global", Subject: "global", WindowStart: stamp(globalStart),
+			BlockedUntil: stamp(until), Scope: "global", Subject: "global", WindowStart: stamp(globalBlockRow),
 		}); err != nil {
 			return 0, false, domain.ErrUnavailable
 		}
 		return globalBlockDuration, true, nil
 	}
 	if ip.Failures >= ipFailureLimit {
-		return retryAfter(ipStart.Add(ipWindow), now), true, nil
+		return retryAfter(ip.Oldest.Time.Add(ipWindow), now), true, nil
 	}
 	return 0, false, nil
 }

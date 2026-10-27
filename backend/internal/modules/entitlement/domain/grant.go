@@ -43,3 +43,7 @@ type GrantFilter struct {
 	BeforeID      string
 	Limit         int
 }
+
+// ExpiredRevokeReason marks a lapsed ACTIVE grant revoked because a new
+// grant for the same tier supersedes it.
+const ExpiredRevokeReason = "expired"

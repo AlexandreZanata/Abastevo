@@ -13,6 +13,8 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import java.time.Instant
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -183,6 +185,129 @@ class DispatchLedgerCommandUseCaseTest {
         }
         assertEquals(LedgerDispatchOutcome.REFUSED, gated().invoke(null))
         coVerify(exactly = 0) { gateway.submit(any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `obsolete queued body is held rather than sent over a local correction`() = runTest {
+        every { sessions.load() } returns session()
+        coEvery { commands.listPending(any(),any()) } returns listOf(command())
+        val drafts = mockk<com.anpfuel.domain.repository.LedgerDraftStore>()
+        coEvery { drafts.find(any(),any(),any(),any()) } returns null
+        val guarded = DispatchLedgerCommandUseCase(commands,gateway,sessions,"https://api.example.test", drafts=drafts)
+        assertEquals(LedgerDispatchOutcome.REFUSED,guarded.invoke(null))
+        coVerify(exactly=0) { gateway.submit(any(),any(),any(),any(),any()) }
+        coVerify(exactly=1) { commands.markConflict(scope,"op-1","ledger.local-record-changed") }
+        coVerify(exactly=0) { commands.acknowledge(any(),any()) }
+    }
+
+    private fun currentDraft() = com.anpfuel.domain.repository.StoredLedgerDraft(
+        com.anpfuel.domain.premium.RefuelDraft(
+            "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222",
+            Instant.parse("2026-03-01T12:00:00Z"), "UTC", com.anpfuel.domain.premium.PremiumFuel.ETHANOL,
+            40000, 26000, null, 10000000, com.anpfuel.domain.premium.LedgerFill.FULL, null, null,
+        ), 0, 1,
+    )
+
+    private suspend fun pausedDraftRead(
+        revoke: () -> Unit, expected: LedgerDispatchOutcome,
+    ) {
+        val stored = currentDraft()
+        val queued = command().copy(recordId = stored.draft.recordId, payloadJson = stored.draft.bodyJson())
+        val drafts = mockk<com.anpfuel.domain.repository.LedgerDraftStore>()
+        val entered = CompletableDeferred<Unit>()
+        val resume = CompletableDeferred<Unit>()
+        every { sessions.load() } returns session()
+        every { syncScope.isDeviceEnabled() } returns true
+        every { syncScope.isDatasetEnabled(any()) } returns true
+        coEvery { commands.listPending(scope, any()) } returns listOf(queued)
+        coEvery { drafts.find(scope.accountId, scope.origin, LedgerDataset.REFUEL, queued.recordId) } coAnswers {
+            entered.complete(Unit)
+            resume.await()
+            stored
+        }
+        coEvery { gateway.submit(any(), any(), any(), any(), any()) } returns LedgerSyncReceipt("op-1", 1, false)
+        val guarded = DispatchLedgerCommandUseCase(commands, gateway, sessions, scope.origin,
+            syncScope = syncScope, acks = acks, drafts = drafts)
+        kotlinx.coroutines.coroutineScope {
+            val dispatch = async { guarded.invoke(null) }
+            entered.await()
+            revoke()
+            resume.complete(Unit)
+            assertEquals(expected, dispatch.await())
+        }
+        coVerify(exactly = 0) { gateway.submit(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { commands.acknowledge(any(), any()) }
+        coVerify(exactly = 0) { commands.markConflict(any(), any(), any()) }
+        coVerify(exactly = 0) { acks.recordAck(any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `owner switched while current draft read suspends prevents transport`() = runTest {
+        pausedDraftRead({ every { sessions.load() } returns session().copy(accountId = "other") }, LedgerDispatchOutcome.REFUSED)
+    }
+
+    @Test fun `same owner new login while current draft read suspends refuses old family`() = runTest {
+        pausedDraftRead({ every { sessions.load() } returns session().copy(familyId = "new-family") }, LedgerDispatchOutcome.REFUSED)
+    }
+
+    @Test fun `device opt out while current draft read suspends prevents transport`() = runTest {
+        pausedDraftRead({ every { syncScope.isDeviceEnabled() } returns false }, LedgerDispatchOutcome.DONE)
+    }
+
+    @Test fun `dataset opt out while current draft read suspends prevents transport`() = runTest {
+        pausedDraftRead({ every { syncScope.isDatasetEnabled("refuel") } returns false }, LedgerDispatchOutcome.DONE)
+    }
+
+    @Test fun `same body with a newer local revision holds obsolete queued command`() = runTest {
+        val stored = currentDraft()
+        val queued = command().copy(recordId = stored.draft.recordId, payloadJson = stored.draft.bodyJson())
+        val drafts = mockk<com.anpfuel.domain.repository.LedgerDraftStore>()
+        every { sessions.load() } returns session()
+        coEvery { commands.listPending(scope, any()) } returns listOf(queued)
+        coEvery { drafts.find(any(), any(), any(), any()) } returns stored.copy(expectedRevision = 1)
+        coEvery { gateway.submit(any(), any(), any(), any(), any()) } returns LedgerSyncReceipt("op-1", 1, false)
+        val guarded = DispatchLedgerCommandUseCase(commands, gateway, sessions, scope.origin, drafts = drafts)
+        assertEquals(LedgerDispatchOutcome.REFUSED, guarded.invoke(null))
+        coVerify(exactly = 0) { gateway.submit(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 1) { commands.markConflict(scope, "op-1", "ledger.local-record-changed") }
+    }
+
+    @Test fun `matching current draft sends once with refreshed token in the same family`() = runTest {
+        val stored = currentDraft()
+        val queued = command().copy(recordId = stored.draft.recordId, payloadJson = stored.draft.bodyJson())
+        val drafts = mockk<com.anpfuel.domain.repository.LedgerDraftStore>()
+        every { sessions.load() } returns session()
+        coEvery { commands.listPending(scope, any()) } returns listOf(queued)
+        coEvery { drafts.find(scope.accountId, scope.origin, LedgerDataset.REFUEL, queued.recordId) } coAnswers {
+            every { sessions.load() } returns session().copy(accessToken = "refreshed-synthetic-token")
+            stored
+        }
+        coEvery { gateway.submit(scope, queued, any(), "fam-1", "refreshed-synthetic-token") } returns LedgerSyncReceipt("op-1", 1, false)
+        val guarded = DispatchLedgerCommandUseCase(commands, gateway, sessions, scope.origin, drafts = drafts)
+        assertEquals(LedgerDispatchOutcome.DONE, guarded.invoke(null))
+        coVerify(exactly = 1) { gateway.submit(scope, queued, any(), "fam-1", "refreshed-synthetic-token") }
+        coVerify(exactly = 1) { commands.acknowledge(scope, "op-1") }
+        coVerify(exactly = 0) { commands.markConflict(any(), any(), any()) }
+    }
+
+    @Test fun `gap and reset intents still dispatch when the draft store guard is enabled`() = runTest {
+        val vehicle = "22222222-2222-4222-8222-222222222222"
+        val queued = listOf(
+            com.anpfuel.domain.premium.LedgerIntentCommandFactory.gapCommand(scope, vehicle,
+                com.anpfuel.domain.premium.LedgerGapIntent("11111111-1111-4111-8111-111111111111", null, null)),
+            com.anpfuel.domain.premium.LedgerIntentCommandFactory.resetCommand(scope, vehicle,
+                com.anpfuel.domain.premium.LedgerSegmentReset("replacement")),
+        )
+        val drafts = mockk<com.anpfuel.domain.repository.LedgerDraftStore>()
+        every { sessions.load() } returns session()
+        val guarded = DispatchLedgerCommandUseCase(commands, gateway, sessions, scope.origin, drafts = drafts)
+        for (intent in queued) {
+            coEvery { commands.listPending(scope, any()) } returns listOf(intent)
+            coEvery { gateway.submit(scope, intent, any(), "fam-1", "at") } returns LedgerSyncReceipt(intent.operationId, 1, false)
+            assertEquals(LedgerDispatchOutcome.DONE, guarded.invoke(null), intent.dataset)
+            coVerify(exactly = 1) { gateway.submit(scope, intent, any(), "fam-1", "at") }
+            coVerify(exactly = 1) { commands.acknowledge(scope, intent.operationId) }
+        }
+        coVerify(exactly = 0) { drafts.find(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { commands.markConflict(any(), any(), any()) }
     }
 
 }

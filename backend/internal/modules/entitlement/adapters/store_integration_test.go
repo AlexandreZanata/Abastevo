@@ -278,3 +278,66 @@ func TestGrant_ENT11_ErasureRevokes(t *testing.T) {
 		t.Fatalf("grant=%+v", row)
 	}
 }
+
+// TestGrant_ENT03_ENT06_ExpiredActiveIsSuperseded: an ACTIVE grant whose
+// end_at passed no longer counts (ENT-06) but still holds the partial unique
+// index; superseding revokes it as "expired" so a new grant can be created.
+// An unexpired grant is never touched.
+func TestGrant_ENT03_ENT06_ExpiredActiveIsSuperseded(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+	accountID := seedAccount(t, pool, "active")
+	session := insertSession(t, pool)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	past := newGrant(t, accountID, session, domain.TierPRO, now.Add(-3*time.Hour))
+	ended := now.Add(-time.Minute)
+	past.EndAt = &ended
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old, err := store.CreateTx(ctx, tx, past)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, err := store.CreateTx(ctx, tx, newGrant(t, accountID, session, domain.TierEnterprise, now))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	tx, err = pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	if untouched, err := store.SupersedeExpiredTx(ctx, tx, accountID, domain.TierEnterprise, now); err != nil || untouched != nil {
+		t.Fatalf("unexpired grant superseded=%v err=%v", untouched, err)
+	}
+	revoked, err := store.SupersedeExpiredTx(ctx, tx, accountID, domain.TierPRO, now)
+	if err != nil || revoked == nil || revoked.ID != old.ID || revoked.State != domain.StateRevoked || revoked.RevokeReason != "expired" {
+		t.Fatalf("expired grant superseded=%+v err=%v", revoked, err)
+	}
+	if _, err := store.CreateTx(ctx, tx, newGrant(t, accountID, session, domain.TierPRO, now)); err != nil {
+		t.Fatalf("re-grant after expiry err=%v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := store.GetTx(ctx, mustBegin(t, pool), current.ID); err != nil || got.State != domain.StateActive {
+		t.Fatalf("unexpired grant=%+v err=%v", got, err)
+	}
+}
+
+func mustBegin(t *testing.T, pool *pgxpool.Pool) pgx.Tx {
+	t.Helper()
+	tx, err := pool.Begin(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = tx.Rollback(context.Background()) })
+	return tx
+}

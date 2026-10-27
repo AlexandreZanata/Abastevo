@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: abastevo-temp-api
+  namespace: abastevo-temp
+spec:
+  clusterIP: ${API_CLUSTER_IP}
+  clusterIPs:
+  - ${API_CLUSTER_IP}
+  externalTrafficPolicy: Cluster
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - nodePort: ${API_NODE_PORT}
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: abastevo-temp-api
+  sessionAffinity: None
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: abastevo-temp-db
+  namespace: abastevo-temp
+spec:
+  clusterIP: ${DB_CLUSTER_IP}
+  clusterIPs:
+  - ${DB_CLUSTER_IP}
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - port: 5432
+    protocol: TCP
+    targetPort: 5432
+  selector:
+    app: abastevo-temp-db
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: abastevo-temp-web
+  namespace: abastevo-temp
+spec:
+  clusterIP: ${WEB_CLUSTER_IP}
+  clusterIPs:
+  - ${WEB_CLUSTER_IP}
+  externalTrafficPolicy: Cluster
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - nodePort: ${WEB_NODE_PORT}
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: abastevo-temp-web
+  sessionAffinity: None
+  type: NodePort

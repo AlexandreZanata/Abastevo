@@ -93,6 +93,17 @@ func (s *Service) CreateGrant(ctx context.Context, session Session, in CreateGra
 		if _, err := s.Grants.LockEligibleAccount(ctx, tx, in.AccountID); err != nil {
 			return MutationResult{}, nil, err
 		}
+		var events []AuditEvent
+		lapsed, err := s.Grants.SupersedeExpiredTx(ctx, tx, in.AccountID, tier, now)
+		if err != nil {
+			return MutationResult{}, nil, err
+		}
+		if lapsed != nil {
+			events = append(events, AuditEvent{
+				Action: "admin.grant.revoke", TargetType: "entitlement_grant", TargetID: lapsed.ID,
+				Reason: entdomain.ExpiredRevokeReason, After: mustJSON(View(*lapsed)),
+			})
+		}
 		active, err := s.Grants.ActiveTx(ctx, tx, in.AccountID, now)
 		if err != nil {
 			return MutationResult{}, nil, err
@@ -104,7 +115,6 @@ func (s *Service) CreateGrant(ctx context.Context, session Session, in CreateGra
 				break
 			}
 		}
-		var events []AuditEvent
 		var replaced *entdomain.Grant
 		if existing != nil {
 			if !in.Replace {

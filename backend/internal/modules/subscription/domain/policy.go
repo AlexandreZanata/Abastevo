@@ -158,7 +158,12 @@ func mergeAdmin(result Status, s *Snapshot, now time.Time) Status {
 	if len(s.AdminCapabilities) == 0 {
 		return result
 	}
-	if !s.AdminValidUntil.IsZero() && !now.Before(s.AdminValidUntil) {
+	// An admin tier without valid_until is open-ended (until revoked).
+	unbounded := false
+	for _, tier := range s.Tiers {
+		unbounded = unbounded || (tier.Source == "admin" && tier.ValidUntil == nil)
+	}
+	if !unbounded && !s.AdminValidUntil.IsZero() && !now.Before(s.AdminValidUntil) {
 		return result
 	}
 	hadAny := len(result.Capabilities) > 0
@@ -176,7 +181,9 @@ func mergeAdmin(result Status, s *Snapshot, now time.Time) Status {
 	if !hadAny {
 		result.Reason = "verified-admin"
 	}
-	if !s.AdminValidUntil.IsZero() {
+	if unbounded {
+		result.ValidUntil = nil
+	} else if !s.AdminValidUntil.IsZero() {
 		until := s.AdminValidUntil.UTC()
 		if result.ValidUntil == nil || until.After(*result.ValidUntil) {
 			result.ValidUntil = &until

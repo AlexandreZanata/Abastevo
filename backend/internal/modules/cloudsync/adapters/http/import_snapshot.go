@@ -61,9 +61,7 @@ func openSnapshot(secret []byte, token, filter string, now time.Time) (app.Snaps
 	return app.SnapshotQuery{Dataset: c.Dataset, After: c.After, Through: c.Through, Epoch: c.Epoch, ConsentRevision: c.Consent}, nil
 }
 
-func validDataset(d string) bool {
-	return d == "vehicles" || d == "favorites" || d == "preferences"
-}
+func validDataset(d string) bool { return domain.KnownDataset(d) }
 
 func (h Handler) consent(w http.ResponseWriter, r *http.Request) {
 	var dto struct {
@@ -75,7 +73,7 @@ func (h Handler) consent(w http.ResponseWriter, r *http.Request) {
 		fail(w, r, err)
 		return
 	}
-	if dto.Enabled == nil || len(dto.Datasets) < 1 || len(dto.Datasets) > 3 {
+	if dto.Enabled == nil || len(dto.Datasets) < 1 || len(dto.Datasets) > len(domain.Datasets()) {
 		fail(w, r, domain.ErrInvalid)
 		return
 	}

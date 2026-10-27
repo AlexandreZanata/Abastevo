@@ -183,6 +183,61 @@ func TestLogin_ADM04_GlobalRateLimit(t *testing.T) {
 	}
 }
 
+// TestLogin_ADM04_IPWindowSlides: five failures just before a quarter-hour
+// boundary still block right after it; the limit is a trailing 15 minutes.
+func TestLogin_ADM04_IPWindowSlides(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	first := time.Date(2026, 10, 27, 12, 14, 59, 0, time.UTC)
+	wrong := syntheticKey('x')
+	for i := 0; i < 5; i++ {
+		if _, err := store.Login(context.Background(), loginInput(wrong, first, "198.51.100.3")); !errors.Is(err, domain.ErrDenied) {
+			t.Fatalf("failure %d err=%v", i+1, err)
+		}
+	}
+	for _, at := range []time.Time{first.Add(time.Second), first.Add(ipWindow - time.Second)} {
+		_, err := store.Login(context.Background(), loginInput(wrong, at, "198.51.100.3"))
+		var limited *domain.RateLimitedError
+		if !errors.As(err, &limited) || limited.RetryAfter <= 0 || limited.RetryAfter > ipWindow {
+			t.Fatalf("at %s err=%v retry=%v", at, err, limited)
+		}
+	}
+	if _, err := store.Login(context.Background(), loginInput(wrong, first.Add(ipWindow), "198.51.100.3")); !errors.Is(err, domain.ErrDenied) {
+		t.Fatalf("after the trailing window err=%v", err)
+	}
+}
+
+// TestLogin_ADM04_GlobalBlockSurvivesHourBoundary: 50 failures at 10:58
+// keep every login refused at 11:00 and 11:12; the block is not tied to a
+// clock-hour row and failures are counted over a trailing hour.
+func TestLogin_ADM04_GlobalBlockSurvivesHourBoundary(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	at := time.Date(2026, 10, 27, 10, 58, 0, 0, time.UTC)
+	wrong := syntheticKey('x')
+	for i := 0; i < 49; i++ {
+		ip := fmt.Sprintf("198.51.100.%d", i+10)
+		if _, err := store.Login(context.Background(), loginInput(wrong, at, ip)); !errors.Is(err, domain.ErrDenied) {
+			t.Fatalf("failure %d err=%v", i+1, err)
+		}
+	}
+	// Forty-nine failures before the hour plus one after it reach the limit.
+	if _, err := store.Login(context.Background(), loginInput(wrong, at.Add(2*time.Minute), "198.51.100.200")); !errors.Is(err, domain.ErrDenied) {
+		t.Fatalf("fiftieth failure err=%v", err)
+	}
+	correct := syntheticKey('c')
+	for _, when := range []time.Time{at.Add(2*time.Minute + time.Second), at.Add(14 * time.Minute)} {
+		_, err := store.Login(context.Background(), acceptedStoreInput(correct, when, "203.0.113.50"))
+		var limited *domain.RateLimitedError
+		if !errors.As(err, &limited) || limited.RetryAfter <= 0 || limited.RetryAfter > globalBlockDuration {
+			t.Fatalf("at %s correct key not blocked err=%v retry=%v", when, err, limited)
+		}
+	}
+	if _, err := store.Login(context.Background(), acceptedStoreInput(correct, at.Add(time.Hour+3*time.Minute), "203.0.113.50")); err != nil {
+		t.Fatalf("after the trailing hour err=%v", err)
+	}
+}
+
 // TestLogin_ADM04_ConcurrentFailuresExact is S7: serialized counters admit
 // exactly the five real comparisons and never lose an update.
 func TestLogin_ADM04_ConcurrentFailuresExact(t *testing.T) {

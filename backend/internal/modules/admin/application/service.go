@@ -110,6 +110,7 @@ type AuditFilter struct {
 type GrantsPort interface {
 	LockEligibleAccount(context.Context, pgx.Tx, string) (entdomain.Grant, error)
 	ActiveTx(context.Context, pgx.Tx, string, time.Time) ([]entdomain.Grant, error)
+	SupersedeExpiredTx(context.Context, pgx.Tx, string, entdomain.Tier, time.Time) (*entdomain.Grant, error)
 	CreateTx(context.Context, pgx.Tx, entdomain.NewGrant) (entdomain.Grant, error)
 	RevokeTx(context.Context, pgx.Tx, string, time.Time, string) (entdomain.Grant, error)
 	GetTx(context.Context, pgx.Tx, string) (entdomain.Grant, error)

@@ -30,6 +30,16 @@ interface LedgerDraftDao {
     suspend fun listOwned(owner: String, origin: String): List<LedgerDraftEntity>
 
     @Query(
+        "UPDATE ledger_draft SET body_json = :replacementBody, updated_at_millis = :nowMillis " +
+            "WHERE owner_account = :owner AND origin = :origin AND dataset = :dataset " +
+            "AND record_id = :recordId AND expected_revision = :expectedRevision AND body_json = :expectedBody AND draft_id = :draftId",
+    )
+    suspend fun compareAndSetBody(
+        owner: String, origin: String, dataset: String, recordId: String,
+        expectedRevision: Long, expectedBody: String, replacementBody: String, nowMillis: Long, draftId: String,
+    ): Int
+
+    @Query(
         "DELETE FROM ledger_draft WHERE owner_account = :owner AND origin = :origin " +
             "AND dataset = :dataset AND record_id = :recordId",
     )
