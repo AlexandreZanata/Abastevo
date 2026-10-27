@@ -6137,6 +6137,195 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/admin/accounts:
+    get:
+      tags:
+      - admin
+      summary: Search accounts (max 20)
+      description: Exact UUID, exact alias, alias prefix of at least 3 characters or exact e-mail hashed server-side. Parameters are never interpolated as wildcards.
+      operationId: adminSearchAccounts
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema: {type: string, minLength: 3, maxLength: 254}
+      responses:
+        '200':
+          description: Bounded search result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccountList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/accounts/{id}:
+    get:
+      tags:
+      - admin
+      summary: Account detail with grants and paid state
+      operationId: adminAccountDetail
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Account detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAccountDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/accounts/{id}/grants:
+    post:
+      tags:
+      - admin
+      summary: Create or replace one granted tier
+      description: Requires X-Admin-CSRF, exact Origin, reason and Idempotency-Key. Capability strings are rejected as unknown fields.
+      operationId: adminCreateGrant
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminGrantCreateRequest'
+      responses:
+        '201':
+          description: Grant created (or replaced atomically).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGrantResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          description: Body exceeds the 16 KiB administrative cap.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/grants:
+    get:
+      tags:
+      - admin
+      summary: List grants
+      operationId: adminListGrants
+      parameters:
+      - name: tier
+        in: query
+        schema: {type: string, enum: [PRO, CONTRIBUTOR, ENTERPRISE]}
+      - name: state
+        in: query
+        schema: {type: string, enum: [ACTIVE, REVOKED]}
+      - name: cursor
+        in: query
+        schema: {type: string, maxLength: 4096}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100}
+      responses:
+        '200':
+          description: Bounded grant page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGrantList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/grants/{id}/revoke:
+    post:
+      tags:
+      - admin
+      summary: Revoke one active grant
+      description: Requires X-Admin-CSRF, exact Origin, reason and Idempotency-Key. Revoked grants are never reactivated.
+      operationId: adminRevokeGrant
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '200':
+          description: Grant revoked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGrant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          description: Body exceeds the 16 KiB administrative cap.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   parameters:
     QualityCompanyStationSelector:
@@ -8018,6 +8207,10 @@ components:
           - true
         payments_configured:
           type: boolean
+        tiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TierStatus'
     AdminLoginRequest:
       type: object
       additionalProperties: false
@@ -8057,6 +8250,115 @@ components:
           type: string
           minLength: 10
           maxLength: 500
+    TierStatus:
+      type: object
+      additionalProperties: false
+      required: [tier, source, valid_until]
+      properties:
+        tier:
+          type: string
+          enum: [PRO, CONTRIBUTOR, ENTERPRISE]
+        source:
+          type: string
+          enum: [play, web, admin]
+        valid_until:
+          type: [string, 'null']
+          format: date-time
+    AdminAccountSummary:
+      type: object
+      additionalProperties: false
+      required: [account_id, alias, status, created_at]
+      properties:
+        account_id: {type: string, format: uuid}
+        alias: {type: string}
+        status: {type: string, enum: [active, suspended, deleted]}
+        created_at: {type: string, format: date-time}
+    AdminAccountList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/AdminAccountSummary'
+    AdminPaidSummary:
+      type: object
+      additionalProperties: false
+      required: [state, valid_until]
+      properties:
+        state: {type: string, enum: [ACTIVE, NONE]}
+        valid_until:
+          type: [string, 'null']
+          format: date-time
+    AdminGrant:
+      type: object
+      additionalProperties: false
+      required: [id, account_id, tier, policy_version, state, start_at, end_at, reason, created_at, revoked_at]
+      properties:
+        id: {type: string, format: uuid}
+        account_id: {type: string, format: uuid}
+        tier: {type: string, enum: [PRO, CONTRIBUTOR, ENTERPRISE]}
+        policy_version: {type: integer, minimum: 1}
+        state: {type: string, enum: [ACTIVE, REVOKED]}
+        start_at: {type: string, format: date-time}
+        end_at:
+          type: [string, 'null']
+          format: date-time
+        reason: {type: string, minLength: 10, maxLength: 500}
+        created_at: {type: string, format: date-time}
+        revoked_at:
+          type: [string, 'null']
+          format: date-time
+        revoke_reason: {type: string}
+    AdminAccountDetail:
+      type: object
+      additionalProperties: false
+      required: [account_id, alias, status, created_at, grants, paid]
+      properties:
+        account_id: {type: string, format: uuid}
+        alias: {type: string}
+        status: {type: string, enum: [active, suspended, deleted]}
+        created_at: {type: string, format: date-time}
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminGrant'
+        paid:
+          $ref: '#/components/schemas/AdminPaidSummary'
+    AdminGrantCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [tier, reason]
+      properties:
+        tier: {type: string, enum: [PRO, CONTRIBUTOR, ENTERPRISE]}
+        end_at:
+          type: [string, 'null']
+          format: date-time
+        reason: {type: string, minLength: 10, maxLength: 500}
+        replace: {type: boolean, default: false}
+    AdminGrantResponse:
+      type: object
+      additionalProperties: false
+      required: [grant, replaced]
+      properties:
+        grant:
+          $ref: '#/components/schemas/AdminGrant'
+        replaced:
+          oneOf:
+          - $ref: '#/components/schemas/AdminGrant'
+          - type: 'null'
+    AdminGrantList:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminGrant'
+        next_cursor: {type: string}
     PremiumPurchaseReceipt:
       type: object
       additionalProperties: false

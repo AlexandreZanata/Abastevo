@@ -32,7 +32,14 @@ func (s *Store) RequireCapability(ctx context.Context, tx pgx.Tx, owner, capabil
 	if err != nil {
 		return domain.ErrUnavailable
 	}
-	if !slices.Contains(capabilities, capability) {
+	if slices.Contains(capabilities, capability) {
+		return nil
+	}
+	adminCapabilities, _, _, err := adminGrants(ctx, tx, owner, time.Now())
+	if err != nil {
+		return domain.ErrUnavailable
+	}
+	if !slices.Contains(adminCapabilities, capability) {
 		return domain.ErrDenied
 	}
 	return nil

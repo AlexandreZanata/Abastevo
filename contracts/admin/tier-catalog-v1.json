@@ -1,0 +1,34 @@
+{
+  "version": "tier-catalog-v1",
+  "policy_version": 1,
+  "tiers": {
+    "PRO": [
+      "cloud.sync",
+      "cloud.backup",
+      "cloud.restore",
+      "alerts.advanced",
+      "professional.write",
+      "professional.report",
+      "vehicles.multiple"
+    ],
+    "CONTRIBUTOR": [
+      "cloud.sync",
+      "cloud.backup",
+      "cloud.restore",
+      "alerts.advanced",
+      "professional.write",
+      "professional.report",
+      "vehicles.multiple",
+      "contributor.profile"
+    ],
+    "ENTERPRISE": [
+      "cloud.sync",
+      "cloud.backup",
+      "cloud.restore",
+      "alerts.advanced",
+      "professional.write",
+      "professional.report",
+      "vehicles.multiple"
+    ]
+  }
+}

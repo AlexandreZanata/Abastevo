@@ -795,15 +795,9 @@ func run() error {
 		return clouddomain.ErrUnavailable
 	}
 	cloudStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		if !premiumService.Configured() {
-			return clouddomain.ErrDenied
-		}
 		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "cloud.sync"))
 	}
 	cloudStore.MultipleVehicles = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		if !premiumService.Configured() {
-			return clouddomain.ErrDenied
-		}
 		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "vehicles.multiple"))
 	}
 	cloudhttp.Handler{
@@ -819,9 +813,6 @@ func run() error {
 	}.RegisterRoutes(router)
 	ledgerStore := ledgeradapters.NewStore(pool.Underlying())
 	ledgerStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		if !premiumService.Configured() {
-			return errors.New("ledger: capability required")
-		}
 		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
 			if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
 				return errors.New("ledger: authentication required")
@@ -858,9 +849,6 @@ func run() error {
 	}.RegisterRoutes(router)
 	alertsStore := alertsadapters.NewStore(pool.Underlying())
 	alertsStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		if !premiumService.Configured() {
-			return errors.New("alerts: capability required")
-		}
 		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
 			if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
 				return errors.New("alerts: authentication required")

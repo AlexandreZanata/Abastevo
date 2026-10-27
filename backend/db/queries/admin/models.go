@@ -88,3 +88,50 @@ type AdminSession struct {
 	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
 	RevokedAt      pgtype.Timestamptz `json:"revoked_at"`
 }
+
+type SubscriptionOperation struct {
+	AccountID   pgtype.UUID        `json:"account_id"`
+	OperationID pgtype.UUID        `json:"operation_id"`
+	Kind        string             `json:"kind"`
+	TokenDigest string             `json:"token_digest"`
+	PayloadHash string             `json:"payload_hash"`
+	TokenCipher []byte             `json:"token_cipher"`
+	Generation  int64              `json:"generation"`
+	Attempts    int32              `json:"attempts"`
+	Status      string             `json:"status"`
+	LeaseUntil  pgtype.Timestamptz `json:"lease_until"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	CompletedAt pgtype.Timestamptz `json:"completed_at"`
+}
+
+type SubscriptionPurchase struct {
+	TokenDigest     string             `json:"token_digest"`
+	AccountID       pgtype.UUID        `json:"account_id"`
+	Environment     string             `json:"environment"`
+	PackageName     string             `json:"package_name"`
+	ProductID       string             `json:"product_id"`
+	BasePlanID      string             `json:"base_plan_id"`
+	State           string             `json:"state"`
+	ValidUntil      pgtype.Timestamptz `json:"valid_until"`
+	VerifiedAt      pgtype.Timestamptz `json:"verified_at"`
+	Revision        int64              `json:"revision"`
+	Retired         bool               `json:"retired"`
+	RefreshRequired bool               `json:"refresh_required"`
+	Acknowledged    bool               `json:"acknowledged"`
+	TokenCipher     []byte             `json:"token_cipher"`
+	LinkedDigest    pgtype.Text        `json:"linked_digest"`
+}
+
+type SubscriptionRetiredToken struct {
+	TokenDigest string             `json:"token_digest"`
+	AccountID   pgtype.UUID        `json:"account_id"`
+	RetiredAt   pgtype.Timestamptz `json:"retired_at"`
+}
+
+type SubscriptionVerificationSlot struct {
+	TokenDigest string             `json:"token_digest"`
+	Generation  int64              `json:"generation"`
+	AccountID   pgtype.UUID        `json:"account_id"`
+	OperationID pgtype.UUID        `json:"operation_id"`
+	LeaseUntil  pgtype.Timestamptz `json:"lease_until"`
+}

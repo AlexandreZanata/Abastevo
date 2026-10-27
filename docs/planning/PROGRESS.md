@@ -1,5 +1,17 @@
 # Current execution state
 
+- A2 granted tiers and capability projection 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-a2-granted-tiers` stacked on A1 PR
+  #164 (base `codex/adm-a1-admin-auth`; planning docs still in PR #161).
+  ENT-01…ENT-12 and BUC-ADM-02/03/04 implemented with migration `000141`,
+  tier catalog/golden JSON, admin grant endpoints, erasure trigger and
+  payments-unconfigured capability proof. Tested revision: branch head
+  before the evidence commit; `go test -race ./...` 128 ok / 0 fail,
+  PostGIS admin+entitlement+subscription+cmd/api integration ok,
+  `make quick-verify` ok (40s), secret scan clean.
+  [Evidence](../../backend/evidence/admin/A2-GRANTED-TIERS.md). Next: push,
+  open PR with `--base codex/adm-a1-admin-auth`, do not start A3.
+
 - A1 admin key authentication, sessions and audit 2026-10-27: LOCAL_DONE /
   INTEGRATION_PENDING. Branch `codex/adm-a1-admin-auth` from `origin/main`
   `44b7b915`; stacked on planning PR #161 (contract/ADR/plan not yet on
