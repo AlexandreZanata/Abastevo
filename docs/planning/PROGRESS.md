@@ -8,9 +8,12 @@
   kubeconfig helper, not applied. Apply mode adds the schema gate, verified
   backup, migration Job, one shared image rollout, smoke, landing symlink,
   `current.json` last, undo/failure receipts and a quota-gated surge default
-  off. 120 harness cases, Quick, shellcheck and actionlint PASS. RBAC
-  application, agent install, timer, R5 worker-overlap proof and two-merge
-  staging acceptance remain OWED; no VPS or production action.
+  off. Review fixes add the `baseline` subcommand, require `current.json` for
+  apply (no live-annotation gate), write the `schema-floor` annotation, add
+  `migrate -check`, and pass the R5 two-dispatcher overlap integration test.
+  157 harness cases, Quick, shellcheck and actionlint PASS. Part B staging
+  install/baseline/plan and the two-merge staging acceptance remain pending;
+  no VPS apply or production action.
   [CD-04 evidence](../backend/evidence/cd/CD-04.md).
 
 - CD-03 schema compatibility window 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
