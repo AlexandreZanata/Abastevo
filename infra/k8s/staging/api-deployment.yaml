@@ -81,7 +81,7 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
-        - mountPath: /opt/abastevo-tools
+        - mountPath: ${RST_TOOLS_MOUNT}
           name: rst-compatible-binaries
           readOnly: true
       - command:
@@ -130,12 +130,12 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
-        - mountPath: /opt/abastevo-tools
+        - mountPath: ${RST_TOOLS_MOUNT}
           name: rst-compatible-binaries
           readOnly: true
         - mountPath: /var/lib/abastevo-enterprise
           name: enterprise
-        - mountPath: /opt/abastevo-web
+        - mountPath: ${LANDING_MOUNT}
           name: landing-web
           readOnly: true
       - env:

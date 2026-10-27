@@ -13,6 +13,8 @@ set -euo pipefail
 
 umask 077
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 log() {
     printf 'abastevo-deploy-agent: %s\n' "$*" >&2
 }
@@ -49,6 +51,23 @@ ABASTEVO_GITHUB_API="${ABASTEVO_GITHUB_API:-https://api.github.com}"
 ABASTEVO_WORKFLOW_PATH="${ABASTEVO_WORKFLOW_PATH:-.github/workflows/release-staging.yml}"
 ABASTEVO_MANIFEST_REPOSITORY="${ABASTEVO_MANIFEST_REPOSITORY:-ghcr.io/alexandrezanata/abastevo-release}"
 ABASTEVO_MANIFEST_TAG="${ABASTEVO_MANIFEST_TAG:-staging}"
+ABASTEVO_APPLY="${ABASTEVO_APPLY:-0}"
+ABASTEVO_API_CONTAINER="${ABASTEVO_API_CONTAINER:-api}"
+ABASTEVO_WORKER_CONTAINER="${ABASTEVO_WORKER_CONTAINER:-worker}"
+ABASTEVO_SURGE_RESOURCE_QUOTA="${ABASTEVO_SURGE_RESOURCE_QUOTA:-abastevo-temp-quota}"
+ABASTEVO_SURGE_CPU_MILLI="${ABASTEVO_SURGE_CPU_MILLI:-2000}"
+ABASTEVO_ALLOW_SURGE="${ABASTEVO_ALLOW_SURGE:-0}"
+ABASTEVO_ROLLOUT_TIMEOUT="${ABASTEVO_ROLLOUT_TIMEOUT:-300}"
+ABASTEVO_JOB_TIMEOUT="${ABASTEVO_JOB_TIMEOUT:-300}"
+ABASTEVO_DB_IMAGE="${ABASTEVO_DB_IMAGE:-postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677}"
+ABASTEVO_DB_SECRET="${ABASTEVO_DB_SECRET:-abastevo-temp-secrets}"
+ABASTEVO_BACKUP_KEEP="${ABASTEVO_BACKUP_KEEP:-7}"
+ABASTEVO_LANDING_KEEP="${ABASTEVO_LANDING_KEEP:-5}"
+ABASTEVO_SMOKE_BASE_URL="${ABASTEVO_SMOKE_BASE_URL:-}"
+ABASTEVO_SMOKE_TIMEOUT="${ABASTEVO_SMOKE_TIMEOUT:-10}"
+ABASTEVO_KUBECTL="${ABASTEVO_KUBECTL:-kubectl}"
+ABASTEVO_LIBDIR="${ABASTEVO_LIBDIR:-$SCRIPT_DIR}"
+ABASTEVO_LOCK_FILE="${ABASTEVO_LOCK_FILE:-$ABASTEVO_STATE_DIR/apply.lock}"
 
 require_var ABASTEVO_NAMESPACE
 require_var ABASTEVO_API_DEPLOYMENT
@@ -72,10 +91,23 @@ require_absolute ABASTEVO_STATE_DIR
     || fail "ABASTEVO_MANIFEST_REPOSITORY must be a GHCR repository"
 [[ -n "$ABASTEVO_MANIFEST_TAG" && "$ABASTEVO_MANIFEST_TAG" != "latest" ]] \
     || fail "ABASTEVO_MANIFEST_TAG must be an immutable release tag, never latest"
+[[ "$ABASTEVO_APPLY" =~ ^[01]$ ]] \
+    || fail "ABASTEVO_APPLY must be 0 or 1"
 
 for tool in cosign oras curl jq sha256sum mktemp install date; do
     require_tool "$tool"
 done
+
+if [[ "$ABASTEVO_APPLY" == "1" ]]; then
+    [[ -f "$ABASTEVO_LIBDIR/runtime/k8s.sh" ]] \
+        || fail "missing runtime adapter: $ABASTEVO_LIBDIR/runtime/k8s.sh"
+    [[ -f "$ABASTEVO_LIBDIR/apply.sh" ]] \
+        || fail "missing apply orchestration: $ABASTEVO_LIBDIR/apply.sh"
+    # shellcheck source=infra/deploy/agent/runtime/k8s.sh
+    . "$ABASTEVO_LIBDIR/runtime/k8s.sh"
+    # shellcheck source=infra/deploy/agent/apply.sh
+    . "$ABASTEVO_LIBDIR/apply.sh"
+fi
 
 owner="${ABASTEVO_GITHUB_REPOSITORY%%/*}"
 owner_lc="$(printf '%s' "$owner" | tr '[:upper:]' '[:lower:]')"
@@ -292,3 +324,7 @@ chmod 0600 "$receipt_tmp"
 mv "$receipt_tmp" "$ABASTEVO_RECEIPT_DIR/$receipt_name"
 
 log "plan written: $receipt_name ($action)"
+
+if [[ "$ABASTEVO_APPLY" == "1" ]]; then
+    apply_release
+fi

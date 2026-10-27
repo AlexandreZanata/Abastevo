@@ -4,6 +4,9 @@ These files are the captured live objects in namespace `abastevo-temp` as of
 2026-10-27. They are review artifacts and the baseline for the executor; they
 are not applied by this directory's tooling.
 
+The reviewed executor RBAC lives in `rbac/deploy-agent-rbac.yaml`; it is not
+part of the captured-object diff and is not applied here.
+
 Captured objects:
 
 - `api-deployment.yaml` — Deployment `abastevo-temp-api` (api, worker and
@@ -28,7 +31,7 @@ The render file is operator-owned, outside Git, and mode 600. Keys:
 ```text
 API_IMAGE WORKER_IMAGE PRIVATE_STORAGE_IMAGE CADDY_IMAGE
 RST_COMPATIBLE_BINARIES_PATH PRIVATE_MEDIA_PATH ENTERPRISE_ROOT
-LANDING_ROOT PORTAL_MOUNT_PATH
+LANDING_ROOT PORTAL_MOUNT_PATH RST_TOOLS_MOUNT LANDING_MOUNT
 EXPORT_ROOT PORTAL_ROOT PORTAL_SEARCH_JS
 STAGING_SITE_URL STAGING_LANDING_URL WORKER_METRICS_ADDR
 API_CLUSTER_IP DB_CLUSTER_IP WEB_CLUSTER_IP
