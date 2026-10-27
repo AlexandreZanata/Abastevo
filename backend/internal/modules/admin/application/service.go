@@ -5,6 +5,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/domain"
@@ -82,6 +83,28 @@ type AccountDetail struct {
 	Paid    PaidSummary
 }
 
+type AuditRecord struct {
+	ID           int64           `json:"id"`
+	At           time.Time       `json:"at"`
+	SessionID    string          `json:"session_id,omitempty"`
+	Action       string          `json:"action"`
+	TargetType   string          `json:"target_type"`
+	TargetID     string          `json:"target_id"`
+	Reason       string          `json:"reason"`
+	Before       json.RawMessage `json:"before"`
+	After        json.RawMessage `json:"after"`
+	RequestID    string          `json:"request_id"`
+	ClientIPHash string          `json:"client_ip_hash"`
+}
+
+type AuditFilter struct {
+	Action   string
+	TargetID string
+	BeforeAt time.Time
+	BeforeID int64
+	Limit    int
+}
+
 // GrantsPort is the entitlement-owned persistence surface. Every method joins
 // the caller transaction.
 type GrantsPort interface {
@@ -104,6 +127,7 @@ type Store interface {
 	SearchAccounts(context.Context, string) ([]Account, error)
 	GetAccountTx(context.Context, pgx.Tx, string) (Account, error)
 	PaidSummaryTx(context.Context, pgx.Tx, string) (PaidSummary, error)
+	ListAudit(context.Context, AuditFilter) ([]AuditRecord, error)
 }
 
 type Service struct {
@@ -192,4 +216,12 @@ func validateMutation(m Mutation) error {
 		return domain.ErrInvalid
 	}
 	return nil
+}
+
+// AdminListAudit returns append-only audit rows with the requested filters.
+func (s *Service) AdminListAudit(ctx context.Context, filter AuditFilter) ([]AuditRecord, error) {
+	if s == nil || s.Store == nil {
+		return nil, domain.ErrUnavailable
+	}
+	return s.Store.ListAudit(ctx, filter)
 }

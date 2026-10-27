@@ -108,3 +108,7 @@ func (f *fakeStore) GetAccountTx(context.Context, pgx.Tx, string) (Account, erro
 func (f *fakeStore) PaidSummaryTx(context.Context, pgx.Tx, string) (PaidSummary, error) {
 	return PaidSummary{}, domain.ErrUnavailable
 }
+
+func (f *fakeStore) ListAudit(context.Context, AuditFilter) ([]AuditRecord, error) {
+	return nil, domain.ErrUnavailable
+}

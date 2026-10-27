@@ -389,9 +389,24 @@ sql:
       - db/migrations/000020_accounts.sql
       - db/migrations/000141_entitlement_grants.sql
       - db/migrations/000142_contributor_profiles.sql
+      - db/migrations/000143_staff_roles.sql
     gen:
       go:
         package: contributor
         out: db/queries/contributor
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/staff
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000140_admin_sessions_audit.sql
+      - db/migrations/000143_staff_roles.sql
+    gen:
+      go:
+        package: staff
+        out: db/queries/staff
         sql_package: pgx/v5
         emit_json_tags: true

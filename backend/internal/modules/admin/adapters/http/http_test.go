@@ -455,3 +455,7 @@ func TestGrant_ENT01_RequiresAdminSession(t *testing.T) {
 		}
 	}
 }
+
+func (f *fakeStore) ListAudit(context.Context, app.AuditFilter) ([]app.AuditRecord, error) {
+	return nil, domain.ErrUnavailable
+}

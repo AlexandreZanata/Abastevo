@@ -151,7 +151,10 @@ RETURNING repo, logins, etag, fetched_at;
 SELECT p.account_id, p.display_name,
     (COALESCE(first_grant.since, p.created_at))::timestamptz AS contributor_since,
     gl.github_login,
-    COALESCE(links.links, '[]'::jsonb) AS links
+    COALESCE(links.links, '[]'::jsonb) AS links,
+    p.show_roles_publicly,
+    CASE WHEN p.show_roles_publicly THEN COALESCE(staff.roles, '[]'::jsonb)
+         ELSE '[]'::jsonb END AS roles
 FROM contributor_profiles p
 JOIN accounts a ON a.id = p.account_id AND a.status = 'active'
 JOIN LATERAL (
@@ -164,6 +167,12 @@ LEFT JOIN LATERAL (
         ORDER BY created_at, platform) AS links
     FROM contributor_links WHERE account_id = p.account_id
 ) links ON true
+LEFT JOIN LATERAL (
+    SELECT jsonb_agg(role ORDER BY role) AS roles
+    FROM staff_assignments s
+    WHERE s.account_id = p.account_id AND s.state = 'ACTIVE'
+      AND s.start_at <= @now AND (s.end_at IS NULL OR s.end_at > @now)
+) staff ON true
 WHERE p.visibility = 'PUBLIC' AND p.public_consent AND NOT p.hidden_by_admin
   AND EXISTS (
       SELECT 1 FROM entitlement_grants g

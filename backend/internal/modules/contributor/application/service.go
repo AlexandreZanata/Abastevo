@@ -56,6 +56,10 @@ type Grants interface {
 	CreateTx(context.Context, pgx.Tx, entdomain.NewGrant) (entdomain.Grant, error)
 }
 
+type Roles interface {
+	ActiveLabels(context.Context, pgx.Tx, string, time.Time) ([]string, error)
+}
+
 type MutationRunner interface {
 	Mutate(context.Context, adminapp.Mutation, func(context.Context, pgx.Tx) (adminapp.MutationResult, []adminapp.AuditEvent, error)) (adminapp.MutationResult, error)
 }
@@ -65,6 +69,7 @@ type Service struct {
 	GitHub            GitHub
 	Grants            Grants
 	Runner            MutationRunner
+	Roles             Roles
 	Repo              string
 	Clock             func() time.Time
 	NewID             func() (string, error)

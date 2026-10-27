@@ -1,5 +1,16 @@
 # Current execution state
 
+- A4 staff roles and audit read 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
+  Branch `codex/adm-a4-staff-roles` stacked on A3 PR #167 (base
+  `codex/adm-a3-contributors`; planning docs still in PR #161). STF-01…STF-06
+  and BUC-ADM-10/12 implemented with migration `000143`, code-frozen catalog,
+  assign/revoke routes, owner/public labels and `GET /v1/admin/audit`. Tested
+  revision: branch head before the evidence commit; `go test -race ./...`
+  133 ok / 0 fail, PostGIS staff/contributor/admin/entitlement/subscription/
+  cmd/api integration 20 ok, `make quick-verify` ok (153s), secret scan clean.
+  [Evidence](../../backend/evidence/admin/A4-STAFF-ROLES.md). Next: push, open
+  PR with `--base codex/adm-a3-contributors`; do not start A5.
+
 - A3 contributors 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING. Branch
   `codex/adm-a3-contributors` stacked on A2 PR #166 (base
   `codex/adm-a2-granted-tiers`; planning docs still in PR #161). CTB-01…CTB-14

@@ -6803,6 +6803,145 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/admin/roles:
+    get:
+      tags:
+      - admin
+      summary: Code-frozen staff role catalog
+      description: Roles are defined only in code; no endpoint creates, renames or edits a role.
+      operationId: adminStaffRoles
+      responses:
+        '200':
+          description: Staff role catalog.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffCatalog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/accounts/{id}/roles:
+    post:
+      tags:
+      - admin
+      summary: Assign one staff role
+      description: Requires X-Admin-CSRF, exact Origin, reason and Idempotency-Key. One ACTIVE assignment per account and role; roles grant no permission in v1.
+      operationId: adminAssignStaffRole
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffAssignRequest'
+      responses:
+        '201':
+          description: Assignment created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffAssignment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/role-assignments/{id}/revoke:
+    post:
+      tags:
+      - admin
+      summary: Revoke one active staff assignment
+      operationId: adminRevokeStaffRole
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '200':
+          description: Assignment revoked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffAssignment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/audit:
+    get:
+      tags:
+      - admin
+      summary: Read the append-only admin audit log
+      operationId: adminAuditList
+      parameters:
+      - name: action
+        in: query
+        schema: {type: string, maxLength: 128}
+      - name: target_id
+        in: query
+        schema: {type: string, maxLength: 128}
+      - name: cursor
+        in: query
+        schema: {type: string, maxLength: 4096}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100}
+      responses:
+        '200':
+          description: Bounded audit page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuditList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   parameters:
     QualityCompanyStationSelector:
@@ -9046,6 +9185,79 @@ components:
       properties:
         account_id: {type: string, format: uuid}
         github_login: {type: string}
+    StaffRole:
+      type: object
+      additionalProperties: false
+      required: [code, label]
+      properties:
+        code: {type: string, enum: [community_moderator, station_reviewer, contributor_curator, support_agent]}
+        label: {type: string}
+    StaffCatalog:
+      type: object
+      additionalProperties: false
+      required: [catalog_version, roles]
+      properties:
+        catalog_version: {type: string, enum: [staff-roles-v1]}
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffRole'
+    StaffAssignment:
+      type: object
+      additionalProperties: false
+      required: [id, account_id, role, label, state, start_at, end_at, reason, created_at, revoked_at]
+      properties:
+        id: {type: string, format: uuid}
+        account_id: {type: string, format: uuid}
+        role: {type: string, enum: [community_moderator, station_reviewer, contributor_curator, support_agent]}
+        label: {type: string}
+        state: {type: string, enum: [ACTIVE, REVOKED]}
+        start_at: {type: string, format: date-time}
+        end_at:
+          type: [string, 'null']
+          format: date-time
+        reason: {type: string, minLength: 10, maxLength: 500}
+        created_at: {type: string, format: date-time}
+        revoked_at:
+          type: [string, 'null']
+          format: date-time
+        revoke_reason: {type: string}
+    StaffAssignRequest:
+      type: object
+      additionalProperties: false
+      required: [role, reason]
+      properties:
+        role: {type: string, enum: [community_moderator, station_reviewer, contributor_curator, support_agent]}
+        end_at:
+          type: [string, 'null']
+          format: date-time
+        reason: {type: string, minLength: 10, maxLength: 500}
+    AdminAuditEvent:
+      type: object
+      additionalProperties: false
+      required: [id, at, action, target_type, target_id, reason, before, after, request_id, client_ip_hash]
+      properties:
+        id: {type: integer, minimum: 1}
+        at: {type: string, format: date-time}
+        session_id: {type: string, format: uuid}
+        action: {type: string}
+        target_type: {type: string}
+        target_id: {type: string}
+        reason: {type: string}
+        before: {}
+        after: {}
+        request_id: {type: string}
+        client_ip_hash: {type: string}
+    AdminAuditList:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAuditEvent'
+        next_cursor: {type: string}
     PremiumPurchaseReceipt:
       type: object
       additionalProperties: false

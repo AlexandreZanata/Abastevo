@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"strings"
@@ -324,6 +325,46 @@ func (s *Store) GetAccountTx(ctx context.Context, tx pgx.Tx, accountID string) (
 		return app.Account{}, domain.ErrUnavailable
 	}
 	return app.Account{ID: idstr(row.ID), Alias: row.Alias, Status: row.Status, CreatedAt: row.CreatedAt.Time}, nil
+}
+
+func (s *Store) ListAudit(ctx context.Context, filter app.AuditFilter) ([]app.AuditRecord, error) {
+	if s == nil || s.Pool == nil {
+		return nil, domain.ErrUnavailable
+	}
+	limit := filter.Limit
+	if limit < 1 || limit > 101 {
+		limit = 20
+	}
+	action, target := pgtype.Text{}, pgtype.Text{}
+	if filter.Action != "" {
+		action = pgtype.Text{String: filter.Action, Valid: true}
+	}
+	if filter.TargetID != "" {
+		target = pgtype.Text{String: filter.TargetID, Valid: true}
+	}
+	rows, err := qadmin.New(s.Pool).ListAuditEvents(ctx, qadmin.ListAuditEventsParams{
+		Action: action, TargetID: target, BeforeAt: stamp(filter.BeforeAt),
+		BeforeID: pgtype.Int8{Int64: filter.BeforeID, Valid: filter.BeforeID != 0}, RowLimit: int32(limit),
+	})
+	if err != nil {
+		return nil, domain.ErrUnavailable
+	}
+	out := make([]app.AuditRecord, 0, len(rows))
+	for _, row := range rows {
+		record := app.AuditRecord{
+			ID: row.ID, At: row.At.Time, SessionID: idstr(row.SessionID),
+			Action: row.Action, TargetType: row.TargetType, TargetID: row.TargetID,
+			Reason: row.Reason, RequestID: row.RequestID, ClientIPHash: row.ClientIpHash,
+		}
+		if len(row.Before) > 0 {
+			record.Before = json.RawMessage(row.Before)
+		}
+		if len(row.After) > 0 {
+			record.After = json.RawMessage(row.After)
+		}
+		out = append(out, record)
+	}
+	return out, nil
 }
 
 func (s *Store) PaidSummaryTx(ctx context.Context, tx pgx.Tx, accountID string) (app.PaidSummary, error) {

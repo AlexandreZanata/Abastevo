@@ -32,7 +32,14 @@ func (s *Service) ReadProfile(ctx context.Context, accountID string) (ProfileRes
 		if err != nil {
 			return err
 		}
-		out = ProfileResult{Profile: profile, Links: links, Roles: []string{}, Found: true}
+		roles := []string{}
+		if s.Roles != nil {
+			roles, err = s.Roles.ActiveLabels(ctx, tx, accountID, s.now())
+			if err != nil {
+				return err
+			}
+		}
+		out = ProfileResult{Profile: profile, Links: links, Roles: roles, Found: true}
 		return nil
 	})
 	return out, err
@@ -82,7 +89,11 @@ func (s *Service) UpsertProfile(ctx context.Context, accountID, displayName stri
 		if err := s.Store.InsertProfileEdit(ctx, tx, accountID, now); err != nil {
 			return domain.ErrUnavailable
 		}
-		out = ProfileResult{Profile: profile, Links: links, Roles: []string{}, Found: true}
+		roles := []string{}
+		if s.Roles != nil {
+			roles, _ = s.Roles.ActiveLabels(ctx, tx, accountID, now)
+		}
+		out = ProfileResult{Profile: profile, Links: links, Roles: roles, Found: true}
 		return nil
 	})
 	return out, err

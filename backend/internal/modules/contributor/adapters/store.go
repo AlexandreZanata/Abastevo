@@ -9,6 +9,7 @@ import (
 
 	qcon "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/contributor"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/domain"
+	staffdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/staff/domain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -413,10 +414,20 @@ func (s *Store) PublicContributors(ctx context.Context, tx pgx.Tx, now time.Time
 		if err := json.Unmarshal(row.Links, &links); err != nil {
 			return nil, domain.ErrUnavailable
 		}
+		var roles []string
+		if err := json.Unmarshal(row.Roles, &roles); err != nil {
+			return nil, domain.ErrUnavailable
+		}
+		labels := make([]string, 0, len(roles))
+		for _, role := range roles {
+			if label := staffdomain.Label(role); label != "" {
+				labels = append(labels, label)
+			}
+		}
 		out = append(out, domain.PublicContributor{
 			AccountID: idstr(row.AccountID), DisplayName: row.DisplayName,
 			Links: domain.PublicLinks(links), GitHubLogin: row.GithubLogin.String,
-			ContributorSince: row.ContributorSince.Time, Roles: []string{},
+			ContributorSince: row.ContributorSince.Time, Roles: labels,
 		})
 	}
 	return out, nil

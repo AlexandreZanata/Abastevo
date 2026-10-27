@@ -90,6 +90,9 @@ import (
 	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/http"
 	qualitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/domain"
+	staffadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/staff/adapters"
+	staffhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/staff/adapters/http"
+	staffapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/staff/application"
 	profileadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/adapters"
 	profileapplication "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/stationprofile/application"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
@@ -742,11 +745,12 @@ func run() error {
 	// Contributor claims, profiles and the consented public list (ADR-023).
 	// Admin-only routes are mounted below with the shared admin middleware.
 	entitlementStore := entitlementadapters.NewStore(pool.Underlying())
+	staffStore := staffadapters.NewStore(pool.Underlying())
 	contributorStore := contributoradapters.NewStore(pool.Underlying())
 	contributorService := &contributorapp.Service{
 		Store:  contributorStore,
 		GitHub: contributoradapters.NewGitHubClient(cfg.GitHubRepo, cfg.GitHubToken),
-		Grants: entitlementStore, Repo: cfg.GitHubRepo, Clock: time.Now, NewID: newUUID,
+		Grants: entitlementStore, Roles: staffStore, Repo: cfg.GitHubRepo, Clock: time.Now, NewID: newUUID,
 		RequireCapability: func(ctx context.Context, tx pgx.Tx, owner string) error {
 			if err := premiumStore.RequireCapability(ctx, tx, owner, "contributor.profile"); err != nil {
 				if errors.Is(err, subscriptiondomain.ErrDenied) {
@@ -771,9 +775,12 @@ func run() error {
 	if adminSurface, ok := newAdminHandler(cfg, pool.Underlying(), trustedProxies); ok {
 		adminSurface.RegisterRoutes(router)
 		contributorAdmin := contributorhttp.AdminHandler{Service: contributorService, Admin: adminSurface}
+		staffService := &staffapp.Service{Store: staffStore, Runner: adminSurface.Service.Store, Clock: time.Now, NewID: newUUID}
+		staffAdmin := staffhttp.AdminHandler{Service: staffService, Admin: adminSurface}
 		router.Group(func(g chi.Router) {
 			g.Use(adminSurface.AdminMiddleware()...)
 			contributorAdmin.RegisterRoutes(g)
+			staffAdmin.RegisterRoutes(g)
 		})
 	}
 	// Free document-free quality participation; payment capabilities never enter.
