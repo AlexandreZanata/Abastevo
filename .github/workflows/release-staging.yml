@@ -165,6 +165,18 @@ jobs:
           npm --prefix landing run build -- --origin https://teste.abastevo.com.br
           npm --prefix landing run check
           npm --prefix landing test
+      - name: Build admin web panel into the landing bundle
+        run: |
+          set -euo pipefail
+          npm --prefix admin-web ci
+          npm --prefix admin-web run typecheck
+          npm --prefix admin-web run build
+          npm --prefix admin-web run check
+          npm --prefix admin-web test
+          test ! -e landing/dist/admin
+          mkdir landing/dist/admin
+          cp -R admin-web/dist/. landing/dist/admin/
+          test -f landing/dist/admin/login/index.html
       - name: Package landing bundle
         id: package
         run: |

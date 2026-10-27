@@ -43,8 +43,15 @@ data:
     \t\t\troot * /srv/landing/current\n\t\t\tfile_server\n\t\t}\n\t\t@retainedAsset\
     \ file {\n\t\t\troot /srv/portal/retained\n\t\t}\n\t\thandle @retainedAsset {\n\
     \t\t\troot * /srv/portal/retained\n\t\t\tfile_server\n\t\t}\n\t\thandle {\n\t\t\
-    \troot * /srv/portal/current\n\t\t\tfile_server\n\t\t}\n\t}\n\n\thandle {\n\t\t\
-    root * /srv/landing/current\n\t\theader Cache-Control \"public, max-age=3600,\
+    \troot * /srv/portal/current\n\t\t\tfile_server\n\t\t}\n\t}\n\n\t# Admin web panel\
+    \ (ADR-023 B3): static, shipped inside the signed landing\n\t# bundle under admin/;\
+    \ data comes only from the same-origin /v1/admin API,\n\t# which stays 404 until\
+    \ an admin key hash and CIDR fence are configured.\n\t# Global CSP/noindex apply;\
+    \ pages are never cached.\n\thandle /admin/* {\n\t\troot * /srv/landing/current\n\
+    \t\t@adminAsset path /admin/assets/*\n\t\theader @adminAsset Cache-Control \"\
+    public, max-age=31536000, immutable\"\n\t\t@adminPage not path /admin/assets/*\n\
+    \t\theader @adminPage Cache-Control \"no-store\"\n\t\tfile_server\n\t}\n\n\thandle\
+    \ {\n\t\troot * /srv/landing/current\n\t\theader Cache-Control \"public, max-age=3600,\
     \ must-revalidate\"\n\t\tfile_server\n\t}\n\n\thandle_errors 404 {\n\t\timport\
     \ security_headers\n\t\troot * /srv/landing/current\n\t\trewrite * /404.html\n\
     \t\theader Cache-Control \"no-cache\"\n\t\tfile_server\n\t}\n}\n"

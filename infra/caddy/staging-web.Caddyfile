@@ -97,6 +97,19 @@ Disallow: /
 		}
 	}
 
+	# Admin web panel (ADR-023 B3): static, shipped inside the signed landing
+	# bundle under admin/; data comes only from the same-origin /v1/admin API,
+	# which stays 404 until an admin key hash and CIDR fence are configured.
+	# Global CSP/noindex apply; pages are never cached.
+	handle /admin/* {
+		root * /srv/landing/current
+		@adminAsset path /admin/assets/*
+		header @adminAsset Cache-Control "public, max-age=31536000, immutable"
+		@adminPage not path /admin/assets/*
+		header @adminPage Cache-Control "no-store"
+		file_server
+	}
+
 	handle {
 		root * /srv/landing/current
 		header Cache-Control "public, max-age=3600, must-revalidate"
