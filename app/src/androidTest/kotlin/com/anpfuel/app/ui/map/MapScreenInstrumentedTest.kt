@@ -1,12 +1,22 @@
 package com.anpfuel.app.ui.map
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.test.onParent
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -54,7 +64,7 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithText("Filters", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithTag("map-search-field", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithTag("map-search-submit", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithText("Downloads", ignoreCase = true).assertIsDisplayed()
+        compose.onNodeWithTag("map-open-downloads").assertIsDisplayed()
         // OSM attribution stays visible.
         compose.onNodeWithText("OpenStreetMap", substring = true, ignoreCase = true).assertExists()
     }
@@ -153,14 +163,12 @@ class MapScreenInstrumentedTest {
             )
         }
         compose.onNodeWithTag("map-filter-source-community").performScrollTo().performClick()
-        org.junit.Assert.assertEquals(MapPriceSource.COMMUNITY, selectedSource)
-        compose.onNodeWithTag("map-filter-current-DC").onParent().performScrollTo()
+        org.junit.Assert.assertNull(selectedSource)
         compose.onNodeWithTag("map-filter-current-DC").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
-        compose.onNodeWithTag("map-filter-power-150").onParent().performScrollTo()
         compose.onNodeWithTag("map-filter-power-150").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
-        compose.onNodeWithTag("map-filter-access-PUBLIC").onParent().performScrollTo()
         compose.onNodeWithTag("map-filter-access-PUBLIC").performScrollTo().assertIsDisplayed().performClick().assertIsSelected()
         compose.onNodeWithTag("map-filter-apply").performClick()
+        org.junit.Assert.assertEquals(MapPriceSource.COMMUNITY, selectedSource)
         org.junit.Assert.assertEquals(
             listOf(
                 true, true, com.anpfuel.domain.valueobject.FuelProduct.GASOLINE_REGULAR, null,
@@ -169,6 +177,274 @@ class MapScreenInstrumentedTest {
             ),
             applied,
         )
+    }
+
+    @Test fun citySearchOpensStandardPickerAndCancelDoesNotApplyDrafts() {
+        var opened = false
+        var applied = false
+        var dismissed = false
+        compose.setContent {
+            MapFiltersDialog(
+                source = MapPriceSource.ANP,
+                showFuel = true,
+                showCharging = true,
+                onSelectSource = { applied = true },
+                onServiceFilter = { _, _ -> applied = true },
+                onDismiss = { dismissed = true },
+                cityLabel = "Sorriso / MT",
+                onOpenCity = { opened = true },
+            )
+        }
+        compose.onNodeWithTag("map-filter-city-search").performClick()
+        org.junit.Assert.assertTrue(opened)
+        compose.onNodeWithTag("map-filter-source-community").performScrollTo().performClick()
+        selectFuelFromSharedDialog(com.anpfuel.domain.valueobject.FuelProduct.DIESEL_S10)
+        compose.onNodeWithTag("map-filter-cancel").performClick()
+        org.junit.Assert.assertTrue(dismissed)
+        org.junit.Assert.assertFalse(applied)
+    }
+
+    @Test fun everyFuelCanBeSelectedThroughTheSharedModalWithoutApplyingTheDraft() {
+        var selected: com.anpfuel.domain.valueobject.FuelProduct? = null
+        compose.setContent {
+            MapFiltersDialog(
+                source = MapPriceSource.ANP,
+                showFuel = true,
+                showCharging = true,
+                onSelectSource = {},
+                onServiceFilter = { _, _ -> },
+                onDismiss = {},
+                onApplyExtendedFilters = { _, _, product, _, _, _, _ -> selected = product },
+            )
+        }
+        compose.onNodeWithTag("map-filter-fuel-picker").assertDoesNotExist()
+        com.anpfuel.domain.valueobject.FuelProduct.entries.forEach { product ->
+            selectFuelFromSharedDialog(product)
+            org.junit.Assert.assertNull(selected)
+        }
+        compose.onNodeWithTag("map-filter-apply").performClick()
+        org.junit.Assert.assertEquals(com.anpfuel.domain.valueobject.FuelProduct.entries.last(), selected)
+    }
+
+    @Test fun filterActionsAndAllFuelChoicesRemainReachableAtDoubleFontScale() {
+        compose.setContent {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, 2f),
+            ) {
+                com.anpfuel.app.ui.theme.AnpFuelTheme(darkTheme = true, dynamicColor = false) {
+                    MapFiltersDialog(
+                        source = MapPriceSource.ANP,
+                        showFuel = true,
+                        showCharging = true,
+                        onSelectSource = {},
+                        onServiceFilter = { _, _ -> },
+                        onDismiss = {},
+                    )
+                }
+            }
+        }
+        compose.onNodeWithTag("map-filter-apply").assertIsDisplayed()
+        compose.onNodeWithTag("map-filter-cancel").assertIsDisplayed()
+        com.anpfuel.domain.valueobject.FuelProduct.entries.forEach { product ->
+            selectFuelFromSharedDialog(product)
+        }
+        compose.onNodeWithTag("map-filter-access-PUBLIC").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("map-filter-apply").assertIsDisplayed()
+    }
+
+    @Test fun mapControlsStartCompactAndCanExpandWithoutReplacingMap() {
+        compose.setContent {
+            MapScreen(
+                guidance = testGuidance(),
+                onOpenStation = { _, _ -> },
+                onOpenSearch = {},
+                onOpenDownloads = {},
+                viewModel = MapScreenViewModel(emptyStore()),
+                mapContent = { Box(Modifier.size(10.dp).testTag("test-native-map")) },
+            )
+        }
+        compose.onNodeWithTag("map-search-field").assertIsDisplayed()
+        compose.onNodeWithTag("map-source-anp").assertDoesNotExist()
+        compose.onNodeWithTag("map-controls-toggle").performClick()
+        compose.onNodeWithTag("map-source-community").assertIsDisplayed()
+        compose.onNodeWithTag("map-controls-toggle").performClick()
+        compose.onNodeWithTag("map-source-community").assertDoesNotExist()
+        compose.onNodeWithTag("test-native-map").assertExists()
+    }
+
+    @Test fun cityStartsAtTheLeftAndLongNamesAreVisuallyEllipsized() {
+        val city = androidx.compose.runtime.mutableStateOf("Sorriso")
+        compose.setContent {
+            MapControlsCard(
+                ui = MapScreenUi(),
+                municipalityName = city.value,
+                cityLocationUnknown = false,
+                offlineCached = false,
+                onOpenCity = {},
+                onSelectSource = {},
+                onSearch = {},
+                onClearSearch = {},
+                onRetry = {},
+                onOpenDownloads = {},
+                onOpenRoute = null,
+                periodContent = {},
+                modifier = Modifier.width(320.dp),
+            )
+        }
+        val label = compose.onNodeWithTag("map-city-label", useUnmergedTree = true)
+        val cardLeft = compose.onNodeWithTag("map-controls-card").getUnclippedBoundsInRoot().left
+        org.junit.Assert.assertTrue(label.getUnclippedBoundsInRoot().left - cardLeft <= 48.dp)
+        val longCity = "Vila Bela da Santíssima Trindade — a very long municipality name"
+        compose.runOnIdle { city.value = longCity }
+        val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        label.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { action -> action(layouts) }
+        org.junit.Assert.assertEquals(1, layouts.single().lineCount)
+        org.junit.Assert.assertTrue(layouts.single().isLineEllipsized(0))
+        label.assert(hasText(longCity))
+        compose.onNodeWithTag("map-controls-toggle").assertIsDisplayed()
+    }
+
+    @Test fun attributionIsSeparateAndStandardActionCardsWorkInBothThemesAndLargeText() {
+        val presentation = androidx.compose.runtime.mutableStateOf(false to 1f)
+        val calls = mutableListOf<String>()
+        compose.setContent {
+            val baseDensity = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density, presentation.value.second),
+            ) {
+                com.anpfuel.app.ui.theme.AnpFuelTheme(darkTheme = presentation.value.first, dynamicColor = false) {
+                    MapBottomControls(
+                        onFilters = { calls += "filters" },
+                        onSearch = { calls += "search" },
+                        onDownloads = { calls += "downloads" },
+                        onSaved = { calls += "saved" },
+                        modifier = Modifier.width(360.dp),
+                    )
+                }
+            }
+        }
+        listOf(false to 1f, true to 1f, true to 2f).forEachIndexed { index, mode ->
+            compose.runOnIdle { presentation.value = mode }
+            val attribution = compose.onNodeWithTag("map-attribution").assertIsDisplayed().getUnclippedBoundsInRoot()
+            val panel = compose.onNodeWithTag("map-action-panel").getUnclippedBoundsInRoot()
+            org.junit.Assert.assertTrue(attribution.bottom <= panel.top)
+            compose.onNode(hasTestTag("map-attribution") and hasAnyAncestor(hasTestTag("map-action-panel"))).assertDoesNotExist()
+            listOf("filters", "search", "downloads", "saved").forEach { action ->
+                val node = compose.onNodeWithTag("map-open-$action").performScrollTo().assertIsDisplayed()
+                val bounds = node.getUnclippedBoundsInRoot()
+                org.junit.Assert.assertTrue(bounds.bottom - bounds.top >= 48.dp)
+                node.performClick()
+                compose.onNodeWithTag("map-attribution").assertIsDisplayed()
+            }
+            org.junit.Assert.assertEquals(listOf("filters", "search", "downloads", "saved"), calls)
+            calls.clear()
+            compose.onNodeWithTag("map-open-filters").performScrollTo()
+            val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+            val directory = java.io.File(context.getExternalFilesDir(null), "map-panel-ui-20261026").apply { mkdirs() }
+            java.io.FileOutputStream(java.io.File(directory, "panel-$index.png")).use { output ->
+                compose.onNodeWithTag("map-bottom-overlay").captureToImage().asAndroidBitmap()
+                    .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output)
+            }
+        }
+    }
+
+    @Test fun recenterInsetTracksMeasuredBottomPanelWhenFontSizeChanges() {
+        val fontScale = androidx.compose.runtime.mutableStateOf(1f)
+        var measuredInset = 0.dp
+        compose.setContent {
+            val baseDensity = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density, fontScale.value),
+            ) {
+                MapScreen(
+                    modifier = Modifier.testTag("tested-map-screen"),
+                    guidance = testGuidance(),
+                    onOpenStation = { _, _ -> },
+                    onOpenSearch = {},
+                    onOpenDownloads = {},
+                    onBottomOverlayInsetChanged = { measuredInset = it },
+                    viewModel = MapScreenViewModel(emptyStore()),
+                    mapContent = { Box(Modifier.size(10.dp)) },
+                )
+            }
+        }
+        compose.waitForIdle()
+        val normalInset = measuredInset
+        val overlay = compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot()
+        org.junit.Assert.assertTrue(normalInset >= (overlay.bottom - overlay.top) + 16.dp)
+        compose.onNodeWithTag("map-actions-toggle").performClick()
+        compose.waitForIdle()
+        org.junit.Assert.assertTrue(measuredInset < normalInset)
+        compose.onNodeWithTag("map-attribution").assertIsDisplayed()
+        compose.onNodeWithTag("map-actions-toggle").performClick()
+        compose.waitForIdle()
+        org.junit.Assert.assertEquals(normalInset, measuredInset)
+        compose.runOnIdle { fontScale.value = 2f }
+        compose.waitForIdle()
+        org.junit.Assert.assertTrue(measuredInset > normalInset)
+        val root = compose.onNodeWithTag("tested-map-screen").getUnclippedBoundsInRoot()
+        val header = compose.onNodeWithTag("map-controls-card").getUnclippedBoundsInRoot()
+        val recenterTop = root.bottom - measuredInset - 48.dp
+        org.junit.Assert.assertTrue(recenterTop >= header.bottom + 8.dp)
+        compose.onNodeWithTag("map-open-downloads").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun minimalToggleHidesActionsAndRestoresSavedStateWithoutLosingCallbacks() {
+        val restoration = StateRestorationTester(compose)
+        var downloads = 0
+        restoration.setContent {
+            com.anpfuel.app.ui.theme.AnpFuelTheme(darkTheme = true, dynamicColor = false) {
+                MapBottomControls(
+                    onFilters = {},
+                    onSearch = {},
+                    onDownloads = { downloads++ },
+                    onSaved = {},
+                    modifier = Modifier.width(360.dp),
+                )
+            }
+        }
+        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val expanded = compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot()
+        val toggle = compose.onNodeWithTag("map-actions-toggle").assertIsDisplayed()
+        val toggleBounds = toggle.getUnclippedBoundsInRoot()
+        org.junit.Assert.assertTrue(toggleBounds.right - toggleBounds.left >= 48.dp)
+        org.junit.Assert.assertTrue(toggleBounds.bottom - toggleBounds.top >= 48.dp)
+        toggle.assert(hasContentDescription(context.getString(com.anpfuel.app.R.string.map_actions_hide))).performClick()
+        compose.onNodeWithTag("map-action-panel").assertDoesNotExist()
+        listOf("filters", "search", "downloads", "saved").forEach { action ->
+            compose.onNodeWithTag("map-open-$action").assertDoesNotExist()
+        }
+        compose.onNodeWithTag("map-attribution").assertIsDisplayed()
+        val collapsed = compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot()
+        org.junit.Assert.assertTrue(collapsed.bottom - collapsed.top < expanded.bottom - expanded.top)
+        restoration.emulateSavedInstanceStateRestore()
+        compose.onNodeWithTag("map-action-panel").assertDoesNotExist()
+        compose.onNodeWithTag("map-attribution").assertIsDisplayed()
+        val directory = java.io.File(context.getExternalFilesDir(null), "map-panel-collapse-20261026").apply { mkdirs() }
+        java.io.FileOutputStream(java.io.File(directory, "collapsed.png")).use { output ->
+            compose.onNodeWithTag("map-bottom-overlay").captureToImage().asAndroidBitmap()
+                .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output)
+        }
+        compose.onNodeWithTag("map-actions-toggle")
+            .assert(hasContentDescription(context.getString(com.anpfuel.app.R.string.map_actions_show))).performClick()
+        compose.onNodeWithTag("map-open-downloads").performScrollTo().assertIsDisplayed().performClick()
+        org.junit.Assert.assertEquals(1, downloads)
+    }
+
+    private fun selectFuelFromSharedDialog(product: com.anpfuel.domain.valueobject.FuelProduct) {
+        val label = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+            .targetContext.getString(com.anpfuel.app.mapper.FuelProductI18n.toStringRes(product))
+        compose.onNodeWithTag("map-filter-fuel-selector").performScrollTo().performClick()
+        compose.onNode(
+            hasText(label) and hasAnyAncestor(hasTestTag("map-filter-fuel-picker")),
+        ).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("fuel-selector-icon-${product.name}", useUnmergedTree = true).assertExists()
+        compose.onNode(
+            hasText(label) and hasAnyAncestor(hasTestTag("map-filter-fuel-picker")),
+        ).performClick()
+        compose.onNodeWithTag("map-filter-fuel-picker").assertDoesNotExist()
+        compose.onNodeWithTag("map-filter-fuel-selector").assert(hasText(label))
     }
 
     @Test fun clusterExpandAllowsSelectingSecondAndLastMemberAndUnpinnedDisablesRoute() {

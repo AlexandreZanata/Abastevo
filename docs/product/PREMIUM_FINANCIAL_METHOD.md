@@ -1,5 +1,7 @@
 # Premium financial method v1
 
+**Driver-suite planning extension, 2026-10-26:** [DRV contract](DRIVER_SUITE_CONTRACT.md) adds separate earned/received/result/shift/allocation methods when implemented. Original financial-v1 examples and existing measurement meaning remain unchanged; new planning oracles are not runtime acceptance.
+
 **Selected EV extension, 2026-10-20:** [EV method](EV_FINANCIAL_METHOD.md) adds
 electric measurement/tariff/PHEV monetary-window contracts. It does not silently
 extend the homogeneous-liquid full-to-full method below or reinterpret frozen
