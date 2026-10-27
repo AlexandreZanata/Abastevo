@@ -1,5 +1,13 @@
 # Current execution state
 
+- MAP completion MC-B2 2026-10-27: LOCAL_DONE. Base `5db9765e` plus this
+  task. Append-only migration `000140` adds `station_corrections` and
+  `station_correction_decisions` with the eight statuses, idempotency key,
+  one-open-per-field partial index, queue indexes and append-only audit
+  fields; `sqlc` regenerated the typed queries. `sqlc diff` empty and
+  `go build ./...` exit 0. Evidence:
+  [MC-B2](../backend/evidence/maps/map-completion/MC-B2.md). Time: ~25 min.
+
 - MAP completion MC-B1 2026-10-27: LOCAL_DONE. Base `f6abff83` plus this
   task. B-BR-COR-01..08 written before code: one-field corrections on an
   existing station, official/community separation, signed free-account proof,

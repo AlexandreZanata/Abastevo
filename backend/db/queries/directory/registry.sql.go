@@ -58,6 +58,25 @@ func (q *Queries) BindPreparedManifest(ctx context.Context, arg BindPreparedMani
 	return id, err
 }
 
+const cancelCorrection = `-- name: CancelCorrection :execrows
+UPDATE station_corrections
+SET status = 'cancelled', updated_at = now(), decided_at = now()
+WHERE id = $1 AND account_id = $2 AND status = 'pending'
+`
+
+type CancelCorrectionParams struct {
+	ID        pgtype.UUID `json:"id"`
+	AccountID pgtype.UUID `json:"account_id"`
+}
+
+func (q *Queries) CancelCorrection(ctx context.Context, arg CancelCorrectionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, cancelCorrection, arg.ID, arg.AccountID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const cancelSuggestion = `-- name: CancelSuggestion :execrows
 UPDATE station_suggestions
 SET state = 'cancelled'
@@ -83,6 +102,25 @@ SELECT count(*) FROM registry_source_runs WHERE source = $1 AND state = 'complet
 
 func (q *Queries) CountCompleteRegistryRuns(ctx context.Context, source string) (int64, error) {
 	row := q.db.QueryRow(ctx, countCompleteRegistryRuns, source)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countOpenCorrections = `-- name: CountOpenCorrections :one
+SELECT count(*) FROM station_corrections
+WHERE account_id = $1 AND station_id = $2
+  AND field = $3 AND status IN ('pending', 'auto_verified')
+`
+
+type CountOpenCorrectionsParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	StationID pgtype.UUID `json:"station_id"`
+	Field     string      `json:"field"`
+}
+
+func (q *Queries) CountOpenCorrections(ctx context.Context, arg CountOpenCorrectionsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countOpenCorrections, arg.AccountID, arg.StationID, arg.Field)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -114,6 +152,18 @@ WHERE m.run_id = $1 AND a.source='station-prep' AND a.municipality_code IS NOT N
 
 func (q *Queries) CountPreparedPublicationRows(ctx context.Context, runID pgtype.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, countPreparedPublicationRows, runID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countRecentCorrections = `-- name: CountRecentCorrections :one
+SELECT count(*) FROM station_corrections
+WHERE account_id = $1 AND created_at > now() - make_interval(days => 1)
+`
+
+func (q *Queries) CountRecentCorrections(ctx context.Context, accountID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countRecentCorrections, accountID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -159,6 +209,114 @@ func (q *Queries) CountUnpublishedPreparedRows(ctx context.Context, runID pgtype
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const createCorrection = `-- name: CreateCorrection :one
+
+INSERT INTO station_corrections (
+    id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6, $7,
+    $8, $9
+)
+ON CONFLICT (account_id, client_submission_id) DO NOTHING
+RETURNING id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id, status, reason_codes,
+    created_at, updated_at, decided_at
+`
+
+type CreateCorrectionParams struct {
+	ID                 pgtype.UUID `json:"id"`
+	StationID          pgtype.UUID `json:"station_id"`
+	AccountID          pgtype.UUID `json:"account_id"`
+	Field              string      `json:"field"`
+	ProposedValue      []byte      `json:"proposed_value"`
+	Note               string      `json:"note"`
+	EvidenceRef        string      `json:"evidence_ref"`
+	ProximityBucket    string      `json:"proximity_bucket"`
+	ClientSubmissionID string      `json:"client_submission_id"`
+}
+
+// Community station corrections (MC-B2/B3, B-BR-COR-01..08). Owner-only
+// reads and an audited append-only decision trail; official facts are never
+// updated in place here.
+func (q *Queries) CreateCorrection(ctx context.Context, arg CreateCorrectionParams) (StationCorrection, error) {
+	row := q.db.QueryRow(ctx, createCorrection,
+		arg.ID,
+		arg.StationID,
+		arg.AccountID,
+		arg.Field,
+		arg.ProposedValue,
+		arg.Note,
+		arg.EvidenceRef,
+		arg.ProximityBucket,
+		arg.ClientSubmissionID,
+	)
+	var i StationCorrection
+	err := row.Scan(
+		&i.ID,
+		&i.StationID,
+		&i.AccountID,
+		&i.Field,
+		&i.ProposedValue,
+		&i.Note,
+		&i.EvidenceRef,
+		&i.ProximityBucket,
+		&i.ClientSubmissionID,
+		&i.Status,
+		&i.ReasonCodes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DecidedAt,
+	)
+	return i, err
+}
+
+const createCorrectionDecision = `-- name: CreateCorrectionDecision :one
+INSERT INTO station_correction_decisions (
+    id, correction_id, decision, reason, decider_kind, decider_id, evidence
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6, $7
+)
+RETURNING id, correction_id, decision, reason, decider_kind, decider_id,
+    evidence, decided_at
+`
+
+type CreateCorrectionDecisionParams struct {
+	ID           pgtype.UUID `json:"id"`
+	CorrectionID pgtype.UUID `json:"correction_id"`
+	Decision     string      `json:"decision"`
+	Reason       string      `json:"reason"`
+	DeciderKind  string      `json:"decider_kind"`
+	DeciderID    string      `json:"decider_id"`
+	Evidence     []byte      `json:"evidence"`
+}
+
+func (q *Queries) CreateCorrectionDecision(ctx context.Context, arg CreateCorrectionDecisionParams) (StationCorrectionDecision, error) {
+	row := q.db.QueryRow(ctx, createCorrectionDecision,
+		arg.ID,
+		arg.CorrectionID,
+		arg.Decision,
+		arg.Reason,
+		arg.DeciderKind,
+		arg.DeciderID,
+		arg.Evidence,
+	)
+	var i StationCorrectionDecision
+	err := row.Scan(
+		&i.ID,
+		&i.CorrectionID,
+		&i.Decision,
+		&i.Reason,
+		&i.DeciderKind,
+		&i.DeciderID,
+		&i.Evidence,
+		&i.DecidedAt,
+	)
+	return i, err
 }
 
 const createDecision = `-- name: CreateDecision :one
@@ -304,6 +462,27 @@ func (q *Queries) CreateSuggestion(ctx context.Context, arg CreateSuggestionPara
 	return i, err
 }
 
+const decideCorrection = `-- name: DecideCorrection :execrows
+UPDATE station_corrections
+SET status = $1, reason_codes = $2, updated_at = now(),
+    decided_at = now()
+WHERE id = $3 AND status = 'pending'
+`
+
+type DecideCorrectionParams struct {
+	Status      string      `json:"status"`
+	ReasonCodes []string    `json:"reason_codes"`
+	ID          pgtype.UUID `json:"id"`
+}
+
+func (q *Queries) DecideCorrection(ctx context.Context, arg DecideCorrectionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, decideCorrection, arg.Status, arg.ReasonCodes, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const decideSuggestion = `-- name: DecideSuggestion :execrows
 UPDATE station_suggestions
 SET state = $1, decided_at = now()
@@ -391,6 +570,71 @@ func (q *Queries) FinishRegistryRun(ctx context.Context, arg FinishRegistryRunPa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getCorrection = `-- name: GetCorrection :one
+SELECT id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id, status, reason_codes,
+    created_at, updated_at, decided_at
+FROM station_corrections
+WHERE id = $1
+`
+
+func (q *Queries) GetCorrection(ctx context.Context, id pgtype.UUID) (StationCorrection, error) {
+	row := q.db.QueryRow(ctx, getCorrection, id)
+	var i StationCorrection
+	err := row.Scan(
+		&i.ID,
+		&i.StationID,
+		&i.AccountID,
+		&i.Field,
+		&i.ProposedValue,
+		&i.Note,
+		&i.EvidenceRef,
+		&i.ProximityBucket,
+		&i.ClientSubmissionID,
+		&i.Status,
+		&i.ReasonCodes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DecidedAt,
+	)
+	return i, err
+}
+
+const getCorrectionByKey = `-- name: GetCorrectionByKey :one
+SELECT id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id, status, reason_codes,
+    created_at, updated_at, decided_at
+FROM station_corrections
+WHERE account_id = $1 AND client_submission_id = $2
+`
+
+type GetCorrectionByKeyParams struct {
+	AccountID          pgtype.UUID `json:"account_id"`
+	ClientSubmissionID string      `json:"client_submission_id"`
+}
+
+func (q *Queries) GetCorrectionByKey(ctx context.Context, arg GetCorrectionByKeyParams) (StationCorrection, error) {
+	row := q.db.QueryRow(ctx, getCorrectionByKey, arg.AccountID, arg.ClientSubmissionID)
+	var i StationCorrection
+	err := row.Scan(
+		&i.ID,
+		&i.StationID,
+		&i.AccountID,
+		&i.Field,
+		&i.ProposedValue,
+		&i.Note,
+		&i.EvidenceRef,
+		&i.ProximityBucket,
+		&i.ClientSubmissionID,
+		&i.Status,
+		&i.ReasonCodes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DecidedAt,
+	)
+	return i, err
 }
 
 const getPreparedMembership = `-- name: GetPreparedMembership :one
@@ -697,6 +941,57 @@ func (q *Queries) LinkPreparedSupersedes(ctx context.Context, runID pgtype.UUID)
 	return result.RowsAffected(), nil
 }
 
+const listOwnedCorrections = `-- name: ListOwnedCorrections :many
+SELECT id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id, status, reason_codes,
+    created_at, updated_at, decided_at
+FROM station_corrections
+WHERE account_id = $1
+ORDER BY created_at DESC
+LIMIT $3::int OFFSET $2::int
+`
+
+type ListOwnedCorrectionsParams struct {
+	AccountID  pgtype.UUID `json:"account_id"`
+	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
+}
+
+func (q *Queries) ListOwnedCorrections(ctx context.Context, arg ListOwnedCorrectionsParams) ([]StationCorrection, error) {
+	rows, err := q.db.Query(ctx, listOwnedCorrections, arg.AccountID, arg.PageOffset, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StationCorrection
+	for rows.Next() {
+		var i StationCorrection
+		if err := rows.Scan(
+			&i.ID,
+			&i.StationID,
+			&i.AccountID,
+			&i.Field,
+			&i.ProposedValue,
+			&i.Note,
+			&i.EvidenceRef,
+			&i.ProximityBucket,
+			&i.ClientSubmissionID,
+			&i.Status,
+			&i.ReasonCodes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DecidedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOwnedSuggestions = `-- name: ListOwnedSuggestions :many
 SELECT id, account_id, client_submission_id, proposal, evidence_ref,
     state, created_at, decided_at
@@ -729,6 +1024,51 @@ func (q *Queries) ListOwnedSuggestions(ctx context.Context, arg ListOwnedSuggest
 			&i.EvidenceRef,
 			&i.State,
 			&i.CreatedAt,
+			&i.DecidedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingCorrections = `-- name: ListPendingCorrections :many
+SELECT id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id, status, reason_codes,
+    created_at, updated_at, decided_at
+FROM station_corrections
+WHERE status = 'pending'
+ORDER BY created_at
+LIMIT $1::int
+`
+
+func (q *Queries) ListPendingCorrections(ctx context.Context, pageLimit int32) ([]StationCorrection, error) {
+	rows, err := q.db.Query(ctx, listPendingCorrections, pageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StationCorrection
+	for rows.Next() {
+		var i StationCorrection
+		if err := rows.Scan(
+			&i.ID,
+			&i.StationID,
+			&i.AccountID,
+			&i.Field,
+			&i.ProposedValue,
+			&i.Note,
+			&i.EvidenceRef,
+			&i.ProximityBucket,
+			&i.ClientSubmissionID,
+			&i.Status,
+			&i.ReasonCodes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.DecidedAt,
 		); err != nil {
 			return nil, err
