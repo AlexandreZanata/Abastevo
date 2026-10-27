@@ -1,5 +1,13 @@
 # Current execution state
 
+- MAP completion MC-A2 2026-10-27: LOCAL_DONE. Base `6ade4a00` plus this
+  task. New Rust `prepare_anp_registry` parses the 2026-10-26 API pages into
+  deterministic NDJSON plus quarantine and manifest: 45,807 accepted, 0
+  quarantined, 27 UFs, 39,017 with a point; 11 s first run and 5 s rerun with
+  identical SHA-256. No new ANP request; raw pages stayed on the VPS. 110 Rust
+  tests and `check-rust-fast.sh` pass. Evidence:
+  [MC-A2](../backend/evidence/maps/map-completion/MC-A2.md). Time: ~35 min.
+
 - MAP completion MC-B4 2026-10-27: LOCAL_DONE. Base `d9ed4579` plus this
   task. Abuse, idempotency, ownership, quota, concurrent decision, concurrent
   open-field and accepted-location projection are covered by unit tests and a
