@@ -33,15 +33,16 @@ ON CONFLICT (scope, subject, window_start)
 DO UPDATE SET failures = admin_login_attempts.failures
 RETURNING failures, blocked_until;
 
--- name: IncrementLoginFailures :one
-UPDATE admin_login_attempts
-SET failures = failures + 1,
-    blocked_until = CASE
-        WHEN scope = 'global' AND failures + 1 >= @global_limit THEN @blocked_until
-        ELSE blocked_until
-    END
-WHERE scope = @scope AND subject = @subject AND window_start = @window_start
-RETURNING failures, blocked_until;
+-- name: AddLoginFailure :exec
+UPDATE admin_login_attempts SET failures = failures + 1
+WHERE scope = @scope AND subject = @subject AND window_start = @window_start;
+
+-- name: SumLoginFailures :one
+SELECT COALESCE(sum(failures), 0)::int AS failures,
+       COALESCE(min(window_start), @since::timestamptz)::timestamptz AS oldest
+FROM admin_login_attempts
+WHERE scope = @scope AND subject = @subject
+  AND window_start > @since::timestamptz AND failures > 0;
 
 -- name: BlockLoginWindow :exec
 UPDATE admin_login_attempts SET blocked_until = @blocked_until

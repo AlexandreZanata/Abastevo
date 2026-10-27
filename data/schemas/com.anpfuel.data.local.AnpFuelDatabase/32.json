@@ -1,0 +1,3612 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 32,
+    "identityHash": "4f28443a7d5187c6759d6ed6bec878ac",
+    "entities": [
+      {
+        "tableName": "survey_week",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `start_date` TEXT NOT NULL, `end_date` TEXT NOT NULL, `summary_imported_at` INTEGER NOT NULL, `station_imported_at` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "start_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "end_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "summaryImportedAt",
+            "columnName": "summary_imported_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stationImportedAt",
+            "columnName": "station_imported_at",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "average_price",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `survey_week_id` TEXT NOT NULL, `state` TEXT NOT NULL, `municipality` TEXT NOT NULL, `fuel_product` TEXT NOT NULL, `station_count` INTEGER, `unit` TEXT, `avg_price` REAL, `min_price` REAL, `max_price` REAL, `std_dev` REAL, PRIMARY KEY(`id`), FOREIGN KEY(`survey_week_id`) REFERENCES `survey_week`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "surveyWeekId",
+            "columnName": "survey_week_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "municipality",
+            "columnName": "municipality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fuelProduct",
+            "columnName": "fuel_product",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stationCount",
+            "columnName": "station_count",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "unit",
+            "columnName": "unit",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "avgPrice",
+            "columnName": "avg_price",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "minPrice",
+            "columnName": "min_price",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "maxPrice",
+            "columnName": "max_price",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "stdDev",
+            "columnName": "std_dev",
+            "affinity": "REAL",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_avg_survey_state_muni",
+            "unique": false,
+            "columnNames": [
+              "survey_week_id",
+              "state",
+              "municipality"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_avg_survey_state_muni` ON `${TABLE_NAME}` (`survey_week_id`, `state`, `municipality`)"
+          },
+          {
+            "name": "idx_avg_muni_product",
+            "unique": false,
+            "columnNames": [
+              "municipality",
+              "fuel_product"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_avg_muni_product` ON `${TABLE_NAME}` (`municipality`, `fuel_product`)"
+          },
+          {
+            "name": "index_average_price_survey_week_id_state_municipality_fuel_product",
+            "unique": true,
+            "columnNames": [
+              "survey_week_id",
+              "state",
+              "municipality",
+              "fuel_product"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_average_price_survey_week_id_state_municipality_fuel_product` ON `${TABLE_NAME}` (`survey_week_id`, `state`, `municipality`, `fuel_product`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "survey_week",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "survey_week_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "station_price",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `survey_week_id` TEXT NOT NULL, `cnpj` TEXT NOT NULL, `legal_name` TEXT, `trade_name` TEXT, `address` TEXT NOT NULL, `municipality` TEXT NOT NULL, `state` TEXT NOT NULL, `brand` TEXT, `fuel_product` TEXT NOT NULL, `price` REAL NOT NULL, `collected_at` TEXT, `legal_name_search` TEXT NOT NULL DEFAULT '', `trade_name_search` TEXT NOT NULL DEFAULT '', `brand_search` TEXT NOT NULL DEFAULT '', `address_search` TEXT NOT NULL DEFAULT '', PRIMARY KEY(`id`), FOREIGN KEY(`survey_week_id`) REFERENCES `survey_week`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "surveyWeekId",
+            "columnName": "survey_week_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cnpj",
+            "columnName": "cnpj",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "legalName",
+            "columnName": "legal_name",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "tradeName",
+            "columnName": "trade_name",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "address",
+            "columnName": "address",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "municipality",
+            "columnName": "municipality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "brand",
+            "columnName": "brand",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "fuelProduct",
+            "columnName": "fuel_product",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "price",
+            "columnName": "price",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "collectedAt",
+            "columnName": "collected_at",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "legalNameSearch",
+            "columnName": "legal_name_search",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "tradeNameSearch",
+            "columnName": "trade_name_search",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "brandSearch",
+            "columnName": "brand_search",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "addressSearch",
+            "columnName": "address_search",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_station_discovery_price",
+            "unique": false,
+            "columnNames": [
+              "survey_week_id",
+              "state",
+              "municipality",
+              "fuel_product",
+              "price",
+              "id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_station_discovery_price` ON `${TABLE_NAME}` (`survey_week_id`, `state`, `municipality`, `fuel_product`, `price`, `id`)"
+          },
+          {
+            "name": "idx_station_survey_muni_product",
+            "unique": false,
+            "columnNames": [
+              "survey_week_id",
+              "municipality",
+              "fuel_product"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_station_survey_muni_product` ON `${TABLE_NAME}` (`survey_week_id`, `municipality`, `fuel_product`)"
+          },
+          {
+            "name": "idx_station_price_asc",
+            "unique": false,
+            "columnNames": [
+              "survey_week_id",
+              "municipality",
+              "fuel_product",
+              "price"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_station_price_asc` ON `${TABLE_NAME}` (`survey_week_id`, `municipality`, `fuel_product`, `price`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "survey_week",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "survey_week_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "import_audit_log",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `survey_week_id` TEXT, `action` TEXT NOT NULL, `detail` TEXT, `occurred_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "surveyWeekId",
+            "columnName": "survey_week_id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "action",
+            "columnName": "action",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detail",
+            "columnName": "detail",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "municipality_catalog",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `ibge_code` TEXT NOT NULL, `state` TEXT NOT NULL, `municipality` TEXT NOT NULL, `normalized_name` TEXT NOT NULL, `anp_alias` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ibgeCode",
+            "columnName": "ibge_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "municipality",
+            "columnName": "municipality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anpAlias",
+            "columnName": "anp_alias",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_municipality_catalog_state_normalized_name",
+            "unique": true,
+            "columnNames": [
+              "state",
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_municipality_catalog_state_normalized_name` ON `${TABLE_NAME}` (`state`, `normalized_name`)"
+          },
+          {
+            "name": "index_municipality_catalog_ibge_code",
+            "unique": true,
+            "columnNames": [
+              "ibge_code"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_municipality_catalog_ibge_code` ON `${TABLE_NAME}` (`ibge_code`)"
+          },
+          {
+            "name": "idx_municipality_catalog_normalized",
+            "unique": false,
+            "columnNames": [
+              "normalized_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_municipality_catalog_normalized` ON `${TABLE_NAME}` (`normalized_name`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "unicode61",
+          "tokenizerArgs": [],
+          "contentTable": "municipality_catalog",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_BEFORE_UPDATE BEFORE UPDATE ON `municipality_catalog` BEGIN DELETE FROM `municipality_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_BEFORE_DELETE BEFORE DELETE ON `municipality_catalog` BEGIN DELETE FROM `municipality_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_AFTER_UPDATE AFTER UPDATE ON `municipality_catalog` BEGIN INSERT INTO `municipality_fts`(`docid`, `municipality`, `state`, `normalized_name`) VALUES (NEW.`rowid`, NEW.`municipality`, NEW.`state`, NEW.`normalized_name`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_municipality_fts_AFTER_INSERT AFTER INSERT ON `municipality_catalog` BEGIN INSERT INTO `municipality_fts`(`docid`, `municipality`, `state`, `normalized_name`) VALUES (NEW.`rowid`, NEW.`municipality`, NEW.`state`, NEW.`normalized_name`); END"
+        ],
+        "tableName": "municipality_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`municipality` TEXT NOT NULL, `state` TEXT NOT NULL, `normalized_name` TEXT NOT NULL, tokenize=unicode61, content=`municipality_catalog`)",
+        "fields": [
+          {
+            "fieldPath": "municipality",
+            "columnName": "municipality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized_name",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "vehicle",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `display_name` TEXT NOT NULL, `tank_capacity_liters` REAL, `fuel_product` TEXT, `price_source_mode` TEXT NOT NULL, `specific_station_cnpj` TEXT, `price_drop_alert_enabled` INTEGER NOT NULL, `sort_order` INTEGER NOT NULL, `photo_path` TEXT, `propulsion` TEXT NOT NULL, `battery_wh` INTEGER, `charge_connector` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "display_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tankCapacityLiters",
+            "columnName": "tank_capacity_liters",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "fuelProduct",
+            "columnName": "fuel_product",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "priceSourceMode",
+            "columnName": "price_source_mode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "specificStationCnpj",
+            "columnName": "specific_station_cnpj",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "priceDropAlertEnabled",
+            "columnName": "price_drop_alert_enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sort_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photoPath",
+            "columnName": "photo_path",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "propulsion",
+            "columnName": "propulsion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "batteryWh",
+            "columnName": "battery_wh",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "chargeConnector",
+            "columnName": "charge_connector",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "backend_price_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `station_id` TEXT NOT NULL, `fuel_filter` TEXT NOT NULL, `payload_json` TEXT NOT NULL, `source` TEXT NOT NULL, `version` TEXT NOT NULL, `fetched_at_millis` INTEGER NOT NULL, `expires_at_millis` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stationId",
+            "columnName": "station_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fuelFilter",
+            "columnName": "fuel_filter",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payloadJson",
+            "columnName": "payload_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAtMillis",
+            "columnName": "fetched_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAtMillis",
+            "columnName": "expires_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "contribution_outbox",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`command_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `payload` TEXT NOT NULL, `revision` INTEGER NOT NULL, `state` TEXT NOT NULL, `attempts` INTEGER NOT NULL, `next_eligible_tick` INTEGER NOT NULL, `nonce` TEXT NOT NULL, `observation_id` TEXT DEFAULT NULL, `remote_status` TEXT DEFAULT NULL, `failure_reason` TEXT DEFAULT NULL, PRIMARY KEY(`command_id`))",
+        "fields": [
+          {
+            "fieldPath": "commandId",
+            "columnName": "command_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payload",
+            "columnName": "payload",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextEligibleTick",
+            "columnName": "next_eligible_tick",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nonce",
+            "columnName": "nonce",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observationId",
+            "columnName": "observation_id",
+            "affinity": "TEXT",
+            "notNull": false,
+            "defaultValue": "NULL"
+          },
+          {
+            "fieldPath": "remoteStatus",
+            "columnName": "remote_status",
+            "affinity": "TEXT",
+            "notNull": false,
+            "defaultValue": "NULL"
+          },
+          {
+            "fieldPath": "failureReason",
+            "columnName": "failure_reason",
+            "affinity": "TEXT",
+            "notNull": false,
+            "defaultValue": "NULL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "command_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_contribution_outbox_state_next_eligible_tick",
+            "unique": false,
+            "columnNames": [
+              "state",
+              "next_eligible_tick"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_contribution_outbox_state_next_eligible_tick` ON `${TABLE_NAME}` (`state`, `next_eligible_tick`)"
+          },
+          {
+            "name": "index_contribution_outbox_remote_status",
+            "unique": false,
+            "columnNames": [
+              "remote_status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_contribution_outbox_remote_status` ON `${TABLE_NAME}` (`remote_status`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "photo_upload_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`capture_id` TEXT NOT NULL, `session_id` TEXT NOT NULL, `photo_id` TEXT NOT NULL, `owner_scope` TEXT NOT NULL, `origin` TEXT NOT NULL, `captured_at_millis` INTEGER NOT NULL, `expires_at_millis` INTEGER NOT NULL, `sha256` TEXT NOT NULL, `evidence_id` TEXT, PRIMARY KEY(`capture_id`))",
+        "fields": [
+          {
+            "fieldPath": "captureId",
+            "columnName": "capture_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "session_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photoId",
+            "columnName": "photo_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownerScope",
+            "columnName": "owner_scope",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "capturedAtMillis",
+            "columnName": "captured_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAtMillis",
+            "columnName": "expires_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sha256",
+            "columnName": "sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "evidenceId",
+            "columnName": "evidence_id",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "capture_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_photo_upload_sessions_owner_scope",
+            "unique": false,
+            "columnNames": [
+              "owner_scope"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_photo_upload_sessions_owner_scope` ON `${TABLE_NAME}` (`owner_scope`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "server_station_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`station_id` TEXT NOT NULL, `display_name` TEXT NOT NULL, `location_quality` TEXT NOT NULL, `latitude` REAL, `longitude` REAL, `cnpj_normalized` TEXT, `municipality_code` TEXT, `state` TEXT, `current_revision_id` TEXT, `position` INTEGER NOT NULL, `saved_at_millis` INTEGER NOT NULL, `address_json` TEXT NOT NULL DEFAULT '{}', `scope_key` TEXT NOT NULL DEFAULT '', PRIMARY KEY(`station_id`, `scope_key`))",
+        "fields": [
+          {
+            "fieldPath": "stationId",
+            "columnName": "station_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "display_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "locationQuality",
+            "columnName": "location_quality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latitude",
+            "columnName": "latitude",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "longitude",
+            "columnName": "longitude",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cnpjNormalized",
+            "columnName": "cnpj_normalized",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "municipalityCode",
+            "columnName": "municipality_code",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "currentRevisionId",
+            "columnName": "current_revision_id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAtMillis",
+            "columnName": "saved_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "addressJson",
+            "columnName": "address_json",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'{}'"
+          },
+          {
+            "fieldPath": "scopeKey",
+            "columnName": "scope_key",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "station_id",
+            "scope_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_server_station_cache_scope_key_position",
+            "unique": false,
+            "columnNames": [
+              "scope_key",
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_server_station_cache_scope_key_position` ON `${TABLE_NAME}` (`scope_key`, `position`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "server_catalog_meta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `next_cursor` TEXT, `saved_at_millis` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextCursor",
+            "columnName": "next_cursor",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "savedAtMillis",
+            "columnName": "saved_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "premium_outbox",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`command_id` TEXT NOT NULL, `owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `dataset` TEXT NOT NULL, `record_id` TEXT NOT NULL, `expected_revision` INTEGER NOT NULL, `payload_json` TEXT NOT NULL, `delete_flag` INTEGER NOT NULL, `void_flag` INTEGER NOT NULL, `state` TEXT NOT NULL, `attempts` INTEGER NOT NULL, `next_eligible_tick` INTEGER NOT NULL, `nonce` TEXT NOT NULL, PRIMARY KEY(`command_id`))",
+        "fields": [
+          {
+            "fieldPath": "commandId",
+            "columnName": "command_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataset",
+            "columnName": "dataset",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordId",
+            "columnName": "record_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expectedRevision",
+            "columnName": "expected_revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payloadJson",
+            "columnName": "payload_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deleteFlag",
+            "columnName": "delete_flag",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "voidFlag",
+            "columnName": "void_flag",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextEligibleTick",
+            "columnName": "next_eligible_tick",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nonce",
+            "columnName": "nonce",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "command_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_premium_outbox_owner_account_state_next_eligible_tick",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "state",
+              "next_eligible_tick"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_premium_outbox_owner_account_state_next_eligible_tick` ON `${TABLE_NAME}` (`owner_account`, `state`, `next_eligible_tick`)"
+          },
+          {
+            "name": "index_premium_outbox_owner_account_origin_dataset",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "dataset"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_premium_outbox_owner_account_origin_dataset` ON `${TABLE_NAME}` (`owner_account`, `origin`, `dataset`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "premium_cursor",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `dataset` TEXT NOT NULL, `cursor` TEXT NOT NULL, `epoch` INTEGER NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `dataset`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataset",
+            "columnName": "dataset",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cursor",
+            "columnName": "cursor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "epoch",
+            "columnName": "epoch",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "dataset"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "quality_owner_gate",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_key` TEXT NOT NULL, `owner_local` TEXT NOT NULL, `origin` TEXT NOT NULL, `blocked` INTEGER NOT NULL, `last_seen` INTEGER NOT NULL, `expires_at` INTEGER NOT NULL, `key_erased` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`owner_key`))",
+        "fields": [
+          {
+            "fieldPath": "ownerKey",
+            "columnName": "owner_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownerLocal",
+            "columnName": "owner_local",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blocked",
+            "columnName": "blocked",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeen",
+            "columnName": "last_seen",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAt",
+            "columnName": "expires_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "keyErased",
+            "columnName": "key_erased",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_quality_owner_gate_owner_local",
+            "unique": false,
+            "columnNames": [
+              "owner_local"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_quality_owner_gate_owner_local` ON `${TABLE_NAME}` (`owner_local`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "quality_report_outbox",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_key` TEXT NOT NULL, `command_id` TEXT NOT NULL, `payload_hash` TEXT NOT NULL, `sealed_command` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `expires_at` INTEGER NOT NULL, `state` TEXT NOT NULL, `attempts` INTEGER NOT NULL, `retry_at` INTEGER NOT NULL, `claim_id` TEXT NOT NULL, `lease_until` INTEGER NOT NULL, PRIMARY KEY(`owner_key`))",
+        "fields": [
+          {
+            "fieldPath": "ownerKey",
+            "columnName": "owner_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "commandId",
+            "columnName": "command_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payloadHash",
+            "columnName": "payload_hash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sealedCommand",
+            "columnName": "sealed_command",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAt",
+            "columnName": "expires_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retryAt",
+            "columnName": "retry_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "claimId",
+            "columnName": "claim_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "leaseUntil",
+            "columnName": "lease_until",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_quality_report_outbox_command_id",
+            "unique": true,
+            "columnNames": [
+              "command_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_quality_report_outbox_command_id` ON `${TABLE_NAME}` (`command_id`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "community_feed_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `kind` TEXT NOT NULL, `origin` TEXT NOT NULL, `state` TEXT NOT NULL, `municipality_code` TEXT NOT NULL, `fuel` TEXT, `sort` TEXT, `payload_json` TEXT NOT NULL, `generated_at_millis` INTEGER NOT NULL, `fetched_at_millis` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "municipalityCode",
+            "columnName": "municipality_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fuel",
+            "columnName": "fuel",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "sort",
+            "columnName": "sort",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "payloadJson",
+            "columnName": "payload_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generatedAtMillis",
+            "columnName": "generated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAtMillis",
+            "columnName": "fetched_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "charging_snapshot_place",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`place_id` TEXT NOT NULL, `entity_key` TEXT, `external_id` TEXT, `generation` INTEGER NOT NULL, `profile` TEXT NOT NULL, `source_revision` TEXT NOT NULL, `origin` TEXT NOT NULL, `license` TEXT NOT NULL, `name` TEXT NOT NULL, `country` TEXT NOT NULL, `latitude` TEXT, `longitude` TEXT, `public_access` TEXT NOT NULL, `reported_points` INTEGER NOT NULL, `groups_json` TEXT NOT NULL, `tombstone` INTEGER NOT NULL, `saved_at_millis` INTEGER NOT NULL, PRIMARY KEY(`place_id`, `generation`))",
+        "fields": [
+          {
+            "fieldPath": "placeId",
+            "columnName": "place_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entityKey",
+            "columnName": "entity_key",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "externalId",
+            "columnName": "external_id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profile",
+            "columnName": "profile",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceRevision",
+            "columnName": "source_revision",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "license",
+            "columnName": "license",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "country",
+            "columnName": "country",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latitude",
+            "columnName": "latitude",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "longitude",
+            "columnName": "longitude",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "publicAccess",
+            "columnName": "public_access",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reportedPoints",
+            "columnName": "reported_points",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupsJson",
+            "columnName": "groups_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tombstone",
+            "columnName": "tombstone",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAtMillis",
+            "columnName": "saved_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "place_id",
+            "generation"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_charging_snapshot_place_generation",
+            "unique": false,
+            "columnNames": [
+              "generation"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_charging_snapshot_place_generation` ON `${TABLE_NAME}` (`generation`)"
+          },
+          {
+            "name": "index_charging_snapshot_place_profile_generation",
+            "unique": false,
+            "columnNames": [
+              "profile",
+              "generation"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_charging_snapshot_place_profile_generation` ON `${TABLE_NAME}` (`profile`, `generation`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "charging_snapshot_meta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `generation` INTEGER NOT NULL, `profile` TEXT NOT NULL, `source_revision` TEXT NOT NULL, `origin` TEXT NOT NULL, `license` TEXT NOT NULL, `schema_version` INTEGER NOT NULL, `base_generation` INTEGER NOT NULL, `place_count` INTEGER NOT NULL, `group_count` INTEGER NOT NULL, `cursor` TEXT, `state` TEXT NOT NULL, `saved_at_millis` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profile",
+            "columnName": "profile",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceRevision",
+            "columnName": "source_revision",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "license",
+            "columnName": "license",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "schemaVersion",
+            "columnName": "schema_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baseGeneration",
+            "columnName": "base_generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "placeCount",
+            "columnName": "place_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupCount",
+            "columnName": "group_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cursor",
+            "columnName": "cursor",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAtMillis",
+            "columnName": "saved_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "vehicle_capability_lease",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `policy_version` INTEGER NOT NULL, `capability` TEXT NOT NULL, `verified_at_millis` INTEGER NOT NULL, `paid_through_millis` INTEGER NOT NULL, `revoked` INTEGER NOT NULL, `saved_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "policyVersion",
+            "columnName": "policy_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "capability",
+            "columnName": "capability",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verifiedAtMillis",
+            "columnName": "verified_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "paidThroughMillis",
+            "columnName": "paid_through_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revoked",
+            "columnName": "revoked",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAtMillis",
+            "columnName": "saved_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "ledger_draft",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`draft_id` TEXT NOT NULL, `owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `dataset` TEXT NOT NULL, `record_id` TEXT NOT NULL, `expected_revision` INTEGER NOT NULL, `body_json` TEXT NOT NULL, `updated_at_millis` INTEGER NOT NULL, `context` TEXT, PRIMARY KEY(`draft_id`))",
+        "fields": [
+          {
+            "fieldPath": "draftId",
+            "columnName": "draft_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataset",
+            "columnName": "dataset",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordId",
+            "columnName": "record_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expectedRevision",
+            "columnName": "expected_revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodyJson",
+            "columnName": "body_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "context",
+            "columnName": "context",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "draft_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ledger_draft_owner_record",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "dataset",
+              "record_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ledger_draft_owner_record` ON `${TABLE_NAME}` (`owner_account`, `origin`, `dataset`, `record_id`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "ledger_erased",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `dataset` TEXT NOT NULL, `record_id` TEXT NOT NULL, `erased_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `dataset`, `record_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataset",
+            "columnName": "dataset",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordId",
+            "columnName": "record_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "erasedAtMillis",
+            "columnName": "erased_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "dataset",
+            "record_id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "map_generation",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`generation` TEXT NOT NULL, `manifest_sha256` TEXT NOT NULL, `active` INTEGER NOT NULL, `activated_at_millis` INTEGER, `data_version` TEXT NOT NULL DEFAULT '', PRIMARY KEY(`generation`))",
+        "fields": [
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "manifestSha256",
+            "columnName": "manifest_sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "active",
+            "columnName": "active",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activatedAtMillis",
+            "columnName": "activated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "dataVersion",
+            "columnName": "data_version",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "generation"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "map_package",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`package_id` TEXT NOT NULL, `generation` TEXT NOT NULL, `role` TEXT NOT NULL, `file_name` TEXT NOT NULL, `bytes` INTEGER NOT NULL, `sha256` TEXT NOT NULL, `etag` TEXT, `status` TEXT NOT NULL, `downloaded_bytes` INTEGER NOT NULL, `error` TEXT, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`generation`, `package_id`), FOREIGN KEY(`generation`) REFERENCES `map_generation`(`generation`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "packageId",
+            "columnName": "package_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "role",
+            "columnName": "role",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fileName",
+            "columnName": "file_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bytes",
+            "columnName": "bytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sha256",
+            "columnName": "sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "etag",
+            "columnName": "etag",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "downloadedBytes",
+            "columnName": "downloaded_bytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "error",
+            "columnName": "error",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "generation",
+            "package_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_map_package_generation",
+            "unique": false,
+            "columnNames": [
+              "generation"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_map_package_generation` ON `${TABLE_NAME}` (`generation`)"
+          },
+          {
+            "name": "index_map_package_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_map_package_status` ON `${TABLE_NAME}` (`status`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "map_generation",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "generation"
+            ],
+            "referencedColumns": [
+              "generation"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "map_saved_place",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`place_id` TEXT NOT NULL, `owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `kind` TEXT NOT NULL, `name` TEXT NOT NULL, `lat_micro` INTEGER NOT NULL, `lon_micro` INTEGER NOT NULL, `station_id` TEXT, `source_kind` TEXT NOT NULL, `source_id` TEXT, `note` TEXT, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `place_id`))",
+        "fields": [
+          {
+            "fieldPath": "placeId",
+            "columnName": "place_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latMicro",
+            "columnName": "lat_micro",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lonMicro",
+            "columnName": "lon_micro",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stationId",
+            "columnName": "station_id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "sourceKind",
+            "columnName": "source_kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "created_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "place_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_map_saved_place_station",
+            "unique": true,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "station_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_map_saved_place_station` ON `${TABLE_NAME}` (`owner_account`, `origin`, `station_id`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "map_saved_trip",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`trip_id` TEXT NOT NULL, `owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `state` TEXT NOT NULL, `kind` TEXT NOT NULL, `name` TEXT NOT NULL, `avoid` TEXT NOT NULL, `source_id` TEXT, `note` TEXT, `point_count` INTEGER NOT NULL, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `trip_id`))",
+        "fields": [
+          {
+            "fieldPath": "tripId",
+            "columnName": "trip_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avoid",
+            "columnName": "avoid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pointCount",
+            "columnName": "point_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "created_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "trip_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_map_saved_trip_owner",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "state"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_map_saved_trip_owner` ON `${TABLE_NAME}` (`owner_account`, `origin`, `state`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "map_saved_trip_point",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `trip_id` TEXT NOT NULL, `seq` INTEGER NOT NULL, `lat_micro` INTEGER NOT NULL, `lon_micro` INTEGER NOT NULL, `elevation_cm` INTEGER, `time_millis` INTEGER, PRIMARY KEY(`owner_account`, `origin`, `trip_id`, `seq`), FOREIGN KEY(`owner_account`, `origin`, `trip_id`) REFERENCES `map_saved_trip`(`owner_account`, `origin`, `trip_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tripId",
+            "columnName": "trip_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seq",
+            "columnName": "seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latMicro",
+            "columnName": "lat_micro",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lonMicro",
+            "columnName": "lon_micro",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "elevationCm",
+            "columnName": "elevation_cm",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "timeMillis",
+            "columnName": "time_millis",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "trip_id",
+            "seq"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": [
+          {
+            "table": "map_saved_trip",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "owner_account",
+              "origin",
+              "trip_id"
+            ],
+            "referencedColumns": [
+              "owner_account",
+              "origin",
+              "trip_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "map_saved_tombstone",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `record_id` TEXT NOT NULL, `deleted_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `record_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordId",
+            "columnName": "record_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAtMillis",
+            "columnName": "deleted_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "record_id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "map_saved_import",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `content_sha256` TEXT NOT NULL, `imported_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `content_sha256`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentSha256",
+            "columnName": "content_sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "importedAtMillis",
+            "columnName": "imported_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "content_sha256"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_shift",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `shift_id` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `timezone` TEXT NOT NULL, `state` TEXT NOT NULL, `version` INTEGER NOT NULL, `last_boot_id` TEXT, `last_elapsed_millis` INTEGER, `last_utc_millis` INTEGER, `active_millis` INTEGER NOT NULL, `manually_reviewed_millis` INTEGER NOT NULL, `start_odometer_metres` INTEGER, `end_odometer_metres` INTEGER, `created_at_millis` INTEGER NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `shift_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftId",
+            "columnName": "shift_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vehicleId",
+            "columnName": "vehicle_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timezone",
+            "columnName": "timezone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastBootId",
+            "columnName": "last_boot_id",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastElapsedMillis",
+            "columnName": "last_elapsed_millis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastUtcMillis",
+            "columnName": "last_utc_millis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "activeMillis",
+            "columnName": "active_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "manuallyReviewedMillis",
+            "columnName": "manually_reviewed_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startOdometerMetres",
+            "columnName": "start_odometer_metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "endOdometerMetres",
+            "columnName": "end_odometer_metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "created_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "shift_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_driver_shift_owner_state",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "state"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_driver_shift_owner_state` ON `${TABLE_NAME}` (`owner_account`, `origin`, `state`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_shift_gap",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `shift_id` TEXT NOT NULL, `gap_id` TEXT NOT NULL, `reason` TEXT NOT NULL, `previous_boot_id` TEXT NOT NULL, `previous_elapsed_millis` INTEGER NOT NULL, `previous_utc_millis` INTEGER NOT NULL, `next_boot_id` TEXT NOT NULL, `next_elapsed_millis` INTEGER NOT NULL, `next_utc_millis` INTEGER NOT NULL, `reviewed` INTEGER NOT NULL, `reviewed_work_millis` INTEGER, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `shift_id`, `gap_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftId",
+            "columnName": "shift_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gapId",
+            "columnName": "gap_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reason",
+            "columnName": "reason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "previousBootId",
+            "columnName": "previous_boot_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "previousElapsedMillis",
+            "columnName": "previous_elapsed_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "previousUtcMillis",
+            "columnName": "previous_utc_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextBootId",
+            "columnName": "next_boot_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextElapsedMillis",
+            "columnName": "next_elapsed_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextUtcMillis",
+            "columnName": "next_utc_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewed",
+            "columnName": "reviewed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewedWorkMillis",
+            "columnName": "reviewed_work_millis",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "created_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "shift_id",
+            "gap_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_driver_shift_gap_owner_shift",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "shift_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_driver_shift_gap_owner_shift` ON `${TABLE_NAME}` (`owner_account`, `origin`, `shift_id`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_earning",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `record_id` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `platform` TEXT NOT NULL, `coverage` TEXT NOT NULL, `currency` TEXT NOT NULL, `from_millis` INTEGER NOT NULL, `to_millis` INTEGER NOT NULL, `timezone` TEXT NOT NULL, `basis` TEXT NOT NULL, `gross_centavos` INTEGER, `fees_centavos` INTEGER, `tips_centavos` INTEGER, `bonus_centavos` INTEGER, `refund_centavos` INTEGER, `net_centavos` INTEGER, `revision` INTEGER NOT NULL, `content_sha256` TEXT NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `record_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordId",
+            "columnName": "record_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vehicleId",
+            "columnName": "vehicle_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "platform",
+            "columnName": "platform",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coverage",
+            "columnName": "coverage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromMillis",
+            "columnName": "from_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "toMillis",
+            "columnName": "to_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timezone",
+            "columnName": "timezone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "basis",
+            "columnName": "basis",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "grossCentavos",
+            "columnName": "gross_centavos",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "feesCentavos",
+            "columnName": "fees_centavos",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "tipsCentavos",
+            "columnName": "tips_centavos",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "bonusCentavos",
+            "columnName": "bonus_centavos",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "refundCentavos",
+            "columnName": "refund_centavos",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "netCentavos",
+            "columnName": "net_centavos",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentSha256",
+            "columnName": "content_sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "record_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_driver_earning_owner_window",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "vehicle_id",
+              "from_millis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_driver_earning_owner_window` ON `${TABLE_NAME}` (`owner_account`, `origin`, `vehicle_id`, `from_millis`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_earning_revision",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `record_id` TEXT NOT NULL, `revision` INTEGER NOT NULL, `body_json` TEXT NOT NULL, `content_sha256` TEXT NOT NULL, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `record_id`, `revision`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordId",
+            "columnName": "record_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodyJson",
+            "columnName": "body_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentSha256",
+            "columnName": "content_sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "created_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "record_id",
+            "revision"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_driver_earning_revision_owner_record",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "record_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_driver_earning_revision_owner_record` ON `${TABLE_NAME}` (`owner_account`, `origin`, `record_id`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_distance",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `observation_id` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `segment` TEXT NOT NULL, `basis` TEXT NOT NULL, `from_millis` INTEGER NOT NULL, `to_millis` INTEGER NOT NULL, `timezone` TEXT NOT NULL, `metres` INTEGER, `complete` INTEGER NOT NULL, `has_gap` INTEGER NOT NULL, `quality` TEXT NOT NULL, `quality_version` INTEGER, `quality_note` TEXT, `start_odometer_metres` INTEGER, `end_odometer_metres` INTEGER, `content_sha256` TEXT NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `observation_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observationId",
+            "columnName": "observation_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vehicleId",
+            "columnName": "vehicle_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "segment",
+            "columnName": "segment",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "basis",
+            "columnName": "basis",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromMillis",
+            "columnName": "from_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "toMillis",
+            "columnName": "to_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timezone",
+            "columnName": "timezone",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metres",
+            "columnName": "metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "complete",
+            "columnName": "complete",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasGap",
+            "columnName": "has_gap",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quality",
+            "columnName": "quality",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityVersion",
+            "columnName": "quality_version",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "qualityNote",
+            "columnName": "quality_note",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "startOdometerMetres",
+            "columnName": "start_odometer_metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "endOdometerMetres",
+            "columnName": "end_odometer_metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "contentSha256",
+            "columnName": "content_sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "observation_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_driver_distance_owner_window",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "vehicle_id",
+              "from_millis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_driver_distance_owner_window` ON `${TABLE_NAME}` (`owner_account`, `origin`, `vehicle_id`, `from_millis`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_local_command",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `operation_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `body_sha256` TEXT NOT NULL, `expected_revision` INTEGER NOT NULL, `state` TEXT NOT NULL, `attempts` INTEGER NOT NULL, `next_eligible_millis` INTEGER NOT NULL, `last_error` TEXT, `lease_until_millis` INTEGER NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `operation_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "operationId",
+            "columnName": "operation_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodySha256",
+            "columnName": "body_sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expectedRevision",
+            "columnName": "expected_revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextEligibleMillis",
+            "columnName": "next_eligible_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "last_error",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "leaseUntilMillis",
+            "columnName": "lease_until_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "operation_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_driver_command_owner_state",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "state",
+              "next_eligible_millis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_driver_command_owner_state` ON `${TABLE_NAME}` (`owner_account`, `origin`, `state`, `next_eligible_millis`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_draft",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `draft_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `record_id` TEXT NOT NULL, `body_json` TEXT NOT NULL, `distance_metres` INTEGER, `amount_centavos` INTEGER, `duration_seconds` INTEGER, `unit_version` TEXT NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `draft_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "draftId",
+            "columnName": "draft_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordId",
+            "columnName": "record_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bodyJson",
+            "columnName": "body_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "distanceMetres",
+            "columnName": "distance_metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "amountCentavos",
+            "columnName": "amount_centavos",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "durationSeconds",
+            "columnName": "duration_seconds",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "unitVersion",
+            "columnName": "unit_version",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "draft_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_driver_draft_owner_updated",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "updated_at_millis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_driver_draft_owner_updated` ON `${TABLE_NAME}` (`owner_account`, `origin`, `updated_at_millis`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_payout",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `payout_id` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `occurred_at_millis` INTEGER NOT NULL, `amount_centavos` INTEGER NOT NULL, `kind` TEXT NOT NULL, `source` TEXT NOT NULL, `note` TEXT, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `payout_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payoutId",
+            "columnName": "payout_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vehicleId",
+            "columnName": "vehicle_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurredAtMillis",
+            "columnName": "occurred_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amountCentavos",
+            "columnName": "amount_centavos",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "created_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "payout_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_driver_payout_owner",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "vehicle_id",
+              "occurred_at_millis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_driver_payout_owner` ON `${TABLE_NAME}` (`owner_account`, `origin`, `vehicle_id`, `occurred_at_millis`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_cost_setting",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `ownership` TEXT NOT NULL, `monthly_amount_centavos` INTEGER, `personal_fraction_percent` INTEGER NOT NULL, `effective_from` TEXT NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vehicleId",
+            "columnName": "vehicle_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownership",
+            "columnName": "ownership",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "monthlyAmountCentavos",
+            "columnName": "monthly_amount_centavos",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "personalFractionPercent",
+            "columnName": "personal_fraction_percent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "effectiveFrom",
+            "columnName": "effective_from",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "vehicle_id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_gps_observation",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `observation_id` TEXT NOT NULL, `shift_id` TEXT NOT NULL, `from_at_millis` INTEGER NOT NULL, `to_at_millis` INTEGER NOT NULL, `metres` INTEGER, `complete` INTEGER NOT NULL, `has_gap` INTEGER NOT NULL, `created_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `observation_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observationId",
+            "columnName": "observation_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shiftId",
+            "columnName": "shift_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromAtMillis",
+            "columnName": "from_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "toAtMillis",
+            "columnName": "to_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metres",
+            "columnName": "metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "complete",
+            "columnName": "complete",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasGap",
+            "columnName": "has_gap",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtMillis",
+            "columnName": "created_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "observation_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_driver_gps_owner_shift",
+            "unique": false,
+            "columnNames": [
+              "owner_account",
+              "origin",
+              "shift_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_driver_gps_owner_shift` ON `${TABLE_NAME}` (`owner_account`, `origin`, `shift_id`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_reconciliation",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `day` TEXT NOT NULL, `basis` TEXT NOT NULL, `odometer_metres` INTEGER, `gps_metres` INTEGER, `paid_metres` INTEGER, `empty_metres` INTEGER, `personal_metres` INTEGER, `complete` INTEGER NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `day`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vehicleId",
+            "columnName": "vehicle_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "day",
+            "columnName": "day",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "basis",
+            "columnName": "basis",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "odometerMetres",
+            "columnName": "odometer_metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "gpsMetres",
+            "columnName": "gps_metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "paidMetres",
+            "columnName": "paid_metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "emptyMetres",
+            "columnName": "empty_metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "personalMetres",
+            "columnName": "personal_metres",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "complete",
+            "columnName": "complete",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "vehicle_id",
+            "day"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_goal",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `goal_id` TEXT NOT NULL, `period` TEXT NOT NULL, `metric` TEXT NOT NULL, `target_centavos` INTEGER NOT NULL, `active` INTEGER NOT NULL, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `goal_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vehicleId",
+            "columnName": "vehicle_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "goalId",
+            "columnName": "goal_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "period",
+            "columnName": "period",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metric",
+            "columnName": "metric",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetCentavos",
+            "columnName": "target_centavos",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "active",
+            "columnName": "active",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "vehicle_id",
+            "goal_id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "driver_maintenance",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `item_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `interval_km` INTEGER, `interval_days` INTEGER, `baseline_km` INTEGER, `baseline_day` TEXT, `next_due_km` INTEGER, `next_due_day` TEXT, `last_service_km` INTEGER, `last_service_day` TEXT, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `item_id`))",
+        "fields": [
+          {
+            "fieldPath": "ownerAccount",
+            "columnName": "owner_account",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vehicleId",
+            "columnName": "vehicle_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemId",
+            "columnName": "item_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intervalKm",
+            "columnName": "interval_km",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "intervalDays",
+            "columnName": "interval_days",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "baselineKm",
+            "columnName": "baseline_km",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "baselineDay",
+            "columnName": "baseline_day",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "nextDueKm",
+            "columnName": "next_due_km",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "nextDueDay",
+            "columnName": "next_due_day",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastServiceKm",
+            "columnName": "last_service_km",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lastServiceDay",
+            "columnName": "last_service_day",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "updatedAtMillis",
+            "columnName": "updated_at_millis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "owner_account",
+            "origin",
+            "vehicle_id",
+            "item_id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4f28443a7d5187c6759d6ed6bec878ac')"
+    ]
+  }
+}

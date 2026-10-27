@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: abastevo-temp-quota
+  namespace: abastevo-temp
+spec:
+  hard:
+    limits.cpu: '6'
+    limits.memory: 8Gi
+    persistentvolumeclaims: '4'
+    requests.cpu: '2'
+    requests.memory: 4Gi

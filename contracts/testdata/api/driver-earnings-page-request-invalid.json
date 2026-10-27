@@ -1,0 +1,10 @@
+{
+  "id": "driver-earnings-page-request-invalid",
+  "schema": "DriverEarningsPageRequest",
+  "valid": false,
+  "value": {
+    "family_id": "44444444-4444-4444-8444-444444444444",
+    "access_token": "synthetic",
+    "limit": 101
+  }
+}

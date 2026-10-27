@@ -25,7 +25,7 @@ func (s *Store) readTx(ctx context.Context, p app.Principal, signing bool) (pgx.
 }
 func stateView(state q.CloudState) app.Status {
 	enabled := []string{}
-	for _, d := range []string{"vehicles", "favorites", "preferences"} {
+	for _, d := range domain.Datasets() {
 		if state.ConsentMask&datasetBit(d) != 0 {
 			enabled = append(enabled, d)
 		}
@@ -138,7 +138,7 @@ func (s *Store) Erase(ctx context.Context, p app.Principal, dataset, id string) 
 	}
 	mask := datasetBit(dataset)
 	if dataset == "all" {
-		mask = 7
+		mask = allDatasetMask()
 	}
 	if !needs.Valid {
 		return 0, domain.ErrUnavailable

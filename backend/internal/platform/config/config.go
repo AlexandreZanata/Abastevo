@@ -102,6 +102,7 @@ const (
 	keyAdminKeySHA256Next = "ANPFUEL_ADMIN_KEY_SHA256_NEXT"
 	keyAdminOrigin        = "ANPFUEL_ADMIN_ORIGIN"
 	keyAdminAllowedCIDRs  = "ANPFUEL_ADMIN_ALLOWED_CIDRS"
+	keyDriverEnabled      = "ANPFUEL_DRIVER_ENABLED"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -150,6 +151,8 @@ type Config struct {
 	QualitySanctionsDiscoveryEnabled   bool
 	QualityDiscoveryEnabled            bool
 	QualityRevalidationEnabled         bool
+	// DriverEnabled gates private driver report/command routes and worker cleanup.
+	DriverEnabled bool
 	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
 	QualityReadsEnabled        bool
 	QualityCompanyReadsEnabled bool
@@ -364,6 +367,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_CHARGING_READS_ENABLED must be boolean")
 		}
 		cfg.ChargingReadsEnabled = enabled
+	}
+
+	if raw, present := getenv(keyDriverEnabled); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_DRIVER_ENABLED must be boolean")
+		}
+		cfg.DriverEnabled = enabled
 	}
 
 	cfg.PriceRankingEnabled = true

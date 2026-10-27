@@ -3905,3 +3905,81 @@ Front B — public static consultation and operational handoff:
 Local data, static-artifact and real-preview gates are distinct. A completed
 plan/build or a 16 GB host does not prove thousands of concurrent users, current
 legal status, national coverage, enabled ingestion, public deployment or G09.
+
+
+## Individual app-driver suite — DRV (planning, 2026-10-26)
+
+[Complete DRV-00–35 execution plan](docs/planning/DRIVER_SUITE_EXECUTION_PLAN.md)
+and [selected product contract](docs/product/DRIVER_SUITE_CONTRACT.md): 36 phases,
+108 bounded tasks. Owner confirmed the professional suite remains Premium.
+Reuse PRM/MEX/EE ledger/metrics/cloud and MAP ports; first repair km/metres and
+financial display, then add private shifts/earnings/distance/cost allocation,
+manual and explicitly initiated GPS work, maintenance/goals/reports/import,
+real backend/mobile/privacy/performance/field acceptance and protected delivery.
+No runtime, sale, platform API, device, VPS, public release or integration was
+executed by creating this plan. Existing PAY/ESP/MAP obligations stay with their
+owning fronts; no raw GPS cloud inclusion or passenger data is introduced.
+
+Driver foundation execution checkpoint (2026-10-26): DRV-00–02 are
+LOCAL_DONE / INTEGRATION_PENDING; [DRV-02 acceptance](docs/backend/evidence/driver-suite/DRV-02.md)
+records real legacy review, unchanged financial corpus and explicit test-only
+earnings/time reference checks. At that initial checkpoint, DRV-03–35 remained planned; the later source
+continuation below supersedes that phase state. Full hosted/mobile driver
+journeys and live GPS remain future scope; local foundation acceptance is not suite delivery or production
+certification. Other construction fronts are preserved.
+
+Driver-only continuation (2026-10-26): DRV-03–07 are LOCAL_DONE /
+INTEGRATION_PENDING: exact earnings/results, clock-safe shifts, distinct
+distance/quality, dated cost allocation and actual private earnings persistence.
+[Batch acceptance](docs/backend/evidence/driver-suite/DRV-03-07_ACCEPTANCE.md)
+records PostGIS/Kotlin/Android checks and the inherited global coverage failure
+(pure dev 80.31%, batch 81.81%, unchanged minimum 90%; owned driver 93.48%).
+Delivery targets only driver PR #152 → dev, preserving other construction
+fronts. No main merge, public endpoint, driver hub, live GPS collector, signed
+cloud activation or production claim. DRV-11 is LOCAL_DONE / INTEGRATION_PENDING at behavior `470e1d26`;
+[evidence](docs/backend/evidence/driver-suite/DRV-11.md) records revisioned
+projections, private HTTP/snapshots, owner cursors and feature-gated worker
+cleanup. DRV-12 is LOCAL_DONE / INTEGRATION_PENDING at behavior `69bdb374`;
+[evidence](docs/backend/evidence/driver-suite/DRV-12.md) records the signed HTTP
+earning/shift/cost/report journey, restart/stale/erasure checks. DRV-13 is LOCAL_DONE / INTEGRATION_PENDING at behavior `062a4030`;
+[evidence](docs/backend/evidence/driver-suite/DRV-13.md) records Room schema 29,
+28→29 migration, transactional owner/origin state, restart and A/B/guest
+isolation on an owned API35 emulator. DRV-14 is LOCAL_DONE / INTEGRATION_PENDING at behavior `72f8bd46`;
+[evidence](docs/backend/evidence/driver-suite/DRV-14.md) records the durable
+outbox/leases/backoff and shared Go→Kotlin wire fixtures on an owned API35
+emulator. DRV-15 is LOCAL_DONE / INTEGRATION_PENDING at behavior `24aa536a`;
+[evidence](docs/backend/evidence/driver-suite/DRV-15.md) records explicit
+driver-dataset consent, two-device sync/restore, conflicts, foreign refusal and
+erasure-epoch snapshot purge on real PostGIS. DRV-16 is LOCAL_DONE / INTEGRATION_PENDING at behavior `d1db75ab`;
+[evidence](docs/backend/evidence/driver-suite/DRV-16.md) records the mobile
+driver hub, Premium/offline/lapse/signed-out states, retained-data actions and
+four-tab navigation regression on an owned API35 emulator. DRV-17 is LOCAL_DONE / INTEGRATION_PENDING at behavior `24c85e5a`;
+[evidence](docs/backend/evidence/driver-suite/DRV-17.md) records quick
+refuel/charge entry, separate charge fees, exact units and the existing
+consumption/energy unknown semantics on JVM and an owned API35 emulator.
+DRV-18–25 are IN_PROGRESS at behavior `757eb61f` (local shift/earnings/payout/cost, explicit GPS recorder, reconciliation, result, goals and maintenance). Break-even, coverage, reserve/vehicle reset, Compose/accessibility and real GPS/battery/field proof remain open; DRV-26–35 remain PLANNED.
+
+Durable movement continuation (2026-10-26): DRV-08 is LOCAL_DONE /
+INTEGRATION_PENDING at behavior `4026df2a`. [Evidence](docs/backend/evidence/driver-suite/DRV-08.md)
+records migration 000134, owner-fenced shift/version receipts, recovery gaps and
+aggregate distance observations, proven by 16 real disposable PostGIS adapter
+tests plus domain checks under `-race`. No HTTP, mobile, GPS, cloud or
+production admission is implied. DRV-09 is LOCAL_DONE / INTEGRATION_PENDING
+at behavior `9241b869`; [evidence](docs/backend/evidence/driver-suite/DRV-09.md)
+records versioned cost/maintenance persistence, exact ledger links and
+tombstone/epoch erasure, proven by 21 real PostGIS adapter tests plus driver
+domain checks under `-race`. DRV-10 is LOCAL_DONE / INTEGRATION_PENDING at
+behavior `0c98c0b4`; [evidence](docs/backend/evidence/driver-suite/DRV-10.md)
+records signed command/principal checks, transactional capability lapse,
+retained reads, versioned reconciliation decisions and cancellation/rollback,
+proven by 24 real PostGIS adapter tests plus application/domain checks under
+`-race`. HTTP/identity wiring and report consumption remain future work.
+DRV-11 is LOCAL_DONE / INTEGRATION_PENDING at behavior `470e1d26`;
+[evidence](docs/backend/evidence/driver-suite/DRV-11.md) records revisioned
+projections, private HTTP/snapshots, owner cursors and feature-gated worker
+cleanup. DRV-12 is LOCAL_DONE / INTEGRATION_PENDING at behavior `69bdb374`;
+[evidence](docs/backend/evidence/driver-suite/DRV-12.md) records the signed HTTP
+earning/shift/cost/report journey, restart/stale/erasure checks. DRV-13 is LOCAL_DONE / INTEGRATION_PENDING at behavior `062a4030`;
+[evidence](docs/backend/evidence/driver-suite/DRV-13.md) records Room schema 29,
+28→29 migration, transactional owner/origin state, restart and A/B/guest
+isolation on an owned API35 emulator. DRV-14–35 remain PLANNED.
