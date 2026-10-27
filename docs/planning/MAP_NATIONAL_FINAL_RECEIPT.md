@@ -171,7 +171,23 @@ distribution origin exists (BLOCKED_CONFIG). Pins still render because the
 world fixture initialises the camera; the three requested cities are therefore
 UI/pin evidence, not base-tile evidence.
 
-P38 matrix, branch `origin/codex/p38-acceptance-20261026` (`4cb221d5`, PR #157)
+Merged-head device run (`b1b85f94` + test fix `ed4f685f`, same device;
+`merged-head-device-matrix.txt`): `MapScreenInstrumentedTest` 13/13,
+`SavedPlacesDeviceTest` 3/3, every `maps:engine` host/overlay class, and
+`MapDownloadWorkerTest` 7/7 pass. `MapDownloadWorkerTest` previously expected
+the pre-MAP-24 `CONNECTED` default; MAP-24 made downloads Wi-Fi-aware
+(`UNMETERED` by default), so the test now asserts both branches.
+`MapRouteInstrumentedTest` (recenter control never leaves the tree after a tab
+switch) and `NativeRouteScreenInstrumentedTest` (`native-route-open` is only
+composed in the expanded panel) fail identically on pure `origin/dev`
+`6f8b82b5`: they come from the dev persistent-host and compact-panel UI, not
+from the national merge, and stay open for that UI work. Bottom-tab, home and
+training-consent failures are the same pre-existing rows as below. No failure
+touches the pin tiers.
+
+The matrix below ran on a different tree and is P38 evidence only, not
+evidence for this merge. P38 matrix, branch
+`origin/codex/p38-acceptance-20261026` (`4cb221d5`, PR #157)
 run with `ANDROID_SERIAL=VKCQGAUCGYAMR4W4 ./gradlew connectedDebugAndroidTest`:
 
 | Module | Cases | Passed | Failed | Skipped |
@@ -186,8 +202,8 @@ the admitted regional fixture (private runtime, not shipped), and nine are
 device/Compose environment cases (scroll/keyboard/WorkManager timing and the
 Appendix A2 sync timeouts). In the data module the failures are the 15 MB
 database-size boundary, `RealImageOcrDeviceTest` BLOCKED_MEDIA, and
-`MapDownloadWorkerTest` expecting `CONNECTED` while the scheduler defaults to
-`UNMETERED` (pre-existing test/code drift in PR #157, not changed here).
+`MapDownloadWorkerTest` expecting the pre-MAP-24 `CONNECTED` default (fixed
+in `ed4f685f`, 7/7 on the merged head).
 `MapOfflineDistributionInstrumentedTest` passed 4/4 once the synthetic
 distribution server and `adb reverse tcp:18766` were provided; the engine
 `MapHostRealEngineInstrumentedTest` passed in isolation and the remaining

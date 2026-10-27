@@ -1,7 +1,7 @@
 # Current execution state
 
 - MAP national stations 2026-10-27: APPLIED on staging / INTEGRATION_PENDING.
-  Branch `codex/map-national-staging` head `b1b85f94` merges the six dev map-UI
+  Branch `codex/map-national-staging` (merge `b1b85f94`) merges the six dev map-UI
   commits (persistent host, compact controls, grouped filters, shared fuel
   selector, action cards, panel collapse) with the national pin tiers:
   40,388/45,688 pins (88.4%); 5,300 L5 stations stay list-only. Staging smoke:
@@ -13,10 +13,15 @@
   Sorriso (`address-point`). Base tiles render only for the admitted Paraná fixture
   because `mapDistBaseUrl`, `mapDistRegion` and `mapDistKeys` are empty in every
   built variant (BLOCKED_CONFIG); the three requested cities keep pins over a
-  blank base. P38 matrix: app 87/120 passed, 24 failed (BLOCKED_MEDIA, missing
-  admitted regional fixture, device/Compose environment), 9 skipped; data
-  112/117 passed, 3 failed (15 MB boundary, BLOCKED_MEDIA, CONNECTED/UNMETERED
-  test drift), 2 skipped; maps engine 9/10 (missing admitted fixture). No
+  blank base. Merged-head device run (`ed4f685f`): `MapScreenInstrumentedTest`
+  13/13, saved places 3/3, all `maps:engine` host/overlay classes and
+  `MapDownloadWorkerTest` 7/7 (stale pre-MAP-24 `CONNECTED` assertion fixed)
+  pass. `MapRouteInstrumentedTest` and `NativeRouteScreenInstrumentedTest` fail
+  identically on pure `origin/dev` `6f8b82b5` (persistent-host and compact-panel
+  UI; open for that work); bottom-tab/home/training-consent rows are
+  pre-existing. Separate P38 matrix on the PR #157 tree (not this merge): app
+  87/120, data 112/117, engine 9/10; BLOCKED_MEDIA and missing admitted
+  regional fixture remain. No
   backend change, so no redeploy. Receipt with screenshots:
   [MAP_NATIONAL_FINAL_RECEIPT](MAP_NATIONAL_FINAL_RECEIPT.md#device-validation).
   Delivery: [PR #162](https://github.com/AlexandreZanata/Abastevo/pull/162)
