@@ -288,3 +288,85 @@ test('login 401: wrong key is an error for the form, not a session expiry redire
   assert.equal(errorMessage(error), 'Chave ou sessão inválida.');
   assert.equal(api.hasSession(), false);
 });
+
+// The Go handlers marshal domain.Claim and domain.Profile without JSON tags,
+// so their keys arrive capitalized; the documented views are lowercase. Both
+// shapes must normalize to the same view.
+const CLAIM_SHAPES = {
+  capitalized: {
+    ID: 'c1', AccountID: 'account-1', GitHubLogin: 'OctoCat', State: 'APPROVED',
+    ProofStatus: 'VERIFIED', GistID: 'gist-1', Override: true, DecisionReason: 'synthetic reason',
+    CreatedAt: '2026-01-01T00:00:00Z', ExpiresAt: '2026-02-01T00:00:00Z', DecidedAt: '2026-01-02T00:00:00Z',
+  },
+  lowercase: {
+    claim_id: 'c1', account_id: 'account-1', github_login: 'OctoCat', state: 'APPROVED',
+    proof_status: 'VERIFIED', gist_id: 'gist-1', override: true, decision_reason: 'synthetic reason',
+    created_at: '2026-01-01T00:00:00Z', expires_at: '2026-02-01T00:00:00Z', decided_at: '2026-01-02T00:00:00Z',
+  },
+};
+
+const PROFILE_SHAPES = {
+  capitalized: {
+    AccountID: 'account-1', DisplayName: 'Octo Cat', Links: [{ platform: 'github', handle: 'octocat' }],
+    Visibility: 'PUBLIC', PublicConsent: true, ShowRolesPublicly: true, HiddenByAdmin: true,
+    CreatedAt: '2026-01-01T00:00:00Z', UpdatedAt: '2026-01-02T00:00:00Z',
+  },
+  lowercase: {
+    account_id: 'account-1', display_name: 'Octo Cat', links: [{ platform: 'github', handle: 'octocat' }],
+    visibility: 'PUBLIC', public_consent: true, show_roles_publicly: true, hidden_by_admin: true,
+    created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
+  },
+};
+
+async function loggedInApi(respond) {
+  const { AdminApi } = await loadApi();
+  const fetchFn = fakeFetch((input, init) => {
+    if (input === '/v1/admin/session') {
+      return jsonResponse(200, { csrf_token: 'csrf-1', expires_at: '2026-01-01T00:00:00Z' });
+    }
+    return respond(input, init);
+  });
+  const api = new AdminApi(fetchFn, () => {});
+  await api.login('k');
+  return { api, fetchFn };
+}
+
+for (const [shape, rawClaim] of Object.entries(CLAIM_SHAPES)) {
+  test(`contributors: approve normalizes a ${shape} claim inside "claim"`, async () => {
+    const grant = { id: 'g1', tier: 'CONTRIBUTOR', state: 'ACTIVE' };
+    const { api, fetchFn } = await loggedInApi(() => jsonResponse(200, { claim: rawClaim, grant, login: 'octocat' }));
+    const approved = await api.approveClaim('c1', '0123456789', true);
+    assert.equal(fetchFn.calls[1].input, '/v1/admin/contributor-claims/c1/approve');
+    assert.deepEqual(approved.claim, {
+      claim_id: 'c1', account_id: 'account-1', github_login: 'OctoCat', state: 'APPROVED',
+      proof_status: 'VERIFIED', gist_id: 'gist-1', override: true, decision_reason: 'synthetic reason',
+      created_at: '2026-01-01T00:00:00Z', expires_at: '2026-02-01T00:00:00Z', decided_at: '2026-01-02T00:00:00Z',
+    });
+    assert.deepEqual(approved.grant, grant);
+    assert.equal(approved.login, 'octocat');
+  });
+}
+
+for (const [shape, rawProfile] of Object.entries(PROFILE_SHAPES)) {
+  for (const hidden of [true, false]) {
+    const action = hidden ? 'hide' : 'unhide';
+    test(`contributors: profile ${action} normalizes a ${shape} profile`, async () => {
+      const body = { ...rawProfile };
+      if (!hidden) {
+        delete body.HiddenByAdmin;
+        delete body.hidden_by_admin;
+      }
+      const { api, fetchFn } = await loggedInApi(() => jsonResponse(200, body));
+      const profile = await api.setProfileHidden('account-1', '0123456789', hidden);
+      const call = fetchFn.calls[1];
+      assert.equal(call.input, `/v1/admin/contributor-profiles/account-1/${action}`);
+      assert.deepEqual(JSON.parse(call.init.body), { reason: '0123456789' });
+      assert.ok(call.init.headers['X-Admin-CSRF']);
+      assert.deepEqual(profile, {
+        account_id: 'account-1', display_name: 'Octo Cat', links: [{ platform: 'github', handle: 'octocat' }],
+        visibility: 'PUBLIC', public_consent: true, show_roles_publicly: true,
+        hidden_by_admin: hidden ? true : undefined,
+      });
+    });
+  }
+}
