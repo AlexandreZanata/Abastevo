@@ -85,6 +85,49 @@ Worktrees (create with `git worktree add -b <branch> <path> origin/main`):
 | B | `.worktrees/adm-web` | `codex/adm-b<N>-<slug>` |
 | C | `.worktrees/adm-contributors-ui` | `codex/adm-c<N>-<slug>` |
 
+## 1a. Consolidation and staging corrections (2026-10-27)
+
+State: A1–A4 are delivered as stacked PRs #164 → #166 → #167 → #168, all
+open; #164 conflicts with `main` (main moved to `d4dcf716`). Migrations
+`000140`–`000143` do not collide with the map (`000139`) or driver
+(`000133`–`000138`) reservations. Nothing of A1–A4 is on staging.
+
+Staging facts that supersede the plan text above:
+
+- Staging is single-node k3s in namespace `abastevo-temp`, not Docker
+  Compose. `docs/operator/deploy.md` (Compose) does not describe it. The
+  reviewed templates are `infra/k8s/staging/` (PR #169) and the deploy path is
+  the CD agent (CD-03/CD-04). The API reads configuration from a Kubernetes
+  Secret, not an env file.
+- Staging currently runs the unmerged map branch (images `stg-7c7d776f`,
+  schema `000139`). Deploying any single feature branch would drop the other
+  branch's features, so admin code reaches staging only through `main` and the
+  CD agent (or one supervised CD apply), after the map PRs are in `main`.
+
+Decisions:
+
+1. Front B starts now (rule above: after the A1 PR exists). It does not wait
+   for A5. Local integration uses a backend built from the A4 head
+   (`codex/adm-a4-staff-roles`, which contains A1–A3) on a disposable
+   database; unit tests use a fake `fetch` against the OpenAPI contract.
+2. A5 is split. A5a (code, now): `scripts/tests/test-admin-staging.sh` plus a
+   run against the local A4 stack, as a normal PR stacked on #168. A5b
+   (staging run): executes in the same staging window as B3, after A1–A4 and
+   the map PRs are in `main` and deployed; its evidence goes in the B3 PR
+   (`backend/evidence/admin/A5-STAGING.md`), not in a bookkeeping-only PR.
+3. Keys: the user generates the staging admin key locally with
+   `go run ./cmd/ops admin keygen`, keeps the raw key, and the hash goes into
+   the staging Secret (`kubectl -n abastevo-temp` patch of the API Secret,
+   run by the user or by an agent that only receives the hash). Rotation is
+   the same command after the validation. No agent sees the raw key.
+4. B3 serves `admin-web/dist` from the staging web tier (the Caddy ConfigMap
+   and web Deployment templates in `infra/k8s/staging/`, a release directory
+   switched by symlink like the landing), not from Compose files. Production
+   wiring stays out of scope (G09).
+5. Merge order: #161 (this plan) → #164 (after merging current `main` into
+   it) → retarget #166, #167, #168 to `main` one by one as each base merges →
+   A5a. Front B PRs target `main` and merge after #164.
+
 ## 2. Front A — Backend
 
 ### A0 — Recon (no PR)
