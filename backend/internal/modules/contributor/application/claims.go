@@ -244,6 +244,16 @@ func (s *Service) ApproveClaim(ctx context.Context, m adminapp.Mutation, claimID
 			Reason: m.Reason, Before: mustJSON(redactClaimForAudit(claim)), After: mustJSON(redactClaimForAudit(decided)),
 		}}
 		var grant *entdomain.Grant
+		lapsed, err := s.Grants.SupersedeExpiredTx(ctx, tx, claim.AccountID, entdomain.TierContributor, now)
+		if err != nil {
+			return adminapp.MutationResult{}, nil, err
+		}
+		if lapsed != nil {
+			events = append(events, adminapp.AuditEvent{
+				Action: "admin.grant.revoke", TargetType: "entitlement_grant", TargetID: lapsed.ID,
+				Reason: entdomain.ExpiredRevokeReason, After: mustJSON(adminapp.View(*lapsed)),
+			})
+		}
 		active, err := s.Grants.ActiveTx(ctx, tx, claim.AccountID, now)
 		if err != nil {
 			return adminapp.MutationResult{}, nil, err
