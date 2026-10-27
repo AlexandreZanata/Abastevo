@@ -11,6 +11,260 @@
   k8s, nginx or production action.
   [CD-03 evidence](../backend/evidence/cd/CD-03.md).
 
+- DRV-00..25 driver suite 2026-10-27: PR #152 integration into `dev`, local
+  slices only and `ANPFUEL_DRIVER_ENABLED` off by default. The open work that
+  closes DRV-18..25 is listed in
+  [DRIVER_SUITE_EXECUTION_PLAN section 10](DRIVER_SUITE_EXECUTION_PLAN.md#10-remaining-work-after-the-pr-152-integration-2026-10-27).
+  Owner decisions D1-D3 come first. DRV-26..35 are not started.
+
+- DRV-18/21 continuation: IN_PROGRESS / partial, on `driver-suite/drv-00-02`.
+  [Evidence](../backend/evidence/driver-suite/DRV-18-recovery-continuation.md).
+  After shift/GPS pause/end/recovery integration, focused JVM tests, APKs,
+  app lint and mobile static guard passed; combined synthetic screen/Room and
+  GPS instrumentation passed 8/8 on owned API35 6 GiB. Earlier failed and
+  crashed attempts remain recorded. The local 60 s/1 s checkpoint values come
+  from test vectors, not an admitted operational policy. Session/logout and
+  Room commit races, GPS account/permission changes without callback, quality,
+  field/battery, lifecycle, accessibility and complete workday remain open.
+  Last recorded global domain coverage was 81.81% versus the required 90%;
+  it was not remeasured. No DRV-18/21 acceptance or batch integration claim.
+
+- DRV-22..25 2026-10-26: IN_PROGRESS / local slice, parent 3fd99ee9,
+  behavior 757eb61f. [Evidence](../backend/evidence/driver-suite/DRV-22-25.md).
+  Room schema 32 adds reconciliation, goals and maintenance; work screen adds
+  basis/odometer/GPS/paid km reconciliation, local result/per-km, daily/weekly
+  goals and km/day maintenance plans with service advance. JVM calculations,
+  Room 31→32 migration on API35, app/data compile and static guards PASS.
+  Break-even, cost-window coverage, reserve/vehicle reset, Compose/accessibility
+  and field GPS/battery proof remain open; no five-phase acceptance.
+
+- DRV-21 2026-10-26: IN_PROGRESS / explicit FGS slice, behavior 313e5c63.
+  [Evidence](../backend/evidence/driver-suite/DRV-18-22.md). Added
+  DriverGpsService (visible notification, GPS provider/2 s, explicit start/stop,
+  START_NOT_STICKY, local distance row) and updated the static location guard to
+  allow only this service. Runtime permission UX, process-death/battery/
+  coexistence and Play policy proof remain open. No field/device acceptance.
+
+- DRV-18..22 2026-10-26: IN_PROGRESS (local slice only), parent c78b0f89,
+  behavior 3517820b, merge c4266814. [Evidence](../backend/evidence/driver-suite/DRV-18-22.md).
+  Added Room schema 31 (shift odometers, payouts, cost settings, GPS table) and
+  a local work screen for manual shift start/pause/resume/end/recovery,
+  earnings/payout entry, cost settings and a basic summary. Room 30→31
+  instrumentation, JVM migration/parsing, app/data compile and static guards
+  PASS. DRV-21 GPS/FGS and DRV-22 reconciliation are NOT implemented; behavior
+  UI tests for 18–20 remain open. Published to PR #152 for incremental review,
+  not as five-phase acceptance.
+
+- DRV-17 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent a6c2837d,
+  behavior 24c85e5a. [Evidence](../backend/evidence/driver-suite/DRV-17.md).
+  Hub quick refuel/charge routes into the real exact ledger forms, separate
+  charge fees field, fees/energy/total/SOC/tariff persistence, pt-BR and
+  double-tap/restart coverage, full-partial-full/GNV/mixed/PHEV unknown
+  regression. JVM ledger/domain/routes and full app unit/compile PASS; owned
+  API35 10/10 instrumentation PASS; static guards PASS. No new sync/GPS/shift;
+  no push/PR/merge.
+
+- DRV-16 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent efdcce26,
+  behavior d1db75ab. [Evidence](../backend/evidence/driver-suite/DRV-16.md).
+  Real driver hub route from Perfil/Veículos, VERIFIED/OFFLINE/LAPSED/
+  UNAVAILABLE/SIGNED_OUT states, retained vehicle/ledger/export actions,
+  actionable first-use/error states and four-tab navigation regression. JVM
+  route/state tests, app unit/compile PASS; owned API35 emulator 10/10
+  instrumentation PASS; static guards PASS. Shift form intentionally deferred
+  to DRV-18; no push/PR/merge.
+
+- DRV-15 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 27a0fc95,
+  behavior 24aa536a. [Evidence](../backend/evidence/driver-suite/DRV-15.md).
+  Explicit per-dataset cloud consent (migration 000138), four driver datasets,
+  strict derived-payload validation, two-device pull/snapshot/restore,
+  conflict/replay, foreign refusal and erasure epoch/old-snapshot purge. Full
+  cloudsync/driver tests under -race, backend unit, vet/staticcheck/sqlc PASS.
+  No Android client/UI or driver_shifts registration; no push/PR/merge in this
+  checkpoint.
+
+- DRV-14 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent b5957f53,
+  behavior 72f8bd46. [Evidence](../backend/evidence/driver-suite/DRV-14.md).
+  PENDING/SYNCED/CONFLICT outbox, 29→30 lease migration, owner/guest-isolated
+  claims, expired-lease reuse, bounded backoff/retry-limit and exact shared
+  Go→Kotlin receipt/error fixtures. Android API35 7/7 instrumentation, Go
+  fixture test, JVM data tests, app compile and mobile static guards PASS.
+  Disk-full test not executed (explicit gap). No live dispatcher/cloud/UI.
+  No push/PR/merge in this checkpoint.
+
+- DRV-13 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 6d665c3b,
+  behavior 062a4030. [Evidence](../backend/evidence/driver-suite/DRV-13.md).
+  Room schema 29 with owner/origin-scoped shift/gap, earning/revision, distance,
+  local command and draft tables; transactional writes, append-only 28→29
+  migration, owner A/B/guest isolation and exact integer-unit restart. Real
+  emulator API35: 4/4 instrumentation PASS; JVM migration/repair tests, full
+  data unit tests, app compile and mobile static guards PASS. No UI/GPS/sync/
+  cloud; DRV-14 next. No push/PR/merge.
+
+- DRV-11 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 568ae322,
+  behavior 470e1d26. [Evidence](../backend/evidence/driver-suite/DRV-11.md).
+  Revisioned DAY/WEEK/MONTH/CUSTOM projections, exact cost/distance coverage,
+  stale report refusal, private snapshots, signed HTTP earnings/report routes,
+  owner cursors, no-store, feature flag and bounded worker cleanup (migration
+  000137). Real PostGIS/HTTP/worker/application/domain checks PASS under -race;
+  full backend unit, vet, staticcheck, sqlc, OpenAPI lint and golden vectors
+  PASS. No mobile/provider/staging acceptance. No push/PR/merge.
+
+- DRV-12 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 470e1d26,
+  behavior 69bdb374. [Evidence](../backend/evidence/driver-suite/DRV-12.md).
+  Real signed HTTP chain: earning save/replay/erase, shift start, cost save,
+  report build/get, correction/stale, foreign-owner denial; snapshot restart,
+  soft erasure and expiry cleanup. 51 top-level PASS under -race, full backend
+  unit/build/vet/staticcheck/sqlc/gofmt/OpenAPI PASS. Command HTTP is limited
+  to earning/shift/cost and erasure; no provider/staging/mobile claim.
+
+- DRV-10 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent fd176a8a
+  behavior 0c98c0b4. [Evidence](../backend/evidence/driver-suite/DRV-10.md).
+  Signed command service, transactional professional capability hook, versioned
+  summary/detail and payout/earnings decisions, and retained reads after lapse
+  were added by migration 000136 after 000135. Real disposable PostGIS: 24
+  adapter tests plus 19 driver domain and one application test group PASS under
+  -race, including concurrent duplicate saves, cancellation after writes and
+  stale epochs. No HTTP/identity wiring/cloud/mobile admission; DRV-11 next.
+  No push/PR/merge here.
+
+- DRV-09 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent babf66a7,
+  behavior 9241b869. [Evidence](../backend/evidence/driver-suite/DRV-09.md).
+  Versioned private cost profiles/items and maintenance schedules, exact
+  transaction-bound ledger links, zero-versus-unknown values, odometer segment/
+  reset context, owner epochs and record tombstones were added by migration
+  000135 after 000134. Real disposable PostGIS: 21 adapter tests plus 19 driver
+  domain tests PASS under -race, including concurrent ledger fencing and soft
+  erasure. Full backend unit, vet, staticcheck, sqlc and formatting PASS. No
+  HTTP/Premium/cloud/GPS/mobile admission; DRV-10 next. No push/PR/merge here.
+
+- DRV-08 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent 84dfd74d,
+  behavior 4026df2a. [Evidence](../backend/evidence/driver-suite/DRV-08.md).
+  Durable private shifts, monotonic recovery gaps, version-fenced receipts,
+  aggregate distance observations and owner/vehicle scoping were added by
+  migration 000134 after 000133. Real disposable PostGIS: 16 adapter tests plus
+  17 driver domain tests PASS under -race, including two-device start, replay,
+  stale pause, rollback, overlap and soft-erasure cases. Full backend unit,
+  vet, staticcheck, sqlc and formatting checks PASS. No HTTP/Premium/cloud/GPS/
+  mobile admission; DRV-09 next. No push/PR/merge in this commit.
+
+- DRV-03–07 batch: LOCAL_DONE / INTEGRATION_PENDING, isolated driver PR #152
+  (`driver-suite/drv-00-02` → `dev`, base `507d915e`). Exact money, shifts,
+  distance quality, cost allocation and private earnings storage are delivered;
+  [batch evidence](../backend/evidence/driver-suite/DRV-03-07_ACCEPTANCE.md) records
+  real PostGIS/Android proofs and the inherited global coverage blocker.
+  API26 found an unavailable BigInteger method; checked compatible conversion
+  now passes the same two runtime tests. No threshold waiver or aggregate PASS.
+  Final publication/check receipt belongs to PR metadata; no merge/deploy/wiki.
+  Stop at DRV-07; DRV-08 onward require another request. Other fronts preserved.
+
+- DRV-07 LOCAL_DONE / INTEGRATION_PENDING at `7d830547`: private earnings, source identity and revision persistence. [Evidence](../backend/evidence/driver-suite/DRV-07.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-08 (not authorized); no main/dev push or merge.
+
+- DRV-06 LOCAL_DONE / INTEGRATION_PENDING at `d21e5a34`: vehicle cost profiles and exact allocation. [Evidence](../backend/evidence/driver-suite/DRV-06.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-07; no main/dev push or merge.
+
+- DRV-05 LOCAL_DONE / INTEGRATION_PENDING at `fadfca59`: distance sources, partitions and gps quality. [Evidence](../backend/evidence/driver-suite/DRV-05.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-06; no main/dev push or merge.
+
+- DRV-04 LOCAL_DONE / INTEGRATION_PENDING at `6a66f414`: shifts, clock recovery and multiapp time. [Evidence](../backend/evidence/driver-suite/DRV-04.md). Immediate risk tests PASS; isolated driver PR #152. Next DRV-05; no main/dev push or merge.
+
+- DRV-03 LOCAL_DONE / INTEGRATION_PENDING at `97b42c60`: exact earned/cash/recorded/modeled rules, twelve shared production vectors, Go/Kotlin negative and weighted-money tests PASS. [Evidence](../backend/evidence/driver-suite/DRV-03.md). Isolated driver PR #152; next DRV-04; no main/dev push or merge.
+
+- DRV-02 completion review 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING at
+  behavior `29f6c4fe`, manual oracle `566c3516`. [Evidence](../backend/evidence/driver-suite/DRV-02.md).
+  Preserved owner-reviewed legacy repair; fixed post-read owner/login/consent
+  races, revision drift, gap/reset transport and malformed proof coercion.
+  Final application 479 + affected data 25/app 30 tests, build/lint PASS;
+  actual Room 8/8, Compose 5/5 on own API35/16KB emulator, then shut down.
+  Added 15 manual gain/time reference rows executed in Go/Kotlin; runtime
+  earnings/shifts remain future work. Original financial goldens unchanged.
+  Foundation gate PASS locally; DRV-03–35 PLANNED. Isolated maintained dev;
+  other branches/checkouts preserved, no push/PR/merge/wiki/deploy.
+
+- DRV-02 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent d4223b5c.
+  [Evidence](../backend/evidence/driver-suite/DRV-02.md): legacy odometer units
+  are UNVERIFIED until an owner-reviewed, CAS-fenced, receipt-backed choice;
+  derived consumption/cost/km blocked meanwhile, purchases kept; local envelope
+  never sent. Real Room 6/6 and Compose 5/5 on owned emulator-5568; Go+Kotlin
+  unit oracle (19 rows) and unchanged financial-v1 PASS; final Gradle matrix PASS.
+  **DRIVER_FOUNDATION_GATE: PASS locally** (DRV-00/01/02), not production or
+  full-suite acceptance. DRV-03–35 not started.
+
+- DRV-01 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING, parent e9f1ce25.
+  [Evidence](../backend/evidence/driver-suite/DRV-01.md): real form RED→GREEN,
+  exact km/metres with localized edit, BRL/km from rational centavos and
+  overflow refusal. 18 focused tests, app debug build and final label/lint PASS.
+  No schema/backend/provider/device change. Next DRV-02 legacy owner review;
+  other primary/MAP branches preserved, no delivery/deploy authorized here.
+
+- DRV-00 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING in isolated planning
+  clone, parent42250934/runtime f1e1d0db. [Evidence](../backend/evidence/driver-suite/DRV-00.md)
+  freezes Premium, exact km/money, legacy review and manual/GPS/owner boundaries,
+  five driver scenarios and existing schema/limits. Remote main eee1b33f and
+  dev f1e1d0db verified; foreign primary/MAP edits preserved. Next DRV-01 RED
+  and actual existing-entry fixes; no DRV-03+, push/PR/merge/device/VPS.
+
+- Driver suite planning 2026-10-26: PLANNED / IMPLEMENTATION_NOT_STARTED.
+  Owner confirmed professional Premium. [DRV-00–35](DRIVER_SUITE_EXECUTION_PLAN.md)
+  defines 36 phases/108 tasks for existing financial-unit repair plus real
+  private shifts/earnings/distance/cost/report mobile journeys. [Contract](../product/DRIVER_SUITE_CONTRACT.md)
+  explicitly amends named prior exclusions without changing financial-v1,
+  free/public behavior or raw-GPS cloud exclusions. [Planning validation](DRIVER_SUITE_PLAN_VALIDATION.md)
+  checks identifiers, dependencies, links and 20 synthetic worked vectors only.
+  Isolated planning source f1e1d0db; foreign-dirty primary/MAP checkouts preserved.
+  No runtime/device/provider/VPS/push/PR/merge/wiki/production change.
+  Next, only on implementation request: DRV-00 → DRV-01 → DRV-02.
+- Map panel-collapse follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
+  dev `e64b655f`, existing PR #154. A visible 48 dp chevron hides/reopens the action
+  container; attribution remains visible and saved-state restoration retains the
+  local choice. Existing overlay measurement updates recenter inset in both states.
+  APKs/lint (zero errors), API30 native 13/13 (including restore, callback, geometry
+  and 200% font), reviewed captures, diff/secret checks PASS. New hide/show labels
+  cover eight locales. [Evidence/previews](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md#follow-up-minimal-action-panel-collapse-control).
+  Original occupied checkout/emulator preserved; no new physical/16 KB, deployment
+  or release acceptance. Next: normal dev push/update of #154; leave PR open for
+  current-head CI/review without merge.
+
+- Map action-panel follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
+  dev `c04e8ac4`, existing PR #154. OpenStreetMap attribution is a separate map
+  overlay above/right of the action panel. Filters/Search/Download/Saved reuse
+  shared action cards in an adaptive grid; measured overlay height and reserved
+  clearance keep recenter accessible. Updated skeleton; existing callbacks kept.
+  APKs/lint (zero errors), full API30 UI 12/12, light/dark/200% captures,
+  diff and secret checks PASS. [Evidence/previews](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md#follow-up-map-attribution-and-standard-action-cards).
+  Original occupied checkout and emulator preserved; no new physical/16 KB or
+  staging/release acceptance. Next: normal dev push/update of #154; current-head
+  CI/review pending, leave PR open without merge.
+
+- Map city/fuel follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
+  remote dev `cb111741`, existing PR #154. City aligns to the header start and
+  truncates visually with ellipsis; the fuel field reuses the shared vehicle
+  selector/modal instead of adjacent chips, retaining Apply/Cancel drafts.
+  Debug app/test APKs, lint (zero errors), diff/secret review and API30 native
+  10/10 PASS, including actual city text-layout assertions and eight choices at
+  200% font. Physical phone disconnected; API35 16 KB emulator attempts crashed
+  and are not accepted. [Evidence](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md#follow-up-left-aligned-city-and-shared-fuel-selector).
+  Original occupied checkout/dev preserved. Next: normal push/update of #154;
+  current-head CI/review pending, no merge or staging change.
+
+- Map UI refinement 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from remote
+  dev parent `6a689e58`; delivery target [PR #154](https://github.com/AlexandreZanata/Abastevo/pull/154),
+  `dev` -> `main`. Compact expandable map controls; grouped filter sheet with all
+  fuel icons and pinned Apply/Cancel; actual state/municipality location search
+  preserves filter drafts. App JVM 92/92, engine 37/37 (cached), final APKs,
+  phone 9/9 (including dark/200% font), lint (zero errors), diff and secret review
+  PASS. [Evidence/screenshots/tested fingerprints](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md).
+  Final debug APK installed without clearing data. Original occupied checkout/dev
+  preserved; no staging change or merge. New-head CI remains pending publication;
+  next: normal push/update of PR #154, leave open for current-head CI/review.
+
+- Map UI isolation 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/map-ui` (parent `fe6ca851`). Native map moved to the shell and kept
+  alive across tabs; no engine/surface reinit on return; tab transitions are
+  instant (no crossfade ghost); full-size map with overlay controls; skeleton
+  gates on the first rendered native frame; FlowRow filters and stable 48 dp
+  action bar; map screen instrumented tests 5/5, targeted unit/engine tests and
+  lint PASS. Installed locally on the authorized phone; not pushed/merged.
+  [Evidence](../backend/evidence/maps/MAP-UI-ISOLATION-20261026.md).
+  Staging `nearby` empty/data update remains separate.
+
 - CD-02 staging deploy planner 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Pull-based dry-run agent in `infra/deploy/agent/` verifies the signed
   `staging` manifest (keyless identity/issuer), checks main ancestry through
@@ -39,13 +293,16 @@
   race tests, vet, gofmt, secret scan and `git diff --check` passed locally.
   No deployment, DNS or public portal publication; required Quick verification
   and review gate the merge.
-- MAP-33 cumulative delivery: IN_PROGRESS / CI_PENDING. Existing open
-  `dev → main` PR #151 updated (not PR #150; PR #152 driver is a separate front
-  and untouched). Source union includes `507d915e` and `4eeccfbf`; MAP-23
-  current phone proof, MAP-27/28 local real-engine/UI evidence, MAP-31 local
-  union and MAP-30/32 dispositions are included. Exact-head checks/reviews,
-  guarded merge, post-merge ancestry and wiki remain pending; no merge/deploy is
-  claimed by this entry. [MAP-33 evidence](../backend/evidence/maps/MAP-33.md).
+- MAP-33 cumulative delivery: **INTEGRATED / WIKI_SYNCED** for source only.
+  Existing `dev → main` PR #151 (not PR #150; PR #152 driver untouched) merged
+  at `bbd96568180563ced975b96f8f89f7a3c242522e` (2026-10-26T19:28:55Z), checked
+  head `04e9a6b3`. Quick verification, fast, integration and test all passed;
+  no failed/skipped/cancelled required check and no review was requested.
+  `main` and retained `dev` both matched the merge SHA; wiki published from
+  `bbd96568` as commit `3c08ac4` (778 pages, independently verified source
+  SHA). This post-merge docs note is on dev only. MAP-29 PARTIAL, MAP-30
+  EXTERNAL_PENDING, MAP-32 STAGING_PENDING and the external/manual obligations
+  remain. [MAP-33 evidence](../backend/evidence/maps/MAP-33.md).
 
 - MAP-32 local checkpoint: LOCAL_DONE (runbook + local restore rehearsal) /
   STAGING_PENDING. Frozen candidate manifest, staging-scoped apply/backup/

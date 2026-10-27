@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ledger_review_required">Перед сохранением подтвердите единицу старого показания.</string>
+    <string name="ledger_review_saved">Сохранённое число (единица не проверена): %1$d</string>
+    <string name="ledger_review_metres">Подтвердить %1$s км (число было в метрах)</string>
+    <string name="ledger_review_kilometres">Подтвердить %1$s км (число было в километрах)</string>
+    <string name="ledger_review_failed">Проверка не сохранена. Закройте и снова откройте запись.</string>
+    <string name="ledger_review_entry">Проверить единицу одометра</string>
+    <string name="monthly_review_required">Расход и стоимость/км недоступны до проверки старых показаний.</string>
+</resources>

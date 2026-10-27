@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"slices"
 	"sync"
 	"testing"
 	"testing/fstest"
@@ -513,9 +514,9 @@ func TestMigrationUpgradeReplayAndPostGIS(t *testing.T) {
 		t.Fatal(err)
 	}
 	applied, err := migrate.Apply(ctx, dsn, target)
-	if err != nil || len(applied) != 10 || applied[0] != "000123" || applied[1] != "000124" ||
-		applied[2] != "000125" || applied[3] != "000126" || applied[4] != "000127" ||
-		applied[5] != "000128" || applied[6] != "000129" || applied[7] != "000130" || applied[8] != "000131" || applied[9] != "000132" {
+	expected := []string{"000123", "000124", "000125", "000126", "000127", "000128", "000129", "000130", "000131", "000132",
+		"000133", "000134", "000135", "000136", "000137", "000138"}
+	if err != nil || !slices.Equal(applied, expected) {
 		t.Fatalf("upgrade applied=%v err=%v", applied, err)
 	}
 	again, err := migrate.Apply(ctx, dsn, target)
