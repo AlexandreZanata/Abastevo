@@ -121,6 +121,7 @@ function showLogin(): void {
   el<HTMLElement>('session-info').hidden = true;
   el<HTMLButtonElement>('logout-button').hidden = true;
   selected = null;
+  resetRoleEvents();
 }
 
 function showAuthed(viewId: string): void {
@@ -195,6 +196,11 @@ function renderResults(items: AccountSummary[]): void {
 }
 
 function renderDetail(detail: AccountDetail): void {
+  // Role events belong to one account: their revoke buttons act on that
+  // account's assignments, so they must not survive a switch.
+  if (selected === null || selected.account_id !== detail.account_id) {
+    resetRoleEvents();
+  }
   selected = detail;
   el<HTMLElement>('detail-alias').textContent = detail.alias;
   el<HTMLElement>('detail-status').textContent = detail.status;
@@ -735,6 +741,11 @@ function wireRoles(): void {
         const assignment = await api.assignRole(accountId, roleSelect.value, endRaw === '' ? null : toEndOfDayIso(endRaw), reasonInput.value.trim());
         setAlert('role-error', '');
         reasonInput.value = '';
+        if (selected === null || selected.account_id !== accountId) {
+          // The admin opened another account while this request was in
+          // flight; its row would show (and revoke) on the wrong account.
+          return;
+        }
         const list = el<HTMLUListElement>('role-events');
         clearChildren(list);
         list.appendChild(renderAssignmentRow(assignment));
