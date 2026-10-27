@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: abastevo-deploy-agent
+  namespace: abastevo-temp
+  labels:
+    app: abastevo-deploy-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: abastevo-deploy-agent
+  namespace: abastevo-temp
+  labels:
+    app: abastevo-deploy-agent
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["resourcequotas"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: abastevo-deploy-agent
+  namespace: abastevo-temp
+  labels:
+    app: abastevo-deploy-agent
+subjects:
+  - kind: ServiceAccount
+    name: abastevo-deploy-agent
+    namespace: abastevo-temp
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: abastevo-deploy-agent

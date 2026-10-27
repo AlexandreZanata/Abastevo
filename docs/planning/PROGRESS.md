@@ -1,5 +1,25 @@
 # Current execution state
 
+- CD-04 staging k3s executor 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
+  R2 captured the live `abastevo-temp` objects into `infra/k8s/staging/` with
+  placeholders; the rendered namespace passed `kubectl diff` with exit 0 after
+  ignoring only server-managed metadata. R7 ships the landing layer in the
+  signed OCI artifact. R8 adds namespace-scoped RBAC and a no-token-print
+  kubeconfig helper, not applied. Apply mode adds the schema gate, verified
+  backup, migration Job, one shared image rollout, smoke, landing symlink,
+  `current.json` last, undo/failure receipts and a quota-gated surge default
+  off. Review fixes add the `baseline` subcommand, require `current.json` for
+  apply (no live-annotation gate), write the `schema-floor` annotation, add
+  `migrate -check`, and pass the R5 two-dispatcher overlap integration test.
+  157 harness cases, Quick, shellcheck and actionlint PASS. Part B applied the
+  RBAC, generated the mode-600 kubeconfig, installed the agent/env under the
+  authorized host paths, staged the unit/drop-in, and ran the baseline with
+  SHA `d4dcf716` (DB/floor `000139`, running `stg-7c7d776f` images) plus a
+  plan-only receipt. No apply or timer. Persistent `/etc/systemd/system`
+  install, service-user ownership and the two-merge staging acceptance remain
+  OWED; no production action.
+  [CD-04 evidence](../backend/evidence/cd/CD-04.md).
+
 - CD-03 schema compatibility window 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Phase 3 prerequisite: embedded `schema_min_supported` (`000132`),
   `migrate.Check` accepts a newer additive schema while rejecting missing,

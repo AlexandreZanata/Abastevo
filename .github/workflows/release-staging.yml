@@ -361,11 +361,20 @@ jobs:
           set -euo pipefail
           owner_lc="$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')"
           repository="ghcr.io/${owner_lc}/abastevo-release"
+          landing_sha256="$(jq -r '.landing_sha256' release-manifest.json)"
+          landing_digest="sha256:$(sha256sum landing-bundle/landing-dist.tar.gz | cut -d' ' -f1)"
+          if [[ "$landing_digest" != "sha256:${landing_sha256}" ]]; then
+            printf '%s\n' "landing archive does not match the signed manifest" >&2
+            exit 1
+          fi
           printf '%s' "$GH_TOKEN" | oras login ghcr.io --username "$ACTOR" --password-stdin
           oras push "${repository}:sha-${SHA}" \
             --artifact-type application/vnd.abastevo.release.v1+json \
             "release-manifest.json:application/vnd.abastevo.release.manifest.v1+json" \
-            "release-manifest.sigstore.json:application/vnd.dev.sigstore.bundle.v0.3+json"
+            "release-manifest.sigstore.json:application/vnd.dev.sigstore.bundle.v0.3+json" \
+            "landing-bundle/landing-dist.tar.gz:application/vnd.abastevo.landing.tar+gzip"
+          oras manifest fetch "${repository}:sha-${SHA}" \
+            | jq -e --arg digest "$landing_digest" '[.layers[] | select(.mediaType == "application/vnd.abastevo.landing.tar+gzip")] | length == 1 and .[0].digest == $digest' >/dev/null
           oras tag "${repository}:sha-${SHA}" staging
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
