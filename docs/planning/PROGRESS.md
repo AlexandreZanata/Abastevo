@@ -1,5 +1,16 @@
 # Current execution state
 
+- CD-03 schema compatibility window 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
+  Phase 3 prerequisite: embedded `schema_min_supported` (`000132`),
+  `migrate.Check` accepts a newer additive schema while rejecting missing,
+  modified and older-than-floor ledgers; the release manifest publishes and
+  validates the floor, and the Phase 2 agent carries it in receipts. Unit and
+  PostGIS integration tests, 36 agent tests and Quick PASS. The rollout
+  executor remains OWED because staging is Compose while Phase 3 assumes k8s,
+  and the landing archive still needs an anonymous distribution path. No VPS,
+  k8s, nginx or production action.
+  [CD-03 evidence](../backend/evidence/cd/CD-03.md).
+
 - CD-02 staging deploy planner 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Pull-based dry-run agent in `infra/deploy/agent/` verifies the signed
   `staging` manifest (keyless identity/issuer), checks main ancestry through

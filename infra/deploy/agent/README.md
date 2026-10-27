@@ -17,7 +17,9 @@ The agent runs from a systemd timer on the staging host. Each run:
 6. writes a `abastevo-deploy-plan-v1` receipt with the proposed changes.
 
 It never writes `current.json` and never calls `docker`, `kubectl`, `helm` or
-`systemctl`.
+`systemctl`. The optional `schema_min_supported` field is validated when a
+manifest carries it; the signed Phase 1 manifests without the field remain
+readable. Phase 3 will require it for apply.
 
 ## Prerequisites
 
@@ -112,7 +114,8 @@ The agent writes `plan-<UTC timestamp>-<pid>.json` with mode `0600`:
     "sha": "...",
     "images": {"api": "...", "worker": "...", "migrate": "..."},
     "landing_sha256": "...",
-    "migrations_max": "000132"
+    "migrations_max": "000132",
+    "schema_min_supported": "000132"
   },
   "changes": {
     "release": true,
@@ -148,12 +151,16 @@ non-zero without writing a receipt.
   "images": {"api": "...", "worker": "...", "migrate": "..."},
   "landing_sha256": "...",
   "migrations_max": "000132",
+  "schema_min_supported": "000132",
   "applied_at": "..."
 }
 ```
 
 The Phase 2 agent only reads this file. Absence means "no current release" and
-produces a `plan-only` receipt with `current: null`.
+produces a `plan-only` receipt with `current: null`. Phase 3 writes it and uses
+`schema_min_supported` for the expand/contract gate: a new release whose floor
+is above the previous release floor contains a contract change and must not be
+applied automatically while the previous image is still the rollback target.
 
 ## Tests
 
