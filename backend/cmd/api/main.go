@@ -774,6 +774,9 @@ func run() error {
 	// no route is mounted and every /v1/admin/* path stays 404.
 	if adminSurface, ok := newAdminHandler(cfg, pool.Underlying(), trustedProxies); ok {
 		adminSurface.RegisterRoutes(router)
+		// Contributor admin mutations (approve/reject/link/hide) commit
+		// through the shared admin audit/idempotency helper.
+		contributorService.Runner = adminSurface.Service.Store
 		contributorAdmin := contributorhttp.AdminHandler{Service: contributorService, Admin: adminSurface}
 		staffService := &staffapp.Service{Store: staffStore, Runner: adminSurface.Service.Store, Clock: time.Now, NewID: newUUID}
 		staffAdmin := staffhttp.AdminHandler{Service: staffService, Admin: adminSurface}

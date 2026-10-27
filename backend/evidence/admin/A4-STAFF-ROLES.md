@@ -69,6 +69,14 @@ bash scripts/scan-secrets.sh        # clean
 Plan section 0 secret grep found no real key, configured hash, GitHub token
 or e-mail address.
 
+## Follow-up fix (found by the B2 panel proof)
+
+- Contributor admin mutations (claim approve/reject, direct link, profile
+  hide/unhide) returned 503: `cmd/api/main.go` never set
+  `contributorService.Runner`, so the shared admin audit/idempotency helper
+  was unreachable. One-line composition fix in this branch; end-to-end
+  approval is proven by the B2 panel run (`backend/evidence/admin/B2-*.md`).
+
 ## Not done / notes
 
 - No consumer endpoint enforces a staff role yet (STF-03); each future
