@@ -122,3 +122,39 @@ func TestAdminGrant_ENT08_UnionOfSources(t *testing.T) {
 		t.Fatalf("tiers=%+v", status.Tiers)
 	}
 }
+
+// TestAdminGrant_ENT09_OpenEndedGrantHasNoValidUntil: an open-ended admin
+// grant keeps access until revoked, so the merged valid_until is null rather
+// than a past paid expiry or a shorter bounded grant.
+func TestAdminGrant_ENT09_OpenEndedGrantHasNoValidUntil(t *testing.T) {
+	now := time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
+	month := now.Add(30 * 24 * time.Hour)
+	for name, s := range map[string]*Snapshot{
+		"expired paid plus open-ended admin": {
+			State: Expired, ValidUntil: now.Add(-24 * time.Hour), VerifiedAt: now,
+			AdminCapabilities: []string{"cloud.sync"},
+			Tiers:             []TierStatus{{Tier: "PRO", Source: "admin"}},
+		},
+		"open-ended plus bounded admin": {
+			AdminCapabilities: []string{"cloud.sync"},
+			AdminValidUntil:   month,
+			Tiers: []TierStatus{
+				{Tier: "PRO", Source: "admin"},
+				{Tier: "ENTERPRISE", Source: "admin", ValidUntil: &month},
+			},
+		},
+	} {
+		status := Evaluate(s, now, true)
+		if status.State != Active || status.ValidUntil != nil {
+			t.Fatalf("%s: state=%s valid_until=%v", name, status.State, status.ValidUntil)
+		}
+	}
+	bounded := Evaluate(&Snapshot{
+		AdminCapabilities: []string{"cloud.sync"},
+		AdminValidUntil:   month,
+		Tiers:             []TierStatus{{Tier: "PRO", Source: "admin", ValidUntil: &month}},
+	}, now, true)
+	if bounded.ValidUntil == nil || !bounded.ValidUntil.Equal(month) {
+		t.Fatalf("bounded valid_until=%v", bounded.ValidUntil)
+	}
+}
