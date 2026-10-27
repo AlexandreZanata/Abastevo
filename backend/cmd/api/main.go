@@ -836,11 +836,19 @@ func run() error {
 		}
 		return clouddomain.ErrUnavailable
 	}
+	// Without configured payment ports only admin grants unlock (ENT-10);
+	// Play and web rows keep unlocking nothing in that state.
+	requireCapability := func(ctx context.Context, tx pgx.Tx, owner, capability string) error {
+		if !premiumService.Configured() {
+			return premiumStore.RequireAdminCapability(ctx, tx, owner, capability)
+		}
+		return premiumStore.RequireCapability(ctx, tx, owner, capability)
+	}
 	cloudStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "cloud.sync"))
+		return mapCloudError(requireCapability(ctx, tx, owner, "cloud.sync"))
 	}
 	cloudStore.MultipleVehicles = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		return mapCloudError(premiumStore.RequireCapability(ctx, tx, owner, "vehicles.multiple"))
+		return mapCloudError(requireCapability(ctx, tx, owner, "vehicles.multiple"))
 	}
 	cloudhttp.Handler{
 		Service: cloudStore, CursorSecret: cfg.CursorSecret, Origin: cfg.CanonicalHost,
@@ -855,7 +863,7 @@ func run() error {
 	}.RegisterRoutes(router)
 	ledgerStore := ledgeradapters.NewStore(pool.Underlying())
 	ledgerStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
+		if err := requireCapability(ctx, tx, owner, "professional.write"); err != nil {
 			if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
 				return errors.New("ledger: authentication required")
 			}
@@ -891,7 +899,7 @@ func run() error {
 	}.RegisterRoutes(router)
 	alertsStore := alertsadapters.NewStore(pool.Underlying())
 	alertsStore.Paid = func(ctx context.Context, tx pgx.Tx, owner string) error {
-		if err := premiumStore.RequireCapability(ctx, tx, owner, "professional.write"); err != nil {
+		if err := requireCapability(ctx, tx, owner, "professional.write"); err != nil {
 			if errors.Is(err, subscriptiondomain.ErrUnauthorized) {
 				return errors.New("alerts: authentication required")
 			}
