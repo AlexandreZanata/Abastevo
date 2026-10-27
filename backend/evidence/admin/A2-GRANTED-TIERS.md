@@ -71,7 +71,7 @@ ANPFUEL_TEST_DATABASE_URL='postgres://...@127.0.0.1:55434/anpfuel?sslmode=disabl
 Repository gates:
 
 ```sh
-make quick-verify                   # ok, selection=full, 40s; 0 OpenAPI errors
+make quick-verify                   # ok, selection=full, 43s; 0 OpenAPI errors
 git diff --check                    # empty
 bash scripts/scan-secrets.sh        # no tracked secrets or high-confidence patterns
 ```

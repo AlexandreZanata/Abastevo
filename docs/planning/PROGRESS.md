@@ -8,7 +8,7 @@
   payments-unconfigured capability proof. Tested revision: branch head
   before the evidence commit; `go test -race ./...` 128 ok / 0 fail,
   PostGIS admin+entitlement+subscription+cmd/api integration ok,
-  `make quick-verify` ok (40s), secret scan clean.
+  `make quick-verify` ok (43s), secret scan clean.
   [Evidence](../../backend/evidence/admin/A2-GRANTED-TIERS.md). PR #166 with
   `--base codex/adm-a1-admin-auth`. Next: wait for review; do not start A3.
 
