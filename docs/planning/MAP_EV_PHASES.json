@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "status": "PLANNING_LOCAL_DONE / IMPLEMENTATION_PLANNED",
-  "date": "2026-10-24",
-  "audited_base": "b90a0cd1277f0728d60fdf47bb1b62bc91613416",
+  "status": "SOURCE_RECONCILED / STAGING_PARTIAL / EXTERNAL_PENDING",
+  "date": "2026-10-27",
+  "audited_base": "4882c230",
   "phase_count": 34,
   "phases": [
     {
       "id": "MAP-00",
       "title": "Reconcile the actual baseline and upstream inventory",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [],
       "scope": "Read-only inventory and bounded execution setup.",
       "steps": [
@@ -34,7 +34,7 @@
     {
       "id": "MAP-01",
       "title": "Freeze behavior, source rights and commercial admission",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-00"
       ],
@@ -62,7 +62,7 @@
     {
       "id": "MAP-02",
       "title": "Close the existing electric runtime gaps",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-01"
       ],
@@ -91,7 +91,7 @@
     {
       "id": "MAP-03",
       "title": "Define map artifacts and cross-language contracts",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-02"
       ],
@@ -119,7 +119,7 @@
     {
       "id": "MAP-04",
       "title": "Prepare OSM reference and location candidates in Rust",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-03"
       ],
@@ -146,7 +146,7 @@
     {
       "id": "MAP-05",
       "title": "Prepare exact per-station ANP price facts in Rust",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-04"
       ],
@@ -174,7 +174,7 @@
     {
       "id": "MAP-06",
       "title": "Prepare admitted charging and vehicle reference data",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-05"
       ],
@@ -203,7 +203,7 @@
     {
       "id": "MAP-07",
       "title": "Resolve identities, co-located services and navigation entrances",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-06"
       ],
@@ -231,7 +231,7 @@
     {
       "id": "MAP-08",
       "title": "Build the native map-generation toolchain",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-07"
       ],
@@ -259,7 +259,7 @@
     {
       "id": "MAP-09",
       "title": "Import and publish map assertions transactionally in Go",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-08"
       ],
@@ -287,7 +287,7 @@
     {
       "id": "MAP-10",
       "title": "Serve bounded spatial discovery and exact price projections",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-09"
       ],
@@ -316,7 +316,7 @@
     {
       "id": "MAP-11",
       "title": "Apply freshness, moderation and source lifecycle rules",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-10"
       ],
@@ -344,7 +344,7 @@
     {
       "id": "MAP-12",
       "title": "Publish regional manifests and recoverable download contracts",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-11"
       ],
@@ -372,7 +372,7 @@
     {
       "id": "MAP-13",
       "title": "Prove the data pipeline before Android map work",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-12"
       ],
@@ -400,7 +400,7 @@
     {
       "id": "MAP-14",
       "title": "Extract, package and own the pinned CoMaps-derived engine",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-13"
       ],
@@ -437,7 +437,7 @@
     {
       "id": "MAP-15",
       "title": "Add Android public map persistence and download recovery",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-14"
       ],
@@ -465,7 +465,7 @@
     {
       "id": "MAP-16",
       "title": "Integrate the engine with Compose lifecycle and location",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-15"
       ],
@@ -493,7 +493,7 @@
     {
       "id": "MAP-17",
       "title": "Add the fourth bottom tab and minimal map shell",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-16"
       ],
@@ -522,7 +522,7 @@
     {
       "id": "MAP-18",
       "title": "Render fuel and electric markers with clustering and selection",
-      "status": "PLANNED",
+      "status": "PARTIAL",
       "depends_on": [
         "MAP-17"
       ],
@@ -550,7 +550,7 @@
     {
       "id": "MAP-19",
       "title": "Show fast station prices and honest source switching",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-18"
       ],
@@ -578,7 +578,7 @@
     {
       "id": "MAP-20",
       "title": "Complete discovery, accessibility and the minimal release gate",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-19"
       ],
@@ -605,7 +605,7 @@
     {
       "id": "MAP-21",
       "title": "Complete electric community and operational reports",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-20"
       ],
@@ -633,7 +633,7 @@
     {
       "id": "MAP-22",
       "title": "Implement offline route planning and search with the native core",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-21"
       ],
@@ -661,7 +661,7 @@
     {
       "id": "MAP-23",
       "title": "Implement foreground navigation, rerouting and voice",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-22"
       ],
@@ -689,7 +689,7 @@
     {
       "id": "MAP-24",
       "title": "Finish the regional offline experience and update UX",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-23"
       ],
@@ -717,7 +717,7 @@
     {
       "id": "MAP-25",
       "title": "Add private favorites, saved trips and safe file exchange",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-24"
       ],
@@ -745,7 +745,7 @@
     {
       "id": "MAP-26",
       "title": "Build the electric energy model as a pure domain component",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-25"
       ],
@@ -773,7 +773,7 @@
     {
       "id": "MAP-27",
       "title": "Plan charging stops with a reachable alternative",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-26"
       ],
@@ -801,7 +801,7 @@
     {
       "id": "MAP-28",
       "title": "Expose trip planning and complete the electric private journey",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-27"
       ],
@@ -830,7 +830,7 @@
     {
       "id": "MAP-29",
       "title": "Measure performance, native compatibility and operational budgets",
-      "status": "PLANNED",
+      "status": "PARTIAL",
       "depends_on": [
         "MAP-28"
       ],
@@ -858,7 +858,7 @@
     {
       "id": "MAP-30",
       "title": "Plan and validate optional in-car integration",
-      "status": "PLANNED",
+      "status": "EXTERNAL_PENDING",
       "depends_on": [
         "MAP-29"
       ],
@@ -885,7 +885,7 @@
     {
       "id": "MAP-31",
       "title": "Run regression, privacy and failure acceptance",
-      "status": "PLANNED",
+      "status": "LOCAL_DONE",
       "depends_on": [
         "MAP-29"
       ],
@@ -914,7 +914,7 @@
     {
       "id": "MAP-32",
       "title": "Prepare scoped staging and manual acceptance runbooks",
-      "status": "PLANNED",
+      "status": "STAGING_PENDING",
       "depends_on": [
         "MAP-31"
       ],
@@ -942,7 +942,7 @@
     {
       "id": "MAP-33",
       "title": "Deliver the cumulative protected batch and reconcile obligations",
-      "status": "PLANNED",
+      "status": "INTEGRATED",
       "depends_on": [
         "MAP-32"
       ],

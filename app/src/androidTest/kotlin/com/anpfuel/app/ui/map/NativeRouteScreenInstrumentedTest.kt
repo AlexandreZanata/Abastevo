@@ -23,7 +23,15 @@ class NativeRouteScreenInstrumentedTest {
             val camera=MapEngineHolder.engine.currentCamera()
             camera!=null && camera.zoom>=13 && kotlin.math.abs(camera.latitude+25.43)<0.1 && kotlin.math.abs(camera.longitude+49.27)<0.1
         }
-        compose.onNodeWithTag("native-route-open").performScrollTo().performClick()
+        // The compact controls only compose the route action when expanded.
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithTag("map-controls-toggle").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("map-controls-toggle").performClick()
+        compose.waitUntil(10_000) {
+            compose.onAllNodesWithTag("native-route-open").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("native-route-open").performClick()
         compose.onNodeWithText(text(R.string.map22_origin),substring=false).performScrollTo().performClick()
         compose.onNodeWithText(text(R.string.map22_latitude)).performTextInput("-25.4295")
         compose.onNodeWithText(text(R.string.map22_longitude)).performTextInput("-49.2719")

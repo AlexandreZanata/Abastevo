@@ -1,5 +1,14 @@
 # Current execution state
 
+- MAP completion MC-00 baseline 2026-10-27: LOCAL_DONE. Base `4882c230` plus
+  the task tree. The two route tests now accept the persistent host/compact
+  panel and pass on the POCO (`MapRouteInstrumentedTest` OK 7.3 s,
+  `NativeRouteScreenInstrumentedTest` OK 21.3 s via direct instrumentation with
+  the admitted fixture); `MAP_EV_PHASES.json` statuses were reconciled with
+  `MAP_BATCH_INVENTORY.md`. Gradle unit/lint/assemble `BUILD SUCCESSFUL in
+  3m 31s`; no product behavior change. Evidence:
+  [MC-00](../backend/evidence/maps/map-completion/MC-00.md). Time: ~20 min.
+
 - MAP national stations 2026-10-27: APPLIED on staging / INTEGRATION_PENDING.
   Branch `codex/map-national-staging` (merge `b1b85f94`) merges the six dev map-UI
   commits (persistent host, compact controls, grouped filters, shared fuel
