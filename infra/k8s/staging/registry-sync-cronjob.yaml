@@ -1,0 +1,93 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    app: abastevo-registry-sync
+  name: abastevo-registry-sync
+  namespace: abastevo-temp
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    metadata:
+      labels:
+        app: abastevo-registry-sync
+    spec:
+      activeDeadlineSeconds: 1200
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: abastevo-registry-sync
+        spec:
+          automountServiceAccountToken: false
+          containers:
+          - args:
+            - --root
+            - /state
+            - --prepare
+            - /tools/prepare_registry
+            - --loader
+            - /tools/station-load
+            - --timeout
+            - 18m
+            command:
+            - /tools/station-sync
+            env:
+            - name: ANPFUEL_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  key: ANPFUEL_DATABASE_URL
+                  name: abastevo-temp-secrets
+            - name: GOMAXPROCS
+              value: '1'
+            - name: GOMEMLIMIT
+              value: 32MiB
+            image: postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677
+            imagePullPolicy: Never
+            name: registry-sync
+            resources:
+              limits:
+                cpu: 250m
+                memory: 256Mi
+              requests:
+                cpu: 25m
+                memory: 32Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+              readOnlyRootFilesystem: true
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            volumeMounts:
+            - mountPath: /tools
+              name: tools
+              readOnly: true
+            - mountPath: /state
+              name: state
+          dnsPolicy: ClusterFirst
+          restartPolicy: Never
+          schedulerName: default-scheduler
+          securityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          terminationGracePeriodSeconds: 30
+          volumes:
+          - hostPath:
+              path: ${REGISTRY_SYNC_RELEASES_PATH}
+              type: Directory
+            name: tools
+          - hostPath:
+              path: ${REGISTRY_SYNC_STATE_PATH}
+              type: Directory
+            name: state
+  schedule: 17 3 * * *
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 2
+  suspend: false
+  timeZone: America/Cuiaba

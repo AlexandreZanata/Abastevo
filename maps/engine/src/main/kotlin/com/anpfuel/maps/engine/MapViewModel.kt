@@ -70,6 +70,8 @@ class MapViewModel @Inject constructor(
 
     fun newMapView(context: Context): View = engine.newMapView(context)
 
+    fun isRenderingReady(): Boolean = _state.value.ready && engine.isRenderingReady()
+
     fun onEngineReady() {
         if (disposed || _state.value.ready) return
         initializing = false

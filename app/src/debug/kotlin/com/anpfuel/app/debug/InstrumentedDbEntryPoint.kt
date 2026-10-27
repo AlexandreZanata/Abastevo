@@ -1,6 +1,8 @@
 package com.anpfuel.app.debug
 
 import com.anpfuel.data.local.AnpFuelDatabase
+import com.anpfuel.application.portable.AuthSessionStore
+import com.anpfuel.data.repository.DriverLocalStore
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
@@ -13,4 +15,6 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 interface InstrumentedDbEntryPoint {
     fun database(): AnpFuelDatabase
+    fun driverStore(): DriverLocalStore
+    fun sessions(): AuthSessionStore
 }

@@ -36,6 +36,10 @@ class MapNavigationTest {
         assertEquals(NavigationTab.MAP, NavigationTab.fromRoute(Routes.MAP))
     }
 
+    @Test fun `driver hub stays under profile tab`() {
+        assertEquals(NavigationTab.PROFILE, NavigationTab.fromRoute(Routes.DRIVER_HUB))
+    }
+
     @Test fun `map child routes do not hijack other tabs`() {
         assertEquals(NavigationTab.EXPLORE, NavigationTab.fromRoute(Routes.STATION_PAGE))
         assertEquals(NavigationTab.MAP, NavigationTab.fromRoute(Routes.MAP_STATION_PAGE))
