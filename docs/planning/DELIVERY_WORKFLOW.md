@@ -40,6 +40,25 @@ The helper requires a clean phase branch, committed evidence and matching phase 
 
 Checkpoint files are local conveniences, not shared authority or new versioned product entities. On a fresh clone/worktree, resume from versioned phase evidence and verify the exact source head before creating state through a new phase start; do not copy another worktree's state blindly. Keep phase issues open until actual integration.
 
+## One PR per planning stage (no fragmentation)
+
+Plan and deliver each planning stage (a phase, a front, or a coherent set of
+tasks reviewed together) as **one PR to `main`**. The required checks plus the
+path-selected backend integration take about 14 minutes per head, and the
+`main` protection is strict, so every extra PR in a stage adds another full
+wait plus a re-sync with `main`.
+
+- Do not split a stage into stacked PRs (A1→A2→A3…). Keep atomic commits on
+  one branch; the PR lists the stage's tasks and evidence.
+- Split only when a part must land separately for a real reason: a different
+  owner or reviewer, an independent rollback unit, or a hard external
+  dependency. Record the reason in the plan.
+- When several finished branches are waiting, integrate them through one
+  consolidated branch (merge commits, no rebase) and one PR, and close the
+  superseded PRs with a link to the merged one.
+- Plans must state, per stage, the single delivery branch and PR. A plan that
+  schedules one PR per task is incomplete.
+
 ## Final project batch integration
 
 1. Freeze the final cumulative branch containing all authorized phase commits. Confirm complete task range, accepted exit evidence and outstanding obligations. Fetch current main and merge it normally if needed; rerun affected checks after changes. No force push/rebase of published history/admin bypass/direct-main development.
