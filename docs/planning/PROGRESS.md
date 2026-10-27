@@ -8,8 +8,9 @@
   `health/ready` 200; Manaus 15 km nearby 100 items (99 `anp-reported`,
   1 `address-point`); nearby p50/p95 São Paulo 15 km 15.6/19.2 ms, Curitiba
   9.1/12.5 ms, Sorriso 4.6/8.0 ms, Manaus 9.1/11.2 ms. Device POCO 2311DRK48G:
-  new UI, pins and bottom-sheet quality labels verified in Curitiba, Sorriso,
-  São Paulo and Manaus. Base tiles render only for the admitted Paraná fixture
+  new UI and pins verified in Curitiba, Sorriso, São Paulo and Manaus;
+  bottom-sheet quality labels captured in Curitiba (`anp-reported`) and
+  Sorriso (`address-point`). Base tiles render only for the admitted Paraná fixture
   because `mapDistBaseUrl`, `mapDistRegion` and `mapDistKeys` are empty in every
   built variant (BLOCKED_CONFIG); the three requested cities keep pins over a
   blank base. P38 matrix: app 87/120 passed, 24 failed (BLOCKED_MEDIA, missing
