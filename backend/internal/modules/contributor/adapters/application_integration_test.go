@@ -128,6 +128,19 @@ func seedClaim(t *testing.T, pool *pgxpool.Pool, accountID, login, state, proof 
 	return id
 }
 
+// assertAuditHasNoClaimSecrets is CTB-13: decided claims clear their code and
+// audit rows must not keep a copy of it (or the operation id).
+func assertAuditHasNoClaimSecrets(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	var leaks int
+	if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM admin_audit_events
+		WHERE coalesce(before::text, '') || coalesce(after::text, '') LIKE '%abastevo-contributor-%'
+		   OR coalesce(before::text, '') || coalesce(after::text, '') LIKE '%OperationID%'
+		   OR coalesce(before::text, '') || coalesce(after::text, '') LIKE '%operation_id%'`).Scan(&leaks); err != nil || leaks != 0 {
+		t.Fatalf("audit rows with claim secrets=%d err=%v", leaks, err)
+	}
+}
+
 func adminSession(t *testing.T, pool *pgxpool.Pool, now time.Time) (adminapp.Session, *adminadapters.Store) {
 	t.Helper()
 	store := adminadapters.NewStore(pool)
@@ -267,6 +280,7 @@ func TestApproval_CTB05_CTB06_AtomicGrantAndLink(t *testing.T) {
 	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM admin_audit_events WHERE action IN ('contributor.claim.approve','admin.grant.create','contributor.github.link')").Scan(&audits); err != nil || audits != 3 {
 		t.Fatalf("audits=%d err=%v", audits, err)
 	}
+	assertAuditHasNoClaimSecrets(t, pool)
 	replay, err := service.ApproveClaim(context.Background(), m, claimID, false)
 	if err != nil || replay.Claim.ID != result.Claim.ID || replay.Grant == nil || replay.Grant.ID != result.Grant.ID {
 		t.Fatalf("replay=%+v err=%v", replay, err)
@@ -544,6 +558,7 @@ func TestReject_CTB05_CTB07(t *testing.T) {
 	if err != nil || rejected.State != domain.ClaimRejected || rejected.Code != "" {
 		t.Fatalf("reject=%+v err=%v", rejected, err)
 	}
+	assertAuditHasNoClaimSecrets(t, pool)
 	m.Key = "99999999-9999-4999-8999-999999999999"
 	if _, err := service.RejectClaim(context.Background(), m, claimID); !errors.Is(err, domain.ErrClaimState) {
 		t.Fatalf("second reject err=%v", err)

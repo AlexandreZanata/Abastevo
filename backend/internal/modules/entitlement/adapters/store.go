@@ -138,6 +138,29 @@ func (s *Store) RevokeTx(ctx context.Context, tx pgx.Tx, id string, now time.Tim
 	return domain.Grant{}, domain.ErrNotFound
 }
 
+// SupersedeExpiredTx locks the ACTIVE grant for (account, tier) and, when
+// its end_at has passed, revokes it as "expired". Such a grant no longer
+// counts (ENT-06) but still occupies the active partial unique index, so a
+// new grant for the tier would otherwise always conflict. It returns the
+// revoked grant, or nil when there is none or it is still in force.
+func (s *Store) SupersedeExpiredTx(ctx context.Context, tx pgx.Tx, accountID string, tier domain.Tier, now time.Time) (*domain.Grant, error) {
+	row, err := qent.New(tx).LockActiveGrant(ctx, qent.LockActiveGrantParams{AccountID: uid(accountID), Tier: string(tier)})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, domain.ErrUnavailable
+	}
+	if !row.EndAt.Valid || row.EndAt.Time.After(now) {
+		return nil, nil
+	}
+	revoked, err := s.RevokeTx(ctx, tx, idstr(row.ID), now, domain.ExpiredRevokeReason)
+	if err != nil {
+		return nil, err
+	}
+	return &revoked, nil
+}
+
 func (s *Store) GetTx(ctx context.Context, tx pgx.Tx, id string) (domain.Grant, error) {
 	row, err := qent.New(tx).GetGrant(ctx, uid(id))
 	if errors.Is(err, pgx.ErrNoRows) {

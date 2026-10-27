@@ -17,6 +17,33 @@ func mustJSON(value any) []byte {
 	return raw
 }
 
+// claimAuditView is the audit-safe image of a claim (CTB-13). The one-time
+// code and operation id are omitted entirely so neither the values nor the
+// field names reach the admin audit log. Decided claims clear the code in
+// the table, but the Before image still carries it.
+type claimAuditView struct {
+	ID             string             `json:"id"`
+	AccountID      string             `json:"account_id"`
+	GitHubLogin    string             `json:"github_login"`
+	State          domain.ClaimState  `json:"state"`
+	ProofStatus    domain.ProofStatus `json:"proof_status"`
+	GistID         string             `json:"gist_id,omitempty"`
+	Override       bool               `json:"override"`
+	DecisionReason string             `json:"decision_reason,omitempty"`
+	CreatedAt      time.Time          `json:"created_at"`
+	ExpiresAt      time.Time          `json:"expires_at"`
+	DecidedAt      *time.Time         `json:"decided_at,omitempty"`
+}
+
+func redactClaimForAudit(c domain.Claim) claimAuditView {
+	return claimAuditView{
+		ID: c.ID, AccountID: c.AccountID, GitHubLogin: c.GitHubLogin,
+		State: c.State, ProofStatus: c.ProofStatus, GistID: c.GistID,
+		Override: c.Override, DecisionReason: c.DecisionReason,
+		CreatedAt: c.CreatedAt, ExpiresAt: c.ExpiresAt, DecidedAt: c.DecidedAt,
+	}
+}
+
 func (s *Service) CreateClaim(ctx context.Context, accountID, login, operationID string) (domain.Claim, error) {
 	if !s.enabled() || !domain.ValidUUID(accountID) || !domain.ValidUUID(operationID) {
 		return domain.Claim{}, domain.ErrInvalid
@@ -214,7 +241,7 @@ func (s *Service) ApproveClaim(ctx context.Context, m adminapp.Mutation, claimID
 		}
 		events := []adminapp.AuditEvent{{
 			Action: "contributor.claim.approve", TargetType: "contributor_claim", TargetID: claimID,
-			Reason: m.Reason, Before: mustJSON(claim), After: mustJSON(decided),
+			Reason: m.Reason, Before: mustJSON(redactClaimForAudit(claim)), After: mustJSON(redactClaimForAudit(decided)),
 		}}
 		var grant *entdomain.Grant
 		active, err := s.Grants.ActiveTx(ctx, tx, claim.AccountID, now)
@@ -299,7 +326,7 @@ func (s *Service) RejectClaim(ctx context.Context, m adminapp.Mutation, claimID 
 		}
 		return adminapp.MutationResult{Status: 200, Body: body}, []adminapp.AuditEvent{{
 			Action: "contributor.claim.reject", TargetType: "contributor_claim", TargetID: claimID,
-			Reason: m.Reason, Before: mustJSON(claim), After: mustJSON(decided),
+			Reason: m.Reason, Before: mustJSON(redactClaimForAudit(claim)), After: mustJSON(redactClaimForAudit(decided)),
 		}}, nil
 	})
 	if err != nil {

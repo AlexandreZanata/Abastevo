@@ -7,6 +7,7 @@ import (
 	"mime"
 	"net/http"
 
+	admindomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/domain"
 	entdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/entitlement/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
@@ -57,6 +58,13 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		writeError(w, r, http.StatusConflict, "contributor.override-required")
 	case errors.Is(err, domain.ErrClaimState), errors.Is(err, domain.ErrClaimExpired):
 		writeError(w, r, http.StatusConflict, "contributor.claim-state")
+	case errors.Is(err, admindomain.ErrConflict):
+		// Idempotency-Key reused with a different body (ADM-12).
+		writeError(w, r, http.StatusConflict, "admin.conflict")
+	case errors.Is(err, admindomain.ErrInvalid):
+		writeError(w, r, http.StatusBadRequest, "admin.invalid")
+	case errors.Is(err, admindomain.ErrUnauthorized), errors.Is(err, admindomain.ErrDenied):
+		writeError(w, r, http.StatusUnauthorized, "admin.denied")
 	case errors.Is(err, entdomain.ErrIneligible):
 		writeError(w, r, http.StatusConflict, "entitlement.account-ineligible")
 	case errors.Is(err, entdomain.ErrExists):

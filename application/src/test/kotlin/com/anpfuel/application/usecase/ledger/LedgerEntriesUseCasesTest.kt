@@ -30,7 +30,7 @@ class LedgerEntriesUseCasesTest {
     private class FakeDrafts : LedgerDraftStore {
         val rows = mutableMapOf<String, com.anpfuel.domain.repository.StoredLedgerDraft>()
         var now = 1L
-        override suspend fun save(accountId: String, origin: String, draft: LedgerDraft, expectedRevision: Long, nowMillis: Long, context: com.anpfuel.domain.premium.LedgerSessionContext?) =
+        override suspend fun save(accountId: String, origin: String, draft: LedgerDraft, expectedRevision: Long, nowMillis: Long, context: com.anpfuel.domain.premium.LedgerSessionContext?, odometerEvidence: com.anpfuel.domain.premium.OdometerEvidence) =
             com.anpfuel.domain.repository.StoredLedgerDraft(draft, expectedRevision, nowMillis).also { rows[draft.recordId] = it }
         override suspend fun find(accountId: String, origin: String, dataset: LedgerDataset, recordId: String) = rows[recordId]
         override suspend fun list(accountId: String, origin: String) = rows.values.toList()
@@ -123,4 +123,12 @@ class LedgerEntriesUseCasesTest {
         remove(LedgerDataset.EXPENSE, id)
         assertEquals(1, commands.rows.size)
     }
+    @Test fun `same-revision queued old body cannot conceal a reviewed correction`() = runTest {
+        coEvery { vehicles.findById(any()) } returns null
+        drafts.save("local","https://api.example.test",expense(),0,1)
+        commands.enqueue(com.anpfuel.domain.premium.LedgerCommandFactory.toCommand(PremiumOwnerScope("local","https://api.example.test"),expense(),0))
+        drafts.save("local","https://api.example.test",expense().copy(amountCentavos=5100),0,2)
+        assertEquals(LedgerEntryState.CONFLICT,list(DomainId.from(vid)).single().state)
+    }
+
 }
