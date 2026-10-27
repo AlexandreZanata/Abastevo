@@ -73,7 +73,7 @@ COMMAND="${1:-plan}"
 BASELINE_SHA=""
 case "$COMMAND" in
     plan)
-        (( $# == 0 )) || fail "plan takes no arguments"
+        (( $# <= 1 )) || fail "plan takes no arguments"
         ;;
     baseline)
         shift
