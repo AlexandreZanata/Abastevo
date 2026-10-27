@@ -1,11 +1,11 @@
 # Current execution state
 
-- CD-01 staging release artifacts 2026-10-27: INTEGRATED / REAL_RUN_PENDING.
-  PR #158 merged as `ef86cc93`; local actionlint v1.7.12 and checks PASS. The
-  first automatic main run stopped before artifacts because `setup-oras`
-  v2.0.2 does not bundle ORAS 1.3.6; the follow-up fix pins 1.3.4. Post-fix
-  real run, cosign/attestation verification and anonymous GHCR pull pending.
-  No VPS, deploy, production or Phase 2 work.
+- CD-01 staging release artifacts 2026-10-27: INTEGRATED / LOG_CLEAN_RUN_PENDING.
+  PR #158 (`ef86cc93`) and the ORAS pin fix PR #159 (`2cd8f0ac`) are merged.
+  Run `40494565772` published the signed manifest and images; cosign,
+  attestations and anonymous GHCR pulls passed. `setup-node` was replaced by a
+  preinstalled-Node check so runner cache paths stay out of logs; the
+  log-clean rerun is pending. No VPS, deploy, production or Phase 2 work.
   [CD-01 evidence](../backend/evidence/cd/CD-01.md).
 
 - Landing LH09 / portal shared chrome 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
