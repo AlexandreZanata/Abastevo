@@ -1,5 +1,17 @@
 # Current execution state
 
+- Admin suite batch integration 2026-10-27: INTEGRATION_PENDING. Branch
+  `codex/phase-adm-integration` consolidates the remaining open fronts into
+  one PR to `main` so the long integration suite runs once: A5a (#171),
+  B1/B2 (#170/#172) and C1/C2/C3 (#173/#174/#175). A1 (#164), plan (#161),
+  A2 (#166), A3 (#167) and A4 (#168) are already merged. Review fixes are in
+  each phase evidence. Two pre-existing CI flakes are fixed here: the
+  official-only portal export now publishes as of its lease (content no
+  longer depends on the wall-clock second) and MEX28 ranks a revision that
+  is a fraction of the price table (deterministic index plan). Remaining
+  blocked work: A5b/B3/C4 staging (staging lacks A1–A4; key stays with the
+  user). Open contract questions are listed in the batch report.
+
 - A5a staging script + local A4 run 2026-10-27: LOCAL_DONE /
   INTEGRATION_PENDING. Branch `codex/adm-a5a-staging-script` from A4
   (`f5004a77`), PR stacked on #168. `scripts/tests/test-admin-staging.sh`
