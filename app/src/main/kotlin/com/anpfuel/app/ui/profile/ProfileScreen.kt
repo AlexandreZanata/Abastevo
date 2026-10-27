@@ -208,6 +208,20 @@ fun ProfileScreen(
                 }
             }
 
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = AnpContainerDefaults.containerShape(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surface),
+            ) {
+                ProfileToolItem(
+                    icon = Icons.Default.DirectionsCar,
+                    title = stringResource(R.string.driver_hub_title),
+                    subtitle = stringResource(R.string.driver_hub_profile_subtitle),
+                    onClick = { onNavigate(Routes.DRIVER_HUB) },
+                )
+            }
+
             OutlinedButton(
                 onClick = { onNavigate(Routes.qualityReportHistory()) },
                 modifier = Modifier.fillMaxWidth(),

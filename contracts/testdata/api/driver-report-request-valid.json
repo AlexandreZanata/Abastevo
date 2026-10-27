@@ -1,0 +1,15 @@
+{
+  "id": "driver-report-request-valid",
+  "schema": "DriverReportRequest",
+  "valid": true,
+  "value": {
+    "family_id": "44444444-4444-4444-8444-444444444444",
+    "access_token": "synthetic",
+    "vehicle_id": "22222222-2222-4222-8222-222222222222",
+    "timezone": "America/Cuiaba",
+    "period": "DAY",
+    "anchor": "2026-10-26",
+    "basis": "ODOMETER",
+    "expected_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

@@ -32,7 +32,7 @@ class ResolveRestoreUseCasesTest {
 
     private class FakeDrafts : LedgerDraftStore {
         val rows = mutableMapOf<String, StoredLedgerDraft>()
-        override suspend fun save(accountId: String, origin: String, draft: com.anpfuel.domain.premium.LedgerDraft, expectedRevision: Long, nowMillis: Long, context: com.anpfuel.domain.premium.LedgerSessionContext?) =
+        override suspend fun save(accountId: String, origin: String, draft: com.anpfuel.domain.premium.LedgerDraft, expectedRevision: Long, nowMillis: Long, context: com.anpfuel.domain.premium.LedgerSessionContext?, odometerEvidence: com.anpfuel.domain.premium.OdometerEvidence) =
             StoredLedgerDraft(draft, expectedRevision, nowMillis, context).also { rows["$accountId|$origin|${draft.dataset.wire}|${draft.recordId}"] = it }
         override suspend fun find(accountId: String, origin: String, dataset: LedgerDataset, recordId: String) = rows["$accountId|$origin|${dataset.wire}|$recordId"]
         override suspend fun list(accountId: String, origin: String) = rows.filterKeys { it.startsWith("$accountId|$origin|") }.values.toList()
@@ -402,7 +402,7 @@ class ResolveRestoreUseCasesTest {
             com.anpfuel.domain.repository.LedgerRecordsPage(listOf(serverRecord(1, refuel().bodyJson()), serverRecord(1, other.bodyJson()).copy(id = other.id)), null)
         val diff = PreviewLedgerRestoreUseCase(drafts, erasures, records, sessions, scope.origin)()
         val failing = object : LedgerDraftStore by drafts {
-            override suspend fun save(accountId: String, origin: String, draft: com.anpfuel.domain.premium.LedgerDraft, expectedRevision: Long, nowMillis: Long, context: com.anpfuel.domain.premium.LedgerSessionContext?): StoredLedgerDraft {
+            override suspend fun save(accountId: String, origin: String, draft: com.anpfuel.domain.premium.LedgerDraft, expectedRevision: Long, nowMillis: Long, context: com.anpfuel.domain.premium.LedgerSessionContext?, odometerEvidence: com.anpfuel.domain.premium.OdometerEvidence): StoredLedgerDraft {
                 if (draft.recordId == other.id) throw java.io.IOException("disk unavailable")
                 return drafts.save(accountId, origin, draft, expectedRevision, nowMillis, context)
             }

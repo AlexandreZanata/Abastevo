@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ledger_review_required">Confirme a unidade desta leitura antiga antes de salvar.</string>
+    <string name="ledger_review_saved">Número salvo (unidade não confirmada): %1$d</string>
+    <string name="ledger_review_metres">Confirmar %1$s km (o número salvo era em metros)</string>
+    <string name="ledger_review_kilometres">Confirmar %1$s km (o número salvo era em quilômetros)</string>
+    <string name="ledger_review_failed">A revisão não foi salva. Feche e reabra o lançamento para conferir os valores atuais.</string>
+    <string name="ledger_review_entry">Revisar unidade do hodômetro</string>
+    <string name="monthly_review_required">Consumo e custo/km indisponíveis até revisar a unidade das leituras antigas.</string>
+</resources>

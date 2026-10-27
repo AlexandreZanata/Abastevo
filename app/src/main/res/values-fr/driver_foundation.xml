@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ledger_review_required">Confirmez l’unité de cet ancien relevé avant de sauvegarder.</string>
+    <string name="ledger_review_saved">Nombre enregistré (unité non vérifiée) : %1$d</string>
+    <string name="ledger_review_metres">Confirmer %1$s km (nombre en mètres)</string>
+    <string name="ledger_review_kilometres">Confirmer %1$s km (nombre en kilomètres)</string>
+    <string name="ledger_review_failed">Révision non enregistrée. Fermez puis rouvrez cette entrée pour vérifier ses valeurs.</string>
+    <string name="ledger_review_entry">Vérifier l’unité du compteur</string>
+    <string name="monthly_review_required">Consommation et coût/km indisponibles avant vérification des anciens relevés.</string>
+</resources>

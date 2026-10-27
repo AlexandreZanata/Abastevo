@@ -47,6 +47,7 @@ import com.anpfuel.app.ui.premium.PremiumManagementScreen
 import com.anpfuel.app.ui.premium.PremiumScreen
 import com.anpfuel.app.ui.privacy.PrivacyScreen
 import com.anpfuel.app.ui.profile.ProfileScreen
+import com.anpfuel.app.ui.driver.DriverHubScreen
 import com.anpfuel.app.ui.settings.SettingsScreen
 import com.anpfuel.app.ui.stations.StationsScreen
 import com.anpfuel.app.ui.vehicle.VehicleScreen
@@ -378,6 +379,29 @@ fun AnpNavGraph(
                 onOpenCharging = { vehicleId ->
                     navController.navigate(Routes.chargingExplore(vehicleId.value))
                 },
+                onOpenDriverHub = { navController.navigate(Routes.DRIVER_HUB) },
+            )
+        }
+        composable(
+            route = Routes.DRIVER_WORK,
+            arguments = listOf(navArgument("vehicleId") { type = NavType.StringType }),
+        ) { entry ->
+            com.anpfuel.app.ui.driver.work.DriverWorkScreen(
+                vehicleId = entry.arguments?.getString("vehicleId").orEmpty(),
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable(Routes.DRIVER_HUB) {
+            DriverHubScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenVehicles = { navController.navigate(Routes.VEHICLES) },
+                onOpenEntries = { vehicleId -> navController.navigate(Routes.vehicleEntries(vehicleId)) },
+                onOpenMonthly = { vehicleId -> navController.navigate(Routes.monthlyIndicators(vehicleId)) },
+                onOpenRefuel = { vehicleId -> navController.navigate(Routes.vehicleEntriesAction(vehicleId, "refuel")) },
+                onOpenCharge = { vehicleId -> navController.navigate(Routes.vehicleEntriesAction(vehicleId, "charge")) },
+                onOpenWork = { vehicleId -> navController.navigate(Routes.driverWork(vehicleId)) },
+                onOpenPremium = { navController.navigate(Routes.PREMIUM) { launchSingleTop = true } },
+                onSignIn = { navController.navigate(Routes.AUTH) },
             )
         }
         composable(
@@ -401,6 +425,26 @@ fun AnpNavGraph(
         ) {
             com.anpfuel.app.ui.charging.ChargingCommunityScreen(
                 onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.VEHICLE_ENTRIES_ACTION,
+            arguments = listOf(
+                navArgument("vehicleId") { type = NavType.StringType },
+                navArgument("action") { type = NavType.StringType; defaultValue = "" },
+            ),
+        ) { backStackEntry ->
+            val vehicleId = backStackEntry.arguments?.getString("vehicleId").orEmpty()
+            val action = backStackEntry.arguments?.getString("action").orEmpty()
+            com.anpfuel.app.ui.ledger.LedgerEntriesScreen(
+                vehicleId = vehicleId,
+                onNavigateBack = { navController.popBackStack() },
+                onOpenMonthly = { id -> navController.navigate(Routes.monthlyIndicators(id)) },
+                initialDataset = when (action) {
+                    "refuel" -> com.anpfuel.domain.premium.LedgerDataset.REFUEL
+                    "charge" -> com.anpfuel.domain.premium.LedgerDataset.CHARGE
+                    else -> null
+                },
             )
         }
         composable(

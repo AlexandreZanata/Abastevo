@@ -64,7 +64,7 @@ enum class NavigationTab(
             route.startsWith("station/") -> EXPLORE
             route == Routes.STATION_PAGE -> EXPLORE
             route == Routes.MAP_STATION_PAGE || route == Routes.MAP_CHARGING_COMMUNITY -> MAP
-            route == Routes.PREMIUM || route == Routes.PREMIUM_MANAGEMENT -> PROFILE
+            route == Routes.PREMIUM || route == Routes.PREMIUM_MANAGEMENT || route == Routes.DRIVER_HUB -> PROFILE
             else -> entries.firstOrNull { it.route == route }
         }
     }
