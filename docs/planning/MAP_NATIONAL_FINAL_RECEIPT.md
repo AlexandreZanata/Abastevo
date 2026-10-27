@@ -147,11 +147,59 @@ Partial Content` to a plain GET for the precompressed files, even without the
 global encoder. The global gzip encoder plus the edge micro-cache serve the
 overlay; the `.gz` files stay in each release for a future CDN.
 
+## Device validation
+
+Device: POCO `2311DRK48G` (serial `VKCQGAUCGYAMR4W4`), 2026-10-27, debug APK
+built from merge head `b1b85f94` (dev map UI plus the national pin tiers) and
+pointing at `https://teste.abastevo.com.br`. Evidence and per-class P38 matrix:
+`docs/backend/evidence/maps/map-national-device-20261027/`.
+
+| Capture | What it shows |
+| --- | --- |
+| `curitiba-pins.png` | Base map plus 100 pins after the admitted `World`, `WorldCoasts` and `Brazil_Parana_East` MWM files were pushed to app-private `files/261004` (hashes match MAP-23). |
+| `curitiba-anp-sheet.png` | Bottom sheet for an `anp-reported` station: "Localização: Localização informada pela ANP". |
+| `sorriso-pins.png` | 22 pins at the Sorriso viewport over a blank base (no regional pack for MT); query completes after the camera moves. |
+| `sorriso-address-sheet.png` | Bottom sheet for an `address-point` station: "Localização: Localização aproximada pelo endereço (IBGE)". |
+| `sao-paulo-pins.png` | 100 items and two clusters with the compact dev controls. |
+| `manaus-pins.png` | 100 items, two clusters and named pins; API reports 99 `anp-reported` + 1 `address-point` for this viewport. |
+
+The compact panel, city selector, grouped filters and action cards are the dev
+layout; the pin labels and `MapStationLocationQuality` plumbing are preserved.
+The base map has no tiles outside the admitted Paraná fixture: `mapDistBaseUrl`,
+`mapDistRegion` and `mapDistKeys` are empty in every local build and no staging
+distribution origin exists (BLOCKED_CONFIG). Pins still render because the
+world fixture initialises the camera; the three requested cities are therefore
+UI/pin evidence, not base-tile evidence.
+
+P38 matrix, branch `origin/codex/p38-acceptance-20261026` (`4cb221d5`, PR #157)
+run with `ANDROID_SERIAL=VKCQGAUCGYAMR4W4 ./gradlew connectedDebugAndroidTest`:
+
+| Module | Cases | Passed | Failed | Skipped |
+| --- | --- | --- | --- | --- |
+| `:app` | 120 | 87 | 24 | 9 |
+| `:data` | 117 | 112 | 3 | 2 |
+| `:maps:engine` | 10 | 9 | 1 | 0 |
+
+The 24 app failures are not waived: two `PhotoReviewDeviceTest` cases are
+BLOCKED_MEDIA (private corpus absent), 13 route/guidance/performance cases need
+the admitted regional fixture (private runtime, not shipped), and nine are
+device/Compose environment cases (scroll/keyboard/WorkManager timing and the
+Appendix A2 sync timeouts). In the data module the failures are the 15 MB
+database-size boundary, `RealImageOcrDeviceTest` BLOCKED_MEDIA, and
+`MapDownloadWorkerTest` expecting `CONNECTED` while the scheduler defaults to
+`UNMETERED` (pre-existing test/code drift in PR #157, not changed here).
+`MapOfflineDistributionInstrumentedTest` passed 4/4 once the synthetic
+distribution server and `adb reverse tcp:18766` were provided; the engine
+`MapHostRealEngineInstrumentedTest` passed in isolation and the remaining
+engine failure is the same missing admitted fixture.
+
 ## Not done / still open
 
 - 5,300 L5 stations remain without a point (no open evidence); the
   community location flow is their path.
 - The app reads pins from `/v1/stations/nearby`; consuming the static overlay
   in the app is a separate product step.
-- Device rendering of the new tiers was checked on the POCO only as recorded
-  in PROGRESS; full P38 matrix rows stay with their own evidence.
+- `mapDistBaseUrl`, `mapDistRegion` and `mapDistKeys` remain unset
+  (BLOCKED_CONFIG), so the base map and offline packages are unavailable
+  outside the admitted Paraná fixture. Device rendering of the new tiers and
+  the remaining P38 rows are recorded in [Device validation](#device-validation).

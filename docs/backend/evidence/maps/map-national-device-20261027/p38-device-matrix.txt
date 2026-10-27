@@ -1,0 +1,133 @@
+== app
+tests=120 failures=24 errors=0 skipped=9
+FAIL com.anpfuel.app.capture.PhotoReviewDeviceTest 2/4
+  - zoomCropAndRecreationPreserveHumanEdits: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+  - realPhotoDetectedSubsetEditRemoveAndLocalConfirmation: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 20000 ms
+PASS com.anpfuel.app.capture.PhotoSubmissionFeedbackDeviceTest 2/2
+PASS com.anpfuel.app.community.CommunityPriceDisplayDeviceTest 1/1
+PASS com.anpfuel.app.games.GamesLandscapeDeviceTest 2/2
+PASS com.anpfuel.app.games.GamesScreenDeviceTest 10/10
+PASS com.anpfuel.app.navigation.BottomTabNavigationDeviceTest 5/5
+FAIL com.anpfuel.app.settings.TrainingConsentDeviceTest 1/3
+  - completeBundledTermsAreReadableWithoutGrantingPermission: java.lang.AssertionError: Semantic Node has no parent layout with a Scroll SemanticsAction
+  - readingAloneNeverConsentsAndOwnerChangeClearsTheCheckbox: java.lang.AssertionError: Semantic Node has no parent layout with a Scroll SemanticsAction
+PASS com.anpfuel.app.settings.TrainingConsentKeyStoreDeviceTest 1/1
+PASS com.anpfuel.app.settings.TrainingConsentPersistenceDeviceTest 1/1
+FAIL com.anpfuel.app.settings.TrainingConsentRecoveryDeviceTest 1/2
+  - applicationSchedulesConnectedRecoveryAndStartupWorkerCompletes: java.lang.AssertionError: expected:<SUCCEEDED> but was:<ENQUEUED>
+PASS com.anpfuel.app.startup.AppStartupPerformanceTest 1/1
+PASS com.anpfuel.app.ui.accessibility.AccessibilityUiTest 3/3
+PASS com.anpfuel.app.ui.auth.AuthAccountContinuityDeviceTest 1/1
+PASS com.anpfuel.app.ui.community.CommunityFeedScreenTest 5/5
+FAIL com.anpfuel.app.ui.components.AnpScaffoldTest 2/3
+  - nativeKeyboardKeepsFocusedScrollableInputVisible: java.lang.AssertionError: Focused input overlaps native keyboard
+PASS com.anpfuel.app.ui.components.FuelProductIconScreenshotTest 3/3
+PASS com.anpfuel.app.ui.components.SafeAreaScreenshotMatrixTest 2/2
+FAIL com.anpfuel.app.ui.home.HomeScreenTest 8/11
+  - darkThemeKeepsAnpSourceAndFuelNavigationExplicit: java.lang.AssertionError: Action performScrollTo() failed.
+  - showsTankFillPlaceholderWhenNoVehicles: java.lang.AssertionError: Action performScrollTo() failed.
+  - heroContributionSelectsAStationBeforeCapture: org.junit.ComparisonFailure: expected:<[stations]> but was:<[capture]>
+FAIL com.anpfuel.app.ui.map.EvTripRealEngineInstrumentedTest 0/1
+  - realRoadLegsBackPrimaryAlternativeAndFailureReplan: java.lang.AssertionError: admitted regional fixture is required
+PASS com.anpfuel.app.ui.map.EvTripSectionAccessibilityTest 1/1
+FAIL com.anpfuel.app.ui.map.EvTripUiInstrumentedTest 0/1
+  - electricPlanShowsAlternativeReplansFromFailureAndSaves: java.lang.AssertionError: real route for synthetic charging fixtures
+FAIL com.anpfuel.app.ui.map.GuidanceInstrumentedTest 2/3
+  - guidanceBindsPreviewRefusesAlteredRouteWithoutNativeFollow: java.lang.AssertionError: admitted regional fixture is required
+FAIL com.anpfuel.app.ui.map.GuidanceServiceInstrumentedTest 0/1
+  - foregroundServiceStartsStopsAndRecoversExplicitly: java.lang.AssertionError: admitted regional fixture is required
+PASS com.anpfuel.app.ui.map.MapNativeDownloadInstrumentedTest 1/1
+PASS com.anpfuel.app.ui.map.MapOfflineJourneyInstrumentedTest 2/2
+FAIL com.anpfuel.app.ui.map.MapPerformanceInstrumentedTest 0/1
+  - engineInitRouteCancellationAndProcessMemoryStayWithinDeclaredLocalBudgets: java.lang.AssertionError: admitted regional fixture is required
+FAIL com.anpfuel.app.ui.map.MapRouteInstrumentedTest 0/1
+  - productionMapTabInitializesOnceAndSurvivesLifecycle: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 10000 ms
+PASS com.anpfuel.app.ui.map.MapScreenInstrumentedTest 13/13
+FAIL com.anpfuel.app.ui.map.NativeRouteCrossRegionInstrumentedTest 0/1
+  - completeNeighborRouteThenMissingDependencyRefusesOffline: java.lang.AssertionError: Brazil_Parana_East.mwm expected:<86360029> but was:<0>
+FAIL com.anpfuel.app.ui.map.NativeRoutePlannerInstrumentedTest 0/5
+  - absentNeighborOrRegionNeverBecomesDrivableSuccess: java.lang.AssertionError: admitted regional fixture is required
+  - nativeAndJavaDiagnosticsNeverEmitRouteOrExceptionPayloads: java.lang.AssertionError: admitted regional fixture is required
+  - sourceOneWayStreetRequiresReverseDetourAndCancelledGenerationCannotPublish: java.lang.AssertionError: admitted regional fixture is required
+  - offlineNativeCarRouteStopsManeuversOptionsAndCancellation: java.lang.AssertionError: admitted regional fixture is required
+  - actualOfflineNativeSearchResolvesStreetCoordinates: java.lang.AssertionError: admitted regional fixture is required
+FAIL com.anpfuel.app.ui.map.NativeRouteScreenInstrumentedTest 0/1
+  - actualMapTabPlansOfflineWithoutLocationAndDisplaysNativePreview: java.lang.AssertionError: Action performScrollTo() failed.
+PASS com.anpfuel.app.ui.map.SavedPlacesDeviceTest 3/3
+PASS com.anpfuel.app.ui.map.TripRecordingServiceDeviceTest 3/3
+PASS com.anpfuel.app.ui.quality.QualityReportsUiDeviceTest 2/2
+PASS com.anpfuel.app.ui.quality.QualityUiDeviceTest 2/2
+PASS com.anpfuel.app.ui.stationprofile.SignedClaimDocumentDeviceTest 2/2
+PASS com.anpfuel.app.ui.stationprofile.StagingAnonymousReadDeviceTest 1/1
+PASS com.anpfuel.app.ui.stationprofile.StationProfileUiDeviceTest 5/5
+PASS com.anpfuel.app.ui.stations.StagingDirectorySyncDeviceTest 4/4
+PASS com.anpfuel.app.ui.stations.StationsListSummaryTest 1/1
+PASS com.anpfuel.app.ui.stations.StationsPaginationDeviceTest 2/2
+PASS com.anpfuel.app.ui.stations.StationsScrollFrameDeviceTest 1/1
+FAIL com.anpfuel.app.validation.AppendixA2FreshInstallTest 0/1
+  - freshInstall_autoSyncsLatestWeekThenPromptsLocation: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 300000 ms
+FAIL com.anpfuel.app.validation.AppendixA2PostSyncTest 0/1
+  - postSyncFlows_coverAppendixA2StepsTwoThroughTen: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 60000 ms
+== data
+tests=117 failures=3 errors=0 skipped=2
+PASS com.anpfuel.data.local.AnpFuelDatabaseTest 2/2
+PASS com.anpfuel.data.local.CatalogMigration17To18Test 1/1
+PASS com.anpfuel.data.local.CommunityCacheMigration16To17Test 1/1
+PASS com.anpfuel.data.local.DirectoryCacheMigration15To16Test 1/1
+PASS com.anpfuel.data.local.DirectoryCacheTransactionTest 7/7
+PASS com.anpfuel.data.local.DirectoryCatalogOfflineDeviceTest 1/1
+PASS com.anpfuel.data.local.MunicipalityFtsSearchTest 4/4
+PASS com.anpfuel.data.local.QualityReportOutboxDeviceTest 2/2
+PASS com.anpfuel.data.local.StationPriceDaoPagingTest 4/4
+PASS com.anpfuel.data.local.V11ToV12DatabaseMigrationTest 3/3
+PASS com.anpfuel.data.local.V12ToV13DatabaseMigrationTest 1/1
+PASS com.anpfuel.data.local.V13ToV14QualityOutboxMigrationTest 1/1
+PASS com.anpfuel.data.local.V14ToV15QualityKeyErasureMigrationTest 1/1
+PASS com.anpfuel.data.local.V1ToV2DatabaseMigrationTest 1/1
+PASS com.anpfuel.data.local.V4ToV5DatabaseMigrationTest 1/1
+PASS com.anpfuel.data.local.V4ToV6DatabaseMigrationTest 1/1
+PASS com.anpfuel.data.local.V5ToV6DatabaseMigrationTest 1/1
+PASS com.anpfuel.data.local.V6ToV7DatabaseMigrationTest 1/1
+PASS com.anpfuel.data.local.V8ToV9PhotoOutboxMigrationTest 1/1
+PASS com.anpfuel.data.local.auth.AnonymousDeviceKeysDeviceTest 1/1
+PASS com.anpfuel.data.local.auth.KeystoreAccountStorageDeviceTest 1/1
+FAIL com.anpfuel.data.local.importing.DatabasePocGateTest 2/3
+  - databaseFileSizeUnderFifteenMegabytesAfterOneWeekStationImport: java.lang.AssertionError: Expected database under 15 MB but was 15 MB
+PASS com.anpfuel.data.local.importing.ImmutableImportHistoryTest 2/2
+PASS com.anpfuel.data.local.importing.ImportPerformanceTest 1/1
+PASS com.anpfuel.data.local.importing.ImportPipelinePocTest 5/5
+PASS com.anpfuel.data.local.importing.MunicipalityCatalogPocTest 6/6
+PASS com.anpfuel.data.local.map.V25ToV26DatabaseMigrationTest 2/2
+PASS com.anpfuel.data.local.map.V26ToV27DatabaseMigrationTest 1/1
+PASS com.anpfuel.data.local.ocr.CaptureOcrDeviceTest 1/1
+PASS com.anpfuel.data.local.saved.RoomSavedStoreInstrumentedTest 9/9
+PASS com.anpfuel.data.local.saved.SavedExchangeDeviceTest 2/2
+PASS com.anpfuel.data.local.saved.V27ToV28DatabaseMigrationTest 1/1
+PASS com.anpfuel.data.map.MapNativeLayoutInstrumentedTest 1/1
+PASS com.anpfuel.data.map.MapOfflineDistributionInstrumentedTest 4/4
+PASS com.anpfuel.data.map.MapPersistenceInstrumentedTest 1/1
+PASS com.anpfuel.data.map.MonocypherEd25519InstrumentedTest 1/1
+PASS com.anpfuel.data.ocr.OcrFormatMatrixDeviceTest 4/4
+FAIL com.anpfuel.data.ocr.RealImageOcrDeviceTest 1/2
+  - privateCorpusPixels: java.lang.AssertionError: Push the private evaluation corpus via run-as before executing
+PASS com.anpfuel.data.remote.AnpFileDownloaderLiveTest 1/1
+PASS com.anpfuel.data.remote.AnpListingLiveRequestTest 1/1
+PASS com.anpfuel.data.repository.PhotoReviewOutboxDeviceTest 3/3
+PASS com.anpfuel.data.repository.RepositoryUseCaseIntegrationTest 2/2
+PASS com.anpfuel.data.repository.StorageStatsRepositoryIntegrationTest 1/1
+PASS com.anpfuel.data.repository.VehicleRepositoryImplTest 3/3
+PASS com.anpfuel.data.worker.ChargingObservationWorkerTest 4/4
+PASS com.anpfuel.data.worker.DirectorySyncWorkerTest 7/7
+FAIL com.anpfuel.data.worker.MapDownloadWorkerTest 6/7
+  - schedulerUsesUniqueConnectedWorkWithBackoff: java.lang.AssertionError: expected:<CONNECTED> but was:<UNMETERED>
+PASS com.anpfuel.data.worker.PriceDropEvaluationWorkerTest 2/2
+PASS com.anpfuel.data.worker.SyncWorkerTest 3/3
+== maps:engine
+tests=10 failures=1 errors=0 skipped=0
+FAIL com.anpfuel.maps.engine.GuidanceEngineInstrumentedTest 0/1
+  - guidanceDisablesTrackBindsPreviewFeedsProgressAndStops: java.lang.AssertionError: admitted regional fixture is required
+PASS com.anpfuel.maps.engine.MapHostInstrumentedTest 4/4
+PASS com.anpfuel.maps.engine.MapHostLifecycleInstrumentedTest 1/1
+PASS com.anpfuel.maps.engine.MapHostRealEngineInstrumentedTest 1/1
+PASS com.anpfuel.maps.engine.MapOverlayListAccessibilityTest 2/2
+PASS com.anpfuel.maps.engine.MapOverlayListInstrumentedTest 1/1

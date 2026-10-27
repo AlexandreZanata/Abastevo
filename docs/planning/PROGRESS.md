@@ -1,5 +1,23 @@
 # Current execution state
 
+- MAP national stations 2026-10-27: APPLIED on staging / INTEGRATION_PENDING.
+  Branch `codex/map-national-staging` head `b1b85f94` merges the six dev map-UI
+  commits (persistent host, compact controls, grouped filters, shared fuel
+  selector, action cards, panel collapse) with the national pin tiers:
+  40,388/45,688 pins (88.4%); 5,300 L5 stations stay list-only. Staging smoke:
+  `health/ready` 200; Manaus 15 km nearby 100 items (99 `anp-reported`,
+  1 `address-point`); nearby p50/p95 São Paulo 15 km 15.6/19.2 ms, Curitiba
+  9.1/12.5 ms, Sorriso 4.6/8.0 ms, Manaus 9.1/11.2 ms. Device POCO 2311DRK48G:
+  new UI, pins and bottom-sheet quality labels verified in Curitiba, Sorriso,
+  São Paulo and Manaus. Base tiles render only for the admitted Paraná fixture
+  because `mapDistBaseUrl`, `mapDistRegion` and `mapDistKeys` are empty in every
+  built variant (BLOCKED_CONFIG); the three requested cities keep pins over a
+  blank base. P38 matrix: app 87/120 passed, 24 failed (BLOCKED_MEDIA, missing
+  admitted regional fixture, device/Compose environment), 9 skipped; data
+  112/117 passed, 3 failed (15 MB boundary, BLOCKED_MEDIA, CONNECTED/UNMETERED
+  test drift), 2 skipped; maps engine 9/10 (missing admitted fixture). No
+  backend change, so no redeploy. Receipt with screenshots:
+  [MAP_NATIONAL_FINAL_RECEIPT](MAP_NATIONAL_FINAL_RECEIPT.md#device-validation).
 - MAP national stations Phase 4 static overlay 2026-10-26: SERVED on staging /
   INTEGRATION_PENDING. New `mapoverlay` builds a release-addressed per-UF JSON
   overlay from the active generation and the latest official week. Release
