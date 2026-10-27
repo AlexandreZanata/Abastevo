@@ -144,6 +144,8 @@ jq -e \
      and (.images.migrate | test("^ghcr\\.io/" + $owner + "/abastevo-migrate@sha256:[0-9a-f]{64}$"))
      and (.landing_sha256 | test("^[0-9a-f]{64}$"))
      and (.migrations_max | test("^[0-9]{6}$"))
+     and ((.schema_min_supported == null) or (.schema_min_supported | test("^[0-9]{6}$")))
+     and ((.schema_min_supported == null) or (.schema_min_supported <= .migrations_max))
      and (.workflow_run_url | startswith("https://github.com/" + $repo + "/actions/runs/"))' \
     "$manifest_file" >/dev/null \
     || fail "release manifest does not match abastevo-release-manifest-v1"
@@ -226,8 +228,8 @@ else
     action="no-change"
 fi
 
-target_payload="$(jq '{sha, images, landing_sha256, migrations_max}' "$manifest_file")"
-current_payload="$(jq 'if . == null then null else {sha, images, landing_sha256, migrations_max} end' "$workdir/current.json")"
+target_payload="$(jq '{sha, images, landing_sha256, migrations_max, schema_min_supported}' "$manifest_file")"
+current_payload="$(jq 'if . == null then null else {sha, images, landing_sha256, migrations_max, schema_min_supported} end' "$workdir/current.json")"
 created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 receipt="$(jq -n \

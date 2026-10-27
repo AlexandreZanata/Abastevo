@@ -155,6 +155,7 @@ make_fixture() {
             images: {api: $api, worker: $worker, migrate: $migrate},
             landing_sha256: $landing,
             migrations_max: "000132",
+            schema_min_supported: "000132",
             workflow_run_url: "https://github.com/AlexandreZanata/Abastevo/actions/runs/123"
         }' > "$dir/artifact/release-manifest.json"
     printf '{"mediaType":"application/vnd.dev.sigstore.bundle.v0.3+json"}\n' \
@@ -270,6 +271,7 @@ if [[ -n "$RECEIPT" ]]; then
     assert_eq "new release target sha" "$(jq -r '.target.sha' "$RECEIPT")" "$FIXTURE_SHA"
     assert_eq "new release current is null" "$(jq -r '.current' "$RECEIPT")" "null"
     assert_eq "new release signature verified" "$(jq -r '.manifest.signature' "$RECEIPT")" "verified"
+    assert_eq "new release schema floor" "$(jq -r '.target.schema_min_supported' "$RECEIPT")" "000132"
     assert_eq "new release ancestry verified" "$(jq -r '.manifest.sha_reachable_from_main' "$RECEIPT")" "true"
     assert_eq "receipt mode" "$(stat -c '%a' "$RECEIPT")" "600"
 else
@@ -315,6 +317,18 @@ jq '.schema = "wrong"' "$CASE/artifact/release-manifest.json" > "$CASE/manifest.
 mv "$CASE/manifest.tmp" "$CASE/artifact/release-manifest.json"
 write_oci "$CASE"
 expect_failure "invalid manifest schema refused" run_agent "$CASE"
+
+CASE="$(new_case invalid-schema-floor)"
+jq '.schema_min_supported = "132"' "$CASE/artifact/release-manifest.json" > "$CASE/manifest.tmp"
+mv "$CASE/manifest.tmp" "$CASE/artifact/release-manifest.json"
+write_oci "$CASE"
+expect_failure "invalid schema floor refused" run_agent "$CASE"
+
+CASE="$(new_case schema-floor-above-chain)"
+jq '.schema_min_supported = "000133"' "$CASE/artifact/release-manifest.json" > "$CASE/manifest.tmp"
+mv "$CASE/manifest.tmp" "$CASE/artifact/release-manifest.json"
+write_oci "$CASE"
+expect_failure "schema floor above migration chain refused" run_agent "$CASE"
 
 CASE="$(new_case digest-mismatch)"
 printf '\n' >> "$CASE/artifact/release-manifest.json"

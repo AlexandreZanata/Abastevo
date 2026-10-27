@@ -4,7 +4,7 @@ package migrations
 
 import "embed"
 
-// Files holds db/migrations/*.sql for the runner and tests.
+// Files holds the append-only SQL chain and the declared compatibility floor.
 //
-//go:embed *.sql
+//go:embed *.sql schema_min_supported
 var Files embed.FS
