@@ -86,3 +86,14 @@ hash, GitHub token or e-mail address. Test keys are constructed at runtime.
 - Admin web UI and staging validation.
 - Live payment ports remain disabled; this PR only proves granted access
   without them.
+
+## Review fixes (2026-10-27)
+
+- Re-granting a tier whose ACTIVE grant lapsed supersedes it as `expired`
+  with its own audit row (`TestGrant_ENT03_ENT06_ExpiredActiveIsSuperseded`,
+  `TestGrant_ENT03_ENT06_RegrantAfterExpiry`).
+- An open-ended admin grant makes the merged `valid_until` null (ENT-09,
+  `TestAdminGrant_ENT09_OpenEndedGrantHasNoValidUntil`).
+- Payment gate restored: with payment ports unconfigured only admin grants
+  unlock; Play and web rows keep unlocking nothing as before A2 (ENT-10,
+  `TestAdminGrant_ENT10_UnconfiguredPaymentsOnlyAdminUnlocks`).
