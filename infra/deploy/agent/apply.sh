@@ -223,16 +223,12 @@ apply_preflight() {
 
 apply_schema_gate() {
     local current_floor db_max target_floor job
-    if [[ -f "$current_file" ]]; then
-        current_floor="$(jq -r '.schema_min_supported // empty' "$current_file" 2>/dev/null || true)"
-        [[ "$current_floor" =~ ^[0-9]{6}$ ]] \
-            || apply_fail "schema" "current state has no schema floor; baseline required"
-    else
-        current_floor="$(runtime_schema_annotation "$ABASTEVO_NAMESPACE" "$ABASTEVO_API_DEPLOYMENT")" \
-            || apply_fail "schema" "cannot read the running schema annotation"
-        [[ "$current_floor" =~ ^[0-9]{6}$ ]] \
-            || apply_fail "schema" "running deployment has no schema version annotation"
+    if [[ ! -f "$current_file" ]]; then
+        apply_fail "schema" "baseline required"
     fi
+    current_floor="$(jq -r '.schema_min_supported // empty' "$current_file" 2>/dev/null || true)"
+    [[ "$current_floor" =~ ^[0-9]{6}$ ]] \
+        || apply_fail "schema" "current state has no schema floor; baseline required"
     target_floor="$(jq -r '.schema_min_supported // empty' "$manifest_file")"
     [[ "$target_floor" =~ ^[0-9]{6}$ ]] \
         || apply_fail "schema" "manifest has no schema floor"

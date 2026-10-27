@@ -19,6 +19,7 @@ runtime_wait_job() {
         --for=condition=complete --timeout="${timeout}s" "job/$job" >/dev/null
 }
 
+# Informational only. The executor never uses this annotation as the gate.
 runtime_schema_annotation() {
     local namespace="$1" deployment="$2"
     runtime_kubectl -n "$namespace" get deployment "$deployment" -o json \
@@ -225,7 +226,7 @@ runtime_set_images() {
 runtime_annotate_source() {
     local namespace="$1" deployment="$2" sha="$3" schema="$4"
     runtime_kubectl -n "$namespace" patch deployment "$deployment" --type=merge \
-        -p "{\"metadata\":{\"annotations\":{\"abastevo.com/source-revision\":\"$sha\",\"abastevo.com/api-source-revision\":\"$sha\",\"abastevo.com/worker-source-revision\":\"$sha\",\"abastevo.com/schema-version\":\"$schema\"}}}" \
+        -p "{\"metadata\":{\"annotations\":{\"abastevo.com/source-revision\":\"$sha\",\"abastevo.com/api-source-revision\":\"$sha\",\"abastevo.com/worker-source-revision\":\"$sha\",\"abastevo.com/schema-floor\":\"$schema\"}}}" \
         >/dev/null
 }
 

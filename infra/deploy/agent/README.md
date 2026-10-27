@@ -25,7 +25,8 @@ floor gate, verified backup, migration Job, one api/worker image rollout,
 rollout status, smoke, landing switch, `current.json` last and a deployment
 receipt. Any failure after the image update runs `rollout undo`; a switched
 landing is restored; earlier failures leave the deployment untouched and write
-a failure receipt.
+a failure receipt. A dedicated `baseline` subcommand records the first real
+state without deploying; apply refuses to run until a baseline exists.
 
 The dry-run path never writes `current.json` and never calls `docker`,
 `kubectl`, `helm` or `systemctl`. Apply mode calls `kubectl` only through
@@ -114,6 +115,7 @@ systemd drop-in (see Install).
 install -m 0755 infra/deploy/agent/abastevo-deploy-agent /usr/local/bin/abastevo-deploy-agent
 install -d -m 0755 /usr/local/lib/abastevo-deploy-agent/runtime
 install -m 0644 infra/deploy/agent/apply.sh /usr/local/lib/abastevo-deploy-agent/
+install -m 0644 infra/deploy/agent/baseline.sh /usr/local/lib/abastevo-deploy-agent/
 install -m 0644 infra/deploy/agent/runtime/k8s.sh /usr/local/lib/abastevo-deploy-agent/runtime/
 install -m 0644 infra/deploy/agent/systemd/abastevo-deploy-agent.service /etc/systemd/system/
 install -m 0644 infra/deploy/agent/systemd/abastevo-deploy-agent.timer /etc/systemd/system/
@@ -145,19 +147,42 @@ are skipped; apply mode also takes an internal `apply.lock`. `ProtectSystem=stri
 `NoNewPrivileges=yes`, `PrivateTmp=yes` and a dedicated user limit the blast
 radius.
 
+## Baseline
+
+The first run against an existing staging host needs a reviewed baseline
+instead of a synthetic current state:
+
+```sh
+ABASTEVO_APPLY=0 ... abastevo-deploy-agent baseline --sha <40-hex-main-commit>
+```
+
+The command fetches the signed `abastevo-release:sha-<sha>` artifact (not the
+moving `staging` tag), verifies the same keyless identity and that the commit
+is an ancestor of `main`, reads the real database maximum with a schema Job,
+reads the running `api` and `worker` images from the Deployment, verifies the
+running deployment's `/health/ready` endpoint (the running image's
+`migrate.Check` validates known migration checksums), and computes the current
+landing tree digest. It writes `current.json` mode 600
+with `baseline: true` and a `abastevo-deploy-baseline-v1` receipt, and performs
+no rollout, migration or landing switch.
+
+It refuses a non-ancestor SHA or a failing running schema-compatibility check.
+The baseline uses `ABASTEVO_SMOKE_BASE_URL` for that readiness call. `schema_min_supported` and `migrations_max` are
+both seeded from the real database maximum, so the running images are treated
+as compatible with the schema they are actually serving.
+
 ## Apply mode (R3-R6)
 
 Apply is opt-in (`ABASTEVO_APPLY=1`) and runs only after the same signed
 manifest verification and plan. The order is fixed:
 
-1. **Schema floor gate** - read the current floor from `current.json` (or the
-   live `abastevo.com/schema-version` annotation for a first run), query the
+1. **Schema floor gate** - require `current.json`; without it apply refuses
+   with `baseline required`. Read the current floor from that state, query the
    database with a short Job, and refuse when the running floor is above the
    database or the target floor is above the current floor. A higher target
-   floor is a contract change and is never automatic. A pre-floor live image
-   (for example annotation `000120` against target floor `000132`) is refused;
-   the owner must perform a reviewed baseline rollout before the executor is
-   enabled.
+   floor is a contract change and is never automatic. The live
+   `abastevo.com/schema-version` annotation is informative only and is never a
+   gate; the executor writes `abastevo.com/schema-floor`.
 2. **Verified backup** - a Job runs `pg_dump -Fc`, `pg_restore --list` and
    writes the SHA-256 next to the archive. The agent re-hashes the archive on
    the host and keeps the last 7 `pre-*` pairs.
@@ -282,12 +307,13 @@ non-zero without writing a receipt.
 }
 ```
 
-The dry-run agent only reads this file. Absence means "no current release" and
-produces a `plan-only` receipt with `current: null`. Apply mode writes it last
-and uses `schema_min_supported` for the expand/contract gate: a new release
-whose floor is above the previous release floor contains a contract change and
-must not be applied automatically while the previous image is still the
-rollback target.
+The dry-run agent only reads this file. Absence means "no current release";
+apply refuses with `baseline required`. The `baseline` subcommand writes the
+first file with `baseline: true`; normal applies write it last and replace it
+atomically. `schema_min_supported` drives the expand/contract gate: a new
+release whose floor is above the previous release floor contains a contract
+change and must not be applied automatically while the previous image is still
+the rollback target.
 
 ## Tests
 
@@ -301,12 +327,25 @@ unsigned manifests, foreign identity, non-ancestor/diverged commits, API and
 registry failures, invalid schema, digest mismatch, missing signature layer,
 invalid current state, missing configuration and absence of deployment calls.
 Apply cases cover success with surge and no-headroom gap, contract-floor
-refusal, bootstrap refusal, backup Job failure, backup checksum mismatch,
-migration failure, broken rollout undo, smoke failure with the previous landing
-kept, concurrent lock refusal, `current.json` unchanged on every failure, Job
-TTL/backoff, one shared set-image command, backup retention 7 and landing
-retention 5. It makes no network request and writes only under a temporary
-directory. Current count: 120 passed, 0 failed.
+refusal, apply without `current.json`, backup Job failure, backup checksum
+mismatch, migration failure, broken rollout undo, smoke failure with the
+previous landing kept, concurrent lock refusal, `current.json` unchanged on
+every failure, Job TTL/backoff, one shared set-image command, `schema-floor`
+annotation, backup retention 7 and landing retention 5. Baseline cases cover
+success, checksum drift and a SHA outside `main`. It makes no network request
+and writes only under a temporary directory. Current count: 157 passed,
+0 failed.
+
+The R5 overlap proof is a separate PostGIS integration test:
+
+```sh
+cd backend
+go test -tags=integration ./cmd/worker -run TestOverlappingWorkersDoNotDuplicateEffects -count=1
+```
+
+It runs two dispatcher loops with distinct worker IDs over one queue, asserts
+both workers consumed work, every job has exactly one effect and no job has
+`attempts > 1`.
 
 ## Scope limits
 
@@ -314,5 +353,7 @@ The dry-run and apply code is reviewed here. RBAC is not applied, the agent is
 not installed, the timer is not enabled and no staging release is executed in
 this delivery. Live acceptance (two consecutive merges, broken-image rollback,
 contract refusal, landing switch and rollback) is OWED after review. The R5
-worker-overlap proof is OWED, so surge remains disabled by default. Production
-remains manual behind G09 and is out of scope.
+overlap integration test passes for the queue dispatchers, but surge remains
+disabled by default until the reviewed staging runs measure zero unavailable
+replicas and the owner enables `ABASTEVO_ALLOW_SURGE=1`. Production remains
+manual behind G09 and is out of scope.

@@ -69,6 +69,35 @@ ABASTEVO_KUBECTL="${ABASTEVO_KUBECTL:-kubectl}"
 ABASTEVO_LIBDIR="${ABASTEVO_LIBDIR:-$SCRIPT_DIR}"
 ABASTEVO_LOCK_FILE="${ABASTEVO_LOCK_FILE:-$ABASTEVO_STATE_DIR/apply.lock}"
 
+COMMAND="${1:-plan}"
+BASELINE_SHA=""
+case "$COMMAND" in
+    plan)
+        (( $# == 0 )) || fail "plan takes no arguments"
+        ;;
+    baseline)
+        shift
+        while (( $# )); do
+            case "$1" in
+                --sha)
+                    [[ -n "${2:-}" ]] || fail "baseline --sha requires a value"
+                    BASELINE_SHA="$2"
+                    shift 2
+                    ;;
+                *)
+                    fail "unknown baseline argument: $1"
+                    ;;
+            esac
+        done
+        [[ "$BASELINE_SHA" =~ ^[0-9a-f]{40}$ ]] \
+            || fail "baseline --sha must be a full 40-hex commit"
+        ABASTEVO_MANIFEST_TAG="sha-${BASELINE_SHA}"
+        ;;
+    *)
+        fail "usage: abastevo-deploy-agent [plan | baseline --sha <commit>]"
+        ;;
+esac
+
 require_var ABASTEVO_NAMESPACE
 require_var ABASTEVO_API_DEPLOYMENT
 require_var ABASTEVO_WORKER_DEPLOYMENT
@@ -98,15 +127,25 @@ for tool in cosign oras curl jq sha256sum mktemp install date; do
     require_tool "$tool"
 done
 
-if [[ "$ABASTEVO_APPLY" == "1" ]]; then
+if [[ "$ABASTEVO_APPLY" == "1" || "$COMMAND" == "baseline" ]]; then
     [[ -f "$ABASTEVO_LIBDIR/runtime/k8s.sh" ]] \
         || fail "missing runtime adapter: $ABASTEVO_LIBDIR/runtime/k8s.sh"
-    [[ -f "$ABASTEVO_LIBDIR/apply.sh" ]] \
-        || fail "missing apply orchestration: $ABASTEVO_LIBDIR/apply.sh"
     # shellcheck source=infra/deploy/agent/runtime/k8s.sh
     . "$ABASTEVO_LIBDIR/runtime/k8s.sh"
+fi
+
+if [[ "$ABASTEVO_APPLY" == "1" ]]; then
+    [[ -f "$ABASTEVO_LIBDIR/apply.sh" ]] \
+        || fail "missing apply orchestration: $ABASTEVO_LIBDIR/apply.sh"
     # shellcheck source=infra/deploy/agent/apply.sh
     . "$ABASTEVO_LIBDIR/apply.sh"
+fi
+
+if [[ "$COMMAND" == "baseline" ]]; then
+    [[ -f "$ABASTEVO_LIBDIR/baseline.sh" ]] \
+        || fail "missing baseline orchestration: $ABASTEVO_LIBDIR/baseline.sh"
+    # shellcheck source=infra/deploy/agent/baseline.sh
+    . "$ABASTEVO_LIBDIR/baseline.sh"
 fi
 
 owner="${ABASTEVO_GITHUB_REPOSITORY%%/*}"
@@ -184,6 +223,10 @@ jq -e \
 
 release_sha="$(jq -r '.sha' "$manifest_file")"
 
+if [[ "$COMMAND" == "baseline" && "$release_sha" != "$BASELINE_SHA" ]]; then
+    fail "baseline release manifest does not match --sha"
+fi
+
 log "checking that the release commit is reachable from main"
 compare_url="${ABASTEVO_GITHUB_API}/repos/${ABASTEVO_GITHUB_REPOSITORY}/compare/main...${release_sha}"
 http_code="$(curl -sS -o "$workdir/compare.json" -w '%{http_code}' \
@@ -199,6 +242,11 @@ case "$compare_status" in
     behind|identical) ;;
     *) fail "release commit is not reachable from main" ;;
 esac
+
+if [[ "$COMMAND" == "baseline" ]]; then
+    baseline_release
+    exit 0
+fi
 
 current_file="$ABASTEVO_STATE_DIR/current.json"
 if [[ -f "$current_file" ]]; then

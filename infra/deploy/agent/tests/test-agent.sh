@@ -146,7 +146,7 @@ case "${cmd[0]:-}" in
         tmp="${KUBECTL_JOBS_DIR:?}/.in.$$"
         cat > "$tmp"
         name="$(sed -n 's/^  name: //p' "$tmp" | head -n1)"
-        role="$(grep -o 'abastevo.com/role: [a-z]*' "$tmp" | head -n1 | awk '{print $2}')"
+        role="$(grep -o 'abastevo.com/role: [a-z-]*' "$tmp" | head -n1 | awk '{print $2}')"
         [[ -n "$name" && -n "$role" ]] || { rm -f "$tmp"; exit 1; }
         mv "$tmp" "$KUBECTL_JOBS_DIR/$name.yaml"
         printf '%s\n' "$role" > "$KUBECTL_JOBS_DIR/$name.role"
@@ -398,6 +398,47 @@ run_agent_apply() {
     ) >"$dir/stdout.log" 2>"$dir/stderr.log"
 }
 
+run_agent_baseline() {
+    local dir="$1"
+    (
+        export PATH="$STUB_BIN:$PATH"
+        export ORAS_FIXTURE_DIR="$dir"
+        export ORAS_FAIL="${ORAS_FAIL:-0}"
+        export COSIGN_MODE="${COSIGN_MODE:-ok}"
+        export CURL_MODE="${CURL_MODE:-behind}"
+        export MUTATION_MARKER="$dir/mutation"
+        export ABASTEVO_NAMESPACE="test-ns"
+        export ABASTEVO_API_DEPLOYMENT="abastevo-temp-api"
+        export ABASTEVO_WORKER_DEPLOYMENT="abastevo-temp-api"
+        export ABASTEVO_MIGRATE_JOB="migrate"
+        export ABASTEVO_LANDING_ROOT="$dir/landing"
+        export ABASTEVO_BACKUP_DIR="$dir/backup"
+        export ABASTEVO_RECEIPT_DIR="$dir/receipts"
+        export ABASTEVO_STATE_DIR="$dir/state"
+        export ABASTEVO_GITHUB_REPOSITORY="AlexandreZanata/Abastevo"
+        export ABASTEVO_GITHUB_API="https://api.github.invalid"
+        export ABASTEVO_MANIFEST_REPOSITORY="ghcr.io/alexandrezanata/abastevo-release"
+        export ABASTEVO_APPLY=0
+        export ABASTEVO_LIBDIR="$ROOT/infra/deploy/agent"
+        export ABASTEVO_KUBECTL="$STUB_BIN/kubectl"
+        export KUBECONFIG="$dir/kubeconfig"
+        export ABASTEVO_SMOKE_BASE_URL="https://staging.invalid"
+        export ABASTEVO_SMOKE_TIMEOUT=5
+        export SMOKE_MODE="${SMOKE_MODE:-ok}"
+        export ABASTEVO_DB_IMAGE="postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677"
+        export ABASTEVO_DB_SECRET="abastevo-temp-secrets"
+        export ABASTEVO_JOB_TIMEOUT=30
+        export ABASTEVO_LOCK_FILE="$dir/state/apply.lock"
+        export KUBECTL_LOG="$dir/kubectl.log"
+        export KUBECTL_JOBS_DIR="$dir/jobs"
+        export KUBECTL_SCHEMA_ANNOTATION="${KUBECTL_SCHEMA_ANNOTATION:-000120}"
+        export KUBECTL_SCHEMA_DB="${KUBECTL_SCHEMA_DB:-000139}"
+        export KUBECTL_FAIL_ROLE="${KUBECTL_FAIL_ROLE:-}"
+        mkdir -p "$KUBECTL_JOBS_DIR" "$dir/state"
+        "$AGENT" baseline --sha "$FIXTURE_SHA"
+    ) >"$dir/stdout.log" 2>"$dir/stderr.log"
+}
+
 latest_receipt() {
     local dir="$1"
     find "$dir/receipts" -maxdepth 1 -name 'plan-*.json' -type f | sort | tail -n 1
@@ -563,6 +604,66 @@ CASE="$(new_case missing-config)"
 ABASTEVO_NAMESPACE_OVERRIDE="" expect_failure "missing configuration refused" run_agent "$CASE"
 
 
+echo "== baseline: success =="
+CASE="$(new_case baseline-success)"
+prepare_landing "$CASE" 1
+expect_success "baseline success" run_agent_baseline "$CASE"
+CURRENT="$CASE/state/current.json"
+assert_file "baseline current exists" "$CURRENT"
+if [[ -f "$CURRENT" ]]; then
+    assert_eq "baseline current sha" "$(jq -r '.sha' "$CURRENT")" "$FIXTURE_SHA"
+    assert_eq "baseline flag" "$(jq -r '.baseline' "$CURRENT")" "true"
+    assert_eq "baseline floor" "$(jq -r '.schema_min_supported' "$CURRENT")" "000139"
+    assert_eq "baseline migrations" "$(jq -r '.migrations_max' "$CURRENT")" "000139"
+    assert_eq "baseline api image" "$(jq -r '.images.api' "$CURRENT")" "local-api"
+    assert_eq "baseline worker image" "$(jq -r '.images.worker' "$CURRENT")" "local-worker"
+    assert_eq "baseline migrate image" "$(jq -r '.images.migrate' "$CURRENT")" "$(jq -r '.images.migrate' "$CASE/artifact/release-manifest.json")"
+    assert_eq "baseline current mode" "$(stat -c '%a' "$CURRENT")" "600"
+fi
+RECEIPT="$(find "$CASE/receipts" -maxdepth 1 -name 'baseline-*.json' ! -name 'baseline-failure-*' -type f | sort | tail -n 1)"
+if [[ -n "$RECEIPT" ]]; then
+    pass "baseline receipt exists"
+    assert_eq "baseline receipt result" "$(jq -r '.result' "$RECEIPT")" "baseline"
+    assert_eq "baseline receipt stage" "$(jq -r '.stage' "$RECEIPT")" "done"
+    assert_eq "baseline receipt database max" "$(jq -r '.database_max' "$RECEIPT")" "000139"
+    assert_eq "baseline receipt floor" "$(jq -r '.schema_min_supported' "$RECEIPT")" "000139"
+    assert_eq "baseline receipt annotation informative" "$(jq -r '.schema_version_annotation' "$RECEIPT")" "000120"
+    assert_eq "baseline receipt checksum" "$(jq -r '.checksum' "$RECEIPT")" "running-readiness"
+    assert_eq "baseline receipt checksum source" "$(jq -r '.checksum_source' "$RECEIPT")" "health-ready"
+    assert_eq "baseline receipt landing source" "$(jq -r '.landing_sha256_source' "$RECEIPT")" "tree"
+    assert_eq "baseline receipt landing digest" "$(jq -r '.landing_sha256' "$RECEIPT")" "$(jq -r '.landing_sha256' "$CURRENT")"
+    assert_eq "baseline receipt mode" "$(stat -c '%a' "$RECEIPT")" "600"
+else
+    failed "baseline receipt exists"
+fi
+SCHEMA_YAML="$(job_yaml_for_role "$CASE" schema)"
+assert_file "baseline schema job exists" "$SCHEMA_YAML"
+if [[ -n "$SCHEMA_YAML" ]]; then
+    assert_eq "baseline schema ttl" "$(grep -c 'ttlSecondsAfterFinished: 86400' "$SCHEMA_YAML")" "1"
+    assert_eq "baseline schema backoff" "$(grep -c 'backoffLimit: 0' "$SCHEMA_YAML")" "1"
+fi
+assert_eq "baseline does not set images" "$(grep -c 'set image' "$CASE/kubectl.log" || true)" "0"
+assert_eq "baseline does not rollout" "$(grep -c 'rollout' "$CASE/kubectl.log" || true)" "0"
+assert_eq "baseline landing unchanged" "$(readlink "$CASE/landing/current")" "releases/$FIXTURE_OLD_SHA"
+assert_absent "baseline does not call other tools" "$CASE/mutation"
+
+echo "== baseline: known checksum divergence is refused =="
+CASE="$(new_case baseline-checksum)"
+prepare_landing "$CASE" 1
+SMOKE_MODE=fail expect_failure "baseline checksum divergence refused" run_agent_baseline "$CASE"
+assert_absent "baseline checksum no current.json" "$CASE/state/current.json"
+RECEIPT="$(find "$CASE/receipts" -maxdepth 1 -name 'baseline-failure-*.json' -type f | sort | tail -n 1)"
+if [[ -n "$RECEIPT" ]]; then
+    assert_eq "baseline checksum failure result" "$(jq -r '.result' "$RECEIPT")" "failed"
+    assert_eq "baseline checksum failure stage" "$(jq -r '.stage' "$RECEIPT")" "checksum"
+fi
+
+echo "== baseline: SHA outside main is refused =="
+CASE="$(new_case baseline-ahead)"
+prepare_landing "$CASE" 1
+CURL_MODE=ahead expect_failure "baseline non-main sha refused" run_agent_baseline "$CASE"
+assert_absent "baseline non-main no current.json" "$CASE/state/current.json"
+
 echo "== apply: successful rollout =="
 CASE="$(new_case apply-success)"
 make_current_old "$CASE"
@@ -597,6 +698,7 @@ assert_eq "apply one shared set image" "$(grep -c 'set image deployment/abastevo
 assert_eq "apply api digest in set image" "$(grep 'set image' "$CASE/kubectl.log" | grep -c 'abastevo-api@sha256:')" "1"
 assert_eq "apply worker digest in set image" "$(grep 'set image' "$CASE/kubectl.log" | grep -c 'abastevo-worker@sha256:')" "1"
 assert_eq "apply surge patch" "$(grep -c 'maxSurge' "$CASE/kubectl.log")" "1"
+assert_eq "apply writes schema-floor annotation" "$(grep -c 'schema-floor' "$CASE/kubectl.log")" "1"
 for role in schema backup migrate; do
     job_yaml="$(job_yaml_for_role "$CASE" "$role")"
     assert_file "apply $role job yaml" "$job_yaml"
@@ -643,14 +745,16 @@ else
 fi
 assert_eq "contract landing unchanged" "$(readlink "$CASE/landing/current")" "releases/$FIXTURE_OLD_SHA"
 
-echo "== apply: bootstrap without a current floor is refused =="
+echo "== apply: no current.json is refused with baseline required =="
 CASE="$(new_case apply-bootstrap)"
 prepare_landing "$CASE" 1
-KUBECTL_SCHEMA_ANNOTATION=000120 expect_failure "apply bootstrap refused" run_agent_apply "$CASE"
+expect_failure "apply without current.json refused" run_agent_apply "$CASE"
 RECEIPT="$(find "$CASE/receipts" -maxdepth 1 -name 'failure-*.json' -type f | sort | tail -n 1)"
 if [[ -n "$RECEIPT" ]]; then
     assert_eq "bootstrap failure stage" "$(jq -r '.stage' "$RECEIPT")" "schema"
+    assert_eq "bootstrap failure message" "$(jq -r '.message' "$RECEIPT")" "baseline required"
 fi
+assert_absent "bootstrap no current.json" "$CASE/state/current.json"
 assert_no_job_role "bootstrap no backup job" "$CASE" backup
 assert_no_job_role "bootstrap no migrate job" "$CASE" migrate
 
