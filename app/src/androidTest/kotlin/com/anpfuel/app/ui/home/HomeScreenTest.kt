@@ -5,6 +5,8 @@ import androidx.compose.runtime.setValue
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -260,7 +262,7 @@ class HomeScreenTest {
             R.string.home_benefit_community,
             R.string.home_benefit_trust,
         ).map { title ->
-            composeTestRule.onNodeWithText(context.getString(title))
+            composeTestRule.onAllNodesWithText(context.getString(title)).onFirst()
                 .performScrollTo().assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         }
         benefitBounds.zipWithNext().forEach { (left, right) ->
