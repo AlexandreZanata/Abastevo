@@ -10,6 +10,7 @@ data class StoredLedgerDraft(
     val expectedRevision: Long,
     val updatedAtMillis: Long,
     val context: LedgerSessionContext? = null,
+    val odometerEvidence: com.anpfuel.domain.premium.OdometerEvidence = com.anpfuel.domain.premium.OdometerEvidence.UNVERIFIED,
 )
 
 /**
@@ -25,7 +26,14 @@ interface LedgerDraftStore {
         expectedRevision: Long,
         nowMillis: Long,
         context: LedgerSessionContext? = null,
+        odometerEvidence: com.anpfuel.domain.premium.OdometerEvidence = com.anpfuel.domain.premium.OdometerEvidence.UNVERIFIED,
     ): StoredLedgerDraft
+
+    suspend fun reviewOdometer(
+        accountId: String, origin: String, dataset: LedgerDataset, recordId: String,
+        expectedBodySha256: String, choice: com.anpfuel.domain.premium.OdometerReviewChoice,
+        nowMillis: Long,
+    ): StoredLedgerDraft = throw com.anpfuel.domain.premium.PremiumValidationException("odometer-review-unavailable")
 
     suspend fun find(
         accountId: String,

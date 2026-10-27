@@ -331,3 +331,15 @@ func TestLoadMapDistributionRequiresPair(t *testing.T) {
 		t.Fatalf("pair not preserved: %+v %v", cfg, err)
 	}
 }
+
+func TestDriverFeatureSwitch(t *testing.T) {
+	for _, raw := range []string{"true", "false"} {
+		cfg, err := load(envFunc(map[string]string{keyDriverEnabled: raw}))
+		if err != nil || cfg.DriverEnabled != (raw == "true") {
+			t.Fatal(raw, cfg.DriverEnabled, err)
+		}
+	}
+	if _, err := load(envFunc(map[string]string{keyDriverEnabled: "invalid"})); err == nil {
+		t.Fatal("invalid driver switch accepted")
+	}
+}

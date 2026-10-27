@@ -5993,6 +5993,138 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/driver/commands:
+    post:
+      tags:
+      - premium
+      summary: Apply a signed private driver command
+      description: Owner derives from a live account session plus exact-body signed key. Hosted mutations require live professional.write; erasure remains a retained-data exit. All responses are no-store without ETags.
+      operationId: driverCommands
+      x-implementation-status: source-local-done-feature-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverCommandRequest'
+      responses:
+        '200':
+          description: Private owned result.
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/driver/earnings:
+    post:
+      tags:
+      - premium
+      summary: List private driver earnings
+      description: Owner derives from a live account session plus exact-body signed key. Free retained reads remain available after lapse. Cursors are owner-bound; every response is no-store without ETags.
+      operationId: driverEarningsPage
+      x-implementation-status: source-local-done-feature-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverEarningsPageRequest'
+      responses:
+        '200':
+          description: Private owned page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverEarningsPageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/driver/reports/build:
+    post:
+      tags:
+      - premium
+      summary: Build a revisioned private driver report
+      description: Paid report generation derives from a signed owner session and live professional.report capability. Recomputes day/week/month/custom windows and refuses stale expected revisions. All responses are no-store without ETags.
+      operationId: driverReportBuild
+      x-implementation-status: source-local-done-feature-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverReportRequest'
+      responses:
+        '200':
+          description: Private owned report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/driver/reports/get:
+    post:
+      tags:
+      - premium
+      summary: Read a retained private driver report
+      description: Free retained read of a stored owner report. Refuses stale snapshots and owner/cursor mismatches. All responses are no-store without ETags.
+      operationId: driverReportGet
+      x-implementation-status: source-local-done-feature-disabled
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverReportRequest'
+      responses:
+        '200':
+          description: Private owned report.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   parameters:
     QualityCompanyStationSelector:
@@ -6011,6 +6143,114 @@ components:
         type: string
         format: uuid
   schemas:
+    DriverCommandRequest:
+      type: object
+      additionalProperties: false
+      required: [family_id, access_token, kind, payload]
+      properties:
+        family_id: {type: string, format: uuid}
+        access_token: {type: string, minLength: 1, maxLength: 512}
+        kind: {type: string, enum: [EARNING_SAVE, EARNING_ERASE, SHIFT_APPLY, COST_SAVE, COST_ERASE]}
+        payload: {type: object}
+    DriverMoney:
+      type: object
+      additionalProperties: false
+      required: [basis]
+      properties:
+        basis: {type: string, enum: [INCLUSIVE_NET, DETAILED]}
+        gross: {type: [integer, 'null'], minimum: 0, maximum: 1000000000000}
+        fees: {type: [integer, 'null'], minimum: 0, maximum: 1000000000000}
+        tips: {type: [integer, 'null'], minimum: 0, maximum: 1000000000000}
+        bonus: {type: [integer, 'null'], minimum: 0, maximum: 1000000000000}
+        refund: {type: [integer, 'null'], minimum: 0, maximum: 1000000000000}
+        net: {type: [integer, 'null'], minimum: 0, maximum: 1000000000000}
+    DriverEarningItem:
+      type: object
+      additionalProperties: false
+      required: [id, vehicle_id, platform, coverage, currency, from, to, timezone, money, revision, adjustment_count, needs_reconciliation]
+      properties:
+        id: {type: string, format: uuid}
+        vehicle_id: {type: string, format: uuid}
+        platform: {type: string, enum: [UBER, '99', INDRIVE, OTHER]}
+        coverage: {type: string, enum: [DETAIL, SUMMARY]}
+        currency: {type: string, enum: [BRL]}
+        from: {type: string, format: date-time}
+        to: {type: string, format: date-time}
+        timezone: {type: string, maxLength: 128}
+        money: {$ref: '#/components/schemas/DriverMoney'}
+        revision: {type: integer, minimum: 1}
+        adjustment_count: {type: integer, minimum: 0}
+        needs_reconciliation: {type: boolean}
+    DriverEarningsPageRequest:
+      type: object
+      additionalProperties: false
+      required: [family_id, access_token]
+      properties:
+        family_id: {type: string, format: uuid}
+        access_token: {type: string, minLength: 1, maxLength: 512}
+        limit: {type: integer, minimum: 1, maximum: 100}
+        cursor: {type: string, maxLength: 2048}
+    DriverEarningsPageResponse:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/DriverEarningItem'}
+        next_cursor: {type: string, maxLength: 2048}
+    DriverReportRequest:
+      type: object
+      additionalProperties: false
+      required: [family_id, access_token, vehicle_id, timezone, period, basis]
+      properties:
+        family_id: {type: string, format: uuid}
+        access_token: {type: string, minLength: 1, maxLength: 512}
+        vehicle_id: {type: string, format: uuid}
+        timezone: {type: string, maxLength: 128}
+        period: {type: string, enum: [DAY, WEEK, MONTH, CUSTOM]}
+        anchor: {type: string, format: date}
+        from: {type: string, format: date}
+        to: {type: string, format: date}
+        platform: {type: string, enum: [UBER, '99', INDRIVE, OTHER]}
+        basis: {type: string, enum: [ODOMETER, GPS_ESTIMATE, PAID_REPORTED, MANUAL_TRIP]}
+        expected_revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+    DriverReport:
+      type: object
+      additionalProperties: false
+      required: [revision, snapshot_version, vehicle_id, timezone, period, from, to, basis, currency, coverage, methods, earnings_per_km, recorded_result_per_km, recorded_result_per_hour, modeled_result_per_km, modeled_result_per_hour, ratios_unknown, generated_at]
+      properties:
+        revision: {type: string, pattern: '^[0-9a-f]{64}$'}
+        snapshot_version: {type: integer, minimum: 1}
+        vehicle_id: {type: string, format: uuid}
+        timezone: {type: string, maxLength: 128}
+        period: {type: string, enum: [DAY, WEEK, MONTH, CUSTOM]}
+        from: {type: string, format: date}
+        to: {type: string, format: date}
+        platform: {type: string, enum: [UBER, '99', INDRIVE, OTHER]}
+        basis: {type: string, enum: [ODOMETER, GPS_ESTIMATE, PAID_REPORTED, MANUAL_TRIP]}
+        currency: {type: string, enum: [BRL]}
+        earned_centavos: {type: [integer, 'null'], maximum: 1000000000000}
+        adjustments_centavos: {type: [integer, 'null'], maximum: 1000000000000}
+        costs_centavos: {type: [integer, 'null'], minimum: 0, maximum: 1000000000000}
+        modeled_costs_centavos: {type: [integer, 'null'], minimum: 0, maximum: 1000000000000}
+        recorded_result_centavos: {type: [integer, 'null'], maximum: 1000000000000}
+        modeled_result_centavos: {type: [integer, 'null'], maximum: 1000000000000}
+        distance_metres: {type: [integer, 'null'], minimum: 0, maximum: 1000000000000}
+        earnings_per_km: {type: string}
+        recorded_result_per_km: {type: string}
+        recorded_result_per_hour: {type: string}
+        modeled_result_per_km: {type: string}
+        modeled_result_per_hour: {type: string}
+        ratios_unknown: {type: string}
+        coverage:
+          type: object
+          additionalProperties: {type: string}
+        methods:
+          type: object
+          additionalProperties: {type: string}
+        generated_at: {type: string, format: date-time}
     ChargingOperationalEvent:
       type: object
       additionalProperties: false
