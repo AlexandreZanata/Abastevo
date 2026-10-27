@@ -18,6 +18,8 @@
   test drift), 2 skipped; maps engine 9/10 (missing admitted fixture). No
   backend change, so no redeploy. Receipt with screenshots:
   [MAP_NATIONAL_FINAL_RECEIPT](MAP_NATIONAL_FINAL_RECEIPT.md#device-validation).
+  Delivery: [PR #162](https://github.com/AlexandreZanata/Abastevo/pull/162)
+  (`codex/map-national-staging` -> `dev`); no merge, auto-merge or CI polling.
 - MAP national stations Phase 4 static overlay 2026-10-26: SERVED on staging /
   INTEGRATION_PENDING. New `mapoverlay` builds a release-addressed per-UF JSON
   overlay from the active generation and the latest official week. Release
