@@ -33,6 +33,7 @@ fun ActionCardButton(
     modifier: Modifier = Modifier,
     style: ActionCardStyle = ActionCardStyle.Outlined,
     enabled: Boolean = true,
+    showChevron: Boolean = true,
 ) {
     val containerColor = when (style) {
         ActionCardStyle.Primary -> MaterialTheme.colorScheme.secondaryContainer
@@ -84,10 +85,12 @@ fun ActionCardButton(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f),
             )
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-            )
+            if (showChevron) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                )
+            }
         }
     }
 }

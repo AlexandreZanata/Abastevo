@@ -88,17 +88,21 @@ docker/curl. The full sequence, backup precheck, receipt keeping and
 the CI publish design live in [the deploy runbook](../docs/operator/deploy.md).
 No destructive down migration exists: rollback is a forward redeploy.
 
-## Pull-based staging planner (CD-02, dry run)
+## Pull-based staging agent (CD-02/CD-03)
 
 `infra/deploy/agent/abastevo-deploy-agent` fetches the signed `staging` release
 manifest, verifies the keyless workflow identity and that the commit is an
 ancestor of `main`, compares it with `/var/lib/abastevo-deploy/current.json`
-and writes a mode-600 plan receipt. It never deploys, migrates, switches
-landing content or calls docker/kubectl/helm/systemctl. Host configuration is
-limited to `/etc/abastevo-deploy/agent.env`, never committed. The systemd
-service/timer use `flock`, `ProtectSystem=strict` and `NoNewPrivileges=yes`.
-See [the agent README](deploy/agent/README.md). Installation and the real VPS
-dry run remain OWED; Phase 2 is code and local acceptance only.
+and writes a mode-600 plan receipt. The default is dry-run; the opt-in apply
+mode adds the schema floor gate, verified backup, migration Job, one shared
+api/worker rollout, smoke, landing symlink switch and `current.json` last,
+with `rollout undo` and failure receipts. The k8s adapter is isolated in
+`runtime/k8s.sh`; host configuration is limited to
+`/etc/abastevo-deploy/agent.env`, never committed. The systemd service/timer
+use `flock`, `ProtectSystem=strict` and `NoNewPrivileges=yes`. See
+[the agent README](deploy/agent/README.md) and the namespace-scoped
+[RBAC](k8s/staging/deploy-agent-rbac.yaml). RBAC, installation and live
+staging acceptance remain OWED.
 
 ## Static portal rehearsal (ESP-14)
 

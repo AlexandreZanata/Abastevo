@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ledger_review_required">保存前请确认旧里程读数的单位。</string>
+    <string name="ledger_review_saved">已保存的数值（单位未确认）：%1$d</string>
+    <string name="ledger_review_metres">确认 %1$s 公里（原数值为米）</string>
+    <string name="ledger_review_kilometres">确认 %1$s 公里（原数值为公里）</string>
+    <string name="ledger_review_failed">未保存确认结果。请关闭并重新打开此记录以检查当前数值。</string>
+    <string name="ledger_review_entry">确认里程单位</string>
+    <string name="monthly_review_required">确认旧里程读数的单位后才能显示能耗和每公里费用。</string>
+</resources>

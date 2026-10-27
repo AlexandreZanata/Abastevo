@@ -46,6 +46,7 @@ data class LedgerEntryRow(
     val note: String?,
     val state: LedgerEntryState,
     val context: LedgerSessionContext?,
+    val odometerNeedsReview: Boolean = false,
 )
 
 private fun summaryOf(draft: LedgerDraft): LedgerEntrySummary = when (draft) {
@@ -80,7 +81,7 @@ class ListLedgerEntriesUseCase(
                 val queue = queued[draft.dataset.wire to draft.recordId]
                 val state = when {
                     queue == null -> LedgerEntryState.LOCAL
-                    queue.expectedRevision == stored.expectedRevision -> LedgerEntryState.PENDING
+                    queue.expectedRevision == stored.expectedRevision && queue.payloadJson == draft.bodyJson() -> LedgerEntryState.PENDING
                     else -> LedgerEntryState.CONFLICT
                 }
                 LedgerEntryRow(
@@ -95,6 +96,7 @@ class ListLedgerEntriesUseCase(
                     note = rowNote(draft),
                     state = state,
                     context = stored.context,
+                    odometerNeedsReview = com.anpfuel.domain.premium.LegacyOdometerReview.value(draft) != null && stored.odometerEvidence != com.anpfuel.domain.premium.OdometerEvidence.VERIFIED_METRES,
                 )
             }.sortedBy { it.occurredAt }
     }

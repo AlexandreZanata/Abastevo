@@ -69,6 +69,7 @@ android {
         getByName("test") {
             assets.srcDir("src/main/assets")
             resources.srcDir("$projectDir/fixtures")
+            resources.srcDir("$rootDir/contracts/testdata/driver-suite/http")
             resources.srcDir("$rootDir/backend/internal/platform/legalterms/text")
         }
     }
