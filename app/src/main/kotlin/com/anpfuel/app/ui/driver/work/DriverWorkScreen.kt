@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,6 +41,8 @@ import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import java.util.Locale
+import java.util.Date
+import java.text.DateFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,12 +101,14 @@ private fun ShiftCard(state: DriverWorkState, vehicleId: String, vm: DriverWorkV
     Card(modifier = Modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Turno manual", style = MaterialTheme.typography.titleMedium)
-            if (shift == null || shift.state == "CLOSED") {
+            if (state.shiftBlocked) {
+                Text("O controle de turno está indisponível até resolver o conflito.")
+            } else if (shift == null || shift.state == "CLOSED") {
                 Text("Nenhum turno ativo. O hodômetro é obrigatório para abrir.")
                 OutlinedTextField(startKm, { startKm = it }, label = { Text("Hodômetro inicial (km)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
                 Button(onClick = { vm.start(vehicleId, startKm) }, modifier = Modifier.fillMaxWidth()) { Text("Iniciar turno") }
             } else {
-                Text("Estado: ${shift.state} · ${(state.activeMillis / 60000)} min trabalhados")
+                Text("Estado: ${shift.state} · ${(state.activeMillis / 60000)} min conhecidos" + if (state.gaps.any { !it.reviewed || it.reviewedWorkMillis == null }) " · lacuna pendente" else "")
                 RowButtons(
                     onPause = { vm.pause(vehicleId) }, onResume = { vm.resume(vehicleId) },
                     onEnd = { vm.end(vehicleId, endKm) }, state = shift.state,
@@ -111,9 +116,19 @@ private fun ShiftCard(state: DriverWorkState, vehicleId: String, vm: DriverWorkV
                 OutlinedTextField(endKm, { endKm = it }, label = { Text("Hodômetro final (km)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
                 OutlinedButton(onClick = onStartGps, modifier = Modifier.fillMaxWidth()) { Text("Ligar GPS opcional") }
                 OutlinedButton(onClick = onStopGps, modifier = Modifier.fillMaxWidth()) { Text("Parar GPS opcional") }
-                state.gaps.filter { !it.reviewed }.forEach { gap ->
-                    OutlinedButton(onClick = { vm.reviewGap(vehicleId, gap.gapId) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Revisar lacuna: ${gap.reason}")
+                state.gaps.filter { !it.reviewed || it.reviewedWorkMillis == null }.forEach { gap ->
+                    key(gap.gapId) {
+                        var reviewedMinutes by remember(gap.gapId) { mutableStateOf("") }
+                        val formatter = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+                        val previous = formatter.format(Date(gap.previousUtcMillis))
+                        val next = formatter.format(Date(gap.nextUtcMillis))
+                        Text("Lacuna pendente: ${gap.reason}. O tempo é desconhecido até sua revisão.")
+                        Text("Último registro: $previous · Retomada: $next (horário local)")
+                        if (gap.nextUtcMillis < gap.previousUtcMillis) Text("Relógio regressivo: duração da lacuna desconhecida.")
+                        OutlinedTextField(reviewedMinutes, { reviewedMinutes = it }, label = { Text("Minutos trabalhados confirmados") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                        OutlinedButton(onClick = { vm.reviewGap(vehicleId, gap.gapId, reviewedMinutes); reviewedMinutes = "" }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Confirmar revisão da lacuna")
+                        }
                     }
                 }
             }

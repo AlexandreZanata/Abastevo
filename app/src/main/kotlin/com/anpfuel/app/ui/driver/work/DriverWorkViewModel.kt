@@ -17,6 +17,8 @@ import com.anpfuel.data.local.entity.DriverPayoutEntity
 import com.anpfuel.data.local.entity.DriverShiftEntity
 import com.anpfuel.data.local.entity.DriverShiftGapEntity
 import com.anpfuel.data.repository.DriverLocalStore
+import com.anpfuel.domain.driver.DriverClock
+import com.anpfuel.domain.driver.DriverShiftAction
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.math.BigDecimal
@@ -30,10 +32,12 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 data class DriverWorkState(
     val loading: Boolean = true,
     val shift: DriverShiftEntity? = null,
+    val shiftBlocked: Boolean = false,
     val gaps: List<DriverShiftGapEntity> = emptyList(),
     val earnings: List<DriverEarningEntity> = emptyList(),
     val payouts: List<DriverPayoutEntity> = emptyList(),
@@ -57,96 +61,153 @@ class DriverWorkViewModel @Inject constructor(
     private val origin = "android"
     private val owner: String get() = sessions.load()?.accountId ?: "local"
 
+    private var initializedOwner: String? = null
+    private var checkpointStarted = false
+
     fun load(vehicleId: String) {
+        val ownerAtStart = owner
         viewModelScope.launch {
-            val shift = store.currentShift(owner, origin)
-            val gaps = shift?.let { store.listShiftGaps(owner, origin, it.shiftId) }.orEmpty()
-            state.value = DriverWorkState(
-                loading = false, shift = shift, gaps = gaps,
-                earnings = store.listEarnings(owner, origin, vehicleId),
-                payouts = store.listPayouts(owner, origin),
-                distances = store.listDistances(owner, origin, vehicleId),
-                cost = store.findCostSetting(owner, origin, vehicleId),
-                reconciliations = store.listReconciliations(owner, origin, vehicleId),
-                goals = store.listGoals(owner, origin, vehicleId),
-                maintenance = store.listMaintenance(owner, origin, vehicleId),
-                activeMillis = shift?.activeMillis ?: 0,
-            )
+            try {
+                val shift = store.currentShiftChecked(ownerAtStart, origin)
+                check(owner == ownerAtStart)
+                if (initializedOwner != ownerAtStart && shift?.state == "RUNNING" && shift.vehicleId == vehicleId) {
+                    val gaps = store.listShiftGaps(ownerAtStart, origin, shift.shiftId)
+                    val (recovered, nextGaps) = DriverWorkShiftTransition.apply(
+                        shift, gaps, DriverShiftAction.RECOVER, clock(), UUID.randomUUID().toString(),
+                    )
+                    check(owner == ownerAtStart)
+                    store.updateShift(recovered, nextGaps, shift.version)
+                    DriverGpsService.stop(context)
+                }
+                check(owner == ownerAtStart)
+                initializedOwner = ownerAtStart.takeIf { shift == null || shift.vehicleId == vehicleId }
+                refresh(vehicleId, ownerAtStart)
+                if (!checkpointStarted) {
+                    checkpointStarted = true
+                    viewModelScope.launch {
+                        while (true) {
+                            delay(30_000)
+                            checkpointActiveShift()
+                        }
+                    }
+                }
+            } catch (error: RuntimeException) {
+                if (error !is IllegalStateException && error !is IllegalArgumentException) throw error
+                state.value = DriverWorkState(loading = false, shiftBlocked = true, message = "Não foi possível recuperar o turno. Os dados permanecem salvos para revisão.")
+            }
         }
     }
 
-    private fun clock(): Pair<String, Long> =
-        "boot-" + Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, 0) to System.currentTimeMillis()
-
-    private fun elapsed(row: DriverShiftEntity, nowElapsed: Long): Long {
-        val last = row.lastElapsedMillis ?: return 0
-        return (nowElapsed - last).coerceAtLeast(0)
+    internal fun checkpointActiveShift() {
+        val active = state.value.shift ?: return
+        if (active.state == "RUNNING") transition(active.vehicleId, DriverShiftAction.CHECKPOINT)
     }
+
+    private suspend fun refresh(vehicleId: String, ownerAtStart: String = owner) {
+        check(owner == ownerAtStart)
+        val shift = store.currentShiftChecked(ownerAtStart, origin)
+        check(owner == ownerAtStart)
+        if (shift != null && shift.vehicleId != vehicleId) {
+            state.value = DriverWorkState(loading = false, shiftBlocked = true, message = "Existe um turno ativo em outro veículo. Abra esse veículo para continuar.")
+            return
+        }
+        val gaps = shift?.let { store.listShiftGaps(ownerAtStart, origin, it.shiftId) }.orEmpty()
+        val next = DriverWorkState(
+            loading = false, shift = shift, gaps = gaps,
+            earnings = store.listEarnings(ownerAtStart, origin, vehicleId),
+            payouts = store.listPayouts(ownerAtStart, origin),
+            distances = store.listDistances(ownerAtStart, origin, vehicleId),
+            cost = store.findCostSetting(ownerAtStart, origin, vehicleId),
+            reconciliations = store.listReconciliations(ownerAtStart, origin, vehicleId),
+            goals = store.listGoals(ownerAtStart, origin, vehicleId),
+            maintenance = store.listMaintenance(ownerAtStart, origin, vehicleId),
+            activeMillis = shift?.activeMillis ?: 0,
+        )
+        check(owner == ownerAtStart)
+        state.value = next
+    }
+
+    private fun clock(): DriverClock = DriverClock(
+        "boot-" + Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, 0),
+        android.os.SystemClock.elapsedRealtime(), System.currentTimeMillis(),
+    )
 
     fun start(vehicleId: String, startKm: String) {
-        val metres = parseKm(startKm) ?: return fail("Odômetro inicial inválido.")
+        val metres = parseKm(startKm)?.takeIf { it >= 0 } ?: return fail("Odômetro inicial inválido.")
+        val ownerAtStart = owner
         viewModelScope.launch {
-            val (boot, utc) = clock()
-            val id = UUID.randomUUID().toString()
-            val row = DriverShiftEntity(
-                owner, origin, id, vehicleId, ZoneId.systemDefault().id, "RUNNING", 1,
-                boot, android.os.SystemClock.elapsedRealtime(), utc, 0, 0, null, null, utc, utc,
-            ).copy(startOdometerMetres = metres)
-            store.saveShift(row, emptyList())
-            load(vehicleId)
+            try {
+                check(owner == ownerAtStart)
+                val now = clock()
+                val id = UUID.randomUUID().toString()
+                val row = DriverShiftEntity(
+                    ownerAtStart, origin, id, vehicleId, ZoneId.systemDefault().id, "RUNNING", 1,
+                    now.bootId, now.elapsedMillis, now.utcMillis, 0, 0, null, null, now.utcMillis, now.utcMillis,
+                ).copy(startOdometerMetres = metres)
+                check(owner == ownerAtStart)
+                store.startShift(row)
+                refresh(vehicleId, ownerAtStart)
+            } catch (_: IllegalStateException) {
+                if (owner != ownerAtStart) {
+                    initializedOwner = null
+                    state.value = DriverWorkState(loading = false, shiftBlocked = true)
+                }
+                fail("Já existe um turno ativo ou houve conflito. Reabra a tela para revisar.")
+            }
         }
     }
 
-    fun pause(vehicleId: String) = mutate(vehicleId, "PAUSED", end = false)
-    fun resume(vehicleId: String) = mutate(vehicleId, "RUNNING", end = false)
+    fun pause(vehicleId: String) = transition(vehicleId, DriverShiftAction.PAUSE)
+    fun resume(vehicleId: String) = transition(vehicleId, DriverShiftAction.RESUME)
     fun end(vehicleId: String, endKm: String) {
-        val metres = parseKm(endKm) ?: return fail("Odômetro final inválido.")
+        val metres = parseKm(endKm)?.takeIf { it >= 0 } ?: return fail("Odômetro final inválido.")
         val row = state.value.shift ?: return fail("Nenhum turno ativo.")
-        val start = row.startOdometerMetres
-        if (start != null && metres < start) return fail("Odômetro final menor que o inicial.")
-        mutate(vehicleId, "CLOSED", end = false, endMetres = metres)
+        val startMetres = row.startOdometerMetres
+        if (startMetres != null && metres < startMetres) return fail("Odômetro final menor que o inicial.")
+        if (state.value.gaps.any { !it.reviewed || it.reviewedWorkMillis == null }) return fail("Revise todas as lacunas antes de encerrar o turno.")
+        transition(vehicleId, DriverShiftAction.END, endMetres = metres)
     }
 
-    private fun mutate(vehicleId: String, stateName: String, end: Boolean, endMetres: Long? = null) {
-        val row = state.value.shift ?: return fail("Nenhum turno ativo.")
+    private fun transition(vehicleId: String, action: DriverShiftAction, endMetres: Long? = null, gapId: String? = null, reviewedWorkMillis: Long? = null) {
+        val row = state.value.shift ?: return
+        val gaps = state.value.gaps
+        val ownerAtStart = owner
         viewModelScope.launch {
-            val (boot, utc) = clock()
-            val nowElapsed = android.os.SystemClock.elapsedRealtime()
-            val previousElapsed = row.lastElapsedMillis
-            val previousBoot = row.lastBootId
-            val worked = row.activeMillis + if (row.state == "RUNNING") elapsed(row, nowElapsed) else 0
-            var gaps = state.value.gaps
-            var nextState = stateName
-            if (previousBoot != null && previousBoot != boot) {
-                nextState = "RECOVERY_REQUIRED"
-                gaps = gaps + DriverShiftGapEntity(
-                    owner, origin, row.shiftId, UUID.randomUUID().toString(), "boot-changed",
-                    previousBoot, previousElapsed ?: 0, row.lastUtcMillis ?: utc, boot, nowElapsed, utc,
-                    false, null, utc,
-                )
+            try {
+                check(row.ownerAccount == ownerAtStart && owner == ownerAtStart)
+                val (candidate, nextGaps) = DriverWorkShiftTransition.apply(row, gaps, action, clock(), UUID.randomUUID().toString(), gapId, reviewedWorkMillis)
+                val updated = if (candidate.state == "CLOSED") candidate.copy(endOdometerMetres = endMetres) else candidate
+                check(owner == ownerAtStart)
+                store.updateShift(updated, nextGaps, row.version)
+                if (updated.state != "RUNNING") DriverGpsService.stop(context)
+                refresh(vehicleId, ownerAtStart)
+            } catch (error: RuntimeException) {
+                if (error !is IllegalStateException && error !is IllegalArgumentException) throw error
+                if (row.ownerAccount == ownerAtStart && owner == ownerAtStart) {
+                    try { refresh(vehicleId, ownerAtStart) } catch (_: IllegalStateException) { }
+                } else {
+                    initializedOwner = null
+                    state.value = DriverWorkState(loading = false, shiftBlocked = true)
+                }
+                fail("O turno mudou ou não pôde ser recuperado. Os dados permanecem salvos para revisão.")
             }
-            val updated = row.copy(
-                state = nextState, version = row.version + 1, lastBootId = boot, lastElapsedMillis = nowElapsed,
-                lastUtcMillis = utc, activeMillis = worked, updatedAtMillis = utc, endOdometerMetres = endMetres ?: row.endOdometerMetres,
-            )
-            store.saveShift(updated, gaps)
-            load(vehicleId)
         }
     }
 
     fun startGps() {
-        val id = state.value.shift?.shiftId ?: return fail("Inicie um turno antes do GPS.")
-        DriverGpsService.start(context, id)
+        val shift = state.value.shift ?: return fail("Inicie um turno antes do GPS.")
+        if (shift.ownerAccount != owner || shift.state != "RUNNING") return fail("O GPS exige um turno em andamento.")
+        DriverGpsService.start(context, shift.shiftId)
     }
     fun stopGps() = DriverGpsService.stop(context)
 
-    fun reviewGap(vehicleId: String, gapId: String) {
-        val row = state.value.shift ?: return
-        viewModelScope.launch {
-            val gaps = state.value.gaps.map { if (it.gapId == gapId) it.copy(reviewed = true) else it }
-            store.saveShift(row.copy(state = "PAUSED", version = row.version + 1, updatedAtMillis = System.currentTimeMillis()), gaps)
-            load(vehicleId)
-        }
+    fun reviewGap(vehicleId: String, gapId: String, minutes: String) {
+        val gap = state.value.gaps.singleOrNull { it.gapId == gapId && (!it.reviewed || it.reviewedWorkMillis == null) } ?: return fail("Lacuna não encontrada.")
+        val amount = minutes.toLongOrNull()?.takeIf { it >= 0 && it <= Long.MAX_VALUE / 60_000 }?.times(60_000)
+            ?: return fail("Informe os minutos trabalhados na lacuna, inclusive zero quando confirmado.")
+        val wallGap = gap.nextUtcMillis - gap.previousUtcMillis
+        if (amount > 0 && (wallGap < 0 || amount > wallGap)) return fail("Duração não verificável; mantenha a lacuna pendente.")
+        transition(vehicleId, DriverShiftAction.REVIEW_GAP, gapId = gapId, reviewedWorkMillis = amount)
     }
 
     fun saveEarning(vehicleId: String, platform: String, netInput: String, tipsInput: String, feesInput: String) {
@@ -166,7 +227,7 @@ class DriverWorkViewModel @Inject constructor(
             )
             val command = DriverLocalCommandEntity(owner, origin, UUID.randomUUID().toString(), "EARNING_SAVE", "a".repeat(64), 0, "PENDING", 0, 0, null, 0, System.currentTimeMillis())
             store.saveEarning(earning, revision, command)
-            load(vehicleId)
+            refresh(vehicleId)
         }
     }
 
@@ -174,7 +235,7 @@ class DriverWorkViewModel @Inject constructor(
         val amount = parseMoney(amountInput) ?: return fail("Repasse inválido.")
         viewModelScope.launch {
             store.savePayout(DriverPayoutEntity(owner, origin, UUID.randomUUID().toString(), vehicleId, System.currentTimeMillis(), amount, kind, "manual", null, System.currentTimeMillis()))
-            load(vehicleId)
+            refresh(vehicleId)
         }
     }
 
@@ -183,7 +244,7 @@ class DriverWorkViewModel @Inject constructor(
         val personal = personalInput.toIntOrNull()?.takeIf { it in 0..100 } ?: return fail("Fração pessoal inválida.")
         viewModelScope.launch {
             store.saveCostSetting(DriverCostSettingEntity(owner, origin, vehicleId, ownership, amount, personal, LocalDate.now().toString(), System.currentTimeMillis()))
-            load(vehicleId)
+            refresh(vehicleId)
         }
     }
 
@@ -199,7 +260,7 @@ class DriverWorkViewModel @Inject constructor(
                 owner, origin, vehicleId, LocalDate.now().toString(), basis, odo, gps, paid, empty, personal,
                 empty != null, System.currentTimeMillis(),
             ))
-            load(vehicleId)
+            refresh(vehicleId)
         }
     }
 
@@ -207,7 +268,7 @@ class DriverWorkViewModel @Inject constructor(
         val target = parseMoney(targetInput) ?: return fail("Meta inválida.")
         viewModelScope.launch {
             store.saveGoal(DriverGoalEntity(owner, origin, vehicleId, UUID.randomUUID().toString(), period, metric, target, true, System.currentTimeMillis()))
-            load(vehicleId)
+            refresh(vehicleId)
         }
     }
 
@@ -223,7 +284,7 @@ class DriverWorkViewModel @Inject constructor(
                 baseline, today.toString(), baseline?.let { intervalKm?.let { km -> it + km } }, intervalDays?.let { today.plusDays(it).toString() },
                 baseline, today.toString(), System.currentTimeMillis(),
             ))
-            load(vehicleId)
+            refresh(vehicleId)
         }
     }
 
@@ -235,7 +296,7 @@ class DriverWorkViewModel @Inject constructor(
                 nextDueKm = km?.let { v -> item.intervalKm?.let { v + it } } ?: item.nextDueKm,
                 nextDueDay = item.intervalDays?.let { today.plusDays(it).toString() } ?: item.nextDueDay,
                 updatedAtMillis = System.currentTimeMillis()))
-            load(vehicleId)
+            refresh(vehicleId)
         }
     }
 
