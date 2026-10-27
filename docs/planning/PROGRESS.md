@@ -103,6 +103,7 @@
   admin+cmd/api integration ok, `make quick-verify` ok (54s), secret scan
   clean. [Evidence](../../backend/evidence/admin/A1-ADMIN-AUTH.md). PR #164 to
   `main`. Next: A2 from this head (stacked because PR #164 is unmerged).
+
 - CD-04 staging k3s executor 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   R2 captured the live `abastevo-temp` objects into `infra/k8s/staging/` with
   placeholders; the rendered namespace passed `kubectl diff` with exit 0 after
@@ -334,6 +335,140 @@
   Isolated planning source f1e1d0db; foreign-dirty primary/MAP checkouts preserved.
   No runtime/device/provider/VPS/push/PR/merge/wiki/production change.
   Next, only on implementation request: DRV-00 → DRV-01 → DRV-02.
+
+- MAP national stations 2026-10-27: APPLIED on staging / INTEGRATION_PENDING.
+  Branch `codex/map-national-staging` (merge `b1b85f94`) merges the six dev map-UI
+  commits (persistent host, compact controls, grouped filters, shared fuel
+  selector, action cards, panel collapse) with the national pin tiers:
+  40,388/45,688 pins (88.4%); 5,300 L5 stations stay list-only. Staging smoke:
+  `health/ready` 200; Manaus 15 km nearby 100 items (99 `anp-reported`,
+  1 `address-point`); nearby p50/p95 São Paulo 15 km 15.6/19.2 ms, Curitiba
+  9.1/12.5 ms, Sorriso 4.6/8.0 ms, Manaus 9.1/11.2 ms. Device POCO 2311DRK48G:
+  new UI and pins verified in Curitiba, Sorriso, São Paulo and Manaus;
+  bottom-sheet quality labels captured in Curitiba (`anp-reported`) and
+  Sorriso (`address-point`). Base tiles render only for the admitted Paraná fixture
+  because `mapDistBaseUrl`, `mapDistRegion` and `mapDistKeys` are empty in every
+  built variant (BLOCKED_CONFIG); the three requested cities keep pins over a
+  blank base. Merged-head device run (`ed4f685f`): `MapScreenInstrumentedTest`
+  13/13, saved places 3/3, all `maps:engine` host/overlay classes and
+  `MapDownloadWorkerTest` 7/7 (stale pre-MAP-24 `CONNECTED` assertion fixed)
+  pass. `MapRouteInstrumentedTest` and `NativeRouteScreenInstrumentedTest` fail
+  identically on pure `origin/dev` `6f8b82b5` (persistent-host and compact-panel
+  UI; open for that work); bottom-tab/home/training-consent rows are
+  pre-existing. Separate P38 matrix on the PR #157 tree (not this merge): app
+  87/120, data 112/117, engine 9/10; BLOCKED_MEDIA and missing admitted
+  regional fixture remain. No
+  backend change, so no redeploy. Receipt with screenshots:
+  [MAP_NATIONAL_FINAL_RECEIPT](MAP_NATIONAL_FINAL_RECEIPT.md#device-validation).
+  Delivery: [PR #162](https://github.com/AlexandreZanata/Abastevo/pull/162)
+  (`codex/map-national-staging` -> `dev`); no merge, auto-merge or CI polling.
+
+- MAP national stations Phase 4 static overlay 2026-10-26: SERVED on staging /
+  INTEGRATION_PENDING. New `mapoverlay` builds a release-addressed per-UF JSON
+  overlay from the active generation and the latest official week. Release
+  `phase3-coverage-sample-20261026-5e8d5a74`: 565 assertions, 19 UFs, 102 with
+  prices (week 2026-10-18..2026-10-24); manifest SHA-256 `1856ce2c...`. The
+  staging web tier serves `/dados/mapa/*` with immutable caching; the edge
+  returned 200 for `current/manifest.json` and `current/PR.json`. The generator
+  is read-only against PostgreSQL; no production change. The first web rollout
+  hit the namespace CPU quota; deleting the temporary overlay pod freed it and
+  the rollout completed. Receipt:
+  [MAP_NATIONAL_STATIC_OVERLAY_RECEIPT](MAP_NATIONAL_STATIC_OVERLAY_RECEIPT.md);
+  operator guide: [map-static-overlay](../operator/map-static-overlay.md). B3
+  (D2), D1 and A1.a remain blocked.
+
+- MAP national stations Phase 3 A3 staging apply 2026-10-26: APPLIED on staging
+  only / B3 BLOCKED by D2. Namespace `abastevo-temp` on `sorrimobi-vps`; no
+  production change. `station-review` applied 361 L1 reviews, 0 failed
+  (reviewed revisions 0 -> 361). `map-load` published generation
+  `02ea6e7d-19ce-4942-a369-1aa7efdd03dd` ACTIVE, source revision
+  `phase3-coverage-sample-20261026`, 565 assertions (generations 0 -> 1). API
+  smoke exposed the active generation; the endpoint accepts ANP/COMMUNITY only,
+  so OSM assertions are stored but not served by this price endpoint. L3 1,574
+  (D1) and L4 186 (D2) were not applied; A1.a remains blocked by 429. Evidence:
+  `work/phase3-apply-*` and receipt hash `c580a8a3...`; see
+  [MAP_NATIONAL_APPLY_RECEIPT](MAP_NATIONAL_APPLY_RECEIPT.md). Temporary apply
+  pod deleted; rollback not needed.
+
+- MAP national stations Phase 3 coverage/apply prep 2026-10-26: LOCAL_DONE /
+  INTEGRATION_PENDING. New `prepare_national_coverage` reconciles A2/B2 into
+  one final tier per station, writes per-UF coverage, merges L2 assertions and
+  builds a `map-load` prepared envelope; `station-review`/`map-load` commands
+  are emitted with `<STAGING_DSN>` placeholders. Sample: 45,688 stations, 926
+  published (2.03%), 1,760 candidates, 43,002 no point; 361 reviews and 565 map
+  assertions ready; envelope validated by Go `mapcontract`. L3 1,574 (D1) and
+  L4 186 (D2) remain blocked; A1.a remains blocked by 429. No DB/deploy/app
+  change. At coverage closure no DB write had been made; the staging apply is
+  recorded above. Apply gate documented in
+  [MAP_NATIONAL_APPLY_GATE](MAP_NATIONAL_APPLY_GATE.md).
+
+- MAP national stations Phase 2 B2 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
+  New `prepare_open_geocode` (`open_geocode.rs` + bin) consumes A2 L5 decisions,
+  registry, OSM, CNEFE and RFB address extracts. It tries OSM CNPJ/address L2,
+  exact CNEFE establishment L4 (publish false while D2 is open) and L5 with
+  reasons; RFB overrides a stale registry address only for the same CNPJ. No
+  centroid, nearest-street or street-only match. Bounds: 5M CNEFE points, 500k
+  RFB rows, 200k decisions, 10k map assertions, 100 m ambiguity radius. Local
+  validation: `check-rust-fast.sh` PASS, 11 B2 tests PASS, real pilot
+  (Londrina/PR, Cuiaba/MT, Ribeirao Preto/SP) with 985,846 CNEFE points and 424
+  RFB addresses produced 186 L4 candidates and 43,002 L5 in 10.12 s / 679,240
+  KiB; 396/424 addresses came from RFB; deterministic reruns. No DB/deploy/app
+  change. At B2 closure B3/Phase 3 had not started; coverage/apply prep is
+  recorded above.
+
+- MAP national stations Phase 2 A2 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
+  Branch `codex/map-national-stations-plan`; new `prepare_national_matches`
+  (`national_match.rs` + bin) joins ANP API pages, OSM references and prepared
+  registry assertions with grid/CNPJ/address indexes, emits L1 reviews for
+  `station-review`, L2 `osm-mapped` map assertions, L3/L5 decisions and
+  deterministic outputs. `station-review` accepts the new
+  `ANP_REGISTRY_API+OSM_CNPJ` method. Source and worker limits are documented in
+  [MAP_NATIONAL_SOURCE_LIMITS](MAP_NATIONAL_SOURCE_LIMITS.md). Local validation:
+  `check-rust-fast.sh` PASS, full Rust crate tests PASS, Go
+  `./cmd/station-review` PASS, 1M-point release test PASS (2.98-8.72 s under load, 594 MiB), and
+  the Phase 1 VPS sample produced 361 L1 reviews / 565 L2 map assertions /
+  1,574 L3 / 43,188 L5 in 1.48 s / 142,648 KiB with byte-identical reruns.
+  No DB/deploy/app change. At A2 closure B2 and Phase 3 had not started; B2 is
+  recorded above.
+
+- MAP national stations Phase 1 2026-10-26: PARTIAL / A1.a BLOCKED.
+  Branch `codex/map-national-stations-plan`; private VPS root
+  `/opt/abastevo-temp/map-national-20261026` (mode 700); no data in Git and no
+  DB/deploy/app change. A1.b/A1.c/A1.d/B1 done: registry 45,808 rows (45,688
+  accepted), OSM 2026-10-25 PBF 2,098,807,156 B, `prepare_osm` 7m14s /
+  875,904 KiB RSS / 363,382,865 elements / 28,565 fuel POIs / 5 valid CNPJ
+  (46 raw tags), reviews Curitiba 68/280, Sorriso 1/24, Sao Paulo 290/1,235,
+  CNEFE PR/MT/SP 31,061,064 rows, RFB 73,809,386 rows, Overture 2026-10-21.0
+  62,091 fuel places. A1.a stopped on repeated HTTP 429 for AC/MANCIO LIMA
+  after 12 municipalities (1,958 rows / 1,935 valid points); no 401/403, no
+  credential request, no retry after STOP. Evidence in
+  `inputs/SOURCES.md` and `inputs/phase1-report.md`. Phase 2 had not started at
+  this closure; A2 is recorded above and B2 remains pending.
+
+- LH10 learning UI 2026-10-26: STAGING_DONE / INTEGRATION_PENDING.
+  Isolated `codex/learning-pages-ui` from the website staging candidate
+  `9e6da1ae` (PR #155); maintained dev has the independent map PR #154.
+  Guias/Como usar and 19 detail routes share the existing home header/footer
+  and neutral card UI. Typecheck/build/check and 68/68 landing tests PASS;
+  desktop/375 px browser review and native mobile menu PASS.
+  [Evidence](../release-evidence/learning-ui-20261026.md).
+  Published `releases/lh10-3981322e-71f98ae2` to `teste.abastevo.com.br`:
+  21 HTML + new CSS verified by HTTPS hashes, noindex/CSP; 135 existing
+  files unchanged, old release retained, live hubs/footer visually checked.
+  Existing website PR #155 carries this UI; exact-head checks/review remain
+  pending. No map PR merge, API rollout or apex deployment.
+
+- Staging landing + portal search + ingestion 2026-10-26: STAGING_DONE /
+  INTEGRATION_PENDING on `codex/vps-staging-landing-perf` from `main`
+  4eeccfbf, PR to main. Owner-authorized `teste.abastevo.com.br` scope,
+  namespace `abastevo-temp` only, noindex. Landing + same-origin portal search
+  live; Rust registry refresh and ANP weekly import (B-BR-002a float-noise,
+  owner-approved) running; eleven measured gaps fixed with tests (ingest load
+  wait, landing chrome, budgets, CPF minimization, verify 4.6x, promote 3.9x,
+  web tier OOM, list keyset). Load @300 req/s: 0 errors, p95 10 ms.
+  [Evidence](../backend/evidence/STAGING_LANDING_PORTAL_2026-10-26.md).
+  Next: review/merge; Directory CPF-name projection as its own task.
+
 - Map panel-collapse follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
   dev `e64b655f`, existing PR #154. A visible 48 dp chevron hides/reopens the action
   container; attribution remains visible and saved-state restoration retains the

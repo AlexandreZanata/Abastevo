@@ -1,6 +1,7 @@
 package com.anpfuel.maps.engine
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -63,5 +64,60 @@ class OverlayPinEligibilityTest {
             second.clusters.single().markers.single().uuid,
         )
         assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", second.clusters.single().markers.single().uuid)
+    }
+
+    @Test fun `every pin tier becomes a pin with its own label and approximate tiers are styled apart`() {
+        val reviewed = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        val osm = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+        val anp = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+        val address = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+        val centroid = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+        val preparation = prepareOverlay(
+            listOf(
+                marker(reviewed, MapStationLocationQuality.REVIEWED, "Reviewed").copy(latitude = -25.40),
+                marker(osm, MapStationLocationQuality.OSM_MAPPED, "Osm").copy(latitude = -25.41),
+                marker(anp, MapStationLocationQuality.ANP_REPORTED, "Anp").copy(latitude = -25.42),
+                marker(address, MapStationLocationQuality.ADDRESS_POINT, "Address").copy(latitude = -25.43),
+                marker(centroid, MapStationLocationQuality.CITY_CENTROID, "Centroid").copy(latitude = -25.44),
+            ),
+            radiusMeters = 60.0,
+            generation = 7,
+        )
+        assertEquals(
+            setOf(reviewed, osm, anp, address),
+            preparation.clusters.flatMap { it.markers }.map { it.uuid }.toSet(),
+        )
+        assertEquals(listOf(centroid), preparation.unpinned.map { it.uuid })
+        val kml = buildOverlayKml(preparation.clusters)
+        assertEquals(2, Regex("#placemark-yellow").findAll(kml).count())
+        assertEquals(2, Regex("#placemark-orange").findAll(kml).count())
+        assertTrue(kml.contains("<description>Anp - Fuel - Location reported by ANP</description>"))
+        assertTrue(kml.contains("<description>Address - Fuel - Approximate location from address (IBGE)</description>"))
+        assertTrue(kml.contains("<description>Osm - Fuel - Mapped by the OpenStreetMap community</description>"))
+        val items = overlayListItems(preparation.clusters, unpinned = preparation.unpinned)
+        assertEquals("Mapped by the OpenStreetMap community", items.single { it.uuid == osm }.locationLabel)
+        assertEquals("Location reported by ANP", items.single { it.uuid == anp }.locationLabel)
+        assertEquals("Approximate location from address (IBGE)", items.single { it.uuid == address }.locationLabel)
+    }
+
+    @Test fun `pin tiers can route and duplicates keep the best tier location`() {
+        assertTrue(marker(ANY, MapStationLocationQuality.ADDRESS_POINT).canRouteByCoordinates)
+        assertTrue(marker(ANY, MapStationLocationQuality.ANP_REPORTED).canRouteByCoordinates)
+        assertTrue(marker(ANY, MapStationLocationQuality.OSM_MAPPED).canRouteByCoordinates)
+        assertFalse(marker(ANY, MapStationLocationQuality.CITY_CENTROID).canRouteByCoordinates)
+        assertFalse(marker(ANY, MapStationLocationQuality.UNKNOWN).canRouteByCoordinates)
+        val merged = prepareOverlay(
+            listOf(
+                marker(ANY, MapStationLocationQuality.ADDRESS_POINT).copy(latitude = -25.0),
+                marker(ANY, MapStationLocationQuality.OSM_MAPPED).copy(latitude = -25.1),
+                marker(ANY, MapStationLocationQuality.ANP_REPORTED).copy(latitude = -25.2),
+            ),
+        ).clusters.single().markers.single()
+        assertEquals(MapStationLocationQuality.OSM_MAPPED, merged.locationQuality)
+        assertEquals(-25.1, merged.latitude)
+    }
+
+    private companion object {
+        const val ANY = "ffffffff-ffff-4fff-8fff-ffffffffffff"
     }
 }

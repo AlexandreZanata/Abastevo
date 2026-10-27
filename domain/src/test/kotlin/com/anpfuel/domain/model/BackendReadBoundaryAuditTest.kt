@@ -59,8 +59,12 @@ class BackendReadBoundaryAuditTest {
             ServerStation.create(station, " Station ", StationLocationQuality.UNKNOWN, lat, lon, cnpj, null, null, revision)
         assertNull(value().latitude)
         assertNull(value().longitude)
-        for (wire in listOf("unknown", "city-centroid", "reviewed")) assertEquals(wire, StationLocationQuality.fromWire(wire).wire)
-        assertThrows<DomainException> { StationLocationQuality.fromWire("gps-guessed") }
+        for (wire in listOf("unknown", "city-centroid", "reviewed", "osm-mapped", "anp-reported", "address-point")) {
+            assertEquals(wire, StationLocationQuality.fromWire(wire).wire)
+        }
+        // Forward compatible: an unrecognised tier degrades to UNKNOWN and never becomes a pin.
+        assertEquals(StationLocationQuality.UNKNOWN, StationLocationQuality.fromWire("gps-guessed"))
+        assertEquals(false, StationLocationQuality.fromWire("gps-guessed").isPin)
         assertThrows<DomainException> { value(lon = 10.0) }
         assertThrows<DomainException> { value(lat = 0.0, lon = Double.NaN) }
         assertThrows<DomainException> { value(cnpj = "x".repeat(19)) }

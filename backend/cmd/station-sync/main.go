@@ -40,8 +40,9 @@ func run() error {
 	preparer := flag.String("prepare", "/tools/prepare_registry", "trusted Rust executable")
 	loader := flag.String("loader", "/tools/station-load", "trusted Go loader executable")
 	timeout := flag.Duration("timeout", 18*time.Minute, "overall bounded refresh duration")
+	budgetWait := flag.Duration("budget-wait", 6*time.Minute, "bounded wait for the host safety budget before starting (inside --timeout)")
 	flag.Parse()
-	if *timeout <= 0 || *timeout > 20*time.Minute || os.Getenv("ANPFUEL_DATABASE_URL") == "" || !filepath.IsAbs(*root) || !filepath.IsAbs(*preparer) || !filepath.IsAbs(*loader) {
+	if *timeout <= 0 || *timeout > 20*time.Minute || *budgetWait < 0 || *budgetWait >= *timeout/2 || os.Getenv("ANPFUEL_DATABASE_URL") == "" || !filepath.IsAbs(*root) || !filepath.IsAbs(*preparer) || !filepath.IsAbs(*loader) {
 		return fmt.Errorf("invalid bounded refresh configuration")
 	}
 	signalContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -49,7 +50,10 @@ func run() error {
 	ctx, cancel := context.WithTimeout(signalContext, *timeout)
 	defer cancel()
 	safetyClient := &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return fmt.Errorf("readiness redirect refused") }}
-	if err := safety(ctx, *root, safetyClient); err != nil {
+	check := func(ctx context.Context) error { return safety(ctx, *root, safetyClient) }
+	if err := waitForBudget(ctx, check, *budgetWait, 15*time.Second, func(err error) {
+		event("budget_deferred", map[string]any{"reason": err.Error()})
+	}); err != nil {
 		return err
 	}
 	done := make(chan struct{})

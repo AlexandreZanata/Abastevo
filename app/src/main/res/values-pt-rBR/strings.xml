@@ -682,6 +682,9 @@
     <string name="server_station_quality_reviewed">Local verificado</string>
     <string name="server_station_quality_centroid">Local aproximado da cidade</string>
     <string name="server_station_quality_unknown">Local não verificado</string>
+    <string name="server_station_quality_osm_mapped">Mapeado pela comunidade OpenStreetMap</string>
+    <string name="server_station_quality_anp_reported">Localização informada pela ANP</string>
+    <string name="server_station_quality_address_point">Localização aproximada pelo endereço (IBGE)</string>
     <string name="server_station_unknown_location">Local não verificado — exibido sem coordenadas.</string>
     <string name="server_station_cached">Exibindo últimos dados conhecidos (cache offline).</string>
     <string name="server_stations_unavailable">Diretório do servidor indisponível. A navegação oficial ANP continua funcionando.</string>
@@ -1135,6 +1138,9 @@
     <string name="map_location_reviewed">Localização revisada</string>
     <string name="map_location_city_centroid">Localização aproximada da cidade</string>
     <string name="map_location_unknown">Localização desconhecida</string>
+    <string name="map_location_osm_mapped">Mapeado pela comunidade OpenStreetMap</string>
+    <string name="map_location_anp_reported">Localização informada pela ANP</string>
+    <string name="map_location_address_point">Localização aproximada pelo endereço (IBGE)</string>
     <string name="map_sheet_source_label">Fonte: %1$s</string>
     <string name="map_sheet_location_label">Localização: %1$s</string>
     <string name="map_sheet_loading_price">Carregando preço…</string>

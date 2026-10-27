@@ -17,11 +17,12 @@ type searchState struct {
 }
 
 type searchShard struct {
-	Schema   string          `json:"schema"`
-	Release  string          `json:"release"`
-	UF       string          `json:"uf"`
-	Count    int             `json:"count"`
-	Stations []searchStation `json:"stations"`
+	Schema       string          `json:"schema"`
+	Release      string          `json:"release"`
+	UF           string          `json:"uf"`
+	Municipality string          `json:"municipio,omitempty"`
+	Count        int             `json:"count"`
+	Stations     []searchStation `json:"stations"`
 }
 
 type searchStation struct {
@@ -35,6 +36,7 @@ type searchStation struct {
 	Status           string           `json:"st,omitempty"`
 	StatusLabel      string           `json:"sl,omitempty"`
 	Prices           map[string]int64 `json:"p,omitempty"`
+	Fuels            int              `json:"f,omitempty"`
 }
 
 type shardFile struct {
@@ -106,7 +108,7 @@ func buildSearchShards(snapshot enterpriseexport.Snapshot, observations []observ
 				SearchName:       normalizeSearchName(station.DisplayName),
 				CNPJ:             normalizeCNPJValue(station.CNPJ),
 				Municipality:     station.MunicipalityCode,
-				MunicipalityName: strings.TrimSpace(station.Address["municipio"]),
+				MunicipalityName: municipalityLabel(station.MunicipalityCode, station.Address["municipio"]),
 				UF:               station.State,
 				Status:           station.OperationStatus,
 				StatusLabel:      statusLabel(station.OperationStatus),

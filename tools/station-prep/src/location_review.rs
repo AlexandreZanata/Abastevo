@@ -235,7 +235,7 @@ fn fold(value: &str) -> String {
 /// Normalize a street label for exact comparison: fold accents, expand only
 /// unambiguous road-type abbreviations and drop punctuation. The raw source
 /// text is preserved in evidence.
-fn normalize_street(value: &str) -> String {
+pub(crate) fn normalize_street(value: &str) -> String {
     let mut folded = fold(value);
     for (from, to) in [
         ("AVENIDA", " "),
@@ -268,7 +268,7 @@ fn normalize_street(value: &str) -> String {
     cleaned.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-fn normalize_number(value: &str) -> String {
+pub(crate) fn normalize_number(value: &str) -> String {
     let trimmed = value.trim().to_uppercase();
     if trimmed == "SN" || trimmed == "S/N" {
         return "SN".to_string();
@@ -284,7 +284,7 @@ fn normalize_number(value: &str) -> String {
     }
 }
 
-fn split_address(raw: &str) -> Option<(String, String)> {
+pub(crate) fn split_address(raw: &str) -> Option<(String, String)> {
     let trimmed = raw.trim();
     let (street, number) = trimmed.rsplit_once(',')?;
     let number = number.trim();
@@ -295,21 +295,28 @@ fn split_address(raw: &str) -> Option<(String, String)> {
 }
 
 fn brand_match(anp: Option<&str>, osm: &OsmReference) -> bool {
+    brand_match_text(
+        anp,
+        osm.tags.get("brand").map(String::as_str),
+        osm.tags.get("operator").map(String::as_str),
+    )
+}
+
+/// Shared brand comparison for callers that carry OSM tags in another shape.
+pub(crate) fn brand_match_text(
+    anp: Option<&str>,
+    osm_brand: Option<&str>,
+    osm_operator: Option<&str>,
+) -> bool {
     let left = fold(anp.unwrap_or_default());
-    let right = fold(
-        osm.tags
-            .get("brand")
-            .or_else(|| osm.tags.get("operator"))
-            .map(String::as_str)
-            .unwrap_or_default(),
-    );
+    let right = fold(osm_brand.or(osm_operator).unwrap_or_default());
     if left.is_empty() || right.is_empty() {
         return true;
     }
     left.contains(&right) || right.contains(&left) || (left == "BR" && right == "VIBRA")
 }
 
-fn haversine_m(lat_a: f64, lon_a: f64, lat_b: f64, lon_b: f64) -> f64 {
+pub(crate) fn haversine_m(lat_a: f64, lon_a: f64, lat_b: f64, lon_b: f64) -> f64 {
     let phi_a = lat_a.to_radians();
     let phi_b = lat_b.to_radians();
     let delta_phi = (lat_b - lat_a).to_radians();

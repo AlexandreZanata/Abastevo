@@ -115,7 +115,7 @@ func (r *Reader) station(ctx context.Context, q *directory.Queries, id pgtype.UU
 		if anchor, err := q.FindOfficialAssertion(ctx, *cnpj); err == nil {
 			official = &application.OfficialAnchor{
 				Source:           anchor.Source,
-				DisplayName:      anchor.DisplayName,
+				DisplayName:      kernel.PublicStationName(anchor.DisplayName, *cnpj),
 				MunicipalityCode: textPtr(anchor.MunicipalityCode),
 				State:            textPtr(anchor.State),
 			}
@@ -149,7 +149,7 @@ func stationView(id pgtype.UUID, display string, muni, state pgtype.Text, wkt an
 	}
 	st := application.Station{
 		ID:               uuidString(id),
-		DisplayName:      display,
+		DisplayName:      kernel.PublicStationName(display, stringValue(cnpj)),
 		CNPJNormalized:   cnpj,
 		MunicipalityCode: textPtr(muni),
 		State:            textPtr(state),
@@ -206,7 +206,7 @@ func (r *Reader) Search(ctx context.Context, f application.SearchFilter) ([]appl
 		var official *application.OfficialAnchor
 		if ref.OfficialSource != "" {
 			official = &application.OfficialAnchor{
-				Source: ref.OfficialSource, DisplayName: ref.OfficialDisplayName,
+				Source: ref.OfficialSource, DisplayName: kernel.PublicStationName(ref.OfficialDisplayName, ref.Cnpj),
 				MunicipalityCode: textPtr(ref.OfficialMunicipality), State: textPtr(ref.OfficialState),
 			}
 			if ref.OfficialFinishedAt.Valid {
@@ -270,7 +270,7 @@ func (r *Reader) Nearby(ctx context.Context, f application.NearbyFilter) ([]appl
 		var official *application.OfficialAnchor
 		if ref.OfficialSource != "" {
 			official = &application.OfficialAnchor{
-				Source: ref.OfficialSource, DisplayName: ref.OfficialDisplayName,
+				Source: ref.OfficialSource, DisplayName: kernel.PublicStationName(ref.OfficialDisplayName, ref.Cnpj),
 				MunicipalityCode: textPtr(ref.OfficialMunicipality), State: textPtr(ref.OfficialState),
 			}
 			if ref.OfficialFinishedAt.Valid {
@@ -345,4 +345,11 @@ func (r *Reader) ByCNPJ(ctx context.Context, raw string) (application.Station, e
 		return application.Station{}, application.ErrUnknownStation
 	}
 	return station, nil
+}
+
+func stringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }

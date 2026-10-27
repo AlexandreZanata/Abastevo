@@ -68,7 +68,8 @@ private fun RealMapHost(
  * MAP-17 shell + MAP-18 markers + MAP-19 sheet + MAP-20 discovery/filters:
  * fourth tab with real native host, source selector, city selector, cluster
  * expansion, accessible marker list, and functional entries. Pins come from
- * canonical UUIDs with REVIEWED coordinates; unknown/city-centroid and
+ * canonical UUIDs with pin-tier coordinates (reviewed, osm-mapped,
+ * anp-reported, address-point); unknown/city-centroid and
  * coordinate-less stations stay list-only and remain selectable by UUID.
  */
 @Composable
@@ -132,6 +133,9 @@ fun MapScreen(
         charging = stringResource(R.string.map_filter_charging),
         fuelAndCharging = stringResource(R.string.map_filter_fuel_charging),
         reviewedLocation = stringResource(R.string.map_location_reviewed),
+        osmMappedLocation = stringResource(R.string.map_location_osm_mapped),
+        anpReportedLocation = stringResource(R.string.map_location_anp_reported),
+        addressPointLocation = stringResource(R.string.map_location_address_point),
         cityCentroidLocation = stringResource(R.string.map_location_city_centroid),
         unknownLocation = stringResource(R.string.map_location_unknown),
     )

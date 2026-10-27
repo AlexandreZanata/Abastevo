@@ -903,6 +903,7 @@ func run() error {
 				SiteURL: cfg.EnterprisePortalSiteURL, Indexable: cfg.EnterprisePortalIndexable,
 				OfficialOnly:     cfg.EnterprisePortalOfficialOnly,
 				SearchScriptPath: cfg.EnterprisePortalSearchScript,
+				LandingURL:       cfg.EnterprisePortalLandingURL,
 				Status:           qualitySourceStatus(raw),
 			}
 		}

@@ -37,8 +37,15 @@ test('tutorial hub covers all 30 chapters with journeys and no dead links', () =
         const id = href.slice(1);
         assert.ok(hubHtml.includes(`id="${id}"`), `dead anchor ${href}`);
       } else if (href.startsWith('/')) {
-        const rel = href === '/' ? 'index.html' : href.slice(1) + (href.endsWith('/') ? 'index.html' : '');
+        // Shared chrome also links the separately generated same-origin portal.
+        if (['/consultar/', '/fiscalizacao/', '/metodologia/'].includes(href)) {
+          assert.ok(fs.existsSync(path.join(root, 'prototype', href, 'index.html')), `missing portal route ${href}`);
+          continue;
+        }
+        const [pathname, anchor] = href.split('#');
+        const rel = pathname === '/' ? 'index.html' : pathname.slice(1) + (pathname.endsWith('/') ? 'index.html' : '');
         assert.ok(fs.existsSync(path.join(outDir, rel)), `dead internal link ${href}`);
+        if (anchor) assert.ok(fs.readFileSync(path.join(outDir, rel), 'utf8').includes(`id="${anchor}"`), `dead home anchor ${href}`);
       }
     }
 

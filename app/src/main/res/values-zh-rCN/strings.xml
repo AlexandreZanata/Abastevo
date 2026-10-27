@@ -673,6 +673,9 @@
     <string name="server_station_quality_reviewed">位置已审核</string>
     <string name="server_station_quality_centroid">城市大致位置</string>
     <string name="server_station_quality_unknown">位置未验证</string>
+    <string name="server_station_quality_osm_mapped">由 OpenStreetMap 社区标注</string>
+    <string name="server_station_quality_anp_reported">ANP 报告的位置</string>
+    <string name="server_station_quality_address_point">根据地址估算的位置（IBGE）</string>
     <string name="server_station_unknown_location">位置未验证，不显示坐标。</string>
     <string name="server_station_cached">正在显示离线缓存中的最后已知数据。</string>
     <string name="server_stations_unavailable">服务器目录不可用，仍可浏览ANP官方数据。</string>
@@ -1122,6 +1125,9 @@
     <string name="map_location_reviewed">已核实位置</string>
     <string name="map_location_city_centroid">城市大致位置</string>
     <string name="map_location_unknown">位置未知</string>
+    <string name="map_location_osm_mapped">由 OpenStreetMap 社区标注</string>
+    <string name="map_location_anp_reported">ANP 报告的位置</string>
+    <string name="map_location_address_point">根据地址估算的位置（IBGE）</string>
     <string name="map_sheet_source_label">来源：%1$s</string>
     <string name="map_sheet_location_label">位置：%1$s</string>
     <string name="map_sheet_loading_price">正在加载价格…</string>

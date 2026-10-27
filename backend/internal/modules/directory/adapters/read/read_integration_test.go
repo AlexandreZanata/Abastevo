@@ -523,3 +523,134 @@ func TestCommunityFirstNominalSearchDisambiguatesAddressOnlyStations(t *testing.
 		}
 	}
 }
+
+// searchTracer records the station search statement Reader.Search sends.
+type searchTracer struct {
+	mu   sync.Mutex
+	sql  string
+	args []any
+}
+
+func (s *searchTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx.TraceQueryStartData) context.Context {
+	if strings.Contains(data.SQL, "FROM directory_stations") && strings.Contains(data.SQL, "LIMIT") && strings.Contains(data.SQL, "ILIKE") {
+		s.mu.Lock()
+		s.sql, s.args = data.SQL, data.Args
+		s.mu.Unlock()
+	}
+	return ctx
+}
+
+func (s *searchTracer) TraceQueryEnd(context.Context, *pgx.Conn, pgx.TraceQueryEndData) {}
+
+// TestSearchPageUsesPrimaryKeyOrder pins the national-scale list plan: a page
+// must walk the primary key instead of sorting every station (staging seq
+// scanned 48,750 rows per page and saturated PostgreSQL under load).
+func TestSearchPageUsesPrimaryKeyOrder(t *testing.T) {
+	base := freshPool(t)
+	ctx := context.Background()
+	if _, err := base.Exec(ctx, `INSERT INTO directory_stations (id, display_name, address, municipality_code, state)
+		SELECT gen_random_uuid(), 'Posto ' || g, '{}'::jsonb, '3550308', 'SP' FROM generate_series(1, 2000) AS g`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := base.Exec(ctx, "ANALYZE directory_stations"); err != nil {
+		t.Fatal(err)
+	}
+	tracer := &searchTracer{}
+	config := base.Config().Copy()
+	config.ConnConfig.Tracer = tracer
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	r := NewReader(pool)
+	seen, pages := 0, 0
+	last, after := "", ""
+	for {
+		page, next, err := r.Search(ctx, application.SearchFilter{Limit: 100, AfterID: after})
+		if err != nil {
+			t.Fatal(err)
+		}
+		pages++
+		for _, st := range page {
+			if st.ID <= last {
+				t.Fatalf("lexical UUID order broken: %s after %s", st.ID, last)
+			}
+			last = st.ID
+			seen++
+		}
+		if pages == 2 {
+			// Explain the exact statement and arguments of a cursor page.
+			tracer.mu.Lock()
+			query, args := tracer.sql, tracer.args
+			tracer.mu.Unlock()
+			if query == "" {
+				t.Fatal("search statement not captured")
+			}
+			var plan strings.Builder
+			rows, err := base.Query(ctx, "EXPLAIN "+query, args...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for rows.Next() {
+				var line string
+				if err := rows.Scan(&line); err != nil {
+					t.Fatal(err)
+				}
+				plan.WriteString(line + "\n")
+			}
+			rows.Close()
+			if !strings.Contains(plan.String(), "directory_stations_pkey") || strings.Contains(plan.String(), "Sort") {
+				t.Fatalf("search page does not walk the primary key:\n%s", plan.String())
+			}
+		}
+		if next == "" {
+			break
+		}
+		after = next
+	}
+	if seen != 2000 {
+		t.Fatalf("keyset walk saw %d stations, want 2000", seen)
+	}
+}
+
+// TestPublicReadsMinimizeCPFShapedNames pins B-BR-017 on every Directory
+// read: the canonical row keeps the official text, responses never do.
+func TestPublicReadsMinimizeCPFShapedNames(t *testing.T) {
+	pool := freshPool(t)
+	ctx := context.Background()
+	repo := parent.NewRepository(pool)
+	st, err := repo.ResolveCNPJ(ctx, "11222333000181", "JOAO DA SILVA 12345678909", map[string]string{"municipio": "3550308"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE directory_stations SET municipality_code='3550308', state='SP' WHERE id=$1`, st.ID); err != nil {
+		t.Fatal(err)
+	}
+	var stored string
+	if err := pool.QueryRow(ctx, `SELECT display_name FROM directory_stations WHERE id=$1`, st.ID).Scan(&stored); err != nil || stored != "JOAO DA SILVA 12345678909" {
+		t.Fatalf("canonical name changed: %q %v", stored, err)
+	}
+	r := NewReader(pool)
+	check := func(where, got string) {
+		t.Helper()
+		if got != "JOAO DA SILVA" {
+			t.Fatalf("%s exposed %q", where, got)
+		}
+	}
+	detail, err := r.Detail(ctx, st.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("detail", detail.DisplayName)
+	byCNPJ, err := r.ByCNPJ(ctx, "11222333000181")
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("by-cnpj", byCNPJ.DisplayName)
+	found, _, err := r.Search(ctx, application.SearchFilter{Q: "joao", Limit: 10})
+	if err != nil || len(found) != 1 {
+		t.Fatalf("search = %d, %v", len(found), err)
+	}
+	check("search", found[0].DisplayName)
+}

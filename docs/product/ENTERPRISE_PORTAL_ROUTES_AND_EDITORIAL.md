@@ -157,7 +157,10 @@ while the real edition is blocked by ESP-07.
 
 - HTML per consultation page: ≤ 100 KiB compressed.
 - Portal-specific JS: ≤ 100 KiB compressed.
-- One initial regional search shard: ≤ 250 KiB compressed.
+- One initial regional search shard: ≤ 512 KiB compressed (raised 2026-10-26
+  from the synthetic 250 KiB after the first real national build: SP shard
+  8,381 stations = 461,000 gzip bytes, dominated by UUID/CNPJ entropy).
+- Portal pages: ≤ 100,000 per release (real national build: 52,578).
 - History/detail payloads load only on demand; no national full database to
   every visitor.
 

@@ -452,3 +452,42 @@ func TestWithdrawPurgesRetainedAssets(t *testing.T) {
 		t.Errorf("shared asset purged with the withdrawal: %s", sharedCSS)
 	}
 }
+
+func TestPromoteLinksSameFilesystemArtifactAndFallsBackToCopy(t *testing.T) {
+	sameInode := func(t *testing.T, artifact, root, hash string) bool {
+		t.Helper()
+		a, err := os.Stat(filepath.Join(artifact, "portal-manifest.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, err := os.Stat(filepath.Join(releasePath(root, hash), "portal-manifest.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return os.SameFile(a, r)
+	}
+	linkedRoot := releaseRoot(t)
+	linkedArtifact := releaseCandidate(t, "Posto Alfa")
+	linked := promoteFixture(t, linkedArtifact, linkedRoot)
+	if !sameInode(t, linkedArtifact, linkedRoot, linked.Current) {
+		t.Fatal("same-filesystem promotion copied bytes instead of linking")
+	}
+	if err := os.RemoveAll(linkedArtifact); err != nil {
+		t.Fatal(err)
+	}
+	if got := currentFixture(t, linkedRoot); got.ContentSHA256 != linked.Current {
+		t.Fatal("removing the promoted artifact broke the linked release")
+	}
+
+	linkFile = func(string, string) error { return syscall.EXDEV }
+	defer func() { linkFile = os.Link }()
+	copiedRoot := releaseRoot(t)
+	copiedArtifact := releaseCandidate(t, "Posto Beta")
+	copied := promoteFixture(t, copiedArtifact, copiedRoot)
+	if sameInode(t, copiedArtifact, copiedRoot, copied.Current) {
+		t.Fatal("cross-filesystem fallback did not copy")
+	}
+	if got := currentFixture(t, copiedRoot); got.ContentSHA256 != copied.Current {
+		t.Fatal("copied release is not current")
+	}
+}

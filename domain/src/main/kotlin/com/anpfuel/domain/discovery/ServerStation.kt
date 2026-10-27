@@ -14,17 +14,48 @@ import com.anpfuel.domain.model.BackendPriceGroup
  * stays null (honest unknown), never a fabricated centroid. Alphanumeric
  * `cnpj_normalized` is preserved verbatim with leading zeros.
  */
-enum class StationLocationQuality(val wire: String) {
-    UNKNOWN("unknown"),
-    CITY_CENTROID("city-centroid"),
-    REVIEWED("reviewed");
+enum class StationLocationQuality(val wire: String, val pinRank: Int) {
+    UNKNOWN("unknown", 0),
+    CITY_CENTROID("city-centroid", 0),
+
+    /** ANP official point confirmed by an OSM fuel POI. */
+    REVIEWED("reviewed", 4),
+
+    /** Community-mapped OSM fuel POI matched by CNPJ tag or exact address. */
+    OSM_MAPPED("osm-mapped", 3),
+
+    /** ANP official point not confirmed by OSM (approximate). */
+    ANP_REPORTED("anp-reported", 2),
+
+    /** IBGE CNEFE address point with exact street and number (approximate). */
+    ADDRESS_POINT("address-point", 1),
+    ;
+
+    /**
+     * B-BR-MAP-PIN-TIERS-01: only the four pin tiers may become map pins;
+     * `unknown` and `city-centroid` stay list-only.
+     */
+    val isPin: Boolean get() = pinRank > 0
+
+    /** Pin tiers whose point is not confirmed by a mapped POI. */
+    val isApproximatePin: Boolean get() = this == ANP_REPORTED || this == ADDRESS_POINT
 
     companion object {
+        /**
+         * Forward compatible: an unrecognised future wire value degrades to
+         * [UNKNOWN] (never a pin) instead of failing the whole response.
+         */
         fun fromWire(wire: String): StationLocationQuality =
-            entries.firstOrNull { it.wire == wire }
-                ?: throw DomainException("unknown location_quality: $wire")
+            entries.firstOrNull { it.wire == wire } ?: UNKNOWN
     }
 }
+
+/**
+ * Best station to center a viewport on: the highest pin tier with
+ * coordinates, keeping list order among equal tiers. Null when none.
+ */
+fun List<ServerStation>.bestPinnedStation(): ServerStation? =
+    filter { it.hasPin }.maxByOrNull { it.locationQuality.pinRank }
 
 class ServerStation private constructor(
     val stationId: String,
@@ -38,6 +69,9 @@ class ServerStation private constructor(
     val currentRevisionId: String?,
     val address: Map<String, String>,
 ) {
+    /** True when this station may be drawn as a map pin and routed to. */
+    val hasPin: Boolean get() = locationQuality.isPin && latitude != null && longitude != null
+
     val addressLabel: String get() = address.values.filter { it.isNotBlank() }.joinToString(", ")
 
     val artwork = com.anpfuel.domain.profile.StationArtwork.BETA_DEFAULT

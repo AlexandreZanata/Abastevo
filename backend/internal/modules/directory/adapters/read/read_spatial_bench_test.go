@@ -96,8 +96,9 @@ func vincentyEast(lat, lon, nominal float64) (float64, float64) {
 }
 
 // spatialSeed plants the census plus the boundary rig: the anchor, one
-// unreviewed pointed station, one reviewed point-less station and five
-// RJ border stations east of the dense cluster.
+// unreviewed pointed station (an anp-reported pin since 000139 forbids an
+// unknown point), one reviewed point-less station and five RJ border
+// stations east of the dense cluster.
 func spatialSeed(tb testing.TB, pool *pgxpool.Pool, n int) {
 	tb.Helper()
 	ctx := context.Background()
@@ -117,7 +118,7 @@ func spatialSeed(tb testing.TB, pool *pgxpool.Pool, n int) {
 	}
 	anchor := fmt.Sprintf("SRID=4326;POINT(%.6f %.6f)", spatialAnchorLon, spatialAnchorLat)
 	insert(spatialAnchorID, "[RST16-TEST] ANCHOR", spatialDenseCity, "SP", "reviewed", "'"+anchor+"'::geography")
-	insert("bbbbbbbb-2222-4222-8222-222222222222", "[RST16-TEST] UNREVIEWED", spatialDenseCity, "SP", "unknown", "'"+anchor+"'::geography")
+	insert("bbbbbbbb-2222-4222-8222-222222222222", "[RST16-TEST] UNREVIEWED", spatialDenseCity, "SP", "anp-reported", "'"+anchor+"'::geography")
 	insert("bbbbbbbb-3333-4333-8333-333333333333", "[RST16-TEST] POINTLESS", spatialDenseCity, "SP", "reviewed", "NULL")
 	for i := 0; i < 5; i++ {
 		point := fmt.Sprintf("SRID=4326;POINT(%.6f %.6f)", spatialAnchorLon+0.018+float64(i)*0.002, spatialAnchorLat+0.001*float64(i))

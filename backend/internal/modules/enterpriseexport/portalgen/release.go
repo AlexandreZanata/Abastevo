@@ -263,6 +263,11 @@ func Promote(opts PromoteOptions) (ReleaseState, error) {
 		if err := copyArtifact(opts.ArtifactDir, tmp); err != nil {
 			return ReleaseState{}, err
 		}
+		if releaseSyncOnce {
+			if err := syncFilesystem(tmp); err != nil {
+				return ReleaseState{}, err
+			}
+		}
 		if err := verifyReleaseDir(tmp, opts.SiteURL, content, opts.OfficialOnly); err != nil {
 			return ReleaseState{}, fmt.Errorf("portal release: copied artifact verification: %w", err)
 		}
@@ -800,7 +805,22 @@ func copyArtifact(src, dst string) error {
 	})
 }
 
+// linkFile is os.Link; tests replace it to force the copy fallback.
+var linkFile = os.Link
+
+// copyFile places one verified artifact file into a release. On the same
+// filesystem it hardlinks (the generator never rewrites a file in place,
+// and the placed release is verified afterwards); otherwise it copies.
+// Durability comes from one syncFilesystem after the whole tree on Linux,
+// or a per-file fsync elsewhere.
 func copyFile(src, dst string) error {
+	if err := linkFile(src, dst); err == nil {
+		return os.Chmod(dst, 0o600)
+	}
+	return copyFileBytes(src, dst)
+}
+
+func copyFileBytes(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -820,8 +840,10 @@ func copyFile(src, dst string) error {
 	if _, err := io.Copy(out, in); err != nil {
 		return err
 	}
-	if err := out.Sync(); err != nil {
-		return err
+	if !releaseSyncOnce {
+		if err := out.Sync(); err != nil {
+			return err
+		}
 	}
 	if err := out.Close(); err != nil {
 		return err

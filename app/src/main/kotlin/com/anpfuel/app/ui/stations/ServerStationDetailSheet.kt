@@ -79,6 +79,9 @@ fun ServerStationRow(
 private fun qualityLabel(station: ServerStation): String =
     when (station.locationQuality) {
         StationLocationQuality.REVIEWED -> stringResource(R.string.server_station_quality_reviewed)
+        StationLocationQuality.OSM_MAPPED -> stringResource(R.string.server_station_quality_osm_mapped)
+        StationLocationQuality.ANP_REPORTED -> stringResource(R.string.server_station_quality_anp_reported)
+        StationLocationQuality.ADDRESS_POINT -> stringResource(R.string.server_station_quality_address_point)
         StationLocationQuality.CITY_CENTROID -> stringResource(R.string.server_station_quality_centroid)
         StationLocationQuality.UNKNOWN -> stringResource(R.string.server_station_quality_unknown)
     }

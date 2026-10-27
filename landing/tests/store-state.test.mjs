@@ -53,7 +53,8 @@ test('store state: published with valid URL renders verified Play Store link', (
     assert.match(indexHtml, /Ver na Google Play<\/strong>/);
     assert.doesNotMatch(indexHtml, /Em breve no Google Play/);
     const hubHtml = fs.readFileSync(path.join(tmpOut, 'como-usar', 'index.html'), 'utf8');
-    assert.match(hubHtml, /play\.google\.com\/store\/apps\/details\?id=com\.anpfuel/);
+    assert.match(hubHtml, /href="\/#aplicativo">Aplicativo<\/a>/);
+    assert.doesNotMatch(hubHtml, /Em breve no Google Play/);
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }

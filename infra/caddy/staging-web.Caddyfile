@@ -1,0 +1,113 @@
+# Staging same-origin web tier. The static landing serves / and the verified
+# enterprise portal release serves its own routes (search, prices, stations,
+# fines). The existing TLS edge keeps /v1, /health and media on the API and
+# proxies everything else here; this server never proxies the API.
+#
+# Mounts (read-only): /srv/landing = landing root whose atomically switched
+# current symlink is the dist built for the staging origin; /srv/portal = the
+# worker's private portal root (current release + retained asset
+# generations). Runs as the worker uid, so the private 0600 release files
+# stay private on the host.
+#
+# Staging is never indexable: noindex everywhere, robots disallow, no sitemap.
+{
+	admin off
+	persist_config off
+	auto_https off
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+}
+
+:8080 {
+	# gzip only: zstd encoders hold large windows per concurrent response and
+	# OOM-killed a 128 MiB tier under load; the edge caches compressed bodies.
+	encode gzip
+
+	import security_headers
+
+	handle /robots.txt {
+		respond "User-agent: *
+Disallow: /
+" 200
+	}
+	handle /sitemap.xml {
+		respond 404
+	}
+
+	@portalBare path /consultar /precos /fiscalizacao /curiosidades /dados /metodologia
+	redir @portalBare {path}/ 308
+
+	# Static map overlay releases are content-addressed and never change.
+	handle_path /dados/mapa/* {
+		root * /srv/portal/map
+		# current/ is an atomic symlink that moves on every release: short
+		# cache. Release directories are content-addressed: immutable.
+		@current path /current/*
+		header @current Cache-Control "public, max-age=300"
+		@release not path /current/*
+		header @release Cache-Control "public, max-age=31536000, immutable"
+		# Caddy 2.10.2 answers 206 to a plain GET with precompressed; the
+		# global gzip encoder plus the edge micro-cache serve these instead.
+		file_server
+	}
+
+	# Search shards are addressed by release, so they never change in place.
+	@portal path /consultar/* /precos/* /postos/* /fiscalizacao/* /curiosidades/* /dados/* /metodologia/* /portal-manifest.json
+	handle @portal {
+		root * /srv/portal/current
+		@shards path /dados/busca/*
+		@pages not path /dados/busca/*
+		header @shards Cache-Control "public, max-age=31536000, immutable"
+		header @pages Cache-Control "public, max-age=0, must-revalidate"
+		file_server
+	}
+
+	# Content-hashed assets: landing first, then the portal's retained
+	# generations (old cached pages keep loading), then the current release.
+	handle /assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		@landingAsset file {
+			root /srv/landing/current
+		}
+		handle @landingAsset {
+			root * /srv/landing/current
+			file_server
+		}
+		@retainedAsset file {
+			root /srv/portal/retained
+		}
+		handle @retainedAsset {
+			root * /srv/portal/retained
+			file_server
+		}
+		handle {
+			root * /srv/portal/current
+			file_server
+		}
+	}
+
+	handle {
+		root * /srv/landing/current
+		header Cache-Control "public, max-age=3600, must-revalidate"
+		file_server
+	}
+
+	handle_errors 404 {
+		import security_headers
+		root * /srv/landing/current
+		rewrite * /404.html
+		header Cache-Control "no-cache"
+		file_server
+	}
+}

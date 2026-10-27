@@ -97,19 +97,102 @@ test('shard validation and loading are version-bound and regional-only', async (
   assert.equal(validateShard(data, 'rel').release, 'rel');
   assert.throws(() => validateShard(data, 'other'), /shard-version/);
   assert.throws(() => validateShard({ ...data, schema: 'other' }, 'rel'), /shard-version/);
-
   const calls = [];
-  const fetcher = async (url) => {
-    calls.push(String(url));
-    return { ok: true, json: async () => data };
-  };
+  const fetcher = async (url) => { calls.push(String(url)); return { ok: true, json: async () => data }; };
   const loaded = await loadShard('SP', 'rel', '/dados/busca/', fetcher);
   assert.equal(loaded.uf, 'SP');
   assert.deepEqual(calls, ['/dados/busca/rel/SP.json']);
   await assert.rejects(loadShard('BR', 'rel', '/dados/busca/', fetcher), /shard-uf/);
   await assert.rejects(loadShard('SP', 'other', '/dados/busca/', fetcher), /shard-version/);
   await assert.rejects(loadShard('SP', 'rel', '/dados/busca/', async () => ({ ok: false })), /shard-missing/);
-  assert.ok(calls.every((url) => /^\/dados\/busca\/(rel|other)\/SP\.json$/.test(url)));
+});
+
+const INDEX = {
+  schema: 'abastevo-search-index-v1',
+  release: 'rel',
+  prefix_length: 3,
+  stopwords: ['posto', 'auto', 'ltda', 'de'],
+  fiscal: true,
+  fuels: [{ code: 'GASOLINE_REGULAR', label: 'Gasolina comum', unit: 'L', count: 2 }],
+  municipalities: [
+    { m: '5107925', n: 'Sorriso', s: 'sorriso', u: 'MT', k: 26 },
+    { m: '3550308', n: 'São Paulo', s: 'sao paulo', u: 'SP', k: 1525 },
+    { m: '3549904', n: 'São José dos Campos', s: 'sao jose dos campos', u: 'SP', k: 120 },
+  ],
+};
+
+test('prefix key selection skips stopwords and handles CNPJ', async () => {
+  const { prefixKeyFor } = await searchModule();
+  assert.equal(prefixKeyFor('Auto Posto Shell', INDEX), 'n-she');
+  assert.equal(prefixKeyFor('AUTOPOSTOSHELL', INDEX), 'n-aut');
+  assert.equal(prefixKeyFor('12ABC34501DE35', INDEX), 'c-12a');
+  assert.equal(prefixKeyFor('posto ipiranga sao', INDEX), 'n-ipi');
+  assert.equal(prefixKeyFor('posto de', INDEX), null);
+  assert.equal(prefixKeyFor('sh', INDEX), null);
+  assert.equal(prefixKeyFor('04.218.406/0001-04', INDEX), 'c-042');
+  assert.equal(prefixKeyFor('042', INDEX), 'c-042');
+  assert.equal(prefixKeyFor('Pôsto Ítalo', INDEX), 'n-ita');
+});
+
+test('place suggestions rank states and cities and respect a state scope', async () => {
+  const { placeSuggestions } = await searchModule();
+  const sao = placeSuggestions('são', INDEX.municipalities, null);
+  assert.equal(sao[0].label, 'São Paulo (SP)');
+  assert.equal(sao[0].scope.kind, 'uf');
+  assert.deepEqual(sao.filter((s) => s.scope.kind === 'city').map((s) => s.label), ['São Paulo/SP', 'São José dos Campos/SP']);
+  assert.equal(placeSuggestions('mt', INDEX.municipalities, null)[0].scope.uf, 'MT');
+  const inMT = placeSuggestions('s', INDEX.municipalities, { kind: 'uf', uf: 'MT', label: 'Mato Grosso (MT)' });
+  assert.deepEqual(inMT, []);
+  const sorriso = placeSuggestions('sorr', INDEX.municipalities, { kind: 'uf', uf: 'MT', label: 'Mato Grosso (MT)' });
+  assert.deepEqual(sorriso.map((s) => s.label), ['Sorriso/MT']);
+});
+
+test('price filters sort cheapest or most expensive within a place', async () => {
+  const { filterPrices, formatMilliBRL, formatDateBR } = await searchModule();
+  const rows = [
+    { i: 'a', n: 'Posto A', c: '04218406000104', m: '5107925', mn: 'Sorriso', u: 'MT', v: 6390, d: '2026-10-20' },
+    { i: 'b', n: 'Posto B', m: '5107925', u: 'MT', v: 5990 },
+    { i: 'c', n: 'Posto C', m: '3550308', u: 'SP', v: 5490 },
+  ];
+  assert.deepEqual(filterPrices(rows, '', null, 'asc').map((r) => r.i), ['c', 'b', 'a']);
+  assert.deepEqual(filterPrices(rows, '', { kind: 'uf', uf: 'MT', label: '' }, 'desc').map((r) => r.i), ['a', 'b']);
+  assert.deepEqual(filterPrices(rows, '042184', null, 'asc').map((r) => r.i), ['a']);
+  assert.equal(formatMilliBRL(6390), 'R$ 6,390');
+  assert.equal(formatMilliBRL(104990), 'R$ 104,990');
+  assert.equal(formatMilliBRL(1234567), 'R$ 1.234,567');
+  assert.equal(formatDateBR('2026-10-20'), '20/10/2026');
+});
+
+test('fiscal filter matches CNPJ, linked station name and place', async () => {
+  const { filterFiscal } = await searchModule();
+  const rows = [
+    { r: '1'.repeat(24), c: '04218406000104', st: 'Pago', n: 'Posto Alfa', m: '5103403', u: 'MT' },
+    { r: '2'.repeat(24), c: '11222333000181', st: 'Aguardando' },
+  ];
+  assert.deepEqual(filterFiscal(rows, '11.222', null).map((r) => r.st), ['Aguardando']);
+  assert.deepEqual(filterFiscal(rows, 'alfa', null).map((r) => r.st), ['Pago']);
+  assert.deepEqual(filterFiscal(rows, '', { kind: 'city', code: '5103403', uf: 'MT', label: '' }).length, 1);
+});
+
+test('search store validates paths, caches files and never builds a national URL', async () => {
+  const { SearchStore } = await searchModule();
+  const urls = [];
+  const store = new SearchStore('/dados/busca/', 'rel', async (url) => {
+    urls.push(String(url));
+    if (String(url).endsWith('/indice.json')) return { ok: true, json: async () => INDEX };
+    if (String(url).includes('/p/')) return { ok: false };
+    return { ok: true, json: async () => ({ schema: 'abastevo-search-v1', release: 'rel', uf: 'MT', municipio: '5107925', count: 0, stations: [] }) };
+  });
+  await store.index();
+  await store.index();
+  assert.equal(urls.filter((u) => u.endsWith('indice.json')).length, 1);
+  assert.equal((await store.prefix('n-zzz')).stations.length, 0);
+  await assert.rejects(store.prefix('../x'), /shard-key/);
+  await assert.rejects(store.city('12'), /shard-city/);
+  await assert.rejects(store.prices('../all'), /shard-fuel/);
+  assert.equal((await store.city('5107925')).municipio, '5107925');
+  assert.throws(() => new SearchStore('/dados/busca/', '../x', async () => ({ ok: false })), /shard-release/);
+  assert.ok(urls.every((u) => /^\/dados\/busca\/rel\/(indice\.json|p\/n-zzz\.json|m\/5107925\.json)$/.test(u)));
 });
 
 class FakeElement {
@@ -119,119 +202,130 @@ class FakeElement {
     this.className = '';
     this.href = '';
     this.value = '';
+    this.type = '';
+    this.hidden = false;
     this.disabled = false;
     this.dataset = {};
+    this.attributes = {};
     this.children = [];
     this.handlers = {};
+    this.selectors = {};
   }
   append(...nodes) { this.children.push(...nodes); }
   replaceChildren(...nodes) { this.children = nodes; }
+  setAttribute(name, value) { this.attributes[name] = String(value); }
+  querySelector(selector) { return this.selectors[selector] || null; }
   addEventListener(type, handler) { (this.handlers[type] ||= []).push(handler); }
   dispatch(type, event = {}) {
-    for (const handler of this.handlers[type] || []) handler(event);
+    for (const handler of this.handlers[type] || []) handler({ preventDefault() {}, ...event });
   }
 }
 
-function fakePortal() {
-  const form = new FakeElement('form');
-  const input = new FakeElement('input');
-  const uf = new FakeElement('select');
-  const city = new FakeElement('select');
-  const status = new FakeElement('p');
-  const results = new FakeElement('ul');
-  const selectors = {
-    '[data-search-query]': input,
-    '[data-search-uf]': uf,
-    '[data-search-city]': city,
-    '[data-search-status]': status,
-    '[data-search-results]': results,
-  };
-  form.querySelector = (selector) => selectors[selector] || null;
-  form.dataset = { shardBase: '/dados/busca/', release: 'rel', resultLimit: '50' };
+function fakePage(rootSelector, parts) {
+  const root = new FakeElement('section');
+  root.dataset = { shardBase: '/dados/busca/', release: 'rel' };
+  const elements = {};
+  for (const [selector, tag] of Object.entries(parts)) {
+    elements[selector] = new FakeElement(tag);
+    root.selectors[selector] = elements[selector];
+  }
   const doc = {
-    querySelector: (selector) => (selector === '[data-portal-search]' ? form : null),
+    querySelector: (selector) => (selector === rootSelector ? root : null),
     createElement: (tag) => new FakeElement(tag),
     addEventListener: () => {},
   };
-  return { form, input, uf, city, status, results, doc };
+  return { root, doc, el: elements };
 }
 
-test('setupPortalSearch loads one shard, renders text results and falls back', async () => {
+const FINDER = {
+  '[data-finder-input]': 'input',
+  '[data-finder-suggestions]': 'ul',
+  '[data-finder-scope]': 'div',
+};
+
+const wait = (ms = 30) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function jsonFetch(map, urls) {
+  return async (url) => {
+    urls.push(String(url));
+    const body = map[String(url)];
+    return body ? { ok: true, json: async () => body } : { ok: false };
+  };
+}
+
+test('consultar searches nationally by name without choosing a state', async () => {
   const { setupPortalSearch } = await searchModule();
-  const fake = fakePortal();
-  let calls = 0;
-  let response = shard([
-    station(),
-    station({ i: '00000000-0000-4000-8000-000000000002', n: 'Posto Alfa', c: '11222333000181', m: '3106200', mn: 'Campinas' }),
-  ]);
-  setupPortalSearch({
-    document: fake.doc,
-    fetch: async (url) => {
-      calls += 1;
-      assert.match(String(url), /^\/dados\/busca\/rel\/(SP|MG)\.json$/);
-      return { ok: true, json: async () => response };
-    },
-  });
-  fake.uf.value = 'SP';
-  fake.input.value = 'alfa';
-  fake.form.dispatch('submit', { preventDefault() {} });
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  assert.equal(calls, 1);
-  assert.equal(fake.results.children.length, 2);
-  assert.equal(fake.results.children[0].children[0].href, '/postos/00000000-0000-4000-8000-000000000001/');
-  assert.equal(fake.results.children[0].children[0].textContent, 'Posto Alfa');
-  assert.match(fake.results.children[0].children[1].textContent, /04\.218\.406\/0001-04/);
-  assert.match(fake.status.textContent, /2 postos encontrados/);
-  assert.ok(fake.city.children.some((option) => option.value === '3550308'));
-  assert.ok(fake.city.children.some((option) => option.value === '3106200'));
-  assert.equal(fake.city.disabled, false);
-
-  fake.input.value = 'nao-existe';
-  fake.form.dispatch('submit', { preventDefault() {} });
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  assert.match(fake.status.textContent, /Nenhum posto/);
-  assert.equal(fake.results.children.length, 1);
-
-  response = shard([station()], { release: 'other' });
-  fake.uf.value = 'MG';
-  fake.uf.dispatch('change');
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  assert.match(fake.status.textContent, /indisponível/);
-});
-
-test('setupPortalSearch applies a landing hand-off and ignores unknown UFs', async () => {
-  const { setupPortalSearch, readSearchHandoff } = await searchModule();
-  assert.deepEqual(readSearchHandoff('?uf=sp&q=alfa'), { uf: 'SP', query: 'alfa' });
-  assert.equal(readSearchHandoff('?uf=BR&q=alfa'), null);
-  assert.equal(readSearchHandoff('?q=alfa'), null);
-  assert.equal(readSearchHandoff('?uf=SP&q=' + 'x'.repeat(200)).query.length, 80);
-
-  const fake = fakePortal();
+  const page = fakePage('[data-portal-finder]', { ...FINDER, '[data-finder-status]': 'p', '[data-finder-results]': 'ul' });
   const urls = [];
   setupPortalSearch({
-    document: fake.doc,
-    search: '?uf=SP&q=alfa',
-    fetch: async (url) => {
-      urls.push(String(url));
-      return { ok: true, json: async () => shard([station()]) };
-    },
+    document: page.doc,
+    search: '',
+    fetch: jsonFetch({
+      '/dados/busca/rel/indice.json': INDEX,
+      '/dados/busca/rel/p/n-she.json': { schema: 'abastevo-search-prefix-v1', release: 'rel', key: 'n-she', count: 2, stations: [
+        station({ n: 'Auto Posto Shell Centro', s: 'auto posto shell centro', mn: 'Sorriso', u: 'MT' }),
+        station({ i: '00000000-0000-4000-8000-000000000002', n: 'Shell Avenida', s: 'shell avenida', mn: 'Curitiba', u: 'PR' }),
+      ] },
+    }, urls),
   });
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  assert.deepEqual(urls, ['/dados/busca/rel/SP.json']);
-  assert.equal(fake.uf.value, 'SP');
-  assert.equal(fake.input.value, 'alfa');
-  assert.match(fake.status.textContent, /1 posto encontrado/);
+  page.el['[data-finder-input]'].value = 'shell cent';
+  page.root.dispatch('submit');
+  await wait();
+  assert.deepEqual(urls, ['/dados/busca/rel/indice.json', '/dados/busca/rel/p/n-she.json']);
+  const results = page.el['[data-finder-results]'].children;
+  assert.equal(results.length, 1);
+  assert.equal(results[0].children[0].textContent, 'Auto Posto Shell Centro');
+  assert.match(results[0].children[1].textContent, /Sorriso\/MT/);
+  assert.match(page.el['[data-finder-status]'].textContent, /1 posto encontrado no Brasil/);
+});
 
-  const ignored = fakePortal();
-  let calls = 0;
+test('consultar applies the landing hand-off as a state scope', async () => {
+  const { setupPortalSearch } = await searchModule();
+  const page = fakePage('[data-portal-finder]', { ...FINDER, '[data-finder-status]': 'p', '[data-finder-results]': 'ul' });
+  const urls = [];
   setupPortalSearch({
-    document: ignored.doc,
-    search: '?uf=../../x&q=alfa',
-    fetch: async () => { calls += 1; return { ok: true, json: async () => shard([station()]) }; },
+    document: page.doc,
+    search: '?uf=SP&q=alfa',
+    fetch: jsonFetch({ '/dados/busca/rel/SP.json': shard([station(), station({ i: '00000000-0000-4000-8000-000000000003', n: 'Posto Beta', s: 'posto beta' })]) }, urls),
   });
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  assert.equal(calls, 0);
-  assert.equal(ignored.input.value, '');
+  await wait();
+  assert.deepEqual(urls, ['/dados/busca/rel/SP.json']);
+  assert.equal(page.el['[data-finder-input]'].value, 'alfa');
+  assert.match(page.el['[data-finder-scope]'].children[0].textContent, /Estado: São Paulo \(SP\)/);
+  assert.equal(page.el['[data-finder-results]'].children.length, 1);
+});
+
+test('prices explorer ranks one fuel and links each price to its station', async () => {
+  const { setupPortalSearch } = await searchModule();
+  const page = fakePage('[data-portal-prices]', {
+    ...FINDER,
+    '[data-prices-fuel]': 'select',
+    '[data-prices-order]': 'select',
+    '[data-prices-status]': 'p',
+    '[data-prices-table]': 'table',
+    '[data-prices-body]': 'tbody',
+  });
+  page.el['[data-prices-fuel]'].value = 'GASOLINE_REGULAR';
+  page.el['[data-prices-order]'].value = 'desc';
+  const urls = [];
+  setupPortalSearch({
+    document: page.doc,
+    fetch: jsonFetch({ '/dados/busca/rel/precos/GASOLINE_REGULAR.json': {
+      schema: 'abastevo-search-prices-v1', release: 'rel', fuel: 'GASOLINE_REGULAR', label: 'Gasolina comum', unit: 'L', count: 2,
+      rows: [
+        { i: '00000000-0000-4000-8000-000000000001', n: 'Barato', u: 'SP', mn: 'São Paulo', v: 5490, d: '2026-10-20' },
+        { i: '00000000-0000-4000-8000-000000000002', n: 'Caro', u: 'MT', mn: 'Sorriso', v: 6990, d: '2026-10-21' },
+      ],
+    } }, urls),
+  });
+  await wait();
+  const rows = page.el['[data-prices-body]'].children;
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].children[0].children[0].textContent, 'Caro');
+  assert.equal(rows[0].children[0].children[0].href, '/postos/00000000-0000-4000-8000-000000000002/');
+  assert.equal(rows[0].children[2].textContent, 'R$ 6,990');
+  assert.equal(page.el['[data-prices-table]'].hidden, false);
+  assert.match(page.el['[data-prices-status]'].textContent, /maior preço primeiro/);
 });
 
 test('search asset is fingerprintable and contains no unsafe HTML injection', async () => {
