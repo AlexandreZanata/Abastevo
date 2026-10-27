@@ -8,7 +8,7 @@
   check && test` green (17/17); local integration login→search→grant→
   revoke→logout proven against A4 backend on disposable PostGIS with
   synthetic data and screenshots. [Evidence](../../backend/evidence/admin/B1-ADMIN-WEB.md).
-  PR to `main`, merges only after #164. Next: A5a script PR stacked on #168,
+  PR #170 to `main`, merges only after #164. Next: A5a script PR stacked on #168,
   then B2. Pending (Front A, do not resolve unasked): #164 conflicts with
   `main` (`d4dcf716`); merge `main` into `codex/adm-a1-admin-auth` on request
   and cascade A2–A4.
