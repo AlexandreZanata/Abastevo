@@ -30,6 +30,40 @@ abstract class DriverLocalDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertShift(shift: DriverShiftEntity)
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    abstract suspend fun insertShift(shift: DriverShiftEntity)
+
+    @Query("SELECT * FROM driver_shift WHERE owner_account=:owner AND state<>'CLOSED' ORDER BY origin, shift_id")
+    abstract suspend fun activeShiftsForOwner(owner: String): List<DriverShiftEntity>
+
+    /** Legacy duplicates or a shift in another origin must never be silently selected. */
+    @Transaction
+    open suspend fun currentShiftChecked(owner: String, origin: String): DriverShiftEntity? {
+        val active = activeShiftsForOwner(owner)
+        check(active.size <= 1) { "driver-active-shift-conflict" }
+        val current = active.singleOrNull()
+        check(current == null || current.origin == origin) { "driver-origin-conflict" }
+        return current
+    }
+
+    @Transaction
+    open suspend fun startShift(shift: DriverShiftEntity) {
+        check(activeShiftsForOwner(shift.ownerAccount).isEmpty()) { "driver-active-shift-conflict" }
+        insertShift(shift)
+    }
+
+    @Transaction
+    open suspend fun updateShift(shift: DriverShiftEntity, gaps: List<DriverShiftGapEntity>, expectedVersion: Long) {
+        val active = activeShiftsForOwner(shift.ownerAccount)
+        check(active.size == 1) { "driver-active-shift-conflict" }
+        val current = active.single()
+        check(current.origin == shift.origin && current.shiftId == shift.shiftId) { "driver-active-shift-conflict" }
+        check(current.version == expectedVersion) { "driver-stale-shift" }
+        check(current.vehicleId == shift.vehicleId && current.timezone == shift.timezone &&
+            current.createdAtMillis == shift.createdAtMillis) { "driver-shift-identity-conflict" }
+        saveShift(shift, gaps)
+    }
+
     @Query("DELETE FROM driver_shift_gap WHERE owner_account=:owner AND origin=:origin AND shift_id=:shiftId")
     abstract suspend fun deleteShiftGaps(owner: String, origin: String, shiftId: String)
 

@@ -60,6 +60,23 @@ class DriverLocalStore @Inject constructor(
         dao.saveShift(shift, gaps)
     }
 
+    /** Atomic owner-wide admission; unlike legacy saveShift this never replaces a row. */
+    suspend fun startShift(shift: DriverShiftEntity) {
+        require(shift.ownerAccount.isNotBlank() && shift.origin.isNotBlank() && shift.shiftId.isNotBlank())
+        require(shift.state == "RUNNING" && shift.version == 1L)
+        dao.startShift(shift)
+    }
+
+    /** Compare the persisted version and publish the shift and its gaps in one Room transaction. */
+    suspend fun updateShift(shift: DriverShiftEntity, gaps: List<DriverShiftGapEntity>, expectedVersion: Long) {
+        require(expectedVersion >= 1 && shift.version == Math.addExact(expectedVersion, 1))
+        require(gaps.all { it.ownerAccount == shift.ownerAccount && it.origin == shift.origin && it.shiftId == shift.shiftId })
+        dao.updateShift(shift, gaps, expectedVersion)
+    }
+
+    suspend fun currentShiftChecked(owner: String, origin: String): DriverShiftEntity? =
+        dao.currentShiftChecked(owner, origin)
+
     suspend fun findShift(owner: String, origin: String, shiftId: String): DriverShiftEntity? =
         dao.findShift(owner, origin, shiftId)
 

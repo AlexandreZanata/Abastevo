@@ -11,6 +11,9 @@ import com.anpfuel.data.local.entity.DriverShiftEntity
 import com.anpfuel.data.local.entity.DriverShiftGapEntity
 import com.anpfuel.data.repository.DriverLocalStore
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -23,6 +26,84 @@ class DriverLocalStoreTest {
 
     private fun open(name: String): AnpFuelDatabase =
         Room.databaseBuilder(context, AnpFuelDatabase::class.java, name).build()
+
+    @Test fun concurrentShiftStartsAndStaleUpdatesAreRejectedAcrossOrigins() = runBlocking {
+        val name = "driver-shift-authority"
+        context.deleteDatabase(name)
+        val db = open(name)
+        val other = open(name)
+        try {
+            val stores = listOf(DriverLocalStore(db.driverLocalDao()), DriverLocalStore(other.driverLocalDao()))
+            fun shift(id: String, origin: String) = DriverShiftEntity(
+                ownerAccount = "owner-a", origin = origin, shiftId = id, vehicleId = "v-$id", timezone = "UTC",
+                state = "RUNNING", version = 1, lastBootId = "boot", lastElapsedMillis = 10, lastUtcMillis = 10,
+                activeMillis = 0, manuallyReviewedMillis = 0, createdAtMillis = 10, updatedAtMillis = 10,
+            )
+            val candidates = listOf(shift("one", "app"), shift("two", "other"))
+            val outcomes = candidates.mapIndexed { index, candidate ->
+                async(Dispatchers.IO) { runCatching { stores[index].startShift(candidate) } }
+            }.awaitAll()
+            assertEquals(1, outcomes.count { it.isSuccess })
+            val winner = candidates[outcomes.indexOfFirst { it.isSuccess }]
+            val store = stores[0]
+            assertEquals(winner, store.currentShift(winner.ownerAccount, winner.origin))
+            assertNull(store.currentShift("owner-a", candidates[outcomes.indexOfFirst { it.isFailure }].origin))
+            assertEquals(winner, store.currentShiftChecked("owner-a", winner.origin))
+            assertTrue(runCatching { store.currentShiftChecked("owner-a", "foreign-origin") }.isFailure)
+            assertNull(store.currentShiftChecked("unknown-owner", winner.origin))
+            store.startShift(shift("third", "app").copy(ownerAccount = "owner-b"))
+
+            val paused = winner.copy(state = "PAUSED", version = 2, activeMillis = 100, updatedAtMillis = 20)
+            store.updateShift(paused, emptyList(), 1)
+            val stale = runCatching { stores[1].updateShift(winner.copy(state = "CLOSED", version = 2), emptyList(), 1) }
+            assertTrue(stale.isFailure)
+            assertEquals(paused, store.findShift(winner.ownerAccount, winner.origin, winner.shiftId))
+
+            val invalid = runCatching { store.updateShift(paused.copy(version = 3, vehicleId = "foreign"), emptyList(), 2) }
+            assertTrue(invalid.isFailure)
+            assertEquals(paused, store.findShift(winner.ownerAccount, winner.origin, winner.shiftId))
+            val gap = DriverShiftGapEntity(
+                ownerAccount = winner.ownerAccount, origin = winner.origin, shiftId = winner.shiftId,
+                gapId = "duplicate", reason = "process-recovery", previousBootId = "boot",
+                previousElapsedMillis = 10, previousUtcMillis = 10, nextBootId = "boot",
+                nextElapsedMillis = 20, nextUtcMillis = 20, reviewed = false,
+                reviewedWorkMillis = null, createdAtMillis = 20,
+            )
+            assertTrue(runCatching { store.updateShift(paused.copy(version = 3), listOf(gap, gap), 2) }.isFailure)
+            assertEquals(paused, store.findShift(winner.ownerAccount, winner.origin, winner.shiftId))
+            assertTrue(store.listShiftGaps(winner.ownerAccount, winner.origin, winner.shiftId).isEmpty())
+            store.updateShift(paused.copy(state = "CLOSED", version = 3), emptyList(), 2)
+            store.startShift(shift("next", "new-origin"))
+        } finally {
+            other.close()
+            db.close()
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test fun existingMultipleActiveShiftsFailClosed() = runBlocking {
+        val name = "driver-shift-legacy-conflict"
+        context.deleteDatabase(name)
+        val db = open(name)
+        try {
+            val store = DriverLocalStore(db.driverLocalDao())
+            fun shift(id: String, origin: String) = DriverShiftEntity(
+                ownerAccount = "owner-a", origin = origin, shiftId = id, vehicleId = id, timezone = "UTC",
+                state = "RUNNING", version = 1, lastBootId = "boot", lastElapsedMillis = 1, lastUtcMillis = 1,
+                activeMillis = 0, manuallyReviewedMillis = 0, createdAtMillis = 1, updatedAtMillis = 1,
+            )
+            val one = shift("one", "app")
+            store.saveShift(one, emptyList())
+            store.saveShift(shift("two", "other"), emptyList())
+            assertTrue(runCatching { store.currentShiftChecked("owner-a", "app") }.isFailure)
+            assertTrue(runCatching { store.startShift(shift("three", "third")) }.isFailure)
+            assertTrue(runCatching { store.updateShift(one.copy(state = "PAUSED", version = 2), emptyList(), 1) }.isFailure)
+            assertEquals(one, store.findShift("owner-a", "app", "one"))
+        } finally {
+            db.close()
+            context.deleteDatabase(name)
+        }
+    }
 
     @Test fun draftsAreOwnerScopedRoundTripUnitsAndSurviveRestart() = runBlocking {
         val name = "driver-local-draft"
