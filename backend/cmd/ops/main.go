@@ -46,6 +46,8 @@ func run(args []string, getenv func(string) string) error {
 		return runMonitoring(args[1:], getenv)
 	case "evidence-url":
 		return runEvidenceURL(args[1:], getenv)
+	case "admin":
+		return runAdmin(args[1:], os.Stdout)
 	case "-h", "-help", "--help", "help":
 		return errors.New(usage)
 	default:
@@ -68,9 +70,11 @@ const usage = `usage:
   ops privacy replay --contributor <id> [--operator <id>]
   ops monitoring eval [--webhook <url>] [--backup-manifest <path>]
   ops evidence-url --case <id> --evidence-id <id> [--operator <id>]
+  ops admin keygen
 
 operator identity: --operator flag or ANPFUEL_OPERATOR_ID environment.
-no public admin path exists; every command appends audit history`
+no public admin path exists; every command appends audit history
+keygen is offline: it prints the key and its SHA-256 once to stdout`
 
 // resolveOperatorID derives the accountable operator identity from
 // restricted access context: explicit flag first, environment second.
