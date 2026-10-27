@@ -19,7 +19,12 @@ The agent runs from a systemd timer on the staging host. Each run:
 It never writes `current.json` and never calls `docker`, `kubectl`, `helm` or
 `systemctl`. The optional `schema_min_supported` field is validated when a
 manifest carries it; the signed Phase 1 manifests without the field remain
-readable. Phase 3 will require it for apply.
+readable. Phase 3 requires it for apply.
+
+The signed OCI artifact also carries `landing-dist.tar.gz` as an
+`application/vnd.abastevo.landing.tar+gzip` layer. Its SHA-256 is the
+`landing_sha256` in the signed manifest; the Phase 3 executor extracts that
+layer and switches the relative `current` symlink.
 
 ## Prerequisites
 

@@ -115,10 +115,11 @@ failed() {
 
 write_oci() {
     local dir="$1"
-    local manifest_sha bundle_sha
+    local manifest_sha bundle_sha landing_sha
     manifest_sha="sha256:$(sha256sum "$dir/artifact/release-manifest.json" | cut -d' ' -f1)"
     bundle_sha="sha256:$(sha256sum "$dir/artifact/release-manifest.sigstore.json" | cut -d' ' -f1)"
-    jq -n --arg md "$manifest_sha" --arg bd "$bundle_sha" '{
+    landing_sha="sha256:$(sha256sum "$dir/artifact/landing-dist.tar.gz" | cut -d' ' -f1)"
+    jq -n --arg md "$manifest_sha" --arg bd "$bundle_sha" --arg ld "$landing_sha" '{
         schemaVersion: 2,
         mediaType: "application/vnd.oci.image.manifest.v1+json",
         artifactType: "application/vnd.abastevo.release.v1+json",
@@ -129,7 +130,8 @@ write_oci() {
         },
         layers: [
             {mediaType: "application/vnd.abastevo.release.manifest.v1+json", digest: $md, size: 1},
-            {mediaType: "application/vnd.dev.sigstore.bundle.v0.3+json", digest: $bd, size: 1}
+            {mediaType: "application/vnd.dev.sigstore.bundle.v0.3+json", digest: $bd, size: 1},
+            {mediaType: "application/vnd.abastevo.landing.tar+gzip", digest: $ld, size: 1}
         ]
     }' > "$dir/oci-manifest.json"
     jq -n --arg digest "sha256:$(printf '0%.0s' {1..64})" '{
@@ -142,12 +144,15 @@ write_oci() {
 make_fixture() {
     local dir="$1"
     mkdir -p "$dir/artifact" "$dir/state" "$dir/landing" "$dir/backup" "$dir/receipts"
+    printf 'landing fixture\n' > "$dir/artifact/landing-dist.tar.gz"
+    local landing
+    landing="$(sha256sum "$dir/artifact/landing-dist.tar.gz" | cut -d' ' -f1)"
     jq -n \
         --arg sha "$FIXTURE_SHA" \
         --arg api "ghcr.io/alexandrezanata/abastevo-api@sha256:$(printf '2%.0s' {1..64})" \
         --arg worker "ghcr.io/alexandrezanata/abastevo-worker@sha256:$(printf '3%.0s' {1..64})" \
         --arg migrate "ghcr.io/alexandrezanata/abastevo-migrate@sha256:$(printf '4%.0s' {1..64})" \
-        --arg landing "$(printf '5%.0s' {1..64})" \
+        --arg landing "$landing" \
         '{
             schema: "abastevo-release-manifest-v1",
             sha: $sha,
