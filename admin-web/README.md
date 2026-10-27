@@ -16,7 +16,9 @@ Static owner panel for the **abastevo** administrative API (Front B).
   Because a full page load would wipe it, both admin routes serve the same
   shell and in-app transitions use `history.pushState` without reloading;
   every full load starts at the login view. Every mutation sends
-  `X-Admin-CSRF` and `Idempotency-Key`. Any 401 returns to `/admin/login/`.
+  `X-Admin-CSRF` and `Idempotency-Key`. Any 401 on an authenticated call
+  returns to `/admin/login/`; a 401 from the login call itself (wrong key)
+  stays on the form and shows the invalid-key message.
   The raw admin key is never displayed or logged; the login input is
   `type=password`, `autocomplete=off`, cleared after submit.
 

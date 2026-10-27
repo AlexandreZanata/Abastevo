@@ -240,9 +240,8 @@ function wireLogin(): void {
       try {
         await api.login(key);
       } catch (error) {
-        if (!isUnauthorized(error)) {
-          setAlert('login-error', errorMessage(error));
-        }
+        // Including 401: a wrong key stays on this form with its message.
+        setAlert('login-error', errorMessage(error));
         return;
       } finally {
         keyInput.value = '';
