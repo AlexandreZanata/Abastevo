@@ -5,6 +5,8 @@
 BASELINE_STAGE="preflight"
 BASELINE_DB_MAX=""
 BASELINE_FLOOR=""
+BASELINE_FLOOR_SOURCE=""
+BASELINE_RELEASE_MATCH="false"
 BASELINE_ANNOTATION=""
 BASELINE_API_IMAGE=""
 BASELINE_WORKER_IMAGE=""
@@ -46,6 +48,8 @@ baseline_write_receipt() {
         --arg landing_source "$BASELINE_LANDING_SOURCE" \
         --arg schema_job "$BASELINE_SCHEMA_JOB" \
         --arg checksum "$BASELINE_CHECKSUM" \
+        --arg floor_source "$BASELINE_FLOOR_SOURCE" \
+        --argjson release_match "$BASELINE_RELEASE_MATCH" \
         '{
             schema: $schema,
             result: $result,
@@ -55,7 +59,8 @@ baseline_write_receipt() {
             sha: $sha,
             database_max: $database_max,
             schema_min_supported: $schema_floor,
-            schema_min_source: "database_max",
+            schema_min_source: $floor_source,
+            release_match: $release_match,
             schema_version_annotation: $schema_annotation,
             images: {
                 api: $api_image,
@@ -137,7 +142,13 @@ baseline_read_images() {
         || baseline_fail "images" "release manifest migrate image is invalid"
     BASELINE_ANNOTATION="$(runtime_schema_annotation "$ABASTEVO_NAMESPACE" \
         "$ABASTEVO_API_DEPLOYMENT" 2>/dev/null || true)"
-    baseline_log "running images captured"
+    # Record whether the running containers are the --sha release itself, so a
+    # baseline over hand-deployed images is never mistaken for that release.
+    if [[ "$BASELINE_API_IMAGE" == "$(jq -r '.images.api' "$manifest_file")" \
+        && "$BASELINE_WORKER_IMAGE" == "$(jq -r '.images.worker' "$manifest_file")" ]]; then
+        BASELINE_RELEASE_MATCH="true"
+    fi
+    baseline_log "running images captured (release match: $BASELINE_RELEASE_MATCH)"
 }
 
 baseline_read_schema() {
@@ -148,8 +159,24 @@ baseline_read_schema() {
         || baseline_fail "schema" "schema version job failed"
     [[ "$BASELINE_DB_MAX" =~ ^[0-9]{6}$ ]] \
         || baseline_fail "schema" "database schema version is unavailable"
-    BASELINE_FLOOR="$BASELINE_DB_MAX"
-    baseline_log "database schema $BASELINE_DB_MAX"
+    # The floor belongs to the running release, never to the database: a
+    # floor taken from the database maximum would hide contract changes up
+    # to that version. Prefer the release manifest; a release that predates
+    # schema_min_supported needs an explicit operator value.
+    local manifest_floor
+    manifest_floor="$(jq -r '.schema_min_supported // empty' "$manifest_file")"
+    if [[ "$manifest_floor" =~ ^[0-9]{6}$ ]]; then
+        BASELINE_FLOOR="$manifest_floor"
+        BASELINE_FLOOR_SOURCE="release-manifest"
+    elif [[ -n "$BASELINE_FLOOR_ARG" ]]; then
+        BASELINE_FLOOR="$BASELINE_FLOOR_ARG"
+        BASELINE_FLOOR_SOURCE="operator"
+    else
+        baseline_fail "schema" "release predates schema_min_supported; pass --floor"
+    fi
+    (( 10#$BASELINE_FLOOR <= 10#$BASELINE_DB_MAX )) \
+        || baseline_fail "schema" "schema floor is above the database schema"
+    baseline_log "database schema $BASELINE_DB_MAX, floor $BASELINE_FLOOR ($BASELINE_FLOOR_SOURCE)"
 }
 
 baseline_check_checksums() {
@@ -190,6 +217,7 @@ baseline_write_current_state() {
         --arg migrations_max "$BASELINE_DB_MAX" \
         --arg schema_min_supported "$BASELINE_FLOOR" \
         --arg applied_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        --argjson release_match "$BASELINE_RELEASE_MATCH" \
         '{
             schema: $schema,
             sha: $sha,
@@ -198,7 +226,8 @@ baseline_write_current_state() {
             migrations_max: $migrations_max,
             schema_min_supported: $schema_min_supported,
             applied_at: $applied_at,
-            baseline: true
+            baseline: true,
+            release_match: $release_match
         }' > "$tmp" || {
         rm -f "$tmp"
         return 1

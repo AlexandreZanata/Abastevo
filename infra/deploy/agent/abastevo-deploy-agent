@@ -71,6 +71,7 @@ ABASTEVO_LOCK_FILE="${ABASTEVO_LOCK_FILE:-$ABASTEVO_STATE_DIR/apply.lock}"
 
 COMMAND="${1:-plan}"
 BASELINE_SHA=""
+BASELINE_FLOOR_ARG=""
 case "$COMMAND" in
     plan)
         (( $# <= 1 )) || fail "plan takes no arguments"
@@ -84,6 +85,11 @@ case "$COMMAND" in
                     BASELINE_SHA="$2"
                     shift 2
                     ;;
+                --floor)
+                    [[ -n "${2:-}" ]] || fail "baseline --floor requires a value"
+                    BASELINE_FLOOR_ARG="$2"
+                    shift 2
+                    ;;
                 *)
                     fail "unknown baseline argument: $1"
                     ;;
@@ -91,10 +97,12 @@ case "$COMMAND" in
         done
         [[ "$BASELINE_SHA" =~ ^[0-9a-f]{40}$ ]] \
             || fail "baseline --sha must be a full 40-hex commit"
+        [[ -z "$BASELINE_FLOOR_ARG" || "$BASELINE_FLOOR_ARG" =~ ^[0-9]{6}$ ]] \
+            || fail "baseline --floor must be a six-digit migration version"
         ABASTEVO_MANIFEST_TAG="sha-${BASELINE_SHA}"
         ;;
     *)
-        fail "usage: abastevo-deploy-agent [plan | baseline --sha <commit>]"
+        fail "usage: abastevo-deploy-agent [plan | baseline --sha <commit> [--floor <NNNNNN>]]"
         ;;
 esac
 

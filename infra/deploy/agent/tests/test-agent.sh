@@ -435,7 +435,8 @@ run_agent_baseline() {
         export KUBECTL_SCHEMA_DB="${KUBECTL_SCHEMA_DB:-000139}"
         export KUBECTL_FAIL_ROLE="${KUBECTL_FAIL_ROLE:-}"
         mkdir -p "$KUBECTL_JOBS_DIR" "$dir/state"
-        "$AGENT" baseline --sha "$FIXTURE_SHA"
+        # shellcheck disable=SC2086
+        "$AGENT" baseline --sha "$FIXTURE_SHA" ${BASELINE_EXTRA_ARGS:-}
     ) >"$dir/stdout.log" 2>"$dir/stderr.log"
 }
 
@@ -613,7 +614,8 @@ assert_file "baseline current exists" "$CURRENT"
 if [[ -f "$CURRENT" ]]; then
     assert_eq "baseline current sha" "$(jq -r '.sha' "$CURRENT")" "$FIXTURE_SHA"
     assert_eq "baseline flag" "$(jq -r '.baseline' "$CURRENT")" "true"
-    assert_eq "baseline floor" "$(jq -r '.schema_min_supported' "$CURRENT")" "000139"
+    assert_eq "baseline floor from manifest" "$(jq -r '.schema_min_supported' "$CURRENT")" "000132"
+    assert_eq "baseline hand-deployed images do not match the release" "$(jq -r '.release_match' "$CURRENT")" "false"
     assert_eq "baseline migrations" "$(jq -r '.migrations_max' "$CURRENT")" "000139"
     assert_eq "baseline api image" "$(jq -r '.images.api' "$CURRENT")" "local-api"
     assert_eq "baseline worker image" "$(jq -r '.images.worker' "$CURRENT")" "local-worker"
@@ -626,7 +628,9 @@ if [[ -n "$RECEIPT" ]]; then
     assert_eq "baseline receipt result" "$(jq -r '.result' "$RECEIPT")" "baseline"
     assert_eq "baseline receipt stage" "$(jq -r '.stage' "$RECEIPT")" "done"
     assert_eq "baseline receipt database max" "$(jq -r '.database_max' "$RECEIPT")" "000139"
-    assert_eq "baseline receipt floor" "$(jq -r '.schema_min_supported' "$RECEIPT")" "000139"
+    assert_eq "baseline receipt floor" "$(jq -r '.schema_min_supported' "$RECEIPT")" "000132"
+    assert_eq "baseline receipt floor source" "$(jq -r '.schema_min_source' "$RECEIPT")" "release-manifest"
+    assert_eq "baseline receipt release match" "$(jq -r '.release_match' "$RECEIPT")" "false"
     assert_eq "baseline receipt annotation informative" "$(jq -r '.schema_version_annotation' "$RECEIPT")" "000120"
     assert_eq "baseline receipt checksum" "$(jq -r '.checksum' "$RECEIPT")" "running-readiness"
     assert_eq "baseline receipt checksum source" "$(jq -r '.checksum_source' "$RECEIPT")" "health-ready"
@@ -657,6 +661,33 @@ if [[ -n "$RECEIPT" ]]; then
     assert_eq "baseline checksum failure result" "$(jq -r '.result' "$RECEIPT")" "failed"
     assert_eq "baseline checksum failure stage" "$(jq -r '.stage' "$RECEIPT")" "checksum"
 fi
+
+# A release built before CD-03 carries no schema_min_supported.
+drop_manifest_floor() {
+    local dir="$1"
+    jq 'del(.schema_min_supported)' "$dir/artifact/release-manifest.json" > "$dir/manifest.tmp"
+    mv "$dir/manifest.tmp" "$dir/artifact/release-manifest.json"
+    write_oci "$dir"
+}
+
+echo "== baseline: pre-floor release needs an explicit floor =="
+CASE="$(new_case baseline-no-floor)"
+prepare_landing "$CASE" 1
+drop_manifest_floor "$CASE"
+expect_failure "baseline without any floor refused" run_agent_baseline "$CASE"
+assert_absent "baseline no-floor no current.json" "$CASE/state/current.json"
+CASE="$(new_case baseline-operator-floor)"
+prepare_landing "$CASE" 1
+drop_manifest_floor "$CASE"
+BASELINE_EXTRA_ARGS="--floor 000132" \
+    expect_success "baseline operator floor" run_agent_baseline "$CASE"
+assert_eq "baseline operator floor value" "$(jq -r '.schema_min_supported' "$CASE/state/current.json" 2>/dev/null)" "000132"
+CASE="$(new_case baseline-floor-above-db)"
+prepare_landing "$CASE" 1
+drop_manifest_floor "$CASE"
+BASELINE_EXTRA_ARGS="--floor 000140" \
+    expect_failure "baseline floor above database refused" run_agent_baseline "$CASE"
+assert_absent "baseline floor-above no current.json" "$CASE/state/current.json"
 
 echo "== baseline: SHA outside main is refused =="
 CASE="$(new_case baseline-ahead)"

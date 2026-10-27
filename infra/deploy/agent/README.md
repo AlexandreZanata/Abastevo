@@ -153,7 +153,7 @@ The first run against an existing staging host needs a reviewed baseline
 instead of a synthetic current state:
 
 ```sh
-ABASTEVO_APPLY=0 ... abastevo-deploy-agent baseline --sha <40-hex-main-commit>
+ABASTEVO_APPLY=0 ... abastevo-deploy-agent baseline --sha <40-hex-main-commit> [--floor <NNNNNN>]
 ```
 
 The command fetches the signed `abastevo-release:sha-<sha>` artifact (not the
@@ -167,9 +167,15 @@ with `baseline: true` and a `abastevo-deploy-baseline-v1` receipt, and performs
 no rollout, migration or landing switch.
 
 It refuses a non-ancestor SHA or a failing running schema-compatibility check.
-The baseline uses `ABASTEVO_SMOKE_BASE_URL` for that readiness call. `schema_min_supported` and `migrations_max` are
-both seeded from the real database maximum, so the running images are treated
-as compatible with the schema they are actually serving.
+The baseline uses `ABASTEVO_SMOKE_BASE_URL` for that readiness call.
+`migrations_max` is the real database maximum. `schema_min_supported` is the
+floor of the release, never the database maximum (a database-derived floor
+would let contract changes up to that version pass as additive): it comes from
+the release manifest, or from `--floor` when the release predates the field;
+without either the baseline refuses, and a floor above the database refuses.
+`release_match` records whether the running `api`/`worker` images are that
+release's digests; `false` means the host runs hand-deployed images and the
+first apply rolls the release images out.
 
 ## Apply mode (R3-R6)
 
