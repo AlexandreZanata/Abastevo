@@ -126,6 +126,8 @@ export function build(options = {}) {
     const htmlFiles = [
       { srcRel: 'app/index.html', destRel: 'login/index.html' },
       { srcRel: 'app/index.html', destRel: 'accounts/index.html' },
+      { srcRel: 'app/index.html', destRel: 'contributors/index.html' },
+      { srcRel: 'app/index.html', destRel: 'audit/index.html' },
       { srcRel: '404.html', destRel: '404.html' },
     ];
     for (const { srcRel, destRel } of htmlFiles) {

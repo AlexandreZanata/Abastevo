@@ -188,6 +188,92 @@ test('grant paths and bodies match the admin contract', async () => {
   assert.equal(fetchFn.calls[2].input, '/v1/admin/grants/g1/revoke');
 });
 
+test('contributors: snapshot, claims queue and override mapping', async () => {
+  const { AdminApi } = await loadApi();
+  const fetchFn = fakeFetch((input, init) => {
+    if (input === '/v1/admin/session') {
+      return jsonResponse(200, { csrf_token: 'csrf-1', expires_at: '2026-01-01T00:00:00Z' });
+    }
+    if (input.startsWith('/v1/admin/github/contributors')) {
+      return jsonResponse(200, { repo: 'o/r', fetched_at: '2026-01-01T00:00:00Z', stale: true, contributors: [{ login: 'octocat' }] });
+    }
+    if (input.startsWith('/v1/admin/contributor-claims') && init.method === 'GET') {
+      return jsonResponse(200, { items: [], next_cursor: 'next' });
+    }
+    if (input.endsWith('/approve')) {
+      return jsonResponse(200, { claim: { claim_id: 'c1' }, grant: null, login: 'octocat' });
+    }
+    return jsonResponse(200, {});
+  });
+  const api = new AdminApi(fetchFn, () => {});
+  await api.login('k');
+  const snapshot = await api.githubContributors(true);
+  assert.equal(snapshot.stale, true);
+  assert.equal(fetchFn.calls[1].input, '/v1/admin/github/contributors?refresh=true');
+  const page = await api.listClaims('PENDING', 'cursor-1');
+  assert.equal(page.next_cursor, 'next');
+  assert.ok(fetchFn.calls[2].input.includes('state=PENDING') && fetchFn.calls[2].input.includes('cursor=cursor-1'));
+  const approved = await api.approveClaim('c1', '0123456789', true);
+  assert.equal(approved.login, 'octocat');
+  const approveCall = fetchFn.calls[3];
+  assert.deepEqual(JSON.parse(approveCall.init.body), { reason: '0123456789', override: true });
+  assert.ok(approveCall.init.headers['X-Admin-CSRF']);
+});
+
+test('contributors: capitalized backend shapes are normalized', async () => {
+  const { AdminApi } = await loadApi();
+  const fetchFn = fakeFetch((input) => {
+    if (input === '/v1/admin/session') {
+      return jsonResponse(200, { csrf_token: 'csrf-1', expires_at: '2026-01-01T00:00:00Z' });
+    }
+    return jsonResponse(200, {
+      ID: 'c1', GitHubLogin: 'OctoCat', State: 'PENDING', ProofStatus: 'UNVERIFIED',
+      Override: false, CreatedAt: '2026-01-01T00:00:00Z', ExpiresAt: '2026-02-01T00:00:00Z',
+    });
+  });
+  const api = new AdminApi(fetchFn, () => {});
+  await api.login('k');
+  const rejected = await api.rejectClaim('c1', '0123456789');
+  assert.equal(rejected.claim_id, 'c1');
+  assert.equal(rejected.github_login, 'OctoCat');
+  assert.equal(rejected.state, 'PENDING');
+});
+
+test('roles and audit: paths, bodies and error codes', async () => {
+  const { AdminApi, errorMessage, ApiError } = await loadApi();
+  const fetchFn = fakeFetch((input, init) => {
+    if (input === '/v1/admin/session') {
+      return jsonResponse(200, { csrf_token: 'csrf-1', expires_at: '2026-01-01T00:00:00Z' });
+    }
+    if (input === '/v1/admin/roles') {
+      return jsonResponse(200, { catalog_version: 'staff-roles-v1', roles: [{ code: 'support_agent', label: 'Suporte' }] });
+    }
+    if (input.endsWith('/roles')) {
+      return jsonResponse(201, { id: 'a1', state: 'ACTIVE' });
+    }
+    if (input.includes('/revoke')) {
+      return jsonResponse(200, { id: 'a1', state: 'REVOKED' });
+    }
+    return jsonResponse(200, { items: [{ id: 7, action: 'admin.staff.assign' }], next_cursor: '' });
+  });
+  const api = new AdminApi(fetchFn, () => {});
+  await api.login('k');
+  const roles = await api.getRoles();
+  assert.equal(roles.length, 1);
+  const assigned = await api.assignRole('account-1', 'support_agent', null, '0123456789');
+  assert.equal(assigned.state, 'ACTIVE');
+  const assignCall = fetchFn.calls[2];
+  assert.deepEqual(JSON.parse(assignCall.init.body), { role: 'support_agent', end_at: null, reason: '0123456789' });
+  const revoked = await api.revokeRole('a1', '0123456789');
+  assert.equal(revoked.state, 'REVOKED');
+  const audits = await api.listAudit('admin.staff.assign', 'account-1', '');
+  assert.equal(audits.items.length, 1);
+  assert.ok(fetchFn.calls[4].input.includes('action=admin.staff.assign'));
+  assert.equal(errorMessage(new ApiError(409, 'contributor.override-required', 'x')), 'É preciso marcar override com motivo para este caso.');
+  assert.equal(errorMessage(new ApiError(409, 'staff.exists', 'x')), 'Já existe assignment ativo desse papel para a conta.');
+  assert.equal(errorMessage(new ApiError(409, 'contributor.claim-state', 'x')), 'A claim não está mais pendente.');
+});
+
 test('login 401: wrong key is an error for the form, not a session expiry redirect', async () => {
   const { AdminApi, isUnauthorized, errorMessage } = await loadApi();
   let fired = 0;
@@ -202,3 +288,85 @@ test('login 401: wrong key is an error for the form, not a session expiry redire
   assert.equal(errorMessage(error), 'Chave ou sessão inválida.');
   assert.equal(api.hasSession(), false);
 });
+
+// The Go handlers marshal domain.Claim and domain.Profile without JSON tags,
+// so their keys arrive capitalized; the documented views are lowercase. Both
+// shapes must normalize to the same view.
+const CLAIM_SHAPES = {
+  capitalized: {
+    ID: 'c1', AccountID: 'account-1', GitHubLogin: 'OctoCat', State: 'APPROVED',
+    ProofStatus: 'VERIFIED', GistID: 'gist-1', Override: true, DecisionReason: 'synthetic reason',
+    CreatedAt: '2026-01-01T00:00:00Z', ExpiresAt: '2026-02-01T00:00:00Z', DecidedAt: '2026-01-02T00:00:00Z',
+  },
+  lowercase: {
+    claim_id: 'c1', account_id: 'account-1', github_login: 'OctoCat', state: 'APPROVED',
+    proof_status: 'VERIFIED', gist_id: 'gist-1', override: true, decision_reason: 'synthetic reason',
+    created_at: '2026-01-01T00:00:00Z', expires_at: '2026-02-01T00:00:00Z', decided_at: '2026-01-02T00:00:00Z',
+  },
+};
+
+const PROFILE_SHAPES = {
+  capitalized: {
+    AccountID: 'account-1', DisplayName: 'Octo Cat', Links: [{ platform: 'github', handle: 'octocat' }],
+    Visibility: 'PUBLIC', PublicConsent: true, ShowRolesPublicly: true, HiddenByAdmin: true,
+    CreatedAt: '2026-01-01T00:00:00Z', UpdatedAt: '2026-01-02T00:00:00Z',
+  },
+  lowercase: {
+    account_id: 'account-1', display_name: 'Octo Cat', links: [{ platform: 'github', handle: 'octocat' }],
+    visibility: 'PUBLIC', public_consent: true, show_roles_publicly: true, hidden_by_admin: true,
+    created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
+  },
+};
+
+async function loggedInApi(respond) {
+  const { AdminApi } = await loadApi();
+  const fetchFn = fakeFetch((input, init) => {
+    if (input === '/v1/admin/session') {
+      return jsonResponse(200, { csrf_token: 'csrf-1', expires_at: '2026-01-01T00:00:00Z' });
+    }
+    return respond(input, init);
+  });
+  const api = new AdminApi(fetchFn, () => {});
+  await api.login('k');
+  return { api, fetchFn };
+}
+
+for (const [shape, rawClaim] of Object.entries(CLAIM_SHAPES)) {
+  test(`contributors: approve normalizes a ${shape} claim inside "claim"`, async () => {
+    const grant = { id: 'g1', tier: 'CONTRIBUTOR', state: 'ACTIVE' };
+    const { api, fetchFn } = await loggedInApi(() => jsonResponse(200, { claim: rawClaim, grant, login: 'octocat' }));
+    const approved = await api.approveClaim('c1', '0123456789', true);
+    assert.equal(fetchFn.calls[1].input, '/v1/admin/contributor-claims/c1/approve');
+    assert.deepEqual(approved.claim, {
+      claim_id: 'c1', account_id: 'account-1', github_login: 'OctoCat', state: 'APPROVED',
+      proof_status: 'VERIFIED', gist_id: 'gist-1', override: true, decision_reason: 'synthetic reason',
+      created_at: '2026-01-01T00:00:00Z', expires_at: '2026-02-01T00:00:00Z', decided_at: '2026-01-02T00:00:00Z',
+    });
+    assert.deepEqual(approved.grant, grant);
+    assert.equal(approved.login, 'octocat');
+  });
+}
+
+for (const [shape, rawProfile] of Object.entries(PROFILE_SHAPES)) {
+  for (const hidden of [true, false]) {
+    const action = hidden ? 'hide' : 'unhide';
+    test(`contributors: profile ${action} normalizes a ${shape} profile`, async () => {
+      const body = { ...rawProfile };
+      if (!hidden) {
+        delete body.HiddenByAdmin;
+        delete body.hidden_by_admin;
+      }
+      const { api, fetchFn } = await loggedInApi(() => jsonResponse(200, body));
+      const profile = await api.setProfileHidden('account-1', '0123456789', hidden);
+      const call = fetchFn.calls[1];
+      assert.equal(call.input, `/v1/admin/contributor-profiles/account-1/${action}`);
+      assert.deepEqual(JSON.parse(call.init.body), { reason: '0123456789' });
+      assert.ok(call.init.headers['X-Admin-CSRF']);
+      assert.deepEqual(profile, {
+        account_id: 'account-1', display_name: 'Octo Cat', links: [{ platform: 'github', handle: 'octocat' }],
+        visibility: 'PUBLIC', public_consent: true, show_roles_publicly: true,
+        hidden_by_admin: hidden ? true : undefined,
+      });
+    });
+  }
+}

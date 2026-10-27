@@ -36,7 +36,7 @@ export function checkDist(options = {}) {
   }
 
   // 1. Required files inventory
-  for (const file of ['login/index.html', 'accounts/index.html', '404.html', '_headers', 'robots.txt']) {
+  for (const file of ['login/index.html', 'accounts/index.html', 'contributors/index.html', 'audit/index.html', '404.html', '_headers', 'robots.txt']) {
     if (!fs.existsSync(path.join(distDir, file))) {
       errors.push(`Missing required file in dist: ${file}`);
     }
@@ -63,7 +63,7 @@ export function checkDist(options = {}) {
   }
 
   // 3. HTML pages: references, robots, titles
-  for (const rel of ['login/index.html', 'accounts/index.html', '404.html']) {
+  for (const rel of ['login/index.html', 'accounts/index.html', 'contributors/index.html', 'audit/index.html', '404.html']) {
     const full = path.join(distDir, rel);
     if (!fs.existsSync(full)) continue;
     const content = fs.readFileSync(full, 'utf8');

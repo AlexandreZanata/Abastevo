@@ -27,7 +27,7 @@ Static owner panel for the **abastevo** administrative API (Front B).
 ```text
 admin-web/
   static/
-    app/index.html          # Single shell served at /admin/login/ and /admin/accounts/
+    app/index.html          # Single shell served at every /admin/ route
     404.html                # Plain noindex fallback
     robots.txt              # Disallow everything (noindex defense in depth)
     _headers                # Admin CSP, no-store HTML, immutable assets

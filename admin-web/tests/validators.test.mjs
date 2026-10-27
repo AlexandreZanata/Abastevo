@@ -119,3 +119,19 @@ test('end date ENT-04: leap-year ranges use 5 x 365 days, not 5 calendar years',
   assert.ok(v.endDateError('2032-02-29', now) !== null);
   assert.ok(v.endDateError('2032-03-01', now) !== null, 'calendar +5 years exceeds 1825 days');
 });
+
+test('github login and roles mirror the contract rules', async () => {
+  const v = await loadValidators();
+  for (const login of ['a', 'octocat', 'user-name', 'A1-b2']) {
+    assert.equal(v.githubLoginError(login), null, login);
+  }
+  for (const login of ['', 'x'.repeat(40), '-abc', 'abc-', 'a--b', 'a_b', 'a b']) {
+    assert.ok(v.githubLoginError(login) !== null, login || '(empty)');
+  }
+  assert.equal(v.isRole('support_agent'), true);
+  assert.equal(v.isRole('administrator'), false);
+  assert.equal(v.isRole(''), false);
+  assert.equal(v.isClaimState(''), true);
+  assert.equal(v.isClaimState('PENDING'), true);
+  assert.equal(v.isClaimState('BOGUS'), false);
+});
