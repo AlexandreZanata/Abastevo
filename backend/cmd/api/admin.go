@@ -18,9 +18,9 @@ import (
 // registerAdminRoutes mounts the administrative surface only when at least
 // one key hash is configured. The trusted-proxy resolver is reused through a
 // narrow closure so the admin module never imports identity adapters.
-func registerAdminRoutes(r chi.Router, cfg config.Config, pool *pgxpool.Pool, trusted []netip.Prefix) bool {
+func newAdminHandler(cfg config.Config, pool *pgxpool.Pool, trusted []netip.Prefix) (*adminhttp.Handler, bool) {
 	if len(cfg.AdminKeyHashes) == 0 {
-		return false
+		return nil, false
 	}
 	keys := make([]admindomain.ConfiguredKey, 0, len(cfg.AdminKeyHashes))
 	for _, hash := range cfg.AdminKeyHashes {
@@ -32,12 +32,21 @@ func registerAdminRoutes(r chi.Router, cfg config.Config, pool *pgxpool.Pool, tr
 		Store: adminStore, Grants: entitlementadapters.NewStore(pool),
 		Keys: keys, Clock: time.Now, NewID: newUUID,
 	}
-	adminhttp.Handler{
+	handler := &adminhttp.Handler{
 		Service:      service,
 		Origin:       cfg.AdminOrigin,
 		AllowedCIDRs: cfg.AdminAllowedCIDRs,
 		ClientIP:     resolver.ClientIP,
 		CursorSecret: cfg.CursorSecret,
-	}.RegisterRoutes(r)
+	}
+	return handler, true
+}
+
+func registerAdminRoutes(r chi.Router, cfg config.Config, pool *pgxpool.Pool, trusted []netip.Prefix) bool {
+	handler, ok := newAdminHandler(cfg, pool, trusted)
+	if !ok {
+		return false
+	}
+	handler.RegisterRoutes(r)
 	return true
 }

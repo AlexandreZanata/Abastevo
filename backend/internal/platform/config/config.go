@@ -102,6 +102,12 @@ const (
 	keyAdminKeySHA256Next = "ANPFUEL_ADMIN_KEY_SHA256_NEXT"
 	keyAdminOrigin        = "ANPFUEL_ADMIN_ORIGIN"
 	keyAdminAllowedCIDRs  = "ANPFUEL_ADMIN_ALLOWED_CIDRS"
+	// Contributor surface (ADR-023). The GitHub repository is owner/repo;
+	// the token is optional and read-only. Public web origins are the only
+	// origins allowed to read GET /v1/contributors with CORS.
+	keyGitHubRepo       = "ANPFUEL_GITHUB_REPO"
+	keyGitHubToken      = "ANPFUEL_GITHUB_TOKEN"
+	keyPublicWebOrigins = "ANPFUEL_PUBLIC_WEB_ORIGINS"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -211,6 +217,12 @@ type Config struct {
 	AdminKeyHashes    []string
 	AdminOrigin       string
 	AdminAllowedCIDRs []netip.Prefix
+	// GitHubRepo is owner/repo for contributor snapshots. GitHubToken is
+	// optional and never logged. PublicWebOrigins is the CORS allowlist for
+	// GET /v1/contributors only.
+	GitHubRepo       string
+	GitHubToken      string
+	PublicWebOrigins []string
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -224,6 +236,9 @@ func (c Config) LogValue() slog.Value {
 		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
 		slog.Bool("db_configured", c.DatabaseURL != ""),
 		slog.Bool("admin_configured", len(c.AdminKeyHashes) > 0),
+		slog.String("github_repo", c.GitHubRepo),
+		slog.Bool("github_token_configured", c.GitHubToken != ""),
+		slog.Int("public_web_origins", len(c.PublicWebOrigins)),
 		slog.Any("r2", c.R2.r2LogValue()),
 		slog.Any("payments", c.Payments.logValue()),
 	)
@@ -573,6 +588,13 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	cfg.AdminKeyHashes = adminHashes
 	cfg.AdminOrigin = adminOrigin
 	cfg.AdminAllowedCIDRs = adminCIDRs
+	githubRepo, githubToken, publicOrigins, err := loadContributor(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.GitHubRepo = githubRepo
+	cfg.GitHubToken = githubToken
+	cfg.PublicWebOrigins = publicOrigins
 	if raw, _ := getenv(keyEvidenceMaxPending); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 || n > 100 {
@@ -643,6 +665,56 @@ func loadAdmin(getenv func(string) (string, bool)) ([]string, string, []netip.Pr
 		cidrs = append(cidrs, prefix.Masked())
 	}
 	return hashes, origin, cidrs, nil
+}
+
+// loadContributor validates the optional contributor surface. The token is
+// never echoed; malformed values fail by variable name only.
+func loadContributor(getenv func(string) (string, bool)) (string, string, []string, error) {
+	repo := strings.TrimSpace(getenvValue(getenv, keyGitHubRepo))
+	if repo != "" {
+		parts := strings.Split(repo, "/")
+		if len(parts) != 2 || !validRepoPart(parts[0]) || !validRepoPart(parts[1]) {
+			return "", "", nil, fmt.Errorf("%s must be owner/repo", keyGitHubRepo)
+		}
+	}
+	token := strings.TrimSpace(getenvValue(getenv, keyGitHubToken))
+	var origins []string
+	seen := map[string]bool{}
+	for _, part := range strings.Split(getenvValue(getenv, keyPublicWebOrigins), ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		parsed, err := url.Parse(part)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
+			parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" ||
+			parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+			return "", "", nil, fmt.Errorf("%s must be comma-separated http(s) origins", keyPublicWebOrigins)
+		}
+		origin := parsed.Scheme + "://" + parsed.Host
+		if !seen[origin] {
+			seen[origin] = true
+			origins = append(origins, origin)
+		}
+	}
+	return repo, token, origins, nil
+}
+
+func getenvValue(getenv func(string) (string, bool), key string) string {
+	value, _ := getenv(key)
+	return value
+}
+
+func validRepoPart(part string) bool {
+	if part == "" || len(part) > 100 {
+		return false
+	}
+	for _, c := range part {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.') {
+			return false
+		}
+	}
+	return true
 }
 
 func validAdminHash(raw string) bool {

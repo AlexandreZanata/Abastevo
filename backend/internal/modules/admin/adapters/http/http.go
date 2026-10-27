@@ -204,7 +204,7 @@ func (h Handler) mutate(w http.ResponseWriter, r *http.Request, session app.Sess
 	var dto struct {
 		Reason string `json:"reason"`
 	}
-	m, ok := h.prepareMutation(w, r, session, action, targetType, targetID, &dto)
+	m, ok := h.PrepareMutation(w, r, session, action, targetType, targetID, &dto)
 	if !ok {
 		return
 	}
@@ -215,13 +215,13 @@ func (h Handler) mutate(w http.ResponseWriter, r *http.Request, session app.Sess
 	}
 	m.Reason = reason
 	result, err := run(m)
-	h.finishMutation(w, r, result, err, true)
+	h.FinishMutation(w, r, result, err, true)
 }
 
 // prepareMutation validates Origin, CSRF, the UUID idempotency key and the
 // 16 KiB body before decoding the caller's DTO. It returns the mutation
 // context with the body hash already bound to action and target.
-func (h Handler) prepareMutation(w http.ResponseWriter, r *http.Request, session app.Session, action, targetType, targetID string, dst any) (app.Mutation, bool) {
+func (h Handler) PrepareMutation(w http.ResponseWriter, r *http.Request, session app.Session, action, targetType, targetID string, dst any) (app.Mutation, bool) {
 	if !h.validOrigin(r) {
 		writeAdminError(w, r, http.StatusForbidden, "admin.csrf")
 		return app.Mutation{}, false
@@ -253,7 +253,7 @@ func (h Handler) prepareMutation(w http.ResponseWriter, r *http.Request, session
 	}, true
 }
 
-func (h Handler) finishMutation(w http.ResponseWriter, r *http.Request, result app.MutationResult, err error, clear bool) {
+func (h Handler) FinishMutation(w http.ResponseWriter, r *http.Request, result app.MutationResult, err error, clear bool) {
 	if err != nil {
 		writeAdminServiceError(w, r, err)
 		return
@@ -331,7 +331,7 @@ func (h Handler) createGrant(w http.ResponseWriter, r *http.Request) {
 	}
 	accountID := chi.URLParam(r, "id")
 	var dto createGrantDTO
-	m, ok := h.prepareMutation(w, r, session, "admin.grant.create", "entitlement_grant", accountID, &dto)
+	m, ok := h.PrepareMutation(w, r, session, "admin.grant.create", "entitlement_grant", accountID, &dto)
 	if !ok {
 		return
 	}
@@ -354,7 +354,7 @@ func (h Handler) createGrant(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, r, http.StatusServiceUnavailable, "admin.unavailable")
 		return
 	}
-	h.finishMutation(w, r, app.MutationResult{Status: http.StatusCreated, Body: body, Replayed: result.Replayed}, nil, false)
+	h.FinishMutation(w, r, app.MutationResult{Status: http.StatusCreated, Body: body, Replayed: result.Replayed}, nil, false)
 }
 
 type revokeGrantDTO struct {
@@ -369,7 +369,7 @@ func (h Handler) revokeGrant(w http.ResponseWriter, r *http.Request) {
 	}
 	grantID := chi.URLParam(r, "id")
 	var dto revokeGrantDTO
-	m, ok := h.prepareMutation(w, r, session, "admin.grant.revoke", "entitlement_grant", grantID, &dto)
+	m, ok := h.PrepareMutation(w, r, session, "admin.grant.revoke", "entitlement_grant", grantID, &dto)
 	if !ok {
 		return
 	}
@@ -392,7 +392,7 @@ func (h Handler) revokeGrant(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, r, http.StatusServiceUnavailable, "admin.unavailable")
 		return
 	}
-	h.finishMutation(w, r, app.MutationResult{Status: http.StatusOK, Body: body, Replayed: replayed}, nil, false)
+	h.FinishMutation(w, r, app.MutationResult{Status: http.StatusOK, Body: body, Replayed: replayed}, nil, false)
 }
 
 func (h Handler) listGrants(w http.ResponseWriter, r *http.Request) {
@@ -556,4 +556,11 @@ func hashIP(raw string) string {
 func requestHash(action, targetType, targetID string, body []byte) string {
 	sum := sha256.Sum256([]byte(action + "\x00" + targetType + "\x00" + targetID + "\x00" + string(body)))
 	return hex.EncodeToString(sum[:])
+}
+
+// AdminMiddleware exposes the same security headers, CIDR fence and session
+// check to later admin surfaces (contributors, roles) mounted from other
+// modules.
+func (h Handler) AdminMiddleware() []func(http.Handler) http.Handler {
+	return []func(http.Handler) http.Handler{h.securityHeaders, h.fence, h.RequireSession}
 }
