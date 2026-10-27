@@ -164,6 +164,11 @@ export function createWindow(initialPath) {
     },
     addEventListener: (type, listener) => { if (type === 'popstate') popstate.push(listener); },
     confirm: () => true,
+    // Browser back/forward to an in-app path.
+    popTo: (url) => {
+      location.pathname = url;
+      for (const listener of popstate) listener({ type: 'popstate' });
+    },
   };
 }
 

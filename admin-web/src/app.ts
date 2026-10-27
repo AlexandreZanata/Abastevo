@@ -424,6 +424,41 @@ if (typeof document !== 'undefined') {
 let claimsCursor = '';
 let claimsState = '';
 let auditCursor = '';
+// The filter the current audit cursor was issued for: the server seals the
+// cursor to it, so "more" must not re-read edited, unapplied inputs.
+let auditFilter = { action: '', target: '' };
+
+// One list request at a time per paged list. A first-page load (filter or
+// refresh) supersedes whatever is in flight; a "more" while busy is a
+// duplicate and is ignored. The "more" button is disabled meanwhile.
+interface PagedList {
+  seq: number;
+  busy: boolean;
+}
+const claimsPaging: PagedList = { seq: 0, busy: false };
+const auditPaging: PagedList = { seq: 0, busy: false };
+
+function beginPage(paging: PagedList, append: boolean, moreId: string): number | null {
+  if (append && paging.busy) {
+    return null;
+  }
+  paging.seq += 1;
+  paging.busy = true;
+  el<HTMLButtonElement>(moreId).disabled = true;
+  return paging.seq;
+}
+
+function isCurrentPage(paging: PagedList, seq: number): boolean {
+  return paging.seq === seq;
+}
+
+function endPage(paging: PagedList, seq: number, moreId: string): void {
+  if (!isCurrentPage(paging, seq)) {
+    return;
+  }
+  paging.busy = false;
+  el<HTMLButtonElement>(moreId).disabled = false;
+}
 
 function renderSnapshotRow(item: SnapshotContributor): HTMLLIElement {
   const row = document.createElement('li');
@@ -527,9 +562,16 @@ function renderClaimRow(claim: ClaimView): HTMLLIElement {
 }
 
 async function loadClaims(append: boolean): Promise<void> {
+  const seq = beginPage(claimsPaging, append, 'claims-more');
+  if (seq === null) {
+    return;
+  }
   setAlert('claims-error', '');
   try {
     const page = await api.listClaims(claimsState, append ? claimsCursor : '');
+    if (!isCurrentPage(claimsPaging, seq)) {
+      return;
+    }
     const list = el<HTMLUListElement>('claims-list');
     if (!append) {
       clearChildren(list);
@@ -540,9 +582,11 @@ async function loadClaims(append: boolean): Promise<void> {
     claimsCursor = page.next_cursor;
     el<HTMLButtonElement>('claims-more').hidden = page.next_cursor === '';
   } catch (error) {
-    if (!isUnauthorized(error)) {
+    if (isCurrentPage(claimsPaging, seq) && !isUnauthorized(error)) {
       setAlert('claims-error', errorMessage(error));
     }
+  } finally {
+    endPage(claimsPaging, seq, 'claims-more');
   }
 }
 
@@ -766,11 +810,22 @@ function renderAuditRow(event: AuditEvent): HTMLLIElement {
 }
 
 async function loadAudit(append: boolean): Promise<void> {
+  const seq = beginPage(auditPaging, append, 'audit-more');
+  if (seq === null) {
+    return;
+  }
   setAlert('audit-error', '');
-  const action = el<HTMLInputElement>('audit-action').value.trim();
-  const target = el<HTMLInputElement>('audit-target').value.trim();
+  if (!append) {
+    auditFilter = {
+      action: el<HTMLInputElement>('audit-action').value.trim(),
+      target: el<HTMLInputElement>('audit-target').value.trim(),
+    };
+  }
   try {
-    const page = await api.listAudit(action, target, append ? auditCursor : '');
+    const page = await api.listAudit(auditFilter.action, auditFilter.target, append ? auditCursor : '');
+    if (!isCurrentPage(auditPaging, seq)) {
+      return;
+    }
     const list = el<HTMLUListElement>('audit-list');
     if (!append) {
       clearChildren(list);
@@ -781,9 +836,11 @@ async function loadAudit(append: boolean): Promise<void> {
     auditCursor = page.next_cursor;
     el<HTMLButtonElement>('audit-more').hidden = page.next_cursor === '';
   } catch (error) {
-    if (!isUnauthorized(error)) {
+    if (isCurrentPage(auditPaging, seq) && !isUnauthorized(error)) {
       setAlert('audit-error', errorMessage(error));
     }
+  } finally {
+    endPage(auditPaging, seq, 'audit-more');
   }
 }
 
