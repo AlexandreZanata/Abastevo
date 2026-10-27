@@ -1,5 +1,18 @@
 # Current execution state
 
+- B1 admin web panel 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING. Branch
+  `codex/adm-b1-admin-web` from `origin/main` `d4dcf716`. New `admin-web/`
+  package (TS 7.0.2, no framework/runtime dep): login + accounts pages,
+  landing tokens copied at build, CSRF in memory, unsafe-DOM scan, CSP
+  headers. Tested revision: branch head; `npm ci && typecheck && build &&
+  check && test` green (17/17); local integration login→search→grant→
+  revoke→logout proven against A4 backend on disposable PostGIS with
+  synthetic data and screenshots. [Evidence](../../backend/evidence/admin/B1-ADMIN-WEB.md).
+  PR to `main`, merges only after #164. Next: A5a script PR stacked on #168,
+  then B2. Pending (Front A, do not resolve unasked): #164 conflicts with
+  `main` (`d4dcf716`); merge `main` into `codex/adm-a1-admin-auth` on request
+  and cascade A2–A4.
+
 - CD-02 staging deploy planner 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Pull-based dry-run agent in `infra/deploy/agent/` verifies the signed
   `staging` manifest (keyless identity/issuer), checks main ancestry through
