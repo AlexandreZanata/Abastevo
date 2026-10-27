@@ -8,8 +8,9 @@
   revision: branch head before the evidence commit; `go test -race ./...`
   133 ok / 0 fail, PostGIS staff/contributor/admin/entitlement/subscription/
   cmd/api integration 20 ok, `make quick-verify` ok (153s), secret scan clean.
-  [Evidence](../../backend/evidence/admin/A4-STAFF-ROLES.md). Next: push, open
-  PR with `--base codex/adm-a3-contributors`; do not start A5.
+  [Evidence](../../backend/evidence/admin/A4-STAFF-ROLES.md). PR #168 with
+  `--base codex/adm-a3-contributors`. Next: wait for review; A5 staging is
+  deferred until the user authorizes staging access.
 
 - A3 contributors 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING. Branch
   `codex/adm-a3-contributors` stacked on A2 PR #166 (base

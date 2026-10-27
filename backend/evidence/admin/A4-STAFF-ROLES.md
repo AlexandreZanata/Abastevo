@@ -1,6 +1,6 @@
 # A4 — Staff roles and audit read
 
-Date: 2026-10-27. Branch `codex/adm-a4-staff-roles`, stacked on A3
+Date: 2026-10-27. Branch `codex/adm-a4-staff-roles`, PR #168, stacked on A3
 `codex/adm-a3-contributors` (PR #167, not merged). Rules: B-BR-STF-01…06,
 BUC-ADM-10/12. Planning documents remain in PR #161.
 
