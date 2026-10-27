@@ -1237,4 +1237,9 @@
     <string name="ev_invalid_target">Informe uma meta de carga acima da reserva e até 100.</string>
     <string name="ev_invalid_phev_share">Informe a parcela elétrica de 1 a 100.</string>
     <string name="map25_open">Abrir</string>
+    <string name="map_filter_source">Fonte dos preços</string>
+    <string name="map_controls_expand">Mostrar detalhes do mapa</string>
+    <string name="map_controls_collapse">Ocultar detalhes do mapa</string>
+    <string name="map_actions_hide">Ocultar ações do mapa</string>
+    <string name="map_actions_show">Mostrar ações do mapa</string>
 </resources>

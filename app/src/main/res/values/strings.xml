@@ -1243,4 +1243,9 @@
     <string name="ev_invalid_target">Enter a charge target above the reserve and up to 100.</string>
     <string name="ev_invalid_phev_share">Enter the electric share from 1 to 100.</string>
     <string name="map25_open">Open</string>
+    <string name="map_filter_source">Price source</string>
+    <string name="map_controls_expand">Show map details</string>
+    <string name="map_controls_collapse">Hide map details</string>
+    <string name="map_actions_hide">Hide map actions</string>
+    <string name="map_actions_show">Show map actions</string>
 </resources>

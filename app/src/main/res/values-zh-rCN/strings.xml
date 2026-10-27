@@ -1224,4 +1224,9 @@
     <string name="ev_invalid_target">请输入高于预留且不超过100的充电目标。</string>
     <string name="ev_invalid_phev_share">请输入1到100的电动部分。</string>
     <string name="map25_open">打开</string>
+    <string name="map_filter_source">价格来源</string>
+    <string name="map_controls_expand">显示地图详情</string>
+    <string name="map_controls_collapse">隐藏地图详情</string>
+    <string name="map_actions_hide">隐藏地图操作</string>
+    <string name="map_actions_show">显示地图操作</string>
 </resources>

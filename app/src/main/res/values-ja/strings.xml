@@ -1224,4 +1224,9 @@
     <string name="ev_invalid_target">予備より大きく100以下の充電目標を入力してください。</string>
     <string name="ev_invalid_phev_share">電動走行割合を1〜100で入力してください。</string>
     <string name="map25_open">開く</string>
+    <string name="map_filter_source">価格の情報源</string>
+    <string name="map_controls_expand">地図の詳細を表示</string>
+    <string name="map_controls_collapse">地図の詳細を非表示</string>
+    <string name="map_actions_hide">地図の操作を非表示</string>
+    <string name="map_actions_show">地図の操作を表示</string>
 </resources>

@@ -99,6 +99,59 @@
   web tier OOM, list keyset). Load @300 req/s: 0 errors, p95 10 ms.
   [Evidence](../backend/evidence/STAGING_LANDING_PORTAL_2026-10-26.md).
   Next: review/merge; Directory CPF-name projection as its own task.
+- Map panel-collapse follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
+  dev `e64b655f`, existing PR #154. A visible 48 dp chevron hides/reopens the action
+  container; attribution remains visible and saved-state restoration retains the
+  local choice. Existing overlay measurement updates recenter inset in both states.
+  APKs/lint (zero errors), API30 native 13/13 (including restore, callback, geometry
+  and 200% font), reviewed captures, diff/secret checks PASS. New hide/show labels
+  cover eight locales. [Evidence/previews](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md#follow-up-minimal-action-panel-collapse-control).
+  Original occupied checkout/emulator preserved; no new physical/16 KB, deployment
+  or release acceptance. Next: normal dev push/update of #154; leave PR open for
+  current-head CI/review without merge.
+
+- Map action-panel follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
+  dev `c04e8ac4`, existing PR #154. OpenStreetMap attribution is a separate map
+  overlay above/right of the action panel. Filters/Search/Download/Saved reuse
+  shared action cards in an adaptive grid; measured overlay height and reserved
+  clearance keep recenter accessible. Updated skeleton; existing callbacks kept.
+  APKs/lint (zero errors), full API30 UI 12/12, light/dark/200% captures,
+  diff and secret checks PASS. [Evidence/previews](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md#follow-up-map-attribution-and-standard-action-cards).
+  Original occupied checkout and emulator preserved; no new physical/16 KB or
+  staging/release acceptance. Next: normal dev push/update of #154; current-head
+  CI/review pending, leave PR open without merge.
+
+- Map city/fuel follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
+  remote dev `cb111741`, existing PR #154. City aligns to the header start and
+  truncates visually with ellipsis; the fuel field reuses the shared vehicle
+  selector/modal instead of adjacent chips, retaining Apply/Cancel drafts.
+  Debug app/test APKs, lint (zero errors), diff/secret review and API30 native
+  10/10 PASS, including actual city text-layout assertions and eight choices at
+  200% font. Physical phone disconnected; API35 16 KB emulator attempts crashed
+  and are not accepted. [Evidence](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md#follow-up-left-aligned-city-and-shared-fuel-selector).
+  Original occupied checkout/dev preserved. Next: normal push/update of #154;
+  current-head CI/review pending, no merge or staging change.
+
+- Map UI refinement 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from remote
+  dev parent `6a689e58`; delivery target [PR #154](https://github.com/AlexandreZanata/Abastevo/pull/154),
+  `dev` -> `main`. Compact expandable map controls; grouped filter sheet with all
+  fuel icons and pinned Apply/Cancel; actual state/municipality location search
+  preserves filter drafts. App JVM 92/92, engine 37/37 (cached), final APKs,
+  phone 9/9 (including dark/200% font), lint (zero errors), diff and secret review
+  PASS. [Evidence/screenshots/tested fingerprints](../backend/evidence/maps/MAP-UI-REFINEMENT-20261026.md).
+  Final debug APK installed without clearing data. Original occupied checkout/dev
+  preserved; no staging change or merge. New-head CI remains pending publication;
+  next: normal push/update of PR #154, leave open for current-head CI/review.
+
+- Map UI isolation 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/map-ui` (parent `fe6ca851`). Native map moved to the shell and kept
+  alive across tabs; no engine/surface reinit on return; tab transitions are
+  instant (no crossfade ghost); full-size map with overlay controls; skeleton
+  gates on the first rendered native frame; FlowRow filters and stable 48 dp
+  action bar; map screen instrumented tests 5/5, targeted unit/engine tests and
+  lint PASS. Installed locally on the authorized phone; not pushed/merged.
+  [Evidence](../backend/evidence/maps/MAP-UI-ISOLATION-20261026.md).
+  Staging `nearby` empty/data update remains separate.
 
 - Landing LH09 / portal shared chrome 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING.
   User-authorized branch `codex/landing-portal-visual` from `origin/main` (dev
@@ -111,13 +164,16 @@
   race tests, vet, gofmt, secret scan and `git diff --check` passed locally.
   No deployment, DNS or public portal publication; required Quick verification
   and review gate the merge.
-- MAP-33 cumulative delivery: IN_PROGRESS / CI_PENDING. Existing open
-  `dev → main` PR #151 updated (not PR #150; PR #152 driver is a separate front
-  and untouched). Source union includes `507d915e` and `4eeccfbf`; MAP-23
-  current phone proof, MAP-27/28 local real-engine/UI evidence, MAP-31 local
-  union and MAP-30/32 dispositions are included. Exact-head checks/reviews,
-  guarded merge, post-merge ancestry and wiki remain pending; no merge/deploy is
-  claimed by this entry. [MAP-33 evidence](../backend/evidence/maps/MAP-33.md).
+- MAP-33 cumulative delivery: **INTEGRATED / WIKI_SYNCED** for source only.
+  Existing `dev → main` PR #151 (not PR #150; PR #152 driver untouched) merged
+  at `bbd96568180563ced975b96f8f89f7a3c242522e` (2026-10-26T19:28:55Z), checked
+  head `04e9a6b3`. Quick verification, fast, integration and test all passed;
+  no failed/skipped/cancelled required check and no review was requested.
+  `main` and retained `dev` both matched the merge SHA; wiki published from
+  `bbd96568` as commit `3c08ac4` (778 pages, independently verified source
+  SHA). This post-merge docs note is on dev only. MAP-29 PARTIAL, MAP-30
+  EXTERNAL_PENDING, MAP-32 STAGING_PENDING and the external/manual obligations
+  remain. [MAP-33 evidence](../backend/evidence/maps/MAP-33.md).
 
 - MAP-32 local checkpoint: LOCAL_DONE (runbook + local restore rehearsal) /
   STAGING_PENDING. Frozen candidate manifest, staging-scoped apply/backup/
