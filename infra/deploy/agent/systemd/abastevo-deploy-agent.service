@@ -1,0 +1,28 @@
+[Unit]
+Description=Abastevo staging release planner (dry run)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=abastevo-deploy
+Group=abastevo-deploy
+EnvironmentFile=/etc/abastevo-deploy/agent.env
+ExecStart=/usr/bin/flock -n /var/lib/abastevo-deploy/agent.lock /usr/local/bin/abastevo-deploy-agent
+StateDirectory=abastevo-deploy
+StateDirectoryMode=0700
+ReadWritePaths=/var/lib/abastevo-deploy
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+UMask=0077
+TimeoutStartSec=180
+Restart=no

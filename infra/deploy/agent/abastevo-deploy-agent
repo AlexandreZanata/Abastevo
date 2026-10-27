@@ -1,0 +1,292 @@
+#!/usr/bin/env bash
+# Pull-based staging release planner, Phase 2 (dry run).
+#
+# Fetches the signed staging release manifest from GHCR, verifies the keyless
+# Sigstore identity and that the commit is an ancestor of main, compares the
+# target with the last applied release, and writes a plan receipt. It never
+# deploys, migrates, switches landing content or updates current.json.
+#
+# Host configuration comes only from the environment (systemd loads
+# /etc/abastevo-deploy/agent.env, mode 600, never committed). No secret or
+# GitHub token is used.
+set -euo pipefail
+
+umask 077
+
+log() {
+    printf 'abastevo-deploy-agent: %s\n' "$*" >&2
+}
+
+fail() {
+    printf 'abastevo-deploy-agent: ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+require_tool() {
+    command -v "$1" >/dev/null 2>&1 || fail "missing required tool: $1"
+}
+
+require_var() {
+    [[ -n "${!1:-}" ]] || fail "missing required configuration: $1"
+}
+
+require_absolute() {
+    local name="$1"
+    local value="${!name:-}"
+    [[ "$value" == /* ]] || fail "$name must be an absolute path"
+}
+
+ABASTEVO_NAMESPACE="${ABASTEVO_NAMESPACE:-}"
+ABASTEVO_API_DEPLOYMENT="${ABASTEVO_API_DEPLOYMENT:-}"
+ABASTEVO_WORKER_DEPLOYMENT="${ABASTEVO_WORKER_DEPLOYMENT:-}"
+ABASTEVO_MIGRATE_JOB="${ABASTEVO_MIGRATE_JOB:-}"
+ABASTEVO_LANDING_ROOT="${ABASTEVO_LANDING_ROOT:-}"
+ABASTEVO_BACKUP_DIR="${ABASTEVO_BACKUP_DIR:-}"
+ABASTEVO_RECEIPT_DIR="${ABASTEVO_RECEIPT_DIR:-}"
+ABASTEVO_STATE_DIR="${ABASTEVO_STATE_DIR:-/var/lib/abastevo-deploy}"
+ABASTEVO_GITHUB_REPOSITORY="${ABASTEVO_GITHUB_REPOSITORY:-AlexandreZanata/Abastevo}"
+ABASTEVO_GITHUB_API="${ABASTEVO_GITHUB_API:-https://api.github.com}"
+ABASTEVO_WORKFLOW_PATH="${ABASTEVO_WORKFLOW_PATH:-.github/workflows/release-staging.yml}"
+ABASTEVO_MANIFEST_REPOSITORY="${ABASTEVO_MANIFEST_REPOSITORY:-ghcr.io/alexandrezanata/abastevo-release}"
+ABASTEVO_MANIFEST_TAG="${ABASTEVO_MANIFEST_TAG:-staging}"
+
+require_var ABASTEVO_NAMESPACE
+require_var ABASTEVO_API_DEPLOYMENT
+require_var ABASTEVO_WORKER_DEPLOYMENT
+require_var ABASTEVO_MIGRATE_JOB
+require_var ABASTEVO_LANDING_ROOT
+require_var ABASTEVO_BACKUP_DIR
+require_var ABASTEVO_RECEIPT_DIR
+require_absolute ABASTEVO_LANDING_ROOT
+require_absolute ABASTEVO_BACKUP_DIR
+require_absolute ABASTEVO_RECEIPT_DIR
+require_absolute ABASTEVO_STATE_DIR
+
+[[ "$ABASTEVO_GITHUB_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] \
+    || fail "ABASTEVO_GITHUB_REPOSITORY must be owner/name"
+[[ "$ABASTEVO_GITHUB_API" =~ ^https://[^/]+ ]] \
+    || fail "ABASTEVO_GITHUB_API must be an https URL"
+[[ "$ABASTEVO_WORKFLOW_PATH" =~ ^\.github/workflows/[A-Za-z0-9._-]+\.ya?ml$ ]] \
+    || fail "ABASTEVO_WORKFLOW_PATH must be a workflow file under .github/workflows"
+[[ "$ABASTEVO_MANIFEST_REPOSITORY" =~ ^ghcr\.io/[a-z0-9._/-]+$ ]] \
+    || fail "ABASTEVO_MANIFEST_REPOSITORY must be a GHCR repository"
+[[ -n "$ABASTEVO_MANIFEST_TAG" && "$ABASTEVO_MANIFEST_TAG" != "latest" ]] \
+    || fail "ABASTEVO_MANIFEST_TAG must be an immutable release tag, never latest"
+
+for tool in cosign oras curl jq sha256sum mktemp install date; do
+    require_tool "$tool"
+done
+
+owner="${ABASTEVO_GITHUB_REPOSITORY%%/*}"
+owner_lc="$(printf '%s' "$owner" | tr '[:upper:]' '[:lower:]')"
+manifest_ref="${ABASTEVO_MANIFEST_REPOSITORY}:${ABASTEVO_MANIFEST_TAG}"
+identity="https://github.com/${ABASTEVO_GITHUB_REPOSITORY}/${ABASTEVO_WORKFLOW_PATH}@refs/heads/main"
+issuer="https://token.actions.githubusercontent.com"
+
+workdir="$(mktemp -d "${TMPDIR:-/tmp}/abastevo-deploy.XXXXXX")"
+trap 'rm -rf "$workdir"' EXIT
+
+log "fetching staging release manifest"
+descriptor="$(oras manifest fetch --descriptor "$manifest_ref")" \
+    || fail "cannot fetch the staging release manifest"
+oci_digest="$(printf '%s' "$descriptor" | jq -r '.digest // empty')"
+[[ "$oci_digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+    || fail "invalid OCI manifest descriptor"
+
+oras manifest fetch "$manifest_ref" > "$workdir/oci-manifest.json" \
+    || fail "cannot fetch the OCI release manifest"
+
+artifact_type="$(jq -r '.artifactType // empty' "$workdir/oci-manifest.json")"
+[[ "$artifact_type" == "application/vnd.abastevo.release.v1+json" ]] \
+    || fail "unexpected release artifact type"
+
+manifest_digest="$(jq -r '[.layers[] | select(.mediaType == "application/vnd.abastevo.release.manifest.v1+json")] | if length == 1 then .[0].digest else empty end' "$workdir/oci-manifest.json")"
+bundle_digest="$(jq -r '[.layers[] | select(.mediaType == "application/vnd.dev.sigstore.bundle.v0.3+json")] | if length == 1 then .[0].digest else empty end' "$workdir/oci-manifest.json")"
+[[ "$manifest_digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+    || fail "release manifest layer is missing or ambiguous"
+[[ "$bundle_digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+    || fail "signature bundle layer is missing or ambiguous"
+
+oras pull --output "$workdir" "$manifest_ref" >/dev/null \
+    || fail "cannot pull the release manifest"
+
+manifest_file="$workdir/release-manifest.json"
+bundle_file="$workdir/release-manifest.sigstore.json"
+[[ -f "$manifest_file" && -f "$bundle_file" ]] \
+    || fail "release manifest or signature bundle is missing"
+
+actual_manifest_digest="sha256:$(sha256sum "$manifest_file" | cut -d' ' -f1)"
+actual_bundle_digest="sha256:$(sha256sum "$bundle_file" | cut -d' ' -f1)"
+[[ "$actual_manifest_digest" == "$manifest_digest" ]] \
+    || fail "release manifest digest mismatch"
+[[ "$actual_bundle_digest" == "$bundle_digest" ]] \
+    || fail "signature bundle digest mismatch"
+
+log "verifying keyless release signature"
+if ! cosign verify-blob \
+    --bundle "$bundle_file" \
+    --certificate-identity "$identity" \
+    --certificate-oidc-issuer "$issuer" \
+    "$manifest_file" >/dev/null 2>"$workdir/cosign.err"; then
+    cat "$workdir/cosign.err" >&2
+    fail "release manifest signature verification failed"
+fi
+
+jq -e \
+    --arg owner "$owner_lc" \
+    --arg repo "$ABASTEVO_GITHUB_REPOSITORY" \
+    '.schema == "abastevo-release-manifest-v1"
+     and (.sha | test("^[0-9a-f]{40}$"))
+     and (.created_at | type == "string" and length > 0)
+     and ((.images | keys) == ["api", "migrate", "worker"])
+     and (.images.api | test("^ghcr\\.io/" + $owner + "/abastevo-api@sha256:[0-9a-f]{64}$"))
+     and (.images.worker | test("^ghcr\\.io/" + $owner + "/abastevo-worker@sha256:[0-9a-f]{64}$"))
+     and (.images.migrate | test("^ghcr\\.io/" + $owner + "/abastevo-migrate@sha256:[0-9a-f]{64}$"))
+     and (.landing_sha256 | test("^[0-9a-f]{64}$"))
+     and (.migrations_max | test("^[0-9]{6}$"))
+     and (.workflow_run_url | startswith("https://github.com/" + $repo + "/actions/runs/"))' \
+    "$manifest_file" >/dev/null \
+    || fail "release manifest does not match abastevo-release-manifest-v1"
+
+release_sha="$(jq -r '.sha' "$manifest_file")"
+
+log "checking that the release commit is reachable from main"
+compare_url="${ABASTEVO_GITHUB_API}/repos/${ABASTEVO_GITHUB_REPOSITORY}/compare/main...${release_sha}"
+http_code="$(curl -sS -o "$workdir/compare.json" -w '%{http_code}' \
+    --connect-timeout 10 --max-time 30 \
+    -H 'Accept: application/vnd.github+json' \
+    -H 'X-GitHub-Api-Version: 2022-11-28' \
+    -H 'User-Agent: abastevo-deploy-agent' \
+    "$compare_url")" || fail "GitHub reachability request failed"
+[[ "$http_code" == "200" ]] \
+    || fail "GitHub reachability check failed with HTTP $http_code"
+compare_status="$(jq -r '.status // empty' "$workdir/compare.json")"
+case "$compare_status" in
+    behind|identical) ;;
+    *) fail "release commit is not reachable from main" ;;
+esac
+
+current_file="$ABASTEVO_STATE_DIR/current.json"
+if [[ -f "$current_file" ]]; then
+    jq -e \
+        '.schema == "abastevo-deploy-current-v1"
+         and (.sha | test("^[0-9a-f]{40}$"))
+         and ((.images | keys) == ["api", "migrate", "worker"])
+         and (.landing_sha256 | test("^[0-9a-f]{64}$"))
+         and (.migrations_max | test("^[0-9]{6}$"))' \
+        "$current_file" >/dev/null \
+        || fail "current deployment state is invalid"
+    cp "$current_file" "$workdir/current.json"
+else
+    printf 'null\n' > "$workdir/current.json"
+fi
+
+current_sha="$(jq -r '.sha // empty' "$workdir/current.json")"
+current_landing="$(jq -r '.landing_sha256 // empty' "$workdir/current.json")"
+current_migrations="$(jq -r '.migrations_max // empty' "$workdir/current.json")"
+target_landing="$(jq -r '.landing_sha256' "$manifest_file")"
+target_migrations="$(jq -r '.migrations_max' "$manifest_file")"
+
+release_changed=false
+api_changed=false
+worker_changed=false
+migrate_changed=false
+landing_changed=false
+migrations_required=false
+
+if [[ -z "$current_sha" ]]; then
+    release_changed=true
+    api_changed=true
+    worker_changed=true
+    migrate_changed=true
+    landing_changed=true
+    migrations_required=true
+else
+    [[ "$release_sha" != "$current_sha" ]] && release_changed=true
+    for role in api worker migrate; do
+        current_ref="$(jq -r ".images.${role}" "$workdir/current.json")"
+        target_ref="$(jq -r ".images.${role}" "$manifest_file")"
+        if [[ "$target_ref" != "$current_ref" ]]; then
+            case "$role" in
+                api) api_changed=true ;;
+                worker) worker_changed=true ;;
+                migrate) migrate_changed=true ;;
+            esac
+        fi
+    done
+    [[ "$target_landing" != "$current_landing" ]] && landing_changed=true
+    [[ "$target_migrations" > "$current_migrations" ]] && migrations_required=true
+fi
+
+if [[ "$release_changed" == "true" || "$api_changed" == "true" \
+    || "$worker_changed" == "true" || "$migrate_changed" == "true" \
+    || "$landing_changed" == "true" || "$migrations_required" == "true" ]]; then
+    action="plan-only"
+else
+    action="no-change"
+fi
+
+target_payload="$(jq '{sha, images, landing_sha256, migrations_max}' "$manifest_file")"
+current_payload="$(jq 'if . == null then null else {sha, images, landing_sha256, migrations_max} end' "$workdir/current.json")"
+created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+receipt="$(jq -n \
+    --arg schema "abastevo-deploy-plan-v1" \
+    --arg created_at "$created_at" \
+    --arg action "$action" \
+    --arg manifest_ref "$manifest_ref" \
+    --arg oci_digest "$oci_digest" \
+    --arg manifest_digest "$manifest_digest" \
+    --arg identity "$identity" \
+    --arg issuer "$issuer" \
+    --arg namespace "$ABASTEVO_NAMESPACE" \
+    --arg api_deployment "$ABASTEVO_API_DEPLOYMENT" \
+    --arg worker_deployment "$ABASTEVO_WORKER_DEPLOYMENT" \
+    --arg migrate_job "$ABASTEVO_MIGRATE_JOB" \
+    --argjson release_changed "$release_changed" \
+    --argjson api_changed "$api_changed" \
+    --argjson worker_changed "$worker_changed" \
+    --argjson migrate_changed "$migrate_changed" \
+    --argjson landing_changed "$landing_changed" \
+    --argjson migrations_required "$migrations_required" \
+    --argjson target "$target_payload" \
+    --argjson current "$current_payload" \
+    '{
+        schema: $schema,
+        created_at: $created_at,
+        action: $action,
+        manifest: {
+            reference: $manifest_ref,
+            oci_digest: $oci_digest,
+            file_digest: $manifest_digest,
+            signature: "verified",
+            certificate_identity: $identity,
+            certificate_oidc_issuer: $issuer,
+            sha_reachable_from_main: true
+        },
+        current: $current,
+        target: $target,
+        changes: {
+            release: $release_changed,
+            api: $api_changed,
+            worker: $worker_changed,
+            migrate: $migrate_changed,
+            landing: $landing_changed,
+            migrations: $migrations_required
+        },
+        host: {
+            namespace: $namespace,
+            api_deployment: $api_deployment,
+            worker_deployment: $worker_deployment,
+            migrate_job: $migrate_job
+        }
+    }')"
+
+install -d -m 0700 "$ABASTEVO_RECEIPT_DIR"
+receipt_name="plan-${created_at//[:]/}-$$.json"
+receipt_tmp="$(mktemp "$ABASTEVO_RECEIPT_DIR/.plan.XXXXXX")"
+printf '%s\n' "$receipt" > "$receipt_tmp"
+chmod 0600 "$receipt_tmp"
+mv "$receipt_tmp" "$ABASTEVO_RECEIPT_DIR/$receipt_name"
+
+log "plan written: $receipt_name ($action)"

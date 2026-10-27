@@ -1,5 +1,14 @@
 # Current execution state
 
+- CD-02 staging deploy planner 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
+  Pull-based dry-run agent in `infra/deploy/agent/` verifies the signed
+  `staging` manifest (keyless identity/issuer), checks main ancestry through
+  the anonymous GitHub API, compares `current.json` and writes a mode-600 plan
+  receipt without deploying or changing state. `make test-deploy-agent` 33/33,
+  shellcheck, a real-artifact dry run and real tamper/foreign-identity refusals
+  PASS. VPS install/timer and Phase 3 rollout remain OWED.
+  [CD-02 evidence](../backend/evidence/cd/CD-02.md).
+
 - CD-01 staging release artifacts 2026-10-27: INTEGRATED / LOG_CLEAN_RUN_PENDING.
   PR #158 (`ef86cc93`) and the ORAS pin fix PR #159 (`2cd8f0ac`) are merged.
   Run `40494565772` published the signed manifest and images; cosign,

@@ -4,7 +4,7 @@
 # measured). verify-release reports the foundation subset plus explicit
 # outstanding work and never certifies a release (P09 owns certification).
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-rust check-infra test-infra test-deploy test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 test-portal-release rehearse-portal check-portal-capacity portal-capacity check-preview-probe preview-portal check-publication-gate preflight-portal-publication smoke-portal-public help
+.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-rust check-infra test-infra test-deploy test-deploy-agent test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 test-portal-release rehearse-portal check-portal-capacity portal-capacity check-preview-probe preview-portal check-publication-gate preflight-portal-publication smoke-portal-public help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -42,6 +42,9 @@ test-infra:
 
 test-deploy:
 	bash scripts/tests/test-deploy.sh
+
+test-deploy-agent:
+	bash infra/deploy/agent/tests/test-agent.sh
 
 test-backup:
 	bash scripts/tests/test-backup.sh
@@ -117,6 +120,7 @@ help:
 	@echo "  check-infra     staging/prod topology gate (P08-T01)"
 	@echo "  test-infra      infra gate failure-behavior harness"
 	@echo "  test-deploy     deploy/rollback failure-behavior harness (P08-T02)"
+	@echo "  test-deploy-agent  signed staging planner failure-behavior harness (CD-02)"
 	@echo "  test-backup     backup pipeline harness, real disposable DB (P08-T03)"
 	@echo "  test-restore    isolated restore drill harness, real disposable DB (P08-T04)"
 	@echo "  test-load       bounded load smoke + fault suite, real disposable DB (P08-T07)"
