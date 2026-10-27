@@ -469,6 +469,19 @@
   [Evidence](../backend/evidence/STAGING_LANDING_PORTAL_2026-10-26.md).
   Next: review/merge; Directory CPF-name projection as its own task.
 
+- P38-T02 end acceptance 2026-10-26: PARTIAL / BLOCKED_DEVICE on
+  `codex/p38-acceptance-20261026` from `origin/dev` `6f8b82b5`. Backend unit
+  regression PASS; Android unit/lint/assemble PASS; two test-only defects fixed
+  (missing `Routes.MAP` in the nav harness and an ambiguous `Community` matcher)
+  and compile PASS. API 35 16k device run reached 21/45 tests with 5 retained
+  failures (two private-corpus photo tests, the two fixed nav cases, one fixed
+  home matcher) before the emulator system died; API 26 x86_64 is ABI-
+  incompatible (app native code is ARM-only), the ARMv7 AVD is unsupported by
+  QEMU2 and the physical POCO is not connected. Manual/provider/media/TLS and
+  P25–P33 rows remain OWED. Evidence:
+  [p38-t02-acceptance-20261026](../mobile/p38-t02-acceptance-20261026.md).
+  No release/acceptance claim.
+
 - Map panel-collapse follow-up 2026-10-26: LOCAL_DONE / INTEGRATION_PENDING from
   dev `e64b655f`, existing PR #154. A visible 48 dp chevron hides/reopens the action
   container; attribution remains visible and saved-state restoration retains the
