@@ -85,6 +85,36 @@ func TestGrant_ENT02_ENT03_ReplaceAndAudit(t *testing.T) {
 	}
 }
 
+// TestGrant_ENT03_ENT06_RegrantAfterExpiry is BUC-ADM-03 repeated: a lapsed
+// PRO grant (still ACTIVE by state, ENT-06 has no expiry job) is revoked as
+// "expired" with its own audit row and the new grant is created without
+// "replace".
+func TestGrant_ENT03_ENT06_RegrantAfterExpiry(t *testing.T) {
+	store, service, session, accountID := grantService(t)
+	ctx := context.Background()
+	lapsedID := newUUIDForTest(t)
+	if _, err := store.Pool.Exec(ctx, `INSERT INTO entitlement_grants
+		(id, account_id, tier, policy_version, state, start_at, end_at, reason, created_session_id)
+		VALUES ($1, $2, 'PRO', $3, 'ACTIVE', clock_timestamp() - interval '3 hours',
+			clock_timestamp() - interval '1 minute', 'synthetic lapsed grant', $4)`,
+		lapsedID, accountID, entdomain.PolicyVersion, session.ID); err != nil {
+		t.Fatal(err)
+	}
+	again, err := service.CreateGrant(ctx, session, grantInput(accountID, "PRO", "synthetic grant again", "66666666-6666-4666-8666-666666666666"))
+	if err != nil || again.Grant.ID == lapsedID || again.Replaced != nil {
+		t.Fatalf("regrant=%+v err=%v", again, err)
+	}
+	var state, reason string
+	if err := store.Pool.QueryRow(ctx, "SELECT state, revoke_reason FROM entitlement_grants WHERE id=$1", lapsedID).Scan(&state, &reason); err != nil || state != "REVOKED" || reason != entdomain.ExpiredRevokeReason {
+		t.Fatalf("lapsed state=%s reason=%s err=%v", state, reason, err)
+	}
+	var audits int
+	if err := store.Pool.QueryRow(ctx, "SELECT count(*) FROM admin_audit_events WHERE (action='admin.grant.revoke' AND target_id=$1 AND reason=$2) OR (action='admin.grant.create' AND target_id=$3)",
+		lapsedID, entdomain.ExpiredRevokeReason, again.Grant.ID).Scan(&audits); err != nil || audits != 2 {
+		t.Fatalf("audits=%d err=%v", audits, err)
+	}
+}
+
 // TestGrant_ENT02_AdminIneligible covers suspended/deleted targets through
 // the admin application.
 func TestGrant_ENT02_AdminIneligible(t *testing.T) {
