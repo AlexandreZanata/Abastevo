@@ -1,5 +1,17 @@
 # Current execution state
 
+- A3 contributors 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING. Branch
+  `codex/adm-a3-contributors` stacked on A2 PR #166 (base
+  `codex/adm-a2-granted-tiers`; planning docs still in PR #161). CTB-01…CTB-14
+  and BUC-ADM-05…09/11 implemented with migration `000142`, GitHub snapshot
+  client, claims/profile/user/admin routes, public CORS list and erasure
+  trigger. Tested revision: branch head before the evidence commit;
+  `go test -race ./...` 131 ok / 0 fail, PostGIS contributor/admin/
+  entitlement/subscription/cmd/api integration 17 ok, `make quick-verify` ok
+  (41s), secret scan clean. [Evidence](../../backend/evidence/admin/A3-CONTRIBUTORS.md).
+  PR #167 with `--base codex/adm-a2-granted-tiers`. Next: wait for review; do
+  not start A4.
+
 - A2 granted tiers and capability projection 2026-10-27: LOCAL_DONE /
   INTEGRATION_PENDING. Branch `codex/adm-a2-granted-tiers` stacked on A1 PR
   #164 (base `codex/adm-a1-admin-auth`; planning docs still in PR #161).

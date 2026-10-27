@@ -46,6 +46,10 @@ import (
 	communityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/read"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
+	contributoradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/adapters"
+	contributorhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/adapters/http"
+	contributorapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/application"
+	contributordomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/domain"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
 	directoryintake "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/intake"
@@ -55,6 +59,7 @@ import (
 	driveradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/adapters"
 	driverhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/adapters/http"
 	driverapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/application"
+	entitlementadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/entitlement/adapters"
 	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
 	evidencehttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/http"
 	evidencestorage "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
@@ -737,9 +742,43 @@ func run() error {
 		},
 	}
 	premiumHTTP.RegisterRoutes(router)
+	// Contributor claims, profiles and the consented public list (ADR-023).
+	// Admin-only routes are mounted below with the shared admin middleware.
+	entitlementStore := entitlementadapters.NewStore(pool.Underlying())
+	contributorStore := contributoradapters.NewStore(pool.Underlying())
+	contributorService := &contributorapp.Service{
+		Store:  contributorStore,
+		GitHub: contributoradapters.NewGitHubClient(cfg.GitHubRepo, cfg.GitHubToken),
+		Grants: entitlementStore, Repo: cfg.GitHubRepo, Clock: time.Now, NewID: newUUID,
+		RequireCapability: func(ctx context.Context, tx pgx.Tx, owner string) error {
+			if err := premiumStore.RequireCapability(ctx, tx, owner, "contributor.profile"); err != nil {
+				if errors.Is(err, subscriptiondomain.ErrDenied) {
+					return contributordomain.ErrForbidden
+				}
+				return contributordomain.ErrUnavailable
+			}
+			return nil
+		},
+	}
+	contributorhttp.UserHandler{
+		Service: contributorService,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			return accountService.ValidateAccess(ctx, family, access)
+		},
+	}.RegisterRoutes(router)
+	contributorhttp.PublicHandler{
+		Service: contributorService, CursorSecret: cfg.CursorSecret, AllowedOrigins: cfg.PublicWebOrigins,
+	}.RegisterRoutes(router)
 	// Optional administrative surface (ADR-023). No configured key hash means
 	// no route is mounted and every /v1/admin/* path stays 404.
-	registerAdminRoutes(router, cfg, pool.Underlying(), trustedProxies)
+	if adminSurface, ok := newAdminHandler(cfg, pool.Underlying(), trustedProxies); ok {
+		adminSurface.RegisterRoutes(router)
+		contributorAdmin := contributorhttp.AdminHandler{Service: contributorService, Admin: adminSurface}
+		router.Group(func(g chi.Router) {
+			g.Use(adminSurface.AdminMiddleware()...)
+			contributorAdmin.RegisterRoutes(g)
+		})
+	}
 	// Free document-free quality participation; payment capabilities never enter.
 	qualityReportStore := &qualityadapters.ReportStore{ConsumeBudget: func(ctx context.Context, tx pgx.Tx, owner string) error {
 		digest := sha256.Sum256([]byte("quality-reports:" + owner))
