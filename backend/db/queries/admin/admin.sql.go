@@ -205,6 +205,64 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) er
 	return err
 }
 
+const listAuditEvents = `-- name: ListAuditEvents :many
+SELECT id, at, session_id, action, target_type, target_id, reason, before, after,
+    request_id, client_ip_hash
+FROM admin_audit_events
+WHERE ($1::text IS NULL OR action = $1::text)
+  AND ($2::text IS NULL OR target_id = $2::text)
+  AND ($3::timestamptz IS NULL OR
+       (at, id) < ($3::timestamptz, $4::bigint))
+ORDER BY at DESC, id DESC
+LIMIT $5
+`
+
+type ListAuditEventsParams struct {
+	Action   pgtype.Text        `json:"action"`
+	TargetID pgtype.Text        `json:"target_id"`
+	BeforeAt pgtype.Timestamptz `json:"before_at"`
+	BeforeID pgtype.Int8        `json:"before_id"`
+	RowLimit int32              `json:"row_limit"`
+}
+
+func (q *Queries) ListAuditEvents(ctx context.Context, arg ListAuditEventsParams) ([]AdminAuditEvent, error) {
+	rows, err := q.db.Query(ctx, listAuditEvents,
+		arg.Action,
+		arg.TargetID,
+		arg.BeforeAt,
+		arg.BeforeID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminAuditEvent
+	for rows.Next() {
+		var i AdminAuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.At,
+			&i.SessionID,
+			&i.Action,
+			&i.TargetType,
+			&i.TargetID,
+			&i.Reason,
+			&i.Before,
+			&i.After,
+			&i.RequestID,
+			&i.ClientIpHash,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockAccount = `-- name: LockAccount :one
 SELECT id, alias, status, created_at FROM accounts
 WHERE id = $1 FOR UPDATE

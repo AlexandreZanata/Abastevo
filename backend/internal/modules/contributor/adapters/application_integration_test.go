@@ -24,6 +24,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/domain"
 	entadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/entitlement/adapters"
+	staffadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/staff/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -340,6 +341,15 @@ func TestReadProfile_STF05_NoProfileHasEmptyRoles(t *testing.T) {
 	if err != nil || result.Found || result.Roles == nil {
 		t.Fatalf("read=%+v err=%v", result, err)
 	}
+	// STF-05: a role holder without a contributor profile still reads roles.
+	service.Roles = staffadapters.NewStore(pool)
+	if _, err := pool.Exec(context.Background(), `INSERT INTO staff_assignments(id,account_id,role,state,start_at,end_at,reason) VALUES($1,$2,'support_agent','ACTIVE',clock_timestamp()-interval '1 minute',NULL,'synthetic staff assignment')`, newID(t), accountID); err != nil {
+		t.Fatal(err)
+	}
+	result, err = service.ReadProfile(context.Background(), accountID)
+	if err != nil || result.Found || len(result.Roles) != 1 {
+		t.Fatalf("role holder read=%+v err=%v", result, err)
+	}
 }
 
 // TestLink_CTB06_ConcurrentUnique covers one login mapping to one account.
@@ -394,6 +404,10 @@ func TestProfile_CTB08_CTB12(t *testing.T) {
 		t.Fatalf("capability err=%v", err)
 	}
 	service.RequireCapability = func(context.Context, pgx.Tx, string) error { return nil }
+	service.Roles = staffadapters.NewStore(pool)
+	if _, err := pool.Exec(context.Background(), `INSERT INTO staff_assignments(id,account_id,role,state,start_at,end_at,reason) VALUES($1,$2,'support_agent','ACTIVE',$3,NULL,'synthetic staff assignment')`, newID(t), accountID, now); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := service.UpsertProfile(context.Background(), accountID, "Ana", nil, domain.VisibilityPublic, false, false); !errors.Is(err, domain.ErrInvalid) {
 		t.Fatalf("consent err=%v", err)
 	}
@@ -409,6 +423,9 @@ func TestProfile_CTB08_CTB12(t *testing.T) {
 	result, err := service.ReadProfile(context.Background(), accountID)
 	if err != nil || !result.Found || result.Profile.Visibility != domain.VisibilityPublic || len(result.Links) != 2 {
 		t.Fatalf("read profile=%+v err=%v", result, err)
+	}
+	if len(result.Roles) != 1 || result.Roles[0] != "Suporte" {
+		t.Fatalf("owner roles=%v", result.Roles)
 	}
 }
 

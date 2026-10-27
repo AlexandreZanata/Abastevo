@@ -111,3 +111,14 @@ SELECT count(*) FILTER (
     ))::timestamptz AS paid_until
 FROM subscription_purchases
 WHERE account_id = sqlc.arg('account_id')::uuid AND NOT retired;
+
+-- name: ListAuditEvents :many
+SELECT id, at, session_id, action, target_type, target_id, reason, before, after,
+    request_id, client_ip_hash
+FROM admin_audit_events
+WHERE (sqlc.narg('action')::text IS NULL OR action = sqlc.narg('action')::text)
+  AND (sqlc.narg('target_id')::text IS NULL OR target_id = sqlc.narg('target_id')::text)
+  AND (sqlc.narg('before_at')::timestamptz IS NULL OR
+       (at, id) < (sqlc.narg('before_at')::timestamptz, sqlc.narg('before_id')::bigint))
+ORDER BY at DESC, id DESC
+LIMIT @row_limit;

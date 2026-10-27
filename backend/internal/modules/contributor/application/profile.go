@@ -21,6 +21,18 @@ func (s *Service) ReadProfile(ctx context.Context, accountID string) (ProfileRes
 	}
 	out := ProfileResult{Links: []domain.Link{}, Roles: []string{}}
 	err := s.Store.RunInTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		// STF-05: the owner sees their roles with or without a profile.
+		roles := []string{}
+		if s.Roles != nil {
+			labels, err := s.Roles.ActiveLabels(ctx, tx, accountID, s.now())
+			if err != nil {
+				return err
+			}
+			if labels != nil {
+				roles = labels
+			}
+		}
+		out.Roles = roles
 		profile, found, err := s.Store.GetProfile(ctx, tx, accountID)
 		if err != nil {
 			return err
@@ -32,7 +44,7 @@ func (s *Service) ReadProfile(ctx context.Context, accountID string) (ProfileRes
 		if err != nil {
 			return err
 		}
-		out = ProfileResult{Profile: profile, Links: links, Roles: []string{}, Found: true}
+		out = ProfileResult{Profile: profile, Links: links, Roles: roles, Found: true}
 		return nil
 	})
 	return out, err
@@ -82,7 +94,11 @@ func (s *Service) UpsertProfile(ctx context.Context, accountID, displayName stri
 		if err := s.Store.InsertProfileEdit(ctx, tx, accountID, now); err != nil {
 			return domain.ErrUnavailable
 		}
-		out = ProfileResult{Profile: profile, Links: links, Roles: []string{}, Found: true}
+		roles := []string{}
+		if s.Roles != nil {
+			roles, _ = s.Roles.ActiveLabels(ctx, tx, accountID, now)
+		}
+		out = ProfileResult{Profile: profile, Links: links, Roles: roles, Found: true}
 		return nil
 	})
 	return out, err

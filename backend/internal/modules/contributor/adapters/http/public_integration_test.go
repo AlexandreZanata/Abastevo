@@ -86,15 +86,20 @@ func newID(t *testing.T) string {
 	return raw[0:8] + "-" + raw[8:12] + "-" + raw[12:16] + "-" + raw[16:20] + "-" + raw[20:32]
 }
 
-func seedPublic(t *testing.T, pool *pgxpool.Pool, name, visibility string, public bool, since time.Time, login string) string {
+func seedPublic(t *testing.T, pool *pgxpool.Pool, name, visibility string, public bool, showRoles bool, roles []string, since time.Time, login string) string {
 	t.Helper()
 	accountID := newID(t)
 	ctx := context.Background()
 	if _, err := pool.Exec(ctx, "INSERT INTO accounts(id,alias,status) VALUES($1,$2,'active')", accountID, "synthetic-"+accountID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO contributor_profiles(account_id,display_name,visibility,public_consent) VALUES($1,$2,$3,$4)`, accountID, name, visibility, public); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO contributor_profiles(account_id,display_name,visibility,public_consent,show_roles_publicly) VALUES($1,$2,$3,$4,$5)`, accountID, name, visibility, public, showRoles); err != nil {
 		t.Fatal(err)
+	}
+	for _, role := range roles {
+		if _, err := pool.Exec(ctx, `INSERT INTO staff_assignments(id,account_id,role,state,start_at,end_at,reason) VALUES($1,$2,$3,'ACTIVE',$4,NULL,'synthetic staff assignment')`, newID(t), accountID, role, since); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO entitlement_grants(id,account_id,tier,policy_version,state,start_at,end_at,reason) VALUES($1,$2,'CONTRIBUTOR',1,'ACTIVE',$3,NULL,'synthetic public grant')`, newID(t), accountID, since); err != nil {
 		t.Fatal(err)
@@ -116,10 +121,10 @@ func TestPublicContributors_CTB09_CTB10_CTB11(t *testing.T) {
 	pool := freshDB(t)
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	service := &application.Service{Store: adapters.NewStore(pool), Clock: func() time.Time { return now }, NewID: func() (string, error) { return newID(t), nil }}
-	firstID := seedPublic(t, pool, "Ana", "PUBLIC", true, now.Add(-3*time.Hour), "octocat")
-	seedPublic(t, pool, "Bia", "PUBLIC", true, now.Add(-2*time.Hour), "")
-	thirdID := seedPublic(t, pool, "Caio", "PUBLIC", true, now.Add(-time.Hour), "")
-	hiddenID := seedPublic(t, pool, "Hidden", "HIDDEN", true, now.Add(-time.Hour), "")
+	firstID := seedPublic(t, pool, "Ana", "PUBLIC", true, true, []string{"community_moderator"}, now.Add(-3*time.Hour), "octocat")
+	seedPublic(t, pool, "Bia", "PUBLIC", true, false, []string{"support_agent"}, now.Add(-2*time.Hour), "")
+	thirdID := seedPublic(t, pool, "Caio", "PUBLIC", true, false, nil, now.Add(-time.Hour), "")
+	hiddenID := seedPublic(t, pool, "Hidden", "HIDDEN", true, false, nil, now.Add(-time.Hour), "")
 	router := chi.NewRouter()
 	PublicHandler{Service: service, CursorSecret: bytes.Repeat([]byte{9}, 32), AllowedOrigins: []string{"https://landing.example"}}.RegisterRoutes(router)
 	router.Get("/v1/stations", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
@@ -165,6 +170,20 @@ func TestPublicContributors_CTB09_CTB10_CTB11(t *testing.T) {
 	var links []map[string]string
 	if err := json.Unmarshal(items[0]["links"], &links); err != nil || len(links) != 1 || links[0]["url"] != "https://github.com/octocat" {
 		t.Fatalf("links=%v err=%v", links, err)
+	}
+	type publicItem struct {
+		DisplayName string   `json:"display_name"`
+		Roles       []string `json:"roles"`
+	}
+	var typed []publicItem
+	if err := json.Unmarshal(page["items"], &typed); err != nil {
+		t.Fatal(err)
+	}
+	if len(typed) != 2 || typed[0].DisplayName != "Ana" || len(typed[0].Roles) != 1 || typed[0].Roles[0] != "Moderação da comunidade" {
+		t.Fatalf("roles=%+v", typed)
+	}
+	if typed[1].DisplayName != "Bia" || len(typed[1].Roles) != 0 {
+		t.Fatalf("hidden roles=%+v", typed[1])
 	}
 	var next string
 	if err := json.Unmarshal(page["next_cursor"], &next); err != nil || next == "" {

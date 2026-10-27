@@ -57,6 +57,7 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 			auth.Post("/v1/admin/accounts/{id}/grants", h.createGrant)
 			auth.Get("/v1/admin/grants", h.listGrants)
 			auth.Post("/v1/admin/grants/{id}/revoke", h.revokeGrant)
+			auth.Get("/v1/admin/audit", h.audit)
 		})
 	})
 }
@@ -393,6 +394,57 @@ func (h Handler) revokeGrant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.FinishMutation(w, r, app.MutationResult{Status: http.StatusOK, Body: body, Replayed: replayed}, nil, false)
+}
+
+func (h Handler) audit(w http.ResponseWriter, r *http.Request) {
+	action := strings.TrimSpace(r.URL.Query().Get("action"))
+	targetID := strings.TrimSpace(r.URL.Query().Get("target_id"))
+	limit, err := httpapi.ParseLimit(r.URL.Query().Get("limit"))
+	if err != nil {
+		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+		return
+	}
+	filter := app.AuditFilter{Action: action, TargetID: targetID, Limit: limit + 1}
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+	if cursor != "" {
+		if len(h.CursorSecret) < 32 {
+			writeAdminError(w, r, http.StatusServiceUnavailable, "admin.unavailable")
+			return
+		}
+		position, err := httpapi.Open(h.CursorSecret, cursor, httpapi.FilterHash("admin-audit-v1", action+"|"+targetID), time.Now())
+		if err != nil {
+			writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+			return
+		}
+		stamp, id, ok := strings.Cut(position, ",")
+		if !ok {
+			writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+			return
+		}
+		beforeAt, err := time.Parse(time.RFC3339Nano, stamp)
+		if err != nil {
+			writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+			return
+		}
+		beforeID, err := strconv.ParseInt(id, 10, 64)
+		if err != nil || beforeID <= 0 {
+			writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+			return
+		}
+		filter.BeforeAt, filter.BeforeID = beforeAt, beforeID
+	}
+	events, err := h.Service.AdminListAudit(r.Context(), filter)
+	if err != nil {
+		writeAdminServiceError(w, r, err)
+		return
+	}
+	next := ""
+	if len(events) > limit {
+		events = events[:limit]
+		last := events[len(events)-1]
+		next = httpapi.Seal(h.CursorSecret, httpapi.FilterHash("admin-audit-v1", action+"|"+targetID), last.At.UTC().Format(time.RFC3339Nano)+","+strconv.FormatInt(last.ID, 10), time.Now())
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": events, "next_cursor": next})
 }
 
 func (h Handler) listGrants(w http.ResponseWriter, r *http.Request) {

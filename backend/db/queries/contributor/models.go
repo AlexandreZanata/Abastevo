@@ -111,3 +111,17 @@ type GithubContributorSnapshot struct {
 	Etag      pgtype.Text        `json:"etag"`
 	FetchedAt pgtype.Timestamptz `json:"fetched_at"`
 }
+
+type StaffAssignment struct {
+	ID               pgtype.UUID        `json:"id"`
+	AccountID        pgtype.UUID        `json:"account_id"`
+	Role             string             `json:"role"`
+	State            string             `json:"state"`
+	StartAt          pgtype.Timestamptz `json:"start_at"`
+	EndAt            pgtype.Timestamptz `json:"end_at"`
+	Reason           string             `json:"reason"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	CreatedSessionID pgtype.UUID        `json:"created_session_id"`
+	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
+	RevokeReason     pgtype.Text        `json:"revoke_reason"`
+}
