@@ -312,6 +312,9 @@ pub struct DecisionRow {
     pub api_point: bool,
     pub api_srid: String,
     pub api_crs: String,
+    /// Exact ANP source text of a valid API point; null otherwise.
+    pub api_latitude_deg: Option<String>,
+    pub api_longitude_deg: Option<String>,
     pub registry_address: String,
     pub osm_address: String,
 }
@@ -918,6 +921,8 @@ fn decision(
     registry_address: Option<&(String, String)>,
     osm_address: Option<&(String, String)>,
 ) -> DecisionRow {
+    let valid_point = matches!(point_status, Some(PointStatus::Valid(_, _)));
+    let valid_api = api.filter(|_| valid_point);
     DecisionRow {
         schema_version: DECISION_FORMAT,
         cnpj: registry.source_key.clone(),
@@ -930,9 +935,15 @@ fn decision(
         osm_type: candidate.map(|place| place.osm_type.clone()),
         osm_id: candidate.map(|place| place.osm_id),
         distance_m: distance.map(round_distance),
-        api_point: matches!(point_status, Some(PointStatus::Valid(_, _))),
+        api_point: valid_point,
         api_srid: api.map(|record| record.srid.clone()).unwrap_or_default(),
         api_crs: api.map(|record| record.src.clone()).unwrap_or_default(),
+        api_latitude_deg: valid_api
+            .and_then(|record| record.latitude.as_deref())
+            .map(|value| value.trim().to_string()),
+        api_longitude_deg: valid_api
+            .and_then(|record| record.longitude.as_deref())
+            .map(|value| value.trim().to_string()),
         registry_address: address_label(registry_address),
         osm_address: address_label(osm_address),
     }
@@ -1474,6 +1485,8 @@ fn match_stations(
             api_point: matches!(api_point(record), PointStatus::Valid(_, _)),
             api_srid: record.srid.clone(),
             api_crs: record.src.clone(),
+            api_latitude_deg: None,
+            api_longitude_deg: None,
             registry_address: String::new(),
             osm_address: String::new(),
         });
@@ -2131,6 +2144,36 @@ mod tests {
         assert_eq!(result.decisions[0].tier, "L3_ANP");
         assert!(result.decisions[0].api_point);
         assert_eq!(result.decisions[0].reason, "missing_osm");
+        // The loader needs the exact official point text for an L3 pin.
+        assert_eq!(
+            result.decisions[0].api_latitude_deg.as_deref(),
+            Some("-25.4")
+        );
+        assert_eq!(
+            result.decisions[0].api_longitude_deg.as_deref(),
+            Some("-49.2")
+        );
+    }
+
+    #[test]
+    fn invalid_api_point_carries_no_coordinates() {
+        let cnpj = "01122233300000";
+        let inputs = inputs(
+            vec![api(
+                cnpj,
+                "RUA TESTE, 100",
+                "-25.4",
+                "-49.2",
+                "9999",
+                "OTHER",
+            )],
+            Vec::new(),
+            vec![registry(cnpj, "RUA TESTE", "100", "CURITIBA")],
+        );
+        let result = run_match(&inputs);
+        assert_eq!(result.decisions[0].tier, "L5");
+        assert!(result.decisions[0].api_latitude_deg.is_none());
+        assert!(result.decisions[0].api_longitude_deg.is_none());
     }
 
     #[test]

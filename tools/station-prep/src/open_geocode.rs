@@ -39,6 +39,14 @@ pub const MAX_OSM_FILE_BYTES: u64 = 1 << 30;
 pub const MAX_REGISTRY_FILE_BYTES: u64 = 1 << 30;
 
 const CNEFE_SOURCE: &str = "IBGE-CNEFE-2022";
+/// CNEFE `NV_GEO_COORD` 1-3 are address coordinates (original, apartment
+/// adjusted, estimated); 4-6 are block-face, locality and census-sector
+/// centroids, which never become a pin (B-BR-MAP-01).
+pub const MAX_CNEFE_GEOCODE_LEVEL: u8 = 3;
+/// CNEFE `COD_ESPECIE` 6, "estabelecimento de outras finalidades", is the only
+/// species a fuel station can carry; agro, school, health ("POSTO DE SAUDE"),
+/// religious, dwelling and construction rows are never station evidence.
+pub const CNEFE_STATION_SPECIES: u8 = 6;
 const REASON_PRIORITY: &[&str] = &[
     "missing_number",
     "missing_address",
@@ -47,6 +55,7 @@ const REASON_PRIORITY: &[&str] = &[
     "missing_municipality",
     "name_mismatch",
     "ambiguous_cnefe",
+    "cnefe_centroid_only",
     "missing_establishment_evidence",
     "missing_cnefe",
     "missing_osm",
@@ -80,6 +89,12 @@ pub struct CnefePoint {
     pub establishment_name: String,
     #[serde(default)]
     pub establishment: bool,
+    /// CNEFE `NV_GEO_COORD`; absent in pre-2026-10-27 extracts.
+    #[serde(default)]
+    pub geocode_level: Option<u8>,
+    /// CNEFE `COD_ESPECIE`; absent in pre-2026-10-27 extracts.
+    #[serde(default)]
+    pub species: Option<u8>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -382,7 +397,19 @@ fn cnefe_point(point: &CnefePoint) -> Option<(f64, f64)> {
 }
 
 fn cnefe_establishment(point: &CnefePoint) -> bool {
+    if point
+        .species
+        .is_some_and(|species| species != CNEFE_STATION_SPECIES)
+    {
+        return false;
+    }
     point.establishment || !point.establishment_name.trim().is_empty()
+}
+
+fn cnefe_address_level(point: &CnefePoint) -> bool {
+    point
+        .geocode_level
+        .is_none_or(|level| (1..=MAX_CNEFE_GEOCODE_LEVEL).contains(&level))
 }
 
 fn build_cnefe_index(points: &[CnefePoint]) -> CnefeIndex {
@@ -650,15 +677,22 @@ fn geocode_station(
         if candidates.is_empty() {
             reasons.insert("missing_cnefe");
         } else {
-            let mut points: Vec<(usize, (f64, f64))> = candidates
+            let establishments: Vec<usize> = candidates
                 .into_iter()
                 .filter(|candidate| cnefe_establishment(&cnefe[*candidate]))
+                .collect();
+            let mut points: Vec<(usize, (f64, f64))> = establishments
+                .iter()
+                .copied()
+                .filter(|candidate| cnefe_address_level(&cnefe[*candidate]))
                 .filter_map(|candidate| {
                     cnefe_point(&cnefe[candidate]).map(|point| (candidate, point))
                 })
                 .collect();
-            if points.is_empty() {
+            if establishments.is_empty() {
                 reasons.insert("missing_establishment_evidence");
+            } else if points.is_empty() {
+                reasons.insert("cnefe_centroid_only");
             } else {
                 points.sort_by(|left, right| {
                     left.1
@@ -1224,6 +1258,8 @@ mod tests {
             longitude_deg: format!("{lon:.7}"),
             establishment_name: establishment.to_string(),
             establishment: !establishment.is_empty(),
+            geocode_level: None,
+            species: None,
         }
     }
 
@@ -1312,6 +1348,73 @@ mod tests {
         assert_eq!(result.candidates.len(), 1);
         assert!(!result.candidates[0].publish);
         assert!(result.map_assertions.is_empty());
+    }
+
+    fn l4_inputs(points: Vec<CnefePoint>) -> GeocodeInputs {
+        let cnpj = "01122233300000";
+        inputs(
+            vec![registry(
+                cnpj,
+                "AVENIDA TESTE",
+                "100",
+                "CURITIBA",
+                "4106902",
+            )],
+            &[cnpj],
+            Vec::new(),
+            points,
+            Vec::new(),
+        )
+    }
+
+    fn graded(level: Option<u8>, species: Option<u8>, lat: f64) -> CnefePoint {
+        let mut point = cnefe(
+            "4106902",
+            "AVENIDA TESTE",
+            "100",
+            "80000000",
+            lat,
+            -49.2,
+            "POSTO TESTE",
+        );
+        point.geocode_level = level;
+        point.species = species;
+        point
+    }
+
+    #[test]
+    fn cnefe_centroid_levels_never_pin() {
+        for level in [4u8, 5, 6] {
+            let result = run_geocode(&l4_inputs(vec![graded(Some(level), Some(6), -25.4)]));
+            assert_eq!(result.decisions[0].tier, "L5", "level {level}");
+            assert_eq!(result.decisions[0].reason, "cnefe_centroid_only");
+            assert!(result.candidates.is_empty());
+        }
+        for level in [1u8, 2, 3] {
+            let result = run_geocode(&l4_inputs(vec![graded(Some(level), Some(6), -25.4)]));
+            assert_eq!(result.decisions[0].tier, "L4_ADDRESS", "level {level}");
+        }
+    }
+
+    #[test]
+    fn cnefe_centroid_does_not_widen_spread() {
+        // A sector centroid 5 km away must not make an exact address point
+        // ambiguous; it is excluded before the spread check.
+        let result = run_geocode(&l4_inputs(vec![
+            graded(Some(1), Some(6), -25.4),
+            graded(Some(6), Some(6), -25.45),
+        ]));
+        assert_eq!(result.decisions[0].tier, "L4_ADDRESS");
+    }
+
+    #[test]
+    fn non_commercial_species_is_not_station_evidence() {
+        // 3 agro, 4 school, 5 health ("POSTO DE SAUDE"), 8 religious.
+        for species in [1u8, 2, 3, 4, 5, 7, 8] {
+            let result = run_geocode(&l4_inputs(vec![graded(Some(1), Some(species), -25.4)]));
+            assert_eq!(result.decisions[0].tier, "L5", "species {species}");
+            assert_eq!(result.decisions[0].reason, "missing_establishment_evidence");
+        }
     }
 
     #[test]

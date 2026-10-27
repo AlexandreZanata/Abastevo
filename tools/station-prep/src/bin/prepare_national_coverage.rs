@@ -3,7 +3,8 @@
 //!
 //! Usage:
 //!   prepare_national_coverage --a2 DIR --b2 DIR --registry assertions.jsonl \
-//!     --output DIR [--generation ID]
+//!     --output DIR [--generation ID] [--publish-anp-reported] \
+//!     [--publish-address-point] [--national-api] [--national-cnefe]
 
 use station_prep::national_coverage::{self, CoverageOptions};
 use std::path::Path;
@@ -27,7 +28,14 @@ fn main() {
     let registry = value(&args, "--registry").unwrap_or_else(|| fail("--registry is required"));
     let output = value(&args, "--output").unwrap_or_else(|| fail("--output is required"));
     let generation = value(&args, "--generation").unwrap_or_default();
-    let options = CoverageOptions { generation };
+    let flag = |name: &str| args.iter().any(|arg| arg == name);
+    let options = CoverageOptions {
+        generation,
+        publish_anp_reported: flag("--publish-anp-reported"),
+        publish_address_point: flag("--publish-address-point"),
+        national_api: flag("--national-api"),
+        national_cnefe: flag("--national-cnefe"),
+    };
     let result = national_coverage::run(
         Path::new(&a2),
         Path::new(&b2),
@@ -43,6 +51,7 @@ fn main() {
         "map_load_ready": result.apply_plan.map_load.ready,
         "station_review_count": result.apply_plan.station_review.count,
         "map_load_count": result.apply_plan.map_load.count,
+        "locations": result.coverage.locations,
         "timings": result.timings,
     });
     println!(

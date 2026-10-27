@@ -2,8 +2,10 @@
 //!
 //! Reads the A2/B2 outputs and the prepared registry, reconciles every station
 //! into one final tier, writes a per-UF coverage report, merges the publishable
-//! L2 map assertions and builds a `map-load` prepared envelope. It never writes
-//! to the database, never deploys and never promotes L3/L4 while D1/D2 are open.
+//! L2 map assertions and builds a `map-load` prepared envelope. It also writes
+//! `locations.ndjson`, one best-tier pin per station for `station-locate`
+//! (B-BR-MAP-02); L3/L4 rows are emitted only when the owner decisions D1/D2
+//! are recorded as enabled. It never writes to the database or deploys.
 
 use crate::map_contract::{self, ASSERTION_FORMAT, VERSION as MAP_VERSION};
 use crate::national_match::{load_registry, MatchError, RegistryInput};
@@ -23,11 +25,13 @@ pub const MAX_DECISIONS: usize = 200_000;
 pub const MAX_ASSERTIONS: usize = 10_000;
 pub const MAX_FILE_BYTES: u64 = 256 << 20;
 pub const PROFILE_ID: &str = "national-open-map-v1";
+pub const LOCATIONS_FORMAT: &str = "abastevo.station-location-tiers-v1";
+pub const LOCATION_SCHEMA: &str = "station-location-tier-v1";
 
 const A2_SUMMARY_FORMAT: &str = "abastevo.national-match-summary-v1";
 const B2_SUMMARY_FORMAT: &str = "abastevo.open-geocode-summary-v1";
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 struct TierDecision {
     #[serde(default)]
     cnpj: String,
@@ -37,6 +41,16 @@ struct TierDecision {
     publish: bool,
     #[serde(default)]
     reason: String,
+    #[serde(default)]
+    osm_type: Option<String>,
+    #[serde(default)]
+    osm_id: Option<i64>,
+    #[serde(default)]
+    api_srid: String,
+    #[serde(default)]
+    api_latitude_deg: Option<String>,
+    #[serde(default)]
+    api_longitude_deg: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -94,6 +108,52 @@ pub struct Scope {
     pub note: &'static str,
 }
 
+impl Scope {
+    fn from_options(options: &CoverageOptions) -> Self {
+        Scope {
+            a1a_status: if options.national_api {
+                "complete_by_uf"
+            } else {
+                "blocked_repeated_429"
+            },
+            b2_scope: if options.national_cnefe {
+                "national_cnefe_rfb_extracts"
+            } else {
+                "pilot_municipalities_from_cnefe_rfb_extracts"
+            },
+            national_api_complete: options.national_api,
+            national_cnefe_complete: options.national_cnefe,
+            note: if options.national_api && options.national_cnefe {
+                "National run: every UF of the ANP API and IBGE CNEFE."
+            } else {
+                "Pipeline validation, not a national coverage claim."
+            },
+        }
+    }
+}
+
+/// Pin counts written to `locations.ndjson`, by stored quality.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct LocationCounts {
+    pub reviewed: u64,
+    pub osm_mapped: u64,
+    pub anp_reported: u64,
+    pub address_point: u64,
+    pub total: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct LocationRow {
+    schema_version: &'static str,
+    cnpj: String,
+    tier: String,
+    quality: &'static str,
+    latitude_deg: String,
+    longitude_deg: String,
+    provider: &'static str,
+    source_reference: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct InputHashes {
     pub registry_sha256: String,
@@ -113,6 +173,8 @@ pub struct OutputHashes {
     pub coverage_md: FileDigest,
     pub combined_assertions: Option<FileDigest>,
     pub envelope: Option<FileDigest>,
+    pub locations: Option<FileDigest>,
+    pub locations_manifest: Option<FileDigest>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -125,6 +187,7 @@ pub struct CoverageReport {
     pub counts: CoverageCounts,
     pub per_uf: BTreeMap<String, CoverageCounts>,
     pub reasons: BTreeMap<String, u64>,
+    pub locations: LocationCounts,
     pub outputs: OutputHashes,
 }
 
@@ -152,6 +215,7 @@ pub struct ApplyPlan {
     pub no_database_write_performed: bool,
     pub station_review: ApplyStep,
     pub map_load: ApplyStep,
+    pub station_locate: ApplyStep,
     pub blocked: Blocked,
     pub coverage: CoverageCounts,
 }
@@ -164,9 +228,17 @@ pub struct Timings {
     pub total_ms: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CoverageOptions {
     pub generation: String,
+    /// Owner decision D1: an ANP API point without OSM confirmation is a pin.
+    pub publish_anp_reported: bool,
+    /// Owner decision D2: an exact-number CNEFE establishment point is a pin.
+    pub publish_address_point: bool,
+    /// A1.a covered every UF of the ANP API.
+    pub national_api: bool,
+    /// B2 used CNEFE/RFB extracts for every UF.
+    pub national_cnefe: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -188,6 +260,7 @@ struct B2Input {
     summary: SummaryDoc,
     decisions: Vec<TierDecision>,
     decisions_sha256: String,
+    candidates: Vec<u8>,
     candidates_sha256: String,
     assertions: Option<AssertionCorpus>,
     assertions_sha256: Option<String>,
@@ -374,6 +447,7 @@ fn load_b2(dir: &Path) -> Result<B2Input, MatchError> {
         summary,
         decisions,
         decisions_sha256,
+        candidates,
         candidates_sha256,
         assertions,
         assertions_sha256,
@@ -417,6 +491,7 @@ type CoverageOutput = (
     BTreeMap<String, CoverageCounts>,
     BTreeMap<String, u64>,
     u64,
+    BTreeMap<String, TierDecision>,
 );
 
 fn compute_coverage(
@@ -485,18 +560,20 @@ fn compute_coverage(
     let mut national = CoverageCounts::default();
     let mut per_uf: BTreeMap<String, CoverageCounts> = BTreeMap::new();
     let mut reasons: BTreeMap<String, u64> = BTreeMap::new();
+    let mut finals: BTreeMap<String, TierDecision> = BTreeMap::new();
     for (cnpj, a2_decision) in &a2_by_cnpj {
         let Some(registry_row) = registry.rows.get(cnpj) else {
             return profile(format!("A2 decision without registry row: {cnpj}"));
         };
-        let (tier, reason) = if a2_decision.tier == "L5" {
-            let b2_decision = b2_by_cnpj
+        let final_decision: &TierDecision = if a2_decision.tier == "L5" {
+            b2_by_cnpj
                 .get(cnpj)
-                .ok_or_else(|| MatchError::Profile(format!("B2 missing {cnpj}")))?;
-            (b2_decision.tier.as_str(), b2_decision.reason.as_str())
+                .ok_or_else(|| MatchError::Profile(format!("B2 missing {cnpj}")))?
         } else {
-            (a2_decision.tier.as_str(), a2_decision.reason.as_str())
+            a2_decision
         };
+        finals.insert(cnpj.clone(), final_decision.clone());
+        let (tier, reason) = (final_decision.tier.as_str(), final_decision.reason.as_str());
         let uf = registry_row.uf.clone();
         let bucket = per_uf.entry(uf).or_default();
         bucket.stations += 1;
@@ -514,7 +591,227 @@ fn compute_coverage(
     {
         return profile("coverage tiers do not reconcile");
     }
-    Ok((national, per_uf, reasons, api_only))
+    Ok((national, per_uf, reasons, api_only, finals))
+}
+
+fn brazil_point(cnpj: &str, latitude: &str, longitude: &str) -> Result<(), MatchError> {
+    let parsed = latitude
+        .trim()
+        .parse::<f64>()
+        .ok()
+        .zip(longitude.trim().parse::<f64>().ok());
+    match parsed {
+        Some((lat, lon))
+            if lat.is_finite()
+                && lon.is_finite()
+                && (-34.0..=6.0).contains(&lat)
+                && (-74.0..=-28.0).contains(&lon) =>
+        {
+            Ok(())
+        }
+        _ => profile(format!("location for {cnpj} is not a point inside Brazil")),
+    }
+}
+
+fn json_text(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::String(text) => Some(text.trim().to_string()),
+        serde_json::Value::Number(number) => Some(number.to_string()),
+        _ => None,
+    }
+}
+
+type PointRef = (String, String, String);
+
+/// `locations.ndjson` bytes, counts and its hash-binding manifest.
+struct LocationsOutput {
+    bytes: Vec<u8>,
+    counts: LocationCounts,
+    manifest: Vec<u8>,
+}
+
+impl LocationsOutput {
+    fn new(
+        bytes: Vec<u8>,
+        counts: LocationCounts,
+        generation: &str,
+        registry_sha256: &str,
+        a2_decisions_sha256: &str,
+        b2_decisions_sha256: &str,
+        options: &CoverageOptions,
+    ) -> Result<Self, MatchError> {
+        let manifest = serde_json::json!({
+            "format": LOCATIONS_FORMAT,
+            "schema_version": LOCATION_SCHEMA,
+            "generation": generation,
+            "owner_decisions": {
+                "D1_anp_reported": options.publish_anp_reported,
+                "D2_address_point": options.publish_address_point,
+            },
+            "inputs": {
+                "registry_sha256": registry_sha256,
+                "a2_decisions_sha256": a2_decisions_sha256,
+                "b2_decisions_sha256": b2_decisions_sha256,
+            },
+            "counts": counts,
+            "files": {
+                "locations.ndjson": {"bytes": bytes.len(), "sha256": sha256_hex(&bytes)},
+            },
+        });
+        let mut manifest = serde_json::to_vec_pretty(&manifest).map_err(json_error)?;
+        manifest.push(b'\n');
+        Ok(LocationsOutput {
+            bytes,
+            counts,
+            manifest,
+        })
+    }
+}
+
+fn ndjson_objects(raw: &[u8]) -> Result<Vec<serde_json::Value>, MatchError> {
+    let mut out = Vec::new();
+    for line in raw.split(|byte| *byte == b'\n') {
+        if line.iter().all(|byte| byte.is_ascii_whitespace()) {
+            continue;
+        }
+        out.push(serde_json::from_slice(line).map_err(json_error)?);
+    }
+    Ok(out)
+}
+
+/// Builds one best-tier pin per station (B-BR-MAP-02) from the final
+/// decisions. Every published tier must resolve to exactly the point its
+/// decision names; L3/L4 rows appear only when D1/D2 are enabled.
+fn build_locations(
+    finals: &BTreeMap<String, TierDecision>,
+    reviews: &[u8],
+    l2_assertions: &[serde_json::Value],
+    b2_candidates: &[u8],
+    options: &CoverageOptions,
+) -> Result<(Vec<u8>, LocationCounts), MatchError> {
+    let mut l1: BTreeMap<String, PointRef> = BTreeMap::new();
+    for review in ndjson_objects(reviews)? {
+        let cnpj = review["cnpj"].as_str().unwrap_or_default();
+        let Ok(cnpj) = crate::cnpj::normalize_cnpj(cnpj) else {
+            return profile(format!("review with invalid CNPJ {cnpj}"));
+        };
+        let (Some(lat), Some(lon)) = (
+            json_text(&review["latitude"]),
+            json_text(&review["longitude"]),
+        ) else {
+            return profile(format!("review without point for {cnpj}"));
+        };
+        let reference = format!(
+            "{}|reviewer={}|{}",
+            review["method"].as_str().unwrap_or_default(),
+            review["reviewer"].as_str().unwrap_or_default(),
+            review["evidence"].as_str().unwrap_or_default()
+        );
+        if l1.insert(cnpj.clone(), (lat, lon, reference)).is_some() {
+            return profile(format!("duplicate review for {cnpj}"));
+        }
+    }
+    let mut l2: BTreeMap<(String, String, i64), PointRef> = BTreeMap::new();
+    for assertion in l2_assertions {
+        let identities = &assertion["identities"];
+        let (Some(cnpj), Some(osm_type), Some(osm_id)) = (
+            identities["cnpj"].as_str(),
+            identities["osm_type"].as_str(),
+            identities["osm_id"].as_i64(),
+        ) else {
+            continue;
+        };
+        let location = &assertion["location"];
+        let (Some(lat), Some(lon)) = (
+            json_text(&location["latitude_deg"]),
+            json_text(&location["longitude_deg"]),
+        ) else {
+            continue;
+        };
+        let reference = format!("osm:{osm_type}/{osm_id}|ODbL-1.0");
+        l2.insert(
+            (cnpj.to_string(), osm_type.to_string(), osm_id),
+            (lat, lon, reference),
+        );
+    }
+    let mut l4: BTreeMap<String, PointRef> = BTreeMap::new();
+    for candidate in ndjson_objects(b2_candidates)? {
+        if candidate["tier"].as_str() != Some("L4_ADDRESS") {
+            continue;
+        }
+        let cnpj = candidate["cnpj"].as_str().unwrap_or_default().to_string();
+        let (Some(lat), Some(lon)) = (
+            json_text(&candidate["latitude_deg"]),
+            json_text(&candidate["longitude_deg"]),
+        ) else {
+            return profile(format!("L4 candidate without point for {cnpj}"));
+        };
+        let source_sha = candidate["source_sha256"].as_str().unwrap_or_default();
+        let reference = format!(
+            "ibge-cnefe-2022|sha256={}|address={}|spread_m={}",
+            &source_sha[..source_sha.len().min(16)],
+            candidate["address_source"].as_str().unwrap_or_default(),
+            candidate["spread_m"]
+        );
+        if l4.insert(cnpj.clone(), (lat, lon, reference)).is_some() {
+            return profile(format!("duplicate L4 candidate for {cnpj}"));
+        }
+    }
+
+    let mut counts = LocationCounts::default();
+    let mut out = Vec::new();
+    for (cnpj, decision) in finals {
+        let (quality, provider, point) = match decision.tier.as_str() {
+            "L1_CNPJ" | "L1_ADDRESS" => ("reviewed", "registry-api", l1.get(cnpj).cloned()),
+            "L2_CNPJ" | "L2_ADDRESS" => {
+                let key = (
+                    cnpj.clone(),
+                    decision.osm_type.clone().unwrap_or_default(),
+                    decision.osm_id.unwrap_or_default(),
+                );
+                ("osm-mapped", "openstreetmap", l2.get(&key).cloned())
+            }
+            "L3_ANP" if options.publish_anp_reported => {
+                let point = decision
+                    .api_latitude_deg
+                    .clone()
+                    .zip(decision.api_longitude_deg.clone())
+                    .map(|(lat, lon)| (lat, lon, format!("anp-api|srid={}", decision.api_srid)));
+                ("anp-reported", "anp-revendedores-api", point)
+            }
+            "L4_ADDRESS" if options.publish_address_point => {
+                ("address-point", "ibge-cnefe-2022", l4.get(cnpj).cloned())
+            }
+            _ => continue,
+        };
+        let Some((latitude, longitude, reference)) = point else {
+            return profile(format!(
+                "{} decision for {cnpj} has no matching point",
+                decision.tier
+            ));
+        };
+        brazil_point(cnpj, &latitude, &longitude)?;
+        match quality {
+            "reviewed" => counts.reviewed += 1,
+            "osm-mapped" => counts.osm_mapped += 1,
+            "anp-reported" => counts.anp_reported += 1,
+            _ => counts.address_point += 1,
+        }
+        counts.total += 1;
+        let row = LocationRow {
+            schema_version: LOCATION_SCHEMA,
+            cnpj: cnpj.clone(),
+            tier: decision.tier.clone(),
+            quality,
+            latitude_deg: latitude,
+            longitude_deg: longitude,
+            provider,
+            source_reference: reference,
+        };
+        out.extend(serde_json::to_vec(&row).map_err(json_error)?);
+        out.push(b'\n');
+    }
+    Ok((out, counts))
 }
 
 fn combine_assertions(
@@ -771,6 +1068,8 @@ fn write_run(
     combined: &[serde_json::Value],
     combined_bytes: Option<&[u8]>,
     envelope_bytes: Option<&[u8]>,
+    locations: &LocationsOutput,
+    options: &CoverageOptions,
     timings: &mut Timings,
 ) -> Result<RunOutput, MatchError> {
     let write_start = Instant::now();
@@ -792,6 +1091,52 @@ fn write_run(
         Some(bytes) => Some(write_file(&envelope_path, bytes)?),
         None => None,
     };
+    let (locations_digest, locations_manifest_digest) = if locations.counts.total > 0 {
+        (
+            Some(write_file(
+                &temp.join("locations.ndjson"),
+                &locations.bytes,
+            )?),
+            Some(write_file(
+                &temp.join("locations-manifest.json"),
+                &locations.manifest,
+            )?),
+        )
+    } else {
+        (None, None)
+    };
+    let station_locate = ApplyStep {
+        ready: locations.counts.total > 0,
+        reason: if locations.counts.total > 0 {
+            "ready".to_string()
+        } else {
+            "no_locations".to_string()
+        },
+        count: locations.counts.total,
+        files: BTreeMap::from([
+            (
+                "locations".to_string(),
+                path_string(&output.join("locations.ndjson")),
+            ),
+            (
+                "manifest".to_string(),
+                path_string(&output.join("locations-manifest.json")),
+            ),
+        ]),
+        command: format!(
+            "station-locate --locations {} --manifest {} --dsn <STAGING_DSN>",
+            path_string(&output.join("locations.ndjson")),
+            path_string(&output.join("locations-manifest.json"))
+        ),
+    };
+    let mut owner_decisions = Vec::new();
+    if !options.publish_anp_reported {
+        owner_decisions.push("D1");
+    }
+    if !options.publish_address_point {
+        owner_decisions.push("D2");
+    }
+    let scope = Scope::from_options(options);
 
     let a2_reviews_count = count_reviews(&a2.reviews);
     let a2_reviews_path = a2.dir.join("reviews.ndjson");
@@ -844,29 +1189,33 @@ fn write_run(
         no_database_write_performed: true,
         station_review,
         map_load,
+        station_locate,
         blocked: Blocked {
-            l3_anp: coverage.l3,
-            l4_address: coverage.l4,
-            owner_decisions: vec!["D1", "D2"],
-            a1a_status: "blocked_repeated_429",
+            l3_anp: if options.publish_anp_reported {
+                0
+            } else {
+                coverage.l3
+            },
+            l4_address: if options.publish_address_point {
+                0
+            } else {
+                coverage.l4
+            },
+            owner_decisions,
+            a1a_status: scope.a1a_status,
         },
         coverage: coverage.clone(),
     };
     let coverage_md = coverage_markdown(&CoverageReport {
         format: COVERAGE_FORMAT,
         generation: generation.to_string(),
-        scope: Scope {
-            a1a_status: "blocked_repeated_429",
-            b2_scope: "pilot_municipalities_from_cnefe_rfb_extracts",
-            national_api_complete: false,
-            national_cnefe_complete: false,
-            note: "Pipeline validation, not a national coverage claim.",
-        },
+        scope: scope.clone(),
         api_only,
         inputs: inputs.clone(),
         counts: coverage.clone(),
         per_uf: per_uf.clone(),
         reasons: reasons.clone(),
+        locations: locations.counts.clone(),
         outputs: OutputHashes {
             coverage_md: FileDigest {
                 bytes: 0,
@@ -874,28 +1223,27 @@ fn write_run(
             },
             combined_assertions: combined_digest.clone(),
             envelope: envelope_digest.clone(),
+            locations: locations_digest.clone(),
+            locations_manifest: locations_manifest_digest.clone(),
         },
     });
     let coverage_md_digest = write_file(&temp.join("coverage.md"), coverage_md.as_bytes())?;
     let report = CoverageReport {
         format: COVERAGE_FORMAT,
         generation: generation.to_string(),
-        scope: Scope {
-            a1a_status: "blocked_repeated_429",
-            b2_scope: "pilot_municipalities_from_cnefe_rfb_extracts",
-            national_api_complete: false,
-            national_cnefe_complete: false,
-            note: "Pipeline validation, not a national coverage claim.",
-        },
+        scope: scope.clone(),
         api_only,
         inputs,
         counts: coverage,
         per_uf,
         reasons,
+        locations: locations.counts.clone(),
         outputs: OutputHashes {
             coverage_md: coverage_md_digest,
             combined_assertions: combined_digest,
             envelope: envelope_digest,
+            locations: locations_digest,
+            locations_manifest: locations_manifest_digest,
         },
     };
     let coverage_bytes = {
@@ -966,7 +1314,7 @@ pub fn run(
     let load_ms = elapsed_ms(load_start);
 
     let combine_start = Instant::now();
-    let (national, per_uf, reasons, api_only) =
+    let (national, per_uf, reasons, api_only, finals) =
         compute_coverage(&registry, &a2.decisions, &b2.decisions)?;
     let (combined, duplicates) =
         combine_assertions(a2.assertions.as_ref(), b2.assertions.as_ref())?;
@@ -1019,6 +1367,17 @@ pub fn run(
         }
         None => None,
     };
+    let (location_bytes, location_counts) =
+        build_locations(&finals, &a2.reviews, &combined, &b2.candidates, options)?;
+    let locations = LocationsOutput::new(
+        location_bytes,
+        location_counts,
+        &generation,
+        &registry.sha256,
+        &a2.decisions_sha256,
+        &b2.decisions_sha256,
+        options,
+    )?;
     let combine_ms = elapsed_ms(combine_start);
 
     let inputs = InputHashes {
@@ -1050,6 +1409,8 @@ pub fn run(
         &combined,
         combined_bytes.as_deref(),
         envelope_bytes.as_deref(),
+        &locations,
+        options,
         &mut timings,
     )?;
     output_run.timings.total_ms = elapsed_ms(total_start);
@@ -1116,6 +1477,7 @@ mod tests {
             tier: tier.to_string(),
             publish,
             reason: reason.to_string(),
+            ..TierDecision::default()
         }
     }
 
@@ -1192,8 +1554,10 @@ mod tests {
             false,
             "cnefe_establishment",
         )];
-        let (national, per_uf, reasons, api_only) =
+        let (national, per_uf, reasons, api_only, finals) =
             compute_coverage(&registry, &a2, &b2).expect("coverage");
+        assert_eq!(finals["05938540000134"].tier, "L4_ADDRESS");
+        assert_eq!(finals["08065008000148"].tier, "L3_ANP");
         assert_eq!(national.stations, 3);
         assert_eq!(national.l1, 1);
         assert_eq!(national.l3, 1);
@@ -1310,6 +1674,7 @@ mod tests {
                 },
             )]),
             reasons: BTreeMap::from([("cnpj_tag".to_string(), 1)]),
+            locations: LocationCounts::default(),
             outputs: OutputHashes {
                 coverage_md: FileDigest {
                     bytes: 0,
@@ -1317,6 +1682,8 @@ mod tests {
                 },
                 combined_assertions: None,
                 envelope: None,
+                locations: None,
+                locations_manifest: None,
             },
         };
         let markdown = coverage_markdown(&report);
@@ -1435,6 +1802,7 @@ mod tests {
             &output,
             &CoverageOptions {
                 generation: "test-generation".to_string(),
+                ..CoverageOptions::default()
             },
         )
         .expect("run");
@@ -1464,6 +1832,17 @@ mod tests {
             serde_json::from_slice(&fs::read(output.join("apply-plan.json")).unwrap()).unwrap();
         assert_eq!(plan["no_database_write_performed"], true);
         assert_eq!(plan["blocked"]["owner_decisions"][0], "D1");
+        assert!(result.apply_plan.station_locate.ready);
+        assert_eq!(result.apply_plan.station_locate.count, 1);
+        let locations = fs::read(output.join("locations.ndjson")).unwrap();
+        let manifest: serde_json::Value =
+            serde_json::from_slice(&fs::read(output.join("locations-manifest.json")).unwrap())
+                .unwrap();
+        assert_eq!(manifest["format"], LOCATIONS_FORMAT);
+        assert_eq!(
+            manifest["files"]["locations.ndjson"]["sha256"],
+            sha256_hex(&locations)
+        );
         let first_envelope = fs::read(output.join("map-envelope.json")).unwrap();
         let first_coverage = fs::read(output.join("coverage.json")).unwrap();
         let _ = fs::remove_dir_all(&root);
@@ -1485,6 +1864,7 @@ mod tests {
             &output,
             &CoverageOptions {
                 generation: "test-generation".to_string(),
+                ..CoverageOptions::default()
             },
         )
         .expect("run");
@@ -1493,5 +1873,137 @@ mod tests {
         assert!(!output.join("map-envelope.json").exists());
         assert!(!output.join("map-assertions-combined.json").exists());
         let _ = fs::remove_dir_all(&root);
+    }
+
+    fn located(cnpj: &str, tier: &str) -> TierDecision {
+        let mut decision = decision(
+            cnpj,
+            tier,
+            tier.starts_with("L1") || tier.starts_with("L2"),
+            "test",
+        );
+        if tier.starts_with("L2") {
+            decision.osm_type = Some("node".to_string());
+            decision.osm_id = Some(7);
+        }
+        if tier == "L3_ANP" {
+            decision.api_srid = "4674".to_string();
+            decision.api_latitude_deg = Some("-23.55".to_string());
+            decision.api_longitude_deg = Some("-46.63".to_string());
+        }
+        decision
+    }
+
+    fn ladder_inputs() -> (
+        BTreeMap<String, TierDecision>,
+        Vec<u8>,
+        Vec<serde_json::Value>,
+        Vec<u8>,
+    ) {
+        let finals: BTreeMap<String, TierDecision> = [
+            ("01122233300000", "L1_ADDRESS"),
+            ("05938540000134", "L2_CNPJ"),
+            ("08065008000148", "L3_ANP"),
+            ("11222333000181", "L4_ADDRESS"),
+            ("33000167000101", "L5"),
+        ]
+        .into_iter()
+        .map(|(cnpj, tier)| (cnpj.to_string(), located(cnpj, tier)))
+        .collect();
+        let reviews = concat!(
+            "{\"cnpj\":\"01122233300000\",\"latitude\":-25.4,\"longitude\":-49.2,",
+            "\"method\":\"ANP_REGISTRY_API+OSM_ADDRESS_NAME\",\"reviewer\":\"r\",\"evidence\":\"e\"}\n"
+        )
+        .as_bytes()
+        .to_vec();
+        let l2 = vec![assertion(
+            "11111111-1111-4111-8111-111111111111",
+            "05938540000134",
+            7,
+            "Posto",
+        )];
+        let candidates = concat!(
+            "{\"cnpj\":\"11222333000181\",\"tier\":\"L4_ADDRESS\",\"latitude_deg\":\"-15.6\",",
+            "\"longitude_deg\":\"-56.1\",\"address_source\":\"rfb\",\"spread_m\":0.0,",
+            "\"source_sha256\":\"0123456789abcdef0123\"}\n"
+        )
+        .as_bytes()
+        .to_vec();
+        (finals, reviews, l2, candidates)
+    }
+
+    fn rows(bytes: &[u8]) -> Vec<serde_json::Value> {
+        ndjson_objects(bytes).unwrap()
+    }
+
+    #[test]
+    fn locations_emit_one_best_tier_pin_per_station() {
+        let (finals, reviews, l2, candidates) = ladder_inputs();
+        let options = CoverageOptions {
+            publish_anp_reported: true,
+            publish_address_point: true,
+            ..CoverageOptions::default()
+        };
+        let (bytes, counts) =
+            build_locations(&finals, &reviews, &l2, &candidates, &options).unwrap();
+        let rows = rows(&bytes);
+        let qualities: Vec<&str> = rows
+            .iter()
+            .map(|row| row["quality"].as_str().unwrap())
+            .collect();
+        assert_eq!(
+            qualities,
+            ["reviewed", "osm-mapped", "anp-reported", "address-point"]
+        );
+        assert_eq!(counts.total, 4);
+        assert_eq!(rows[0]["latitude_deg"], "-25.4");
+        assert_eq!(rows[1]["source_reference"], "osm:node/7|ODbL-1.0");
+        assert_eq!(rows[2]["latitude_deg"], "-23.55");
+        assert_eq!(rows[2]["source_reference"], "anp-api|srid=4674");
+        assert_eq!(rows[3]["provider"], "ibge-cnefe-2022");
+        // No L5 row, never a centroid.
+        assert!(rows.iter().all(|row| row["cnpj"] != "33000167000101"));
+        let (again, _) = build_locations(&finals, &reviews, &l2, &candidates, &options).unwrap();
+        assert_eq!(bytes, again, "deterministic");
+    }
+
+    #[test]
+    fn locations_withhold_l3_l4_without_owner_decisions() {
+        let (finals, reviews, l2, candidates) = ladder_inputs();
+        let (bytes, counts) = build_locations(
+            &finals,
+            &reviews,
+            &l2,
+            &candidates,
+            &CoverageOptions::default(),
+        )
+        .unwrap();
+        assert_eq!(counts.total, 2);
+        assert_eq!(counts.anp_reported + counts.address_point, 0);
+        let only_d1 = CoverageOptions {
+            publish_anp_reported: true,
+            ..CoverageOptions::default()
+        };
+        let (_, counts) = build_locations(&finals, &reviews, &l2, &candidates, &only_d1).unwrap();
+        assert_eq!((counts.anp_reported, counts.address_point), (1, 0));
+        assert_eq!(rows(&bytes).len(), 2);
+    }
+
+    #[test]
+    fn locations_refuse_a_tier_without_its_point_or_outside_brazil() {
+        let (mut finals, reviews, l2, candidates) = ladder_inputs();
+        let options = CoverageOptions {
+            publish_anp_reported: true,
+            publish_address_point: true,
+            ..CoverageOptions::default()
+        };
+        finals.get_mut("08065008000148").unwrap().api_latitude_deg = None;
+        assert!(build_locations(&finals, &reviews, &l2, &candidates, &options).is_err());
+        let (mut finals, ..) = ladder_inputs();
+        finals.get_mut("08065008000148").unwrap().api_latitude_deg = Some("48.85".to_string());
+        assert!(build_locations(&finals, &reviews, &l2, &candidates, &options).is_err());
+        let (mut finals, ..) = ladder_inputs();
+        finals.get_mut("05938540000134").unwrap().osm_id = Some(8);
+        assert!(build_locations(&finals, &reviews, &l2, &candidates, &options).is_err());
     }
 }
