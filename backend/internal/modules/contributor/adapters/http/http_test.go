@@ -97,6 +97,10 @@ func TestServiceError_CTB(t *testing.T) {
 		{domain.ErrOverrideRequired, http.StatusConflict, "contributor.override-required"},
 		{domain.ErrClaimState, http.StatusConflict, "contributor.claim-state"},
 		{domain.ErrUnavailable, http.StatusServiceUnavailable, "contributor.unavailable"},
+		// Admin mutation envelope errors keep the admin codes (ADM-12).
+		{admindomain.ErrConflict, http.StatusConflict, "admin.conflict"},
+		{admindomain.ErrInvalid, http.StatusBadRequest, "admin.invalid"},
+		{admindomain.ErrUnauthorized, http.StatusUnauthorized, "admin.denied"},
 	} {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodPost, "/v1/contributor/claims", nil)
