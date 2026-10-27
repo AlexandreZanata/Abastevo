@@ -19,7 +19,7 @@ func (s *Service) ReadProfile(ctx context.Context, accountID string) (ProfileRes
 	if !s.enabled() || !domain.ValidUUID(accountID) {
 		return ProfileResult{}, domain.ErrInvalid
 	}
-	var out ProfileResult
+	out := ProfileResult{Links: []domain.Link{}, Roles: []string{}}
 	err := s.Store.RunInTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
 		profile, found, err := s.Store.GetProfile(ctx, tx, accountID)
 		if err != nil {
