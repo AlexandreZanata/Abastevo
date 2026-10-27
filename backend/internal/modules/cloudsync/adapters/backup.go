@@ -33,7 +33,7 @@ func (s *Store) Manifest(ctx context.Context, p app.Principal) (app.BackupManife
 	}
 	counts := map[string]int64{}
 	hash := sha256.New()
-	for _, dataset := range []string{"vehicles", "favorites", "preferences"} {
+	for _, dataset := range domain.Datasets() {
 		rows, err := query.ListRecords(ctx, q.ListRecordsParams{AccountID: uid(p.AccountID), Dataset: dataset, ID: uid(zeroID), Limit: 1001})
 		if err != nil {
 			return app.BackupManifest{}, domain.ErrUnavailable
@@ -46,7 +46,7 @@ func (s *Store) Manifest(ctx context.Context, p app.Principal) (app.BackupManife
 		}
 	}
 	enabled := []string{}
-	for _, d := range []string{"vehicles", "favorites", "preferences"} {
+	for _, d := range domain.Datasets() {
 		if state.ConsentMask&datasetBit(d) != 0 {
 			enabled = append(enabled, d)
 		}

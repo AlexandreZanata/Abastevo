@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: abastevo-temp-web
+  name: abastevo-temp-web
+  namespace: abastevo-temp
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: abastevo-temp-web
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: abastevo-temp-web
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - args:
+        - caddy
+        - run
+        - --config
+        - /etc/caddy/Caddyfile
+        - --adapter
+        - caddyfile
+        env:
+        - name: GOMAXPROCS
+          value: '1'
+        - name: GOMEMLIMIT
+          value: 200MiB
+        image: ${CADDY_IMAGE}
+        imagePullPolicy: Never
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /robots.txt
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 1
+        name: caddy
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+            - NET_BIND_SERVICE
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/caddy
+          name: caddyfile
+          readOnly: true
+        - mountPath: /srv/landing
+          name: landing
+          readOnly: true
+        - mountPath: /srv/portal
+          name: portal
+          readOnly: true
+        - mountPath: /data
+          name: caddy-data
+        - mountPath: /config
+          name: caddy-config
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: abastevo-temp-web-caddyfile
+        name: caddyfile
+      - hostPath:
+          path: ${LANDING_ROOT}
+          type: Directory
+        name: landing
+      - hostPath:
+          path: ${PORTAL_MOUNT_PATH}
+          type: Directory
+        name: portal
+      - emptyDir:
+          sizeLimit: 16Mi
+        name: caddy-data
+      - emptyDir:
+          sizeLimit: 1Mi
+        name: caddy-config

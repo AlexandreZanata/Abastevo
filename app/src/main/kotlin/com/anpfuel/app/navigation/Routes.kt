@@ -20,6 +20,7 @@ object Routes {
         return "map/plan/$tripId"
     }
     const val PROFILE = "profile"
+    const val DRIVER_HUB = "driver-hub"
     const val GAMES = "games"
     const val LOCATION = "location"
     const val HISTORY = "history"
@@ -30,10 +31,24 @@ object Routes {
     const val PRIVACY = "privacy"
     const val VEHICLES = "vehicles"
     const val VEHICLE_ENTRIES = "vehicle-entries/{vehicleId}"
+    const val VEHICLE_ENTRIES_ACTION = "vehicle-entries/{vehicleId}?action={action}"
 
     fun vehicleEntries(vehicleId: String): String {
         require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
         return "vehicle-entries/$vehicleId"
+    }
+
+    const val DRIVER_WORK = "driver-work/{vehicleId}"
+
+    fun driverWork(vehicleId: String): String {
+        require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
+        return "driver-work/$vehicleId"
+    }
+
+    fun vehicleEntriesAction(vehicleId: String, action: String): String {
+        require(java.util.UUID.fromString(vehicleId).toString() == vehicleId)
+        require(action == "refuel" || action == "charge")
+        return "vehicle-entries/$vehicleId?action=$action"
     }
 
     const val CHARGING_EXPLORE = "charging-explore/{vehicleId}"
