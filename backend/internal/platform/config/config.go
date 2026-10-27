@@ -9,6 +9,7 @@ package config
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"net"
@@ -94,6 +95,13 @@ const (
 	keyQualitySanctionsDiscoveryEnabled   = "ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED"
 	keyQualityDiscoveryEnabled            = "ANPFUEL_QUALITY_DISCOVERY_ENABLED"
 	keyQualityRevalidationEnabled         = "ANPFUEL_QUALITY_REVALIDATION_ENABLED"
+	// Administrative surface (ADR-023). The raw key never reaches the
+	// process: only its lowercase SHA-256 is configured. No hash means no
+	// /v1/admin/* route is registered.
+	keyAdminKeySHA256     = "ANPFUEL_ADMIN_KEY_SHA256"
+	keyAdminKeySHA256Next = "ANPFUEL_ADMIN_KEY_SHA256_NEXT"
+	keyAdminOrigin        = "ANPFUEL_ADMIN_ORIGIN"
+	keyAdminAllowedCIDRs  = "ANPFUEL_ADMIN_ALLOWED_CIDRS"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -195,6 +203,14 @@ type Config struct {
 	// Payments holds provider switches and credentials; LogValue/Preflight
 	// expose readiness only, never key material.
 	Payments PaymentsConfig
+	// AdminKeyHashes are the accepted lowercase SHA-256 digests (current
+	// plus optional rotation value). Empty keeps the admin routes unmounted.
+	// AdminOrigin must exactly match the browser Origin for non-GET admin
+	// requests. AdminAllowedCIDRs is the optional network fence. None of
+	// these values is a raw key and none is logged.
+	AdminKeyHashes    []string
+	AdminOrigin       string
+	AdminAllowedCIDRs []netip.Prefix
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -207,6 +223,7 @@ func (c Config) LogValue() slog.Value {
 		slog.Int64("max_body_bytes", c.MaxBodyBytes),
 		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
 		slog.Bool("db_configured", c.DatabaseURL != ""),
+		slog.Bool("admin_configured", len(c.AdminKeyHashes) > 0),
 		slog.Any("r2", c.R2.r2LogValue()),
 		slog.Any("payments", c.Payments.logValue()),
 	)
@@ -549,6 +566,13 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	}
 	cfg.R2 = r2
 	cfg.Payments = loadPayments(getenv, cfg.Env)
+	adminHashes, adminOrigin, adminCIDRs, err := loadAdmin(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.AdminKeyHashes = adminHashes
+	cfg.AdminOrigin = adminOrigin
+	cfg.AdminAllowedCIDRs = adminCIDRs
 	if raw, _ := getenv(keyEvidenceMaxPending); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 || n > 100 {
@@ -567,6 +591,66 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		cfg.DevelopmentPhotoPreviewUntil = deadline
 	}
 	return cfg, nil
+}
+
+// loadAdmin validates the optional administrative surface. A malformed hash,
+// origin or CIDR fails startup by variable name only; no value is echoed. No
+// hash keeps the routes unmounted (ADM-01).
+func loadAdmin(getenv func(string) (string, bool)) ([]string, string, []netip.Prefix, error) {
+	var hashes []string
+	seen := map[string]bool{}
+	for _, name := range []string{keyAdminKeySHA256, keyAdminKeySHA256Next} {
+		raw, _ := getenv(name)
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		if !validAdminHash(raw) {
+			return nil, "", nil, fmt.Errorf("%s must be 64 lowercase hex characters", name)
+		}
+		if !seen[raw] {
+			seen[raw] = true
+			hashes = append(hashes, raw)
+		}
+	}
+
+	origin, _ := getenv(keyAdminOrigin)
+	origin = strings.TrimSpace(origin)
+	if origin != "" {
+		parsed, err := url.Parse(origin)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
+			parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" ||
+			parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+			return nil, "", nil, fmt.Errorf("%s must be an http(s) origin", keyAdminOrigin)
+		}
+		origin = parsed.Scheme + "://" + parsed.Host
+	}
+	if len(hashes) > 0 && origin == "" {
+		return nil, "", nil, fmt.Errorf("%s is required when an admin key hash is configured", keyAdminOrigin)
+	}
+
+	var cidrs []netip.Prefix
+	rawCIDRs, _ := getenv(keyAdminAllowedCIDRs)
+	for _, part := range strings.Split(rawCIDRs, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(part)
+		if err != nil {
+			return nil, "", nil, fmt.Errorf("%s must be comma-separated CIDRs", keyAdminAllowedCIDRs)
+		}
+		cidrs = append(cidrs, prefix.Masked())
+	}
+	return hashes, origin, cidrs, nil
+}
+
+func validAdminHash(raw string) bool {
+	if len(raw) != 64 || strings.ToLower(raw) != raw {
+		return false
+	}
+	_, err := hex.DecodeString(raw)
+	return err == nil
 }
 
 // validTermsDigest bounds the configured training-terms digest before

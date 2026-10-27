@@ -734,6 +734,9 @@ func run() error {
 		},
 	}
 	premiumHTTP.RegisterRoutes(router)
+	// Optional administrative surface (ADR-023). No configured key hash means
+	// no route is mounted and every /v1/admin/* path stays 404.
+	registerAdminRoutes(router, cfg, pool.Underlying(), trustedProxies)
 	// Free document-free quality participation; payment capabilities never enter.
 	qualityReportStore := &qualityadapters.ReportStore{ConsumeBudget: func(ctx context.Context, tx pgx.Tx, owner string) error {
 		digest := sha256.Sum256([]byte("quality-reports:" + owner))

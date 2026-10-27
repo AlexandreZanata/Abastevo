@@ -42,6 +42,8 @@ tags:
     description: Authenticated station/fuel ratings and comments plus anonymous reads.
   - name: premium
     description: Private optional Premium subscription infrastructure; real payments OFF.
+  - name: admin
+    description: Owner administrative session surface; unmounted unless a key hash is configured.
 paths:
   /health/live:
     get:
@@ -5993,6 +5995,148 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/admin/session:
+    post:
+      tags:
+      - admin
+      summary: Exchange the owner key for an administrative session
+      description: JSON body only; keys in the query string are rejected. The raw key never persists. Successful login sets the __Host-abv_admin cookie and returns the per-session CSRF token. Responses are no-store and never indexed.
+      operationId: adminLogin
+      x-implementation-status: source-local-done
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+      responses:
+        '200':
+          description: Administrative session issued.
+          headers:
+            Set-Cookie:
+              schema: {type: string}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminLoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '413':
+          description: Body exceeds the 16 KiB administrative cap.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    get:
+      tags:
+      - admin
+      summary: Current administrative session
+      description: Cookie-authenticated read; the idle and absolute timeouts are enforced server-side. No request body.
+      operationId: adminSession
+      responses:
+        '200':
+          description: Current session metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    delete:
+      tags:
+      - admin
+      summary: Log out the administrative session
+      description: Requires the session cookie, X-Admin-CSRF, an exact Origin match, a 10–500 character reason and an Idempotency-Key UUID.
+      operationId: adminLogout
+      parameters:
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '204':
+          description: Session revoked and cookie cleared.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          description: Body exceeds the 16 KiB administrative cap.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/admin/sessions/revoke-all:
+    post:
+      tags:
+      - admin
+      summary: Revoke every administrative session
+      description: Requires the session cookie, X-Admin-CSRF, an exact Origin match, a 10–500 character reason and an Idempotency-Key UUID. The caller session is revoked too.
+      operationId: adminRevokeAllSessions
+      parameters:
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema: {type: string}
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '204':
+          description: All administrative sessions revoked and cookie cleared.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          description: Body exceeds the 16 KiB administrative cap.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   parameters:
     QualityCompanyStationSelector:
@@ -7874,6 +8018,45 @@ components:
           - true
         payments_configured:
           type: boolean
+    AdminLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [key]
+      properties:
+        key:
+          type: string
+          maxLength: 16384
+    AdminLoginResponse:
+      type: object
+      additionalProperties: false
+      required: [csrf_token, expires_at]
+      properties:
+        csrf_token:
+          type: string
+          minLength: 1
+        expires_at:
+          type: string
+          format: date-time
+    AdminSessionResponse:
+      type: object
+      additionalProperties: false
+      required: [key_fingerprint, expires_at]
+      properties:
+        key_fingerprint:
+          type: string
+          pattern: '^[0-9a-f]{12}$'
+        expires_at:
+          type: string
+          format: date-time
+    AdminMutationRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
     PremiumPurchaseReceipt:
       type: object
       additionalProperties: false

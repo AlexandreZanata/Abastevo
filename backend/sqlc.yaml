@@ -352,3 +352,16 @@ sql:
         out: db/queries/charging
         sql_package: pgx/v5
         emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/admin
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000140_admin_sessions_audit.sql
+    gen:
+      go:
+        package: admin
+        out: db/queries/admin
+        sql_package: pgx/v5
+        emit_json_tags: true

@@ -1,5 +1,15 @@
 # Current execution state
 
+- A1 admin key authentication, sessions and audit 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-a1-admin-auth` from `origin/main`
+  `44b7b915`; stacked on planning PR #161 (contract/ADR/plan not yet on
+  `main`). ADM-01…ADM-12 implemented with S1–S20 tests, migration `000140`,
+  config/ops keygen and OpenAPI routes. Tested revision: branch head before
+  the evidence commit; `go test -race ./...` 127 ok / 0 fail, PostGIS
+  admin+cmd/api integration ok, `make quick-verify` ok (54s), secret scan
+  clean. [Evidence](../../backend/evidence/admin/A1-ADMIN-AUTH.md). Next: push,
+  open PR to `main`, then A2 from this head (stacked if PR 1 is unmerged).
+
 - CD-01 staging release artifacts 2026-10-27: INTEGRATED / LOG_CLEAN_RUN_PENDING.
   PR #158 (`ef86cc93`) and the ORAS pin fix PR #159 (`2cd8f0ac`) are merged.
   Run `40494565772` published the signed manifest and images; cosign,
