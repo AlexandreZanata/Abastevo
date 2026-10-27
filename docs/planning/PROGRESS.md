@@ -1,5 +1,15 @@
 # Current execution state
 
+- MAP completion MC-C1 retry 2026-10-27: West regeneration recorded. Base
+  `394c1389` plus this task. The failed `Brazil_Northeast Region_West` work
+  was preserved under `old-run-20261027/` and regenerated alone with
+  `--timeout 3600 --replace`: 185,957,500 bytes, SHA-256
+  `021f0cab...539a23d420`, launch-to-package ~2,227 s. All 23 regional packages
+  are now present on local disk (1,953,691,272 bytes); signed distribution,
+  staging proof, World/WorldCoasts and device validation remain pending.
+  Evidence: [MC-C1](../backend/evidence/maps/map-completion/MC-C1.md). Time:
+  ~30 min supervision/evidence plus ~37 min machine time.
+
 - MAP completion MC-A3 2026-10-27: LOCAL_DONE. Base `23bc459b` plus this
   task. B-BR-MAP-15 and the Rust `validate_anp_points` use the official IBGE
   malha (CC BY 4.0, 5,571 features): 45,807 input -> 37,415 valid, 6,790 no
