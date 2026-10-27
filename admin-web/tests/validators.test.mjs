@@ -58,3 +58,19 @@ test('end date: optional, calendar-valid, bounded', async () => {
   assert.equal(v.defaultEndDate(now), '2026-11-26');
   assert.equal(v.toEndOfDayIso('2026-11-26'), '2026-11-26T00:00:00Z');
 });
+
+test('github login and roles mirror the contract rules', async () => {
+  const v = await loadValidators();
+  for (const login of ['a', 'octocat', 'user-name', 'A1-b2']) {
+    assert.equal(v.githubLoginError(login), null, login);
+  }
+  for (const login of ['', 'x'.repeat(40), '-abc', 'abc-', 'a--b', 'a_b', 'a b']) {
+    assert.ok(v.githubLoginError(login) !== null, login || '(empty)');
+  }
+  assert.equal(v.isRole('support_agent'), true);
+  assert.equal(v.isRole('administrator'), false);
+  assert.equal(v.isRole(''), false);
+  assert.equal(v.isClaimState(''), true);
+  assert.equal(v.isClaimState('PENDING'), true);
+  assert.equal(v.isClaimState('BOGUS'), false);
+});

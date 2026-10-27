@@ -1,5 +1,16 @@
 # Current execution state
 
+- B2 admin web contributors/roles/audit 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-b2-admin-web-contributors` from B1,
+  PR stacked on #170 (which merges only after #164). Contributors view
+  (snapshot, claims approve/reject with override, direct link, hide/unhide),
+  roles section on account detail, audit view with filters. Tested revision:
+  branch head; admin-web gate green (21/21); local integration proven
+  against the fixed A4 backend on disposable PostGIS
+  (approve/link/hide/assign/revoke/audit/logout, screenshots included).
+  [Evidence](../../backend/evidence/admin/B2-ADMIN-WEB.md). Next: B3 after
+  user authorization (serving + staging need infra decisions).
+
 - B1 admin web panel 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING. Branch
   `codex/adm-b1-admin-web` from `origin/main` `d4dcf716`. New `admin-web/`
   package (TS 7.0.2, no framework/runtime dep): login + accounts pages,

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="description" content="Painel de administração: login, contas e grants.">
+  <meta name="description" content="Painel de administração: login, contas, contribuidores e auditoria.">
   <title>Painel de administração</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/assets/styles.css">
@@ -14,6 +14,11 @@
   <a class="skip-link" href="#main">Pular para o conteúdo</a>
   <header class="admin-topbar">
     <span class="admin-brand">Painel de administração</span>
+    <nav aria-label="Seções" id="main-nav" hidden>
+      <a href="/admin/accounts/" data-route="/admin/accounts/">Contas</a>
+      <a href="/admin/contributors/" data-route="/admin/contributors/">Contribuidores</a>
+      <a href="/admin/audit/" data-route="/admin/audit/">Auditoria</a>
+    </nav>
     <span class="admin-session" id="session-info" hidden>Sessão <span id="session-fingerprint">…</span> · expira em <span id="session-expiry">…</span></span>
     <nav aria-label="Sessão"><button id="logout-button" type="button" hidden>Sair</button></nav>
   </header>
@@ -67,6 +72,96 @@
           <p id="grant-error" class="error" role="alert"></p>
           <button type="submit">Conceder</button>
         </form>
+        <h3>Papéis da equipe</h3>
+        <p>Os papéis não concedem permissões por si sós. Eventos recentes aparecem abaixo.</p>
+        <ul id="role-events" aria-live="polite"></ul>
+        <form id="role-form" method="post" action="#">
+          <label for="role-select">Papel</label>
+          <select id="role-select" name="role">
+            <option value="community_moderator">Moderação da comunidade</option>
+            <option value="station_reviewer">Revisão de postos</option>
+            <option value="contributor_curator">Curadoria de contribuidores</option>
+            <option value="support_agent">Suporte</option>
+          </select>
+          <label for="role-end">Data final (opcional)</label>
+          <input id="role-end" name="end" type="date">
+          <label class="checkbox"><input id="role-no-end" name="no-end" type="checkbox"> Sem data final</label>
+          <label for="role-reason">Motivo (10 a 500 caracteres)</label>
+          <textarea id="role-reason" name="reason" rows="3" required></textarea>
+          <p id="role-error" class="error" role="alert"></p>
+          <button type="submit">Atribuir papel</button>
+        </form>
+      </section>
+    </div>
+    <div id="view-contributors" hidden>
+      <section class="card" aria-labelledby="snapshot-title">
+        <h1 id="snapshot-title">Contribuidores do GitHub</h1>
+        <p id="snapshot-error" class="error" role="alert"></p>
+        <p>Repositório <span id="snapshot-repo">…</span> · atualizado em <span id="snapshot-fetched">…</span>
+          <span id="snapshot-stale" hidden> · desatualizado</span></p>
+        <form id="snapshot-form" method="get" action="#">
+          <button type="submit">Atualizar agora</button>
+        </form>
+        <ul id="snapshot-list"></ul>
+      </section>
+      <section class="card" aria-labelledby="claims-title">
+        <h2 id="claims-title">Fila de claims</h2>
+        <form id="claims-filter-form" method="get" action="#">
+          <label for="claims-state">Estado</label>
+          <select id="claims-state" name="state">
+            <option value="">Todos</option>
+            <option value="PENDING">PENDING</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="REJECTED">REJECTED</option>
+            <option value="WITHDRAWN">WITHDRAWN</option>
+            <option value="EXPIRED">EXPIRED</option>
+          </select>
+          <button type="submit">Filtrar</button>
+        </form>
+        <p id="claims-error" class="error" role="alert"></p>
+        <ul id="claims-list"></ul>
+        <button id="claims-more" type="button" hidden>Carregar mais</button>
+      </section>
+      <section class="card" aria-labelledby="link-title">
+        <h2 id="link-title">Vincular GitHub</h2>
+        <form id="link-form" method="post" action="#">
+          <label for="link-account">ID da conta</label>
+          <input id="link-account" name="account" type="text" required>
+          <label for="link-login">Login do GitHub</label>
+          <input id="link-login" name="login" type="text" required>
+          <label for="link-reason">Motivo (10 a 500 caracteres)</label>
+          <textarea id="link-reason" name="reason" rows="3" required></textarea>
+          <label class="checkbox"><input id="link-override" name="override" type="checkbox"> Override (login fora do snapshot)</label>
+          <p id="link-error" class="error" role="alert"></p>
+          <button type="submit">Vincular</button>
+        </form>
+      </section>
+      <section class="card" aria-labelledby="visibility-title">
+        <h2 id="visibility-title">Visibilidade do perfil</h2>
+        <form id="visibility-form" method="post" action="#">
+          <label for="visibility-account">ID da conta</label>
+          <input id="visibility-account" name="account" type="text" required>
+          <label for="visibility-reason">Motivo (10 a 500 caracteres)</label>
+          <textarea id="visibility-reason" name="reason" rows="3" required></textarea>
+          <p id="visibility-error" class="error" role="alert"></p>
+          <button type="submit" name="visibility-action" value="hide">Ocultar</button>
+          <button type="submit" name="visibility-action" value="unhide">Exibir</button>
+        </form>
+      </section>
+    </div>
+    <div id="view-audit" hidden>
+      <section class="card" aria-labelledby="audit-title">
+        <h1 id="audit-title">Trilha de auditoria</h1>
+        <form id="audit-filter-form" method="get" action="#">
+          <label for="audit-action">Ação</label>
+          <input id="audit-action" name="action" type="text">
+          <label for="audit-target">ID do alvo</label>
+          <input id="audit-target" name="target" type="text">
+          <button type="submit">Filtrar</button>
+        </form>
+        <p id="audit-error" class="error" role="alert"></p>
+        <ul id="audit-list"></ul>
+        <button id="audit-more" type="button" hidden>Carregar mais</button>
       </section>
     </div>
   </main>

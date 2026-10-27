@@ -10,6 +10,9 @@ const DEFAULT_ROOT = path.resolve(__dirname, '..');
 export function checkDist(options = {}) {
   const root = options.projectRoot || DEFAULT_ROOT;
   const distDir = options.distDir || path.join(root, 'dist');
+  // dist/ is served mounted at /admin/* (Front B3); resolve absolute links
+  // against that mount point.
+  const basePath = options.basePath || '/admin';
   const errors = [];
 
   if (!fs.existsSync(distDir)) {
@@ -17,7 +20,7 @@ export function checkDist(options = {}) {
   }
 
   // 1. Required files inventory
-  for (const file of ['login/index.html', 'accounts/index.html', '404.html', '_headers', 'robots.txt']) {
+  for (const file of ['login/index.html', 'accounts/index.html', 'contributors/index.html', 'audit/index.html', '404.html', '_headers', 'robots.txt']) {
     if (!fs.existsSync(path.join(distDir, file))) {
       errors.push(`Missing required file in dist: ${file}`);
     }
@@ -44,7 +47,7 @@ export function checkDist(options = {}) {
   }
 
   // 3. HTML pages: references, robots, titles
-  for (const rel of ['login/index.html', 'accounts/index.html', '404.html']) {
+  for (const rel of ['login/index.html', 'accounts/index.html', 'contributors/index.html', 'audit/index.html', '404.html']) {
     const full = path.join(distDir, rel);
     if (!fs.existsSync(full)) continue;
     const content = fs.readFileSync(full, 'utf8');
@@ -66,7 +69,10 @@ export function checkDist(options = {}) {
         errors.push(`${rel} does not reference fingerprinted app JS`);
       }
       for (const match of content.matchAll(/(?:src|href)="(\/[^"#?]+)"/g)) {
-        const resourcePath = match[1];
+        let resourcePath = match[1];
+        if (resourcePath === basePath || resourcePath.startsWith(`${basePath}/`)) {
+          resourcePath = resourcePath.slice(basePath.length) || '/';
+        }
         const diskTarget = resourcePath.endsWith('/')
           ? path.join(distDir, resourcePath, 'index.html')
           : path.join(distDir, resourcePath);

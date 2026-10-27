@@ -12,11 +12,18 @@ import {
   isUnauthorized,
   type AccountDetail,
   type AccountSummary,
+  type AuditEvent,
+  type ClaimView,
   type GrantView,
+  type SnapshotContributor,
+  type StaffAssignment,
 } from './api.js';
 import {
   defaultEndDate,
   endDateError,
+  githubLoginError,
+  isClaimState,
+  isRole,
   isTier,
   isUuid,
   reasonError,
@@ -27,6 +34,8 @@ import {
 const LOGOUT_REASON = 'admin logout via web panel';
 const LOGIN_PATH = '/admin/login/';
 const ACCOUNTS_PATH = '/admin/accounts/';
+const CONTRIBUTORS_PATH = '/admin/contributors/';
+const AUDIT_PATH = '/admin/audit/';
 
 // Arrow wrapper: the DOM fetch requires the window receiver.
 const sameOriginFetch = (input: string, init?: RequestInit): Promise<Response> => fetch(input, init);
@@ -87,32 +96,71 @@ function goAccounts(): void {
   navigate(ACCOUNTS_PATH);
 }
 
+function wireNav(): void {
+  const nav = el<HTMLElement>('main-nav');
+  nav.addEventListener('click', (event) => {
+    const anchor = (event.target as HTMLElement).closest('a[data-route]');
+    if (anchor === null) {
+      return;
+    }
+    event.preventDefault();
+    navigate(anchor.getAttribute('data-route') ?? ACCOUNTS_PATH);
+  });
+}
+
+function hideAllViews(): void {
+  for (const id of ['view-login', 'view-accounts', 'view-contributors', 'view-audit']) {
+    el<HTMLElement>(id).hidden = true;
+  }
+}
+
 function showLogin(): void {
+  hideAllViews();
   el<HTMLElement>('view-login').hidden = false;
-  el<HTMLElement>('view-accounts').hidden = true;
+  el<HTMLElement>('main-nav').hidden = true;
   el<HTMLElement>('session-info').hidden = true;
   el<HTMLButtonElement>('logout-button').hidden = true;
   selected = null;
 }
 
-function showAccounts(): void {
-  el<HTMLElement>('view-login').hidden = true;
-  el<HTMLElement>('view-accounts').hidden = false;
+function showAuthed(viewId: string): void {
+  hideAllViews();
+  el<HTMLElement>(viewId).hidden = false;
+  el<HTMLElement>('main-nav').hidden = false;
   el<HTMLElement>('session-info').hidden = false;
   el<HTMLButtonElement>('logout-button').hidden = false;
 }
 
 function route(): void {
-  // The CSRF token never survives a full load, so the accounts view is only
-  // honest while this document holds a session.
-  if (window.location.pathname === ACCOUNTS_PATH && api.hasSession()) {
-    showAccounts();
+  // The CSRF token never survives a full load, so the authed views are only
+  // honest while this document holds a session. Showing a view also loads
+  // its data: nothing else triggers the first fetch.
+  const path = window.location.pathname;
+  if (api.hasSession() && (path === ACCOUNTS_PATH || path === CONTRIBUTORS_PATH || path === AUDIT_PATH)) {
+    if (path === CONTRIBUTORS_PATH) {
+      showAuthed('view-contributors');
+      void refreshContributors();
+    } else if (path === AUDIT_PATH) {
+      showAuthed('view-audit');
+      auditCursor = '';
+      void loadAudit(false);
+    } else {
+      showAuthed('view-accounts');
+    }
     return;
   }
-  if (window.location.pathname !== LOGIN_PATH) {
+  if (path !== LOGIN_PATH) {
     window.history.replaceState({}, '', LOGIN_PATH);
   }
   showLogin();
+}
+
+async function refreshContributors(): Promise<void> {
+  const stateSelect = el<HTMLSelectElement>('claims-state');
+  claimsState = isClaimState(stateSelect.value) ? stateSelect.value : '';
+  claimsCursor = '';
+  await loadSnapshot(false);
+  await loadClaims(false);
 }
 
 function renderHeader(fingerprint: string, expiresAt: string): void {
@@ -348,6 +396,10 @@ function wireAccounts(): void {
 function boot(): void {
   wireLogin();
   wireAccounts();
+  wireNav();
+  wireContributors();
+  wireRoles();
+  wireAudit();
   window.addEventListener('popstate', route);
   route();
 }
@@ -362,4 +414,377 @@ if (typeof document !== 'undefined') {
   } else {
     start();
   }
+}
+
+let claimsCursor = '';
+let claimsState = '';
+let auditCursor = '';
+
+function renderSnapshotRow(item: SnapshotContributor): HTMLLIElement {
+  const row = document.createElement('li');
+  row.appendChild(text('strong', item.login));
+  const state = item.linked_account_id
+    ? ` vinculado a ${item.linked_account_id}`
+    : ' sem vínculo';
+  row.appendChild(text('span', state));
+  if (item.claim_id) {
+    row.appendChild(text('span', ` · claim ${item.claim_state ?? ''} (${item.claim_proof_status ?? ''})`));
+  }
+  return row;
+}
+
+async function loadSnapshot(refresh: boolean): Promise<void> {
+  setAlert('snapshot-error', '');
+  try {
+    const snapshot = await api.githubContributors(refresh);
+    el<HTMLElement>('snapshot-repo').textContent = snapshot.repo;
+    el<HTMLElement>('snapshot-fetched').textContent = formatDateTime(snapshot.fetched_at);
+    el<HTMLElement>('snapshot-stale').hidden = !snapshot.stale;
+    const list = el<HTMLUListElement>('snapshot-list');
+    clearChildren(list);
+    if (snapshot.contributors.length === 0) {
+      const empty = document.createElement('li');
+      empty.textContent = 'Snapshot vazio.';
+      list.appendChild(empty);
+      return;
+    }
+    for (const item of snapshot.contributors) {
+      list.appendChild(renderSnapshotRow(item));
+    }
+  } catch (error) {
+    if (!isUnauthorized(error)) {
+      setAlert('snapshot-error', errorMessage(error));
+    }
+  }
+}
+
+function renderClaimRow(claim: ClaimView): HTMLLIElement {
+  const row = document.createElement('li');
+  row.appendChild(text('strong', `${claim.github_login} · ${claim.state}`));
+  row.appendChild(text('span', ` prova ${claim.proof_status}`));
+  if (claim.state === 'PENDING') {
+    for (const action of ['approve', 'reject'] as const) {
+      const form = document.createElement('form');
+      form.className = 'inline-form';
+      const reasonInput = document.createElement('input');
+      reasonInput.type = 'text';
+      reasonInput.name = `${action}-reason`;
+      reasonInput.placeholder = 'Motivo da decisão';
+      reasonInput.setAttribute('aria-label', 'Motivo da decisão');
+      form.appendChild(reasonInput);
+      if (action === 'approve') {
+        const overrideLabel = document.createElement('label');
+        overrideLabel.className = 'checkbox';
+        const overrideInput = document.createElement('input');
+        overrideInput.type = 'checkbox';
+        overrideInput.name = 'override';
+        overrideLabel.appendChild(overrideInput);
+        overrideLabel.appendChild(text('span', 'Override'));
+        form.appendChild(overrideLabel);
+      }
+      const button = document.createElement('button');
+      button.type = 'submit';
+      button.textContent = action === 'approve' ? 'Aprovar' : 'Rejeitar';
+      form.appendChild(button);
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const reason = reasonInput.value;
+        const invalid = reasonError(reason);
+        if (invalid !== null) {
+          setAlert('claims-error', invalid);
+          return;
+        }
+        const override = action === 'approve'
+          && (form.querySelector('input[name="override"]') as HTMLInputElement | null)?.checked === true;
+        if (!window.confirm(`${action === 'approve' ? 'Aprovar' : 'Rejeitar'} claim de ${claim.github_login}?`)) {
+          return;
+        }
+        void (async () => {
+          try {
+            if (action === 'approve') {
+              await api.approveClaim(claim.claim_id, reason.trim(), override);
+            } else {
+              await api.rejectClaim(claim.claim_id, reason.trim());
+            }
+            setAlert('claims-error', '');
+            await loadClaims(false);
+          } catch (error) {
+            if (!isUnauthorized(error)) {
+              setAlert('claims-error', errorMessage(error));
+            }
+          }
+        })();
+      });
+      row.appendChild(form);
+    }
+  }
+  return row;
+}
+
+async function loadClaims(append: boolean): Promise<void> {
+  setAlert('claims-error', '');
+  try {
+    const page = await api.listClaims(claimsState, append ? claimsCursor : '');
+    const list = el<HTMLUListElement>('claims-list');
+    if (!append) {
+      clearChildren(list);
+    }
+    for (const claim of page.items) {
+      list.appendChild(renderClaimRow(claim));
+    }
+    claimsCursor = page.next_cursor;
+    el<HTMLButtonElement>('claims-more').hidden = page.next_cursor === '';
+  } catch (error) {
+    if (!isUnauthorized(error)) {
+      setAlert('claims-error', errorMessage(error));
+    }
+  }
+}
+
+function wireContributors(): void {
+  const snapshotForm = el<HTMLFormElement>('snapshot-form');
+  snapshotForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    void loadSnapshot(true);
+  });
+
+  const filterForm = el<HTMLFormElement>('claims-filter-form');
+  const stateSelect = el<HTMLSelectElement>('claims-state');
+  filterForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (!isClaimState(stateSelect.value)) {
+      setAlert('claims-error', 'Estado inválido.');
+      return;
+    }
+    claimsState = stateSelect.value;
+    claimsCursor = '';
+    void loadClaims(false);
+  });
+  el<HTMLButtonElement>('claims-more').addEventListener('click', () => {
+    void loadClaims(true);
+  });
+
+  const linkForm = el<HTMLFormElement>('link-form');
+  linkForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const accountInput = el<HTMLInputElement>('link-account');
+    const loginInput = el<HTMLInputElement>('link-login');
+    const reasonInput = el<HTMLTextAreaElement>('link-reason');
+    const overrideInput = el<HTMLInputElement>('link-override');
+    if (!isUuid(accountInput.value.trim())) {
+      setAlert('link-error', 'ID da conta inválido.');
+      return;
+    }
+    const loginInvalid = githubLoginError(loginInput.value);
+    if (loginInvalid !== null) {
+      setAlert('link-error', loginInvalid);
+      return;
+    }
+    const reasonInvalid = reasonError(reasonInput.value);
+    if (reasonInvalid !== null) {
+      setAlert('link-error', reasonInvalid);
+      return;
+    }
+    if (!window.confirm(`Vincular ${loginInput.value.trim()} à conta?`)) {
+      return;
+    }
+    void (async () => {
+      try {
+        await api.linkGitHub(
+          accountInput.value.trim(),
+          loginInput.value.trim(),
+          reasonInput.value.trim(),
+          overrideInput.checked,
+        );
+        setAlert('link-error', '');
+        reasonInput.value = '';
+        await loadSnapshot(false);
+      } catch (error) {
+        if (!isUnauthorized(error)) {
+          setAlert('link-error', errorMessage(error));
+        }
+      }
+    })();
+  });
+
+  const visibilityForm = el<HTMLFormElement>('visibility-form');
+  const setVisibility = (hidden: boolean): void => {
+    const accountInput = el<HTMLInputElement>('visibility-account');
+    const reasonInput = el<HTMLTextAreaElement>('visibility-reason');
+    if (!isUuid(accountInput.value.trim())) {
+      setAlert('visibility-error', 'ID da conta inválido.');
+      return;
+    }
+    const reasonInvalid = reasonError(reasonInput.value);
+    if (reasonInvalid !== null) {
+      setAlert('visibility-error', reasonInvalid);
+      return;
+    }
+    if (!window.confirm(`${hidden ? 'Ocultar' : 'Exibir'} perfil da conta?`)) {
+      return;
+    }
+    void (async () => {
+      try {
+        await api.setProfileHidden(accountInput.value.trim(), reasonInput.value.trim(), hidden);
+        setAlert('visibility-error', '');
+        reasonInput.value = '';
+      } catch (error) {
+        if (!isUnauthorized(error)) {
+          setAlert('visibility-error', errorMessage(error));
+        }
+      }
+    })();
+  };
+  visibilityForm.addEventListener('click', (event) => {
+    const button = (event.target as HTMLElement).closest('button[name="visibility-action"]');
+    if (button === null) {
+      return;
+    }
+    event.preventDefault();
+    setVisibility(button.getAttribute('value') === 'hide');
+  });
+}
+
+function renderAssignmentRow(assignment: StaffAssignment): HTMLLIElement {
+  const row = document.createElement('li');
+  const until = assignment.end_at === null || assignment.end_at === '' ? 'sem data final' : formatDateTime(assignment.end_at);
+  row.appendChild(text('strong', `${assignment.label} · ${assignment.state}`));
+  row.appendChild(text('span', ` válido até ${until}`));
+  if (assignment.state === 'ACTIVE') {
+    const revokeForm = document.createElement('form');
+    revokeForm.className = 'inline-form';
+    const reasonInput = document.createElement('input');
+    reasonInput.type = 'text';
+    reasonInput.name = 'role-revoke-reason';
+    reasonInput.placeholder = 'Motivo da revogação';
+    reasonInput.setAttribute('aria-label', 'Motivo da revogação');
+    const revokeButton = document.createElement('button');
+    revokeButton.type = 'submit';
+    revokeButton.textContent = 'Revogar papel';
+    revokeForm.appendChild(reasonInput);
+    revokeForm.appendChild(revokeButton);
+    revokeForm.addEventListener('submit', (submitEvent) => {
+      submitEvent.preventDefault();
+      const reason = reasonInput.value;
+      const invalid = reasonError(reason);
+      if (invalid !== null) {
+        setAlert('role-error', invalid);
+        return;
+      }
+      if (!window.confirm(`Revogar papel ${assignment.label}?`)) {
+        return;
+      }
+      void (async () => {
+        try {
+          const revoked = await api.revokeRole(assignment.id, reason.trim());
+          setAlert('role-error', '');
+          clearChildren(row);
+          row.appendChild(text('strong', `${revoked.label} · ${revoked.state}`));
+        } catch (error) {
+          if (!isUnauthorized(error)) {
+            setAlert('role-error', errorMessage(error));
+          }
+        }
+      })();
+    });
+    row.appendChild(revokeForm);
+  }
+  return row;
+}
+
+function resetRoleEvents(): void {
+  const list = el<HTMLUListElement>('role-events');
+  clearChildren(list);
+  const hint = document.createElement('li');
+  hint.textContent = 'Nenhum papel atribuído nesta sessão — atribua abaixo ou consulte a auditoria.';
+  list.appendChild(hint);
+}
+
+function wireRoles(): void {
+  const roleForm = el<HTMLFormElement>('role-form');
+  const roleSelect = el<HTMLSelectElement>('role-select');
+  const endInput = el<HTMLInputElement>('role-end');
+  const noEndCheckbox = el<HTMLInputElement>('role-no-end');
+  roleForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (selected === null) {
+      setAlert('role-error', 'Selecione uma conta primeiro.');
+      return;
+    }
+    if (!isRole(roleSelect.value)) {
+      setAlert('role-error', 'Papel inválido.');
+      return;
+    }
+    const endRaw = noEndCheckbox.checked ? '' : endInput.value;
+    const endInvalid = endDateError(endRaw);
+    if (endInvalid !== null) {
+      setAlert('role-error', endInvalid);
+      return;
+    }
+    const reasonInput = el<HTMLTextAreaElement>('role-reason');
+    const reasonInvalid = reasonError(reasonInput.value);
+    if (reasonInvalid !== null) {
+      setAlert('role-error', reasonInvalid);
+      return;
+    }
+    if (!window.confirm(`Atribuir papel ${roleSelect.value} para ${selected.alias}?`)) {
+      return;
+    }
+    const accountId = selected.account_id;
+    void (async () => {
+      try {
+        const assignment = await api.assignRole(accountId, roleSelect.value, endRaw === '' ? null : toEndOfDayIso(endRaw), reasonInput.value.trim());
+        setAlert('role-error', '');
+        reasonInput.value = '';
+        const list = el<HTMLUListElement>('role-events');
+        clearChildren(list);
+        list.appendChild(renderAssignmentRow(assignment));
+      } catch (error) {
+        if (!isUnauthorized(error)) {
+          setAlert('role-error', errorMessage(error));
+        }
+      }
+    })();
+  });
+}
+
+function renderAuditRow(event: AuditEvent): HTMLLIElement {
+  const row = document.createElement('li');
+  row.appendChild(text('strong', event.action));
+  row.appendChild(text('span', ` · alvo ${event.target_id} · em ${formatDateTime(event.at)} · ${event.reason}`));
+  return row;
+}
+
+async function loadAudit(append: boolean): Promise<void> {
+  setAlert('audit-error', '');
+  const action = el<HTMLInputElement>('audit-action').value.trim();
+  const target = el<HTMLInputElement>('audit-target').value.trim();
+  try {
+    const page = await api.listAudit(action, target, append ? auditCursor : '');
+    const list = el<HTMLUListElement>('audit-list');
+    if (!append) {
+      clearChildren(list);
+    }
+    for (const event of page.items) {
+      list.appendChild(renderAuditRow(event));
+    }
+    auditCursor = page.next_cursor;
+    el<HTMLButtonElement>('audit-more').hidden = page.next_cursor === '';
+  } catch (error) {
+    if (!isUnauthorized(error)) {
+      setAlert('audit-error', errorMessage(error));
+    }
+  }
+}
+
+function wireAudit(): void {
+  const filterForm = el<HTMLFormElement>('audit-filter-form');
+  filterForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    auditCursor = '';
+    void loadAudit(false);
+  });
+  el<HTMLButtonElement>('audit-more').addEventListener('click', () => {
+    void loadAudit(true);
+  });
 }

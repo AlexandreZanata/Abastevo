@@ -79,3 +79,38 @@ export function defaultEndDate(now: Date = new Date()): string {
 export function toEndOfDayIso(date: string): string {
   return `${date}T00:00:00Z`;
 }
+
+export const ROLES = [
+  'community_moderator',
+  'station_reviewer',
+  'contributor_curator',
+  'support_agent',
+] as const;
+export type StaffRole = (typeof ROLES)[number];
+
+export function isRole(raw: string): raw is StaffRole {
+  return (ROLES as readonly string[]).includes(raw);
+}
+
+export const CLAIM_STATES = ['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN', 'EXPIRED'] as const;
+
+export function isClaimState(raw: string): boolean {
+  return raw === '' || (CLAIM_STATES as readonly string[]).includes(raw);
+}
+
+// GitHub login rules (mirror CTB-03): 1–39 chars, alphanumerics or hyphen,
+// no leading/trailing hyphen, no double hyphen.
+export function githubLoginError(raw: string): string | null {
+  const login = raw.trim();
+  if (
+    login.length < 1 ||
+    login.length > 39 ||
+    login.startsWith('-') ||
+    login.endsWith('-') ||
+    login.includes('--') ||
+    !/^[A-Za-z0-9-]+$/.test(login)
+  ) {
+    return 'Login do GitHub inválido.';
+  }
+  return null;
+}
