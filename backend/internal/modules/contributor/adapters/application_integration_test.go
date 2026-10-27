@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	entdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/entitlement/domain"
 	"net/url"
 	"os"
 	"strings"
@@ -297,6 +298,57 @@ func TestApproval_CTB05_CTB06_AtomicGrantAndLink(t *testing.T) {
 	service.Runner = adminStore2
 	if _, err := service.ApproveClaim(context.Background(), m2, secondClaim, true); err != nil {
 		t.Fatalf("override approval err=%v", err)
+	}
+}
+
+// TestApproval_CTB05_LapsedContributorGrant: an expired CONTRIBUTOR grant
+// (still ACTIVE by state) is superseded as "expired" and approval creates a
+// fresh grant instead of failing on the active partial unique index.
+func TestApproval_CTB05_LapsedContributorGrant(t *testing.T) {
+	pool := freshDB(t)
+	accountID := seedAccount(t, pool, "active")
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	session, adminStore := adminSession(t, pool, now)
+	service := testService(t, pool, fakeGitHub{logins: []string{"octocat"}}, now)
+	service.Runner = adminStore
+	lapsedID := newID(t)
+	if _, err := pool.Exec(context.Background(), `INSERT INTO entitlement_grants
+		(id,account_id,tier,policy_version,state,start_at,end_at,reason,created_session_id)
+		VALUES($1,$2,'CONTRIBUTOR',1,'ACTIVE',$3,$4,'synthetic lapsed grant',$5)`,
+		lapsedID, accountID, now.Add(-3*time.Hour), now.Add(-time.Minute), session.ID); err != nil {
+		t.Fatal(err)
+	}
+	claimID := seedClaim(t, pool, accountID, "octocat", "PENDING", "VERIFIED", now.Add(-time.Minute), now.Add(time.Hour))
+	m := mutation(session.ID)
+	m.TargetID = claimID
+	result, err := service.ApproveClaim(context.Background(), m, claimID, false)
+	if err != nil || result.Grant == nil || result.Grant.ID == lapsedID {
+		t.Fatalf("approve=%+v err=%v", result, err)
+	}
+	var state, reason string
+	if err := pool.QueryRow(context.Background(), "SELECT state, revoke_reason FROM entitlement_grants WHERE id=$1", lapsedID).Scan(&state, &reason); err != nil || state != "REVOKED" || reason != entdomain.ExpiredRevokeReason {
+		t.Fatalf("lapsed state=%s reason=%s err=%v", state, reason, err)
+	}
+}
+
+// TestReadProfile_STF05_NoProfileHasEmptyRoles: the owner read answers an
+// empty roles array, never null, when no profile exists.
+func TestReadProfile_STF05_NoProfileHasEmptyRoles(t *testing.T) {
+	pool := freshDB(t)
+	accountID := seedAccount(t, pool, "active")
+	service := testService(t, pool, fakeGitHub{}, time.Now().UTC())
+	result, err := service.ReadProfile(context.Background(), accountID)
+	if err != nil || result.Found || result.Roles == nil {
+		t.Fatalf("read=%+v err=%v", result, err)
+	}
+	// STF-05: a role holder without a contributor profile still reads roles.
+	service.Roles = staffadapters.NewStore(pool)
+	if _, err := pool.Exec(context.Background(), `INSERT INTO staff_assignments(id,account_id,role,state,start_at,end_at,reason) VALUES($1,$2,'support_agent','ACTIVE',clock_timestamp()-interval '1 minute',NULL,'synthetic staff assignment')`, newID(t), accountID); err != nil {
+		t.Fatal(err)
+	}
+	result, err = service.ReadProfile(context.Background(), accountID)
+	if err != nil || result.Found || len(result.Roles) != 1 {
+		t.Fatalf("role holder read=%+v err=%v", result, err)
 	}
 }
 

@@ -53,6 +53,7 @@ type GitHub interface {
 type Grants interface {
 	LockEligibleAccount(context.Context, pgx.Tx, string) (entdomain.Grant, error)
 	ActiveTx(context.Context, pgx.Tx, string, time.Time) ([]entdomain.Grant, error)
+	SupersedeExpiredTx(context.Context, pgx.Tx, string, entdomain.Tier, time.Time) (*entdomain.Grant, error)
 	CreateTx(context.Context, pgx.Tx, entdomain.NewGrant) (entdomain.Grant, error)
 }
 

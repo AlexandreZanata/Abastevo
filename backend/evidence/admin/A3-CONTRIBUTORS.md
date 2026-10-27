@@ -99,3 +99,23 @@ token or e-mail address. Test keys/logins are synthetic.
   admin routes expose them directly.
 - Admin web UI and staging validation are later fronts/tasks. Real GitHub is
   never contacted in tests.
+
+## Review fixes (2026-10-27)
+
+- Public `next_cursor` no longer exposes account ids (CTB-10): the keyset
+  position is AES-GCM encrypted inside the sealed envelope
+  (`TestPublicCursor_CTB10_DoesNotExposeAccountID`).
+- Admin envelope errors (idempotency key reused with another body) map to
+  `409 admin.conflict` instead of `503` (`TestServiceError_CTB`).
+- Claim codes and operation ids are redacted from audit rows (CTB-13,
+  `assertAuditHasNoClaimSecrets` in approve/reject tests).
+- Approval supersedes a lapsed CONTRIBUTOR grant as `expired` (own audit
+  row) instead of failing with `entitlement.exists`
+  (`TestApproval_CTB05_LapsedContributorGrant`).
+- Owner profile read answers `roles: []`, never `null`, without a profile
+  (`TestReadProfile_STF05_NoProfileHasEmptyRoles`).
+- Dependency review: `golang.org/x/text` v0.42.0 (Go project, BSD-3-Clause,
+  already in the module graph as an indirect dependency) is now imported
+  directly for NFC display-name normalization; `go mod tidy` only moves it
+  to the direct block. `govulncheck` in quick-verify reports no
+  vulnerabilities.

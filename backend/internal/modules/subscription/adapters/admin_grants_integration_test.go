@@ -139,3 +139,44 @@ func TestAdminGrant_ENT07_RevokeThenCheckDenies(t *testing.T) {
 		t.Fatalf("revoked grant err=%v", err)
 	}
 }
+
+// TestAdminGrant_ENT10_UnconfiguredPaymentsOnlyAdminUnlocks keeps the pre-A2
+// payment gate: with payment ports unconfigured a verified Play row unlocks
+// nothing, while an admin grant still does (ENT-10).
+func TestAdminGrant_ENT10_UnconfiguredPaymentsOnlyAdminUnlocks(t *testing.T) {
+	pool := freshDB(t)
+	store := NewStore(pool)
+	ctx := context.Background()
+	paid := seedOwner(t, pool)
+	if _, err := pool.Exec(ctx, `INSERT INTO subscription_purchases(token_digest,account_id,environment,package_name,product_id,base_plan_id,state,valid_until,verified_at)
+		VALUES (md5('ent10')||md5('ent10-synthetic'),$1,'test','com.anpfuel','synthetic.premium','monthly','ACTIVE',clock_timestamp()+interval '1 hour',clock_timestamp())`, paid.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	granted := seedOwner(t, pool)
+	if _, err := pool.Exec(ctx, `INSERT INTO entitlement_grants
+		(id,account_id,tier,policy_version,state,start_at,end_at,reason)
+		VALUES($1,$2,'PRO',1,'ACTIVE',clock_timestamp()-interval '1 minute',NULL,'synthetic admin grant')`,
+		newid(t), granted.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	check := func(owner string, adminOnly bool) error {
+		tx, err := pool.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback(ctx)
+		if adminOnly {
+			return store.RequireAdminCapability(ctx, tx, owner, "cloud.sync")
+		}
+		return store.RequireCapability(ctx, tx, owner, "cloud.sync")
+	}
+	if err := check(paid.AccountID, false); err != nil {
+		t.Fatalf("configured payments deny the paid row: %v", err)
+	}
+	if err := check(paid.AccountID, true); !errors.Is(err, subdomain.ErrDenied) {
+		t.Fatalf("unconfigured payments unlock the paid row: %v", err)
+	}
+	if err := check(granted.AccountID, true); err != nil {
+		t.Fatalf("unconfigured payments deny the admin grant: %v", err)
+	}
+}

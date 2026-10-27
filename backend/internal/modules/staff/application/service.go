@@ -61,8 +61,24 @@ func (s *Service) Assign(ctx context.Context, m adminapp.Mutation, in AssignInpu
 		if err := s.Store.LockEligibleAccount(ctx, tx, in.AccountID); err != nil {
 			return adminapp.MutationResult{}, nil, err
 		}
-		if _, found, err := s.Store.GetActiveAssignment(ctx, tx, in.AccountID, in.Role); err != nil {
+		var events []adminapp.AuditEvent
+		current, found, err := s.Store.GetActiveAssignment(ctx, tx, in.AccountID, in.Role)
+		if err != nil {
 			return adminapp.MutationResult{}, nil, err
+		}
+		if found && current.EndAt != nil && !current.EndAt.After(now) {
+			// A lapsed assignment no longer counts but still holds the active
+			// unique index; revoke it as expired before assigning again.
+			lapsed, err := s.Store.Revoke(ctx, tx, current.ID, now, domain.ExpiredRevokeReason)
+			if err != nil {
+				return adminapp.MutationResult{}, nil, err
+			}
+			beforeBody, _ := json.Marshal(current)
+			afterBody, _ := json.Marshal(lapsed)
+			events = append(events, adminapp.AuditEvent{
+				Action: "admin.staff.revoke", TargetType: "staff_assignment", TargetID: lapsed.ID,
+				Reason: domain.ExpiredRevokeReason, Before: beforeBody, After: afterBody,
+			})
 		} else if found {
 			return adminapp.MutationResult{}, nil, domain.ErrConflict
 		}
@@ -81,10 +97,10 @@ func (s *Service) Assign(ctx context.Context, m adminapp.Mutation, in AssignInpu
 		if err != nil {
 			return adminapp.MutationResult{}, nil, domain.ErrUnavailable
 		}
-		return adminapp.MutationResult{Status: 201, Body: body}, []adminapp.AuditEvent{{
+		return adminapp.MutationResult{Status: 201, Body: body}, append(events, adminapp.AuditEvent{
 			Action: "admin.staff.assign", TargetType: "staff_assignment", TargetID: assignment.ID,
 			Reason: m.Reason, After: body,
-		}}, nil
+		}), nil
 	})
 	if err != nil {
 		return domain.Assignment{}, err

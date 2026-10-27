@@ -182,6 +182,34 @@ func TestAssign_STF02(t *testing.T) {
 	}
 }
 
+// TestAssign_STF02_ReassignAfterExpiry: an assignment whose end_at passed is
+// no longer active, so assigning the role again revokes it as "expired"
+// (own audit row) instead of answering staff.exists forever.
+func TestAssign_STF02_ReassignAfterExpiry(t *testing.T) {
+	pool := freshDB(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	service, _, session := staffService(t, pool, now)
+	accountID := seedAccount(t, pool, "active")
+	lapsedID := newID(t)
+	if _, err := pool.Exec(context.Background(), `INSERT INTO staff_assignments(id,account_id,role,state,start_at,end_at,reason)
+		VALUES($1,$2,'support_agent','ACTIVE',$3,$4,'synthetic lapsed assignment')`,
+		lapsedID, accountID, now.Add(-3*time.Hour), now.Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	again, err := service.Assign(context.Background(), mutation(session.ID), staffapp.AssignInput{AccountID: accountID, Role: string(domain.RoleSupportAgent)})
+	if err != nil || again.ID == lapsedID || again.State != "ACTIVE" {
+		t.Fatalf("reassign=%+v err=%v", again, err)
+	}
+	var state, reason string
+	if err := pool.QueryRow(context.Background(), "SELECT state, revoke_reason FROM staff_assignments WHERE id=$1", lapsedID).Scan(&state, &reason); err != nil || state != "REVOKED" || reason != domain.ExpiredRevokeReason {
+		t.Fatalf("lapsed state=%s reason=%s err=%v", state, reason, err)
+	}
+	var audits int
+	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM admin_audit_events WHERE action='admin.staff.revoke' AND target_id=$1", lapsedID).Scan(&audits); err != nil || audits != 1 {
+		t.Fatalf("expiry audits=%d err=%v", audits, err)
+	}
+}
+
 // TestErasure_STF06 revokes active assignments on account deletion.
 func TestErasure_STF06(t *testing.T) {
 	pool := freshDB(t)
