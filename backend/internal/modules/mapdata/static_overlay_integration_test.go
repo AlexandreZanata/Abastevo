@@ -50,7 +50,7 @@ func TestBuildStaticOverlayRealPostGIS(t *testing.T) {
 		         ST_SetSRID(ST_MakePoint(-49.2, -25.4), 4326)::geography, 'osm-mapped',
 		         'osm_node', ARRAY['FUEL'],
 		         '{"observed_at":"2026-10-25T21:21:21Z","published_at":"2026-10-25T21:21:21Z","fetched_at":"2026-10-25T21:21:21Z"}',
-		         '{"source":"OSM","license":"ADMITTED","attribution":"test","source_sha256":"' || repeat('e', 64) || '"}',
+		         ('{"source":"OSM","license":"ADMITTED","attribution":"test","source_sha256":"' || repeat('e', 64) || '"}')::jsonb,
 		         '{"price_known":false,"pin_eligible":true,"entrance_known":false,"live_status":false}',
 		         repeat('f', 64))`,
 	}
