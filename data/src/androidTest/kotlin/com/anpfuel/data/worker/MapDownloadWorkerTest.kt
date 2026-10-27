@@ -182,9 +182,15 @@ class MapDownloadWorkerTest {
         assertEquals(ListenableWorker.Result.failure(), w.doWork())
     }
 
-    @Test fun schedulerUsesUniqueConnectedWorkWithBackoff() {
+    @Test fun schedulerUsesUniqueWifiAwareWorkWithBackoff() {
         val req = MapDownloadScheduler.request("gen-1", "https://example.test")
-        assertEquals(NetworkType.CONNECTED, req.workSpec.constraints.requiredNetworkType)
+        // MAP-24: downloads honour the Wi-Fi preference, which defaults to on.
+        assertEquals(NetworkType.UNMETERED, req.workSpec.constraints.requiredNetworkType)
+        assertEquals(
+            NetworkType.CONNECTED,
+            MapDownloadScheduler.request("gen-1", "https://example.test", requireUnmetered = false)
+                .workSpec.constraints.requiredNetworkType,
+        )
         assertEquals("gen-1", req.workSpec.input.getString(MapDownloadWorker.KEY_GENERATION))
         assertEquals("map-download-gen-1", MapDownloadScheduler.uniqueName("gen-1"))
     }
