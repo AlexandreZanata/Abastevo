@@ -1,6 +1,7 @@
 # Map and EV source/commercial-use admission register
 
-Date: 2026-10-24. Status: MAP-01 DECISIONS_RECORDED / TRANSITIVE_AND_BYTE_ADMISSION_PENDING.
+Date: 2026-10-27. Status: MAP-01 DECISIONS_RECORDED /
+MC-A1 OFFICIAL UNIVERSE RECORDED; ANP DERIVATIVE ARTIFACT BLOCKED_PENDING_LEGAL.
 This register qualifies candidates; it does not grant rights or activate a source.
 Implementation must fill exact version/SHA, raw digest, license evidence digest,
 redistribution/derivative obligations, attribution text, retained notices, limits,
@@ -20,7 +21,7 @@ public OSM write or a provider contact.
 | SRC-COMAPS | CoMaps native source | `4587b8ad4d12c9f59982709fdaf03cc925948827`; LICENSE SHA-256 `09e8a9bc…f1130b`; NOTICE SHA-256 `307a6cfe…e6acc`; copyright inventory SHA-256 `5d0156f5…8121e`; [T07 audit](../backend/evidence/maps/MAP-14_T07_AUDIT.md) 215 components, 0 unresolved, 219-file notices/SBOM | `ADMITTED_FOR_SPIKE` | Human legal sign-off and public source offer; do not ship an AAR/APK until accepted. Engine SHA/ABI/patch change requires re-audit |
 | SRC-GEN | CoMaps generator/styles/fonts/resources | Same source commit; `tools/python/maps_generator`, `data/countries.txt`, `data/styles`, `data/fonts` | `PENDING` | T07 notices/SBOM cover code and retained `data/copyright.html`; per-asset font/style/symbol review, exact input PBF/extract digest and reproducible regional build remain |
 | SRC-OSM | OSM/Geofabrik Brazil extract | No extract selected yet; T07 ODbL derived-database/source-offer determination recorded | `PENDING` | Exact extract URL/date/bytes/SHA-256; publish the durable source/derived-data offer at release |
-| SRC-ANP | ANP station facts | Existing admitted pipeline covers current Android import; station-level server facts not yet selected | `PENDING` for new server artifact; existing importer behavior preserved | Exact dataset/terms/metadata, bytes/SHA-256, station linkage and period rules |
+| SRC-ANP | ANP station facts | `revendedoresapi.anp.gov.br` `/v1/combustivel` and `/v1/glp`; open-data CSVs downloaded 2026-10-27 (45,807 automotive + 57,127 GLP rows) | `PENDING` for the existing pipeline; **new derived server artifact BLOCKED_PENDING_LEGAL** | Site states CC BY-ND 3.0 (no derivatives) and the API manual has no separate terms; a derived dossier/pin artifact needs owner/legal admission. Existing importer behavior preserved |
 | SRC-OCM | Open Charge Map subset | No provider subset selected | `PENDING` | Per-record/provider license and attribution; `opendata` flag alone is insufficient |
 | SRC-COMM | Abastevo community data | Existing account/consent/moderation contracts | `ADMITTED_FOR_SOURCE` under existing rules | Public extract/relicense review; no private GPS/photos |
 | SRC-ICON | Generated map pictograms | `docs/assets/map-icons/` provenance and hashes; Android exports integrated in the accessible list | `ADMITTED_FOR_SOURCE` | Preserve MIT notice/provenance; device list semantics/48 dp/icon composition PASS; MAP-18 native map-background/theme review remains |
@@ -72,6 +73,51 @@ No required Google Maps/Places, proprietary Mapbox service, scraped PlugShare/op
 Open-Meteo's free hosted API permits noncommercial use only; apps with subscriptions/advertising are commercial examples. This release does not use that endpoint. A future self-hosted open stack needs a separate code/data/deployment license review, not a URL switch. [Terms](https://open-meteo.com/en/terms).
 
 MapLibre, OpenFreeMap and PMTiles can be legitimate open alternatives, but are not the chosen native format/renderer in this CoMaps-derived plan. Do not add both engines or feed MWM packages into MapLibre. Reconsider only with an evidence-backed revised architecture decision.
+
+## MC-A1 official reseller universe (2026-10-27)
+
+Scope: enumerate the official reseller sources and define denominators per kind.
+No raw data is in Git; the two CSVs live only under the private VPS root
+`/opt/abastevo-temp/map-completion-20261027/inputs/anp/` (mode 700).
+
+### Endpoints and open datasets
+
+| Kind | Source | Evidence | Fields / coordinates |
+| --- | --- | --- | --- |
+| Automotive fuel | `GET https://revendedoresapi.anp.gov.br/v1/combustivel` (OpenAPI 3.0.1, API 1.0) | `swagger/v1/swagger.json`; params `cnpj`, `uf`, `municipio`, `numeropagina` (the service also accepts `tamanhoPagina`); raw pages previously harvested by the national pipeline | `latitude`, `longitude`, `latitude_ANP4C`, `longitude_ANP4C`, `validacao`, `estimativaAcuracia`, `srid` (observed 4674/SIRGAS2000), `src`, `dataObtencao`, `origemInformacao`, plus registry/authorization/address/products fields |
+| Automotive fuel registry | `https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/arquivos-dados-cadastrais-dos-revendedores-varejistas-de-combustiveis-automotivos/dados-cadastrais-revendedores-varejistas-combustiveis-automoveis.csv` | 7,902,828 bytes; SHA-256 `eec94784af356616f893304c282e265bcd36c3845699b76432df3a504e89855b`; page updated 2026-10-27 09:21; daily cadence | 13 columns; **no coordinates** |
+| GLP resellers | `GET https://revendedoresapi.anp.gov.br/v1/glp` | Same OpenAPI; `AC` returned 526 rows and no coordinate fields | Registry/authorization/address/distributor/class fields; **no coordinates** |
+| GLP registry | `https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/arquivos-dados-cadastrais-das-revendas-de-gas-liquefeito-de-petroleo-glp/cadastro-revendas-glp.csv` | 11,785,474 bytes; SHA-256 `be9b6b188da7b55094f9f6b658a10a7d53f891ee56b8234810046b41e6710172`; page updated 2026-10-27; daily cadence | 14 columns including `CLASSE`; **no coordinates** |
+| TRR / TRRNI | No API endpoint or open-data CSV found | ANP distribution pages link to CDP; the CDP export is CAPTCHA/manual ("não permite consulta automatizada") | Not admitted; no denominator claimed |
+| Aviation / GNV / marine / floating / school / supply points | CDP "Consulta de Postos" type filter lists these types | No API endpoint or open-data CSV found; CDP export is CAPTCHA/manual | Not admitted; no denominator claimed |
+
+### Denominators
+
+| Kind | Rows | Unique CNPJ | Notes |
+| --- | --- | --- | --- |
+| Automotive fuel | 45,807 | 45,807 | Matches the Phase 1 API harvest and the existing registry inputs |
+| GLP resellers | 57,127 | 57,124 | 3 duplicate CNPJ rows retained as source rows; no coordinates |
+| **Total declared universe** | **102,934** | **102,931** | TRR/aviation/etc. excluded until an open source exists |
+
+The 3,003 directory stations without UF (2,924 LPG from the weekly price survey
+and 79 priced fuel stations absent from the current registry/API) are accounted
+for as: LPG price-survey points → GLP kind; 79 fuel stations → automotive fuel
+kind. They are not added to the denominators above because they are already
+directory rows; the dossier step must join them by CNPJ or mark them absent
+from the official registry.
+
+### Licence finding and decision
+
+The ANP open-data pages state that all site content is published under
+**Creative Commons Atribuição-SemDerivações 3.0 Não Adaptada (CC BY-ND 3.0)**.
+The API manual references the same open-data page and states no separate API
+licence. NoDerivatives does not authorize publishing a transformed/derived
+dossier that combines ANP facts with Receita/IBGE and computed location tiers.
+
+Decision: the existing importer behavior is preserved, but the new
+`station-dossier`/derived official artifact is **BLOCKED_PENDING_LEGAL**
+(SRC-ANP). MC-A2..A7 are not executed until the owner or legal admits a
+redistribution basis. No pin or dossier is invented to work around this.
 
 ## Source admission record template
 

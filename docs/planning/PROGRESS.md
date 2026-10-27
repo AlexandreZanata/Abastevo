@@ -1,5 +1,16 @@
 # Current execution state
 
+- MAP completion MC-A1 2026-10-27: LOCAL_DONE / Track A BLOCKED_PENDING_LEGAL.
+  Official ANP universe recorded: 45,807 automotive-fuel resellers (45,807
+  unique CNPJ) and 57,127 GLP resellers (57,124 unique; 3 duplicate rows);
+  TRR/TRR-NI/aviation/GNV/marine have no open API or CSV and the CDP export is
+  CAPTCHA/manual. OpenAPI has only `/v1/combustivel` and `/v1/glp`; fuel carries
+  SRID 4674 coordinates, GLP does not. The ANP open-data pages are CC BY-ND 3.0
+  and the API has no separate terms, so the new derived dossier/pin artifact
+  is blocked pending owner/legal admission; the existing importer is
+  unchanged. Raw CSVs stay only on the VPS private root. Evidence:
+  [MC-A1](../backend/evidence/maps/map-completion/MC-A1.md). Time: ~25 min.
+
 - MAP completion MC-00 baseline 2026-10-27: LOCAL_DONE. Base `4882c230` plus
   the task tree. The two route tests now accept the persistent host/compact
   panel and pass on the POCO (`MapRouteInstrumentedTest` OK 7.3 s,
