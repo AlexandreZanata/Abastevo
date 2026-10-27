@@ -20,7 +20,8 @@
   stays authoritative; 401/403/409/429 mapped distinctly; 8 locales.
   Tested revision: branch head; Android gate green, androidTest compiled
   only (device refuses installs). [Evidence](../../backend/evidence/admin/C3-APP-SELF-SERVICE.md).
-  Next: C4 staging check (blocked: staging lacks A1–A4).
+  PR #175 stacked on #174. Next: C4 staging check (blocked: staging lacks
+  A1–A4).
 
 - C2 landing contributors page 2026-10-27: LOCAL_DONE /
   INTEGRATION_PENDING. Branch `codex/adm-c2-landing-contributors` stacked
