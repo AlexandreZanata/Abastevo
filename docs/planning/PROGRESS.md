@@ -17,7 +17,7 @@
   enhancement (meta-gated API origin, textContent-only cards, CTB-08 link
   allowlist), per-path CSP, sitemap/llms entries. Tested revision: branch
   head; landing gate green (69/69). [Evidence](../../backend/evidence/admin/C2-LANDING-CONTRIBUTORS.md).
-  PR stacked on #173. Next: C3 self-service.
+  PR #174 stacked on #173. Next: C3 self-service.
 
 - CD-02 staging deploy planner 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Pull-based dry-run agent in `infra/deploy/agent/` verifies the signed
