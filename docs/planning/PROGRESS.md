@@ -9,8 +9,8 @@
   before the evidence commit; `go test -race ./...` 128 ok / 0 fail,
   PostGIS admin+entitlement+subscription+cmd/api integration ok,
   `make quick-verify` ok (40s), secret scan clean.
-  [Evidence](../../backend/evidence/admin/A2-GRANTED-TIERS.md). Next: push,
-  open PR with `--base codex/adm-a1-admin-auth`, do not start A3.
+  [Evidence](../../backend/evidence/admin/A2-GRANTED-TIERS.md). PR #166 with
+  `--base codex/adm-a1-admin-auth`. Next: wait for review; do not start A3.
 
 - A1 admin key authentication, sessions and audit 2026-10-27: LOCAL_DONE /
   INTEGRATION_PENDING. Branch `codex/adm-a1-admin-auth` from `origin/main`

@@ -1,6 +1,6 @@
 # A2 — Granted tiers and capability projection
 
-Date: 2026-10-27. Branch `codex/adm-a2-granted-tiers`, stacked on A1
+Date: 2026-10-27. Branch `codex/adm-a2-granted-tiers`, PR #166, stacked on A1
 `codex/adm-a1-admin-auth` (PR #164, not merged). Rules: B-BR-ENT-01…12,
 BUC-ADM-02/03/04. Planning documents remain in PR #161.
 
