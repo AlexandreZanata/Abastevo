@@ -1,8 +1,9 @@
 # A1 — Admin key authentication, sessions and audit
 
 Date: 2026-10-27. Branch `codex/adm-a1-admin-auth` from `origin/main`
-`44b7b915`. Rules: B-BR-ADM-01…12. Plan PR: #161 (planning documents are not
-yet on `main`; this branch contains only A0/A1 source, tests and evidence).
+`44b7b915`. PR: #164. Rules: B-BR-ADM-01…12. Plan PR: #161 (planning
+documents are not yet on `main`; this branch contains only A0/A1 source,
+tests and evidence).
 
 ## Delivered
 
