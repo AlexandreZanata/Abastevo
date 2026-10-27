@@ -1,5 +1,13 @@
 # Current execution state
 
+- MAP completion MC-B3 2026-10-27: LOCAL_DONE. Base `96952e07` plus this
+  task. Signed correction routes (submit/mine/status/cancel), validation and
+  quota/idempotency service, transactional decision+audit, accepted-location
+  `reviewed` projection, operator CLI `-corrections-list/-corrections-decide`
+  and the OpenAPI contract are in place. `go build ./...`, `go vet ./...` and
+  `go test -count=1 ./...` exit 0 with 0 failures. Evidence:
+  [MC-B3](../backend/evidence/maps/map-completion/MC-B3.md). Time: ~40 min.
+
 - MAP completion MC-B2 2026-10-27: LOCAL_DONE. Base `5db9765e` plus this
   task. Append-only migration `000140` adds `station_corrections` and
   `station_correction_decisions` with the eight statuses, idempotency key,
