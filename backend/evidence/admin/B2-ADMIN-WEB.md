@@ -71,3 +71,22 @@ npm ci && npm run typecheck && npm run build && npm run check && npm test
 - A5b (same staging script on real staging, with B3).
 - Pre-existing role assignments have no list endpoint in the contract, so
   the detail page shows session-scoped assignments plus audit history.
+
+## Review fixes (2026-10-27)
+
+| Fix | Commit | Tests added (RED first, then GREEN) |
+|---|---|---|
+| Merged the B1 review fixes (`/admin/assets` mount, login 401 error, Brazil end-of-day grant date). `scripts/check.mjs` keeps B2's contributors/audit page inventory and uses B1's mount resolver instead of B2's `basePath` option; the mount checks cover every B2 page and nav link, and role end dates use the fixed `toEndOfDayIso`. | `0dccf49b` (merge) | B1 tests run on B2: mount/resolve test over all dist HTML/CSS, `app-login.test.mjs`, ENT-04 validator tests. |
+| `resetRoleEvents()` was never called: account A's assignment row (and its "Revogar papel" button) stayed visible on account B. The list now resets when a different account's detail renders and when the session ends; an assignment answered after switching accounts is not rendered on the new account. | `f38d2650` | `app-roles.test.mjs`: switching accounts clears A's events and revoke form; reloading the same account keeps them; late assignment response not shown on B; logout clears them. |
+| Paging: "Carregar mais" stayed enabled in flight (double click appended a page twice), and audit "more" re-read unapplied filter inputs with a cursor sealed to the previous filter (`400 admin.invalid`). One request per list: "more" disabled while loading, duplicate "more" ignored, a first-page load supersedes an in-flight one and drops its stale page; audit keeps the filter its cursor was issued for. | `defc6ea4` | `app-paging.test.mjs`: claims and audit double click append once with the button disabled; audit "more" keeps the issued filter; applying a filter re-seals the cursor; a filter applied while "more" is in flight drops the stale page. |
+| Tests only: capitalized Go-default response normalization was covered for reject, not for approve or profile hide/unhide. | `e8341918` | `api-client.test.mjs`: approve with a capitalized and a lowercase claim under `claim`; profile hide and unhide with capitalized and lowercase shapes (mutation-checked: dropping a capitalized key fails them). |
+
+App-level tests drive the compiled `app.js` through the dependency-free DOM
+double `admin-web/tests/support/fake-dom.mjs` (ids taken from the shipped
+shell).
+
+```sh
+cd admin-web
+npm ci && npm run typecheck && npm run build && npm run check && npm test
+# typecheck OK, build OK, check PASSED; 48 tests, 48 pass, 0 fail
+```
