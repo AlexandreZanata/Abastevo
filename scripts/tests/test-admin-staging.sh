@@ -32,6 +32,14 @@
 #   test-admin-staging.sh --check-target  validate ANPFUEL_STAGING_URL only,
 #                                         no key required, no network
 #
+# Secrets (admin key, session cookie, CSRF token, account key and access
+# token) never appear in curl's argv, where `ps` could show them: request
+# bodies are piped to `--data-binary @-` and the cookie/CSRF headers are
+# read by curl from 0600 files (`-H @file`) inside a private `mktemp -d`
+# directory. An EXIT/INT/TERM trap revokes a grant this run created and
+# logs the admin session out when they are still active, then removes the
+# directory.
+#
 # Prints step results only. Exits non-zero on the first failure.
 set +x
 set -uo pipefail
@@ -145,6 +153,55 @@ BASE="${ANPFUEL_STAGING_URL%/}"
 ADMIN_ORIGIN="${ANPFUEL_ADMIN_ORIGIN:-$BASE}"
 PUBLIC_ORIGIN="${ANPFUEL_PUBLIC_ORIGIN:-https://abastevo.com.br}"
 
+# Private work directory for the secret header files (mode 0700/0600).
+umask 077
+SESSION_ACTIVE=0
+GRANT_ACTIVE=0
+GRANT_ID=""
+ADMIN_COOKIE=""
+ADMIN_CSRF=""
+WORKDIR=$(mktemp -d) || die "cannot create a private temp directory"
+COOKIE_HDR="$WORKDIR/cookie.hdr"
+CSRF_HDR="$WORKDIR/csrf.hdr"
+
+note() { printf 'CLEANUP: %s\n' "$1" >&2; }
+
+# cleanup: best effort, never prints a secret. Runs once on any exit.
+cleanup() {
+  local rc=$?
+  trap - EXIT INT TERM
+  if [ "$SESSION_ACTIVE" = 1 ] && [ -s "$COOKIE_HDR" ] && [ -s "$CSRF_HDR" ]; then
+    if [ "$GRANT_ACTIVE" = 1 ] && [ -n "$GRANT_ID" ]; then
+      api POST "/v1/admin/grants/$GRANT_ID/revoke" '{"reason":"staging validation cleanup revoke"}'
+      if [ "$RESP_STATUS" = 200 ]; then
+        note "grant $GRANT_ID revoked"
+      else
+        note "grant $GRANT_ID revoke failed (HTTP ${RESP_STATUS:-none}); revoke it manually"
+      fi
+    fi
+    api DELETE /v1/admin/session '{"reason":"staging validation cleanup logout"}'
+    if [ "$RESP_STATUS" = 204 ]; then
+      note "admin session logged out"
+    else
+      note "admin session logout failed (HTTP ${RESP_STATUS:-none}); it expires on its own"
+    fi
+  elif [ "$GRANT_ACTIVE" = 1 ] && [ -n "$GRANT_ID" ]; then
+    note "grant $GRANT_ID may still be active; revoke it manually"
+  fi
+  rm -rf "$WORKDIR"
+  exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# write_secret_headers: printf is a builtin, so the values never reach an
+# exec argv; the files inherit umask 077.
+write_secret_headers() {
+  printf 'Cookie: __Host-abv_admin=%s\n' "$ADMIN_COOKIE" >"$COOKIE_HDR"
+  printf 'X-Admin-CSRF: %s\n' "$ADMIN_CSRF" >"$CSRF_HDR"
+}
+
 new_uuid() {
   if [ -r /proc/sys/kernel/random/uuid ]; then
     cat /proc/sys/kernel/random/uuid
@@ -159,17 +216,18 @@ jget() {
   printf '%s' "$RESP_BODY" | python3 -c "import json,sys; d=json.load(sys.stdin); print($1)"
 }
 
-# api <method> <path>: performs the request with the session cookie when set.
-# Sets RESP_STATUS and RESP_BODY. Bodies travel through stdin, never argv.
+# api <method> <path> [body]: performs the request with the session cookie
+# and CSRF headers when set. Sets RESP_STATUS and RESP_BODY. Bodies travel
+# through stdin and secret headers through 0600 files, never argv.
 api() {
   local method="$1" path="$2" body="${3:-}"
   local args=(-s -w '\n%{http_code}' -X "$method" "$BASE$path"
     -H 'Content-Type: application/json' -H "Origin: $ADMIN_ORIGIN")
-  if [ -n "${ADMIN_COOKIE:-}" ]; then
-    args+=(-H "Cookie: __Host-abv_admin=$ADMIN_COOKIE")
+  if [ -s "$COOKIE_HDR" ]; then
+    args+=(-H "@$COOKIE_HDR")
   fi
-  if [ -n "${ADMIN_CSRF:-}" ]; then
-    args+=(-H "X-Admin-CSRF: $ADMIN_CSRF" -H "Idempotency-Key: $(new_uuid)")
+  if [ -s "$CSRF_HDR" ]; then
+    args+=(-H "@$CSRF_HDR" -H "Idempotency-Key: $(new_uuid)")
   fi
   local raw
   if [ -n "$body" ]; then
@@ -202,10 +260,12 @@ exchange=$(login_body | curl -s -D - -o - -X POST "$BASE/v1/admin/session" \
 RESP_STATUS=$(printf '%s' "$exchange" | tail -n 1)
 RESP_BODY=$(printf '%s' "$exchange" | grep '^{' | head -n 1)
 expect "login" "200" "$RESP_STATUS"
+SESSION_ACTIVE=1
 ADMIN_COOKIE=$(printf '%s' "$exchange" | awk 'tolower($1)=="set-cookie:"{split($2,a,";");split(a[1],b,"=");print b[2];exit}')
 [ "${#ADMIN_COOKIE}" -ge 20 ] || die "login: missing session cookie"
 ADMIN_CSRF=$(jget 'd["csrf_token"]')
 [ "${#ADMIN_CSRF}" -ge 20 ] || die "login: missing csrf token"
+write_secret_headers
 
 # 2. Who-am-I.
 api GET /v1/admin/session
@@ -221,7 +281,7 @@ expect "wrong-key" "401" "$wrong"
 # 4. Mutation without CSRF is 403.
 no_csrf=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "$BASE/v1/admin/session" \
   -H 'Content-Type: application/json' -H "Origin: $ADMIN_ORIGIN" \
-  -H "Cookie: __Host-abv_admin=$ADMIN_COOKIE" \
+  -H "@$COOKIE_HDR" \
   -H "Idempotency-Key: $(new_uuid)" --data-binary @- <<< '{"reason":"staging validation logout"}')
 expect "missing-csrf" "403" "$no_csrf"
 
@@ -246,8 +306,9 @@ else
   expect "account-create" "201" "$RESP_STATUS"
   ACCOUNT_KEY=$(jget 'd["account_key"]')
   [ "${#ACCOUNT_KEY}" -ge 10 ] || die "account-create: missing account key"
+  key_login_body=$(ACCOUNT_KEY="$ACCOUNT_KEY" python3 -c 'import json,os; print(json.dumps({"account_key": os.environ["ACCOUNT_KEY"]}))')
   logged=$(curl -s -w '\n%{http_code}' -X POST "$BASE/v1/accounts/keys/login" \
-    -H 'Content-Type: application/json' --data-binary @- <<<"$(ACCOUNT_KEY="$ACCOUNT_KEY" python3 -c 'import json,os; print(json.dumps({"account_key": os.environ["ACCOUNT_KEY"]}))')")
+    -H 'Content-Type: application/json' --data-binary @- <<<"$key_login_body")
   RESP_STATUS=$(printf '%s' "$logged" | tail -n 1)
   RESP_BODY=$(printf '%s' "$logged" | sed '$d')
   expect "account-login" "200" "$RESP_STATUS"
@@ -267,8 +328,12 @@ expect "search" "200" "$RESP_STATUS"
 END_AT=$(date -u -d '+24 hours' '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || python3 -c 'import datetime; print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ"))')
 api POST "/v1/admin/accounts/$ACCOUNT_ID/grants" "$(END_AT="$END_AT" python3 -c 'import json,os; print(json.dumps({"tier":"PRO","end_at":os.environ["END_AT"],"reason":"staging validation grant","replace":False}))')"
 expect "grant" "201" "$RESP_STATUS"
-[ "$(jget 'd["grant"]["state"]')" = "ACTIVE" ] || die "grant: not active"
 GRANT_ID=$(jget 'd["grant"]["id"]')
+case "$GRANT_ID" in
+  ????????-????-????-????-????????????) GRANT_ACTIVE=1 ;;
+  *) GRANT_ID=""; die "grant: response has no grant id" ;;
+esac
+[ "$(jget 'd["grant"]["state"]')" = "ACTIVE" ] || die "grant: not active"
 
 # 8. Premium status shows the admin tier.
 status_body=$(FAMILY_ID="$FAMILY_ID" ACCESS_TOKEN="$ACCESS_TOKEN" python3 -c 'import json,os; print(json.dumps({"family_id":os.environ["FAMILY_ID"],"access_token":os.environ["ACCESS_TOKEN"]}))')
@@ -284,6 +349,7 @@ expect "status-tier" "200" "$RESP_STATUS"
 api POST "/v1/admin/grants/$GRANT_ID/revoke" '{"reason":"staging validation revoke"}'
 expect "revoke" "200" "$RESP_STATUS"
 [ "$(jget 'd["state"]')" = "REVOKED" ] || die "revoke: not revoked"
+GRANT_ACTIVE=0
 status=$(curl -s -w '\n%{http_code}' -X POST "$BASE/v1/premium/status" \
   -H 'Content-Type: application/json' --data-binary @- <<<"$status_body")
 RESP_STATUS=$(printf '%s' "$status" | tail -n 1)
@@ -294,7 +360,8 @@ expect "status-cleared" "200" "$RESP_STATUS"
 # 10. Logout, then cookie reuse is 401.
 api DELETE /v1/admin/session '{"reason":"staging validation logout"}'
 expect "logout" "204" "$RESP_STATUS"
-reuse=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/v1/admin/session" -H "Cookie: __Host-abv_admin=$ADMIN_COOKIE")
+SESSION_ACTIVE=0
+reuse=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/v1/admin/session" -H "@$COOKIE_HDR")
 expect "reuse-cookie" "401" "$reuse"
 
 # 11. Public contributors list with CORS for the landing origin.

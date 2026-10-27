@@ -15,8 +15,9 @@ touches staging.
   staging URL) and `ANPFUEL_PUBLIC_ORIGIN` (defaults to the landing origin).
 - Prints step results only (`PASS: …`); the key, cookie, tokens and CSRF
   token travel in shell variables and piped stdin bodies, never in output.
-  Secret bodies are piped to `curl --data-binary @-`, never interpolated
-  into argv.
+  Secret bodies are piped to `curl --data-binary @-`. Correction: the
+  original revision (`d5162019`) did interpolate the session cookie and
+  CSRF token into curl `-H` arguments (visible in `ps`); fixed below.
 - Flow: config (disabled-check skipped: routes are mounted) → login →
   whoami → wrong-key 401 → missing-CSRF 403 → account create/login →
   search → grant PRO 1 day → premium status shows the admin tier → revoke →
@@ -50,6 +51,36 @@ PASS: admin staging validation complete
 
 Exit 0. The disposable database was dropped and the server stopped
 afterwards; the API log contains no key material.
+
+## Review fixes (2026-10-27)
+
+- Target validation, before any network call (`--check-target` validates
+  only): `ANPFUEL_STAGING_URL` must be a bare origin (no userinfo, path,
+  query, fragment or percent-encoding). Loopback (`127.0.0.1`, `::1`,
+  `localhost`) may use http or https; the only remote host accepted is the
+  documented staging origin `https://teste.abastevo.com.br` (ADR-019,
+  `docs/backend/RST_VPS_HARDENING.md`) on the default port; `abastevo.com.br`
+  and every other `*.abastevo.com.br` name are refused as production.
+  Refusals never echo the URL.
+- Secrets out of argv: the session cookie and CSRF token are written with
+  the `printf` builtin to 0600 files in a private `mktemp -d` directory
+  (umask 077) and passed as `curl -H @file`; bodies stay on stdin. An
+  EXIT/INT/TERM trap revokes a grant the run created and logs the admin
+  session out when still active, then removes the directory.
+- Harness `scripts/tests/test-admin-staging-guard.sh` (`make
+  test-admin-staging`), no network: 69 checks covering 9 accepted and 39
+  rejected targets with zero curl calls; a static check that no curl
+  command line references a secret variable (and that it flags 4 planted
+  leaks); and a python fake API standing in for curl that runs the full
+  flow, a failure after the grant and a SIGTERM mid-request, asserting no
+  secret in any curl argv or output, private header files, temp directory
+  removed, and grant revoked plus session logged out by the trap. Against
+  the pre-fix script the same harness fails 9 checks.
+- Real curl 8.5.0 was checked against a loopback echo server to send
+  headers read from `-H @file`. The script was not re-run against a live
+  API or any remote host.
+- Open decision: the remote allowlist is exactly `teste.abastevo.com.br`;
+  any other staging name needs a reviewed change to the script.
 
 ## Not done
 
