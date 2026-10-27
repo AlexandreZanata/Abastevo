@@ -133,6 +133,13 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		writeError(w, r, http.StatusConflict, "staff.already-revoked")
 	case errors.Is(err, domain.ErrNotFound):
 		writeError(w, r, http.StatusNotFound, "staff.not-found")
+	case errors.Is(err, admindomain.ErrConflict):
+		// Idempotency-Key reused with a different body (ADM-12).
+		writeError(w, r, http.StatusConflict, "admin.conflict")
+	case errors.Is(err, admindomain.ErrInvalid):
+		writeError(w, r, http.StatusBadRequest, "admin.invalid")
+	case errors.Is(err, admindomain.ErrUnauthorized), errors.Is(err, admindomain.ErrDenied):
+		writeError(w, r, http.StatusUnauthorized, "admin.denied")
 	default:
 		writeError(w, r, http.StatusServiceUnavailable, "staff.unavailable")
 	}

@@ -94,6 +94,10 @@ func TestServiceError_STF(t *testing.T) {
 		{domain.ErrAlreadyRevoked, http.StatusConflict, "staff.already-revoked"},
 		{domain.ErrNotFound, http.StatusNotFound, "staff.not-found"},
 		{domain.ErrUnavailable, http.StatusServiceUnavailable, "staff.unavailable"},
+		// Admin mutation envelope errors keep the admin codes (ADM-12).
+		{admindomain.ErrConflict, http.StatusConflict, "admin.conflict"},
+		{admindomain.ErrInvalid, http.StatusBadRequest, "admin.invalid"},
+		{admindomain.ErrUnauthorized, http.StatusUnauthorized, "admin.denied"},
 	} {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest(http.MethodPost, "/v1/admin/accounts/x/roles", nil)
