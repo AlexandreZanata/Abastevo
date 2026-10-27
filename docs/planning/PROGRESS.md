@@ -1,5 +1,14 @@
 # Current execution state
 
+- A1 admin key authentication, sessions and audit 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-a1-admin-auth` from `origin/main`
+  `44b7b915`; stacked on planning PR #161 (contract/ADR/plan not yet on
+  `main`). ADM-01…ADM-12 implemented with S1–S20 tests, migration `000140`,
+  config/ops keygen and OpenAPI routes. Tested revision: branch head before
+  the evidence commit; `go test -race ./...` 127 ok / 0 fail, PostGIS
+  admin+cmd/api integration ok, `make quick-verify` ok (54s), secret scan
+  clean. [Evidence](../../backend/evidence/admin/A1-ADMIN-AUTH.md). PR #164 to
+  `main`. Next: A2 from this head (stacked because PR #164 is unmerged).
 - CD-04 staging k3s executor 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   R2 captured the live `abastevo-temp` objects into `infra/k8s/staging/` with
   placeholders; the rendered namespace passed `kubectl diff` with exit 0 after
