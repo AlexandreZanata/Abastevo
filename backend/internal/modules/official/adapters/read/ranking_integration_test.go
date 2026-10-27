@@ -334,6 +334,13 @@ JOIN (
 	if _, err := f.pool.Exec(ctx, "ANALYZE directory_stations"); err != nil {
 		t.Fatal(err)
 	}
+	// Each revision is written as one bulk import, so a real table is laid
+	// out revision by revision. CLUSTER reproduces that layout; otherwise the
+	// random UUID order of the staged revisions decides the planner's
+	// correlation estimate and the plan flips between runs.
+	if _, err := f.pool.Exec(ctx, "CLUSTER official_station_prices USING official_station_prices_ranking_idx"); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := f.pool.Exec(ctx, "VACUUM (ANALYZE) official_station_prices"); err != nil {
 		t.Fatal(err)
 	}
