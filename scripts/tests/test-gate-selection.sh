@@ -160,6 +160,22 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+echo "== bounded admin web selection (ADR-023 B1) =="
+if grep -q "admin-web/\*" scripts/quick-verify.sh; then
+    echo "PASS: admin-web path classified in quick-verify.sh"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: admin-web path missing in quick-verify.sh" >&2
+    FAIL=$((FAIL + 1))
+fi
+if grep -q "npm --prefix admin-web run check" scripts/quick-verify.sh; then
+    echo "PASS: admin-web check integration present in quick-verify.sh"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: admin-web check integration missing in quick-verify.sh" >&2
+    FAIL=$((FAIL + 1))
+fi
+
 echo "== bounded rust selection (RST-04) =="
 if grep -q "tools/\*" scripts/quick-verify.sh; then
     echo "PASS: tools path classified in quick-verify.sh"

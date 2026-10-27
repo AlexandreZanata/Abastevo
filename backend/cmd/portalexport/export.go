@@ -151,10 +151,21 @@ func writeOfficialSnapshot(ctx context.Context, provider enterprisejobs.Official
 	}
 	inputSum := sha256.Sum256([]byte("official-only|" + build.Pin.PayloadSHA256))
 	inputHash := "sha256:" + hex.EncodeToString(inputSum[:])
-	now := time.Now().UTC().Format(time.RFC3339)
+	// The official-only candidate is published as of its lease, so an
+	// unchanged lease rebuilds the identical candidate at any time; the wall
+	// clock is only a fallback for a manifest without published_at.
+	builtAt := time.Now().UTC().Format(time.RFC3339)
+	var lease struct {
+		PublishedAt string `json:"published_at"`
+	}
+	if json.Unmarshal(build.Manifest, &lease) == nil {
+		if at, err := time.Parse(time.RFC3339, lease.PublishedAt); err == nil {
+			builtAt = at.UTC().Format(time.RFC3339)
+		}
+	}
 	exportManifest := enterpriseexport.Manifest{
 		SchemaVersion: enterpriseexport.SchemaVersion, ContentVersion: enterpriseexport.ContentVersion,
-		PublicFieldPolicy: enterpriseexport.PublicFieldPolicy, BuiltAt: now,
+		PublicFieldPolicy: enterpriseexport.PublicFieldPolicy, BuiltAt: builtAt,
 		Scope:  enterpriseexport.Scope{PageSize: 500, MaxStations: 100000, MaxRevisions: 2000, MaxPrices: 5000000},
 		Counts: enterpriseexport.Counts{}, ContentSHA256: inputHash,
 	}

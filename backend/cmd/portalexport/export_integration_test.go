@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -137,9 +138,25 @@ func TestPortalExportOfficialOnlyPostGIS(t *testing.T) {
 			PortalOut:   filepath.Join(t.TempDir(), "portal"), OfficialOnly: true,
 		}
 	}
-	first, err := runExportTx(ctx, pool, newCfg())
+	firstCfg := newCfg()
+	first, err := runExportTx(ctx, pool, firstCfg)
 	if err != nil {
 		t.Fatalf("export: %v", err)
+	}
+	// The candidate's publication time is the official lease's, never the
+	// wall clock, so reruns of an unchanged lease converge at any time.
+	var lease, built struct {
+		PublishedAt string `json:"published_at"`
+		BuiltAt     string `json:"built_at"`
+	}
+	for path, into := range map[string]any{"official-records-manifest.json": &lease, "manifest.json": &built} {
+		raw, err := os.ReadFile(filepath.Join(firstCfg.SnapshotDir, path))
+		if err != nil || json.Unmarshal(raw, into) != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+	}
+	if lease.PublishedAt == "" || built.BuiltAt != lease.PublishedAt {
+		t.Fatalf("built_at=%q lease published_at=%q", built.BuiltAt, lease.PublishedAt)
 	}
 	if first.Edition != "2025" || first.Rows != 2 || first.Linked != 1 || first.Unmatched != 1 {
 		t.Fatalf("result = %+v", first)

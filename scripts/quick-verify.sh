@@ -97,7 +97,7 @@ else
         case "$f" in
             *.md|*.mdc|docs/*|.cursor/*|README*|ROADMAP*|TRADEMARKS*|LICENSE*|.gitignore)
                 ;;
-            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|tools/*)
+            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|admin-web/*|tools/*)
                 DOCS_ONLY=0
                 ;;
             *)
@@ -206,6 +206,27 @@ else
         npm --prefix landing run build
         npm --prefix landing run check
         npm --prefix landing test
+    fi
+    # Bounded admin web selection (ADR-023 B1): admin-web changes run its
+    # typecheck, build, dist check and tests, mirroring the landing.
+    ADMIN_WEB_CHANGED=0
+    while IFS= read -r f || [[ -n "$f" ]]; do
+        case "$f" in
+            admin-web/*)
+                ADMIN_WEB_CHANGED=1
+                break
+                ;;
+        esac
+    done <<< "$CHANGED_ALL"
+    if [[ "$ADMIN_WEB_CHANGED" == "1" ]]; then
+        echo "== admin web static & ts selection =="
+        if [[ ! -d "admin-web/node_modules" ]]; then
+            npm --prefix admin-web ci
+        fi
+        npm --prefix admin-web run typecheck
+        npm --prefix admin-web run build
+        npm --prefix admin-web run check
+        npm --prefix admin-web test
     fi
     # Bounded Rust selection (RST-04): tools-area changes run the frozen
     # Rust gate (fmt, clippy, locked tests). Quick verification itself is

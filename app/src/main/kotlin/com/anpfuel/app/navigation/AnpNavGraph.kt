@@ -267,6 +267,30 @@ fun AnpNavGraph(
                 onOpenPremium = {
                     navController.navigate(Routes.PREMIUM) { launchSingleTop = true }
                 },
+                onOpenContributors = {
+                    navController.navigate(Routes.CONTRIBUTORS) { launchSingleTop = true }
+                },
+            )
+        }
+        composable(Routes.CONTRIBUTORS) {
+            com.anpfuel.app.ui.contributors.ContributorsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onClaimClick = {
+                    navController.navigate(Routes.CONTRIBUTOR_CLAIM) { launchSingleTop = true }
+                },
+            )
+        }
+        composable(Routes.CONTRIBUTOR_CLAIM) {
+            com.anpfuel.app.ui.contributors.ClaimScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onEditProfile = {
+                    navController.navigate(Routes.CONTRIBUTOR_PROFILE) { launchSingleTop = true }
+                },
+            )
+        }
+        composable(Routes.CONTRIBUTOR_PROFILE) {
+            com.anpfuel.app.ui.contributors.ProfileEditScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
         composable(Routes.GAMES) {

@@ -1,5 +1,51 @@
 # Current execution state
 
+- Admin suite batch integration 2026-10-27: INTEGRATION_PENDING. Branch
+  `codex/phase-adm-integration` consolidates the remaining open fronts into
+  one PR to `main` so the long integration suite runs once: A5a (#171),
+  B1/B2 (#170/#172) and C1/C2/C3 (#173/#174/#175). A1 (#164), plan (#161),
+  A2 (#166), A3 (#167) and A4 (#168) are already merged. Review fixes are in
+  each phase evidence. Two pre-existing CI flakes are fixed here: the
+  official-only portal export now publishes as of its lease (content no
+  longer depends on the wall-clock second) and MEX28 ranks a revision that
+  is a fraction of the price table (deterministic index plan). Remaining
+  blocked work: A5b/B3/C4 staging (staging lacks A1–A4; key stays with the
+  user). Open contract questions are listed in the batch report.
+
+- A5a staging script + local A4 run 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-a5a-staging-script` from A4
+  (`f5004a77`), PR stacked on #168. `scripts/tests/test-admin-staging.sh`
+  (`set +x`, secrets only in env/memory/piped stdin, PASS-only output) run
+  green (exit 0, 16 steps) against the local A4 stack on disposable PostGIS
+  with a memory-only test key. [Evidence](../../backend/evidence/admin/A5A-STAGING-LOCAL.md).
+  PR #171 with `--base codex/adm-a4-staff-roles`. Next: B2; A5b runs on real
+  staging with B3.
+
+- B2 admin web contributors/roles/audit 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-b2-admin-web-contributors` from B1,
+  PR stacked on #170 (which merges only after #164). Contributors view
+  (snapshot, claims approve/reject with override, direct link, hide/unhide),
+  roles section on account detail, audit view with filters. Tested revision:
+  branch head; admin-web gate green (21/21); local integration proven
+  against the fixed A4 backend on disposable PostGIS
+  (approve/link/hide/assign/revoke/audit/logout, screenshots included).
+  [Evidence](../../backend/evidence/admin/B2-ADMIN-WEB.md). PR #172 with
+  `--base codex/adm-b1-admin-web`. Next: B3 after user authorization
+  (serving + staging need infra decisions).
+
+
+- B1 admin web panel 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING. Branch
+  `codex/adm-b1-admin-web` from `origin/main` `d4dcf716`. New `admin-web/`
+  package (TS 7.0.2, no framework/runtime dep): login + accounts pages,
+  landing tokens copied at build, CSRF in memory, unsafe-DOM scan, CSP
+  headers. Tested revision: branch head; `npm ci && typecheck && build &&
+  check && test` green (17/17); local integration login→search→grant→
+  revoke→logout proven against A4 backend on disposable PostGIS with
+  synthetic data and screenshots. [Evidence](../../backend/evidence/admin/B1-ADMIN-WEB.md).
+  PR #170 to `main`, merges only after #164. A1 reconciliation was published;
+  remote integration remains pending.
+
+
 - A4 staff roles and audit read 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Branch `codex/adm-a4-staff-roles` stacked on A3 PR #167 (base
   `codex/adm-a3-contributors`; planning docs still in PR #161). STF-01…STF-06
@@ -35,6 +81,18 @@
   `make quick-verify` ok (43s), secret scan clean.
   [Evidence](../../backend/evidence/admin/A2-GRANTED-TIERS.md). PR #166 with
   `--base codex/adm-a1-admin-auth`. Next: wait for review; do not start A3.
+
+- C1 app public contributors list 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-c1-app-contributors` from
+  `origin/main` `d4dcf716`. Anonymous cursor-paged list: domain model,
+  OkHttp client, mapper, use case, ViewModel states, ContributorsScreen,
+  Premium-accent entry as last Profile item + route. Tested revision:
+  branch head; domain 781 / data 629 / application 484 / app 561 unit
+  tests, 0 failures; lint/assemble/androidTest-compile green;
+  instrumented tests compile but need a device/CI run (attached device
+  refuses installs). [Evidence](../../backend/evidence/admin/C1-APP-CONTRIBUTORS.md).
+  PR #173 to `main`. Next: C2 landing page, then C3 self-service.
+
 
 - A1 admin key authentication, sessions and audit 2026-10-27: LOCAL_DONE /
   INTEGRATION_PENDING. Branch `codex/adm-a1-admin-auth` from `origin/main`
@@ -329,6 +387,26 @@
   lint PASS. Installed locally on the authorized phone; not pushed/merged.
   [Evidence](../backend/evidence/maps/MAP-UI-ISOLATION-20261026.md).
   Staging `nearby` empty/data update remains separate.
+
+- C3 app contributor self-service 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-c3-app-contributor-self` stacked
+  on C2. Signed-in claim flow (login → one-time code + copy + gist
+  instructions → gist proof → status, withdraw; pending code re-shown) and
+  profile edit (name, ≤2 links, visibility + explicit consent, show-roles)
+  against the A3 user routes; client validators mirror CTB-03/08, server
+  stays authoritative; 401/403/409/429 mapped distinctly; 8 locales.
+  Tested revision: branch head; Android gate green, androidTest compiled
+  only (device refuses installs). [Evidence](../../backend/evidence/admin/C3-APP-SELF-SERVICE.md).
+  PR #175 stacked on #174. Next: C4 staging check (blocked: staging lacks
+  A1–A4).
+
+- C2 landing contributors page 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-c2-landing-contributors` stacked
+  on C1. Static `/contribuidores/` shell + `contributors.ts` progressive
+  enhancement (meta-gated API origin, textContent-only cards, CTB-08 link
+  allowlist), per-path CSP, sitemap/llms entries. Tested revision: branch
+  head; landing gate green (69/69). [Evidence](../../backend/evidence/admin/C2-LANDING-CONTRIBUTORS.md).
+  PR #174 stacked on #173. Next: C3 self-service.
 
 - CD-02 staging deploy planner 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Pull-based dry-run agent in `infra/deploy/agent/` verifies the signed

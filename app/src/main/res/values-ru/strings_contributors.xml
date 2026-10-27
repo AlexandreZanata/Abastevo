@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- B-BR-CTB public project contributors -->
+    <string name="contributors_entry_title">Участники проекта</string>
+    <string name="contributors_entry_subtitle">Публичные профили, GitHub и роли</string>
+    <string name="contributors_screen_title">Участники проекта</string>
+    <string name="contributors_empty_title">Пока нет участников</string>
+    <string name="contributors_empty_message">Одобренные командой профили появятся здесь.</string>
+    <string name="contributors_offline">Нет соединения. Проверьте сеть и повторите.</string>
+    <string name="contributors_denied">Доступ запрещён.</string>
+    <string name="contributors_error">Что-то пошло не так.</string>
+    <string name="contributors_retry">Повторить</string>
+    <string name="contributors_load_more">Загрузить ещё</string>
+    <string name="contributors_verified_badge">GitHub подтверждён</string>
+    <string name="contributors_since">С %1$s</string>
+</resources>

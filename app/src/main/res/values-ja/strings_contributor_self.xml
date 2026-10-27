@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- B-BR-CTB contributor self-service -->
+    <string name="claim_entry_button">貢献者である</string>
+    <string name="claim_screen_title">貢献者になる</string>
+    <string name="claim_login_label">GitHubログイン</string>
+    <string name="claim_open_button">コードを要求</string>
+    <string name="claim_code_title">確認コード</string>
+    <string name="claim_code_instructions">このコードを含む公開gistを作成し、そのIDを送信してください。</string>
+    <string name="claim_copy_button">コードをコピー</string>
+    <string name="claim_dismiss_button">閉じる</string>
+    <string name="claim_gist_label">gistのID</string>
+    <string name="claim_prove_button">証明を送信</string>
+    <string name="claim_withdraw_button">申請を取り下げ</string>
+    <string name="claim_signed_out">コントリビューター プロフィールの申請や編集にはサインインしてください。</string>
+    <string name="claim_empty">申請はありません。</string>
+    <string name="claim_quota">上限に達しました。後でもう一度お試しください。</string>
+    <string name="claim_conflict">すでに開いている申請があります。</string>
+    <string name="claim_invalid">GitHub ログインまたは Gist ID を確認して、もう一度お試しください。</string>
+    <string name="claim_edit_profile_button">公開プロフィールを編集</string>
+    <string name="claim_state_pending">保留中</string>
+    <string name="claim_state_approved">承認済み</string>
+    <string name="claim_state_rejected">拒否されました</string>
+    <string name="claim_state_withdrawn">取り下げ済み</string>
+    <string name="claim_state_expired">期限切れ</string>
+    <string name="contributor_profile_screen_title">公開プロフィール</string>
+    <string name="profile_name_label">表示名</string>
+    <string name="profile_name_error">2〜40文字の英数字、空白または.-\'を使ってください。</string>
+    <string name="profile_platform_label">プラットフォーム</string>
+    <string name="profile_handle_label">ハンドル</string>
+    <string name="profile_visibility_label">公開プロフィール</string>
+    <string name="profile_consent_text">名前、リンク、役割が誰にでも見えることを理解しています。</string>
+    <string name="profile_consent_error">公開には明示的な同意が必要です。</string>
+    <string name="profile_links_error">リンクは最大 2 件、各プラットフォーム 1 件まで、有効なハンドルを使ってください。</string>
+    <string name="profile_roles_label">役割を公開する</string>
+    <string name="profile_save_button">保存</string>
+    <string name="profile_saved">プロフィールを保存しました。</string>
+    <string name="profile_empty">プロフィールがありません。入力して保存してください。</string>
+    <string name="profile_forbidden">このアカウントはまだプロフィールを編集できません。</string>
+    <string name="profile_quota">編集上限に達しました。後でもう一度お試しください。</string>
+    <string name="profile_conflict">競合する変更です。再読み込みしてもう一度お試しください。</string>
+</resources>

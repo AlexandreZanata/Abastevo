@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- B-BR-CTB contributor self-service -->
+    <string name="claim_entry_button">Я участник</string>
+    <string name="claim_screen_title">Стать участником</string>
+    <string name="claim_login_label">Логин GitHub</string>
+    <string name="claim_open_button">Запросить код</string>
+    <string name="claim_code_title">Ваш код подтверждения</string>
+    <string name="claim_code_instructions">Создайте публичный gist с этим кодом и отправьте его ID.</string>
+    <string name="claim_copy_button">Скопировать код</string>
+    <string name="claim_dismiss_button">Закрыть</string>
+    <string name="claim_gist_label">ID gist</string>
+    <string name="claim_prove_button">Отправить подтверждение</string>
+    <string name="claim_withdraw_button">Отозвать заявку</string>
+    <string name="claim_signed_out">Войдите, чтобы подать заявку или изменить профиль участника.</string>
+    <string name="claim_empty">Заявок нет.</string>
+    <string name="claim_quota">Лимит исчерпан. Попробуйте позже.</string>
+    <string name="claim_conflict">Уже есть открытая заявка.</string>
+    <string name="claim_invalid">Проверьте логин GitHub или ID gist и повторите попытку.</string>
+    <string name="claim_edit_profile_button">Редактировать публичный профиль</string>
+    <string name="claim_state_pending">Ожидает</string>
+    <string name="claim_state_approved">Одобрена</string>
+    <string name="claim_state_rejected">Отклонена</string>
+    <string name="claim_state_withdrawn">Отозвана</string>
+    <string name="claim_state_expired">Истекла</string>
+    <string name="contributor_profile_screen_title">Публичный профиль</string>
+    <string name="profile_name_label">Отображаемое имя</string>
+    <string name="profile_name_error">Используйте 2–40 букв, цифр, пробелов или .-\'.</string>
+    <string name="profile_platform_label">Платформа</string>
+    <string name="profile_handle_label">Ник</string>
+    <string name="profile_visibility_label">Публичный профиль</string>
+    <string name="profile_consent_text">Я понимаю, что имя, ссылки и роли станут видны всем.</string>
+    <string name="profile_consent_error">Для публикации нужно явное согласие.</string>
+    <string name="profile_links_error">Не более 2 ссылок, по одной на платформу, с корректным именем.</string>
+    <string name="profile_roles_label">Показывать роли публично</string>
+    <string name="profile_save_button">Сохранить</string>
+    <string name="profile_saved">Профиль сохранён.</string>
+    <string name="profile_empty">Профиля нет. Заполните и сохраните.</string>
+    <string name="profile_forbidden">Этот аккаунт пока не может редактировать профиль.</string>
+    <string name="profile_quota">Лимит правок исчерпан. Попробуйте позже.</string>
+    <string name="profile_conflict">Конфликтующее изменение. Обновите и повторите.</string>
+</resources>
