@@ -11,9 +11,13 @@
   off. Review fixes add the `baseline` subcommand, require `current.json` for
   apply (no live-annotation gate), write the `schema-floor` annotation, add
   `migrate -check`, and pass the R5 two-dispatcher overlap integration test.
-  157 harness cases, Quick, shellcheck and actionlint PASS. Part B staging
-  install/baseline/plan and the two-merge staging acceptance remain pending;
-  no VPS apply or production action.
+  157 harness cases, Quick, shellcheck and actionlint PASS. Part B applied the
+  RBAC, generated the mode-600 kubeconfig, installed the agent/env under the
+  authorized host paths, staged the unit/drop-in, and ran the baseline with
+  SHA `d4dcf716` (DB/floor `000139`, running `stg-7c7d776f` images) plus a
+  plan-only receipt. No apply or timer. Persistent `/etc/systemd/system`
+  install, service-user ownership and the two-merge staging acceptance remain
+  OWED; no production action.
   [CD-04 evidence](../backend/evidence/cd/CD-04.md).
 
 - CD-03 schema compatibility window 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
