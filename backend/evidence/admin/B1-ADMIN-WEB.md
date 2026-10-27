@@ -102,3 +102,22 @@ npm ci && npm run typecheck && npm run build && npm run check && npm test
 - B3 (Caddy serving, staging validation, screenshots on staging).
 - The panel builds against the A1/A2 contract; contributor/role/audit
   endpoints arrive in B2.
+
+## Review fixes (2026-10-27)
+
+| Fix | Commit | Tests added (RED first, then GREEN) |
+|---|---|---|
+| Built HTML and the copied landing stylesheet referenced root `/assets/...`; under Caddy `handle_path /admin/*` they resolved to the API origin root and 404. Source HTML now uses `/admin/assets/...`, the build re-roots landing font `url()`s to `/admin/assets/fonts/...`, and build + check fail on any reference outside `/admin/` or one that does not resolve once the prefix is stripped. | `113e105b` | `build.test.mjs`: every asset reference is mounted under /admin and resolves after the prefix is stripped; font test now requires `/admin/assets/fonts`. `check.test.mjs`: rejects a root-absolute `/assets/` reference. |
+| Wrong key (`401 admin.denied` from `POST /v1/admin/session`) showed nothing: the global 401 redirect fired and the login form skipped 401. The anonymous login call no longer triggers the session-expiry redirect; the form shows the mapped message for every failure. | `7c9595e3` | `app-login.test.mjs` (compiled `app.js` on a dependency-free DOM double, `tests/support/fake-dom.mjs`): wrong key shows the error without a redirect loop; correct key after a wrong one opens accounts; 401 on an authenticated call still returns to login. `api-client.test.mjs`: login 401 does not fire the unauthorized handler. |
+| `toEndOfDayIso` sent `T00:00:00Z` (start of the UTC day): today was rejected by ENT-04's 1h minimum and the date read one day earlier in Brazil; the client upper bound used 5 calendar years instead of 5 × 365 days. Now `YYYY-MM-DDT23:59:59-03:00`, Brazilian "today" and default, and `endInstantError` checks `now + 1h ≤ end_at ≤ now + 1825 days` (inclusive, like the server). | `11fcc3b7` | `validators.test.mjs`: Brazil end of day; today late evening (< 1h) rejected, exactly 1h accepted; tomorrow accepted; instant bounds (+1h, +1825 d accepted; +1825 d 1 s, +1826 d rejected); last selectable day; leap-year range. |
+
+Consequence of the server rule: because a picked day ends at 23:59:59 in
+Brazil, the last selectable day is today + 1824 days (its end must still be
+within now + 1825 days); today + 1825 days is rejected by the client exactly
+as the server would reject it.
+
+```sh
+cd admin-web
+npm ci && npm run typecheck && npm run build && npm run check && npm test
+# typecheck OK, build OK, check PASSED; 29 tests, 29 pass, 0 fail
+```

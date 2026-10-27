@@ -8,6 +8,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
 
+// Public mount point. B3 serves dist at /admin/* with Caddy handle_path, which
+// strips this prefix before the file lookup, so every URL the browser sees
+// must carry it while the files stay at the dist root.
+export const MOUNT_PATH = '/admin';
+export const ASSETS_URL = `${MOUNT_PATH}/assets`;
+
+// The landing stylesheet is written for the site root (url(/assets/fonts/...)).
+// Re-root its absolute asset URLs under the admin mount and refuse to emit a
+// stylesheet that still points at the origin root.
+export function remountCss(css) {
+  const remounted = css.replace(/url\(\s*(['"]?)\/assets\//g, `url($1${ASSETS_URL}/`);
+  if (/url\(\s*['"]?\/(?!admin\/)/.test(remounted)) {
+    throw new Error(`stylesheet has a root-absolute url() outside ${MOUNT_PATH}/`);
+  }
+  return remounted;
+}
+
 export function computeHash(content) {
   return crypto.createHash('sha256').update(content).digest('hex').slice(0, 8);
 }
@@ -71,7 +88,7 @@ export function build(options = {}) {
     if (!fs.existsSync(landingCssPath)) {
       throw new Error(`landing stylesheet not found: ${landingCssPath}`);
     }
-    const cssContent = fs.readFileSync(landingCssPath);
+    const cssContent = remountCss(fs.readFileSync(landingCssPath, 'utf8'));
     const cssName = `styles.${computeHash(cssContent)}.css`;
     fs.writeFileSync(path.join(outDir, 'assets', cssName), cssContent);
 
@@ -80,7 +97,7 @@ export function build(options = {}) {
     if (!fs.existsSync(adminCssPath)) {
       throw new Error('static/assets/admin.css not found');
     }
-    const adminCssContent = fs.readFileSync(adminCssPath);
+    const adminCssContent = remountCss(fs.readFileSync(adminCssPath, 'utf8'));
     const adminCssName = `admin.${computeHash(adminCssContent)}.css`;
     fs.writeFileSync(path.join(outDir, 'assets', adminCssName), adminCssContent);
 
@@ -119,10 +136,16 @@ export function build(options = {}) {
         throw new Error(`Required HTML file missing: ${srcRel}`);
       }
       let html = fs.readFileSync(srcPath, 'utf8');
-      html = html.replaceAll('/assets/styles.css', `/assets/${cssName}`);
-      html = html.replaceAll('/assets/admin.css', `/assets/${adminCssName}`);
+      html = html.replaceAll(`"${ASSETS_URL}/styles.css"`, `"${ASSETS_URL}/${cssName}"`);
+      html = html.replaceAll(`"${ASSETS_URL}/admin.css"`, `"${ASSETS_URL}/${adminCssName}"`);
       for (const [file, fingerprintedName] of fingerprinted) {
-        html = html.replaceAll(`/assets/${file}`, `/assets/${fingerprintedName}`);
+        html = html.replaceAll(`"${ASSETS_URL}/${file}"`, `"${ASSETS_URL}/${fingerprintedName}"`);
+      }
+      const unmounted = [...html.matchAll(/(?:src|href)="(\/[^"]*)"/g)]
+        .map((match) => match[1])
+        .filter((ref) => !ref.startsWith(`${MOUNT_PATH}/`));
+      if (unmounted.length > 0) {
+        throw new Error(`${srcRel} references paths outside ${MOUNT_PATH}/: ${unmounted.join(', ')}`);
       }
       const destPath = path.join(outDir, destRel);
       fs.mkdirSync(path.dirname(destPath), { recursive: true });
@@ -182,10 +205,10 @@ if (process.argv[1] === __filename) {
   }
   const result = build(options);
   console.log(`Build complete: dist created at ${result.outDir}`);
-  console.log(`  CSS: /assets/${result.cssName}`);
-  console.log(`  Admin CSS: /assets/${result.adminCssName}`);
+  console.log(`  CSS: ${ASSETS_URL}/${result.cssName}`);
+  console.log(`  Admin CSS: ${ASSETS_URL}/${result.adminCssName}`);
   for (const [from, to] of Object.entries(result.fingerprinted)) {
-    console.log(`  JS ${from} -> /assets/${to}`);
+    console.log(`  JS ${from} -> ${ASSETS_URL}/${to}`);
   }
 }
 

@@ -273,3 +273,18 @@ test('roles and audit: paths, bodies and error codes', async () => {
   assert.equal(errorMessage(new ApiError(409, 'staff.exists', 'x')), 'Já existe assignment ativo desse papel para a conta.');
   assert.equal(errorMessage(new ApiError(409, 'contributor.claim-state', 'x')), 'A claim não está mais pendente.');
 });
+
+test('login 401: wrong key is an error for the form, not a session expiry redirect', async () => {
+  const { AdminApi, isUnauthorized, errorMessage } = await loadApi();
+  let fired = 0;
+  const api = new AdminApi(fakeFetch(denied), () => { fired += 1; });
+  const error = await api.login('wrong-key').then(
+    () => { throw new Error('should have thrown'); },
+    (err) => err,
+  );
+  assert.equal(fired, 0, 'login 401 must not trigger the unauthorized redirect');
+  assert.ok(isUnauthorized(error));
+  assert.equal(error.code, 'admin.denied');
+  assert.equal(errorMessage(error), 'Chave ou sessão inválida.');
+  assert.equal(api.hasSession(), false);
+});

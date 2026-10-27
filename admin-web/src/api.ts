@@ -309,7 +309,9 @@ export class AdminApi {
     } catch (err) {
       throw new Error(`admin request failed: ${err instanceof Error ? err.message : 'network error'}`);
     }
-    if (response.status === 401) {
+    // A 401 on an authenticated call means the session is gone. On the
+    // anonymous login call it only means a wrong key: the caller shows it.
+    if (response.status === 401 && !options.allowAnonymous) {
       this.onUnauthorized();
     }
     if (!response.ok) {

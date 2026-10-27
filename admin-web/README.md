@@ -16,7 +16,9 @@ Static owner panel for the **abastevo** administrative API (Front B).
   Because a full page load would wipe it, both admin routes serve the same
   shell and in-app transitions use `history.pushState` without reloading;
   every full load starts at the login view. Every mutation sends
-  `X-Admin-CSRF` and `Idempotency-Key`. Any 401 returns to `/admin/login/`.
+  `X-Admin-CSRF` and `Idempotency-Key`. Any 401 on an authenticated call
+  returns to `/admin/login/`; a 401 from the login call itself (wrong key)
+  stays on the form and shows the invalid-key message.
   The raw admin key is never displayed or logged; the login input is
   `type=password`, `autocomplete=off`, cleared after submit.
 
@@ -51,5 +53,10 @@ npm run check
 npm test
 ```
 
-`dist/` is served from the API origin at `/admin/*` (Front B3); the panel
-calls relative `/v1/admin/...` paths with `credentials: 'same-origin'`.
+`dist/` is served from the API origin at `/admin/*` (Front B3) with the
+`/admin` prefix stripped before the file lookup (Caddy `handle_path`). Every
+page and stylesheet therefore references `/admin/assets/...` (including the
+font URLs re-rooted from the landing stylesheet) while the files live at
+`dist/assets/`; `build` and `check` fail on any reference outside `/admin/`.
+The panel calls relative `/v1/admin/...` paths with
+`credentials: 'same-origin'`.
