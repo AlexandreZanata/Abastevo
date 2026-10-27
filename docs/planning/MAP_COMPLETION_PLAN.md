@@ -1,8 +1,11 @@
 # Map completion plan: official coverage, corrections, real offline map
 
-Status: PLANNED (2026-10-27). Nothing here is complete because it is written.
-Base: `codex/map-completion` from `codex/map-national-staging` `9036464d`
-(PR #162). Owner of the outcome: merge every map PR into `main` after review.
+Status: MC-00 and MC-A1 done; Track A BLOCKED_PENDING_LEGAL (ANP open data is
+CC BY-ND 3.0 and the API has no separate terms, so the new derived dossier/pin
+artifact is not admitted). Tracks B/C/D/E were not started because B depends on
+A5 and C6 depends on A7. Base: `codex/map-completion` from
+`codex/map-national-staging` `9036464d` (PR #162). Owner of the outcome: merge
+every map PR into `main` after review.
 
 Read first: `AGENTS.md`, `docs/planning/FAST_EXECUTION.md`,
 `MAP_NATIONAL_STATIONS_PLAN.md` (tier ladder), `MAP_NATIONAL_FINAL_RECEIPT.md`
