@@ -63,6 +63,7 @@ ABASTEVO_GITHUB_API=https://api.github.com
 ABASTEVO_WORKFLOW_PATH=.github/workflows/release-staging.yml
 ABASTEVO_MANIFEST_REPOSITORY=ghcr.io/alexandrezanata/abastevo-release
 ABASTEVO_MANIFEST_TAG=staging
+KUBECONFIG=/etc/abastevo-deploy/kubeconfig
 ```
 
 `ABASTEVO_RECEIPT_DIR` and `ABASTEVO_STATE_DIR` must be under a directory the
@@ -95,6 +96,36 @@ ls -l /var/lib/abastevo-deploy/receipts/
 The timer runs every two minutes. The service uses `flock` so overlapping runs
 are skipped. `ProtectSystem=strict`, `NoNewPrivileges=yes`, `PrivateTmp=yes`
 and a dedicated user limit the blast radius.
+
+## RBAC and kubeconfig (R8)
+
+`infra/k8s/staging/deploy-agent-rbac.yaml` defines the namespace-scoped
+ServiceAccount, Role and RoleBinding for `abastevo-temp`. It is review-only
+here; do not apply it until the executor is approved. The Role grants only:
+
+- Deployments: get/list/watch/patch (set image, rollout status, rollout undo)
+- ReplicaSets: get/list/watch (rollout status)
+- Jobs: create/get/list/watch/delete (backup and migration jobs)
+- Pods: get/list/watch and pods/log get (job observation)
+- ResourceQuotas: get/list (surge headroom)
+
+It grants no secrets, ConfigMaps, Services, pods/exec, other namespaces or
+cluster-scoped resources. The agent uses a kubeconfig outside the cluster; the
+ServiceAccount token is not mounted into workload pods.
+
+After the RBAC is applied, generate the kubeconfig without printing the token:
+
+```sh
+ABASTEVO_NAMESPACE=abastevo-temp \
+ABASTEVO_SERVICE_ACCOUNT=abastevo-deploy-agent \
+ABASTEVO_KUBECONFIG_OUT=/etc/abastevo-deploy/kubeconfig \
+bash infra/deploy/agent/kubeconfig-from-serviceaccount.sh
+```
+
+The helper reads the token from `kubectl create token` through stdin, writes the
+kubeconfig with mode 600 and never prints the token. The default token duration
+is 8760h; rotate it before expiry with the same command. Keep both files outside
+Git.
 
 ## Plan receipt
 
