@@ -223,4 +223,35 @@ class DirectoryStationRoomCacheTest {
         assertEquals(Int.MAX_VALUE, saved.captured.position)
     }
 
+
+    @Test
+    fun `every location tier round-trips through the TEXT column and unknown future values degrade`() = runTest {
+        val repo = DirectoryStationRoomCache(dao)
+        for (quality in StationLocationQuality.entries) {
+            val saved = slot<ServerStationCacheEntity>()
+            coEvery { dao.saveDetailBounded(capture(saved)) } returns Unit
+            val station = ServerStation.create(
+                stationId = "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+                displayName = "Posto Central",
+                locationQuality = quality,
+                latitude = if (quality.isPin) -23.55 else null,
+                longitude = if (quality.isPin) -46.63 else null,
+                cnpjNormalized = null,
+                municipalityCode = "3550308",
+                state = "SP",
+                currentRevisionId = null,
+            )
+            repo.saveDetail(station)
+            assertEquals(quality.wire, saved.captured.locationQuality)
+            coEvery { dao.findById(station.stationId) } returns saved.captured
+            val loaded = repo.loadDetail(station.stationId)
+            assertEquals(quality, loaded?.locationQuality)
+            assertEquals(quality.isPin, loaded?.hasPin)
+        }
+        coEvery { dao.findById("d6c74c23-63db-4c24-a2e5-408cb23bad26") } returns
+            entity().copy(locationQuality = "future-tier")
+        val degraded = repo.loadDetail("d6c74c23-63db-4c24-a2e5-408cb23bad26")
+        assertEquals(StationLocationQuality.UNKNOWN, degraded?.locationQuality)
+        assertEquals(false, degraded?.hasPin)
+    }
 }

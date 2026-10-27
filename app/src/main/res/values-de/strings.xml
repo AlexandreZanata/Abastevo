@@ -673,6 +673,9 @@
     <string name="server_station_quality_reviewed">Geprüfter Standort</string>
     <string name="server_station_quality_centroid">Ungefähre Lage in der Stadt</string>
     <string name="server_station_quality_unknown">Standort nicht geprüft</string>
+    <string name="server_station_quality_osm_mapped">Von der OpenStreetMap-Community kartiert</string>
+    <string name="server_station_quality_anp_reported">Von der ANP gemeldeter Standort</string>
+    <string name="server_station_quality_address_point">Ungefährer Standort laut Adresse (IBGE)</string>
     <string name="server_station_unknown_location">Standort nicht geprüft · ohne Koordinaten angezeigt.</string>
     <string name="server_station_cached">Letzte bekannte Daten aus dem Offline-Cache.</string>
     <string name="server_stations_unavailable">Serververzeichnis nicht verfügbar. Offizielle ANP-Daten bleiben zugänglich.</string>
@@ -1122,6 +1125,9 @@
     <string name="map_location_reviewed">Geprüfter Standort</string>
     <string name="map_location_city_centroid">Ungefährer Stadtstandort</string>
     <string name="map_location_unknown">Standort unbekannt</string>
+    <string name="map_location_osm_mapped">Von der OpenStreetMap-Community kartiert</string>
+    <string name="map_location_anp_reported">Von der ANP gemeldeter Standort</string>
+    <string name="map_location_address_point">Ungefährer Standort laut Adresse (IBGE)</string>
     <string name="map_sheet_source_label">Quelle: %1$s</string>
     <string name="map_sheet_location_label">Standort: %1$s</string>
     <string name="map_sheet_loading_price">Preis wird geladen…</string>

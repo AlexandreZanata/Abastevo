@@ -673,6 +673,9 @@
     <string name="server_station_quality_reviewed">審査済みの場所</string>
     <string name="server_station_quality_centroid">市のおおよその場所</string>
     <string name="server_station_quality_unknown">場所未確認</string>
+    <string name="server_station_quality_osm_mapped">OpenStreetMapコミュニティによるマッピング</string>
+    <string name="server_station_quality_anp_reported">ANPが報告した位置</string>
+    <string name="server_station_quality_address_point">住所に基づくおおよその位置（IBGE）</string>
     <string name="server_station_unknown_location">場所未確認のため、座標を表示しません。</string>
     <string name="server_station_cached">オフライン保存された最後の情報を表示しています。</string>
     <string name="server_stations_unavailable">サーバーの一覧は利用できません。公式ANPデータの閲覧は引き続き可能です。</string>
@@ -1122,6 +1125,9 @@
     <string name="map_location_reviewed">確認済みの位置</string>
     <string name="map_location_city_centroid">都市のおおよその位置</string>
     <string name="map_location_unknown">位置不明</string>
+    <string name="map_location_osm_mapped">OpenStreetMapコミュニティによるマッピング</string>
+    <string name="map_location_anp_reported">ANPが報告した位置</string>
+    <string name="map_location_address_point">住所に基づくおおよその位置（IBGE）</string>
     <string name="map_sheet_source_label">情報源: %1$s</string>
     <string name="map_sheet_location_label">位置: %1$s</string>
     <string name="map_sheet_loading_price">価格を読み込み中…</string>

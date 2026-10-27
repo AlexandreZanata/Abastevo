@@ -2,8 +2,10 @@ package com.anpfuel.domain.discovery
 
 import com.anpfuel.domain.exception.DomainException
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class ServerStationTest {
@@ -113,5 +115,65 @@ class ServerStationTest {
                 currentRevisionId = null,
             )
         }
+    }
+
+    private fun tiered(
+        id: String,
+        quality: StationLocationQuality,
+        lat: Double? = -23.55,
+        lon: Double? = -46.63,
+    ) = ServerStation.create(id, "Posto", quality, lat, lon, null, "3550308", "SP", null)
+
+    @Test
+    fun `each new pin tier parses from its wire value`() {
+        assertEquals(StationLocationQuality.OSM_MAPPED, StationLocationQuality.fromWire("osm-mapped"))
+        assertEquals(StationLocationQuality.ANP_REPORTED, StationLocationQuality.fromWire("anp-reported"))
+        assertEquals(StationLocationQuality.ADDRESS_POINT, StationLocationQuality.fromWire("address-point"))
+    }
+
+    @Test
+    fun `unrecognised future wire value degrades to unknown without a pin`() {
+        assertEquals(StationLocationQuality.UNKNOWN, StationLocationQuality.fromWire("satellite-guess"))
+        assertEquals(StationLocationQuality.UNKNOWN, StationLocationQuality.fromWire(""))
+        val station = tiered(stationId, StationLocationQuality.fromWire("satellite-guess"))
+        assertFalse(station.hasPin)
+    }
+
+    @Test
+    fun `pin tiers follow reviewed then osm then anp then address precedence`() {
+        val ordered = StationLocationQuality.entries.filter { it.isPin }.sortedByDescending { it.pinRank }
+        assertEquals(
+            listOf(
+                StationLocationQuality.REVIEWED,
+                StationLocationQuality.OSM_MAPPED,
+                StationLocationQuality.ANP_REPORTED,
+                StationLocationQuality.ADDRESS_POINT,
+            ),
+            ordered,
+        )
+        assertFalse(StationLocationQuality.UNKNOWN.isPin)
+        assertFalse(StationLocationQuality.CITY_CENTROID.isPin)
+        assertTrue(StationLocationQuality.ANP_REPORTED.isApproximatePin)
+        assertTrue(StationLocationQuality.ADDRESS_POINT.isApproximatePin)
+        assertFalse(StationLocationQuality.REVIEWED.isApproximatePin)
+        assertFalse(StationLocationQuality.OSM_MAPPED.isApproximatePin)
+    }
+
+    @Test
+    fun `pin requires a pin tier and coordinates`() {
+        assertTrue(tiered(stationId, StationLocationQuality.ADDRESS_POINT).hasPin)
+        assertFalse(tiered(stationId, StationLocationQuality.ADDRESS_POINT, null, null).hasPin)
+        assertFalse(tiered(stationId, StationLocationQuality.CITY_CENTROID).hasPin)
+    }
+
+    @Test
+    fun `centering prefers the best pin tier and skips coordinate-less stations`() {
+        val address = tiered("11111111-1111-4111-8111-111111111111", StationLocationQuality.ADDRESS_POINT)
+        val anp = tiered("22222222-2222-4222-8222-222222222222", StationLocationQuality.ANP_REPORTED)
+        val osmNoCoords = tiered("33333333-3333-4333-8333-333333333333", StationLocationQuality.OSM_MAPPED, null, null)
+        val centroid = tiered("44444444-4444-4444-8444-444444444444", StationLocationQuality.CITY_CENTROID)
+        assertEquals(anp.stationId, listOf(centroid, address, osmNoCoords, anp).bestPinnedStation()?.stationId)
+        assertEquals(address.stationId, listOf(centroid, address).bestPinnedStation()?.stationId)
+        assertNull(listOf(centroid, osmNoCoords).bestPinnedStation())
     }
 }

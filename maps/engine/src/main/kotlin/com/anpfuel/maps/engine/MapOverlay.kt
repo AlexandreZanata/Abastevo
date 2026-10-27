@@ -4,10 +4,20 @@ import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sqrt
 
-enum class MapStationLocationQuality {
-    UNKNOWN,
-    CITY_CENTROID,
-    REVIEWED,
+enum class MapStationLocationQuality(internal val rank: Int) {
+    UNKNOWN(1),
+    CITY_CENTROID(2),
+    ADDRESS_POINT(3),
+    ANP_REPORTED(4),
+    OSM_MAPPED(5),
+    REVIEWED(6),
+    ;
+
+    /** Pin tiers (best first): reviewed > osm-mapped > anp-reported > address-point. */
+    val isPin: Boolean get() = rank >= ADDRESS_POINT.rank
+
+    /** Pin tiers whose point is approximate and drawn with a distinct style. */
+    val isApproximate: Boolean get() = this == ANP_REPORTED || this == ADDRESS_POINT
 }
 
 enum class MapStationType {
@@ -31,7 +41,7 @@ data class MapOverlayMarker(
         get() = hasValidCoordinates &&
             latitude.isFinite() &&
             longitude.isFinite() &&
-            locationQuality == MapStationLocationQuality.REVIEWED
+            locationQuality.isPin
 }
 
 sealed interface MapOverlaySelection {
@@ -65,6 +75,9 @@ data class MapOverlayLabels(
     val unknownLocation: String = "Location unknown",
     val cityCentroidLocation: String = "Approximate city location",
     val reviewedLocation: String = "Reviewed location",
+    val osmMappedLocation: String = "Mapped by the OpenStreetMap community",
+    val anpReportedLocation: String = "Location reported by ANP",
+    val addressPointLocation: String = "Approximate location from address (IBGE)",
 )
 
 data class MapOverlayListItem(
@@ -108,10 +121,9 @@ fun prepareOverlay(
     }
     if (unique.isEmpty()) return MapOverlayPreparation(emptyList(), rejected, duplicates)
     // B-BR-MAP-01: unknown/city-centroid never become exact pins. They stay
-    // reachable through the accessible list with an explicit warning.
-    val (pinnable, unpinned) = unique.values.partition {
-        it.locationQuality == MapStationLocationQuality.REVIEWED
-    }
+    // reachable through the accessible list with an explicit warning. Every
+    // pin tier (reviewed, osm-mapped, anp-reported, address-point) is drawn.
+    val (pinnable, unpinned) = unique.values.partition { it.locationQuality.isPin }
     if (pinnable.isEmpty()) {
         return MapOverlayPreparation(emptyList(), rejected, duplicates, unpinned = unpinned.toList())
     }
@@ -223,6 +235,8 @@ internal fun buildOverlayKml(
                 style = when {
                     marker.fuel && marker.charging -> "purple"
                     marker.charging -> "teal"
+                    // Approximate tiers (anp-reported, address-point) stay visually distinct.
+                    marker.locationQuality.isApproximate -> "yellow"
                     else -> "orange"
                 },
                 icon = when {
@@ -244,7 +258,7 @@ private class MutableCluster(val anchor: MapOverlayMarker) {
 }
 
 private fun mergeDuplicate(existing: MapOverlayMarker, incoming: MapOverlayMarker): MapOverlayMarker {
-    val useIncomingLocation = incoming.locationQuality.rank() > existing.locationQuality.rank()
+    val useIncomingLocation = incoming.locationQuality.rank > existing.locationQuality.rank
     return existing.copy(
         latitude = if (useIncomingLocation) incoming.latitude else existing.latitude,
         longitude = if (useIncomingLocation) incoming.longitude else existing.longitude,
@@ -255,12 +269,6 @@ private fun mergeDuplicate(existing: MapOverlayMarker, incoming: MapOverlayMarke
         subtitle = existing.subtitle.ifBlank { incoming.subtitle },
         hasValidCoordinates = existing.hasValidCoordinates || incoming.hasValidCoordinates,
     )
-}
-
-private fun MapStationLocationQuality.rank(): Int = when (this) {
-    MapStationLocationQuality.UNKNOWN -> 1
-    MapStationLocationQuality.CITY_CENTROID -> 2
-    MapStationLocationQuality.REVIEWED -> 3
 }
 
 private fun cellOf(latitude: Double, longitude: Double, latStep: Double, lonStep: Double): Pair<Long, Long> =
@@ -288,6 +296,9 @@ private fun locationLabel(quality: MapStationLocationQuality, labels: MapOverlay
     MapStationLocationQuality.UNKNOWN -> labels.unknownLocation
     MapStationLocationQuality.CITY_CENTROID -> labels.cityCentroidLocation
     MapStationLocationQuality.REVIEWED -> labels.reviewedLocation
+    MapStationLocationQuality.OSM_MAPPED -> labels.osmMappedLocation
+    MapStationLocationQuality.ANP_REPORTED -> labels.anpReportedLocation
+    MapStationLocationQuality.ADDRESS_POINT -> labels.addressPointLocation
 }
 
 private fun describe(marker: MapOverlayMarker): String = listOf(

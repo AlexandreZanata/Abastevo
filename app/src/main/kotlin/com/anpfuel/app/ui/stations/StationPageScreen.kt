@@ -41,7 +41,6 @@ import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.SourceTimeBadge
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.data.mapper.WireFuelMapper
-import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.profile.ProfileBadge
 import com.anpfuel.domain.profile.ProfileBadgeInput
 import com.anpfuel.domain.profile.ProfileBadgeRule
@@ -64,9 +63,7 @@ fun StationPageScreen(
     StationPageContent(state, onBack, { viewModel.load(locale) }, { viewModel.selectFuel(it, locale) },
         onSignIn, onUpdatePrice, onRoute = {
             val station = state.canonical
-            val query = state.navigationQuery ?: station?.takeIf {
-                it.locationQuality == StationLocationQuality.REVIEWED && it.latitude != null && it.longitude != null
-            }?.let { "${it.latitude},${it.longitude}" }
+            val query = state.navigationQuery ?: station?.takeIf { it.hasPin }?.let { "${it.latitude},${it.longitude}" }
             if (query != null && MapAppChooser.openNavigation(context, query) == MapNavigationResult.NoAppFound) {
                 Toast.makeText(context, context.getString(R.string.stations_navigate_no_app), Toast.LENGTH_SHORT).show()
             }
@@ -132,9 +129,7 @@ internal fun StationPageContent(
                         Text(stringResource(R.string.station_profile_unavailable))
                         OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_retry)) }
                     }
-                    val hasRoute = state.navigationQuery != null || state.canonical?.let {
-                        it.locationQuality == StationLocationQuality.REVIEWED && it.latitude != null && it.longitude != null
-                    } == true
+                    val hasRoute = state.navigationQuery != null || state.canonical?.hasPin == true
                     Button(onClick = onRoute, enabled = hasRoute, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.stations_navigate_action))
                     }
