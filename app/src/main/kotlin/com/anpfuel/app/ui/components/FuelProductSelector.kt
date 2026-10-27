@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -77,13 +78,14 @@ fun FuelProductSelectorDialog(
     selected: FuelProduct,
     onSelect: (FuelProduct) -> Unit,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp),
             shape = RoundedCornerShape(28.dp),
@@ -119,6 +121,7 @@ fun FuelProductSelectorDialog(
                         )
                         FuelProductIcon(
                             product = product,
+                            modifier = Modifier.testTag("fuel-selector-icon-${product.name}"),
                             size = 20.dp,
                             contentDescription = null,
                         )

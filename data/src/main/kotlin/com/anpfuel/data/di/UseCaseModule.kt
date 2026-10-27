@@ -536,6 +536,7 @@ object UseCaseModule {
         syncScope: com.anpfuel.domain.repository.LedgerSyncScope,
         acks: com.anpfuel.domain.repository.LedgerSyncAckStore,
         erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
     ): com.anpfuel.application.usecase.ledger.DispatchLedgerCommandUseCase =
         com.anpfuel.application.usecase.ledger.DispatchLedgerCommandUseCase(
             outbox = commands,
@@ -546,6 +547,7 @@ object UseCaseModule {
             syncScope = syncScope,
             acks = acks,
             erasures = erasures,
+            drafts = drafts,
         )
 
     @Provides

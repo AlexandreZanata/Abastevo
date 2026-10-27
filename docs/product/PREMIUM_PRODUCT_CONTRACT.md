@@ -1,5 +1,7 @@
 # Premium cloud and individual professional tools — proposed product contract
 
+**Selected driver-suite planning amendment, 2026-10-26:** [Driver suite](DRIVER_SUITE_CONTRACT.md) and [DRV-00–35](../planning/DRIVER_SUITE_EXECUTION_PLAN.md) plan individual work earnings/results, shifts and separately consented local distance recording. The owner confirmed professional Premium. Only the named earlier exclusions are amended for future DRV implementation; financial-v1, free behavior, private-data exit and no raw-GPS cloud rules remain. This is planning, not runtime/provider/deployment acceptance.
+
 **Selected EV extension, 2026-10-20:** [EV support](EV_SUPPORT_CONTRACT.md) and
 [energy/cost method](EV_FINANCIAL_METHOD.md) extend private vehicle/ledger/report/
 sync data for BEV/PHEV and hybrids. Public charging discovery/community remain

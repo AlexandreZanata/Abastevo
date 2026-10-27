@@ -310,7 +310,8 @@ func TestPreviousSchemaUpgradeAddsMapTables(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := []string{"000122", "000123", "000124", "000125", "000126", "000127", "000128", "000129", "000130", "000131", "000132"}
+	expected := []string{"000122", "000123", "000124", "000125", "000126", "000127", "000128", "000129", "000130", "000131", "000132",
+		"000133", "000134", "000135", "000136", "000137", "000138"}
 	if !slices.Equal(applied, expected) {
 		t.Fatalf("applied %v", applied)
 	}

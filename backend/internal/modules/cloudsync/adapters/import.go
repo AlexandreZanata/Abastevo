@@ -12,7 +12,7 @@ import (
 )
 
 func (s *Store) SetConsent(ctx context.Context, p app.Principal, datasets []string, enabled bool) (app.Status, error) {
-	if len(datasets) < 1 || len(datasets) > 3 {
+	if len(datasets) < 1 || len(datasets) > len(domain.Datasets()) {
 		return app.Status{}, domain.ErrInvalid
 	}
 	var mask int32
@@ -40,7 +40,7 @@ func (s *Store) SetConsent(ctx context.Context, p app.Principal, datasets []stri
 		return app.Status{}, domain.ErrUnavailable
 	}
 	enabledDatasets := []string{}
-	for _, d := range []string{"vehicles", "favorites", "preferences"} {
+	for _, d := range domain.Datasets() {
 		if row.ConsentMask&datasetBit(d) != 0 {
 			enabledDatasets = append(enabledDatasets, d)
 		}
