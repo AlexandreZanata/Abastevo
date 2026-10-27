@@ -1,6 +1,8 @@
 package mapdata
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -16,6 +18,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 )
 
 const (
@@ -61,6 +65,7 @@ type StaticOverlayPrice struct {
 
 type StaticOverlayAssertion struct {
 	ID           string               `json:"id"`
+	StationID    string               `json:"station_id,omitempty"`
 	Source       string               `json:"source"`
 	Kind         string               `json:"kind"`
 	Name         string               `json:"name"`
@@ -114,6 +119,58 @@ type StaticOverlayResult struct {
 type staticOverlayRow struct {
 	UF        string
 	Assertion StaticOverlayAssertion
+}
+
+// directoryPinRights names the source that owns a directory pin's point
+// (B-BR-MAP-02). OSM-derived points carry the ODbL attribution.
+func directoryPinRights(quality string) json.RawMessage {
+	switch quality {
+	case "reviewed":
+		return json.RawMessage(`{"source":"ANP","license":"ADMITTED","attribution":"ANP Revendedores API; confirmed by © OpenStreetMap contributors — ODbL 1.0"}`)
+	case "osm-mapped":
+		return json.RawMessage(`{"source":"OSM","license":"ADMITTED","attribution":"© OpenStreetMap contributors — ODbL 1.0"}`)
+	case "anp-reported":
+		return json.RawMessage(`{"source":"ANP","license":"ADMITTED","attribution":"ANP Revendedores API"}`)
+	default:
+		return json.RawMessage(`{"source":"IBGE","license":"ADMITTED","attribution":"IBGE CNEFE 2022"}`)
+	}
+}
+
+// mergeDirectoryPins makes the canonical directory pin the single point for
+// a station: an overlay assertion whose CNPJ already has a directory pin is
+// dropped, every other assertion is kept.
+func mergeDirectoryPins(assertions, pins []staticOverlayRow) []staticOverlayRow {
+	pinned := make(map[string]struct{}, len(pins))
+	for _, pin := range pins {
+		if pin.Assertion.CNPJ != "" {
+			pinned[pin.Assertion.CNPJ] = struct{}{}
+		}
+	}
+	out := make([]staticOverlayRow, 0, len(assertions)+len(pins))
+	for _, row := range assertions {
+		if _, dup := pinned[row.Assertion.CNPJ]; dup && row.Assertion.CNPJ != "" {
+			continue
+		}
+		out = append(out, row)
+	}
+	return append(out, pins...)
+}
+
+// gzipBest precompresses a release file deterministically (no name or
+// mtime in the header) so the web tier serves it without per-request CPU.
+func gzipBest(raw []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	writer, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := writer.Write(raw); err != nil {
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func sha256Hex(data []byte) string {
@@ -214,6 +271,17 @@ func assembleStaticOverlay(
 		fileDigests[name] = StaticOverlayFile{
 			Bytes:      int64(len(raw)),
 			SHA256:     sha256Hex(raw),
+			Assertions: len(byUF[uf]),
+			WithPrices: withPrices,
+		}
+		gz, err := gzipBest(raw)
+		if err != nil {
+			return nil, staticOverlayManifest{}, StaticOverlayResult{}, err
+		}
+		files[name+".gz"] = gz
+		fileDigests[name+".gz"] = StaticOverlayFile{
+			Bytes:      int64(len(gz)),
+			SHA256:     sha256Hex(gz),
 			Assertions: len(byUF[uf]),
 			WithPrices: withPrices,
 		}
@@ -403,6 +471,43 @@ func BuildStaticOverlay(ctx context.Context, pool *pgxpool.Pool, opts StaticOver
 	if err := rows.Err(); err != nil {
 		return StaticOverlayResult{}, err
 	}
+
+	pinRows, err := tx.Query(ctx, `SELECT s.id::text, s.display_name, COALESCE(di.normalized_value, ''),
+			COALESCE(s.state, ''), ST_Y(s.current_point::geometry), ST_X(s.current_point::geometry),
+			s.current_quality
+		FROM directory_stations s
+		LEFT JOIN directory_identifiers di
+			ON di.station_id = s.id AND di.kind = 'CNPJ' AND di.valid_to IS NULL
+		WHERE s.current_point IS NOT NULL AND s.status = 'active'
+		ORDER BY s.id`)
+	if err != nil {
+		return StaticOverlayResult{}, err
+	}
+	pins := make([]staticOverlayRow, 0)
+	for pinRows.Next() {
+		var row staticOverlayRow
+		var name string
+		var lat, lon float64
+		assertion := StaticOverlayAssertion{Source: "DIRECTORY", Kind: "FUEL_STATION",
+			DisplayPoint: "station", Services: []string{"FUEL"}}
+		if err := pinRows.Scan(&assertion.StationID, &name, &assertion.CNPJ, &row.UF,
+			&lat, &lon, &assertion.Quality); err != nil {
+			pinRows.Close()
+			return StaticOverlayResult{}, err
+		}
+		assertion.ID = assertion.StationID
+		assertion.Name = kernel.PublicStationName(name, assertion.CNPJ)
+		assertion.LatitudeDeg = strconv.FormatFloat(lat, 'f', 7, 64)
+		assertion.LongitudeDeg = strconv.FormatFloat(lon, 'f', 7, 64)
+		assertion.Rights = directoryPinRights(assertion.Quality)
+		row.Assertion = assertion
+		pins = append(pins, row)
+	}
+	pinRows.Close()
+	if err := pinRows.Err(); err != nil {
+		return StaticOverlayResult{}, err
+	}
+	overlayRows = mergeDirectoryPins(overlayRows, pins)
 
 	var priceWeek *StaticPriceWeek
 	var revisionID, surveyStart, surveyEnd string

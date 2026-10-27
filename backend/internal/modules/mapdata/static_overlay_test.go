@@ -1,7 +1,10 @@
 package mapdata
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -45,7 +48,8 @@ func TestAssembleStaticOverlayGroupsByUFAndEmbedsPrices(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(files) != 2 || len(manifest.Files) != 2 {
+	// One JSON plus its precompressed .gz per UF.
+	if len(files) != 4 || len(manifest.Files) != 4 {
 		t.Fatalf("files=%d manifest=%d", len(files), len(manifest.Files))
 	}
 	if result.Counts.Assertions != 2 || result.Counts.WithPrices != 1 || result.Counts.UFs != 2 {
@@ -131,5 +135,67 @@ func TestSanitizeRelease(t *testing.T) {
 	}
 	if got := sanitizeRelease("..."); got != "release" {
 		t.Fatalf("empty sanitize=%q", got)
+	}
+}
+
+func TestMergeDirectoryPinsKeepsOnePointPerStation(t *testing.T) {
+	osm := []staticOverlayRow{
+		{UF: "PR", Assertion: StaticOverlayAssertion{ID: "osm-1", Source: "OSM", CNPJ: "01122233300000"}},
+		{UF: "PR", Assertion: StaticOverlayAssertion{ID: "osm-2", Source: "OSM", CNPJ: "05938540000134"}},
+		{UF: "PR", Assertion: StaticOverlayAssertion{ID: "osm-3", Source: "OSM"}},
+	}
+	pins := []staticOverlayRow{
+		{UF: "PR", Assertion: StaticOverlayAssertion{ID: "st-1", StationID: "st-1", Source: "DIRECTORY", CNPJ: "01122233300000", Quality: "anp-reported"}},
+	}
+	merged := mergeDirectoryPins(osm, pins)
+	ids := []string{}
+	for _, row := range merged {
+		ids = append(ids, row.Assertion.ID)
+	}
+	if strings.Join(ids, ",") != "osm-2,osm-3,st-1" {
+		t.Fatalf("merged %v", ids)
+	}
+}
+
+func TestDirectoryPinRightsAttributeEverySource(t *testing.T) {
+	for quality, source := range map[string]string{
+		"reviewed": "ANP", "osm-mapped": "OSM", "anp-reported": "ANP", "address-point": "IBGE",
+	} {
+		var rights struct{ Source, Attribution string }
+		if err := json.Unmarshal(directoryPinRights(quality), &rights); err != nil {
+			t.Fatal(err)
+		}
+		if rights.Source != source || rights.Attribution == "" {
+			t.Errorf("%s rights %+v", quality, rights)
+		}
+	}
+	var osm struct{ Attribution string }
+	_ = json.Unmarshal(directoryPinRights("osm-mapped"), &osm)
+	if !strings.Contains(osm.Attribution, "ODbL") {
+		t.Error("osm-mapped pin lost its ODbL attribution")
+	}
+}
+
+func TestAssembleStaticOverlayPrecompressesEveryUFFile(t *testing.T) {
+	rows := []staticOverlayRow{{UF: "SP", Assertion: StaticOverlayAssertion{ID: "a", Quality: "anp-reported"}}}
+	files, manifest, _, err := assembleStaticOverlay("g", "id", "rev", time.Unix(0, 0), rows, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gz, ok := files["SP.json.gz"]
+	if !ok || manifest.Files["SP.json.gz"].SHA256 != sha256Hex(gz) {
+		t.Fatalf("missing or unbound SP.json.gz: %v", manifest.Files)
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(gz))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain, err := io.ReadAll(reader)
+	if err != nil || !bytes.Equal(plain, files["SP.json"]) {
+		t.Fatalf("gzip does not round-trip: %v", err)
+	}
+	again, _, _, _ := assembleStaticOverlay("g", "id", "rev", time.Unix(0, 0), rows, nil, nil)
+	if !bytes.Equal(again["SP.json.gz"], gz) {
+		t.Fatal("precompressed file is not deterministic")
 	}
 }
