@@ -86,6 +86,10 @@ uploads/
 landing/dist/
 landing/node_modules/
 
+# Admin-web build artifacts & dependencies
+admin-web/dist/
+admin-web/node_modules/
+
 # Local real-station photo reference set (geolocated, Sorriso MT) — never commit
 /combustiveis/
 combustiveis.zip

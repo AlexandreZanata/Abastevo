@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Painel de administração: login, contas e grants.">
+  <title>Painel de administração</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/admin/assets/styles.css">
+  <link rel="stylesheet" href="/admin/assets/admin.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
+  <header class="admin-topbar">
+    <span class="admin-brand">Painel de administração</span>
+    <span class="admin-session" id="session-info" hidden>Sessão <span id="session-fingerprint">…</span> · expira em <span id="session-expiry">…</span></span>
+    <nav aria-label="Sessão"><button id="logout-button" type="button" hidden>Sair</button></nav>
+  </header>
+  <main id="main">
+    <noscript><p>Este painel precisa de JavaScript para falar com a API.</p></noscript>
+    <section class="card" id="view-login" aria-labelledby="login-title" hidden>
+      <h1 id="login-title">Entrar</h1>
+      <p>Use a chave de administração do ambiente. Ela nunca é exibida nem registrada.</p>
+      <form id="login-form" method="post" action="#">
+        <label for="admin-key">Chave de administração</label>
+        <input id="admin-key" name="key" type="password" autocomplete="off" required>
+        <p id="login-error" class="error" role="alert"></p>
+        <button type="submit">Entrar</button>
+      </form>
+    </section>
+    <div id="view-accounts" hidden>
+      <section class="card" aria-labelledby="search-title">
+        <h1 id="search-title">Buscar contas</h1>
+        <form id="search-form" method="get" action="#">
+          <label for="search-q">UUID, apelido ou e-mail</label>
+          <input id="search-q" name="q" type="search" minlength="3" required>
+          <button type="submit">Buscar</button>
+        </form>
+        <p id="search-error" class="error" role="alert"></p>
+        <ul id="results" aria-live="polite"></ul>
+      </section>
+      <section class="card" aria-labelledby="detail-title">
+        <h2 id="detail-title">Detalhe da conta</h2>
+        <p id="detail-error" class="error" role="alert"></p>
+        <dl>
+          <dt>Apelido</dt><dd id="detail-alias">—</dd>
+          <dt>Estado</dt><dd id="detail-status">—</dd>
+          <dt>Criada em</dt><dd id="detail-created">—</dd>
+          <dt>Pagante</dt><dd id="detail-paid">—</dd>
+        </dl>
+        <h3>Grants</h3>
+        <ul id="grants"></ul>
+        <h3>Conceder grant</h3>
+        <form id="grant-form" method="post" action="#">
+          <label for="grant-tier">Tier</label>
+          <select id="grant-tier" name="tier">
+            <option value="PRO">PRO</option>
+            <option value="CONTRIBUTOR">CONTRIBUTOR</option>
+            <option value="ENTERPRISE">ENTERPRISE</option>
+          </select>
+          <label for="grant-end">Data final (opcional)</label>
+          <input id="grant-end" name="end" type="date">
+          <label class="checkbox"><input id="grant-no-end" name="no-end" type="checkbox"> Sem data final</label>
+          <label for="grant-reason">Motivo (10 a 500 caracteres)</label>
+          <textarea id="grant-reason" name="reason" rows="3" required></textarea>
+          <p id="grant-error" class="error" role="alert"></p>
+          <button type="submit">Conceder</button>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="/admin/assets/app.js"></script>
+</body>
+</html>

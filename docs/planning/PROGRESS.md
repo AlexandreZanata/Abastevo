@@ -9,6 +9,18 @@
   PR #171 with `--base codex/adm-a4-staff-roles`. Next: B2; A5b runs on real
   staging with B3.
 
+- B1 admin web panel 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING. Branch
+  `codex/adm-b1-admin-web` from `origin/main` `d4dcf716`. New `admin-web/`
+  package (TS 7.0.2, no framework/runtime dep): login + accounts pages,
+  landing tokens copied at build, CSRF in memory, unsafe-DOM scan, CSP
+  headers. Tested revision: branch head; `npm ci && typecheck && build &&
+  check && test` green (17/17); local integration login→search→grant→
+  revoke→logout proven against A4 backend on disposable PostGIS with
+  synthetic data and screenshots. [Evidence](../../backend/evidence/admin/B1-ADMIN-WEB.md).
+  PR #170 to `main`, merges only after #164. A1 reconciliation was published;
+  remote integration remains pending.
+
+
 - A4 staff roles and audit read 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Branch `codex/adm-a4-staff-roles` stacked on A3 PR #167 (base
   `codex/adm-a3-contributors`; planning docs still in PR #161). STF-01…STF-06
