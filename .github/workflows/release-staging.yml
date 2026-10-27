@@ -97,7 +97,7 @@ jobs:
           printf 'workflow_run_url=%s\n' "$workflow_run_url" >> "$GITHUB_OUTPUT"
       - uses: oras-project/setup-oras@005458ad77f1c8facd38a094e4af2e69e5607ff4 # v2.0.2
         with:
-          version: 1.3.6
+          version: 1.3.4
       - name: Evaluate release gate
         id: gate
         env:
@@ -303,7 +303,7 @@ jobs:
       - name: Install oras
         uses: oras-project/setup-oras@005458ad77f1c8facd38a094e4af2e69e5607ff4 # v2.0.2
         with:
-          version: 1.3.6
+          version: 1.3.4
       - name: Assemble release manifest
         env:
           SHA: ${{ needs.gate.outputs.sha }}
