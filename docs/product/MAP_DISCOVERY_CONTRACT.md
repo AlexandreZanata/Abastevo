@@ -334,3 +334,36 @@ guaranteed safe arrival is contracted here.
 - **B-BR-MAP-SEARCH-SNAPSHOT-01:** a search update replaces the prior SDK
   snapshot; it does not append repeated intermediate results into the final
   callback. Cancellation/generation checks precede snapshot replacement.
+
+### B-BR-MAP-15 — Official point validation (MC-A3)
+
+An official ANP point may become a pin only when every check passes. A failing
+point falls to the next location tier; it never pins and is never replaced by
+an invented point. Validation removes evidence; it never upgrades a tier.
+
+- **Coordinates:** finite WGS84 numeric latitude/longitude. Latitude in
+  `[-33.75, 5.27]`, longitude in `[-73.99, -34.79]` (Brazil), excluding
+  `(0, 0)` and sentinel/null values. Accepted SRID is 4674 (SIRGAS2000;
+  4326 is treated as the same WGS84-compatible datum).
+- **Lat/lon swap:** if the original pair is outside Brazil but the swapped pair
+  is inside, the row fails with `lat_lon_swapped`; the validator never silently
+  swaps it.
+- **Municipality:** the station's UF + municipality name resolves to exactly one
+  IBGE municipality code. Unknown or ambiguous names fail with
+  `municipality_unknown`.
+- **Municipality polygon:** the point must be inside the official IBGE
+  municipality polygon or within a 500 m buffer of it. The official simplified
+  malha (IBGE, CC BY 4.0) is the geometry source; attribution is retained.
+  Outside points fail with `outside_municipality`.
+- **Shared-coordinate cluster:** five or more stations at the same rounded
+  coordinate (6 decimal places) fail with `shared_coordinate_cluster`; a shared
+  address/sentinel is not a station point.
+- **Address candidate distance:** when the open geocode/CNEFE candidate exists,
+  an ANP point farther than 2,000 m from it fails with
+  `address_candidate_too_far`; a candidate closer than that is recorded as
+  corroboration, not as a new tier.
+- **Provenance:** the ANP values stay verbatim with source, retrieval time and
+  "Fonte: ANP"; the validation code/status is an Abastevo-derived value and is
+  labelled as such. No personal data, contributor GPS or raw ANP file enters
+  Git. A rejected point is retained only as validation evidence and never
+  projected as the station pin.

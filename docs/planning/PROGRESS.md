@@ -1,5 +1,13 @@
 # Current execution state
 
+- MAP completion MC-A3 2026-10-27: LOCAL_DONE. Base `23bc459b` plus this
+  task. B-BR-MAP-15 and the Rust `validate_anp_points` use the official IBGE
+  malha (CC BY 4.0, 5,571 features): 45,807 input -> 37,415 valid, 6,790 no
+  point and 1,602 rejected (1,318 outside municipality, 196 shared cluster, 87
+  unknown municipality, 1 outside Brazil). 1 s; byte-identical rerun; 112 Rust
+  tests and `check-rust-fast.sh` pass. Evidence:
+  [MC-A3](../backend/evidence/maps/map-completion/MC-A3.md). Time: ~40 min.
+
 - MAP completion MC-A2 2026-10-27: LOCAL_DONE. Base `6ade4a00` plus this
   task. New Rust `prepare_anp_registry` parses the 2026-10-26 API pages into
   deterministic NDJSON plus quarantine and manifest: 45,807 accepted, 0
