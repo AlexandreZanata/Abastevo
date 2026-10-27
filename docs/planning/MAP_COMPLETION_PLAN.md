@@ -1,9 +1,8 @@
 # Map completion plan: official coverage, corrections, real offline map
 
-Status: MC-00 and MC-A1 done; Track A BLOCKED_PENDING_LEGAL (ANP open data is
-CC BY-ND 3.0 and the API has no separate terms, so the new derived dossier/pin
-artifact is not admitted). Tracks B/C/D/E were not started because B depends on
-A5 and C6 depends on A7. Base: `codex/map-completion` from
+Status: MC-00 and MC-A1 LOCAL_DONE. The SRC-ANP licence block was resolved
+by maintainer decision D11 on 2026-10-27; Track A resumes at MC-A2. Tracks B
+and C start now in parallel (see "Unblocked order" below). Base: `codex/map-completion` from
 `codex/map-national-staging` `9036464d` (PR #162). Owner of the outcome: merge
 every map PR into `main` after review.
 
@@ -46,6 +45,11 @@ pinned at a city centroid or an invented point to reach a number.
 | D8 | Corrections never overwrite official facts. They create community assertions; location corrections reach `reviewed` only by a recorded review decision. | Keeps official/community distinct (AGENTS rule 12). |
 | D9 | Review happens through an operator CLI now and through the admin suite later (ADMIN_CONTRIBUTOR_PLAN A1/A4/B2). | Admin panel is not ready; the review port is built once. |
 
+| D11 | SRC-ANP per-station facts are `MAINTAINER_ADMITTED`: verbatim, attributed, never republished as ANP files; basis Lei 9.610 art. 7º § 2º and art. 8º V, Decreto 8.777 art. 2º III. | Recorded in `MAP_EV_SOURCE_REGISTER.md`; optional Fala.BR confirmation does not block. |
+| D12 | Universe: automotive (45,807) is the driver map; GLP (57,127) is catalog plus an off-by-default map layer pinned only by address tiers; TRR/aviation/marine are NOT_APPLICABLE. | Measured in MC-A1; no open source for the excluded classes. |
+| D13 | ANP API politeness: ≤ 1 request per 20 s, honour `Retry-After`, stop at the first challenge, resume per-UF next run; CSV is the denominator. | The 1-second sweep hit a Cloudflare challenge after 17 UFs. |
+| D14 | The private Paraná fixture is replaced by the self-generated Brazil packages from MC-C1 for device tests (pushed by script, never committed). | Removes the "admitted regional fixture is required" rows. |
+
 If the user rejects D4 in chat, skip those tasks and record
 NOT_PLANNED with the reason; nothing else depends on them.
 
@@ -60,9 +64,10 @@ MC-00 baseline
 MC-E closure: phase states, P38 rows, PR consolidation, merge readiness
 ```
 
-A and C1 can run in parallel (different files). B depends on A5 (dossier
-fields it corrects). C6 depends on A7 (overlay content). D deploys after each
-track's local gate. E runs last.
+Unblocked order: A2→A7 continue; C1→C5 start in parallel (C1 needs no ANP
+data); B1→B4 start on the existing directory fields (location, name, brand,
+address, status) and pick up dossier fields when A5 lands. C6 waits for A7.
+D deploys after each track's local gate. E runs last.
 
 ## 3. MC-00 Baseline
 
@@ -153,6 +158,17 @@ nothing raw enters Git.
   the previous release active.
 - Done: two consecutive runs; the second applies zero changes when inputs are
   unchanged.
+
+### MC-A8 EV and hybrid sources
+- Admit, per `MAP_EV_SOURCE_REGISTER.md` "EV and hybrid driver sources":
+  OSM chargers (pinned Brazil extract), OCM POIs whose provider licence is
+  CC BY 4.0, Inmetro PBEV current edition, ANEEL distributor tariffs. Record
+  URL, bytes, SHA-256, licence evidence; stop on unclear terms.
+- Rust `prepare_chargers`: normalize OSM and OCM chargers, match within 50 m
+  and same socket family, emit `confirmed_by` (1 or 2 sources), keep each
+  source's attribution.
+- Done: charger counts per UF by confirmation level; PBEV/tariff admission
+  states.
 
 Track A gate: measured coverage per kind, zero bad pins (outside Brazil, in
 the wrong municipality, centroid), reruns idempotent, timings recorded.

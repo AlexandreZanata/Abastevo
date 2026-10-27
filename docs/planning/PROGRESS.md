@@ -1,5 +1,13 @@
 # Current execution state
 
+- MAP completion unblock 2026-10-27: SRC-ANP per-station facts
+  MAINTAINER_ADMITTED (D11; basis Lei 9.610 art. 7º § 2º and art. 8º V,
+  Decreto 8.777 art. 2º III; verbatim, attributed, no ANP file republication).
+  Universe D12 (automotive map, GLP off-by-default layer, TRR/aviation
+  NOT_APPLICABLE), API politeness D13, self-generated Brazil packages replace
+  the private fixture D14, EV/hybrid source assessment and MC-A8 added. Next:
+  MC-A2 and MC-C1 in parallel, MC-B1 on existing directory fields. Branch
+  `codex/map-completion`; no PR yet.
 - MAP completion MC-A1 2026-10-27: LOCAL_DONE / Track A BLOCKED_PENDING_LEGAL.
   Official ANP universe recorded: 45,807 automotive-fuel resellers (45,807
   unique CNPJ) and 57,127 GLP resellers (57,124 unique; 3 duplicate rows);
