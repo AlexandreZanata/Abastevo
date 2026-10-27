@@ -43,3 +43,4 @@ Existing Android decisions remain applicable to the imported release. New status
 - [ADR-021 — Address-first community contribution](adr/021-community-first-contribution.md): identity/address suffice for initial contribution; mandatory proximity deferred.
 
 - [ADR-022 — CoMaps-derived native map engine](adr/022-comaps-derived-native-map-engine.md): pinned Apache-2.0 core behind a narrow Android port; real ENGINE_GATE proof before UI integration.
+- [ADR-023 — Admin suite, granted tiers and contributors](adr/023-admin-suite-granted-tiers-contributors.md): hashed single owner key, admin-granted PRO/CONTRIBUTOR/ENTERPRISE tiers in the capability projection, code-frozen staff roles. PROPOSED.
