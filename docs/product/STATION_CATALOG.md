@@ -62,3 +62,71 @@ Actor: operator. Exercise a frozen synthetic workload, dependency outages, backl
 Verified representation is now explicitly planned in [STATION_PROFILE_REPRESENTATION](STATION_PROFILE_REPRESENTATION.md) / [P30–P33](../planning/STATION_PROFILE_PLAN.md), superseding P28-T04. Directory remains owner of Station/operator identities; a profile grant is scoped to an account/station/operator revision and never inferred from source/suggestion/partner access.
 
 P25/P27 must update the owning versioned OpenAPI, fixtures, Data Model and privacy inventory before their new handlers/migrations. Names in this document are semantic targets, not endpoints or tables claimed to exist. Existing account writes, Directory UUIDs, anonymous reads, cache allowlists and media ownership remain in force. Unknown additive states have cautious client fallbacks. Native iOS work is deferred until an explicit request; Kotlin contracts preserve portable domain/application code.
+
+## B-BR-COR-01..08 — station corrections (MC-B1)
+
+Target: an active free account may propose a correction to an existing
+directory station. Corrections are community assertions; they never overwrite
+an official fact in place (D8). The fields available in this batch are
+location, display name, brand, address and operating status. Fuel products,
+services and EV connectors join the same contract after the dossier (A5) and
+their own validators land.
+
+- **COR-01 — Target and fields.** Every correction names one station UUID and
+  exactly one field. Payloads are structured JSON validated by a per-field
+  validator; unknown fields and unknown top-level members are rejected. A
+  correction never creates a station, a price, a trust rating or ownership.
+- **COR-02 — Official/community separation.** The official/ANP projection and
+  the station's canonical identity remain unchanged. An accepted location
+  becomes a new `reviewed` location revision through the existing ladder; an
+  accepted name/brand/address/status becomes a community-layer assertion with
+  its own label, source and observed date. Community consensus alone never
+  changes an official field.
+- **COR-03 — Proof, quota and idempotency.** Submission requires a live free
+  account session and the existing signed-request proof. The account quota is
+  20 submissions per rolling day. One open correction per account + station +
+  field is allowed. `(account_id, client_submission_id)` is unique; the same key
+  with the same body replays the record, the same key with another body is a
+  conflict. Anonymous contributor proof alone is insufficient.
+- **COR-04 — Field validation.** Location must be a finite WGS84 point inside
+  Brazil and inside the station municipality polygon (500 m buffer), and may
+  not exceed the allowed distance from the current point unless the payload
+  carries accepted evidence. The request may carry only a coarse proximity
+  bucket (for example `same_municipality`, `within_1km`); raw contributor GPS
+  is never stored or published (P16). Name/brand/address are normalized,
+  length-bounded, escaped on output and checked against the station context.
+  An optional note is at most 280 scalar values and rejects URLs, e-mail
+  addresses, phone numbers and CPF/CNPJ-like personal identifiers.
+- **COR-05 — Consensus and review.** Consensus counts distinct accounts and
+  distinct device keys; new accounts weigh less, and correlated submissions
+  (same device, network or time window) count once. A correction matching
+  official evidence (for example an ANP point within 50 m of the proposed pin,
+  or an equal ANP name/brand) may become `auto_verified` with the evidence
+  attached; everything else waits for an operator review. Review decisions are
+  append-only and carry a mandatory reason. A community location accepted by
+  review becomes `reviewed`; auto-verified official matches become the
+  corresponding official tier, never `reviewed`.
+- **COR-06 — Status lifecycle.** Frozen values are `pending`, `auto_verified`,
+  `accepted`, `rejected`, `expired`, `cancelled`, `superseded` and `frozen`.
+  Only `pending`/`auto_verified` are open; `cancelled` is owner-only;
+  `expired` follows the evidence/policy window; a newer accepted correction
+  supersedes an older open one for the same station+field; `frozen` is a review
+  hold for flip-flopping. Every transition is audited. A decision after a
+  cancellation, a duplicate reviewer decision or a foreign-owner action fails
+  closed.
+- **COR-07 — Privacy, retention and erasure.** Owner reads are private and
+  never list who suggested what to the public. Evidence follows the existing
+  24-hour private-media rules and EXIF stripping; expired evidence cannot be
+  re-linked to extend retention. Account erasure deletes or anonymizes
+  correction rows according to P13, while retaining the minimal audited
+  decision metadata required by the moderation policy. No personal name, CPF,
+  personal phone/e-mail or precise contributor GPS enters Git, logs or public
+  APIs.
+- **COR-08 — Abuse and audit.** Per-account/day and per-device/network controls
+  bound flooding; a bounded per-station queue and a 30-day cooldown per
+  station+field after a decision apply unless new evidence arrives.
+  Closed/permanently-closed proposals never hide a station without ANP
+  revocation evidence or staff review. A rejection ratio over a window lowers
+  weight and may pause intake reversibly and with an audit record. Every staff
+  decision records decider kind/id, reason and evidence; payment or subscription
+  never affects review, intake or trust.

@@ -1,5 +1,13 @@
 # Current execution state
 
+- MAP completion MC-B1 2026-10-27: LOCAL_DONE. Base `f6abff83` plus this
+  task. B-BR-COR-01..08 written before code: one-field corrections on an
+  existing station, official/community separation, signed free-account proof,
+  20/day quota, one open per account+station+field, idempotency, field
+  validation, reviewed/auto-verified decisions with mandatory audit and the
+  eight-status lifecycle. Docs only; no runtime change. Evidence:
+  [MC-B1](../backend/evidence/maps/map-completion/MC-B1.md). Time: ~15 min.
+
 - MAP completion unblock 2026-10-27: SRC-ANP per-station facts
   MAINTAINER_ADMITTED (D11; basis Lei 9.610 art. 7º § 2º and art. 8º V,
   Decreto 8.777 art. 2º III; verbatim, attributed, no ANP file republication).
