@@ -52,7 +52,8 @@ WHERE scope = @scope AND subject = @subject AND window_start = @window_start;
 INSERT INTO admin_audit_events
     (session_id, action, target_type, target_id, reason, before, after,
      request_id, client_ip_hash)
-VALUES (@session_id, @action, @target_type, @target_id, @reason, NULL, NULL,
+VALUES (@session_id, @action, @target_type, @target_id, @reason,
+    sqlc.narg('before')::jsonb, sqlc.narg('after')::jsonb,
     @request_id, @client_ip_hash);
 
 -- name: ReserveMutation :one
@@ -76,3 +77,37 @@ WHERE session_id = @session_id AND key = @key AND response_code IS NULL;
 
 -- name: DeleteMutation :exec
 DELETE FROM admin_idempotency WHERE session_id = @session_id AND key = @key;
+
+-- name: LockAccount :one
+SELECT id, alias, status, created_at FROM accounts
+WHERE id = @id FOR UPDATE;
+
+-- name: GetAccount :one
+SELECT id, alias, status, created_at FROM accounts
+WHERE id = @id;
+
+-- name: SearchAccounts :many
+SELECT a.id, a.alias, a.status, a.created_at
+FROM accounts a
+WHERE a.id = sqlc.narg('id')::uuid
+   OR a.alias = sqlc.arg('query')::text
+   OR (char_length(sqlc.arg('query')::text) >= 3
+       AND a.alias LIKE sqlc.arg('prefix')::text ESCAPE '\')
+   OR a.id IN (
+       SELECT account_id FROM account_addresses
+       WHERE address_hash = sqlc.arg('address_hash')::text
+   )
+ORDER BY a.alias, a.id
+LIMIT 20;
+
+-- name: AccountPaidSummary :one
+SELECT count(*) FILTER (
+        WHERE state IN ('ACTIVE', 'CANCELED', 'GRACE')
+          AND (valid_until IS NULL OR valid_until > clock_timestamp())
+    )::int AS paid_active,
+    (max(valid_until) FILTER (
+        WHERE state IN ('ACTIVE', 'CANCELED', 'GRACE')
+          AND (valid_until IS NULL OR valid_until > clock_timestamp())
+    ))::timestamptz AS paid_until
+FROM subscription_purchases
+WHERE account_id = sqlc.arg('account_id')::uuid AND NOT retired;

@@ -8,6 +8,7 @@ import (
 	adminhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/adapters/http"
 	adminapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/application"
 	admindomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/domain"
+	entitlementadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/entitlement/adapters"
 	identityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/http"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/go-chi/chi/v5"
@@ -26,12 +27,17 @@ func registerAdminRoutes(r chi.Router, cfg config.Config, pool *pgxpool.Pool, tr
 		keys = append(keys, admindomain.ConfiguredKey{Hash: hash, Fingerprint: admindomain.Fingerprint(hash)})
 	}
 	resolver := identityhttp.Resolver{TrustedProxies: trusted}
-	service := &adminapp.Service{Store: adapters.NewStore(pool), Keys: keys, Clock: time.Now}
+	adminStore := adapters.NewStore(pool)
+	service := &adminapp.Service{
+		Store: adminStore, Grants: entitlementadapters.NewStore(pool),
+		Keys: keys, Clock: time.Now, NewID: newUUID,
+	}
 	adminhttp.Handler{
 		Service:      service,
 		Origin:       cfg.AdminOrigin,
 		AllowedCIDRs: cfg.AdminAllowedCIDRs,
 		ClientIP:     resolver.ClientIP,
+		CursorSecret: cfg.CursorSecret,
 	}.RegisterRoutes(r)
 	return true
 }

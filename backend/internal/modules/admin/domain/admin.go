@@ -36,6 +36,7 @@ var (
 	ErrUnauthorized = errors.New("admin: session required")
 	ErrCSRF         = errors.New("admin: csrf denied")
 	ErrConflict     = errors.New("admin: conflict")
+	ErrNotFound     = errors.New("admin: not found")
 	ErrUnavailable  = errors.New("admin: unavailable")
 )
 

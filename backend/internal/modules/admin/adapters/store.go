@@ -10,9 +10,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"strings"
 	"time"
 
 	qadmin "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/admin"
+	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/domain"
 	"github.com/jackc/pgx/v5"
@@ -261,30 +263,110 @@ func (s *Store) Authenticate(ctx context.Context, rawToken string, now time.Time
 }
 
 func (s *Store) Logout(ctx context.Context, session app.Session, m app.Mutation) (app.MutationResult, error) {
-	return s.mutate(ctx, m, func(ctx context.Context, q *qadmin.Queries) (app.MutationResult, error) {
+	return s.mutate(ctx, m, func(ctx context.Context, tx pgx.Tx) (app.MutationResult, []app.AuditEvent, error) {
+		q := qadmin.New(tx)
 		n, err := q.RevokeSession(ctx, qadmin.RevokeSessionParams{ID: uid(session.ID), Now: stamp(m.Now)})
 		if err != nil {
-			return app.MutationResult{}, domain.ErrUnavailable
+			return app.MutationResult{}, nil, domain.ErrUnavailable
 		}
 		if n != 1 {
-			return app.MutationResult{}, domain.ErrUnauthorized
+			return app.MutationResult{}, nil, domain.ErrUnauthorized
 		}
-		return app.MutationResult{Status: 204}, nil
+		return app.MutationResult{Status: 204}, nil, nil
 	})
 }
 
 func (s *Store) RevokeAll(ctx context.Context, _ app.Session, m app.Mutation) (app.MutationResult, error) {
-	return s.mutate(ctx, m, func(ctx context.Context, q *qadmin.Queries) (app.MutationResult, error) {
-		if _, err := q.RevokeAllSessions(ctx, stamp(m.Now)); err != nil {
-			return app.MutationResult{}, domain.ErrUnavailable
+	return s.mutate(ctx, m, func(ctx context.Context, tx pgx.Tx) (app.MutationResult, []app.AuditEvent, error) {
+		if _, err := qadmin.New(tx).RevokeAllSessions(ctx, stamp(m.Now)); err != nil {
+			return app.MutationResult{}, nil, domain.ErrUnavailable
 		}
-		return app.MutationResult{Status: 204}, nil
+		return app.MutationResult{Status: 204}, nil, nil
 	})
 }
 
+// Mutate is the exported transactional mutation helper used by later admin
+// surfaces (grants and roles).
+func (s *Store) Mutate(ctx context.Context, m app.Mutation, fn func(context.Context, pgx.Tx) (app.MutationResult, []app.AuditEvent, error)) (app.MutationResult, error) {
+	return s.mutate(ctx, m, fn)
+}
+
+// RunInTx runs one read-only composition inside a bounded transaction.
+func (s *Store) RunInTx(ctx context.Context, fn func(context.Context, pgx.Tx) error) error {
+	if s == nil || s.Pool == nil {
+		return domain.ErrUnavailable
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return domain.ErrUnavailable
+	}
+	defer rollback(tx)
+	if err := fn(ctx, tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domain.ErrUnavailable
+	}
+	return nil
+}
+
+func (s *Store) SearchAccounts(ctx context.Context, query string) ([]app.Account, error) {
+	if s == nil || s.Pool == nil {
+		return nil, domain.ErrUnavailable
+	}
+	params := qadmin.SearchAccountsParams{Query: query, Prefix: likePrefix(query)}
+	if domain.ValidUUID(query) {
+		params.ID = uid(query)
+	}
+	if accountdomain.ValidEmail(query) {
+		params.AddressHash = accountdomain.AddressHash(query)
+	}
+	rows, err := qadmin.New(s.Pool).SearchAccounts(ctx, params)
+	if err != nil {
+		return nil, domain.ErrUnavailable
+	}
+	out := make([]app.Account, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, app.Account{ID: idstr(row.ID), Alias: row.Alias, Status: row.Status, CreatedAt: row.CreatedAt.Time})
+	}
+	return out, nil
+}
+
+func (s *Store) GetAccountTx(ctx context.Context, tx pgx.Tx, accountID string) (app.Account, error) {
+	row, err := qadmin.New(tx).GetAccount(ctx, uid(accountID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.Account{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return app.Account{}, domain.ErrUnavailable
+	}
+	return app.Account{ID: idstr(row.ID), Alias: row.Alias, Status: row.Status, CreatedAt: row.CreatedAt.Time}, nil
+}
+
+func (s *Store) PaidSummaryTx(ctx context.Context, tx pgx.Tx, accountID string) (app.PaidSummary, error) {
+	row, err := qadmin.New(tx).AccountPaidSummary(ctx, uid(accountID))
+	if err != nil {
+		return app.PaidSummary{}, domain.ErrUnavailable
+	}
+	summary := app.PaidSummary{State: "NONE"}
+	if row.PaidActive > 0 {
+		summary.State = "ACTIVE"
+	}
+	if row.PaidUntil.Valid {
+		until := row.PaidUntil.Time
+		summary.ValidUntil = &until
+	}
+	return summary, nil
+}
+
+func likePrefix(query string) string {
+	replacer := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+	return replacer.Replace(query) + "%"
+}
+
 // mutate reserves one idempotency key, runs fn, writes the append-only audit
-// row and stores the safe outcome in the same transaction.
-func (s *Store) mutate(ctx context.Context, m app.Mutation, fn func(context.Context, *qadmin.Queries) (app.MutationResult, error)) (app.MutationResult, error) {
+// rows and stores the safe outcome in the same transaction.
+func (s *Store) mutate(ctx context.Context, m app.Mutation, fn func(context.Context, pgx.Tx) (app.MutationResult, []app.AuditEvent, error)) (app.MutationResult, error) {
 	if s == nil || s.Pool == nil || !domain.ValidUUID(m.SessionID) || !domain.ValidUUID(m.Key) || !domain.ValidHash(m.RequestHash) {
 		return app.MutationResult{}, domain.ErrInvalid
 	}
@@ -300,18 +382,23 @@ func (s *Store) mutate(ctx context.Context, m app.Mutation, fn func(context.Cont
 			SessionID: sessionID, Key: key, Action: m.Action, RequestHash: m.RequestHash,
 		})
 		if err == nil {
-			out, err := fn(ctx, q)
+			out, events, err := fn(ctx, tx)
 			if err != nil {
 				rollback(tx)
 				return app.MutationResult{}, err
 			}
-			if err := q.InsertAudit(ctx, qadmin.InsertAuditParams{
-				SessionID: sessionID, Action: m.Action, TargetType: m.TargetType,
-				TargetID: m.TargetID, Reason: m.Reason, RequestID: m.RequestID,
-				ClientIpHash: m.ClientIPHash,
-			}); err != nil {
-				rollback(tx)
-				return app.MutationResult{}, domain.ErrUnavailable
+			if len(events) == 0 {
+				events = []app.AuditEvent{{Action: m.Action, TargetType: m.TargetType, TargetID: m.TargetID, Reason: m.Reason}}
+			}
+			for _, event := range events {
+				if err := q.InsertAudit(ctx, qadmin.InsertAuditParams{
+					SessionID: sessionID, Action: event.Action, TargetType: event.TargetType,
+					TargetID: event.TargetID, Reason: event.Reason, Before: event.Before,
+					After: event.After, RequestID: m.RequestID, ClientIpHash: m.ClientIPHash,
+				}); err != nil {
+					rollback(tx)
+					return app.MutationResult{}, domain.ErrUnavailable
+				}
 			}
 			if err := q.CompleteMutation(ctx, qadmin.CompleteMutationParams{
 				ResponseCode: pgtype.Int4{Int32: int32(out.Status), Valid: true},

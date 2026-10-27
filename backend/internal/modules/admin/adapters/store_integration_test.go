@@ -17,7 +17,6 @@ import (
 	"time"
 
 	migrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
-	qadmin "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/admin"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
@@ -396,8 +395,8 @@ func TestMutate_ADM12_Idempotency(t *testing.T) {
 		Reason: "synthetic mutation reason", Key: "33333333-3333-4333-8333-333333333333",
 		RequestHash: strings.Repeat("c", 64), Now: now,
 	}
-	run := func(context.Context, *qadmin.Queries) (app.MutationResult, error) {
-		return app.MutationResult{Status: 200, Body: body}, nil
+	run := func(context.Context, pgx.Tx) (app.MutationResult, []app.AuditEvent, error) {
+		return app.MutationResult{Status: 200, Body: body}, nil, nil
 	}
 	first, err := store.mutate(context.Background(), mutation, run)
 	if err != nil || first.Replayed || string(first.Body) != string(body) {

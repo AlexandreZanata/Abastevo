@@ -11,6 +11,31 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const accountPaidSummary = `-- name: AccountPaidSummary :one
+SELECT count(*) FILTER (
+        WHERE state IN ('ACTIVE', 'CANCELED', 'GRACE')
+          AND (valid_until IS NULL OR valid_until > clock_timestamp())
+    )::int AS paid_active,
+    (max(valid_until) FILTER (
+        WHERE state IN ('ACTIVE', 'CANCELED', 'GRACE')
+          AND (valid_until IS NULL OR valid_until > clock_timestamp())
+    ))::timestamptz AS paid_until
+FROM subscription_purchases
+WHERE account_id = $1::uuid AND NOT retired
+`
+
+type AccountPaidSummaryRow struct {
+	PaidActive int32              `json:"paid_active"`
+	PaidUntil  pgtype.Timestamptz `json:"paid_until"`
+}
+
+func (q *Queries) AccountPaidSummary(ctx context.Context, accountID pgtype.UUID) (AccountPaidSummaryRow, error) {
+	row := q.db.QueryRow(ctx, accountPaidSummary, accountID)
+	var i AccountPaidSummaryRow
+	err := row.Scan(&i.PaidActive, &i.PaidUntil)
+	return i, err
+}
+
 const addLoginFailure = `-- name: AddLoginFailure :exec
 UPDATE admin_login_attempts SET failures = failures + 1
 WHERE scope = $1 AND subject = $2 AND window_start = $3
@@ -86,12 +111,30 @@ func (q *Queries) DeleteMutation(ctx context.Context, arg DeleteMutationParams) 
 	return err
 }
 
+const getAccount = `-- name: GetAccount :one
+SELECT id, alias, status, created_at FROM accounts
+WHERE id = $1
+`
+
+func (q *Queries) GetAccount(ctx context.Context, id pgtype.UUID) (Account, error) {
+	row := q.db.QueryRow(ctx, getAccount, id)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.Alias,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertAudit = `-- name: InsertAudit :exec
 INSERT INTO admin_audit_events
     (session_id, action, target_type, target_id, reason, before, after,
      request_id, client_ip_hash)
-VALUES ($1, $2, $3, $4, $5, NULL, NULL,
-    $6, $7)
+VALUES ($1, $2, $3, $4, $5,
+    $6::jsonb, $7::jsonb,
+    $8, $9)
 `
 
 type InsertAuditParams struct {
@@ -100,6 +143,8 @@ type InsertAuditParams struct {
 	TargetType   string      `json:"target_type"`
 	TargetID     string      `json:"target_id"`
 	Reason       string      `json:"reason"`
+	Before       []byte      `json:"before"`
+	After        []byte      `json:"after"`
 	RequestID    string      `json:"request_id"`
 	ClientIpHash string      `json:"client_ip_hash"`
 }
@@ -111,6 +156,8 @@ func (q *Queries) InsertAudit(ctx context.Context, arg InsertAuditParams) error 
 		arg.TargetType,
 		arg.TargetID,
 		arg.Reason,
+		arg.Before,
+		arg.After,
 		arg.RequestID,
 		arg.ClientIpHash,
 	)
@@ -156,6 +203,23 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) er
 		arg.ExpiresAt,
 	)
 	return err
+}
+
+const lockAccount = `-- name: LockAccount :one
+SELECT id, alias, status, created_at FROM accounts
+WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockAccount(ctx context.Context, id pgtype.UUID) (Account, error) {
+	row := q.db.QueryRow(ctx, lockAccount, id)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.Alias,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const lockLoginWindow = `-- name: LockLoginWindow :one
@@ -276,6 +340,58 @@ func (q *Queries) RevokeSession(ctx context.Context, arg RevokeSessionParams) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const searchAccounts = `-- name: SearchAccounts :many
+SELECT a.id, a.alias, a.status, a.created_at
+FROM accounts a
+WHERE a.id = $1::uuid
+   OR a.alias = $2::text
+   OR (char_length($2::text) >= 3
+       AND a.alias LIKE $3::text ESCAPE '\')
+   OR a.id IN (
+       SELECT account_id FROM account_addresses
+       WHERE address_hash = $4::text
+   )
+ORDER BY a.alias, a.id
+LIMIT 20
+`
+
+type SearchAccountsParams struct {
+	ID          pgtype.UUID `json:"id"`
+	Query       string      `json:"query"`
+	Prefix      string      `json:"prefix"`
+	AddressHash string      `json:"address_hash"`
+}
+
+func (q *Queries) SearchAccounts(ctx context.Context, arg SearchAccountsParams) ([]Account, error) {
+	rows, err := q.db.Query(ctx, searchAccounts,
+		arg.ID,
+		arg.Query,
+		arg.Prefix,
+		arg.AddressHash,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Account
+	for rows.Next() {
+		var i Account
+		if err := rows.Scan(
+			&i.ID,
+			&i.Alias,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const sumLoginFailures = `-- name: SumLoginFailures :one

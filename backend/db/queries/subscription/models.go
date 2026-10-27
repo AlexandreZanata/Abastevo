@@ -58,6 +58,21 @@ type AccountSessionFamily struct {
 	RevokedAt     pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type EntitlementGrant struct {
+	ID               pgtype.UUID        `json:"id"`
+	AccountID        pgtype.UUID        `json:"account_id"`
+	Tier             string             `json:"tier"`
+	PolicyVersion    int32              `json:"policy_version"`
+	State            string             `json:"state"`
+	StartAt          pgtype.Timestamptz `json:"start_at"`
+	EndAt            pgtype.Timestamptz `json:"end_at"`
+	Reason           string             `json:"reason"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	CreatedSessionID pgtype.UUID        `json:"created_session_id"`
+	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
+	RevokeReason     pgtype.Text        `json:"revoke_reason"`
+}
+
 type IdentityChallenge struct {
 	ID          pgtype.UUID        `json:"id"`
 	NonceHash   string             `json:"nonce_hash"`

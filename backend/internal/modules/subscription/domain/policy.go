@@ -53,19 +53,39 @@ type Snapshot struct {
 	// grants; they are independent of Play proof and credentials.
 	WebCapabilities []string
 	WebValidUntil   time.Time
+	// AdminCapabilities/AdminValidUntil are projected from admin grants.
+	AdminCapabilities []string
+	AdminValidUntil   time.Time
+	// Tiers carries admin grant tier metadata (source "admin").
+	Tiers []TierStatus
 }
+
+// TierStatus is one additive entitlement source reported by the status read.
+type TierStatus struct {
+	Tier       string     `json:"tier"`
+	Source     string     `json:"source"`
+	ValidUntil *time.Time `json:"valid_until"`
+}
+
 type Status struct {
-	PolicyVersion      int        `json:"policy_version"`
-	State              State      `json:"state"`
-	Reason             string     `json:"reason"`
-	Capabilities       []string   `json:"capabilities"`
-	ValidUntil         *time.Time `json:"valid_until"`
-	RetainedDataAccess bool       `json:"retained_data_access"`
-	PaymentsConfigured bool       `json:"payments_configured"`
+	PolicyVersion      int          `json:"policy_version"`
+	State              State        `json:"state"`
+	Reason             string       `json:"reason"`
+	Capabilities       []string     `json:"capabilities"`
+	ValidUntil         *time.Time   `json:"valid_until"`
+	RetainedDataAccess bool         `json:"retained_data_access"`
+	PaymentsConfigured bool         `json:"payments_configured"`
+	Tiers              []TierStatus `json:"tiers"`
+}
+
+// PremiumCapabilities is the frozen PRO bundle shared by paid Premium and
+// admin-granted PRO.
+func PremiumCapabilities() []string {
+	return []string{"cloud.sync", "cloud.backup", "cloud.restore", "alerts.advanced", "professional.write", "professional.report", "vehicles.multiple"}
 }
 
 func Evaluate(s *Snapshot, now time.Time, live bool) Status {
-	result := Status{PolicyVersion: 1, State: None, Reason: "no-purchase", Capabilities: []string{}, RetainedDataAccess: true}
+	result := Status{PolicyVersion: 1, State: None, Reason: "no-purchase", Capabilities: []string{}, RetainedDataAccess: true, Tiers: []TierStatus{}}
 	if !live {
 		result.Reason = "account-inactive"
 		return result
@@ -83,24 +103,26 @@ func Evaluate(s *Snapshot, now time.Time, live bool) Status {
 	}
 	if s.Retired {
 		result.Reason = "purchase-retired"
-		return mergeWeb(result, s, now)
+		return mergeAdmin(mergeWeb(result, s, now), s, now)
 	}
 	if s.VerifiedAt.IsZero() || now.Before(s.VerifiedAt) || now.Sub(s.VerifiedAt) >= ProofFreshness {
 		result.Reason = "proof-stale"
-		return mergeWeb(result, s, now)
+		return mergeAdmin(mergeWeb(result, s, now), s, now)
 	}
 	if !now.Before(s.ValidUntil) {
 		result.Reason = "access-expired"
-		return mergeWeb(result, s, now)
+		return mergeAdmin(mergeWeb(result, s, now), s, now)
 	}
 	switch s.State {
 	case Active, Canceled, Grace:
 		result.Reason = "verified"
-		result.Capabilities = []string{"cloud.sync", "cloud.backup", "cloud.restore", "alerts.advanced", "professional.write", "professional.report", "vehicles.multiple"}
+		result.Capabilities = PremiumCapabilities()
+		until := s.ValidUntil.UTC()
+		result.Tiers = append(result.Tiers, TierStatus{Tier: "PRO", Source: "play", ValidUntil: &until})
 	default:
 		result.Reason = "state-ineligible"
 	}
-	return mergeWeb(result, s, now)
+	return mergeAdmin(mergeWeb(result, s, now), s, now)
 }
 
 func mergeWeb(result Status, s *Snapshot, now time.Time) Status {
@@ -128,6 +150,46 @@ func mergeWeb(result Status, s *Snapshot, now time.Time) Status {
 	if result.ValidUntil == nil || until.After(*result.ValidUntil) {
 		result.ValidUntil = &until
 	}
+	result.Tiers = append(result.Tiers, TierStatus{Tier: "PRO", Source: "web", ValidUntil: &until})
+	return result
+}
+
+func mergeAdmin(result Status, s *Snapshot, now time.Time) Status {
+	if len(s.AdminCapabilities) == 0 {
+		return result
+	}
+	// An admin tier without valid_until is open-ended (until revoked).
+	unbounded := false
+	for _, tier := range s.Tiers {
+		unbounded = unbounded || (tier.Source == "admin" && tier.ValidUntil == nil)
+	}
+	if !unbounded && !s.AdminValidUntil.IsZero() && !now.Before(s.AdminValidUntil) {
+		return result
+	}
+	hadAny := len(result.Capabilities) > 0
+	seen := make(map[string]bool, len(result.Capabilities)+len(s.AdminCapabilities))
+	for _, capability := range result.Capabilities {
+		seen[capability] = true
+	}
+	for _, capability := range s.AdminCapabilities {
+		if !seen[capability] {
+			result.Capabilities = append(result.Capabilities, capability)
+			seen[capability] = true
+		}
+	}
+	result.State = Active
+	if !hadAny {
+		result.Reason = "verified-admin"
+	}
+	if unbounded {
+		result.ValidUntil = nil
+	} else if !s.AdminValidUntil.IsZero() {
+		until := s.AdminValidUntil.UTC()
+		if result.ValidUntil == nil || until.After(*result.ValidUntil) {
+			result.ValidUntil = &until
+		}
+	}
+	result.Tiers = append(result.Tiers, s.Tiers...)
 	return result
 }
 

@@ -335,11 +335,16 @@ func (s *Store) Status(ctx context.Context, p app.Principal) (*domain.Snapshot, 
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, domain.ErrUnavailable
 	}
-	webCapabilities, webValidUntil, err := webGrants(ctx, tx, p.AccountID, time.Now())
+	now := time.Now()
+	webCapabilities, webValidUntil, err := webGrants(ctx, tx, p.AccountID, now)
 	if err != nil {
 		return nil, domain.ErrUnavailable
 	}
-	if result == nil && len(webCapabilities) == 0 {
+	adminCapabilities, adminValidUntil, adminTiers, err := adminGrants(ctx, tx, p.AccountID, now)
+	if err != nil {
+		return nil, domain.ErrUnavailable
+	}
+	if result == nil && len(webCapabilities) == 0 && len(adminCapabilities) == 0 {
 		return nil, nil
 	}
 	if result == nil {
@@ -347,6 +352,9 @@ func (s *Store) Status(ctx context.Context, p app.Principal) (*domain.Snapshot, 
 	}
 	result.WebCapabilities = webCapabilities
 	result.WebValidUntil = webValidUntil
+	result.AdminCapabilities = adminCapabilities
+	result.AdminValidUntil = adminValidUntil
+	result.Tiers = adminTiers
 	if err = tx.Commit(ctx); err != nil {
 		return nil, domain.ErrUnavailable
 	}

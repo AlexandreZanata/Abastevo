@@ -20,6 +20,7 @@ import (
 
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/domain"
+	entdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/entitlement/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/go-chi/chi/v5"
 )
@@ -36,6 +37,7 @@ type Handler struct {
 	Origin       string
 	AllowedCIDRs []netip.Prefix
 	ClientIP     func(*http.Request) (string, error)
+	CursorSecret []byte
 }
 
 func (h Handler) RegisterRoutes(r chi.Router) {
@@ -50,6 +52,11 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 			auth.Get("/v1/admin/session", h.whoami)
 			auth.Delete("/v1/admin/session", h.logout)
 			auth.Post("/v1/admin/sessions/revoke-all", h.revokeAll)
+			auth.Get("/v1/admin/accounts", h.searchAccounts)
+			auth.Get("/v1/admin/accounts/{id}", h.accountDetail)
+			auth.Post("/v1/admin/accounts/{id}/grants", h.createGrant)
+			auth.Get("/v1/admin/grants", h.listGrants)
+			auth.Post("/v1/admin/grants/{id}/revoke", h.revokeGrant)
 		})
 	})
 }
@@ -190,30 +197,15 @@ func (h Handler) revokeAll(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// mutate is the single path for administrative mutations: Origin + CSRF,
-// reason, UUID idempotency key and the transactional audit/outcome helper
-// (ADM-06/ADM-10/ADM-12).
+// mutate is the single path for reason-only administrative mutations
+// (ADM-06/ADM-10/ADM-12). Grant mutations reuse prepareMutation/finishMutation
+// with their own validated body.
 func (h Handler) mutate(w http.ResponseWriter, r *http.Request, session app.Session, action, targetType, targetID string, run func(app.Mutation) (app.MutationResult, error)) {
-	if !h.validOrigin(r) {
-		writeAdminError(w, r, http.StatusForbidden, "admin.csrf")
-		return
-	}
-	presented := r.Header.Get(csrfHeader)
-	if subtle.ConstantTimeCompare([]byte(domain.SaltedHash(session.CSRFSalt, presented)), []byte(session.CSRFHash)) != 1 {
-		writeAdminError(w, r, http.StatusForbidden, "admin.csrf")
-		return
-	}
-	key := r.Header.Get(idempotencyHeader)
-	if !domain.ValidUUID(key) {
-		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
-		return
-	}
 	var dto struct {
 		Reason string `json:"reason"`
 	}
-	raw, err := readAdminJSONRaw(r, &dto)
-	if err != nil {
-		writeBodyError(w, r, err)
+	m, ok := h.prepareMutation(w, r, session, action, targetType, targetID, &dto)
+	if !ok {
 		return
 	}
 	reason := strings.TrimSpace(dto.Reason)
@@ -221,21 +213,54 @@ func (h Handler) mutate(w http.ResponseWriter, r *http.Request, session app.Sess
 		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
 		return
 	}
+	m.Reason = reason
+	result, err := run(m)
+	h.finishMutation(w, r, result, err, true)
+}
+
+// prepareMutation validates Origin, CSRF, the UUID idempotency key and the
+// 16 KiB body before decoding the caller's DTO. It returns the mutation
+// context with the body hash already bound to action and target.
+func (h Handler) prepareMutation(w http.ResponseWriter, r *http.Request, session app.Session, action, targetType, targetID string, dst any) (app.Mutation, bool) {
+	if !h.validOrigin(r) {
+		writeAdminError(w, r, http.StatusForbidden, "admin.csrf")
+		return app.Mutation{}, false
+	}
+	presented := r.Header.Get(csrfHeader)
+	if subtle.ConstantTimeCompare([]byte(domain.SaltedHash(session.CSRFSalt, presented)), []byte(session.CSRFHash)) != 1 {
+		writeAdminError(w, r, http.StatusForbidden, "admin.csrf")
+		return app.Mutation{}, false
+	}
+	key := r.Header.Get(idempotencyHeader)
+	if !domain.ValidUUID(key) {
+		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+		return app.Mutation{}, false
+	}
+	raw, err := readAdminJSONRaw(r, dst)
+	if err != nil {
+		writeBodyError(w, r, err)
+		return app.Mutation{}, false
+	}
 	rawIP, err := h.clientIP(r)
 	if err != nil {
 		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
-		return
+		return app.Mutation{}, false
 	}
-	result, err := run(app.Mutation{
+	return app.Mutation{
 		SessionID: session.ID, Action: action, TargetType: targetType, TargetID: targetID,
-		Reason: reason, Key: key, RequestHash: requestHash(action, targetType, targetID, raw),
+		Key: key, RequestHash: requestHash(action, targetType, targetID, raw),
 		RequestID: r.Header.Get("X-Request-ID"), ClientIPHash: hashIP(rawIP),
-	})
+	}, true
+}
+
+func (h Handler) finishMutation(w http.ResponseWriter, r *http.Request, result app.MutationResult, err error, clear bool) {
 	if err != nil {
 		writeAdminServiceError(w, r, err)
 		return
 	}
-	clearCookie(w)
+	if clear {
+		clearCookie(w)
+	}
 	if result.Status == http.StatusNoContent {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -243,6 +268,189 @@ func (h Handler) mutate(w http.ResponseWriter, r *http.Request, session app.Sess
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(result.Status)
 	_, _ = w.Write(result.Body)
+}
+
+type accountView struct {
+	AccountID string    `json:"account_id"`
+	Alias     string    `json:"alias"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type paidView struct {
+	State      string     `json:"state"`
+	ValidUntil *time.Time `json:"valid_until"`
+}
+
+func (h Handler) searchAccounts(w http.ResponseWriter, r *http.Request) {
+	items, err := h.Service.SearchAccounts(r.Context(), r.URL.Query().Get("q"))
+	if err != nil {
+		writeAdminServiceError(w, r, err)
+		return
+	}
+	out := make([]accountView, 0, len(items))
+	for _, item := range items {
+		out = append(out, accountView{AccountID: item.ID, Alias: item.Alias, Status: item.Status, CreatedAt: item.CreatedAt})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+func (h Handler) accountDetail(w http.ResponseWriter, r *http.Request) {
+	detail, err := h.Service.AccountDetail(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		writeAdminServiceError(w, r, err)
+		return
+	}
+	grants := make([]app.GrantView, 0, len(detail.Grants))
+	for _, grant := range detail.Grants {
+		grants = append(grants, app.View(grant))
+	}
+	writeJSON(w, http.StatusOK, struct {
+		AccountID string          `json:"account_id"`
+		Alias     string          `json:"alias"`
+		Status    string          `json:"status"`
+		CreatedAt time.Time       `json:"created_at"`
+		Grants    []app.GrantView `json:"grants"`
+		Paid      paidView        `json:"paid"`
+	}{detail.Account.ID, detail.Account.Alias, detail.Account.Status, detail.Account.CreatedAt, grants,
+		paidView{State: detail.Paid.State, ValidUntil: detail.Paid.ValidUntil}})
+}
+
+type createGrantDTO struct {
+	Tier    string     `json:"tier"`
+	EndAt   *time.Time `json:"end_at"`
+	Reason  string     `json:"reason"`
+	Replace bool       `json:"replace"`
+}
+
+func (h Handler) createGrant(w http.ResponseWriter, r *http.Request) {
+	session, ok := SessionFromContext(r.Context())
+	if !ok {
+		writeAdminError(w, r, http.StatusUnauthorized, "admin.denied")
+		return
+	}
+	accountID := chi.URLParam(r, "id")
+	var dto createGrantDTO
+	m, ok := h.prepareMutation(w, r, session, "admin.grant.create", "entitlement_grant", accountID, &dto)
+	if !ok {
+		return
+	}
+	reason := strings.TrimSpace(dto.Reason)
+	if !domain.ValidReason(reason) {
+		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+		return
+	}
+	m.Reason = reason
+	result, err := h.Service.CreateGrant(r.Context(), session, app.CreateGrantInput{
+		AccountID: accountID, Tier: dto.Tier, EndAt: dto.EndAt, Reason: reason, Replace: dto.Replace,
+		Key: m.Key, RequestHash: m.RequestHash, RequestID: m.RequestID, ClientIPHash: m.ClientIPHash,
+	})
+	if err != nil {
+		writeAdminServiceError(w, r, err)
+		return
+	}
+	body, err := json.Marshal(result)
+	if err != nil {
+		writeAdminError(w, r, http.StatusServiceUnavailable, "admin.unavailable")
+		return
+	}
+	h.finishMutation(w, r, app.MutationResult{Status: http.StatusCreated, Body: body, Replayed: result.Replayed}, nil, false)
+}
+
+type revokeGrantDTO struct {
+	Reason string `json:"reason"`
+}
+
+func (h Handler) revokeGrant(w http.ResponseWriter, r *http.Request) {
+	session, ok := SessionFromContext(r.Context())
+	if !ok {
+		writeAdminError(w, r, http.StatusUnauthorized, "admin.denied")
+		return
+	}
+	grantID := chi.URLParam(r, "id")
+	var dto revokeGrantDTO
+	m, ok := h.prepareMutation(w, r, session, "admin.grant.revoke", "entitlement_grant", grantID, &dto)
+	if !ok {
+		return
+	}
+	reason := strings.TrimSpace(dto.Reason)
+	if !domain.ValidReason(reason) {
+		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+		return
+	}
+	m.Reason = reason
+	view, replayed, err := h.Service.RevokeGrant(r.Context(), session, app.RevokeGrantInput{
+		GrantID: grantID, Reason: reason, Key: m.Key, RequestHash: m.RequestHash,
+		RequestID: m.RequestID, ClientIPHash: m.ClientIPHash,
+	})
+	if err != nil {
+		writeAdminServiceError(w, r, err)
+		return
+	}
+	body, err := json.Marshal(view)
+	if err != nil {
+		writeAdminError(w, r, http.StatusServiceUnavailable, "admin.unavailable")
+		return
+	}
+	h.finishMutation(w, r, app.MutationResult{Status: http.StatusOK, Body: body, Replayed: replayed}, nil, false)
+}
+
+func (h Handler) listGrants(w http.ResponseWriter, r *http.Request) {
+	tierRaw := strings.TrimSpace(r.URL.Query().Get("tier"))
+	stateRaw := strings.TrimSpace(r.URL.Query().Get("state"))
+	if tierRaw != "" && !entdomain.ValidTier(entdomain.Tier(tierRaw)) {
+		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+		return
+	}
+	if stateRaw != "" && stateRaw != string(entdomain.StateActive) && stateRaw != string(entdomain.StateRevoked) {
+		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+		return
+	}
+	limit, err := httpapi.ParseLimit(r.URL.Query().Get("limit"))
+	if err != nil {
+		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+		return
+	}
+	filter := entdomain.GrantFilter{Tier: entdomain.Tier(tierRaw), State: entdomain.State(stateRaw), Limit: limit + 1}
+	cursor := strings.TrimSpace(r.URL.Query().Get("cursor"))
+	if cursor != "" {
+		if len(h.CursorSecret) < 32 {
+			writeAdminError(w, r, http.StatusServiceUnavailable, "admin.unavailable")
+			return
+		}
+		position, err := httpapi.Open(h.CursorSecret, cursor, httpapi.FilterHash("admin-grants-v1", tierRaw+"|"+stateRaw), time.Now())
+		if err != nil {
+			writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+			return
+		}
+		stamp, id, ok := strings.Cut(position, ",")
+		if !ok || !domain.ValidUUID(id) {
+			writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+			return
+		}
+		created, err := time.Parse(time.RFC3339Nano, stamp)
+		if err != nil {
+			writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
+			return
+		}
+		filter.BeforeCreated, filter.BeforeID = created, id
+	}
+	grants, err := h.Service.ListGrants(r.Context(), filter)
+	if err != nil {
+		writeAdminServiceError(w, r, err)
+		return
+	}
+	next := ""
+	if len(grants) > limit {
+		grants = grants[:limit]
+		last := grants[len(grants)-1]
+		next = httpapi.Seal(h.CursorSecret, httpapi.FilterHash("admin-grants-v1", tierRaw+"|"+stateRaw), last.CreatedAt.UTC().Format(time.RFC3339Nano)+","+last.ID, time.Now())
+	}
+	items := make([]app.GrantView, 0, len(grants))
+	for _, grant := range grants {
+		items = append(items, app.View(grant))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items, "next_cursor": next})
 }
 
 func (h Handler) validOrigin(r *http.Request) bool {
@@ -298,6 +506,18 @@ func writeAdminServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		writeAdminError(w, r, http.StatusBadRequest, "admin.invalid")
 	case errors.Is(err, domain.ErrConflict):
 		writeAdminError(w, r, http.StatusConflict, "admin.conflict")
+	case errors.Is(err, entdomain.ErrIneligible):
+		writeAdminError(w, r, http.StatusConflict, "entitlement.account-ineligible")
+	case errors.Is(err, entdomain.ErrExists):
+		writeAdminError(w, r, http.StatusConflict, "entitlement.exists")
+	case errors.Is(err, entdomain.ErrAlreadyRevoked):
+		writeAdminError(w, r, http.StatusConflict, "entitlement.already-revoked")
+	case errors.Is(err, entdomain.ErrNotFound), errors.Is(err, domain.ErrNotFound):
+		writeAdminError(w, r, http.StatusNotFound, "admin.not-found")
+	case errors.Is(err, entdomain.ErrInvalid):
+		writeAdminError(w, r, http.StatusBadRequest, "entitlement.invalid")
+	case errors.Is(err, entdomain.ErrUnavailable):
+		writeAdminError(w, r, http.StatusServiceUnavailable, "entitlement.unavailable")
 	default:
 		writeAdminError(w, r, http.StatusServiceUnavailable, "admin.unavailable")
 	}
