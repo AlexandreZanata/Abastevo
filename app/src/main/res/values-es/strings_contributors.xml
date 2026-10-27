@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- B-BR-CTB public project contributors -->
+    <string name="contributors_entry_title">Contribuidores del proyecto</string>
+    <string name="contributors_entry_subtitle">Perfiles públicos, GitHub y roles</string>
+    <string name="contributors_screen_title">Contribuidores del proyecto</string>
+    <string name="contributors_empty_title">Aún no hay contribuidores</string>
+    <string name="contributors_empty_message">Los perfiles aprobados por el equipo aparecen aquí.</string>
+    <string name="contributors_offline">Sin conexión. Revisa la red e inténtalo de nuevo.</string>
+    <string name="contributors_denied">Acceso denegado.</string>
+    <string name="contributors_error">Algo salió mal.</string>
+    <string name="contributors_retry">Reintentar</string>
+    <string name="contributors_load_more">Cargar más</string>
+    <string name="contributors_verified_badge">GitHub verificado</string>
+    <string name="contributors_since">Desde %1$s</string>
+</resources>

@@ -70,6 +70,18 @@
   [Evidence](../../backend/evidence/admin/A2-GRANTED-TIERS.md). PR #166 with
   `--base codex/adm-a1-admin-auth`. Next: wait for review; do not start A3.
 
+- C1 app public contributors list 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-c1-app-contributors` from
+  `origin/main` `d4dcf716`. Anonymous cursor-paged list: domain model,
+  OkHttp client, mapper, use case, ViewModel states, ContributorsScreen,
+  Premium-accent entry as last Profile item + route. Tested revision:
+  branch head; domain 781 / data 629 / application 484 / app 561 unit
+  tests, 0 failures; lint/assemble/androidTest-compile green;
+  instrumented tests compile but need a device/CI run (attached device
+  refuses installs). [Evidence](../../backend/evidence/admin/C1-APP-CONTRIBUTORS.md).
+  PR #173 to `main`. Next: C2 landing page, then C3 self-service.
+
+
 - A1 admin key authentication, sessions and audit 2026-10-27: LOCAL_DONE /
   INTEGRATION_PENDING. Branch `codex/adm-a1-admin-auth` from `origin/main`
   `44b7b915`; stacked on planning PR #161 (contract/ADR/plan not yet on
@@ -363,6 +375,26 @@
   lint PASS. Installed locally on the authorized phone; not pushed/merged.
   [Evidence](../backend/evidence/maps/MAP-UI-ISOLATION-20261026.md).
   Staging `nearby` empty/data update remains separate.
+
+- C3 app contributor self-service 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-c3-app-contributor-self` stacked
+  on C2. Signed-in claim flow (login → one-time code + copy + gist
+  instructions → gist proof → status, withdraw; pending code re-shown) and
+  profile edit (name, ≤2 links, visibility + explicit consent, show-roles)
+  against the A3 user routes; client validators mirror CTB-03/08, server
+  stays authoritative; 401/403/409/429 mapped distinctly; 8 locales.
+  Tested revision: branch head; Android gate green, androidTest compiled
+  only (device refuses installs). [Evidence](../../backend/evidence/admin/C3-APP-SELF-SERVICE.md).
+  PR #175 stacked on #174. Next: C4 staging check (blocked: staging lacks
+  A1–A4).
+
+- C2 landing contributors page 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-c2-landing-contributors` stacked
+  on C1. Static `/contribuidores/` shell + `contributors.ts` progressive
+  enhancement (meta-gated API origin, textContent-only cards, CTB-08 link
+  allowlist), per-path CSP, sitemap/llms entries. Tested revision: branch
+  head; landing gate green (69/69). [Evidence](../../backend/evidence/admin/C2-LANDING-CONTRIBUTORS.md).
+  PR #174 stacked on #173. Next: C3 self-service.
 
 - CD-02 staging deploy planner 2026-10-27: LOCAL_DONE / INTEGRATION_PENDING.
   Pull-based dry-run agent in `infra/deploy/agent/` verifies the signed

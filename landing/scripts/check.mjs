@@ -39,6 +39,7 @@ export function checkDist(options = {}) {
     'como-usar/minhas-contribuicoes/index.html',
     'como-usar/perfil-do-posto/index.html',
     'como-usar/configuracoes/index.html',
+    'contribuidores/index.html',
     '404.html',
     'robots.txt',
     'sitemap.xml',
@@ -92,6 +93,7 @@ export function checkDist(options = {}) {
   // 3. Inspect HTML files for link integrity, metadata bounds, and JSON-LD
   const htmlPages = [
     { rel: 'index.html', isIndexable: true },
+    { rel: 'contribuidores/index.html', isIndexable: true },
     { rel: 'privacidade/index.html', isIndexable: true },
     { rel: 'excluir-conta/index.html', isIndexable: true },
     { rel: 'termos/index.html', isIndexable: true },
