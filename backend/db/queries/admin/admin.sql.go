@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addLoginFailure = `-- name: AddLoginFailure :exec
+UPDATE admin_login_attempts SET failures = failures + 1
+WHERE scope = $1 AND subject = $2 AND window_start = $3
+`
+
+type AddLoginFailureParams struct {
+	Scope       string             `json:"scope"`
+	Subject     string             `json:"subject"`
+	WindowStart pgtype.Timestamptz `json:"window_start"`
+}
+
+func (q *Queries) AddLoginFailure(ctx context.Context, arg AddLoginFailureParams) error {
+	_, err := q.db.Exec(ctx, addLoginFailure, arg.Scope, arg.Subject, arg.WindowStart)
+	return err
+}
+
 const blockLoginWindow = `-- name: BlockLoginWindow :exec
 UPDATE admin_login_attempts SET blocked_until = $1
 WHERE scope = $2 AND subject = $3 AND window_start = $4
@@ -68,43 +84,6 @@ type DeleteMutationParams struct {
 func (q *Queries) DeleteMutation(ctx context.Context, arg DeleteMutationParams) error {
 	_, err := q.db.Exec(ctx, deleteMutation, arg.SessionID, arg.Key)
 	return err
-}
-
-const incrementLoginFailures = `-- name: IncrementLoginFailures :one
-UPDATE admin_login_attempts
-SET failures = failures + 1,
-    blocked_until = CASE
-        WHEN scope = 'global' AND failures + 1 >= $1 THEN $2
-        ELSE blocked_until
-    END
-WHERE scope = $3 AND subject = $4 AND window_start = $5
-RETURNING failures, blocked_until
-`
-
-type IncrementLoginFailuresParams struct {
-	GlobalLimit  int32              `json:"global_limit"`
-	BlockedUntil pgtype.Timestamptz `json:"blocked_until"`
-	Scope        string             `json:"scope"`
-	Subject      string             `json:"subject"`
-	WindowStart  pgtype.Timestamptz `json:"window_start"`
-}
-
-type IncrementLoginFailuresRow struct {
-	Failures     int32              `json:"failures"`
-	BlockedUntil pgtype.Timestamptz `json:"blocked_until"`
-}
-
-func (q *Queries) IncrementLoginFailures(ctx context.Context, arg IncrementLoginFailuresParams) (IncrementLoginFailuresRow, error) {
-	row := q.db.QueryRow(ctx, incrementLoginFailures,
-		arg.GlobalLimit,
-		arg.BlockedUntil,
-		arg.Scope,
-		arg.Subject,
-		arg.WindowStart,
-	)
-	var i IncrementLoginFailuresRow
-	err := row.Scan(&i.Failures, &i.BlockedUntil)
-	return i, err
 }
 
 const insertAudit = `-- name: InsertAudit :exec
@@ -297,6 +276,32 @@ func (q *Queries) RevokeSession(ctx context.Context, arg RevokeSessionParams) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const sumLoginFailures = `-- name: SumLoginFailures :one
+SELECT COALESCE(sum(failures), 0)::int AS failures,
+       COALESCE(min(window_start), $1::timestamptz)::timestamptz AS oldest
+FROM admin_login_attempts
+WHERE scope = $2 AND subject = $3
+  AND window_start > $1::timestamptz AND failures > 0
+`
+
+type SumLoginFailuresParams struct {
+	Since   pgtype.Timestamptz `json:"since"`
+	Scope   string             `json:"scope"`
+	Subject string             `json:"subject"`
+}
+
+type SumLoginFailuresRow struct {
+	Failures int32              `json:"failures"`
+	Oldest   pgtype.Timestamptz `json:"oldest"`
+}
+
+func (q *Queries) SumLoginFailures(ctx context.Context, arg SumLoginFailuresParams) (SumLoginFailuresRow, error) {
+	row := q.db.QueryRow(ctx, sumLoginFailures, arg.Since, arg.Scope, arg.Subject)
+	var i SumLoginFailuresRow
+	err := row.Scan(&i.Failures, &i.Oldest)
+	return i, err
 }
 
 const touchSession = `-- name: TouchSession :one
