@@ -18,6 +18,20 @@
 #   ANPFUEL_PUBLIC_ORIGIN  Origin for the contributors CORS check
 #                          (default: https://abastevo.com.br)
 #
+# Target rule (checked before any network call): ANPFUEL_STAGING_URL must be
+# a bare origin (scheme://host[:port], optional trailing slash; no userinfo,
+# path, query, fragment or percent-encoding). Loopback hosts (127.0.0.1, ::1,
+# localhost) may use http or https; the only remote host accepted is the
+# documented staging origin https://teste.abastevo.com.br (ADR-019,
+# RST_VPS_HARDENING), on the default port. abastevo.com.br and every other
+# *.abastevo.com.br name are refused as production. Plain http to a remote
+# host is refused because the raw admin key travels in the login body.
+#
+# Usage:
+#   test-admin-staging.sh                 run the validation
+#   test-admin-staging.sh --check-target  validate ANPFUEL_STAGING_URL only,
+#                                         no key required, no network
+#
 # Prints step results only. Exits non-zero on the first failure.
 set +x
 set -uo pipefail
@@ -25,20 +39,111 @@ set -uo pipefail
 say() { printf 'PASS: %s\n' "$1"; }
 die() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 
+STAGING_HOST="teste.abastevo.com.br"
+PRODUCTION_DOMAIN="abastevo.com.br"
+
+# check_target <url>: prints a non-secret refusal reason on stderr and
+# returns 1 when the URL is not an acceptable target. Never echoes the URL
+# (it could carry userinfo). Pure string checks: no network, no DNS.
+check_target() {
+  local LC_ALL=C url="$1" scheme rest authority host port lower
+  case "$url" in
+    http://*) scheme=http; rest="${url#http://}" ;;
+    https://*) scheme=https; rest="${url#https://}" ;;
+    *) printf 'target: scheme must be lowercase http:// or https://\n' >&2; return 1 ;;
+  esac
+  authority="${rest%/}"
+  if [ -z "$authority" ]; then
+    printf 'target: missing host\n' >&2; return 1
+  fi
+  case "$authority" in
+    *@*) printf 'target: userinfo (@) is not allowed\n' >&2; return 1 ;;
+    */*|*\?*|*#*|*\\*) printf 'target: path, query or fragment is not allowed\n' >&2; return 1 ;;
+    *%*) printf 'target: percent-encoding is not allowed\n' >&2; return 1 ;;
+  esac
+  if [ "${authority#\[}" != "$authority" ]; then
+    host="${authority#\[}"; host="${host%%]*}"
+    port="${authority#*]}"
+    case "$port" in
+      '') ;;
+      :*) port="${port#:}" ;;
+      *) printf 'target: malformed bracketed host\n' >&2; return 1 ;;
+    esac
+    if [ "$host" != "::1" ]; then
+      printf 'target: only the ::1 IPv6 literal is allowed\n' >&2; return 1
+    fi
+  else
+    host="${authority%%:*}"
+    port=""
+    if [ "$host" != "$authority" ]; then
+      port="${authority#*:}"
+    fi
+    case "$host" in
+      ''|*[!A-Za-z0-9.-]*) printf 'target: host has characters outside [A-Za-z0-9.-]\n' >&2; return 1 ;;
+    esac
+  fi
+  if [ -n "$port" ] || [ "${authority%:}" != "$authority" ]; then
+    case "$port" in
+      ''|*[!0-9]*) printf 'target: port must be numeric\n' >&2; return 1 ;;
+    esac
+    if [ "${#port}" -gt 5 ] || [ "$((10#$port))" -lt 1 ] || [ "$((10#$port))" -gt 65535 ]; then
+      printf 'target: port out of range\n' >&2; return 1
+    fi
+  fi
+  lower=$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')
+  # Trailing dots would dodge exact-name comparisons; normalize for the
+  # production check and refuse them for the allowlist.
+  local bare="$lower"
+  while [ "${bare%.}" != "$bare" ]; do bare="${bare%.}"; done
+  case "$bare" in
+    127.0.0.1|::1|localhost)
+      if [ "$bare" != "$lower" ]; then
+        printf 'target: trailing dot is not allowed\n' >&2; return 1
+      fi
+      return 0 ;;
+  esac
+  if [ "$bare" != "$STAGING_HOST" ]; then
+    case "$bare" in
+      "$PRODUCTION_DOMAIN"|*."$PRODUCTION_DOMAIN")
+        printf 'target: refusing production host; this script is staging-only\n' >&2; return 1 ;;
+    esac
+  fi
+  if [ "$scheme" != https ]; then
+    printf 'target: plain http is only allowed for loopback hosts (the admin key is sent in the login body)\n' >&2
+    return 1
+  fi
+  if [ "$lower" != "$STAGING_HOST" ]; then
+    printf 'target: host is not the allowlisted staging host %s or loopback\n' "$STAGING_HOST" >&2
+    return 1
+  fi
+  if [ -n "$port" ] && [ "$((10#$port))" -ne 443 ]; then
+    printf 'target: the staging host must use the default https port\n' >&2; return 1
+  fi
+  return 0
+}
+
+MODE=run
+case "${1:-}" in
+  '') ;;
+  --check-target) MODE=check-target ;;
+  *) die "usage: test-admin-staging.sh [--check-target]" ;;
+esac
+
+: "${ANPFUEL_STAGING_URL:?ANPFUEL_STAGING_URL is required}"
+check_target "$ANPFUEL_STAGING_URL" || die "ANPFUEL_STAGING_URL rejected before any network call"
+if [ "$MODE" = check-target ]; then
+  say "target"
+  exit 0
+fi
+
 for tool in curl python3 date; do
   command -v "$tool" >/dev/null 2>&1 || die "missing required tool: $tool"
 done
 
 : "${ANPFUEL_ADMIN_KEY:?ANPFUEL_ADMIN_KEY is required}"
-: "${ANPFUEL_STAGING_URL:?ANPFUEL_STAGING_URL is required}"
-ADMIN_ORIGIN="${ANPFUEL_ADMIN_ORIGIN:-$ANPFUEL_STAGING_URL}"
-PUBLIC_ORIGIN="${ANPFUEL_PUBLIC_ORIGIN:-https://abastevo.com.br}"
 BASE="${ANPFUEL_STAGING_URL%/}"
-
-case "$BASE" in
-  http://*|https://*) ;;
-  *) die "ANPFUEL_STAGING_URL must be an http(s) origin" ;;
-esac
+ADMIN_ORIGIN="${ANPFUEL_ADMIN_ORIGIN:-$BASE}"
+PUBLIC_ORIGIN="${ANPFUEL_PUBLIC_ORIGIN:-https://abastevo.com.br}"
 
 new_uuid() {
   if [ -r /proc/sys/kernel/random/uuid ]; then
