@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestReadinessRejectsUnmigratedModifiedAndNewerSchema(t *testing.T) {
+func TestReadinessRejectsUnmigratedAndModifiedSchemaAcceptsAdditiveNewerSchema(t *testing.T) {
 	ctx := context.Background()
 	dsn := freshDB(t, testDSN(t))
 	pool, err := pgxpool.New(ctx, dsn)
@@ -42,7 +42,10 @@ func TestReadinessRejectsUnmigratedModifiedAndNewerSchema(t *testing.T) {
 	if _, err := pool.Exec(ctx, "INSERT INTO schema_migrations(version,checksum) VALUES ('999999','unknown')"); err != nil {
 		t.Fatal(err)
 	}
-	if err := Check(ctx, pool, dbmigrations.Files); err == nil {
-		t.Fatal("newer schema marked ready")
+	// The expand/contract window accepts a newer additive schema so the
+	// previous image can still serve during a rollout; the deploy agent owns
+	// the contract-migration refusal.
+	if err := Check(ctx, pool, dbmigrations.Files); err != nil {
+		t.Fatalf("newer additive schema rejected: %v", err)
 	}
 }

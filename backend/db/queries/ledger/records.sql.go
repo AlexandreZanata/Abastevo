@@ -351,6 +351,56 @@ func (q *Queries) ListLedger(ctx context.Context, arg ListLedgerParams) ([]ListL
 	return items, nil
 }
 
+const lockDriverLedgerCosts = `-- name: LockDriverLedgerCosts :many
+SELECT dataset,id,vehicle_id,revision,voided,deleted,
+ COALESCE(CASE WHEN dataset='expense' THEN payload->>'amount_centavos'
+      ELSE payload->>'total_centavos' END,'')::text AS amount_text
+FROM ledger_records WHERE account_id=$1 AND id=$2 FOR SHARE
+`
+
+type LockDriverLedgerCostsParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	ID        pgtype.UUID `json:"id"`
+}
+
+type LockDriverLedgerCostsRow struct {
+	Dataset    string      `json:"dataset"`
+	ID         pgtype.UUID `json:"id"`
+	VehicleID  pgtype.UUID `json:"vehicle_id"`
+	Revision   int64       `json:"revision"`
+	Voided     bool        `json:"voided"`
+	Deleted    bool        `json:"deleted"`
+	AmountText string      `json:"amount_text"`
+}
+
+func (q *Queries) LockDriverLedgerCosts(ctx context.Context, arg LockDriverLedgerCostsParams) ([]LockDriverLedgerCostsRow, error) {
+	rows, err := q.db.Query(ctx, lockDriverLedgerCosts, arg.AccountID, arg.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LockDriverLedgerCostsRow
+	for rows.Next() {
+		var i LockDriverLedgerCostsRow
+		if err := rows.Scan(
+			&i.Dataset,
+			&i.ID,
+			&i.VehicleID,
+			&i.Revision,
+			&i.Voided,
+			&i.Deleted,
+			&i.AmountText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockLedgerOwner = `-- name: LockLedgerOwner :one
 SELECT revision FROM ledger_consent WHERE account_id=$1 FOR UPDATE
 `

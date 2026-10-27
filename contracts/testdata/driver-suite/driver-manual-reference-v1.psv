@@ -1,0 +1,16 @@
+id|operation|args|expected
+DRV-V06|DETAILED|gross=50000;fees=10000;tips=2000;bonus=3000;refund=0|earned=45000
+DRV-V07|NET|inclusive=40000;included_tips=3000|earned=40000;gross=null;fees=null;unknown=gross-and-fee-components-unknown
+DRV-V08|PAYOUT|earned=45000;payout=30000|earned=45000;received=30000
+DRV-V09|RESULT|earned=45000;costs=13000,2000,5000;distance=200000;seconds=28800;complete=1|result=25000;per_km=125;per_hour=3125;unknown=
+DRV-V10|MODEL|recorded=25000;estimates=4000,6000;distance=200000;seconds=28800|recorded=25000;modeled=15000;per_km=75;per_hour=1875;unknown=
+DRV-V11|UNION|intervals=0:21600,7200:25200|union=25200;summed=39600
+DRV-V17|RATIOS|amount=45000;distance=null;seconds=0|per_km=null;per_hour=null;unknown=distance-missing,time-nonpositive
+DRV-V20|RESULT|earned=45000;costs=null;distance=200000;seconds=28800;complete=0|result=null;per_km=null;per_hour=null;unknown=cost-coverage-incomplete
+DRV-M01|RESULT|earned=10000;costs=12000;distance=100000;seconds=3600;complete=1|result=-2000;per_km=-20;per_hour=-2000;unknown=
+DRV-M02|RESULT|earned=45000;costs=13000;distance=200000;seconds=28800;complete=0|result=null;per_km=null;per_hour=null;unknown=cost-coverage-incomplete
+DRV-M03|RATIOS|amount=100;distance=3000;seconds=7000|per_km=100/3;per_hour=360/7;unknown=
+DRV-M04|RATIOS|amount=100;distance=0;seconds=null|per_km=null;per_hour=null;unknown=distance-nonpositive,time-missing
+DRV-M05|UNION|intervals=20:30,0:10,2:8,0:10,10:20|union=30;summed=46
+DRV-M06|UNION|intervals=0:10,20:30|union=20;summed=20
+DRV-M07|DETAILED|gross=50000;fees=10000;tips=2000;bonus=3000;refund=5000|earned=40000

@@ -2,6 +2,7 @@ package com.anpfuel.app.ui.contributors
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -64,5 +65,10 @@ class ContributorsScreenTest {
         render(ContributorsUiState(loading = false, notice = ContributorsNotice.ERROR), onRetry = { retried = true })
         compose.onNodeWithText("Retry").performClick()
         assertEquals(true, retried)
+    }
+
+    @Test fun sameNameAndMonthDoNotCollide() {
+        render(ContributorsUiState(loading = false, items = listOf(ana, ana.copy(githubLogin = null))))
+        assertEquals(2, compose.onAllNodesWithText("Ana").fetchSemanticsNodes().size)
     }
 }

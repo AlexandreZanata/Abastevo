@@ -40,7 +40,7 @@ func TestNativePMQCResultExpansionUpgradeReplayAndRollback(t *testing.T) {
 		t.Fatal(e)
 	}
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
 			continue
 		}
 		if entry.Name() >= "000097" {

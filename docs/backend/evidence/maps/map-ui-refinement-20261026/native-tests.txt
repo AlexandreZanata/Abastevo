@@ -1,0 +1,5 @@
+com.anpfuel.app.ui.map.MapScreenInstrumentedTest:.........
+
+Time: 21.248
+
+OK (9 tests)
