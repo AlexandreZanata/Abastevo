@@ -2,7 +2,9 @@ package com.anpfuel.data.di
 
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.OkHttpClientFactory
+import com.anpfuel.data.remote.contributor.ContributorSelfHttpClient
 import com.anpfuel.data.remote.contributor.ContributorsHttpClient
+import com.anpfuel.domain.repository.ContributorSelfGateway
 import com.anpfuel.domain.repository.ContributorsGateway
 import dagger.Module
 import dagger.Provides
@@ -26,4 +28,15 @@ object ContributorsModule {
     @Provides
     @Singleton
     fun provideContributorsGateway(client: ContributorsHttpClient): ContributorsGateway = client
+
+    @Provides
+    @Singleton
+    fun provideContributorSelfClient(
+        @Named("apiOrigin") environment: ApiEnvironment,
+    ): ContributorSelfHttpClient =
+        ContributorSelfHttpClient(OkHttpClientFactory.create(maxRetries = 0), environment.origin)
+
+    @Provides
+    @Singleton
+    fun provideContributorSelfGateway(client: ContributorSelfHttpClient): ContributorSelfGateway = client
 }

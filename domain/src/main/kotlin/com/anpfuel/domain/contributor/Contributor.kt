@@ -29,6 +29,9 @@ data class ContributorPage(
 sealed class ContributorException(message: String) : Exception(message) {
     class Invalid(code: String) : ContributorException(code)
     class Denied(code: String) : ContributorException(code)
+    class Forbidden(code: String) : ContributorException(code)
+    class Conflict(code: String) : ContributorException(code)
+    class Quota(code: String) : ContributorException(code)
     class Unavailable(code: String) : ContributorException(code)
     class Offline(code: String) : ContributorException(code)
 }

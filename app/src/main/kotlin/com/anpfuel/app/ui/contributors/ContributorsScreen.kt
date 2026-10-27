@@ -60,6 +60,7 @@ import com.anpfuel.domain.contributor.ContributorLinkHosts
 @Composable
 fun ContributorsScreen(
     onNavigateBack: () -> Unit,
+    onClaimClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ContributorsViewModel = hiltViewModel(),
     onOpenLink: (String) -> Unit = defaultOpenLink(),
@@ -69,6 +70,7 @@ fun ContributorsScreen(
     ContributorsContent(
         state = state,
         onNavigateBack = onNavigateBack,
+        onClaimClick = onClaimClick,
         onRetry = viewModel::refresh,
         onLoadMore = viewModel::loadMore,
         onOpenLink = onOpenLink,
@@ -91,6 +93,7 @@ private fun defaultOpenLink(): (String) -> Unit {
 fun ContributorsContent(
     state: ContributorsUiState,
     onNavigateBack: () -> Unit,
+    onClaimClick: () -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onOpenLink: (String) -> Unit,
@@ -127,6 +130,11 @@ fun ContributorsContent(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                item(key = "claim-entry") {
+                    OutlinedButton(onClick = onClaimClick, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.claim_entry_button))
+                    }
+                }
                 items(state.items, key = { it.displayName + it.contributorSince }) { item ->
                     ContributorRow(item = item, onOpenLink = onOpenLink)
                 }

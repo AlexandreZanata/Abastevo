@@ -36,6 +36,7 @@ class ContributorsScreenTest {
                 ContributorsContent(
                     state = state,
                     onNavigateBack = {},
+                    onClaimClick = {},
                     onRetry = onRetry,
                     onLoadMore = {},
                     onOpenLink = onOpenLink,

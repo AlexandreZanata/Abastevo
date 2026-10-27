@@ -11,6 +11,17 @@
   refuses installs). [Evidence](../../backend/evidence/admin/C1-APP-CONTRIBUTORS.md).
   PR #173 to `main`. Next: C2 landing page, then C3 self-service.
 
+- C3 app contributor self-service 2026-10-27: LOCAL_DONE /
+  INTEGRATION_PENDING. Branch `codex/adm-c3-app-contributor-self` stacked
+  on C2. Signed-in claim flow (login → one-time code + copy + gist
+  instructions → gist proof → status, withdraw; pending code re-shown) and
+  profile edit (name, ≤2 links, visibility + explicit consent, show-roles)
+  against the A3 user routes; client validators mirror CTB-03/08, server
+  stays authoritative; 401/403/409/429 mapped distinctly; 8 locales.
+  Tested revision: branch head; Android gate green, androidTest compiled
+  only (device refuses installs). [Evidence](../../backend/evidence/admin/C3-APP-SELF-SERVICE.md).
+  Next: C4 staging check (blocked: staging lacks A1–A4).
+
 - C2 landing contributors page 2026-10-27: LOCAL_DONE /
   INTEGRATION_PENDING. Branch `codex/adm-c2-landing-contributors` stacked
   on C1. Static `/contribuidores/` shell + `contributors.ts` progressive
