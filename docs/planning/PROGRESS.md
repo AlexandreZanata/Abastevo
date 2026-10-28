@@ -43,7 +43,8 @@
   [MC-B3](../backend/evidence/maps/map-completion/MC-B3.md). Time: ~40 min.
 
 - MAP completion MC-B2 2026-10-27: LOCAL_DONE. Base `5db9765e` plus this
-  task. Append-only migration `000140` adds `station_corrections` and
+  task. Append-only migration `000144` (first numbered `000140`; renumbered
+  because `main` took `000140` for admin sessions) adds `station_corrections` and
   `station_correction_decisions` with the eight statuses, idempotency key,
   one-open-per-field partial index, queue indexes and append-only audit
   fields; `sqlc` regenerated the typed queries. `sqlc diff` empty and
