@@ -648,4 +648,42 @@ class MapDiscoveryViewModelTest {
         assertEquals(-15.61 to -56.11, engine.viewports.last())
         assertEquals(setOf(address.stationId, anp.stationId), engine.markers.map { it.uuid }.toSet())
     }
+
+    @Test fun `opened city point follows the camera centered on the city, then stations, then built-in`() = runTest {
+        val gateway = io.mockk.mockk<ServerStationGateway>(relaxed = true)
+        val anp = station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", lat = -12.54, lon = -55.71, quality = StationLocationQuality.ANP_REPORTED)
+        val centroidA = station("cccccccc-cccc-4ccc-8ccc-cccccccccccc", lat = -12.0, lon = -55.0, quality = StationLocationQuality.CITY_CENTROID)
+        val centroidB = station("dddddddd-dddd-4ddd-8ddd-dddddddddddd", lat = -13.0, lon = -56.0, quality = StationLocationQuality.CITY_CENTROID)
+        io.mockk.coEvery { gateway.listInMunicipality("5107925", 100, null) } returns ServerStationPage(listOf(centroidA, anp), null)
+        io.mockk.coEvery { gateway.listInMunicipality("5100250", 100, null) } returns ServerStationPage(listOf(centroidA, centroidB), null)
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, FakeEngine())
+        // Default city (Curitiba) is known before any selection.
+        assertEquals(-25.4284 to -49.2733, vm.ui.value.cityLatitude to vm.ui.value.cityLongitude)
+        // Pinned station: the camera centers on it, so it represents the city.
+        vm.onSelectCity("5107925", "Sorriso")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(-12.54 to -55.71, vm.ui.value.cityLatitude to vm.ui.value.cityLongitude)
+        // No pin: the centroid of the city's loaded stations.
+        vm.onSelectCity("5100250", "Alta Floresta")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(-12.5 to -55.5, vm.ui.value.cityLatitude to vm.ui.value.cityLongitude)
+        // Built-in city coordinates.
+        vm.onSelectCity("1302603", "Manaus")
+        assertEquals(-3.1190 to -60.0217, vm.ui.value.cityLatitude to vm.ui.value.cityLongitude)
+        // Panning elsewhere does not move the opened city's point.
+        vm.onViewport(-23.55, -46.63)
+        assertEquals(-3.1190 to -60.0217, vm.ui.value.cityLatitude to vm.ui.value.cityLongitude)
+        dispatcher.scheduler.advanceUntilIdle()
+    }
+
+    @Test fun `unknown city without any station coordinate has no city point`() = runTest {
+        val gateway = io.mockk.mockk<ServerStationGateway>()
+        val bare = station("dddddddd-dddd-4ddd-8ddd-dddddddddddd", lat = null, lon = null, quality = StationLocationQuality.UNKNOWN)
+        io.mockk.coEvery { gateway.listInMunicipality("5103403", 100, null) } returns ServerStationPage(listOf(bare), null)
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, FakeEngine())
+        vm.onSelectCity("5103403", "Cuiabá")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(null, vm.ui.value.cityLatitude)
+        assertEquals(null, vm.ui.value.cityLongitude)
+    }
 }

@@ -47,12 +47,18 @@ fun MapDownloadsScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(stringResource(R.string.map_downloads), style = MaterialTheme.typography.titleLarge)
+        ui.region?.let { region ->
+            Text(
+                stringResource(R.string.map_downloads_region, region.name),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.testTag("map-download-region"),
+            )
+        }
         when {
             ui.loading -> Text(stringResource(R.string.map_loading))
             ui.unconfigured -> {
                 Text(stringResource(R.string.map_dist_unconfigured))
                 if (ui.missingUrl) Text("map_dist_base_url: missing")
-                if (ui.missingRegion) Text("map_dist_region: missing")
                 if (ui.missingKeys) Text("map_dist_keys: missing")
                 if (ui.keysInvalid) Text("map_dist_keys: invalid")
                 TextButton(onClick = { viewModel.refresh() }, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -143,6 +149,11 @@ fun MapDownloadsScreen(
                             Text(downloadLabel)
                         }
                     }
+                } else if (ui.regionUnknown) {
+                    Text(
+                        stringResource(R.string.map_region_unknown),
+                        modifier = Modifier.testTag("map-download-region-unknown"),
+                    )
                 } else {
                     val checkUpdateLabel = stringResource(R.string.map_check_update)
                     Button(

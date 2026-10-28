@@ -1,12 +1,14 @@
 package com.anpfuel.app.ui.map
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import com.anpfuel.data.map.MapDistribution
 import com.anpfuel.data.map.MapDistributionConfig
 import com.anpfuel.data.map.MapDownloadException
+import com.anpfuel.data.map.MapManifestVerifier
 import com.anpfuel.data.map.MapPackageRepository
 import com.anpfuel.data.map.MapPackageStore
 import com.anpfuel.data.map.PACKAGE_FAILED
@@ -37,7 +39,6 @@ data class MapPackageUi(
 data class MapDownloadsUi(
     val loading: Boolean = true,
     val missingUrl: Boolean = false,
-    val missingRegion: Boolean = false,
     val missingKeys: Boolean = false,
     val keysInvalid: Boolean = false,
     val activeGeneration: String? = null,
@@ -52,8 +53,12 @@ data class MapDownloadsUi(
     val retryable: Boolean = false,
     val wifiOnly: Boolean = true,
     val inactiveGenerations: List<String> = emptyList(),
+    /** Region to download: the opened city's region, else the build default. */
+    val region: MapRegionUi? = null,
+    /** No region could be determined (no city opened inside Brazil). */
+    val regionUnknown: Boolean = false,
 ) {
-    val unconfigured: Boolean get() = missingUrl || missingRegion || missingKeys || keysInvalid
+    val unconfigured: Boolean get() = missingUrl || missingKeys || keysInvalid
 }
 
 /** Enqueue/cancel seam over WorkManager unique work; faked in unit tests. */
@@ -90,21 +95,35 @@ class MapDownloadsViewModel @Inject constructor(
     private val store: MapPackageStore,
     private val work: MapWorkControl,
     private val preferences: com.anpfuel.domain.repository.UserPreferencesRepository,
+    private val selection: MapRegionSelection = MapRegionSelection(),
+    private val savedState: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
-    private val _ui = MutableStateFlow(MapDownloadsUi())
+    // Fixed for this screen instance (restored after process death): the
+    // region the map resolved for the opened city, else the build default.
+    private val regionSlug: String? =
+        savedState.get<String>(KEY_REGION) ?: selection.selected.value ?: config.defaultRegion
+    private val _ui = MutableStateFlow(MapDownloadsUi(region = regionSlug?.let(::regionUi)))
     val ui: StateFlow<MapDownloadsUi> = _ui.asStateFlow()
     private var pollJob: Job? = null
+    private var autoStart = false
 
     init {
-        refresh()
+        savedState[KEY_REGION] = regionSlug
+        if (regionSlug != null && config.configured && selection.consumeDownloadRequest(regionSlug)) {
+            // "Baixar" on the map suggestion: check and download this region now.
+            autoStart = true
+            checkForUpdate()
+        } else {
+            refresh()
+        }
     }
 
     fun refresh() {
         pollJob?.cancel()
-        if (!config.configured || config.defaultRegion == null) {
+        if (!config.configured) {
             _ui.update {
                 it.copy(
-                    loading = false, missingUrl = config.missingUrl, missingRegion = config.defaultRegion == null,
+                    loading = false, missingUrl = config.missingUrl,
                     missingKeys = config.missingKeys, keysInvalid = config.keysInvalid,
                 )
             }
@@ -120,8 +139,8 @@ class MapDownloadsViewModel @Inject constructor(
                 _ui.update {
                     val settled = it.candidateGeneration != null && it.candidateGeneration == active?.generation
                     it.copy(
-                        loading = false, missingUrl = false, missingRegion = false,
-                        missingKeys = false, keysInvalid = false,
+                        loading = false, missingUrl = false,
+                        missingKeys = false, keysInvalid = false, regionUnknown = regionSlug == null,
                         activeGeneration = active?.generation, published = published,
                         wifiOnly = wifiOnly, inactiveGenerations = inactive,
                         // An already-active candidate is current, not an update.
@@ -138,17 +157,28 @@ class MapDownloadsViewModel @Inject constructor(
 
     fun checkForUpdate() {
         pollJob?.cancel()
-        val region = config.defaultRegion
+        val region = regionSlug
         if (!config.configured || region == null) {
             refresh()
             return
         }
+        val startAfterCheck = autoStart
+        autoStart = false
         viewModelScope.launch {
             _ui.update { it.copy(loading = true, error = null, retryable = false) }
+            if (startAfterCheck) {
+                // The auto-started download honours the Wi-Fi preference too.
+                val wifiOnly = runCatching { preferences.getPreferences().autoSyncOnWifi }.getOrDefault(true)
+                _ui.update { it.copy(wifiOnly = wifiOnly) }
+            }
             try {
-                val envelope = distribution.fetchEnvelope(region)
+                val envelope = distribution.fetchEnvelope(region).decodeToString()
+                // Refuse a manifest of another region before any Room row is written.
+                if (MapManifestVerifier.verify(envelope, config.trustedKeys).manifest.regionId != region) {
+                    throw MapDownloadException("map-region-mismatch")
+                }
                 val verified = try {
-                    repository.importManifest(envelope.decodeToString(), config.trustedKeys)
+                    repository.importManifest(envelope, config.trustedKeys)
                 } catch (e: MapDownloadException) {
                     if (e.message == "active-generation-reimport") {
                         // Already on this generation: show current state, no fake update.
@@ -158,6 +188,7 @@ class MapDownloadsViewModel @Inject constructor(
                     throw e
                 }
                 showCandidate(verified)
+                if (startAfterCheck) download()
             } catch (error: MapDownloadException) {
                 _ui.update { it.copy(loading = false, error = error.message, retryable = false) }
             } catch (_: IOException) {
@@ -315,5 +346,12 @@ class MapDownloadsViewModel @Inject constructor(
             }
             download()
         }
+    }
+
+    private companion object {
+        const val KEY_REGION = "map_download_region"
+
+        fun regionUi(slug: String): MapRegionUi =
+            MapRegionUi.ofSlug(slug) ?: MapRegionUi(countryId = slug, slug = slug, name = slug)
     }
 }

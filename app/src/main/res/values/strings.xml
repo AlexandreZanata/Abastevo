@@ -34,6 +34,12 @@
     <string name="map_needs_activation">Installed, pending map activation</string>
     <string name="map_published">Published</string>
     <string name="map_dist_unconfigured">Map downloads are not configured on this build</string>
+    <string name="map_region_suggestion">Download the %1$s map (%2$s)</string>
+    <string name="map_region_suggestion_no_size">Download the %1$s map</string>
+    <string name="map_region_suggestion_detail">Offline map for the city you opened</string>
+    <string name="map_region_not_now">Not now</string>
+    <string name="map_downloads_region">Region: %1$s</string>
+    <string name="map_region_unknown">Open a city on the map to choose which map region to download.</string>
     <string name="map_attribution">© OpenStreetMap contributors</string>
     <string name="map_search_hint">Search stations…</string>
     <string name="map_filter_service">Service</string>

@@ -11,6 +11,8 @@ import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
 import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.discovery.bestPinnedStation
+import com.anpfuel.domain.map.MapRegionPoint
+import com.anpfuel.domain.map.chooseCityRegionPoint
 import com.anpfuel.domain.repository.MunicipalityCatalogRepository
 import com.anpfuel.domain.repository.ServerStationCache
 import com.anpfuel.domain.repository.ServerStationGateway
@@ -89,6 +91,13 @@ data class MapDiscoveryUi(
     val chargingError: String? = null,
     val cityLocationUnknown: Boolean = false,
     val offlineCached: Boolean = false,
+    /**
+     * Coordinate that represents the opened city for the offline-map region
+     * (see [chooseCityRegionPoint]); null while unknown. It follows the city,
+     * not later panning.
+     */
+    val cityLatitude: Double? = -25.4284,
+    val cityLongitude: Double? = -49.2733,
 )
 
 /**
@@ -192,10 +201,15 @@ class MapDiscoveryViewModel @Inject constructor(
         val normalizedCode = ibgeCode.trim().ifBlank { _ui.value.municipalityCode }
         val knownCity = DEFAULT_MAP_CITIES.firstOrNull { it.ibgeCode == normalizedCode }
         val resolvedName = cityName.trim().ifBlank { knownCity?.name ?: normalizedCode }
+        // A built-in city is where the camera is centered below; other cities
+        // resolve from their loaded stations in loadCityStations.
+        val cityPoint = chooseCityRegionPoint(null, emptyList(), builtInCityPoint(normalizedCode))
         _ui.update {
             it.copy(
                 municipalityCode = normalizedCode,
                 municipalityName = resolvedName,
+                cityLatitude = cityPoint?.latitude,
+                cityLongitude = cityPoint?.longitude,
             )
         }
         val activeQuery = _ui.value.searchQuery.trim()
@@ -219,7 +233,19 @@ class MapDiscoveryViewModel @Inject constructor(
                 if (gen != generation) return@launch
                 // Center on the best pin tier (reviewed > osm-mapped > anp-reported > address-point).
                 val pinned = page.items.bestPinnedStation()
-                _ui.update { it.copy(cityLocationUnknown = pinned == null, offlineCached = false) }
+                val cityPoint = chooseCityRegionPoint(
+                    pinned?.let { MapRegionPoint(checkNotNull(it.latitude), checkNotNull(it.longitude)) },
+                    page.items.stationPoints(),
+                    builtInCityPoint(code),
+                )
+                _ui.update {
+                    it.copy(
+                        cityLocationUnknown = pinned == null,
+                        offlineCached = false,
+                        cityLatitude = cityPoint?.latitude,
+                        cityLongitude = cityPoint?.longitude,
+                    )
+                }
                 saveMapCache(code, page.items)
                 pushMarkers(
                     page.items.mapNotNull { it.toMarker() }, gen,
@@ -238,12 +264,27 @@ class MapDiscoveryViewModel @Inject constructor(
                         cached.mapNotNull { it.toMarker() }, gen,
                         cached.filter { it.latitude == null || it.longitude == null },
                     )
-                    _ui.update { it.copy(loading = false, error = null, offlineCached = true) }
+                    val cityPoint = chooseCityRegionPoint(null, cached.stationPoints(), builtInCityPoint(code))
+                    _ui.update {
+                        it.copy(
+                            loading = false, error = null, offlineCached = true,
+                            cityLatitude = cityPoint?.latitude, cityLongitude = cityPoint?.longitude,
+                        )
+                    }
                 } else {
                     _ui.update { it.copy(loading = false, error = e.message ?: "city-unavailable") }
                 }
             }
         }
+    }
+
+    private fun builtInCityPoint(code: String): MapRegionPoint? =
+        DEFAULT_MAP_CITIES.firstOrNull { it.ibgeCode == code }?.let { MapRegionPoint(it.latitude, it.longitude) }
+
+    private fun List<ServerStation>.stationPoints(): List<MapRegionPoint> = mapNotNull { station ->
+        val lat = station.latitude ?: return@mapNotNull null
+        val lon = station.longitude ?: return@mapNotNull null
+        MapRegionPoint(lat, lon)
     }
 
     fun onViewport(latitude: Double, longitude: Double, radiusMeters: Int = 10_000) {

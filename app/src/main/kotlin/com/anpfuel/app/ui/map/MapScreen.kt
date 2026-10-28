@@ -156,6 +156,11 @@ fun MapScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // The opened city's coordinate selects the offline-map region to offer.
+    LaunchedEffect(discovery, discUi?.cityLatitude, discUi?.cityLongitude) {
+        if (discovery != null) viewModel.onCityPoint(discUi?.cityLatitude, discUi?.cityLongitude)
+    }
+
     // Initial viewport loads markers once when discovery has not fetched yet.
     LaunchedEffect(discovery) {
         if (discovery != null && discovery.ui.value.generation == 0L) {
@@ -237,6 +242,14 @@ fun MapScreen(
                     periodContent = { periodContent { viewModel.refreshAvailability() } },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 )
+                ui.regionSuggestion?.let { suggestion ->
+                    MapRegionSuggestionCard(
+                        suggestion = suggestion,
+                        onDownload = { if (viewModel.acceptRegionSuggestion()) onOpenDownloads() },
+                        onDismiss = viewModel::dismissRegionSuggestion,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                }
 
                 Spacer(Modifier.weight(1f))
                 // Reserve a 48 dp recenter target, its 16 dp inset and 8 dp clearance.

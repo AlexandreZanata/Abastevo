@@ -3,13 +3,17 @@ package com.anpfuel.data.di
 import android.content.Context
 import com.anpfuel.data.BuildConfig
 import com.anpfuel.data.local.dao.MapPackageDao
+import com.anpfuel.data.map.AssetMapRegionResolver
 import com.anpfuel.data.map.MapActivationObserver
 import com.anpfuel.data.map.MapDistribution
 import com.anpfuel.data.map.MapDistributionConfig
 import com.anpfuel.data.map.MapDistributionKeys
 import com.anpfuel.data.map.MapPackageRepository
 import com.anpfuel.data.map.MapPackageStore
+import com.anpfuel.data.map.MapRegionDismissalStore
+import com.anpfuel.data.map.MapRegionResolver
 import com.anpfuel.data.map.RoomMapPackageStore
+import com.anpfuel.data.map.SharedPreferencesMapRegionDismissalStore
 import com.anpfuel.data.remote.OkHttpClientFactory
 import com.anpfuel.domain.map.MapContractException
 import dagger.Module
@@ -60,11 +64,20 @@ object MapModule {
         }
         return MapDistributionConfig(
             baseUrl = BuildConfig.MAP_DIST_BASE_URL.trimEnd('/'),
+            // Optional default; the app picks the region of the opened city at runtime.
             region = BuildConfig.MAP_DIST_REGION,
             trustedKeys = keys,
             keysInvalid = keysInvalid,
         )
     }
+
+    @Provides
+    @Singleton
+    fun provideMapRegionResolver(impl: AssetMapRegionResolver): MapRegionResolver = impl
+
+    @Provides
+    @Singleton
+    fun provideMapRegionDismissalStore(impl: SharedPreferencesMapRegionDismissalStore): MapRegionDismissalStore = impl
 
     @Provides
     @Singleton

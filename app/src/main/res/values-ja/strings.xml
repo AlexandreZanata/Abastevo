@@ -560,6 +560,12 @@
     <string name="map_needs_activation">インストール済み、マップへの反映待ち</string>
     <string name="map_published">公開済み</string>
     <string name="map_dist_unconfigured">このビルドではマップのダウンロードが設定されていません</string>
+    <string name="map_region_suggestion">%1$s の地図をダウンロード (%2$s)</string>
+    <string name="map_region_suggestion_no_size">%1$s の地図をダウンロード</string>
+    <string name="map_region_suggestion_detail">開いた都市のオフライン地図</string>
+    <string name="map_region_not_now">今はしない</string>
+    <string name="map_downloads_region">地域: %1$s</string>
+    <string name="map_region_unknown">ダウンロードする地図の地域を選ぶには、地図で都市を開いてください。</string>
     <string name="map_attribution">© OpenStreetMap 投稿者</string>
     <string name="map_search_hint">スタンドを検索…</string>
     <string name="map_filter_service">サービス</string>

@@ -14,4 +14,7 @@ interface MapAppModule {
 
     @Binds
     fun bindMapWorkControl(impl: WorkManagerControl): MapWorkControl
+
+    @Binds
+    fun bindMapRegionServices(impl: DefaultMapRegionServices): MapRegionServices
 }
