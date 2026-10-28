@@ -812,4 +812,30 @@ class MapDiscoveryViewModelTest {
         com.anpfuel.maps.engine.MapViewModel(engine, store).onEngineReady()
         assertEquals(-12.54 to -55.71, engine.viewports.last())
     }
+    @Test fun `a viewport refresh while the city loads does not drop the city camera`() = runTest {
+        // Map readiness reports the default camera (Curitiba) while the chosen
+        // city's stations are still loading. That nearby refresh must not
+        // cancel the city: its camera and region point still apply.
+        val gateway = io.mockk.mockk<ServerStationGateway>(relaxed = true)
+        val pinned = station(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            lat = -12.54, lon = -55.71,
+            quality = StationLocationQuality.ANP_REPORTED,
+            name = "Posto Sorriso",
+        )
+        io.mockk.coEvery { gateway.listInMunicipality("5107925", 100, null) } coAnswers {
+            kotlinx.coroutines.delay(1_000)
+            ServerStationPage(listOf(pinned), null)
+        }
+        io.mockk.coEvery { gateway.nearby(any(), any(), any(), any()) } returns emptyList()
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onSelectCity("5107925", "Sorriso")
+        advanceTimeBy(100)
+        vm.onViewport(-25.42, -49.27, 10_000)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(-12.54 to -55.71, engine.viewports.last())
+        assertEquals(-12.54, vm.ui.value.cityLatitude)
+        assertEquals(-55.71, vm.ui.value.cityLongitude)
+    }
 }

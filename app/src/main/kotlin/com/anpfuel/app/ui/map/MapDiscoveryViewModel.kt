@@ -138,6 +138,8 @@ class MapDiscoveryViewModel @Inject constructor(
 
     private var fetchJob: Job? = null
     private var generation = 0L
+    private var cityJob: Job? = null
+    private var cityGeneration = 0L
     private var lastMarkers: List<MapOverlayMarker> = emptyList()
     private var lastNullStations: List<ServerStation> = emptyList()
     private var lastNullCharging: List<ChargingPlace> = emptyList()
@@ -252,13 +254,18 @@ class MapDiscoveryViewModel @Inject constructor(
     }
 
     private fun loadCityStations(code: String, moveViewport: Boolean) {
+        // The city load owns its own job: a nearby refresh (map readiness
+        // reporting the default camera, native camera sync) may replace the
+        // pins, but must never cancel the city camera and region point.
         fetchJob?.cancel()
+        cityJob?.cancel()
         val gen = ++generation
+        val cityGen = ++cityGeneration
         _ui.update { it.copy(loading = true, error = null, generation = gen) }
-        fetchJob = viewModelScope.launch {
+        cityJob = viewModelScope.launch {
             try {
                 val page = stations.listInMunicipality(code, 100, null)
-                if (gen != generation) return@launch
+                if (cityGen != cityGeneration) return@launch
                 // Center on the best pin tier (reviewed > osm-mapped > anp-reported > address-point).
                 val pinned = page.items.bestPinnedStation()
                 val cityPoint = chooseCityRegionPoint(
@@ -275,30 +282,32 @@ class MapDiscoveryViewModel @Inject constructor(
                     )
                 }
                 saveMapCache(code, page.items)
-                pushMarkers(
-                    page.items.mapNotNull { it.toMarker() }, gen,
-                    page.items.filter { it.latitude == null || it.longitude == null },
-                )
+                if (gen == generation) {
+                    pushMarkers(
+                        page.items.mapNotNull { it.toMarker() }, gen,
+                        page.items.filter { it.latitude == null || it.longitude == null },
+                    )
+                }
                 if (pinned != null && moveViewport) {
                     moveCameraToCity(checkNotNull(pinned.latitude), checkNotNull(pinned.longitude))
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (gen != generation) return@launch
+                if (cityGen != cityGeneration) return@launch
                 val cached = loadMapCache(code)
+                val cityPoint = chooseCityRegionPoint(null, cached.stationPoints(), builtInCityPoint(code))
+                if (cached.isNotEmpty()) {
+                    _ui.update { it.copy(cityLatitude = cityPoint?.latitude, cityLongitude = cityPoint?.longitude) }
+                }
+                // Pins and loading state belong to the newest fetch only.
+                if (gen != generation) return@launch
                 if (cached.isNotEmpty()) {
                     pushMarkers(
                         cached.mapNotNull { it.toMarker() }, gen,
                         cached.filter { it.latitude == null || it.longitude == null },
                     )
-                    val cityPoint = chooseCityRegionPoint(null, cached.stationPoints(), builtInCityPoint(code))
-                    _ui.update {
-                        it.copy(
-                            loading = false, error = null, offlineCached = true,
-                            cityLatitude = cityPoint?.latitude, cityLongitude = cityPoint?.longitude,
-                        )
-                    }
+                    _ui.update { it.copy(loading = false, error = null, offlineCached = true) }
                 } else {
                     _ui.update { it.copy(loading = false, error = e.message ?: "city-unavailable") }
                 }
