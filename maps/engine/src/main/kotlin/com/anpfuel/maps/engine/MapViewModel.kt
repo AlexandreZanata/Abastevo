@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+/** Native overlay station names render from this street zoom up; below it only pins show. */
+internal const val OVERLAY_LABELS_MIN_ZOOM = 15
+
 data class MapUiState(
     val ready: Boolean = false,
     val hasLocationPermission: Boolean = false,
@@ -29,6 +32,8 @@ class MapViewModel @Inject constructor(
     private var defaultCamera: MapCamera = MapCamera(-25.42, -49.27, 13)
     private var disposed = false
     private var initializing = false
+    /** Native bookmark labels render above this zoom only; the SDK default is shown. */
+    private var overlayLabelsVisible = true
     private val _state = MutableStateFlow(MapUiState())
     val state: StateFlow<MapUiState> = _state.asStateFlow()
 
@@ -142,6 +147,7 @@ class MapViewModel @Inject constructor(
         val native = engine.currentCamera() ?: engine.currentCenter()?.let {
             current.copy(latitude = it.latitude, longitude = it.longitude)
         } ?: return _state.value.camera
+        applyOverlayLabelsVisibility(native.zoom)
         val dLat = kotlin.math.abs(native.latitude - current.latitude)
         val dLon = kotlin.math.abs(native.longitude - current.longitude)
         if (dLat >= 0.0005 || dLon >= 0.0005 || native.zoom != current.zoom) {
@@ -165,6 +171,19 @@ class MapViewModel @Inject constructor(
         val camera = syncCameraFromEngine() ?: return
         cameraStore.save(camera)
         _state.update { it.copy(camera = camera) }
+    }
+
+    /**
+     * Station-name clutter: native bookmark labels render from street zoom up.
+     * Per-pin text color, size, halo and min-zoom are owned by the pinned map
+     * style, so visibility is the only supported lever; pins stay tappable.
+     */
+    private fun applyOverlayLabelsVisibility(zoom: Int) {
+        val visible = zoom >= OVERLAY_LABELS_MIN_ZOOM
+        if (visible != overlayLabelsVisible) {
+            overlayLabelsVisible = visible
+            engine.setOverlayLabelsVisible(visible)
+        }
     }
 
     fun dispose() {

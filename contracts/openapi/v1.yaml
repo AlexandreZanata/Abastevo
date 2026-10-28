@@ -3046,6 +3046,168 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
 
+  /v1/stations/{id}/corrections:
+    post:
+      summary: Submit a private station correction (signed).
+      operationId: submitStationCorrection
+      tags: [directory]
+      security: []
+      description: >
+        Session-authenticated correction of one existing station field
+        (MC-B3, B-BR-COR-01..08). The author derives server-side from the
+        live session; anonymous contributor proof alone is insufficient.
+        Same idempotency key plus same body replays the record (200); a
+        changed body or a second open correction for the same field
+        conflicts (409). Corrections never overwrite official facts.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, client_submission_id, field, proposed_value]
+              additionalProperties: false
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+                client_submission_id: {type: string, maxLength: 128}
+                field:
+                  type: string
+                  enum: [location, display_name, brand, address, operating_status]
+                proposed_value:
+                  $ref: '#/components/schemas/StationCorrectionValue'
+                note: {type: string, maxLength: 280}
+                evidence_ref: {type: string, maxLength: 200}
+                proximity_bucket:
+                  type: string
+                  enum: ['', same_municipality, within_1km, within_250m, within_50m]
+      responses:
+        '200':
+          description: Idempotent replay of the existing correction.
+          headers:
+            Cache-Control: {schema: {type: string, example: 'no-store'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StationCorrection'}
+        '201':
+          description: Correction stored privately.
+          headers:
+            Cache-Control: {schema: {type: string, example: 'no-store'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StationCorrection'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /v1/stations/corrections/mine:
+    post:
+      summary: List the caller's private corrections.
+      operationId: listOwnedCorrections
+      tags: [directory]
+      security: []
+      description: Owner-only newest-first page, at most 20. Session in the JSON body, never the URL; always no-store.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+      responses:
+        '200':
+          description: Owner correction page.
+          headers:
+            Cache-Control: {schema: {type: string, example: 'no-store'}}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/StationCorrection'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /v1/stations/corrections/{id}/status:
+    post:
+      summary: Read one private correction status.
+      operationId: getStationCorrectionStatus
+      tags: [directory]
+      security: []
+      description: Owner-only status; foreign and unknown ids share one 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+      responses:
+        '200':
+          description: Correction status.
+          headers:
+            Cache-Control: {schema: {type: string, example: 'no-store'}}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StationCorrection'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /v1/stations/corrections/{id}/cancel:
+    post:
+      summary: Cancel an owner's pending correction.
+      operationId: cancelStationCorrection
+      tags: [directory]
+      security: []
+      description: Owner-only cancellation of a pending correction; non-pending rows conflict.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+      responses:
+        '200':
+          description: Cancelled.
+          headers:
+            Cache-Control: {schema: {type: string, example: 'no-store'}}
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: cancelled}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
   /v1/stations/suggestions:
     post:
       summary: Submit a private station suggestion (signed).
@@ -11198,6 +11360,47 @@ components:
         created_at:
           type: string
           format: date-time
+    StationCorrection:
+      description: >
+        Private correction status (MC-B3, B-BR-COR-01..08): id, field,
+        lifecycle state and reason codes only. Never another owner's data,
+        never an official fact and never a trust or ownership grant.
+      type: object
+      required: [id, station_id, field, status, client_submission_id, created_at]
+      properties:
+        id: {type: string, format: uuid}
+        station_id: {type: string, format: uuid}
+        field:
+          type: string
+          enum: [location, display_name, brand, address, operating_status]
+        status:
+          type: string
+          enum: [pending, auto_verified, accepted, rejected, expired, cancelled, superseded, frozen]
+        client_submission_id: {type: string}
+        reason_codes:
+          type: array
+          items: {type: string}
+        created_at: {type: string, format: date-time}
+        decided_at: {type: string, format: date-time}
+    StationCorrectionValue:
+      description: >
+        Structured correction payload. Only the members for the selected
+        field are accepted; unknown members are rejected by the server.
+      type: object
+      additionalProperties: false
+      properties:
+        latitude: {type: number, minimum: -33.75, maximum: 5.27}
+        longitude: {type: number, minimum: -73.99, maximum: -34.79}
+        value: {type: string, maxLength: 160}
+        street: {type: string, maxLength: 160}
+        number: {type: string, maxLength: 20}
+        district: {type: string, maxLength: 80}
+        postal_code: {type: string, pattern: '^[0-9]{8}$'}
+        municipality_code: {type: string, pattern: '^[0-9]{7}$'}
+        state: {type: string, pattern: '^[A-Z]{2}$'}
+        status:
+          type: string
+          enum: [active, temporarily_closed, permanently_closed]
     StationProfile:
       description: >
         Public station profile (P30-T02, B-BR-P01/P02): identity,

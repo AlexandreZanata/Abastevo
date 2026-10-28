@@ -145,7 +145,7 @@ class MapOfflineDistributionInstrumentedTest {
     @Test fun offlineDistributionActivatesSurvivesRestartWithNoNewContact() = runBlocking {
         val repository = repo()
         val before = proofRequestCount()
-        val fetched = distribution().fetchEnvelope().decodeToString()
+        val fetched = distribution().fetchEnvelope("test-rect").decodeToString()
         assertEquals(before + 1, proofRequestCount())
         val generation = generationOf(fetched)
         repository.importManifest(fetched, trusted)
@@ -182,7 +182,7 @@ class MapOfflineDistributionInstrumentedTest {
 
     @Test fun corruptedTransferAndLeasedActiveGenerationRefuseDeletion() = runBlocking {
         val repository = repo()
-        val fetched = distribution().fetchEnvelope().decodeToString()
+        val fetched = distribution().fetchEnvelope("test-rect").decodeToString()
         val generation = generationOf(fetched)
         repository.importManifest(fetched, trusted)
         assertTrue(repository.downloadMissing(generation, origin))
@@ -201,7 +201,7 @@ class MapOfflineDistributionInstrumentedTest {
         fetchBytes("/proof/corrupt?id=east")
         try {
             fetchBytes("/proof/advance")
-            val fetchedB = distribution().fetchEnvelope().decodeToString()
+            val fetchedB = distribution().fetchEnvelope("test-rect").decodeToString()
             val generationB = generationOf(fetchedB)
             repository.importManifest(fetchedB, trusted)
             try {
@@ -219,7 +219,7 @@ class MapOfflineDistributionInstrumentedTest {
 
     @Test fun diskFullFailsClosedWithoutTouchingActive() = runBlocking {
         val repository = repo()
-        val fetched = distribution().fetchEnvelope().decodeToString()
+        val fetched = distribution().fetchEnvelope("test-rect").decodeToString()
         val generation = generationOf(fetched)
         repository.importManifest(fetched, trusted)
         assertTrue(repository.downloadMissing(generation, origin))
@@ -229,7 +229,7 @@ class MapOfflineDistributionInstrumentedTest {
         // generation is required: re-importing the active one is refused by design.
         fetchBytes("/proof/advance")
         val fullRepo = repo(freeBytes = 0)
-        val fetchedB = distribution().fetchEnvelope().decodeToString()
+        val fetchedB = distribution().fetchEnvelope("test-rect").decodeToString()
         val generationB = generationOf(fetchedB)
         fullRepo.importManifest(fetchedB, trusted)
         try {
@@ -249,7 +249,7 @@ class MapOfflineDistributionInstrumentedTest {
 
     @Test fun interruptedUpdateKeepsLastGoodThenResumesFromThePartialFile() = runBlocking {
         val repository = repo()
-        val fetched = distribution().fetchEnvelope().decodeToString()
+        val fetched = distribution().fetchEnvelope("test-rect").decodeToString()
         val generation = generationOf(fetched)
         repository.importManifest(fetched, trusted)
         assertTrue(repository.downloadMissing(generation, origin))
@@ -259,7 +259,7 @@ class MapOfflineDistributionInstrumentedTest {
         // The new generation's world transfer is cut after 50000 of 131072 bytes.
         fetchBytes("/proof/advance")
         fetchBytes("/proof/truncate?id=world&bytes=50000")
-        val fetchedB = distribution().fetchEnvelope().decodeToString()
+        val fetchedB = distribution().fetchEnvelope("test-rect").decodeToString()
         val generationB = generationOf(fetchedB)
         repository.importManifest(fetchedB, trusted)
         try {

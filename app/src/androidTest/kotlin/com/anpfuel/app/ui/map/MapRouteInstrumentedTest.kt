@@ -4,6 +4,7 @@ import android.content.pm.ActivityInfo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.anpfuel.app.MainActivity
 import com.anpfuel.app.R
@@ -65,16 +66,16 @@ class MapRouteInstrumentedTest {
         val first = MapEngineHolder.engine
         assertTrue(first.isInitialized())
 
-        // Leave to another tab and return: entry destroyed and recreated,
-        // same singleton engine, surface back without a blank screen.
+        // Leave to another tab and return. The persistent host keeps the map
+        // composed behind the shell, so the Map route controls must be gone
+        // while the engine stays alive; the recenter assertion applies after
+        // returning to the Map tab.
         val exploreTab = string(R.string.nav_explore)
         compose.onNodeWithContentDescription(exploreTab, substring = false, useUnmergedTree = true)
             .performClick()
         compose.waitUntil(timeoutMillis = 10_000) {
             try {
-                compose.onNodeWithContentDescription(
-                    string(R.string.map_recenter), substring = false, useUnmergedTree = true,
-                ).assertDoesNotExist()
+                compose.onNodeWithTag("map-controls-card").assertDoesNotExist()
                 true
             } catch (_: AssertionError) {
                 false

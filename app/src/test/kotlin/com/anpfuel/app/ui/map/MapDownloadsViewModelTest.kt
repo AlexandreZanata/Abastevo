@@ -8,6 +8,7 @@ import com.anpfuel.data.map.MapDownloadException
 import com.anpfuel.data.map.MapPackageRepository
 import com.anpfuel.data.map.MapPackageStore
 import com.anpfuel.data.map.PACKAGE_FAILED
+import androidx.lifecycle.SavedStateHandle
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -76,7 +77,7 @@ class MapDownloadsViewModelTest {
     }
 
     private fun config(keys: Map<String, ByteArray> = mapOf("k" to ByteArray(32))) =
-        MapDistributionConfig("https://example.test", "test-region", keys, keysInvalid = false)
+        MapDistributionConfig("https://example.test", "test-rect", keys, keysInvalid = false)
 
     private fun vm(
         store: FakeStore,
@@ -86,7 +87,7 @@ class MapDownloadsViewModelTest {
         prefs: FakePrefs = FakePrefs(),
     ): Pair<MapDownloadsViewModel, FakeWork> {
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), cfg) {
-            override suspend fun fetchEnvelope(): ByteArray = fetch?.invoke() ?: error("no fetch stub")
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = fetch?.invoke() ?: error("no fetch stub")
         }
         val repository = object : MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher) {
             override suspend fun importManifest(envelopeJson: String, trustedKeys: Map<String, ByteArray>) =
@@ -138,7 +139,7 @@ class MapDownloadsViewModelTest {
         val rawPub = kp.public.encoded.let { it.copyOfRange(it.size - 32, it.size) }
         val envelope = signEnvelope(manifest, kp)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
-            override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = envelope.toByteArray()
         }
         val viewModel = MapDownloadsViewModel(
             config(mapOf("k" to rawPub)), distribution, realRepo, store, FakeWork(), FakePrefs(),
@@ -160,7 +161,7 @@ class MapDownloadsViewModelTest {
         val envelope = signEnvelope(manifest, kp)
         val realRepo = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
-            override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = envelope.toByteArray()
         }
         val work = FakeWork()
         val viewModel = MapDownloadsViewModel(config(mapOf("k" to rawPub)), distribution, realRepo, store, work, FakePrefs())
@@ -185,7 +186,7 @@ class MapDownloadsViewModelTest {
         val envelope = signEnvelope(manifest, kp)
         val realRepo = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
-            override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = envelope.toByteArray()
         }
         val viewModel = MapDownloadsViewModel(config(mapOf("k" to rawPub)), distribution, realRepo, store, FakeWork(), FakePrefs())
         viewModel.checkForUpdate()
@@ -232,7 +233,7 @@ class MapDownloadsViewModelTest {
         )
         val work = FakeWork()
         val viewModel = MapDownloadsViewModel(config(), object : MapDistribution(okhttp3.OkHttpClient(), config()) {
-            override suspend fun fetchEnvelope(): ByteArray = error("must not fetch")
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = error("must not fetch")
         }, MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher), store, work, FakePrefs())
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("g1", viewModel.ui.value.activeGeneration)
@@ -250,7 +251,7 @@ class MapDownloadsViewModelTest {
         val envelope = signEnvelope(manifest, kp)
         val realRepo = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
-            override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = envelope.toByteArray()
         }
         val viewModel = MapDownloadsViewModel(config(mapOf("k" to rawPub)), distribution, realRepo, store, FakeWork(), FakePrefs())
         viewModel.checkForUpdate()
@@ -274,7 +275,7 @@ class MapDownloadsViewModelTest {
         val envelope = signEnvelope(manifest, kp)
         val realRepo = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
-            override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = envelope.toByteArray()
         }
         val work = FakeWork()
         val viewModel = MapDownloadsViewModel(
@@ -300,7 +301,7 @@ class MapDownloadsViewModelTest {
         val repository = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val viewModel = MapDownloadsViewModel(
             config(), object : MapDistribution(okhttp3.OkHttpClient(), config()) {
-                override suspend fun fetchEnvelope(): ByteArray = error("unused")
+                override suspend fun fetchEnvelope(regionSlug: String): ByteArray = error("unused")
             }, repository, store, FakeWork(), FakePrefs(),
         )
         dispatcher.scheduler.advanceUntilIdle()
@@ -312,5 +313,105 @@ class MapDownloadsViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals(null, viewModel.ui.value.error)
         assertFalse(store.generations.containsKey("g-stale"))
+    }
+
+    private class Signed(val rawPub: ByteArray, val envelope: String) {
+        val requested = mutableListOf<String>()
+    }
+
+    private fun signed(manifest: String = catalogManifest()): Signed {
+        val kp = java.security.KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
+        val rawPub = kp.public.encoded.let { it.copyOfRange(it.size - 32, it.size) }
+        return Signed(rawPub, signEnvelope(manifest, kp))
+    }
+
+    private fun regionalVm(
+        signed: Signed,
+        store: FakeStore,
+        selection: MapRegionSelection,
+        work: FakeWork = FakeWork(),
+        defaultRegion: String = "",
+        savedState: SavedStateHandle = SavedStateHandle(),
+    ): MapDownloadsViewModel {
+        val cfg = MapDistributionConfig("https://example.test", defaultRegion, mapOf("k" to signed.rawPub), keysInvalid = false)
+        val distribution = object : MapDistribution(okhttp3.OkHttpClient(), cfg) {
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray {
+                signed.requested += regionSlug
+                return signed.envelope.toByteArray()
+            }
+        }
+        val repo = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
+        return MapDownloadsViewModel(cfg, distribution, repo, store, work, FakePrefs(), selection, savedState)
+    }
+
+    private fun regionManifest(region: String) = catalogManifest().replace("\"id\":\"test-rect\"", "\"id\":\"$region\"")
+
+    @Test fun `no build region and no opened city shows a clear region message, not unconfigured`() = runTest {
+        val signed = signed()
+        val viewModel = regionalVm(signed, FakeStore(), MapRegionSelection())
+        dispatcher.scheduler.advanceUntilIdle()
+        val ui = viewModel.ui.value
+        assertFalse(ui.unconfigured)
+        assertTrue(ui.regionUnknown)
+        assertEquals(null, ui.region)
+        viewModel.checkForUpdate()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(signed.requested.isEmpty())
+        assertTrue(viewModel.ui.value.regionUnknown)
+    }
+
+    @Test fun `opened city region overrides the build default and is fetched`() = runTest {
+        val signed = signed(regionManifest("brazil-mato-grosso"))
+        val selection = MapRegionSelection().apply { select("brazil-mato-grosso") }
+        val viewModel = regionalVm(signed, FakeStore(), selection, defaultRegion = "brazil-bahia")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("Mato Grosso", viewModel.ui.value.region?.name)
+        assertFalse(viewModel.ui.value.regionUnknown)
+        viewModel.checkForUpdate()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf("brazil-mato-grosso"), signed.requested)
+        assertEquals("g-catalog", viewModel.ui.value.candidateGeneration)
+    }
+
+    @Test fun `manifest of another region is refused before any row is written`() = runTest {
+        val signed = signed(regionManifest("brazil-bahia"))
+        val store = FakeStore()
+        val selection = MapRegionSelection().apply { select("brazil-mato-grosso") }
+        val viewModel = regionalVm(signed, store, selection)
+        viewModel.checkForUpdate()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("map-region-mismatch", viewModel.ui.value.error)
+        assertEquals(null, viewModel.ui.value.candidateGeneration)
+        assertTrue(store.packages.isEmpty() && store.generations.isEmpty())
+    }
+
+    @Test fun `suggestion download request checks and starts that region once`() = runTest {
+        val signed = signed(regionManifest("brazil-mato-grosso"))
+        val selection = MapRegionSelection().apply { requestDownload("brazil-mato-grosso") }
+        val work = FakeWork()
+        val viewModel = regionalVm(signed, FakeStore(), selection, work)
+        dispatcher.scheduler.advanceTimeBy(100)
+        dispatcher.scheduler.runCurrent()
+        assertEquals(listOf("brazil-mato-grosso"), signed.requested)
+        assertEquals(listOf("g-catalog"), work.enqueued)
+        assertEquals(listOf(true), work.enqueuedUnmetered)
+        assertFalse(selection.consumeDownloadRequest("brazil-mato-grosso"), "request is one-shot")
+        viewModel.cancel()
+        dispatcher.scheduler.advanceUntilIdle()
+        // A second screen instance does not start again.
+        regionalVm(signed, FakeStore(), selection, work)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf("g-catalog"), work.enqueued)
+    }
+
+    @Test fun `region survives process recreation through saved state`() = runTest {
+        val signed = signed(regionManifest("brazil-parana-east"))
+        val saved = SavedStateHandle()
+        regionalVm(signed, FakeStore(), MapRegionSelection().apply { select("brazil-parana-east") }, savedState = saved)
+        dispatcher.scheduler.advanceUntilIdle()
+        val restored = regionalVm(signed, FakeStore(), MapRegionSelection(), savedState = saved)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals("brazil-parana-east", restored.ui.value.region?.slug)
+        assertEquals("Paraná – Leste", restored.ui.value.region?.name)
     }
 }

@@ -88,6 +88,34 @@ type RegistrySourceRun struct {
 	PreparedManifestSha256 string             `json:"prepared_manifest_sha256"`
 }
 
+type StationCorrection struct {
+	ID                 pgtype.UUID        `json:"id"`
+	StationID          pgtype.UUID        `json:"station_id"`
+	AccountID          pgtype.UUID        `json:"account_id"`
+	Field              string             `json:"field"`
+	ProposedValue      []byte             `json:"proposed_value"`
+	Note               string             `json:"note"`
+	EvidenceRef        string             `json:"evidence_ref"`
+	ProximityBucket    string             `json:"proximity_bucket"`
+	ClientSubmissionID string             `json:"client_submission_id"`
+	Status             string             `json:"status"`
+	ReasonCodes        []string           `json:"reason_codes"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	DecidedAt          pgtype.Timestamptz `json:"decided_at"`
+}
+
+type StationCorrectionDecision struct {
+	ID           pgtype.UUID        `json:"id"`
+	CorrectionID pgtype.UUID        `json:"correction_id"`
+	Decision     string             `json:"decision"`
+	Reason       string             `json:"reason"`
+	DeciderKind  string             `json:"decider_kind"`
+	DeciderID    string             `json:"decider_id"`
+	Evidence     []byte             `json:"evidence"`
+	DecidedAt    pgtype.Timestamptz `json:"decided_at"`
+}
+
 type StationSuggestion struct {
 	ID                 pgtype.UUID        `json:"id"`
 	AccountID          pgtype.UUID        `json:"account_id"`

@@ -70,7 +70,19 @@ func run() error {
 	dsn := flag.String("dsn", os.Getenv("ANPFUEL_DATABASE_URL"), "postgres DSN (or ANPFUEL_DATABASE_URL)")
 	dryRun := flag.Bool("dry-run", false, "validate and resolve stations without writing")
 	timeout := flag.Duration("timeout", 2*time.Minute, "overall deadline")
+	correctionsList := flag.Int("corrections-list", 0, "list this many pending station corrections and exit")
+	correctionsDecide := flag.String("corrections-decide", "", "decide this correction id and exit")
+	decision := flag.String("decision", "", "correction decision: accepted, rejected, expired, superseded or frozen")
+	reason := flag.String("reason", "", "mandatory correction decision reason")
+	decider := flag.String("decider", "operator", "correction decider id")
+	evidence := flag.String("evidence", "{}", "correction decision evidence JSON object")
 	flag.Parse()
+	if *correctionsList > 0 || *correctionsDecide != "" {
+		if *dsn == "" {
+			return fmt.Errorf("corrections require --dsn or ANPFUEL_DATABASE_URL")
+		}
+		return runCorrections(*dsn, *timeout, *correctionsList, *correctionsDecide, *decision, *reason, *decider, *evidence)
+	}
 	if *reviewsPath == "" || *dsn == "" {
 		return fmt.Errorf("usage: station-review --reviews FILE [--report FILE] [--dsn URL] [--dry-run]")
 	}

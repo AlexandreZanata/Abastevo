@@ -45,6 +45,8 @@ interface MapEngine : com.anpfuel.domain.routing.NativeRoutePlanner {
     ): Boolean
     fun setOverlayMarkers(markers: List<MapOverlayMarker>): Boolean
     fun overlayClusters(): List<MapOverlayCluster>
+    /** Global bookmark-label visibility; hides clutter when zoomed out. Defaults to shown. */
+    fun setOverlayLabelsVisible(visible: Boolean) = Unit
     fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit)
     fun cancelSearch()
     override fun cancelRoute()

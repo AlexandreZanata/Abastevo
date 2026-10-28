@@ -294,6 +294,12 @@ class ComapsMapEngine(
                 // This JNI call removes/re-registers ALL local maps. ReloadWorldMaps
                 // only reloads world overview files and misses regional packages.
                 Framework.nativeChangeWritableDir(desiredRoot)
+                // Re-registering maps does not invalidate tiles the renderer
+                // already drew without them (the native downloader does), so a
+                // just-activated region stayed blank until restart. Re-applying
+                // the unchanged transliteration setting is the SDK's public
+                // call that invalidates the current viewport.
+                Config.setTransliteration(Config.isTransliteration())
             }
             lastViewport?.let { vp ->
                 Framework.nativeSetSearchViewport(vp.latitude, vp.longitude, vp.zoom)
@@ -531,7 +537,11 @@ class ComapsMapEngine(
                 Handler(Looper.getMainLooper()).postDelayed({
                     if (!initialized || overlayGeneration != generation) return@postDelayed
                     try {
-                        manager.showBookmarkCategoryOnMap(category.id)
+                        // Never reframe here: showBookmarkCategoryOnMap fits the
+                        // camera to the category, which snaps back every user
+                        // pan/zoom once the next overlay generation commits.
+                        // setVisibility keeps the new pins visible in place.
+                        manager.setVisibility(category.id, true)
                         oldCategories.filter { it != category.id }.forEach(manager::deleteCategory)
                         overlayCategory = category.id
                         overlayClusters = preparation.clusters
@@ -588,6 +598,11 @@ class ComapsMapEngine(
     }
 
     override fun overlayClusters(): List<MapOverlayCluster> = overlayClusters
+
+    override fun setOverlayLabelsVisible(visible: Boolean) {
+        if (!initialized) return
+        callOnMain { Framework.nativeSetShowBookmarkLabels(visible) }
+    }
 
     override fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit) {
         overlayListener = listener

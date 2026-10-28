@@ -1,5 +1,114 @@
 # Current execution state
 
+- Map regional integration 2026-10-28: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/phase-map-regional-integration` (from `origin/main` 66229695, merges
+  `origin/codex/map-completion`, `origin/codex/map-regional-download`,
+  `origin/codex/c3-claim-from-empty-list`, plus 2 atomic commits 1afff32c and
+  786c09b2). Pan/zoom snap-back fixed and verified on device; station-label
+  declutter gated by zoom; native custom-icon art proven unsupported by the
+  pinned SDK. Correction (same day, release build on device): the
+  `Brazil_Mato Grosso.mwm` artifact renders; the blank map was the camera
+  stuck at the Curitiba default. Fixed in 5b3ff0b6 (city camera survives
+  engine readiness), 91a00c21 (a nearby refresh no longer cancels the city
+  load) and c220a4bb (viewport redraw after activating a region);
+  58186a2e defaults every build, release included, to the signed staging
+  map distribution (MC-C3). Fresh release install at Sorriso: card offers
+  only Mato Grosso (116 MB), download active in ~10 s, streets render without
+  restart; staging serves all 23 signed regional manifests with matching
+  package sizes.
+  Gates: backend gofmt/vet clean, race+integration green (145 pkgs ok, 11 pkgs
+  rerun green with -p 2 after load timeouts), Android unit/lint/assemble green,
+  diff-check and secret scan clean. Next: PR #181 CI, then owner release
+  signing key and the airplane-mode leg of MC-C8.
+
+- MAP completion MC-C1 retry 2026-10-27: West regeneration recorded. Base
+  `394c1389` plus this task. The failed `Brazil_Northeast Region_West` work
+  was preserved under `old-run-20261027/` and regenerated alone with
+  `--timeout 3600 --replace`: 185,957,500 bytes, SHA-256
+  `021f0cab...539a23d420`, launch-to-package ~2,227 s. All 23 regional packages
+  are now present on local disk (1,953,691,272 bytes); signed distribution,
+  staging proof, World/WorldCoasts and device validation remain pending.
+  Evidence: [MC-C1](../backend/evidence/maps/map-completion/MC-C1.md). Time:
+  ~30 min supervision/evidence plus ~37 min machine time.
+
+- MAP completion MC-A3 2026-10-27: LOCAL_DONE. Base `23bc459b` plus this
+  task. B-BR-MAP-15 and the Rust `validate_anp_points` use the official IBGE
+  malha (CC BY 4.0, 5,571 features): 45,807 input -> 37,415 valid, 6,790 no
+  point and 1,602 rejected (1,318 outside municipality, 196 shared cluster, 87
+  unknown municipality, 1 outside Brazil). 1 s; byte-identical rerun; 112 Rust
+  tests and `check-rust-fast.sh` pass. Evidence:
+  [MC-A3](../backend/evidence/maps/map-completion/MC-A3.md). Time: ~40 min.
+
+- MAP completion MC-A2 2026-10-27: LOCAL_DONE. Base `6ade4a00` plus this
+  task. New Rust `prepare_anp_registry` parses the 2026-10-26 API pages into
+  deterministic NDJSON plus quarantine and manifest: 45,807 accepted, 0
+  quarantined, 27 UFs, 39,017 with a point; 11 s first run and 5 s rerun with
+  identical SHA-256. No new ANP request; raw pages stayed on the VPS. 110 Rust
+  tests and `check-rust-fast.sh` pass. Evidence:
+  [MC-A2](../backend/evidence/maps/map-completion/MC-A2.md). Time: ~35 min.
+
+- MAP completion MC-B4 2026-10-27: LOCAL_DONE. Base `d9ed4579` plus this
+  task. Abuse, idempotency, ownership, quota, concurrent decision, concurrent
+  open-field and accepted-location projection are covered by unit tests and a
+  disposable PostGIS integration suite (`ok` 15.997 s). The municipality
+  polygon/distance rule lands with MC-A3; no raw contributor GPS is stored.
+  Evidence: [MC-B4](../backend/evidence/maps/map-completion/MC-B4.md).
+  Time: ~30 min.
+
+- MAP completion MC-B3 2026-10-27: LOCAL_DONE. Base `96952e07` plus this
+  task. Signed correction routes (submit/mine/status/cancel), validation and
+  quota/idempotency service, transactional decision+audit, accepted-location
+  `reviewed` projection, operator CLI `-corrections-list/-corrections-decide`
+  and the OpenAPI contract are in place. `go build ./...`, `go vet ./...` and
+  `go test -count=1 ./...` exit 0 with 0 failures. Evidence:
+  [MC-B3](../backend/evidence/maps/map-completion/MC-B3.md). Time: ~40 min.
+
+- MAP completion MC-B2 2026-10-27: LOCAL_DONE. Base `5db9765e` plus this
+  task. Append-only migration `000144` (first numbered `000140`; renumbered
+  because `main` took `000140` for admin sessions) adds `station_corrections` and
+  `station_correction_decisions` with the eight statuses, idempotency key,
+  one-open-per-field partial index, queue indexes and append-only audit
+  fields; `sqlc` regenerated the typed queries. `sqlc diff` empty and
+  `go build ./...` exit 0. Evidence:
+  [MC-B2](../backend/evidence/maps/map-completion/MC-B2.md). Time: ~25 min.
+
+- MAP completion MC-B1 2026-10-27: LOCAL_DONE. Base `f6abff83` plus this
+  task. B-BR-COR-01..08 written before code: one-field corrections on an
+  existing station, official/community separation, signed free-account proof,
+  20/day quota, one open per account+station+field, idempotency, field
+  validation, reviewed/auto-verified decisions with mandatory audit and the
+  eight-status lifecycle. Docs only; no runtime change. Evidence:
+  [MC-B1](../backend/evidence/maps/map-completion/MC-B1.md). Time: ~15 min.
+
+- MAP completion unblock 2026-10-27: SRC-ANP per-station facts
+  MAINTAINER_ADMITTED (D11; basis Lei 9.610 art. 7º § 2º and art. 8º V,
+  Decreto 8.777 art. 2º III; verbatim, attributed, no ANP file republication).
+  Universe D12 (automotive map, GLP off-by-default layer, TRR/aviation
+  NOT_APPLICABLE), API politeness D13, self-generated Brazil packages replace
+  the private fixture D14, EV/hybrid source assessment and MC-A8 added. Next:
+  MC-A2 and MC-C1 in parallel, MC-B1 on existing directory fields. Branch
+  `codex/map-completion`; no PR yet.
+
+- MAP completion MC-A1 2026-10-27: LOCAL_DONE / Track A BLOCKED_PENDING_LEGAL.
+  Official ANP universe recorded: 45,807 automotive-fuel resellers (45,807
+  unique CNPJ) and 57,127 GLP resellers (57,124 unique; 3 duplicate rows);
+  TRR/TRR-NI/aviation/GNV/marine have no open API or CSV and the CDP export is
+  CAPTCHA/manual. OpenAPI has only `/v1/combustivel` and `/v1/glp`; fuel carries
+  SRID 4674 coordinates, GLP does not. The ANP open-data pages are CC BY-ND 3.0
+  and the API has no separate terms, so the new derived dossier/pin artifact
+  is blocked pending owner/legal admission; the existing importer is
+  unchanged. Raw CSVs stay only on the VPS private root. Evidence:
+  [MC-A1](../backend/evidence/maps/map-completion/MC-A1.md). Time: ~25 min.
+
+- MAP completion MC-00 baseline 2026-10-27: LOCAL_DONE. Base `4882c230` plus
+  the task tree. The two route tests now accept the persistent host/compact
+  panel and pass on the POCO (`MapRouteInstrumentedTest` OK 7.3 s,
+  `NativeRouteScreenInstrumentedTest` OK 21.3 s via direct instrumentation with
+  the admitted fixture); `MAP_EV_PHASES.json` statuses were reconciled with
+  `MAP_BATCH_INVENTORY.md`. Gradle unit/lint/assemble `BUILD SUCCESSFUL in
+  3m 31s`; no product behavior change. Evidence:
+  [MC-00](../backend/evidence/maps/map-completion/MC-00.md). Time: ~20 min.
+
 - Admin suite batch integration 2026-10-27: INTEGRATION_PENDING. Branch
   `codex/phase-adm-integration` consolidates the remaining open fronts into
   one PR to `main` so the long integration suite runs once: A5a (#171),
@@ -335,6 +444,7 @@
   Isolated planning source f1e1d0db; foreign-dirty primary/MAP checkouts preserved.
   No runtime/device/provider/VPS/push/PR/merge/wiki/production change.
   Next, only on implementation request: DRV-00 → DRV-01 → DRV-02.
+
 
 - MAP national stations 2026-10-27: APPLIED on staging / INTEGRATION_PENDING.
   Branch `codex/map-national-staging` (merge `b1b85f94`) merges the six dev map-UI

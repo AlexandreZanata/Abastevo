@@ -81,6 +81,11 @@ type config struct {
 }
 
 func build(args config) ([]byte, error) {
+	// The Android parser requires an array; a nil slice would encode as null.
+	dependencies := args.dependencies
+	if dependencies == nil {
+		dependencies = []string{}
+	}
 	manifest := mapcontract.NativeManifest{
 		Format:     mapcontract.ManifestFormat,
 		Version:    mapcontract.Version,
@@ -102,7 +107,7 @@ func build(args config) ([]byte, error) {
 				MaxLatDeg: args.bbox.maxLat,
 			},
 		},
-		Dependencies: args.dependencies,
+		Dependencies: dependencies,
 		Rights: mapcontract.ManifestRights{
 			License:        args.rightsLicense,
 			Attribution:    args.attribution,

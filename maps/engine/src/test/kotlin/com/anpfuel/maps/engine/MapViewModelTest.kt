@@ -15,11 +15,15 @@ class MapViewModelTest {
         var cancelRouteCalls = 0
         var releaseCalls = 0
         var center: MapCenter? = MapCenter(-25.43, -49.28)
+        var camera: MapCamera? = null
+        var labelsVisibleCalls = mutableListOf<Boolean>()
         var recenterResult = true
         override fun initialize(context: Context, onReady: () -> Unit): Boolean = true
         override fun newMapView(context: Context): View = throw UnsupportedOperationException()
         override fun setViewport(latitude: Double, longitude: Double, zoom: Int) { viewport = Triple(latitude, longitude, zoom) }
         override fun currentCenter(): MapCenter? = center
+        override fun currentCamera(): MapCamera? = camera
+        override fun setOverlayLabelsVisible(visible: Boolean) { labelsVisibleCalls += visible }
         override fun recenter(): Boolean { recenterCalls++; return recenterResult }
         override fun isInitialized(): Boolean = true
         override fun search(context: Context, query: String, onResult: (List<MapSearchResult>) -> Unit): Boolean = true
@@ -100,6 +104,22 @@ class MapViewModelTest {
         assertEquals(null, engine.viewport)
         assertEquals(null, store.camera)
         assertEquals(0, engine.recenterCalls)
+    }
+
+    @Test fun `overlay labels hide when zoomed out and return when zoomed in`() {
+        val engine = FakeEngine()
+        val vm = MapViewModel(engine, FakeStore())
+        vm.onEngineReady()
+        engine.camera = MapCamera(-12.54, -55.71, 13)
+        vm.syncCameraFromEngine()
+        assertEquals(listOf(false), engine.labelsVisibleCalls)
+        // Same zoom again: no repeat call to the native engine.
+        vm.syncCameraFromEngine()
+        assertEquals(listOf(false), engine.labelsVisibleCalls)
+        // Street zoom: labels come back.
+        engine.camera = MapCamera(-12.54, -55.71, 16)
+        vm.syncCameraFromEngine()
+        assertEquals(listOf(false, true), engine.labelsVisibleCalls)
     }
 
     @Test fun `repeated disposal releases exactly once`() {

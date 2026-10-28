@@ -59,6 +59,8 @@ fun MapHost(
     onReady: ((Boolean) -> Unit)? = null,
     active: Boolean = true,
     recenterBottomInset: Dp = 16.dp,
+    /** Follows the app theme; null leaves the native appearance untouched. */
+    darkMode: Boolean? = null,
 ) {
     val vm: MapViewModel = hiltViewModel()
     MapHostContent(
@@ -74,6 +76,7 @@ fun MapHost(
         onReady = onReady,
         active = active,
         recenterBottomInset = recenterBottomInset,
+        darkMode = darkMode,
     )
 }
 
@@ -96,6 +99,8 @@ fun MapHost(
     onReady: ((Boolean) -> Unit)? = null,
     active: Boolean = true,
     recenterBottomInset: Dp = 16.dp,
+    /** Follows the app theme; null leaves the native appearance untouched. */
+    darkMode: Boolean? = null,
 ) {
     val context = LocalContext.current
     val store = cameraStore ?: remember(context) { SharedPreferencesMapCameraStore(context) }
@@ -123,6 +128,7 @@ fun MapHost(
         onReady = onReady,
         active = active,
         recenterBottomInset = recenterBottomInset,
+        darkMode = darkMode,
     )
 }
 
@@ -140,10 +146,20 @@ private fun MapHostContent(
     onReady: ((Boolean) -> Unit)? = null,
     active: Boolean = true,
     recenterBottomInset: Dp = 16.dp,
+    /** Follows the app theme; null leaves the native appearance untouched. */
+    darkMode: Boolean? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val state by vm.state.collectAsStateWithLifecycle()
+    LaunchedEffect(darkMode) {
+        if (darkMode != null) {
+            app.organicmaps.sdk.MapAppearance.set(
+                if (darkMode) app.organicmaps.sdk.MapAppearance.Dark
+                else app.organicmaps.sdk.MapAppearance.Light,
+            )
+        }
+    }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED

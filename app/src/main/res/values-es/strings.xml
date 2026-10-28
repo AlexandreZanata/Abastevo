@@ -560,6 +560,12 @@
     <string name="map_needs_activation">Instalado, pendiente de activación en el mapa</string>
     <string name="map_published">Publicado</string>
     <string name="map_dist_unconfigured">Descargas de mapas no configuradas en esta compilación</string>
+    <string name="map_region_suggestion">Descargar el mapa de %1$s (%2$s)</string>
+    <string name="map_region_suggestion_no_size">Descargar el mapa de %1$s</string>
+    <string name="map_region_suggestion_detail">Mapa sin conexión de la ciudad que abriste</string>
+    <string name="map_region_not_now">Ahora no</string>
+    <string name="map_downloads_region">Región: %1$s</string>
+    <string name="map_region_unknown">Abre una ciudad en el mapa para elegir qué región del mapa descargar.</string>
     <string name="map_attribution">© Colaboradores de OpenStreetMap</string>
     <string name="map_search_hint">Buscar estaciones…</string>
     <string name="map_filter_service">Servicio</string>

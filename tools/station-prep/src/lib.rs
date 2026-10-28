@@ -13,6 +13,8 @@
 //! and no automatic promotion of coordinate candidates.
 
 pub mod anp_prices;
+pub mod anp_registry;
+pub mod anp_validation;
 pub mod cnpj;
 pub mod datasets;
 pub mod deflate;

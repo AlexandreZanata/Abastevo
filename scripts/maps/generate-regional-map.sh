@@ -22,6 +22,10 @@ Options:
   --osmfilter PATH   osmfilter binary (required with --drop)
   --drop EXPR        explicit osmfilter drop expression; recorded verbatim
   --world-roads FILE optional world_roads file for multi-region routing
+  --borders GLOB     border polygons copied into the work dir (default
+                     "Brazil_*"). Every copied polygon enters the generator's
+                     affiliation index; the full 1,148-polygon world set costs
+                     minutes per run and writes features for unused regions.
   --timeout SECONDS  per-stage timeout (default 900)
   --replace          atomically replace an existing output package
   --help
@@ -33,7 +37,7 @@ need() { [[ -n "${1:-}" ]] || die "missing $2"; }
 file() { [[ -f "$1" ]] || die "not a file: $1"; }
 exe() { [[ -x "$1" ]] || die "not executable: $1"; }
 
-GENERATOR="" OSMCONVERT="" OSMTFILTER="" INPUT="" WORK="" OUTPUT="" REGION="" DATA="" DROP="" WORLD_ROADS="" TIMEOUT=900 REPLACE=0
+GENERATOR="" OSMCONVERT="" OSMTFILTER="" INPUT="" WORK="" OUTPUT="" REGION="" DATA="" DROP="" WORLD_ROADS="" TIMEOUT=900 REPLACE=0 BORDERS="Brazil_*"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --generator) GENERATOR="${2:-}"; shift 2 ;;
@@ -46,6 +50,7 @@ while [[ $# -gt 0 ]]; do
     --data) DATA="${2:-}"; shift 2 ;;
     --drop) DROP="${2:-}"; shift 2 ;;
     --world-roads) WORLD_ROADS="${2:-}"; shift 2 ;;
+    --borders) BORDERS="${2:-}"; shift 2 ;;
     --timeout) TIMEOUT="${2:-}"; shift 2 ;;
     --replace) REPLACE=1; shift ;;
     --help|-h) usage; exit 0 ;;
@@ -64,7 +69,19 @@ DEST="$OUTPUT/$REGION.mwm"
 if [[ -e "$DEST" && "$REPLACE" != "1" ]]; then die "output exists; pass --replace"; fi
 run() { timeout --foreground "${TIMEOUT}s" "$@"; }
 mkdir -p "$WORK/intermediate" "$WORK/cache" "$WORK/mwm" "$OUTPUT"
-if [[ ! -d "$WORK/mwm/borders" ]]; then cp -r "$DATA/borders" "$WORK/mwm/borders"; fi
+[[ "$BORDERS" =~ ^[A-Za-z0-9_*\ -]+$ ]] || die "unsafe borders glob"
+[[ -f "$DATA/borders/$REGION.poly" ]] || die "no border polygon for $REGION"
+if [[ ! -d "$WORK/mwm/borders" ]]; then
+  mkdir -p "$WORK/mwm/borders.tmp"
+  shopt -s nullglob
+  # shellcheck disable=SC2206 # the glob must expand; names with spaces stay whole
+  POLYS=("$DATA/borders/"$BORDERS.poly)
+  shopt -u nullglob
+  [[ ${#POLYS[@]} -gt 0 ]] || die "borders glob matched nothing: $BORDERS"
+  cp "${POLYS[@]}" "$WORK/mwm/borders.tmp/"
+  [[ -f "$WORK/mwm/borders.tmp/$REGION.poly" ]] || die "borders glob excludes $REGION"
+  mv "$WORK/mwm/borders.tmp" "$WORK/mwm/borders"
+fi
 
 SOURCE_O5M="$WORK/source.o5m"
 GEN_INPUT="$SOURCE_O5M"
@@ -118,7 +135,9 @@ cat > "$OUTPUT/$REGION.generation.json" <<JSON
   "sha256": "$SHA",
   "check_mwm_exit": $CHECK_EXIT,
   "check_mwm_log": "$(basename "$CHECK_LOG")",
-  "world_roads": "$WORLD_ROADS"
+  "world_roads": "$WORLD_ROADS",
+  "borders": "$BORDERS",
+  "borders_count": $(find "$WORK/mwm/borders" -name '*.poly' | wc -l)
 }
 JSON
 printf '{"region":"%s","bytes":%s,"sha256":"%s"}\n' "$REGION" "$SIZE" "$SHA"

@@ -376,8 +376,11 @@ open class MapPackageRepository(
             throw MapStorageException("map-storage-full")
         }
         val resumedFrom = part.length()
+        // Package bytes are static generation files (D10): the API only
+        // serves the signed manifest, so downloads never hash 80 MiB per
+        // request in the 1-CPU API container.
         val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/v1/map/packages/${pkg.packageId}")
+            .url("${baseUrl.trimEnd('/')}/dados/mapa-dist/${generation}/${pkg.packageId}")
             .apply {
                 if (resumedFrom > 0) {
                     header("Range", "bytes=$resumedFrom-")

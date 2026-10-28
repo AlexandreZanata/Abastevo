@@ -62,6 +62,21 @@ Disallow: /
 		file_server
 	}
 
+	# Offline map distribution (MAP completion D10): static and signed. The
+	# per-region manifest is a signed envelope the app verifies before use;
+	# generation packages are immutable and served with Range for resume.
+	# The API never serves map bytes.
+	handle_path /dados/mapa-dist/* {
+		root * /srv/map-dist
+		@manifest path /regions/*
+		header @manifest Content-Type "application/json"
+		header @manifest Cache-Control "public, max-age=60, must-revalidate"
+		@package not path /regions/*
+		header @package Content-Type "application/octet-stream"
+		header @package Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
 	# Search shards are addressed by release, so they never change in place.
 	@portal path /consultar/* /precos/* /postos/* /fiscalizacao/* /curiosidades/* /dados/* /metodologia/* /portal-manifest.json
 	handle @portal {

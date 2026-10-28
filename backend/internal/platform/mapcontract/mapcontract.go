@@ -27,7 +27,7 @@ var (
 	hex64       = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	cnpjPattern = regexp.MustCompile(`^[0-9A-Za-z]{14}$`)
 	regionID    = regexp.MustCompile(`^[a-z0-9-]{1,64}$`)
-	packagePath = regexp.MustCompile(`^[A-Za-z0-9._/-]{1,160}$`)
+	packagePath = regexp.MustCompile(`^[A-Za-z0-9._/-]+( [A-Za-z0-9._/-]+)*$`)
 )
 
 type AssertionCorpus struct {
@@ -527,6 +527,10 @@ func ParseNativeManifest(data []byte) (*NativeManifest, error) {
 		m.Region.BBox.MinLonDeg >= m.Region.BBox.MaxLonDeg || m.Region.BBox.MinLatDeg >= m.Region.BBox.MaxLatDeg {
 		return nil, fail("region.bbox", "invalid bounds")
 	}
+	if m.Dependencies == nil {
+		// Same rule as the Android parser: the key is a JSON array, never null.
+		return nil, fail("dependencies", "array required")
+	}
 	if len(m.Packages) < 1 || len(m.Packages) > 200 {
 		return nil, fail("packages", "count out of bounds")
 	}
@@ -537,7 +541,7 @@ func ParseNativeManifest(data []byte) (*NativeManifest, error) {
 		if !regionID.MatchString(p.ID) || !oneOf(p.Role, "REGION", "OVERVIEW", "SEARCH", "ROUTING", "STYLE", "FONT") {
 			return nil, fail(path, "invalid package id/role")
 		}
-		if !packagePath.MatchString(p.Path) || strings.Contains(p.Path, "..") || strings.HasPrefix(p.Path, "/") {
+		if !ValidPackagePath(p.Path) {
 			return nil, fail(path+".path", "unsafe package path")
 		}
 		if p.Bytes < 1 || p.Bytes > 4294967296 {
@@ -597,6 +601,22 @@ func validProductUnit(product, unit string) bool {
 	default:
 		return false
 	}
+}
+
+// ValidPackagePath is the manifest package path rule shared with the Kotlin
+// `isSafeMapPackagePath`. CoMaps country files are named after the exact
+// country id, which may hold single interior spaces ("Brazil_Mato
+// Grosso.mwm"). Spaces are admitted only between two path characters: never
+// leading/trailing (also per "/" segment), never doubled. "..", absolute
+// paths, control and non-ASCII characters stay refused; the 160-byte bound is
+// unchanged.
+func ValidPackagePath(path string) bool {
+	return len(path) >= 1 && len(path) <= 160 &&
+		packagePath.MatchString(path) &&
+		!strings.Contains(path, "..") &&
+		!strings.HasPrefix(path, "/") &&
+		!strings.Contains(path, " /") &&
+		!strings.Contains(path, "/ ")
 }
 
 func oneOf(value string, allowed ...string) bool {

@@ -13,6 +13,9 @@ import com.anpfuel.maps.engine.MapOverlaySelection
 import com.anpfuel.maps.engine.MapSearchResult
 import com.anpfuel.maps.engine.MapRouteInfo
 import com.anpfuel.maps.engine.MapStationLocationQuality
+import com.anpfuel.domain.model.UserPreferences
+import com.anpfuel.domain.valueobject.BrazilianState
+import com.anpfuel.domain.valueobject.MunicipalityCatalogEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -647,5 +650,192 @@ class MapDiscoveryViewModelTest {
         assertEquals(false, vm.ui.value.cityLocationUnknown)
         assertEquals(-15.61 to -56.11, engine.viewports.last())
         assertEquals(setOf(address.stationId, anp.stationId), engine.markers.map { it.uuid }.toSet())
+    }
+
+    @Test fun `opened city point follows the camera centered on the city, then stations, then built-in`() = runTest {
+        val gateway = io.mockk.mockk<ServerStationGateway>(relaxed = true)
+        val anp = station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", lat = -12.54, lon = -55.71, quality = StationLocationQuality.ANP_REPORTED)
+        val centroidA = station("cccccccc-cccc-4ccc-8ccc-cccccccccccc", lat = -12.0, lon = -55.0, quality = StationLocationQuality.CITY_CENTROID)
+        val centroidB = station("dddddddd-dddd-4ddd-8ddd-dddddddddddd", lat = -13.0, lon = -56.0, quality = StationLocationQuality.CITY_CENTROID)
+        io.mockk.coEvery { gateway.listInMunicipality("5107925", 100, null) } returns ServerStationPage(listOf(centroidA, anp), null)
+        io.mockk.coEvery { gateway.listInMunicipality("5100250", 100, null) } returns ServerStationPage(listOf(centroidA, centroidB), null)
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, FakeEngine())
+        // Default city (Curitiba) is known before any selection.
+        assertEquals(-25.4284 to -49.2733, vm.ui.value.cityLatitude to vm.ui.value.cityLongitude)
+        // Pinned station: the camera centers on it, so it represents the city.
+        vm.onSelectCity("5107925", "Sorriso")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(-12.54 to -55.71, vm.ui.value.cityLatitude to vm.ui.value.cityLongitude)
+        // No pin: the centroid of the city's loaded stations.
+        vm.onSelectCity("5100250", "Alta Floresta")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(-12.5 to -55.5, vm.ui.value.cityLatitude to vm.ui.value.cityLongitude)
+        // Built-in city coordinates.
+        vm.onSelectCity("1302603", "Manaus")
+        assertEquals(-3.1190 to -60.0217, vm.ui.value.cityLatitude to vm.ui.value.cityLongitude)
+        // Panning elsewhere does not move the opened city's point.
+        vm.onViewport(-23.55, -46.63)
+        assertEquals(-3.1190 to -60.0217, vm.ui.value.cityLatitude to vm.ui.value.cityLongitude)
+        dispatcher.scheduler.advanceUntilIdle()
+    }
+
+    @Test fun `unknown city without any station coordinate has no city point`() = runTest {
+        val gateway = io.mockk.mockk<ServerStationGateway>()
+        val bare = station("dddddddd-dddd-4ddd-8ddd-dddddddddddd", lat = null, lon = null, quality = StationLocationQuality.UNKNOWN)
+        io.mockk.coEvery { gateway.listInMunicipality("5103403", 100, null) } returns ServerStationPage(listOf(bare), null)
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, FakeEngine())
+        vm.onSelectCity("5103403", "Cuiabá")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(null, vm.ui.value.cityLatitude)
+        assertEquals(null, vm.ui.value.cityLongitude)
+    }
+
+    @Test fun `reselecting the same built-in city does not move the viewport again`() = runTest {
+        val gateway = FakeGateway(
+            stations = listOf(station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")),
+        )
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onSelectCity("4106902", "Curitiba")
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, engine.viewports.size)
+        // Same city re-emitted (resume/recomposition/refresh): camera must stay.
+        vm.onSelectCity("4106902", "Curitiba")
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(1, engine.viewports.size)
+    }
+
+    @Test fun `reselecting the same directory city does not recenter on its pinned station`() = runTest {
+        val gateway = io.mockk.mockk<ServerStationGateway>()
+        val pinned = station(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            lat = -12.54, lon = -55.71,
+            quality = StationLocationQuality.REVIEWED,
+            name = "Posto Sorriso",
+        )
+        io.mockk.coEvery { gateway.listInMunicipality("5107925", 100, null) } returns
+            ServerStationPage(listOf(pinned), null)
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onSelectCity("5107925", "Sorriso")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf(-12.54 to -55.71), engine.viewports)
+        // Same city selected again: list may refresh, camera must not move.
+        vm.onSelectCity("5107925", "Sorriso")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf(-12.54 to -55.71), engine.viewports)
+    }
+
+    @Test fun `resume refresh with unchanged preferred city never moves the camera`() = runTest {
+        val gateway = io.mockk.mockk<ServerStationGateway>()
+        val pinned = station(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            lat = -12.54, lon = -55.71,
+            quality = StationLocationQuality.REVIEWED,
+            name = "Posto Sorriso",
+        )
+        io.mockk.coEvery { gateway.listInMunicipality("5107925", 100, null) } returns
+            ServerStationPage(listOf(pinned), null)
+        val prefs = io.mockk.mockk<com.anpfuel.domain.repository.UserPreferencesRepository>()
+        io.mockk.coEvery { prefs.getPreferences() } returns UserPreferences(
+            preferredState = BrazilianState.MATO_GROSSO,
+            preferredMunicipality = "Sorriso",
+        )
+        val catalog = io.mockk.mockk<com.anpfuel.domain.repository.MunicipalityCatalogRepository>(relaxed = true)
+        io.mockk.coEvery { catalog.findCatalogEntry(BrazilianState.MATO_GROSSO, "Sorriso") } returns
+            MunicipalityCatalogEntry(
+                state = BrazilianState.MATO_GROSSO,
+                municipality = "Sorriso",
+                ibgeCode = "5107925",
+            )
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(
+            gateway, ChargingMarkersSource { emptyList() }, engine,
+            prefs, catalog,
+        )
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf(-12.54 to -55.71), engine.viewports)
+        // ON_RESUME refresh with the same preferred city: no camera move.
+        vm.refreshPreferredMunicipality()
+        dispatcher.scheduler.advanceUntilIdle()
+        vm.refreshPreferredMunicipality()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf(-12.54 to -55.71), engine.viewports)
+    }
+
+    @Test fun `selecting a different city still moves the viewport`() = runTest {
+        val gateway = FakeGateway(
+            stations = listOf(station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")),
+        )
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onSelectCity("4106902", "Curitiba")
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        vm.onSelectCity("3550308", "São Paulo")
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2, engine.viewports.size)
+        assertEquals(-23.5505 to -46.6333, engine.viewports.last())
+    }
+    @Test fun `city camera survives the engine becoming ready after the city was chosen`() = runTest {
+        // Fresh install race: the preferred city resolves before native init
+        // finishes, then engine readiness restores the stored or default
+        // camera (Curitiba). The chosen city must win, not the default.
+        val gateway = io.mockk.mockk<ServerStationGateway>()
+        val pinned = station(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            lat = -12.54, lon = -55.71,
+            quality = StationLocationQuality.REVIEWED,
+            name = "Posto Sorriso",
+        )
+        io.mockk.coEvery { gateway.listInMunicipality("5107925", 100, null) } returns
+            ServerStationPage(listOf(pinned), null)
+        val engine = FakeEngine()
+        val store = object : com.anpfuel.maps.engine.MapCameraStore {
+            var camera: com.anpfuel.maps.engine.MapCamera? = null
+            override fun load() = camera
+            override fun save(camera: com.anpfuel.maps.engine.MapCamera) { this.camera = camera }
+        }
+        val discovery = MapDiscoveryViewModel(
+            stations = gateway,
+            charging = ChargingMarkersSource { emptyList() },
+            engine = engine,
+            userPreferences = null,
+            catalog = null,
+            cameraStore = store,
+        )
+        discovery.onSelectCity("5107925", "Sorriso")
+        dispatcher.scheduler.advanceUntilIdle()
+        com.anpfuel.maps.engine.MapViewModel(engine, store).onEngineReady()
+        assertEquals(-12.54 to -55.71, engine.viewports.last())
+    }
+    @Test fun `a viewport refresh while the city loads does not drop the city camera`() = runTest {
+        // Map readiness reports the default camera (Curitiba) while the chosen
+        // city's stations are still loading. That nearby refresh must not
+        // cancel the city: its camera and region point still apply.
+        val gateway = io.mockk.mockk<ServerStationGateway>(relaxed = true)
+        val pinned = station(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            lat = -12.54, lon = -55.71,
+            quality = StationLocationQuality.ANP_REPORTED,
+            name = "Posto Sorriso",
+        )
+        io.mockk.coEvery { gateway.listInMunicipality("5107925", 100, null) } coAnswers {
+            kotlinx.coroutines.delay(1_000)
+            ServerStationPage(listOf(pinned), null)
+        }
+        io.mockk.coEvery { gateway.nearby(any(), any(), any(), any()) } returns emptyList()
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onSelectCity("5107925", "Sorriso")
+        advanceTimeBy(100)
+        vm.onViewport(-25.42, -49.27, 10_000)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(-12.54 to -55.71, engine.viewports.last())
+        assertEquals(-12.54, vm.ui.value.cityLatitude)
+        assertEquals(-55.71, vm.ui.value.cityLongitude)
     }
 }

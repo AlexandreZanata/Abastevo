@@ -51,6 +51,7 @@ import (
 	contributorapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/application"
 	contributordomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/contributor/domain"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
+	directorycorrection "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/correction"
 	directoryhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/http"
 	directoryintake "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/intake"
 	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
@@ -619,6 +620,31 @@ func run() error {
 				switch accountdomain.VerdictCode(err) {
 				case "account-suspended", "account-deleted":
 					return "", directoryapp.ErrAuthorForbidden
+				default:
+					return "", err
+				}
+			}
+			return id, nil
+		},
+	}.RegisterRoutes(router)
+	// Community station corrections (MC-B3, B-BR-COR-01..08). Same
+	// composition rule as intake: the session validator arrives as a
+	// closure; accepted locations append a reviewed revision later.
+	directorycorrection.Handler{
+		Service: directoryapp.CorrectionService{
+			Store: directoryadapters.CorrectionStore{
+				Pool: pool.Underlying(),
+				Repo: directoryadapters.NewRepository(pool.Underlying()),
+			},
+			Clock: time.Now,
+			NewID: newUUID,
+		},
+		Sessions: func(ctx context.Context, familyID, accessToken string) (string, error) {
+			id, err := accountService.ValidateAccess(ctx, familyID, accessToken)
+			if err != nil {
+				switch accountdomain.VerdictCode(err) {
+				case "account-suspended", "account-deleted":
+					return "", directoryapp.ErrCorrectionForbidden
 				default:
 					return "", err
 				}

@@ -84,9 +84,10 @@ def proof_handler(inputs, public_key_output):
                 body = b"ok"
             elif self.path == "/proof/requests":
                 body = status
-            elif self.path == "/v1/map/regions/brazil-parana-east/manifest":
+            elif self.path in ("/v1/map/regions/brazil-parana-east/manifest",
+                               "/dados/mapa-dist/regions/brazil-parana-east/manifest"):
                 body = envelope(generation)
-            elif self.path.startswith("/v1/map/packages/"):
+            elif self.path.startswith("/v1/map/packages/") or self.path.startswith("/dados/mapa-dist/"):
                 package_id = self.path.rsplit("/", 1)[-1]
                 if package_id not in FILES:
                     self.send_error(404)

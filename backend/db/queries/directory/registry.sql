@@ -316,3 +316,83 @@ LEFT JOIN LATERAL (
     ORDER BY r.finished_at DESC NULLS LAST, r.started_at DESC
     LIMIT 1
 ) AS a ON TRUE;
+
+-- Community station corrections (MC-B2/B3, B-BR-COR-01..08). Owner-only
+-- reads and an audited append-only decision trail; official facts are never
+-- updated in place here.
+
+-- name: CreateCorrection :one
+INSERT INTO station_corrections (
+    id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id
+)
+VALUES (
+    @id, @station_id, @account_id, @field, @proposed_value, @note, @evidence_ref,
+    @proximity_bucket, @client_submission_id
+)
+ON CONFLICT (account_id, client_submission_id) DO NOTHING
+RETURNING id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id, status, reason_codes,
+    created_at, updated_at, decided_at;
+
+-- name: GetCorrection :one
+SELECT id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id, status, reason_codes,
+    created_at, updated_at, decided_at
+FROM station_corrections
+WHERE id = @id;
+
+-- name: GetCorrectionByKey :one
+SELECT id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id, status, reason_codes,
+    created_at, updated_at, decided_at
+FROM station_corrections
+WHERE account_id = @account_id AND client_submission_id = @client_submission_id;
+
+-- name: ListOwnedCorrections :many
+SELECT id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id, status, reason_codes,
+    created_at, updated_at, decided_at
+FROM station_corrections
+WHERE account_id = @account_id
+ORDER BY created_at DESC
+LIMIT @page_limit::int OFFSET @page_offset::int;
+
+-- name: CountRecentCorrections :one
+SELECT count(*) FROM station_corrections
+WHERE account_id = @account_id AND created_at > now() - make_interval(days => 1);
+
+-- name: CountOpenCorrections :one
+SELECT count(*) FROM station_corrections
+WHERE account_id = @account_id AND station_id = @station_id
+  AND field = @field AND status IN ('pending', 'auto_verified');
+
+-- name: CancelCorrection :execrows
+UPDATE station_corrections
+SET status = 'cancelled', updated_at = now(), decided_at = now()
+WHERE id = @id AND account_id = @account_id AND status = 'pending';
+
+-- name: ListPendingCorrections :many
+SELECT id, station_id, account_id, field, proposed_value, note, evidence_ref,
+    proximity_bucket, client_submission_id, status, reason_codes,
+    created_at, updated_at, decided_at
+FROM station_corrections
+WHERE status = 'pending'
+ORDER BY created_at
+LIMIT @page_limit::int;
+
+-- name: DecideCorrection :execrows
+UPDATE station_corrections
+SET status = @status, reason_codes = @reason_codes, updated_at = now(),
+    decided_at = now()
+WHERE id = @id AND status = 'pending';
+
+-- name: CreateCorrectionDecision :one
+INSERT INTO station_correction_decisions (
+    id, correction_id, decision, reason, decider_kind, decider_id, evidence
+)
+VALUES (
+    @id, @correction_id, @decision, @reason, @decider_kind, @decider_id, @evidence
+)
+RETURNING id, correction_id, decision, reason, decider_kind, decider_id,
+    evidence, decided_at;

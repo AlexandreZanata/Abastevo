@@ -110,11 +110,13 @@ class MapPublishTest {
     )
 
     private var serving = false
+    private val requestPaths = mutableListOf<String>()
 
     private fun serveBytes(vararg parts: Pair<String, ByteArray>, code: Int = 200, contentRange: String? = null) {
         val byPath = parts.toMap()
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
+                requestPaths += request.path!!
                 val id = request.path!!.substringAfterLast("/").substringBefore("?")
                 val bytes = byPath[id] ?: return MockResponse().setResponseCode(404)
                 val resp = MockResponse().setResponseCode(code).setHeader("ETag", "\"e1\"")
@@ -137,6 +139,10 @@ class MapPublishTest {
         assertEquals("test-20261025.1", verified.manifest.generation)
         serveBytes("test-rect" to goPackageBytes("2601/test-rect.mwm"), "world" to goPackageBytes("2601/World.mwm"))
         assertTrue(runBlocking { repository.downloadMissing("test-20261025.1", baseUrl()) })
+        assertTrue(
+            requestPaths.any { it.startsWith("/dados/mapa-dist/test-20261025.1/") && it.endsWith("test-rect") },
+            "package download must use the static generation path: $requestPaths",
+        )
         assertTrue(runBlocking { repository.activate("test-20261025.1") })
         val versionDir = File(root, "native/2601")
         assertArrayEquals(goPackageBytes("2601/test-rect.mwm"), File(versionDir, "test-rect.mwm").readBytes())
@@ -227,6 +233,38 @@ class MapPublishTest {
             assertEquals(setOf("test-rect.mwm", "World.mwm"), names)
         }
         assertTrue(File(root, "native/2601").listFiles()!!.none { it.extension == "part" })
+    }
+
+    @Test fun `switching region leaves no stale country file under the native version`() {
+        // CoMaps registers <countryId>.mwm by file name: a leftover file of the
+        // previous region would still load as that country after a switch.
+        val store = store()
+        val repository = repo(store)
+        val mt = "mato-grosso-bytes".toByteArray()
+        val pr = "parana-east-bytes".toByteArray()
+        runBlocking {
+            repository.importManifest(
+                envelopeFor(manifestB("gen-mt", "brazil-mato-grosso", "261004/Brazil_Mato Grosso.mwm", mt, "261004")),
+                mapOf("k2" to rawPub()),
+            )
+        }
+        serveBytes("brazil-mato-grosso" to mt, "brazil-parana-east" to pr)
+        assertTrue(runBlocking { repository.downloadMissing("gen-mt", baseUrl()) })
+        assertTrue(runBlocking { repository.activate("gen-mt") })
+        val versionDir = File(root, "native/261004")
+        assertArrayEquals(mt, File(versionDir, "Brazil_Mato Grosso.mwm").readBytes())
+
+        runBlocking {
+            repository.importManifest(
+                envelopeFor(manifestB("gen-pr", "brazil-parana-east", "261004/Brazil_Parana_East.mwm", pr, "261004")),
+                mapOf("k2" to rawPub()),
+            )
+        }
+        assertTrue(runBlocking { repository.downloadMissing("gen-pr", baseUrl()) })
+        assertTrue(runBlocking { repository.activate("gen-pr") })
+        assertEquals(setOf("Brazil_Parana_East.mwm"), versionDir.listFiles()!!.map { it.name }.toSet())
+        assertEquals(listOf(File(versionDir, "Brazil_Parana_East.mwm")), runBlocking { repository.activeMapFiles() })
+        assertFalse(File(root, "staging/map-packages/gen-mt").exists(), "previous region staging is recycled")
     }
 
     @Test fun `open readers keep old bytes across a same-path swap`() {

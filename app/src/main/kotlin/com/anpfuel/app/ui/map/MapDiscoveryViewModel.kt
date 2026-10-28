@@ -11,11 +11,15 @@ import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
 import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.discovery.bestPinnedStation
+import com.anpfuel.domain.map.MapRegionPoint
+import com.anpfuel.domain.map.chooseCityRegionPoint
 import com.anpfuel.domain.repository.MunicipalityCatalogRepository
 import com.anpfuel.domain.repository.ServerStationCache
 import com.anpfuel.domain.repository.ServerStationGateway
 import com.anpfuel.domain.repository.UserPreferencesRepository
 import com.anpfuel.domain.valueobject.FuelProduct
+import com.anpfuel.maps.engine.MapCamera
+import com.anpfuel.maps.engine.MapCameraStore
 import com.anpfuel.maps.engine.MapEngine
 import com.anpfuel.maps.engine.MapOverlayCluster
 import com.anpfuel.maps.engine.MapOverlayLabels
@@ -89,6 +93,13 @@ data class MapDiscoveryUi(
     val chargingError: String? = null,
     val cityLocationUnknown: Boolean = false,
     val offlineCached: Boolean = false,
+    /**
+     * Coordinate that represents the opened city for the offline-map region
+     * (see [chooseCityRegionPoint]); null while unknown. It follows the city,
+     * not later panning.
+     */
+    val cityLatitude: Double? = -25.4284,
+    val cityLongitude: Double? = -49.2733,
 )
 
 /**
@@ -106,6 +117,7 @@ class MapDiscoveryViewModel @Inject constructor(
     private val userPreferences: UserPreferencesRepository?,
     private val catalog: MunicipalityCatalogRepository?,
     private val stationCache: ServerStationCache = NoopServerStationCache,
+    private val cameraStore: MapCameraStore? = null,
 ) : ViewModel() {
 
     constructor(
@@ -126,11 +138,20 @@ class MapDiscoveryViewModel @Inject constructor(
 
     private var fetchJob: Job? = null
     private var generation = 0L
+    private var cityJob: Job? = null
+    private var cityGeneration = 0L
     private var lastMarkers: List<MapOverlayMarker> = emptyList()
     private var lastNullStations: List<ServerStation> = emptyList()
     private var lastNullCharging: List<ChargingPlace> = emptyList()
     private var overlayLabels: MapOverlayLabels = MapOverlayLabels()
     private var lastPreferredMunicipalityCode: String? = null
+    /**
+     * City the camera was last explicitly moved to. Resume, recomposition,
+     * refresh and marker reloads must never move the camera: only a genuine
+     * city change (user picks a new city, or the first map open) recenters it.
+     * The recenter button still centers on the user on demand.
+     */
+    private var lastViewportCityCode: String? = null
 
     init {
         engine.setOnOverlaySelected(::onNativeSelection)
@@ -192,47 +213,95 @@ class MapDiscoveryViewModel @Inject constructor(
         val normalizedCode = ibgeCode.trim().ifBlank { _ui.value.municipalityCode }
         val knownCity = DEFAULT_MAP_CITIES.firstOrNull { it.ibgeCode == normalizedCode }
         val resolvedName = cityName.trim().ifBlank { knownCity?.name ?: normalizedCode }
+        // The camera moves only when the city actually changes: a repeated
+        // selection, resume or refresh keeps the user's current framing.
+        val shouldMoveViewport = moveViewport && normalizedCode != lastViewportCityCode
+        if (shouldMoveViewport) {
+            lastViewportCityCode = normalizedCode
+        }
+        // A built-in city is where the camera is centered below; other cities
+        // resolve from their loaded stations in loadCityStations.
+        val cityPoint = chooseCityRegionPoint(null, emptyList(), builtInCityPoint(normalizedCode))
         _ui.update {
             it.copy(
                 municipalityCode = normalizedCode,
                 municipalityName = resolvedName,
+                cityLatitude = cityPoint?.latitude,
+                cityLongitude = cityPoint?.longitude,
             )
         }
         val activeQuery = _ui.value.searchQuery.trim()
         if (activeQuery.length >= 2) {
             onSearch(normalizedCode, activeQuery)
-        } else if (moveViewport && knownCity != null) {
-            engine.setViewport(knownCity.latitude, knownCity.longitude, 13)
+        } else if (shouldMoveViewport && knownCity != null) {
+            moveCameraToCity(knownCity.latitude, knownCity.longitude)
             onViewport(knownCity.latitude, knownCity.longitude, _ui.value.viewportRadiusMeters)
-        } else if (moveViewport) {
-            loadCityStations(normalizedCode)
+        } else if (knownCity == null && moveViewport) {
+            // Directory city: (re)load its stations, recentering only when the
+            // city actually changed. Same-city reselect/refresh keeps the camera.
+            loadCityStations(normalizedCode, moveViewport = shouldMoveViewport)
         }
     }
 
-    private fun loadCityStations(code: String) {
+    /**
+     * The chosen city is also the camera the engine restores when it becomes
+     * ready: on a fresh start the city often resolves before native init ends,
+     * and readiness would otherwise reset the camera to the stored/default one.
+     */
+    private fun moveCameraToCity(latitude: Double, longitude: Double) {
+        cameraStore?.save(MapCamera(latitude, longitude, 13))
+        engine.setViewport(latitude, longitude, 13)
+    }
+
+    private fun loadCityStations(code: String, moveViewport: Boolean) {
+        // The city load owns its own job: a nearby refresh (map readiness
+        // reporting the default camera, native camera sync) may replace the
+        // pins, but must never cancel the city camera and region point.
         fetchJob?.cancel()
+        cityJob?.cancel()
         val gen = ++generation
+        val cityGen = ++cityGeneration
         _ui.update { it.copy(loading = true, error = null, generation = gen) }
-        fetchJob = viewModelScope.launch {
+        cityJob = viewModelScope.launch {
             try {
                 val page = stations.listInMunicipality(code, 100, null)
-                if (gen != generation) return@launch
+                if (cityGen != cityGeneration) return@launch
                 // Center on the best pin tier (reviewed > osm-mapped > anp-reported > address-point).
                 val pinned = page.items.bestPinnedStation()
-                _ui.update { it.copy(cityLocationUnknown = pinned == null, offlineCached = false) }
-                saveMapCache(code, page.items)
-                pushMarkers(
-                    page.items.mapNotNull { it.toMarker() }, gen,
-                    page.items.filter { it.latitude == null || it.longitude == null },
+                val cityPoint = chooseCityRegionPoint(
+                    pinned?.let { MapRegionPoint(checkNotNull(it.latitude), checkNotNull(it.longitude)) },
+                    page.items.stationPoints(),
+                    builtInCityPoint(code),
                 )
-                if (pinned != null) {
-                    engine.setViewport(checkNotNull(pinned.latitude), checkNotNull(pinned.longitude), 13)
+                _ui.update {
+                    it.copy(
+                        cityLocationUnknown = pinned == null,
+                        offlineCached = false,
+                        cityLatitude = cityPoint?.latitude,
+                        cityLongitude = cityPoint?.longitude,
+                    )
+                }
+                saveMapCache(code, page.items)
+                if (gen == generation) {
+                    pushMarkers(
+                        page.items.mapNotNull { it.toMarker() }, gen,
+                        page.items.filter { it.latitude == null || it.longitude == null },
+                    )
+                }
+                if (pinned != null && moveViewport) {
+                    moveCameraToCity(checkNotNull(pinned.latitude), checkNotNull(pinned.longitude))
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (gen != generation) return@launch
+                if (cityGen != cityGeneration) return@launch
                 val cached = loadMapCache(code)
+                val cityPoint = chooseCityRegionPoint(null, cached.stationPoints(), builtInCityPoint(code))
+                if (cached.isNotEmpty()) {
+                    _ui.update { it.copy(cityLatitude = cityPoint?.latitude, cityLongitude = cityPoint?.longitude) }
+                }
+                // Pins and loading state belong to the newest fetch only.
+                if (gen != generation) return@launch
                 if (cached.isNotEmpty()) {
                     pushMarkers(
                         cached.mapNotNull { it.toMarker() }, gen,
@@ -244,6 +313,15 @@ class MapDiscoveryViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun builtInCityPoint(code: String): MapRegionPoint? =
+        DEFAULT_MAP_CITIES.firstOrNull { it.ibgeCode == code }?.let { MapRegionPoint(it.latitude, it.longitude) }
+
+    private fun List<ServerStation>.stationPoints(): List<MapRegionPoint> = mapNotNull { station ->
+        val lat = station.latitude ?: return@mapNotNull null
+        val lon = station.longitude ?: return@mapNotNull null
+        MapRegionPoint(lat, lon)
     }
 
     fun onViewport(latitude: Double, longitude: Double, radiusMeters: Int = 10_000) {
