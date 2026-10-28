@@ -192,3 +192,53 @@ func TestClocksPreserveFutureAndRejectMalformed(t *testing.T) {
 		t.Fatal("malformed clock accepted")
 	}
 }
+
+func TestPackagePathVectors(t *testing.T) {
+	var vectors struct {
+		Valid   []string `json:"valid"`
+		Invalid []string `json:"invalid"`
+	}
+	if err := json.Unmarshal(fixture(t, "package-path-vectors-v1.json"), &vectors); err != nil {
+		t.Fatal(err)
+	}
+	if len(vectors.Valid) == 0 || len(vectors.Invalid) == 0 {
+		t.Fatal("empty path vectors")
+	}
+	for _, path := range vectors.Valid {
+		if !ValidPackagePath(path) {
+			t.Errorf("valid path refused: %q", path)
+		}
+	}
+	for _, path := range vectors.Invalid {
+		if ValidPackagePath(path) {
+			t.Errorf("invalid path accepted: %q", path)
+		}
+	}
+}
+
+func TestNativeManifestAcceptsCountryIDWithSpaces(t *testing.T) {
+	doc := corpusMap(t, fixture(t, "native-map-manifest-v1.json"))
+	doc["packages"].([]any)[0].(map[string]any)["path"] = "2601/Brazil_Mato Grosso.mwm"
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := ParseNativeManifest(raw)
+	if err != nil {
+		t.Fatalf("spaced country id refused: %v", err)
+	}
+	if manifest.Packages[0].Path != "2601/Brazil_Mato Grosso.mwm" {
+		t.Fatalf("path drifted: %q", manifest.Packages[0].Path)
+	}
+	for _, bad := range []string{" Brazil.mwm", "Brazil.mwm ", "Brazil_Mato  Grosso.mwm", "2601/ Brazil.mwm"} {
+		doc := corpusMap(t, fixture(t, "native-map-manifest-v1.json"))
+		doc["packages"].([]any)[0].(map[string]any)["path"] = bad
+		raw, err := json.Marshal(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ParseNativeManifest(raw); err == nil {
+			t.Fatalf("unsafe spaced path accepted: %q", bad)
+		}
+	}
+}

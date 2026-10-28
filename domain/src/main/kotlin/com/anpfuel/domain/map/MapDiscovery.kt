@@ -88,6 +88,23 @@ private val uuidPattern =
 private val cnpjPattern = Regex("^[0-9A-Za-z]{14}$")
 private val sha256Pattern = Regex("^[0-9a-f]{64}$")
 private val hex40Pattern = Regex("^[0-9a-f]{40}$")
+private val packagePathPattern = Regex("^[A-Za-z0-9._/-]+( [A-Za-z0-9._/-]+)*$")
+
+/**
+ * Manifest package path rule shared with Go `mapcontract.validPackagePath`.
+ * CoMaps country files are named after the exact country id, which may hold
+ * single interior spaces (`Brazil_Mato Grosso.mwm`). Spaces are admitted only
+ * between two path characters: never leading/trailing (also per `/` segment),
+ * never doubled. `..`, absolute paths, control and non-ASCII characters stay
+ * refused and the 160-character bound is unchanged.
+ */
+fun isSafeMapPackagePath(path: String): Boolean =
+    path.length in 1..160 &&
+        packagePathPattern.matches(path) &&
+        ".." !in path &&
+        !path.startsWith("/") &&
+        " /" !in path &&
+        "/ " !in path
 
 private fun requireUuid(value: String, code: String = "invalid-id"): String {
     if (!uuidPattern.matches(value)) throw MapContractException(code)
@@ -352,7 +369,7 @@ data class NativeMapPackage(
         if (role !in setOf("REGION", "OVERVIEW", "SEARCH", "ROUTING", "STYLE", "FONT")) {
             throw MapContractException("invalid-package-role")
         }
-        if (!Regex("^[A-Za-z0-9._/-]{1,160}$").matches(path) || ".." in path || path.startsWith("/")) {
+        if (!isSafeMapPackagePath(path)) {
             throw MapContractException("unsafe-package-path")
         }
         if (bytes !in 1..4_294_967_296L) throw MapContractException("invalid-package-bytes")
