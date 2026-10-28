@@ -387,3 +387,40 @@ a check needs a secret or credential not already provisioned; a test fails
 and the fix would weaken it; an action would touch another namespace,
 project, the main checkout or `main`; free VPS disk would drop below 100 GB;
 an engine rebuild fails ENGINE_GATE; a migration cannot be made append-only.
+
+## Coordination notes (2026-10-28, from the admin-suite/CD session)
+
+The owner kept this plan's key policy: the map-distribution signing key stays
+local, off the VPS; only public keys go to the app build and the API.
+
+- **Branch synced with `main`** (`3c86c898`). `main` already holds #162/#156/#155/#157
+  (via #177) and migrations `000139`–`000143`. Because `main` used `000140`
+  for admin sessions, which is already applied on staging, MC-B2's
+  `station_corrections` moved to **`000144`**. It was never applied on any
+  real database.
+- **Staging deploys automatically from `main`.** A systemd timer runs the
+  deploy agent every 2 minutes. It pulls the signed release, then runs
+  backup → migrations → api/worker image rollout → landing switch → smoke.
+  - The agent changes only images and the landing. Map-distribution env vars
+    (`ANPFUEL_MAP_DIST_DIR`, `ANPFUEL_MAP_DIST_PUBLIC_KEYS`) and any hostPath
+    mount must also go into `infra/k8s/staging/api-deployment.yaml`, or the
+    R2 zero-diff check reports drift. Apply them by hand.
+  - Never place map-distribution files under the landing root; every deploy
+    switches `current` to a new release tree.
+  - For D10 static serving, start from `main`'s
+    `infra/caddy/staging-web.Caddyfile` and its configmap mirror. They carry a
+    `handle /admin/*` block that must stay. The configmap is applied by hand
+    (`kubectl apply` plus a web rollout restart); the agent does not apply it.
+- **Delivery:** deliver this stage as one PR to `main`
+  (`DELIVERY_WORKFLOW.md`, "One PR per planning stage").
+- **Fixed on 2026-10-28:**
+  - The staging upload `brazil-mato-grosso-20261027/WorldCoasts.mwm` was
+    corrupt (7,311,360 B). It was replaced with the verified file
+    (8,489,900 B, sha `d42a71b1…`); all three packages now match
+    `manifest.json`, and the corrupt copy is quarantined under `/root` on the
+    host. The local MAP-12 test seed `key.b64` is now mode 600.
+- **Owner decisions still open:**
+  - ODbL redistribution of World/WorldCoasts.
+  - The API serves one region per process (several regions need code or one
+    national region).
+  - Region names with spaces are rejected by the Go/Kotlin path rules.
