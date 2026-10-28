@@ -22,7 +22,9 @@ func TestRunnerOutageCleanupAndRedaction(t *testing.T) {
 		if e := os.WriteFile(binary, []byte(body), 0700); e != nil {
 			t.Fatal(e)
 		}
-		runner := Runner{Binary: binary, WorkspaceRoot: root, Timeout: 30 * time.Millisecond}
+		// The timeout spans the archive read too; 30 ms expired there under
+		// load and surfaced "archive read" instead of exercising the child.
+		runner := Runner{Binary: binary, WorkspaceRoot: root, Timeout: time.Second}
 		_, e := runner.Prepare(context.Background(), Request{Path: p, Identity: id, URL: annualURL, Member: "PMQC_2025_01.csv", Edition: "2025-01"}, unbound)
 		if e == nil || !strings.Contains(e.Error(), "preparer failed or cancelled") || strings.Contains(e.Error(), "private-source-output") || strings.Contains(e.Error(), p) {
 			t.Fatal("failure leaked or accepted", e)

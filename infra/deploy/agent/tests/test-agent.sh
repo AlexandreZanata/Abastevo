@@ -776,6 +776,28 @@ else
 fi
 assert_eq "contract landing unchanged" "$(readlink "$CASE/landing/current")" "releases/$FIXTURE_OLD_SHA"
 
+echo "== apply: schema versions with 8/9 digits compare in base 10 =="
+# Six-digit versions keep leading zeros; bash arithmetic reads them as octal
+# and refuses 000139, which stopped the first real staging apply.
+CASE="$(new_case apply-decimal)"
+make_current_old "$CASE"
+prepare_landing "$CASE" 1
+jq '.migrations_max = "000143"' "$CASE/artifact/release-manifest.json" > "$CASE/manifest.tmp"
+mv "$CASE/manifest.tmp" "$CASE/artifact/release-manifest.json"
+write_oci "$CASE"
+KUBECTL_SCHEMA_DB=000139 expect_success "apply decimal schema window" run_agent_apply "$CASE"
+assert_eq "apply decimal current sha" "$(jq -r '.sha' "$CASE/state/current.json")" "$FIXTURE_SHA"
+CASE="$(new_case apply-decimal-floor)"
+make_current_old "$CASE"
+prepare_landing "$CASE" 1
+jq '.schema_min_supported = "000139" | .migrations_max = "000143"' "$CASE/artifact/release-manifest.json" > "$CASE/manifest.tmp"
+mv "$CASE/manifest.tmp" "$CASE/artifact/release-manifest.json"
+write_oci "$CASE"
+KUBECTL_SCHEMA_DB=000139 expect_failure "apply decimal contract floor refused" run_agent_apply "$CASE"
+RECEIPT="$(find "$CASE/receipts" -maxdepth 1 -name 'failure-*.json' -type f | sort | tail -n 1)"
+assert_eq "decimal floor failure stage" "$(jq -r '.stage' "$RECEIPT")" "schema"
+assert_eq "decimal floor reason" "$(jq -r '.reason // .message // .error' "$RECEIPT")" "contract schema floor refused"
+
 echo "== apply: no current.json is refused with baseline required =="
 CASE="$(new_case apply-bootstrap)"
 prepare_landing "$CASE" 1
