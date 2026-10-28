@@ -5,20 +5,8 @@ name: backend
 on:
   push:
     branches: [main]
-    paths:
-      - backend/**
-      - tools/station-prep/**
-      - contracts/**
-      - infra/**
-      - scripts/check-backend-fast.sh
-      - scripts/scan-secrets.sh
-      - scripts/audit-anp-source-census.py
-      - scripts/audit-enforcement-privacy.py
-      - scripts/tests/test-anp-source-census.py
-      - scripts/tests/test-enforcement-privacy.py
-      - .github/workflows/backend.yml
-      - .github/workflows/release-staging.yml
-      - scripts/check-release-workflow.sh
+    # No path filter on main: the release-staging gate needs this workflow's
+    # result for every main commit, or path-only merges never release.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
