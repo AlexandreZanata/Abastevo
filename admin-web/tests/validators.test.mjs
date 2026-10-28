@@ -129,6 +129,7 @@ test('github login and roles mirror the contract rules', async () => {
     assert.ok(v.githubLoginError(login) !== null, login || '(empty)');
   }
   assert.equal(v.isRole('support_agent'), true);
+  assert.equal(v.isRole('project_creator'), true);
   assert.equal(v.isRole('administrator'), false);
   assert.equal(v.isRole(''), false);
   assert.equal(v.isClaimState(''), true);

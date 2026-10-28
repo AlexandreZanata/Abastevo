@@ -52,7 +52,7 @@ func TestCatalog_STF01_Response(t *testing.T) {
 		Version string            `json:"catalog_version"`
 		Roles   []domain.RoleInfo `json:"roles"`
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil || payload.Version != domain.CatalogVersion || len(payload.Roles) != 4 {
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil || payload.Version != domain.CatalogVersion || len(payload.Roles) != len(domain.Catalog()) {
 		t.Fatalf("payload=%s err=%v", w.Body.String(), err)
 	}
 }

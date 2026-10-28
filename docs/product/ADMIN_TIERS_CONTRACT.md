@@ -182,11 +182,13 @@ Catalog `tier-catalog-v1` (Go constant in `entitlement/domain`, golden JSON in
 
 ## 5. Staff roles (B-BR-STF)
 
-Catalog `staff-roles-v1` (Go constant in `staff/domain`, golden JSON
-`contracts/admin/staff-roles-v1.json`):
+Catalog `staff-roles-v2` (Go constant in `staff/domain`, golden JSON
+`contracts/admin/staff-roles-v2.json`; v2 adds `project_creator`, migration
+000145, owner request 2026-10-28; `staff-roles-v1.json` stays as history):
 
 | Role | Public label (pt-BR) | Intended responsibility (future consumer) |
 |---|---|---|
+| `project_creator` | Criador do projeto | Public badge for the project's author; no responsibility or permission |
 | `community_moderator` | Moderação da comunidade | Review reports and apply moderation actions |
 | `station_reviewer` | Revisão de postos | Review station suggestions and profile claims |
 | `contributor_curator` | Curadoria de contribuidores | Pre-review contributor claims |

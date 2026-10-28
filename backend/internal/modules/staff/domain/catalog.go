@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const CatalogVersion = "staff-roles-v1"
+const CatalogVersion = "staff-roles-v2"
 
 var (
 	ErrInvalid        = errors.New("staff: invalid input")
@@ -21,6 +21,9 @@ var (
 type Role string
 
 const (
+	// RoleProjectCreator is the public "project creator" badge for the
+	// project's author. Like every role it grants no permission (STF-03).
+	RoleProjectCreator     Role = "project_creator"
 	RoleCommunityModerator Role = "community_moderator"
 	RoleStationReviewer    Role = "station_reviewer"
 	RoleContributorCurator Role = "contributor_curator"
@@ -33,6 +36,7 @@ type RoleInfo struct {
 }
 
 var catalog = []RoleInfo{
+	{Code: string(RoleProjectCreator), Label: "Criador do projeto"},
 	{Code: string(RoleCommunityModerator), Label: "Moderação da comunidade"},
 	{Code: string(RoleStationReviewer), Label: "Revisão de postos"},
 	{Code: string(RoleContributorCurator), Label: "Curadoria de contribuidores"},

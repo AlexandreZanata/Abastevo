@@ -17,7 +17,7 @@ func TestCatalog_STF01_MatchesGolden(t *testing.T) {
 	if !ok {
 		t.Fatal("runtime caller unavailable")
 	}
-	path := filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "..", "contracts", "admin", "staff-roles-v1.json")
+	path := filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "..", "contracts", "admin", "staff-roles-v2.json")
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

@@ -1,0 +1,10 @@
+{
+  "version": "staff-roles-v2",
+  "roles": [
+    {"code": "project_creator", "label": "Criador do projeto"},
+    {"code": "community_moderator", "label": "Moderação da comunidade"},
+    {"code": "station_reviewer", "label": "Revisão de postos"},
+    {"code": "contributor_curator", "label": "Curadoria de contribuidores"},
+    {"code": "support_agent", "label": "Suporte"}
+  ]
+}

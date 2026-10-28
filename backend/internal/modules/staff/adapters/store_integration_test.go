@@ -261,3 +261,21 @@ func TestAudit_STF_BUCADM12(t *testing.T) {
 		t.Fatalf("page2=%+v err=%v", page2, err)
 	}
 }
+
+// TestAssign_STF01_ProjectCreatorV2 proves staff-roles-v2 reaches the table:
+// the project creator badge assigns like any role, keeps its pt-BR label, and
+// the CHECK still refuses codes outside the catalog.
+func TestAssign_STF01_ProjectCreatorV2(t *testing.T) {
+	pool := freshDB(t)
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	service, _, session := staffService(t, pool, now)
+	accountID := seedAccount(t, pool, "active")
+	assignment, err := service.Assign(context.Background(), mutation(session.ID), staffapp.AssignInput{AccountID: accountID, Role: string(domain.RoleProjectCreator)})
+	if err != nil || assignment.Label != "Criador do projeto" || assignment.State != "ACTIVE" {
+		t.Fatalf("assignment=%+v err=%v", assignment, err)
+	}
+	if _, err := pool.Exec(context.Background(), `INSERT INTO staff_assignments(id,account_id,role,state,start_at,reason)
+		VALUES($1,$2,'administrator','ACTIVE',$3,'synthetic unknown role')`, newID(t), accountID, now); err == nil {
+		t.Fatal("unknown role accepted by the table")
+	}
+}
