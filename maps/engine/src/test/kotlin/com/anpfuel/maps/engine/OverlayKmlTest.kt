@@ -69,6 +69,10 @@ class OverlayKmlTest {
         assertTrue(kml.contains("<description>Hibrido - Fuel and charging - Reviewed location</description>"))
         assertTrue(kml.contains("<styleUrl>#placemark-purple</styleUrl>"))
         assertFalse(kml.contains("Posto & Cia"))
+        // Abastevo station art from every zoom: fuel pump, EV pedestal; a
+        // combined site keeps the fuel art and its purple fallback style.
+        assertEquals(2, Regex("""<mwm:value key="CustomImage">1,abastevo-station-fuel</mwm:value>""").findAll(kml).count())
+        assertEquals(1, Regex("""<mwm:value key="CustomImage">1,abastevo-station-ev</mwm:value>""").findAll(kml).count())
     }
 
     @Test
@@ -203,6 +207,7 @@ class OverlayKmlTest {
         assertTrue(kml.contains("<description>2 stations</description>"))
         assertTrue(kml.contains("<styleUrl>#placemark-bluegray</styleUrl>"))
         assertTrue(kml.contains("<mwm:icon>Information</mwm:icon>"))
+        assertFalse(kml.contains("CustomImage"))
     }
 
     @Test

@@ -253,6 +253,7 @@ internal fun buildOverlayKml(
                     marker.charging -> "ChargingStation"
                     else -> "Gas"
                 },
+                customImage = if (marker.charging && !marker.fuel) STATION_EV_SYMBOL else STATION_FUEL_SYMBOL,
             )
         }
     }
@@ -323,6 +324,7 @@ private fun StringBuilder.appendPlacemark(
     longitude: Double,
     style: String,
     icon: String,
+    customImage: String? = null,
 ) {
     appendLine("    <Placemark>")
     appendLine("      <name>$name</name>")
@@ -330,10 +332,21 @@ private fun StringBuilder.appendPlacemark(
     appendLine("      <styleUrl>#placemark-$style</styleUrl>")
     appendLine("""      <ExtendedData xmlns:mwm="https://comaps.app">""")
     appendLine("        <mwm:icon>$icon</mwm:icon>")
+    if (customImage != null) {
+        // Native CustomImage: symbol from the app's atlas from zoom 1 up, in
+        // place of the SDK pin; style/icon stay as the fallback.
+        appendLine("        <mwm:properties>")
+        appendLine("""          <mwm:value key="CustomImage">1,$customImage</mwm:value>""")
+        appendLine("        </mwm:properties>")
+    }
     appendLine("      </ExtendedData>")
     appendLine("      <Point><coordinates>$longitude,$latitude</coordinates></Point>")
     appendLine("    </Placemark>")
 }
+
+/** Abastevo station art packed into the symbol atlas (maps/style/symbols). */
+internal const val STATION_FUEL_SYMBOL = "abastevo-station-fuel"
+internal const val STATION_EV_SYMBOL = "abastevo-station-ev"
 
 private fun escapeXml(value: String): String = value
     .replace("&", "&amp;")
