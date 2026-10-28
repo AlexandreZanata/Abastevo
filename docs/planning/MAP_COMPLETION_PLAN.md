@@ -325,6 +325,7 @@ overrides both.
 - Tests: package verification, Room import idempotence, airplane-mode render.
 
 ### MC-C7 Route to the station, CoMaps-style
+Exact task plan: `docs/planning/NATIVE_NAVIGATION_PLAN.md` (NAV-0…NAV-8).
 - Station sheet "Rota" → native route from current location to the station
   pin (MAP-22) → preview with distance/time → "Iniciar" → guidance (MAP-23):
   follow-me camera centred and rotated with heading, voice prompts, rerouting
