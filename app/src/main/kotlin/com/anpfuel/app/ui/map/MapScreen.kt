@@ -49,6 +49,7 @@ private fun RealMapHost(
     onViewportChanged: ((latitude: Double, longitude: Double, radiusMeters: Int) -> Unit)? = null,
     onReady: ((Boolean) -> Unit)? = null,
     recenterBottomInset: Dp = 164.dp,
+    darkMode: Boolean = com.anpfuel.app.ui.theme.LocalAnpDarkTheme.current,
 ) {
     MapHost(
         modifier = modifier,
@@ -61,6 +62,7 @@ private fun RealMapHost(
         onViewportChanged = onViewportChanged,
         onReady = onReady,
         recenterBottomInset = recenterBottomInset,
+        darkMode = darkMode,
     )
 }
 
