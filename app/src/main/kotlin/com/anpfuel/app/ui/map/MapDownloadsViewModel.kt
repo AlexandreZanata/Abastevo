@@ -101,10 +101,10 @@ class MapDownloadsViewModel @Inject constructor(
 
     fun refresh() {
         pollJob?.cancel()
-        if (!config.configured) {
+        if (!config.configured || config.defaultRegion == null) {
             _ui.update {
                 it.copy(
-                    loading = false, missingUrl = config.missingUrl, missingRegion = config.missingRegion,
+                    loading = false, missingUrl = config.missingUrl, missingRegion = config.defaultRegion == null,
                     missingKeys = config.missingKeys, keysInvalid = config.keysInvalid,
                 )
             }
@@ -138,14 +138,15 @@ class MapDownloadsViewModel @Inject constructor(
 
     fun checkForUpdate() {
         pollJob?.cancel()
-        if (!config.configured) {
+        val region = config.defaultRegion
+        if (!config.configured || region == null) {
             refresh()
             return
         }
         viewModelScope.launch {
             _ui.update { it.copy(loading = true, error = null, retryable = false) }
             try {
-                val envelope = distribution.fetchEnvelope()
+                val envelope = distribution.fetchEnvelope(region)
                 val verified = try {
                     repository.importManifest(envelope.decodeToString(), config.trustedKeys)
                 } catch (e: MapDownloadException) {

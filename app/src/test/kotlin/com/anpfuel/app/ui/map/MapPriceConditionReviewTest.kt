@@ -510,7 +510,7 @@ class MapPriceConditionReviewTest {
             val beforeDownloadsIo = ioDispatches.get()
             val cfg = MapDistributionConfig("https://example.test", "test-region", mapOf("k" to ByteArray(32)), false)
             val dist = object : MapDistribution(OkHttpClient(), cfg) {
-                override suspend fun fetchEnvelope(): ByteArray = error("unused")
+                override suspend fun fetchEnvelope(regionSlug: String): ByteArray = error("unused")
             }
             val downloadsVm = MapDownloadsViewModel(cfg, dist, repo, store, object : MapWorkControl {
                 override fun enqueue(generation: String, requireUnmetered: Boolean) = Unit

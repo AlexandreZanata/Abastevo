@@ -86,7 +86,7 @@ class MapDownloadsViewModelTest {
         prefs: FakePrefs = FakePrefs(),
     ): Pair<MapDownloadsViewModel, FakeWork> {
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), cfg) {
-            override suspend fun fetchEnvelope(): ByteArray = fetch?.invoke() ?: error("no fetch stub")
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = fetch?.invoke() ?: error("no fetch stub")
         }
         val repository = object : MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher) {
             override suspend fun importManifest(envelopeJson: String, trustedKeys: Map<String, ByteArray>) =
@@ -138,7 +138,7 @@ class MapDownloadsViewModelTest {
         val rawPub = kp.public.encoded.let { it.copyOfRange(it.size - 32, it.size) }
         val envelope = signEnvelope(manifest, kp)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
-            override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = envelope.toByteArray()
         }
         val viewModel = MapDownloadsViewModel(
             config(mapOf("k" to rawPub)), distribution, realRepo, store, FakeWork(), FakePrefs(),
@@ -160,7 +160,7 @@ class MapDownloadsViewModelTest {
         val envelope = signEnvelope(manifest, kp)
         val realRepo = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
-            override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = envelope.toByteArray()
         }
         val work = FakeWork()
         val viewModel = MapDownloadsViewModel(config(mapOf("k" to rawPub)), distribution, realRepo, store, work, FakePrefs())
@@ -185,7 +185,7 @@ class MapDownloadsViewModelTest {
         val envelope = signEnvelope(manifest, kp)
         val realRepo = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
-            override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = envelope.toByteArray()
         }
         val viewModel = MapDownloadsViewModel(config(mapOf("k" to rawPub)), distribution, realRepo, store, FakeWork(), FakePrefs())
         viewModel.checkForUpdate()
@@ -232,7 +232,7 @@ class MapDownloadsViewModelTest {
         )
         val work = FakeWork()
         val viewModel = MapDownloadsViewModel(config(), object : MapDistribution(okhttp3.OkHttpClient(), config()) {
-            override suspend fun fetchEnvelope(): ByteArray = error("must not fetch")
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = error("must not fetch")
         }, MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher), store, work, FakePrefs())
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("g1", viewModel.ui.value.activeGeneration)
@@ -250,7 +250,7 @@ class MapDownloadsViewModelTest {
         val envelope = signEnvelope(manifest, kp)
         val realRepo = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
-            override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = envelope.toByteArray()
         }
         val viewModel = MapDownloadsViewModel(config(mapOf("k" to rawPub)), distribution, realRepo, store, FakeWork(), FakePrefs())
         viewModel.checkForUpdate()
@@ -274,7 +274,7 @@ class MapDownloadsViewModelTest {
         val envelope = signEnvelope(manifest, kp)
         val realRepo = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val distribution = object : MapDistribution(okhttp3.OkHttpClient(), config(mapOf("k" to rawPub))) {
-            override suspend fun fetchEnvelope(): ByteArray = envelope.toByteArray()
+            override suspend fun fetchEnvelope(regionSlug: String): ByteArray = envelope.toByteArray()
         }
         val work = FakeWork()
         val viewModel = MapDownloadsViewModel(
@@ -300,7 +300,7 @@ class MapDownloadsViewModelTest {
         val repository = MapPackageRepository(store, File(System.getProperty("java.io.tmpdir"), "map-vm-test-${System.nanoTime()}"), okhttp3.OkHttpClient(), ioDispatcher = dispatcher)
         val viewModel = MapDownloadsViewModel(
             config(), object : MapDistribution(okhttp3.OkHttpClient(), config()) {
-                override suspend fun fetchEnvelope(): ByteArray = error("unused")
+                override suspend fun fetchEnvelope(regionSlug: String): ByteArray = error("unused")
             }, repository, store, FakeWork(), FakePrefs(),
         )
         dispatcher.scheduler.advanceUntilIdle()
