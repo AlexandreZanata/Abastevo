@@ -140,6 +140,13 @@ class MapDiscoveryViewModel @Inject constructor(
     private var lastNullCharging: List<ChargingPlace> = emptyList()
     private var overlayLabels: MapOverlayLabels = MapOverlayLabels()
     private var lastPreferredMunicipalityCode: String? = null
+    /**
+     * City the camera was last explicitly moved to. Resume, recomposition,
+     * refresh and marker reloads must never move the camera: only a genuine
+     * city change (user picks a new city, or the first map open) recenters it.
+     * The recenter button still centers on the user on demand.
+     */
+    private var lastViewportCityCode: String? = null
 
     init {
         engine.setOnOverlaySelected(::onNativeSelection)
@@ -201,6 +208,12 @@ class MapDiscoveryViewModel @Inject constructor(
         val normalizedCode = ibgeCode.trim().ifBlank { _ui.value.municipalityCode }
         val knownCity = DEFAULT_MAP_CITIES.firstOrNull { it.ibgeCode == normalizedCode }
         val resolvedName = cityName.trim().ifBlank { knownCity?.name ?: normalizedCode }
+        // The camera moves only when the city actually changes: a repeated
+        // selection, resume or refresh keeps the user's current framing.
+        val shouldMoveViewport = moveViewport && normalizedCode != lastViewportCityCode
+        if (shouldMoveViewport) {
+            lastViewportCityCode = normalizedCode
+        }
         // A built-in city is where the camera is centered below; other cities
         // resolve from their loaded stations in loadCityStations.
         val cityPoint = chooseCityRegionPoint(null, emptyList(), builtInCityPoint(normalizedCode))
@@ -215,15 +228,17 @@ class MapDiscoveryViewModel @Inject constructor(
         val activeQuery = _ui.value.searchQuery.trim()
         if (activeQuery.length >= 2) {
             onSearch(normalizedCode, activeQuery)
-        } else if (moveViewport && knownCity != null) {
+        } else if (shouldMoveViewport && knownCity != null) {
             engine.setViewport(knownCity.latitude, knownCity.longitude, 13)
             onViewport(knownCity.latitude, knownCity.longitude, _ui.value.viewportRadiusMeters)
-        } else if (moveViewport) {
-            loadCityStations(normalizedCode)
+        } else if (knownCity == null && moveViewport) {
+            // Directory city: (re)load its stations, recentering only when the
+            // city actually changed. Same-city reselect/refresh keeps the camera.
+            loadCityStations(normalizedCode, moveViewport = shouldMoveViewport)
         }
     }
 
-    private fun loadCityStations(code: String) {
+    private fun loadCityStations(code: String, moveViewport: Boolean) {
         fetchJob?.cancel()
         val gen = ++generation
         _ui.update { it.copy(loading = true, error = null, generation = gen) }
@@ -251,7 +266,7 @@ class MapDiscoveryViewModel @Inject constructor(
                     page.items.mapNotNull { it.toMarker() }, gen,
                     page.items.filter { it.latitude == null || it.longitude == null },
                 )
-                if (pinned != null) {
+                if (pinned != null && moveViewport) {
                     engine.setViewport(checkNotNull(pinned.latitude), checkNotNull(pinned.longitude), 13)
                 }
             } catch (e: CancellationException) {

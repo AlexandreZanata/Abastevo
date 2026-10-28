@@ -531,7 +531,11 @@ class ComapsMapEngine(
                 Handler(Looper.getMainLooper()).postDelayed({
                     if (!initialized || overlayGeneration != generation) return@postDelayed
                     try {
-                        manager.showBookmarkCategoryOnMap(category.id)
+                        // Never reframe here: showBookmarkCategoryOnMap fits the
+                        // camera to the category, which snaps back every user
+                        // pan/zoom once the next overlay generation commits.
+                        // setVisibility keeps the new pins visible in place.
+                        manager.setVisibility(category.id, true)
                         oldCategories.filter { it != category.id }.forEach(manager::deleteCategory)
                         overlayCategory = category.id
                         overlayClusters = preparation.clusters
