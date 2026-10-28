@@ -6,13 +6,20 @@
   `origin/codex/c3-claim-from-empty-list`, plus 2 atomic commits 1afff32c and
   786c09b2). Pan/zoom snap-back fixed and verified on device; station-label
   declutter gated by zoom; native custom-icon art proven unsupported by the
-  pinned SDK. Staging `Brazil_Mato Grosso.mwm` (53,816,563 bytes) does not
-  render: official v261004 expects 93,654,573 bytes and World/WorldCoasts render
-  correctly, so the custom region artifact needs regeneration (mapdata track).
+  pinned SDK. Correction (same day, release build on device): the
+  `Brazil_Mato Grosso.mwm` artifact renders; the blank map was the camera
+  stuck at the Curitiba default. Fixed in 5b3ff0b6 (city camera survives
+  engine readiness), 91a00c21 (a nearby refresh no longer cancels the city
+  load) and c220a4bb (viewport redraw after activating a region);
+  58186a2e defaults every build, release included, to the signed staging
+  map distribution (MC-C3). Fresh release install at Sorriso: card offers
+  only Mato Grosso (116 MB), download active in ~10 s, streets render without
+  restart; staging serves all 23 signed regional manifests with matching
+  package sizes.
   Gates: backend gofmt/vet clean, race+integration green (145 pkgs ok, 11 pkgs
   rerun green with -p 2 after load timeouts), Android unit/lint/assemble green,
-  diff-check and secret scan clean. Next: single PR to main, then mapdata owner
-  regenerates the MT artifact and streets render is re-verified.
+  diff-check and secret scan clean. Next: PR #181 CI, then owner release
+  signing key and the airplane-mode leg of MC-C8.
 
 - MAP completion MC-C1 retry 2026-10-27: West regeneration recorded. Base
   `394c1389` plus this task. The failed `Brazil_Northeast Region_West` work

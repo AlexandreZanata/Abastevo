@@ -291,8 +291,10 @@ correctly in the app.
 ### MC-C3 App configuration
 `mapDistBaseUrl=https://teste.abastevo.com.br`, region catalog and public
 keys provided as Gradle properties for staging builds (public keys are not
-secrets; still not hard-coded in source). Document in `backend/README.md` /
-mobile docs.
+secrets; still not hard-coded in source). Done 2026-10-28: root
+`gradle.properties` carries `mapDistBaseUrl` and the `staging-20261027`
+public key so every build, release included, can download regions; `-P`
+overrides both.
 
 ### MC-C4 On-demand download like CoMaps
 - Region lookup from bundled Brazil border polygons (`packed_polygons`,
@@ -344,13 +346,16 @@ regional card "Download the Mato Grosso map (116 MB)" only → Download
 completes → `files/261004` holds `World.mwm` (53,519,450),
 `WorldCoasts.mwm` (8,489,900) and `Brazil_Mato Grosso.mwm` (53,816,563);
 Downloads shows "Active: 20261028.1-brazil-mato-grosso", "Published". Pan/zoom
-hold 30 s with no snap-back (overlay commits no longer reframe). BLOCKED:
-the staging `Brazil_Mato Grosso.mwm` (53,816,563 bytes) renders nothing while
-World/WorldCoasts (official v261004 sizes) render correctly, so the custom
-region artifact needs regeneration; the SDK expects 93,654,573 bytes for
-`Brazil_Mato Grosso` per its bundled v261004 country table. Screenshots are
-kept outside the repo. Next: mapdata owner regenerates the MT artifact, then
-re-run this journey (streets render, tap station, airplane-mode leg).
+hold 30 s with no snap-back (overlay commits no longer reframe). The "renders
+nothing" observation was wrong: the camera stayed at the Curitiba default
+(startup race plus a nearby refresh cancelling the city load), and an
+activated region was not redrawn until restart. After 5b3ff0b6, 91a00c21,
+c220a4bb and 58186a2e, a fresh release install (R8, test-key signed) at
+SORRISO shows the Mato Grosso card, downloads it and renders the generated
+`Brazil_Mato Grosso.mwm` streets without restarting; the size gap to the
+official table (no search/extra sections) does not affect drawing.
+Screenshots are kept outside the repo. Open: airplane-mode leg, tap station
+→ route, and São Paulo/Manaus online runs.
 
 ## 7. Track D: VPS (namespace `abastevo-temp` only)
 
