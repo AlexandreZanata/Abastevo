@@ -88,6 +88,9 @@ spec:
         - mountPath: /srv/portal
           name: portal
           readOnly: true
+        - mountPath: /srv/map-dist
+          name: map-dist
+          readOnly: true
         - mountPath: /data
           name: caddy-data
         - mountPath: /config
@@ -115,6 +118,10 @@ spec:
           path: ${PORTAL_MOUNT_PATH}
           type: Directory
         name: portal
+      - hostPath:
+          path: ${MAP_DIST_ROOT}
+          type: Directory
+        name: map-dist
       - emptyDir:
           sizeLimit: 16Mi
         name: caddy-data
