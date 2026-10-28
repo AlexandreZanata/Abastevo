@@ -379,14 +379,18 @@ jobs:
             printf '%s\n' "landing archive does not match the signed manifest" >&2
             exit 1
           fi
+          # oras records the pushed path as the layer title and the deploy
+          # agent pulls it to that path, so the layer must be pushed as the
+          # bare landing-dist.tar.gz the agent reads.
+          cp landing-bundle/landing-dist.tar.gz landing-dist.tar.gz
           printf '%s' "$GH_TOKEN" | oras login ghcr.io --username "$ACTOR" --password-stdin
           oras push "${repository}:sha-${SHA}" \
             --artifact-type application/vnd.abastevo.release.v1+json \
             "release-manifest.json:application/vnd.abastevo.release.manifest.v1+json" \
             "release-manifest.sigstore.json:application/vnd.dev.sigstore.bundle.v0.3+json" \
-            "landing-bundle/landing-dist.tar.gz:application/vnd.abastevo.landing.tar+gzip"
+            "landing-dist.tar.gz:application/vnd.abastevo.landing.tar+gzip"
           oras manifest fetch "${repository}:sha-${SHA}" \
-            | jq -e --arg digest "$landing_digest" '[.layers[] | select(.mediaType == "application/vnd.abastevo.landing.tar+gzip")] | length == 1 and .[0].digest == $digest' >/dev/null
+            | jq -e --arg digest "$landing_digest" '[.layers[] | select(.mediaType == "application/vnd.abastevo.landing.tar+gzip")] | length == 1 and .[0].digest == $digest and .[0].annotations["org.opencontainers.image.title"] == "landing-dist.tar.gz"' >/dev/null
           oras tag "${repository}:sha-${SHA}" staging
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
