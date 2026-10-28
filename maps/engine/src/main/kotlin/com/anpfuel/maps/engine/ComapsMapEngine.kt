@@ -294,6 +294,12 @@ class ComapsMapEngine(
                 // This JNI call removes/re-registers ALL local maps. ReloadWorldMaps
                 // only reloads world overview files and misses regional packages.
                 Framework.nativeChangeWritableDir(desiredRoot)
+                // Re-registering maps does not invalidate tiles the renderer
+                // already drew without them (the native downloader does), so a
+                // just-activated region stayed blank until restart. Re-applying
+                // the unchanged transliteration setting is the SDK's public
+                // call that invalidates the current viewport.
+                Config.setTransliteration(Config.isTransliteration())
             }
             lastViewport?.let { vp ->
                 Framework.nativeSetSearchViewport(vp.latitude, vp.longitude, vp.zoom)
