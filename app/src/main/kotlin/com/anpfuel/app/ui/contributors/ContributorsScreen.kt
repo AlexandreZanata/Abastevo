@@ -127,6 +127,7 @@ fun ContributorsContent(
             )
 
             state.items.isEmpty() -> ContributorsEmpty(
+                onClaimClick = onClaimClick,
                 modifier = Modifier.fillMaxSize().padding(padding),
             )
 
@@ -189,7 +190,7 @@ private fun ContributorsNotice(
 }
 
 @Composable
-private fun ContributorsEmpty(modifier: Modifier = Modifier) {
+private fun ContributorsEmpty(onClaimClick: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -205,8 +206,17 @@ private fun ContributorsEmpty(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // The first contributor must be able to claim while the list is empty.
+        OutlinedButton(
+            onClick = onClaimClick,
+            modifier = Modifier.fillMaxWidth().testTag(CONTRIBUTORS_CLAIM_ENTRY_TAG),
+        ) {
+            Text(stringResource(R.string.claim_entry_button))
+        }
     }
 }
+
+const val CONTRIBUTORS_CLAIM_ENTRY_TAG = "contributors-claim-entry"
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

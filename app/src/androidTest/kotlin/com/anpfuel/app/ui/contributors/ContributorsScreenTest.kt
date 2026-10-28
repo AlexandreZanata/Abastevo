@@ -3,6 +3,7 @@ package com.anpfuel.app.ui.contributors
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -31,13 +32,14 @@ class ContributorsScreenTest {
         state: ContributorsUiState,
         onOpenLink: (String) -> Unit = {},
         onRetry: () -> Unit = {},
+        onClaimClick: () -> Unit = {},
     ) {
         compose.setContent {
             AnpFuelTheme(darkTheme = false) {
                 ContributorsContent(
                     state = state,
                     onNavigateBack = {},
-                    onClaimClick = {},
+                    onClaimClick = onClaimClick,
                     onRetry = onRetry,
                     onLoadMore = {},
                     onOpenLink = onOpenLink,
@@ -58,6 +60,13 @@ class ContributorsScreenTest {
     @Test fun emptyStateHasNoRows() {
         render(ContributorsUiState(loading = false, items = emptyList()))
         compose.onNodeWithText("Ana").assertDoesNotExist()
+    }
+
+    @Test fun emptyStateStillOffersClaim() {
+        var claimed = false
+        render(ContributorsUiState(loading = false, items = emptyList()), onClaimClick = { claimed = true })
+        compose.onNodeWithTag(CONTRIBUTORS_CLAIM_ENTRY_TAG).performClick()
+        assertEquals(true, claimed)
     }
 
     @Test fun errorStateRetries() {
