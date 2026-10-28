@@ -128,7 +128,15 @@ func TestWrongKeyAndAccountMismatch(t *testing.T) {
 	// Tampered statement byte fails.
 	proof = key.sign(t, provAccount, provContrib, provNow+60)
 	parts := strings.Split(proof, ".")
-	parts[2] = parts[2][:len(parts[2])-2] + "AA"
+	// Flip a decoded signature byte: rewriting trailing base64 characters
+	// can leave the decoded bytes unchanged (padding bits), which made this
+	// assertion flaky.
+	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
+	if err != nil || len(sig) == 0 {
+		t.Fatalf("decode signature: %v", err)
+	}
+	sig[len(sig)/2] ^= 0xff
+	parts[2] = base64.RawURLEncoding.EncodeToString(sig)
 	if _, err := p.VerifyKeyProof(context.Background(), provAccount, provContrib, strings.Join(parts, ".")); err == nil {
 		t.Error("tampered signature must fail")
 	}

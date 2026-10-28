@@ -9,6 +9,7 @@ package config
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"net"
@@ -94,6 +95,20 @@ const (
 	keyQualitySanctionsDiscoveryEnabled   = "ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED"
 	keyQualityDiscoveryEnabled            = "ANPFUEL_QUALITY_DISCOVERY_ENABLED"
 	keyQualityRevalidationEnabled         = "ANPFUEL_QUALITY_REVALIDATION_ENABLED"
+	// Administrative surface (ADR-023). The raw key never reaches the
+	// process: only its lowercase SHA-256 is configured. No hash means no
+	// /v1/admin/* route is registered.
+	keyAdminKeySHA256     = "ANPFUEL_ADMIN_KEY_SHA256"
+	keyAdminKeySHA256Next = "ANPFUEL_ADMIN_KEY_SHA256_NEXT"
+	keyAdminOrigin        = "ANPFUEL_ADMIN_ORIGIN"
+	keyAdminAllowedCIDRs  = "ANPFUEL_ADMIN_ALLOWED_CIDRS"
+	// Contributor surface (ADR-023). The GitHub repository is owner/repo;
+	// the token is optional and read-only. Public web origins are the only
+	// origins allowed to read GET /v1/contributors with CORS.
+	keyGitHubRepo       = "ANPFUEL_GITHUB_REPO"
+	keyGitHubToken      = "ANPFUEL_GITHUB_TOKEN"
+	keyPublicWebOrigins = "ANPFUEL_PUBLIC_WEB_ORIGINS"
+	keyDriverEnabled    = "ANPFUEL_DRIVER_ENABLED"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -142,6 +157,8 @@ type Config struct {
 	QualitySanctionsDiscoveryEnabled   bool
 	QualityDiscoveryEnabled            bool
 	QualityRevalidationEnabled         bool
+	// DriverEnabled gates private driver report/command routes and worker cleanup.
+	DriverEnabled bool
 	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
 	QualityReadsEnabled        bool
 	QualityCompanyReadsEnabled bool
@@ -199,6 +216,20 @@ type Config struct {
 	// Payments holds provider switches and credentials; LogValue/Preflight
 	// expose readiness only, never key material.
 	Payments PaymentsConfig
+	// AdminKeyHashes are the accepted lowercase SHA-256 digests (current
+	// plus optional rotation value). Empty keeps the admin routes unmounted.
+	// AdminOrigin must exactly match the browser Origin for non-GET admin
+	// requests. AdminAllowedCIDRs is the optional network fence. None of
+	// these values is a raw key and none is logged.
+	AdminKeyHashes    []string
+	AdminOrigin       string
+	AdminAllowedCIDRs []netip.Prefix
+	// GitHubRepo is owner/repo for contributor snapshots. GitHubToken is
+	// optional and never logged. PublicWebOrigins is the CORS allowlist for
+	// GET /v1/contributors only.
+	GitHubRepo       string
+	GitHubToken      string
+	PublicWebOrigins []string
 }
 
 // LogValue renders Config for slog without secrets: the DSN never appears,
@@ -211,6 +242,10 @@ func (c Config) LogValue() slog.Value {
 		slog.Int64("max_body_bytes", c.MaxBodyBytes),
 		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
 		slog.Bool("db_configured", c.DatabaseURL != ""),
+		slog.Bool("admin_configured", len(c.AdminKeyHashes) > 0),
+		slog.String("github_repo", c.GitHubRepo),
+		slog.Bool("github_token_configured", c.GitHubToken != ""),
+		slog.Int("public_web_origins", len(c.PublicWebOrigins)),
 		slog.Any("r2", c.R2.r2LogValue()),
 		slog.Any("payments", c.Payments.logValue()),
 	)
@@ -354,6 +389,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_CHARGING_READS_ENABLED must be boolean")
 		}
 		cfg.ChargingReadsEnabled = enabled
+	}
+
+	if raw, present := getenv(keyDriverEnabled); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_DRIVER_ENABLED must be boolean")
+		}
+		cfg.DriverEnabled = enabled
 	}
 
 	cfg.PriceRankingEnabled = true
@@ -556,6 +599,20 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	}
 	cfg.R2 = r2
 	cfg.Payments = loadPayments(getenv, cfg.Env)
+	adminHashes, adminOrigin, adminCIDRs, err := loadAdmin(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.AdminKeyHashes = adminHashes
+	cfg.AdminOrigin = adminOrigin
+	cfg.AdminAllowedCIDRs = adminCIDRs
+	githubRepo, githubToken, publicOrigins, err := loadContributor(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.GitHubRepo = githubRepo
+	cfg.GitHubToken = githubToken
+	cfg.PublicWebOrigins = publicOrigins
 	if raw, _ := getenv(keyEvidenceMaxPending); raw != "" {
 		n, err := strconv.Atoi(raw)
 		if err != nil || n < 0 || n > 100 {
@@ -574,6 +631,116 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		cfg.DevelopmentPhotoPreviewUntil = deadline
 	}
 	return cfg, nil
+}
+
+// loadAdmin validates the optional administrative surface. A malformed hash,
+// origin or CIDR fails startup by variable name only; no value is echoed. No
+// hash keeps the routes unmounted (ADM-01).
+func loadAdmin(getenv func(string) (string, bool)) ([]string, string, []netip.Prefix, error) {
+	var hashes []string
+	seen := map[string]bool{}
+	for _, name := range []string{keyAdminKeySHA256, keyAdminKeySHA256Next} {
+		raw, _ := getenv(name)
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		if !validAdminHash(raw) {
+			return nil, "", nil, fmt.Errorf("%s must be 64 lowercase hex characters", name)
+		}
+		if !seen[raw] {
+			seen[raw] = true
+			hashes = append(hashes, raw)
+		}
+	}
+
+	origin, _ := getenv(keyAdminOrigin)
+	origin = strings.TrimSpace(origin)
+	if origin != "" {
+		parsed, err := url.Parse(origin)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
+			parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" ||
+			parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+			return nil, "", nil, fmt.Errorf("%s must be an http(s) origin", keyAdminOrigin)
+		}
+		origin = parsed.Scheme + "://" + parsed.Host
+	}
+	if len(hashes) > 0 && origin == "" {
+		return nil, "", nil, fmt.Errorf("%s is required when an admin key hash is configured", keyAdminOrigin)
+	}
+
+	var cidrs []netip.Prefix
+	rawCIDRs, _ := getenv(keyAdminAllowedCIDRs)
+	for _, part := range strings.Split(rawCIDRs, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(part)
+		if err != nil {
+			return nil, "", nil, fmt.Errorf("%s must be comma-separated CIDRs", keyAdminAllowedCIDRs)
+		}
+		cidrs = append(cidrs, prefix.Masked())
+	}
+	return hashes, origin, cidrs, nil
+}
+
+// loadContributor validates the optional contributor surface. The token is
+// never echoed; malformed values fail by variable name only.
+func loadContributor(getenv func(string) (string, bool)) (string, string, []string, error) {
+	repo := strings.TrimSpace(getenvValue(getenv, keyGitHubRepo))
+	if repo != "" {
+		parts := strings.Split(repo, "/")
+		if len(parts) != 2 || !validRepoPart(parts[0]) || !validRepoPart(parts[1]) {
+			return "", "", nil, fmt.Errorf("%s must be owner/repo", keyGitHubRepo)
+		}
+	}
+	token := strings.TrimSpace(getenvValue(getenv, keyGitHubToken))
+	var origins []string
+	seen := map[string]bool{}
+	for _, part := range strings.Split(getenvValue(getenv, keyPublicWebOrigins), ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		parsed, err := url.Parse(part)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
+			parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" ||
+			parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+			return "", "", nil, fmt.Errorf("%s must be comma-separated http(s) origins", keyPublicWebOrigins)
+		}
+		origin := parsed.Scheme + "://" + parsed.Host
+		if !seen[origin] {
+			seen[origin] = true
+			origins = append(origins, origin)
+		}
+	}
+	return repo, token, origins, nil
+}
+
+func getenvValue(getenv func(string) (string, bool), key string) string {
+	value, _ := getenv(key)
+	return value
+}
+
+func validRepoPart(part string) bool {
+	if part == "" || len(part) > 100 {
+		return false
+	}
+	for _, c := range part {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.') {
+			return false
+		}
+	}
+	return true
+}
+
+func validAdminHash(raw string) bool {
+	if len(raw) != 64 || strings.ToLower(raw) != raw {
+		return false
+	}
+	_, err := hex.DecodeString(raw)
+	return err == nil
 }
 
 // validTermsDigest bounds the configured training-terms digest before

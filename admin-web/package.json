@@ -1,0 +1,19 @@
+{
+  "name": "abastevo-admin-web",
+  "version": "1.0.0",
+  "description": "Static owner admin panel for abastevo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/**/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": "staff-roles-v1",
+  "roles": [
+    {"code": "community_moderator", "label": "Moderação da comunidade"},
+    {"code": "station_reviewer", "label": "Revisão de postos"},
+    {"code": "contributor_curator", "label": "Curadoria de contribuidores"},
+    {"code": "support_agent", "label": "Suporte"}
+  ]
+}

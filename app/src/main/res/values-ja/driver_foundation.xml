@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ledger_review_required">保存前に以前の走行距離の単位を確認してください。</string>
+    <string name="ledger_review_saved">保存された数値（単位未確認）: %1$d</string>
+    <string name="ledger_review_metres">%1$s km を確認（保存値はメートル）</string>
+    <string name="ledger_review_kilometres">%1$s km を確認（保存値はキロメートル）</string>
+    <string name="ledger_review_failed">確認は保存されませんでした。項目を閉じて再度開いてください。</string>
+    <string name="ledger_review_entry">走行距離の単位を確認</string>
+    <string name="monthly_review_required">以前の走行距離の単位を確認するまで燃費と km あたりの費用は表示できません。</string>
+</resources>

@@ -26,4 +26,5 @@ O abastevo é um projeto de código aberto sob licença MIT desenvolvido para da
 - Política de Privacidade: {{CANONICAL_ORIGIN}}/privacidade/
 - Exclusão de Conta e Dados: {{CANONICAL_ORIGIN}}/excluir-conta/
 - Termos de Uso e Comunidade: {{CANONICAL_ORIGIN}}/termos/
+- Contribuidores do projeto: {{CANONICAL_ORIGIN}}/contribuidores/
 - Repositório no GitHub: https://github.com/AlexandreZanata/abastevo

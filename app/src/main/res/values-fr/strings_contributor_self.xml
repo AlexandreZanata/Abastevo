@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- B-BR-CTB contributor self-service -->
+    <string name="claim_entry_button">Je suis contributeur</string>
+    <string name="claim_screen_title">Devenir contributeur</string>
+    <string name="claim_login_label">Login GitHub</string>
+    <string name="claim_open_button">Demander un code</string>
+    <string name="claim_code_title">Votre code de vérification</string>
+    <string name="claim_code_instructions">Créez un gist public avec ce code puis envoyez son ID.</string>
+    <string name="claim_copy_button">Copier le code</string>
+    <string name="claim_dismiss_button">Fermer</string>
+    <string name="claim_gist_label">ID du gist</string>
+    <string name="claim_prove_button">Envoyer la preuve</string>
+    <string name="claim_withdraw_button">Retirer la demande</string>
+    <string name="claim_signed_out">Connectez-vous pour revendiquer ou modifier votre profil de contributeur.</string>
+    <string name="claim_empty">Aucune demande.</string>
+    <string name="claim_quota">Limite atteinte. Réessayez plus tard.</string>
+    <string name="claim_conflict">Une demande est déjà ouverte.</string>
+    <string name="claim_invalid">Vérifiez l\'identifiant GitHub ou l\'ID du gist et réessayez.</string>
+    <string name="claim_edit_profile_button">Modifier le profil public</string>
+    <string name="claim_state_pending">En attente</string>
+    <string name="claim_state_approved">Approuvée</string>
+    <string name="claim_state_rejected">Rejetée</string>
+    <string name="claim_state_withdrawn">Retirée</string>
+    <string name="claim_state_expired">Expirée</string>
+    <string name="contributor_profile_screen_title">Profil public</string>
+    <string name="profile_name_label">Nom affiché</string>
+    <string name="profile_name_error">Utilisez 2 à 40 lettres, chiffres, espaces ou .-\'.</string>
+    <string name="profile_platform_label">Plateforme</string>
+    <string name="profile_handle_label">Identifiant</string>
+    <string name="profile_visibility_label">Profil public</string>
+    <string name="profile_consent_text">Je comprends que mon nom, mes liens et mes rôles seront visibles par tous.</string>
+    <string name="profile_consent_error">La publication exige un consentement explicite.</string>
+    <string name="profile_links_error">Utilisez au plus 2 liens, un par plateforme, avec un identifiant valide.</string>
+    <string name="profile_roles_label">Afficher les rôles publiquement</string>
+    <string name="profile_save_button">Enregistrer</string>
+    <string name="profile_saved">Profil enregistré.</string>
+    <string name="profile_empty">Aucun profil. Remplissez et enregistrez.</string>
+    <string name="profile_forbidden">Votre compte ne peut pas encore modifier le profil.</string>
+    <string name="profile_quota">Limite de modifications atteinte. Réessayez plus tard.</string>
+    <string name="profile_conflict">Modification en conflit. Rechargez et réessayez.</string>
+</resources>

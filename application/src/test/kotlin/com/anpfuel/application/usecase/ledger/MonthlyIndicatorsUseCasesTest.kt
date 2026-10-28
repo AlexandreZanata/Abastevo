@@ -37,8 +37,8 @@ class MonthlyIndicatorsUseCasesTest {
     private class FakeDrafts : LedgerDraftStore {
         val rows = mutableListOf<StoredLedgerDraft>()
         var now = 0L
-        override suspend fun save(accountId: String, origin: String, draft: LedgerDraft, expectedRevision: Long, nowMillis: Long, context: com.anpfuel.domain.premium.LedgerSessionContext?) =
-            StoredLedgerDraft(draft, expectedRevision, nowMillis).also { rows.add(it) }
+        override suspend fun save(accountId: String, origin: String, draft: LedgerDraft, expectedRevision: Long, nowMillis: Long, context: com.anpfuel.domain.premium.LedgerSessionContext?, odometerEvidence: com.anpfuel.domain.premium.OdometerEvidence) =
+            StoredLedgerDraft(draft, expectedRevision, nowMillis, odometerEvidence = com.anpfuel.domain.premium.OdometerEvidence.VERIFIED_METRES).also { rows.add(it) }
         override suspend fun find(accountId: String, origin: String, dataset: LedgerDataset, recordId: String) = rows.firstOrNull { it.draft.recordId == recordId }
         override suspend fun list(accountId: String, origin: String) = rows.toList()
         override suspend fun delete(accountId: String, origin: String, dataset: LedgerDataset, recordId: String) {
@@ -201,4 +201,36 @@ class MonthlyIndicatorsUseCasesTest {
         assertEquals("800/3", got.energyReference.whPerKm)
         assertEquals("0", got.energyComparison.changePercent)
     }
+    @Test fun `legacy unknown odometer units retain money but cannot certify consumption`() = runTest {
+        drafts.rows.add(StoredLedgerDraft(refuel("aaaaaaaa-1111-4111-8111-111111111111",at1,10000),0,1))
+        drafts.rows.add(StoredLedgerDraft(refuel("bbbbbbbb-2222-4222-8222-222222222222",at2,10500),0,2))
+        val got = useCase(vehicleId,2026,3,"America/Sao_Paulo").single()
+        assertEquals(24800L,got.purchaseCentavos)
+        assertEquals("odometer-unit-unverified",got.measured.unknown)
+        assertEquals("",got.costPerKm)
+        assertEquals("odometer-unit-unverified",got.combinedUnknown)
+    }
+    @Test fun `unverified expense odometer does not block consumption from verified refuel anchors`() = runTest {
+        drafts.save("local","o",refuel("aaaaaaaa-1111-4111-8111-111111111111",at1,100000),0,1)
+        drafts.save("local","o",refuel("bbbbbbbb-2222-4222-8222-222222222222",at2,200000),0,2)
+        val expense = ExpenseDraft("cccccccc-3333-4333-8333-333333333333",vid,at1,"America/Sao_Paulo",5000,ExpenseCategory.MAINTENANCE,150,"legacy note")
+        drafts.rows.add(StoredLedgerDraft(expense,0,3))
+        val got = useCase(vehicleId,2026,3,"America/Sao_Paulo").single()
+        assertEquals("",got.measured.unknown)
+        assertEquals("5",got.measured.kmPerUnit)
+        assertEquals("124",got.costPerKm)
+        assertEquals(5000L,got.expenseCentavos)
+        assertEquals(false,got.windowNote.hasUnverifiedOdometer)
+    }
+
+    @Test fun `one unverified refuel among verified anchors blocks the derived distance not the money`() = runTest {
+        drafts.save("local","o",refuel("aaaaaaaa-1111-4111-8111-111111111111",at1,100000),0,1)
+        drafts.rows.add(StoredLedgerDraft(refuel("bbbbbbbb-2222-4222-8222-222222222222",at2,200),0,2))
+        val got = useCase(vehicleId,2026,3,"America/Sao_Paulo").single()
+        assertEquals(24800L,got.purchaseCentavos)
+        assertEquals("odometer-unit-unverified",got.measured.unknown)
+        assertEquals(true,got.windowNote.hasUnverifiedOdometer)
+        assertEquals(0L,got.windowNote.distanceMetres)
+    }
+
 }

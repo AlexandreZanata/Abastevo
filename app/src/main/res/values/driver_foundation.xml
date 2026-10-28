@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ledger_review_required">Confirm the unit of this older odometer reading before saving.</string>
+    <string name="ledger_review_saved">Stored number (unit unverified): %1$d</string>
+    <string name="ledger_review_metres">Confirm %1$s km (stored number was metres)</string>
+    <string name="ledger_review_kilometres">Confirm %1$s km (stored number was kilometres)</string>
+    <string name="ledger_review_failed">Review was not saved. Close and reopen this entry to check its current values.</string>
+    <string name="ledger_review_entry">Review odometer unit</string>
+    <string name="monthly_review_required">Consumption and cost/km are unavailable until the older odometer readings are reviewed.</string>
+</resources>

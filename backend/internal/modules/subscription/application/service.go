@@ -26,11 +26,14 @@ func (s *Service) Status(ctx context.Context, p Principal) (domain.Status, error
 	if err != nil {
 		return domain.Status{}, err
 	}
-	result := domain.Evaluate(snapshot, s.now(), true)
+	now := s.now()
+	result := domain.Evaluate(snapshot, now, true)
 	webActive := snapshot != nil && len(snapshot.WebCapabilities) > 0 &&
-		!snapshot.WebValidUntil.IsZero() && s.now().Before(snapshot.WebValidUntil)
+		!snapshot.WebValidUntil.IsZero() && now.Before(snapshot.WebValidUntil)
+	adminActive := snapshot != nil && len(snapshot.AdminCapabilities) > 0 &&
+		(snapshot.AdminValidUntil.IsZero() || now.Before(snapshot.AdminValidUntil))
 	result.PaymentsConfigured = s.Configured() || webActive
-	if !result.PaymentsConfigured {
+	if !result.PaymentsConfigured && !adminActive {
 		result.Capabilities = []string{}
 		result.Reason = "payments-disabled"
 	}

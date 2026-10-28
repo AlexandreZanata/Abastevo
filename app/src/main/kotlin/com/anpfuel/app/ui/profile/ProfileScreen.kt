@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -51,6 +52,7 @@ import com.anpfuel.app.ui.auth.AuthViewModel
 import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.contributors.ProfileContributorsEntry
 import com.anpfuel.app.ui.components.SkeletonButton
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
@@ -80,6 +82,7 @@ fun ProfileScreen(
     onToggleTheme: () -> Unit,
     onNavigate: (String) -> Unit,
     onOpenPremium: () -> Unit,
+    onOpenContributors: () -> Unit,
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = hiltViewModel(),
 ) {
@@ -208,6 +211,20 @@ fun ProfileScreen(
                 }
             }
 
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = AnpContainerDefaults.containerShape(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surface),
+            ) {
+                ProfileToolItem(
+                    icon = Icons.Default.DirectionsCar,
+                    title = stringResource(R.string.driver_hub_title),
+                    subtitle = stringResource(R.string.driver_hub_profile_subtitle),
+                    onClick = { onNavigate(Routes.DRIVER_HUB) },
+                )
+            }
+
             OutlinedButton(
                 onClick = { onNavigate(Routes.qualityReportHistory()) },
                 modifier = Modifier.fillMaxWidth(),
@@ -307,12 +324,20 @@ fun ProfileScreen(
                         title = stringResource(R.string.profile_tool_privacy_title),
                         subtitle = stringResource(R.string.profile_tool_privacy_subtitle),
                         onClick = { onNavigate(Routes.PRIVACY) },
+                        modifier = Modifier.testTag(PROFILE_TOOL_PRIVACY_TEST_TAG),
                     )
                 }
             }
+
+            // B-BR-CTB project contributors entry: highlighted last card.
+            ProfileContributorsEntry(
+                onClick = onOpenContributors,
+            )
         }
     }
 }
+
+const val PROFILE_TOOL_PRIVACY_TEST_TAG = "profile_tool_privacy"
 
 @Composable
 private fun ProfileSkeleton() {
@@ -331,9 +356,10 @@ private fun ProfileToolItem(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),

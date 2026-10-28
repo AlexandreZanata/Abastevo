@@ -222,6 +222,7 @@ sql:
       - db/migrations/000075_subscription_ownership.sql
       - db/migrations/000076_subscription_notifications.sql
       - db/migrations/000077_subscription_reconcile.sql
+      - db/migrations/000141_entitlement_grants.sql
     gen:
       go:
         package: subscription
@@ -243,6 +244,7 @@ sql:
       - db/migrations/000082_cloud_compaction.sql
       - db/migrations/000083_cloud_snapshots.sql
       - db/migrations/000084_cloud_restores.sql
+      - db/migrations/000138_cloud_driver_consent.sql
     gen:
       go:
         package: cloudsync
@@ -351,5 +353,78 @@ sql:
       go:
         package: charging
         out: db/queries/charging
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/admin
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000075_subscription_ownership.sql
+      - db/migrations/000140_admin_sessions_audit.sql
+    gen:
+      go:
+        package: admin
+        out: db/queries/admin
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/entitlement
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000140_admin_sessions_audit.sql
+      - db/migrations/000141_entitlement_grants.sql
+    gen:
+      go:
+        package: entitlement
+        out: db/queries/entitlement
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/contributor
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000141_entitlement_grants.sql
+      - db/migrations/000142_contributor_profiles.sql
+      - db/migrations/000143_staff_roles.sql
+    gen:
+      go:
+        package: contributor
+        out: db/queries/contributor
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/staff
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000140_admin_sessions_audit.sql
+      - db/migrations/000143_staff_roles.sql
+    gen:
+      go:
+        package: staff
+        out: db/queries/staff
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/driver
+    schema:
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000133_driver_earnings.sql
+      - db/migrations/000134_driver_shifts_distance.sql
+      - db/migrations/000135_driver_cost_maintenance.sql
+      - db/migrations/000136_driver_reconciliation.sql
+      - db/migrations/000137_driver_report_snapshots.sql
+    gen:
+      go:
+        package: driver
+        out: db/queries/driver
         sql_package: pgx/v5
         emit_json_tags: true

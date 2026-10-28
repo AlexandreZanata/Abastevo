@@ -536,6 +536,7 @@ object UseCaseModule {
         syncScope: com.anpfuel.domain.repository.LedgerSyncScope,
         acks: com.anpfuel.domain.repository.LedgerSyncAckStore,
         erasures: com.anpfuel.domain.repository.LedgerErasureLog,
+        drafts: com.anpfuel.domain.repository.LedgerDraftStore,
     ): com.anpfuel.application.usecase.ledger.DispatchLedgerCommandUseCase =
         com.anpfuel.application.usecase.ledger.DispatchLedgerCommandUseCase(
             outbox = commands,
@@ -546,6 +547,7 @@ object UseCaseModule {
             syncScope = syncScope,
             acks = acks,
             erasures = erasures,
+            drafts = drafts,
         )
 
     @Provides
@@ -995,6 +997,81 @@ object UseCaseModule {
         sessions: com.anpfuel.application.portable.AuthSessionStore,
     ): com.anpfuel.application.usecase.premium.GetPremiumStatusUseCase =
         com.anpfuel.application.usecase.premium.GetPremiumStatusUseCase(
+            gateway = gateway,
+            sessions = sessions,
+        )
+
+    @Provides
+    @Singleton
+    fun provideGetContributorsUseCase(
+        gateway: com.anpfuel.domain.repository.ContributorsGateway,
+    ): com.anpfuel.application.usecase.contributor.GetContributorsUseCase =
+        com.anpfuel.application.usecase.contributor.GetContributorsUseCase(
+            gateway = gateway,
+        )
+
+    @Provides
+    @Singleton
+    fun provideOpenClaimUseCase(
+        gateway: com.anpfuel.domain.repository.ContributorSelfGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+    ): com.anpfuel.application.usecase.contributor.OpenClaimUseCase =
+        com.anpfuel.application.usecase.contributor.OpenClaimUseCase(
+            gateway = gateway,
+            sessions = sessions,
+        )
+
+    @Provides
+    @Singleton
+    fun provideReadOwnClaimsUseCase(
+        gateway: com.anpfuel.domain.repository.ContributorSelfGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+    ): com.anpfuel.application.usecase.contributor.ReadOwnClaimsUseCase =
+        com.anpfuel.application.usecase.contributor.ReadOwnClaimsUseCase(
+            gateway = gateway,
+            sessions = sessions,
+        )
+
+    @Provides
+    @Singleton
+    fun provideSubmitClaimProofUseCase(
+        gateway: com.anpfuel.domain.repository.ContributorSelfGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+    ): com.anpfuel.application.usecase.contributor.SubmitClaimProofUseCase =
+        com.anpfuel.application.usecase.contributor.SubmitClaimProofUseCase(
+            gateway = gateway,
+            sessions = sessions,
+        )
+
+    @Provides
+    @Singleton
+    fun provideWithdrawClaimUseCase(
+        gateway: com.anpfuel.domain.repository.ContributorSelfGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+    ): com.anpfuel.application.usecase.contributor.WithdrawClaimUseCase =
+        com.anpfuel.application.usecase.contributor.WithdrawClaimUseCase(
+            gateway = gateway,
+            sessions = sessions,
+        )
+
+    @Provides
+    @Singleton
+    fun provideReadOwnProfileUseCase(
+        gateway: com.anpfuel.domain.repository.ContributorSelfGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+    ): com.anpfuel.application.usecase.contributor.ReadOwnProfileUseCase =
+        com.anpfuel.application.usecase.contributor.ReadOwnProfileUseCase(
+            gateway = gateway,
+            sessions = sessions,
+        )
+
+    @Provides
+    @Singleton
+    fun provideUpsertProfileUseCase(
+        gateway: com.anpfuel.domain.repository.ContributorSelfGateway,
+        sessions: com.anpfuel.application.portable.AuthSessionStore,
+    ): com.anpfuel.application.usecase.contributor.UpsertProfileUseCase =
+        com.anpfuel.application.usecase.contributor.UpsertProfileUseCase(
             gateway = gateway,
             sessions = sessions,
         )

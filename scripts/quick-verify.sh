@@ -63,6 +63,12 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     fi
 done < "$MANIFEST"
 
+echo "== release workflow guard =="
+bash "$ROOT/scripts/check-release-workflow.sh"
+
+echo "== staging deploy agent =="
+bash "$ROOT/infra/deploy/agent/tests/test-agent.sh"
+
 # Collect changed files from working tree (tracked + untracked) and, when
 # available, the committed PR diff against origin/main. CI checkouts are clean,
 # so working-tree status alone would scan nothing; the PR diff covers that case.
@@ -91,7 +97,7 @@ else
         case "$f" in
             *.md|*.mdc|docs/*|.cursor/*|README*|ROADMAP*|TRADEMARKS*|LICENSE*|.gitignore)
                 ;;
-            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|tools/*)
+            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|admin-web/*|tools/*)
                 DOCS_ONLY=0
                 ;;
             *)
@@ -200,6 +206,27 @@ else
         npm --prefix landing run build
         npm --prefix landing run check
         npm --prefix landing test
+    fi
+    # Bounded admin web selection (ADR-023 B1): admin-web changes run its
+    # typecheck, build, dist check and tests, mirroring the landing.
+    ADMIN_WEB_CHANGED=0
+    while IFS= read -r f || [[ -n "$f" ]]; do
+        case "$f" in
+            admin-web/*)
+                ADMIN_WEB_CHANGED=1
+                break
+                ;;
+        esac
+    done <<< "$CHANGED_ALL"
+    if [[ "$ADMIN_WEB_CHANGED" == "1" ]]; then
+        echo "== admin web static & ts selection =="
+        if [[ ! -d "admin-web/node_modules" ]]; then
+            npm --prefix admin-web ci
+        fi
+        npm --prefix admin-web run typecheck
+        npm --prefix admin-web run build
+        npm --prefix admin-web run check
+        npm --prefix admin-web test
     fi
     # Bounded Rust selection (RST-04): tools-area changes run the frozen
     # Rust gate (fmt, clippy, locked tests). Quick verification itself is

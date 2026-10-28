@@ -1,0 +1,61 @@
+apiVersion: v1
+data:
+  Caddyfile: "# Staging same-origin web tier. The static landing serves / and the\
+    \ verified\n# enterprise portal release serves its own routes (search, prices,\
+    \ stations,\n# fines). The existing TLS edge keeps /v1, /health and media on the\
+    \ API and\n# proxies everything else here; this server never proxies the API.\n\
+    #\n# Mounts (read-only): /srv/landing = landing root whose atomically switched\n\
+    # current symlink is the dist built for the staging origin; /srv/portal = the\n\
+    # worker's private portal root (current release + retained asset\n# generations).\
+    \ Runs as the worker uid, so the private 0600 release files\n# stay private on\
+    \ the host.\n#\n# Staging is never indexable: noindex everywhere, robots disallow,\
+    \ no sitemap.\n{\n\tadmin off\n\tpersist_config off\n\tauto_https off\n}\n\n(security_headers)\
+    \ {\n\theader {\n\t\tStrict-Transport-Security \"max-age=31536000\"\n\t\tX-Content-Type-Options\
+    \ nosniff\n\t\tX-Frame-Options DENY\n\t\tReferrer-Policy strict-origin-when-cross-origin\n\
+    \t\tPermissions-Policy \"camera=(), microphone=(), geolocation=()\"\n\t\tContent-Security-Policy\
+    \ \"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;\
+    \ connect-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors\
+    \ 'none'; object-src 'none'\"\n\t\tX-Robots-Tag \"noindex, nofollow\"\n\t\t-Server\n\
+    \t}\n}\n\n:8080 {\n\t# gzip only: zstd encoders hold large windows per concurrent\
+    \ response and\n\t# OOM-killed a 128 MiB tier under load; the edge caches compressed\
+    \ bodies.\n\tencode gzip\n\n\timport security_headers\n\n\thandle /robots.txt\
+    \ {\n\t\trespond \"User-agent: *\nDisallow: /\n\" 200\n\t}\n\thandle /sitemap.xml\
+    \ {\n\t\trespond 404\n\t}\n\n\t@portalBare path /consultar /precos /fiscalizacao\
+    \ /curiosidades /dados /metodologia\n\tredir @portalBare {path}/ 308\n\n\t# Static\
+    \ map overlay releases are content-addressed and never change.\n\thandle_path\
+    \ /dados/mapa/* {\n\t\troot * /srv/portal/map\n\t\t# current/ is an atomic symlink\
+    \ that moves on every release: short\n\t\t# cache. Release directories are content-addressed:\
+    \ immutable.\n\t\t@current path /current/*\n\t\theader @current Cache-Control\
+    \ \"public, max-age=300\"\n\t\t@release not path /current/*\n\t\theader @release\
+    \ Cache-Control \"public, max-age=31536000, immutable\"\n\t\t# Caddy 2.10.2 answers\
+    \ 206 to a plain GET with precompressed; the\n\t\t# global gzip encoder plus the\
+    \ edge micro-cache serve these instead.\n\t\tfile_server\n\t}\n\n\t# Search shards\
+    \ are addressed by release, so they never change in place.\n\t@portal path /consultar/*\
+    \ /precos/* /postos/* /fiscalizacao/* /curiosidades/* /dados/* /metodologia/*\
+    \ /portal-manifest.json\n\thandle @portal {\n\t\troot * /srv/portal/current\n\t\
+    \t@shards path /dados/busca/*\n\t\t@pages not path /dados/busca/*\n\t\theader\
+    \ @shards Cache-Control \"public, max-age=31536000, immutable\"\n\t\theader @pages\
+    \ Cache-Control \"public, max-age=0, must-revalidate\"\n\t\tfile_server\n\t}\n\
+    \n\t# Content-hashed assets: landing first, then the portal's retained\n\t# generations\
+    \ (old cached pages keep loading), then the current release.\n\thandle /assets/*\
+    \ {\n\t\theader Cache-Control \"public, max-age=31536000, immutable\"\n\t\t@landingAsset\
+    \ file {\n\t\t\troot /srv/landing/current\n\t\t}\n\t\thandle @landingAsset {\n\
+    \t\t\troot * /srv/landing/current\n\t\t\tfile_server\n\t\t}\n\t\t@retainedAsset\
+    \ file {\n\t\t\troot /srv/portal/retained\n\t\t}\n\t\thandle @retainedAsset {\n\
+    \t\t\troot * /srv/portal/retained\n\t\t\tfile_server\n\t\t}\n\t\thandle {\n\t\t\
+    \troot * /srv/portal/current\n\t\t\tfile_server\n\t\t}\n\t}\n\n\t# Admin web panel\
+    \ (ADR-023 B3): static, shipped inside the signed landing\n\t# bundle under admin/;\
+    \ data comes only from the same-origin /v1/admin API,\n\t# which stays 404 until\
+    \ an admin key hash and CIDR fence are configured.\n\t# Global CSP/noindex apply;\
+    \ pages are never cached.\n\thandle /admin/* {\n\t\troot * /srv/landing/current\n\
+    \t\t@adminAsset path /admin/assets/*\n\t\theader @adminAsset Cache-Control \"\
+    public, max-age=31536000, immutable\"\n\t\t@adminPage not path /admin/assets/*\n\
+    \t\theader @adminPage Cache-Control \"no-store\"\n\t\tfile_server\n\t}\n\n\thandle\
+    \ {\n\t\troot * /srv/landing/current\n\t\theader Cache-Control \"public, max-age=3600,\
+    \ must-revalidate\"\n\t\tfile_server\n\t}\n\n\thandle_errors 404 {\n\t\timport\
+    \ security_headers\n\t\troot * /srv/landing/current\n\t\trewrite * /404.html\n\
+    \t\theader Cache-Control \"no-cache\"\n\t\tfile_server\n\t}\n}\n"
+kind: ConfigMap
+metadata:
+  name: abastevo-temp-web-caddyfile
+  namespace: abastevo-temp

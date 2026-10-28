@@ -88,9 +88,21 @@ export function copyAppAssets(staticAppDir, outAppDir) {
   return copied;
 }
 
+export function validateApiOrigin(raw) {
+  const origin = (raw || '').trim();
+  if (origin === '') {
+    return '';
+  }
+  return validateOrigin(origin);
+}
+
 export function build(options = {}) {
   const root = options.projectRoot || DEFAULT_ROOT;
   const origin = validateOrigin(options.origin || options.canonicalOrigin || 'https://abastevo.com.br');
+  const apiOrigin = validateApiOrigin(
+    options.apiOrigin || process.env.ABASTEVO_API_ORIGIN || '',
+  );
+  const apiConnectExtra = apiOrigin === '' ? '' : ` ${apiOrigin}`;
   const storeState = options.storeState || 'prelaunch';
   const storeUrl = options.storeUrl || null;
   validateStoreState(storeState, storeUrl);
@@ -129,6 +141,14 @@ export function build(options = {}) {
       fingerprintedSearchName = `search.${searchHash}.js`;
     }
 
+    const contributorsSourcePath = path.join(tmpDir, 'contributors.js');
+    let contributorsContent = null;
+    let fingerprintedContributorsName = null;
+    if (fs.existsSync(contributorsSourcePath)) {
+      contributorsContent = fs.readFileSync(contributorsSourcePath);
+      fingerprintedContributorsName = `contributors.${computeHash(contributorsContent)}.js`;
+    }
+
     // 2. Read and fingerprint CSS
     const cssPath = path.join(staticDir, 'assets', 'styles.css');
     if (!fs.existsSync(cssPath)) {
@@ -148,6 +168,9 @@ export function build(options = {}) {
     fs.writeFileSync(path.join(outDir, 'assets', fingerprintedJsName), jsContent);
     if (searchContent && fingerprintedSearchName) {
       fs.writeFileSync(path.join(outDir, 'assets', fingerprintedSearchName), searchContent);
+    }
+    if (contributorsContent && fingerprintedContributorsName) {
+      fs.writeFileSync(path.join(outDir, 'assets', fingerprintedContributorsName), contributorsContent);
     }
     fs.writeFileSync(path.join(outDir, 'assets', fingerprintedCssName), cssContent);
 
@@ -214,6 +237,7 @@ export function build(options = {}) {
       if (fs.existsSync(src)) {
         let text = fs.readFileSync(src, 'utf8');
         text = text.replaceAll('{{CANONICAL_ORIGIN}}', origin);
+        text = text.replaceAll('{{API_CONNECT_EXTRA}}', apiConnectExtra);
         fs.writeFileSync(path.join(outDir, file), text, 'utf8');
       }
     }
@@ -264,6 +288,7 @@ export function build(options = {}) {
       { srcRel: 'como-usar/minhas-contribuicoes/index.html', destRel: 'como-usar/minhas-contribuicoes/index.html' },
       { srcRel: 'como-usar/perfil-do-posto/index.html', destRel: 'como-usar/perfil-do-posto/index.html' },
       { srcRel: 'como-usar/configuracoes/index.html', destRel: 'como-usar/configuracoes/index.html' },
+      { srcRel: 'contribuidores/index.html', destRel: 'contribuidores/index.html' },
       { srcRel: '404.html', destRel: '404.html' },
     ];
 
@@ -296,7 +321,11 @@ export function build(options = {}) {
       // Asset reference rewrites
       html = html.replaceAll('/assets/styles.css', `/assets/${fingerprintedCssName}`);
       html = html.replaceAll('/assets/main.js', `/assets/${fingerprintedJsName}`);
+      if (fingerprintedContributorsName) {
+        html = html.replaceAll('/assets/contributors.js', `/assets/${fingerprintedContributorsName}`);
+      }
       html = html.replaceAll('{{CANONICAL_ORIGIN}}', origin);
+      html = html.replaceAll('{{ABASTEVO_API_ORIGIN}}', apiOrigin);
 
       // Store state replacement
       const playButton = `<a href="${storeUrl}" class="store-btn store-pill" target="_blank" rel="noopener"><span class="store-btn-icon" aria-hidden="true"><svg fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z"/></svg></span><span class="store-btn-text"><strong>Ver na Google Play</strong><small>Baixar o aplicativo</small></span></a>`;
@@ -359,6 +388,7 @@ export function build(options = {}) {
     return {
       outDir,
       origin,
+      apiOrigin,
       storeState,
       storeUrl,
       fingerprintedCss: fingerprintedCssName,
@@ -385,6 +415,8 @@ if (process.argv[1] === __filename) {
       options.storeState = args[++i];
     } else if (args[i] === '--store-url' && args[i + 1]) {
       options.storeUrl = args[++i];
+    } else if (args[i] === '--api-origin' && args[i + 1]) {
+      options.apiOrigin = args[++i];
     } else if (args[i] === '--out-dir' && args[i + 1]) {
       options.outDir = path.resolve(args[++i]);
     }

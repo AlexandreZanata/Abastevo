@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- B-BR-CTB public project contributors -->
+    <string name="contributors_entry_title">プロジェクトの貢献者</string>
+    <string name="contributors_entry_subtitle">公開プロフィール、GitHub、役割</string>
+    <string name="contributors_screen_title">プロジェクトの貢献者</string>
+    <string name="contributors_empty_title">まだ貢献者がいません</string>
+    <string name="contributors_empty_message">プロジェクトチームに承認されたプロフィールがここに表示されます。</string>
+    <string name="contributors_offline">接続がありません。ネットワークを確認して再試行してください。</string>
+    <string name="contributors_denied">アクセスが拒否されました。</string>
+    <string name="contributors_error">問題が発生しました。</string>
+    <string name="contributors_retry">再試行</string>
+    <string name="contributors_load_more">さらに読み込む</string>
+    <string name="contributors_verified_badge">確認済みGitHub</string>
+    <string name="contributors_since">%1$sから</string>
+</resources>

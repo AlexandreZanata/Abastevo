@@ -58,7 +58,7 @@
 	# no-store, so stripping there is equally safe.
 	@shared_cacheable {
 		method GET
-		path /v1/stations /v1/stations/* /v1/stations/*/prices /v1/stations/*/official-prices
+		path /v1/stations /v1/stations/* /v1/stations/*/prices /v1/stations/*/official-prices /v1/contributors
 	}
 	request_header @shared_cacheable -Cookie
 	request_header @shared_cacheable -Authorization

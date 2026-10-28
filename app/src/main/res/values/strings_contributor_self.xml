@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- B-BR-CTB contributor self-service -->
+    <string name="claim_entry_button">I am a contributor</string>
+    <string name="claim_screen_title">Become a contributor</string>
+    <string name="claim_login_label">GitHub login</string>
+    <string name="claim_open_button">Request code</string>
+    <string name="claim_code_title">Your verification code</string>
+    <string name="claim_code_instructions">Create a public gist containing this code, then submit its ID below.</string>
+    <string name="claim_copy_button">Copy code</string>
+    <string name="claim_dismiss_button">Dismiss</string>
+    <string name="claim_gist_label">Gist ID</string>
+    <string name="claim_prove_button">Submit proof</string>
+    <string name="claim_withdraw_button">Withdraw claim</string>
+    <string name="claim_signed_out">Sign in to claim or edit your contributor profile.</string>
+    <string name="claim_empty">No claims yet.</string>
+    <string name="claim_quota">Claim limit reached. Try again later.</string>
+    <string name="claim_conflict">There is already an open claim.</string>
+    <string name="claim_invalid">Check the GitHub login or gist ID and try again.</string>
+    <string name="claim_edit_profile_button">Edit public profile</string>
+    <string name="claim_state_pending">Pending</string>
+    <string name="claim_state_approved">Approved</string>
+    <string name="claim_state_rejected">Rejected</string>
+    <string name="claim_state_withdrawn">Withdrawn</string>
+    <string name="claim_state_expired">Expired</string>
+    <string name="contributor_profile_screen_title">Public profile</string>
+    <string name="profile_name_label">Display name</string>
+    <string name="profile_name_error">Use 2 to 40 letters, digits, spaces or .-\' characters.</string>
+    <string name="profile_platform_label">Platform</string>
+    <string name="profile_handle_label">Handle</string>
+    <string name="profile_visibility_label">Public profile</string>
+    <string name="profile_consent_text">I understand my name, links and checked roles become visible to anyone.</string>
+    <string name="profile_consent_error">Publishing requires explicit consent.</string>
+    <string name="profile_links_error">Use up to 2 links, one per platform, with a valid handle.</string>
+    <string name="profile_roles_label">Show roles publicly</string>
+    <string name="profile_save_button">Save</string>
+    <string name="profile_saved">Profile saved.</string>
+    <string name="profile_empty">No profile yet. Fill in and save.</string>
+    <string name="profile_forbidden">Your account cannot edit a profile yet.</string>
+    <string name="profile_quota">Edit limit reached. Try again later.</string>
+    <string name="profile_conflict">Conflicting change. Reload and retry.</string>
+</resources>

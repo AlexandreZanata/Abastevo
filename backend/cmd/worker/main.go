@@ -33,6 +33,8 @@ import (
 	directoryregistry "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/registry"
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	directorydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
+	driveradapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/adapters"
+	driverjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/driver/adapters/jobs"
 	enterprisejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/adapters/jobs"
 	evidenceadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters"
 	evidencejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/jobs"
@@ -938,6 +940,11 @@ func run() error {
 		handlers[qualityjobs.RecomputeKind] = qualityjobs.Recompute{Store: qualityadapters.NewProjectionStore(raw)}
 		nativeKinds = append(nativeKinds, qualityjobs.NativeFineImportKind, qualityjobs.NativeFineDiscoveryKind, "quality-import", qualityjobs.RevalidationKind, "quality-discovery", qualityjobs.RecomputeKind)
 	}
+	if cfg.DriverEnabled {
+		handlers[driverjobs.ReportCleanupKind] = driverjobs.ReportCleanup{
+			Store: driveradapters.NewReportStore(raw), Retention: 400 * 24 * time.Hour, Limit: 1000,
+		}
+	}
 	dispatchers, err := workerDispatchers(queue, handlers, nativeKinds...)
 	if err != nil {
 		return err
@@ -1018,6 +1025,11 @@ func run() error {
 			Build: func(string) map[string]any { return map[string]any{"version": 1} },
 		},
 		{Name: "privacy-training-reconcile-every-minute", Kind: "privacy-training-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
+		{
+			Name: "driver-report-snapshot-cleanup-daily", Kind: driverjobs.ReportCleanupKind, Version: 1,
+			Interval: 24 * time.Hour, Enabled: cfg.DriverEnabled, Reason: "disabled by configuration",
+			Build: func(string) map[string]any { return map[string]any{"version": 1} },
+		},
 		{
 			Name: "privacy-training-sweep-every-minute", Kind: "privacy-training-sweep", Version: 1,
 			Interval: time.Minute, Enabled: true,
