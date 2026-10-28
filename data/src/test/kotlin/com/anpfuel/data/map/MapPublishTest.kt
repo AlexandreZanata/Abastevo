@@ -110,11 +110,13 @@ class MapPublishTest {
     )
 
     private var serving = false
+    private val requestPaths = mutableListOf<String>()
 
     private fun serveBytes(vararg parts: Pair<String, ByteArray>, code: Int = 200, contentRange: String? = null) {
         val byPath = parts.toMap()
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
+                requestPaths += request.path!!
                 val id = request.path!!.substringAfterLast("/").substringBefore("?")
                 val bytes = byPath[id] ?: return MockResponse().setResponseCode(404)
                 val resp = MockResponse().setResponseCode(code).setHeader("ETag", "\"e1\"")
@@ -137,6 +139,10 @@ class MapPublishTest {
         assertEquals("test-20261025.1", verified.manifest.generation)
         serveBytes("test-rect" to goPackageBytes("2601/test-rect.mwm"), "world" to goPackageBytes("2601/World.mwm"))
         assertTrue(runBlocking { repository.downloadMissing("test-20261025.1", baseUrl()) })
+        assertTrue(
+            requestPaths.any { it.startsWith("/dados/mapa-dist/test-20261025.1/") && it.endsWith("test-rect") },
+            "package download must use the static generation path: $requestPaths",
+        )
         assertTrue(runBlocking { repository.activate("test-20261025.1") })
         val versionDir = File(root, "native/2601")
         assertArrayEquals(goPackageBytes("2601/test-rect.mwm"), File(versionDir, "test-rect.mwm").readBytes())

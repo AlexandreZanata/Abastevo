@@ -155,7 +155,7 @@ def main():
                 body = b"ok"
             elif self.path.endswith("/manifest"):
                 body = envelope(generation)
-            elif "/v1/map/packages/" in self.path:
+            elif "/v1/map/packages/" in self.path or "/dados/mapa-dist/" in self.path:
                 pid = self.path.rsplit("/", 1)[-1].split("?")[0]
                 if pid not in good:
                     self.send_error(404)
