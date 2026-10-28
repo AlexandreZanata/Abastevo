@@ -17,6 +17,13 @@ fail() {
     exit 1
 }
 
+# The deploy agent pulls the landing layer to its OCI title and reads
+# landing-dist.tar.gz from the pull root; a pushed path with a directory
+# would land elsewhere and fail every apply.
+if ! grep -qE '^[[:space:]]*"landing-dist\.tar\.gz:application/vnd\.abastevo\.landing\.tar\+gzip"' "$WORKFLOW"; then
+    fail "landing layer must be pushed as a bare landing-dist.tar.gz"
+fi
+
 if grep -nE 'pull_request_target' "$WORKFLOW" >/dev/null; then
     fail "pull_request_target is forbidden"
 fi
