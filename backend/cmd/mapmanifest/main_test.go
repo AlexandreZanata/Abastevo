@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -129,6 +130,28 @@ func TestRunWritesValidatedManifest(t *testing.T) {
 	raw, err := os.ReadFile(config.output)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if _, err := mapcontract.ParseNativeManifest(raw); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A manifest without dependencies must still carry an empty array: the
+// Android parser requires the key to be a JSON array, never null.
+func TestBuildWithoutDependenciesEmitsEmptyArray(t *testing.T) {
+	dir := t.TempDir()
+	cfg := baseConfig(t, dir)
+	cfg.dependencies = nil
+	raw, err := build(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var generic map[string]any
+	if err := json.Unmarshal(raw, &generic); err != nil {
+		t.Fatal(err)
+	}
+	if deps, ok := generic["dependencies"].([]any); !ok || len(deps) != 0 {
+		t.Fatalf("dependencies not an empty array: %v", generic["dependencies"])
 	}
 	if _, err := mapcontract.ParseNativeManifest(raw); err != nil {
 		t.Fatal(err)

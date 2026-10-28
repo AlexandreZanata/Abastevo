@@ -55,7 +55,7 @@
         "properties": {
           "id": {"type": "string", "pattern": "^[a-z0-9-]{1,64}$"},
           "role": {"enum": ["REGION", "OVERVIEW", "SEARCH", "ROUTING", "STYLE", "FONT"]},
-          "path": {"type": "string", "pattern": "^[A-Za-z0-9._/-]{1,160}$"},
+          "path": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^(?!/)(?!.*\\.\\.)(?!.* /)(?!.*/ )[A-Za-z0-9._/-]+( [A-Za-z0-9._/-]+)*$"},
           "bytes": {"type": "integer", "minimum": 1, "maximum": 4294967296},
           "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
         }

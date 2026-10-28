@@ -560,6 +560,12 @@
     <string name="map_needs_activation">已安装，等待在地图上激活</string>
     <string name="map_published">已发布</string>
     <string name="map_dist_unconfigured">此版本未配置地图下载</string>
+    <string name="map_region_suggestion">下载 %1$s 地图（%2$s）</string>
+    <string name="map_region_suggestion_no_size">下载 %1$s 地图</string>
+    <string name="map_region_suggestion_detail">所打开城市的离线地图</string>
+    <string name="map_region_not_now">暂不</string>
+    <string name="map_downloads_region">地区：%1$s</string>
+    <string name="map_region_unknown">请在地图上打开一个城市，以选择要下载的地图地区。</string>
     <string name="map_attribution">© OpenStreetMap 贡献者</string>
     <string name="map_search_hint">搜索站点…</string>
     <string name="map_filter_service">服务</string>

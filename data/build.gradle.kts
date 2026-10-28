@@ -15,9 +15,11 @@ android {
         // Debug-only loopback proof origin switch. Release builds and
         // default debug builds keep the explicit staging origin.
         buildConfigField("boolean", "MAP_API_LOCAL_PROOF", providers.gradleProperty("mapApiLocalProof").orElse("false").get().toBooleanStrict().toString())
-        // Map distribution origin/region/keys are build-time operational
-        // config; empty means "not configured" (UI shows the pending state,
-        // never a fake download). Keys are public verification keys only.
+        // Map distribution origin/keys are build-time operational config;
+        // empty means "not configured" (UI shows the pending state, never a
+        // fake download). Keys are public verification keys only. The region
+        // is an optional default: the app resolves the opened city's region
+        // at runtime.
         buildConfigField("String", "MAP_DIST_BASE_URL", "\"${providers.gradleProperty("mapDistBaseUrl").orElse("").get()}\"")
         buildConfigField("String", "MAP_DIST_REGION", "\"${providers.gradleProperty("mapDistRegion").orElse("").get()}\"")
         buildConfigField("String", "MAP_DIST_KEYS", "\"${providers.gradleProperty("mapDistKeys").orElse("").get()}\"")

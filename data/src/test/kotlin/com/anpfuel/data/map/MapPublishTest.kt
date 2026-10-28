@@ -235,6 +235,38 @@ class MapPublishTest {
         assertTrue(File(root, "native/2601").listFiles()!!.none { it.extension == "part" })
     }
 
+    @Test fun `switching region leaves no stale country file under the native version`() {
+        // CoMaps registers <countryId>.mwm by file name: a leftover file of the
+        // previous region would still load as that country after a switch.
+        val store = store()
+        val repository = repo(store)
+        val mt = "mato-grosso-bytes".toByteArray()
+        val pr = "parana-east-bytes".toByteArray()
+        runBlocking {
+            repository.importManifest(
+                envelopeFor(manifestB("gen-mt", "brazil-mato-grosso", "261004/Brazil_Mato Grosso.mwm", mt, "261004")),
+                mapOf("k2" to rawPub()),
+            )
+        }
+        serveBytes("brazil-mato-grosso" to mt, "brazil-parana-east" to pr)
+        assertTrue(runBlocking { repository.downloadMissing("gen-mt", baseUrl()) })
+        assertTrue(runBlocking { repository.activate("gen-mt") })
+        val versionDir = File(root, "native/261004")
+        assertArrayEquals(mt, File(versionDir, "Brazil_Mato Grosso.mwm").readBytes())
+
+        runBlocking {
+            repository.importManifest(
+                envelopeFor(manifestB("gen-pr", "brazil-parana-east", "261004/Brazil_Parana_East.mwm", pr, "261004")),
+                mapOf("k2" to rawPub()),
+            )
+        }
+        assertTrue(runBlocking { repository.downloadMissing("gen-pr", baseUrl()) })
+        assertTrue(runBlocking { repository.activate("gen-pr") })
+        assertEquals(setOf("Brazil_Parana_East.mwm"), versionDir.listFiles()!!.map { it.name }.toSet())
+        assertEquals(listOf(File(versionDir, "Brazil_Parana_East.mwm")), runBlocking { repository.activeMapFiles() })
+        assertFalse(File(root, "staging/map-packages/gen-mt").exists(), "previous region staging is recycled")
+    }
+
     @Test fun `open readers keep old bytes across a same-path swap`() {
         val store = store()
         val repository = repo(store)

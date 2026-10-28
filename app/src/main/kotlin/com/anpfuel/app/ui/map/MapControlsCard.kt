@@ -171,7 +171,8 @@ internal fun MapControlsCard(
                 if (ui.error != null) {
                     TextButton(onClick = onRetry) { Text(stringResource(R.string.map_retry)) }
                 }
-                if (ui.noPackage) {
+                // The region suggestion card replaces the generic row when shown.
+                if (ui.noPackage && ui.regionSuggestion == null) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.map_no_package), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                         TextButton(onClick = onOpenDownloads) { Text(stringResource(R.string.map_download)) }

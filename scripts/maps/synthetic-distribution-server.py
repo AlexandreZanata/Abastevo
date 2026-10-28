@@ -11,8 +11,8 @@ exposes the raw public key for the pinned-key verifier. Endpoints:
                            that package, then drop the connection (interrupted
                            update); /proof/truncate?clear=1 removes all truncation
   Package transfers honour a single-range "Range: bytes=<from>-" request (206).
-  /v1/map/regions/<r>/manifest
-  /v1/map/packages/<id>
+  /dados/mapa-dist/regions/<r>/manifest (legacy /v1/map/regions/<r>/manifest)
+  /dados/mapa-dist/<generation>/<id>    (legacy /v1/map/packages/<id>)
 """
 import argparse
 import base64

@@ -365,7 +365,7 @@ class MapActivationReviewTest {
                 ),
             )
             val err = assertThrows(MapDownloadException::class.java) {
-                runBlocking { dist.fetchEnvelope() }
+                runBlocking { dist.fetchEnvelope("brazil-parana-east") }
             }
             assertEquals("map-manifest-too-large", err.message)
 
@@ -379,7 +379,7 @@ class MapActivationReviewTest {
                 ),
             )
             val job = launch(Dispatchers.IO) {
-                slowDist.fetchEnvelope()
+                slowDist.fetchEnvelope("slow-region")
             }
             delay(80)
             job.cancelAndJoin()

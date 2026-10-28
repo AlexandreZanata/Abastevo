@@ -560,6 +560,12 @@
     <string name="map_needs_activation">Installé, en attente d’activation sur la carte</string>
     <string name="map_published">Publié</string>
     <string name="map_dist_unconfigured">Téléchargements de cartes non configurés dans cette version</string>
+    <string name="map_region_suggestion">Télécharger la carte de %1$s (%2$s)</string>
+    <string name="map_region_suggestion_no_size">Télécharger la carte de %1$s</string>
+    <string name="map_region_suggestion_detail">Carte hors ligne de la ville ouverte</string>
+    <string name="map_region_not_now">Pas maintenant</string>
+    <string name="map_downloads_region">Région : %1$s</string>
+    <string name="map_region_unknown">Ouvrez une ville sur la carte pour choisir la région de carte à télécharger.</string>
     <string name="map_attribution">© Contributeurs OpenStreetMap</string>
     <string name="map_search_hint">Rechercher des stations…</string>
     <string name="map_filter_service">Service</string>

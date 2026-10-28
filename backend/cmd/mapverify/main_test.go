@@ -106,3 +106,26 @@ func TestVerifyRejectsCorruptMissingAndTraversalPackages(t *testing.T) {
 		t.Fatal("absolute path accepted")
 	}
 }
+
+func TestVerifyAcceptsCountryIDFileNameWithSpaces(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "261004", "Brazil_Mato Grosso.mwm"), "region!!")
+	write(t, filepath.Join(root, "261004", "World.mwm"), "world!!")
+	manifestPath := filepath.Join(root, "manifest.json")
+	if err := os.WriteFile(manifestPath, manifestJSON(t, "261004/Brazil_Mato Grosso.mwm"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := verify(manifestPath, root)
+	if err != nil {
+		t.Fatalf("spaced country file refused: %v", err)
+	}
+	if out.Packages != 2 {
+		t.Fatalf("result %+v", out)
+	}
+	if err := os.WriteFile(manifestPath, manifestJSON(t, "261004/Brazil_Mato  Grosso.mwm"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := verify(manifestPath, root); err == nil {
+		t.Fatal("double-spaced path accepted")
+	}
+}

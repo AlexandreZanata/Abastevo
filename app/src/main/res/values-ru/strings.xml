@@ -560,6 +560,12 @@
     <string name="map_needs_activation">Установлено, ожидает активации на карте</string>
     <string name="map_published">Опубликовано</string>
     <string name="map_dist_unconfigured">Загрузка карт не настроена в этой сборке</string>
+    <string name="map_region_suggestion">Скачать карту: %1$s (%2$s)</string>
+    <string name="map_region_suggestion_no_size">Скачать карту: %1$s</string>
+    <string name="map_region_suggestion_detail">Офлайн-карта открытого города</string>
+    <string name="map_region_not_now">Не сейчас</string>
+    <string name="map_downloads_region">Регион: %1$s</string>
+    <string name="map_region_unknown">Откройте город на карте, чтобы выбрать регион карты для загрузки.</string>
     <string name="map_attribution">© Участники OpenStreetMap</string>
     <string name="map_search_hint">Поиск станций…</string>
     <string name="map_filter_service">Услуга</string>

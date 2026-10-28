@@ -14,10 +14,14 @@ import okhttp3.Request
 
 private const val MAX_ENVELOPE_BYTES = 1 * 1024 * 1024
 
+private val REGION_SLUG = Regex("^[a-z0-9-]{1,64}$")
+
 /**
  * Pinned map-distribution origin. Empty fields mean "not configured" (the UI
  * shows the specific pendency); keys are public verification keys only and a
- * malformed non-empty key set is reported, never silently dropped.
+ * malformed non-empty key set is reported, never silently dropped. [region]
+ * is an optional build-time default slug: the app chooses the region at
+ * runtime from the city the user opened, so it is not part of [configured].
  */
 data class MapDistributionConfig(
     val baseUrl: String,
@@ -26,13 +30,26 @@ data class MapDistributionConfig(
     val keysInvalid: Boolean,
 ) {
     val missingUrl: Boolean get() = baseUrl.isBlank()
-    val missingRegion: Boolean get() = region.isBlank()
     val missingKeys: Boolean get() = trustedKeys.isEmpty() && !keysInvalid
-    val configured: Boolean get() = !missingUrl && !missingRegion && !missingKeys && !keysInvalid
+    val configured: Boolean get() = !missingUrl && !missingKeys && !keysInvalid
+
+    /** Build-time default region slug, or null when unset/invalid. */
+    val defaultRegion: String? get() = region.takeIf { isMapRegionSlug(it) }
+}
+
+fun isMapRegionSlug(value: String): Boolean = REGION_SLUG.matches(value)
+
+/**
+ * Static signed manifest location of one region (D10): the envelope is a
+ * pre-signed file served next to the generation directories.
+ */
+internal fun mapRegionManifestUrl(baseUrl: String, regionSlug: String): String {
+    if (!isMapRegionSlug(regionSlug)) throw MapDownloadException("map-region-unknown")
+    return "${baseUrl.trimEnd('/')}/dados/mapa-dist/regions/$regionSlug/manifest"
 }
 
 /**
- * Fetches the signed distribution envelope for the configured region.
+ * Fetches the signed distribution envelope of one region slug.
  * Bounded (1 MiB enforced during stream read, even without Content-Length),
  * no silent retry; HTTP failures surface as [MapDownloadException] with the
  * status so the UI can distinguish outage (retryable at the worker layer) from
@@ -49,13 +66,10 @@ open class MapDistribution(
         config: MapDistributionConfig,
     ) : this(http, config, Dispatchers.IO)
 
-    open suspend fun fetchEnvelope(): ByteArray = withContext(ioDispatcher) {
+    open suspend fun fetchEnvelope(regionSlug: String): ByteArray = withContext(ioDispatcher) {
         if (!config.configured) throw MapDownloadException("map-distribution-unconfigured")
-        if (!config.region.matches(Regex("^[a-z0-9-]{1,64}$"))) {
-            throw MapDownloadException("map-distribution-unconfigured")
-        }
         val request = Request.Builder()
-            .url("${config.baseUrl.trimEnd('/')}/v1/map/regions/${config.region}/manifest")
+            .url(mapRegionManifestUrl(config.baseUrl, regionSlug))
             .header("Accept", "application/json")
             .build()
         val call = http.newCall(request)
