@@ -1,5 +1,19 @@
 # Current execution state
 
+- Map regional integration 2026-10-28: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/phase-map-regional-integration` (from `origin/main` 66229695, merges
+  `origin/codex/map-completion`, `origin/codex/map-regional-download`,
+  `origin/codex/c3-claim-from-empty-list`, plus 2 atomic commits 1afff32c and
+  786c09b2). Pan/zoom snap-back fixed and verified on device; station-label
+  declutter gated by zoom; native custom-icon art proven unsupported by the
+  pinned SDK. Staging `Brazil_Mato Grosso.mwm` (53,816,563 bytes) does not
+  render: official v261004 expects 93,654,573 bytes and World/WorldCoasts render
+  correctly, so the custom region artifact needs regeneration (mapdata track).
+  Gates: backend gofmt/vet clean, race+integration green (145 pkgs ok, 11 pkgs
+  rerun green with -p 2 after load timeouts), Android unit/lint/assemble green,
+  diff-check and secret scan clean. Next: single PR to main, then mapdata owner
+  regenerates the MT artifact and streets render is re-verified.
+
 - MAP completion MC-C1 retry 2026-10-27: West regeneration recorded. Base
   `394c1389` plus this task. The failed `Brazil_Northeast Region_West` work
   was preserved under `old-run-20261027/` and regenerated alone with

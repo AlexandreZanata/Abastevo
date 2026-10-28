@@ -337,6 +337,21 @@ open map at Sorriso → icons render → tap station → route → guidance repl
 arrive. Video or screenshot sequence plus timings. Repeat online at São Paulo
 and Manaus.
 
+Validation 2026-10-28 (branch
+`codex/phase-map-regional-integration`, physical device, staging
+`https://teste.abastevo.com.br`): fresh user → SORRISO (MT) → Map shows the
+regional card "Download the Mato Grosso map (116 MB)" only → Download
+completes → `files/261004` holds `World.mwm` (53,519,450),
+`WorldCoasts.mwm` (8,489,900) and `Brazil_Mato Grosso.mwm` (53,816,563);
+Downloads shows "Active: 20261028.1-brazil-mato-grosso", "Published". Pan/zoom
+hold 30 s with no snap-back (overlay commits no longer reframe). BLOCKED:
+the staging `Brazil_Mato Grosso.mwm` (53,816,563 bytes) renders nothing while
+World/WorldCoasts (official v261004 sizes) render correctly, so the custom
+region artifact needs regeneration; the SDK expects 93,654,573 bytes for
+`Brazil_Mato Grosso` per its bundled v261004 country table. Screenshots are
+kept outside the repo. Next: mapdata owner regenerates the MT artifact, then
+re-run this journey (streets render, tap station, airplane-mode leg).
+
 ## 7. Track D: VPS (namespace `abastevo-temp` only)
 
 - MC-D1 Before each migration: `pg_dump` backup with sha256, active map
