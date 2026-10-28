@@ -238,11 +238,16 @@ apply_schema_gate() {
         || apply_fail "schema" "schema version job failed"
     [[ "$db_max" =~ ^[0-9]{6}$ ]] \
         || apply_fail "schema" "database schema version is unavailable"
-    (( current_floor <= db_max )) \
+    local migrations_max
+    migrations_max="$(jq -r '.migrations_max' "$manifest_file")"
+    [[ "$migrations_max" =~ ^[0-9]{6}$ ]] \
+        || apply_fail "schema" "manifest has no migration chain maximum"
+    # Versions keep leading zeros; compare in base 10, never as octal.
+    (( 10#$current_floor <= 10#$db_max )) \
         || apply_fail "schema" "running floor is above the database schema"
-    (( target_floor <= current_floor )) \
+    (( 10#$target_floor <= 10#$current_floor )) \
         || apply_fail "schema" "contract schema floor refused"
-    [[ "$target_floor" -le "$(jq -r '.migrations_max' "$manifest_file")" ]] \
+    (( 10#$target_floor <= 10#$migrations_max )) \
         || apply_fail "schema" "target floor is above the migration chain"
     APPLY_SCHEMA_CURRENT="$current_floor"
     APPLY_SCHEMA_DB="$db_max"
