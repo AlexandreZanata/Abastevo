@@ -75,3 +75,19 @@ normalizer reports only those server-managed fields.
 No `kubectl apply` is run by this directory. The executor later patches images
 and source annotations; it does not change the namespace, quota, database,
 Services or CronJob.
+
+## Admin key and dev seeds (manual, not rendered)
+
+- Admin panel: `https://teste.abastevo.com.br/admin/login/` (served from the
+  signed landing bundle). The API mounts `/v1/admin/*` only when
+  `ANPFUEL_ADMIN_KEY_SHA256` and `ANPFUEL_ADMIN_ORIGIN` are present in the
+  `abastevo-temp-secrets` Secret; they are patched there directly (the
+  deploy agent never rewrites the Secret). The raw key comes from
+  `go run ./cmd/ops admin keygen` and never enters Git; rotate by patching a
+  new hash (or `ANPFUEL_ADMIN_KEY_SHA256_NEXT` first) and restarting the API.
+  `ANPFUEL_ADMIN_ALLOWED_CIDRS` is unset on staging (no network fence).
+- Seeds: `backend/db/seeds/*.sql` are idempotent dev/staging data, never part
+  of the migration chain. Run after the migrations they depend on, e.g.
+  `kubectl -n abastevo-temp exec -i <db pod> -- psql -U "$DATABASE_USER"
+  -d "$DATABASE_NAME" -v ON_ERROR_STOP=1 < backend/db/seeds/project_creator.sql`
+  (needs migration 000145).

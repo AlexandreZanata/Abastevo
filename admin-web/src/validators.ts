@@ -112,6 +112,7 @@ export function toEndOfDayIso(date: string): string {
 }
 
 export const ROLES = [
+  'project_creator',
   'community_moderator',
   'station_reviewer',
   'contributor_curator',
