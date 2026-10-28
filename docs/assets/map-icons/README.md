@@ -66,6 +66,16 @@ outline/selection, map-background/20 px review and the final MAP-18 artwork
 review remain open. Raw large source images stay out of the APK; only the
 128 px Android exports are shipped.
 
+Integration update 2026-10-28: verified against the pinned CoMaps source
+(`libs/kml/serdes.cpp`) that the native KML overlay only honors the fixed
+`BookmarkIcon` set and 16 fixed colors, so custom SVG/VectorDrawable art cannot
+be injected without rebuilding the pinned SDK (out of scope). Native pins stay
+on the closest mapping — fuel to `Gas` in the orange family (approximate tiers
+stay yellow), EV chargers to `ChargingStation` in teal, combined sites to purple
+and clusters to the `Information` count badge — locked by `OverlayKmlTest`.
+Station names render from street zoom (15+) through the labels gate and truncate
+past 40 characters. Provenance JSONs above are unchanged.
+
 ## Requested electric SVG correction
 
 The final electric SVG removes exactly one accidental enclosed subpath in the teal

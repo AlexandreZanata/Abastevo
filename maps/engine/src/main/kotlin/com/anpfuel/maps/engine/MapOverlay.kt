@@ -194,6 +194,15 @@ fun overlayListItems(
 
 internal const val OVERLAY_CATEGORY_NAME = "Abastevo overlay v1:"
 
+/** Map labels have no per-pin size control, so length is the clutter lever. */
+internal const val OVERLAY_NAME_MAX_LENGTH = 40
+
+internal fun String.truncatedOverlayName(maxLength: Int = OVERLAY_NAME_MAX_LENGTH): String {
+    require(maxLength > 1)
+    if (length <= maxLength) return this
+    return take(maxLength - 1) + "…"
+}
+
 // BookmarkManager appends decimal suffixes when a category name already exists.
 internal fun overlayCategoryName(generation: Long): String = "${OVERLAY_CATEGORY_NAME}g$generation:"
 
@@ -228,7 +237,7 @@ internal fun buildOverlayKml(
             )
         } else {
             appendPlacemark(
-                name = escapeXml(marker.title),
+                name = escapeXml(marker.title.truncatedOverlayName()),
                 description = describe(marker),
                 latitude = marker.latitude,
                 longitude = marker.longitude,

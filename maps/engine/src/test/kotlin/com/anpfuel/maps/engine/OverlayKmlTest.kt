@@ -249,6 +249,58 @@ class OverlayKmlTest {
     }
 
     @Test
+    fun `approximate fuel tiers keep the yellow gas pin distinct from reviewed orange`() {
+        val preparation = prepareOverlay(
+            listOf(
+                marker(
+                    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    quality = MapStationLocationQuality.ANP_REPORTED,
+                ),
+            ),
+            radiusMeters = 1.0,
+            generation = 20,
+        )
+        val kml = buildOverlayKml(preparation.clusters)
+        assertTrue(kml.contains("<styleUrl>#placemark-yellow</styleUrl>"))
+        assertTrue(kml.contains("<mwm:icon>Gas</mwm:icon>"))
+        assertFalse(kml.contains("#placemark-orange"))
+    }
+
+    @Test
+    fun `long station names truncate on the map label but keep the full description`() {
+        val longTitle = "Posto Rodovia BR-163 Km 742 Margem Direita Sentido Norte Sorriso"
+        val preparation = prepareOverlay(
+            listOf(
+                marker(
+                    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    title = longTitle,
+                    quality = MapStationLocationQuality.REVIEWED,
+                ),
+            ),
+            radiusMeters = 1.0,
+            generation = 21,
+        )
+        val kml = buildOverlayKml(preparation.clusters)
+        assertFalse(kml.contains("<name>$longTitle</name>"), "map label must truncate long names")
+        assertTrue(kml.contains("…</name>"), "truncated map label keeps an ellipsis")
+        assertTrue(kml.contains(longTitle), "description keeps the full station name")
+        val short = buildOverlayKml(
+            prepareOverlay(
+                listOf(
+                    marker(
+                        "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                        title = "Posto Centro",
+                        quality = MapStationLocationQuality.REVIEWED,
+                    ),
+                ),
+                radiusMeters = 1.0,
+                generation = 22,
+            ).clusters,
+        )
+        assertTrue(short.contains("<name>Posto Centro</name>"), "short names stay untouched")
+    }
+
+    @Test
     fun `selection maps exact rendered points and never technical labels`() {
         val first = marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", latitude = -25.41, longitude = -49.26)
         val second = marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", latitude = -25.42, longitude = -49.27)

@@ -593,6 +593,11 @@ class ComapsMapEngine(
 
     override fun overlayClusters(): List<MapOverlayCluster> = overlayClusters
 
+    override fun setOverlayLabelsVisible(visible: Boolean) {
+        if (!initialized) return
+        callOnMain { Framework.nativeSetShowBookmarkLabels(visible) }
+    }
+
     override fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit) {
         overlayListener = listener
     }
