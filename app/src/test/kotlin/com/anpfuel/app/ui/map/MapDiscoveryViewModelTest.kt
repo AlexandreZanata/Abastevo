@@ -780,4 +780,36 @@ class MapDiscoveryViewModelTest {
         assertEquals(2, engine.viewports.size)
         assertEquals(-23.5505 to -46.6333, engine.viewports.last())
     }
+    @Test fun `city camera survives the engine becoming ready after the city was chosen`() = runTest {
+        // Fresh install race: the preferred city resolves before native init
+        // finishes, then engine readiness restores the stored or default
+        // camera (Curitiba). The chosen city must win, not the default.
+        val gateway = io.mockk.mockk<ServerStationGateway>()
+        val pinned = station(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            lat = -12.54, lon = -55.71,
+            quality = StationLocationQuality.REVIEWED,
+            name = "Posto Sorriso",
+        )
+        io.mockk.coEvery { gateway.listInMunicipality("5107925", 100, null) } returns
+            ServerStationPage(listOf(pinned), null)
+        val engine = FakeEngine()
+        val store = object : com.anpfuel.maps.engine.MapCameraStore {
+            var camera: com.anpfuel.maps.engine.MapCamera? = null
+            override fun load() = camera
+            override fun save(camera: com.anpfuel.maps.engine.MapCamera) { this.camera = camera }
+        }
+        val discovery = MapDiscoveryViewModel(
+            stations = gateway,
+            charging = ChargingMarkersSource { emptyList() },
+            engine = engine,
+            userPreferences = null,
+            catalog = null,
+            cameraStore = store,
+        )
+        discovery.onSelectCity("5107925", "Sorriso")
+        dispatcher.scheduler.advanceUntilIdle()
+        com.anpfuel.maps.engine.MapViewModel(engine, store).onEngineReady()
+        assertEquals(-12.54 to -55.71, engine.viewports.last())
+    }
 }

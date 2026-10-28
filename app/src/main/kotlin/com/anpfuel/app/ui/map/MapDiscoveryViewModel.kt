@@ -18,6 +18,8 @@ import com.anpfuel.domain.repository.ServerStationCache
 import com.anpfuel.domain.repository.ServerStationGateway
 import com.anpfuel.domain.repository.UserPreferencesRepository
 import com.anpfuel.domain.valueobject.FuelProduct
+import com.anpfuel.maps.engine.MapCamera
+import com.anpfuel.maps.engine.MapCameraStore
 import com.anpfuel.maps.engine.MapEngine
 import com.anpfuel.maps.engine.MapOverlayCluster
 import com.anpfuel.maps.engine.MapOverlayLabels
@@ -115,6 +117,7 @@ class MapDiscoveryViewModel @Inject constructor(
     private val userPreferences: UserPreferencesRepository?,
     private val catalog: MunicipalityCatalogRepository?,
     private val stationCache: ServerStationCache = NoopServerStationCache,
+    private val cameraStore: MapCameraStore? = null,
 ) : ViewModel() {
 
     constructor(
@@ -229,13 +232,23 @@ class MapDiscoveryViewModel @Inject constructor(
         if (activeQuery.length >= 2) {
             onSearch(normalizedCode, activeQuery)
         } else if (shouldMoveViewport && knownCity != null) {
-            engine.setViewport(knownCity.latitude, knownCity.longitude, 13)
+            moveCameraToCity(knownCity.latitude, knownCity.longitude)
             onViewport(knownCity.latitude, knownCity.longitude, _ui.value.viewportRadiusMeters)
         } else if (knownCity == null && moveViewport) {
             // Directory city: (re)load its stations, recentering only when the
             // city actually changed. Same-city reselect/refresh keeps the camera.
             loadCityStations(normalizedCode, moveViewport = shouldMoveViewport)
         }
+    }
+
+    /**
+     * The chosen city is also the camera the engine restores when it becomes
+     * ready: on a fresh start the city often resolves before native init ends,
+     * and readiness would otherwise reset the camera to the stored/default one.
+     */
+    private fun moveCameraToCity(latitude: Double, longitude: Double) {
+        cameraStore?.save(MapCamera(latitude, longitude, 13))
+        engine.setViewport(latitude, longitude, 13)
     }
 
     private fun loadCityStations(code: String, moveViewport: Boolean) {
@@ -267,7 +280,7 @@ class MapDiscoveryViewModel @Inject constructor(
                     page.items.filter { it.latitude == null || it.longitude == null },
                 )
                 if (pinned != null && moveViewport) {
-                    engine.setViewport(checkNotNull(pinned.latitude), checkNotNull(pinned.longitude), 13)
+                    moveCameraToCity(checkNotNull(pinned.latitude), checkNotNull(pinned.longitude))
                 }
             } catch (e: CancellationException) {
                 throw e
