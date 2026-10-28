@@ -29,21 +29,7 @@ data:
     \ \"public, max-age=300\"\n\t\t@release not path /current/*\n\t\theader @release\
     \ Cache-Control \"public, max-age=31536000, immutable\"\n\t\t# Caddy 2.10.2 answers\
     \ 206 to a plain GET with precompressed; the\n\t\t# global gzip encoder plus the\
-    \ edge micro-cache serve these instead.\n\t\tfile_server\n\t}\n\n\t# Search shards\
-    \ are addressed by release, so they never change in place.\n\t@portal path /consultar/*\
-    \ /precos/* /postos/* /fiscalizacao/* /curiosidades/* /dados/* /metodologia/*\
-    \ /portal-manifest.json\n\thandle @portal {\n\t\troot * /srv/portal/current\n\t\
-    \t@shards path /dados/busca/*\n\t\t@pages not path /dados/busca/*\n\t\theader\
-    \ @shards Cache-Control \"public, max-age=31536000, immutable\"\n\t\theader @pages\
-    \ Cache-Control \"public, max-age=0, must-revalidate\"\n\t\tfile_server\n\t}\n\
-    \n\t# Content-hashed assets: landing first, then the portal's retained\n\t# generations\
-    \ (old cached pages keep loading), then the current release.\n\thandle /assets/*\
-    \ {\n\t\theader Cache-Control \"public, max-age=31536000, immutable\"\n\t\t@landingAsset\
-    \ file {\n\t\t\troot /srv/landing/current\n\t\t}\n\t\thandle @landingAsset {\n\
-    \t\t\troot * /srv/landing/current\n\t\t\tfile_server\n\t\t}\n\t\t@retainedAsset\
-    \ file {\n\t\t\troot /srv/portal/retained\n\t\t}\n\t\thandle @retainedAsset {\n\
-    \t\t\troot * /srv/portal/retained\n\t\t\tfile_server\n\t\t}\n\t\thandle {\n\t\t\
-    \troot * /srv/portal/current\n\t\t\tfile_server\n\t\t}\n\t}\n\n\t# Offline map\
+    \ edge micro-cache serve these instead.\n\t\tfile_server\n\t}\n\n\t# Offline map\
     \ distribution (MAP completion D10): static and signed. The\n\t# per-region manifest\
     \ is a signed envelope the app verifies before use;\n\t# generation packages are\
     \ immutable and served with Range for resume.\n\t# The API never serves map bytes.\n\
@@ -52,16 +38,30 @@ data:
     \ @manifest Cache-Control \"public, max-age=60, must-revalidate\"\n\t\t@package\
     \ not path /regions/*\n\t\theader @package Content-Type \"application/octet-stream\"\
     \n\t\theader @package Cache-Control \"public, max-age=31536000, immutable\"\n\t\
-    \tfile_server\n\t}\n\n\t# Admin web panel (ADR-023 B3): static, shipped inside\
-    \ the signed landing\n\t# bundle under admin/; data comes only from the same-origin\
-    \ /v1/admin API,\n\t# which stays 404 until an admin key hash and CIDR fence are\
-    \ configured.\n\t# Global CSP/noindex apply; pages are never cached.\n\thandle\
-    \ /admin/* {\n\t\troot * /srv/landing/current\n\t\t@adminAsset path /admin/assets/*\n\
-    \t\theader @adminAsset Cache-Control \"public, max-age=31536000, immutable\"\n\
-    \t\t@adminPage not path /admin/assets/*\n\t\theader @adminPage Cache-Control \"\
-    no-store\"\n\t\tfile_server\n\t}\n\n\thandle {\n\t\troot * /srv/landing/current\n\
-    \t\theader Cache-Control \"public, max-age=3600, must-revalidate\"\n\t\tfile_server\n\
-    \t}\n\n\thandle_errors 404 {\n\t\timport security_headers\n\t\troot * /srv/landing/current\n\
+    \tfile_server\n\t}\n\n\t# Search shards are addressed by release, so they never\
+    \ change in place.\n\t@portal path /consultar/* /precos/* /postos/* /fiscalizacao/*\
+    \ /curiosidades/* /dados/* /metodologia/* /portal-manifest.json\n\thandle @portal\
+    \ {\n\t\troot * /srv/portal/current\n\t\t@shards path /dados/busca/*\n\t\t@pages\
+    \ not path /dados/busca/*\n\t\theader @shards Cache-Control \"public, max-age=31536000,\
+    \ immutable\"\n\t\theader @pages Cache-Control \"public, max-age=0, must-revalidate\"\
+    \n\t\tfile_server\n\t}\n\n\t# Content-hashed assets: landing first, then the portal's\
+    \ retained\n\t# generations (old cached pages keep loading), then the current\
+    \ release.\n\thandle /assets/* {\n\t\theader Cache-Control \"public, max-age=31536000,\
+    \ immutable\"\n\t\t@landingAsset file {\n\t\t\troot /srv/landing/current\n\t\t\
+    }\n\t\thandle @landingAsset {\n\t\t\troot * /srv/landing/current\n\t\t\tfile_server\n\
+    \t\t}\n\t\t@retainedAsset file {\n\t\t\troot /srv/portal/retained\n\t\t}\n\t\t\
+    handle @retainedAsset {\n\t\t\troot * /srv/portal/retained\n\t\t\tfile_server\n\
+    \t\t}\n\t\thandle {\n\t\t\troot * /srv/portal/current\n\t\t\tfile_server\n\t\t\
+    }\n\t}\n\n\t# Admin web panel (ADR-023 B3): static, shipped inside the signed\
+    \ landing\n\t# bundle under admin/; data comes only from the same-origin /v1/admin\
+    \ API,\n\t# which stays 404 until an admin key hash and CIDR fence are configured.\n\
+    \t# Global CSP/noindex apply; pages are never cached.\n\thandle /admin/* {\n\t\
+    \troot * /srv/landing/current\n\t\t@adminAsset path /admin/assets/*\n\t\theader\
+    \ @adminAsset Cache-Control \"public, max-age=31536000, immutable\"\n\t\t@adminPage\
+    \ not path /admin/assets/*\n\t\theader @adminPage Cache-Control \"no-store\"\n\
+    \t\tfile_server\n\t}\n\n\thandle {\n\t\troot * /srv/landing/current\n\t\theader\
+    \ Cache-Control \"public, max-age=3600, must-revalidate\"\n\t\tfile_server\n\t\
+    }\n\n\thandle_errors 404 {\n\t\timport security_headers\n\t\troot * /srv/landing/current\n\
     \t\trewrite * /404.html\n\t\theader Cache-Control \"no-cache\"\n\t\tfile_server\n\
     \t}\n}\n"
 kind: ConfigMap
