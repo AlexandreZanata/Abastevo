@@ -37,6 +37,19 @@ class CadenceTests(unittest.TestCase):
         self.assertIn('    name: Quick verification\n', quick)
         self.assertIn('        run: make quick-verify\n', quick)
 
+    def test_release_gate_workflows_run_on_every_main_push(self):
+        # release-staging waits for quick, CI and backend on the exact main
+        # commit; a path filter on push would leave the gate closed forever.
+        for name in ('quick', 'ci', 'backend'):
+            workflow = (ROOT / f'.github/workflows/{name}.yml').read_text()
+            with self.subTest(workflow=name):
+                push = workflow.split('  push:\n', 1)[1].split('\n  pull_request:', 1)[0]
+                self.assertNotIn('paths:', push)
+                self.assertNotIn('paths-ignore:', push)
+        release = (ROOT / '.github/workflows/release-staging.yml').read_text()
+        for name in ('quick', 'ci', 'backend'):
+            self.assertIn(f'.github/workflows/{name}.yml', release)
+
 
 if __name__ == '__main__':
     unittest.main()

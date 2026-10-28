@@ -3,13 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - docs/**
-      - contracts/**
-      - infra/**
-      - backend/**
-      - '*.md'
-      - .github/workflows/backend.yml
+    # No path filter on main: the release-staging gate needs this workflow's
+    # result for every main commit, or path-only merges never release.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]

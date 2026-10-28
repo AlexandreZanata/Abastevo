@@ -93,3 +93,27 @@ fix found by the drills) plus the acceptance evidence ship on one branch
 `codex/cd-staging-acceptance`, one PR to `main`. Drill commits for items 6–7,
 if that mechanism is chosen, are a documented exception (they must reach
 `main` separately to be deployable).
+
+## Progress 2026-10-28
+
+- Task 1 (rehearsal): structural rehearsal passed; data rehearsal not run.
+- Task 3 (first supervised apply): **done**. Release `d181510a` deployed by
+  the persistent unit with `ABASTEVO_APPLY=1`: schema window
+  `000132..000139`, verified backup, migration Job (`000133`–`000138`,
+  `000140`–`000143`), shared image rollout (surge off), landing switch,
+  smoke; `current.json` now at `d181510a`, floor `000132`, chain `000143`.
+  Two earlier attempts stopped before any change and were fixed: the landing
+  layer title (PR #178) and octal schema comparison (PR #179).
+- Timer **enabled** (every 2 min) with apply on, owner-requested. Later runs
+  plan `no-change` correctly.
+- Found: `CI` and `backend` had path filters on `main` pushes, so the
+  release gate stayed closed for any merge that skipped one of them (for
+  example `47b6b8d6`). Fixed by running both on every `main` push (PR filters
+  unchanged) with a cadence test.
+- Drift to fix with the R2 zero-diff check: `infra/k8s/staging/api-deployment.yaml`
+  declares `imagePullPolicy: Never` for api/worker while the agent sets the
+  live value to `IfNotPresent`.
+
+Still open: two consecutive unattended `main` deploys (the first comes with
+the trigger fix), broken-image rollback drill, contract-floor refusal drill,
+landing rollback drill, surge measurement, data rehearsal.
