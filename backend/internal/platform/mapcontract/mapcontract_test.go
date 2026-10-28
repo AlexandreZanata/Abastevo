@@ -148,6 +148,13 @@ func TestNativeManifestRejections(t *testing.T) {
 		{"engine-unpinned", func(d map[string]any) {
 			d["engine"].(map[string]any)["upstream_sha"] = "main"
 		}},
+		{"dependencies-null", func(d map[string]any) {
+			// The Android parser requires an array; keep both sides equal.
+			d["dependencies"] = nil
+		}},
+		{"dependencies-missing", func(d map[string]any) {
+			delete(d, "dependencies")
+		}},
 		{"bbox-inverted", func(d map[string]any) {
 			d["region"].(map[string]any)["bbox"].(map[string]any)["min_lon_deg"] = 10
 			d["region"].(map[string]any)["bbox"].(map[string]any)["max_lon_deg"] = -10

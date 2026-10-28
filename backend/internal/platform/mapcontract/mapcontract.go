@@ -527,6 +527,10 @@ func ParseNativeManifest(data []byte) (*NativeManifest, error) {
 		m.Region.BBox.MinLonDeg >= m.Region.BBox.MaxLonDeg || m.Region.BBox.MinLatDeg >= m.Region.BBox.MaxLatDeg {
 		return nil, fail("region.bbox", "invalid bounds")
 	}
+	if m.Dependencies == nil {
+		// Same rule as the Android parser: the key is a JSON array, never null.
+		return nil, fail("dependencies", "array required")
+	}
 	if len(m.Packages) < 1 || len(m.Packages) > 200 {
 		return nil, fail("packages", "count out of bounds")
 	}
