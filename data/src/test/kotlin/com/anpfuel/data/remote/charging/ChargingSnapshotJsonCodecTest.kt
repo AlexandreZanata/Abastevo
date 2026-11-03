@@ -69,6 +69,11 @@ class ChargingSnapshotJsonCodecTest {
         assertEquals(listOf("osm:node:7", "ocm:poi:7"), decoded.groups.map { it.sourceKey })
         assertEquals(placeId, decoded.linkedStationId)
         assertEquals(true, decoded.confirmedByTwoSources)
+        assertEquals(decoded, ChargingSnapshotJsonCodec.decodePlacePage(page(wire.toString())).items.single())
+        val incomplete = JSONObject(wire.toString()).apply { remove("groups") }
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlacePage(page(incomplete.toString()))
+        }
 
         ocmGroup.put("source_key", "ocm:poi:8")
         assertThrows(ChargingSnapshotUnavailable::class.java) {
@@ -99,6 +104,10 @@ class ChargingSnapshotJsonCodecTest {
             JSONObject("""{"profile":"ocm-br-20261021-v1","source_revision":"rev-1","places":1298,"groups":3387,"vehicles":181,"generated_at":"2026-10-22T00:00:00Z"}"""),
         )
         assertEquals(3387L, coverage.groups)
+        val fractional = JSONObject("""{"profile":"charging-br-national-v1","source_revision":"rev-1","places":1.5,"groups":2,"vehicles":0,"generated_at":"2026-10-22T00:00:00Z"}""")
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodeCoverage(fractional)
+        }
     }
 
     @Test

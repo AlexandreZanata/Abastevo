@@ -153,6 +153,16 @@ data class ChargingPlacePage(
     }
 }
 
+data class ChargingCatalogOffer(val noticePath: String, val dataPath: String) {
+    companion object {
+        fun forRevision(revision: String): ChargingCatalogOffer? {
+            if (!entityKeyPattern.matches(revision)) return null
+            val base = "/v1/charging/catalog/$revision/offer"
+            return ChargingCatalogOffer("$base/derived-database-offer.json", "$base/derived-database.ndjson")
+        }
+    }
+}
+
 /** Stored batch counts with identity. Counts only; never a freshness claim. */
 data class ChargingCoverage(
     val profile: String,
@@ -161,6 +171,7 @@ data class ChargingCoverage(
     val groups: Long,
     val vehicles: Long,
     val generatedAt: String,
+    val offer: ChargingCatalogOffer? = null,
 ) {
     init {
         require(profile.isNotBlank() && sourceRevision.isNotBlank())

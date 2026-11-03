@@ -95,8 +95,9 @@
   LOCAL_DONE: Room 35 isolates offline identities and scoped retirement;
   legacy migration and national round-trip tests pass. EVC-07C LOCAL_DONE:
   national pages carry per-source groups, operator and safe address from
-  the same generation; HTTP/PostGIS tests pass. Next Android refresh and
-  presentation.
+  the same generation; HTTP/PostGIS tests pass. EVC-07D LOCAL_DONE:
+  Android verifies revision, exact counts and same-origin offer paths before
+  atomically replacing the offline generation. Next app presentation.
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).

@@ -5,6 +5,9 @@ import com.anpfuel.data.local.dao.ChargingSnapshotDao
 import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity
 import com.anpfuel.data.remote.charging.ChargingSnapshotHttpClient
+import com.anpfuel.domain.charging.ChargingCatalogConfidence
+import com.anpfuel.domain.charging.ChargingCoverage
+import com.anpfuel.domain.charging.ChargingSourceAttribution
 import com.anpfuel.domain.charging.ChargingAccess
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingCurrent
@@ -107,6 +110,11 @@ class ChargingDiscoveryRepositoryTest {
         ids.map { place(it) }, next, "2026-10-26T00:00:00Z",
     )
 
+    private suspend fun assertRefreshRefused(refresh: suspend () -> Unit) {
+        val failure = runCatching { refresh() }.exceptionOrNull()
+        assertTrue(failure is IllegalStateException, "expected refresh refusal, got $failure")
+    }
+
     @BeforeEach
     fun setUp() {
         repo = ChargingDiscoveryRepository(client, dao, origin)
@@ -122,6 +130,56 @@ class ChargingDiscoveryRepositoryTest {
         assertEquals(3, rows.size)
         assertTrue(rows.all { it.verdict == Compatibility.COMPATIBLE })
         assertEquals("ocm-br-20261021-v1", rows.single { it.place.id == "11111111-1111-4111-8111-111111111111" }.profile)
+    }
+
+    @Test fun `national refresh requires a complete stable revision before replacing cache`() = runTest {
+        val profile = "charging-br-national-v1"
+        val revision = "c".repeat(64)
+        val stamp = "2026-10-26T00:00:00Z"
+        val id = "11111111-1111-4111-8111-111111111111"
+        val second = "33333333-3333-4333-8333-333333333333"
+        val codec = com.anpfuel.data.remote.charging.ChargingSnapshotJsonCodec
+        fun coverage(
+            rev: String = revision,
+            groups: Int = 2,
+            base: String = "/v1/charging/catalog/$rev/offer",
+            data: String = "$base/derived-database.ndjson",
+        ): ChargingCoverage =
+            codec.decodeCoverage(org.json.JSONObject("""
+                {"profile":"$profile","source_revision":"$rev","places":2,"groups":$groups,
+                 "vehicles":0,"generated_at":"$stamp",
+                 "offer":{"notice":"$base/derived-database-offer.json","data":"$data"}}
+            """.trimIndent()))
+        fun national(id: String): ChargingPlace {
+            val base = place(id)
+            return base.copy(
+                catalogConfidence = ChargingCatalogConfidence.SINGLE_SOURCE,
+                sources = listOf(ChargingSourceAttribution("OSM", "node:7", "synthetic", null, "ODbL-1.0", "Synthetic OSM")),
+                groups = base.groups.map { it.copy(sourceKey = "osm:node:7") },
+            )
+        }
+        val firstPage = ChargingPlacePage(listOf(national(id)), "c2", stamp)
+        val lastPage = ChargingPlacePage(listOf(national(second)), null, stamp)
+        coEvery { client.coverage(profile) } returns coverage()
+        coEvery { client.places(profile, revision, 100, null) } returns firstPage
+        coEvery { client.places(profile, revision, 100, "c2") } returns lastPage
+
+        val original = repo.refresh(profile)
+        assertEquals(revision, original.sourceRevision)
+        assertEquals(2L, original.groupCount)
+        assertEquals(national(id), repo.detail(id, profile, null)?.place)
+
+        coEvery { client.places(profile, revision, 100, "c2") } returns lastPage.copy(items = emptyList())
+        assertRefreshRefused { repo.refresh(profile) }
+        coEvery { client.places(profile, revision, 100, "c2") } returns lastPage
+        coEvery { client.coverage(profile) } returns coverage(data = "https://foreign.example/offer")
+        assertRefreshRefused { repo.refresh(profile) }
+        coEvery { client.coverage(profile) } returns coverage(groups = 3)
+        assertRefreshRefused { repo.refresh(profile) }
+        coEvery { client.coverage(profile) } returnsMany listOf(coverage(), coverage(rev = "d".repeat(64)))
+        assertRefreshRefused { repo.refresh(profile) }
+        assertEquals(original.generation, repo.generationMeta(profile)?.generation)
+        assertEquals(national(id), repo.detail(id, profile, null)?.place)
     }
 
     @Test fun `pbe profile refuses while mixed sources coexist without merging`() = runTest {

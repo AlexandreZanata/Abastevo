@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import com.anpfuel.data.local.charging.ChargingSnapshotImport
+import com.anpfuel.data.local.charging.NATIONAL_CHARGING_PROFILE
 import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity
 
@@ -30,6 +31,10 @@ interface ChargingSnapshotDao {
         meta: ChargingSnapshotMetaEntity,
         places: List<ChargingSnapshotPlaceEntity>,
     ) {
+        if (meta.profile == NATIONAL_CHARGING_PROFILE) {
+            val currentGeneration = findMeta(ChargingSnapshotMetaEntity.packKey(meta.profile))?.generation ?: 0L
+            check(currentGeneration == meta.baseGeneration) { "national snapshot base changed" }
+        }
         check(places.all { it.profile == meta.profile && it.generation == meta.generation }) { "snapshot row scope mismatch" }
         upsertPlaces(places)
         upsertMeta(meta)

@@ -101,6 +101,19 @@ class ChargingSnapshotDaoTest {
         assertEquals(4L, dao.findMeta(ChargingSnapshotMetaEntity.packKey("ocm-br-20261021-v1"))?.generation)
     }
 
+    @Test fun `an obsolete national writer cannot replace the committed cache`() = runTest {
+        val dao = FakeDao()
+        val profile = "charging-br-national-v1"
+        val firstMeta = meta(1).copy(key = ChargingSnapshotMetaEntity.packKey(profile), profile = profile, baseGeneration = 0)
+        val firstRow = place(1).copy(profile = profile)
+        dao.replaceGeneration(firstMeta, listOf(firstRow))
+        val staleWrite = runCatching {
+            dao.replaceGeneration(firstMeta, listOf(firstRow.copy(name = "Stale")))
+        }
+        assertTrue(staleWrite.exceptionOrNull() is IllegalStateException)
+        assertEquals(firstRow, dao.findPlace(firstRow.placeId, profile, 1))
+    }
+
     @Test fun `budgets fail the transaction instead of trimming`() = runTest {
         val dao = FakeDao()
         val filler = (0 until 10_000).map { place(generation = 4, id = "%08x-1111-4111-8111-111111111111".format(it)) }

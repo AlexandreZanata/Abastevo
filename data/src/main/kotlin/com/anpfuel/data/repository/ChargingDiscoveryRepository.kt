@@ -1,5 +1,6 @@
 package com.anpfuel.data.repository
 
+import com.anpfuel.data.local.charging.NATIONAL_CHARGING_PROFILE
 import com.anpfuel.data.local.charging.ChargingSnapshotImport
 import com.anpfuel.data.local.charging.ChargingSnapshotMapper
 import com.anpfuel.data.local.charging.StoredPackMeta
@@ -7,6 +8,7 @@ import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.dao.ChargingSnapshotDao
 import com.anpfuel.data.remote.charging.ChargingSnapshotHttpClient
 import com.anpfuel.domain.charging.ChargingAccess
+import com.anpfuel.domain.charging.ChargingCatalogOffer
 import com.anpfuel.domain.charging.ChargingCompatibility
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingCurrent
@@ -70,6 +72,8 @@ class ChargingDiscoveryRepository @Inject constructor(
     companion object {
         const val OCM_PROFILE = "ocm-br-20261021-v1"
         const val OCM_LICENSE = "CC-BY-4.0 (provider metadata, attribution required)"
+        const val NATIONAL_PROFILE = NATIONAL_CHARGING_PROFILE
+        private const val NATIONAL_LICENSE = "ODbL-1.0 and source-specific OCM provider terms"
         const val PAGE_SIZE = 100
     }
 
@@ -80,21 +84,31 @@ class ChargingDiscoveryRepository @Inject constructor(
         licenseNote: String = OCM_LICENSE,
         nowMillis: Long = Instant.now().toEpochMilli(),
     ): StoredPackMeta {
-        if (profile != OCM_PROFILE) throw ChargingDiscoveryUnavailable("pbe-rights-pending")
+        if (profile != OCM_PROFILE && profile != NATIONAL_CHARGING_PROFILE) {
+            throw ChargingDiscoveryUnavailable("pbe-rights-pending")
+        }
         val stored = dao.findMeta(key(profile))?.generation ?: 0L
         if (baseGeneration != null && baseGeneration != stored) {
             throw IllegalStateException("pack base $baseGeneration != stored $stored")
         }
+        val coverage = if (profile == NATIONAL_CHARGING_PROFILE) client.coverage(profile) else null
+        if (coverage != null) {
+            val expectedOffer = ChargingCatalogOffer.forRevision(coverage.sourceRevision)
+            check(coverage.profile == profile && expectedOffer != null && coverage.offer == expectedOffer &&
+                coverage.places in 1..ChargingSnapshotImport.PLACES_BUDGET.toLong() &&
+                (revision == null || revision == coverage.sourceRevision)) { "national coverage refused" }
+        }
+        val requestedRevision = coverage?.sourceRevision ?: revision
         val current = stored
         val meta = ChargingPackMeta(
-            profile = profile, sourceRevision = revision ?: currentRevision(profile, current),
-            origin = origin, license = licenseNote, schemaVersion = 1,
+            profile = profile, sourceRevision = requestedRevision ?: currentRevision(profile, current),
+            origin = origin, license = if (coverage == null) licenseNote else NATIONAL_LICENSE, schemaVersion = 1,
             baseGeneration = current, generatedAt = Instant.ofEpochMilli(nowMillis).toString(),
         )
         val session = ChargingSnapshotImport.beginLivePack(meta, origin, current)
         var cursor: String? = null
         do {
-            val page = client.places(profile, revision, PAGE_SIZE, cursor)
+            val page = client.places(profile, requestedRevision, PAGE_SIZE, cursor)
             // Live packs carry no pre-published manifest: the hash is an
             // audit trail over the decoded page, while TLS plus strict
             // decode remain the integrity boundary.
@@ -102,7 +116,16 @@ class ChargingDiscoveryRepository @Inject constructor(
             ChargingSnapshotImport.addPage(session, raw, page, shaHex(raw))
             cursor = page.nextCursor
         } while (cursor != null)
-        val committed = ChargingSnapshotImport.commitPack(session, emptyList(), null)
+        val committed = ChargingSnapshotImport.commitPack(session, emptyList(), coverage)
+        if (coverage != null) {
+            check(committed.meta.placeCount == coverage.places && committed.meta.groupCount == coverage.groups) {
+                "national snapshot counts differ from coverage"
+            }
+            val currentCoverage = client.coverage(profile)
+            check(currentCoverage.copy(generatedAt = coverage.generatedAt) == coverage) {
+                "national generation changed during refresh"
+            }
+        }
         dao.replaceGeneration(
             ChargingSnapshotMapper.toMetaEntity(committed.meta, key(profile)),
             committed.places.map { ChargingSnapshotMapper.toEntity(it, nowMillis) },

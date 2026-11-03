@@ -84,3 +84,30 @@ Legacy pages still omit groups.
 Status: LOCAL_DONE / INTEGRATION_PENDING. Charging HTTP integration with
 race detection, vet, staticcheck, OpenAPI lint with zero errors,
 whitespace and secret review passed.
+
+## EVC-07D national offline refresh
+
+B-BR-EVC-07D. A national refresh uses only its active coverage revision,
+same-origin revision-qualified offer paths and source-owned page groups.
+Require exact place and group counts and recheck the active revision before
+commit. An interrupted or stale refresh preserves the previous cache;
+compare its base inside the Room transaction.
+
+BUC-EVC-07D. Refresh a synthetic two-page generation, then refuse a
+short generation, foreign offer URL and a revision change during refresh.
+The original groups and cached generation remain available offline.
+
+RED failed at the national profile gate. GREEN verifies exact counts
+across the two-page fixture, keeps source-owned groups offline and
+refuses a missing page, group count mismatch, foreign offer path and a
+revision change. The codec also refuses missing national page groups and
+fractional counts. An obsolete writer cannot overwrite the committed
+generation. Offer paths are verified against the active revision; the
+backend's publication gate serves the pinned artifacts.
+
+Twenty-five focused Android data tests and three domain tests passed.
+UI activation, the localized detail presentation and map/station
+integration remain part of the following app tasks.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. App debug Kotlin compilation,
+whitespace and secret-surface checks passed.
