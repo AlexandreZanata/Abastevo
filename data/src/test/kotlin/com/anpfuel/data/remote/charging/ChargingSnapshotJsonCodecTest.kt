@@ -49,6 +49,42 @@ class ChargingSnapshotJsonCodecTest {
     }
 
     @Test
+    fun `national facts retain missing name source groups and link`() {
+        val osm = JSONObject("""{"source":"OSM","external_id":"node:7","revision":"synthetic-osm","license":"ODbL-1.0","attribution":"© OpenStreetMap contributors"}""")
+        val ocm = JSONObject("""{"source":"OCM","external_id":"7","revision":"synthetic-ocm","provider_id":40,"license":"CC-0","attribution":"Synthetic provider"}""")
+        val sources = org.json.JSONArray().put(osm).put(ocm)
+        val wire = detail().put("name", "").put("confidence", "two-source")
+            .put("linked_station_id", placeId).put("sources", sources)
+            .put("latitude", "-15.7939123456789012")
+        val osmGroup = JSONObject(group("GBT_DC")).put("source_key", "osm:node:7").put("raw_connector_code", "gb_dc")
+        val ocmGroup = JSONObject(group("UNKNOWN")).put("id", placeId)
+            .put("source_key", "ocm:poi:7").put("raw_connector_code", "")
+        wire.put("groups", org.json.JSONArray().put(osmGroup).put(ocmGroup))
+
+        val decoded = ChargingSnapshotJsonCodec.decodePlaceDetail(wire)
+        assertEquals("", decoded.name)
+        assertEquals("-15.7939123456789012", decoded.latitude)
+        assertEquals("GBT_DC", decoded.groups.first().connector.name)
+        assertEquals("", decoded.groups.last().rawConnectorCode)
+        assertEquals(listOf("osm:node:7", "ocm:poi:7"), decoded.groups.map { it.sourceKey })
+        assertEquals(placeId, decoded.linkedStationId)
+        assertEquals(true, decoded.confirmedByTwoSources)
+
+        ocmGroup.put("source_key", "ocm:poi:8")
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(wire)
+        }
+        ocmGroup.put("source_key", "ocm:poi:7")
+        wire.put("sources", org.json.JSONArray().put(osm))
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(wire)
+        }
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(detail().put("name", ""))
+        }
+    }
+
+    @Test
     fun `valid page detail and coverage decode with raw retention`() {
         val parsed = ChargingSnapshotJsonCodec.decodePlacePage(page())
         assertEquals(1, parsed.items.size)

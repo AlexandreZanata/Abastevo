@@ -89,7 +89,11 @@
   000154 gates activation on complete offer chunks and serves exact revision
   bytes with cache tests. EVC-06I LOCAL_DONE: owner command verifies the
   national files without a DB and gates activation on the exact candidate
-  and allowed target. Synthetic PostGIS import passes. Next EVC-07 app.
+  and allowed target. Synthetic PostGIS import passes. EVC-07A LOCAL_DONE:
+  Android national wire facts preserve absent names, 16-place coordinate
+  precision, connector ownership, confidence and station links. Next
+  profile-isolated offline storage and presentation.
+  [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).

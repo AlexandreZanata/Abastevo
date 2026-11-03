@@ -229,7 +229,7 @@ private fun CommunityForm(state: ChargingCommunityUiState, viewModel: ChargingCo
                 style = MaterialTheme.typography.labelLarge,
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChargingConnector.entries.forEach { connector ->
+                ChargingConnector.entries.filter { it.supportsCommunityReport }.forEach { connector ->
                     FilterChip(
                         selected = state.form.connector == connector,
                         onClick = { viewModel.setConnector(connector) },

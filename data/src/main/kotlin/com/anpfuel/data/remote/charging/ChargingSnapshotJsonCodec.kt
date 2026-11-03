@@ -1,7 +1,7 @@
 package com.anpfuel.data.remote.charging
 
 import com.anpfuel.data.mapper.ChargingSourceAttributionJson
-import com.anpfuel.domain.charging.ChargingAccess
+import com.anpfuel.domain.charging.ChargingCatalogConfidence
 import com.anpfuel.domain.charging.ChargingConnectionGroup
 import com.anpfuel.domain.charging.ChargingCoverage
 import com.anpfuel.domain.charging.ChargingPlace
@@ -83,13 +83,20 @@ object ChargingSnapshotJsonCodec {
             id = reqText(item, "id"),
             entityKey = reqText(item, "entity_key"),
             externalId = reqText(item, "external_id"),
-            name = reqText(item, "name"),
+            name = optText(item, "name") ?: invalid("missing name"),
             country = reqText(item, "country"),
             latitude = optText(item, "latitude"),
             longitude = optText(item, "longitude"),
             publicAccess = wireAccess(reqText(item, "public_access")),
             reportedPoints = reqCount(item, "reported_points"),
             groups = emptyList(),
+            catalogConfidence = when (optText(item, "confidence")) {
+                null -> null
+                "single-source" -> ChargingCatalogConfidence.SINGLE_SOURCE
+                "two-source" -> ChargingCatalogConfidence.TWO_SOURCE
+                else -> invalid("bad confidence")
+            },
+            linkedStationId = optText(item, "linked_station_id"),
             sources = if (item.has("sources")) ChargingSourceAttributionJson.decode(item.getJSONArray("sources")) else emptyList(),
         )
     }
@@ -103,7 +110,8 @@ object ChargingSnapshotJsonCodec {
             entityKey = reqText(item, "entity_key"),
             externalId = reqText(item, "external_id"),
             connector = wireConnector(reqText(item, "connector_code")),
-            rawConnectorCode = reqText(item, "raw_connector_code"),
+            rawConnectorCode = optText(item, "raw_connector_code") ?: invalid("missing raw_connector_code"),
+            sourceKey = optText(item, "source_key"),
             current = wireCurrent(reqText(item, "current")),
             powerW = optCount(item, "power_w", minimum = 1),
             reportedQuantity = optCount(item, "reported_quantity", minimum = 1),

@@ -297,6 +297,12 @@ private fun connectorLabel(connector: ChargingConnector): String = when (connect
     ChargingConnector.TYPE2 -> "Type 2"
     ChargingConnector.CHADEMO -> "CHAdeMO"
     ChargingConnector.NACS -> "NACS"
+    ChargingConnector.TYPE1 -> "Type 1"
+    ChargingConnector.CCS1 -> "CCS 1"
+    ChargingConnector.GBT_AC -> "GB/T AC"
+    ChargingConnector.GBT_DC -> "GB/T DC"
+    ChargingConnector.NBR14136 -> "NBR 14136"
+    ChargingConnector.TESLA_LEGACY -> "Tesla Legacy"
     ChargingConnector.UNKNOWN -> stringResource(R.string.charging_explore_unknown)
 }
 
