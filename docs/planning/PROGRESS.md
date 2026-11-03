@@ -109,7 +109,8 @@
   covers removals, surviving sources, movement and group changes, with
   review holds for ambiguous transitions. EVC-08B LOCAL_DONE: verified
   inventory binds 1,775 real source decisions to the national catalog.
-  Next connect the scheduled operations entry point.
+  EVC-08C LOCAL_DONE: file-only review CLI and OCM weekly/OSM monthly
+  timers verified locally. Next bind review to the activation transaction.
   [Refresh evidence](../backend/evidence/evc/EVC-08.md).
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).

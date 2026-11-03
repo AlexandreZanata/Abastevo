@@ -46,7 +46,24 @@ func TestVerifyIsFileOnlyAndApprovalIsExact(t *testing.T) {
 	data := map[string]any{"path": "derived-database.ndjson", "sha256": dataHash, "bytes": len(catalog), "records": 1}
 	notice := encode(map[string]any{"format": "abastevo.ev-derived-database-offer-v1", "license": "ODbL-1.0", "data": data})
 	noticeHash := write(filepath.Join(rightsDir, "derived-database-offer.json"), notice)
-	manifest, boundary := strings.Repeat("c", 64), strings.Repeat("d", 64)
+	for _, sub := range []string{"normalized/generation", "conflated/generation"} {
+		if err := os.MkdirAll(filepath.Join(dir, sub), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	decisions := []byte("{\"key\":\"osm:node:1\",\"state\":\"ACCEPTED\"}\n")
+	decisionHash := write(filepath.Join(dir, "normalized/generation/decisions.ndjson"), decisions)
+	normal := encode(map[string]any{
+		"format": "abastevo.ev-source-sites-v1", "source_pins": map[string]int{"ocm_rows": 0},
+		"summary": map[string]int{"accepted_source_sites": 1, "osm_candidates": 1},
+		"files":   map[string]any{"decisions.ndjson": map[string]any{"sha256": decisionHash, "bytes": len(decisions), "records": 1}},
+	})
+	normalHash := write(filepath.Join(dir, "normalized/generation/manifest.json"), normal)
+	manifest := write(filepath.Join(dir, "conflated/generation/manifest.json"), encode(map[string]any{
+		"format": "abastevo.ev-conflated-v1", "input_manifest_sha256": normalHash,
+		"files": map[string]any{"catalog.ndjson": data},
+	}))
+	boundary := strings.Repeat("d", 64)
 	rights := encode(map[string]any{"format": "abastevo.ev-generation-rights-v1", "catalog_sha256": dataHash,
 		"catalog_manifest_sha256": manifest, "catalog_sites": 1, "requires_derived_database_offer": true,
 		"offer": map[string]any{"data": data, "notice": map[string]any{"path": "derived-database-offer.json",
@@ -75,6 +92,35 @@ func TestVerifyIsFileOnlyAndApprovalIsExact(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil || report.BatchSHA256 == "" {
 		t.Fatalf("verify receipt invalid: %v", err)
 	}
+	config := filepath.Join(dir, "review.json")
+	spec := map[string]string{"directory": dir, "rights_sha256": rightsHash, "manifest_sha256": manifest,
+		"geography_sha256": geoHash, "boundary_sha256": boundary}
+	write(config, encode(map[string]any{"candidate": spec, "baseline": spec}))
+	reports := filepath.Join(dir, "reports")
+	if err := os.Mkdir(reports, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := run([]string{"review", "--config", config, "--output-dir", reports}, noDB, &output); err != nil {
+		t.Fatalf("file-only review: %v", err)
+	}
+	entries, err := os.ReadDir(reports)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("review reports=%v err=%v", entries, err)
+	}
+	info, err := entries[0].Info()
+	if err != nil || info.Mode().Perm() != 0600 {
+		t.Fatalf("review report permissions: %v %v", info, err)
+	}
+	review, err := os.ReadFile(filepath.Join(reports, entries[0].Name()))
+	if err != nil || !bytes.Contains(review, []byte(`"inventory_records":1`)) ||
+		!bytes.Contains(review, []byte(report.BatchSHA256)) || bytes.Contains(review, []byte(`"added"`)) {
+		t.Fatalf("review report=%q err=%v", review, err)
+	}
+	write(config, encode(map[string]any{"candidate": spec, "activate": true}))
+	if err := run([]string{"review", "--config", config}, noDB, &output); err == nil {
+		t.Fatal("unexpected review config accepted")
+	}
+
 	production := func(key string) string {
 		if key != "ANPFUEL_ENV" {
 			t.Fatalf("refused target tried to read %s", key)

@@ -54,3 +54,32 @@ configuration was present for the replay.
 Status: LOCAL_DONE / INTEGRATION_PENDING. Corruption, duplicate,
 framing and reconciliation tests, race detection, vet, staticcheck,
 whitespace and secret review passed.
+
+## EVC-08C scheduled file-only review
+
+B-BR-EVC-08C. Scheduled reviews read only owner-pinned candidate
+and optional baseline directories. A weekly OCM timer and monthly OSM
+timer invoke the same offline verifier. Each successful verification
+writes a private, revision-bound report. Unapproved source acquisition
+and catalog activation remain separate operator actions.
+
+BUC-EVC-08C. Run the actual review command against a synthetic approved
+candidate and against the already approved local national replay.
+Verify private report creation, invalid configuration refusal and
+the timer calendars without installing services on staging.
+
+RED reproduced the missing review subcommand. The command now reads
+an owner-local configuration, resolves a fixed bundle layout inside
+opened roots and writes a mode-0600 JSON report atomically. A synthetic
+test exercises the real entry point with an environment callback that
+fails on any read. Invalid config fields are refused.
+
+The real pinned replay through the built binary verified 1,775 decisions
+and wrote a private empty repeat diff. The OCM Monday and first-of-month
+OSM calendars parsed successfully. Both timer definitions and the service
+template passed systemd verification against a temporary copy of the built
+binary. No timer was installed or started.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. Unit/race tests, vet,
+staticcheck, whitespace and secret review passed. Binding the reviewed
+baseline to the activation transaction remains open.

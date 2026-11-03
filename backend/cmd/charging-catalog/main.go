@@ -25,6 +25,9 @@ func main() {
 }
 
 func run(args []string, getenv func(string) string, output io.Writer) error {
+	if len(args) > 0 && args[0] == "review" {
+		return runReview(args[1:], output)
+	}
 	flags := flag.NewFlagSet("charging-catalog", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	bundle := flags.String("bundle", "", "owner-reviewed rights bundle directory")
@@ -138,13 +141,5 @@ func readGeography(path string) ([]byte, error) {
 		return nil, errors.New("geography file unavailable")
 	}
 	defer file.Close()
-	info, err := file.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Size() > limit {
-		return nil, errors.New("geography file refused")
-	}
-	raw, err := io.ReadAll(io.LimitReader(file, limit+1))
-	if err != nil || len(raw) > limit {
-		return nil, errors.New("geography file refused")
-	}
-	return raw, nil
+	return readBoundedRegularFile(file, limit)
 }
