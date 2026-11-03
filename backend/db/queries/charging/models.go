@@ -19,6 +19,49 @@ type ChargingBatch struct {
 	StoredAt       pgtype.Timestamptz `json:"stored_at"`
 }
 
+type ChargingCatalogActivation struct {
+	ID              int64              `json:"id"`
+	BatchID         pgtype.UUID        `json:"batch_id"`
+	PreviousBatchID pgtype.UUID        `json:"previous_batch_id"`
+	OverrideActor   pgtype.Text        `json:"override_actor"`
+	OverrideReason  pgtype.Text        `json:"override_reason"`
+	ActivatedAt     pgtype.Timestamptz `json:"activated_at"`
+}
+
+type ChargingCatalogCurrent struct {
+	Singleton bool        `json:"singleton"`
+	BatchID   pgtype.UUID `json:"batch_id"`
+	Held      bool        `json:"held"`
+}
+
+type ChargingCatalogGeneration struct {
+	BatchID      pgtype.UUID `json:"batch_id"`
+	RightsSha256 string      `json:"rights_sha256"`
+	OfferSha256  string      `json:"offer_sha256"`
+	UfCounts     []byte      `json:"uf_counts"`
+}
+
+type ChargingCatalogOfferArtifact struct {
+	BatchID pgtype.UUID `json:"batch_id"`
+	Kind    string      `json:"kind"`
+	Sha256  string      `json:"sha256"`
+	Bytes   int32       `json:"bytes"`
+}
+
+type ChargingCatalogOfferChunk struct {
+	BatchID  pgtype.UUID `json:"batch_id"`
+	Kind     string      `json:"kind"`
+	Position int32       `json:"position"`
+	Data     []byte      `json:"data"`
+}
+
+type ChargingCatalogPlaceAlias struct {
+	BatchID   pgtype.UUID `json:"batch_id"`
+	PublicID  pgtype.UUID `json:"public_id"`
+	PlaceID   pgtype.UUID `json:"place_id"`
+	IsPrimary bool        `json:"is_primary"`
+}
+
 type ChargingConnectionGroup struct {
 	ID               pgtype.UUID `json:"id"`
 	BatchID          pgtype.UUID `json:"batch_id"`
@@ -30,6 +73,7 @@ type ChargingConnectionGroup struct {
 	Current          string      `json:"current"`
 	PowerW           pgtype.Int4 `json:"power_w"`
 	ReportedQuantity pgtype.Int4 `json:"reported_quantity"`
+	CatalogSourceKey pgtype.Text `json:"catalog_source_key"`
 }
 
 type ChargingHelpfulnessVote struct {
@@ -92,6 +136,7 @@ type ChargingPlace struct {
 	PublicAccess   string      `json:"public_access"`
 	ReportedPoints int32       `json:"reported_points"`
 	StationID      pgtype.UUID `json:"station_id"`
+	CatalogDetails []byte      `json:"catalog_details"`
 }
 
 type ChargingVehicleReference struct {

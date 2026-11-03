@@ -68,11 +68,28 @@ class ServerStation private constructor(
     val state: String?,
     val currentRevisionId: String?,
     val address: Map<String, String>,
+    val legalName: String?,
+    val addressSource: StationAddressSource?,
 ) {
     /** True when this station may be drawn as a map pin and routed to. */
     val hasPin: Boolean get() = locationQuality.isPin && latitude != null && longitude != null
 
-    val addressLabel: String get() = address.values.filter { it.isNotBlank() }.joinToString(", ")
+    val addressLine: String = formatStationAddress(address, state)
+    val addressLabel: String get() = addressLine
+
+    val secondaryLegalName: String? = legalName?.trim()?.takeUnless {
+        normalizedStationName(it).equals(normalizedStationName(displayName), ignoreCase = true)
+    }
+
+    val hasApproximateAddress: Boolean get() =
+        addressLine.isNotBlank() && addressSource != null && addressSource != StationAddressSource.ANP
+
+    fun matchesName(query: String): Boolean {
+        val text = normalizedStationName(query)
+        return text.isNotEmpty() && listOfNotNull(displayName, legalName).any {
+            normalizedStationName(it).contains(text, ignoreCase = true)
+        }
+    }
 
     /** Readable address for the UI (street, number · district); empty when unknown. */
     val displayAddress: String get() = StationAddressFormatter.format(address)
@@ -91,6 +108,8 @@ class ServerStation private constructor(
             state: String?,
             currentRevisionId: String?,
             address: Map<String, String> = emptyMap(),
+            legalName: String? = null,
+            addressSource: StationAddressSource? = null,
         ): ServerStation {
             if (!BackendPriceGroup.isUuid(stationId)) {
                 throw DomainException("malformed station_id")
@@ -125,6 +144,8 @@ class ServerStation private constructor(
                 state = state?.trim()?.takeIf { it.isNotEmpty() },
                 currentRevisionId = currentRevisionId?.lowercase(),
                 address = address.toMap(),
+                legalName = legalName?.takeIf { it.isNotBlank() },
+                addressSource = addressSource,
             )
         }
     }

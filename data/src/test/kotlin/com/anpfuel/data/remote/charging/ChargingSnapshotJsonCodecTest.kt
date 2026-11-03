@@ -24,6 +24,83 @@ class ChargingSnapshotJsonCodecTest {
         JSONObject("""{"items":[$items],"next_cursor":$next,"generated_at":"2026-10-22T00:00:00Z"}""")
 
     @Test
+    fun `retains distinct provider attribution and accepts legacy omission`() {
+        val osm = JSONObject("""{"source":"OSM","external_id":"node:7","revision":"synthetic-osm","license":"ODbL-1.0","attribution":"© OpenStreetMap contributors (ODbL)"}""")
+        val ocm = JSONObject("""{"source":"OCM","external_id":"7","revision":"synthetic-ocm","provider_id":40,"license":"CC-0","attribution":"Easy Volt"}""")
+        val sources = org.json.JSONArray().put(osm).put(ocm)
+        val decoded = ChargingSnapshotJsonCodec.decodePlaceDetail(detail().put("sources", sources))
+        assertEquals(listOf("© OpenStreetMap contributors (ODbL)", "Easy Volt"), decoded.sources.map { it.attribution })
+        assertEquals(listOf(null, 40L), decoded.sources.map { it.providerId })
+        assertEquals(listOf("ODbL-1.0", "CC-0"), decoded.sources.map { it.license })
+        assertEquals(decoded.sources, ChargingSnapshotJsonCodec.decodePlacePage(page(place(",\"sources\":$sources"))).items.single().sources)
+        assertEquals(emptyList<Any>(), ChargingSnapshotJsonCodec.decodePlaceDetail(detail()).sources)
+        ocm.put("provider_id", 40.5)
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(detail().put("sources", sources))
+        }
+        ocm.remove("provider_id")
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(detail().put("sources", sources))
+        }
+        ocm.put("provider_id", 40).put("contact", "synthetic private")
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(detail().put("sources", sources))
+        }
+    }
+
+    @Test
+    fun `national facts retain missing name source groups and link`() {
+        val osm = JSONObject("""{"source":"OSM","external_id":"node:7","revision":"synthetic-osm","license":"ODbL-1.0","attribution":"© OpenStreetMap contributors"}""")
+        val ocm = JSONObject("""{"source":"OCM","external_id":"7","revision":"synthetic-ocm","provider_id":40,"license":"CC-0","attribution":"Synthetic provider"}""")
+        val sources = org.json.JSONArray().put(osm).put(ocm)
+        val wire = detail().put("name", "").put("confidence", "two-source")
+            .put("linked_station_id", placeId).put("sources", sources)
+            .put("latitude", "-15.7939123456789012")
+        val osmGroup = JSONObject(group("GBT_DC")).put("source_key", "osm:node:7").put("raw_connector_code", "gb_dc")
+        val ocmGroup = JSONObject(group("UNKNOWN")).put("id", placeId)
+            .put("source_key", "ocm:poi:7").put("raw_connector_code", "")
+        wire.put("groups", org.json.JSONArray().put(osmGroup).put(ocmGroup))
+
+        val decoded = ChargingSnapshotJsonCodec.decodePlaceDetail(wire)
+        assertEquals("", decoded.name)
+        assertEquals("-15.7939123456789012", decoded.latitude)
+        assertEquals("GBT_DC", decoded.groups.first().connector.name)
+        assertEquals("", decoded.groups.last().rawConnectorCode)
+        assertEquals(listOf("osm:node:7", "ocm:poi:7"), decoded.groups.map { it.sourceKey })
+        assertEquals(placeId, decoded.linkedStationId)
+        assertEquals(true, decoded.confirmedByTwoSources)
+        assertEquals(decoded, ChargingSnapshotJsonCodec.decodePlacePage(page(wire.toString())).items.single())
+        val incomplete = JSONObject(wire.toString()).apply { remove("groups") }
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlacePage(page(incomplete.toString()))
+        }
+
+        ocmGroup.put("source_key", "ocm:poi:8")
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(wire)
+        }
+        ocmGroup.put("source_key", "ocm:poi:7")
+        wire.put("sources", org.json.JSONArray().put(osm))
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(wire)
+        }
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(detail().put("name", ""))
+        }
+    }
+
+    @Test
+    fun `national operator and formatted address survive wire without coordinates`() {
+        val sources = org.json.JSONArray().put(JSONObject("""{"source":"OSM","external_id":"node:7","revision":"synthetic","license":"ODbL-1.0","attribution":"Synthetic OSM"}"""))
+        val address = JSONObject("""{"street":"-23.5, -46.6","municipio":"Synthetic City","uf":"SP","raw":"Private field"}""")
+        val national = detail().put("confidence", "single-source").put("sources", sources)
+            .put("groups", org.json.JSONArray()).put("operator", "Synthetic operator").put("address", address)
+        val place = ChargingSnapshotJsonCodec.decodePlaceDetail(national)
+        assertEquals("Synthetic operator", place.operator)
+        assertEquals("Synthetic City/SP", place.addressLine)
+    }
+
+    @Test
     fun `valid page detail and coverage decode with raw retention`() {
         val parsed = ChargingSnapshotJsonCodec.decodePlacePage(page())
         assertEquals(1, parsed.items.size)
@@ -38,6 +115,10 @@ class ChargingSnapshotJsonCodecTest {
             JSONObject("""{"profile":"ocm-br-20261021-v1","source_revision":"rev-1","places":1298,"groups":3387,"vehicles":181,"generated_at":"2026-10-22T00:00:00Z"}"""),
         )
         assertEquals(3387L, coverage.groups)
+        val fractional = JSONObject("""{"profile":"charging-br-national-v1","source_revision":"rev-1","places":1.5,"groups":2,"vehicles":0,"generated_at":"2026-10-22T00:00:00Z"}""")
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodeCoverage(fractional)
+        }
     }
 
     @Test

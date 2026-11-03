@@ -1,0 +1,30 @@
+{
+  "source_units": {
+    "OCM": {
+      "CHARGING_SITE": 1258
+    },
+    "OSM": {
+      "CHARGING_SITE": 399,
+      "CHARGE_POINT": 64,
+      "COMBINED_SITE": 6
+    }
+  },
+  "quarantine_reasons": {
+    "OCM": {
+      "private_access": 37,
+      "outside_country_extent": 1,
+      "planned_site": 2
+    },
+    "OSM": {
+      "private_access": 7,
+      "outside_country_extent": 1
+    }
+  },
+  "source_decisions_total": 1775,
+  "complete_ocm_inventory": true,
+  "all_accepted_points_within_independent_ibge_extent": true,
+  "outside_extent_source_ids": [
+    "ocm:poi:311700",
+    "osm:node:11524381344"
+  ]
+}

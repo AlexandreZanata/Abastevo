@@ -1,0 +1,24 @@
+{
+  "status": "PASS",
+  "input_manifest_sha256": "61a0d64aaf2eda85dae247b3948a9d0df49a49baa1c019a83bab2bca1af4877b",
+  "output_manifest_sha256": "d3b5d0ab7b0b0b05933decd285d012a052210391c4f46ea10a93d2befb80f44c",
+  "byte_identical_files": 8,
+  "independent_exhaustive_source_pairs": 509490,
+  "confirmed_pairs": 5,
+  "conflict_pairs": 38,
+  "probable_pairs": 3,
+  "consumed_candidate_pairs": 0,
+  "catalog_sites": 1658,
+  "source_assertions_unchanged": 1665,
+  "unresolved_equipment": 62,
+  "all_source_records_partitioned": 1727,
+  "independent_ibge_catalog_counts_match": true,
+  "represented_ufs": 25,
+  "unassigned_sites": 11,
+  "owner_imagery_sample": {
+    "candidates": 30,
+    "represented_ufs": 26,
+    "status": "PENDING"
+  },
+  "no_import_or_staging_operation": true
+}

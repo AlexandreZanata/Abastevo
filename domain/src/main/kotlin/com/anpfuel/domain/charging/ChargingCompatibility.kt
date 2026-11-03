@@ -34,10 +34,14 @@ object ChargingCompatibility {
         connector: ChargingConnector?,
         current: ChargingCurrent?,
         access: ChargingAccess?,
+        minPowerW: Long? = null,
     ): Boolean {
-        if (connector != null && place.groups.none { it.connector == connector }) return false
-        if (current != null && place.groups.none { it.current == current }) return false
         if (access != null && place.publicAccess != access) return false
-        return true
+        if (connector == null && current == null && minPowerW == null) return true
+        return place.groups.any { group ->
+            (connector == null || group.connector == connector) &&
+                (current == null || group.current == current) &&
+                (minPowerW == null || group.powerW?.let { it >= minPowerW } == true)
+        }
     }
 }

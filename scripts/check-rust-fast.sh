@@ -15,7 +15,13 @@ if ! command -v cargo >/dev/null 2>&1; then
     echo "ERROR: missing tool cargo (rustup toolchain install 1.99.0 --profile minimal --component rustfmt,clippy)" >&2
     exit 1
 fi
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "ERROR: missing python3 for offline acquisition tests" >&2
+    exit 1
+fi
 cd "$CRATE"
+echo "== offline source preparation tests =="
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p 'test_*.py'
 
 echo "== rust fmt =="
 cargo fmt --check

@@ -214,6 +214,36 @@ func (q *Queries) JobBacklog(ctx context.Context) (JobBacklogRow, error) {
 	return i, err
 }
 
+const jobDedupePrefixStats = `-- name: JobDedupePrefixStats :many
+SELECT status,count(*)::bigint AS total FROM job_queue
+WHERE starts_with(dedupe_key,$1::text) GROUP BY status ORDER BY status
+`
+
+type JobDedupePrefixStatsRow struct {
+	Status string `json:"status"`
+	Total  int64  `json:"total"`
+}
+
+func (q *Queries) JobDedupePrefixStats(ctx context.Context, prefix string) ([]JobDedupePrefixStatsRow, error) {
+	rows, err := q.db.Query(ctx, jobDedupePrefixStats, prefix)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []JobDedupePrefixStatsRow
+	for rows.Next() {
+		var i JobDedupePrefixStatsRow
+		if err := rows.Scan(&i.Status, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const replayDeadJob = `-- name: ReplayDeadJob :execrows
 UPDATE job_queue
 SET status = 'queued', attempts = 0, last_error = $1,

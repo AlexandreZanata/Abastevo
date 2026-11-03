@@ -21,6 +21,7 @@ pub mod deflate;
 pub mod enforcement;
 pub mod enforcement_xlsx;
 pub mod ev_contract;
+pub mod ev_geography;
 pub mod ev_ocm;
 pub mod ev_output;
 pub mod ev_pbe;
@@ -37,10 +38,13 @@ pub mod output;
 pub mod pmqc;
 pub mod quality;
 pub mod registry;
+pub mod registry_addresses;
+pub mod registry_names;
 pub mod replay;
 pub mod sanction;
 pub mod sanction_anp;
 pub mod sanction_history;
+pub mod station_addresses;
 pub mod types;
 pub mod xlsx;
 pub mod xml;
@@ -76,3 +80,25 @@ pub use sanction::{
     parse_sanctions, SanctionBatch, SanctionError, SanctionSnapshot, SANCTION_SOURCE,
 };
 pub use types::{Counts, Limits, QuarantineRow, RunState};
+
+pub mod osm_national;
+
+pub mod ev_sockets;
+
+pub mod ev_sites;
+
+pub mod ev_osm_sites;
+
+pub mod ev_site_preparation;
+
+pub mod ev_hierarchy;
+
+pub mod ev_conflation;
+
+pub mod ev_conflation_preparation;
+
+/// Per-generation attribution and source rights.
+pub mod ev_rights;
+
+/// Local rights and derived database offer bundle.
+pub mod ev_rights_bundle;

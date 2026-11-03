@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
 	"strconv"
 	"strings"
 	"time"
@@ -73,6 +74,7 @@ func decodeAPIPage(body []byte, pageNumber int) (apiPage, error) {
 type officialAPIRecord struct {
 	CNPJ          string `json:"cnpj"`
 	Business      string `json:"razaoSocial"`
+	TradeName     string `json:"nomeFantasia"`
 	SIMP          string `json:"codigoSIMP"`
 	Authorization string `json:"autorizacao"`
 	Published     string `json:"dataPublicacao"`
@@ -102,7 +104,9 @@ func parseOfficialAPIRecord(raw json.RawMessage) (Assertion, bool) {
 	if err != nil || name == "" || len(uf) != 2 || strings.TrimSpace(rec.Address) == "" || strings.TrimSpace(rec.Municipality) == "" {
 		return Assertion{}, false
 	}
-	a := Assertion{Source: SourceAPI, SourceKey: cnpj, DisplayName: name, State: uf,
+	a := Assertion{Source: SourceAPI, SourceKey: cnpj,
+		DisplayName: domain.StationDisplayName(rec.Business, rec.TradeName, cnpj, ""),
+		LegalName:   rec.Business, TradeName: rec.TradeName, State: uf,
 		AuthState: "unknown", Eligibility: "pending", LocationQuality: "unknown",
 		Address: map[string]string{"raw": rec.Address, "complement": rec.Complement, "district": rec.District, "postal_code": rec.PostalCode, "municipio": rec.Municipality, "uf": uf},
 	}

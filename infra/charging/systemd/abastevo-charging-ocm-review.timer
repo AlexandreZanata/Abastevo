@@ -1,0 +1,10 @@
+[Unit]
+Description=Review pinned OCM charging data weekly
+
+[Timer]
+OnCalendar=Mon *-*-* 04:10:00 UTC
+Persistent=true
+Unit=abastevo-charging-review@ocm.service
+
+[Install]
+WantedBy=timers.target

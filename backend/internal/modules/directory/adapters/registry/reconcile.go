@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // Canonicalizer publishes staged assertions to stable identities. The
@@ -13,6 +14,7 @@ import (
 // consolidation stay audited operator decisions (B-BR-D02), never
 // import side effects.
 type Canonicalizer interface {
+	ProjectSourceFacts(context.Context, string, string) error
 	ResolveStation(ctx context.Context, cnpj, display string, address map[string]string) (string, error)
 	RecordReviewedPoint(ctx context.Context, stationID string, lat, lon float64, sourceRef string) error
 	SetStatus(ctx context.Context, stationID, status string) error
@@ -49,6 +51,13 @@ func stationStatusFor(auth string) (string, bool) {
 // never closes anything, and no address-only merge or invented
 // price/location is ever created.
 func ReconcileRun(ctx context.Context, store Store, canon Canonicalizer, source, snapshot string) (ReconReport, error) {
+	// Jobs retain their logical snapshot input; resolve the current parser's
+	// physical identity, while explicit versioned identities remain auditable.
+	if source == SourceCSV && !strings.HasPrefix(snapshot, "registry-csv-v") {
+		snapshot = ParserVersion + ":" + snapshot
+	} else if source == SourceAPI && !strings.HasPrefix(snapshot, "registry-api-v") {
+		snapshot = APIParserVersion + ":" + snapshot
+	}
 	run, err := store.GetRun(ctx, source, snapshot)
 	if err != nil {
 		return ReconReport{}, err
@@ -88,6 +97,11 @@ func reconcileOne(ctx context.Context, store Store, canon Canonicalizer, a Asser
 	}
 	if err := store.SetAssertionStation(ctx, a.ID, stationID); err != nil {
 		return err
+	}
+	if a.Source == SourceCSV || a.Source == SourceAPI {
+		if err := canon.ProjectSourceFacts(ctx, stationID, a.ID); err != nil {
+			return err
+		}
 	}
 	if status, ok := stationStatusFor(a.AuthState); ok {
 		if err := canon.SetStatus(ctx, stationID, status); err != nil {

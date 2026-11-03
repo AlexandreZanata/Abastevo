@@ -114,6 +114,16 @@ pub struct Manifest {
     pub municipality_reference: MunicipalityReference,
     pub started_at: String,
     pub ended_at: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub name_inputs: Vec<crate::registry_names::NameInputPin>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_policy_sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_inputs: Option<Vec<crate::registry_addresses::AddressInputPin>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_skips: Option<Vec<crate::registry_addresses::AddressSkip>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub address_coverage: Option<crate::registry_addresses::AddressCoverage>,
     pub inputs: Vec<SourceMeta>,
     pub counts: BTreeMap<String, ManifestCounts>,
     pub completeness: Completeness,
@@ -362,6 +372,11 @@ fn base_manifest(alias_reference: &str, alias_digest: &str, options: &EmitOption
         },
         started_at: options.started_at.clone(),
         ended_at: options.ended_at.clone(),
+        name_inputs: Vec::new(),
+        address_policy_sha256: None,
+        address_inputs: None,
+        address_skips: None,
+        address_coverage: None,
         inputs: Vec::new(),
         counts: BTreeMap::new(),
         completeness: Completeness {
@@ -397,6 +412,11 @@ pub fn emit_run(
     let mut spill_bytes = 0u64;
 
     if let Some((meta, batch)) = registry {
+        if batch.name_profile {
+            manifest.parser_version = crate::registry_names::NAMED_PARSER_VERSION.to_string();
+            manifest.name_inputs = batch.name_inputs.clone();
+        }
+        crate::registry_addresses::apply_manifest(&mut manifest, batch);
         manifest.inputs.push(meta.clone());
         manifest
             .counts
@@ -562,6 +582,11 @@ pub fn emit_to_directory(
     let cleanup = Cleanup(staging.clone());
     let mut manifest = base_manifest(alias_reference, alias_digest, options);
     if let Some((meta, batch)) = registry {
+        if batch.name_profile {
+            manifest.parser_version = crate::registry_names::NAMED_PARSER_VERSION.to_string();
+            manifest.name_inputs = batch.name_inputs.clone();
+        }
+        crate::registry_addresses::apply_manifest(&mut manifest, batch);
         manifest.inputs.push(meta.clone());
         manifest
             .counts

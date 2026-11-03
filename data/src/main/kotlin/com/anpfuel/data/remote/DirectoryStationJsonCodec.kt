@@ -3,6 +3,7 @@ package com.anpfuel.data.remote
 import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
+import com.anpfuel.domain.discovery.StationAddressSource
 import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.exception.DomainException
 import org.json.JSONObject
@@ -110,9 +111,11 @@ object DirectoryStationJsonCodec {
             municipalityCode = optNullableString(item, "municipality_code"),
             state = optNullableString(item, "state"),
             currentRevisionId = optNullableString(item, "current_revision_id"),
+            legalName = item.opt("legal_name") as? String,
+            addressSource = StationAddressSource.fromWire(item.opt("address_source") as? String),
             address = item.optJSONObject("address")?.let { address ->
                 address.keys().asSequence().mapNotNull { key ->
-                    if (address.isNull(key)) null else key to address.optString(key)
+                    (address.opt(key) as? String)?.let { key to it }
                 }.toMap()
             } ?: emptyMap(),
         )

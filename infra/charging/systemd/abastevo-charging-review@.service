@@ -1,0 +1,17 @@
+[Unit]
+Description=Review an owner-pinned Abastevo charging candidate (%i)
+ConditionPathExists=/etc/abastevo/charging-review-%i.json
+
+[Service]
+Type=oneshot
+User=abastevo-charge-review
+Group=abastevo-charge-review
+UMask=0077
+StateDirectory=abastevo-charging-review/%i
+StateDirectoryMode=0700
+ExecStart=/usr/local/bin/charging-catalog review --config /etc/abastevo/charging-review-%i.json --output-dir /var/lib/abastevo-charging-review/%i
+PrivateNetwork=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes

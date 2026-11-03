@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -31,6 +32,7 @@ import com.anpfuel.app.community.CommunityPriceDisplay
 import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.navigation.MapAppChooser
 import com.anpfuel.app.navigation.MapNavigationResult
+import com.anpfuel.app.ui.charging.ChargingPlaceDetailDialog
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.BouncyToggleIcon
@@ -54,6 +56,7 @@ fun StationPageScreen(
     onUpdatePrice: (String, String) -> Unit,
     onQuality: (String, FuelProduct) -> Unit,
     viewModel: StationPageViewModel = hiltViewModel(),
+    onReportCharging: (String) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
@@ -67,7 +70,7 @@ fun StationPageScreen(
             if (query != null && MapAppChooser.openNavigation(context, query) == MapNavigationResult.NoAppFound) {
                 Toast.makeText(context, context.getString(R.string.stations_navigate_no_app), Toast.LENGTH_SHORT).show()
             }
-        },onQuality=onQuality)
+        }, onQuality = onQuality, onReportCharging = onReportCharging)
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -81,8 +84,16 @@ internal fun StationPageContent(
     onUpdatePrice: (String, String) -> Unit,
     onRoute: () -> Unit,
     onQuality: (String, FuelProduct) -> Unit = {_,_->},
+    onReportCharging: (String) -> Unit = {},
 ) {
     var showGuide by remember { mutableStateOf(false) }
+    var selectedChargingId by rememberSaveable { mutableStateOf<String?>(null) }
+    state.linkedChargers.firstOrNull { it.place.id == selectedChargingId }?.let { detail ->
+        ChargingPlaceDetailDialog(
+            detail, LocalConfiguration.current.locales[0],
+            onDismissDetail = { selectedChargingId = null }, onOpenCommunity = onReportCharging,
+        )
+    }
     val artwork = state.profile?.artwork ?: state.canonical?.artwork ?: StationArtwork.BETA_DEFAULT
     AnpScaffold(topBar = {
         AnpTopAppBar(onNavigateUp = onBack, title = {
@@ -135,6 +146,27 @@ internal fun StationPageContent(
                     }
                     OutlinedButton(onClick = { state.canonical?.let { onUpdatePrice(it.stationId, WireFuelMapper.toWire(state.fuel)) } },
                         enabled = state.canParticipate, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.nav_update_price)) }
+                }
+            }
+            if (state.linkedChargers.isNotEmpty()) {
+                item {
+                    StationSectionCard(stringResource(R.string.station_linked_chargers)) {
+                        state.linkedChargers.forEach { detail ->
+                            val place = detail.place
+                            OutlinedButton(
+                                onClick = { selectedChargingId = place.id },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Column {
+                                    Text(place.name.ifBlank { stringResource(R.string.charging_place_unnamed) })
+                                    if (place.confirmedByTwoSources) {
+                                        Text(stringResource(R.string.charging_place_two_sources),
+                                            style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             item {

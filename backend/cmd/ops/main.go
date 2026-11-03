@@ -32,6 +32,8 @@ func run(args []string, getenv func(string) string) error {
 		return errors.New(usage)
 	}
 	switch args[0] {
+	case "directory":
+		return runDirectory(args[1:], getenv)
 	case "quality":
 		return runQuality(args[1:], getenv)
 	case "subscription":
@@ -56,6 +58,8 @@ func run(args []string, getenv func(string) string) error {
 }
 
 const usage = `usage:
+  ops directory reproject-facts --campaign <uuid> --reason <text> [--operator <id>]
+  ops directory facts-status --campaign <uuid> [--operator <id>]
   ops quality queue [--after <case-uuid>] [--operator <id>]
   ops quality inspect --target <review-target-uuid> [--operator <id>]
   ops quality group --station <uuid> --fuel <canonical> --day <YYYY-MM-DD> [--after <uuid>] [--operator <id>]

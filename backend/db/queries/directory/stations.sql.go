@@ -307,7 +307,7 @@ func (q *Queries) FixDistanceM(ctx context.Context, arg FixDistanceMParams) (Fix
 }
 
 const getStation = `-- name: GetStation :one
-SELECT id, display_name, address, municipality_code, state, status,
+SELECT id, display_name, legal_name, address_source, address, municipality_code, state, status,
     ST_AsText(current_point) AS current_point_wkt, current_quality,
     current_revision_id, created_at
 FROM directory_stations
@@ -317,6 +317,8 @@ WHERE id = $1
 type GetStationRow struct {
 	ID                pgtype.UUID        `json:"id"`
 	DisplayName       string             `json:"display_name"`
+	LegalName         pgtype.Text        `json:"legal_name"`
+	AddressSource     pgtype.Text        `json:"address_source"`
 	Address           []byte             `json:"address"`
 	MunicipalityCode  pgtype.Text        `json:"municipality_code"`
 	State             pgtype.Text        `json:"state"`
@@ -333,6 +335,8 @@ func (q *Queries) GetStation(ctx context.Context, id pgtype.UUID) (GetStationRow
 	err := row.Scan(
 		&i.ID,
 		&i.DisplayName,
+		&i.LegalName,
+		&i.AddressSource,
 		&i.Address,
 		&i.MunicipalityCode,
 		&i.State,
@@ -394,7 +398,7 @@ func (q *Queries) ListLocationRevisions(ctx context.Context, stationID pgtype.UU
 }
 
 const nearbyStations = `-- name: NearbyStations :many
-SELECT id, display_name, address, municipality_code, state, status,
+SELECT id, display_name, legal_name, address_source, address, municipality_code, state, status,
     ST_AsText(current_point) AS current_point_wkt, current_quality,
     current_revision_id, created_at,
     ST_Distance(current_point, ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)::geography) AS distance_m
@@ -421,6 +425,8 @@ type NearbyStationsParams struct {
 type NearbyStationsRow struct {
 	ID                pgtype.UUID        `json:"id"`
 	DisplayName       string             `json:"display_name"`
+	LegalName         pgtype.Text        `json:"legal_name"`
+	AddressSource     pgtype.Text        `json:"address_source"`
 	Address           []byte             `json:"address"`
 	MunicipalityCode  pgtype.Text        `json:"municipality_code"`
 	State             pgtype.Text        `json:"state"`
@@ -452,6 +458,8 @@ func (q *Queries) NearbyStations(ctx context.Context, arg NearbyStationsParams) 
 		if err := rows.Scan(
 			&i.ID,
 			&i.DisplayName,
+			&i.LegalName,
+			&i.AddressSource,
 			&i.Address,
 			&i.MunicipalityCode,
 			&i.State,
@@ -535,13 +543,18 @@ func (q *Queries) RetireIdentifier(ctx context.Context, arg RetireIdentifierPara
 }
 
 const searchStations = `-- name: SearchStations :many
-SELECT id, display_name, address, municipality_code, state, status,
+SELECT id, display_name, legal_name, address_source, address, municipality_code, state, status,
     ST_AsText(current_point) AS current_point_wkt, current_quality,
     current_revision_id, created_at
 FROM directory_stations
 WHERE ($1::text = '' OR state = $1)
     AND ($2::text = '' OR municipality_code = $2)
-    AND ($3::text = '' OR display_name ILIKE '%' || $3 || '%')
+    -- Match the CPF-minimized public names. Lookahead keeps the separator
+    -- available for a second adjacent token, as in kernel.PublicStationLegalName.
+    AND ($3::text = ''
+        OR regexp_replace(display_name, '(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}[.][0-9]{3}[.][0-9]{3}-[0-9]{2})(?=[^0-9A-Za-z]|$)', '\1', 'g') ILIKE '%' || $3 || '%'
+        OR regexp_replace(legal_name, '(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}[.][0-9]{3}[.][0-9]{3}-[0-9]{2})(?=[^0-9A-Za-z]|$)', '\1', 'g') ILIKE '%' || $3 || '%'
+    )
     -- uuid order equals the lexical order of its canonical lowercase text,
     -- so the primary key serves pages without sorting every station.
     AND ($4::text = '' OR id > NULLIF($4::text, '')::uuid)
@@ -560,6 +573,8 @@ type SearchStationsParams struct {
 type SearchStationsRow struct {
 	ID                pgtype.UUID        `json:"id"`
 	DisplayName       string             `json:"display_name"`
+	LegalName         pgtype.Text        `json:"legal_name"`
+	AddressSource     pgtype.Text        `json:"address_source"`
 	Address           []byte             `json:"address"`
 	MunicipalityCode  pgtype.Text        `json:"municipality_code"`
 	State             pgtype.Text        `json:"state"`
@@ -588,6 +603,8 @@ func (q *Queries) SearchStations(ctx context.Context, arg SearchStationsParams) 
 		if err := rows.Scan(
 			&i.ID,
 			&i.DisplayName,
+			&i.LegalName,
+			&i.AddressSource,
 			&i.Address,
 			&i.MunicipalityCode,
 			&i.State,

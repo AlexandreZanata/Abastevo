@@ -120,6 +120,9 @@ func TestChargingReadsTraversalCoverageAndOpenAPI(t *testing.T) {
 		t.Fatal("places lost", len(items))
 	}
 	for _, item := range items {
+		if _, hasGroups := item.(map[string]any)["groups"]; hasGroups {
+			t.Fatal("legacy page unexpectedly includes groups")
+		}
 		if err := spec.Components.Schemas["ChargingPlace"].Value.VisitJSON(item); err != nil {
 			t.Fatal("place outside contract", err)
 		}

@@ -152,3 +152,24 @@ func TestGoneAuthorDefersAutomationAndFailsReviewClosed(t *testing.T) {
 		t.Fatalf("state = %q (must stay pending)", store.rows["s-1"].State)
 	}
 }
+
+func TestChargingProposalCannotEnterFuelVerification(t *testing.T) {
+	row := storedRow("charge-1", "04218406000104", "3550308")
+	row.Proposal = []byte(`{"kind":"charging_site","DisplayName":"Synthetic","MunicipalityCode":"3550308","State":"SP","CNPJ":"04218406000104"}`)
+	store := &verifyStore{rows: map[string]SuggestionRow{row.ID: row}}
+	ports := verifyPorts(store)
+	ports.Resolve = func(context.Context, string, string, map[string]string) (string, string, string, error) {
+		t.Fatal("fuel resolver received charging intake")
+		return "", "", "", nil
+	}
+	ctx := context.Background()
+	if result, err := AutoVerify(ctx, ports, row.ID); err != nil || result.Approved {
+		t.Fatalf("auto verify = %+v, %v", result, err)
+	}
+	if err := Decide(ctx, ports, row.ID, "synthetic-reviewer", true, "synthetic", "fuel-id"); err != ErrVerifyKind {
+		t.Fatalf("fuel approval result = %v", err)
+	}
+	if store.rows[row.ID].State != SuggestionPending || store.decisions != 0 {
+		t.Fatal("charging proposal changed during fuel verification")
+	}
+}

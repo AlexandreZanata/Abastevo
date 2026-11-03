@@ -12,6 +12,24 @@ import org.junit.jupiter.api.Test
 class DirectoryStationJsonCodecTest {
 
     @Test
+    fun `optional address facts work with old current and malformed optional fields`() {
+        fun decode(extra: String) = DirectoryStationJsonCodec.decodeStation(
+            """{"station_id":"d6c74c23-63db-4c24-a2e5-408cb23bad26","display_name":"[P25-TEST] Trade","location_quality":"unknown","coordinates":null$extra}""",
+        )
+        val old = decode("")
+        assertNull(old.legalName)
+        assertNull(old.addressSource)
+        val current = decode(""", "legal_name":" [P25-TEST] Legal LTDA ","address_source":"osm","address":{"street":"[P25-TEST] Street","number":"12"}""")
+        assertEquals(" [P25-TEST] Legal LTDA ", current.legalName)
+        assertEquals("osm", current.addressSource?.wire)
+        assertEquals("[P25-TEST] Street, 12", current.addressLine)
+        val future = decode(""", "legal_name":17,"address_source":"future","address":{"raw":{"lat":-12.1,"lon":-51.1}}""")
+        assertNull(future.legalName)
+        assertNull(future.addressSource)
+        assertEquals("", future.addressLine)
+    }
+
+    @Test
     fun `malformed list envelope cannot clear a good cache`() {
         listOf("{}", "{\"items\":null}", "{\"items\":{}}").forEach { payload ->
             assertThrows(Exception::class.java) { DirectoryStationJsonCodec.decodeList(payload) }

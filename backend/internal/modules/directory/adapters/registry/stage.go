@@ -16,10 +16,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	directory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
+	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
 )
 
 // ParserVersion freezes the staging parser identity recorded on every run.
-const ParserVersion = "registry-csv-v1"
+const ParserVersion = "registry-csv-v2"
 
 // SourceCSV is the frozen source key for the ANP registry CSV snapshot.
 const SourceCSV = "registry-csv"
@@ -63,24 +64,30 @@ type Store interface {
 
 // Assertion is one validated source row ready for staging.
 type Assertion struct {
-	ID               string
-	Source           string
-	SourceKey        string
-	Checksum         string
-	DisplayName      string
-	Address          map[string]string
-	MunicipalityCode string
-	State            string
-	AuthState        string
-	Eligibility      string
-	LocationQuality  string
-	SourceReference  string
-	EffectiveDate    pgtype.Date
-	Latitude         float64
-	Longitude        float64
-	HasCoords        bool
-	CRS              string
-	runID            string
+	ID                  string
+	Source              string
+	SourceKey           string
+	Checksum            string
+	DisplayName         string
+	LegalName           string
+	SourceDisplayName   string
+	AddressSource       string
+	AddressProvenance   *BatchAddressProvenance
+	TradeNameProvenance *BatchNameProvenance
+	TradeName           string
+	Address             map[string]string
+	MunicipalityCode    string
+	State               string
+	AuthState           string
+	Eligibility         string
+	LocationQuality     string
+	SourceReference     string
+	EffectiveDate       pgtype.Date
+	Latitude            float64
+	Longitude           float64
+	HasCoords           bool
+	CRS                 string
+	runID               string
 }
 
 // PGStore implements Store with the generated directory queries.
@@ -188,9 +195,33 @@ func (s *PGStore) StageAssertion(ctx context.Context, a Assertion) (bool, error)
 	if err != nil {
 		return false, err
 	}
+	var provenance []byte
+	if a.TradeNameProvenance != nil {
+		provenance, err = json.Marshal(a.TradeNameProvenance)
+		if err != nil {
+			return false, err
+		}
+	}
+	var addressProvenance []byte
+	if a.AddressProvenance != nil {
+		addressProvenance, err = json.Marshal(a.AddressProvenance)
+		if err != nil {
+			return false, err
+		}
+	}
+	sourceDisplay := a.SourceDisplayName
+	if sourceDisplay == "" {
+		sourceDisplay = a.DisplayName
+	}
+	addressSource := a.AddressSource
+	if addressSource == "" && (a.Source == SourceCSV || a.Source == SourceAPI || a.Source == SourcePrep) {
+		addressSource = domain.ANPStationAddress(a.Address).Source
+	}
 	id, err := s.Q.StageRegistryAssertion(ctx, directory.StageRegistryAssertionParams{
 		ID: uid, RunID: runUID, Source: a.Source, SourceKey: a.SourceKey,
 		Checksum: a.Checksum, DisplayName: a.DisplayName, Address: address,
+		LegalName: textOrNull(a.LegalName), TradeName: textOrNull(a.TradeName),
+		SourceDisplayName: textOrNull(sourceDisplay), AddressSource: textOrNull(addressSource), TradeNameProvenance: provenance, AddressProvenance: addressProvenance,
 		MunicipalityCode: textOrNull(a.MunicipalityCode), State: textOrNull(a.State),
 		AuthState: a.AuthState, Operation: "unknown", Eligibility: a.Eligibility,
 		LocationQuality: a.LocationQuality, SourceReference: a.SourceReference,
@@ -223,7 +254,17 @@ func (s *PGStore) ListAssertions(ctx context.Context, runID string) ([]Assertion
 		if len(row.Address) > 0 {
 			_ = json.Unmarshal(row.Address, &address)
 		}
+		provenance, err := decodeStoredNameProvenance(row.TradeNameProvenance)
+		if err != nil {
+			return nil, err
+		}
+		addressProvenance, err := decodeStoredAddressProvenance(row.AddressProvenance)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, Assertion{
+			LegalName: row.LegalName.String, TradeName: row.TradeName.String,
+			SourceDisplayName: row.SourceDisplayName.String, AddressSource: row.AddressSource.String, TradeNameProvenance: provenance, AddressProvenance: addressProvenance,
 			ID:               uuidString(row.ID),
 			Source:           row.Source,
 			SourceKey:        row.SourceKey,
@@ -277,7 +318,17 @@ func (s *PGStore) GetAssertion(ctx context.Context, id string) (Assertion, strin
 	if len(row.Address) > 0 {
 		_ = json.Unmarshal(row.Address, &address)
 	}
+	provenance, err := decodeStoredNameProvenance(row.TradeNameProvenance)
+	if err != nil {
+		return Assertion{}, "", err
+	}
+	addressProvenance, err := decodeStoredAddressProvenance(row.AddressProvenance)
+	if err != nil {
+		return Assertion{}, "", err
+	}
 	return Assertion{
+		LegalName: row.LegalName.String, TradeName: row.TradeName.String,
+		SourceDisplayName: row.SourceDisplayName.String, AddressSource: row.AddressSource.String, TradeNameProvenance: provenance, AddressProvenance: addressProvenance,
 		ID:               uuidString(row.ID),
 		Source:           row.Source,
 		SourceKey:        row.SourceKey,
@@ -353,6 +404,7 @@ func crsOrEmpty(crs string, present bool) string {
 // Identical replay and concurrent staging converge without duplicates
 // via the (source, source_key, checksum) key.
 func StageCSV(ctx context.Context, store Store, snapshot string, r io.Reader, limits Limits) (Report, error) {
+	snapshot = ParserVersion + ":" + snapshot
 	raw, err := io.ReadAll(io.LimitReader(r, limits.MaxBytes+1))
 	if err != nil {
 		return Report{}, err
@@ -453,8 +505,16 @@ func parseRecord(index map[string]int, record []string) (Assertion, bool) {
 	if err != nil {
 		return Assertion{}, false
 	}
-	name := at("RAZAO_SOCIAL")
-	if name == "" {
+	legalName := ""
+	if i, ok := index["RAZAO_SOCIAL"]; ok && i < len(record) {
+		legalName = record[i]
+	}
+	tradeName := ""
+	if i, ok := index["NOME_FANTASIA"]; ok && i < len(record) {
+		tradeName = record[i]
+	}
+	name := domain.StationDisplayName(legalName, tradeName, cnpj, "")
+	if strings.TrimSpace(legalName) == "" {
 		return Assertion{}, false
 	}
 	ibge := at("COD_IBGE")
@@ -467,13 +527,17 @@ func parseRecord(index map[string]int, record []string) (Assertion, bool) {
 		IdentityOK: true, AddressOK: true,
 		Authorized: auth == AuthorizationAuthorized,
 	})
-	sum := sha256.Sum256([]byte(strings.Join(record, "\x1f")))
+	sum := sha256.Sum256([]byte(ParserVersion + "\x1f" + strings.Join(record, "\x1f")))
 	return Assertion{
-		Source:           SourceCSV,
-		SourceKey:        cnpj,
-		Checksum:         hex.EncodeToString(sum[:]),
-		DisplayName:      name,
-		Address:          map[string]string{"municipio_ibge": ibge, "uf": uf},
+		Source:      SourceCSV,
+		SourceKey:   cnpj,
+		Checksum:    hex.EncodeToString(sum[:]),
+		DisplayName: name,
+		LegalName:   legalName,
+		TradeName:   tradeName,
+		Address: map[string]string{"street": at("LOGRADOURO"), "number": at("NUMERO"),
+			"complement": at("COMPLEMENTO"), "district": at("BAIRRO"), "postal_code": at("CEP"),
+			"municipio": at("MUNICIPIO"), "municipio_ibge": ibge, "uf": uf},
 		MunicipalityCode: ibge,
 		State:            uf,
 		AuthState:        string(auth),

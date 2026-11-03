@@ -1,5 +1,6 @@
 package com.anpfuel.app.ui.suggest
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.portable.AuthSessionStore
@@ -11,11 +12,15 @@ import com.anpfuel.application.usecase.intake.OwnedSuggestionsOutcome
 import com.anpfuel.application.usecase.intake.SubmitStationSuggestionUseCase
 import com.anpfuel.application.usecase.intake.SubmitSuggestionOutcome
 import com.anpfuel.application.usecase.intake.SuggestionStatusOutcome
+import com.anpfuel.domain.portable.PortableAuth
 import com.anpfuel.domain.repository.IntakeSummary
 import com.anpfuel.domain.repository.ServerStationCache
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +43,8 @@ data class SuggestUiState(
     val municipalityCode: String = "",
     val state: String = "",
     val cnpj: String = "",
+    val chargingSite: Boolean = false,
+    val publicAddress: String = "",
     val duplicateHint: String? = null,
     val submit: SubmitSuggestionOutcome? = null,
     val isSending: Boolean = false,
@@ -53,9 +60,12 @@ class SuggestStationViewModel @Inject constructor(
     private val mine: GetOwnedSuggestionsUseCase,
     private val sessionStore: AuthSessionStore? = null,
     private val catalogCache: ServerStationCache? = null,
+    saved: SavedStateHandle = SavedStateHandle(),
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SuggestUiState())
+    private val chargingSite = saved.get<Boolean>("chargingSite") == true
+    private val _uiState = MutableStateFlow(SuggestUiState(chargingSite = chargingSite))
+    internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
     val uiState: StateFlow<SuggestUiState> = _uiState.asStateFlow()
 
     private var clientSubmissionId: String = UUID.randomUUID().toString()
@@ -73,50 +83,72 @@ class SuggestStationViewModel @Inject constructor(
         }
     }
 
+    fun onPublicAddress(address: String) {
+        _uiState.update { it.copy(publicAddress = address, submit = null) }
+    }
+
     fun newForm() {
+        if (_uiState.value.isSending) return
         clientSubmissionId = UUID.randomUUID().toString()
-        _uiState.update { SuggestUiState(ownItems = it.ownItems) }
+        _uiState.update { SuggestUiState(chargingSite = chargingSite, ownItems = it.ownItems) }
     }
 
     fun submitProposal() {
+        if (_uiState.value.isSending) return
         val session = sessionStore?.load()
         if (session == null || session.familyId.isBlank() || session.accessToken.isBlank()) {
             _uiState.update { it.copy(submit = SubmitSuggestionOutcome.SessionInvalid) }
             return
         }
         val current = _uiState.value
+        if (chargingSite && current.displayName.isBlank() && current.publicAddress.isBlank()) {
+            _uiState.update { it.copy(submit = SubmitSuggestionOutcome.Invalid) }
+            return
+        }
+        val submissionId = clientSubmissionId
+        _uiState.update { it.copy(isSending = true, submit = null, duplicateHint = null) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isSending = true, submit = null, duplicateHint = null) }
-            val hint = findDuplicateHint(current.cnpj)
+            val hint = if (chargingSite) null else withContext(ioDispatcher) { findDuplicateHint(current.cnpj) }
             val proposal = JSONObject()
                 .put("display_name", current.displayName)
                 .put("municipality_code", current.municipalityCode)
                 .put("state", current.state)
-                .put("cnpj_normalized", current.cnpj)
-                .toString()
-            val outcome = submit.invoke(
-                session.familyId, session.accessToken,
-                clientSubmissionId, proposal,
-            )
+                .apply {
+                    if (chargingSite) {
+                        put("kind", "charging_site")
+                        put("public_address", current.publicAddress)
+                    } else {
+                        put("cnpj_normalized", current.cnpj)
+                    }
+                }
+            val outcome = withContext(ioDispatcher) {
+                submit.invoke(session.familyId, session.accessToken, submissionId, proposal.toString())
+            }
+            if (sessionStore?.load()?.accountId != session.accountId) {
+                _uiState.update { it.copy(isSending = false, ownItems = emptyList(), selectedStatus = null) }
+                return@launch
+            }
             _uiState.update { it.copy(isSending = false, submit = outcome, duplicateHint = hint) }
             if (outcome is SubmitSuggestionOutcome.Submitted) {
-                refreshMine(session.familyId, session.accessToken)
+                refreshMine(session)
             }
         }
     }
 
     fun refreshMine() {
+        _uiState.update { it.copy(ownItems = emptyList(), selectedStatus = null) }
         val session = sessionStore?.load() ?: return
         viewModelScope.launch {
-            refreshMine(session.familyId, session.accessToken)
+            refreshMine(session)
         }
     }
 
     fun loadStatus(id: String) {
         val session = sessionStore?.load() ?: return
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(selectedStatus = status.invoke(session.familyId, session.accessToken, id))
+            val result = withContext(ioDispatcher) { status.invoke(session.familyId, session.accessToken, id) }
+            if (sessionStore?.load()?.accountId == session.accountId) {
+                _uiState.update { it.copy(selectedStatus = result) }
             }
         }
     }
@@ -124,24 +156,25 @@ class SuggestStationViewModel @Inject constructor(
     fun cancelSuggestion(id: String) {
         val session = sessionStore?.load() ?: return
         viewModelScope.launch {
-            when (cancel.invoke(session.familyId, session.accessToken, id)) {
+            val result = withContext(ioDispatcher) { cancel.invoke(session.familyId, session.accessToken, id) }
+            if (sessionStore?.load()?.accountId != session.accountId) return@launch
+            when (result) {
                 is CancelSuggestionOutcome.Cancelled,
                 is CancelSuggestionOutcome.Closed,
                 is CancelSuggestionOutcome.NotFound,
                 -> {
                     _uiState.update { it.copy(selectedStatus = null) }
-                    refreshMine(session.familyId, session.accessToken)
+                    refreshMine(session)
                 }
                 else -> Unit
             }
         }
     }
 
-    private suspend fun refreshMine(familyId: String, accessToken: String) {
-        when (val outcome = mine.invoke(familyId, accessToken)) {
-            is OwnedSuggestionsOutcome.Found ->
-                _uiState.update { it.copy(ownItems = outcome.items) }
-            else -> Unit
+    private suspend fun refreshMine(session: PortableAuth.Session) {
+        val outcome = withContext(ioDispatcher) { mine.invoke(session.familyId, session.accessToken) }
+        if (sessionStore?.load()?.accountId == session.accountId && outcome is OwnedSuggestionsOutcome.Found) {
+            _uiState.update { it.copy(ownItems = outcome.items) }
         }
     }
 

@@ -40,6 +40,18 @@ class OverlayKmlTest {
     }
 
     @Test
+    fun `only a confirmed charging pin gets a native label checkmark`() {
+        val ev = marker(
+            "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", title = "Synthetic charging",
+            fuel = false, charging = true, quality = MapStationLocationQuality.CHARGING_SOURCE,
+        )
+        val confirmed = ev.copy(confirmedByTwoSources = true)
+        assertTrue(buildOverlayKml(prepareOverlay(listOf(confirmed)).clusters).contains("<name>✓ Synthetic charging</name>"))
+        assertTrue(buildHighlightKml(confirmed, highlightCategoryName(4)).contains("<name>✓ Synthetic charging</name>"))
+        assertTrue(buildOverlayKml(prepareOverlay(listOf(ev)).clusters).contains("<name>Synthetic charging</name>"))
+    }
+
+    @Test
     fun `highlight categories never collide with overlay ownership`() {
         assertTrue(isOwnedHighlightCategory(highlightCategoryName(7)))
         assertTrue(isOwnedHighlightCategory(highlightCategoryName(7) + "2"))

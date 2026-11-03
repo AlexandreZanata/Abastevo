@@ -1,0 +1,35 @@
+{
+  "status": "LOCAL_CONFLATED_OWNER_REVIEW_AND_IMPORT_PENDING",
+  "manifest_sha256": "d3b5d0ab7b0b0b05933decd285d012a052210391c4f46ea10a93d2befb80f44c",
+  "binary_sha256": "e523da252dc6b3402c8943914eb6ffba70938e3a413c468d2e21650ec1c928b1",
+  "input_manifest_sha256": "61a0d64aaf2eda85dae247b3948a9d0df49a49baa1c019a83bab2bca1af4877b",
+  "profile": {
+    "exposure": "PRIVATE_PREPARATION",
+    "id": "ev-conflation-v1",
+    "sha256": "b656ba0988503cddd33ca1ed7d5f7ee7d2f82ef2896ecb508863f8cfeed4a140"
+  },
+  "stats": {
+    "candidate_comparisons": 69,
+    "confirmed_pairs": 5,
+    "conflict_pairs": 38,
+    "grouped_equipment": 2,
+    "input_records": 1727,
+    "ocm_only": 1253,
+    "osm_only": 400,
+    "probable_pairs": 3,
+    "source_roots": 1663,
+    "unresolved_records": 62
+  },
+  "measurements": {
+    "wall_seconds": 0.204,
+    "peak_rss_bytes": 59891712,
+    "working_disk_bytes": 9175055
+  },
+  "limits": {
+    "max_wall_seconds": 1800,
+    "max_cpu_seconds": 1800,
+    "max_memory_bytes": 6442450944,
+    "max_output_file_bytes": 536870912,
+    "max_working_disk_bytes": 8589934592
+  }
+}

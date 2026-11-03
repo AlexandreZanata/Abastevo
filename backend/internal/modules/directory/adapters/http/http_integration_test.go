@@ -295,3 +295,24 @@ func TestByCNPJCanonicalResolution(t *testing.T) {
 		}
 	}
 }
+
+func TestStationMetadataHTTPAdditiveNullContract(t *testing.T) {
+	router, ids := freshRouter(t)
+	for _, id := range ids {
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/stations/"+id, nil))
+		if rec.Code != http.StatusOK {
+			t.Fatal(rec.Code, rec.Body.String())
+		}
+		var object map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &object); err != nil {
+			t.Fatal(err)
+		}
+		for _, key := range []string{"legal_name", "address_source"} {
+			value, ok := object[key]
+			if !ok || value != nil {
+				t.Fatal("nullable Station field missing", key, object)
+			}
+		}
+	}
+}

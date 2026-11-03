@@ -1,0 +1,149 @@
+{
+  "boundary_attribution": "Fonte: IBGE",
+  "boundary_sha256": "5491bd548fe381cd388ba81c9edfbf4cf2749891e2fd32c1079ac71f7aba1c10",
+  "by_uf": {
+    "AC": {
+      "municipalities": 22,
+      "municipalities_with_sites": 0,
+      "sites": 0
+    },
+    "AL": {
+      "municipalities": 102,
+      "municipalities_with_sites": 8,
+      "sites": 14
+    },
+    "AM": {
+      "municipalities": 62,
+      "municipalities_with_sites": 2,
+      "sites": 9
+    },
+    "AP": {
+      "municipalities": 16,
+      "municipalities_with_sites": 0,
+      "sites": 0
+    },
+    "BA": {
+      "municipalities": 417,
+      "municipalities_with_sites": 36,
+      "sites": 79
+    },
+    "CE": {
+      "municipalities": 184,
+      "municipalities_with_sites": 34,
+      "sites": 106
+    },
+    "DF": {
+      "municipalities": 1,
+      "municipalities_with_sites": 1,
+      "sites": 96
+    },
+    "ES": {
+      "municipalities": 78,
+      "municipalities_with_sites": 15,
+      "sites": 32
+    },
+    "GO": {
+      "municipalities": 246,
+      "municipalities_with_sites": 36,
+      "sites": 151
+    },
+    "MA": {
+      "municipalities": 217,
+      "municipalities_with_sites": 18,
+      "sites": 30
+    },
+    "MG": {
+      "municipalities": 853,
+      "municipalities_with_sites": 59,
+      "sites": 128
+    },
+    "MS": {
+      "municipalities": 79,
+      "municipalities_with_sites": 7,
+      "sites": 11
+    },
+    "MT": {
+      "municipalities": 142,
+      "municipalities_with_sites": 11,
+      "sites": 25
+    },
+    "PA": {
+      "municipalities": 144,
+      "municipalities_with_sites": 16,
+      "sites": 24
+    },
+    "PB": {
+      "municipalities": 223,
+      "municipalities_with_sites": 8,
+      "sites": 20
+    },
+    "PE": {
+      "municipalities": 185,
+      "municipalities_with_sites": 27,
+      "sites": 75
+    },
+    "PI": {
+      "municipalities": 224,
+      "municipalities_with_sites": 16,
+      "sites": 26
+    },
+    "PR": {
+      "municipalities": 399,
+      "municipalities_with_sites": 33,
+      "sites": 88
+    },
+    "RJ": {
+      "municipalities": 92,
+      "municipalities_with_sites": 34,
+      "sites": 138
+    },
+    "RN": {
+      "municipalities": 167,
+      "municipalities_with_sites": 14,
+      "sites": 37
+    },
+    "RO": {
+      "municipalities": 52,
+      "municipalities_with_sites": 2,
+      "sites": 2
+    },
+    "RR": {
+      "municipalities": 15,
+      "municipalities_with_sites": 3,
+      "sites": 3
+    },
+    "RS": {
+      "municipalities": 497,
+      "municipalities_with_sites": 58,
+      "sites": 115
+    },
+    "SC": {
+      "municipalities": 295,
+      "municipalities_with_sites": 31,
+      "sites": 78
+    },
+    "SE": {
+      "municipalities": 75,
+      "municipalities_with_sites": 3,
+      "sites": 6
+    },
+    "SP": {
+      "municipalities": 645,
+      "municipalities_with_sites": 88,
+      "sites": 346
+    },
+    "TO": {
+      "municipalities": 139,
+      "municipalities_with_sites": 7,
+      "sites": 8
+    }
+  },
+  "catalog_sha256": "7b105a1eb91471629e4af9de1690001d3af1e3670cc26b2e7707aa60c4a0dabb",
+  "format": "abastevo.ev-geographic-coverage-v1",
+  "sites": 1658,
+  "unassigned_municipality": 11,
+  "unassigned_uf": 11,
+  "unit": "canonical_site",
+  "municipalities_in_boundary": 5571,
+  "municipalities_with_sites": 567
+}

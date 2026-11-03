@@ -105,6 +105,7 @@ fun MapScreen(
     guidance: GuidanceViewModel = hiltViewModel(),
     onBottomOverlayInsetChanged: (Dp) -> Unit = {},
     mapContent: (@Composable (Modifier) -> Unit)? = null,
+    onAddChargingSite: (() -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     var bottomOverlayInset by remember { mutableStateOf(164.dp) }
@@ -150,6 +151,9 @@ fun MapScreen(
         osmMappedLocation = stringResource(R.string.map_location_osm_mapped),
         anpReportedLocation = stringResource(R.string.map_location_anp_reported),
         addressPointLocation = stringResource(R.string.map_location_address_point),
+        sourceChargingLocation = stringResource(R.string.map_location_charging_source),
+        unnamedCharging = stringResource(R.string.charging_place_unnamed),
+        confirmedCharging = stringResource(R.string.charging_place_two_sources),
         cityCentroidLocation = stringResource(R.string.map_location_city_centroid),
         unknownLocation = stringResource(R.string.map_location_unknown),
     )
@@ -301,6 +305,26 @@ fun MapScreen(
                         }
                     },
                 ) {
+                if (discUi != null && discUi.showCharging && !discUi.loading && discUi.generation > 0) {
+                    val message = when {
+                        !discUi.chargingSnapshotPresent || discUi.chargingError != null ->
+                            R.string.charging_catalog_unavailable
+                        discUi.error == null && discUi.selectableByUuid.values.none { it.charging } ->
+                            R.string.charging_map_gap
+                        else -> R.string.charging_open_sources
+                    }
+                    Text(
+                        text = stringResource(message),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    )
+                    if (message == R.string.charging_map_gap && onAddChargingSite != null) {
+                        TextButton(onClick = onAddChargingSite, modifier = Modifier.padding(horizontal = 12.dp)) {
+                            Text(stringResource(R.string.charging_add_site))
+                        }
+                    }
+                }
                 // B-BR-MAP-CLUSTER-01: Accessible cluster expansion controls and member chooser.
                 val multiClusters = discUi?.clusters?.filter { it.isCluster }.orEmpty()
                 if (multiClusters.isNotEmpty()) {

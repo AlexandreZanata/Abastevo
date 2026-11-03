@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.charging.connectorLabel
 import com.anpfuel.app.ui.components.FuelProductSelectorButton
 import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.domain.charging.ChargingAccess
@@ -193,16 +194,11 @@ fun MapFiltersDialog(
                                 label = { Text(stringResource(R.string.map_filter_all)) },
                                 modifier = Modifier.heightIn(min = 48.dp).testTag("map-filter-connector-ALL"),
                             )
-                            listOf(
-                                ChargingConnector.CCS2,
-                                ChargingConnector.TYPE2,
-                                ChargingConnector.CHADEMO,
-                                ChargingConnector.NACS,
-                            ).forEach { conn ->
+                            ChargingConnector.entries.forEach { conn ->
                                 FilterChip(
                                     selected = connector == conn,
                                     onClick = { connector = conn },
-                                    label = { Text(localizedMapProductLabel(conn.name)) },
+                                    label = { Text(connectorLabel(conn)) },
                                     modifier = Modifier.heightIn(min = 48.dp).testTag("map-filter-connector-${conn.name}"),
                                 )
                             }

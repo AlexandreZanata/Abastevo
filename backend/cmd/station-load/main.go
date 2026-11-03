@@ -110,7 +110,7 @@ func run() error {
 		var publication registry.ReconReport
 		err = retryPreparedOperation(ctx, *attempts, func() error {
 			publication, err = registry.PublishPreparedRegistry(ctx, registry.NewPGStore(pool), registry.PreparedPublicationPorts{
-				Canonical: canon, Locality: canon.SetInitialLocality, EnsureProfile: profiles.EnsureUnclaimed, RefreshFacts: canon.RefreshPreparedFacts,
+				Canonical: canon, Locality: canon.SetInitialLocality, EnsureProfile: profiles.EnsureUnclaimed,
 			}, manifest)
 			return err
 		})

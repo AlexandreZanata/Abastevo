@@ -1,0 +1,53 @@
+{
+  "OSM": {
+    "profile": "ev-national-acquisition-v1",
+    "source": "OSM",
+    "url": "https://download.geofabrik.de/south-america/brazil-latest.osm.pbf",
+    "resolved_url": "https://download.geofabrik.de/south-america/brazil-261102.osm.pbf",
+    "bytes": 2102091708,
+    "sha256": "176a899d86f1bf2f77964577c482c119a3dcc772b8ee214e78387a5dfe4d3366",
+    "etag": "\"7d4b5fbc-65f5588430a54\"",
+    "last_modified": "Tue, 03 Nov 2026 01:53:43 GMT",
+    "license": "ODbL-1.0",
+    "attribution": "© OpenStreetMap contributors",
+    "acquired_at": "2026-11-03T14:42:08Z"
+  },
+  "IBGE": {
+    "profile": "ev-national-acquisition-v1",
+    "source": "IBGE",
+    "url": "https://servicodados.ibge.gov.br/api/v4/malhas/paises/BR?formato=application%2Fvnd.geo%2Bjson&intrarregiao=municipio&qualidade=minima",
+    "acquired_at": "2026-11-03T14:39:21Z",
+    "bytes": 3998504,
+    "sha256": "5491bd548fe381cd388ba81c9edfbf4cf2749891e2fd32c1079ac71f7aba1c10",
+    "features": 5571,
+    "license": "CC-BY-4.0",
+    "attribution": "Fonte: IBGE",
+    "use": "derived UF census only"
+  },
+  "OCM": {
+    "profile": "ev-ocm-export-acquisition-v1",
+    "source": "OCM",
+    "country": "BR",
+    "commit": "8e3bedca48ca94807d96b2f5e7ee02cffe63ae54",
+    "source_date": "2026-04-22T10:59:34Z",
+    "country_tree_sha": "4e59a90e92f14d5c881abf543da2939ccf6ef928",
+    "acquired_at": "2026-11-03T15:00:59Z",
+    "rows": 1298,
+    "bytes": 1816497,
+    "connection_groups": 2089,
+    "provider_counts": {
+      "1": 768,
+      "40": 422,
+      "57": 108
+    },
+    "reference_sha256": "71c7ea6f70e8f360ff13cc64ada578d07c05af0bf9e92b5efeda591ff695f7e8",
+    "inventory_sha256": "a4c88697138d5e56f8b544c50bb1800f4d723f4102bb768ba26daa4b070898b8",
+    "provider_license_sha256": {
+      "1": "44880f94a1b591f3c9fbb69daf42ce7d1c703454fe930d0a26c2653743d9e4f7",
+      "40": "e61d4135c2fd446f18afe6ed9f824e2dda78a8fa6b42c4eebf91820ef4c5e6d0",
+      "57": "cd754a95896760f420a2eacb8508e6dfc8f7764c6f280e84365a7076218b3944"
+    },
+    "freshness": "DATED_EXPORT_NOT_LIVE_STATUS",
+    "complete_country_tree": true
+  }
+}

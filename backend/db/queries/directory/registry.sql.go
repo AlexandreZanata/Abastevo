@@ -132,9 +132,6 @@ JOIN directory_stations s ON s.id=a.station_id
 WHERE m.run_id= $1 AND a.source='station-prep' AND a.municipality_code IS NOT NULL
  AND a.state IS NOT NULL AND a.latitude IS NULL AND a.longitude IS NULL AND a.superseded_by IS NULL
  AND (s.display_name IS DISTINCT FROM a.display_name OR s.address IS DISTINCT FROM a.address)
- AND NOT EXISTS (SELECT 1 FROM registry_assertions previous JOIN registry_source_runs r ON r.id=previous.run_id
- WHERE previous.source='station-prep' AND previous.source_key=a.source_key AND previous.station_id=s.id
- AND previous.display_name=s.display_name AND previous.address=s.address AND r.state='complete' AND r.prepared_manifest_sha256 IS NOT NULL)
 `
 
 func (q *Queries) CountPreparedCuratedFacts(ctx context.Context, runID pgtype.UUID) (int64, error) {
@@ -196,12 +193,11 @@ const countUnpublishedPreparedRows = `-- name: CountUnpublishedPreparedRows :one
 SELECT count(*) FROM registry_assertions a JOIN registry_run_assertions m ON m.assertion_id=a.id
 WHERE m.run_id = $1 AND a.source='station-prep' AND a.municipality_code IS NOT NULL
   AND a.state IS NOT NULL AND a.latitude IS NULL AND a.longitude IS NULL
-  AND a.superseded_by IS NULL AND (a.station_id IS NULL OR EXISTS (
- SELECT 1 FROM directory_stations s WHERE s.id=a.station_id AND
- (s.municipality_code IS DISTINCT FROM a.municipality_code OR s.state IS DISTINCT FROM a.state
- OR ((s.display_name IS DISTINCT FROM a.display_name OR s.address IS DISTINCT FROM a.address) AND EXISTS (SELECT 1 FROM registry_assertions previous JOIN registry_source_runs r ON r.id=previous.run_id
- WHERE previous.source='station-prep' AND previous.source_key=a.source_key AND previous.station_id=s.id
- AND previous.display_name=s.display_name AND previous.address=s.address AND r.state='complete' AND r.prepared_manifest_sha256 IS NOT NULL)))))
+ AND a.superseded_by IS NULL AND (a.station_id IS NULL OR EXISTS (
+ SELECT 1 FROM directory_stations s JOIN registry_source_runs r ON r.id= $1
+ WHERE s.id=a.station_id AND (s.municipality_code IS DISTINCT FROM a.municipality_code OR s.state IS DISTINCT FROM a.state
+ OR s.facts_source_clock IS NULL OR s.facts_source_clock<r.finished_at
+ OR (s.facts_source_clock=r.finished_at AND s.facts_source_checksum<a.checksum))))
 `
 
 func (q *Queries) CountUnpublishedPreparedRows(ctx context.Context, runID pgtype.UUID) (int64, error) {
@@ -503,7 +499,7 @@ func (q *Queries) DecideSuggestion(ctx context.Context, arg DecideSuggestionPara
 }
 
 const findOfficialAssertion = `-- name: FindOfficialAssertion :one
-SELECT a.source, a.source_key, a.display_name, a.municipality_code, a.state,
+SELECT a.source, a.source_key, COALESCE(a.source_display_name,a.display_name)::text AS display_name, a.municipality_code, a.state,
     a.auth_state, a.eligibility, r.finished_at AS run_finished_at
 FROM registry_assertions AS a
 JOIN registry_source_runs AS r ON r.id = a.run_id
@@ -767,6 +763,7 @@ func (q *Queries) GetRegistryRunByID(ctx context.Context, id pgtype.UUID) (GetRe
 const getReviewEvidence = `-- name: GetReviewEvidence :one
 
 SELECT a.id, a.run_id, a.source, a.source_key, a.checksum, a.display_name,
+    a.legal_name, a.trade_name, a.address_source, a.source_display_name, a.trade_name_provenance, a.address_provenance,
     a.address, a.municipality_code, a.state, a.auth_state, a.operation,
     a.eligibility, a.location_quality, a.source_reference, a.latitude,
     a.longitude, a.crs, a.station_id, a.effective_date, r.state AS run_state
@@ -776,26 +773,32 @@ WHERE a.id = $1
 `
 
 type GetReviewEvidenceRow struct {
-	ID               pgtype.UUID   `json:"id"`
-	RunID            pgtype.UUID   `json:"run_id"`
-	Source           string        `json:"source"`
-	SourceKey        string        `json:"source_key"`
-	Checksum         string        `json:"checksum"`
-	DisplayName      string        `json:"display_name"`
-	Address          []byte        `json:"address"`
-	MunicipalityCode pgtype.Text   `json:"municipality_code"`
-	State            pgtype.Text   `json:"state"`
-	AuthState        string        `json:"auth_state"`
-	Operation        string        `json:"operation"`
-	Eligibility      string        `json:"eligibility"`
-	LocationQuality  string        `json:"location_quality"`
-	SourceReference  string        `json:"source_reference"`
-	Latitude         pgtype.Float8 `json:"latitude"`
-	Longitude        pgtype.Float8 `json:"longitude"`
-	Crs              string        `json:"crs"`
-	StationID        pgtype.UUID   `json:"station_id"`
-	EffectiveDate    pgtype.Date   `json:"effective_date"`
-	RunState         string        `json:"run_state"`
+	ID                  pgtype.UUID   `json:"id"`
+	RunID               pgtype.UUID   `json:"run_id"`
+	Source              string        `json:"source"`
+	SourceKey           string        `json:"source_key"`
+	Checksum            string        `json:"checksum"`
+	DisplayName         string        `json:"display_name"`
+	LegalName           pgtype.Text   `json:"legal_name"`
+	TradeName           pgtype.Text   `json:"trade_name"`
+	AddressSource       pgtype.Text   `json:"address_source"`
+	SourceDisplayName   pgtype.Text   `json:"source_display_name"`
+	TradeNameProvenance []byte        `json:"trade_name_provenance"`
+	AddressProvenance   []byte        `json:"address_provenance"`
+	Address             []byte        `json:"address"`
+	MunicipalityCode    pgtype.Text   `json:"municipality_code"`
+	State               pgtype.Text   `json:"state"`
+	AuthState           string        `json:"auth_state"`
+	Operation           string        `json:"operation"`
+	Eligibility         string        `json:"eligibility"`
+	LocationQuality     string        `json:"location_quality"`
+	SourceReference     string        `json:"source_reference"`
+	Latitude            pgtype.Float8 `json:"latitude"`
+	Longitude           pgtype.Float8 `json:"longitude"`
+	Crs                 string        `json:"crs"`
+	StationID           pgtype.UUID   `json:"station_id"`
+	EffectiveDate       pgtype.Date   `json:"effective_date"`
+	RunState            string        `json:"run_state"`
 }
 
 // Owned by directory (location review, RST-06). The CRS transform stays
@@ -811,6 +814,12 @@ func (q *Queries) GetReviewEvidence(ctx context.Context, id pgtype.UUID) (GetRev
 		&i.SourceKey,
 		&i.Checksum,
 		&i.DisplayName,
+		&i.LegalName,
+		&i.TradeName,
+		&i.AddressSource,
+		&i.SourceDisplayName,
+		&i.TradeNameProvenance,
+		&i.AddressProvenance,
 		&i.Address,
 		&i.MunicipalityCode,
 		&i.State,
@@ -1085,7 +1094,7 @@ const listPendingSuggestions = `-- name: ListPendingSuggestions :many
 SELECT id, account_id, client_submission_id, proposal, evidence_ref,
     state, created_at, decided_at
 FROM station_suggestions
-WHERE state = 'pending'
+WHERE state = 'pending' AND COALESCE(proposal->>'kind', '') = ''
 ORDER BY created_at ASC
 LIMIT $1::int
 `
@@ -1125,12 +1134,11 @@ FROM registry_assertions a JOIN registry_run_assertions m ON m.assertion_id = a.
 WHERE m.run_id = $1 AND a.id > $2
   AND a.municipality_code IS NOT NULL AND a.state IS NOT NULL
   AND a.source = 'station-prep' AND a.latitude IS NULL AND a.longitude IS NULL
-  AND a.superseded_by IS NULL AND (a.station_id IS NULL OR EXISTS (
- SELECT 1 FROM directory_stations s WHERE s.id=a.station_id AND
- (s.municipality_code IS DISTINCT FROM a.municipality_code OR s.state IS DISTINCT FROM a.state
- OR ((s.display_name IS DISTINCT FROM a.display_name OR s.address IS DISTINCT FROM a.address) AND EXISTS (SELECT 1 FROM registry_assertions previous JOIN registry_source_runs r ON r.id=previous.run_id
- WHERE previous.source='station-prep' AND previous.source_key=a.source_key AND previous.station_id=s.id
- AND previous.display_name=s.display_name AND previous.address=s.address AND r.state='complete' AND r.prepared_manifest_sha256 IS NOT NULL)))))
+ AND a.superseded_by IS NULL AND (a.station_id IS NULL OR EXISTS (
+ SELECT 1 FROM directory_stations s JOIN registry_source_runs r ON r.id= $1
+ WHERE s.id=a.station_id AND (s.municipality_code IS DISTINCT FROM a.municipality_code OR s.state IS DISTINCT FROM a.state
+ OR s.facts_source_clock IS NULL OR s.facts_source_clock<r.finished_at
+ OR (s.facts_source_clock=r.finished_at AND s.facts_source_checksum<a.checksum))))
 ORDER BY a.id LIMIT 100
 `
 
@@ -1177,6 +1185,7 @@ func (q *Queries) ListPreparedRegistryPage(ctx context.Context, arg ListPrepared
 
 const listRegistryAssertions = `-- name: ListRegistryAssertions :many
 SELECT id, run_id, source, source_key, checksum, display_name, address,
+    legal_name, trade_name, address_source, source_display_name, trade_name_provenance, address_provenance,
     municipality_code, state, auth_state, operation, eligibility,
     location_quality, source_reference, latitude, longitude, crs,
     station_id
@@ -1187,24 +1196,30 @@ ORDER BY source_key, checksum
 `
 
 type ListRegistryAssertionsRow struct {
-	ID               pgtype.UUID   `json:"id"`
-	RunID            pgtype.UUID   `json:"run_id"`
-	Source           string        `json:"source"`
-	SourceKey        string        `json:"source_key"`
-	Checksum         string        `json:"checksum"`
-	DisplayName      string        `json:"display_name"`
-	Address          []byte        `json:"address"`
-	MunicipalityCode pgtype.Text   `json:"municipality_code"`
-	State            pgtype.Text   `json:"state"`
-	AuthState        string        `json:"auth_state"`
-	Operation        string        `json:"operation"`
-	Eligibility      string        `json:"eligibility"`
-	LocationQuality  string        `json:"location_quality"`
-	SourceReference  string        `json:"source_reference"`
-	Latitude         pgtype.Float8 `json:"latitude"`
-	Longitude        pgtype.Float8 `json:"longitude"`
-	Crs              string        `json:"crs"`
-	StationID        pgtype.UUID   `json:"station_id"`
+	ID                  pgtype.UUID   `json:"id"`
+	RunID               pgtype.UUID   `json:"run_id"`
+	Source              string        `json:"source"`
+	SourceKey           string        `json:"source_key"`
+	Checksum            string        `json:"checksum"`
+	DisplayName         string        `json:"display_name"`
+	Address             []byte        `json:"address"`
+	LegalName           pgtype.Text   `json:"legal_name"`
+	TradeName           pgtype.Text   `json:"trade_name"`
+	AddressSource       pgtype.Text   `json:"address_source"`
+	SourceDisplayName   pgtype.Text   `json:"source_display_name"`
+	TradeNameProvenance []byte        `json:"trade_name_provenance"`
+	AddressProvenance   []byte        `json:"address_provenance"`
+	MunicipalityCode    pgtype.Text   `json:"municipality_code"`
+	State               pgtype.Text   `json:"state"`
+	AuthState           string        `json:"auth_state"`
+	Operation           string        `json:"operation"`
+	Eligibility         string        `json:"eligibility"`
+	LocationQuality     string        `json:"location_quality"`
+	SourceReference     string        `json:"source_reference"`
+	Latitude            pgtype.Float8 `json:"latitude"`
+	Longitude           pgtype.Float8 `json:"longitude"`
+	Crs                 string        `json:"crs"`
+	StationID           pgtype.UUID   `json:"station_id"`
 }
 
 func (q *Queries) ListRegistryAssertions(ctx context.Context, runID pgtype.UUID) ([]ListRegistryAssertionsRow, error) {
@@ -1224,6 +1239,12 @@ func (q *Queries) ListRegistryAssertions(ctx context.Context, runID pgtype.UUID)
 			&i.Checksum,
 			&i.DisplayName,
 			&i.Address,
+			&i.LegalName,
+			&i.TradeName,
+			&i.AddressSource,
+			&i.SourceDisplayName,
+			&i.TradeNameProvenance,
+			&i.AddressProvenance,
 			&i.MunicipalityCode,
 			&i.State,
 			&i.AuthState,
@@ -1266,43 +1287,6 @@ func (q *Queries) PreparedDanglingSupersedes(ctx context.Context, runID pgtype.U
 	return count, err
 }
 
-const refreshPreparedStationFacts = `-- name: RefreshPreparedStationFacts :one
-WITH refreshed AS (
- UPDATE directory_stations AS s
- SET display_name= $1, address= $2::jsonb
- WHERE s.id= $3 AND (s.display_name IS DISTINCT FROM $1 OR s.address IS DISTINCT FROM $2::jsonb)
-   AND EXISTS (
-    SELECT 1 FROM registry_assertions AS previous JOIN registry_source_runs AS r ON r.id=previous.run_id
-    WHERE previous.station_id=s.id AND previous.source='station-prep'
- AND previous.source_key=(SELECT normalized_value FROM directory_identifiers WHERE station_id=s.id AND kind='CNPJ' AND valid_to IS NULL LIMIT 1)
-      AND previous.display_name=s.display_name AND previous.address=s.address
-      AND r.state='complete' AND r.prepared_manifest_sha256 IS NOT NULL
-   )
- RETURNING s.id
-)
-SELECT id,false AS preserved_curated FROM refreshed
-UNION ALL SELECT id,(display_name IS DISTINCT FROM $1 OR address IS DISTINCT FROM $2::jsonb) AS preserved_curated FROM directory_stations WHERE id= $3
-LIMIT 1
-`
-
-type RefreshPreparedStationFactsParams struct {
-	DisplayName string      `json:"display_name"`
-	Address     []byte      `json:"address"`
-	ID          pgtype.UUID `json:"id"`
-}
-
-type RefreshPreparedStationFactsRow struct {
-	ID               pgtype.UUID `json:"id"`
-	PreservedCurated bool        `json:"preserved_curated"`
-}
-
-func (q *Queries) RefreshPreparedStationFacts(ctx context.Context, arg RefreshPreparedStationFactsParams) (RefreshPreparedStationFactsRow, error) {
-	row := q.db.QueryRow(ctx, refreshPreparedStationFacts, arg.DisplayName, arg.Address, arg.ID)
-	var i RefreshPreparedStationFactsRow
-	err := row.Scan(&i.ID, &i.PreservedCurated)
-	return i, err
-}
-
 const resumePreparedRun = `-- name: ResumePreparedRun :execrows
 UPDATE registry_source_runs SET state = 'running', accepted = 0, duplicates = 0,
     rejected = 0, error_code = '', finished_at = NULL
@@ -1330,7 +1314,7 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) AS i ON TRUE
 LEFT JOIN LATERAL (
-    SELECT a.source, a.display_name, a.municipality_code, a.state,
+    SELECT a.source, COALESCE(a.source_display_name,a.display_name)::text AS display_name, a.municipality_code, a.state,
         r.finished_at AS run_finished_at
     FROM registry_assertions AS a
     JOIN registry_source_runs AS r ON r.id = a.run_id
@@ -1447,38 +1431,46 @@ func (q *Queries) SetInitialRegistryLocality(ctx context.Context, arg SetInitial
 const stageRegistryAssertion = `-- name: StageRegistryAssertion :one
 INSERT INTO registry_assertions (
     id, run_id, source, source_key, checksum, display_name, address,
+    legal_name, trade_name, address_source, source_display_name, trade_name_provenance, address_provenance,
     municipality_code, state, auth_state, operation, eligibility,
     location_quality, source_reference, effective_date,
     latitude, longitude, crs
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
-    $7, $8, $9, $10, $11,
-    $12, $13, $14, $15,
-    $16, $17, $18
+    $7, $8, $9, $10, $11, $12, $13,
+    $14, $15, $16, $17,
+    $18, $19, $20, $21,
+    $22, $23, $24
 )
 ON CONFLICT (source, source_key, checksum) DO NOTHING
 RETURNING id
 `
 
 type StageRegistryAssertionParams struct {
-	ID               pgtype.UUID   `json:"id"`
-	RunID            pgtype.UUID   `json:"run_id"`
-	Source           string        `json:"source"`
-	SourceKey        string        `json:"source_key"`
-	Checksum         string        `json:"checksum"`
-	DisplayName      string        `json:"display_name"`
-	Address          []byte        `json:"address"`
-	MunicipalityCode pgtype.Text   `json:"municipality_code"`
-	State            pgtype.Text   `json:"state"`
-	AuthState        string        `json:"auth_state"`
-	Operation        string        `json:"operation"`
-	Eligibility      string        `json:"eligibility"`
-	LocationQuality  string        `json:"location_quality"`
-	SourceReference  string        `json:"source_reference"`
-	EffectiveDate    pgtype.Date   `json:"effective_date"`
-	Latitude         pgtype.Float8 `json:"latitude"`
-	Longitude        pgtype.Float8 `json:"longitude"`
-	Crs              string        `json:"crs"`
+	ID                  pgtype.UUID   `json:"id"`
+	RunID               pgtype.UUID   `json:"run_id"`
+	Source              string        `json:"source"`
+	SourceKey           string        `json:"source_key"`
+	Checksum            string        `json:"checksum"`
+	DisplayName         string        `json:"display_name"`
+	Address             []byte        `json:"address"`
+	LegalName           pgtype.Text   `json:"legal_name"`
+	TradeName           pgtype.Text   `json:"trade_name"`
+	AddressSource       pgtype.Text   `json:"address_source"`
+	SourceDisplayName   pgtype.Text   `json:"source_display_name"`
+	TradeNameProvenance []byte        `json:"trade_name_provenance"`
+	AddressProvenance   []byte        `json:"address_provenance"`
+	MunicipalityCode    pgtype.Text   `json:"municipality_code"`
+	State               pgtype.Text   `json:"state"`
+	AuthState           string        `json:"auth_state"`
+	Operation           string        `json:"operation"`
+	Eligibility         string        `json:"eligibility"`
+	LocationQuality     string        `json:"location_quality"`
+	SourceReference     string        `json:"source_reference"`
+	EffectiveDate       pgtype.Date   `json:"effective_date"`
+	Latitude            pgtype.Float8 `json:"latitude"`
+	Longitude           pgtype.Float8 `json:"longitude"`
+	Crs                 string        `json:"crs"`
 }
 
 func (q *Queries) StageRegistryAssertion(ctx context.Context, arg StageRegistryAssertionParams) (pgtype.UUID, error) {
@@ -1490,6 +1482,12 @@ func (q *Queries) StageRegistryAssertion(ctx context.Context, arg StageRegistryA
 		arg.Checksum,
 		arg.DisplayName,
 		arg.Address,
+		arg.LegalName,
+		arg.TradeName,
+		arg.AddressSource,
+		arg.SourceDisplayName,
+		arg.TradeNameProvenance,
+		arg.AddressProvenance,
 		arg.MunicipalityCode,
 		arg.State,
 		arg.AuthState,

@@ -111,6 +111,13 @@ interface ErrorEnvelope {
   error?: { code?: string; message?: string };
 }
 
+export interface StationFacts {
+  station_id: string;
+  display_name: string;
+  legal_name?: string | null;
+  address_source?: string | null;
+}
+
 export class AdminApi {
   private csrfToken: string | null = null;
 
@@ -277,6 +284,10 @@ export class AdminApi {
       'GET',
       `/v1/admin/audit${query === '' ? '' : `?${query}`}`,
     );
+  }
+
+  async stationFacts(id: string): Promise<StationFacts> {
+    return this.request<StationFacts>('GET', `/v1/stations/${encodeURIComponent(id)}`);
   }
 
   private async request<T>(

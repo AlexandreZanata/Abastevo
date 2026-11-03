@@ -26,3 +26,16 @@ func PublicStationName(name, cnpj string) string {
 	}
 	return name
 }
+
+// PublicStationLegalName keeps source formatting while removing personal CPF
+// tokens. The private legal value is retained separately; no label is invented
+// when minimization leaves no name.
+func PublicStationLegalName(name string) string {
+	for cpfShapedToken.MatchString(name) {
+		name = cpfShapedToken.ReplaceAllString(name, "$1$3")
+	}
+	if strings.TrimSpace(name) == "" {
+		return ""
+	}
+	return name
+}

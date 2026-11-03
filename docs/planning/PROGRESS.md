@@ -1,7 +1,151 @@
 # Current execution state
 
-- Home sync feedback + map UI polish 2026-11-03: LOCAL_DONE /
-  INTEGRATION_PENDING on `codex/home-sync-responsive` (from `origin/main`
+- Station/EV ingestor 2026-11-03: IN_PROGRESS, isolated
+  `codex/station-ev-ingestor` from main d0eb9c79; first plan commit 415c5af0.
+  SNA-01..03 LOCAL_DONE / INTEGRATION_PENDING: source names/full CSV/API addresses,
+  immutable facts/curated projection, queued reprojection (migrations 146..148),
+  additive API/privacy. Real PostGIS/race/concurrency/recovery and affected
+  static/contracts pass. [SNA evidence](../backend/evidence/sna/SNA-03.md).
+  EVC-00/01 LOCAL_DONE: baseline has no EV catalog/overlay; owner-approved local
+  Brazil PBF/IBGE and dated OCM (22 Apr 2026) pins/licenses verified. No API key.
+  [Pins](../backend/evidence/evc/EVC-01.md). EVC-02 normalization/source-role audit
+  preserves ten dual-marked sites/44 closed contours, exact separate socket
+  groups, rights and clocks; all 1,775 input decisions reconcile.
+  EVC-02C1 LOCAL_DONE: immutable v2 IBGE country-extent guard supersedes v1.
+  Two byte-identical real v2 runs: OCM 1,258 source sites; OSM 399 charging + six combined;
+  64 equipment, 48 exclusions (including two outside country extent). These are
+  pre-conflation source assertions. Full Rust gate/16 offline Python groups
+  pass on tested parent 886e8eae plus child; accepted replay 118.780 s / 370.4 MB
+  RSS within frozen budgets.
+  [Normalization evidence](../backend/evidence/evc/EVC-02.md).
+  EVC-03A1 LOCAL_DONE: footprint-grid hierarchy, explicit derivation sidecar;
+  six pure geometry/chain/boundary negatives and clippy pass. EVC-03A2 LOCAL_DONE:
+  one-to-one matching/field lineage, reviewed family gate and goldens; 13 affected
+  matching/hierarchy groups and all-target clippy pass (parent 7ec04382 plus child).
+  EVC-03B LOCAL_DONE: private CLI/reproducible catalog, 1,658 sites (five
+  two-source, 400 OSM-only, 1,253 OCM-only); three probable/38 conflict pairs,
+  two attached/62 unresolved equipment. Eight byte-identical files; independent
+  509,490-pair distance audit and IBGE per-UF census agree. 25 UFs, 11 UNASSIGNED.
+  Full Rust gate/18 offline Python groups pass (parent 1981531d plus child).
+  Thirty source-linked owner imagery candidates generated; manual review OWED.
+  SNA-04A LOCAL_DONE: pure whole-address precedence, proof/rights gates and
+  deterministic review; six test groups/fmt/all-target clippy pass (parent
+  f08a4df6 plus child). RFB primary catalog declares unversioned CC Attribution;
+  CNEFE dataset licence still PENDING (no inferred malha licence). SNA-04B
+  LOCAL_DONE: v4 hash-bound preparation, immutable JSONB provenance (migration
+  149), before/after distinct-current-CNPJ census; v1..v3 preserved. Full Rust
+  gate and directory race/real PostGIS, replay, rollback and upgrade tests pass
+  on parent c4a5b1d6 plus child. SNA-04C LOCAL_DONE: owner-approved read-only
+  cache copy, 45,688 current CNPJs in 27 UFs; before/after both 45,687 ANP
+  addresses and one municipality fallback (TO). All 17 exact OSM candidates
+  retain ANP precedence; RFB status absent and CNEFE rights pending. Independent
+  paired census and real file-only Go admission pass (parent 8bb0d1df plus
+  child). SNA-05A LOCAL_DONE: Android domain/codec optional legal name and
+  address source, textual formatter and name matching; 883 domain/eight codec
+  tests pass (parent 404a560a plus child). SNA-05B1 LOCAL_DONE: Room 32→33
+  cache persistence, 15 unit tests and real emulator migration pass.
+  SNA-05B2 LOCAL_DONE: private-token-safe search of both names, real PostGIS
+  directory read/HTTP race checks and 26 offline map ViewModel tests pass
+  (parent bfa7f1a9 plus child). SNA-05C LOCAL_DONE: textual map/list/detail
+  address, eight locales, 27 map ViewModel tests and two real emulator
+  Compose tests with light/dark evidence (parent 6d0c4fe5 plus child).
+  SNA-06A LOCAL_DONE: generated portal station address with named municipality
+  fallback and coordinate rejection; portal/export race suites and vet pass.
+  Main reconciled at cd78249e. SNA-06B LOCAL_DONE: admin station lookup
+  exposes both public names and address source, with 50 tests, typecheck,
+  build and dist checks passing (parent 02cbf7b5 plus child). SNA-06C
+  LOCAL_DONE: sourced address in landing search, legacy shard fallback, new
+  immutable search path with existing CSV URLs preserved. Portal/export race
+  suites, vet and 76 landing tests pass. EVC-04A LOCAL_DONE: real PostGIS
+  candidate rules for exact OSM or 75 m with sourced name/reviewed brand,
+  including ambiguity and revocation. EVC-04B LOCAL_DONE: migration 000150,
+  source/manual precedence, concurrent idempotent replay and rollback on
+  real PostGIS. Charging unit/race and vet pass. EVC-05A LOCAL_DONE: pinned
+  generation rights validate every retained assertion and refuse missing or
+  mismatched provider terms. EVC-05B LOCAL_DONE: local ODbL offer and exact
+  candidate gate reject missing or changed rights/data/notice. Full Rust
+  tests and Clippy pass. EVC-05C LOCAL_DONE: optional charging API source
+  terms and cache tags; charging race, real legacy HTTP and OpenAPI pass.
+  EVC-05D1 LOCAL_DONE: Android page/detail attribution decode, with
+  legacy compatibility and strict nested validation. EVC-05D2 LOCAL_DONE:
+  Room 33→34 preserves per-place attribution and renders it offline; 17
+  unit tests and real emulator migration and detail tests pass. EVC-06A
+  LOCAL_DONE: exact per-UF drop guard, including disappeared UFs and invalid
+  census rejection. EVC-06B LOCAL_DONE: migration 000151, transactional
+  pointer/hold/audit, and last-good protection on real PostGIS. EVC-06C
+  LOCAL_DONE: Go verifies pinned rights and exact ODbL offer bytes before
+  parsing. EVC-06D LOCAL_DONE: deterministic identity resolver retains prior
+  public aliases and rejects ambiguous splits. EVC-06E LOCAL_DONE: verified
+  rows project with nullable names and source-owned connectors and lineage.
+  EVC-06F LOCAL_DONE: pinned per-site IBGE sidecar and Go census binder,
+  with missing/duplicate/invalid geography negatives. EVC-06G1 LOCAL_DONE:
+  migration 000152 adds national details, source-owned groups and same-batch
+  public aliases, validated on PostGIS. EVC-06G2 LOCAL_DONE: verified staging
+  and activation in one transaction, synthetic rollback/replay and legacy
+  public ID tests pass. EVC-06G3 LOCAL_DONE: human decisions carry forward
+  by public alias, preserving rejections and refusing conflicts in PostGIS.
+  EVC-06H1 LOCAL_DONE: active national API, stable aliases, generation-bound
+  cursors and legacy/PostGIS regressions pass. EVC-06H2 LOCAL_DONE: migration
+  000154 gates activation on complete offer chunks and serves exact revision
+  bytes with cache tests. EVC-06I LOCAL_DONE: owner command verifies the
+  national files without a DB and gates activation on the exact candidate
+  and allowed target. Synthetic PostGIS import passes. EVC-07A LOCAL_DONE:
+  Android national wire facts preserve absent names, 16-place coordinate
+  precision, connector ownership, confidence and station links. EVC-07B
+  LOCAL_DONE: Room 35 isolates offline identities and scoped retirement;
+  legacy migration and national round-trip tests pass. EVC-07C LOCAL_DONE:
+  national pages carry per-source groups, operator and safe address from
+  the same generation; HTTP/PostGIS tests pass. EVC-07D LOCAL_DONE:
+  Android verifies revision, exact counts and same-origin offer paths before
+  atomically replacing the offline generation. EVC-07E LOCAL_DONE:
+  Explore prefers cached national rows and filters on one source-owned
+  group, with offline continuation and minimum power. EVC-07F LOCAL_DONE:
+  Room 36 and Compose show offline operator, safe address, source powers,
+  confirmed badge and reporting route. EVC-07G LOCAL_DONE: national map
+  pins show source agreement and use the saved generation and strict power
+  filters. EVC-07H LOCAL_DONE: fuel station detail reads exact national
+  cache links and opens the offline charger detail. EVC-07 LOCAL_DONE /
+  INTEGRATION_PENDING. EVC-08A LOCAL_DONE: source-root generation diff
+  covers removals, surviving sources, movement and group changes, with
+  review holds for ambiguous transitions. EVC-08B LOCAL_DONE: verified
+  inventory binds 1,775 real source decisions to the national catalog.
+  EVC-08C LOCAL_DONE: file-only review CLI and OCM weekly/OSM monthly
+  timers verified locally. EVC-08D LOCAL_DONE: activation binds the
+  reviewed baseline under the publication lock and rejects stale reviews
+  in PostGIS. EVC-08 LOCAL_DONE / INTEGRATION_PENDING. EVC-09A LOCAL_DONE:
+  1,658 sites reconcile to 567 municipality codes and 25 UFs; 11 sites
+  remain unassigned. ABVE/Tupi uses a distinct points unit. EVC-09B
+  LOCAL_DONE: open-source and gap wording in eight locales and owner
+  candidate list. EVC-09C LOCAL_DONE: authenticated private charging
+  suggestions cannot enter fuel approval. EVC-09D LOCAL_DONE: Android gap
+  action and private address-only submission, 11 JVM and four emulator tests.
+  EVC-09 LOCAL_DONE / INTEGRATION_PENDING. EVC-10A LOCAL_DONE: audited
+  hold/resume and digest-pinned predecessor rollback (migration 155);
+  PostGIS race, vet and staticcheck pass. EVC-10B LOCAL_DONE: static
+  operator executable included in the worker target; 11 security checks
+  pass. SNA-07 and EVC-10 staging
+  acceptance pending. [Recovery](../backend/evidence/evc/EVC-10.md).
+  [Coverage](../backend/evidence/evc/EVC-09.md).
+  [Refresh evidence](../backend/evidence/evc/EVC-08.md).
+  [App evidence](../backend/evidence/evc/EVC-07.md).
+  [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
+  [Link evidence](../backend/evidence/evc/EVC-04.md).
+  [Portal evidence](../backend/evidence/sna/SNA-06.md).
+  [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact
+  recovery DONE: same OSM/OCM/IBGE pins, two identical national catalog
+  replays, rights/offer and per-UF Go validation for 1,658 sites. Real replay
+  identified and fixed source key/revision differences (migration 000153).
+  [Address evidence](../backend/evidence/sna/SNA-04.md). [Conflation](../backend/evidence/evc/EVC-03.md).
+  Read-only staging baseline (12:40Z): 48,770 station rows / 40,388 points /
+  3,003 without UF; zero charging batches/links. PR #183 merged d0eb9c79,
+  all four checks green; signed images auto-deployed at 12:39:49Z, imageIDs
+  match manifest, public health 200. [CD proof](../backend/evidence/cd/ZD-08.md).
+  ZD live strategy/drills remain OWED. No ingestor DB import/backfill/staging
+  mutation. New downloads/keys/imports/staging mutations need specific approval.
+  Ingestor PR/CI NOT_RUN (construction); final protected dev → main PR and
+  staging acceptance owed. [Prior detailed checkpoint](history/STATION_EV_PROGRESS_BEFORE_COUNTRY_V2_20261103.md).
+
+- Home sync feedback + map UI polish 2026-11-03: INTEGRATED via PR #184 (cd78249e) from `codex/home-sync-responsive` (from `origin/main`
   c19f0bde). B-BR-SYNC-FEEDBACK-01: manual sync and ANP table import run off
   the main thread (device logcat: 3 s input lag and 36 skipped frames before,
   none after); FAILED/refused syncs show an inline error and keep cached
@@ -17,9 +161,10 @@
   data: owner-requested PRO grant for the test account (no Git change).
   Address formatter rejects coordinate literals and municipality codes in
   source components, with named locality fallback. Seven formatter tests
-  pass after reproducing the legacy coordinate regression. Next: PR #184 CI.
+  pass after reproducing the legacy coordinate regression. Quick verification and CI test passed at the reviewed head.
 
-- Zero-downtime staging source 2026-11-03: LOCAL_DONE / INTEGRATION_PENDING;
+- Historical zero-downtime source checkpoint (before merged PR #183 above):
+  LOCAL_DONE / INTEGRATION_PENDING;
   full live acceptance OWED. [Batch evidence/activation queue](../backend/evidence/cd/ZD-08.md),
   [plan](CD_ZERO_DOWNTIME_PLAN.md). Isolated `codex/cd-zero-downtime`, tested
   parent 0792eb35 plus final operations task; atomic history retained. 229

@@ -32,6 +32,7 @@ export interface SearchStation {
   i: string;
   n: string;
   s: string;
+  a?: string;
   c?: string;
   m?: string;
   mn?: string;
@@ -462,7 +463,7 @@ function setupFinder(root: Element, doc: Document, store: SearchStore, options: 
             if (next.length >= MAX_SUGGESTIONS * 2) break;
             next.push({
               label: station.n,
-              detail: [formatCNPJ(station.c), place(station)].filter(Boolean).join(' · '),
+              detail: [formatCNPJ(station.c), station.a || place(station)].filter(Boolean).join(' · '),
               pick: () => options.onPickStation?.(station),
             });
           }
@@ -534,7 +535,7 @@ function stationItem(doc: Document, station: SearchStation): HTMLElement {
   const priceText = fuelCount
     ? `${fuelCount} ${plural(fuelCount, 'combustível com preço', 'combustíveis com preço')}`
     : 'sem preço nesta pesquisa';
-  const where = place(station);
+  const where = station.a || place(station);
   meta.textContent = ` — ${formatCNPJ(station.c)}${where ? ` · ${where}` : ''} · ${priceText}`;
   item.append(meta);
   return item;

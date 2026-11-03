@@ -1,6 +1,6 @@
 # Map and EV source/commercial-use admission register
 
-Date: 2026-10-27. Status: MAP-01 DECISIONS_RECORDED /
+Date: 2026-11-03 (EVC-00/01 reconciliation; historical decisions retained). Status: MAP-01 DECISIONS_RECORDED /
 MC-A1 OFFICIAL UNIVERSE RECORDED; SRC-ANP station facts MAINTAINER_ADMITTED
 2026-10-27 (see "Maintainer decision on ANP station facts").
 This register qualifies candidates; it does not grant rights or activate a source.
@@ -21,9 +21,9 @@ public OSM write or a provider contact.
 | --- | --- | --- | --- | --- |
 | SRC-COMAPS | CoMaps native source | `4587b8ad4d12c9f59982709fdaf03cc925948827`; LICENSE SHA-256 `09e8a9bc…f1130b`; NOTICE SHA-256 `307a6cfe…e6acc`; copyright inventory SHA-256 `5d0156f5…8121e`; [T07 audit](../backend/evidence/maps/MAP-14_T07_AUDIT.md) 215 components, 0 unresolved, 219-file notices/SBOM | `ADMITTED_FOR_SPIKE` | Human legal sign-off and public source offer; do not ship an AAR/APK until accepted. Engine SHA/ABI/patch change requires re-audit |
 | SRC-GEN | CoMaps generator/styles/fonts/resources | Same source commit; `tools/python/maps_generator`, `data/countries.txt`, `data/styles`, `data/fonts` | `PENDING` | T07 notices/SBOM cover code and retained `data/copyright.html`; per-asset font/style/symbol review, exact input PBF/extract digest and reproducible regional build remain |
-| SRC-OSM | OSM/Geofabrik Brazil extract | No extract selected yet; T07 ODbL derived-database/source-offer determination recorded | `PENDING` | Exact extract URL/date/bytes/SHA-256; publish the durable source/derived-data offer at release |
+| SRC-OSM | OSM/Geofabrik Brazil extract | [EVC-01](../backend/evidence/evc/EVC-01.md): owner-approved Brazil-261102 PBF, 2,102,091,708 bytes, SHA-256 `176a899d…d3366`; frozen national profile and measured/reproducible census | `ADMITTED_FOR_SOURCE` for this pinned private preparation; public generation pending | EVC-02/03 eligibility/conflation and EVC-05 rights/derived-database offer before publication; retain ODbL attribution. T07 regional MWM decision is not live national acceptance |
 | SRC-ANP | ANP station facts | `revendedoresapi.anp.gov.br` `/v1/combustivel` and `/v1/glp`; open-data CSVs downloaded 2026-10-27 (45,807 automotive + 57,127 GLP rows) | `MAINTAINER_ADMITTED` (2026-10-27) for per-station factual fields and API coordinates, verbatim and attributed | Basis and limits in "Maintainer decision on ANP station facts"; no republication of ANP files or their arrangement; optional Fala.BR confirmation does not block |
-| SRC-OCM | Open Charge Map subset | No provider subset selected | `PENDING` | Per-record/provider license and attribution; `opendata` flag alone is insufficient |
+| SRC-OCM | Open Charge Map subset | [EE-04](../backend/evidence/ev-support/EE-04.md), renewed owner-approved [EVC-01](../backend/evidence/evc/EVC-01.md) dated fallback: commit `8e3bedca48ca94807d96b2f5e7ee02cffe63ae54` (2026-04-22), all 1,298 BR blobs / 2,089 groups; providers 1/40/57 verified | `ADMITTED_FOR_SOURCE` for that dated private subset; no live-status acceptance | New `national-source-pins-20261103-v1` binds correct provider-57 digest; historical artifacts unchanged. EVC-02/03 eligibility/conflation and EVC-05 per-provider attribution/rights required before public generation; `opendata` alone is insufficient |
 | SRC-COMM | Abastevo community data | Existing account/consent/moderation contracts | `ADMITTED_FOR_SOURCE` under existing rules | Public extract/relicense review; no private GPS/photos |
 | SRC-ICON | Generated map pictograms | `docs/assets/map-icons/` provenance and hashes; Android exports integrated in the accessible list | `ADMITTED_FOR_SOURCE` | Preserve MIT notice/provenance; device list semantics/48 dp/icon composition PASS; MAP-18 native map-background/theme review remains |
 | SRC-PLATFORM | Android location/TTS | Platform APIs | `ADMITTED_FOR_SOURCE` | No Play Services or cloud TTS requirement; permission/fallback tests |
@@ -179,17 +179,17 @@ Optional Fala.BR text (maintainer sends; agents never contact third parties):
 
 ## EV and hybrid driver sources (assessment 2026-10-27)
 
-No Brazilian authority publishes an open registry of public EV chargers:
-charging is a free activity under ANEEL rules, distributor connection records
-are not open data, and the ANEEL open-data portal returns no charging dataset.
-The best map for EV and hybrid drivers is therefore a cross-checked
-combination, each layer labeled with its source:
+The 2026-10 research did not establish a comprehensive authoritative open
+Brazilian charger inventory. That bounded finding is not proof that no such
+source can exist. Site and charging-point counts are different units; neither
+an OCM/OSM extract nor a plan establishes complete physical coverage. Use
+source-labeled layers and explicit measured coverage gaps:
 
 | Need | Source | Status | Use |
 | --- | --- | --- | --- |
 | Fuel stations and prices (hybrids) | SRC-ANP | `MAINTAINER_ADMITTED` | Official stations, weekly prices |
 | Charger locations | SRC-OSM `amenity=charging_station` | ODbL, pending extract pin | Primary open geometry, sockets/operator tags |
-| Charger locations | SRC-OCM, only POIs whose data provider licence is CC BY 4.0 (OCM contributors) | `PENDING` per provider | Second independent source |
+| Charger locations | SRC-OCM providers 1/40/57 in the EE-04 pin (CC BY 4.0 / CC-0 / CC0) | `ADMITTED_FOR_SOURCE` for that historical pin; EVC-01 refresh/metadata repair pending | Independent OCM assertions; export and API are the same source |
 | Charger confidence | OSM ∩ OCM match within 50 m and same socket family | Derived (Abastevo) | "Confirmado por 2 fontes" label; single-source stays unconfirmed |
 | Charger live status | SRC-COMM working/not-working reports (MAP-21) | `ADMITTED_FOR_SOURCE` | Dated community status, never official |
 | Vehicle efficiency | Inmetro PBEV tables (MJ/km, EV range km, hybrids) | `PENDING`: exact edition, file and reuse terms | Defaults for the MAP-26 energy model; manual input stays available |
@@ -200,6 +200,22 @@ combination, each layer labeled with its source:
 Hybrid-driver value: the same route can show the cheapest official fuel price
 and the nearest confirmed charger, with estimated cost per km for each energy.
 Admission work for OCM, PBEV and ANEEL tariffs is task MC-A8.
+
+## EVC-00 reconciliation (2026-11-03)
+
+[Measured inventory and outstanding gates](../backend/evidence/evc/EVC-00.md).
+Staging has no charging catalog batch/link and no EV assertion in its active
+map overlay. Its generation named national-20261027 holds 66 OSM fuel assertions;
+the name is not evidence of national coverage. Native MWM embedded POIs were
+not counted by that SQL inventory. Do not infer runtime EV acceptance from
+EE-04's historical local preparation.
+
+The existing T07 boundary describes a separate overlay and regional MWM.
+EVC's new OSM/OCM conflation is a different derived artifact: preserve the OSM
+ODbL/source-offer obligations and each OCM provider's attribution/license.
+Displaying a separate layer or adding a second source does not waive those
+obligations. No new license exception, provider enrollment, key or live call
+is authorized by this reconciliation.
 
 ## Source admission record template
 

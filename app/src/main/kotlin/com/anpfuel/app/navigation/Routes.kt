@@ -123,6 +123,7 @@ object Routes {
     fun stationProfile(stationId: String): String = "station-profile/$stationId"
 
     const val SUGGEST = "suggest"
+    const val SUGGEST_CHARGING = "suggest/charging"
 
     const val OCCURRENCE_EXPLORER = "occurrence-explorer"
     const val OCCURRENCE_DETAIL = "occurrence-detail/{recordId}"

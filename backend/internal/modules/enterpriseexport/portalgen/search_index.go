@@ -212,6 +212,7 @@ func searchRow(station enterpriseexport.Station, prices map[string]int64, withPr
 	row := searchStation{
 		ID: station.StationID, Name: station.DisplayName,
 		SearchName:       normalizeSearchName(station.DisplayName),
+		AddressLine:      addressLine(station.Address),
 		CNPJ:             normalizeCNPJValue(station.CNPJ),
 		Municipality:     station.MunicipalityCode,
 		MunicipalityName: municipalityLabel(station.MunicipalityCode, station.Address["municipio"]),
@@ -385,7 +386,7 @@ func buildSearchIndexes(snapshot enterpriseexport.Snapshot, observations []obser
 
 // GeneratorRevision names the generator's output contract; bump it when
 // pure Go changes alter the emitted files without touching templates/assets.
-const GeneratorRevision = "2026-10-26-search-v2"
+const GeneratorRevision = "2026-11-03-search-station-address"
 
 // GenerationKey identifies every non-data input of a generation: generator
 // revision, templates, embedded assets, the search script bytes and the

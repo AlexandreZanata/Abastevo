@@ -659,7 +659,7 @@ private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () ->
         if (selected != null) {
             StationOptionCard(
                 name = selected!!.displayName,
-                address = selected!!.displayAddress.ifBlank { selected!!.cnpjNormalized.orEmpty() },
+                address = selected!!.addressLine.ifBlank { selected!!.cnpjNormalized.orEmpty() },
                 selected = true,
                 enabled = !busy,
                 onClick = viewModel::changeNominalStation,
@@ -688,7 +688,7 @@ private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () ->
             stations.forEach { station ->
                 StationOptionCard(
                     name = station.displayName,
-                    address = station.displayAddress.ifBlank { station.cnpjNormalized.orEmpty() },
+                    address = station.addressLine.ifBlank { station.cnpjNormalized.orEmpty() },
                     selected = false,
                     enabled = !busy,
                     onClick = { viewModel.selectStation(station.stationId) },

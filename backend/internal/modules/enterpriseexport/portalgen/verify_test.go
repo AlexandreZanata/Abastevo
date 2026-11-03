@@ -212,9 +212,10 @@ func TestVerifyRejectsTamperingBudgetsAndPrivateFields(t *testing.T) {
 		if _, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out}); err != nil {
 			t.Fatal(err)
 		}
-		path := filepath.Join(out, "dados/busca/fixture/SP.json")
+		rel := "dados/busca/" + fixtureSearchRelease(t, out) + "/SP.json"
+		path := filepath.Join(out, rel)
 		var shard map[string]any
-		if err := json.Unmarshal([]byte(readPortal(t, out, "dados/busca/fixture/SP.json")), &shard); err != nil {
+		if err := json.Unmarshal([]byte(readPortal(t, out, rel)), &shard); err != nil {
 			t.Fatal(err)
 		}
 		shard["cpf"] = "private"
@@ -298,7 +299,7 @@ func TestVerifyRejectsNonContentAddressedAssetsAndMixedRelease(t *testing.T) {
 		}
 		path := filepath.Join(out, "consultar/index.html")
 		body, _ := os.ReadFile(path)
-		body = bytes.Replace(body, []byte(`data-release="fixture"`), []byte(`data-release="other"`), 1)
+		body = bytes.Replace(body, []byte(`data-release="`+fixtureSearchRelease(t, out)+`"`), []byte(`data-release="other"`), 1)
 		if err := os.WriteFile(path, body, 0o600); err != nil {
 			t.Fatal(err)
 		}

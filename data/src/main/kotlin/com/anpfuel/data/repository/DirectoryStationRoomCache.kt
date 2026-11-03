@@ -5,6 +5,7 @@ import com.anpfuel.data.local.entity.ServerCatalogMetaEntity
 import com.anpfuel.data.local.entity.ServerStationCacheEntity
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
+import com.anpfuel.domain.discovery.StationAddressSource
 import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.repository.ServerStationCache
 import javax.inject.Inject
@@ -134,6 +135,8 @@ class DirectoryStationRoomCache(
         savedAtMillis = System.currentTimeMillis(),
         addressJson = org.json.JSONObject(address).toString(),
         scopeKey = scopeKey,
+        legalName = legalName,
+        addressSource = addressSource?.wire,
     )
 
     private fun ServerStationCacheEntity.toDomain() = ServerStation.create(
@@ -146,6 +149,8 @@ class DirectoryStationRoomCache(
         municipalityCode = municipalityCode,
         state = state,
         currentRevisionId = currentRevisionId,
+        legalName = legalName,
+        addressSource = StationAddressSource.fromWire(addressSource),
         address = org.json.JSONObject(addressJson).let { doc -> doc.keys().asSequence().associateWith { doc.getString(it) } },
     )
 }

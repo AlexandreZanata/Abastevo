@@ -1,0 +1,12 @@
+{
+  "profile_id": "brazil-ev-national-v1",
+  "byte_identical_runs": 2,
+  "first_run": "artifact produced; execution receipt interrupted, not a measured acceptance",
+  "accepted_measurement": "EVC-01-OSM-execution.json",
+  "files": {
+    "references.ndjson": "d5db4422c9497f79e098e8d07ad5ed5b82b01de927ef0ffb04e4a6b76262f131",
+    "decisions.ndjson": "f7566655de7a123921e6bf7419985133fbfda11434c0550675d05ff010f813dd",
+    "uf-census.json": "fa7aa26756787a5bcc62400e5550c5f653f16d974b17e8f08dd16d02f16ae40d",
+    "manifest.json": "eddacd24d921b66954dd8bd6688bde692828f5ec1946631d0e4404c610e71020"
+  }
+}

@@ -16,7 +16,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -24,6 +23,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
@@ -49,7 +50,7 @@ fun SuggestStationScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(viewModel) {
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refreshMine()
     }
 
@@ -59,7 +60,7 @@ fun SuggestStationScreen(
         topBar = {
             AnpTopAppBar(
                 onNavigateUp = onNavigateBack,
-                title = { Text(text = stringResource(R.string.suggest_title)) },
+                title = { Text(text = stringResource(if (uiState.chargingSite) R.string.charging_add_site else R.string.suggest_title)) },
             )
         },
     ) { innerPadding ->
@@ -77,7 +78,8 @@ fun SuggestStationScreen(
                     viewModel.onField(it, uiState.municipalityCode, uiState.state, uiState.cnpj)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(text = stringResource(R.string.suggest_display)) },
+                label = { Text(text = stringResource(if (uiState.chargingSite) R.string.charging_suggestion_name_optional else R.string.suggest_display)) },
+                enabled = !uiState.isSending,
                 singleLine = true,
             )
             OutlinedTextField(
@@ -87,6 +89,7 @@ fun SuggestStationScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(text = stringResource(R.string.suggest_municipality)) },
+                enabled = !uiState.isSending,
                 singleLine = true,
             )
             OutlinedTextField(
@@ -96,17 +99,31 @@ fun SuggestStationScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(text = stringResource(R.string.suggest_state)) },
+                enabled = !uiState.isSending,
                 singleLine = true,
             )
-            OutlinedTextField(
-                value = uiState.cnpj,
-                onValueChange = {
-                    viewModel.onField(uiState.displayName, uiState.municipalityCode, uiState.state, it)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(text = stringResource(R.string.suggest_cnpj)) },
-                singleLine = true,
-            )
+            if (uiState.chargingSite) {
+                OutlinedTextField(
+                    value = uiState.publicAddress,
+                    onValueChange = viewModel::onPublicAddress,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(text = stringResource(R.string.charging_suggestion_address)) },
+                    supportingText = { Text(text = stringResource(R.string.charging_suggestion_help)) },
+                    enabled = !uiState.isSending,
+                    singleLine = true,
+                )
+            } else {
+                OutlinedTextField(
+                    value = uiState.cnpj,
+                    onValueChange = {
+                        viewModel.onField(uiState.displayName, uiState.municipalityCode, uiState.state, it)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(text = stringResource(R.string.suggest_cnpj)) },
+                    enabled = !uiState.isSending,
+                    singleLine = true,
+                )
+            }
             uiState.duplicateHint?.let { hint ->
                 Text(
                     text = stringResource(R.string.suggest_duplicate_hint, hint),
@@ -164,6 +181,7 @@ fun SuggestStationScreen(
             }
             OutlinedButton(
                 onClick = { viewModel.newForm() },
+                enabled = !uiState.isSending,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(text = stringResource(R.string.suggest_new_form))

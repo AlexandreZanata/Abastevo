@@ -1,0 +1,37 @@
+{
+  "source_units": {
+    "OCM": {
+      "CHARGING_SITE": 1259
+    },
+    "OSM": {
+      "CHARGING_SITE": 400,
+      "CHARGE_POINT": 64,
+      "COMBINED_SITE": 6
+    }
+  },
+  "source_decisions": {
+    "OCM": {
+      "ACCEPTED": 1259,
+      "QUARANTINED": 39
+    },
+    "OSM": {
+      "ACCEPTED": 470,
+      "QUARANTINED": 7
+    }
+  },
+  "quarantine_reasons": {
+    "OCM": {
+      "private_access": 37,
+      "planned_site": 2
+    },
+    "OSM": {
+      "private_access": 7
+    }
+  },
+  "source_decisions_total": 1775,
+  "ocm_inventory_exact_match": true,
+  "artifact_hashes_valid": true,
+  "contact_field_scan": "PASS",
+  "closed_source_footprints": 44,
+  "dual_markers_preserved": 10
+}

@@ -173,7 +173,7 @@ func TestUpgradeFromPreviousSchemaPreservesExistingData(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range files {
-		if name == "000121_charging_identity_links.sql" {
+		if name == "000121_charging_identity_links.sql" || name == "000150_charging_link_osm_object.sql" {
 			continue
 		}
 		data, err := fs.ReadFile(dbmigrations.Files, name)
@@ -191,9 +191,27 @@ func TestUpgradeFromPreviousSchemaPreservesExistingData(t *testing.T) {
 	}
 	defer pool.Close()
 	seed(t, pool)
-	applied, err := migrate.Apply(ctx, dsn, dbmigrations.Files)
+	linksMigration := "000121_charging_identity_links.sql"
+	data, err := fs.ReadFile(dbmigrations.Files, linksMigration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous[linksMigration] = &fstest.MapFile{Data: data}
+	applied, err := migrate.Apply(ctx, dsn, previous)
 	if err != nil || len(applied) != 1 || applied[0] != "000121" {
-		t.Fatalf("upgrade %v %v", applied, err)
+		t.Fatalf("link upgrade %v %v", applied, err)
+	}
+	store := Store{Pool: pool}
+	manualID, err := store.Review(ctx, Link{PlaceID: placeID, StationID: stationA, State: Reviewed, Method: MethodManual, ReviewerRef: "test-reviewer"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	applied, err = migrate.Apply(ctx, dsn, dbmigrations.Files)
+	if err != nil || len(applied) != 1 || applied[0] != "000150" {
+		t.Fatalf("method upgrade %v %v", applied, err)
+	}
+	if got, found, err := store.Active(ctx, placeID); err != nil || !found || got.ID != manualID || got.Method != MethodManual {
+		t.Fatalf("manual review changed %+v found=%v err=%v", got, found, err)
 	}
 	var name string
 	if err := pool.QueryRow(ctx, `SELECT name FROM charging_places WHERE id=$1`, placeID).Scan(&name); err != nil || name != "Test place" {

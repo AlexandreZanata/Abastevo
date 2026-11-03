@@ -834,4 +834,51 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("CREATE TABLE IF NOT EXISTS `driver_maintenance` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `item_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `interval_km` INTEGER, `interval_days` INTEGER, `baseline_km` INTEGER, `baseline_day` TEXT, `next_due_km` INTEGER, `next_due_day` TEXT, `last_service_km` INTEGER, `last_service_day` TEXT, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `item_id`))")
         }
     }
+    val MIGRATION_32_33: Migration = object : Migration(32, 33) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE server_station_cache ADD COLUMN legal_name TEXT")
+            db.execSQL("ALTER TABLE server_station_cache ADD COLUMN address_source TEXT")
+        }
+    }
+    val MIGRATION_33_34: Migration = object : Migration(33, 34) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE charging_snapshot_place ADD COLUMN sources_json TEXT")
+        }
+    }
+
+    val MIGRATION_34_35: Migration = object : Migration(34, 35) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE charging_snapshot_place_v35 (
+                    place_id TEXT NOT NULL, entity_key TEXT, external_id TEXT, generation INTEGER NOT NULL,
+                    profile TEXT NOT NULL, source_revision TEXT NOT NULL, origin TEXT NOT NULL, license TEXT NOT NULL,
+                    name TEXT NOT NULL, country TEXT NOT NULL, latitude TEXT, longitude TEXT,
+                    public_access TEXT NOT NULL, reported_points INTEGER NOT NULL, groups_json TEXT NOT NULL,
+                    tombstone INTEGER NOT NULL, saved_at_millis INTEGER NOT NULL, sources_json TEXT,
+                    catalog_confidence TEXT, linked_station_id TEXT,
+                    PRIMARY KEY (profile, generation, place_id)
+                )
+                """.trimIndent(),
+            )
+            val legacyColumns = """
+                place_id, entity_key, external_id, generation, profile, source_revision, origin, license,
+                name, country, latitude, longitude, public_access, reported_points, groups_json, tombstone,
+                saved_at_millis, sources_json
+            """.trimIndent()
+            db.execSQL(
+                "INSERT INTO charging_snapshot_place_v35 ($legacyColumns) " +
+                    "SELECT $legacyColumns FROM charging_snapshot_place",
+            )
+            db.execSQL("DROP TABLE charging_snapshot_place")
+            db.execSQL("ALTER TABLE charging_snapshot_place_v35 RENAME TO charging_snapshot_place")
+        }
+    }
+
+    val MIGRATION_35_36: Migration = object : Migration(35, 36) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE charging_snapshot_place ADD COLUMN operator TEXT")
+            db.execSQL("ALTER TABLE charging_snapshot_place ADD COLUMN address_line TEXT")
+        }
+    }
 }

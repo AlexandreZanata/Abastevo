@@ -263,6 +263,7 @@ fun AnpNavGraph(
         ) {
             com.anpfuel.app.ui.stations.StationPageScreen(
                 onBack = { navController.popBackStack() },
+                onReportCharging = { navController.navigate(Routes.mapChargingCommunity(it)) },
                 onSignIn = { navController.navigate(Routes.AUTH) },
                 onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
                 onQuality = { stationId, fuel -> navController.navigate(Routes.stationQuality(stationId, fuel)) },
@@ -337,6 +338,7 @@ fun AnpNavGraph(
         )) {
             com.anpfuel.app.ui.stations.StationPageScreen(
                 onBack = { navController.popBackStack() },
+                onReportCharging = { navController.navigate(Routes.chargingCommunity(it)) },
                 onSignIn = { navController.navigate(Routes.AUTH) },
                 onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
                 onQuality = {stationId,fuel -> navController.navigate(Routes.stationQuality(stationId,fuel))},
@@ -446,6 +448,7 @@ fun AnpNavGraph(
             val vehicleId = backStackEntry.arguments?.getString("vehicleId").orEmpty()
             com.anpfuel.app.ui.charging.ChargingExploreScreen(
                 vehicleId = vehicleId,
+                onAddChargingSite = { navController.navigate(Routes.SUGGEST_CHARGING) },
                 onNavigateBack = { navController.popBackStack() },
                 onOpenCommunity = { placeId -> navController.navigate(Routes.chargingCommunity(placeId)) },
             )
@@ -586,6 +589,14 @@ fun AnpNavGraph(
             )
         }
         composable(
+            route = Routes.SUGGEST_CHARGING,
+            arguments = listOf(navArgument("chargingSite") { type = NavType.BoolType; defaultValue = true }),
+        ) {
+            com.anpfuel.app.ui.suggest.SuggestStationScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable(
             route = Routes.CAPTURE_WITH_TARGET,
             arguments = listOf(
                 navArgument("stationId") { defaultValue = "" },
@@ -667,6 +678,7 @@ private fun MapDestination(
                     navController.navigate(Routes.STATIONS)
                 }
             },
+            onAddChargingSite = { navController.navigate(Routes.SUGGEST_CHARGING) },
             onOpenSearch = { navController.navigate(Routes.STATIONS) },
             onOpenDownloads = { navController.navigate("map/downloads") },
             onOpenSaved = { navController.navigate("map/saved") },

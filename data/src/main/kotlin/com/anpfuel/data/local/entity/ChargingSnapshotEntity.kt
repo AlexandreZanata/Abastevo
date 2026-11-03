@@ -2,12 +2,11 @@ package com.anpfuel.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
  * EE-18 public EV snapshot rows: one validated charging place per
- * generation. Identity is (place_id, generation); a resnapshot writes a
+ * generation. Identity is (profile, generation, place_id); a resnapshot writes a
  * fresh generation and deletes the old one atomically, so readers never
  * see a half-written pack. Retired places stay as tombstone rows (payload
  * dropped, identity kept) until the next resnapshot clears them; reads
@@ -17,11 +16,7 @@ import androidx.room.PrimaryKey
  */
 @Entity(
     tableName = "charging_snapshot_place",
-    primaryKeys = ["place_id", "generation"],
-    indices = [
-        Index(value = ["generation"]),
-        Index(value = ["profile", "generation"]),
-    ],
+    primaryKeys = ["profile", "generation", "place_id"],
 )
 data class ChargingSnapshotPlaceEntity(
     @ColumnInfo(name = "place_id") val placeId: String,
@@ -41,6 +36,11 @@ data class ChargingSnapshotPlaceEntity(
     @ColumnInfo(name = "groups_json") val groupsJson: String,
     @ColumnInfo(name = "tombstone") val tombstone: Boolean,
     @ColumnInfo(name = "saved_at_millis") val savedAtMillis: Long,
+    @ColumnInfo(name = "sources_json") val sourcesJson: String? = null,
+    @ColumnInfo(name = "catalog_confidence") val catalogConfidence: String? = null,
+    @ColumnInfo(name = "linked_station_id") val linkedStationId: String? = null,
+    @ColumnInfo(name = "operator") val operator: String? = null,
+    @ColumnInfo(name = "address_line") val addressLine: String? = null,
 )
 
 /**

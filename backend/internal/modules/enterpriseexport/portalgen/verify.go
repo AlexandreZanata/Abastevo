@@ -58,7 +58,7 @@ var (
 		".jsonl": true, ".csv": true, ".txt": true, ".xml": true,
 	}
 	searchStationKeys = map[string]bool{
-		"i": true, "n": true, "s": true, "c": true, "m": true,
+		"i": true, "n": true, "s": true, "a": true, "c": true, "m": true,
 		"mn": true, "u": true, "st": true, "sl": true, "p": true, "f": true,
 	}
 	searchPrefixKey       = regexp.MustCompile(`^(n-[a-z0-9]{3}|c-[0-9a-z]{3})$`)
@@ -621,6 +621,12 @@ func checkSearchStationRow(raw json.RawMessage) error {
 	}
 	if err := json.Unmarshal(row["s"], &searchName); err != nil || strings.TrimSpace(searchName) == "" {
 		return fmt.Errorf("portalcheck: invalid search station key")
+	}
+	if raw, ok := row["a"]; ok {
+		var address string
+		if err := json.Unmarshal(raw, &address); err != nil || !validSearchAddress(address) {
+			return fmt.Errorf("portalcheck: invalid search address line")
+		}
 	}
 	if raw, ok := row["c"]; ok {
 		if err := json.Unmarshal(raw, &cnpj); err != nil {
@@ -1198,12 +1204,19 @@ func checkSearchIndexes(dir string, files map[string]FileDigest, release string)
 	return nil
 }
 
+func validSearchAddress(address string) bool {
+	return address != "" && addressComponent(address) == address && !addressMunicipalityCode.MatchString(address)
+}
+
 // checkStationRows validates strictly decoded station rows (the struct is
 // the key allowlist) without re-encoding each row.
 func checkStationRows(rows []searchStation) error {
 	for _, row := range rows {
 		if !isUUID(row.ID) || strings.TrimSpace(row.Name) == "" || strings.TrimSpace(row.SearchName) == "" {
 			return fmt.Errorf("portalcheck: invalid search station row")
+		}
+		if row.AddressLine != "" && !validSearchAddress(row.AddressLine) {
+			return fmt.Errorf("portalcheck: invalid search address line")
 		}
 		if row.CNPJ != "" {
 			parsed, err := kernel.ParseCNPJ(row.CNPJ)

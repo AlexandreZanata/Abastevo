@@ -14,12 +14,12 @@ class ChargingSnapshotDaoTest {
         override suspend fun findPlace(placeId: String, profile: String, generation: Long) =
             places.values.singleOrNull { it.placeId == placeId && it.profile == profile && it.generation == generation && !it.tombstone }
 
-        val places = mutableMapOf<Pair<String, Long>, ChargingSnapshotPlaceEntity>()
+        val places = mutableMapOf<Triple<String, Long, String>, ChargingSnapshotPlaceEntity>()
         val metas = mutableMapOf<String, ChargingSnapshotMetaEntity>()
         var tombstoneCalls = 0
 
         override suspend fun upsertPlaces(places: List<ChargingSnapshotPlaceEntity>) {
-            places.forEach { this.places[it.placeId to it.generation] = it }
+            places.forEach { this.places[Triple(it.profile, it.generation, it.placeId)] = it }
         }
 
         override suspend fun upsertMeta(meta: ChargingSnapshotMetaEntity) {
@@ -39,11 +39,11 @@ class ChargingSnapshotDaoTest {
             metas.remove(key)
         }
 
-        override suspend fun markTombstones(ids: List<String>, generation: Long) {
+        override suspend fun markTombstones(ids: List<String>, profile: String, generation: Long) {
             tombstoneCalls++
             ids.forEach { id ->
-                val row = places[id to generation] ?: return@forEach
-                places[id to generation] = row.copy(tombstone = true)
+                val row = places[Triple(profile, generation, id)] ?: return@forEach
+                places[Triple(profile, generation, id)] = row.copy(tombstone = true)
             }
         }
 
@@ -67,11 +67,18 @@ class ChargingSnapshotDaoTest {
                 it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
         }.sortedBy { it.placeId }.take(limit)
 
-        override suspend fun countPlaces(generation: Long) =
-            places.values.count { it.generation == generation && !it.tombstone }.toLong()
+        override suspend fun readLinkedPlaces(packKey: String, stationId: String): List<ChargingSnapshotPlaceEntity> {
+            val meta = metas[packKey]?.takeIf { it.state == "COMPLETE" } ?: return emptyList()
+            return places.values.filter {
+                it.profile == meta.profile && it.generation == meta.generation && it.linkedStationId == stationId && !it.tombstone
+            }.sortedWith(compareBy({ it.name }, { it.placeId }))
+        }
 
-        override suspend fun estimatedBytes(generation: Long) =
-            places.values.filter { it.generation == generation }
+        override suspend fun countPlaces(profile: String, generation: Long) =
+            places.values.count { it.profile == profile && it.generation == generation && !it.tombstone }.toLong()
+
+        override suspend fun estimatedBytes(profile: String, generation: Long) =
+            places.values.filter { it.profile == profile && it.generation == generation }
                 .sumOf { (it.name.length + it.groupsJson.length + 512).toLong() }
     }
 
@@ -99,6 +106,19 @@ class ChargingSnapshotDaoTest {
         assertEquals(listOf(place()), dao.readPlaces("ocm-br-20261021-v1", 4, 10, 0))
         assertTrue(dao.readPlaces("ocm-br-20261021-v1", 3, 10, 0).isEmpty())
         assertEquals(4L, dao.findMeta(ChargingSnapshotMetaEntity.packKey("ocm-br-20261021-v1"))?.generation)
+    }
+
+    @Test fun `an obsolete national writer cannot replace the committed cache`() = runTest {
+        val dao = FakeDao()
+        val profile = "charging-br-national-v1"
+        val firstMeta = meta(1).copy(key = ChargingSnapshotMetaEntity.packKey(profile), profile = profile, baseGeneration = 0)
+        val firstRow = place(1).copy(profile = profile)
+        dao.replaceGeneration(firstMeta, listOf(firstRow))
+        val staleWrite = runCatching {
+            dao.replaceGeneration(firstMeta, listOf(firstRow.copy(name = "Stale")))
+        }
+        assertTrue(staleWrite.exceptionOrNull() is IllegalStateException)
+        assertEquals(firstRow, dao.findPlace(firstRow.placeId, profile, 1))
     }
 
     @Test fun `budgets fail the transaction instead of trimming`() = runTest {

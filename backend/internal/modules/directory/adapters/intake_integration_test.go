@@ -154,3 +154,36 @@ func TestIntakeIntegrationQuotaBoundary(t *testing.T) {
 		t.Fatalf("21st submit err = %v, want quota", err)
 	}
 }
+
+func TestIntakeIntegrationChargingIsPrivateAndOutsideFuelQueue(t *testing.T) {
+	svc, store := freshIntake(t)
+	ctx := context.Background()
+	owner := "11111111-1111-4111-8111-111111111111"
+	other := "22222222-2222-4222-8222-222222222222"
+	input := application.ProposalInput{
+		Kind: application.ProposalChargingSite, PublicAddress: "Synthetic Street, 7",
+		MunicipalityCode: "3550308", State: "SP",
+	}
+	created, fresh, err := svc.Submit(ctx, owner, "charge-1", input)
+	if err != nil || !fresh || created.State != application.SuggestionPending ||
+		created.Proposal.Kind != input.Kind || created.Proposal.DisplayName != "" ||
+		created.Proposal.PublicAddress != input.PublicAddress {
+		t.Fatalf("typed intake = %+v, %v, %v", created, fresh, err)
+	}
+	replayed, fresh, err := svc.Submit(ctx, owner, "charge-1", input)
+	if err != nil || fresh || replayed.ID != created.ID {
+		t.Fatalf("typed replay = %+v, %v, %v", replayed, fresh, err)
+	}
+	if _, err := svc.Owned(ctx, other, created.ID); err != application.ErrSuggestionNotFound {
+		t.Fatalf("foreign private read = %v", err)
+	}
+	if rows, err := store.ListPending(ctx, 25); err != nil || len(rows) != 0 {
+		t.Fatalf("fuel pending queue received charger: %v, %v", rows, err)
+	}
+	if _, _, err := svc.Submit(ctx, owner, "fuel-1", intakeInput()); err != nil {
+		t.Fatal(err)
+	}
+	if rows, err := store.ListPending(ctx, 25); err != nil || len(rows) != 1 {
+		t.Fatalf("fuel pending queue lost fuel proposal: %v, %v", rows, err)
+	}
+}

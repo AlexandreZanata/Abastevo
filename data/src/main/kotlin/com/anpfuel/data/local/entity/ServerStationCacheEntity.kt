@@ -37,6 +37,8 @@ data class ServerStationCacheEntity(
     @ColumnInfo(name = "saved_at_millis") val savedAtMillis: Long,
     @ColumnInfo(name = "address_json", defaultValue = "'{}'") val addressJson: String = "{}",
     @ColumnInfo(name = "scope_key", defaultValue = "''") val scopeKey: String = "",
+    @ColumnInfo(name = "legal_name") val legalName: String? = null,
+    @ColumnInfo(name = "address_source") val addressSource: String? = null,
 ) {
     companion object {
         /** Unscoped identity records (details); page replacement never deletes them. */

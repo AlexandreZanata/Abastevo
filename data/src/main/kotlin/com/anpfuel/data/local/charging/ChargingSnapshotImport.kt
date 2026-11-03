@@ -1,5 +1,6 @@
 package com.anpfuel.data.local.charging
 
+import com.anpfuel.data.mapper.ChargingSourceAttributionJson
 import com.anpfuel.domain.charging.ChargingCoverage
 import com.anpfuel.domain.charging.ChargingPackMeta
 import com.anpfuel.domain.charging.ChargingPlace
@@ -10,7 +11,9 @@ import org.json.JSONObject
 
 /** Admitted public snapshot profiles (EE-09). Licensed-operator or any
  * other profile refuses here, never reaching storage. */
-val ADMITTED_CHARGING_PROFILES = setOf("ocm-br-20261021-v1", "pbe-2026-pdf-v1")
+internal const val NATIONAL_CHARGING_PROFILE = "charging-br-national-v1"
+
+val ADMITTED_CHARGING_PROFILES = setOf("ocm-br-20261021-v1", "pbe-2026-pdf-v1", NATIONAL_CHARGING_PROFILE)
 
 private val canonicalId = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
@@ -33,6 +36,11 @@ data class StoredChargingPlace(
     val groupsJson: String,
     val tombstone: Boolean,
     val savedAtMillis: Long,
+    val sourcesJson: String? = null,
+    val catalogConfidence: String? = null,
+    val linkedStationId: String? = null,
+    val operator: String? = null,
+    val addressLine: String? = null,
 )
 
 /** Validated generation metadata row. */
@@ -139,6 +147,8 @@ object ChargingSnapshotImport {
         val fresh: List<String> = page.items.map { item: ChargingPlace -> item.id }
         check(fresh.distinct().size == fresh.size) { "duplicate place in page" }
         check(fresh.none { it in known }) { "page overlaps committed pages" }
+        val national = session.meta.profile == NATIONAL_CHARGING_PROFILE
+        check(page.items.all { (it.catalogConfidence != null) == national }) { "place profile mismatch" }
         val additions = page.items.map { toStored(it, session) }
         val estimated = estimateBytes(rows + additions)
         check(rows.size + additions.size <= PLACES_BUDGET) { "snapshot places over budget" }
@@ -192,7 +202,8 @@ object ChargingSnapshotImport {
                 .put("raw_connector_code", group.rawConnectorCode)
                 .put("current", group.current.name)
                 .put("power_w", group.powerW)
-                .put("reported_quantity", group.reportedQuantity))
+                .put("reported_quantity", group.reportedQuantity)
+                .put("source_key", group.sourceKey))
         }
         return StoredChargingPlace(
             placeId = place.id, entityKey = place.entityKey, externalId = place.externalId,
@@ -203,6 +214,10 @@ object ChargingSnapshotImport {
             longitude = place.longitude, publicAccess = place.publicAccess.name,
             reportedPoints = place.reportedPoints, groupsJson = groups.toString(),
             tombstone = false, savedAtMillis = System.currentTimeMillis(),
+            sourcesJson = ChargingSourceAttributionJson.encode(place.sources),
+            catalogConfidence = place.catalogConfidence?.name,
+            linkedStationId = place.linkedStationId,
+            operator = place.operator, addressLine = place.addressLine,
         )
     }
 
@@ -213,7 +228,10 @@ object ChargingSnapshotImport {
     }
 
     private fun estimateBytes(rows: List<StoredChargingPlace>): Long =
-        rows.sumOf { (it.name.length + it.groupsJson.length + 512).toLong() }
+        rows.sumOf {
+            (it.name.length + it.groupsJson.length + (it.sourcesJson?.toByteArray()?.size ?: 0) +
+                (it.operator?.toByteArray()?.size ?: 0) + (it.addressLine?.toByteArray()?.size ?: 0) + 512).toLong()
+        }
 
     private fun sha256Hex(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

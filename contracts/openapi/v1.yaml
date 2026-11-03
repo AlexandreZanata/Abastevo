@@ -1985,6 +1985,7 @@ paths:
   /v1/charging/places:
     get:
       summary: Keyset public charging places from stored batches (anonymous).
+      description: National pages include the source-owned connector groups for offline snapshots.
       operationId: chargingPlaces
       tags: [charging]
       security: []
@@ -1993,10 +1994,10 @@ paths:
           in: query
           required: true
           description: Admitted source profile.
-          schema: {type: string, enum: [ocm-br-20261021-v1, pbe-2026-pdf-v1]}
+          schema: {type: string, enum: [ocm-br-20261021-v1, pbe-2026-pdf-v1, charging-br-national-v1]}
         - name: revision
           in: query
-          description: Optional source revision; empty resolves latest stored.
+          description: Optional source revision. The national profile resolves only its active generation.
           schema: {type: string}
         - name: limit
           in: query
@@ -2005,7 +2006,7 @@ paths:
           example: 20
         - name: cursor
           in: query
-          description: Opaque page cursor from the previous response.
+          description: Opaque page cursor from the previous response. National cursors expire on generation swap.
           schema: {type: string}
       responses:
         '200':
@@ -2025,7 +2026,7 @@ paths:
           $ref: '#/components/responses/Unavailable'
   /v1/charging/places/{id}:
     get:
-      summary: One public charging place with its connection groups (anonymous).
+      summary: One public charging place or active national alias with its connection groups.
       operationId: chargingPlaceOne
       tags: [charging]
       security: []
@@ -2048,6 +2049,44 @@ paths:
                 $ref: '#/components/schemas/ChargingPlace'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/charging/catalog/{revision}/offer/{file}:
+    get:
+      summary: Download the exact ODbL offer of a published national charging generation.
+      operationId: chargingCatalogOffer
+      tags: [charging]
+      security: []
+      parameters:
+        - name: revision
+          in: path
+          required: true
+          description: Published national source revision.
+          schema: {type: string, pattern: '^[0-9a-f]{64}$'}
+        - name: file
+          in: path
+          required: true
+          description: Public data or licence and attribution notice.
+          schema: {type: string, enum: [derived-database.ndjson, derived-database-offer.json]}
+      responses:
+        '200':
+          description: Exact immutable offer bytes.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=31536000, immutable'}
+          content:
+            application/x-ndjson:
+              schema: {type: string, format: binary}
+            application/json:
+              schema: {type: object}
+        '304':
+          description: The requested offer has not changed.
+        '404':
+          $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/Unavailable'
   /v1/charging/coverage:
@@ -10434,15 +10473,65 @@ components:
         id: {type: string, format: uuid}
         entity_key: {type: string, pattern: '^[0-9a-f]{64}$'}
         external_id: {type: string}
-        name: {type: string}
+        name: {type: string, description: Empty when a national source has no name.}
         country: {type: string, enum: [BR]}
         latitude: {type: string}
         longitude: {type: string}
         public_access: {type: string, enum: [PUBLIC, UNKNOWN]}
         reported_points: {type: integer, minimum: 0}
+        confidence:
+          description: National source agreement, distinct from availability.
+          type: string
+          enum: [single-source, two-source]
+        linked_station_id:
+          description: Canonical directory ID from an active reviewed link.
+          type: string
+          format: uuid
+        uf:
+          description: Pinned polygon classification or UNASSIGNED.
+          type: string
+        access_class:
+          description: Source-backed access classification for a national place.
+          type: string
+          enum: [PUBLIC, UNKNOWN, PERMISSIVE, CUSTOMERS, DESTINATION, MEMBERSHIP, NOTICE_REQUIRED]
+        operator:
+          description: Source-backed operator name, when available for a national place.
+          type: string
+        address:
+          description: Source-backed public address components. Coordinates are excluded.
+          type: object
+          additionalProperties: false
+          properties:
+            street: {type: string}
+            number: {type: string}
+            complement: {type: string}
+            district: {type: string}
+            municipio: {type: string}
+            postal_code: {type: string}
+            uf: {type: string}
+        sources:
+          description: Source identities and exact provider terms. Omitted when legacy data lacks admitted source terms.
+          type: array
+          minItems: 1
+          items: {$ref: '#/components/schemas/ChargingSourceAttribution'}
         groups:
+          description: Included in place detail and national pages. Legacy pages may omit it.
           type: array
           items: {$ref: '#/components/schemas/ChargingConnectionGroup'}
+    ChargingSourceAttribution:
+      type: object
+      additionalProperties: false
+      required: [source, external_id, revision, license, attribution]
+      properties:
+        source: {type: string, enum: [OSM, OCM]}
+        external_id: {type: string}
+        revision: {type: string}
+        provider_id:
+          description: OCM provider ID. Omitted for OSM assertions.
+          type: integer
+          minimum: 1
+        license: {type: string}
+        attribution: {type: string}
     ChargingConnectionGroup:
       type: object
       required: [id, entity_key, external_id, connector_code, raw_connector_code, current]
@@ -10450,8 +10539,9 @@ components:
         id: {type: string, format: uuid}
         entity_key: {type: string, pattern: '^[0-9a-f]{64}$'}
         external_id: {type: string}
-        connector_code: {type: string, enum: [CCS2, TYPE2, CHADEMO, NACS, UNKNOWN]}
+        connector_code: {type: string, enum: [CCS1, CCS2, TYPE1, TYPE2, CHADEMO, GBT_AC, GBT_DC, NACS, NBR14136, TESLA_LEGACY, UNKNOWN]}
         raw_connector_code: {type: string}
+        source_key: {type: string, description: Root or equipment source owning the reported group.}
         current: {type: string, enum: [AC, DC, UNKNOWN]}
         power_w: {type: integer, minimum: 1}
         reported_quantity: {type: integer, minimum: 1}
@@ -10474,6 +10564,13 @@ components:
         places: {type: integer, minimum: 0}
         groups: {type: integer, minimum: 0}
         vehicles: {type: integer, minimum: 0}
+        offer:
+          description: Download paths for the published national offer.
+          type: object
+          required: [data, notice]
+          properties:
+            data: {type: string}
+            notice: {type: string}
         generated_at: {type: string, format: date-time}
     QualityCompanyScope:
       type: object
@@ -10628,10 +10725,26 @@ components:
         display_name:
           type: string
           example: Posto Central
+        legal_name:
+          type: [string, "null"]
+          description: >
+            Source legal name, separate from the display label. Source formatting
+            is retained except that public privacy filtering removes CPF-shaped
+            personal identifiers. Unknown or fully minimized names are null.
+          example: "[P25-TEST] Legal LTDA"
+        address_source:
+          type: [string, "null"]
+          enum: [anp, rfb, osm, cnefe, municipality, null]
+          description: Source of the displayed address; unknown/curated legacy values are null.
+          example: anp
         address:
           type: [object, "null"]
-          description: Source address components verbatim.
-          example: {logradouro: AV PAULISTA, numero: '1000', municipio: SAO PAULO, uf: SP}
+          description: >
+            Source address components. Canonical keys are street, number,
+            complement, district, postal_code, municipio (name), municipio_ibge
+            (code) and uf. Older component aliases may also be present.
+            Coordinates are never substituted as address text.
+          example: {street: '[P25-TEST] Street', number: '100', municipio: '[P25-TEST] City', uf: SP}
         cnpj_normalized:
           type: [string, "null"]
           example: "04218406000104"
@@ -11313,10 +11426,20 @@ components:
         Structured station suggestion body (P27-T01, B-BR-D07/D08):
         display name plus municipality code and state; optional
         kernel-validated CNPJ text, optional bounded coordinates and
-        an opaque private-evidence reference. Never grants ownership.
+        an opaque private-evidence reference. A charging_site proposal
+        carries a name or public address and has no CNPJ or coordinates.
+        Never grants ownership or creates a public place.
       type: object
       required: [display_name, municipality_code, state]
       properties:
+        kind:
+          description: Omit for a fuel station suggestion.
+          type: string
+          enum: [charging_site]
+        public_address:
+          description: Optional public street address for a charging site suggestion.
+          type: string
+          maxLength: 240
         display_name:
           type: string
           example: Posto Novo

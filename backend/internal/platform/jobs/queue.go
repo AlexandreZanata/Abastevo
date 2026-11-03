@@ -272,3 +272,17 @@ func mapJob(id pgtype.UUID, kind string, payload []byte, dedupe pgtype.Text, sta
 }
 
 func idString(id pgtype.UUID) string { return uuidString(id) }
+
+// DedupePrefixStats returns aggregate operational state without job payloads.
+// Like Enqueue, it can share a caller-owned transaction for a consistent view.
+func DedupePrefixStats(ctx context.Context, db platform.DBTX, prefix string) (map[string]int64, error) {
+	rows, err := platform.New(db).JobDedupePrefixStats(ctx, prefix)
+	if err != nil {
+		return nil, err
+	}
+	stats := map[string]int64{}
+	for _, row := range rows {
+		stats[row.Status] = row.Total
+	}
+	return stats, nil
+}

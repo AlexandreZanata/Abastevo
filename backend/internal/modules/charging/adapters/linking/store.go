@@ -30,6 +30,7 @@ const (
 	MethodCNPJ        Method = "CNPJ"
 	MethodAddressName Method = "ADDRESS_NAME"
 	MethodManual      Method = "MANUAL"
+	MethodOSMObject   Method = "OSM_OBJECT"
 )
 
 type Link struct {
@@ -114,7 +115,7 @@ func (s Store) Review(ctx context.Context, link Link) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if !validState(link.State) || !validMethod(link.Method) || link.ReviewerRef == "" || len(link.ReviewerRef) > 200 {
+	if !validState(link.State) || !validMethod(link.Method) || link.ReviewerRef == "" || link.ReviewerRef == sourceLinkReviewer || len(link.ReviewerRef) > 200 {
 		return "", errors.New("linking: invalid review")
 	}
 	evidence := link.Evidence
@@ -125,14 +126,6 @@ func (s Store) Review(ctx context.Context, link Link) (string, error) {
 	if err != nil {
 		return "", errors.New("linking: invalid evidence")
 	}
-	id, err := newID()
-	if err != nil {
-		return "", err
-	}
-	newID, err := uuid(id)
-	if err != nil {
-		return "", err
-	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	tx, err := s.Pool.Begin(ctx)
@@ -140,22 +133,19 @@ func (s Store) Review(ctx context.Context, link Link) (string, error) {
 		return "", err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	// Serialize reviews for one place, including the first insert.
-	if _, err = tx.Exec(ctx, "SELECT id FROM charging_places WHERE id=$1 FOR UPDATE", place); err != nil {
-		return "", fmt.Errorf("linking: place unavailable: %w", err)
-	}
-	var active pgtype.UUID
-	err = tx.QueryRow(ctx, "SELECT id FROM charging_place_station_links WHERE place_id=$1 AND superseded_by IS NULL FOR UPDATE", place).Scan(&active)
-	if err == nil {
-		if _, err = tx.Exec(ctx, "UPDATE charging_place_station_links SET superseded_by=$2 WHERE id=$1", active, newID); err != nil {
-			return "", err
-		}
-	} else if !errors.Is(err, pgx.ErrNoRows) {
+	if err := lockPlace(ctx, tx, place); err != nil {
 		return "", err
 	}
-	if _, err = tx.Exec(ctx, `INSERT INTO charging_place_station_links
-		(id,place_id,station_id,state,method,evidence,reviewer_ref) VALUES($1,$2,$3,$4,$5,$6,$7)`,
-		newID, place, station, string(link.State), string(link.Method), rawEvidence, link.ReviewerRef); err != nil {
+	active, found, err := readActiveLink(ctx, tx, place)
+	if err != nil {
+		return "", err
+	}
+	previous := ""
+	if found {
+		previous = active.ID
+	}
+	id, err := writeLink(ctx, tx, place, station, previous, link, rawEvidence)
+	if err != nil {
 		return "", err
 	}
 	if err = tx.Commit(ctx); err != nil {
@@ -164,15 +154,50 @@ func (s Store) Review(ctx context.Context, link Link) (string, error) {
 	return id, nil
 }
 
+// Lock the same place row for explicit review and source decisions.
+func lockPlace(ctx context.Context, tx pgx.Tx, place pgtype.UUID) error {
+	var locked pgtype.UUID
+	if err := tx.QueryRow(ctx, "SELECT id FROM charging_places WHERE id=$1 FOR UPDATE", place).Scan(&locked); err != nil {
+		return fmt.Errorf("linking: place unavailable: %w", err)
+	}
+	return nil
+}
+
+func writeLink(ctx context.Context, tx pgx.Tx, place, station pgtype.UUID, previous string, link Link, evidence []byte) (string, error) {
+	id, err := newID()
+	if err != nil {
+		return "", err
+	}
+	if previous != "" {
+		if _, err := tx.Exec(ctx, "UPDATE charging_place_station_links SET superseded_by=$2 WHERE id=$1", previous, id); err != nil {
+			return "", err
+		}
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO charging_place_station_links
+		(id,place_id,station_id,state,method,evidence,reviewer_ref) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+		id, place, station, string(link.State), string(link.Method), evidence, link.ReviewerRef); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+type linkQuerier interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
 func (s Store) Active(ctx context.Context, placeID string) (Link, bool, error) {
 	place, err := uuid(placeID)
 	if err != nil {
 		return Link{}, false, err
 	}
+	return readActiveLink(ctx, s.Pool, place)
+}
+
+func readActiveLink(ctx context.Context, db linkQuerier, place pgtype.UUID) (Link, bool, error) {
 	var link Link
 	var evidence []byte
 	var station pgtype.UUID
-	err = s.Pool.QueryRow(ctx, `SELECT id,place_id,station_id,state,method,evidence,reviewer_ref
+	err := db.QueryRow(ctx, `SELECT id,place_id,station_id,state,method,evidence,reviewer_ref
 		FROM charging_place_station_links WHERE place_id=$1 AND superseded_by IS NULL`, place).
 		Scan(&link.ID, &link.PlaceID, &station, &link.State, &link.Method, &evidence, &link.ReviewerRef)
 	if errors.Is(err, pgx.ErrNoRows) {

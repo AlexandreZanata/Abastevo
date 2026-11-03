@@ -7,7 +7,7 @@ VALUES (@id, @display_name, @address, @municipality_code, @state)
 RETURNING id, display_name, municipality_code, state, status, created_at;
 
 -- name: GetStation :one
-SELECT id, display_name, address, municipality_code, state, status,
+SELECT id, display_name, legal_name, address_source, address, municipality_code, state, status,
     ST_AsText(current_point) AS current_point_wkt, current_quality,
     current_revision_id, created_at
 FROM directory_stations
@@ -64,13 +64,18 @@ SET current_point = ST_GeogFromText(NULLIF(@point_wkt, '')),
 WHERE id = @id;
 
 -- name: SearchStations :many
-SELECT id, display_name, address, municipality_code, state, status,
+SELECT id, display_name, legal_name, address_source, address, municipality_code, state, status,
     ST_AsText(current_point) AS current_point_wkt, current_quality,
     current_revision_id, created_at
 FROM directory_stations
 WHERE (@state::text = '' OR state = @state)
     AND (@municipality::text = '' OR municipality_code = @municipality)
-    AND (@q::text = '' OR display_name ILIKE '%' || @q || '%')
+    -- Match the CPF-minimized public names. Lookahead keeps the separator
+    -- available for a second adjacent token, as in kernel.PublicStationLegalName.
+    AND (@q::text = ''
+        OR regexp_replace(display_name, '(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}[.][0-9]{3}[.][0-9]{3}-[0-9]{2})(?=[^0-9A-Za-z]|$)', '\1', 'g') ILIKE '%' || @q || '%'
+        OR regexp_replace(legal_name, '(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}[.][0-9]{3}[.][0-9]{3}-[0-9]{2})(?=[^0-9A-Za-z]|$)', '\1', 'g') ILIKE '%' || @q || '%'
+    )
     -- uuid order equals the lexical order of its canonical lowercase text,
     -- so the primary key serves pages without sorting every station.
     AND (@after_id::text = '' OR id > NULLIF(@after_id::text, '')::uuid)
@@ -78,7 +83,7 @@ ORDER BY id ASC
 LIMIT @limit_plus_one::int;
 
 -- name: NearbyStations :many
-SELECT id, display_name, address, municipality_code, state, status,
+SELECT id, display_name, legal_name, address_source, address, municipality_code, state, status,
     ST_AsText(current_point) AS current_point_wkt, current_quality,
     current_revision_id, created_at,
     ST_Distance(current_point, ST_SetSRID(ST_MakePoint(@lon::float8, @lat::float8), 4326)::geography) AS distance_m

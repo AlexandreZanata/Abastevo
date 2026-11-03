@@ -146,3 +146,5 @@ func TestReconcileHandlerSurfacesRowFailure(t *testing.T) {
 		t.Fatal("canon failure must surface for dispatcher retry")
 	}
 }
+
+func (*fakeCanon) ProjectSourceFacts(context.Context, string, string) error { return nil }

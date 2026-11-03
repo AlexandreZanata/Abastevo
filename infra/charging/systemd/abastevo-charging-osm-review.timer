@@ -1,0 +1,10 @@
+[Unit]
+Description=Review pinned OSM charging data monthly
+
+[Timer]
+OnCalendar=*-*-01 04:20:00 UTC
+Persistent=true
+Unit=abastevo-charging-review@osm.service
+
+[Install]
+WantedBy=timers.target

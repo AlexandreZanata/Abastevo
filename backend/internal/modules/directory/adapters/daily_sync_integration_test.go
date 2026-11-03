@@ -32,7 +32,7 @@ func TestDailySyncActualRustLoaderRecoveryChangedReadAndOverlap(t *testing.T) {
 	pool, store, canon := freshRegistryDB(t)
 	ctx := context.Background()
 	profiles := profile.Store{Q: dbprofile.New(pool)}
-	ports := registry.PreparedPublicationPorts{Canonical: canon, Locality: canon.SetInitialLocality, RefreshFacts: canon.RefreshPreparedFacts, EnsureProfile: profiles.EnsureUnclaimed}
+	ports := registry.PreparedPublicationPorts{Canonical: canon, Locality: canon.SetInitialLocality, EnsureProfile: profiles.EnsureUnclaimed}
 	fetches, prepares, verifies := 0, 0, 0
 	name := "[SYNC-TEST] PIPELINE FIRST"
 	interrupted := true

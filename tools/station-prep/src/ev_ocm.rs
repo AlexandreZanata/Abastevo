@@ -114,6 +114,8 @@ pub fn parse_ocm_poi(
     providers: &mut HashSet<i64>,
     emit: &mut impl FnMut(&OcmEntity) -> Result<(), OcmError>,
 ) -> Result<OcmFileRun, OcmError> {
+    let powers = crate::ev_sockets::ocm_connection_powers(raw)
+        .map_err(|_| OcmError::Contract("connection numeric shape refused".into()))?;
     let mut run = OcmFileRun {
         entities: Vec::new(),
         accepted: 0,
@@ -239,12 +241,10 @@ pub fn parse_ocm_poi(
                 continue;
             }
             let raw_code = get_i64(connection, "ConnectionTypeID").unwrap_or(0);
-            let power_w = match connection.get("PowerKW").and_then(Value::as_f64) {
-                Some(kw) if kw.is_finite() && kw > 0.0 && kw <= 1_000_000.0 => {
-                    Some((kw * 1000.0).round() as i64)
-                }
-                _ => None,
-            };
+            let power_w = powers
+                .get(index)
+                .and_then(Option::as_deref)
+                .and_then(crate::ev_sockets::power_kw_to_watts);
             let quantity = match get_i64(connection, "Quantity") {
                 Some(q) if (1..=500_000).contains(&q) => Some(q),
                 _ => None,
@@ -256,7 +256,6 @@ pub fn parse_ocm_poi(
                 "power_w": power_w,
                 "reported_quantity": quantity,
             });
-            let _ = index;
             let clocks = json!([
                 {"field": "created_at", "value": Value::Null},
                 {"field": "verified_at", "value": clock(&value, "DateLastVerified")},
@@ -292,11 +291,7 @@ pub fn parse_ocm_poi(
 }
 
 fn current_label(code: i64) -> &'static str {
-    match code {
-        10 => "AC",
-        20 => "DC",
-        _ => "UNKNOWN",
-    }
+    crate::ev_sockets::current_family(code)
 }
 
 /// Frozen connector vocabulary (reference data). Unmapped source codes

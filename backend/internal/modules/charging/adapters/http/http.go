@@ -2,11 +2,13 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/read"
+	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/go-chi/chi/v5"
 )
@@ -28,6 +30,7 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/v1/charging/places", h.places)
 	r.Get("/v1/charging/places/{id}", h.placeOne)
 	r.Get("/v1/charging/coverage", h.coverage)
+	r.Get("/v1/charging/catalog/{revision}/offer/{file}", h.catalogOffer)
 }
 
 func (h Handler) disabled(w http.ResponseWriter, r *http.Request) bool {
@@ -52,7 +55,7 @@ func (h Handler) places(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	profile := q.Get("profile")
-	if profile != "ocm-br-20261021-v1" && profile != "pbe-2026-pdf-v1" {
+	if profile != "ocm-br-20261021-v1" && profile != "pbe-2026-pdf-v1" && profile != domain.NationalCatalogProfile {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-filter", "unknown profile",
 			[]httpapi.Detail{{Field: "profile", Code: "vocabulary"}})
 		return
@@ -72,15 +75,21 @@ func (h Handler) places(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, next, err := h.Read.Places(r.Context(), profile, revision, lastKey, limit)
+	if errors.Is(err, read.ErrNationalCursorStale) {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-cursor", "catalog generation changed", nil)
+		return
+	}
 	if err != nil {
 		sourceDown(w, r)
 		return
 	}
 	wire := make([]map[string]any, 0, len(rows))
 	for _, place := range rows {
-		wire = append(wire, map[string]any{"id": place.ID, "entity_key": place.EntityKey, "external_id": place.ExternalID,
-			"name": place.Name, "country": place.Country, "latitude": place.Latitude, "longitude": place.Longitude,
-			"public_access": place.PublicAccess, "reported_points": place.ReportedPoints})
+		facts := placeFacts(place)
+		if profile == domain.NationalCatalogProfile {
+			facts["groups"] = connectionGroupFacts(place.Groups)
+		}
+		wire = append(wire, facts)
 	}
 	var nextCursor *string
 	if next != "" {
@@ -98,12 +107,25 @@ func (h Handler) placeOne(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 	place, err := h.Read.PlaceDetail(r.Context(), id)
+	if errors.Is(err, read.ErrNationalPlaceNotFound) {
+		httpapi.WriteError(w, r, http.StatusNotFound, "charging.not-found", "charging place is not in the active catalog", nil)
+		return
+	}
 	if err != nil {
 		sourceDown(w, r)
 		return
 	}
-	groups := make([]map[string]any, 0, len(place.Groups))
-	for _, group := range place.Groups {
+	groups := connectionGroupFacts(place.Groups)
+	facts := placeFacts(place)
+	facts["groups"] = groups
+	facts["generated_at"] = generatedAt(h.now())
+	body, _ := json.Marshal(facts)
+	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body, placeDetailETag(place, groups))
+}
+
+func connectionGroupFacts(groups []read.ConnectionGroup) []map[string]any {
+	wire := make([]map[string]any, 0, len(groups))
+	for _, group := range groups {
 		item := map[string]any{"id": group.ID, "entity_key": group.EntityKey, "external_id": group.ExternalID,
 			"connector_code": group.ConnectorCode, "raw_connector_code": group.RawConnectorCode, "current": group.Current}
 		if group.PowerW != nil {
@@ -112,16 +134,52 @@ func (h Handler) placeOne(w http.ResponseWriter, r *http.Request) {
 		if group.ReportedQuantity != nil {
 			item["reported_quantity"] = *group.ReportedQuantity
 		}
-		groups = append(groups, item)
+		if group.SourceKey != nil {
+			item["source_key"] = *group.SourceKey
+		}
+		wire = append(wire, item)
 	}
-	body, _ := json.Marshal(map[string]any{
+	return wire
+}
+
+func placeFacts(place read.Place) map[string]any {
+	facts := map[string]any{
 		"id": place.ID, "entity_key": place.EntityKey, "external_id": place.ExternalID,
 		"name": place.Name, "country": place.Country, "latitude": place.Latitude, "longitude": place.Longitude,
 		"public_access": place.PublicAccess, "reported_points": place.ReportedPoints,
-		"groups": groups, "generated_at": generatedAt(h.now()),
-	})
-	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
-		httpapi.ETag(mustMarshal(map[string]any{"id": place.ID, "groups": groups})))
+	}
+	if len(place.Sources) != 0 {
+		facts["sources"] = place.Sources
+	}
+	if place.Confidence != "" {
+		facts["confidence"], facts["uf"] = place.Confidence, place.UF
+		if place.Operator != "" {
+			facts["operator"] = place.Operator
+		}
+		if place.Address != (read.PlaceAddress{}) {
+			facts["address"] = place.Address
+		}
+		if place.AccessClass != "" {
+			facts["access_class"] = place.AccessClass
+		}
+		if place.LinkedStationID != nil {
+			facts["linked_station_id"] = *place.LinkedStationID
+		}
+	}
+	return facts
+}
+
+func placeDetailETag(place read.Place, groups []map[string]any) string {
+	if place.Confidence != "" {
+		facts := placeFacts(place)
+		facts["groups"] = groups
+		return httpapi.ETag(mustMarshal(facts))
+	}
+	facts := map[string]any{"id": place.ID, "groups": groups}
+	if len(place.Sources) != 0 {
+		facts["sources"] = place.Sources
+	}
+	return httpapi.ETag(mustMarshal(facts))
 }
 
 func (h Handler) coverage(w http.ResponseWriter, r *http.Request) {
@@ -145,13 +203,22 @@ func (h Handler) coverage(w http.ResponseWriter, r *http.Request) {
 		sourceDown(w, r)
 		return
 	}
-	body, _ := json.Marshal(map[string]any{
+	facts := map[string]any{
 		"profile": coverage.Profile, "source_revision": coverage.SourceRevision,
 		"places": coverage.Places, "groups": coverage.Groups, "vehicles": coverage.Vehicles,
-		"generated_at": generatedAt(h.now()),
-	})
+	}
+	if coverage.Profile == domain.NationalCatalogProfile {
+		base := "/v1/charging/catalog/" + coverage.SourceRevision + "/offer/"
+		facts["offer"] = map[string]string{"notice": base + offerNoticeFile, "data": base + offerDataFile}
+	}
+	tag := httpapi.ETag(mustMarshal(facts))
+	if coverage.Profile != domain.NationalCatalogProfile {
+		tag = httpapi.ETag(mustMarshal(map[string]any{"coverage": coverage}))
+	}
+	facts["generated_at"] = generatedAt(h.now())
+	body, _ := json.Marshal(facts)
 	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
-		httpapi.ETag(mustMarshal(map[string]any{"coverage": coverage})))
+		tag)
 }
 
 func (h Handler) now() time.Time {

@@ -74,6 +74,13 @@ func TestGenerateWritesNationalSearchIndex(t *testing.T) {
 	if prefix.Count != 1 || prefix.Stations[0].Name != "Posto Alfa" || prefix.Stations[0].MunicipalityName != "São Paulo" || prefix.Stations[0].Prices != nil {
 		t.Fatalf("prefix shard = %+v", prefix)
 	}
+	var publicPrefix struct {
+		Stations []map[string]any `json:"stations"`
+	}
+	readIndexJSON(t, out, "p/n-alf.json", &publicPrefix)
+	if got := publicPrefix.Stations[0]["a"]; got != "Rua A, 100 · Centro · 01000-000 · São Paulo/SP" {
+		t.Fatalf("prefix address = %v", got)
+	}
 	var city searchShard
 	readIndexJSON(t, out, "m/3550308.json", &city)
 	if city.Municipality != "3550308" || city.UF != "SP" || city.Count != 5 {
@@ -106,6 +113,20 @@ func TestSearchIndexChecksRefuseTampering(t *testing.T) {
 			path := filepath.Join(base, "p", "n-alf.json")
 			raw, _ := os.ReadFile(path)
 			if err := os.WriteFile(path, []byte(strings.Replace(string(raw), `"n":"Posto Alfa"`, `"n":"Posto Alfa","cpf":"x"`, 1)), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"coordinate address line": func(t *testing.T, base string, _ map[string]FileDigest, _ string) {
+			path := filepath.Join(base, "p", "n-alf.json")
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			changed := strings.Replace(string(raw), `"a":"Rua A, 100 · Centro · 01000-000 · São Paulo/SP"`, `"a":"geo:-23.5,-46.6"`, 1)
+			if changed == string(raw) {
+				t.Fatal("test address line missing from fixture")
+			}
+			if err := os.WriteFile(path, []byte(changed), 0o600); err != nil {
 				t.Fatal(err)
 			}
 		},

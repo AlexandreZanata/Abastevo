@@ -44,12 +44,12 @@ fun interface ChargingMarkersSource {
 }
 
 internal fun matchesChargingQuery(place: ChargingPlace, query: ChargingMarkersQuery): Boolean {
-    if (!ChargingCompatibility.matches(place, query.connector, query.current, query.access)) {
+    val minW = query.minPowerKw?.takeIf { it > 0 }?.let { it.toLong() * 1_000L }
+    val national = place.catalogConfidence != null
+    if (!ChargingCompatibility.matches(place, query.connector, query.current, query.access, minW.takeIf { national })) {
         return false
     }
-    val minKw = query.minPowerKw
-    if (minKw != null && minKw > 0) {
-        val minW = minKw.toLong() * 1_000L
+    if (!national && minW != null) {
         // Unknown power (groups empty or powerW == null) stays visible per B-BR-MAP-FILTERS-01.
         val powerMatches = place.groups.isEmpty() ||
             place.groups.any { group ->

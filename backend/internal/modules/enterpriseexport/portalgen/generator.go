@@ -430,8 +430,11 @@ func Generate(opts Options) (Result, error) {
 	for _, item := range observations {
 		obsByStation[item.station.StationID] = append(obsByStation[item.station.StationID], item)
 	}
-	release := releaseSlug(manifest.ContentSHA256)
-	shards, err := buildSearchShards(snapshot, observations, release)
+	// Search files have immutable cache headers, so format changes need a
+	// fresh URL even when the input snapshot has not changed.
+	searchDigest := sha256.Sum256([]byte(manifest.ContentSHA256 + "\x00" + GeneratorRevision))
+	searchRelease := hex.EncodeToString(searchDigest[:])
+	shards, err := buildSearchShards(snapshot, observations, searchRelease)
 	if err != nil {
 		return Result{}, err
 	}
@@ -447,17 +450,17 @@ func Generate(opts Options) (Result, error) {
 		if err := validateSearchShard(shard); err != nil {
 			return Result{}, err
 		}
-		if err := g.writeAsset("dados/busca/"+release+"/"+shard.UF+".json", shard.Data); err != nil {
+		if err := g.writeAsset("dados/busca/"+searchRelease+"/"+shard.UF+".json", shard.Data); err != nil {
 			return Result{}, err
 		}
 	}
-	indexes, searchIdx, err := buildSearchIndexes(snapshot, observations, fiscalSearchRows(official, stations, true), release)
+	indexes, searchIdx, err := buildSearchIndexes(snapshot, observations, fiscalSearchRows(official, stations, true), searchRelease)
 	if err != nil {
 		return Result{}, err
 	}
-	g.searchRelease, g.searchFuels, g.searchFiscal = release, searchIdx.Fuels, searchIdx.Fiscal
+	g.searchRelease, g.searchFuels, g.searchFiscal = searchRelease, searchIdx.Fuels, searchIdx.Fiscal
 	for _, file := range indexes {
-		if err := g.writeAsset("dados/busca/"+release+"/"+file.Path, file.Data); err != nil {
+		if err := g.writeAsset("dados/busca/"+searchRelease+"/"+file.Path, file.Data); err != nil {
 			return Result{}, err
 		}
 	}
@@ -474,6 +477,7 @@ func Generate(opts Options) (Result, error) {
 	if latest != nil {
 		period = periodLabel(latest.SurveyStart, latest.SurveyEnd)
 	}
+	release := releaseSlug(manifest.ContentSHA256)
 	downloadFiles, manifestLink, err := g.writeDownloads(snapshot, latest, stations, observations, latestSummaries, release, period, published, combinedHash)
 	if err != nil {
 		return Result{}, err
@@ -489,7 +493,7 @@ func Generate(opts Options) (Result, error) {
 		return Result{}, err
 	}
 
-	if err := g.generateConsultar(latestSummaries, stateStations, searchStates, release, period, published, combinedHash); err != nil {
+	if err := g.generateConsultar(latestSummaries, stateStations, searchStates, searchRelease, period, published, combinedHash); err != nil {
 		return Result{}, err
 	}
 	if err := g.generatePrecos(latestSummaries, latestRankings, stations, stateStations, period, published, combinedHash); err != nil {

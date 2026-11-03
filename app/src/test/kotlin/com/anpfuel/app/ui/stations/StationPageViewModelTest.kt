@@ -11,6 +11,10 @@ import com.anpfuel.application.usecase.community.GetCommunityPriceGroupsUseCase
 import com.anpfuel.application.usecase.community.CommunityPriceGroupsOutcome
 import com.anpfuel.application.usecase.profile.GetStationProfileUseCase
 import com.anpfuel.application.usecase.profile.StationProfileOutcome
+import com.anpfuel.data.repository.ChargingDiscoveryRepository
+import com.anpfuel.data.repository.PlaceDetail
+import com.anpfuel.domain.charging.ChargingAccess
+import com.anpfuel.domain.charging.ChargingPlace
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.valueobject.FuelProduct
@@ -32,6 +36,7 @@ class StationPageViewModelTest {
     private val profile = mockk<GetStationProfileUseCase>()
     private val cityFeed = mockk<GetCityCommunityFeedUseCase>()
     private val auth = mockk<AuthFlow>()
+    private val charging = mockk<ChargingDiscoveryRepository>()
     private val id = "d6c74c23-63db-4c24-a2e5-408cb23bad26"
     private val station = ServerStation.create(id, "Central", StationLocationQuality.UNKNOWN,
         null, null, "04218406000104", null, "SP", null)
@@ -42,12 +47,13 @@ class StationPageViewModelTest {
             com.anpfuel.domain.model.BackendPriceGroups.create(id, null, emptyList(), 1L, 2L))
         coEvery { profile(any()) } returns StationProfileOutcome.Unclaimed
         coEvery { cityFeed.city() } returns null
+        coEvery { charging.linkedToStation(any()) } returns emptyList()
         every { auth.refreshSession() } returns AuthApiResult.Ok(null)
     }
     @AfterEach fun after() { Dispatchers.resetMain() }
     private fun vm(key: String = id, fuel: String = "ETHANOL") = StationPageViewModel(
         SavedStateHandle(mapOf("stationKey" to key, "fuelProduct" to fuel)), local, resolve, detail,
-        prices, profile, cityFeed, auth).also { it.ioDispatcher = dispatcher }
+        prices, profile, cityFeed, auth, charging).also { it.ioDispatcher = dispatcher }
 
     @Test fun malformedRouteDoesNotReadOrInventStation() = runTest(dispatcher) {
         val vm = vm("../auth"); vm.load(Locale.US); advanceUntilIdle()
@@ -61,7 +67,30 @@ class StationPageViewModelTest {
         assertEquals(id, vm.state.value.canonical?.stationId)
         assertEquals(FuelProduct.ETHANOL, vm.state.value.fuel)
         assertFalse(vm.state.value.unavailable)
+        coVerify(exactly = 1) { charging.linkedToStation(id) }
     }
+    @Test fun canonicalRouteShowsCachedLinksWhenDirectoryIsOffline() = runTest(dispatcher) {
+        coEvery { detail(id) } throws IOException()
+        val place = ChargingPlace(
+            id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", entityKey = "a".repeat(64),
+            externalId = "synthetic", name = "Synthetic Charge", country = "BR", latitude = null, longitude = null,
+            publicAccess = ChargingAccess.PUBLIC, reportedPoints = 0, groups = emptyList(),
+        )
+        val linked = PlaceDetail(place, ChargingDiscoveryRepository.NATIONAL_PROFILE, "synthetic", 1, 1)
+        coEvery { charging.linkedToStation(id) } returns listOf(linked)
+        val vm = vm(); vm.load(Locale.US); advanceUntilIdle()
+        assertEquals(listOf(linked), vm.state.value.linkedChargers)
+        assertFalse(vm.state.value.canParticipate)
+        coVerify(exactly = 1) { charging.linkedToStation(id) }
+    }
+
+    @Test fun unresolvedLegacyRouteNeverQueriesLinks() = runTest(dispatcher) {
+        coEvery { resolve("04218406000104") } throws IOException()
+        val vm = vm("04218406000104"); vm.load(Locale.US); advanceUntilIdle()
+        assertTrue(vm.state.value.linkedChargers.isEmpty())
+        coVerify(exactly = 0) { charging.linkedToStation(any()) }
+    }
+
     @Test fun staleLegacyIdentityCannotEnableParticipation() = runTest(dispatcher) {
         coEvery { resolve(any()) } returns ServerStationDetailOutcome.StaleCache(station, IOException())
         val vm = vm("04218406000104"); vm.load(Locale.US); advanceUntilIdle()

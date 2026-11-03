@@ -2,6 +2,18 @@ package com.anpfuel.app.ui.map
 
 import android.content.Context
 import android.view.View
+import com.anpfuel.data.local.charging.StoredPackMeta
+import com.anpfuel.data.repository.ChargingDiscoveryRepository
+import com.anpfuel.data.repository.ChargingExplorePage
+import com.anpfuel.data.repository.DiscoveryRow
+import com.anpfuel.domain.charging.ChargingAccess
+import com.anpfuel.domain.charging.ChargingCatalogConfidence
+import com.anpfuel.domain.charging.ChargingConnectionGroup
+import com.anpfuel.domain.charging.ChargingConnector
+import com.anpfuel.domain.charging.ChargingCurrent
+import com.anpfuel.domain.charging.ChargingPlace
+import com.anpfuel.domain.charging.ChargingSourceAttribution
+import com.anpfuel.domain.charging.Compatibility
 import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
@@ -16,6 +28,9 @@ import com.anpfuel.maps.engine.MapStationLocationQuality
 import com.anpfuel.domain.model.UserPreferences
 import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.valueobject.MunicipalityCatalogEntry
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -37,6 +52,7 @@ class MapDiscoveryViewModelTest {
         var stations: List<ServerStation> = emptyList(),
         var delayMs: Long = 0,
         var failNearby: Boolean = false,
+        var failSearch: Boolean = false,
     ) : ServerStationGateway {
         var lastRadius: Int? = null
         var calls = 0
@@ -48,6 +64,7 @@ class MapDiscoveryViewModelTest {
         override suspend fun search(municipalityCode: String, query: String, limit: Int, cursor: String?): ServerStationPage {
             calls++
             lastSearch = municipalityCode to query
+            if (failSearch) throw java.io.IOException("offline")
             if (delayMs > 0) kotlinx.coroutines.delay(delayMs)
             val filtered = stations.filter { it.displayName.contains(query, ignoreCase = true) }
             return ServerStationPage(filtered, null)
@@ -113,6 +130,8 @@ class MapDiscoveryViewModelTest {
         lon: Double? = -49.27,
         quality: StationLocationQuality = StationLocationQuality.REVIEWED,
         name: String = "Posto $id",
+        legalName: String? = null,
+        address: Map<String, String> = emptyMap(),
     ) = ServerStation.create(
         stationId = id,
         displayName = name,
@@ -123,6 +142,8 @@ class MapDiscoveryViewModelTest {
         municipalityCode = "4106902",
         state = "PR",
         currentRevisionId = null,
+        legalName = legalName,
+        address = address,
     )
 
     @BeforeEach fun setup() {
@@ -468,6 +489,60 @@ class MapDiscoveryViewModelTest {
         assertTrue(vm.ui.value.listItems.size == 2, "clearing search must return to nearby results")
     }
 
+    @Test fun `offline search finds cached station by its legal name`() = runTest {
+        val matched = station(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            name = "[P25-TEST] Trade",
+            legalName = "[P25-TEST] Razão Exemplo LTDA",
+        )
+        val other = station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name = "[P25-TEST] Other")
+        val cache = FakeStationCache()
+        cache.saveScopedPage("map:4106902", ServerStationPage(listOf(matched, other), null))
+        val vm = MapDiscoveryViewModel(
+            FakeGateway(failSearch = true), ChargingMarkersSource { emptyList() }, FakeEngine(),
+            null, null, cache,
+        )
+
+        vm.onSearch("4106902", "razão exemplo")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(matched.displayName), vm.ui.value.listItems.map { it.title })
+        assertTrue(vm.ui.value.offlineCached)
+    }
+
+    @Test fun `offline markers show the textual address or municipality name`() = runTest {
+        val addressed = station(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            address = mapOf("street" to "Rua Exemplo", "number" to "10", "city" to "Curitiba"),
+        )
+        val unlocated = station(
+            "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            lat = null,
+            lon = null,
+            quality = StationLocationQuality.UNKNOWN,
+            address = mapOf("raw" to "-25.42, -49.27", "city" to "Curitiba"),
+        )
+        val unknownCity = station("cccccccc-cccc-4ccc-8ccc-cccccccccccc")
+        val cache = FakeStationCache()
+        cache.saveScopedPage("map:4106902", ServerStationPage(listOf(addressed, unlocated, unknownCity), null))
+        val vm = MapDiscoveryViewModel(
+            FakeGateway(failSearch = true), ChargingMarkersSource { emptyList() }, FakeEngine(),
+            null, null, cache,
+        )
+
+        vm.onSearch("4106902", "Posto")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(
+            mapOf(
+                addressed.stationId to "Rua Exemplo, 10 – Curitiba/PR",
+                unlocated.stationId to "Curitiba/PR",
+                unknownCity.stationId to "",
+            ),
+            vm.ui.value.selectableByUuid.mapValues { it.value.subtitle },
+        )
+    }
+
     @Test fun `offline viewport uses the last saved public map page and marks it cached`() = runTest {
         val station = station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name = "Posto Offline")
         val cache = FakeStationCache()
@@ -521,6 +596,62 @@ class MapDiscoveryViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("c", vm.ui.value.searchQuery)
         assertEquals(listBeforeCase2, vm.ui.value.listItems.map { it.title }, "In-flight search must not overwrite cleared state")
+    }
+
+    @Test fun `map selects a confirmed pin from the national offline cache`() = runTest {
+        val repo = mockk<ChargingDiscoveryRepository>()
+        val profile = ChargingDiscoveryRepository.NATIONAL_PROFILE
+        val id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+        val confirmed = ChargingPlace(
+            id = id, entityKey = "b".repeat(64), externalId = "synthetic", name = "", country = "BR",
+            latitude = "-25.42", longitude = "-49.27",
+            publicAccess = ChargingAccess.PUBLIC, reportedPoints = 0, groups = emptyList(),
+            catalogConfidence = ChargingCatalogConfidence.TWO_SOURCE,
+            addressLine = "Synthetic Street, 7",
+            sources = listOf(
+                ChargingSourceAttribution("OSM", "node:7", "osm-rev", null, "ODbL-1.0", "Synthetic OSM"),
+                ChargingSourceAttribution("OCM", "7", "ocm-rev", 40, "CC-0", "Synthetic OCM"),
+            ),
+        )
+        val single = confirmed.copy(
+            id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc", name = "Synthetic single",
+            latitude = "-25.43", catalogConfidence = ChargingCatalogConfidence.SINGLE_SOURCE,
+            sources = confirmed.sources.take(1),
+            groups = listOf(ChargingConnectionGroup(
+                "dddddddd-dddd-4ddd-8ddd-dddddddddddd", "d".repeat(64), "synthetic-group",
+                ChargingConnector.CCS2, "CCS2", ChargingCurrent.DC, 60000, null, "osm:node:7",
+            )),
+        )
+        coEvery { repo.generationMeta(any()) } returns null
+        coEvery { repo.generationMeta(profile) } returns StoredPackMeta(
+            key = "pack:$profile", generation = 2, profile = profile, sourceRevision = "national-rev",
+            origin = "https://example.test", license = "L", schemaVersion = 1, baseGeneration = 1,
+            placeCount = 2, groupCount = 1, cursor = null, state = "COMPLETE", savedAtMillis = 1,
+        )
+        val row = DiscoveryRow(
+            confirmed, Compatibility.UNKNOWN, profile, "national-rev", 2, 1,
+        )
+        coEvery { repo.explorePage(profile, 2, null, null, null, null, 100, 0) } returns
+            ChargingExplorePage(listOf(row, row.copy(place = single)), null)
+
+        val source = MapDiscoveryModule.provideChargingMarkersSource(repo)
+        assertEquals(listOf(confirmed, single), source.query(ChargingMarkersQuery()).places)
+        assertEquals(listOf(single), source.query(ChargingMarkersQuery(minPowerKw = 50)).places)
+
+        val vm = MapDiscoveryViewModel(FakeGateway(), source, FakeEngine())
+        vm.onViewport(-25.42, -49.27)
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        vm.onSelection(id)
+        val marker = requireNotNull(vm.ui.value.selectedMarker)
+        assertEquals("Synthetic Street, 7", marker.subtitle)
+        assertEquals("Unnamed charging site", marker.title)
+        assertEquals(MapStationLocationQuality.CHARGING_SOURCE, marker.locationQuality)
+        assertTrue(marker.confirmedByTwoSources)
+        assertTrue(vm.ui.value.listItems.single { it.uuid == id }.typeLabel.contains("Confirmed by 2 sources"))
+        vm.onSelection(single.id)
+        assertEquals(false, vm.ui.value.selectedMarker?.confirmedByTwoSources)
+        coVerify(exactly = 0) { repo.refresh(any(), any(), any(), any(), any()) }
     }
 
     @Test fun `charging markers source paginates beyond first 100 rows and preserves unknown power`() = runTest {
@@ -581,7 +712,7 @@ class MapDiscoveryViewModelTest {
             override suspend fun deleteOlderGenerations(profile: String, generation: Long) = Unit
             override suspend fun deleteProfilePlaces(profile: String) = Unit
             override suspend fun clearMeta(key: String) = Unit
-            override suspend fun markTombstones(ids: List<String>, generation: Long) = Unit
+            override suspend fun markTombstones(ids: List<String>, profile: String, generation: Long) = Unit
             override suspend fun findMeta(key: String) = metaEntity.takeIf { it.key == key }
             override suspend fun readPlaces(profile: String, generation: Long, limit: Int, offset: Int) =
                 allPlaces.drop(offset).take(limit)
@@ -600,8 +731,11 @@ class MapDiscoveryViewModelTest {
                     it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
             }.take(limit)
 
-            override suspend fun countPlaces(generation: Long) = allPlaces.size.toLong()
-            override suspend fun estimatedBytes(generation: Long) = 1024L
+            override suspend fun readLinkedPlaces(packKey: String, stationId: String) =
+                emptyList<com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity>()
+
+            override suspend fun countPlaces(profile: String, generation: Long) = allPlaces.size.toLong()
+            override suspend fun estimatedBytes(profile: String, generation: Long) = 1024L
         }
         val repo = com.anpfuel.data.repository.ChargingDiscoveryRepository(
             client = com.anpfuel.data.remote.charging.ChargingSnapshotHttpClient(okhttp3.OkHttpClient(), "https://teste.abastevo.com.br"),

@@ -1,0 +1,29 @@
+{
+  "status": "LOCAL_PREPARED_NOT_IMPORTED",
+  "profile_id": "brazil-ev-national-v1",
+  "profile_sha256": "33010274c5e8ed643c2f2d9cb9b036b3e16a1d1fab26cbc1c8d8aa5942eef974",
+  "source_sha256": "176a899d86f1bf2f77964577c482c119a3dcc772b8ee214e78387a5dfe4d3366",
+  "manifest_sha256": "eddacd24d921b66954dd8bd6688bde692828f5ec1946631d0e4404c610e71020",
+  "limits": {
+    "max_wall_seconds": 1800,
+    "max_cpu_seconds": 1800,
+    "max_memory_bytes": 6442450944,
+    "max_output_file_bytes": 536870912,
+    "max_working_disk_bytes": 8589934592
+  },
+  "measurements": {
+    "wall_seconds": 109.163,
+    "peak_rss_bytes": 926662656,
+    "working_disk_bytes": 2125409654
+  },
+  "census": {
+    "input_elements": 363988420,
+    "matched": 28987,
+    "accepted": 28986,
+    "duplicates": 0,
+    "quarantined": 1,
+    "missing_geometry": 0,
+    "fuel": 28579,
+    "charging": 407
+  }
+}

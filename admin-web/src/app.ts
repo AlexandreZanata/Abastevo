@@ -8,6 +8,7 @@
 
 import {
   AdminApi,
+  ApiError,
   errorMessage,
   isUnauthorized,
   type AccountDetail,
@@ -36,6 +37,15 @@ const LOGIN_PATH = '/admin/login/';
 const ACCOUNTS_PATH = '/admin/accounts/';
 const CONTRIBUTORS_PATH = '/admin/contributors/';
 const AUDIT_PATH = '/admin/audit/';
+const STATIONS_PATH = '/admin/stations/';
+const ADDRESS_SOURCE_LABELS = new Map([
+  ['anp', 'ANP (anp)'],
+  ['rfb', 'Receita Federal (rfb)'],
+  ['osm', 'OpenStreetMap (osm)'],
+  ['cnefe', 'CNEFE (cnefe)'],
+  ['municipality', 'Município (municipality)'],
+]);
+let stationLookupGeneration = 0;
 
 // Arrow wrapper: the DOM fetch requires the window receiver.
 const sameOriginFetch = (input: string, init?: RequestInit): Promise<Response> => fetch(input, init);
@@ -109,7 +119,7 @@ function wireNav(): void {
 }
 
 function hideAllViews(): void {
-  for (const id of ['view-login', 'view-accounts', 'view-contributors', 'view-audit']) {
+  for (const id of ['view-login', 'view-accounts', 'view-contributors', 'view-audit', 'view-stations']) {
     el<HTMLElement>(id).hidden = true;
   }
 }
@@ -137,6 +147,12 @@ function route(): void {
   // honest while this document holds a session. Showing a view also loads
   // its data: nothing else triggers the first fetch.
   const path = window.location.pathname;
+  ++stationLookupGeneration;
+  clearStationResult();
+  if (api.hasSession() && path === STATIONS_PATH) {
+    showAuthed('view-stations');
+    return;
+  }
   if (api.hasSession() && (path === ACCOUNTS_PATH || path === CONTRIBUTORS_PATH || path === AUDIT_PATH)) {
     if (path === CONTRIBUTORS_PATH) {
       showAuthed('view-contributors');
@@ -154,6 +170,54 @@ function route(): void {
     window.history.replaceState({}, '', LOGIN_PATH);
   }
   showLogin();
+}
+
+function clearStationResult(): void {
+  el<HTMLElement>('station-result').hidden = true;
+  for (const id of ['station-display-name', 'station-legal-name', 'station-address-source']) {
+    el<HTMLElement>(id).textContent = '';
+  }
+  setAlert('station-error', '');
+  el<HTMLElement>('station-status').textContent = '';
+}
+
+function wireStationLookup(): void {
+  el<HTMLFormElement>('station-lookup').addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (!api.hasSession() || window.location.pathname !== STATIONS_PATH) return;
+    const ticket = ++stationLookupGeneration;
+    clearStationResult();
+    const id = el<HTMLInputElement>('station-id').value.trim().toLowerCase();
+    if (!isUuid(id)) {
+      setAlert('station-error', 'Informe um UUID de posto válido.');
+      return;
+    }
+    const status = el<HTMLElement>('station-status');
+    status.textContent = 'Consultando posto…';
+    void (async () => {
+      try {
+        const facts = await api.stationFacts(id);
+        if (ticket !== stationLookupGeneration) return;
+        if (facts.station_id !== id || typeof facts.display_name !== 'string' || facts.display_name.trim() === '') {
+          setAlert('station-error', 'Resposta inválida do diretório.');
+          return;
+        }
+        el<HTMLElement>('station-display-name').textContent = facts.display_name;
+        el<HTMLElement>('station-legal-name').textContent =
+          typeof facts.legal_name === 'string' && facts.legal_name.trim() !== '' ? facts.legal_name : 'Não informada';
+        el<HTMLElement>('station-address-source').textContent =
+          ADDRESS_SOURCE_LABELS.get(facts.address_source ?? '') ?? 'Não informada';
+        el<HTMLElement>('station-result').hidden = false;
+      } catch (error) {
+        if (ticket !== stationLookupGeneration) return;
+        setAlert('station-error', error instanceof ApiError && error.status === 404
+          ? 'Posto não encontrado.'
+          : errorMessage(error));
+      } finally {
+        if (ticket === stationLookupGeneration) status.textContent = '';
+      }
+    })();
+  });
 }
 
 async function refreshContributors(): Promise<void> {
@@ -405,6 +469,7 @@ function boot(): void {
   wireContributors();
   wireRoles();
   wireAudit();
+  wireStationLookup();
   window.addEventListener('popstate', route);
   route();
 }

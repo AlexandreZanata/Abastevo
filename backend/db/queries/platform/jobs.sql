@@ -65,3 +65,7 @@ SELECT COUNT(*) FILTER (WHERE status = 'queued') AS queued,
     COUNT(*) FILTER (WHERE status = 'dead') AS dead,
     MIN(created_at) FILTER (WHERE status = 'queued') AS oldest_queued
 FROM job_queue;
+
+-- name: JobDedupePrefixStats :many
+SELECT status,count(*)::bigint AS total FROM job_queue
+WHERE starts_with(dedupe_key,@prefix::text) GROUP BY status ORDER BY status;

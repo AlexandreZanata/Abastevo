@@ -1,0 +1,10 @@
+{
+  "byte_identical_runs": 2,
+  "files": {
+    "sites.ndjson": "6e7b6871e3b6c499cd1f85ea62d2b8d7489a6d71e2e30b9e7ed7fd7e26045ecd",
+    "decisions.ndjson": "1f74a6ed9aa672fe5d947185e589302bd291a8c4ffcf7fc12c49255969ddce13",
+    "issues.ndjson": "bf902afd2d1f68b762020ba4053d6c01bd1874d8cf8f58d62a213be15450c0ba",
+    "uf-census.json": "ad2ed0aba1c03d964cbeebdbba212dabe3d6d7c89486a1597d0e5a11727b1766",
+    "manifest.json": "61a0d64aaf2eda85dae247b3948a9d0df49a49baa1c019a83bab2bca1af4877b"
+  }
+}

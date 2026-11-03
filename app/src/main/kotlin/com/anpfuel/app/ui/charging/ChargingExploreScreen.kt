@@ -52,6 +52,8 @@ import com.anpfuel.domain.charging.ChargingCurrent
 import com.anpfuel.domain.charging.Compatibility
 import com.anpfuel.domain.valueobject.DomainId
 import java.text.DateFormat
+import java.text.NumberFormat
+import java.math.BigDecimal
 import java.util.Date
 import java.util.Locale
 
@@ -62,6 +64,7 @@ fun ChargingExploreScreen(
     onOpenCommunity: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ChargingExploreViewModel = hiltViewModel(),
+    onAddChargingSite: (() -> Unit)? = null,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
@@ -76,6 +79,7 @@ fun ChargingExploreScreen(
         onConnectorChanged = viewModel::onConnectorChanged,
         onCurrentChanged = viewModel::onCurrentChanged,
         onAccessChanged = viewModel::onAccessChanged,
+        onMinPowerChanged = viewModel::onMinPowerChanged,
         onRefresh = viewModel::refresh,
         onLoadMore = viewModel::loadMore,
         onOpenDetail = viewModel::openDetail,
@@ -83,6 +87,7 @@ fun ChargingExploreScreen(
         onDismissError = viewModel::dismissError,
         onNavigateBack = onNavigateBack,
         onOpenCommunity = onOpenCommunity,
+        onAddChargingSite = onAddChargingSite,
         modifier = modifier,
     )
 }
@@ -103,6 +108,8 @@ internal fun ChargingExploreContent(
     onNavigateBack: () -> Unit,
     onOpenCommunity: (String) -> Unit = {},
     modifier: Modifier = Modifier,
+    onMinPowerChanged: (Long?) -> Unit = {},
+    onAddChargingSite: (() -> Unit)? = null,
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -135,6 +142,13 @@ internal fun ChargingExploreContent(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (uiState.sourceRevision != null) {
+                Text(
+                    text = stringResource(R.string.charging_open_sources),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             uiState.sourceRevision?.let { revision ->
                 Text(
                     text = stringResource(
@@ -192,18 +206,50 @@ internal fun ChargingExploreContent(
                     label = { Text(text = stringResource(R.string.charging_explore_public_only)) },
                 )
             }
+            Text(
+                text = stringResource(R.string.map_filter_min_power),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = uiState.minPowerW == null,
+                    onClick = { onMinPowerChanged(null) },
+                    label = { Text(stringResource(R.string.charging_explore_all)) },
+                )
+                listOf(22, 50, 150).forEach { powerKw ->
+                    val powerW = powerKw * 1000L
+                    FilterChip(
+                        selected = uiState.minPowerW == powerW,
+                        onClick = { onMinPowerChanged(powerW) },
+                        label = { Text("$powerKw kW") },
+                    )
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onRefresh, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = onRefresh, enabled = !uiState.isLoading && !uiState.isRefreshing, modifier = Modifier.weight(1f)) {
                     Text(text = stringResource(R.string.charging_explore_refresh))
                 }
             }
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             } else if (uiState.rows.isEmpty()) {
-                EmptyState(
-                    message = stringResource(R.string.charging_explore_empty),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Column(
+                    modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    EmptyState(
+                        message = stringResource(
+                            if (uiState.sourceRevision == null) R.string.charging_catalog_unavailable
+                            else R.string.charging_explore_empty,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (uiState.sourceRevision != null && uiState.errorMessage == null && onAddChargingSite != null) {
+                        TextButton(onClick = onAddChargingSite) {
+                            Text(stringResource(R.string.charging_add_site))
+                        }
+                    }
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f, fill = false),
@@ -232,59 +278,102 @@ internal fun ChargingExploreContent(
     }
 
     uiState.detail?.let { detail ->
-        AlertDialog(
-            onDismissRequest = onDismissDetail,
-            title = { Text(text = detail.place.name) },
-            text = {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(text = stringResource(R.string.charging_explore_detail_access, detail.place.publicAccess.name))
-                    detail.place.latitude?.let { Text(text = "Lat $it") }
-                    detail.place.longitude?.let { Text(text = "Lon $it") }
-                    Text(text = stringResource(R.string.charging_explore_detail_points, detail.place.reportedPoints.toInt()))
-                    detail.place.groups.forEach { group ->
-                        Text(
-                            text = "${group.rawConnectorCode} · ${group.current} · " +
-                                (group.powerW?.let { "${it / 1000} kW" } ?: "?") +
-                                (group.reportedQuantity?.let { " · ×$it" } ?: ""),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.charging_explore_detail_source, detail.sourceRevision),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Text(
-                        text = stringResource(R.string.charging_explore_detail_no_tariff),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onOpenCommunity(detail.place.id)
-                    onDismissDetail()
-                }) {
-                    Text(text = stringResource(R.string.charging_community_title))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissDetail) {
-                    Text(text = stringResource(R.string.action_cancel))
-                }
-            },
-        )
+        ChargingPlaceDetailDialog(detail, locale, onDismissDetail, onOpenCommunity)
     }
 }
 
 @Composable
-private fun connectorLabel(connector: ChargingConnector): String = when (connector) {
+internal fun ChargingPlaceDetailDialog(
+    detail: PlaceDetail,
+    locale: Locale,
+    onDismissDetail: () -> Unit,
+    onOpenCommunity: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismissDetail,
+        title = { Text(text = detail.place.name.ifBlank { stringResource(R.string.charging_place_unnamed) }) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                val place = detail.place
+                if (place.confirmedByTwoSources) {
+                    Text(text = stringResource(R.string.charging_place_two_sources))
+                }
+                place.operator?.let {
+                    Text(text = stringResource(R.string.charging_place_operator, it))
+                }
+                place.addressLine?.let { Text(text = it) }
+                Text(text = stringResource(R.string.charging_explore_detail_access, place.publicAccess.name))
+                if (place.catalogConfidence == null) {
+                    place.latitude?.let { Text(text = "Lat $it") }
+                    place.longitude?.let { Text(text = "Lon $it") }
+                    Text(text = stringResource(R.string.charging_explore_detail_points, place.reportedPoints.toInt()))
+                }
+                val owners = place.sources.associateBy { it.sourceKey }
+                val powerFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 3 }
+                place.groups.forEach { group ->
+                    val connector = group.rawConnectorCode.ifBlank { connectorLabel(group.connector) }
+                    val power = group.powerW?.let { "${powerFormat.format(BigDecimal.valueOf(it, 3))} kW" }
+                        ?: stringResource(R.string.charging_explore_unknown)
+                    val owner = owners[group.sourceKey]?.attribution
+                    Text(
+                        text = listOfNotNull(connector, group.current.name, power, group.reportedQuantity?.let { "×$it" }, owner)
+                            .joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.charging_explore_detail_source, detail.sourceRevision),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (detail.place.sources.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.settings_attribution_section),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    detail.place.sources
+                        .map { it.attribution to it.license }
+                        .distinct()
+                        .forEach { (attribution, license) ->
+                            Text(text = "$attribution · $license", style = MaterialTheme.typography.bodySmall)
+                        }
+                }
+                Text(
+                    text = stringResource(R.string.charging_explore_detail_no_tariff),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onOpenCommunity(detail.place.id)
+                onDismissDetail()
+            }) {
+                Text(text = stringResource(R.string.charging_place_report_status))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissDetail) {
+                Text(text = stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+internal fun connectorLabel(connector: ChargingConnector): String = when (connector) {
     ChargingConnector.CCS2 -> "CCS 2"
     ChargingConnector.TYPE2 -> "Type 2"
     ChargingConnector.CHADEMO -> "CHAdeMO"
     ChargingConnector.NACS -> "NACS"
+    ChargingConnector.TYPE1 -> "Type 1"
+    ChargingConnector.CCS1 -> "CCS 1"
+    ChargingConnector.GBT_AC -> "GB/T AC"
+    ChargingConnector.GBT_DC -> "GB/T DC"
+    ChargingConnector.NBR14136 -> "NBR 14136"
+    ChargingConnector.TESLA_LEGACY -> "Tesla Legacy"
     ChargingConnector.UNKNOWN -> stringResource(R.string.charging_explore_unknown)
 }
 
@@ -302,7 +391,13 @@ private fun ChargingPlaceRow(
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text = row.place.name, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = row.place.name.ifBlank { stringResource(R.string.charging_place_unnamed) },
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (row.place.confirmedByTwoSources) {
+                Text(text = stringResource(R.string.charging_place_two_sources), style = MaterialTheme.typography.labelMedium)
+            }
             Text(
                 text = when (row.verdict) {
                     Compatibility.COMPATIBLE -> stringResource(R.string.charging_explore_compatible)

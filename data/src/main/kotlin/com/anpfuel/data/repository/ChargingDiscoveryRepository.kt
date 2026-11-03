@@ -1,5 +1,6 @@
 package com.anpfuel.data.repository
 
+import com.anpfuel.data.local.charging.NATIONAL_CHARGING_PROFILE
 import com.anpfuel.data.local.charging.ChargingSnapshotImport
 import com.anpfuel.data.local.charging.ChargingSnapshotMapper
 import com.anpfuel.data.local.charging.StoredPackMeta
@@ -7,12 +8,14 @@ import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.dao.ChargingSnapshotDao
 import com.anpfuel.data.remote.charging.ChargingSnapshotHttpClient
 import com.anpfuel.domain.charging.ChargingAccess
+import com.anpfuel.domain.charging.ChargingCatalogOffer
 import com.anpfuel.domain.charging.ChargingCompatibility
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingCurrent
 import com.anpfuel.domain.charging.ChargingPackMeta
 import com.anpfuel.domain.charging.ChargingPlace
 import com.anpfuel.domain.charging.Compatibility
+import com.anpfuel.domain.discovery.StationPageIdentity
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,6 +33,8 @@ data class DiscoveryRow(
     val generation: Long,
     val savedAtMillis: Long,
 )
+
+data class ChargingExplorePage(val rows: List<DiscoveryRow>, val nextOffset: Int?)
 
 data class PlaceDetail(
     val place: ChargingPlace,
@@ -55,9 +60,8 @@ data class CorridorRow(
  * pack planner and commits one atomic Room generation; any failure
  * leaves the previous generation intact. Reads serve Room only (lazy
  * windows, resumable cursors), so offline listings stay fully usable
- * without ever asserting live state. Only the admitted OCM profile
- * syncs here (PBE rights remain pending); hours/operator are not on
- * the wire and are shown as not-reported, never invented.
+ * without ever asserting live state. The legacy OCM and the verified
+ * national profile sync here. PBE rights remain pending.
  */
 @Singleton
 class ChargingDiscoveryRepository @Inject constructor(
@@ -70,6 +74,8 @@ class ChargingDiscoveryRepository @Inject constructor(
     companion object {
         const val OCM_PROFILE = "ocm-br-20261021-v1"
         const val OCM_LICENSE = "CC-BY-4.0 (provider metadata, attribution required)"
+        const val NATIONAL_PROFILE = NATIONAL_CHARGING_PROFILE
+        private const val NATIONAL_LICENSE = "ODbL-1.0 and source-specific OCM provider terms"
         const val PAGE_SIZE = 100
     }
 
@@ -80,21 +86,31 @@ class ChargingDiscoveryRepository @Inject constructor(
         licenseNote: String = OCM_LICENSE,
         nowMillis: Long = Instant.now().toEpochMilli(),
     ): StoredPackMeta {
-        if (profile != OCM_PROFILE) throw ChargingDiscoveryUnavailable("pbe-rights-pending")
+        if (profile != OCM_PROFILE && profile != NATIONAL_CHARGING_PROFILE) {
+            throw ChargingDiscoveryUnavailable("pbe-rights-pending")
+        }
         val stored = dao.findMeta(key(profile))?.generation ?: 0L
         if (baseGeneration != null && baseGeneration != stored) {
             throw IllegalStateException("pack base $baseGeneration != stored $stored")
         }
+        val coverage = if (profile == NATIONAL_CHARGING_PROFILE) client.coverage(profile) else null
+        if (coverage != null) {
+            val expectedOffer = ChargingCatalogOffer.forRevision(coverage.sourceRevision)
+            check(coverage.profile == profile && expectedOffer != null && coverage.offer == expectedOffer &&
+                coverage.places in 1..ChargingSnapshotImport.PLACES_BUDGET.toLong() &&
+                (revision == null || revision == coverage.sourceRevision)) { "national coverage refused" }
+        }
+        val requestedRevision = coverage?.sourceRevision ?: revision
         val current = stored
         val meta = ChargingPackMeta(
-            profile = profile, sourceRevision = revision ?: currentRevision(profile, current),
-            origin = origin, license = licenseNote, schemaVersion = 1,
+            profile = profile, sourceRevision = requestedRevision ?: currentRevision(profile, current),
+            origin = origin, license = if (coverage == null) licenseNote else NATIONAL_LICENSE, schemaVersion = 1,
             baseGeneration = current, generatedAt = Instant.ofEpochMilli(nowMillis).toString(),
         )
         val session = ChargingSnapshotImport.beginLivePack(meta, origin, current)
         var cursor: String? = null
         do {
-            val page = client.places(profile, revision, PAGE_SIZE, cursor)
+            val page = client.places(profile, requestedRevision, PAGE_SIZE, cursor)
             // Live packs carry no pre-published manifest: the hash is an
             // audit trail over the decoded page, while TLS plus strict
             // decode remain the integrity boundary.
@@ -102,7 +118,16 @@ class ChargingDiscoveryRepository @Inject constructor(
             ChargingSnapshotImport.addPage(session, raw, page, shaHex(raw))
             cursor = page.nextCursor
         } while (cursor != null)
-        val committed = ChargingSnapshotImport.commitPack(session, emptyList(), null)
+        val committed = ChargingSnapshotImport.commitPack(session, emptyList(), coverage)
+        if (coverage != null) {
+            check(committed.meta.placeCount == coverage.places && committed.meta.groupCount == coverage.groups) {
+                "national snapshot counts differ from coverage"
+            }
+            val currentCoverage = client.coverage(profile)
+            check(currentCoverage.copy(generatedAt = coverage.generatedAt) == coverage) {
+                "national generation changed during refresh"
+            }
+        }
         dao.replaceGeneration(
             ChargingSnapshotMapper.toMetaEntity(committed.meta, key(profile)),
             committed.places.map { ChargingSnapshotMapper.toEntity(it, nowMillis) },
@@ -134,6 +159,46 @@ class ChargingDiscoveryRepository @Inject constructor(
                     savedAtMillis = meta.savedAtMillis,
                 )
             }
+    }
+
+    /** Continue at the next matching row, even across sparse raw windows. */
+    suspend fun explorePage(
+        profile: String,
+        generation: Long,
+        connector: ChargingConnector?,
+        current: ChargingCurrent?,
+        access: ChargingAccess?,
+        minPowerW: Long?,
+        limit: Int,
+        offset: Int,
+    ): ChargingExplorePage {
+        val meta = dao.findMeta(key(profile))?.takeIf { it.generation == generation }
+            ?: return ChargingExplorePage(emptyList(), null)
+        val size = limit.coerceIn(1, PAGE_SIZE)
+        val matches = ArrayList<DiscoveryRow>(size)
+        var rawOffset = offset.coerceAtLeast(0)
+        while (true) {
+            val window = dao.readPlaces(profile, generation, PAGE_SIZE, rawOffset)
+            for ((index, entity) in window.withIndex()) {
+                val place = runCatching { ChargingSnapshotMapper.toDomain(entity) }.getOrNull() ?: continue
+                if (!ChargingCompatibility.matches(place, connector, current, access, minPowerW)) continue
+                if (matches.size == size) return ChargingExplorePage(matches, rawOffset + index)
+                matches += DiscoveryRow(
+                    place, ChargingCompatibility.assess(connector, place.groups), profile,
+                    meta.sourceRevision, generation, meta.savedAtMillis,
+                )
+            }
+            if (window.size < PAGE_SIZE) return ChargingExplorePage(matches, null)
+            rawOffset += window.size
+        }
+    }
+
+    suspend fun linkedToStation(stationId: String): List<PlaceDetail> {
+        val canonical = StationPageIdentity.parse(stationId) as? StationPageIdentity.Canonical ?: return emptyList()
+        return dao.readLinkedPlaces(key(NATIONAL_PROFILE), canonical.stationId).mapNotNull { row ->
+            val place = runCatching { ChargingSnapshotMapper.toDomain(row) }.getOrNull() ?: return@mapNotNull null
+            PlaceDetail(place, row.profile, row.sourceRevision, row.generation, row.savedAtMillis)
+        }
     }
 
     suspend fun detail(placeId: String, profile: String, generation: Long?): PlaceDetail? {

@@ -2,7 +2,6 @@ package adapters
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -69,28 +68,6 @@ func (c RegistryCanonicalizer) SetInitialLocality(ctx context.Context, stationID
 	})
 	if err != nil {
 		return fmt.Errorf("registry: locality projection conflict/unavailable: %w", err)
-	}
-	return nil
-}
-
-// RefreshPreparedFacts preserves curated projections: only values supported by
-// an earlier bound complete prepared assertion may change. Reviewed location,
-// status, locality and profile/community data are outside this update.
-func (c RegistryCanonicalizer) RefreshPreparedFacts(ctx context.Context, stationID, display string, address map[string]string) error {
-	uid, err := mustUUID(stationID)
-	if err != nil {
-		return err
-	}
-	raw, err := json.Marshal(address)
-	if err != nil {
-		return err
-	}
-	result, err := directory.New(c.Repo.pool).RefreshPreparedStationFacts(ctx, directory.RefreshPreparedStationFactsParams{ID: uid, DisplayName: display, Address: raw})
-	if err != nil {
-		return fmt.Errorf("registry: source facts conflict/unavailable: %w", err)
-	}
-	if result.PreservedCurated {
-		return registry.ErrCuratedFacts
 	}
 	return nil
 }

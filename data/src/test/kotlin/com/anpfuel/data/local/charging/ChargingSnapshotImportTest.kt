@@ -1,9 +1,14 @@
 package com.anpfuel.data.local.charging
 
+import com.anpfuel.domain.charging.ChargingCatalogConfidence
+import com.anpfuel.domain.charging.ChargingConnectionGroup
+import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingCoverage
+import com.anpfuel.domain.charging.ChargingCurrent
 import com.anpfuel.domain.charging.ChargingPackMeta
 import com.anpfuel.domain.charging.ChargingPlace
 import com.anpfuel.domain.charging.ChargingPlacePage
+import com.anpfuel.domain.charging.ChargingSourceAttribution
 import java.security.MessageDigest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -35,6 +40,47 @@ class ChargingSnapshotImportTest {
 
     private fun pageBytes(vararg ids: String): ByteArray =
         ids.joinToString(",").toByteArray()
+
+    @Test
+    fun `offline pack keeps both source terms across the storage mapping`() {
+        val sources = listOf(
+            ChargingSourceAttribution("OSM", "node:7", "osm-edition", null, "ODbL-1.0", "© OpenStreetMap contributors (ODbL)"),
+            ChargingSourceAttribution("OCM", "7", "ocm-edition", 40, "CC-0", "Easy Volt"),
+        )
+        val raw = pageBytes(placeId)
+        val session = ChargingSnapshotImport.beginPack(meta(), "https://api.example.test", 3, listOf(sha(raw)), 1)
+        val page = ChargingPlacePage(listOf(place().copy(sources = sources)), null, "2026-10-22T00:00:00Z")
+        ChargingSnapshotImport.addPage(session, raw, page, sha(raw))
+        val stored = ChargingSnapshotImport.commitPack(session, emptyList(), null).places.single()
+        val entity = ChargingSnapshotMapper.toEntity(stored, 100)
+        assertEquals(sources, ChargingSnapshotMapper.toDomain(entity).sources)
+    }
+
+    @Test
+    fun `national pack round trips confidence linked station and source owned groups`() {
+        val national = place().copy(
+            name = "", latitude = "-15.7939123456789012", linkedStationId = placeTwo,
+            operator = "Synthetic operator", addressLine = "Synthetic Street, 7 – Synthetic City/SP",
+            catalogConfidence = ChargingCatalogConfidence.SINGLE_SOURCE,
+            sources = listOf(ChargingSourceAttribution("OSM", "node:7", "osm-edition", null, "ODbL-1.0", "Synthetic attribution")),
+            groups = listOf(ChargingConnectionGroup(
+                retiredId, key, "osm:node:7:socket:gb_dc", ChargingConnector.GBT_DC,
+                "", ChargingCurrent.DC, 150000, 1, "osm:node:7",
+            )),
+        )
+        val raw = pageBytes(placeId)
+        val page = ChargingPlacePage(listOf(national), null, meta().generatedAt)
+        val legacySession = ChargingSnapshotImport.beginLivePack(meta(), "https://api.example.test", 3)
+        assertThrows(IllegalStateException::class.java) {
+            ChargingSnapshotImport.addPage(legacySession, raw, page, sha(raw))
+        }
+        val session = ChargingSnapshotImport.beginPack(
+            meta().copy(profile = "charging-br-national-v1"), "https://api.example.test", 3, listOf(sha(raw)), 1,
+        )
+        ChargingSnapshotImport.addPage(session, raw, page, sha(raw))
+        val stored = ChargingSnapshotImport.commitPack(session, emptyList(), null).places.single()
+        assertEquals(national, ChargingSnapshotMapper.toDomain(ChargingSnapshotMapper.toEntity(stored, 100)))
+    }
 
     @Test
     fun `begin admits pinned pack and refuses wrong base source origin`() {

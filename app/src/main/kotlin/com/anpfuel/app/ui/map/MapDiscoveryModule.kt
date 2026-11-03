@@ -22,7 +22,8 @@ object MapDiscoveryModule {
 
         override suspend fun query(request: ChargingMarkersQuery): ChargingMarkersResult {
             try {
-                val meta = repo.generationMeta(ChargingDiscoveryRepository.OCM_PROFILE)
+                val meta = repo.generationMeta(ChargingDiscoveryRepository.NATIONAL_PROFILE)
+                    ?: repo.generationMeta(ChargingDiscoveryRepository.OCM_PROFILE)
                     ?: return ChargingMarkersResult(
                         places = emptyList(),
                         snapshotPresent = false,
@@ -33,24 +34,23 @@ object MapDiscoveryModule {
                 val matched = ArrayList<ChargingPlace>(targetLimit)
                 var offset = 0
                 while (offset < maxScan && matched.size < targetLimit) {
-                    val page = repo.list(
-                        profile = ChargingDiscoveryRepository.OCM_PROFILE,
+                    val page = repo.explorePage(
+                        profile = meta.profile,
                         generation = meta.generation,
                         connector = null,
                         current = null,
                         access = null,
+                        minPowerW = null,
                         limit = ChargingDiscoveryRepository.PAGE_SIZE,
                         offset = offset,
                     )
-                    if (page.isEmpty()) break
-                    for (row in page) {
+                    for (row in page.rows) {
                         if (matchesChargingQuery(row.place, request)) {
                             matched.add(row.place)
                             if (matched.size >= targetLimit) break
                         }
                     }
-                    if (page.size < ChargingDiscoveryRepository.PAGE_SIZE) break
-                    offset += ChargingDiscoveryRepository.PAGE_SIZE
+                    offset = page.nextOffset ?: break
                 }
                 return ChargingMarkersResult(
                     places = matched,

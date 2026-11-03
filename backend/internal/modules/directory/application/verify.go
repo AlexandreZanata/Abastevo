@@ -30,6 +30,7 @@ type VerifyStore interface {
 }
 
 var (
+	ErrVerifyKind     = errors.New("directory: suggestion requires charging review")
 	ErrVerifyClosed   = errors.New("directory: suggestion is no longer pending")
 	ErrVerifyReviewer = errors.New("directory: reviewer is required")
 	ErrVerifyReason   = errors.New("directory: decision reason is required")
@@ -87,7 +88,7 @@ func AutoVerify(ctx context.Context, ports VerifyPorts, suggestionID string) (Ve
 		return VerifyResult{}, err
 	}
 	proposal, err := decodeProposal(row.Proposal)
-	if err != nil || proposal.CNPJ == "" {
+	if err != nil || proposal.Kind != "" || proposal.CNPJ == "" {
 		return VerifyResult{}, nil
 	}
 	stationID, municipality, state, err := ports.Resolve(ctx, proposal.CNPJ, proposal.DisplayName, proposalAddress(proposal))
@@ -140,6 +141,12 @@ func Decide(ctx context.Context, ports VerifyPorts, suggestionID, reviewer strin
 	}
 	if err := authorLive(ctx, ports, row.AccountID); err != nil {
 		return err
+	}
+	if approve || stationID != "" {
+		proposal, err := decodeProposal(row.Proposal)
+		if err != nil || proposal.Kind != "" {
+			return ErrVerifyKind
+		}
 	}
 	decision := DecisionRejected
 	if approve {

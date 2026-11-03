@@ -16,8 +16,6 @@ object StationAddressFormatter {
     private val cityKeys = listOf("municipio", "city")
     private val connectors = setOf("de", "da", "do", "das", "dos", "e", "em", "na", "no")
     private val roman = Regex("^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)$")
-    private val coordinateLabels = Regex("""\b(?:lat(?:itude)?|lon(?:gitude)?|lng|gps|geo)\b""", RegexOption.IGNORE_CASE)
-    private val coordinatePair = Regex("""[-+]?\d{1,3}(?:[.,]\d+)?\s*[,;/]\s*[-+]?\d{1,3}(?:[.,]\d+)?""")
     private val municipalityCode = Regex("""\d{7}(?:\s*/\s*[a-z]{2})?""", RegexOption.IGNORE_CASE)
     private val ptBr = Locale.forLanguageTag("pt-BR")
 
@@ -25,8 +23,8 @@ object StationAddressFormatter {
         fun first(keys: List<String>) = keys.firstNotNullOfOrNull { key -> address[key]?.let(::clean)?.takeIf { it.isNotEmpty() } }
         val rawParts = address["raw"]?.trim()?.takeIf(::readableText).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
         val street = first(streetKeys)?.takeIf(::readableText) ?: rawParts.firstOrNull()?.takeIf(::readableText)
-        val number = first(numberKeys)?.takeUnless(::coordinateLiteral)
-            ?: rawParts.getOrNull(1)?.takeIf { part -> part.any(Char::isDigit) && !coordinateLiteral(part) }
+        val number = first(numberKeys)?.takeUnless(::isCoordinateLiteral)
+            ?: rawParts.getOrNull(1)?.takeIf { part -> part.any(Char::isDigit) && !isCoordinateLiteral(part) }
         val district = first(districtKeys)?.takeIf(::readableText)
         if (street == null) {
             val city = first(cityKeys)?.takeIf(::readableText) ?: return ""
@@ -38,13 +36,7 @@ object StationAddressFormatter {
     }
 
     private fun readableText(value: String): Boolean =
-        value.any(Char::isLetter) && !coordinateLiteral(value) && !municipalityCode.matches(value)
-
-    private fun coordinateLiteral(value: String): Boolean {
-        val withoutLabels = coordinateLabels.replace(value, "")
-        return coordinatePair.matches(value) ||
-            (withoutLabels != value && withoutLabels.any(Char::isDigit) && withoutLabels.none(Char::isLetter))
-    }
+        value.any(Char::isLetter) && !isCoordinateLiteral(value) && !municipalityCode.matches(value)
 
     /** Source fields may end with separators ("AVENIDA X ,"). */
     private fun clean(value: String): String = value.trim().trimEnd(',', ';', '.', '-', ' ').trim()

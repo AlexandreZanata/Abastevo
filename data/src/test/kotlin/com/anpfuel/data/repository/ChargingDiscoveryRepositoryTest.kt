@@ -5,6 +5,9 @@ import com.anpfuel.data.local.dao.ChargingSnapshotDao
 import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity
 import com.anpfuel.data.remote.charging.ChargingSnapshotHttpClient
+import com.anpfuel.domain.charging.ChargingCatalogConfidence
+import com.anpfuel.domain.charging.ChargingCoverage
+import com.anpfuel.domain.charging.ChargingSourceAttribution
 import com.anpfuel.domain.charging.ChargingAccess
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingCurrent
@@ -50,10 +53,10 @@ class ChargingDiscoveryRepositoryTest {
             metas.remove(key)
         }
 
-        override suspend fun markTombstones(ids: List<String>, generation: Long) {
+        override suspend fun markTombstones(ids: List<String>, profile: String, generation: Long) {
             ids.forEach { id ->
-                val key = places.keys.firstOrNull { it.first == id && it.second == generation }
-                key?.let { places[it] = places[it]!!.copy(tombstone = true) }
+                val key = Triple(id, generation, profile)
+                places[key]?.let { places[key] = it.copy(tombstone = true) }
             }
         }
 
@@ -80,10 +83,17 @@ class ChargingDiscoveryRepositoryTest {
                 it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
         }.sortedBy { it.placeId }.take(limit)
 
-        override suspend fun countPlaces(generation: Long) =
-            places.values.count { it.generation == generation && !it.tombstone }.toLong()
+        override suspend fun readLinkedPlaces(packKey: String, stationId: String): List<ChargingSnapshotPlaceEntity> {
+            val meta = metas[packKey]?.takeIf { it.state == "COMPLETE" } ?: return emptyList()
+            return places.values.filter {
+                it.profile == meta.profile && it.generation == meta.generation && it.linkedStationId == stationId && !it.tombstone
+            }.sortedWith(compareBy({ it.name }, { it.placeId }))
+        }
 
-        override suspend fun estimatedBytes(generation: Long) = 1024L
+        override suspend fun countPlaces(profile: String, generation: Long) =
+            places.values.count { it.profile == profile && it.generation == generation && !it.tombstone }.toLong()
+
+        override suspend fun estimatedBytes(profile: String, generation: Long) = 1024L
     }
 
     private val dao = FakeDao()
@@ -107,6 +117,11 @@ class ChargingDiscoveryRepositoryTest {
         ids.map { place(it) }, next, "2026-10-26T00:00:00Z",
     )
 
+    private suspend fun assertRefreshRefused(refresh: suspend () -> Unit) {
+        val failure = runCatching { refresh() }.exceptionOrNull()
+        assertTrue(failure is IllegalStateException, "expected refresh refusal, got $failure")
+    }
+
     @BeforeEach
     fun setUp() {
         repo = ChargingDiscoveryRepository(client, dao, origin)
@@ -122,6 +137,107 @@ class ChargingDiscoveryRepositoryTest {
         assertEquals(3, rows.size)
         assertTrue(rows.all { it.verdict == Compatibility.COMPATIBLE })
         assertEquals("ocm-br-20261021-v1", rows.single { it.place.id == "11111111-1111-4111-8111-111111111111" }.profile)
+    }
+
+    @Test fun `power filtered windows skip sparse raw pages and continue exactly once`() = runTest {
+        val profile = ChargingDiscoveryRepository.OCM_PROFILE
+        val places = (1..104).map { number ->
+            val base = place("%08x-1111-4111-8111-111111111111".format(number))
+            val power = when (number) {
+                101 -> null
+                102, 104 -> 150000L
+                else -> 22000L
+            }
+            base.copy(groups = listOf(base.groups.single().copy(powerW = power)))
+        }
+        val stamp = "2026-10-26T00:00:00Z"
+        coEvery { client.places(profile, null, 100, null) } returns ChargingPlacePage(places.take(100), "c2", stamp)
+        coEvery { client.places(profile, null, 100, "c2") } returns ChargingPlacePage(places.drop(100), null, stamp)
+        val meta = repo.refresh(profile)
+
+        suspend fun read(offset: Int) = repo.explorePage(
+            profile, meta.generation, ChargingConnector.CCS2, ChargingCurrent.DC, null, 150000, 1, offset,
+        )
+        val first = read(0)
+        val second = read(requireNotNull(first.nextOffset))
+        assertEquals(listOf(places[101].id), first.rows.map { it.place.id })
+        assertEquals(listOf(places[103].id), second.rows.map { it.place.id })
+        assertEquals(null, second.nextOffset)
+    }
+
+    @Test fun `national refresh requires a complete stable revision before replacing cache`() = runTest {
+        val profile = "charging-br-national-v1"
+        val revision = "c".repeat(64)
+        val stamp = "2026-10-26T00:00:00Z"
+        val id = "11111111-1111-4111-8111-111111111111"
+        val second = "33333333-3333-4333-8333-333333333333"
+        val codec = com.anpfuel.data.remote.charging.ChargingSnapshotJsonCodec
+        fun coverage(
+            rev: String = revision,
+            groups: Int = 2,
+            base: String = "/v1/charging/catalog/$rev/offer",
+            data: String = "$base/derived-database.ndjson",
+        ): ChargingCoverage =
+            codec.decodeCoverage(org.json.JSONObject("""
+                {"profile":"$profile","source_revision":"$rev","places":2,"groups":$groups,
+                 "vehicles":0,"generated_at":"$stamp",
+                 "offer":{"notice":"$base/derived-database-offer.json","data":"$data"}}
+            """.trimIndent()))
+        fun national(id: String): ChargingPlace {
+            val base = place(id)
+            return base.copy(
+                catalogConfidence = ChargingCatalogConfidence.SINGLE_SOURCE,
+                sources = listOf(ChargingSourceAttribution("OSM", "node:7", "synthetic", null, "ODbL-1.0", "Synthetic OSM")),
+                groups = base.groups.map { it.copy(sourceKey = "osm:node:7") },
+            )
+        }
+        val firstPage = ChargingPlacePage(listOf(national(id)), "c2", stamp)
+        val lastPage = ChargingPlacePage(listOf(national(second)), null, stamp)
+        coEvery { client.coverage(profile) } returns coverage()
+        coEvery { client.places(profile, revision, 100, null) } returns firstPage
+        coEvery { client.places(profile, revision, 100, "c2") } returns lastPage
+
+        val original = repo.refresh(profile)
+        assertEquals(revision, original.sourceRevision)
+        assertEquals(2L, original.groupCount)
+        assertEquals(national(id), repo.detail(id, profile, null)?.place)
+
+        coEvery { client.places(profile, revision, 100, "c2") } returns lastPage.copy(items = emptyList())
+        assertRefreshRefused { repo.refresh(profile) }
+        coEvery { client.places(profile, revision, 100, "c2") } returns lastPage
+        coEvery { client.coverage(profile) } returns coverage(data = "https://foreign.example/offer")
+        assertRefreshRefused { repo.refresh(profile) }
+        coEvery { client.coverage(profile) } returns coverage(groups = 3)
+        assertRefreshRefused { repo.refresh(profile) }
+        coEvery { client.coverage(profile) } returnsMany listOf(coverage(), coverage(rev = "d".repeat(64)))
+        assertRefreshRefused { repo.refresh(profile) }
+        assertEquals(original.generation, repo.generationMeta(profile)?.generation)
+        assertEquals(national(id), repo.detail(id, profile, null)?.place)
+    }
+
+    @Test fun `linked charger lookup uses only the active national station identity`() = runTest {
+        val profile = ChargingDiscoveryRepository.NATIONAL_PROFILE
+        val station = "11111111-1111-4111-8111-111111111111"
+        val other = "33333333-3333-4333-8333-333333333333"
+        val key = com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity.packKey(profile)
+        dao.upsertMeta(com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity(
+            key, 2, profile, "synthetic", "https://example.test", "ODbL-1.0", 1, 1, 2, 0, null, "COMPLETE", 1,
+        ))
+        fun row(id: String, link: String, generation: Long = 2, tombstone: Boolean = false) =
+            com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity(
+                id, "a".repeat(64), "synthetic", generation, profile, "synthetic", "https://example.test",
+                "ODbL-1.0", "Synthetic Charge", "BR", null, null, "PUBLIC", 0, "[]", tombstone, 1,
+                """[{"source":"OSM","external_id":"node:7","revision":"synthetic","license":"ODbL-1.0","attribution":"Synthetic OSM"}]""",
+                "SINGLE_SOURCE", link,
+            )
+        val linked = row("22222222-2222-4222-8222-222222222222", station)
+        dao.upsertPlaces(listOf(
+            linked, row("44444444-4444-4444-8444-444444444444", other),
+            row("55555555-5555-4555-8555-555555555555", station, generation = 1),
+            row("66666666-6666-4666-8666-666666666666", station, tombstone = true),
+        ))
+        assertEquals(listOf(linked.placeId), repo.linkedToStation(station).map { it.place.id })
+        assertTrue(repo.linkedToStation("04218406000104").isEmpty())
     }
 
     @Test fun `pbe profile refuses while mixed sources coexist without merging`() = runTest {
