@@ -1,5 +1,7 @@
 //! Prepare or verify a local charging rights and derived-database bundle.
-use station_prep::ev_rights_bundle::{prepare_bundle, prepare_geography, validate_bundle};
+use station_prep::ev_rights_bundle::{
+    prepare_bundle, prepare_coverage, prepare_geography, validate_bundle,
+};
 use std::path::Path;
 use std::time::Instant;
 
@@ -30,7 +32,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         [mode, catalog, digest, boundaries, output] if mode == "geography" => {
             prepare_geography(Path::new(catalog), digest, Path::new(boundaries), Path::new(output))?
         }
-        _ => return Err("usage: prepare_ev_rights prepare|verify CATALOG_DIR MANIFEST_SHA256 BUNDLE_DIR; or geography CATALOG_DIR MANIFEST_SHA256 IBGE_FILE OUTPUT_FILE".into()),
+        [mode, catalog, digest, boundaries, output] if mode == "coverage" => {
+            prepare_coverage(Path::new(catalog), digest, Path::new(boundaries), Path::new(output))?
+        }
+        _ => return Err("usage: prepare_ev_rights prepare|verify CATALOG_DIR MANIFEST_SHA256 BUNDLE_DIR; or geography|coverage CATALOG_DIR MANIFEST_SHA256 IBGE_FILE OUTPUT_FILE".into()),
     };
     println!("{}", serde_json::to_string(&receipt)?);
     Ok(())

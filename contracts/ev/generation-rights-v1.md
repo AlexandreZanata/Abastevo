@@ -64,3 +64,16 @@ Development and test targets use a loopback database. Staging requires
 service. Set `ANPFUEL_ENV` to the corresponding environment. A coverage
 exception requires all three override flags for the previous digest,
 actor and reason and is recorded in the activation audit.
+
+## Geographic coverage
+
+```text
+prepare_ev_rights coverage CATALOG_DIR MANIFEST_SHA256 IBGE_FILE OUTPUT_FILE
+```
+
+The file-only report gives one count per canonical site across each UF
+and municipality code in the pinned polygon file, including empty
+geographies and separate unassigned counts. Coordinates and record
+identifiers are absent from the report. Attribution for the boundary
+classification is retained. Benchmark equipment totals have a
+different unit and do not enter the calculation.

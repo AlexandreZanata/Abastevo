@@ -6,7 +6,9 @@ use crate::ev_site_preparation::{
     checked_raw, read_bounded, write_bytes, write_lines, PrepError, SourcePins,
 };
 use crate::types::sha256_hex;
+use serde::Serialize;
 use serde_json::{json, Value};
+use std::collections::BTreeMap;
 use std::fs;
 use std::os::unix::fs::DirBuilderExt;
 use std::path::Path;
@@ -227,5 +229,94 @@ pub fn prepare_geography(
     if bytes.len() > 64 << 20 {
         return Err(PrepError("geography file budget exceeded"));
     }
+    write_bytes(output, &bytes)
+}
+
+#[derive(Default, Serialize)]
+struct UFCoverage {
+    sites: usize,
+    municipalities: usize,
+    municipalities_with_sites: usize,
+}
+
+#[derive(Serialize)]
+struct MunicipalityCoverage {
+    uf: &'static str,
+    sites: usize,
+}
+
+pub(crate) fn catalog_coverage(
+    index: &crate::ev_geography::StateIndex,
+    catalog_digest: &str,
+    sites: &[CanonicalSite],
+) -> Value {
+    let mut by_uf: BTreeMap<_, _> = crate::ev_geography::STATES
+        .into_iter()
+        .map(|uf| (uf, UFCoverage::default()))
+        .collect();
+    let mut by_municipality: BTreeMap<_, _> = index
+        .municipalities()
+        .map(|(code, uf)| {
+            by_uf.get_mut(uf).expect("known UF").municipalities += 1;
+            (code, MunicipalityCoverage { uf, sites: 0 })
+        })
+        .collect();
+    let mut unassigned_uf = 0;
+    let mut unassigned_municipality = 0;
+    for site in sites {
+        let point = index.classify(
+            site.point.latitude_decimal.parse().unwrap_or(f64::NAN),
+            site.point.longitude_decimal.parse().unwrap_or(f64::NAN),
+        );
+        if let Some(uf) = point.uf {
+            by_uf.get_mut(uf.as_str()).expect("known UF").sites += 1;
+        } else {
+            unassigned_uf += 1;
+        }
+        if let Some(code) = point.municipality_code {
+            let municipality = by_municipality
+                .get_mut(code.as_str())
+                .expect("known municipality");
+            if municipality.sites == 0 {
+                by_uf
+                    .get_mut(municipality.uf)
+                    .expect("known UF")
+                    .municipalities_with_sites += 1;
+            }
+            municipality.sites += 1;
+        } else {
+            unassigned_municipality += 1;
+        }
+    }
+    json!({
+        "format": "abastevo.ev-geographic-coverage-v1",
+        "unit": "canonical_site",
+        "catalog_sha256": catalog_digest,
+        "boundary_sha256": index.source_sha256,
+        "boundary_attribution": "Fonte: IBGE",
+        "sites": sites.len(),
+        "unassigned_uf": unassigned_uf,
+        "unassigned_municipality": unassigned_municipality,
+        "by_uf": by_uf,
+        "by_municipality": by_municipality
+    })
+}
+
+pub fn prepare_coverage(
+    catalog: &Path,
+    manifest_sha256: &str,
+    boundaries: &Path,
+    output: &Path,
+) -> Result<Value> {
+    let admission = admit(catalog, manifest_sha256)?;
+    let raw = checked_raw(boundaries, 8 << 20, &SourcePins::frozen().boundary_sha256)?;
+    let index = crate::ev_geography::StateIndex::from_bytes(&raw)
+        .map_err(|_| PrepError("boundary model refused"))?;
+    let catalog_digest = admission.rights["catalog_sha256"]
+        .as_str()
+        .expect("admitted digest");
+    let coverage = catalog_coverage(&index, catalog_digest, &admission.sites);
+    let bytes =
+        serde_json::to_vec(&coverage).map_err(|_| PrepError("coverage encoding refused"))?;
     write_bytes(output, &bytes)
 }

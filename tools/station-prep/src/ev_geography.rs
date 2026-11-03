@@ -13,6 +13,7 @@ type Ring = Vec<Point>;
 #[derive(Debug)]
 struct Polygon {
     uf: &'static str,
+    municipality: String,
     rings: Vec<Ring>,
     bounds: [f64; 4],
 }
@@ -22,12 +23,15 @@ pub struct StateIndex {
     pub source_sha256: String,
     extent: [f64; 4],
     polygons: Vec<Polygon>,
+    municipalities: BTreeMap<String, &'static str>,
     grid: BTreeMap<(i16, i16), Vec<usize>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StateDecision {
     pub uf: Option<String>,
+    #[serde(skip_serializing)]
+    pub municipality_code: Option<String>,
     pub reason: &'static str,
 }
 
@@ -69,7 +73,12 @@ fn state_for_code(code: &str) -> Option<&'static str> {
     }
 }
 
-fn parse_polygon(value: &Value, uf: &'static str, points: &mut usize) -> Result<Polygon, String> {
+fn parse_polygon(
+    value: &Value,
+    uf: &'static str,
+    municipality: &str,
+    points: &mut usize,
+) -> Result<Polygon, String> {
     let raw_rings = value.as_array().ok_or("boundary polygon array required")?;
     if raw_rings.is_empty() {
         return Err("boundary polygon needs an exterior ring".into());
@@ -116,7 +125,12 @@ fn parse_polygon(value: &Value, uf: &'static str, points: &mut usize) -> Result<
         }
         rings.push(ring);
     }
-    Ok(Polygon { uf, rings, bounds })
+    Ok(Polygon {
+        uf,
+        municipality: municipality.into(),
+        rings,
+        bounds,
+    })
 }
 
 impl StateIndex {
@@ -136,6 +150,7 @@ impl StateIndex {
             return Err("boundary feature budget refused".into());
         }
         let mut polygons = Vec::new();
+        let mut municipalities = BTreeMap::new();
         let mut points = 0;
         for feature in features {
             let code = feature
@@ -146,6 +161,7 @@ impl StateIndex {
                 return Err("invalid IBGE municipality identity".into());
             }
             let uf = state_for_code(&code[..2]).ok_or("unknown IBGE UF prefix")?;
+            municipalities.insert(code.to_owned(), uf);
             let geometry = feature
                 .get("geometry")
                 .ok_or("boundary geometry required")?;
@@ -153,14 +169,16 @@ impl StateIndex {
                 .get("coordinates")
                 .ok_or("boundary coordinates required")?;
             match geometry.get("type").and_then(Value::as_str) {
-                Some("Polygon") => polygons.push(parse_polygon(coordinates, uf, &mut points)?),
+                Some("Polygon") => {
+                    polygons.push(parse_polygon(coordinates, uf, code, &mut points)?)
+                }
                 Some("MultiPolygon") => {
                     let components = coordinates
                         .as_array()
                         .filter(|v| !v.is_empty())
                         .ok_or("boundary multipolygon components required")?;
                     for component in components {
-                        polygons.push(parse_polygon(component, uf, &mut points)?);
+                        polygons.push(parse_polygon(component, uf, code, &mut points)?);
                     }
                 }
                 _ => return Err("unsupported boundary geometry".into()),
@@ -200,6 +218,7 @@ impl StateIndex {
             extent,
             source_sha256: sha256_hex(raw),
             polygons,
+            municipalities,
             grid,
         })
     }
@@ -214,9 +233,16 @@ impl StateIndex {
             && lat <= self.extent[3]
     }
 
+    pub fn municipalities(&self) -> impl Iterator<Item = (&str, &'static str)> {
+        self.municipalities
+            .iter()
+            .map(|(code, uf)| (code.as_str(), *uf))
+    }
+
     pub fn classify(&self, lat: f64, lon: f64) -> StateDecision {
-        let decision = |uf: Option<&str>, reason| StateDecision {
+        let decision = |uf: Option<&str>, municipality: Option<&str>, reason| StateDecision {
             uf: uf.map(String::from),
+            municipality_code: municipality.map(String::from),
             reason,
         };
         if !lat.is_finite()
@@ -224,7 +250,7 @@ impl StateIndex {
             || !(-90.0..=90.0).contains(&lat)
             || !(-180.0..=180.0).contains(&lon)
         {
-            return decision(None, "invalid_point");
+            return decision(None, None, "invalid_point");
         }
         let mut matches = BTreeSet::new();
         let mut boundary = false;
@@ -251,17 +277,23 @@ impl StateIndex {
                     .iter()
                     .any(|ring| in_ring(lon, lat, ring))
             {
-                matches.insert(polygon.uf);
+                matches.insert((polygon.uf, polygon.municipality.as_str()));
             }
         }
         if boundary {
-            return decision(None, "boundary_ambiguous");
+            return decision(None, None, "boundary_ambiguous");
         }
-        match matches.len() {
-            0 => decision(None, "no_boundary_match"),
-            1 => decision(matches.first().copied(), "ibge_polygon"),
-            _ => decision(None, "ambiguous_uf"),
+        let Some(&(uf, code)) = matches.first() else {
+            return decision(None, None, "no_boundary_match");
+        };
+        if matches.iter().any(|(state, _)| *state != uf) {
+            return decision(None, None, "ambiguous_uf");
         }
+        decision(
+            Some(uf),
+            (matches.len() == 1).then_some(code),
+            "ibge_polygon",
+        )
     }
 }
 

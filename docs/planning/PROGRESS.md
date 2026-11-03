@@ -112,7 +112,10 @@
   EVC-08C LOCAL_DONE: file-only review CLI and OCM weekly/OSM monthly
   timers verified locally. EVC-08D LOCAL_DONE: activation binds the
   reviewed baseline under the publication lock and rejects stale reviews
-  in PostGIS. EVC-08 LOCAL_DONE / INTEGRATION_PENDING. Next EVC-09 coverage.
+  in PostGIS. EVC-08 LOCAL_DONE / INTEGRATION_PENDING. EVC-09A LOCAL_DONE:
+  1,658 sites reconcile to 567 municipality codes and 25 UFs; 11 sites
+  remain unassigned. ABVE/Tupi uses a distinct points unit. Next app gap
+  wording and owner source candidates. [Coverage](../backend/evidence/evc/EVC-09.md).
   [Refresh evidence](../backend/evidence/evc/EVC-08.md).
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).

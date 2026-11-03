@@ -180,6 +180,12 @@ mod tests {
         let sites = conflate(&[source(true), outside]).unwrap().sites;
         let hash = "a".repeat(64);
         let receipt = crate::ev_rights_bundle::catalog_geography(&index, &hash, &sites);
+        let coverage = crate::ev_rights_bundle::catalog_coverage(&index, &hash, &sites);
+        assert_eq!(coverage["sites"], 2);
+        assert_eq!(coverage["by_municipality"]["3550308"]["sites"], 1);
+        assert_eq!(coverage["by_uf"]["SP"]["sites"], 1);
+        assert_eq!(coverage["by_uf"]["AC"]["sites"], 0);
+        assert_eq!(coverage["unassigned_municipality"], 1);
         assert_eq!(receipt["catalog_sha256"], hash);
         assert_eq!(receipt["boundary_sha256"], sha256_hex(boundary));
         for site in sites {
@@ -196,6 +202,25 @@ mod tests {
                 .unwrap();
             assert_eq!(row["uf"], uf);
         }
+    }
+
+    #[test]
+    fn overlapping_municipalities_preserve_only_unambiguous_uf() {
+        let feature = json!({"type":"Feature","properties":{"codarea":"3550308"},
+            "geometry":{"type":"Polygon","coordinates":[[[-47,-24],[-46,-24],[-46,-23],[-47,-23],[-47,-24]]]}});
+        let mut overlapping = feature.clone();
+        overlapping["properties"]["codarea"] = json!("3548708");
+        let raw = serde_json::to_vec(
+            &json!({"type":"FeatureCollection","features":[feature,overlapping]}),
+        )
+        .unwrap();
+        let index = crate::ev_geography::StateIndex::from_bytes(&raw).unwrap();
+        let inside = index.classify(-23.5, -46.5);
+        assert_eq!(inside.uf.as_deref(), Some("SP"));
+        assert_eq!(inside.municipality_code, None);
+        let boundary = index.classify(-23.5, -46.0);
+        assert_eq!(boundary.uf, None);
+        assert_eq!(boundary.municipality_code, None);
     }
 
     #[test]
