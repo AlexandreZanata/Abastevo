@@ -5,6 +5,7 @@ import com.anpfuel.data.local.entity.ServerCatalogMetaEntity
 import com.anpfuel.data.local.entity.ServerStationCacheEntity
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
+import com.anpfuel.domain.discovery.StationAddressSource
 import com.anpfuel.domain.discovery.StationLocationQuality
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -31,6 +32,8 @@ class DirectoryStationRoomCacheTest {
         state = "SP",
         currentRevisionId = null,
         address = mapOf("street" to "Synthetic Street"),
+        legalName = " [P25-TEST] Legal LTDA ",
+        addressSource = StationAddressSource.OSM,
     )
 
     private fun entity(scope: String = ServerCatalogMetaEntity.PAGE_KEY) = ServerStationCacheEntity(
@@ -48,6 +51,24 @@ class DirectoryStationRoomCacheTest {
         addressJson = "{\"street\":\"Synthetic Street\"}",
         scopeKey = scope,
     )
+
+    @Test
+    fun `scoped cache round trips public legal name and address source`() = runTest {
+        val repo = DirectoryStationRoomCache(dao)
+        val saved = slot<List<ServerStationCacheEntity>>()
+        val scope = "city:3550308"
+        coEvery { dao.replacePage(capture(saved), any(), scope) } returns Unit
+        repo.saveScopedPage("3550308", ServerStationPage(listOf(station()), "cursor-1"))
+        coEvery { dao.pageSnapshot(scope) } returns
+            (saved.captured to ServerCatalogMetaEntity(scope, "cursor-1", 1L))
+
+        val page = checkNotNull(DirectoryStationRoomCache(dao).loadScopedPage("3550308"))
+        val restored = page.items.single()
+        assertEquals(" [P25-TEST] Legal LTDA ", restored.legalName)
+        assertEquals(StationAddressSource.OSM, restored.addressSource)
+        assertEquals("Synthetic Street", restored.addressLine)
+        assertEquals("cursor-1", page.nextCursor)
+    }
 
     @Test
     fun `save replaces page set and load replays in order`() = runTest {

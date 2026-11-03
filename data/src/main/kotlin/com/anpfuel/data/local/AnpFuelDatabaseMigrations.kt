@@ -834,4 +834,10 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("CREATE TABLE IF NOT EXISTS `driver_maintenance` (`owner_account` TEXT NOT NULL, `origin` TEXT NOT NULL, `vehicle_id` TEXT NOT NULL, `item_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `interval_km` INTEGER, `interval_days` INTEGER, `baseline_km` INTEGER, `baseline_day` TEXT, `next_due_km` INTEGER, `next_due_day` TEXT, `last_service_km` INTEGER, `last_service_day` TEXT, `updated_at_millis` INTEGER NOT NULL, PRIMARY KEY(`owner_account`, `origin`, `vehicle_id`, `item_id`))")
         }
     }
+    val MIGRATION_32_33: Migration = object : Migration(32, 33) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE server_station_cache ADD COLUMN legal_name TEXT")
+            db.execSQL("ALTER TABLE server_station_cache ADD COLUMN address_source TEXT")
+        }
+    }
 }

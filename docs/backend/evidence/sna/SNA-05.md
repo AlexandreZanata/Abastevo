@@ -46,3 +46,22 @@ Next: preserve the optional fields in the Room cache (current schema 32), and
 implement remote/offline both-name search without searching private CPF tokens.
 Then finish the presentation, eight locales, ViewModel/Compose tests and the
 light/dark proof. No UI/device acceptance is claimed here.
+
+## SNA-05B1 opening
+
+B-BR-STATION-MOBILE-05B1. Preserve the optional legal name and address source
+in the directory's scoped Room cache. Existing rows retain their addresses
+and read both new fields as unknown. Keep scope, position and identity intact.
+
+BUC-SNA-05B1. Round-trip both fields through the cache and verify migration
+from schema 32 with an existing station row and a recorded page cursor.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Room 32 → 33 adds nullable legal_name and address_source columns to the
+station cache. The scoped round-trip initially failed because both facts
+were discarded. All 15 cache unit tests now pass. The instrumented migration
+passed on a disposable Android 35 emulator with the generated schema bundled
+in the test APK. The fixture verifies the old address, scope, row position,
+cursor and null defaults. The mobile static gate and secret review pass.
