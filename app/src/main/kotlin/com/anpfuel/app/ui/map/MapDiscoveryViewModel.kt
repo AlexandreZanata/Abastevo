@@ -893,8 +893,9 @@ private fun ServerStation.toUnlocatedMarker(): MapOverlayMarker = MapOverlayMark
     hasValidCoordinates = false,
 )
 
+/** Readable street address; the state alone when unknown, never an IBGE code. */
 private fun ServerStation.addressLabel(): String =
-    listOfNotNull(municipalityCode, state).joinToString("/")
+    displayAddress.ifBlank { state.orEmpty() }
 
 private fun ChargingPlace.toMarker(): MapOverlayMarker? {
     val lat = latitude?.toDoubleOrNull() ?: return null
