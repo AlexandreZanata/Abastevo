@@ -38,15 +38,16 @@ const (
 
 // Environment variable names.
 const (
-	keyEnv             = "ANPFUEL_ENV"
-	keyLogLevel        = "ANPFUEL_LOG_LEVEL"
-	keyHTTPAddr        = "ANPFUEL_HTTP_ADDR"
-	keyDatabaseURL     = "ANPFUEL_DATABASE_URL"
-	keyMaxBodyBytes    = "ANPFUEL_MAX_BODY_BYTES"
-	keyShutdownTimeout = "ANPFUEL_SHUTDOWN_TIMEOUT"
-	keyCursorSecret    = "ANPFUEL_CURSOR_SECRET"
-	keyCanonicalHost   = "ANPFUEL_CANONICAL_HOST"
-	keyMetricsAddr     = "ANPFUEL_METRICS_ADDR"
+	keyEnv                = "ANPFUEL_ENV"
+	keyLogLevel           = "ANPFUEL_LOG_LEVEL"
+	keyHTTPAddr           = "ANPFUEL_HTTP_ADDR"
+	keyDatabaseURL        = "ANPFUEL_DATABASE_URL"
+	keyMaxBodyBytes       = "ANPFUEL_MAX_BODY_BYTES"
+	keyShutdownTimeout    = "ANPFUEL_SHUTDOWN_TIMEOUT"
+	keyShutdownDrainDelay = "ANPFUEL_SHUTDOWN_DRAIN_DELAY"
+	keyCursorSecret       = "ANPFUEL_CURSOR_SECRET"
+	keyCanonicalHost      = "ANPFUEL_CANONICAL_HOST"
+	keyMetricsAddr        = "ANPFUEL_METRICS_ADDR"
 	// Optional signed map distribution. Both variables are required together;
 	// an unset pair leaves the map distribution routes unmounted.
 	keyMapDistributionDir  = "ANPFUEL_MAP_DIST_DIR"
@@ -132,14 +133,15 @@ const (
 // multi-instance production must set a shared secret). CanonicalHost is the
 // authority proofs cover; proxy hosts are never trusted.
 type Config struct {
-	Env             Environment
-	LogLevel        string
-	HTTPAddr        string
-	DatabaseURL     string
-	MaxBodyBytes    int64
-	ShutdownTimeout time.Duration
-	CursorSecret    []byte
-	CanonicalHost   string
+	Env                Environment
+	LogLevel           string
+	HTTPAddr           string
+	DatabaseURL        string
+	MaxBodyBytes       int64
+	ShutdownTimeout    time.Duration
+	ShutdownDrainDelay time.Duration
+	CursorSecret       []byte
+	CanonicalHost      string
 	// MetricsAddr is the private metrics listener; empty disables it.
 	MetricsAddr string
 	// MapDistributionDir/Keys configure the optional signed native-map
@@ -241,6 +243,7 @@ func (c Config) LogValue() slog.Value {
 		slog.String("http_addr", c.HTTPAddr),
 		slog.Int64("max_body_bytes", c.MaxBodyBytes),
 		slog.Duration("shutdown_timeout", c.ShutdownTimeout),
+		slog.Duration("shutdown_drain_delay", c.ShutdownDrainDelay),
 		slog.Bool("db_configured", c.DatabaseURL != ""),
 		slog.Bool("admin_configured", len(c.AdminKeyHashes) > 0),
 		slog.String("github_repo", c.GitHubRepo),
@@ -491,6 +494,16 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("%s must be a positive duration", keyShutdownTimeout)
 		}
 		cfg.ShutdownTimeout = d
+	}
+
+	rawDrain, _ := getenv(keyShutdownDrainDelay)
+	cfg.ShutdownDrainDelay = 10 * time.Second
+	if rawDrain != "" {
+		d, err := time.ParseDuration(rawDrain)
+		if err != nil || d < 0 || d > 30*time.Second {
+			return Config{}, fmt.Errorf("%s must be a duration between 0s and 30s", keyShutdownDrainDelay)
+		}
+		cfg.ShutdownDrainDelay = d
 	}
 
 	secret, secretSet := getenv(keyCursorSecret)

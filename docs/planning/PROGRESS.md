@@ -1,5 +1,12 @@
 # Current execution state
 
+- ZD-02 2026-11-03: drain source LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/cd-zero-downtime`, tested parent 9bc48e20 plus task.
+  [Evidence](../backend/evidence/cd/ZD-02.md): real SIGTERM/TCP/upload and
+  affected Go race/vet pass; full real-PostGIS jobs and overlapping workers
+  pass. Next: ZD-03 preserve signed public URLs while separating singleton
+  storage; no VPS change, live acceptance OWED.
+
 - ZD-00/01 2026-11-03: read-only staging inventory and agent safety source
   LOCAL_DONE / INTEGRATION_PENDING on `codex/cd-zero-downtime`, tested parent
   d9fa3db0 plus task. [Inventory](../backend/evidence/cd/ZD-00.md),

@@ -1416,15 +1416,16 @@ func run() error {
 		router.Handle("/abastevo-dev-photos/*", httpapi.DevelopmentStorageProxy(cfg.R2.Bucket))
 	}
 	server, err := httpserver.New(httpserver.Options{
-		Addr:              cfg.HTTPAddr,
-		ReadTimeout:       httpserver.DefaultReadTimeout,
-		ReadHeaderTimeout: httpserver.DefaultReadHeaderTimeout,
-		WriteTimeout:      httpserver.DefaultWriteTimeout,
-		IdleTimeout:       httpserver.DefaultIdleTimeout,
-		ShutdownTimeout:   cfg.ShutdownTimeout,
-		MaxBodyBytes:      cfg.MaxBodyBytes,
-		BodyLimit:         requestBodyLimit(cfg),
-		Logger:            logger,
+		Addr:               cfg.HTTPAddr,
+		ReadTimeout:        httpserver.DefaultReadTimeout,
+		ReadHeaderTimeout:  httpserver.DefaultReadHeaderTimeout,
+		WriteTimeout:       httpserver.DefaultWriteTimeout,
+		IdleTimeout:        httpserver.DefaultIdleTimeout,
+		ShutdownTimeout:    cfg.ShutdownTimeout,
+		ShutdownDrainDelay: cfg.ShutdownDrainDelay,
+		MaxBodyBytes:       cfg.MaxBodyBytes,
+		BodyLimit:          requestBodyLimit(cfg),
+		Logger:             logger,
 	}, router)
 	if err != nil {
 		return err
