@@ -15,7 +15,11 @@
   catalog/overlay assertions; active overlay holds 66 OSM fuel rows. Historical
   OCM admission restored with scope; malformed provider-57 license digest is
   an EVC-01 hold. [EVC-00](../backend/evidence/evc/EVC-00.md).
-  Next: EVC-01..03, then SNA-04..06; national downloads require owner approval.
+  EVC-01A acquisition code LOCAL_DONE: strict pins/budgets/private output and
+  OCM header/pagination tests pass. Owner approved the local 2.10 GB Brazil
+  PBF download and existing-key OCM collection; key not yet provided.
+  EVC-01B national limits/census and approved real source pins remain next.
+  Then EVC-02/03 and SNA-04..06.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links. This is not a national EV coverage
   result. PR #183 merged d0eb9c79 with all four checks green; signed release
