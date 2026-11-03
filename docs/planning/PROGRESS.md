@@ -105,7 +105,11 @@
   pins show source agreement and use the saved generation and strict power
   filters. EVC-07H LOCAL_DONE: fuel station detail reads exact national
   cache links and opens the offline charger detail. EVC-07 LOCAL_DONE /
-  INTEGRATION_PENDING. Next EVC-08 refresh cadence and generation diff.
+  INTEGRATION_PENDING. EVC-08A LOCAL_DONE: source-root generation diff
+  covers removals, surviving sources, movement and group changes, with
+  review holds for ambiguous transitions. Next bind the complete inventory
+  and connect the scheduled operations entry point.
+  [Refresh evidence](../backend/evidence/evc/EVC-08.md).
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
