@@ -122,3 +122,55 @@ Fmt and clippy all targets with warnings denied pass; diff and secret checks
 pass. No new dependency, Go/SQL/API/UI change, real normalization run or staging
 action. Next EVC-02B2 adds OSM normalization into this same model, then EVC-02C
 binds both source inputs and executes the private real normalization census.
+
+### EVC-02B2 opening
+
+B-BR-EV-NORM-02B2: OSM nodes/ways/relations preserve identity, actual object
+version/timestamp and geometry provenance. Missing version/geometry stays
+unknown or quarantined, never fabricated. `man_made=charge_point` is equipment,
+not another site; only explicit source membership can supply parent keys here.
+Fuel objects qualify as combined only with an explicit charging indication or a
+positively reported known EV socket. Ordinary fuel rows are ignored as non-EV.
+Private/no, deleted, disused/abandoned and construction objects are excluded.
+Socket `yes` means a reported family with unknown quantity, never one connector;
+`no`/zero does not prove a family. Unknown socket names stay UNKNOWN, and multiple
+power alternatives are not reduced to a guessed maximum. OSM contact tags and
+arbitrary tags never enter the common model; a digest of the decoded evidence
+plus the pinned PBF identity retains auditability without contributor metadata.
+
+BUC-EVC-02B2: Normalize synthetic site/equipment/fuel/lifecycle objects using the
+same model as OCM, typed source units, stable sorted groups, explicit field issues
+and source-only address components. Validate parent source identities without
+proximity guesses or linking across sources. Source reader/CLI will construct
+these evidence records from the admitted PBF in EVC-02C; no live source calls.
+
+### EVC-02B2 checkpoint
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Tested parent 62366afb plus this child. OSM normalization now produces the same
+common source model, with an enum distinguishing CHARGING_SITE, COMBINED_SITE
+and CHARGE_POINT. Ordinary fuel evidence is ignored. Explicit electric-fuel or
+positive known EV socket evidence identifies combined source objects; generic
+domestic/no/unknown-presence tags do not fabricate an EV site. Lifecycle-only
+site/equipment candidates remain visible to excluded-reason accounting.
+
+Six synthetic OSM groups pass, along with all seven OCM groups after the final
+filter/enum refactor (13 focused tests). RED exposed missing normalization,
+inconsistent geometry provenance, parent-order sensitivity and uncounted
+inactive equipment; GREEN validates source type/identity/version/timestamp,
+finite geometry/provenance, explicit source parent identities, stable parent
+sets/digests and sorted groups. Contact tags are discarded. A reported socket
+`yes` retains null quantity; no/zero is absent; alternative powers remain null
+with an issue. Names, brands, address components, fee and hours are source-only.
+Missing name/address never becomes a coordinate or an invented label.
+
+The record digest hashes canonical decoded evidence (sorted tags/parent set),
+not a claimed raw PBF blob. Lineage revision includes the exact PBF SHA-256;
+actual source versions/clocks and centroid/node provenance remain explicit.
+The full Rust fast gate passed; after the final bounded candidate/enum changes,
+affected OSM/OCM tests and all-target clippy with denied warnings pass. Fmt,
+diff and secret checks pass. No dependency/SQL/API/UI change, real normalization
+execution, import/backfill or staging action. Next: EVC-02C artifact contract,
+bounded file preparation and real source reconciliation before EVC-03.

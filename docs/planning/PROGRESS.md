@@ -32,8 +32,12 @@
   [EVC-02](../backend/evidence/evc/EVC-02.md). EVC-02B1 LOCAL_DONE: minimized
   common site DTO/OCM reader, pinned rights, access/status exclusions, per-path
   exact numerics, privacy/duplicate/clock negatives; 12 focused tests + all-target
-  clippy/fmt pass (parent d610ca8d plus child). Next EVC-02B2 OSM normalization,
-  EVC-02C bound real census, then EVC-03 and SNA-04..06.
+  clippy/fmt pass. EVC-02B2 LOCAL_DONE: typed OSM site/equipment units,
+  lifecycle/private filters, source versions/clocks/geometry, parent sets,
+  noninvented source fields and exact separate socket groups. Full Rust gate,
+  then 13 affected tests/all-target clippy after final filter/refactor pass
+  (parent 62366afb plus child). Next EVC-02C bounded artifacts/real normalization
+  census, then EVC-03 and SNA-04..06.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links. This is not a national EV coverage
   result. PR #183 merged d0eb9c79 with all four checks green; signed release

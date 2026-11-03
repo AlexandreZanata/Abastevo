@@ -33,15 +33,25 @@ pub struct ConnectorGroup {
     pub current: String,
     pub raw_status: Option<i64>,
 }
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SiteKind {
+    ChargingSite,
+    CombinedSite,
+    ChargePoint,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SourceSite {
     pub key: String,
-    pub kind: String,
+    pub kind: SiteKind,
     pub source: SourceLineage,
     pub point: SitePoint,
     pub name: Option<String>,
     pub operator: Option<String>,
     pub network: Option<String>,
+    #[serde(default)]
+    pub brand: Option<String>,
     pub address: BTreeMap<String, String>,
     pub access: String,
     pub raw_access: Option<String>,
@@ -511,7 +521,7 @@ pub fn normalize_ocm(raw: &[u8], context: &OcmContext) -> Normalization {
     Normalization::accepted(
         SourceSite {
             key,
-            kind: "CHARGING_SITE".into(),
+            kind: SiteKind::ChargingSite,
             source,
             point,
             name: text(address.title.as_deref(), 160),
@@ -519,6 +529,7 @@ pub fn normalize_ocm(raw: &[u8], context: &OcmContext) -> Normalization {
                 .operator
                 .and_then(|id| context.operators.get(&id).cloned()),
             network: None,
+            brand: None,
             address: address_fields,
             access: access.into(),
             raw_access: row.usage.map(|v| v.to_string()),
