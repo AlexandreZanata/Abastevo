@@ -303,7 +303,10 @@
     <string name="charging_explore_source_stale">This snapshot is dated. Refresh to check for a newer source pack; availability is never live.</string>
     <string name="charging_explore_refresh">Refresh snapshot</string>
     <string name="charging_explore_more">Show more</string>
-    <string name="charging_explore_empty">No compatible chargers in this snapshot yet.</string>
+    <string name="charging_open_sources">Charging sites mapped by open sources. Coverage is partial.</string>
+    <string name="charging_catalog_unavailable">The charging catalog is currently unavailable.</string>
+    <string name="charging_map_gap">The catalog found no charging sites in this area with the current filters.</string>
+    <string name="charging_explore_empty">The catalog found no charging sites with these filters.</string>
     <string name="charging_explore_compatible">Compatible</string>
     <string name="charging_explore_unknown_compat">Compatibility unknown</string>
     <string name="charging_explore_incompatible">Incompatible</string>

@@ -186,7 +186,10 @@
     <string name="charging_explore_source_stale">このスナップショットは日付付きです。更新して新しいソースパックを確認してください。空き状況はライブではありません。</string>
     <string name="charging_explore_refresh">スナップショットを更新</string>
     <string name="charging_explore_more">さらに表示</string>
-    <string name="charging_explore_empty">このスナップショットに互換性のある充電器はまだありません。</string>
+    <string name="charging_open_sources">オープンな情報源に基づく充電施設です。掲載範囲は一部に限られます。</string>
+    <string name="charging_catalog_unavailable">現在、充電施設カタログを利用できません。</string>
+    <string name="charging_map_gap">現在の絞り込み条件では、このエリアの充電施設はカタログに見つかりませんでした。</string>
+    <string name="charging_explore_empty">この絞り込み条件では、充電施設はカタログに見つかりませんでした。</string>
     <string name="charging_explore_compatible">互換性あり</string>
     <string name="charging_explore_unknown_compat">互換性不明</string>
     <string name="charging_explore_incompatible">非互換</string>

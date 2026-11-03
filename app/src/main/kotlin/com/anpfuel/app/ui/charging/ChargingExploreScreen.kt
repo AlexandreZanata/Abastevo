@@ -139,6 +139,13 @@ internal fun ChargingExploreContent(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (uiState.sourceRevision != null) {
+                Text(
+                    text = stringResource(R.string.charging_open_sources),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             uiState.sourceRevision?.let { revision ->
                 Text(
                     text = stringResource(
@@ -224,7 +231,10 @@ internal fun ChargingExploreContent(
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             } else if (uiState.rows.isEmpty()) {
                 EmptyState(
-                    message = stringResource(R.string.charging_explore_empty),
+                    message = stringResource(
+                        if (uiState.sourceRevision == null) R.string.charging_catalog_unavailable
+                        else R.string.charging_explore_empty,
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                 )
             } else {

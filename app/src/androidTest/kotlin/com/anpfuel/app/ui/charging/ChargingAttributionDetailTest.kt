@@ -56,6 +56,23 @@ class ChargingAttributionDetailTest {
         compose.onNodeWithText("© OpenStreetMap contributors (ODbL) · ODbL-1.0").assertIsDisplayed()
         compose.onNodeWithText("Easy Volt · CC-0").assertIsDisplayed()
     }
+    @Test fun emptyCatalogDescribesOnlyWhatOpenSourcesMapped() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.setContent {
+            AnpFuelTheme(dynamicColor = false) {
+                ChargingExploreContent(
+                    uiState = ChargingExploreUiState(isLoading = false, sourceRevision = "synthetic"),
+                    locale = Locale.US,
+                    onConnectorChanged = {}, onCurrentChanged = {}, onAccessChanged = {},
+                    onRefresh = {}, onLoadMore = {}, onOpenDetail = {}, onDismissDetail = {},
+                    onDismissError = {}, onNavigateBack = {},
+                )
+            }
+        }
+        compose.onNodeWithText(context.getString(R.string.charging_open_sources)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.charging_explore_empty)).assertIsDisplayed()
+    }
+
     @Test fun nationalDetailInLightTheme() = checkNationalDetail(darkTheme = false)
 
     @Test fun nationalDetailInDarkTheme() = checkNationalDetail(darkTheme = true)

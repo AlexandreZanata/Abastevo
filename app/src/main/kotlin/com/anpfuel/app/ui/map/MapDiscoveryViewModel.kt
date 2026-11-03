@@ -626,6 +626,9 @@ class MapDiscoveryViewModel @Inject constructor(
             val nullCharging = chargingResult.places.filter {
                 it.latitude?.toDoubleOrNull() == null || it.longitude?.toDoubleOrNull() == null
             }
+            _ui.update {
+                it.copy(chargingSnapshotPresent = chargingResult.snapshotPresent, chargingError = chargingResult.error)
+            }
             lastMarkers = fuelOnlyMarkers + chargeMarkers
             lastNullCharging = nullCharging
             val filtered = lastMarkers.filter {

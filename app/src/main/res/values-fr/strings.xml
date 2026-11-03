@@ -186,7 +186,10 @@
     <string name="charging_explore_source_stale">Cet instantané est daté. Actualisez pour chercher un paquet source plus récent ; la disponibilité n’est jamais en direct.</string>
     <string name="charging_explore_refresh">Actualiser l’instantané</string>
     <string name="charging_explore_more">Afficher plus</string>
-    <string name="charging_explore_empty">Aucune borne compatible dans cet instantané pour l’instant.</string>
+    <string name="charging_open_sources">Sites de recharge cartographiés à partir de sources ouvertes. La couverture est partielle.</string>
+    <string name="charging_catalog_unavailable">Le catalogue de recharge est actuellement indisponible.</string>
+    <string name="charging_map_gap">Le catalogue ne trouve aucun site de recharge dans cette zone avec les filtres actuels.</string>
+    <string name="charging_explore_empty">Le catalogue ne trouve aucun site de recharge avec ces filtres.</string>
     <string name="charging_explore_compatible">Compatible</string>
     <string name="charging_explore_unknown_compat">Compatibilité inconnue</string>
     <string name="charging_explore_incompatible">Incompatible</string>

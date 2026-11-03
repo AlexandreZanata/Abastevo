@@ -303,7 +303,10 @@
     <string name="charging_explore_source_stale">Este snapshot é datado. Atualize para buscar um pacote de fonte mais novo; a disponibilidade nunca é ao vivo.</string>
     <string name="charging_explore_refresh">Atualizar foto</string>
     <string name="charging_explore_more">Mostrar mais</string>
-    <string name="charging_explore_empty">Sem recargas compatíveis nesta foto ainda.</string>
+    <string name="charging_open_sources">Eletropostos mapeados por fontes abertas. A cobertura é parcial.</string>
+    <string name="charging_catalog_unavailable">O catálogo de recarga está indisponível no momento.</string>
+    <string name="charging_map_gap">O catálogo não encontrou eletropostos nesta área com os filtros atuais.</string>
+    <string name="charging_explore_empty">O catálogo não encontrou eletropostos com estes filtros.</string>
     <string name="charging_explore_compatible">Compatível</string>
     <string name="charging_explore_unknown_compat">Compatibilidade desconhecida</string>
     <string name="charging_explore_incompatible">Incompatível</string>

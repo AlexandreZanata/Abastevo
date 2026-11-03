@@ -304,6 +304,21 @@ fun MapScreen(
                         }
                     },
                 ) {
+                if (discUi != null && discUi.showCharging && !discUi.loading && discUi.generation > 0) {
+                    val message = when {
+                        !discUi.chargingSnapshotPresent || discUi.chargingError != null ->
+                            R.string.charging_catalog_unavailable
+                        discUi.error == null && discUi.selectableByUuid.values.none { it.charging } ->
+                            R.string.charging_map_gap
+                        else -> R.string.charging_open_sources
+                    }
+                    Text(
+                        text = stringResource(message),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    )
+                }
                 // B-BR-MAP-CLUSTER-01: Accessible cluster expansion controls and member chooser.
                 val multiClusters = discUi?.clusters?.filter { it.isCluster }.orEmpty()
                 if (multiClusters.isNotEmpty()) {

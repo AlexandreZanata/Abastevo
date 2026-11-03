@@ -37,3 +37,41 @@ is derived. [ABVE/Tupi release](https://abve.org.br/recarga-rapida-dc-quase-trip
 Status: LOCAL_DONE / INTEGRATION_PENDING. Nineteen focused Rust tests,
 including boundary and same-UF overlap, formatting, all-target Clippy,
 whitespace and secret review passed.
+
+## EVC-09B app coverage wording
+
+B-BR-EVC-09B. Label charging catalog results as mapped by open sources.
+An empty filtered or local view describes what the catalog found and
+cannot imply the absence of real infrastructure. Keep missing snapshots
+and failed requests distinct from a geographic gap.
+
+BUC-EVC-09B. Render the open-source attribution and honest empty copy in
+Explore and use the same distinction on the map. The current charging
+observation route requires an existing place ID. Adding a previously
+unknown site requires a separate typed intake proposal.
+
+The Android map and Explore use the same open-source notice. An empty
+result describes only the currently available catalog and filters. A
+missing cache or failed charging query uses separate unavailable copy.
+All four coverage strings are available in eight locales.
+
+Owner-only source candidates already in the project register include
+Tupi, EZVolt and Zletric, the historical Raízen/Shell Recharge lead,
+operator OCPI agreements, and potential commercial catalog providers
+PlugShare, TomTom and HERE. Review regional scope, refresh, attribution,
+offline use, redistribution, contact authorization and cost before
+admission. These are research leads with no access or current feed
+claimed. [Existing source register](../../../planning/EV_SOURCE_RESEARCH.md)
+
+The current charging observation endpoint accepts an existing place ID.
+The fuel suggestion form and moderation queue require a distinct proposal
+type before being offered as a way to add missing chargers. That typed
+intake remains open for the next app checkpoint.
+
+RED failed because the coverage notice was missing. GREEN passed
+29 map ViewModel tests and four Compose tests on the disposable emulator.
+The first combined device run was interrupted. The isolated regression
+and the subsequent full suite passed. Debug APK and test APK builds,
+whitespace and secret review passed.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING.
