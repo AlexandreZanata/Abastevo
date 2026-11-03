@@ -33,6 +33,8 @@ data class DiscoveryRow(
     val savedAtMillis: Long,
 )
 
+data class ChargingExplorePage(val rows: List<DiscoveryRow>, val nextOffset: Int?)
+
 data class PlaceDetail(
     val place: ChargingPlace,
     val profile: String,
@@ -57,9 +59,8 @@ data class CorridorRow(
  * pack planner and commits one atomic Room generation; any failure
  * leaves the previous generation intact. Reads serve Room only (lazy
  * windows, resumable cursors), so offline listings stay fully usable
- * without ever asserting live state. Only the admitted OCM profile
- * syncs here (PBE rights remain pending); hours/operator are not on
- * the wire and are shown as not-reported, never invented.
+ * without ever asserting live state. The legacy OCM and the verified
+ * national profile sync here. PBE rights remain pending.
  */
 @Singleton
 class ChargingDiscoveryRepository @Inject constructor(
@@ -157,6 +158,38 @@ class ChargingDiscoveryRepository @Inject constructor(
                     savedAtMillis = meta.savedAtMillis,
                 )
             }
+    }
+
+    /** Continue at the next matching row, even across sparse raw windows. */
+    suspend fun explorePage(
+        profile: String,
+        generation: Long,
+        connector: ChargingConnector?,
+        current: ChargingCurrent?,
+        access: ChargingAccess?,
+        minPowerW: Long?,
+        limit: Int,
+        offset: Int,
+    ): ChargingExplorePage {
+        val meta = dao.findMeta(key(profile))?.takeIf { it.generation == generation }
+            ?: return ChargingExplorePage(emptyList(), null)
+        val size = limit.coerceIn(1, PAGE_SIZE)
+        val matches = ArrayList<DiscoveryRow>(size)
+        var rawOffset = offset.coerceAtLeast(0)
+        while (true) {
+            val window = dao.readPlaces(profile, generation, PAGE_SIZE, rawOffset)
+            for ((index, entity) in window.withIndex()) {
+                val place = runCatching { ChargingSnapshotMapper.toDomain(entity) }.getOrNull() ?: continue
+                if (!ChargingCompatibility.matches(place, connector, current, access, minPowerW)) continue
+                if (matches.size == size) return ChargingExplorePage(matches, rawOffset + index)
+                matches += DiscoveryRow(
+                    place, ChargingCompatibility.assess(connector, place.groups), profile,
+                    meta.sourceRevision, generation, meta.savedAtMillis,
+                )
+            }
+            if (window.size < PAGE_SIZE) return ChargingExplorePage(matches, null)
+            rawOffset += window.size
+        }
     }
 
     suspend fun detail(placeId: String, profile: String, generation: Long?): PlaceDetail? {

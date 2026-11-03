@@ -76,6 +76,7 @@ fun ChargingExploreScreen(
         onConnectorChanged = viewModel::onConnectorChanged,
         onCurrentChanged = viewModel::onCurrentChanged,
         onAccessChanged = viewModel::onAccessChanged,
+        onMinPowerChanged = viewModel::onMinPowerChanged,
         onRefresh = viewModel::refresh,
         onLoadMore = viewModel::loadMore,
         onOpenDetail = viewModel::openDetail,
@@ -103,6 +104,7 @@ internal fun ChargingExploreContent(
     onNavigateBack: () -> Unit,
     onOpenCommunity: (String) -> Unit = {},
     modifier: Modifier = Modifier,
+    onMinPowerChanged: (Long?) -> Unit = {},
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -192,8 +194,27 @@ internal fun ChargingExploreContent(
                     label = { Text(text = stringResource(R.string.charging_explore_public_only)) },
                 )
             }
+            Text(
+                text = stringResource(R.string.map_filter_min_power),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = uiState.minPowerW == null,
+                    onClick = { onMinPowerChanged(null) },
+                    label = { Text(stringResource(R.string.charging_explore_all)) },
+                )
+                listOf(22, 50, 150).forEach { powerKw ->
+                    val powerW = powerKw * 1000L
+                    FilterChip(
+                        selected = uiState.minPowerW == powerW,
+                        onClick = { onMinPowerChanged(powerW) },
+                        label = { Text("$powerKw kW") },
+                    )
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onRefresh, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = onRefresh, enabled = !uiState.isLoading && !uiState.isRefreshing, modifier = Modifier.weight(1f)) {
                     Text(text = stringResource(R.string.charging_explore_refresh))
                 }
             }

@@ -97,7 +97,9 @@
   national pages carry per-source groups, operator and safe address from
   the same generation; HTTP/PostGIS tests pass. EVC-07D LOCAL_DONE:
   Android verifies revision, exact counts and same-origin offer paths before
-  atomically replacing the offline generation. Next app presentation.
+  atomically replacing the offline generation. EVC-07E LOCAL_DONE:
+  Explore prefers cached national rows and filters on one source-owned
+  group, with offline continuation and minimum power. Next map and detail.
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).

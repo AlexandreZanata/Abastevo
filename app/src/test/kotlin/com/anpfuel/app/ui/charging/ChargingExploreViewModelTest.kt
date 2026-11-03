@@ -2,7 +2,9 @@ package com.anpfuel.app.ui.charging
 
 import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.application.usecase.vehicle.GetVehicleUseCase
+import com.anpfuel.data.remote.charging.ChargingSnapshotUnavailable
 import com.anpfuel.data.repository.ChargingDiscoveryRepository
+import com.anpfuel.data.repository.ChargingExplorePage
 import com.anpfuel.data.repository.DiscoveryRow
 import com.anpfuel.domain.charging.ChargingAccess
 import com.anpfuel.domain.charging.ChargingConnector
@@ -78,7 +80,9 @@ class ChargingExploreViewModelTest {
             schemaVersion = 1, baseGeneration = 0, placeCount = 0, groupCount = 0,
             cursor = null, state = "COMPLETE", savedAtMillis = 1,
         )
-        coEvery { repository.list(any(), any(), any(), any(), any(), any(), any()) } returns emptyList()
+        coEvery { repository.refresh(ChargingDiscoveryRepository.NATIONAL_PROFILE, any(), any(), any(), any()) } throws
+            ChargingSnapshotUnavailable("national catalog not published")
+        coEvery { repository.explorePage(any(), any(), any(), any(), any(), any(), any(), any()) } returns ChargingExplorePage(emptyList(), null)
         viewModel = ChargingExploreViewModel(repository, getVehicle, connectivity)
     }
 
@@ -88,8 +92,8 @@ class ChargingExploreViewModelTest {
     }
 
     @Test fun `first open downloads then pages locally without network`() = runTest(dispatcher) {
-        coEvery { repository.list(any(), 4L, any(), any(), any(), 20, 0) } returns listOf(row())
-        coEvery { repository.list(any(), 4L, any(), any(), any(), 20, 20) } returns emptyList()
+        coEvery { repository.explorePage(any(), 4L, any(), any(), any(), any(), 20, 0) } returns ChargingExplorePage(listOf(row()), 20)
+        coEvery { repository.explorePage(any(), 4L, any(), any(), any(), any(), 20, 20) } returns ChargingExplorePage(emptyList(), null)
         viewModel.load(vehicleId)
         advanceUntilIdle()
         coVerify(exactly = 1) { repository.refresh("ocm-br-20261021-v1", any(), any(), any(), any()) }
@@ -98,15 +102,16 @@ class ChargingExploreViewModelTest {
         viewModel.loadMore()
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.rows.isNotEmpty())
+        coVerify(exactly = 1) { repository.explorePage(any(), 4L, any(), any(), any(), any(), 20, 20) }
     }
 
     @Test fun `filter change resets the window and offline keeps rows`() = runTest(dispatcher) {
-        coEvery { repository.list(any(), 4L, any(), any(), any(), 20, 0) } returns listOf(row())
+        coEvery { repository.explorePage(any(), 4L, any(), any(), any(), any(), 20, 0) } returns ChargingExplorePage(listOf(row()), null)
         viewModel.load(vehicleId)
         advanceUntilIdle()
         viewModel.onCurrentChanged(ChargingCurrent.DC)
         advanceUntilIdle()
-        coVerify(exactly = 1) { repository.list(any(), 4L, any(), ChargingCurrent.DC, any(), 20, 0) }
+        coVerify(exactly = 1) { repository.explorePage(any(), 4L, any(), ChargingCurrent.DC, any(), any(), 20, 0) }
         coEvery { repository.refresh(any(), any(), any(), any(), any()) } throws java.io.IOException("offline")
         viewModel.refresh()
         advanceUntilIdle()
@@ -122,7 +127,7 @@ class ChargingExploreViewModelTest {
             cursor = null, state = "COMPLETE", savedAtMillis = 1L,
         )
         coEvery { repository.generationMeta(any()) } returns stale
-        coEvery { repository.list(any(), 4L, any(), any(), any(), 20, 0) } returns emptyList()
+        coEvery { repository.explorePage(any(), 4L, any(), any(), any(), any(), 20, 0) } returns ChargingExplorePage(emptyList(), null)
         viewModel.load(vehicleId)
         advanceUntilIdle()
         assertEquals(com.anpfuel.domain.charging.ChargingSnapshotAge.STALE, viewModel.uiState.value.sourceAge)
@@ -136,9 +141,9 @@ class ChargingExploreViewModelTest {
             cursor = null, state = "COMPLETE", savedAtMillis = 1,
         )
         coEvery { repository.generationMeta(any()) } returns meta
-        coEvery { repository.list(any(), 4L, any(), any(), any(), 20, 0) } returns emptyList()
+        coEvery { repository.explorePage(any(), 4L, any(), any(), any(), any(), 20, 0) } returns ChargingExplorePage(emptyList(), null)
         val gate = CompletableDeferred<Unit>()
-        coEvery { repository.refresh(any(), any(), any(), any(), any()) } coAnswers {
+        coEvery { repository.refresh(ChargingDiscoveryRepository.OCM_PROFILE, any(), any(), any(), any()) } coAnswers {
             gate.await()
             meta
         }
@@ -154,8 +159,38 @@ class ChargingExploreViewModelTest {
         assertEquals(false, viewModel.uiState.value.isRefreshing)
     }
 
+    @Test fun `cached national profile paginates using repository continuation and resets for power`() = runTest(dispatcher) {
+        val profile = ChargingDiscoveryRepository.NATIONAL_PROFILE
+        val meta = com.anpfuel.data.local.charging.StoredPackMeta(
+            key = "pack:$profile", generation = 4, profile = profile,
+            sourceRevision = "national-rev", origin = "https://api.example.test", license = "L",
+            schemaVersion = 1, baseGeneration = 3, placeCount = 2, groupCount = 0,
+            cursor = null, state = "COMPLETE", savedAtMillis = 1L,
+        )
+        val first = row().copy(profile = profile)
+        val second = row("33333333-3333-4333-8333-333333333333").copy(profile = profile)
+        coEvery { repository.generationMeta(profile) } returns meta
+        coEvery { repository.explorePage(profile, 4L, any(), any(), any(), null, 20, 0) } returns
+            ChargingExplorePage(listOf(first), 124)
+        coEvery { repository.explorePage(profile, 4L, any(), any(), any(), null, 20, 124) } returns
+            ChargingExplorePage(listOf(second), null)
+        coEvery { repository.explorePage(profile, 4L, any(), any(), any(), 150000L, 20, 0) } returns
+            ChargingExplorePage(listOf(second), null)
+        viewModel.load(vehicleId)
+        advanceUntilIdle()
+        assertEquals(profile, viewModel.uiState.value.profile)
+        assertTrue(viewModel.uiState.value.hasMore)
+        viewModel.loadMore()
+        advanceUntilIdle()
+        assertEquals(listOf(first.place.id, second.place.id), viewModel.uiState.value.rows.map { it.place.id })
+        viewModel.onMinPowerChanged(150000L)
+        advanceUntilIdle()
+        assertEquals(listOf(second.place.id), viewModel.uiState.value.rows.map { it.place.id })
+        coVerify(exactly = 0) { repository.refresh(any(), any(), any(), any(), any()) }
+    }
+
     @Test fun `detail opens offline and unknown verdicts never claim availability`() = runTest(dispatcher) {
-        coEvery { repository.list(any(), 4L, any(), any(), any(), 20, 0) } returns listOf(row())
+        coEvery { repository.explorePage(any(), 4L, any(), any(), any(), any(), 20, 0) } returns ChargingExplorePage(listOf(row()), null)
         viewModel.load(vehicleId)
         advanceUntilIdle()
         coEvery { repository.detail(placeId, "ocm-br-20261021-v1", 4L) } returns com.anpfuel.data.repository.PlaceDetail(

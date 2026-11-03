@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.usecase.network.ObserveNetworkConnectivityUseCase
 import com.anpfuel.application.usecase.vehicle.GetVehicleUseCase
+import com.anpfuel.data.local.charging.StoredPackMeta
+import com.anpfuel.data.remote.charging.ChargingSnapshotUnavailable
 import com.anpfuel.data.repository.ChargingDiscoveryRepository
 import com.anpfuel.data.repository.DiscoveryRow
 import com.anpfuel.data.repository.PlaceDetail
@@ -35,6 +37,8 @@ data class ChargingExploreUiState(
     val connector: ChargingConnector? = null,
     val current: ChargingCurrent? = null,
     val access: ChargingAccess? = null,
+    val minPowerW: Long? = null,
+    val profile: String = ChargingDiscoveryRepository.OCM_PROFILE,
     val rows: List<DiscoveryRow> = emptyList(),
     val hasMore: Boolean = false,
     val detail: PlaceDetail? = null,
@@ -55,7 +59,8 @@ class ChargingExploreViewModel @Inject constructor(
     val uiState: StateFlow<ChargingExploreUiState> = _uiState.asStateFlow()
 
     private var generation: Long? = null
-    private var offset = 0
+    private var nextOffset: Int? = null
+    private var windowRequest = 0
     private var refreshJob: Job? = null
 
     fun load(vehicleId: DomainId) {
@@ -64,6 +69,7 @@ class ChargingExploreViewModel @Inject constructor(
             runCatching {
                 val vehicle = getVehicle(vehicleId)
                 val connector = vehicle?.chargeConnector
+                val filterChanged = _uiState.value.connector != connector
                 _uiState.update {
                     it.copy(
                         vehicleName = vehicle?.displayName.orEmpty(),
@@ -71,6 +77,7 @@ class ChargingExploreViewModel @Inject constructor(
                         connector = connector,
                     )
                 }
+                if (filterChanged) reloadWindow()
                 observeConnectivity().collect { connected ->
                     _uiState.update { it.copy(isOffline = !connected) }
                 }
@@ -80,21 +87,9 @@ class ChargingExploreViewModel @Inject constructor(
         }
         viewModelScope.launch {
             runCatching {
-                val meta = repository.generationMeta(PROFILE)
-                if (meta == null) {
-                    refreshInternal()
-                } else {
-                    generation = meta.generation
-                    _uiState.update {
-                        it.copy(
-                            sourceRevision = meta.sourceRevision,
-                            sourceSavedAt = meta.savedAtMillis,
-                            sourceAge = ChargingSnapshotFreshness.classify(System.currentTimeMillis(), meta.savedAtMillis),
-                        )
-                    }
-                    appendPage(reset = true)
-                    _uiState.update { it.copy(isLoading = false) }
-                }
+                val cached = repository.generationMeta(ChargingDiscoveryRepository.NATIONAL_PROFILE)
+                    ?: repository.generationMeta(ChargingDiscoveryRepository.OCM_PROFILE)
+                if (cached == null) refreshInternal() else showGeneration(cached)
             }.onFailure { error ->
                 _uiState.update { it.copy(isLoading = false, errorMessage = error.message) }
             }
@@ -114,17 +109,32 @@ class ChargingExploreViewModel @Inject constructor(
             runCatching {
                 refreshInternal()
             }.onFailure { error ->
-                _uiState.update { it.copy(errorMessage = error.message, isOffline = true) }
+                _uiState.update { it.copy(isLoading = false, errorMessage = error.message, isOffline = true) }
             }
             _uiState.update { it.copy(isRefreshing = false) }
         }
     }
 
     private suspend fun refreshInternal() {
-        val meta = repository.refresh(PROFILE)
+        val meta = try {
+            repository.refresh(ChargingDiscoveryRepository.NATIONAL_PROFILE)
+        } catch (unavailable: ChargingSnapshotUnavailable) {
+            if (_uiState.value.profile == ChargingDiscoveryRepository.NATIONAL_PROFILE) throw unavailable
+            repository.refresh(ChargingDiscoveryRepository.OCM_PROFILE)
+        }
+        showGeneration(meta)
+    }
+
+    private suspend fun showGeneration(meta: StoredPackMeta) {
         generation = meta.generation
+        nextOffset = null
         _uiState.update {
             it.copy(
+                profile = meta.profile,
+                rows = emptyList(),
+                detail = null,
+                hasMore = false,
+                isLoading = true,
                 sourceRevision = meta.sourceRevision,
                 sourceSavedAt = meta.savedAtMillis,
                 sourceAge = ChargingSnapshotFreshness.classify(System.currentTimeMillis(), meta.savedAtMillis),
@@ -136,14 +146,12 @@ class ChargingExploreViewModel @Inject constructor(
 
     fun loadMore() {
         val gen = generation ?: return
-        if (_uiState.value.isLoadingMore || !_uiState.value.hasMore) return
+        if (_uiState.value.isLoadingMore || nextOffset == null) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
             runCatching {
-                offset += PAGE_SIZE
                 appendPage(reset = false, generation = gen)
             }.onFailure { error ->
-                offset -= PAGE_SIZE
                 _uiState.update { it.copy(errorMessage = error.message) }
             }
             _uiState.update { it.copy(isLoadingMore = false) }
@@ -152,12 +160,17 @@ class ChargingExploreViewModel @Inject constructor(
 
     private suspend fun appendPage(reset: Boolean, generation: Long? = this.generation) {
         val gen = generation ?: return
-        if (reset) offset = 0
+        val offset = if (reset) 0 else nextOffset ?: return
+        val request = ++windowRequest
         val state = _uiState.value
-        val page = repository.list(
-            profile = PROFILE, generation = gen, connector = state.connector,
-            current = state.current, access = state.access, limit = PAGE_SIZE, offset = offset,
-        ).map { row ->
+        val result = repository.explorePage(
+            profile = state.profile, generation = gen, connector = state.connector,
+            current = state.current, access = state.access, minPowerW = state.minPowerW,
+            limit = PAGE_SIZE, offset = offset,
+        )
+        if (request != windowRequest || gen != this.generation) return
+        nextOffset = result.nextOffset
+        val page = result.rows.map { row ->
             // Verdicts follow the selected filters: an explicit connector
             // filter re-assesses every row, otherwise the vehicle answers.
             val verdict = ChargingCompatibility.assess(state.connector ?: state.vehicleConnector, row.place.groups)
@@ -167,7 +180,7 @@ class ChargingExploreViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 rows = merged,
-                hasMore = page.size >= PAGE_SIZE,
+                hasMore = nextOffset != null,
             )
         }
     }
@@ -187,11 +200,18 @@ class ChargingExploreViewModel @Inject constructor(
         reloadWindow()
     }
 
+    fun onMinPowerChanged(minPowerW: Long?) {
+        _uiState.update { it.copy(minPowerW = minPowerW) }
+        reloadWindow()
+    }
+
     private fun reloadWindow() {
         val gen = generation ?: return
+        ++windowRequest
+        nextOffset = null
+        _uiState.update { it.copy(hasMore = false) }
         viewModelScope.launch {
             runCatching {
-                offset = 0
                 appendPage(reset = true, generation = gen)
             }.onFailure { error ->
                 _uiState.update { it.copy(errorMessage = error.message) }
@@ -201,9 +221,13 @@ class ChargingExploreViewModel @Inject constructor(
 
     fun openDetail(placeId: String) {
         val gen = generation ?: return
+        val profile = _uiState.value.profile
         viewModelScope.launch {
             runCatching {
-                _uiState.update { it.copy(detail = repository.detail(placeId, PROFILE, gen)) }
+                val detail = repository.detail(placeId, profile, gen)
+                if (gen == generation && profile == _uiState.value.profile) {
+                    _uiState.update { it.copy(detail = detail) }
+                }
             }.onFailure { error ->
                 _uiState.update { it.copy(errorMessage = error.message) }
             }
@@ -219,7 +243,6 @@ class ChargingExploreViewModel @Inject constructor(
     }
 
     companion object {
-        const val PROFILE = "ocm-br-20261021-v1"
         const val PAGE_SIZE = 20
     }
 }

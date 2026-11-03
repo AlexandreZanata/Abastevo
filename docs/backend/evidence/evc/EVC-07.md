@@ -111,3 +111,30 @@ integration remain part of the following app tasks.
 
 Status: LOCAL_DONE / INTEGRATION_PENDING. App debug Kotlin compilation,
 whitespace and secret-surface checks passed.
+
+## EVC-07E offline filter windows
+
+B-BR-EVC-07E. A connector, current and minimum power filter must
+match one reported connector group. Unknown power cannot satisfy a
+minimum. Filter a complete local generation without stopping at an
+empty raw window; continuation resumes at the next matching row.
+
+BUC-EVC-07E. Refuse a site where the requested family and current
+belong to distinct groups. Traverse a local snapshot where early
+database rows do not qualify and check stable continuation and
+power thresholds.
+
+RED reproduced a false match across a Type 2 AC group and a CCS2 DC
+group. The filter now evaluates every requested connector fact on the
+same group. A cache test skips 101 nonmatching rows before returning the
+first hit, then resumes at the second without duplication.
+
+Explore prefers a cached national generation. Initial or manual network
+refresh tries the national profile, with legacy bootstrap only when the
+national request is unavailable and national data has not been selected.
+The screen reuses the eight-locale minimum-power label and offers 22,
+50 and 150 kW thresholds. Filter changes reset the local continuation.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. Fourteen domain, repository
+and ViewModel tests, app compilation, whitespace and secret review passed.
+Map pins and national detail presentation remain open.

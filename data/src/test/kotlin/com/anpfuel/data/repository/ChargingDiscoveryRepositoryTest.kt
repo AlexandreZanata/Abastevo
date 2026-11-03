@@ -132,6 +132,32 @@ class ChargingDiscoveryRepositoryTest {
         assertEquals("ocm-br-20261021-v1", rows.single { it.place.id == "11111111-1111-4111-8111-111111111111" }.profile)
     }
 
+    @Test fun `power filtered windows skip sparse raw pages and continue exactly once`() = runTest {
+        val profile = ChargingDiscoveryRepository.OCM_PROFILE
+        val places = (1..104).map { number ->
+            val base = place("%08x-1111-4111-8111-111111111111".format(number))
+            val power = when (number) {
+                101 -> null
+                102, 104 -> 150000L
+                else -> 22000L
+            }
+            base.copy(groups = listOf(base.groups.single().copy(powerW = power)))
+        }
+        val stamp = "2026-10-26T00:00:00Z"
+        coEvery { client.places(profile, null, 100, null) } returns ChargingPlacePage(places.take(100), "c2", stamp)
+        coEvery { client.places(profile, null, 100, "c2") } returns ChargingPlacePage(places.drop(100), null, stamp)
+        val meta = repo.refresh(profile)
+
+        suspend fun read(offset: Int) = repo.explorePage(
+            profile, meta.generation, ChargingConnector.CCS2, ChargingCurrent.DC, null, 150000, 1, offset,
+        )
+        val first = read(0)
+        val second = read(requireNotNull(first.nextOffset))
+        assertEquals(listOf(places[101].id), first.rows.map { it.place.id })
+        assertEquals(listOf(places[103].id), second.rows.map { it.place.id })
+        assertEquals(null, second.nextOffset)
+    }
+
     @Test fun `national refresh requires a complete stable revision before replacing cache`() = runTest {
         val profile = "charging-br-national-v1"
         val revision = "c".repeat(64)
