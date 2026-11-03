@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	charging "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/charging"
+	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/domain"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -35,6 +36,7 @@ type Place struct {
 	PublicAccess   string
 	ReportedPoints int64
 	Groups         []ConnectionGroup
+	Sources        []domain.SourceAttribution
 }
 
 // ConnectionGroup is one public connector group under a place.

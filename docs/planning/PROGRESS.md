@@ -64,7 +64,9 @@
   generation rights validate every retained assertion and refuse missing or
   mismatched provider terms. EVC-05B LOCAL_DONE: local ODbL offer and exact
   candidate gate reject missing or changed rights/data/notice. Full Rust
-  tests and Clippy pass. Next API, Android and offline attribution. [Rights evidence](../backend/evidence/evc/EVC-05.md).
+  tests and Clippy pass. EVC-05C LOCAL_DONE: optional charging API source
+  terms and cache tags; charging race, real legacy HTTP and OpenAPI pass.
+  Next Android and offline attribution. [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact

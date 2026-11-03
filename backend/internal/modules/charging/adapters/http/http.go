@@ -78,9 +78,7 @@ func (h Handler) places(w http.ResponseWriter, r *http.Request) {
 	}
 	wire := make([]map[string]any, 0, len(rows))
 	for _, place := range rows {
-		wire = append(wire, map[string]any{"id": place.ID, "entity_key": place.EntityKey, "external_id": place.ExternalID,
-			"name": place.Name, "country": place.Country, "latitude": place.Latitude, "longitude": place.Longitude,
-			"public_access": place.PublicAccess, "reported_points": place.ReportedPoints})
+		wire = append(wire, placeFacts(place))
 	}
 	var nextCursor *string
 	if next != "" {
@@ -114,14 +112,31 @@ func (h Handler) placeOne(w http.ResponseWriter, r *http.Request) {
 		}
 		groups = append(groups, item)
 	}
-	body, _ := json.Marshal(map[string]any{
+	facts := placeFacts(place)
+	facts["groups"] = groups
+	facts["generated_at"] = generatedAt(h.now())
+	body, _ := json.Marshal(facts)
+	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body, placeDetailETag(place, groups))
+}
+
+func placeFacts(place read.Place) map[string]any {
+	facts := map[string]any{
 		"id": place.ID, "entity_key": place.EntityKey, "external_id": place.ExternalID,
 		"name": place.Name, "country": place.Country, "latitude": place.Latitude, "longitude": place.Longitude,
 		"public_access": place.PublicAccess, "reported_points": place.ReportedPoints,
-		"groups": groups, "generated_at": generatedAt(h.now()),
-	})
-	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
-		httpapi.ETag(mustMarshal(map[string]any{"id": place.ID, "groups": groups})))
+	}
+	if len(place.Sources) != 0 {
+		facts["sources"] = place.Sources
+	}
+	return facts
+}
+
+func placeDetailETag(place read.Place, groups []map[string]any) string {
+	facts := map[string]any{"id": place.ID, "groups": groups}
+	if len(place.Sources) != 0 {
+		facts["sources"] = place.Sources
+	}
+	return httpapi.ETag(mustMarshal(facts))
 }
 
 func (h Handler) coverage(w http.ResponseWriter, r *http.Request) {

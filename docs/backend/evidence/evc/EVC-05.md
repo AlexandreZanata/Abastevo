@@ -50,3 +50,24 @@ implementation. All Rust targets, Clippy, format, whitespace and
 secret checks pass. This evidence uses synthetic inputs. Runtime
 publication and the nationwide offer await the admitted catalog and
 EVC-06 activation gate.
+
+## EVC-05C opening
+
+B-BR-EV-RIGHTS-01. Public place reads preserve the exact source and provider
+terms of each admitted assertion. Legacy records may lack the optional
+field. Source changes must invalidate a cached response.
+
+BUC-EVC-05C. Exercise serialization for two sources and a legacy place, and
+verify that changing only attribution changes the detail entity tag.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Both place responses can now carry the optional source array. OSM and
+each OCM provider retain their exact licence, attribution, revision
+and identity. A legacy place still omits the field. The source terms
+are included in the list and detail cache tags when present. The
+synthetic wire test failed on missing terms and unchanged detail ETag
+before the change. Charging race tests, legacy HTTP traversal on real
+PostGIS, vet, OpenAPI lint (zero errors), format and secret checks pass.
+The national reader will populate the field when EVC-06 admits a batch.

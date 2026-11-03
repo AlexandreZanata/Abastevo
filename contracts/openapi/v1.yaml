@@ -10440,9 +10440,28 @@ components:
         longitude: {type: string}
         public_access: {type: string, enum: [PUBLIC, UNKNOWN]}
         reported_points: {type: integer, minimum: 0}
+        sources:
+          description: Source identities and exact provider terms. Omitted when legacy data lacks admitted source terms.
+          type: array
+          minItems: 1
+          items: {$ref: '#/components/schemas/ChargingSourceAttribution'}
         groups:
           type: array
           items: {$ref: '#/components/schemas/ChargingConnectionGroup'}
+    ChargingSourceAttribution:
+      type: object
+      additionalProperties: false
+      required: [source, external_id, revision, license, attribution]
+      properties:
+        source: {type: string, enum: [OSM, OCM]}
+        external_id: {type: string}
+        revision: {type: string}
+        provider_id:
+          description: OCM provider ID. Omitted for OSM assertions.
+          type: integer
+          minimum: 1
+        license: {type: string}
+        attribution: {type: string}
     ChargingConnectionGroup:
       type: object
       required: [id, entity_key, external_id, connector_code, raw_connector_code, current]
