@@ -845,4 +845,33 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("ALTER TABLE charging_snapshot_place ADD COLUMN sources_json TEXT")
         }
     }
+
+    val MIGRATION_34_35: Migration = object : Migration(34, 35) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE charging_snapshot_place_v35 (
+                    place_id TEXT NOT NULL, entity_key TEXT, external_id TEXT, generation INTEGER NOT NULL,
+                    profile TEXT NOT NULL, source_revision TEXT NOT NULL, origin TEXT NOT NULL, license TEXT NOT NULL,
+                    name TEXT NOT NULL, country TEXT NOT NULL, latitude TEXT, longitude TEXT,
+                    public_access TEXT NOT NULL, reported_points INTEGER NOT NULL, groups_json TEXT NOT NULL,
+                    tombstone INTEGER NOT NULL, saved_at_millis INTEGER NOT NULL, sources_json TEXT,
+                    catalog_confidence TEXT, linked_station_id TEXT,
+                    PRIMARY KEY (profile, generation, place_id)
+                )
+                """.trimIndent(),
+            )
+            val legacyColumns = """
+                place_id, entity_key, external_id, generation, profile, source_revision, origin, license,
+                name, country, latitude, longitude, public_access, reported_points, groups_json, tombstone,
+                saved_at_millis, sources_json
+            """.trimIndent()
+            db.execSQL(
+                "INSERT INTO charging_snapshot_place_v35 ($legacyColumns) " +
+                    "SELECT $legacyColumns FROM charging_snapshot_place",
+            )
+            db.execSQL("DROP TABLE charging_snapshot_place")
+            db.execSQL("ALTER TABLE charging_snapshot_place_v35 RENAME TO charging_snapshot_place")
+        }
+    }
 }

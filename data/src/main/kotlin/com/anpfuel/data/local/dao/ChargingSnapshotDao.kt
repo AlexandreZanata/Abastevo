@@ -30,10 +30,11 @@ interface ChargingSnapshotDao {
         meta: ChargingSnapshotMetaEntity,
         places: List<ChargingSnapshotPlaceEntity>,
     ) {
+        check(places.all { it.profile == meta.profile && it.generation == meta.generation }) { "snapshot row scope mismatch" }
         upsertPlaces(places)
         upsertMeta(meta)
         deleteOlderGenerations(meta.profile, meta.generation)
-        enforceBudgets(meta.generation)
+        enforceBudgets(meta.profile, meta.generation)
     }
 
     @Transaction
@@ -42,10 +43,11 @@ interface ChargingSnapshotDao {
         places: List<ChargingSnapshotPlaceEntity>,
         tombstoneIds: List<String>,
     ) {
+        check(places.all { it.profile == meta.profile && it.generation == meta.generation }) { "snapshot row scope mismatch" }
         upsertPlaces(places)
-        if (tombstoneIds.isNotEmpty()) markTombstones(tombstoneIds, meta.generation)
+        if (tombstoneIds.isNotEmpty()) markTombstones(tombstoneIds, meta.profile, meta.generation)
         upsertMeta(meta)
-        enforceBudgets(meta.generation)
+        enforceBudgets(meta.profile, meta.generation)
     }
 
     @Transaction
@@ -54,9 +56,9 @@ interface ChargingSnapshotDao {
         clearMeta(ChargingSnapshotMetaEntity.packKey(profile))
     }
 
-    suspend fun enforceBudgets(generation: Long) {
-        check(countPlaces(generation) <= ChargingSnapshotImport.PLACES_BUDGET) { "snapshot places over budget" }
-        check(estimatedBytes(generation) <= ChargingSnapshotImport.SNAPSHOT_BYTES_BUDGET) { "snapshot bytes over budget" }
+    suspend fun enforceBudgets(profile: String, generation: Long) {
+        check(countPlaces(profile, generation) <= ChargingSnapshotImport.PLACES_BUDGET) { "snapshot places over budget" }
+        check(estimatedBytes(profile, generation) <= ChargingSnapshotImport.SNAPSHOT_BYTES_BUDGET) { "snapshot bytes over budget" }
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -74,8 +76,8 @@ interface ChargingSnapshotDao {
     @Query("DELETE FROM charging_snapshot_meta WHERE `key` = :key")
     suspend fun clearMeta(key: String)
 
-    @Query("UPDATE charging_snapshot_place SET tombstone = 1 WHERE place_id IN (:ids) AND generation = :generation")
-    suspend fun markTombstones(ids: List<String>, generation: Long)
+    @Query("UPDATE charging_snapshot_place SET tombstone = 1 WHERE place_id IN (:ids) AND profile = :profile AND generation = :generation")
+    suspend fun markTombstones(ids: List<String>, profile: String, generation: Long)
 
     @Query("SELECT * FROM charging_snapshot_meta WHERE `key` = :key LIMIT 1")
     suspend fun findMeta(key: String): ChargingSnapshotMetaEntity?
@@ -110,9 +112,9 @@ interface ChargingSnapshotDao {
     @Query("SELECT * FROM charging_snapshot_place WHERE place_id = :placeId AND profile = :profile AND generation = :generation AND tombstone = 0 LIMIT 1")
     suspend fun findPlace(placeId: String, profile: String, generation: Long): ChargingSnapshotPlaceEntity?
 
-    @Query("SELECT COUNT(*) FROM charging_snapshot_place WHERE generation = :generation AND tombstone = 0")
-    suspend fun countPlaces(generation: Long): Long
+    @Query("SELECT COUNT(*) FROM charging_snapshot_place WHERE profile = :profile AND generation = :generation AND tombstone = 0")
+    suspend fun countPlaces(profile: String, generation: Long): Long
 
-    @Query("SELECT COALESCE(SUM(length(name) + length(groups_json) + COALESCE(length(CAST(sources_json AS BLOB)), 0) + 512), 0) FROM charging_snapshot_place WHERE generation = :generation")
-    suspend fun estimatedBytes(generation: Long): Long
+    @Query("SELECT COALESCE(SUM(length(name) + length(groups_json) + COALESCE(length(CAST(sources_json AS BLOB)), 0) + 512), 0) FROM charging_snapshot_place WHERE profile = :profile AND generation = :generation")
+    suspend fun estimatedBytes(profile: String, generation: Long): Long
 }

@@ -641,7 +641,7 @@ class MapDiscoveryViewModelTest {
             override suspend fun deleteOlderGenerations(profile: String, generation: Long) = Unit
             override suspend fun deleteProfilePlaces(profile: String) = Unit
             override suspend fun clearMeta(key: String) = Unit
-            override suspend fun markTombstones(ids: List<String>, generation: Long) = Unit
+            override suspend fun markTombstones(ids: List<String>, profile: String, generation: Long) = Unit
             override suspend fun findMeta(key: String) = metaEntity.takeIf { it.key == key }
             override suspend fun readPlaces(profile: String, generation: Long, limit: Int, offset: Int) =
                 allPlaces.drop(offset).take(limit)
@@ -660,8 +660,8 @@ class MapDiscoveryViewModelTest {
                     it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
             }.take(limit)
 
-            override suspend fun countPlaces(generation: Long) = allPlaces.size.toLong()
-            override suspend fun estimatedBytes(generation: Long) = 1024L
+            override suspend fun countPlaces(profile: String, generation: Long) = allPlaces.size.toLong()
+            override suspend fun estimatedBytes(profile: String, generation: Long) = 1024L
         }
         val repo = com.anpfuel.data.repository.ChargingDiscoveryRepository(
             client = com.anpfuel.data.remote.charging.ChargingSnapshotHttpClient(okhttp3.OkHttpClient(), "https://teste.abastevo.com.br"),

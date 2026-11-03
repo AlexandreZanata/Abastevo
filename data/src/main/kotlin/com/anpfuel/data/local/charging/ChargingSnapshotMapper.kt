@@ -4,6 +4,7 @@ import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity
 import com.anpfuel.data.mapper.ChargingSourceAttributionJson
 import com.anpfuel.domain.charging.ChargingAccess
+import com.anpfuel.domain.charging.ChargingCatalogConfidence
 import com.anpfuel.domain.charging.ChargingConnectionGroup
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingCurrent
@@ -28,6 +29,7 @@ object ChargingSnapshotMapper {
             longitude = row.longitude, publicAccess = row.publicAccess,
             reportedPoints = row.reportedPoints, groupsJson = row.groupsJson,
             tombstone = row.tombstone, savedAtMillis = savedAtMillis, sourcesJson = row.sourcesJson,
+            catalogConfidence = row.catalogConfidence, linkedStationId = row.linkedStationId,
         )
 
     fun toMetaEntity(meta: StoredPackMeta, key: String): ChargingSnapshotMetaEntity =
@@ -44,6 +46,9 @@ object ChargingSnapshotMapper {
         // reach this mapping); anything else is stored corruption.
         val entityKey = entity.entityKey ?: throw IllegalStateException("corrupt snapshot identity for ${entity.placeId}")
         val externalId = entity.externalId ?: throw IllegalStateException("corrupt snapshot identity for ${entity.placeId}")
+        check((entity.catalogConfidence != null) == (entity.profile == NATIONAL_CHARGING_PROFILE)) {
+            "corrupt snapshot profile for ${entity.placeId}"
+        }
         val groups = try {
             val array = JSONArray(entity.groupsJson)
             (0 until array.length()).map { index ->
@@ -57,6 +62,7 @@ object ChargingSnapshotMapper {
                     current = ChargingCurrent.valueOf(row.getString("current")),
                     powerW = if (row.isNull("power_w")) null else row.getLong("power_w"),
                     reportedQuantity = if (row.isNull("reported_quantity")) null else row.getLong("reported_quantity"),
+                    sourceKey = if (row.isNull("source_key")) null else row.getString("source_key"),
                 )
             }
         } catch (e: Exception) {
@@ -69,6 +75,8 @@ object ChargingSnapshotMapper {
             publicAccess = ChargingAccess.valueOf(entity.publicAccess),
             reportedPoints = entity.reportedPoints, groups = groups,
             sources = entity.sourcesJson?.let { ChargingSourceAttributionJson.decode(JSONArray(it)) }.orEmpty(),
+            catalogConfidence = entity.catalogConfidence?.let(ChargingCatalogConfidence::valueOf),
+            linkedStationId = entity.linkedStationId,
         )
     }
 

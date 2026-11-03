@@ -50,10 +50,10 @@ class ChargingDiscoveryRepositoryTest {
             metas.remove(key)
         }
 
-        override suspend fun markTombstones(ids: List<String>, generation: Long) {
+        override suspend fun markTombstones(ids: List<String>, profile: String, generation: Long) {
             ids.forEach { id ->
-                val key = places.keys.firstOrNull { it.first == id && it.second == generation }
-                key?.let { places[it] = places[it]!!.copy(tombstone = true) }
+                val key = Triple(id, generation, profile)
+                places[key]?.let { places[key] = it.copy(tombstone = true) }
             }
         }
 
@@ -80,10 +80,10 @@ class ChargingDiscoveryRepositoryTest {
                 it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
         }.sortedBy { it.placeId }.take(limit)
 
-        override suspend fun countPlaces(generation: Long) =
-            places.values.count { it.generation == generation && !it.tombstone }.toLong()
+        override suspend fun countPlaces(profile: String, generation: Long) =
+            places.values.count { it.profile == profile && it.generation == generation && !it.tombstone }.toLong()
 
-        override suspend fun estimatedBytes(generation: Long) = 1024L
+        override suspend fun estimatedBytes(profile: String, generation: Long) = 1024L
     }
 
     private val dao = FakeDao()

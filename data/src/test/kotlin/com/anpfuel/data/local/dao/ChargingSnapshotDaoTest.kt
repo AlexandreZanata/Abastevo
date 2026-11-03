@@ -14,12 +14,12 @@ class ChargingSnapshotDaoTest {
         override suspend fun findPlace(placeId: String, profile: String, generation: Long) =
             places.values.singleOrNull { it.placeId == placeId && it.profile == profile && it.generation == generation && !it.tombstone }
 
-        val places = mutableMapOf<Pair<String, Long>, ChargingSnapshotPlaceEntity>()
+        val places = mutableMapOf<Triple<String, Long, String>, ChargingSnapshotPlaceEntity>()
         val metas = mutableMapOf<String, ChargingSnapshotMetaEntity>()
         var tombstoneCalls = 0
 
         override suspend fun upsertPlaces(places: List<ChargingSnapshotPlaceEntity>) {
-            places.forEach { this.places[it.placeId to it.generation] = it }
+            places.forEach { this.places[Triple(it.profile, it.generation, it.placeId)] = it }
         }
 
         override suspend fun upsertMeta(meta: ChargingSnapshotMetaEntity) {
@@ -39,11 +39,11 @@ class ChargingSnapshotDaoTest {
             metas.remove(key)
         }
 
-        override suspend fun markTombstones(ids: List<String>, generation: Long) {
+        override suspend fun markTombstones(ids: List<String>, profile: String, generation: Long) {
             tombstoneCalls++
             ids.forEach { id ->
-                val row = places[id to generation] ?: return@forEach
-                places[id to generation] = row.copy(tombstone = true)
+                val row = places[Triple(profile, generation, id)] ?: return@forEach
+                places[Triple(profile, generation, id)] = row.copy(tombstone = true)
             }
         }
 
@@ -67,11 +67,11 @@ class ChargingSnapshotDaoTest {
                 it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
         }.sortedBy { it.placeId }.take(limit)
 
-        override suspend fun countPlaces(generation: Long) =
-            places.values.count { it.generation == generation && !it.tombstone }.toLong()
+        override suspend fun countPlaces(profile: String, generation: Long) =
+            places.values.count { it.profile == profile && it.generation == generation && !it.tombstone }.toLong()
 
-        override suspend fun estimatedBytes(generation: Long) =
-            places.values.filter { it.generation == generation }
+        override suspend fun estimatedBytes(profile: String, generation: Long) =
+            places.values.filter { it.profile == profile && it.generation == generation }
                 .sumOf { (it.name.length + it.groupsJson.length + 512).toLong() }
     }
 

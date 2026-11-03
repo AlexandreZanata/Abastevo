@@ -91,8 +91,10 @@
   national files without a DB and gates activation on the exact candidate
   and allowed target. Synthetic PostGIS import passes. EVC-07A LOCAL_DONE:
   Android national wire facts preserve absent names, 16-place coordinate
-  precision, connector ownership, confidence and station links. Next
-  profile-isolated offline storage and presentation.
+  precision, connector ownership, confidence and station links. EVC-07B
+  LOCAL_DONE: Room 35 isolates offline identities and scoped retirement;
+  legacy migration and national round-trip tests pass. Next revision-bound
+  refresh payload and presentation.
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).

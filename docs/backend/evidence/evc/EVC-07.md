@@ -29,3 +29,33 @@ scope row identity and accounting to the profile before enabling refresh.
 
 Status: LOCAL_DONE / INTEGRATION_PENDING. Android debug Kotlin
 compilation, whitespace and secret-surface checks also passed.
+
+## EVC-07B offline snapshot storage
+
+B-BR-EVC-07B. The offline place identity includes profile, generation and
+public ID. A write, retirement or size check is scoped to one profile.
+Migration preserves old rows and attribution. A national pack retains
+confidence, links, exact coordinates, absent names and source-owned
+connector groups through the storage mapping.
+
+BUC-EVC-07B. Upgrade a Room database with a legacy place and write a
+national row with the same ID and generation. Retire only the national
+row and check both profiles. Round-trip a national pack with synthetic
+facts and reject a place with the wrong profile shape.
+
+The RED test reproduced a national row accepted by a legacy pack. The
+round-trip regression now passes with a profile check on import and read.
+Room 35 rebuilds the charging place table with a profile-scoped key and
+copies all Room 34 fields, including source attribution. The schema diff
+shows one changed table. The primary key also serves profile/generation
+reads. Tombstones and budget checks use the same profile scope.
+
+Twenty-three snapshot and discovery repository tests passed. The
+33-to-34 and 34-to-35 instrumented tests passed on the Android emulator.
+The new test opens the migrated database with Room, writes the same
+identity in both profiles and verifies scoped retirement and counts.
+Repository refresh still gates national packs pending the revision-bound
+payload and rights checks.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. App debug unit-test Kotlin
+compilation, whitespace and secret-surface checks passed.
