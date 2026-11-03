@@ -20,6 +20,7 @@ fn evidence(pairs: &[(&str, &str)]) -> OsmEvidence {
             longitude_decimal: "-50.25".into(),
             provenance: "osm_node".into(),
         }),
+        footprint: None,
         parent_keys: vec![],
     }
 }
@@ -190,4 +191,21 @@ fn candidate_selection_counts_inactive_equipment_and_never_invents_fuel_charging
     ] {
         assert!(!is_osm_ev_candidate(&evidence(&pairs).tags), "{pairs:?}");
     }
+}
+
+#[test]
+fn dual_site_equipment_markers_do_not_lose_explicit_unparented_sites() {
+    let mut row = evidence(&[
+        ("amenity", "charging_station"),
+        ("man_made", "charge_point"),
+    ]);
+    let site = normalize_osm(&row, &context()).site.unwrap();
+    assert_eq!(site.kind, SiteKind::ChargingSite);
+    assert!(site.site_marker);
+    assert!(site.equipment_marker);
+    row.parent_keys = vec!["osm:way:90003".into()];
+    let site = normalize_osm(&row, &context()).site.unwrap();
+    assert_eq!(site.kind, SiteKind::ChargePoint);
+    assert!(site.site_marker);
+    assert!(site.equipment_marker);
 }

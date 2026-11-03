@@ -1,7 +1,7 @@
 //! Pure OSM normalization into the common source model; equipment is not a site.
 use crate::ev_sites::{
     point, source_clock, text, ConnectorGroup, Normalization, NormalizationDecision,
-    NormalizationIssue, SiteKind, SitePoint, SourceLineage, SourceSite,
+    NormalizationIssue, SiteKind, SitePoint, SourceFootprint, SourceLineage, SourceSite,
 };
 use crate::ev_sockets::{family_for_osm, power_osm_to_watts};
 use crate::types::sha256_hex;
@@ -18,6 +18,7 @@ pub struct OsmEvidence {
     pub visible: bool,
     pub tags: BTreeMap<String, String>,
     pub point: Option<SitePoint>,
+    pub footprint: Option<SourceFootprint>,
     pub parent_keys: Vec<String>,
 }
 #[derive(Debug)]
@@ -122,7 +123,10 @@ pub fn normalize_osm(row: &OsmEvidence, context: &OsmContext) -> Normalization {
     }) {
         return refuse("construction_site");
     }
-    let kind = if tag("man_made") == Some("charge_point") {
+    let site_marker = tag("amenity") == Some("charging_station")
+        || (tag("amenity") == Some("fuel") && fuel_charging(&row.tags));
+    let equipment_marker = tag("man_made") == Some("charge_point");
+    let kind = if equipment_marker && (!site_marker || !row.parent_keys.is_empty()) {
         SiteKind::ChargePoint
     } else if tag("amenity") == Some("charging_station") {
         if tag("fuel") == Some("yes") {
@@ -172,7 +176,13 @@ pub fn normalize_osm(row: &OsmEvidence, context: &OsmContext) -> Normalization {
     {
         return refuse("invalid_parent_identity");
     }
+    if row.footprint.as_ref().is_some_and(|f| !f.valid()) {
+        return refuse("invalid_source_footprint");
+    }
     let mut issues = vec![];
+    if row.osm_type != "node" && row.footprint.is_none() {
+        issue(&mut issues, &key, "footprint_unavailable");
+    }
     let version = row.version.filter(|v| *v > 0);
     if version.is_none() {
         issue(&mut issues, &key, "missing_object_version");
@@ -288,6 +298,9 @@ pub fn normalize_osm(row: &OsmEvidence, context: &OsmContext) -> Normalization {
         SourceSite {
             key,
             kind,
+            site_marker,
+            equipment_marker,
+            footprint: row.footprint.clone(),
             source,
             point: coords,
             name: text(tag("name"), 160),

@@ -1,0 +1,30 @@
+{
+  "status": "LOCAL_NORMALIZED_NOT_CONFLATED_OR_IMPORTED",
+  "manifest_sha256": "f7b43d21a294d2a7552ac3b8abb2589ca246dd0ff581e4a494db935fea07f560",
+  "source_profile": {
+    "exposure": "PRIVATE_PREPARATION",
+    "profile_id": "brazil-ev-sources-20261103-v1",
+    "sha256": "efb1cb1172810dd9946d48e41fa1ee3bd10a07fe25ca0dc24801b8d7fbd1164f"
+  },
+  "summary": {
+    "accepted_source_sites": 1665,
+    "ignored": 0,
+    "osm_candidates": 477,
+    "osm_input_elements": 363988420,
+    "quarantined": 46,
+    "source_equipment": 64
+  },
+  "binary_sha256": "81d37fb566679a79448e53fabe0074c307d2b9d089dc58eb13215f0bfeaabca7",
+  "measurements": {
+    "wall_seconds": 70.747,
+    "peak_rss_bytes": 370352128,
+    "working_disk_bytes": 2111670020
+  },
+  "limits": {
+    "max_wall_seconds": 1800,
+    "max_cpu_seconds": 1800,
+    "max_memory_bytes": 6442450944,
+    "max_output_file_bytes": 536870912,
+    "max_working_disk_bytes": 8589934592
+  }
+}

@@ -1,0 +1,300 @@
+{
+  "boundary_attribution": "Fonte: IBGE",
+  "boundary_license": "CC-BY-4.0",
+  "boundary_sha256": "5491bd548fe381cd388ba81c9edfbf4cf2749891e2fd32c1079ac71f7aba1c10",
+  "by_source": {
+    "OCM": {
+      "AC": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 0,
+        "COMBINED_SITE": 0
+      },
+      "AL": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 13,
+        "COMBINED_SITE": 0
+      },
+      "AM": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 4,
+        "COMBINED_SITE": 0
+      },
+      "AP": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 0,
+        "COMBINED_SITE": 0
+      },
+      "BA": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 60,
+        "COMBINED_SITE": 0
+      },
+      "CE": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 85,
+        "COMBINED_SITE": 0
+      },
+      "DF": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 89,
+        "COMBINED_SITE": 0
+      },
+      "ES": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 27,
+        "COMBINED_SITE": 0
+      },
+      "GO": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 130,
+        "COMBINED_SITE": 0
+      },
+      "MA": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 24,
+        "COMBINED_SITE": 0
+      },
+      "MG": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 100,
+        "COMBINED_SITE": 0
+      },
+      "MS": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 4,
+        "COMBINED_SITE": 0
+      },
+      "MT": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 11,
+        "COMBINED_SITE": 0
+      },
+      "PA": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 6,
+        "COMBINED_SITE": 0
+      },
+      "PB": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 20,
+        "COMBINED_SITE": 0
+      },
+      "PE": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 21,
+        "COMBINED_SITE": 0
+      },
+      "PI": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 24,
+        "COMBINED_SITE": 0
+      },
+      "PR": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 64,
+        "COMBINED_SITE": 0
+      },
+      "RJ": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 123,
+        "COMBINED_SITE": 0
+      },
+      "RN": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 28,
+        "COMBINED_SITE": 0
+      },
+      "RO": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 0,
+        "COMBINED_SITE": 0
+      },
+      "RR": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 1,
+        "COMBINED_SITE": 0
+      },
+      "RS": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 78,
+        "COMBINED_SITE": 0
+      },
+      "SC": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 49,
+        "COMBINED_SITE": 0
+      },
+      "SE": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 6,
+        "COMBINED_SITE": 0
+      },
+      "SP": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 274,
+        "COMBINED_SITE": 0
+      },
+      "TO": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 6,
+        "COMBINED_SITE": 0
+      },
+      "UNASSIGNED": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 12,
+        "COMBINED_SITE": 0
+      }
+    },
+    "OSM": {
+      "AC": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 0,
+        "COMBINED_SITE": 0
+      },
+      "AL": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 1,
+        "COMBINED_SITE": 0
+      },
+      "AM": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 5,
+        "COMBINED_SITE": 0
+      },
+      "AP": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 0,
+        "COMBINED_SITE": 0
+      },
+      "BA": {
+        "CHARGE_POINT": 5,
+        "CHARGING_SITE": 20,
+        "COMBINED_SITE": 0
+      },
+      "CE": {
+        "CHARGE_POINT": 3,
+        "CHARGING_SITE": 24,
+        "COMBINED_SITE": 0
+      },
+      "DF": {
+        "CHARGE_POINT": 1,
+        "CHARGING_SITE": 7,
+        "COMBINED_SITE": 0
+      },
+      "ES": {
+        "CHARGE_POINT": 1,
+        "CHARGING_SITE": 4,
+        "COMBINED_SITE": 1
+      },
+      "GO": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 21,
+        "COMBINED_SITE": 0
+      },
+      "MA": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 6,
+        "COMBINED_SITE": 0
+      },
+      "MG": {
+        "CHARGE_POINT": 10,
+        "CHARGING_SITE": 28,
+        "COMBINED_SITE": 0
+      },
+      "MS": {
+        "CHARGE_POINT": 7,
+        "CHARGING_SITE": 7,
+        "COMBINED_SITE": 0
+      },
+      "MT": {
+        "CHARGE_POINT": 10,
+        "CHARGING_SITE": 14,
+        "COMBINED_SITE": 0
+      },
+      "PA": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 18,
+        "COMBINED_SITE": 0
+      },
+      "PB": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 0,
+        "COMBINED_SITE": 0
+      },
+      "PE": {
+        "CHARGE_POINT": 3,
+        "CHARGING_SITE": 53,
+        "COMBINED_SITE": 1
+      },
+      "PI": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 2,
+        "COMBINED_SITE": 0
+      },
+      "PR": {
+        "CHARGE_POINT": 2,
+        "CHARGING_SITE": 25,
+        "COMBINED_SITE": 0
+      },
+      "RJ": {
+        "CHARGE_POINT": 2,
+        "CHARGING_SITE": 15,
+        "COMBINED_SITE": 0
+      },
+      "RN": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 9,
+        "COMBINED_SITE": 0
+      },
+      "RO": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 2,
+        "COMBINED_SITE": 0
+      },
+      "RR": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 2,
+        "COMBINED_SITE": 0
+      },
+      "RS": {
+        "CHARGE_POINT": 8,
+        "CHARGING_SITE": 37,
+        "COMBINED_SITE": 0
+      },
+      "SC": {
+        "CHARGE_POINT": 2,
+        "CHARGING_SITE": 26,
+        "COMBINED_SITE": 3
+      },
+      "SE": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 0,
+        "COMBINED_SITE": 0
+      },
+      "SP": {
+        "CHARGE_POINT": 10,
+        "CHARGING_SITE": 71,
+        "COMBINED_SITE": 1
+      },
+      "TO": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 2,
+        "COMBINED_SITE": 0
+      },
+      "UNASSIGNED": {
+        "CHARGE_POINT": 0,
+        "CHARGING_SITE": 1,
+        "COMBINED_SITE": 0
+      }
+    }
+  },
+  "classification_reasons": {
+    "OCM:ibge_polygon": 1247,
+    "OCM:no_boundary_match": 12,
+    "OSM:ibge_polygon": 469,
+    "OSM:no_boundary_match": 1
+  },
+  "eligibility": "normalized source assertions before cross-source conflation; not complete Brazil coverage",
+  "format": "abastevo.ev-source-census-v1",
+  "units": "source objects; CHARGE_POINT equipment is separate, not sites or summed connectors"
+}

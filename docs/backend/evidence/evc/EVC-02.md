@@ -1,6 +1,8 @@
 # EVC-02 — Canonical source normalization
 
-Status: IN_PROGRESS
+Status: LOCAL_DONE
+Validation: PASS
+Integration: INTEGRATION_PENDING
 
 Bounded children, in order: EVC-02A socket/current and exact power primitives
 plus the directly discovered legacy current/power decoding corrections;
@@ -174,3 +176,92 @@ affected OSM/OCM tests and all-target clippy with denied warnings pass. Fmt,
 diff and secret checks pass. No dependency/SQL/API/UI change, real normalization
 execution, import/backfill or staging action. Next: EVC-02C artifact contract,
 bounded file preparation and real source reconciliation before EVC-03.
+
+## EVC-02C opening
+
+B-BR-EV-NORM-02C: A private normalized generation binds the frozen source profile,
+PBF/IBGE bytes, complete OCM inventory and each POI/reference hash. No partial or
+foreign input replaces a prior generation. Reuse the frozen national OSM limits
+and resource fences; no silent cap raise or truncation. Scan/select EV site and
+equipment evidence, preserve actual versions/timestamps and explicit structural
+parent membership, resolve geometry with the bounded PBF index, then normalize.
+Rejected output holds source identities/reasons only, never rejected coordinates
+or contact data. Counts remain per source, UF and typed unit; equipment is not
+counted as a site and sources are not summed before conflation. The output is a
+private preparation format, not the public import/publication contract.
+
+BUC-EVC-02C: Before real national execution, prove deterministic synthetic PBF +
+OCM + boundary preparation, explicit child membership, privacy and complete
+inventory/hash admission; test changed/missing/unexpected input, cancellation,
+resource caps and existing-output preservation. Write owner-only hash-bound
+streams/manifest to a new directory, with measured execution receipts outside
+deterministic artifacts. Run only on already authorized local files, then record
+actual source/UF counts and repeated output hashes. No DB, network or staging.
+
+### Real-input unit audit before acceptance
+
+The first real prototype reconciled all 1,775 source decisions (1,298 OCM +
+477 OSM): 1,655 source sites, 74 equipment records, 46 exclusions. It is not the
+accepted final normalization: cross-checking the EVC-01 charging keys found ten
+objects carrying both amenity=charging_station and man_made=charge_point, all
+without explicit parent membership. Preserve both explicit markers, and retain
+standalone site evidence unless a source parent actually makes it equipment.
+An unparented equipment-only object still does not become an invented site.
+Record available closed-way footprints for EVC-03 containment/parent review;
+unsupported/incomplete footprints remain absent, never synthetically closed.
+This is a data-audit correction within the unaccepted EVC-02C prototype. Preserve
+the prototype outputs privately; only the corrected tested replay will be final.
+
+## EVC-02C accepted local checkpoint
+
+Status: LOCAL_DONE
+Validation: PASS
+Integration: INTEGRATION_PENDING
+
+Tested parent ccc52734 plus this child. The new private
+[source format](../../../../contracts/ev/source-site-format-v1.md) and frozen
+[normalization profile](../../../../contracts/ev/normalization-profile-v1.json)
+bind both source pins, raw file inventory/hashes, resource profile and typed
+records. The native CLI refuses cap/profile overrides and production/staging
+contexts. The owner-only resource wrapper checks exact profile/format/required
+file hashes, retains private child logs and records executable SHA separately.
+PBF is hashed before and after processing; OCM directory coverage and each
+file/reference hash are exact. Cancellation during output removes only that
+unpublished generation; prior output is never replaced.
+
+RED covered absent preparation, changed/missing/unexpected sources, integer
+inventory-total overflow, cancellation during output and mixed source roles.
+GREEN: full Rust fast gate passes (fmt, clippy all targets, locked suite),
+including six file/CLI failure groups, seven OCM groups, seven OSM groups and
+16 offline Python groups. Synthetic closed-way footprint/explicit-child output
+is reproducible and private. No dependency added or lockfile changed. Diff and
+secret checks pass. No Go/SQL/API/UI operation, import/backfill or staging change.
+
+Corrected real preparation processed 363,988,420 PBF elements and all 1,298
+OCM country files. [Independent reconciliation](EVC-02-reconciliation.json):
+
+- OCM: 1,259 accepted source sites; 37 private and two planned excluded.
+- OSM: 400 charging + six combined source sites, 64 equipment-only objects;
+  seven private excluded. All ten dual-marked explicit sites are preserved.
+- Total: 1,775 source decisions exactly reconcile; 1,665 source-site assertions,
+  64 separate equipment records and 46 exclusions. These are source assertions
+  before conflation, not 1,665 unique physical locations or complete coverage.
+- All 44 available closed-way footprints are preserved. No accepted relation
+  objects occur in these pins; fragmented relation footprints are unsupported
+  and remain absent, not fabricated. Equipment parent containment/review is
+  EVC-03 work; unparented equipment does not silently create a public site.
+- All original OCM inventory IDs match decisions, artifact hashes verify, and
+  contact/comment/media field scan passes. Raw rows remain outside Git.
+
+Two corrected real executions are byte-identical for all five artifacts;
+[hashes](EVC-02-reproducibility.json), manifest SHA-256
+f7b43d21a294d2a7552ac3b8abb2589ca246dd0ff581e4a494db935fea07f560.
+The accepted [replay receipt](EVC-02-execution.json) measures 70.747 s, peak RSS
+370,352,128 bytes and owned working disk 2,111,670,020 bytes, within frozen
+budgets. [Per-source/UF census](EVC-02-uf-census.json) includes all 27 UFs and
+UNASSIGNED, with equipment explicitly separate. No cross-source quantity sum.
+
+Next: EVC-03 deterministic conflation, parent containment/aggregation and actual
+matched/single/probable/conflict counts. The owner imagery spot check and later
+public rights/import/staging gates remain owed; this checkpoint does not claim
+those acceptances.

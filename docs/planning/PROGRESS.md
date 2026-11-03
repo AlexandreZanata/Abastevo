@@ -36,8 +36,14 @@
   lifecycle/private filters, source versions/clocks/geometry, parent sets,
   noninvented source fields and exact separate socket groups. Full Rust gate,
   then 13 affected tests/all-target clippy after final filter/refactor pass
-  (parent 62366afb plus child). Next EVC-02C bounded artifacts/real normalization
-  census, then EVC-03 and SNA-04..06.
+  (parent 62366afb plus child). EVC-02C LOCAL_DONE: hash-bound private preparation
+  and two byte-identical real runs (parent ccc52734 plus child); 16 offline Python
+  groups/full Rust gate pass. OCM 1,259 source sites; OSM 400 charging + 6 combined,
+  64 equipment; 46 exclusions. All 1,775 decisions reconcile; dual-role audit
+  preserved ten explicit sites/44 closed footprints. Accepted replay 70.747 s /
+  370.4 MB RSS. These are pre-conflation source assertions, not unique locations.
+  Next EVC-03 deterministic matching/parent aggregation and actual per-UF counts,
+  then SNA-04..06. Owner imagery spot check remains owed.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links. This is not a national EV coverage
   result. PR #183 merged d0eb9c79 with all four checks green; signed release

@@ -33,6 +33,44 @@ pub struct ConnectorGroup {
     pub current: String,
     pub raw_status: Option<i64>,
 }
+/// Closed source-way rings, longitude/latitude decimal strings, never guessed closure.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct FootprintPolygon {
+    pub outer: Vec<[String; 2]>,
+    pub holes: Vec<Vec<[String; 2]>>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SourceFootprint {
+    pub polygons: Vec<FootprintPolygon>,
+}
+impl SourceFootprint {
+    pub fn valid(&self) -> bool {
+        if self.polygons.is_empty() || self.polygons.len() > 32 {
+            return false;
+        }
+        let mut points = 0;
+        for polygon in &self.polygons {
+            for ring in std::iter::once(&polygon.outer).chain(&polygon.holes) {
+                points += ring.len();
+                if ring.len() < 4 || points > 4096 || ring.first() != ring.last() {
+                    return false;
+                }
+                if ring
+                    .iter()
+                    .any(|p| point(&p[1], &p[0], "source_ring").is_none())
+                {
+                    return false;
+                }
+                let unique: BTreeSet<_> = ring.iter().collect();
+                if unique.len() < 3 {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SiteKind {
@@ -45,6 +83,9 @@ pub enum SiteKind {
 pub struct SourceSite {
     pub key: String,
     pub kind: SiteKind,
+    pub site_marker: bool,
+    pub equipment_marker: bool,
+    pub footprint: Option<SourceFootprint>,
     pub source: SourceLineage,
     pub point: SitePoint,
     pub name: Option<String>,
@@ -522,6 +563,9 @@ pub fn normalize_ocm(raw: &[u8], context: &OcmContext) -> Normalization {
         SourceSite {
             key,
             kind: SiteKind::ChargingSite,
+            site_marker: true,
+            equipment_marker: false,
+            footprint: None,
             source,
             point,
             name: text(address.title.as_deref(), 160),

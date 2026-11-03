@@ -408,7 +408,7 @@ pub fn parse_file(
     })
 }
 
-fn coordinates(
+pub(crate) fn coordinates(
     index: &mut IndexedReader<pbf_craft::readers::CachedReader>,
     element: &Element,
     cancel: &dyn Fn() -> bool,
