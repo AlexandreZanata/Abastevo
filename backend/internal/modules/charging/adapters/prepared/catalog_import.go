@@ -108,6 +108,9 @@ func ImportNationalCatalog(ctx context.Context, pool *pgxpool.Pool, input Nation
 		VALUES($1,$2,$3,$4)`, batch, bundle.RightsSHA256, bundle.OfferSHA256, census); err != nil {
 		return "", err
 	}
+	if err := stageCatalogOffer(ctx, tx, batch, bundle); err != nil {
+		return "", err
+	}
 	for i, place := range places {
 		if err := stageNationalPlace(ctx, tx, batch, place, publicIDs[i]); err != nil {
 			return "", err

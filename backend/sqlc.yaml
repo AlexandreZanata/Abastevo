@@ -356,6 +356,7 @@ sql:
       - db/migrations/000151_charging_catalog_publication.sql
       - db/migrations/000152_charging_national_place_details.sql
       - db/migrations/000153_charging_catalog_ocm_source_keys.sql
+      - db/migrations/000154_charging_catalog_offer_artifacts.sql
     gen:
       go:
         package: charging

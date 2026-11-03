@@ -4,6 +4,7 @@ package prepared
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"strings"
 	"sync"
@@ -33,12 +34,26 @@ func TestCatalogActivationRetainsLastGoodAndBindsOverride(t *testing.T) {
 			t.Fatal(err)
 		}
 		if rights {
-			_, err = pool.Exec(ctx, `INSERT INTO charging_catalog_generations(batch_id,rights_sha256,offer_sha256,uf_counts)
-				VALUES($1,repeat('a',64),repeat('b',64),$2::jsonb)`, id, fmt.Sprintf(`{"SP":%d}`, n))
+			offer := NationalBundle{Catalog: []byte("synthetic data"), Notice: []byte("synthetic notice")}
+			offer.OfferSHA256 = fmt.Sprintf("%x", sha256.Sum256(offer.Catalog))
+			offer.NoticeSHA256 = fmt.Sprintf("%x", sha256.Sum256(offer.Notice))
+			tx, err := pool.Begin(ctx)
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer func() { _ = tx.Rollback(ctx) }()
+			if _, err := tx.Exec(ctx, `INSERT INTO charging_catalog_generations(batch_id,rights_sha256,offer_sha256,uf_counts)
+				VALUES($1,repeat('a',64),$2,$3::jsonb)`, id, offer.OfferSHA256, fmt.Sprintf(`{"SP":%d}`, n)); err != nil {
+				t.Fatal(err)
+			}
+			if err := stageCatalogOffer(ctx, tx, id, offer); err != nil {
+				t.Fatal(err)
+			}
+			if err := tx.Commit(ctx); err != nil {
+				t.Fatal(err)
+			}
 		}
+
 		return id
 	}
 	activate := func(batch pgtype.UUID, override *CatalogCoverageOverride, commit bool) error {
@@ -69,6 +84,10 @@ func TestCatalogActivationRetainsLastGoodAndBindsOverride(t *testing.T) {
 	firstHash, nextHash := strings.Repeat("1", 64), strings.Repeat("2", 64)
 	first, next := seed(20, firstHash, true), seed(16, nextHash, true)
 	missing := seed(30, strings.Repeat("3", 64), false)
+	incomplete := seed(22, strings.Repeat("4", 64), true)
+	if _, err := pool.Exec(ctx, "DELETE FROM charging_catalog_offer_chunks WHERE batch_id=$1 AND kind='notice'", incomplete); err != nil {
+		t.Fatal(err)
+	}
 	var attempts sync.WaitGroup
 	for range 5 {
 		attempts.Go(func() {
@@ -84,7 +103,7 @@ func TestCatalogActivationRetainsLastGoodAndBindsOverride(t *testing.T) {
 	for _, tc := range []struct {
 		batch    pgtype.UUID
 		override *CatalogCoverageOverride
-	}{{missing, nil}, {next, nil}, {next, stale}} {
+	}{{missing, nil}, {incomplete, nil}, {next, nil}, {next, stale}} {
 		if err := activate(tc.batch, tc.override, true); err == nil {
 			t.Fatal("unapproved publication accepted")
 		}

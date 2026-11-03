@@ -30,6 +30,7 @@ func (h Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/v1/charging/places", h.places)
 	r.Get("/v1/charging/places/{id}", h.placeOne)
 	r.Get("/v1/charging/coverage", h.coverage)
+	r.Get("/v1/charging/catalog/{revision}/offer/{file}", h.catalogOffer)
 }
 
 func (h Handler) disabled(w http.ResponseWriter, r *http.Request) bool {
@@ -187,13 +188,22 @@ func (h Handler) coverage(w http.ResponseWriter, r *http.Request) {
 		sourceDown(w, r)
 		return
 	}
-	body, _ := json.Marshal(map[string]any{
+	facts := map[string]any{
 		"profile": coverage.Profile, "source_revision": coverage.SourceRevision,
 		"places": coverage.Places, "groups": coverage.Groups, "vehicles": coverage.Vehicles,
-		"generated_at": generatedAt(h.now()),
-	})
+	}
+	if coverage.Profile == domain.NationalCatalogProfile {
+		base := "/v1/charging/catalog/" + coverage.SourceRevision + "/offer/"
+		facts["offer"] = map[string]string{"notice": base + offerNoticeFile, "data": base + offerDataFile}
+	}
+	tag := httpapi.ETag(mustMarshal(facts))
+	if coverage.Profile != domain.NationalCatalogProfile {
+		tag = httpapi.ETag(mustMarshal(map[string]any{"coverage": coverage}))
+	}
+	facts["generated_at"] = generatedAt(h.now())
+	body, _ := json.Marshal(facts)
 	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body,
-		httpapi.ETag(mustMarshal(map[string]any{"coverage": coverage})))
+		tag)
 }
 
 func (h Handler) now() time.Time {

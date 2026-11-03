@@ -88,6 +88,9 @@ func ActivateCatalog(ctx context.Context, tx pgx.Tx, batch pgtype.UUID, override
 	if err != nil {
 		return err
 	}
+	if err := requireCatalogOffer(ctx, tx, batch); err != nil {
+		return err
+	}
 	var alreadyPublished bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM charging_catalog_activations WHERE batch_id=$1)`,
 		batch).Scan(&alreadyPublished); err != nil {

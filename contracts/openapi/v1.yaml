@@ -2052,6 +2052,42 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/charging/catalog/{revision}/offer/{file}:
+    get:
+      summary: Download the exact ODbL offer of a published national charging generation.
+      operationId: chargingCatalogOffer
+      tags: [charging]
+      security: []
+      parameters:
+        - name: revision
+          in: path
+          required: true
+          description: Published national source revision.
+          schema: {type: string, pattern: '^[0-9a-f]{64}$'}
+        - name: file
+          in: path
+          required: true
+          description: Public data or licence and attribution notice.
+          schema: {type: string, enum: [derived-database.ndjson, derived-database-offer.json]}
+      responses:
+        '200':
+          description: Exact immutable offer bytes.
+          headers:
+            ETag:
+              schema: {type: string}
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=31536000, immutable'}
+          content:
+            application/x-ndjson:
+              schema: {type: string, format: binary}
+            application/json:
+              schema: {type: object}
+        '304':
+          description: The requested offer has not changed.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/charging/coverage:
     get:
       summary: Stored batch valid counts (anonymous).
@@ -10511,6 +10547,13 @@ components:
         places: {type: integer, minimum: 0}
         groups: {type: integer, minimum: 0}
         vehicles: {type: integer, minimum: 0}
+        offer:
+          description: Download paths for the published national offer.
+          type: object
+          required: [data, notice]
+          properties:
+            data: {type: string}
+            notice: {type: string}
         generated_at: {type: string, format: date-time}
     QualityCompanyScope:
       type: object

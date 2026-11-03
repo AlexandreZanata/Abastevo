@@ -41,6 +41,20 @@ type ChargingCatalogGeneration struct {
 	UfCounts     []byte      `json:"uf_counts"`
 }
 
+type ChargingCatalogOfferArtifact struct {
+	BatchID pgtype.UUID `json:"batch_id"`
+	Kind    string      `json:"kind"`
+	Sha256  string      `json:"sha256"`
+	Bytes   int32       `json:"bytes"`
+}
+
+type ChargingCatalogOfferChunk struct {
+	BatchID  pgtype.UUID `json:"batch_id"`
+	Kind     string      `json:"kind"`
+	Position int32       `json:"position"`
+	Data     []byte      `json:"data"`
+}
+
 type ChargingCatalogPlaceAlias struct {
 	BatchID   pgtype.UUID `json:"batch_id"`
 	PublicID  pgtype.UUID `json:"public_id"`

@@ -23,6 +23,8 @@ type NationalBundle struct {
 	RightsSHA256 string
 	OfferSHA256  string
 	Catalog      []byte
+	Notice       []byte
+	NoticeSHA256 string
 	Sites        int64
 }
 
@@ -96,7 +98,7 @@ func VerifyNationalBundle(files fs.FS, rightsSHA256, manifestSHA256 string) (Nat
 		int64(bytes.Count(catalog, []byte{'\n'})) != data.Records {
 		return NationalBundle{}, errors.New("prepared: national offer framing refused")
 	}
-	return NationalBundle{RightsSHA256: rightsSHA256, OfferSHA256: data.SHA256, Catalog: catalog, Sites: receipt.Sites}, nil
+	return NationalBundle{RightsSHA256: rightsSHA256, OfferSHA256: data.SHA256, Catalog: catalog, Notice: noticeBytes, NoticeSHA256: notice.SHA256, Sites: receipt.Sites}, nil
 }
 
 func readNationalArtifact(files fs.FS, name, digest string, limit int64) ([]byte, error) {

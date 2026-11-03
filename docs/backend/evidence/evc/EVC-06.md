@@ -288,3 +288,31 @@ Synthetic HTTP traversal, legacy OpenAPI traversal on PostGIS,
 charging race tests, vet and staticcheck passed. OpenAPI lint reported
 zero errors. The national offer still needs a public serving path
 before authorized real activation.
+
+## EVC-06H2 opening
+
+B-BR-EV-RIGHTS-01. Stage the exact verified ODbL data and notice in
+the publication transaction. Refuse activation without both files.
+The HTTP offer is revision-addressed and serves only published
+generations. Stream bounded chunks without reassembling the download
+in the API process.
+
+BUC-EVC-06H2. On disposable PostGIS, serve exact synthetic bytes and
+reject an unpublished revision, an unsupported filename and a
+generation missing its offer.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The route regression initially received the generic router 404.
+Migration 000154 persists the exact offer and notice in bounded
+chunks in the staging transaction. Activation checks both complete
+artifacts and the data digest binding. Coverage advertises the two
+immutable paths. Unpublished revisions and private filenames return
+404. The public reader streamed a multichunk fixture byte-for-byte
+and returned 304 for its ETag.
+
+PostGIS activation, import, HTTP and legacy compatibility tests
+passed with race detection. SQLc, vet, staticcheck, OpenAPI lint
+(zero errors), formatting and secret review passed. The operator
+entry point and authorized national activation remain separate.
