@@ -4,6 +4,7 @@ import com.anpfuel.domain.charging.ChargingCoverage
 import com.anpfuel.domain.charging.ChargingPackMeta
 import com.anpfuel.domain.charging.ChargingPlace
 import com.anpfuel.domain.charging.ChargingPlacePage
+import com.anpfuel.domain.charging.ChargingSourceAttribution
 import java.security.MessageDigest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -35,6 +36,21 @@ class ChargingSnapshotImportTest {
 
     private fun pageBytes(vararg ids: String): ByteArray =
         ids.joinToString(",").toByteArray()
+
+    @Test
+    fun `offline pack keeps both source terms across the storage mapping`() {
+        val sources = listOf(
+            ChargingSourceAttribution("OSM", "node:7", "osm-edition", null, "ODbL-1.0", "© OpenStreetMap contributors (ODbL)"),
+            ChargingSourceAttribution("OCM", "7", "ocm-edition", 40, "CC-0", "Easy Volt"),
+        )
+        val raw = pageBytes(placeId)
+        val session = ChargingSnapshotImport.beginPack(meta(), "https://api.example.test", 3, listOf(sha(raw)), 1)
+        val page = ChargingPlacePage(listOf(place().copy(sources = sources)), null, "2026-10-22T00:00:00Z")
+        ChargingSnapshotImport.addPage(session, raw, page, sha(raw))
+        val stored = ChargingSnapshotImport.commitPack(session, emptyList(), null).places.single()
+        val entity = ChargingSnapshotMapper.toEntity(stored, 100)
+        assertEquals(sources, ChargingSnapshotMapper.toDomain(entity).sources)
+    }
 
     @Test
     fun `begin admits pinned pack and refuses wrong base source origin`() {

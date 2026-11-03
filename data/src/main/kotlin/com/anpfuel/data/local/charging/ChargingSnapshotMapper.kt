@@ -2,6 +2,7 @@ package com.anpfuel.data.local.charging
 
 import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity
+import com.anpfuel.data.mapper.ChargingSourceAttributionJson
 import com.anpfuel.domain.charging.ChargingAccess
 import com.anpfuel.domain.charging.ChargingConnectionGroup
 import com.anpfuel.domain.charging.ChargingConnector
@@ -26,7 +27,7 @@ object ChargingSnapshotMapper {
             name = row.name, country = row.country, latitude = row.latitude,
             longitude = row.longitude, publicAccess = row.publicAccess,
             reportedPoints = row.reportedPoints, groupsJson = row.groupsJson,
-            tombstone = row.tombstone, savedAtMillis = savedAtMillis,
+            tombstone = row.tombstone, savedAtMillis = savedAtMillis, sourcesJson = row.sourcesJson,
         )
 
     fun toMetaEntity(meta: StoredPackMeta, key: String): ChargingSnapshotMetaEntity =
@@ -67,6 +68,7 @@ object ChargingSnapshotMapper {
             latitude = entity.latitude, longitude = entity.longitude,
             publicAccess = ChargingAccess.valueOf(entity.publicAccess),
             reportedPoints = entity.reportedPoints, groups = groups,
+            sources = entity.sourcesJson?.let { ChargingSourceAttributionJson.decode(JSONArray(it)) }.orEmpty(),
         )
     }
 

@@ -89,3 +89,30 @@ Page and detail decoding now retain distinct provider terms and reject
 private or unknown nested fields, absent provider identity and fractional
 provider IDs. The existing no-sources response still decodes. The domain,
 codec and transport suites, whitespace and secret checks pass.
+
+## EVC-05D2 opening
+
+B-BR-EV-RIGHTS-01. The offline charging pack preserves exact public
+attribution per place, within its storage budget. An upgraded legacy
+pack retains its rows and has no inferred provider. The charging
+detail view renders the retained terms in the user's locale.
+
+BUC-EVC-05D2. Round-trip a two-source place through pack import and
+Room mapping. Upgrade schema 33 with a populated legacy pack and verify
+identity, connectors and generation metadata survive with absent terms.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The offline round-trip first returned an empty source list. Room 33 → 34
+adds nullable sources_json to charging_snapshot_place. The pack writer
+preserves and budgets the UTF-8 terms, and its reader uses the same strict
+decoder as the API. The detail dialog displays each distinct attribution
+and licence with the existing heading in eight locales.
+
+All 17 charging snapshot tests passed. Instrumented tests on a disposable
+Android 35 emulator verified migration of a populated legacy pack and
+display of both source notices. The exported schema changes only the
+charging snapshot place table. Mobile static, format, whitespace and
+secret checks pass. The public national data and offer activation remain
+dependent on EVC-06.

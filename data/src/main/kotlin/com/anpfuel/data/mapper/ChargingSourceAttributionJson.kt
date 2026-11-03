@@ -31,6 +31,23 @@ internal object ChargingSourceAttributionJson {
         }
     }
 
+    fun encode(sources: List<ChargingSourceAttribution>): String? {
+        if (sources.isEmpty()) return null
+        val array = JSONArray()
+        for (source in sources) {
+            array.put(
+                JSONObject()
+                    .put("source", source.source)
+                    .put("external_id", source.externalId)
+                    .put("revision", source.revision)
+                    .put("provider_id", source.providerId)
+                    .put("license", source.license)
+                    .put("attribution", source.attribution),
+            )
+        }
+        return array.toString()
+    }
+
     private fun JSONObject.text(key: String): String = get(key) as? String
         ?: throw IllegalArgumentException("invalid charging source field")
 }

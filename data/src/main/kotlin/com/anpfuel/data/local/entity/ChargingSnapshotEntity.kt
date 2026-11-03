@@ -41,6 +41,7 @@ data class ChargingSnapshotPlaceEntity(
     @ColumnInfo(name = "groups_json") val groupsJson: String,
     @ColumnInfo(name = "tombstone") val tombstone: Boolean,
     @ColumnInfo(name = "saved_at_millis") val savedAtMillis: Long,
+    @ColumnInfo(name = "sources_json") val sourcesJson: String? = null,
 )
 
 /**

@@ -840,4 +840,9 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("ALTER TABLE server_station_cache ADD COLUMN address_source TEXT")
         }
     }
+    val MIGRATION_33_34: Migration = object : Migration(33, 34) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE charging_snapshot_place ADD COLUMN sources_json TEXT")
+        }
+    }
 }

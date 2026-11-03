@@ -1,5 +1,6 @@
 package com.anpfuel.data.local.charging
 
+import com.anpfuel.data.mapper.ChargingSourceAttributionJson
 import com.anpfuel.domain.charging.ChargingCoverage
 import com.anpfuel.domain.charging.ChargingPackMeta
 import com.anpfuel.domain.charging.ChargingPlace
@@ -33,6 +34,7 @@ data class StoredChargingPlace(
     val groupsJson: String,
     val tombstone: Boolean,
     val savedAtMillis: Long,
+    val sourcesJson: String? = null,
 )
 
 /** Validated generation metadata row. */
@@ -203,6 +205,7 @@ object ChargingSnapshotImport {
             longitude = place.longitude, publicAccess = place.publicAccess.name,
             reportedPoints = place.reportedPoints, groupsJson = groups.toString(),
             tombstone = false, savedAtMillis = System.currentTimeMillis(),
+            sourcesJson = ChargingSourceAttributionJson.encode(place.sources),
         )
     }
 
@@ -213,7 +216,7 @@ object ChargingSnapshotImport {
     }
 
     private fun estimateBytes(rows: List<StoredChargingPlace>): Long =
-        rows.sumOf { (it.name.length + it.groupsJson.length + 512).toLong() }
+        rows.sumOf { (it.name.length + it.groupsJson.length + (it.sourcesJson?.toByteArray()?.size ?: 0) + 512).toLong() }
 
     private fun sha256Hex(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

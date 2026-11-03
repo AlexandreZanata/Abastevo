@@ -256,6 +256,18 @@ internal fun ChargingExploreContent(
                         text = stringResource(R.string.charging_explore_detail_source, detail.sourceRevision),
                         style = MaterialTheme.typography.bodySmall,
                     )
+                    if (detail.place.sources.isNotEmpty()) {
+                        Text(
+                            text = stringResource(R.string.settings_attribution_section),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        detail.place.sources
+                            .map { it.attribution to it.license }
+                            .distinct()
+                            .forEach { (attribution, license) ->
+                                Text(text = "$attribution · $license", style = MaterialTheme.typography.bodySmall)
+                            }
+                    }
                     Text(
                         text = stringResource(R.string.charging_explore_detail_no_tariff),
                         style = MaterialTheme.typography.bodySmall,

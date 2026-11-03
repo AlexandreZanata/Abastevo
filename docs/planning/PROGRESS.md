@@ -67,8 +67,9 @@
   tests and Clippy pass. EVC-05C LOCAL_DONE: optional charging API source
   terms and cache tags; charging race, real legacy HTTP and OpenAPI pass.
   EVC-05D1 LOCAL_DONE: Android page/detail attribution decode, with
-  legacy compatibility and strict nested validation. Next offline persistence
-  and detail presentation. [Rights evidence](../backend/evidence/evc/EVC-05.md).
+  legacy compatibility and strict nested validation. EVC-05D2 LOCAL_DONE:
+  Room 33→34 preserves per-place attribution and renders it offline; 17
+  unit tests and real emulator migration and detail tests pass. Next EVC-06. [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact

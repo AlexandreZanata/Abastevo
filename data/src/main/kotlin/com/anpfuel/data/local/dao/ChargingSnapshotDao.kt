@@ -113,6 +113,6 @@ interface ChargingSnapshotDao {
     @Query("SELECT COUNT(*) FROM charging_snapshot_place WHERE generation = :generation AND tombstone = 0")
     suspend fun countPlaces(generation: Long): Long
 
-    @Query("SELECT COALESCE(SUM(length(name) + length(groups_json) + 512), 0) FROM charging_snapshot_place WHERE generation = :generation")
+    @Query("SELECT COALESCE(SUM(length(name) + length(groups_json) + COALESCE(length(CAST(sources_json AS BLOB)), 0) + 512), 0) FROM charging_snapshot_place WHERE generation = :generation")
     suspend fun estimatedBytes(generation: Long): Long
 }
