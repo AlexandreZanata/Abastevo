@@ -84,3 +84,54 @@ tests pass. No boundary bytes have been used in a claimed national census yet.
 Seven acquisition test groups run in the Rust fast gate with only synthetic
 transports, no live network. The checkout test handles both normal and linked
 checkouts. IBGE CC BY 4.0 evidence: [technical/legal note](https://www.ibge.gov.br/biblioteca/visualizacao/livros/liv102152.pdf).
+
+## EVC-01B opening
+
+B-BR-EV-SRC-01B: National parsing uses a frozen opt-in profile, refuses bbox/
+limit overrides and records its profile hash. Raw regional output remains
+compatible. Country/UF counts are object/site units, never connector totals.
+Municipality polygons determine UF without fabricating a name/address; holes,
+exclaves, overlapping/border ambiguity and missing geometry must remain honest.
+Only uniquely classified points receive a UF; unassigned records are counted.
+
+BUC-EVC-01B: Reuse the bounded PBF reader and its per-blob index/cache; apply
+explicit input/candidate/tag, memory/file/disk/wall-time ceilings. Emit a
+reproducible per-UF census tied to the PBF and IBGE byte hashes, and a separate
+measured execution receipt. No national file runs before local negative,
+geometry and deterministic-fixture tests. No database access or public runtime
+source queries. Raw preparation candidates are not yet public eligible catalog
+acceptance; EVC-02 owns access/status normalization and private/disused exclusion.
+
+### EVC-01B code checkpoint
+
+Status: LOCAL_DONE (code only)
+Validation: PASS
+
+Tested parent 188e7bea plus this child. RED first failed on absent geography,
+national profile and resource runner modules. GREEN: full Rust fast gate passes
+(fmt, clippy all targets with denied warnings, locked suite) and ten offline
+Python test groups. Synthetic end-to-end CLI runs are byte-identical including
+profile and source/boundary hashes, 27 UF buckets plus UNASSIGNED, separate
+fuel/charging/combined object units and ambiguity reasons. Unknown profiles,
+overrides and existing output are refused before parsing; last good output is
+preserved. Polygon holes/exclaves, overlaps, borders and bad identities/points
+are covered. Legacy regional output remains unchanged by optional fields.
+
+The Linux stdlib runner loads the frozen profile, fences parser address space,
+CPU and per-file size, monitors wall time/owned working disk and kills only its
+own process group on failure. Tests exercise nonzero exit, timeout, memory/file/
+disk refusal, private output and symlink refusal. It measures peak RSS/elapsed
+separately from deterministic artifacts. No dependency was added. The national
+CLI's cooperative deadline supplements this runner; use the runner for actual
+national inputs, never the bare CLI as resource-acceptance evidence. No DB or
+staging operation is part of this checkpoint.
+
+EVC-01C remains IN_PROGRESS. Owner-approved downloads completed: OSM PBF
+2,102,091,708 bytes, SHA-256
+176a899d86f1bf2f77964577c482c119a3dcc772b8ee214e78387a5dfe4d3366;
+IBGE 3,998,504 bytes / 5,571 features, SHA-256
+5491bd548fe381cd388ba81c9edfbf4cf2749891e2fd32c1079ac71f7aba1c10.
+The owner now explicitly authorized downloading/using the dated OCM export
+(2026-04-22) instead of supplying an API key. No key/account creation is needed.
+Do not relabel the snapshot as fresh or infer public/live coverage from raw
+preparation counts. Source pins and real preparation measurements follow.

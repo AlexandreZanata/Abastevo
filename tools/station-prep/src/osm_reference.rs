@@ -9,7 +9,7 @@ use pbf_craft::models::{Element, ElementType, Tag};
 #[cfg(test)]
 use pbf_craft::models::{Node, Relation, RelationMember, Way, WayNode};
 use pbf_craft::readers::{IndexedReader, PbfReader};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashSet};
 use std::fs::{self, File};
@@ -21,7 +21,8 @@ pub const PARSER_VERSION: &str = "osm-reference-v1";
 pub const SOURCE_LICENSE: &str = "ODbL-1.0";
 pub const SOURCE_ATTRIBUTION: &str = "© OpenStreetMap contributors — ODbL 1.0";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Limits {
     pub max_input_bytes: u64,
     pub max_input_elements: u64,
@@ -482,11 +483,36 @@ struct OutputManifest {
     input_bytes: u64,
     census: Census,
     files: BTreeMap<String, FileDigest>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    preparation_profile: Option<serde_json::Value>,
 }
 
 /// Writes a complete generation and swaps it into place. The previous
 /// directory remains untouched on any failure before the final rename.
 pub fn write_run(dir: &Path, run: &ReferenceRun) -> Result<()> {
+    write_generation(dir, run, None)
+}
+
+/// National generations always use a fresh directory; no replacement of a last good run.
+pub fn write_national_run(
+    dir: &Path,
+    run: &ReferenceRun,
+    census: &crate::osm_national::NationalCensus,
+    profile: &crate::osm_national::NationalProfile,
+) -> Result<()> {
+    if dir.exists() {
+        return invalid("national output already exists");
+    }
+    let bytes = serde_json::to_vec_pretty(census)
+        .map_err(|error| OsmReferenceError::Invalid(error.to_string()))?;
+    write_generation(dir, run, Some((profile, bytes)))
+}
+
+fn write_generation(
+    dir: &Path,
+    run: &ReferenceRun,
+    national: Option<(&crate::osm_national::NationalProfile, Vec<u8>)>,
+) -> Result<()> {
     let parent = dir.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(parent).map_err(|error| OsmReferenceError::Invalid(error.to_string()))?;
     let name = dir
@@ -512,9 +538,22 @@ pub fn write_run(dir: &Path, run: &ReferenceRun) -> Result<()> {
             },
         );
     }
+    if let Some((_, bytes)) = &national {
+        write_file(&temp.join("uf-census.json"), bytes)?;
+        files.insert(
+            "uf-census.json".into(),
+            FileDigest {
+                bytes: bytes.len() as u64,
+                sha256: sha256_hex(bytes),
+            },
+        );
+    }
     let manifest = OutputManifest {
         format: REFERENCE_FORMAT.into(),
-        parser_version: PARSER_VERSION.into(),
+        parser_version: national
+            .as_ref()
+            .map(|(p, _)| p.parser_version.clone())
+            .unwrap_or_else(|| PARSER_VERSION.into()),
         source: "OSM".into(),
         license: SOURCE_LICENSE.into(),
         attribution: SOURCE_ATTRIBUTION.into(),
@@ -522,6 +561,7 @@ pub fn write_run(dir: &Path, run: &ReferenceRun) -> Result<()> {
         input_bytes: run.input_bytes,
         census: run.census.clone(),
         files,
+        preparation_profile: national.as_ref().map(|(p, _)| p.manifest()),
     };
     let manifest_bytes = serde_json::to_vec_pretty(&manifest)
         .map_err(|error| OsmReferenceError::Invalid(error.to_string()))?;

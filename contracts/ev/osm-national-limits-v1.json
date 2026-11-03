@@ -1,0 +1,28 @@
+{
+  "format": "abastevo.osm-national-limits-v1",
+  "profile_id": "brazil-ev-national-v1",
+  "parser_version": "osm-reference-v1+national-v1",
+  "exposure": "PRIVATE_PREPARATION",
+  "limits": {
+    "max_input_bytes": 3221225472,
+    "max_input_elements": 400000000,
+    "max_matched": 200000,
+    "max_tags": 64,
+    "max_tag_bytes": 256
+  },
+  "resources": {
+    "max_wall_seconds": 1800,
+    "max_cpu_seconds": 1800,
+    "max_memory_bytes": 6442450944,
+    "max_output_file_bytes": 536870912,
+    "max_working_disk_bytes": 8589934592
+  },
+  "census": {
+    "boundary_max_bytes": 8388608,
+    "boundary_max_features": 6000,
+    "boundary_grid_degrees": 1,
+    "boundary_policy": "unique-polygon-UF-or-unassigned; preserve holes/exclaves; no nearest guess",
+    "source_units": "OSM objects; three site kinds kept separate",
+    "eligibility": "raw candidates only; public access/status filtering belongs to EVC-02"
+  }
+}

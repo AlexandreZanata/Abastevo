@@ -18,7 +18,10 @@
   EVC-01A acquisition code LOCAL_DONE: strict pins/budgets/private output and
   OCM header/pagination tests pass. Owner approved the local 2.10 GB Brazil
   PBF download and existing-key OCM collection; key not yet provided.
-  EVC-01B national limits/census and approved real source pins remain next.
+  EVC-01B national profile/geography/census/resource fences LOCAL_DONE: full Rust
+  gate and ten offline Python groups pass (parent 188e7bea plus child). OSM/IBGE
+  downloads verified; owner approved dated OCM export fallback (22 Apr 2026).
+  EVC-01C actual private preparation/source pins IN_PROGRESS.
   Then EVC-02/03 and SNA-04..06.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links. This is not a national EV coverage
