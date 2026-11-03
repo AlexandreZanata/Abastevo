@@ -120,6 +120,10 @@ These are atomic children in one cumulative delivery, not separate PRs.
 
 ### SNA-02: Storage and projection (append-only migration)
 
+Execution bounds (2026-11-03): SNA-02A = nullable storage and assertion round
+trips; SNA-02B = name/address projection; SNA-02C = resumable concurrent-safe
+re-projection job. Finish all before SNA-03, within the same cumulative PR.
+
 - New migration: `directory_stations.legal_name TEXT NULL`,
   `trade_name TEXT NULL`, `address_source TEXT NULL` with a CHECK on the
   enum. Add the matching staging and assertion columns where the projection

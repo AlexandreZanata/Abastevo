@@ -23,12 +23,14 @@ WHERE id = @id AND state = 'running';
 -- name: StageRegistryAssertion :one
 INSERT INTO registry_assertions (
     id, run_id, source, source_key, checksum, display_name, address,
+    legal_name, trade_name, address_source, source_display_name, trade_name_provenance,
     municipality_code, state, auth_state, operation, eligibility,
     location_quality, source_reference, effective_date,
     latitude, longitude, crs
 ) VALUES (
     @id, @run_id, @source, @source_key, @checksum, @display_name,
-    @address, @municipality_code, @state, @auth_state, @operation,
+    @address, @legal_name, @trade_name, @address_source, @source_display_name, @trade_name_provenance,
+    @municipality_code, @state, @auth_state, @operation,
     @eligibility, @location_quality, @source_reference, @effective_date,
     @latitude, @longitude, @crs
 )
@@ -49,6 +51,7 @@ WHERE id = @id;
 
 -- name: ListRegistryAssertions :many
 SELECT id, run_id, source, source_key, checksum, display_name, address,
+    legal_name, trade_name, address_source, source_display_name, trade_name_provenance,
     municipality_code, state, auth_state, operation, eligibility,
     location_quality, source_reference, latitude, longitude, crs,
     station_id
@@ -101,6 +104,7 @@ LIMIT 1;
 
 -- name: GetReviewEvidence :one
 SELECT a.id, a.run_id, a.source, a.source_key, a.checksum, a.display_name,
+    a.legal_name, a.trade_name, a.address_source, a.source_display_name, a.trade_name_provenance,
     a.address, a.municipality_code, a.state, a.auth_state, a.operation,
     a.eligibility, a.location_quality, a.source_reference, a.latitude,
     a.longitude, a.crs, a.station_id, a.effective_date, r.state AS run_state

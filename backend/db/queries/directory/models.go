@@ -40,30 +40,38 @@ type DirectoryStation struct {
 	CurrentQuality    pgtype.Text        `json:"current_quality"`
 	CurrentRevisionID pgtype.UUID        `json:"current_revision_id"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	LegalName         pgtype.Text        `json:"legal_name"`
+	TradeName         pgtype.Text        `json:"trade_name"`
+	AddressSource     pgtype.Text        `json:"address_source"`
 }
 
 type RegistryAssertion struct {
-	ID               pgtype.UUID        `json:"id"`
-	RunID            pgtype.UUID        `json:"run_id"`
-	Source           string             `json:"source"`
-	SourceKey        string             `json:"source_key"`
-	Checksum         string             `json:"checksum"`
-	StationID        pgtype.UUID        `json:"station_id"`
-	DisplayName      string             `json:"display_name"`
-	Address          []byte             `json:"address"`
-	MunicipalityCode pgtype.Text        `json:"municipality_code"`
-	State            pgtype.Text        `json:"state"`
-	AuthState        string             `json:"auth_state"`
-	Operation        string             `json:"operation"`
-	Eligibility      string             `json:"eligibility"`
-	LocationQuality  string             `json:"location_quality"`
-	SourceReference  string             `json:"source_reference"`
-	EffectiveDate    pgtype.Date        `json:"effective_date"`
-	FetchedAt        pgtype.Timestamptz `json:"fetched_at"`
-	SupersededBy     pgtype.UUID        `json:"superseded_by"`
-	Latitude         pgtype.Float8      `json:"latitude"`
-	Longitude        pgtype.Float8      `json:"longitude"`
-	Crs              string             `json:"crs"`
+	ID                  pgtype.UUID        `json:"id"`
+	RunID               pgtype.UUID        `json:"run_id"`
+	Source              string             `json:"source"`
+	SourceKey           string             `json:"source_key"`
+	Checksum            string             `json:"checksum"`
+	StationID           pgtype.UUID        `json:"station_id"`
+	DisplayName         string             `json:"display_name"`
+	Address             []byte             `json:"address"`
+	MunicipalityCode    pgtype.Text        `json:"municipality_code"`
+	State               pgtype.Text        `json:"state"`
+	AuthState           string             `json:"auth_state"`
+	Operation           string             `json:"operation"`
+	Eligibility         string             `json:"eligibility"`
+	LocationQuality     string             `json:"location_quality"`
+	SourceReference     string             `json:"source_reference"`
+	EffectiveDate       pgtype.Date        `json:"effective_date"`
+	FetchedAt           pgtype.Timestamptz `json:"fetched_at"`
+	SupersededBy        pgtype.UUID        `json:"superseded_by"`
+	Latitude            pgtype.Float8      `json:"latitude"`
+	Longitude           pgtype.Float8      `json:"longitude"`
+	Crs                 string             `json:"crs"`
+	LegalName           pgtype.Text        `json:"legal_name"`
+	TradeName           pgtype.Text        `json:"trade_name"`
+	AddressSource       pgtype.Text        `json:"address_source"`
+	SourceDisplayName   pgtype.Text        `json:"source_display_name"`
+	TradeNameProvenance []byte             `json:"trade_name_provenance"`
 }
 
 type RegistryRunAssertion struct {

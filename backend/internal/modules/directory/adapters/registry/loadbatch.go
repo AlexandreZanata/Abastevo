@@ -501,21 +501,23 @@ func mapAssertionRow(row BatchAssertion) (Assertion, error) {
 		return invalid("sourced names require assertion v3")
 	}
 	return Assertion{
-		LegalName:        legal,
-		TradeName:        trade,
-		Source:           SourcePrep,
-		SourceKey:        cnpj,
-		Checksum:         strings.ToLower(row.Checksum),
-		DisplayName:      display,
-		Address:          address,
-		MunicipalityCode: row.MunicipalityIBGE,
-		State:            strings.ToUpper(row.UF),
-		AuthState:        row.AuthState,
-		Eligibility:      row.Eligibility,
-		LocationQuality:  row.LocationQuality,
-		SourceReference:  row.AuthorizationRef,
-		EffectiveDate:    effective,
-		HasCoords:        false,
+		SourceDisplayName:   row.BusinessNameNormalized,
+		TradeNameProvenance: row.TradeNameProvenance,
+		LegalName:           legal,
+		TradeName:           trade,
+		Source:              SourcePrep,
+		SourceKey:           cnpj,
+		Checksum:            strings.ToLower(row.Checksum),
+		DisplayName:         display,
+		Address:             address,
+		MunicipalityCode:    row.MunicipalityIBGE,
+		State:               strings.ToUpper(row.UF),
+		AuthState:           row.AuthState,
+		Eligibility:         row.Eligibility,
+		LocationQuality:     row.LocationQuality,
+		SourceReference:     row.AuthorizationRef,
+		EffectiveDate:       effective,
+		HasCoords:           false,
 	}, nil
 }
 

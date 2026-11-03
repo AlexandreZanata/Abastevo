@@ -1,0 +1,153 @@
+{
+  "coverage_read": "passed",
+  "read_at": "2026-11-03T12:40:23.107536+00:00",
+  "stations_by_uf": [
+    {
+      "uf": "AC",
+      "stations": 193,
+      "with_point": 153
+    },
+    {
+      "uf": "AL",
+      "stations": 569,
+      "with_point": 566
+    },
+    {
+      "uf": "AM",
+      "stations": 863,
+      "with_point": 648
+    },
+    {
+      "uf": "AP",
+      "stations": 145,
+      "with_point": 113
+    },
+    {
+      "uf": "BA",
+      "stations": 3714,
+      "with_point": 2863
+    },
+    {
+      "uf": "CE",
+      "stations": 2030,
+      "with_point": 1709
+    },
+    {
+      "uf": "DF",
+      "stations": 392,
+      "with_point": 389
+    },
+    {
+      "uf": "ES",
+      "stations": 799,
+      "with_point": 752
+    },
+    {
+      "uf": "GO",
+      "stations": 2067,
+      "with_point": 2020
+    },
+    {
+      "uf": "MA",
+      "stations": 1793,
+      "with_point": 1204
+    },
+    {
+      "uf": "MG",
+      "stations": 5050,
+      "with_point": 4796
+    },
+    {
+      "uf": "MS",
+      "stations": 632,
+      "with_point": 615
+    },
+    {
+      "uf": "MT",
+      "stations": 1174,
+      "with_point": 1072
+    },
+    {
+      "uf": "PA",
+      "stations": 1744,
+      "with_point": 1352
+    },
+    {
+      "uf": "PB",
+      "stations": 887,
+      "with_point": 858
+    },
+    {
+      "uf": "PE",
+      "stations": 1636,
+      "with_point": 1608
+    },
+    {
+      "uf": "PI",
+      "stations": 1240,
+      "with_point": 901
+    },
+    {
+      "uf": "PR",
+      "stations": 2961,
+      "with_point": 2453
+    },
+    {
+      "uf": "RJ",
+      "stations": 1997,
+      "with_point": 1968
+    },
+    {
+      "uf": "RN",
+      "stations": 737,
+      "with_point": 678
+    },
+    {
+      "uf": "RO",
+      "stations": 535,
+      "with_point": 429
+    },
+    {
+      "uf": "RR",
+      "stations": 148,
+      "with_point": 145
+    },
+    {
+      "uf": "RS",
+      "stations": 3167,
+      "with_point": 2934
+    },
+    {
+      "uf": "SC",
+      "stations": 2096,
+      "with_point": 1927
+    },
+    {
+      "uf": "SE",
+      "stations": 339,
+      "with_point": 301
+    },
+    {
+      "uf": "SP",
+      "stations": 8382,
+      "with_point": 7512
+    },
+    {
+      "uf": "TO",
+      "stations": 477,
+      "with_point": 422
+    },
+    {
+      "uf": null,
+      "stations": 3003,
+      "with_point": 0
+    }
+  ],
+  "charging_batches": [],
+  "charging_links": {
+    "reviewed": 0,
+    "unresolved": 0,
+    "rejected": 0
+  },
+  "charging_per_profile_uf": []
+}

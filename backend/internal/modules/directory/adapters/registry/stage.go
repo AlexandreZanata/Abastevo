@@ -64,26 +64,29 @@ type Store interface {
 
 // Assertion is one validated source row ready for staging.
 type Assertion struct {
-	ID               string
-	Source           string
-	SourceKey        string
-	Checksum         string
-	DisplayName      string
-	LegalName        string
-	TradeName        string
-	Address          map[string]string
-	MunicipalityCode string
-	State            string
-	AuthState        string
-	Eligibility      string
-	LocationQuality  string
-	SourceReference  string
-	EffectiveDate    pgtype.Date
-	Latitude         float64
-	Longitude        float64
-	HasCoords        bool
-	CRS              string
-	runID            string
+	ID                  string
+	Source              string
+	SourceKey           string
+	Checksum            string
+	DisplayName         string
+	LegalName           string
+	SourceDisplayName   string
+	AddressSource       string
+	TradeNameProvenance *BatchNameProvenance
+	TradeName           string
+	Address             map[string]string
+	MunicipalityCode    string
+	State               string
+	AuthState           string
+	Eligibility         string
+	LocationQuality     string
+	SourceReference     string
+	EffectiveDate       pgtype.Date
+	Latitude            float64
+	Longitude           float64
+	HasCoords           bool
+	CRS                 string
+	runID               string
 }
 
 // PGStore implements Store with the generated directory queries.
@@ -191,9 +194,30 @@ func (s *PGStore) StageAssertion(ctx context.Context, a Assertion) (bool, error)
 	if err != nil {
 		return false, err
 	}
+	var provenance []byte
+	if a.TradeNameProvenance != nil {
+		provenance, err = json.Marshal(a.TradeNameProvenance)
+		if err != nil {
+			return false, err
+		}
+	}
+	sourceDisplay := a.SourceDisplayName
+	if sourceDisplay == "" {
+		sourceDisplay = a.DisplayName
+	}
+	addressSource := a.AddressSource
+	if addressSource == "" && (a.Source == SourceCSV || a.Source == SourceAPI || a.Source == SourcePrep) {
+		if strings.TrimSpace(a.Address["street"]) != "" || strings.TrimSpace(a.Address["raw"]) != "" {
+			addressSource = "anp"
+		} else if strings.TrimSpace(a.Address["municipio"]) != "" {
+			addressSource = "municipality"
+		}
+	}
 	id, err := s.Q.StageRegistryAssertion(ctx, directory.StageRegistryAssertionParams{
 		ID: uid, RunID: runUID, Source: a.Source, SourceKey: a.SourceKey,
 		Checksum: a.Checksum, DisplayName: a.DisplayName, Address: address,
+		LegalName: textOrNull(a.LegalName), TradeName: textOrNull(a.TradeName),
+		SourceDisplayName: textOrNull(sourceDisplay), AddressSource: textOrNull(addressSource), TradeNameProvenance: provenance,
 		MunicipalityCode: textOrNull(a.MunicipalityCode), State: textOrNull(a.State),
 		AuthState: a.AuthState, Operation: "unknown", Eligibility: a.Eligibility,
 		LocationQuality: a.LocationQuality, SourceReference: a.SourceReference,
@@ -226,7 +250,13 @@ func (s *PGStore) ListAssertions(ctx context.Context, runID string) ([]Assertion
 		if len(row.Address) > 0 {
 			_ = json.Unmarshal(row.Address, &address)
 		}
+		provenance, err := decodeStoredNameProvenance(row.TradeNameProvenance)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, Assertion{
+			LegalName: row.LegalName.String, TradeName: row.TradeName.String,
+			SourceDisplayName: row.SourceDisplayName.String, AddressSource: row.AddressSource.String, TradeNameProvenance: provenance,
 			ID:               uuidString(row.ID),
 			Source:           row.Source,
 			SourceKey:        row.SourceKey,
@@ -280,7 +310,13 @@ func (s *PGStore) GetAssertion(ctx context.Context, id string) (Assertion, strin
 	if len(row.Address) > 0 {
 		_ = json.Unmarshal(row.Address, &address)
 	}
+	provenance, err := decodeStoredNameProvenance(row.TradeNameProvenance)
+	if err != nil {
+		return Assertion{}, "", err
+	}
 	return Assertion{
+		LegalName: row.LegalName.String, TradeName: row.TradeName.String,
+		SourceDisplayName: row.SourceDisplayName.String, AddressSource: row.AddressSource.String, TradeNameProvenance: provenance,
 		ID:               uuidString(row.ID),
 		Source:           row.Source,
 		SourceKey:        row.SourceKey,

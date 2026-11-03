@@ -767,6 +767,7 @@ func (q *Queries) GetRegistryRunByID(ctx context.Context, id pgtype.UUID) (GetRe
 const getReviewEvidence = `-- name: GetReviewEvidence :one
 
 SELECT a.id, a.run_id, a.source, a.source_key, a.checksum, a.display_name,
+    a.legal_name, a.trade_name, a.address_source, a.source_display_name, a.trade_name_provenance,
     a.address, a.municipality_code, a.state, a.auth_state, a.operation,
     a.eligibility, a.location_quality, a.source_reference, a.latitude,
     a.longitude, a.crs, a.station_id, a.effective_date, r.state AS run_state
@@ -776,26 +777,31 @@ WHERE a.id = $1
 `
 
 type GetReviewEvidenceRow struct {
-	ID               pgtype.UUID   `json:"id"`
-	RunID            pgtype.UUID   `json:"run_id"`
-	Source           string        `json:"source"`
-	SourceKey        string        `json:"source_key"`
-	Checksum         string        `json:"checksum"`
-	DisplayName      string        `json:"display_name"`
-	Address          []byte        `json:"address"`
-	MunicipalityCode pgtype.Text   `json:"municipality_code"`
-	State            pgtype.Text   `json:"state"`
-	AuthState        string        `json:"auth_state"`
-	Operation        string        `json:"operation"`
-	Eligibility      string        `json:"eligibility"`
-	LocationQuality  string        `json:"location_quality"`
-	SourceReference  string        `json:"source_reference"`
-	Latitude         pgtype.Float8 `json:"latitude"`
-	Longitude        pgtype.Float8 `json:"longitude"`
-	Crs              string        `json:"crs"`
-	StationID        pgtype.UUID   `json:"station_id"`
-	EffectiveDate    pgtype.Date   `json:"effective_date"`
-	RunState         string        `json:"run_state"`
+	ID                  pgtype.UUID   `json:"id"`
+	RunID               pgtype.UUID   `json:"run_id"`
+	Source              string        `json:"source"`
+	SourceKey           string        `json:"source_key"`
+	Checksum            string        `json:"checksum"`
+	DisplayName         string        `json:"display_name"`
+	LegalName           pgtype.Text   `json:"legal_name"`
+	TradeName           pgtype.Text   `json:"trade_name"`
+	AddressSource       pgtype.Text   `json:"address_source"`
+	SourceDisplayName   pgtype.Text   `json:"source_display_name"`
+	TradeNameProvenance []byte        `json:"trade_name_provenance"`
+	Address             []byte        `json:"address"`
+	MunicipalityCode    pgtype.Text   `json:"municipality_code"`
+	State               pgtype.Text   `json:"state"`
+	AuthState           string        `json:"auth_state"`
+	Operation           string        `json:"operation"`
+	Eligibility         string        `json:"eligibility"`
+	LocationQuality     string        `json:"location_quality"`
+	SourceReference     string        `json:"source_reference"`
+	Latitude            pgtype.Float8 `json:"latitude"`
+	Longitude           pgtype.Float8 `json:"longitude"`
+	Crs                 string        `json:"crs"`
+	StationID           pgtype.UUID   `json:"station_id"`
+	EffectiveDate       pgtype.Date   `json:"effective_date"`
+	RunState            string        `json:"run_state"`
 }
 
 // Owned by directory (location review, RST-06). The CRS transform stays
@@ -811,6 +817,11 @@ func (q *Queries) GetReviewEvidence(ctx context.Context, id pgtype.UUID) (GetRev
 		&i.SourceKey,
 		&i.Checksum,
 		&i.DisplayName,
+		&i.LegalName,
+		&i.TradeName,
+		&i.AddressSource,
+		&i.SourceDisplayName,
+		&i.TradeNameProvenance,
 		&i.Address,
 		&i.MunicipalityCode,
 		&i.State,
@@ -1177,6 +1188,7 @@ func (q *Queries) ListPreparedRegistryPage(ctx context.Context, arg ListPrepared
 
 const listRegistryAssertions = `-- name: ListRegistryAssertions :many
 SELECT id, run_id, source, source_key, checksum, display_name, address,
+    legal_name, trade_name, address_source, source_display_name, trade_name_provenance,
     municipality_code, state, auth_state, operation, eligibility,
     location_quality, source_reference, latitude, longitude, crs,
     station_id
@@ -1187,24 +1199,29 @@ ORDER BY source_key, checksum
 `
 
 type ListRegistryAssertionsRow struct {
-	ID               pgtype.UUID   `json:"id"`
-	RunID            pgtype.UUID   `json:"run_id"`
-	Source           string        `json:"source"`
-	SourceKey        string        `json:"source_key"`
-	Checksum         string        `json:"checksum"`
-	DisplayName      string        `json:"display_name"`
-	Address          []byte        `json:"address"`
-	MunicipalityCode pgtype.Text   `json:"municipality_code"`
-	State            pgtype.Text   `json:"state"`
-	AuthState        string        `json:"auth_state"`
-	Operation        string        `json:"operation"`
-	Eligibility      string        `json:"eligibility"`
-	LocationQuality  string        `json:"location_quality"`
-	SourceReference  string        `json:"source_reference"`
-	Latitude         pgtype.Float8 `json:"latitude"`
-	Longitude        pgtype.Float8 `json:"longitude"`
-	Crs              string        `json:"crs"`
-	StationID        pgtype.UUID   `json:"station_id"`
+	ID                  pgtype.UUID   `json:"id"`
+	RunID               pgtype.UUID   `json:"run_id"`
+	Source              string        `json:"source"`
+	SourceKey           string        `json:"source_key"`
+	Checksum            string        `json:"checksum"`
+	DisplayName         string        `json:"display_name"`
+	Address             []byte        `json:"address"`
+	LegalName           pgtype.Text   `json:"legal_name"`
+	TradeName           pgtype.Text   `json:"trade_name"`
+	AddressSource       pgtype.Text   `json:"address_source"`
+	SourceDisplayName   pgtype.Text   `json:"source_display_name"`
+	TradeNameProvenance []byte        `json:"trade_name_provenance"`
+	MunicipalityCode    pgtype.Text   `json:"municipality_code"`
+	State               pgtype.Text   `json:"state"`
+	AuthState           string        `json:"auth_state"`
+	Operation           string        `json:"operation"`
+	Eligibility         string        `json:"eligibility"`
+	LocationQuality     string        `json:"location_quality"`
+	SourceReference     string        `json:"source_reference"`
+	Latitude            pgtype.Float8 `json:"latitude"`
+	Longitude           pgtype.Float8 `json:"longitude"`
+	Crs                 string        `json:"crs"`
+	StationID           pgtype.UUID   `json:"station_id"`
 }
 
 func (q *Queries) ListRegistryAssertions(ctx context.Context, runID pgtype.UUID) ([]ListRegistryAssertionsRow, error) {
@@ -1224,6 +1241,11 @@ func (q *Queries) ListRegistryAssertions(ctx context.Context, runID pgtype.UUID)
 			&i.Checksum,
 			&i.DisplayName,
 			&i.Address,
+			&i.LegalName,
+			&i.TradeName,
+			&i.AddressSource,
+			&i.SourceDisplayName,
+			&i.TradeNameProvenance,
 			&i.MunicipalityCode,
 			&i.State,
 			&i.AuthState,
@@ -1447,38 +1469,45 @@ func (q *Queries) SetInitialRegistryLocality(ctx context.Context, arg SetInitial
 const stageRegistryAssertion = `-- name: StageRegistryAssertion :one
 INSERT INTO registry_assertions (
     id, run_id, source, source_key, checksum, display_name, address,
+    legal_name, trade_name, address_source, source_display_name, trade_name_provenance,
     municipality_code, state, auth_state, operation, eligibility,
     location_quality, source_reference, effective_date,
     latitude, longitude, crs
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
-    $7, $8, $9, $10, $11,
-    $12, $13, $14, $15,
-    $16, $17, $18
+    $7, $8, $9, $10, $11, $12,
+    $13, $14, $15, $16,
+    $17, $18, $19, $20,
+    $21, $22, $23
 )
 ON CONFLICT (source, source_key, checksum) DO NOTHING
 RETURNING id
 `
 
 type StageRegistryAssertionParams struct {
-	ID               pgtype.UUID   `json:"id"`
-	RunID            pgtype.UUID   `json:"run_id"`
-	Source           string        `json:"source"`
-	SourceKey        string        `json:"source_key"`
-	Checksum         string        `json:"checksum"`
-	DisplayName      string        `json:"display_name"`
-	Address          []byte        `json:"address"`
-	MunicipalityCode pgtype.Text   `json:"municipality_code"`
-	State            pgtype.Text   `json:"state"`
-	AuthState        string        `json:"auth_state"`
-	Operation        string        `json:"operation"`
-	Eligibility      string        `json:"eligibility"`
-	LocationQuality  string        `json:"location_quality"`
-	SourceReference  string        `json:"source_reference"`
-	EffectiveDate    pgtype.Date   `json:"effective_date"`
-	Latitude         pgtype.Float8 `json:"latitude"`
-	Longitude        pgtype.Float8 `json:"longitude"`
-	Crs              string        `json:"crs"`
+	ID                  pgtype.UUID   `json:"id"`
+	RunID               pgtype.UUID   `json:"run_id"`
+	Source              string        `json:"source"`
+	SourceKey           string        `json:"source_key"`
+	Checksum            string        `json:"checksum"`
+	DisplayName         string        `json:"display_name"`
+	Address             []byte        `json:"address"`
+	LegalName           pgtype.Text   `json:"legal_name"`
+	TradeName           pgtype.Text   `json:"trade_name"`
+	AddressSource       pgtype.Text   `json:"address_source"`
+	SourceDisplayName   pgtype.Text   `json:"source_display_name"`
+	TradeNameProvenance []byte        `json:"trade_name_provenance"`
+	MunicipalityCode    pgtype.Text   `json:"municipality_code"`
+	State               pgtype.Text   `json:"state"`
+	AuthState           string        `json:"auth_state"`
+	Operation           string        `json:"operation"`
+	Eligibility         string        `json:"eligibility"`
+	LocationQuality     string        `json:"location_quality"`
+	SourceReference     string        `json:"source_reference"`
+	EffectiveDate       pgtype.Date   `json:"effective_date"`
+	Latitude            pgtype.Float8 `json:"latitude"`
+	Longitude           pgtype.Float8 `json:"longitude"`
+	Crs                 string        `json:"crs"`
 }
 
 func (q *Queries) StageRegistryAssertion(ctx context.Context, arg StageRegistryAssertionParams) (pgtype.UUID, error) {
@@ -1490,6 +1519,11 @@ func (q *Queries) StageRegistryAssertion(ctx context.Context, arg StageRegistryA
 		arg.Checksum,
 		arg.DisplayName,
 		arg.Address,
+		arg.LegalName,
+		arg.TradeName,
+		arg.AddressSource,
+		arg.SourceDisplayName,
+		arg.TradeNameProvenance,
 		arg.MunicipalityCode,
 		arg.State,
 		arg.AuthState,

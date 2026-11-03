@@ -91,7 +91,7 @@ func TestStationNamesActualRustV3AdmissionAndPreparedRollback(t *testing.T) {
 			t.Fatal(reports)
 		}
 		assertions, err := store.ListAssertions(context.Background(), reports["registry-13col"].RunID)
-		if err != nil || len(assertions) != 1 || assertions[0].DisplayName != "[P25-TEST] Trade" {
+		if err != nil || len(assertions) != 1 || assertions[0].DisplayName != "[P25-TEST] Trade" || assertions[0].LegalName != a.LegalName || assertions[0].TradeNameProvenance == nil || assertions[0].TradeNameProvenance.SHA256 != hex.EncodeToString(sum[:]) || assertions[0].AddressSource != "anp" || assertions[0].SourceDisplayName != "[P25-TEST] Legal LTDA" {
 			t.Fatalf("v3 staging %+v: %v", assertions, err)
 		}
 	}

@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -72,4 +73,15 @@ func validateNameBinding(manifest BatchManifest, row BatchAssertion) error {
 		}
 	}
 	return fmt.Errorf("registry: trade name provenance matches no pinned input")
+}
+
+func decodeStoredNameProvenance(raw []byte) (*BatchNameProvenance, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var provenance BatchNameProvenance
+	if err := json.Unmarshal(raw, &provenance); err != nil {
+		return nil, fmt.Errorf("registry: invalid stored name provenance: %w", err)
+	}
+	return &provenance, nil
 }
