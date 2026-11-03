@@ -82,6 +82,7 @@ type RegistryAssertion struct {
 	AddressSource       pgtype.Text        `json:"address_source"`
 	SourceDisplayName   pgtype.Text        `json:"source_display_name"`
 	TradeNameProvenance []byte             `json:"trade_name_provenance"`
+	AddressProvenance   []byte             `json:"address_provenance"`
 }
 
 type RegistryRunAssertion struct {

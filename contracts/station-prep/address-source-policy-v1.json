@@ -1,0 +1,31 @@
+{
+  "id": "station-address-sources-v1",
+  "sources": {
+    "rfb": {
+      "status": "ADMITTED",
+      "profile": "rfb-station-addresses-v1",
+      "license": "Creative Commons Attribution",
+      "license_version": null,
+      "attribution": "Receita Federal do Brasil — Cadastro Nacional da Pessoa Jurídica (CNPJ)",
+      "rights_reference": "https://dados.gov.br/dados/conjuntos-dados/cadastro-nacional-da-pessoa-juridica---cnpj",
+      "reviewed_on": "2026-11-03"
+    },
+    "osm": {
+      "status": "ADMITTED",
+      "profile": "osm-station-addresses-v1",
+      "license": "ODbL-1.0",
+      "attribution": "© OpenStreetMap contributors",
+      "rights_reference": "https://www.openstreetmap.org/copyright",
+      "publication": "attribution and derived-database offer required",
+      "reviewed_on": "2026-11-03"
+    },
+    "cnefe": {
+      "status": "PENDING",
+      "profile": "cnefe-station-addresses-v1",
+      "license": null,
+      "rights_reference": "https://www.ibge.gov.br/estatisticas/sociais/populacao/38734-cadastro-nacional-de-enderecos-para-fins-estatisticos.html",
+      "reason": "dataset reuse permission not yet independently established; skip real rows",
+      "reviewed_on": "2026-11-03"
+    }
+  }
+}

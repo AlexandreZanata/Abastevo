@@ -763,7 +763,7 @@ func (q *Queries) GetRegistryRunByID(ctx context.Context, id pgtype.UUID) (GetRe
 const getReviewEvidence = `-- name: GetReviewEvidence :one
 
 SELECT a.id, a.run_id, a.source, a.source_key, a.checksum, a.display_name,
-    a.legal_name, a.trade_name, a.address_source, a.source_display_name, a.trade_name_provenance,
+    a.legal_name, a.trade_name, a.address_source, a.source_display_name, a.trade_name_provenance, a.address_provenance,
     a.address, a.municipality_code, a.state, a.auth_state, a.operation,
     a.eligibility, a.location_quality, a.source_reference, a.latitude,
     a.longitude, a.crs, a.station_id, a.effective_date, r.state AS run_state
@@ -784,6 +784,7 @@ type GetReviewEvidenceRow struct {
 	AddressSource       pgtype.Text   `json:"address_source"`
 	SourceDisplayName   pgtype.Text   `json:"source_display_name"`
 	TradeNameProvenance []byte        `json:"trade_name_provenance"`
+	AddressProvenance   []byte        `json:"address_provenance"`
 	Address             []byte        `json:"address"`
 	MunicipalityCode    pgtype.Text   `json:"municipality_code"`
 	State               pgtype.Text   `json:"state"`
@@ -818,6 +819,7 @@ func (q *Queries) GetReviewEvidence(ctx context.Context, id pgtype.UUID) (GetRev
 		&i.AddressSource,
 		&i.SourceDisplayName,
 		&i.TradeNameProvenance,
+		&i.AddressProvenance,
 		&i.Address,
 		&i.MunicipalityCode,
 		&i.State,
@@ -1183,7 +1185,7 @@ func (q *Queries) ListPreparedRegistryPage(ctx context.Context, arg ListPrepared
 
 const listRegistryAssertions = `-- name: ListRegistryAssertions :many
 SELECT id, run_id, source, source_key, checksum, display_name, address,
-    legal_name, trade_name, address_source, source_display_name, trade_name_provenance,
+    legal_name, trade_name, address_source, source_display_name, trade_name_provenance, address_provenance,
     municipality_code, state, auth_state, operation, eligibility,
     location_quality, source_reference, latitude, longitude, crs,
     station_id
@@ -1206,6 +1208,7 @@ type ListRegistryAssertionsRow struct {
 	AddressSource       pgtype.Text   `json:"address_source"`
 	SourceDisplayName   pgtype.Text   `json:"source_display_name"`
 	TradeNameProvenance []byte        `json:"trade_name_provenance"`
+	AddressProvenance   []byte        `json:"address_provenance"`
 	MunicipalityCode    pgtype.Text   `json:"municipality_code"`
 	State               pgtype.Text   `json:"state"`
 	AuthState           string        `json:"auth_state"`
@@ -1241,6 +1244,7 @@ func (q *Queries) ListRegistryAssertions(ctx context.Context, runID pgtype.UUID)
 			&i.AddressSource,
 			&i.SourceDisplayName,
 			&i.TradeNameProvenance,
+			&i.AddressProvenance,
 			&i.MunicipalityCode,
 			&i.State,
 			&i.AuthState,
@@ -1427,16 +1431,16 @@ func (q *Queries) SetInitialRegistryLocality(ctx context.Context, arg SetInitial
 const stageRegistryAssertion = `-- name: StageRegistryAssertion :one
 INSERT INTO registry_assertions (
     id, run_id, source, source_key, checksum, display_name, address,
-    legal_name, trade_name, address_source, source_display_name, trade_name_provenance,
+    legal_name, trade_name, address_source, source_display_name, trade_name_provenance, address_provenance,
     municipality_code, state, auth_state, operation, eligibility,
     location_quality, source_reference, effective_date,
     latitude, longitude, crs
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
-    $7, $8, $9, $10, $11, $12,
-    $13, $14, $15, $16,
-    $17, $18, $19, $20,
-    $21, $22, $23
+    $7, $8, $9, $10, $11, $12, $13,
+    $14, $15, $16, $17,
+    $18, $19, $20, $21,
+    $22, $23, $24
 )
 ON CONFLICT (source, source_key, checksum) DO NOTHING
 RETURNING id
@@ -1455,6 +1459,7 @@ type StageRegistryAssertionParams struct {
 	AddressSource       pgtype.Text   `json:"address_source"`
 	SourceDisplayName   pgtype.Text   `json:"source_display_name"`
 	TradeNameProvenance []byte        `json:"trade_name_provenance"`
+	AddressProvenance   []byte        `json:"address_provenance"`
 	MunicipalityCode    pgtype.Text   `json:"municipality_code"`
 	State               pgtype.Text   `json:"state"`
 	AuthState           string        `json:"auth_state"`
@@ -1482,6 +1487,7 @@ func (q *Queries) StageRegistryAssertion(ctx context.Context, arg StageRegistryA
 		arg.AddressSource,
 		arg.SourceDisplayName,
 		arg.TradeNameProvenance,
+		arg.AddressProvenance,
 		arg.MunicipalityCode,
 		arg.State,
 		arg.AuthState,

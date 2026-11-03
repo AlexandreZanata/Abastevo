@@ -134,6 +134,8 @@ pub struct RegistryRow {
     pub trade_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trade_name_provenance: Option<crate::registry_names::NameProvenance>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address_facts: Option<crate::registry_addresses::AddressFacts>,
     pub business_name_raw: String,
     pub business_name_normalized: String,
     pub address_raw: String,
@@ -171,6 +173,7 @@ impl RegistryRow {
 pub struct RegistryBatch {
     pub name_profile: bool,
     pub name_inputs: Vec<crate::registry_names::NameInputPin>,
+    pub address_metadata: Option<crate::registry_addresses::AddressMetadata>,
     pub state: RunState,
     pub error_code: String,
     pub counts: Counts,
@@ -272,6 +275,7 @@ fn parse_registry_profile(
         return Ok(RegistryBatch {
             name_profile: named,
             name_inputs: Vec::new(),
+            address_metadata: None,
             state: RunState::Quarantined,
             error_code: "header_mismatch".to_string(),
             counts: Counts::default(),
@@ -491,6 +495,7 @@ fn parse_registry_profile(
             legal_name: named.then_some(legal_raw),
             trade_name: named.then(String::new),
             trade_name_provenance: None,
+            address_facts: None,
             source: REGISTRY_SOURCE,
             source_key: cnpj,
             checksum,
@@ -587,6 +592,7 @@ fn parse_registry_profile(
     Ok(RegistryBatch {
         name_profile: named,
         name_inputs: Vec::new(),
+        address_metadata: None,
         state: RunState::Complete,
         error_code: String::new(),
         counts,

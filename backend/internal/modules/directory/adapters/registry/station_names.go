@@ -37,7 +37,7 @@ func validateNameInputs(manifest BatchManifest) error {
 	seen := map[string]bool{}
 	for _, pin := range manifest.NameInputs {
 		expected := map[string]string{"rfb": "rfb-station-names-v1", "anp-survey": "anp-station-price-v1"}[pin.Source]
-		if manifest.ParserVersion != namedParserVersion || expected == "" || expected != pin.Profile || seen[pin.Source] ||
+		if (manifest.ParserVersion != namedParserVersion && manifest.ParserVersion != addressParserVersion) || expected == "" || expected != pin.Profile || seen[pin.Source] ||
 			strings.TrimSpace(pin.Reference) == "" || len(pin.Reference) > 2048 || strings.TrimSpace(pin.Edition) == "" || len(pin.Edition) > 256 ||
 			!validSHA256(pin.SHA256) || pin.Bytes > 64<<20 || pin.Rows < 0 || pin.Rows > 500000 {
 			return fmt.Errorf("registry: invalid pinned name input")
@@ -48,10 +48,10 @@ func validateNameInputs(manifest BatchManifest) error {
 }
 
 func validateNameBinding(manifest BatchManifest, row BatchAssertion) error {
-	if row.SchemaVersion != SchemaAssertionV3 {
+	if row.SchemaVersion != SchemaAssertionV3 && row.SchemaVersion != SchemaAssertionV4 {
 		return nil
 	} // Old schemas reject name fields during mapping.
-	if manifest.ParserVersion != namedParserVersion || row.TradeName == nil {
+	if ((row.SchemaVersion == SchemaAssertionV3 && manifest.ParserVersion != namedParserVersion) || (row.SchemaVersion == SchemaAssertionV4 && manifest.ParserVersion != addressParserVersion)) || row.TradeName == nil {
 		return fmt.Errorf("registry: unversioned sourced names")
 	}
 	if strings.TrimSpace(*row.TradeName) == "" {

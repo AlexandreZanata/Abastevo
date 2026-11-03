@@ -19,6 +19,7 @@ func TestStationFactsMigrationFailureRecoveryPreservesLegacy(t *testing.T) {
 		{"000146", "000146_station_source_facts.sql", "directory_stations", "legal_name"},
 		{"000147", "000147_station_fact_projection_clock.sql", "directory_stations", "facts_source_clock"},
 		{"000148", "000148_station_fact_reprojection_campaigns.sql", "directory_station_fact_reprojection_campaigns", "campaign_id"},
+		{"000149", "000149_station_address_provenance.sql", "registry_assertions", "address_provenance"},
 	} {
 		t.Run(tc.version, func(t *testing.T) { testStationFactsUpgrade(t, tc.version, tc.file, tc.table, tc.column) })
 	}
@@ -50,6 +51,17 @@ func testStationFactsUpgrade(t *testing.T, version, file, table, column string) 
 	if _, err := pool.Exec(ctx, "INSERT INTO directory_stations(id,display_name,address) VALUES($1::uuid,'[P25-TEST] Legacy','{\"street\":\"SYNTHETIC\"}')", id); err != nil {
 		t.Fatal(err)
 	}
+	var legacyAssertion string
+	if version == "000149" {
+		runID := newUUID()
+		legacyAssertion = newUUID()
+		if _, err := pool.Exec(ctx, "INSERT INTO registry_source_runs(id,source,snapshot_identity,checksum,parser_version) VALUES($1::uuid,'registry-csv','[P25-TEST] legacy snapshot',$2,'synthetic')", runID, vectorChecksum("legacy-run")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, "INSERT INTO registry_assertions(id,run_id,source,source_key,checksum,display_name,address,address_source) VALUES($1::uuid,$2::uuid,'registry-csv','91000000000066',$3,'[P25-TEST] Legacy assertion','{\"street\":\"[P25-TEST] Historical\"}','anp')", legacyAssertion, runID, vectorChecksum("legacy-assertion")); err != nil {
+			t.Fatal(err)
+		}
+	}
 	raw, err := fs.ReadFile(dbmigrations.Files, file)
 	if err != nil {
 		t.Fatal(err)
@@ -75,6 +87,13 @@ func testStationFactsUpgrade(t *testing.T, version, file, table, column string) 
 	var empty bool
 	if err := pool.QueryRow(ctx, "SELECT display_name, legal_name IS NULL AND trade_name IS NULL AND address_source IS NULL AND facts_source_clock IS NULL FROM directory_stations WHERE id=$1::uuid", id).Scan(&name, &empty); err != nil || name != "[P25-TEST] Legacy" || !empty {
 		t.Fatal(name, empty, err)
+	}
+	if legacyAssertion != "" {
+		var oldStreet string
+		var absent bool
+		if err := pool.QueryRow(ctx, "SELECT address->>'street',address_provenance IS NULL FROM registry_assertions WHERE id=$1::uuid", legacyAssertion).Scan(&oldStreet, &absent); err != nil || oldStreet != "[P25-TEST] Historical" || !absent {
+			t.Fatal("legacy assertion changed", oldStreet, absent, err)
+		}
 	}
 	applied, err := migrate.Apply(ctx, dsn, dbmigrations.Files)
 	if err != nil || len(applied) != 0 {

@@ -72,6 +72,7 @@ type Assertion struct {
 	LegalName           string
 	SourceDisplayName   string
 	AddressSource       string
+	AddressProvenance   *BatchAddressProvenance
 	TradeNameProvenance *BatchNameProvenance
 	TradeName           string
 	Address             map[string]string
@@ -201,6 +202,13 @@ func (s *PGStore) StageAssertion(ctx context.Context, a Assertion) (bool, error)
 			return false, err
 		}
 	}
+	var addressProvenance []byte
+	if a.AddressProvenance != nil {
+		addressProvenance, err = json.Marshal(a.AddressProvenance)
+		if err != nil {
+			return false, err
+		}
+	}
 	sourceDisplay := a.SourceDisplayName
 	if sourceDisplay == "" {
 		sourceDisplay = a.DisplayName
@@ -213,7 +221,7 @@ func (s *PGStore) StageAssertion(ctx context.Context, a Assertion) (bool, error)
 		ID: uid, RunID: runUID, Source: a.Source, SourceKey: a.SourceKey,
 		Checksum: a.Checksum, DisplayName: a.DisplayName, Address: address,
 		LegalName: textOrNull(a.LegalName), TradeName: textOrNull(a.TradeName),
-		SourceDisplayName: textOrNull(sourceDisplay), AddressSource: textOrNull(addressSource), TradeNameProvenance: provenance,
+		SourceDisplayName: textOrNull(sourceDisplay), AddressSource: textOrNull(addressSource), TradeNameProvenance: provenance, AddressProvenance: addressProvenance,
 		MunicipalityCode: textOrNull(a.MunicipalityCode), State: textOrNull(a.State),
 		AuthState: a.AuthState, Operation: "unknown", Eligibility: a.Eligibility,
 		LocationQuality: a.LocationQuality, SourceReference: a.SourceReference,
@@ -250,9 +258,13 @@ func (s *PGStore) ListAssertions(ctx context.Context, runID string) ([]Assertion
 		if err != nil {
 			return nil, err
 		}
+		addressProvenance, err := decodeStoredAddressProvenance(row.AddressProvenance)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, Assertion{
 			LegalName: row.LegalName.String, TradeName: row.TradeName.String,
-			SourceDisplayName: row.SourceDisplayName.String, AddressSource: row.AddressSource.String, TradeNameProvenance: provenance,
+			SourceDisplayName: row.SourceDisplayName.String, AddressSource: row.AddressSource.String, TradeNameProvenance: provenance, AddressProvenance: addressProvenance,
 			ID:               uuidString(row.ID),
 			Source:           row.Source,
 			SourceKey:        row.SourceKey,
@@ -310,9 +322,13 @@ func (s *PGStore) GetAssertion(ctx context.Context, id string) (Assertion, strin
 	if err != nil {
 		return Assertion{}, "", err
 	}
+	addressProvenance, err := decodeStoredAddressProvenance(row.AddressProvenance)
+	if err != nil {
+		return Assertion{}, "", err
+	}
 	return Assertion{
 		LegalName: row.LegalName.String, TradeName: row.TradeName.String,
-		SourceDisplayName: row.SourceDisplayName.String, AddressSource: row.AddressSource.String, TradeNameProvenance: provenance,
+		SourceDisplayName: row.SourceDisplayName.String, AddressSource: row.AddressSource.String, TradeNameProvenance: provenance, AddressProvenance: addressProvenance,
 		ID:               uuidString(row.ID),
 		Source:           row.Source,
 		SourceKey:        row.SourceKey,

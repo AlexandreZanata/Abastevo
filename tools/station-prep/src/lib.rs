@@ -38,6 +38,7 @@ pub mod output;
 pub mod pmqc;
 pub mod quality;
 pub mod registry;
+pub mod registry_addresses;
 pub mod registry_names;
 pub mod replay;
 pub mod sanction;

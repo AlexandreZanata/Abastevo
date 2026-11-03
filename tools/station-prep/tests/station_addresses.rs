@@ -134,6 +134,8 @@ fn identity_link_rights_and_provenance_gates_skip_with_reasons() {
         "cnefe_species",
         "cnefe_level",
         "cnefe_link",
+        "wrong_uf",
+        "wrong_city_code",
         "rights_pending",
         "rights_restricted",
         "rights_reference",
@@ -195,6 +197,13 @@ fn identity_link_rights_and_provenance_gates_skip_with_reasons() {
                 {
                     match_reference.clear()
                 }
+            }
+            "wrong_uf" => {
+                c.components.insert("uf".into(), "MT".into());
+            }
+            "wrong_city_code" => {
+                c.components
+                    .insert("municipio_ibge".into(), "5103403".into());
             }
             "rights_pending" => c.reuse.status = ReuseStatus::Pending,
             "rights_restricted" => c.reuse.status = ReuseStatus::Restricted,

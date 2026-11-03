@@ -90,7 +90,7 @@ pub struct Selection {
     pub provenance: Option<Provenance>,
     pub reviews: Vec<Review>,
 }
-const COMPONENTS: &[&str] = &[
+pub(crate) const COMPONENTS: &[&str] = &[
     "street",
     "number",
     "complement",
@@ -189,12 +189,21 @@ fn proof_reason(s: &StationAddressInput, c: &AddressCandidate) -> Option<&'stati
         None
     }
 }
-fn eligibility(c: &AddressCandidate) -> Option<&'static str> {
+fn eligibility(s: &StationAddressInput, c: &AddressCandidate) -> Option<&'static str> {
     if c.reuse.status != ReuseStatus::Admitted || !bounded_text(&c.reuse.reference, 2048) {
         return Some("source_reuse_not_admitted");
     }
     if matches!(c.proof, MatchProof::Rfb { active: false, .. }) {
         return Some("rfb_inactive");
+    }
+    if c.components
+        .get("uf")
+        .is_some_and(|v| !v.is_empty() && !v.eq_ignore_ascii_case(&s.uf))
+        || c.components
+            .get("municipio_ibge")
+            .is_some_and(|v| !v.is_empty() && v != &s.municipality_ibge)
+    {
+        return Some("source_geography_mismatch");
     }
     if !address_valid(&c.components) {
         return Some("unusable_address");
@@ -264,7 +273,7 @@ pub fn select_address(
                 .collect();
             let bad: Vec<_> = latest
                 .iter()
-                .filter_map(|c| eligibility(c).map(|r| review(c, r)))
+                .filter_map(|c| eligibility(s, c).map(|r| review(c, r)))
                 .collect();
             if !bad.is_empty() {
                 result.reviews.extend(bad);

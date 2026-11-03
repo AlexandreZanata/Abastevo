@@ -42,6 +42,7 @@ const (
 	SchemaAssertion   = "station-assertion-v1"
 	SchemaAssertionV2 = "station-assertion-v2"
 	SchemaAssertionV3 = "station-assertion-v3"
+	SchemaAssertionV4 = "station-assertion-v4"
 	SchemaCandidate   = "station-coordinate-candidate-v1"
 	SchemaQuarantine  = "station-quarantine-v1"
 	FormatBatch       = "station-batch-v1"
@@ -62,10 +63,14 @@ type BatchManifest struct {
 		Reference     string `json:"reference"`
 		ReferenceHash string `json:"reference_hash"`
 	} `json:"municipality_reference"`
-	NameInputs   []BatchNameInput       `json:"name_inputs,omitempty"`
-	Inputs       []BatchInput           `json:"inputs"`
-	Counts       map[string]BatchCounts `json:"counts"`
-	Completeness struct {
+	AddressPolicySHA256 string                 `json:"address_policy_sha256,omitempty"`
+	AddressInputs       []BatchAddressInput    `json:"address_inputs,omitempty"`
+	AddressSkips        []BatchAddressSkip     `json:"address_skips,omitempty"`
+	AddressCoverage     *BatchAddressCoverage  `json:"address_coverage,omitempty"`
+	NameInputs          []BatchNameInput       `json:"name_inputs,omitempty"`
+	Inputs              []BatchInput           `json:"inputs"`
+	Counts              map[string]BatchCounts `json:"counts"`
+	Completeness        struct {
 		EOFValidated     bool `json:"eof_validated"`
 		ExpectedManifest bool `json:"expected_manifest"`
 	} `json:"completeness"`
@@ -117,6 +122,7 @@ type BatchAssertion struct {
 	AuthorizationRef       string               `json:"authorization_ref"`
 	LegalName              *string              `json:"legal_name,omitempty"`
 	TradeName              *string              `json:"trade_name,omitempty"`
+	AddressFacts           *BatchAddressFacts   `json:"address_facts,omitempty"`
 	TradeNameProvenance    *BatchNameProvenance `json:"trade_name_provenance,omitempty"`
 	BusinessNameRaw        string               `json:"business_name_raw"`
 	BusinessNameNormalized string               `json:"business_name_normalized"`
@@ -290,6 +296,9 @@ func validateBatchManifest(manifestJSON []byte) (BatchManifest, error) {
 			return manifest, fmt.Errorf("registry: input %q rows do not match accounting", input.Key)
 		}
 	}
+	if err := validateAddressInputs(manifest); err != nil {
+		return manifest, err
+	}
 	if err := validateNameInputs(manifest); err != nil {
 		return manifest, err
 	}
@@ -365,6 +374,9 @@ func validateBatch(manifestJSON []byte, streams BatchStreams) (*validatedBatch, 
 		if err := validateNameBinding(manifest, row); err != nil {
 			return fail("%v", err)
 		}
+		if err := validateAddressBinding(manifest, row); err != nil {
+			return fail("%v", err)
+		}
 		assertion, err := mapAssertionRow(row)
 		if err != nil {
 			return fail("%v", err)
@@ -433,10 +445,10 @@ func mapAssertionRow(row BatchAssertion) (Assertion, error) {
 	invalid := func(format string, args ...any) (Assertion, error) {
 		return Assertion{}, fmt.Errorf("registry: "+format, args...)
 	}
-	if row.SchemaVersion != SchemaAssertion && row.SchemaVersion != SchemaAssertionV2 && row.SchemaVersion != SchemaAssertionV3 {
+	if row.SchemaVersion != SchemaAssertion && row.SchemaVersion != SchemaAssertionV2 && row.SchemaVersion != SchemaAssertionV3 && row.SchemaVersion != SchemaAssertionV4 {
 		return invalid("assertion row with schema %q", row.SchemaVersion)
 	}
-	if row.SchemaVersion == SchemaAssertionV2 || row.SchemaVersion == SchemaAssertionV3 {
+	if row.SchemaVersion == SchemaAssertionV2 || row.SchemaVersion == SchemaAssertionV3 || row.SchemaVersion == SchemaAssertionV4 {
 		if _, err := parseEffectiveDate(row.PublishedAt, "authorization publication date"); err != nil {
 			return invalid("%v", err)
 		}
@@ -494,16 +506,21 @@ func mapAssertionRow(row BatchAssertion) (Assertion, error) {
 	address["uf"] = strings.ToUpper(row.UF)
 
 	legal, trade, display := row.BusinessNameRaw, "", row.BusinessNameNormalized
-	if row.SchemaVersion == SchemaAssertionV3 {
+	if row.SchemaVersion == SchemaAssertionV3 || row.SchemaVersion == SchemaAssertionV4 {
 		if row.LegalName == nil || row.TradeName == nil || strings.TrimSpace(*row.LegalName) == "" || strings.TrimSpace(*row.LegalName) != row.BusinessNameRaw {
-			return invalid("v3 assertion requires legal_name and trade_name")
+			return invalid("named assertion requires legal_name and trade_name")
 		}
 		legal, trade = *row.LegalName, *row.TradeName
 		display = domain.StationDisplayName(legal, trade, cnpj, "")
 	} else if row.LegalName != nil || row.TradeName != nil || row.TradeNameProvenance != nil {
 		return invalid("sourced names require assertion v3")
 	}
+	address, addressSource, addressProvenance, err := projectPreparedAddress(row, address)
+	if err != nil {
+		return Assertion{}, err
+	}
 	return Assertion{
+		AddressSource: addressSource, AddressProvenance: addressProvenance,
 		SourceDisplayName:   row.BusinessNameNormalized,
 		TradeNameProvenance: row.TradeNameProvenance,
 		LegalName:           legal,

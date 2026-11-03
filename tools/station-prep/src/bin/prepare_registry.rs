@@ -8,9 +8,21 @@ use std::io::Read;
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 8 && !(args.len() == 10 && args[8] == "--name-inputs") {
-        return Err("usage: prepare_registry CSV ALIASES OUTPUT_DIR SOURCE_REFERENCE EDITION RUN_UUID UTC_TIMESTAMP [--name-inputs MANIFEST]".into());
+    if args.len() < 8 || !(args.len() - 8).is_multiple_of(2) || args.len() > 12 {
+        return Err("usage: prepare_registry CSV ALIASES OUTPUT_DIR SOURCE_REFERENCE EDITION RUN_UUID UTC_TIMESTAMP [--name-inputs MANIFEST] [--address-inputs MANIFEST]".into());
     }
+    let mut name_path = None;
+    let mut address_path = None;
+    for [flag, path] in args[8..].as_chunks::<2>().0 {
+        match flag.as_str() {
+            "--name-inputs" if name_path.is_none() => name_path = Some(path),
+            "--address-inputs" if address_path.is_none() => address_path = Some(path),
+            _ => return Err("unknown or duplicate enrichment option".into()),
+        }
+    }
+    let addresses = address_path
+        .map(|p| station_prep::registry_addresses::load_address_inputs(std::path::Path::new(p)))
+        .transpose()?;
     let mut raw = Vec::new();
     std::fs::File::open(&args[1])?
         .take((100 << 20) + 1)
@@ -31,14 +43,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         .file_name()
         .and_then(|name| name.to_str())
         .ok_or("source file name must be UTF-8")?;
-    let names = if args.len() == 10 {
+    let names = if let Some(path) = name_path {
         Some(station_prep::registry_names::load_name_inputs(
-            std::path::Path::new(&args[9]),
+            std::path::Path::new(path),
         )?)
     } else {
         None
     };
-    let mut batch = if names.is_some() {
+    let mut batch = if names.is_some() || addresses.is_some() {
         station_prep::registry::parse_registry_named(source_name, raw, &Limits::default(), &table)
     } else {
         parse_registry(source_name, raw, &Limits::default(), &table)
@@ -46,6 +58,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     .map_err(|e| format!("registry parse refused: {e:?}"))?;
     if let Some(names) = names {
         station_prep::registry_names::enrich_registry_names(&mut batch, &names)?;
+    }
+    if let Some(addresses) = addresses {
+        station_prep::registry_addresses::enrich_registry_addresses(&mut batch, &addresses)?;
     }
     if batch.state != RunState::Complete {
         return Err("quarantined source/header must not publish".into());
