@@ -40,3 +40,30 @@ refuses corrupt gzip. Eight acquisition test groups passed. A fresh
 authorized retrieval produced 3,998,504 decoded bytes with the exact
 EVC-01 SHA-256 5491bd548fe381cd388ba81c9edfbf4cf2749891e2fd32c1079ac71f7aba1c10.
 No source edition changed.
+
+## EVC-06B opening
+
+B-BR-EVC-06B. One national publication pointer exposes the last admitted
+batch. Serialise publication under its row lock. A hold, missing rights
+receipt, or an unapproved UF regression leaves the pointer unchanged.
+An owner exception binds both generations and carries an audit reason.
+
+BUC-EVC-06B. Publish synthetic batches on disposable PostGIS, exercise
+rollback, hold, stale and valid overrides, and verify idempotent replay.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The activation regression first failed before the gate existed. The new
+append-only schema retains a single current pointer and an activation
+audit. On disposable PostGIS, five concurrent calls produced one
+activation. Missing rights metadata, excessive UF loss, stale override
+and publication hold left the prior pointer intact. A valid override
+recorded its actor and reason. Rolling back the caller transaction
+removed both pointer change and audit. Superseded automatic replay was
+refused. Race, vet, format, whitespace and secret review passed.
+
+The next import step must derive and verify the per-UF counts and offer
+bytes before registering this metadata and calling the gate in the same
+transaction. This checkpoint does not provide a serving path or authorize
+a real import.

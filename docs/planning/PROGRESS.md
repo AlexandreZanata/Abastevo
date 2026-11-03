@@ -71,7 +71,9 @@
   Room 33→34 preserves per-place attribution and renders it offline; 17
   unit tests and real emulator migration and detail tests pass. EVC-06A
   LOCAL_DONE: exact per-UF drop guard, including disappeared UFs and invalid
-  census rejection. Domain race and vet pass. Next atomic generation gate.
+  census rejection. EVC-06B LOCAL_DONE: migration 000151, transactional
+  pointer/hold/audit, and last-good protection on real PostGIS. Next wire
+  the admitted national batch and expose only its active generation.
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).
