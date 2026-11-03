@@ -12,22 +12,22 @@ func TestResolveCatalogIdentitiesRetainsHistoryAndRefusesSplit(t *testing.T) {
 	older := "33333333-3333-4333-8333-333333333333"
 	key := func(c string) string { return "ev-site-v1:" + strings.Repeat(c, 64) }
 	old := map[string]CatalogPublicIdentity{
-		"ocm:7":        {ID: legacy, Aliases: []string{older}},
+		"ocm:poi:7":    {ID: legacy, Aliases: []string{older}},
 		"osm:node:101": {ID: oldOSM},
 	}
-	merged := CatalogIdentity{Key: key("a"), SourceKeys: []string{"osm:node:101", "ocm:7"}}
+	merged := CatalogIdentity{Key: key("a"), SourceKeys: []string{"osm:node:101", "ocm:poi:7"}}
 	got, err := ResolveCatalogIdentities([]CatalogIdentity{merged}, old)
 	want := CatalogPublicIdentity{ID: legacy, Aliases: []string{oldOSM, older}}
 	if err != nil || len(got) != 1 || !reflect.DeepEqual(got[0], want) {
 		t.Fatalf("merge=%+v err=%v want=%+v", got, err, want)
 	}
-	continued := map[string]CatalogPublicIdentity{"ocm:7": want, "osm:node:101": want}
+	continued := map[string]CatalogPublicIdentity{"ocm:poi:7": want, "osm:node:101": want}
 	osmOnly := CatalogIdentity{Key: key("b"), SourceKeys: []string{"osm:node:101"}}
 	got, err = ResolveCatalogIdentities([]CatalogIdentity{osmOnly}, continued)
 	if err != nil || len(got) != 1 || !reflect.DeepEqual(got[0], want) {
 		t.Fatalf("source disappearance lost identity: %+v, %v", got, err)
 	}
-	ocmOnly := CatalogIdentity{Key: key("c"), SourceKeys: []string{"ocm:7"}}
+	ocmOnly := CatalogIdentity{Key: key("c"), SourceKeys: []string{"ocm:poi:7"}}
 	if _, err := ResolveCatalogIdentities([]CatalogIdentity{osmOnly, ocmOnly}, continued); err == nil {
 		t.Fatal("one previous public identity bound to two sites")
 	}
@@ -43,9 +43,9 @@ func TestResolveCatalogIdentitiesRetainsHistoryAndRefusesSplit(t *testing.T) {
 }
 
 func TestResolveCatalogIdentitiesRefusesDuplicateAndInvalidSources(t *testing.T) {
-	a := CatalogIdentity{Key: "ev-site-v1:" + strings.Repeat("a", 64), SourceKeys: []string{"ocm:7"}}
-	b := CatalogIdentity{Key: "ev-site-v1:" + strings.Repeat("b", 64), SourceKeys: []string{"ocm:7"}}
-	for _, sites := range [][]CatalogIdentity{{a, b}, {{Key: a.Key, SourceKeys: []string{"ocm:07"}}}, {{Key: a.Key}}} {
+	a := CatalogIdentity{Key: "ev-site-v1:" + strings.Repeat("a", 64), SourceKeys: []string{"ocm:poi:7"}}
+	b := CatalogIdentity{Key: "ev-site-v1:" + strings.Repeat("b", 64), SourceKeys: []string{"ocm:poi:7"}}
+	for _, sites := range [][]CatalogIdentity{{a, b}, {{Key: a.Key, SourceKeys: []string{"ocm:poi:07"}}}, {{Key: a.Key}}} {
 		if _, err := ResolveCatalogIdentities(sites, nil); err == nil {
 			t.Fatalf("invalid identity accepted: %+v", sites)
 		}

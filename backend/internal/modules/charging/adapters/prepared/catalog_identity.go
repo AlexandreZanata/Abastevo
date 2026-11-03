@@ -97,6 +97,12 @@ func catalogSourceNamespace(key string) (string, bool) {
 			return "", false
 		}
 	}
+	if namespace == "ocm" {
+		identifier, found = strings.CutPrefix(identifier, "poi:")
+		if !found {
+			return "", false
+		}
+	}
 	id, err := strconv.ParseInt(identifier, 10, 64)
 	return namespace, err == nil && id > 0 && identifier == strconv.FormatInt(id, 10)
 }

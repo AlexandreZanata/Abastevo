@@ -199,7 +199,11 @@ func projectNationalPlace(row nationalSiteRow, seenSources, seenGroups map[strin
 func validNationalSource(row nationalSourceRow) bool {
 	namespace, ok := catalogSourceNamespace(row.Key)
 	source := row.Source
-	return ok && strings.ToUpper(namespace) == source.Source && row.Key == namespace+":"+source.ExternalID &&
+	prefix := namespace + ":"
+	if namespace == "ocm" {
+		prefix += "poi:"
+	}
+	return ok && strings.ToUpper(namespace) == source.Source && row.Key == prefix+source.ExternalID &&
 		(source.Source == "OCM" && source.ProviderID != nil && *source.ProviderID > 0 ||
 			source.Source == "OSM" && source.ProviderID == nil) &&
 		nationalText(source.Revision, 128) && nationalText(source.License, 512) &&

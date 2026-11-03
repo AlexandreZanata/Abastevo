@@ -1,5 +1,6 @@
 //! Generation rights admission for the pinned national charging catalog.
 use crate::ev_conflation::CanonicalSite;
+use crate::ev_osm_sites::OsmContext;
 use crate::ev_site_preparation::SourcePins;
 use crate::types::sha256_hex;
 use serde_json::{json, Value};
@@ -27,6 +28,7 @@ pub fn generation_rights(
         return Err("catalog rights input refused");
     }
     let pins = SourcePins::frozen();
+    let osm_context = OsmContext::new(&pins.osm_revision, &pins.osm_sha256)?;
     let profile: Value = serde_json::from_slice(PROFILE).expect("compiled EV source policy");
     let osm = &profile["sources"]["OSM"];
     let ocm = &profile["sources"]["OCM"];
@@ -59,7 +61,7 @@ pub fn generation_rights(
             let source = &row.source;
             let namespace = match source.source.as_str() {
                 "OSM" => "osm",
-                "OCM" => "ocm",
+                "OCM" => "ocm:poi",
                 _ => return Err("unknown rights source"),
             };
             if source_keys.len() >= 205_000
@@ -73,7 +75,7 @@ pub fn generation_rights(
                 return Err("invalid or duplicate source lineage");
             }
             if namespace == "osm" {
-                if source.revision != pins.osm_revision
+                if source.revision != osm_context.revision()
                     || source.provider_id.is_some()
                     || osm["license"].as_str() != Some(source.license.as_str())
                     || osm["attribution"].as_str() != Some(source.attribution.as_str())
@@ -139,14 +141,14 @@ mod tests {
                 "osm:node:101",
                 "node:101",
                 "OSM",
-                pins.osm_revision,
+                format!("{}@sha256:{}", pins.osm_revision, pins.osm_sha256),
                 None,
                 "ODbL-1.0",
                 "© OpenStreetMap contributors (ODbL)",
             )
         } else {
             (
-                "ocm:101",
+                "ocm:poi:101",
                 "101",
                 "OCM",
                 pins.ocm_revision,
@@ -283,7 +285,7 @@ mod tests {
     #[test]
     fn checks_attached_equipment_and_keeps_provider_licences_separate() {
         let mut yellot = source(false);
-        yellot.key = "ocm:102".into();
+        yellot.key = "ocm:poi:102".into();
         yellot.source.external_id = "102".into();
         yellot.source.provider_id = Some(57);
         yellot.source.license = "CC0".into();
@@ -300,6 +302,17 @@ mod tests {
         catalog[0].equipment[0].source.attribution.clear();
         assert_eq!(
             generation_rights(&digest, &catalog),
+            Err("OSM source rights mismatch")
+        );
+    }
+
+    #[test]
+    fn rejects_osm_filename_without_the_extract_digest() {
+        let mut site = source(true);
+        site.source.revision = SourcePins::frozen().osm_revision;
+        let catalog = conflate(&[site]).unwrap().sites;
+        assert_eq!(
+            generation_rights(&"a".repeat(64), &catalog),
             Err("OSM source rights mismatch")
         );
     }

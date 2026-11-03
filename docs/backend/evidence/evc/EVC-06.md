@@ -183,3 +183,29 @@ generation and its foreign key refuses a place from another batch.
 PostGIS storage and activation race tests, SQLc generation and vet,
 whitespace and secret review passed. The importer transaction is the
 next step.
+
+## Real catalog replay and source identity correction
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Two replays from the same recovered source hashes reproduced the previous
+normalization and conflation manifests byte-for-byte. The optimized
+normalization took 122.914 seconds. The real rights gate exposed two
+fixture mismatches: OSM uses a digest-qualified revision, and OCM root
+keys use the ocm:poi namespace. Both verifiers now check the emitted
+identity exactly. Migration 000153 admits that key for national groups.
+
+The local ODbL offer contains 1,658 sites and 3,041,372 bytes. It includes
+407 OSM source assertions (including equipment) and 1,258 OCM assertions,
+with OCM provider IDs 1, 40 and 57. Catalog SHA-256
+7b105a1eb91471629e4af9de1690001d3af1e3670cc26b2e7707aa60c4a0dabb.
+Rights receipt SHA-256
+52713c1cc28af777d53627a50486339ed3a31fa1c548faed0c5e5f278496215c.
+Geography SHA-256
+a8f120b421613f7ae7a6f088f80a87cb8eae173588d5a579b785a776bdecfc3d.
+
+Go verified the files and re-derived the previous catalog site counts
+across 27 UF buckets and UNASSIGNED. Eleven sites remain unassigned.
+The run read private local artifacts only. No real database import or
+staging publication was performed.

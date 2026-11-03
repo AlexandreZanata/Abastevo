@@ -26,6 +26,10 @@ pub struct OsmContext {
     revision: String,
 }
 impl OsmContext {
+    pub(crate) fn revision(&self) -> &str {
+        &self.revision
+    }
+
     pub fn new(revision: &str, source_sha256: &str) -> Result<Self, &'static str> {
         if revision.is_empty()
             || revision.len() > 128
@@ -285,7 +289,7 @@ pub fn normalize_osm(row: &OsmEvidence, context: &OsmContext) -> Normalization {
     let source = SourceLineage {
         source: "OSM".into(),
         external_id: format!("{}:{}", row.osm_type, row.id),
-        revision: context.revision.clone(),
+        revision: context.revision().into(),
         record_sha256: sha256_hex(&source_bytes),
         object_version: version,
         clocks: BTreeMap::from([("object_at".into(), timestamp)]),
