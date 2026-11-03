@@ -9,7 +9,7 @@ enum class StationAddressSource(val wire: String) {
     }
 }
 
-private val coordinateLabels = Regex("""\b(?:lat(?:itude)?|lon(?:gitude)?|lng|gps)\b""", RegexOption.IGNORE_CASE)
+private val coordinateLabels = Regex("""\b(?:lat(?:itude)?|lon(?:gitude)?|lng|gps|geo)\b""", RegexOption.IGNORE_CASE)
 private val coordinatePair = Regex("""[-+]?\d{1,3}(?:[.,]\d+)?\s*[,;/]\s*[-+]?\d{1,3}(?:[.,]\d+)?""")
 private val municipalityCodeLabel = Regex("""\d{7}(?:\s*/\s*[a-z]{2})?""", RegexOption.IGNORE_CASE)
 private val notAnAddress = setOf("NULL", "N/A", "NAO INFORMADO", "NÃO INFORMADO", "SEM ENDERECO", "SEM ENDEREÇO", "SN", "S/N")
@@ -18,7 +18,7 @@ private val nameSpacing = Regex("""[\s\p{Z}]+""")
 
 internal fun normalizedStationName(name: String): String = nameSpacing.replace(name, " ").trim()
 
-private fun isCoordinateLiteral(value: String): Boolean {
+internal fun isCoordinateLiteral(value: String): Boolean {
     val withoutLabels = coordinateLabels.replace(value, "")
     return coordinatePair.matches(value) ||
         (withoutLabels != value && withoutLabels.any(Char::isDigit) && withoutLabels.none(Char::isLetter))

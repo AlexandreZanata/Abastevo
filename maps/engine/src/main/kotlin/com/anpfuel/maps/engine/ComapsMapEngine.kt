@@ -10,6 +10,9 @@ import app.organicmaps.sdk.Framework
 import app.organicmaps.sdk.MapViewHelper
 import app.organicmaps.sdk.OrganicMaps
 import app.organicmaps.sdk.PlacePageActivationListener
+import app.organicmaps.sdk.location.LocationState
+import app.organicmaps.sdk.location.LocationListener
+import android.location.Location
 import app.organicmaps.sdk.bookmarks.data.BookmarkCategory
 import app.organicmaps.sdk.bookmarks.data.BookmarkManager
 import app.organicmaps.sdk.bookmarks.data.DataChangedListener
@@ -60,6 +63,11 @@ class ComapsMapEngine(
     private var overlayLoadingListener: BookmarkManager.BookmarksLoadingListener? = null
     private var overlayCategoriesListener: DataChangedListener? = null
     private var overlayGeneration = 0L
+    // Seeded per process: highlight categories persist in the bookmark store,
+    // so a category left by an earlier process can never match the current one.
+    private var highlightGeneration = System.currentTimeMillis()
+    private var highlightListener: DataChangedListener? = null
+    private var firstFixListener: LocationListener? = null
     private val readyCallbacks = MapReadyCallbacks()
     private var searchGeneration = 0L
     @Volatile
@@ -213,6 +221,44 @@ class ComapsMapEngine(
         val position = organicMaps?.locationHelper?.myPosition ?: return false
         setViewport(position.lat, position.lon, 15)
         return true
+    }
+
+    override fun startMyLocation(onFix: (MapCenter) -> Unit): Boolean {
+        if (!initialized) return false
+        val helper = organicMaps?.locationHelper ?: return false
+        callOnMain {
+            try {
+                // Pending mode makes the core draw the my-position marker on the first fix.
+                if (LocationState.getMode() == LocationState.NOT_FOLLOW_NO_POSITION) {
+                    LocationState.nativeStartPendingPositionMode()
+                }
+                firstFixListener?.let(helper::removeListener)
+                val listener = object : LocationListener {
+                    override fun onLocationUpdated(location: Location) {
+                        helper.removeListener(this)
+                        if (firstFixListener === this) firstFixListener = null
+                        setViewport(location.latitude, location.longitude, 15)
+                        onFix(MapCenter(location.latitude, location.longitude))
+                    }
+                }
+                firstFixListener = listener
+                helper.addListener(listener)
+                if (!helper.isActive) helper.start()
+            } catch (error: Exception) {
+                Log.e("ComapsMapEngine", "my-location start failed", error)
+            }
+        }
+        return true
+    }
+
+    override fun stopMyLocation() {
+        if (!initialized) return
+        val helper = organicMaps?.locationHelper ?: return
+        callOnMain {
+            firstFixListener?.let(helper::removeListener)
+            firstFixListener = null
+            if (helper.isActive) helper.stop()
+        }
     }
 
     override fun isInitialized(): Boolean = initialized
@@ -543,6 +589,8 @@ class ComapsMapEngine(
                         // setVisibility keeps the new pins visible in place.
                         manager.setVisibility(category.id, true)
                         oldCategories.filter { it != category.id }.forEach(manager::deleteCategory)
+                        // Drops highlights persisted by an earlier process or selection.
+                        settleHighlightCategories(highlightGeneration)
                         overlayCategory = category.id
                         overlayClusters = preparation.clusters
                         overlayMarkers = markers
@@ -608,6 +656,60 @@ class ComapsMapEngine(
         overlayListener = listener
     }
 
+    override fun setHighlightedMarker(marker: MapOverlayMarker?) {
+        if (!initialized) return
+        val context = appContext ?: return
+        val generation = ++highlightGeneration
+        callOnMain {
+            try {
+                installHighlightListener()
+                settleHighlightCategories(generation)
+                if (marker == null || !marker.canRouteByCoordinates) return@callOnMain
+                val file = File(context.cacheDir, "abastevo-highlight-$generation.kml")
+                file.writeText(buildHighlightKml(marker, highlightCategoryName(generation)))
+                BookmarkManager.INSTANCE.loadBookmarksFile(file.absolutePath, true)
+            } catch (error: Exception) {
+                Log.e("ComapsMapEngine", "highlight generation $generation failed", error)
+            }
+        }
+    }
+
+    /** Keeps exactly the current highlight generation visible; older loads are dropped. */
+    private fun settleHighlightCategories(generation: Long) {
+        val manager = BookmarkManager.INSTANCE
+        val current = highlightCategoryName(generation)
+        manager.getCategories().filter { isOwnedHighlightCategory(it.name) }.forEach { category ->
+            if (!category.name.startsWith(current)) {
+                manager.deleteCategory(category.id)
+            } else if (!category.isVisible) {
+                // Only an already-committed category may change visibility; it
+                // never runs inside a native bookmark callback (see listener).
+                manager.setVisibility(category.id, true)
+            }
+        }
+    }
+
+    private fun installHighlightListener() {
+        if (highlightListener != null) return
+        val handler = Handler(Looper.getMainLooper())
+        val listener = DataChangedListener {
+            // Imports finish asynchronously: a late, superseded selection must
+            // not linger. Mutating bookmarks inside this native callback aborts
+            // the core, so settle on the next main-loop turn like the overlay.
+            val generation = highlightGeneration
+            handler.postDelayed({
+                if (!initialized || highlightGeneration != generation) return@postDelayed
+                try {
+                    settleHighlightCategories(generation)
+                } catch (error: Exception) {
+                    Log.e("ComapsMapEngine", "highlight settle failed", error)
+                }
+            }, 100L)
+        }
+        highlightListener = listener
+        BookmarkManager.INSTANCE.addCategoriesUpdatesListener(listener)
+    }
+
     override fun cancelSearch() {
         searchListener?.let { SearchEngine.INSTANCE.removeListener(it) }
         searchListener = null
@@ -627,6 +729,9 @@ class ComapsMapEngine(
         runCatching { stopGuidance() }
         lastReadyRequest = null
         clearOverlayListeners()
+        highlightGeneration++
+        highlightListener?.let { BookmarkManager.INSTANCE.removeCategoriesUpdatesListener(it) }
+        highlightListener = null
         placePageListener?.let { Framework.nativeRemovePlacePageActivationListener(it) }
         placePageListener = null
         overlayListener = null
@@ -652,7 +757,12 @@ class ComapsMapEngine(
                     objectData.lon,
                     overlayMarkers,
                     overlayClusters,
-                )?.let { overlayListener?.invoke(it) }
+                )?.let { selection ->
+                    // Abastevo pins show their own enlarged art (setHighlightedMarker),
+                    // never the SDK's translucent selection circle.
+                    Framework.nativeDeactivateMapSelectionCircle(false)
+                    overlayListener?.invoke(selection)
+                }
             }
 
             override fun onPlacePageDeactivated() = Unit

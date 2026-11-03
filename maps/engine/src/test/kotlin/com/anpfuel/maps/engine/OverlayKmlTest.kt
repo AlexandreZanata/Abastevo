@@ -25,6 +25,30 @@ class OverlayKmlTest {
     }
 
     @Test
+    fun `selected station highlight is one enlarged pin with the selected art`() {
+        val fuel = marker("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", title = "Posto & Cia", quality = MapStationLocationQuality.REVIEWED)
+        val kml = buildHighlightKml(fuel, highlightCategoryName(3))
+
+        assertTrue(kml.startsWith("""<?xml version="1.0" encoding="UTF-8"?>"""))
+        assertEquals(1, Regex("<Placemark>").findAll(kml).count())
+        assertTrue(kml.contains("1,$STATION_FUEL_SELECTED_SYMBOL"))
+        assertTrue(kml.contains("<coordinates>-49.27,-25.42</coordinates>"))
+        assertTrue(kml.contains("Posto &amp; Cia"))
+
+        val ev = marker("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", fuel = false, charging = true, quality = MapStationLocationQuality.REVIEWED)
+        assertTrue(buildHighlightKml(ev, highlightCategoryName(4)).contains("1,$STATION_EV_SELECTED_SYMBOL"))
+    }
+
+    @Test
+    fun `highlight categories never collide with overlay ownership`() {
+        assertTrue(isOwnedHighlightCategory(highlightCategoryName(7)))
+        assertTrue(isOwnedHighlightCategory(highlightCategoryName(7) + "2"))
+        assertFalse(isOwnedOverlayCategory(highlightCategoryName(7)))
+        assertFalse(isOwnedHighlightCategory(overlayCategoryName(7)))
+        assertFalse(isOwnedHighlightCategory("Abastevo selection v1:my places"))
+    }
+
+    @Test
     fun `kml starts with the xml declaration and keeps canonical markers`() {
         val preparation = prepareOverlay(
             listOf(

@@ -330,7 +330,6 @@
     <string name="sync_failed">同期に失敗しました</string>
     <string name="info_sync_up_to_date">すでに最新です。</string>
     <string name="home_stale_verified">%1$sに確認 — ANPはまだ新しい週を公開していません。%2$sを表示中（利用可能な最新）。</string>
-    <string name="action_verify_again">再確認</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">ANPに接続できませんでした。接続を確認して再試行してください。</string>
@@ -1158,7 +1157,6 @@
     <string name="map_host_waiting_fix">現在地を取得中。</string>
     <string name="map_downloads_active_generation">有効: %1$s</string>
     <string name="map_downloads_update_generation">更新: %1$s</string>
-    <string name="map_downloads_size_summary">サイズ: %1$d KiB (%2$d パッケージ)</string>
     <string name="map_downloads_depends_on">依存: %1$s</string>
     <string name="map_downloads_wifi_only">Wi-Fiのみ</string>
     <string name="map_downloads_wifi_any">Wi-Fiまたはモバイルデータ</string>
@@ -1166,6 +1164,17 @@
     <string name="map_downloads_in_use">ナビゲーションで使用中。ガイダンス停止後に再試行</string>
     <string name="map_downloads_stored">保存済み: %1$s</string>
     <string name="map_downloads_ok">OK</string>
+    <string name="map_downloads_subtitle">地域の地図をダウンロードすると、インターネットなしで閲覧・ナビができます。</string>
+    <string name="map_downloads_size_total">%1$s（%2$d パッケージ）</string>
+    <string name="map_downloads_progress">%1$s / %2$s</string>
+    <string name="map_download_with_size">ダウンロード（%1$s）</string>
+    <string name="map_pkg_world">世界のベースマップ</string>
+    <string name="map_pkg_world_coasts">世界の海岸線</string>
+    <string name="map_pkg_region">地域の地図</string>
+    <string name="map_pkg_status_pending">待機中</string>
+    <string name="map_pkg_status_downloading">ダウンロード中</string>
+    <string name="map_pkg_status_complete">ダウンロード済み</string>
+    <string name="map_pkg_status_failed">失敗</string>
     <string name="map_hours_unknown">データ提供元に営業時間の情報がありません。</string>
     <string name="ev_title">電動ドライブ</string>
     <string name="ev_vehicle">電気自動車</string>

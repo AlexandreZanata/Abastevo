@@ -3,9 +3,15 @@ package com.anpfuel.app.ui.map
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -44,7 +50,7 @@ import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.FuelProductIcon
 
 /** Compact overlay; expanding controls never changes the native map bounds. */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 internal fun MapControlsCard(
     ui: MapScreenUi,
@@ -68,38 +74,42 @@ internal fun MapControlsCard(
     val sourceLabel = stringResource(if (ui.source == MapPriceSource.ANP) R.string.map_source_anp else R.string.map_source_community)
     Surface(
         modifier = modifier.fillMaxWidth().testTag("map-controls-card"),
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-        shadowElevation = 3.dp,
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.96f),
+        shadowElevation = 8.dp,
     ) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(
+        Column(
+            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MapPill(
                     onClick = onOpenCity,
-                    contentPadding = PaddingValues(horizontal = 4.dp),
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-city-chip"),
+                    modifier = Modifier.weight(1f, fill = false).testTag("map-city-chip"),
                 ) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, null, Modifier.size(18.dp))
-                        Text(
-                            municipalityName ?: stringResource(R.string.map_city_label),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.weight(1f).padding(start = 4.dp).testTag("map-city-label"),
-                        )
-                    }
+                    Icon(Icons.Default.LocationOn, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        municipalityName ?: stringResource(R.string.map_city_label),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f, fill = false).testTag("map-city-label"),
+                    )
+                    Icon(Icons.Default.ExpandMore, null, Modifier.size(20.dp))
                 }
-                FuelProductIcon(ui.selectedFuelProduct, size = 20.dp)
-                Text(sourceLabel, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 6.dp))
-                IconButton(
+                Spacer(Modifier.size(10.dp))
+                MapPill(
                     onClick = { expanded = !expanded },
                     modifier = Modifier.testTag("map-controls-toggle"),
+                    contentDescription = stringResource(if (expanded) R.string.map_controls_collapse else R.string.map_controls_expand),
                 ) {
-                    Icon(
-                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        stringResource(if (expanded) R.string.map_controls_collapse else R.string.map_controls_expand),
-                    )
+                    FuelProductIcon(ui.selectedFuelProduct, size = 20.dp)
+                    Text(sourceLabel, style = MaterialTheme.typography.titleSmall)
+                    Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null, Modifier.size(20.dp))
                 }
             }
             OutlinedTextField(
@@ -109,13 +119,23 @@ internal fun MapControlsCard(
                     if (value.trim().length < 2) onClearSearch()
                 },
                 placeholder = { Text(stringResource(R.string.map_search_hint), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                trailingIcon = {
-                    IconButton(onClick = submitSearch, modifier = Modifier.testTag("map-search-submit")) {
-                        Icon(Icons.Default.Search, stringResource(R.string.map_search))
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                trailingIcon = if (query.isNotBlank()) {
+                    {
+                        IconButton(onClick = submitSearch, modifier = Modifier.testTag("map-search-submit")) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.map_search), tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
+                } else {
+                    null
                 },
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(24.dp),
                 singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f),
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { submitSearch() }),
                 modifier = Modifier.fillMaxWidth().testTag("map-search-field"),
@@ -130,14 +150,13 @@ internal fun MapControlsCard(
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, top = 6.dp, bottom = 2.dp),
+                    modifier = Modifier.padding(start = 4.dp),
                 )
             }
-            if (ui.loading) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 4.dp))
+            if (ui.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (expanded) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(top = 4.dp),
                 ) {
                     MapPriceSource.entries.forEach { source ->
                         FilterChip(
@@ -180,5 +199,31 @@ internal fun MapControlsCard(
                 }
             }
         }
+    }
+}
+
+/** Pill-shaped tonal control used in the map header (city, price source). */
+@Composable
+private fun MapPill(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .then(if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content,
+        )
     }
 }

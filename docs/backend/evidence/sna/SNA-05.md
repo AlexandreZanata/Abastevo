@@ -115,3 +115,12 @@ test APKs compiled with the installed SDK and JDK 21. Both Compose tests
 passed on the disposable Android 35 emulator. The
 [light](screenshots/SNA-05-light.png) and [dark](screenshots/SNA-05-dark.png)
 screenshots use synthetic fixtures and were inspected at full size.
+
+## Main reconciliation
+
+Main at cd78249e includes PR #184's capture picker and map changes. Preserve
+its UI and use the SNA textual address line for capture, marker and detail.
+Both domain formatters share the coordinate predicate. The geo URI regression
+failed before the change and passed afterward. The domain suite and map and
+capture ViewModel suites passed on the combined tree. Mobile static,
+whitespace and secret checks passed.

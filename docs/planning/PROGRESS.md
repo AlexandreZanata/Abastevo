@@ -51,7 +51,7 @@
   Compose tests with light/dark evidence (parent 6d0c4fe5 plus child).
   SNA-06A LOCAL_DONE: generated portal station address with named municipality
   fallback and coordinate rejection; portal/export race suites and vet pass.
-  Next reconcile main after PR #184 (cd78249e), then admin/landing audit.
+  Main reconciled at cd78249e. Next admin/landing audit.
   [Portal evidence](../backend/evidence/sna/SNA-06.md).
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact
   recovery owed after restart.
@@ -64,6 +64,24 @@
   mutation. New downloads/keys/imports/staging mutations need specific approval.
   Ingestor PR/CI NOT_RUN (construction); final protected dev → main PR and
   staging acceptance owed. [Prior detailed checkpoint](history/STATION_EV_PROGRESS_BEFORE_COUNTRY_V2_20261103.md).
+
+- Home sync feedback + map UI polish 2026-11-03: INTEGRATED via PR #184 (cd78249e) from `codex/home-sync-responsive` (from `origin/main`
+  c19f0bde). B-BR-SYNC-FEEDBACK-01: manual sync and ANP table import run off
+  the main thread (device logcat: 3 s input lag and 36 skipped frames before,
+  none after); FAILED/refused syncs show an inline error and keep cached
+  prices. A verified stale week no longer shows any banner: the confirmation
+  is a one-shot snackbar. Map: the SDK selection circle is replaced by an
+  enlarged, ringed station pin (new `*-selected` atlas symbols, regenerated
+  with `scripts/maps/build-abastevo-symbols.sh`, one-pin highlight category
+  settled outside native callbacks after a device SIGABRT was reproduced and
+  fixed). Map header, round controls, bottom action sheet and Downloads
+  screen restyled on theme tokens (light/dark). Gates: app 628, data 655,
+  maps/engine 44 unit tests green; `check-mobile.sh --static-only` ok;
+  diff-check clean; installed and exercised on a Xiaomi 2311DRK48G. Staging
+  data: owner-requested PRO grant for the test account (no Git change).
+  Address formatter rejects coordinate literals and municipality codes in
+  source components, with named locality fallback. Seven formatter tests
+  pass after reproducing the legacy coordinate regression. Quick verification and CI test passed at the reviewed head.
 
 - Historical zero-downtime source checkpoint (before merged PR #183 above):
   LOCAL_DONE / INTEGRATION_PENDING;

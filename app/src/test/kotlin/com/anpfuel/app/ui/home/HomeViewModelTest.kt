@@ -98,6 +98,7 @@ class HomeViewModelTest {
             communitySummary = communitySummary,
             communitySnapshot = communitySnapshot,
         )
+        viewModel.ioDispatcher = dispatcher
     }
 
     @AfterEach
@@ -333,6 +334,197 @@ class HomeViewModelTest {
 
         coVerify { manualSyncVerificationStore.clear() }
         assertEquals(false, viewModel.uiState.value.isStaleVerified)
+    }
+
+    @Test
+    fun refreshWithSuccessButStillStaleMarksNewestWeekVerified() = runTest(dispatcher) {
+        // ANP's newest week is itself older than the freshness threshold.
+        stubStaleHome(displayedWeek = surveyWeek, latestWeek = surveyWeek)
+        stubSync(com.anpfuel.domain.event.SyncJobOutcome.SUCCESS)
+        useInMemoryVerificationStore()
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isStaleVerified)
+        assertEquals(null, viewModel.uiState.value.syncError)
+    }
+
+    @Test
+    fun refreshWithFailedOutcomeShowsInlineSyncErrorAndKeepsPrices() = runTest(dispatcher) {
+        stubStaleHome(displayedWeek = surveyWeek, latestWeek = surveyWeek)
+        stubSync(
+            com.anpfuel.domain.event.SyncJobOutcome.FAILED,
+            error = com.anpfuel.application.error.AppError.SyncNetworkError,
+        )
+        useInMemoryVerificationStore()
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(com.anpfuel.application.error.AppError.SyncNetworkError, state.syncError)
+        assertEquals(null, state.error)
+        assertEquals(false, state.isRefreshing)
+        assertEquals(false, state.isStaleVerified)
+    }
+
+    @Test
+    fun refreshRefusedByDomainRuleShowsInlineSyncError() = runTest(dispatcher) {
+        stubStaleHome(displayedWeek = surveyWeek, latestWeek = surveyWeek)
+        coEvery {
+            syncPriceTablesUseCase.invoke(com.anpfuel.domain.event.SyncRequestSource.MANUAL)
+        } throws com.anpfuel.domain.exception.DomainException("sync already running")
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.syncError != null)
+        assertEquals(null, state.error)
+        assertEquals(false, state.isRefreshing)
+    }
+
+    @Test
+    fun refreshWithUnexpectedFailureKeepsCachedPricesVisible() = runTest(dispatcher) {
+        stubStaleHome(displayedWeek = surveyWeek, latestWeek = surveyWeek)
+        coEvery {
+            syncPriceTablesUseCase.invoke(com.anpfuel.domain.event.SyncRequestSource.MANUAL)
+        } throws java.io.IOException("ANP unreachable")
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.syncError != null)
+        assertEquals(null, state.error)
+        assertEquals(true, state.hasCachedData)
+        assertEquals(false, state.isRefreshing)
+    }
+
+    @Test
+    fun successfulRefreshClearsPreviousSyncError() = runTest(dispatcher) {
+        stubStaleHome(displayedWeek = surveyWeek, latestWeek = surveyWeek)
+        useInMemoryVerificationStore()
+        stubSync(
+            com.anpfuel.domain.event.SyncJobOutcome.FAILED,
+            error = com.anpfuel.application.error.AppError.SyncNetworkError,
+        )
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        stubSync(com.anpfuel.domain.event.SyncJobOutcome.NO_NEW_DATA)
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.uiState.value.syncError)
+        assertTrue(viewModel.uiState.value.isStaleVerified)
+    }
+
+    @Test
+    fun refreshRunsSyncOffTheMainDispatcher() = runTest(dispatcher) {
+        stubStaleHome(displayedWeek = surveyWeek, latestWeek = surveyWeek)
+        val io = StandardTestDispatcher(dispatcher.scheduler, name = "io")
+        viewModel.ioDispatcher = io
+        var syncDispatcher: kotlin.coroutines.ContinuationInterceptor? = null
+        coEvery {
+            syncPriceTablesUseCase.invoke(com.anpfuel.domain.event.SyncRequestSource.MANUAL)
+        } coAnswers {
+            syncDispatcher = kotlinx.coroutines.currentCoroutineContext()[kotlin.coroutines.ContinuationInterceptor]
+            com.anpfuel.application.usecase.sync.SyncPriceTablesResult(
+                outcome = com.anpfuel.domain.event.SyncJobOutcome.NO_NEW_DATA,
+            )
+        }
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        assertEquals(io, syncDispatcher)
+    }
+
+    @Test
+    fun verifiedRefreshEmitsTransientNoticeThatIsConsumedOnce() = runTest(dispatcher) {
+        stubStaleHome(displayedWeek = surveyWeek, latestWeek = surveyWeek)
+        stubSync(com.anpfuel.domain.event.SyncJobOutcome.NO_NEW_DATA)
+        useInMemoryVerificationStore()
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        assertEquals(HomeSyncNotice.VERIFIED_NO_NEW_WEEK, viewModel.uiState.value.syncNotice)
+        viewModel.onSyncNoticeShown()
+        assertEquals(null, viewModel.uiState.value.syncNotice)
+
+        // Reopening the screen keeps the verification but shows nothing again.
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isStaleVerified)
+        assertEquals(null, viewModel.uiState.value.syncNotice)
+    }
+
+    @Test
+    fun successfulRefreshEmitsUpdatedNotice() = runTest(dispatcher) {
+        stubReadyHome(vehicles = emptyList(), tankItems = emptyList())
+        stubSync(com.anpfuel.domain.event.SyncJobOutcome.SUCCESS)
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        assertEquals(HomeSyncNotice.UPDATED, viewModel.uiState.value.syncNotice)
+    }
+
+    @Test
+    fun failedRefreshEmitsNoNotice() = runTest(dispatcher) {
+        stubStaleHome(displayedWeek = surveyWeek, latestWeek = surveyWeek)
+        stubSync(
+            com.anpfuel.domain.event.SyncJobOutcome.FAILED,
+            error = com.anpfuel.application.error.AppError.SyncNetworkError,
+        )
+
+        viewModel.load(Locale.US)
+        advanceUntilIdle()
+        viewModel.refresh(Locale.US)
+        advanceUntilIdle()
+
+        assertEquals(null, viewModel.uiState.value.syncNotice)
+    }
+
+    private fun stubSync(
+        outcome: com.anpfuel.domain.event.SyncJobOutcome,
+        error: com.anpfuel.application.error.AppError? = null,
+    ) {
+        coEvery {
+            syncPriceTablesUseCase.invoke(com.anpfuel.domain.event.SyncRequestSource.MANUAL)
+        } returns com.anpfuel.application.usecase.sync.SyncPriceTablesResult(outcome = outcome, error = error)
+    }
+
+    private fun useInMemoryVerificationStore() {
+        var stored: com.anpfuel.data.local.preferences.ManualSyncVerificationStore.Verification? = null
+        every { manualSyncVerificationStore.get() } answers { stored }
+        every { manualSyncVerificationStore.saveVerified(any(), any(), any()) } answers {
+            stored = com.anpfuel.data.local.preferences.ManualSyncVerificationStore.Verification(
+                weekStartIso = firstArg(),
+                weekEndIso = secondArg(),
+                verifiedAtMillis = thirdArg(),
+            )
+        }
+        every { manualSyncVerificationStore.clear() } answers { stored = null }
     }
 
     @Test

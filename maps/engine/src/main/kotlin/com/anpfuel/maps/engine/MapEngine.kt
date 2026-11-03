@@ -27,6 +27,13 @@ interface MapEngine : com.anpfuel.domain.routing.NativeRoutePlanner {
     fun currentCenter(): MapCenter?
     fun currentCamera(): MapCamera? = null
     fun recenter(): Boolean
+    /**
+     * Foreground-only location after an explicit recenter tap: shows the
+     * my-position marker and reports the first fix once. Never started by
+     * browsing; [stopMyLocation] ends it when the map leaves the screen.
+     */
+    fun startMyLocation(onFix: (MapCenter) -> Unit): Boolean = false
+    fun stopMyLocation() = Unit
     fun isRenderingReady(): Boolean = isInitialized()
     fun isInitialized(): Boolean
     fun reloadMaps(): Boolean = false
@@ -48,6 +55,8 @@ interface MapEngine : com.anpfuel.domain.routing.NativeRoutePlanner {
     /** Global bookmark-label visibility; hides clutter when zoomed out. Defaults to shown. */
     fun setOverlayLabelsVisible(visible: Boolean) = Unit
     fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit)
+    /** Draws the selected pin enlarged in place of the SDK selection circle; null clears it. */
+    fun setHighlightedMarker(marker: MapOverlayMarker?) = Unit
     fun cancelSearch()
     override fun cancelRoute()
     fun startGuidance(request: com.anpfuel.domain.routing.NativeRouteRequest): Boolean = false

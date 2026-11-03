@@ -39,6 +39,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -155,6 +157,12 @@ class MapDiscoveryViewModel @Inject constructor(
 
     init {
         engine.setOnOverlaySelected(::onNativeSelection)
+        viewModelScope.launch {
+            // Only pins have a map point; list-only stations clear the highlight.
+            _ui.map { ui -> ui.selectedMarker?.takeIf { it.canRouteByCoordinates } }
+                .distinctUntilChanged()
+                .collect(engine::setHighlightedMarker)
+        }
         if (userPreferences != null && catalog != null) {
             viewModelScope.launch {
                 loadPreferredMunicipality()

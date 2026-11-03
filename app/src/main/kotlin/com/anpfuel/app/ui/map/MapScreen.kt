@@ -1,5 +1,14 @@
 package com.anpfuel.app.ui.map
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,6 +72,7 @@ private fun RealMapHost(
         onReady = onReady,
         recenterBottomInset = recenterBottomInset,
         darkMode = darkMode,
+        recenterIcon = { Icon(Icons.Default.MyLocation, contentDescription = null) },
     )
 }
 
@@ -98,6 +108,8 @@ fun MapScreen(
 ) {
     val density = LocalDensity.current
     var bottomOverlayInset by remember { mutableStateOf(164.dp) }
+    var sheetHeight by remember { mutableStateOf(0.dp) }
+    var controlsHeight by remember { mutableStateOf(0.dp) }
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val discUi = discovery?.ui?.collectAsStateWithLifecycle()?.value
     var showRoute by remember { mutableStateOf(false) }
@@ -254,8 +266,23 @@ fun MapScreen(
                 }
 
                 Spacer(Modifier.weight(1f))
-                // Reserve a 48 dp recenter target, its 16 dp inset and 8 dp clearance.
-                Spacer(Modifier.height(72.dp))
+                // The two round controls sit together just above the sheet, beside
+                // the attribution: recenter (host) at sheet + gap, layers one gap above.
+                val layersBottom = (sheetHeight + MAP_CONTROL_GAP * 2 + 56.dp - controlsHeight).coerceAtLeast(0.dp)
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                    Surface(
+                        onClick = { showFilters = true },
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        shadowElevation = 6.dp,
+                        modifier = Modifier.padding(end = 16.dp, bottom = layersBottom).size(56.dp).testTag("map-layers"),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Layers, contentDescription = stringResource(R.string.map_filters))
+                        }
+                    }
+                }
 
                 MapBottomControls(
                     onFilters = { showFilters = true },
@@ -263,12 +290,16 @@ fun MapScreen(
                     onDownloads = onOpenDownloads,
                     onSaved = onOpenSaved.takeIf { saved != null },
                     modifier = Modifier.onSizeChanged { size ->
-                        val inset = with(density) { size.height.toDp() } + 16.dp
+                        controlsHeight = with(density) { size.height.toDp() }
+                    },
+                    onSheetHeightChanged = { height ->
+                        sheetHeight = height
+                        val inset = height + MAP_CONTROL_GAP
                         if (bottomOverlayInset != inset) {
                             bottomOverlayInset = inset
                             onBottomOverlayInsetChanged(inset)
                         }
-                    }.padding(horizontal = 12.dp, vertical = 8.dp),
+                    },
                 ) {
                 // B-BR-MAP-CLUSTER-01: Accessible cluster expansion controls and member chooser.
                 val multiClusters = discUi?.clusters?.filter { it.isCluster }.orEmpty()
@@ -345,12 +376,20 @@ fun MapScreen(
                             .heightIn(min = 48.dp)
                             .testTag("map-list-toggle"),
                     ) {
+                        Icon(
+                            if (showList) Icons.Default.Close else Icons.AutoMirrored.Filled.List,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.width(10.dp))
                         Text(
                             if (showList) {
                                 stringResource(R.string.action_dismiss)
                             } else {
                                 stringResource(R.string.map_list_toggle, discUi.listItems.size)
-                            }
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                     if (showList) {
@@ -471,3 +510,6 @@ fun MapScreen(
         )
     }
 }
+
+/** Gap between the bottom sheet and the round map controls, and between the controls. */
+private val MAP_CONTROL_GAP = 10.dp

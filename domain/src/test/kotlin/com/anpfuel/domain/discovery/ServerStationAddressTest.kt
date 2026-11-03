@@ -46,6 +46,7 @@ class ServerStationAddressTest {
         assertEquals("Cidade Teste/MT", city.addressLine)
         assertTrue(city.hasApproximateAddress)
         assertEquals("", station(mapOf("raw" to "lat: -12.12345, lon: -51.54321", "municipio" to "5103403")).addressLine)
+        assertEquals("Cidade Teste/MT", station(mapOf("raw" to "geo:-12.1,-51.2", "municipio" to "Cidade Teste")).addressLine)
         assertEquals("", station(mapOf("municipio_ibge" to "5103403", "coordinates" to "-12.12345, -51.54321")).addressLine)
     }
 

@@ -41,8 +41,11 @@ mkdir -p "$WORK/styles"
 for theme in light dark; do
   cp -r "$COMAPS_SRC/data/styles/default/$theme" "$WORK/styles/$theme"
   for svg in "$ROOT"/maps/style/symbols/*.svg; do
-    # Map pins are 26 mdpi units, between bookmark -s (20) and -m (30).
-    sed -E '0,/<(ns0:)?svg /s/width="[0-9.]+" height="[0-9.]+"/width="26" height="26"/' \
+    # Map pins are 26 mdpi units, between bookmark -s (20) and -m (30); the
+    # selected-station highlight is larger so it covers the regular pin.
+    size=26
+    case "$svg" in *-selected.svg) size=40 ;; esac
+    sed -E "0,/<(ns0:)?svg /s/width=\"[0-9.]+\" height=\"[0-9.]+\"/width=\"$size\" height=\"$size\"/" \
       "$svg" > "$WORK/styles/$theme/symbols/$(basename "$svg")"
   done
 done
@@ -68,7 +71,8 @@ for theme in dark light; do
   build_skin "$theme" xxxhdpi 64
 done
 for sdf in "$OUT"/symbols/*/*/symbols.sdf; do
-  grep -q 'name="abastevo-station-fuel"' "$sdf" && grep -q 'name="abastevo-station-ev"' "$sdf" \
-    || { echo "station art missing in $sdf" >&2; exit 1; }
+  for name in abastevo-station-fuel abastevo-station-ev abastevo-station-fuel-selected abastevo-station-ev-selected; do
+    grep -q "name=\"$name\"" "$sdf" || { echo "station art $name missing in $sdf" >&2; exit 1; }
+  done
 done
 echo "build-abastevo-symbols: wrote $(ls "$OUT"/symbols/*/*/symbols.sdf | wc -l) atlases to $OUT/symbols"

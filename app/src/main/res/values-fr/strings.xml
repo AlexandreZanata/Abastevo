@@ -330,7 +330,6 @@
     <string name="sync_failed">Échec de la synchronisation</string>
     <string name="info_sync_up_to_date">Déjà à jour.</string>
     <string name="home_stale_verified">Vérifié %1$s — l\'ANP n\'a pas encore publié de semaine plus récente. Affichage %2$s (dernière disponible).</string>
-    <string name="action_verify_again">Vérifier à nouveau</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">Impossible d\'accéder à l\'ANP. Vérifiez votre connexion et réessayez.</string>
@@ -1158,7 +1157,6 @@
     <string name="map_host_waiting_fix">En attente du premier signal.</string>
     <string name="map_downloads_active_generation">Actif : %1$s</string>
     <string name="map_downloads_update_generation">Mise à jour : %1$s</string>
-    <string name="map_downloads_size_summary">Taille : %1$d Kio en %2$d paquets</string>
     <string name="map_downloads_depends_on">Dépend de : %1$s</string>
     <string name="map_downloads_wifi_only">Wi-Fi uniquement</string>
     <string name="map_downloads_wifi_any">Wi-Fi ou données mobiles</string>
@@ -1166,6 +1164,17 @@
     <string name="map_downloads_in_use">Utilisé par la navigation ; arrêtez le guidage et réessayez</string>
     <string name="map_downloads_stored">Enregistré : %1$s</string>
     <string name="map_downloads_ok">OK</string>
+    <string name="map_downloads_subtitle">Téléchargez la carte de votre région pour naviguer sans internet.</string>
+    <string name="map_downloads_size_total">%1$s en %2$d paquets</string>
+    <string name="map_downloads_progress">%1$s sur %2$s</string>
+    <string name="map_download_with_size">Télécharger (%1$s)</string>
+    <string name="map_pkg_world">Carte de base mondiale</string>
+    <string name="map_pkg_world_coasts">Côtes du monde</string>
+    <string name="map_pkg_region">Carte de la région</string>
+    <string name="map_pkg_status_pending">En attente</string>
+    <string name="map_pkg_status_downloading">Téléchargement</string>
+    <string name="map_pkg_status_complete">Téléchargé</string>
+    <string name="map_pkg_status_failed">Échec</string>
     <string name="map_hours_unknown">Les horaires ne sont pas fournis par la source.</string>
     <string name="ev_title">Trajet électrique</string>
     <string name="ev_vehicle">Véhicule électrique</string>

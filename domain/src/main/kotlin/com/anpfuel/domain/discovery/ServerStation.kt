@@ -91,6 +91,9 @@ class ServerStation private constructor(
         }
     }
 
+    /** Readable address for the UI (street, number · district); empty when unknown. */
+    val displayAddress: String get() = StationAddressFormatter.format(address)
+
     val artwork = com.anpfuel.domain.profile.StationArtwork.BETA_DEFAULT
 
     companion object {

@@ -324,6 +324,18 @@ All errors use a **structured error model** in Application layer; UI maps to i18
 
 ANP typically publishes weekly; the 8-day threshold allows for publication delay.
 
+**B-BR-SYNC-FEEDBACK-01 — manual sync always resolves visibly (Home).**
+
+| Manual sync result | UI behavior |
+|--------------------|-------------|
+| Running | CTA disabled with "Sincronizando…"; the screen stays responsive (download, parsing and import run off the main thread) |
+| `NO_NEW_DATA`, or `SUCCESS`/`PARTIAL` while the newest ANP week is still ≥ 8 days old | The week is verified: the `STALE` banner and the sync CTA disappear. A transient confirmation ("Verificado em … — ANP ainda não publicou semana nova…") shows once and dismisses itself; nothing stays on screen. The week chip keeps "Última disponível" |
+| `SUCCESS`/`PARTIAL` with a fresh week | Transient "Sincronização concluída"; normal home, no banner |
+| `FAILED`, network error or refused sync | Inline sync error under the CTA with retry; cached prices stay visible (never replaced by a full-screen error) |
+
+The verification is global per survey week and only applies when the
+displayed week is the newest imported week.
+
 ---
 
 ## Privacy and compliance
