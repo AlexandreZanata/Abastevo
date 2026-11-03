@@ -41,7 +41,7 @@ func TestPreparedDailyRefreshUpdatesOwnedFactsSkipsUnchangedAndPreservesConflict
 	ctx := context.Background()
 	profiles := profile.Store{Q: dbprofile.New(pool)}
 	calls := 0
-	ports := registry.PreparedPublicationPorts{Canonical: canon, Locality: canon.SetInitialLocality, RefreshFacts: canon.RefreshPreparedFacts, EnsureProfile: func(ctx context.Context, id string) error { calls++; return profiles.EnsureUnclaimed(ctx, id) }}
+	ports := registry.PreparedPublicationPorts{Canonical: canon, Locality: canon.SetInitialLocality, EnsureProfile: func(ctx context.Context, id string) error { calls++; return profiles.EnsureUnclaimed(ctx, id) }}
 	first, firstOpen := refreshBatch(t, "66666666-2222-4333-8444-555555555555", "[SYNC-TEST] FIRST")
 	if _, e := registry.LoadPreparedBatch(ctx, pool, first, firstOpen); e != nil {
 		t.Fatal(e)

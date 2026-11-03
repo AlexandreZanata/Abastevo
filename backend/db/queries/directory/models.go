@@ -30,19 +30,21 @@ type DirectoryLocationRevision struct {
 }
 
 type DirectoryStation struct {
-	ID                pgtype.UUID        `json:"id"`
-	DisplayName       string             `json:"display_name"`
-	Address           []byte             `json:"address"`
-	MunicipalityCode  pgtype.Text        `json:"municipality_code"`
-	State             pgtype.Text        `json:"state"`
-	Status            string             `json:"status"`
-	CurrentPoint      interface{}        `json:"current_point"`
-	CurrentQuality    pgtype.Text        `json:"current_quality"`
-	CurrentRevisionID pgtype.UUID        `json:"current_revision_id"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
-	LegalName         pgtype.Text        `json:"legal_name"`
-	TradeName         pgtype.Text        `json:"trade_name"`
-	AddressSource     pgtype.Text        `json:"address_source"`
+	ID                  pgtype.UUID        `json:"id"`
+	DisplayName         string             `json:"display_name"`
+	Address             []byte             `json:"address"`
+	MunicipalityCode    pgtype.Text        `json:"municipality_code"`
+	State               pgtype.Text        `json:"state"`
+	Status              string             `json:"status"`
+	CurrentPoint        interface{}        `json:"current_point"`
+	CurrentQuality      pgtype.Text        `json:"current_quality"`
+	CurrentRevisionID   pgtype.UUID        `json:"current_revision_id"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	LegalName           pgtype.Text        `json:"legal_name"`
+	TradeName           pgtype.Text        `json:"trade_name"`
+	AddressSource       pgtype.Text        `json:"address_source"`
+	FactsSourceClock    pgtype.Timestamptz `json:"facts_source_clock"`
+	FactsSourceChecksum pgtype.Text        `json:"facts_source_checksum"`
 }
 
 type RegistryAssertion struct {

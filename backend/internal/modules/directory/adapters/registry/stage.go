@@ -207,11 +207,7 @@ func (s *PGStore) StageAssertion(ctx context.Context, a Assertion) (bool, error)
 	}
 	addressSource := a.AddressSource
 	if addressSource == "" && (a.Source == SourceCSV || a.Source == SourceAPI || a.Source == SourcePrep) {
-		if strings.TrimSpace(a.Address["street"]) != "" || strings.TrimSpace(a.Address["raw"]) != "" {
-			addressSource = "anp"
-		} else if strings.TrimSpace(a.Address["municipio"]) != "" {
-			addressSource = "municipality"
-		}
+		addressSource = domain.ANPStationAddress(a.Address).Source
 	}
 	id, err := s.Q.StageRegistryAssertion(ctx, directory.StageRegistryAssertionParams{
 		ID: uid, RunID: runUID, Source: a.Source, SourceKey: a.SourceKey,

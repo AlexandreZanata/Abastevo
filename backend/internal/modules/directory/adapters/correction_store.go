@@ -207,6 +207,17 @@ func (s CorrectionStore) Decide(ctx context.Context, id string, status string, r
 	}); err != nil {
 		return 0, err
 	}
+	if status == "accepted" {
+		correction, err := q.GetCorrection(ctx, correctionUID)
+		if err != nil {
+			return 0, err
+		}
+		if correction.Field == "display_name" {
+			if err := projectAcceptedStationName(ctx, q, correction.StationID); err != nil {
+				return 0, err
+			}
+		}
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return 0, err
 	}

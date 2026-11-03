@@ -168,3 +168,5 @@ func TestReconcileSkipsFailedRowsHonestly(t *testing.T) {
 		t.Fatalf("report = %+v", report)
 	}
 }
+
+func (*fakeCanon) ProjectSourceFacts(context.Context, string, string) error { return nil }

@@ -5,15 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	directory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
 )
-
-// ErrCuratedFacts is an explicit preserved projection, not a persistence failure.
-var ErrCuratedFacts = errors.New("registry: curated source-fact projection preserved")
 
 // PreparedPublicationPorts keeps Directory and StationProfile ownership explicit.
 // Composition roots supply these ports; registry never imports either adapter.
@@ -21,7 +17,6 @@ type PreparedPublicationPorts struct {
 	Canonical     Canonicalizer
 	Locality      func(context.Context, string, string, string) error
 	EnsureProfile func(context.Context, string) error
-	RefreshFacts  func(context.Context, string, string, map[string]string) error
 }
 
 // PublishPreparedRegistry publishes only the bound complete registry input, in
@@ -54,11 +49,6 @@ func PublishPreparedRegistry(ctx context.Context, store *PGStore, ports Prepared
 			if err != nil {
 				return report, err
 			}
-			if ports.RefreshFacts != nil {
-				if err := ports.RefreshFacts(ctx, stationID, row.DisplayName, address); err != nil && !errors.Is(err, ErrCuratedFacts) {
-					return report, err
-				}
-			}
 			if err := ports.Locality(ctx, stationID, row.MunicipalityCode.String, row.State.String); err != nil {
 				return report, err
 			}
@@ -66,6 +56,9 @@ func PublishPreparedRegistry(ctx context.Context, store *PGStore, ports Prepared
 				return report, err
 			}
 			if err := store.SetAssertionStation(ctx, uuidString(row.ID), stationID); err != nil {
+				return report, err
+			}
+			if err := ports.Canonical.ProjectSourceFacts(ctx, stationID, uuidString(row.ID)); err != nil {
 				return report, err
 			}
 			report.Reconciled++

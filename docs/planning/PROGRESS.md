@@ -6,7 +6,9 @@
   [Evidence](../backend/evidence/sna/SNA-01.md): locked Rust/clippy, Go race/vet,
   actual Rust v3→Go admission and real PostGIS rollback/replay pass. Tested
   parent 5cfa2717 plus SNA-01B. SNA-02A nullable storage passes real PostGIS recovery/immutable replay;
-  SNA-02B canonical projection, then SNA-02C job remain next.
+  SNA-02B canonical projection LOCAL_DONE: audited corrections, edition fences
+  and concurrent ordering pass real PostGIS. Tested parent 14604272 plus task.
+  SNA-02C explicit bounded re-projection job remains next.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links in this database. This is not
   a national EV coverage result. PR #183 merged d0eb9c79, all four PR checks
