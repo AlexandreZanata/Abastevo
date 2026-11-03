@@ -186,6 +186,10 @@
     <string name="charging_explore_source_stale">Esta instantánea está fechada. Actualiza para buscar un paquete de origen más nuevo; la disponibilidad nunca es en vivo.</string>
     <string name="charging_explore_refresh">Actualizar foto</string>
     <string name="charging_explore_more">Mostrar más</string>
+    <string name="charging_add_site">Añadir punto de recarga</string>
+    <string name="charging_suggestion_name_optional">Nombre del lugar (si se conoce)</string>
+    <string name="charging_suggestion_address">Dirección pública</string>
+    <string name="charging_suggestion_help">Indica el nombre o la dirección pública del lugar.</string>
     <string name="charging_open_sources">Puntos de recarga cartografiados con fuentes abiertas. La cobertura es parcial.</string>
     <string name="charging_catalog_unavailable">El catálogo de recarga no está disponible en este momento.</string>
     <string name="charging_map_gap">El catálogo no encontró puntos de recarga en esta zona con los filtros actuales.</string>

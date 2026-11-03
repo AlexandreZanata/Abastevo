@@ -105,6 +105,7 @@ fun MapScreen(
     guidance: GuidanceViewModel = hiltViewModel(),
     onBottomOverlayInsetChanged: (Dp) -> Unit = {},
     mapContent: (@Composable (Modifier) -> Unit)? = null,
+    onAddChargingSite: (() -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     var bottomOverlayInset by remember { mutableStateOf(164.dp) }
@@ -318,6 +319,11 @@ fun MapScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     )
+                    if (message == R.string.charging_map_gap && onAddChargingSite != null) {
+                        TextButton(onClick = onAddChargingSite, modifier = Modifier.padding(horizontal = 12.dp)) {
+                            Text(stringResource(R.string.charging_add_site))
+                        }
+                    }
                 }
                 // B-BR-MAP-CLUSTER-01: Accessible cluster expansion controls and member chooser.
                 val multiClusters = discUi?.clusters?.filter { it.isCluster }.orEmpty()

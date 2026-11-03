@@ -64,6 +64,7 @@ fun ChargingExploreScreen(
     onOpenCommunity: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ChargingExploreViewModel = hiltViewModel(),
+    onAddChargingSite: (() -> Unit)? = null,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
@@ -86,6 +87,7 @@ fun ChargingExploreScreen(
         onDismissError = viewModel::dismissError,
         onNavigateBack = onNavigateBack,
         onOpenCommunity = onOpenCommunity,
+        onAddChargingSite = onAddChargingSite,
         modifier = modifier,
     )
 }
@@ -107,6 +109,7 @@ internal fun ChargingExploreContent(
     onOpenCommunity: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     onMinPowerChanged: (Long?) -> Unit = {},
+    onAddChargingSite: (() -> Unit)? = null,
 ) {
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
@@ -230,13 +233,23 @@ internal fun ChargingExploreContent(
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
             } else if (uiState.rows.isEmpty()) {
-                EmptyState(
-                    message = stringResource(
-                        if (uiState.sourceRevision == null) R.string.charging_catalog_unavailable
-                        else R.string.charging_explore_empty,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Column(
+                    modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    EmptyState(
+                        message = stringResource(
+                            if (uiState.sourceRevision == null) R.string.charging_catalog_unavailable
+                            else R.string.charging_explore_empty,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (uiState.sourceRevision != null && uiState.errorMessage == null && onAddChargingSite != null) {
+                        TextButton(onClick = onAddChargingSite) {
+                            Text(stringResource(R.string.charging_add_site))
+                        }
+                    }
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f, fill = false),

@@ -303,6 +303,10 @@
     <string name="charging_explore_source_stale">Este snapshot é datado. Atualize para buscar um pacote de fonte mais novo; a disponibilidade nunca é ao vivo.</string>
     <string name="charging_explore_refresh">Atualizar foto</string>
     <string name="charging_explore_more">Mostrar mais</string>
+    <string name="charging_add_site">Adicionar eletroposto</string>
+    <string name="charging_suggestion_name_optional">Nome do eletroposto (se souber)</string>
+    <string name="charging_suggestion_address">Endereço público</string>
+    <string name="charging_suggestion_help">Informe o nome ou o endereço público do local.</string>
     <string name="charging_open_sources">Eletropostos mapeados por fontes abertas. A cobertura é parcial.</string>
     <string name="charging_catalog_unavailable">O catálogo de recarga está indisponível no momento.</string>
     <string name="charging_map_gap">O catálogo não encontrou eletropostos nesta área com os filtros atuais.</string>

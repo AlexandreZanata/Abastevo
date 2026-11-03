@@ -186,6 +186,10 @@
     <string name="charging_explore_source_stale">此快照有日期。请刷新以检查更新的来源包；可用性从不是实时状态。</string>
     <string name="charging_explore_refresh">刷新快照</string>
     <string name="charging_explore_more">显示更多</string>
+    <string name="charging_add_site">添加充电站</string>
+    <string name="charging_suggestion_name_optional">站点名称（如已知）</string>
+    <string name="charging_suggestion_address">公开地址</string>
+    <string name="charging_suggestion_help">请输入站点名称或公开地址。</string>
     <string name="charging_open_sources">充电站来自开放数据源，覆盖范围有限。</string>
     <string name="charging_catalog_unavailable">充电目录目前不可用。</string>
     <string name="charging_map_gap">使用当前筛选条件时，目录未在此区域找到充电站。</string>

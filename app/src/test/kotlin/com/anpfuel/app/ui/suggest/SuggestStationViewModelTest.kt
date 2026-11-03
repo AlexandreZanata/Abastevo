@@ -1,5 +1,6 @@
 package com.anpfuel.app.ui.suggest
 
+import androidx.lifecycle.SavedStateHandle
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.usecase.intake.CancelOwnedSuggestionUseCase
 import com.anpfuel.application.usecase.intake.GetOwnedSuggestionsUseCase
@@ -60,7 +61,7 @@ class SuggestStationViewModelTest {
         every { sessions.load() } returns session
         coEvery { catalog.loadPage() } returns null
         every { mine.invoke(any(), any()) } returns OwnedSuggestionsOutcome.Found(emptyList())
-        viewModel = SuggestStationViewModel(submit, status, cancel, mine, sessions, catalog)
+        viewModel = SuggestStationViewModel(submit, status, cancel, mine, sessions, catalog).also { it.ioDispatcher = dispatcher }
     }
 
     @AfterEach
@@ -117,6 +118,36 @@ class SuggestStationViewModelTest {
 
         assertEquals(2, keys.size)
         assertEquals(keys[0], keys[1])
+    }
+
+    @Test
+    fun `charging proposal retries an address-only typed payload`() = runTest(dispatcher) {
+        val keys = mutableListOf<String>()
+        val bodies = mutableListOf<String>()
+        every { submit.invoke("fam-1", "tok-1", capture(keys), capture(bodies)) } returns
+            SubmitSuggestionOutcome.Submitted("suggestion")
+        val charging = SuggestStationViewModel(
+            submit, status, cancel, mine, sessions, catalog,
+            saved = SavedStateHandle(mapOf("chargingSite" to true)),
+        ).also { it.ioDispatcher = dispatcher }
+        charging.onField("", "3550308", "SP", "ignored-fuel")
+        charging.onPublicAddress("Synthetic Street, 7")
+        charging.submitProposal()
+        advanceUntilIdle()
+        charging.submitProposal()
+        advanceUntilIdle()
+        assertEquals(2, bodies.size)
+        assertEquals(keys[0], keys[1])
+        val payload = org.json.JSONObject(bodies[0])
+        assertEquals("charging_site", payload.getString("kind"))
+        assertEquals("", payload.getString("display_name"))
+        assertEquals("Synthetic Street, 7", payload.getString("public_address"))
+        assertTrue(!payload.has("cnpj_normalized") && !payload.has("latitude") && !payload.has("longitude"))
+        every { sessions.load() } returns null
+        charging.submitProposal()
+        advanceUntilIdle()
+        assertTrue(charging.uiState.value.submit is SubmitSuggestionOutcome.SessionInvalid)
+        assertEquals(2, bodies.size)
     }
 
     @Test

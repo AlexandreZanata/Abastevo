@@ -117,8 +117,10 @@
   remain unassigned. ABVE/Tupi uses a distinct points unit. EVC-09B
   LOCAL_DONE: open-source and gap wording in eight locales and owner
   candidate list. EVC-09C LOCAL_DONE: authenticated private charging
-  suggestions cannot enter fuel approval. Next Android gap action and
-  submission. [Coverage](../backend/evidence/evc/EVC-09.md).
+  suggestions cannot enter fuel approval. EVC-09D LOCAL_DONE: Android gap
+  action and private address-only submission, 11 JVM and four emulator tests.
+  EVC-09 LOCAL_DONE / INTEGRATION_PENDING. Next SNA-07 and EVC-10 acceptance.
+  [Coverage](../backend/evidence/evc/EVC-09.md).
   [Refresh evidence](../backend/evidence/evc/EVC-08.md).
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).

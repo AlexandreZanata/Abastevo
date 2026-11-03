@@ -102,3 +102,23 @@ HTTP and application tests covered invalid fields and approval refusal.
 Race checks, SQLc generation/vet, Go vet, staticcheck, OpenAPI lint with
 zero errors, whitespace and secret review passed. Android submission
 and the gap action are the next task.
+
+## EVC-09D Android gap action
+
+B-BR-EVC-09D. A genuine empty catalog result can offer Add charging site.
+Use the existing private community intake form in charging mode. Keep
+the owner session and retry identity, allow name or public address, and
+send no fuel CNPJ or device coordinates. Unavailable data is a separate
+state and is not shown as a local gap.
+
+BUC-EVC-09D. Open the charging form from the gap action, submit a
+synthetic address-only proposal, and verify the typed payload, session
+gate, and stable retry key. Existing fuel suggestions remain compatible.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. The Explore and map gap
+actions open charging mode, with four new strings in each supported locale.
+The test-first compilation failed on the missing charging form contract.
+After implementation, 11 targeted JVM tests passed and both debug APKs
+built. Four Compose tests passed on emulator-5570, including activation
+of the gap action. The form submits an authenticated synthetic address-only
+proposal with an unchanged retry key. Whitespace and secret checks passed.

@@ -58,6 +58,7 @@ class ChargingAttributionDetailTest {
     }
     @Test fun emptyCatalogDescribesOnlyWhatOpenSourcesMapped() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
+        var opened = false
         compose.setContent {
             AnpFuelTheme(dynamicColor = false) {
                 ChargingExploreContent(
@@ -65,12 +66,14 @@ class ChargingAttributionDetailTest {
                     locale = Locale.US,
                     onConnectorChanged = {}, onCurrentChanged = {}, onAccessChanged = {},
                     onRefresh = {}, onLoadMore = {}, onOpenDetail = {}, onDismissDetail = {},
-                    onDismissError = {}, onNavigateBack = {},
+                    onDismissError = {}, onNavigateBack = {}, onAddChargingSite = { opened = true },
                 )
             }
         }
         compose.onNodeWithText(context.getString(R.string.charging_open_sources)).assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.charging_explore_empty)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.charging_add_site)).performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(true, opened) }
     }
 
     @Test fun nationalDetailInLightTheme() = checkNationalDetail(darkTheme = false)

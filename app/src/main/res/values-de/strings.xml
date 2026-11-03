@@ -186,6 +186,10 @@
     <string name="charging_explore_source_stale">Dieser Snapshot ist datiert. Aktualisieren Sie, um ein neueres Quellpaket zu prüfen; die Verfügbarkeit ist nie live.</string>
     <string name="charging_explore_refresh">Stand aktualisieren</string>
     <string name="charging_explore_more">Mehr anzeigen</string>
+    <string name="charging_add_site">Ladestandort hinzufügen</string>
+    <string name="charging_suggestion_name_optional">Name des Standorts (falls bekannt)</string>
+    <string name="charging_suggestion_address">Öffentliche Adresse</string>
+    <string name="charging_suggestion_help">Gib den Namen oder die öffentliche Adresse des Standorts ein.</string>
     <string name="charging_open_sources">Ladestandorte aus offenen Quellen. Die Abdeckung ist teilweise.</string>
     <string name="charging_catalog_unavailable">Der Ladekatalog ist derzeit nicht verfügbar.</string>
     <string name="charging_map_gap">Der Katalog enthält mit den aktuellen Filtern keine Ladestandorte in diesem Gebiet.</string>

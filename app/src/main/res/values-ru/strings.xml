@@ -186,6 +186,10 @@
     <string name="charging_explore_source_stale">Этот снимок датирован. Обновите, чтобы проверить новый пакет источника; доступность никогда не в реальном времени.</string>
     <string name="charging_explore_refresh">Обновить снимок</string>
     <string name="charging_explore_more">Показать ещё</string>
+    <string name="charging_add_site">Добавить зарядную площадку</string>
+    <string name="charging_suggestion_name_optional">Название площадки (если известно)</string>
+    <string name="charging_suggestion_address">Публичный адрес</string>
+    <string name="charging_suggestion_help">Укажите название или публичный адрес площадки.</string>
     <string name="charging_open_sources">Зарядные площадки нанесены по открытым источникам. Охват частичный.</string>
     <string name="charging_catalog_unavailable">Каталог зарядных площадок сейчас недоступен.</string>
     <string name="charging_map_gap">При текущих фильтрах каталог не нашёл зарядных площадок в этой области.</string>
