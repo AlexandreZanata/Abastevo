@@ -113,3 +113,26 @@ split refuses admission. New sites have deterministic IDs. Prepared
 race tests, vet, staticcheck, whitespace and secret checks passed.
 The national store still needs to persist this mapping and use it
 for active-generation lookup.
+
+## EVC-06E opening
+
+B-BR-EVC-06E. Decode the verified offer into national storage inputs
+without filling unknown names or combining connector quantities.
+Every group keeps the root or equipment source that supplied it.
+
+BUC-EVC-06E. Decode a synthetic two-source place with no name and two
+groups of the same family, then refuse malformed attribution and
+duplicate source-group identity before returning any rows.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The initial projection test failed before any rows could be decoded.
+The verified offer now decodes into storage inputs with nullable source
+name, source-backed point and access, and each root or equipment
+assertion's rights and lineage. Same-family connector counts remain
+separate. Misowned groups, missing provider identity, inconsistent
+confidence and duplicate identities refuse the entire projection.
+Prepared race tests, vet, staticcheck, whitespace and secret review
+passed. Database persistence and the pinned geography sidecar are
+pending.
