@@ -11,7 +11,11 @@
   Tested parent 91305b9e plus SNA-03: additive API/source separation/CPF privacy,
   all affected PostGIS, unit/race, build/vet/staticcheck/sqlc, OpenAPI, secret
   and diff checks pass. [SNA-03](../backend/evidence/sna/SNA-03.md).
-  Next: EVC-00..03, then SNA-04..06 in plan order.
+  EVC-00 inventory/register reconciliation LOCAL_DONE: staging has zero EV
+  catalog/overlay assertions; active overlay holds 66 OSM fuel rows. Historical
+  OCM admission restored with scope; malformed provider-57 license digest is
+  an EVC-01 hold. [EVC-00](../backend/evidence/evc/EVC-00.md).
+  Next: EVC-01..03, then SNA-04..06; national downloads require owner approval.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links. This is not a national EV coverage
   result. PR #183 merged d0eb9c79 with all four checks green; signed release

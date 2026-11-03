@@ -1,0 +1,39 @@
+{
+  "overlay_read": "passed",
+  "read_at": "2026-11-03T13:45:55.36701+00:00",
+  "overlay_generations": [
+    {
+      "generation_key": "national-20261027",
+      "profile_id": "national-open-map-v1",
+      "source_revision": "national-20261027",
+      "status": "ACTIVE",
+      "input_count": 66,
+      "accepted_count": 66,
+      "duplicate_count": 0,
+      "quarantined_count": 0,
+      "created_at": "2026-10-27T10:06:32.802531+00:00",
+      "activated_at": "2026-10-27T10:06:32.802531+00:00"
+    },
+    {
+      "generation_key": "phase3-coverage-sample-20261026",
+      "profile_id": "national-open-map-v1",
+      "source_revision": "phase3-coverage-sample-20261026",
+      "status": "SUPERSEDED",
+      "input_count": 565,
+      "accepted_count": 565,
+      "duplicate_count": 0,
+      "quarantined_count": 0,
+      "created_at": "2026-10-26T23:04:03.549622+00:00",
+      "activated_at": "2026-10-26T23:04:03.549622+00:00"
+    }
+  ],
+  "active_overlay_by_source_kind": [
+    {
+      "source": "OSM",
+      "kind": "FUEL_STATION",
+      "assertion_rows": 66,
+      "distinct_nonnull_place_ids": 0
+    }
+  ],
+  "active_ev_overlay_by_linked_uf": []
+}
