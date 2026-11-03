@@ -6,12 +6,12 @@ SELECT s.id,s.display_name,s.address,s.legal_name,s.trade_name,s.address_source,
   AND a.display_name=s.display_name AND a.source IN ('registry-csv','registry-api','station-prep')
   AND EXISTS(SELECT 1 FROM registry_source_runs r WHERE r.state='complete' AND r.source=a.source
    AND (r.id=a.run_id OR EXISTS(SELECT 1 FROM registry_run_assertions m WHERE m.assertion_id=a.id AND m.run_id=r.id))
-   AND (a.source<>'station-prep' OR (r.prepared_manifest_sha256 IS NOT NULL AND r.snapshot_identity LIKE 'station-prep:%:registry-13col')))) AS source_name_owned,
+   AND (a.source<>'station-prep' OR (r.prepared_manifest_sha256 <> '' AND r.snapshot_identity LIKE 'station-prep:%:registry-13col')))) AS source_name_owned,
  EXISTS(SELECT 1 FROM registry_assertions a WHERE a.station_id=s.id
   AND a.address=s.address AND a.source IN ('registry-csv','registry-api','station-prep')
   AND EXISTS(SELECT 1 FROM registry_source_runs r WHERE r.state='complete' AND r.source=a.source
    AND (r.id=a.run_id OR EXISTS(SELECT 1 FROM registry_run_assertions m WHERE m.assertion_id=a.id AND m.run_id=r.id))
-   AND (a.source<>'station-prep' OR (r.prepared_manifest_sha256 IS NOT NULL AND r.snapshot_identity LIKE 'station-prep:%:registry-13col')))) AS source_address_owned
+   AND (a.source<>'station-prep' OR (r.prepared_manifest_sha256 <> '' AND r.snapshot_identity LIKE 'station-prep:%:registry-13col')))) AS source_address_owned
 FROM directory_stations s WHERE s.id= @id FOR UPDATE;
 
 -- name: SourceStationFacts :one
@@ -22,7 +22,7 @@ JOIN LATERAL (
  SELECT run.finished_at FROM registry_source_runs run
  WHERE run.state='complete' AND run.source=a.source AND run.finished_at IS NOT NULL
  AND (run.id=a.run_id OR EXISTS(SELECT 1 FROM registry_run_assertions m WHERE m.assertion_id=a.id AND m.run_id=run.id))
- AND (a.source IN ('registry-csv','registry-api') OR (a.source='station-prep' AND run.prepared_manifest_sha256 IS NOT NULL AND run.snapshot_identity LIKE 'station-prep:%:registry-13col'))
+ AND (a.source IN ('registry-csv','registry-api') OR (a.source='station-prep' AND run.prepared_manifest_sha256 <> '' AND run.snapshot_identity LIKE 'station-prep:%:registry-13col'))
  ORDER BY run.finished_at DESC LIMIT 1
 ) r ON TRUE
 JOIN directory_identifiers i ON i.station_id= @station_id AND i.kind='CNPJ'

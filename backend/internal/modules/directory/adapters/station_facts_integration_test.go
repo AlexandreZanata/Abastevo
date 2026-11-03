@@ -19,7 +19,11 @@ func factVersion(t *testing.T, pool *pgxpool.Pool, store *registry.PGStore, cano
 	t.Helper()
 	ctx := context.Background()
 	run, _ := NewUUIDv4()
-	if _, _, err := store.CreateRun(ctx, run, source, fmt.Sprintf("sna-synthetic-%d", version), "synthetic"); err != nil {
+	snapshot := fmt.Sprintf("sna-synthetic-%d", version)
+	if source == registry.SourcePrep {
+		snapshot = "station-prep:" + run + ":registry-13col"
+	}
+	if _, _, err := store.CreateRun(ctx, run, source, snapshot, "synthetic"); err != nil {
 		t.Fatal(err)
 	}
 	checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(version))))

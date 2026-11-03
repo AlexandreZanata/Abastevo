@@ -100,3 +100,14 @@ diff-check and secret review pass. No source acquisition or live data write.
 
 SNA-02 remains IN_PROGRESS: SNA-02C must add an explicit bounded re-projection
 job before SNA-03. It must not run on staging without separate approval.
+
+## SNA-02B binding follow-up
+
+A post-commit source review found that the legacy manifest column defaults to
+an empty string, not SQL NULL. RED strengthened the negative case to use a
+correctly shaped station-prep registry snapshot with an empty manifest hash;
+the prior NULL-only predicate admitted it. The new nonempty predicate refuses
+it. Actual prepared Rust publication, negative identity/completeness, curated
+fields and concurrent correction/source cases pass again on real PostGIS/race
+(13.925s), with sqlc vet/diff and secret/diff checks. Tested parent 159d2d5c
+plus this fix. No live importer executed; SNA-02C remains next.

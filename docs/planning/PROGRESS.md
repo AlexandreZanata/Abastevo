@@ -7,7 +7,8 @@
   actual Rust v3→Go admission and real PostGIS rollback/replay pass. Tested
   parent 5cfa2717 plus SNA-01B. SNA-02A nullable storage passes real PostGIS recovery/immutable replay;
   SNA-02B canonical projection LOCAL_DONE: audited corrections, edition fences
-  and concurrent ordering pass real PostGIS. Tested parent 14604272 plus task.
+  and concurrent ordering pass real PostGIS. Tested parent 159d2d5c plus the empty-manifest binding fix;
+  actual prepared/negative/concurrent PostGIS cases pass again (13.925s).
   SNA-02C explicit bounded re-projection job remains next.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links in this database. This is not
