@@ -28,6 +28,9 @@ func run(args []string, getenv func(string) string, output io.Writer) error {
 	if len(args) > 0 && args[0] == "review" {
 		return runReview(args[1:], output)
 	}
+	if len(args) > 0 && args[0] == "control" {
+		return runControl(args[1:], getenv, output)
+	}
 	flags := flag.NewFlagSet("charging-catalog", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	bundle := flags.String("bundle", "", "owner-reviewed rights bundle directory")
@@ -86,23 +89,9 @@ func run(args []string, getenv func(string) string, output io.Writer) error {
 		return errors.New("activation requires the matching reviewed transition without open items")
 	}
 	input.Transition = transition
-	env := getenv("ANPFUEL_ENV")
-	switch env {
-	case "development", "test":
-	case "staging":
-		if getenv("ANPFUEL_CANONICAL_HOST") != "teste.abastevo.com.br" {
-			return errors.New("staging activation requires the staging canonical host")
-		}
-	default:
-		return errors.New("activation requires an explicit local or staging environment")
-	}
-	dsn := getenv("ANPFUEL_DATABASE_URL")
-	if dsn == "" {
-		return errors.New("database configuration required")
-	}
-	cfg, err := pgxpool.ParseConfig(dsn)
-	if err != nil || !allowedDatabase(env, cfg) {
-		return errors.New("database target refused")
+	cfg, err := ownerDatabaseConfig(getenv)
+	if err != nil {
+		return err
 	}
 	if hasOverride {
 		input.Override = &prepared.CatalogCoverageOverride{
@@ -111,7 +100,6 @@ func run(args []string, getenv func(string) string, output io.Writer) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
-	cfg.MaxConns = 2
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return errors.New("database pool unavailable")
@@ -125,6 +113,29 @@ func run(args []string, getenv func(string) string, output io.Writer) error {
 		prepared.NationalImportPlan
 		BatchID string `json:"batch_id"`
 	}{plan, id})
+}
+
+func ownerDatabaseConfig(getenv func(string) string) (*pgxpool.Config, error) {
+	env := getenv("ANPFUEL_ENV")
+	switch env {
+	case "development", "test":
+	case "staging":
+		if getenv("ANPFUEL_CANONICAL_HOST") != "teste.abastevo.com.br" {
+			return nil, errors.New("staging catalog writes require the staging canonical host")
+		}
+	default:
+		return nil, errors.New("catalog writes require an explicit local or staging environment")
+	}
+	dsn := getenv("ANPFUEL_DATABASE_URL")
+	if dsn == "" {
+		return nil, errors.New("database configuration required")
+	}
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil || !allowedDatabase(env, cfg) {
+		return nil, errors.New("database target refused")
+	}
+	cfg.MaxConns = 2
+	return cfg, nil
 }
 
 func allowedDatabase(env string, cfg *pgxpool.Config) bool {

@@ -1,0 +1,33 @@
+# EVC-10 staging acceptance
+
+## EVC-10A publication recovery rehearsal
+
+B-BR-EVC-10A. An owner can hold or resume national publication without
+changing the visible generation. An explicitly approved rollback restores
+the active generation's recorded predecessor, or the pre-catalog state
+for the first generation, and leaves publication held. The operation
+checks both digests under the publication lock. Preserve past activation
+records, source data and licence offers. Audit each effective control
+change in the same transaction.
+
+BUC-EVC-10A. In disposable PostGIS, activate two synthetic generations,
+hold and resume publication, reject stale control commands, and roll
+back each generation in order. Verify the current pointer, hold state
+and immutable audit. Use the same database target restrictions as the
+national activation command.
+
+Local result: the RED build failed on the missing control contract. With
+migration 155 applied to disposable PostGIS, the affected Go suites with
+race detection passed. The control test covered a held generation, stale
+resume, incorrect restore digest, two concurrent rollback attempts with
+one committed result, and restoration to the pre-catalog state. Activation
+history stayed intact and the four effective control events were retained.
+Three existing optional Rust/prepared-batch parity tests skipped because
+their fixture paths were unavailable. Go vet, staticcheck, whitespace and
+secret review passed. Staging acceptance remains pending.
+
+Operator interface: `charging-catalog control --action hold|resume|rollback
+--expected-sha256 DIGEST --actor OWNER --reason REASON`. Rollback also
+requires `--restore-sha256 PREDECESSOR`; use `none` for the pre-catalog
+state. A lost response requires checking the pointer and audit before
+issuing another command.

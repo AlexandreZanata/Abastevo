@@ -141,4 +141,59 @@ func TestCatalogActivationRetainsLastGoodAndBindsOverride(t *testing.T) {
 		t.Fatalf("override audit actor=%q reason=%q err=%v", actor, reason, err)
 	}
 
+	control := func(action, expected, target string) error {
+		return ControlCatalog(ctx, pool, CatalogControl{
+			Action: action, ExpectedSHA256: expected, RestoreSHA256: target,
+			Actor: "synthetic-owner", Reason: "exercise publication recovery",
+		})
+	}
+	if err := control("hold", nextHash, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := activate(next, nil, true); err == nil {
+		t.Fatal("held catalog accepted activation")
+	}
+	assertCurrent(next, 2)
+	if err := control("resume", firstHash, ""); err == nil {
+		t.Fatal("stale resume accepted")
+	}
+	if err := control("resume", nextHash, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := activate(next, nil, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := control("rollback", nextHash, "none"); err == nil {
+		t.Fatal("incorrect restore digest accepted")
+	}
+	assertCurrent(next, 2)
+	rollbacks := make(chan error, 2)
+	for range 2 {
+		attempts.Go(func() { rollbacks <- control("rollback", nextHash, firstHash) })
+	}
+	attempts.Wait()
+	firstAttempt, secondAttempt := <-rollbacks, <-rollbacks
+	if (firstAttempt == nil) == (secondAttempt == nil) {
+		t.Fatalf("expected exactly one committed rollback: %v / %v", firstAttempt, secondAttempt)
+	}
+	assertCurrent(first, 2)
+	if err := activate(first, nil, true); err == nil {
+		t.Fatal("rollback did not hold publication")
+	}
+	if err := control("rollback", nextHash, firstHash); err == nil {
+		t.Fatal("stale rollback accepted")
+	}
+	if err := control("rollback", firstHash, "none"); err != nil {
+		t.Fatal(err)
+	}
+	assertCurrent(pgtype.UUID{}, 2)
+	var held bool
+	var actions string
+	err = pool.QueryRow(ctx, `SELECT held,
+		(SELECT string_agg(action, ',' ORDER BY id) FROM charging_catalog_control_events)
+		FROM charging_catalog_current WHERE singleton`).Scan(&held, &actions)
+	if err != nil || !held || actions != "hold,resume,rollback,rollback" {
+		t.Fatalf("held=%t actions=%q err=%v", held, actions, err)
+	}
+
 }

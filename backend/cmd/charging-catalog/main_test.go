@@ -140,3 +140,25 @@ func TestVerifyIsFileOnlyAndApprovalIsExact(t *testing.T) {
 		t.Fatal("valid review did not reach the target guard")
 	}
 }
+
+func TestControlRequiresExactApprovalAndRejectsProduction(t *testing.T) {
+	args := []string{"control", "--action", "rollback", "--expected-sha256", strings.Repeat("a", 64),
+		"--actor", "synthetic-owner", "--reason", "test recovery"}
+	noDB := func(key string) string {
+		t.Fatalf("incomplete control attempted to read environment key %s", key)
+		return ""
+	}
+	if err := run(args, noDB, &bytes.Buffer{}); err == nil {
+		t.Fatal("missing restore digest accepted")
+	}
+	production := func(key string) string {
+		if key != "ANPFUEL_ENV" {
+			t.Fatalf("production control tried to read %s", key)
+		}
+		return "production"
+	}
+	if err := run(append(args, "--restore-sha256", "none"), production, &bytes.Buffer{}); err == nil ||
+		!strings.Contains(err.Error(), "explicit local or staging environment") {
+		t.Fatalf("production target was not rejected by the environment guard: %v", err)
+	}
+}

@@ -119,7 +119,10 @@
   candidate list. EVC-09C LOCAL_DONE: authenticated private charging
   suggestions cannot enter fuel approval. EVC-09D LOCAL_DONE: Android gap
   action and private address-only submission, 11 JVM and four emulator tests.
-  EVC-09 LOCAL_DONE / INTEGRATION_PENDING. Next SNA-07 and EVC-10 acceptance.
+  EVC-09 LOCAL_DONE / INTEGRATION_PENDING. EVC-10A LOCAL_DONE: audited
+  hold/resume and digest-pinned predecessor rollback (migration 155);
+  PostGIS race, vet and staticcheck pass. SNA-07 and EVC-10 staging
+  acceptance pending. [Recovery](../backend/evidence/evc/EVC-10.md).
   [Coverage](../backend/evidence/evc/EVC-09.md).
   [Refresh evidence](../backend/evidence/evc/EVC-08.md).
   [App evidence](../backend/evidence/evc/EVC-07.md).
