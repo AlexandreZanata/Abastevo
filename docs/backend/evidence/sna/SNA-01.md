@@ -1,6 +1,7 @@
 # SNA-01 — Names and full addresses at ingestion
 
-Status: IN_PROGRESS
+Status: LOCAL_DONE
+Validation: PASS
 
 Bounded children, declared before behavior: SNA-01A covers the pure Go name
 rule and CSV/official API parsing; SNA-01B covers the existing Rust v2 batch's
@@ -51,3 +52,39 @@ old row masking the new parse. Full address and raw legal/trade values are
 retained in Assertion; SNA-02 must add storage/projection before that is a
 stored/public legal-name feature. No backfill, source download or staging write.
 Next: SNA-01B additive v3 batch and deterministic pinned name enrichment.
+
+## SNA-01B opening
+
+B-BR-STATION-NAME-01B: The versioned local enrichment selects an active usable
+RFB trade name by exact CNPJ, else the latest usable survey name, else none.
+Never invent or title-case a value. Contradictory values at one source clock
+refuse the input; a newer inactive RFB row cannot revive stale active data.
+
+BUC-SNA-01B: Verify declared local pins/bounds/row counts before enrichment,
+join through a CNPJ index, emit named v3 rows with source provenance and
+correct succession checksums, bind provenance again at Go admission, preserve
+v1/v2 compatibility and all existing source quarantine/publication behavior.
+The input schema/budgets are frozen in contracts/station-prep/station-names-v3.md.
+SNA-02 still owns storing these new fields and approved-correction projection.
+
+## SNA-01B checkpoint (2026-11-03)
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Tested parent 5cfa2717 plus this child. RED: the Go strict decoder refused
+name_inputs, and Rust lacked the v3 profile. GREEN: complete locked Rust suite
+(including legacy golden/emission compatibility); three new Rust name/CLI
+cases; clippy all-targets with warnings denied; Go domain/registry race, vet
+and real PostGIS registry suite (29.790s). The actual new Rust executable emits
+v3, Go preserves untrimmed legal names/components, both admission paths refuse
+unbound pins, and the prepared transaction leaves no partial run after failure.
+The final legal-name/source-binding guard was rechecked through the real
+Rust→Go/PostGIS case (1.664s). Initial local httptest was sandbox-denied; the
+same full affected race suite passed with local sockets permitted, no skip.
+
+The minimized RFB/survey descriptor is bounded and verified before atomic
+publication; no new dependency or source download. Old v1/v2 are readable and
+the legacy CLI emits unchanged bytes. New source fields still await SNA-02
+storage/projection; this does not claim backfill, API or national coverage.
+Diff-check and changed-file secret surface reviewed. Next: SNA-02.

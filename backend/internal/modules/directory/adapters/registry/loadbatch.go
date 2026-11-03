@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -40,6 +41,7 @@ const (
 const (
 	SchemaAssertion   = "station-assertion-v1"
 	SchemaAssertionV2 = "station-assertion-v2"
+	SchemaAssertionV3 = "station-assertion-v3"
 	SchemaCandidate   = "station-coordinate-candidate-v1"
 	SchemaQuarantine  = "station-quarantine-v1"
 	FormatBatch       = "station-batch-v1"
@@ -60,6 +62,7 @@ type BatchManifest struct {
 		Reference     string `json:"reference"`
 		ReferenceHash string `json:"reference_hash"`
 	} `json:"municipality_reference"`
+	NameInputs   []BatchNameInput       `json:"name_inputs,omitempty"`
 	Inputs       []BatchInput           `json:"inputs"`
 	Counts       map[string]BatchCounts `json:"counts"`
 	Completeness struct {
@@ -106,31 +109,34 @@ type BatchStreams struct {
 
 // BatchAssertion mirrors station-assertion-v1 (loader subset).
 type BatchAssertion struct {
-	SchemaVersion          string            `json:"schema_version"`
-	Source                 string            `json:"source"`
-	SourceKey              string            `json:"source_key"`
-	Checksum               string            `json:"checksum"`
-	SimpRef                string            `json:"simp_ref"`
-	AuthorizationRef       string            `json:"authorization_ref"`
-	BusinessNameRaw        string            `json:"business_name_raw"`
-	BusinessNameNormalized string            `json:"business_name_normalized"`
-	AddressRaw             string            `json:"address_raw"`
-	AddressNormalized      map[string]string `json:"address_normalized"`
-	UF                     string            `json:"uf"`
-	MunicipalityNameRaw    string            `json:"municipality_name_raw"`
-	MunicipalityIBGE       string            `json:"municipality_ibge"`
-	BrandRaw               string            `json:"brand_raw"`
-	PublishedAt            string            `json:"published_at"`
-	EffectiveAt            string            `json:"effective_at"`
-	BrandLinkedAt          string            `json:"brand_linked_at,omitempty"`
-	AuthState              string            `json:"auth_state"`
-	Eligibility            string            `json:"eligibility"`
-	AuthEvidence           string            `json:"auth_evidence"`
-	LocationQuality        string            `json:"location_quality"`
-	Latitude               *float64          `json:"latitude"`
-	Longitude              *float64          `json:"longitude"`
-	CRS                    string            `json:"crs"`
-	Supersedes             *string           `json:"supersedes"`
+	SchemaVersion          string               `json:"schema_version"`
+	Source                 string               `json:"source"`
+	SourceKey              string               `json:"source_key"`
+	Checksum               string               `json:"checksum"`
+	SimpRef                string               `json:"simp_ref"`
+	AuthorizationRef       string               `json:"authorization_ref"`
+	LegalName              *string              `json:"legal_name,omitempty"`
+	TradeName              *string              `json:"trade_name,omitempty"`
+	TradeNameProvenance    *BatchNameProvenance `json:"trade_name_provenance,omitempty"`
+	BusinessNameRaw        string               `json:"business_name_raw"`
+	BusinessNameNormalized string               `json:"business_name_normalized"`
+	AddressRaw             string               `json:"address_raw"`
+	AddressNormalized      map[string]string    `json:"address_normalized"`
+	UF                     string               `json:"uf"`
+	MunicipalityNameRaw    string               `json:"municipality_name_raw"`
+	MunicipalityIBGE       string               `json:"municipality_ibge"`
+	BrandRaw               string               `json:"brand_raw"`
+	PublishedAt            string               `json:"published_at"`
+	EffectiveAt            string               `json:"effective_at"`
+	BrandLinkedAt          string               `json:"brand_linked_at,omitempty"`
+	AuthState              string               `json:"auth_state"`
+	Eligibility            string               `json:"eligibility"`
+	AuthEvidence           string               `json:"auth_evidence"`
+	LocationQuality        string               `json:"location_quality"`
+	Latitude               *float64             `json:"latitude"`
+	Longitude              *float64             `json:"longitude"`
+	CRS                    string               `json:"crs"`
+	Supersedes             *string              `json:"supersedes"`
 }
 
 // BatchCandidate mirrors station-coordinate-candidate-v1.
@@ -284,6 +290,9 @@ func validateBatchManifest(manifestJSON []byte) (BatchManifest, error) {
 			return manifest, fmt.Errorf("registry: input %q rows do not match accounting", input.Key)
 		}
 	}
+	if err := validateNameInputs(manifest); err != nil {
+		return manifest, err
+	}
 	return manifest, nil
 }
 
@@ -351,6 +360,9 @@ func validateBatch(manifestJSON []byte, streams BatchStreams) (*validatedBatch, 
 	for _, line := range assertionLines {
 		var row BatchAssertion
 		if err := decodeStrict(line, &row, "assertion row"); err != nil {
+			return fail("%v", err)
+		}
+		if err := validateNameBinding(manifest, row); err != nil {
 			return fail("%v", err)
 		}
 		assertion, err := mapAssertionRow(row)
@@ -421,10 +433,10 @@ func mapAssertionRow(row BatchAssertion) (Assertion, error) {
 	invalid := func(format string, args ...any) (Assertion, error) {
 		return Assertion{}, fmt.Errorf("registry: "+format, args...)
 	}
-	if row.SchemaVersion != SchemaAssertion && row.SchemaVersion != SchemaAssertionV2 {
+	if row.SchemaVersion != SchemaAssertion && row.SchemaVersion != SchemaAssertionV2 && row.SchemaVersion != SchemaAssertionV3 {
 		return invalid("assertion row with schema %q", row.SchemaVersion)
 	}
-	if row.SchemaVersion == SchemaAssertionV2 {
+	if row.SchemaVersion == SchemaAssertionV2 || row.SchemaVersion == SchemaAssertionV3 {
 		if _, err := parseEffectiveDate(row.PublishedAt, "authorization publication date"); err != nil {
 			return invalid("%v", err)
 		}
@@ -474,14 +486,27 @@ func mapAssertionRow(row BatchAssertion) (Assertion, error) {
 		address[key] = value
 	}
 	address["raw"] = row.AddressRaw
+	address["municipio"] = row.MunicipalityNameRaw
 	address["municipio_ibge"] = row.MunicipalityIBGE
 	address["uf"] = strings.ToUpper(row.UF)
 
+	legal, trade, display := row.BusinessNameRaw, "", row.BusinessNameNormalized
+	if row.SchemaVersion == SchemaAssertionV3 {
+		if row.LegalName == nil || row.TradeName == nil || strings.TrimSpace(*row.LegalName) == "" || strings.TrimSpace(*row.LegalName) != row.BusinessNameRaw {
+			return invalid("v3 assertion requires legal_name and trade_name")
+		}
+		legal, trade = *row.LegalName, *row.TradeName
+		display = domain.StationDisplayName(legal, trade, cnpj, "")
+	} else if row.LegalName != nil || row.TradeName != nil || row.TradeNameProvenance != nil {
+		return invalid("sourced names require assertion v3")
+	}
 	return Assertion{
+		LegalName:        legal,
+		TradeName:        trade,
 		Source:           SourcePrep,
 		SourceKey:        cnpj,
 		Checksum:         strings.ToLower(row.Checksum),
-		DisplayName:      row.BusinessNameNormalized,
+		DisplayName:      display,
 		Address:          address,
 		MunicipalityCode: row.MunicipalityIBGE,
 		State:            strings.ToUpper(row.UF),

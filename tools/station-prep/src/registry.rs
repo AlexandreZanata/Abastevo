@@ -74,7 +74,7 @@ fn row_checksum(fields: &[&str]) -> String {
 
 // Strict calendar parsing without locale guesses. The official CSV uses
 // DD/MM/YYYY; older synthetic fixtures use ISO. Brand linkage is independent.
-fn normalize_calendar_date(raw: &str) -> Result<String, &'static str> {
+pub(crate) fn normalize_calendar_date(raw: &str) -> Result<String, &'static str> {
     if raw.is_empty() {
         return Ok(String::new());
     }
@@ -128,6 +128,12 @@ pub struct RegistryRow {
     pub checksum: String,
     pub simp_ref: String,
     pub authorization_ref: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legal_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trade_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trade_name_provenance: Option<crate::registry_names::NameProvenance>,
     pub business_name_raw: String,
     pub business_name_normalized: String,
     pub address_raw: String,
@@ -163,6 +169,8 @@ impl RegistryRow {
 /// multiset the manifest accounts for and the Go loader
 /// independently re-verifies. Quarantined rows never enter either.
 pub struct RegistryBatch {
+    pub name_profile: bool,
+    pub name_inputs: Vec<crate::registry_names::NameInputPin>,
     pub state: RunState,
     pub error_code: String,
     pub counts: Counts,
@@ -195,6 +203,26 @@ pub fn parse_registry(
     raw: Vec<u8>,
     limits: &Limits,
     aliases: &AliasTable,
+) -> Result<RegistryBatch, RegistryError> {
+    parse_registry_profile(file, raw, limits, aliases, false)
+}
+
+/// Opt-in v3 parsing preserves the untrimmed legal name without changing v2.
+pub fn parse_registry_named(
+    file: &str,
+    raw: Vec<u8>,
+    limits: &Limits,
+    aliases: &AliasTable,
+) -> Result<RegistryBatch, RegistryError> {
+    parse_registry_profile(file, raw, limits, aliases, true)
+}
+
+fn parse_registry_profile(
+    file: &str,
+    raw: Vec<u8>,
+    limits: &Limits,
+    aliases: &AliasTable,
+    named: bool,
 ) -> Result<RegistryBatch, RegistryError> {
     if raw.len() as u64 > limits.max_bytes {
         return Err(RegistryError::Oversize);
@@ -242,6 +270,8 @@ pub fn parse_registry(
     let unique_names: HashSet<&str> = names.iter().map(String::as_str).collect();
     if !missing.is_empty() || !unknown.is_empty() || unique_names.len() != names.len() {
         return Ok(RegistryBatch {
+            name_profile: named,
+            name_inputs: Vec::new(),
             state: RunState::Quarantined,
             error_code: "header_mismatch".to_string(),
             counts: Counts::default(),
@@ -320,6 +350,7 @@ pub fn parse_registry(
         let authorization_ref = fields[1].clone();
         let published = fields[2].clone();
         let business = fields[3].clone();
+        let legal_raw = record.get(index["RAZAOSOCIAL"]).unwrap_or("").to_string();
         let cnpj_raw = fields[4].clone();
         let address_raw = fields[5].clone();
         let complement = fields[6].clone();
@@ -435,6 +466,15 @@ pub fn parse_registry(
             &published,
             &effective,
         ]);
+        let checksum = if named {
+            sha256_hex(
+                serde_json::to_string(&("station-assertion-v3-base", &checksum, &legal_raw))
+                    .expect("name checksum")
+                    .as_bytes(),
+            )
+        } else {
+            checksum
+        };
         if !seen.insert(checksum.clone()) {
             counts.duplicates += 1;
             dup_checksums.push(checksum);
@@ -443,7 +483,14 @@ pub fn parse_registry(
         let (street, number) = split_street_number(&address_raw);
         counts.accepted += 1;
         accepted.push(RegistryRow {
-            schema_version: "station-assertion-v2",
+            schema_version: if named {
+                "station-assertion-v3"
+            } else {
+                "station-assertion-v2"
+            },
+            legal_name: named.then_some(legal_raw),
+            trade_name: named.then(String::new),
+            trade_name_provenance: None,
             source: REGISTRY_SOURCE,
             source_key: cnpj,
             checksum,
@@ -538,6 +585,8 @@ pub fn parse_registry(
     }
 
     Ok(RegistryBatch {
+        name_profile: named,
+        name_inputs: Vec::new(),
         state: RunState::Complete,
         error_code: String::new(),
         counts,

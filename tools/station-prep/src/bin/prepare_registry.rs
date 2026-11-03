@@ -8,8 +8,8 @@ use std::io::Read;
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 8 {
-        return Err("usage: prepare_registry CSV ALIASES OUTPUT_DIR SOURCE_REFERENCE EDITION RUN_UUID UTC_TIMESTAMP".into());
+    if args.len() != 8 && !(args.len() == 10 && args[8] == "--name-inputs") {
+        return Err("usage: prepare_registry CSV ALIASES OUTPUT_DIR SOURCE_REFERENCE EDITION RUN_UUID UTC_TIMESTAMP [--name-inputs MANIFEST]".into());
     }
     let mut raw = Vec::new();
     std::fs::File::open(&args[1])?
@@ -31,8 +31,22 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         .file_name()
         .and_then(|name| name.to_str())
         .ok_or("source file name must be UTF-8")?;
-    let batch = parse_registry(source_name, raw, &Limits::default(), &table)
-        .map_err(|e| format!("registry parse refused: {e:?}"))?;
+    let names = if args.len() == 10 {
+        Some(station_prep::registry_names::load_name_inputs(
+            std::path::Path::new(&args[9]),
+        )?)
+    } else {
+        None
+    };
+    let mut batch = if names.is_some() {
+        station_prep::registry::parse_registry_named(source_name, raw, &Limits::default(), &table)
+    } else {
+        parse_registry(source_name, raw, &Limits::default(), &table)
+    }
+    .map_err(|e| format!("registry parse refused: {e:?}"))?;
+    if let Some(names) = names {
+        station_prep::registry_names::enrich_registry_names(&mut batch, &names)?;
+    }
     if batch.state != RunState::Complete {
         return Err("quarantined source/header must not publish".into());
     }

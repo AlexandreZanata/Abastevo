@@ -1,15 +1,18 @@
 # Current execution state
 
 - Station/EV ingestor 2026-11-03: IN_PROGRESS on isolated
-  `codex/station-ev-ingestor`, from remote dev 3efc171b (main c19f0bde).
-  Plan first commit 415c5af0. SNA-01A Go parsing LOCAL_DONE; whole SNA-01
-  awaits Rust v3 child. [Evidence](../backend/evidence/sna/SNA-01.md): domain/
-  registry race, actual Rust→Go publication recovery and real PostGIS suites
-  pass; tested parent 415c5af0 plus task. No import/download/staging write.
-  Owner approved read-only staging inventory; downloads, keys, imports and
-  mutations still require separate approval. Prior PR #183 is open with CI
-  pending at the last snapshot. Next: SNA-01B, then SNA-02/03; final single
-  cumulative dev → main PR, source coverage and automatic-deploy evidence owed.
+  `codex/station-ev-ingestor`, synchronized with merged main d0eb9c79.
+  Plan first commit 415c5af0; SNA-01A 1078b2a6 and SNA-01B LOCAL_DONE.
+  [Evidence](../backend/evidence/sna/SNA-01.md): locked Rust/clippy, Go race/vet,
+  actual Rust v3→Go admission and real PostGIS rollback/replay pass. Tested
+  parent 5cfa2717 plus SNA-01B. SNA-02 storage/projection remains next.
+  Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
+  without UF; zero charging batches/links in this database. This is not
+  a national EV coverage result. PR #183 merged d0eb9c79, all four PR checks
+  green and signed release published; staging receipt advanced automatically
+  to d0eb9c79, runtime digest comparison still being checked. Downloads, keys,
+  imports and staging mutations require separate approval. Final cumulative
+  dev → main PR, per-UF source reconciliation and staging acceptance owed.
 
 - Zero-downtime staging source 2026-11-03: LOCAL_DONE / INTEGRATION_PENDING;
   full live acceptance OWED. [Batch evidence/activation queue](../backend/evidence/cd/ZD-08.md),

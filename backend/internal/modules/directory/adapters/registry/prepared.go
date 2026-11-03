@@ -163,6 +163,9 @@ func LoadPreparedBatch(ctx context.Context, pool *pgxpool.Pool, raw []byte, open
 				if err := decodeStrict(line, &row, "assertion row"); err != nil {
 					return err
 				}
+				if err := validateNameBinding(manifest, row); err != nil {
+					return err
+				}
 				a, err := mapAssertionRow(row)
 				if err != nil {
 					return err
