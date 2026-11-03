@@ -147,3 +147,18 @@ class BoundaryAcquisitionTests(unittest.TestCase):
                     self.assertEqual(1,pin["features"])
                     self.assertEqual("CC-BY-4.0",pin["license"])
                     self.assertEqual(0o600,(target/"municipalities.geojson").stat().st_mode&0o777)
+
+    def test_ibge_gzip_preserves_document_bytes_and_bounds(self):
+        import gzip
+        raw = b'{"type":"FeatureCollection","features":[{"properties":{"codarea":"3550308"}}]}'
+        zipped = gzip.compress(raw)
+        with tempfile.TemporaryDirectory() as root:
+            target = Path(root) / "boundaries"
+            pin = source.download_ibge(target, lambda _: Response(zipped, {
+                "Content-Length": str(len(zipped)), "Content-Encoding": "gzip",
+            }))
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), pin["sha256"])
+            self.assertEqual(raw, (target / "municipalities.geojson").read_bytes())
+        for invalid in [zipped[:-4], gzip.compress(b" " * 1000)]:
+            with self.assertRaises(source.SourceError):
+                source.read_json_response(Response(invalid, {"Content-Encoding": "gzip"}), 128, allow_gzip=True)

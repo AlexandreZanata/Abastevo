@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Local, bounded source acquisition. This is not a production fetch service."""
 import argparse
+import gzip
 import hashlib
+import io
 import json
 import os
 import re
@@ -11,6 +13,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 
 OSM_URL = "https://download.geofabrik.de/south-america/brazil-latest.osm.pbf"
 OCM_ROOT = "https://api.openchargemap.io/v3/"
@@ -141,7 +144,7 @@ def read_key(path=None, variable=None):
     return value
 
 
-def read_json_response(response, limit):
+def read_json_response(response, limit, *, allow_gzip=False):
     if response.status != 200:
         raise SourceError("publisher request did not succeed")
     raw = response.read(limit + 1)
@@ -150,6 +153,17 @@ def read_json_response(response, limit):
     declared = response.headers.get("Content-Length")
     if declared is not None and int(declared) != len(raw):
         raise SourceError("truncated publisher response")
+    encoding = response.headers.get("Content-Encoding", "identity").strip().lower()
+    if encoding == "gzip" and allow_gzip:
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(raw)) as decoded:
+                raw = decoded.read(limit + 1)
+        except (OSError, EOFError, zlib.error):
+            raise SourceError("invalid gzip publisher response") from None
+        if len(raw) > limit:
+            raise SourceError("decoded source exceeded byte budget")
+    elif encoding != "identity":
+        raise SourceError("publisher content encoding refused")
     try:
         return raw, json.loads(raw)
     except (ValueError, UnicodeError):
@@ -234,7 +248,7 @@ def download_ibge(output, fetch=transport):
     completed = False
     try:
         with fetch(request(IBGE_URL)) as response:
-            raw, value = read_json_response(response, MAX_BOUNDARY_BYTES)
+            raw, value = read_json_response(response, MAX_BOUNDARY_BYTES, allow_gzip=True)
         features = value.get("features") if isinstance(value, dict) else None
         if not isinstance(value, dict) or value.get("type") != "FeatureCollection" or not isinstance(features, list) or not 0 < len(features) <= 6000:
             raise SourceError("IBGE boundary scope/shape refused")
