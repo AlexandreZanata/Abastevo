@@ -1,40 +1,19 @@
 # Current execution state
 
-- ZD-06 2026-11-03: probe tooling LOCAL_DONE, LIVE_ACCEPTANCE_OWED on
-  `codex/cd-zero-downtime`, tested parent 7ceed35d plus task.
-  [Evidence](../backend/evidence/cd/ZD-06.md): seven HTTP/subprocess fixtures
-  pass, including 503/unavailable/no-rollout/saturation and privacy refusals.
-  Three actual campaigns remain OWED; surge default OFF. ZD-05 has no
-  measured trigger. Next: ZD-07 owner-controlled drill runbook, ZD-08 ops.
-
-- ZD-04 2026-11-03: rollout/capacity source LOCAL_DONE / INTEGRATION_PENDING,
-  `codex/cd-zero-downtime`, tested parent ca7a7aba plus task.
-  [Evidence](../backend/evidence/cd/ZD-04.md): 218 agent assertions, four
-  quota dimensions, storage refusal and infra/static gates pass. Source
-  default surge OFF; live 0/1 unchanged, zero-diff/measurements OWED. Next:
-  ZD-06 probe tooling; ZD-05 only on measured edge failure.
-
-- ZD-03 2026-11-03: storage separation source LOCAL_DONE /
-  INTEGRATION_PENDING on `codex/cd-zero-downtime`, tested parent 30160e51
-  plus task. [Evidence](../backend/evidence/cd/ZD-03.md): singleton/render,
-  scoped config, HTTP race/real MinIO signatures and infra gates pass.
-  Signed public URLs preserved. Live topology unchanged; migration requires
-  signed new image and individual approval. Next: ZD-04 hardening.
-
-- ZD-02 2026-11-03: drain source LOCAL_DONE / INTEGRATION_PENDING on
-  `codex/cd-zero-downtime`, tested parent 9bc48e20 plus task.
-  [Evidence](../backend/evidence/cd/ZD-02.md): real SIGTERM/TCP/upload and
-  affected Go race/vet pass; full real-PostGIS jobs and overlapping workers
-  pass. Next: ZD-03 preserve signed public URLs while separating singleton
-  storage; no VPS change, live acceptance OWED.
-
-- ZD-00/01 2026-11-03: read-only staging inventory and agent safety source
-  LOCAL_DONE / INTEGRATION_PENDING on `codex/cd-zero-downtime`, tested parent
-  d9fa3db0 plus task. [Inventory](../backend/evidence/cd/ZD-00.md),
-  [safety](../backend/evidence/cd/ZD-01.md); 221 harness assertions and static
-  checks pass. Live c19f0bde/timer active, surge OFF; no VPS mutation. Next:
-  ZD-02 drain, then storage separation before surge; live approvals and
-  measured acceptance OWED. Final single dev → main PR pending.
+- Zero-downtime staging source 2026-11-03: LOCAL_DONE / INTEGRATION_PENDING;
+  full live acceptance OWED. [Batch evidence/activation queue](../backend/evidence/cd/ZD-08.md),
+  [plan](CD_ZERO_DOWNTIME_PLAN.md). Isolated `codex/cd-zero-downtime`, tested
+  parent 0792eb35 plus final operations task; atomic history retained. 229
+  agent assertions, seven probe cases, capacity/manifest/status, Go race/vet,
+  real PostGIS jobs/worker overlap and S3 signatures pass; 21-case gate and
+  static/secret checks pass. Read-only staging remains c19f0bde/schema145,
+  timer/apply active, surge OFF; no live write. Remote protection verified:
+  strict required Quick verification. Issue: none; PR: pending creation from
+  remote dev to main, checks NOT_RUN at this source checkpoint. Occupied
+  local dev/three unmerged Android commits preserved. Next: publish one source
+  PR; obtain individual approval for agent install, then signed-image storage
+  migration, three measured rollouts and drills. ZD-05 untriggered, ZD-09 not
+  opted in; no merge, production certification or wiki claim.
 
 - Map regional integration 2026-10-28: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/phase-map-regional-integration` (from `origin/main` 66229695, merges

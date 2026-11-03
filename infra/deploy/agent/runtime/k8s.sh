@@ -6,7 +6,7 @@
 # sources this file. Jobs carry ttlSecondsAfterFinished=86400 and backoffLimit=0.
 
 runtime_kubectl() {
-    "${ABASTEVO_KUBECTL:-kubectl}" "$@"
+    "${ABASTEVO_KUBECTL:-kubectl}" "$@" 2>/dev/null
 }
 
 runtime_apply_job() {

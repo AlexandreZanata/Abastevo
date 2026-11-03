@@ -67,7 +67,8 @@ echo "== release workflow guard =="
 bash "$ROOT/scripts/check-release-workflow.sh"
 
 echo "== staging deploy agent =="
-bash "$ROOT/infra/deploy/agent/tests/test-agent.sh"
+make -C "$ROOT" test-deploy-agent
+python3 "$ROOT/infra/k8s/staging/test-manifests.py"
 
 # Collect changed files from working tree (tracked + untracked) and, when
 # available, the committed PR diff against origin/main. CI checkouts are clean,
@@ -97,7 +98,7 @@ else
         case "$f" in
             *.md|*.mdc|docs/*|.cursor/*|README*|ROADMAP*|TRADEMARKS*|LICENSE*|.gitignore)
                 ;;
-            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|backend/go.mod|backend/go.sum|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|admin-web/*|tools/*)
+            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|admin-web/*|tools/*)
                 DOCS_ONLY=0
                 ;;
             *)
@@ -130,17 +131,15 @@ echo "== secret scan (working tree + PR diff) =="
 SECRET_PATTERN='ghp_[A-Za-z0-9]{20,}|github_pat_|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|sk_live_|AKIA[0-9A-Z]{16}|xox[bap]-'
 SCAN_LIST="$(printf "%s" "$CHANGED_ALL" | grep -v -e '^scripts/check-backend-fast.sh$' -e '^scripts/scan-secrets.sh$' -e '^scripts/quick-verify.sh$' -e '^scripts/check-security.sh$' -e '^scripts/verify-release.sh$' -e '^scripts/wiki.sh$' -e '^scripts/tests/test-gate-selection.sh$' || true)"
 if [[ -n "$SCAN_LIST" ]]; then
-    FILES=""
-    # shellcheck disable=SC2086
-    for f in $SCAN_LIST; do
+    FILES=()
+    while IFS= read -r f; do
         if [[ -f "$f" ]]; then
-            FILES="$FILES $f"
+            FILES+=("$f")
         fi
-    done
-    if [[ -n "$FILES" ]]; then
-        # shellcheck disable=SC2086
+    done <<< "$SCAN_LIST"
+    if (( ${#FILES[@]} )); then
         set +e
-        SCAN_OUT="$(grep -nE "$SECRET_PATTERN" $FILES 2>&1)"
+        SCAN_OUT="$(grep -nE "$SECRET_PATTERN" "${FILES[@]}" 2>&1)"
         SCAN_EXIT=$?
         set -e
         if [[ "$SCAN_EXIT" -eq 0 ]]; then

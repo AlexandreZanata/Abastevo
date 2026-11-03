@@ -1,6 +1,6 @@
 # Zero-downtime continuous deploy plan (staging VPS)
 
-Status: PLANNED (2026-11-03). Owner request: every `main` update reaches the
+Status: SOURCE_LOCAL_DONE / LIVE_ACCEPTANCE_OWED (2026-11-03). Owner request: every `main` update reaches the
 VPS automatically, with **zero downtime** for people using the app while the
 new image rolls out, following the delivery model already running in the
 TBG (Tupi Battle Grounds) project. Written for execution by another agent:
@@ -207,3 +207,20 @@ push-based SSH deploy from GitHub; `latest` tags; `kubectl delete` of the
 namespace, PVC or StatefulSet; `docker compose down -v` / volume deletion;
 touching other namespaces or nginx vhosts; production deploys; enabling
 anything live without the owner's explicit authorization for that step.
+
+## 6. Execution checkpoint — 2026-11-03
+
+- ZD-00 read-only inventory complete; staging c19f0bde, timer/apply active,
+  surge OFF. No live write was performed.
+- ZD-01/02/03/04 source and ZD-06/08 tooling locally validated; cumulative
+  delivery is one protected dev → main PR. See `docs/backend/evidence/cd/ZD-xx.md`.
+- ZD-03/04 live migration/apply/zero-diff, three ZD-06 campaigns, ZD-07 drills,
+  notification activation, image GC, pause and actual portal refresh remain
+  OWED. Source preparation does not consume those live acceptance gates.
+- ZD-05 has no measured trigger; no edge retry change. ZD-09 has no owner opt-in.
+- Phase 3 step 5's stable script path/15-minute worker ownership is formally
+  amended in STAGING_CONTINUOUS_DEPLOY_PLAN; its live path/refresh is unverified.
+- Next owner-controlled live step: approve a reviewed complete agent bundle
+  upgrade with prior bundle retained for rollback. Topology/surge/timer/drills
+  require their own subsequent approvals; no main merge is performed merely
+  to satisfy a request to open the source PR.

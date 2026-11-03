@@ -89,6 +89,7 @@ safety_hold() {
 safety_journal() {
     if [[ -f "$ABASTEVO_STATE_DIR/inflight.json" ]]; then
         APPLY_PREVIOUS_REVISION="$(jq -r .previous_revision "$ABASTEVO_STATE_DIR/inflight.json")"
+        APPLY_PREVIOUS_WORKER_REVISION="$(jq -r '.previous_worker_revision // .previous_revision' "$ABASTEVO_STATE_DIR/inflight.json")"
         APPLY_PREVIOUS_STRATEGY_JSON="$(jq -c .previous_strategy "$ABASTEVO_STATE_DIR/inflight.json")"
         APPLY_PREVIOUS_LANDING="$(jq -r .previous_landing "$ABASTEVO_STATE_DIR/inflight.json")"
         return
@@ -97,10 +98,38 @@ safety_journal() {
     deployment="$(runtime_kubectl -n "$ABASTEVO_NAMESPACE" get deployment "$ABASTEVO_API_DEPLOYMENT" -o json)"
     APPLY_PREVIOUS_REVISION="$(printf '%s' "$deployment" | jq -r '.metadata.annotations["deployment.kubernetes.io/revision"] // empty')"
     [[ "$APPLY_PREVIOUS_REVISION" =~ ^[0-9]+$ ]] || apply_fail journal "deployment revision unavailable"
+    APPLY_PREVIOUS_WORKER_REVISION="$APPLY_PREVIOUS_REVISION"
+    if [[ "$ABASTEVO_WORKER_DEPLOYMENT" != "$ABASTEVO_API_DEPLOYMENT" ]]; then
+        APPLY_PREVIOUS_WORKER_REVISION="$(runtime_kubectl -n "$ABASTEVO_NAMESPACE" get deployment "$ABASTEVO_WORKER_DEPLOYMENT" -o json \
+            | jq -r '.metadata.annotations["deployment.kubernetes.io/revision"] // empty')"
+        [[ "$APPLY_PREVIOUS_WORKER_REVISION" =~ ^[0-9]+$ ]] || apply_fail journal "worker deployment revision unavailable"
+    fi
     APPLY_PREVIOUS_STRATEGY_JSON="$(printf '%s' "$deployment" | jq -c '.spec.strategy.rollingUpdate')"
     APPLY_PREVIOUS_LANDING="$(readlink "$ABASTEVO_LANDING_ROOT/current" 2>/dev/null || true)"
     safety_write inflight.json "$(jq -n --arg sha "$release_sha" \
-        --arg revision "$APPLY_PREVIOUS_REVISION" --arg landing "$APPLY_PREVIOUS_LANDING" \
+        --arg revision "$APPLY_PREVIOUS_REVISION" --arg worker_revision "$APPLY_PREVIOUS_WORKER_REVISION" --arg landing "$APPLY_PREVIOUS_LANDING" \
         --argjson strategy "$APPLY_PREVIOUS_STRATEGY_JSON" \
-        '{schema:"abastevo-deploy-inflight-v1",sha:$sha,previous_revision:$revision,previous_landing:$landing,previous_strategy:$strategy}')"
+        '{schema:"abastevo-deploy-inflight-v1",sha:$sha,previous_revision:$revision,previous_worker_revision:$worker_revision,previous_landing:$landing,previous_strategy:$strategy}')"
+}
+
+# Optional local delivery adapter. It reads its own token; no channel secrets
+# or private configuration enter this sanitized stdin envelope or the journal.
+safety_notify() {
+    [[ -n "$ABASTEVO_FAILURE_HOOK" ]] || return 0
+    local mode owner
+    if [[ "$ABASTEVO_FAILURE_HOOK" != /* || ! -f "$ABASTEVO_FAILURE_HOOK" || ! -x "$ABASTEVO_FAILURE_HOOK" ]]; then
+        log "failure hook unavailable; inspect local notification configuration"
+        return 0
+    fi
+    mode="$(stat -c '%a' "$ABASTEVO_FAILURE_HOOK")"
+    owner="$(stat -c '%u' "$ABASTEVO_FAILURE_HOOK")"
+    if (( (8#$mode & 022) != 0 )) || [[ "$owner" != "0" && "$owner" != "$(id -u)" ]]; then
+        log "failure hook permissions refused"
+        return 0
+    fi
+    if ! jq -n --arg sha "$release_sha" --arg stage "$APPLY_STAGE" \
+        '{schema:"abastevo-deploy-notification-v1",result:"failed",sha:$sha,stage:$stage}' \
+        | timeout 10s "$ABASTEVO_FAILURE_HOOK" >/dev/null 2>&1; then
+        log "failure notification unavailable; deploy failure remains recorded"
+    fi
 }

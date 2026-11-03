@@ -121,8 +121,10 @@ Order per release (any failure stops and rolls back what changed):
 4. Roll api/worker by digest with `maxSurge: 1` (raise the namespace quota
    only if the owner approves; otherwise `maxUnavailable: 0` with a
    pre-pull) and readiness gate; on failure `rollout undo`.
-5. Landing: unpack to `releases/<sha>`, switch `current` atomically, update
-   the worker search-script env, enqueue one portal refresh.
+5. Landing: unpack to `releases/<sha>`, switch `current` atomically. Per the
+   ZD-08 amendment below, the worker uses an operator-configured stable path
+   through `current` and its existing deduplicated 15-minute portal-refresh
+   schedule; the deploy agent neither patches worker env nor enqueues jobs.
 6. Smoke: `/health/ready`, `/`, `/consultar/`, one nearby/list call, one
    search shard; on failure roll back images and landing pointer.
 7. Write the receipt (no secrets) and keep the previous release for rollback.
@@ -158,3 +160,16 @@ the owner opens it.
   on `main`.
 - Touching other namespaces, the shared nginx config beyond the Abastevo
   vhost, or host packages from the agent.
+
+## ZD-08 amendment (2026-11-03): portal refresh ownership
+
+Phase 3 step 5 no longer requires an extra env patch and queue write on each
+release. The existing worker owns `enterprise-portal-refresh` on a 15-minute
+schedule with dedupe/lease fencing; deployment remains storage/queue agnostic.
+The operator must configure `PORTAL_SEARCH_JS` to the stable search script
+through the landing `current` link and verify one scheduled refresh after a
+switch. This permits up to one schedule interval before portal regeneration;
+it does not claim immediate refreshed portal content. The existing source
+scheduler is evidence for the mechanism, not for the live path or refresh.
+Live path/refresh proof remains OWED to ZD-08. No RBAC, DB credential or
+additional env rollout is granted to the agent by this amendment.

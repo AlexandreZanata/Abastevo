@@ -11,6 +11,7 @@ APPLY_LANDING_SWITCHED=0
 APPLY_STRATEGY_PATCHED=0
 APPLY_PREVIOUS_LANDING=""
 APPLY_PREVIOUS_REVISION=""
+APPLY_PREVIOUS_WORKER_REVISION=""
 APPLY_PREVIOUS_STRATEGY_JSON=""
 APPLY_SURGE=false
 APPLY_MAX_SURGE=0
@@ -150,15 +151,20 @@ apply_fail() {
         if apply_restore_landing; then landing_rolled_back=true; else log "landing rollback failed"; safety_hold; fi
     fi
     if [[ "$APPLY_ROLLOUT_STARTED" == "1" ]]; then
-        if runtime_rollout_undo "$ABASTEVO_NAMESPACE" "$ABASTEVO_API_DEPLOYMENT" "$APPLY_PREVIOUS_REVISION"; then
+        if runtime_rollout_undo "$ABASTEVO_NAMESPACE" "$ABASTEVO_API_DEPLOYMENT" "$APPLY_PREVIOUS_REVISION" \
+            && runtime_rollout_status "$ABASTEVO_NAMESPACE" "$ABASTEVO_API_DEPLOYMENT" "$ABASTEVO_ROLLOUT_TIMEOUT"; then
             rollout_undone=true
         else
             log "rollout undo failed for the api deployment"
             safety_hold
         fi
         if [[ "$ABASTEVO_WORKER_DEPLOYMENT" != "$ABASTEVO_API_DEPLOYMENT" ]]; then
-            runtime_rollout_undo "$ABASTEVO_NAMESPACE" "$ABASTEVO_WORKER_DEPLOYMENT" \
-                || { log "rollout undo failed for the worker deployment"; safety_hold; }
+            if ! runtime_rollout_undo "$ABASTEVO_NAMESPACE" "$ABASTEVO_WORKER_DEPLOYMENT" "$APPLY_PREVIOUS_WORKER_REVISION" \
+                || ! runtime_rollout_status "$ABASTEVO_NAMESPACE" "$ABASTEVO_WORKER_DEPLOYMENT" "$ABASTEVO_ROLLOUT_TIMEOUT"; then
+                rollout_undone=false
+                log "rollout undo failed for the worker deployment"
+                safety_hold
+            fi
         fi
     elif [[ "$APPLY_STRATEGY_PATCHED" == "1" ]]; then
         if apply_restore_strategy; then strategy_restored=true; else log "strategy restore failed"; safety_hold; fi
@@ -167,6 +173,7 @@ apply_fail() {
     apply_write_receipt "failed" "$stage" "$message" "$rollout_undone" \
         "$landing_rolled_back" "$strategy_restored"
     safety_reject || exit 1
+    safety_notify
     rm -f "$ABASTEVO_STATE_DIR/inflight.json"
     exit 1
 }

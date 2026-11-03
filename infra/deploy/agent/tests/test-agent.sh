@@ -204,8 +204,14 @@ case "${cmd[0]:-}" in
         ;;
     rollout)
         case "${cmd[1]:-}" in
-            status) [[ "${KUBECTL_ROLLOUT_FAIL:-0}" == "0" ]] || exit 1 ;;
-            undo) [[ "${KUBECTL_UNDO_FAIL:-0}" == "0" ]] || exit 1 ;;
+            status)
+                if [[ -e "$ORAS_FIXTURE_DIR/undo-requested" ]]; then
+                    [[ "${KUBECTL_UNDO_STATUS_FAIL:-0}" == "0" ]] || exit 1
+                else
+                    [[ "${KUBECTL_ROLLOUT_FAIL:-0}" == "0" ]] || exit 1
+                fi
+                ;;
+            undo) touch "$ORAS_FIXTURE_DIR/undo-requested"; [[ "${KUBECTL_UNDO_FAIL:-0}" == "0" ]] || exit 1 ;;
             *) exit 1 ;;
         esac
         ;;

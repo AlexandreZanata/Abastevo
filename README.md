@@ -19,6 +19,12 @@ Backend/local infrastructure and P12–P17 functional modules are integrated; P1
 
 **iOS is archived and deferred until the maintainer explicitly requests resumption.** Shared Kotlin ports, native source and prepared icon assets are preserved; no iOS build/device acceptance is claimed. [Archived backlog](docs/planning/archive/IOS_DEFERRED.md), [platform decision](docs/adr/016-android-commercial-community-ios-deferred.md).
 
+Staging uses the existing signed pull deployment timer. The [zero-downtime
+source work](docs/planning/CD_ZERO_DOWNTIME_PLAN.md) adds drain, safety guards,
+independent storage and measurement tooling; the [live inventory](docs/backend/evidence/cd/ZD-00.md)
+still shows surge OFF. Topology activation, three measured rollouts and failure
+drills remain pending explicit approval; no zero-downtime acceptance is claimed.
+
 ## Development and documentation
 
 - [Roadmap and bounded tasks](ROADMAP.md), [current progress](docs/planning/PROGRESS.md) and [documentation index](docs/README.md).

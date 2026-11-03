@@ -60,3 +60,35 @@ CASE="$(new_case landing-restore-hold)"
 make_current_old "$CASE"; prepare_landing "$CASE" 1
 SMOKE_MODE=after-landing LANDING_ROLLBACK_FAIL=1 expect_failure "landing restore failure" run_agent_apply "$CASE"
 assert_file "landing restore failure holds" "$CASE/state/operator-hold.json"
+
+CASE="$(new_case notification)"
+make_current_old "$CASE"; prepare_landing "$CASE" 1
+cat > "$CASE/failure-hook" <<'HOOK'
+#!/usr/bin/env bash
+cat > "$ORAS_FIXTURE_DIR/notification.json"
+printf 'called\n' >> "$ORAS_FIXTURE_DIR/notification.calls"
+printf 'PRIVATE-HOOK-CANARY\n' >&2
+exit 1
+HOOK
+chmod 700 "$CASE/failure-hook"
+KUBECTL_ROLLOUT_FAIL=1 ABASTEVO_FAILURE_HOOK="$CASE/failure-hook" expect_failure "hook failure preserves deploy failure" run_agent_apply "$CASE"
+assert_file "hook received notification" "$CASE/notification.json"
+assert_eq "hook receives only safe envelope" "$(jq -r '.schema' "$CASE/notification.json")" "abastevo-deploy-notification-v1"
+if grep -q 'PRIVATE-HOOK-CANARY' "$CASE/stderr.log"; then failed "hook stderr leaked"; else pass "hook stderr suppressed"; fi
+BEFORE="$(wc -l < "$CASE/notification.calls")"
+expect_success "rejection suppresses repeat notification" run_agent_apply "$CASE"
+assert_eq "notification unchanged on rejected skip" "$(wc -l < "$CASE/notification.calls")" "$BEFORE"
+
+CASE="$(new_case undo-never-ready)"
+make_current_old "$CASE"; prepare_landing "$CASE" 1
+KUBECTL_ROLLOUT_FAIL=1 KUBECTL_UNDO_STATUS_FAIL=1 expect_failure "undo not ready fails" run_agent_apply "$CASE"
+assert_file "undo never ready holds" "$CASE/state/operator-hold.json"
+CASE="$(new_case pinned-candidate-mismatch)"
+make_current_old "$CASE"; prepare_landing "$CASE" 1
+KUBECTL_KILL_POINT=migrate expect_failure "pin candidate before interruption" run_agent_apply "$CASE"
+jq '.sha="2222222222222222222222222222222222222222"' "$CASE/artifact/release-manifest.json" > "$CASE/manifest.tmp"
+mv "$CASE/manifest.tmp" "$CASE/artifact/release-manifest.json"
+write_oci "$CASE"
+BEFORE="$(wc -l < "$CASE/kubectl.log")"
+expect_failure "immutable pinned tag SHA mismatch refused" run_agent_apply "$CASE"
+assert_eq "pin mismatch makes no cluster call" "$(wc -l < "$CASE/kubectl.log")" "$BEFORE"
