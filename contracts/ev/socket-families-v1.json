@@ -1,0 +1,24 @@
+{
+  "format": "abastevo.ev-socket-families-v1",
+  "reference_sha256": "71c7ea6f70e8f360ff13cc64ada578d07c05af0bf9e92b5efeda591ff695f7e8",
+  "unknown_policy": "UNKNOWN plus raw code; never shared evidence for automatic matching",
+  "ambiguous_osm_keys": ["domestic", "tesla_supercharger", "tesla_destination", "tesla"],
+  "families": [
+    {"family":"TYPE1","osm":["type1","type1_cable"],"ocm":[1]},
+    {"family":"TYPE2","osm":["type2","type2_cable"],"ocm":[25,1036]},
+    {"family":"CCS1","osm":["type1_combo"],"ocm":[32]},
+    {"family":"CCS2","osm":["type2_combo"],"ocm":[33]},
+    {"family":"CHADEMO","osm":["chademo"],"ocm":[2]},
+    {"family":"GBT_AC","osm":["gb_ac"],"ocm":[1038,1039]},
+    {"family":"GBT_DC","osm":["gb_dc"],"ocm":[1040]},
+    {"family":"NACS","osm":["nacs"],"ocm":[27]},
+    {"family":"NBR14136","osm":["nbr14136","nbr_14136"],"ocm":[]},
+    {"family":"TESLA_LEGACY","osm":[],"ocm":[30]}
+  ],
+  "current": {"10":"AC","20":"AC","30":"DC"},
+  "power": {"units":"integer W from exact source decimal; no rounding","max_w":1000000000,"osm_unitless":"kW"},
+  "sources": [
+    "https://wiki.openstreetmap.org/wiki/Key:socket",
+    "https://github.com/openchargemap/ocm-export/blob/8e3bedca48ca94807d96b2f5e7ee02cffe63ae54/data/referencedata.json"
+  ]
+}

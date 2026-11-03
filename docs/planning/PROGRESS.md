@@ -26,7 +26,11 @@
   objects; 129 unassigned UF, one quarantine. Two outputs byte-identical; accepted
   replay 109.163 s / 926.7 MB RSS within frozen budgets. Fourteen offline Python
   groups pass; source pins/UF census/receipts in EVC-01 evidence. No import.
-  Next EVC-02/03, then SNA-04..06.
+  EVC-02A LOCAL_DONE: frozen socket/current mapping and exact decimal power;
+  corrected legacy OCM 20→AC / 30→DC, no rounded/fabricated W. Full Rust gate
+  and 14 offline Python groups pass (parent fa9e43cf plus child); lockfile unchanged.
+  [EVC-02](../backend/evidence/evc/EVC-02.md). Next EVC-02B/C canonical model and
+  normalization, then EVC-03 and SNA-04..06.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links. This is not a national EV coverage
   result. PR #183 merged d0eb9c79 with all four checks green; signed release
