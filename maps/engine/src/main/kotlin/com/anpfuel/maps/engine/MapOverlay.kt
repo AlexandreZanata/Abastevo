@@ -348,6 +348,38 @@ private fun StringBuilder.appendPlacemark(
 internal const val STATION_FUEL_SYMBOL = "abastevo-station-fuel"
 internal const val STATION_EV_SYMBOL = "abastevo-station-ev"
 
+/** Enlarged, ringed art for the selected station (replaces the SDK selection circle). */
+internal const val STATION_FUEL_SELECTED_SYMBOL = "abastevo-station-fuel-selected"
+internal const val STATION_EV_SELECTED_SYMBOL = "abastevo-station-ev-selected"
+
+internal const val HIGHLIGHT_CATEGORY_NAME = "Abastevo selection v1:"
+
+internal fun highlightCategoryName(generation: Long): String = "${HIGHLIGHT_CATEGORY_NAME}g$generation:"
+
+internal fun isOwnedHighlightCategory(name: String): Boolean {
+    if (!name.startsWith(HIGHLIGHT_CATEGORY_NAME)) return false
+    return Regex("g[0-9]+:[0-9]*").matches(name.removePrefix(HIGHLIGHT_CATEGORY_NAME))
+}
+
+/** One-placemark category drawn over the regular pin of the selected station. */
+internal fun buildHighlightKml(marker: MapOverlayMarker, categoryName: String): String = buildString {
+    appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
+    appendLine("""<kml xmlns="http://www.opengis.net/kml/2.2">""")
+    appendLine("  <Document>")
+    appendLine("    <name>${escapeXml(categoryName)}</name>")
+    appendPlacemark(
+        name = escapeXml(marker.title.truncatedOverlayName()),
+        description = describe(marker),
+        latitude = marker.latitude,
+        longitude = marker.longitude,
+        style = if (marker.charging && !marker.fuel) "teal" else "orange",
+        icon = if (marker.charging && !marker.fuel) "ChargingStation" else "Gas",
+        customImage = if (marker.charging && !marker.fuel) STATION_EV_SELECTED_SYMBOL else STATION_FUEL_SELECTED_SYMBOL,
+    )
+    appendLine("  </Document>")
+    appendLine("</kml>")
+}
+
 private fun escapeXml(value: String): String = value
     .replace("&", "&amp;")
     .replace("<", "&lt;")

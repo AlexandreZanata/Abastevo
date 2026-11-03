@@ -48,6 +48,8 @@ interface MapEngine : com.anpfuel.domain.routing.NativeRoutePlanner {
     /** Global bookmark-label visibility; hides clutter when zoomed out. Defaults to shown. */
     fun setOverlayLabelsVisible(visible: Boolean) = Unit
     fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit)
+    /** Draws the selected pin enlarged in place of the SDK selection circle; null clears it. */
+    fun setHighlightedMarker(marker: MapOverlayMarker?) = Unit
     fun cancelSearch()
     override fun cancelRoute()
     fun startGuidance(request: com.anpfuel.domain.routing.NativeRouteRequest): Boolean = false
