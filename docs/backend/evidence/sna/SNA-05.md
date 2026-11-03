@@ -65,3 +65,23 @@ were discarded. All 15 cache unit tests now pass. The instrumented migration
 passed on a disposable Android 35 emulator with the generated schema bundled
 in the test APK. The fixture verifies the old address, scope, row position,
 cursor and null defaults. The mobile static gate and secret review pass.
+
+## SNA-05B2 opening
+
+B-BR-STATION-MOBILE-05B2. Search the public portions of the display and legal
+names. The directory must not reveal a removed CPF token through result
+membership. Preserve city filters, escaped query text and cursor ordering.
+
+BUC-SNA-05B2. Exercise both name matches and CPF exclusion on real PostGIS.
+Use the same name matching in the Android map's offline search.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The real PostGIS regression first failed on a legal-name-only query. The
+directory now applies the public CPF-token rule before comparing either name.
+The fixture verifies that adjacent CPF-shaped tokens and formatted tokens
+cannot affect result membership. The directory read and HTTP integration
+suites passed with race detection. SQLc generation and vet passed. All 26
+map ViewModel tests passed, including a network failure followed by offline
+legal-name search with the trade name retained as the result label.

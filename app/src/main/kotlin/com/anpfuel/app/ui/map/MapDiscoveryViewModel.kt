@@ -526,7 +526,7 @@ class MapDiscoveryViewModel @Inject constructor(
             } catch (e: Exception) {
                 if (gen != generation) return@launch
                 val cached = loadMapCache(effectiveCode).filter {
-                    it.displayName.contains(q, ignoreCase = true)
+                    it.matchesName(q)
                 }
                 if (cached.isNotEmpty()) {
                     pushMarkers(

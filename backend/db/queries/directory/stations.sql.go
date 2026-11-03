@@ -549,7 +549,12 @@ SELECT id, display_name, legal_name, address_source, address, municipality_code,
 FROM directory_stations
 WHERE ($1::text = '' OR state = $1)
     AND ($2::text = '' OR municipality_code = $2)
-    AND ($3::text = '' OR display_name ILIKE '%' || $3 || '%')
+    -- Match the CPF-minimized public names. Lookahead keeps the separator
+    -- available for a second adjacent token, as in kernel.PublicStationLegalName.
+    AND ($3::text = ''
+        OR regexp_replace(display_name, '(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}[.][0-9]{3}[.][0-9]{3}-[0-9]{2})(?=[^0-9A-Za-z]|$)', '\1', 'g') ILIKE '%' || $3 || '%'
+        OR regexp_replace(legal_name, '(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}[.][0-9]{3}[.][0-9]{3}-[0-9]{2})(?=[^0-9A-Za-z]|$)', '\1', 'g') ILIKE '%' || $3 || '%'
+    )
     -- uuid order equals the lexical order of its canonical lowercase text,
     -- so the primary key serves pages without sorting every station.
     AND ($4::text = '' OR id > NULLIF($4::text, '')::uuid)

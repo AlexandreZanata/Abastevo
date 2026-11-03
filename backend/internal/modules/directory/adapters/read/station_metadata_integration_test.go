@@ -113,3 +113,30 @@ func TestStationMetadataPublicPrivacySourceSeparationAndLegacyNull(t *testing.T)
 		}
 	}
 }
+
+func TestStationSearchMatchesBothNamesWithoutCPF(t *testing.T) {
+	pool := freshPool(t)
+	ctx := context.Background()
+	repo := parent.NewRepository(pool)
+	station, err := repo.ResolveCNPJ(ctx, "91000000000066", "[P25-TEST] Trade 00000000000", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = pool.Exec(ctx, "UPDATE directory_stations SET legal_name=$2, municipality_code='3550308' WHERE id=$1::uuid",
+		station.ID, "[P25-TEST] Razão 111.111.111-11 22222222222 LTDA")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := NewReader(pool)
+	for _, tc := range []struct {
+		query string
+		want  int
+	}{
+		{"trade", 1}, {"razão", 1}, {"00000000000", 0}, {"111.111.111-11", 0}, {"22222222222", 0},
+	} {
+		rows, _, err := reader.Search(ctx, application.SearchFilter{Q: tc.query, Municipality: "3550308", Limit: 10})
+		if err != nil || len(rows) != tc.want || (tc.want == 1 && rows[0].ID != station.ID) {
+			t.Fatalf("search %q: got %d, want %d, err %v", tc.query, len(rows), tc.want, err)
+		}
+	}
+}

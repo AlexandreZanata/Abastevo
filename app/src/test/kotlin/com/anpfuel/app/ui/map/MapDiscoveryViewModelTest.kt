@@ -37,6 +37,7 @@ class MapDiscoveryViewModelTest {
         var stations: List<ServerStation> = emptyList(),
         var delayMs: Long = 0,
         var failNearby: Boolean = false,
+        var failSearch: Boolean = false,
     ) : ServerStationGateway {
         var lastRadius: Int? = null
         var calls = 0
@@ -48,6 +49,7 @@ class MapDiscoveryViewModelTest {
         override suspend fun search(municipalityCode: String, query: String, limit: Int, cursor: String?): ServerStationPage {
             calls++
             lastSearch = municipalityCode to query
+            if (failSearch) throw java.io.IOException("offline")
             if (delayMs > 0) kotlinx.coroutines.delay(delayMs)
             val filtered = stations.filter { it.displayName.contains(query, ignoreCase = true) }
             return ServerStationPage(filtered, null)
@@ -109,6 +111,7 @@ class MapDiscoveryViewModelTest {
         lon: Double? = -49.27,
         quality: StationLocationQuality = StationLocationQuality.REVIEWED,
         name: String = "Posto $id",
+        legalName: String? = null,
     ) = ServerStation.create(
         stationId = id,
         displayName = name,
@@ -119,6 +122,7 @@ class MapDiscoveryViewModelTest {
         municipalityCode = "4106902",
         state = "PR",
         currentRevisionId = null,
+        legalName = legalName,
     )
 
     @BeforeEach fun setup() {
@@ -431,6 +435,27 @@ class MapDiscoveryViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("", vm.ui.value.searchQuery)
         assertTrue(vm.ui.value.listItems.size == 2, "clearing search must return to nearby results")
+    }
+
+    @Test fun `offline search finds cached station by its legal name`() = runTest {
+        val matched = station(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            name = "[P25-TEST] Trade",
+            legalName = "[P25-TEST] Razão Exemplo LTDA",
+        )
+        val other = station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name = "[P25-TEST] Other")
+        val cache = FakeStationCache()
+        cache.saveScopedPage("map:4106902", ServerStationPage(listOf(matched, other), null))
+        val vm = MapDiscoveryViewModel(
+            FakeGateway(failSearch = true), ChargingMarkersSource { emptyList() }, FakeEngine(),
+            null, null, cache,
+        )
+
+        vm.onSearch("4106902", "razão exemplo")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(matched.displayName), vm.ui.value.listItems.map { it.title })
+        assertTrue(vm.ui.value.offlineCached)
     }
 
     @Test fun `offline viewport uses the last saved public map page and marks it cached`() = runTest {

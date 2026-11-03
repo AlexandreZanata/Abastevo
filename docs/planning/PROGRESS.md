@@ -43,8 +43,10 @@
   child). SNA-05A LOCAL_DONE: Android domain/codec optional legal name and
   address source, textual formatter and name matching; 883 domain/eight codec
   tests pass (parent 404a560a plus child). SNA-05B1 LOCAL_DONE: Room 32→33
-  cache persistence, 15 unit tests and real emulator migration pass. Next
-  private-token-safe search, then UI/locales/visual proof and SNA-06.
+  cache persistence, 15 unit tests and real emulator migration pass.
+  SNA-05B2 LOCAL_DONE: private-token-safe search of both names, real PostGIS
+  directory read/HTTP race checks and 26 offline map ViewModel tests pass
+  (parent bfa7f1a9 plus child). Next UI/locales/visual proof and SNA-06.
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact
   recovery owed after restart.
   [Address evidence](../backend/evidence/sna/SNA-04.md). [Conflation](../backend/evidence/evc/EVC-03.md).
