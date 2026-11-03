@@ -9,6 +9,7 @@ enum class MapStationLocationQuality(internal val rank: Int) {
     CITY_CENTROID(2),
     ADDRESS_POINT(3),
     ANP_REPORTED(4),
+    CHARGING_SOURCE(4),
     OSM_MAPPED(5),
     REVIEWED(6),
     ;
@@ -36,6 +37,7 @@ data class MapOverlayMarker(
     val locationQuality: MapStationLocationQuality = MapStationLocationQuality.UNKNOWN,
     val subtitle: String = "",
     val hasValidCoordinates: Boolean = true,
+    val confirmedByTwoSources: Boolean = false,
 ) {
     val canRouteByCoordinates: Boolean
         get() = hasValidCoordinates &&
@@ -78,6 +80,9 @@ data class MapOverlayLabels(
     val osmMappedLocation: String = "Mapped by the OpenStreetMap community",
     val anpReportedLocation: String = "Location reported by ANP",
     val addressPointLocation: String = "Approximate location from address (IBGE)",
+    val sourceChargingLocation: String = "Location reported by the charging source",
+    val unnamedCharging: String = "Unnamed charging site",
+    val confirmedCharging: String = "Confirmed by 2 sources",
 )
 
 data class MapOverlayListItem(
@@ -177,7 +182,9 @@ fun overlayListItems(
     .distinctBy { it.uuid }
     .sortedWith(compareBy({ it.title.lowercase(Locale.ROOT) }, { it.uuid }))
     .map { marker ->
-        val typeLabel = typeLabel(marker, labels)
+        val typeLabel = if (marker.confirmedByTwoSources) {
+            "${typeLabel(marker, labels)} · ${labels.confirmedCharging}"
+        } else typeLabel(marker, labels)
         val locationLabel = locationLabel(marker.locationQuality, labels)
         val description = listOf(marker.title, typeLabel, locationLabel, marker.subtitle)
             .filter { it.isNotBlank() }
@@ -237,7 +244,7 @@ internal fun buildOverlayKml(
             )
         } else {
             appendPlacemark(
-                name = escapeXml(marker.title.truncatedOverlayName()),
+                name = escapeXml(marker.pinLabel()),
                 description = describe(marker),
                 latitude = marker.latitude,
                 longitude = marker.longitude,
@@ -278,6 +285,7 @@ private fun mergeDuplicate(existing: MapOverlayMarker, incoming: MapOverlayMarke
         locationQuality = if (useIncomingLocation) incoming.locationQuality else existing.locationQuality,
         subtitle = existing.subtitle.ifBlank { incoming.subtitle },
         hasValidCoordinates = existing.hasValidCoordinates || incoming.hasValidCoordinates,
+        confirmedByTwoSources = existing.confirmedByTwoSources || incoming.confirmedByTwoSources,
     )
 }
 
@@ -308,8 +316,12 @@ private fun locationLabel(quality: MapStationLocationQuality, labels: MapOverlay
     MapStationLocationQuality.REVIEWED -> labels.reviewedLocation
     MapStationLocationQuality.OSM_MAPPED -> labels.osmMappedLocation
     MapStationLocationQuality.ANP_REPORTED -> labels.anpReportedLocation
+    MapStationLocationQuality.CHARGING_SOURCE -> labels.sourceChargingLocation
     MapStationLocationQuality.ADDRESS_POINT -> labels.addressPointLocation
 }
+
+private fun MapOverlayMarker.pinLabel(): String =
+    (if (confirmedByTwoSources) "✓ $title" else title).truncatedOverlayName()
 
 private fun describe(marker: MapOverlayMarker): String = listOf(
     marker.title,
@@ -368,7 +380,7 @@ internal fun buildHighlightKml(marker: MapOverlayMarker, categoryName: String): 
     appendLine("  <Document>")
     appendLine("    <name>${escapeXml(categoryName)}</name>")
     appendPlacemark(
-        name = escapeXml(marker.title.truncatedOverlayName()),
+        name = escapeXml(marker.pinLabel()),
         description = describe(marker),
         latitude = marker.latitude,
         longitude = marker.longitude,

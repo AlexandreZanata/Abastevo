@@ -739,16 +739,19 @@ class MapDiscoveryViewModel @Inject constructor(
             lastNullCharging = nullCoordsCharging
         }
         val uiState = _ui.value
+        val labels = overlayLabels
         val filtered = markers.filter {
             (it.fuel && uiState.showFuel) || (it.charging && uiState.showCharging)
+        }.map { marker ->
+            if (marker.charging && marker.title.isBlank()) marker.copy(title = labels.unnamedCharging)
+            else marker
         }
         val preparation = prepareOverlay(filtered, radiusMeters = 60.0, generation = gen)
         engine.setOverlayMarkers(
             preparation.clusters.flatMap { it.markers },
         )
-        val labels = overlayLabels
         val nullStationMarkers = nullCoordsStations.map { it.toUnlocatedMarker() }
-        val nullChargingMarkers = nullCoordsCharging.map { it.toUnlocatedMarker() }
+        val nullChargingMarkers = nullCoordsCharging.map { it.toUnlocatedMarker(labels.unnamedCharging) }
         val nullItems = nullStationMarkers.map { m ->
             MapOverlayListItem(
                 uuid = m.uuid,
@@ -761,13 +764,16 @@ class MapDiscoveryViewModel @Inject constructor(
                     .joinToString(", "),
             )
         } + nullChargingMarkers.map { m ->
+            val typeLabel = if (m.confirmedByTwoSources) {
+                "${labels.charging} · ${labels.confirmedCharging}"
+            } else labels.charging
             MapOverlayListItem(
                 uuid = m.uuid,
                 title = m.title,
                 type = MapStationType.CHARGING,
-                typeLabel = labels.charging,
+                typeLabel = typeLabel,
                 locationLabel = labels.unknownLocation,
-                contentDescription = listOf(m.title, labels.charging, labels.unknownLocation, m.subtitle)
+                contentDescription = listOf(m.title, typeLabel, labels.unknownLocation, m.subtitle)
                     .filter { it.isNotBlank() }
                     .joinToString(", "),
             )
@@ -897,8 +903,7 @@ private fun ChargingPlace.toMarker(): MapOverlayMarker? {
     val lat = latitude?.toDoubleOrNull() ?: return null
     val lon = longitude?.toDoubleOrNull() ?: return null
     if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
-    // OCM snapshot coordinates are admitted reference geometry; pin-eligible
-    // when present, list-only when absent (null returns above).
+    // The catalog point determines pin eligibility, independent of source agreement.
     return MapOverlayMarker(
         uuid = id.lowercase(Locale.ROOT),
         latitude = lat,
@@ -906,20 +911,23 @@ private fun ChargingPlace.toMarker(): MapOverlayMarker? {
         title = name,
         fuel = false,
         charging = true,
-        locationQuality = MapStationLocationQuality.REVIEWED,
-        subtitle = country,
+        locationQuality = if (catalogConfidence != null) MapStationLocationQuality.CHARGING_SOURCE
+            else MapStationLocationQuality.REVIEWED,
+        subtitle = addressLine.orEmpty(),
         hasValidCoordinates = true,
+        confirmedByTwoSources = confirmedByTwoSources,
     )
 }
 
-private fun ChargingPlace.toUnlocatedMarker(): MapOverlayMarker = MapOverlayMarker(
+private fun ChargingPlace.toUnlocatedMarker(unnamed: String): MapOverlayMarker = MapOverlayMarker(
     uuid = id.lowercase(Locale.ROOT),
     latitude = 0.0,
     longitude = 0.0,
-    title = name,
+    title = name.ifBlank { unnamed },
     fuel = false,
     charging = true,
     locationQuality = MapStationLocationQuality.UNKNOWN,
-    subtitle = country,
+    subtitle = addressLine.orEmpty(),
     hasValidCoordinates = false,
+    confirmedByTwoSources = confirmedByTwoSources,
 )

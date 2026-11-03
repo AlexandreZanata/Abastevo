@@ -112,6 +112,7 @@ fun MapBottomSheet(
         MapStationLocationQuality.REVIEWED -> stringResource(R.string.map_location_reviewed)
         MapStationLocationQuality.OSM_MAPPED -> stringResource(R.string.map_location_osm_mapped)
         MapStationLocationQuality.ANP_REPORTED -> stringResource(R.string.map_location_anp_reported)
+        MapStationLocationQuality.CHARGING_SOURCE -> stringResource(R.string.map_location_charging_source)
         MapStationLocationQuality.ADDRESS_POINT -> stringResource(R.string.map_location_address_point)
         MapStationLocationQuality.CITY_CENTROID -> stringResource(R.string.map_location_city_centroid)
         MapStationLocationQuality.UNKNOWN -> stringResource(R.string.map_location_unknown)
@@ -126,6 +127,16 @@ fun MapBottomSheet(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(marker.title, style = MaterialTheme.typography.titleLarge)
+            if (marker.confirmedByTwoSources) {
+                Text(
+                    stringResource(R.string.charging_place_two_sources),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            if (marker.locationQuality == MapStationLocationQuality.CHARGING_SOURCE && marker.subtitle.isNotBlank()) {
+                Text(marker.subtitle, style = MaterialTheme.typography.bodyMedium)
+            }
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

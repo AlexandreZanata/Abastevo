@@ -2,6 +2,18 @@ package com.anpfuel.app.ui.map
 
 import android.content.Context
 import android.view.View
+import com.anpfuel.data.local.charging.StoredPackMeta
+import com.anpfuel.data.repository.ChargingDiscoveryRepository
+import com.anpfuel.data.repository.ChargingExplorePage
+import com.anpfuel.data.repository.DiscoveryRow
+import com.anpfuel.domain.charging.ChargingAccess
+import com.anpfuel.domain.charging.ChargingCatalogConfidence
+import com.anpfuel.domain.charging.ChargingConnectionGroup
+import com.anpfuel.domain.charging.ChargingConnector
+import com.anpfuel.domain.charging.ChargingCurrent
+import com.anpfuel.domain.charging.ChargingPlace
+import com.anpfuel.domain.charging.ChargingSourceAttribution
+import com.anpfuel.domain.charging.Compatibility
 import com.anpfuel.domain.discovery.NearbyServerStation
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.ServerStationPage
@@ -16,6 +28,9 @@ import com.anpfuel.maps.engine.MapStationLocationQuality
 import com.anpfuel.domain.model.UserPreferences
 import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.valueobject.MunicipalityCatalogEntry
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -581,6 +596,62 @@ class MapDiscoveryViewModelTest {
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("c", vm.ui.value.searchQuery)
         assertEquals(listBeforeCase2, vm.ui.value.listItems.map { it.title }, "In-flight search must not overwrite cleared state")
+    }
+
+    @Test fun `map selects a confirmed pin from the national offline cache`() = runTest {
+        val repo = mockk<ChargingDiscoveryRepository>()
+        val profile = ChargingDiscoveryRepository.NATIONAL_PROFILE
+        val id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+        val confirmed = ChargingPlace(
+            id = id, entityKey = "b".repeat(64), externalId = "synthetic", name = "", country = "BR",
+            latitude = "-25.42", longitude = "-49.27",
+            publicAccess = ChargingAccess.PUBLIC, reportedPoints = 0, groups = emptyList(),
+            catalogConfidence = ChargingCatalogConfidence.TWO_SOURCE,
+            addressLine = "Synthetic Street, 7",
+            sources = listOf(
+                ChargingSourceAttribution("OSM", "node:7", "osm-rev", null, "ODbL-1.0", "Synthetic OSM"),
+                ChargingSourceAttribution("OCM", "7", "ocm-rev", 40, "CC-0", "Synthetic OCM"),
+            ),
+        )
+        val single = confirmed.copy(
+            id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc", name = "Synthetic single",
+            latitude = "-25.43", catalogConfidence = ChargingCatalogConfidence.SINGLE_SOURCE,
+            sources = confirmed.sources.take(1),
+            groups = listOf(ChargingConnectionGroup(
+                "dddddddd-dddd-4ddd-8ddd-dddddddddddd", "d".repeat(64), "synthetic-group",
+                ChargingConnector.CCS2, "CCS2", ChargingCurrent.DC, 60000, null, "osm:node:7",
+            )),
+        )
+        coEvery { repo.generationMeta(any()) } returns null
+        coEvery { repo.generationMeta(profile) } returns StoredPackMeta(
+            key = "pack:$profile", generation = 2, profile = profile, sourceRevision = "national-rev",
+            origin = "https://example.test", license = "L", schemaVersion = 1, baseGeneration = 1,
+            placeCount = 2, groupCount = 1, cursor = null, state = "COMPLETE", savedAtMillis = 1,
+        )
+        val row = DiscoveryRow(
+            confirmed, Compatibility.UNKNOWN, profile, "national-rev", 2, 1,
+        )
+        coEvery { repo.explorePage(profile, 2, null, null, null, null, 100, 0) } returns
+            ChargingExplorePage(listOf(row, row.copy(place = single)), null)
+
+        val source = MapDiscoveryModule.provideChargingMarkersSource(repo)
+        assertEquals(listOf(confirmed, single), source.query(ChargingMarkersQuery()).places)
+        assertEquals(listOf(single), source.query(ChargingMarkersQuery(minPowerKw = 50)).places)
+
+        val vm = MapDiscoveryViewModel(FakeGateway(), source, FakeEngine())
+        vm.onViewport(-25.42, -49.27)
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+        vm.onSelection(id)
+        val marker = requireNotNull(vm.ui.value.selectedMarker)
+        assertEquals("Synthetic Street, 7", marker.subtitle)
+        assertEquals("Unnamed charging site", marker.title)
+        assertEquals(MapStationLocationQuality.CHARGING_SOURCE, marker.locationQuality)
+        assertTrue(marker.confirmedByTwoSources)
+        assertTrue(vm.ui.value.listItems.single { it.uuid == id }.typeLabel.contains("Confirmed by 2 sources"))
+        vm.onSelection(single.id)
+        assertEquals(false, vm.ui.value.selectedMarker?.confirmedByTwoSources)
+        coVerify(exactly = 0) { repo.refresh(any(), any(), any(), any(), any()) }
     }
 
     @Test fun `charging markers source paginates beyond first 100 rows and preserves unknown power`() = runTest {

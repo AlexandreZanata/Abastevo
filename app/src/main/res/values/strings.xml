@@ -1154,6 +1154,7 @@
     <string name="map_filter_unknown_kept_note">Unknown power, hours or tariff stay visible with warnings.</string>
     <string name="map_location_reviewed">Reviewed location</string>
     <string name="map_location_city_centroid">Approximate city location</string>
+    <string name="map_location_charging_source">Location reported by the charging source</string>
     <string name="map_location_unknown">Location unknown</string>
     <string name="map_location_osm_mapped">Mapped by the OpenStreetMap community</string>
     <string name="map_location_anp_reported">Location reported by ANP</string>

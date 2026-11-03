@@ -1135,6 +1135,7 @@
     <string name="map_filter_unknown_kept_note">Неизвестные мощность, часы работы или тариф остаются видимыми с пометкой.</string>
     <string name="map_location_reviewed">Проверенные координаты</string>
     <string name="map_location_city_centroid">Примерное положение города</string>
+    <string name="map_location_charging_source">Местоположение по данным источника о зарядке</string>
     <string name="map_location_unknown">Координаты неизвестны</string>
     <string name="map_location_osm_mapped">Нанесено сообществом OpenStreetMap</string>
     <string name="map_location_anp_reported">Местоположение по данным ANP</string>

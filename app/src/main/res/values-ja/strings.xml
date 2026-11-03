@@ -1135,6 +1135,7 @@
     <string name="map_filter_unknown_kept_note">出力、営業時間、料金が不明な場所も注意付きで表示されます。</string>
     <string name="map_location_reviewed">確認済みの位置</string>
     <string name="map_location_city_centroid">都市のおおよその位置</string>
+    <string name="map_location_charging_source">充電情報源が報告した位置</string>
     <string name="map_location_unknown">位置不明</string>
     <string name="map_location_osm_mapped">OpenStreetMapコミュニティによるマッピング</string>
     <string name="map_location_anp_reported">ANPが報告した位置</string>

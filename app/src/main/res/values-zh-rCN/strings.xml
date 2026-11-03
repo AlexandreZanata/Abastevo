@@ -1135,6 +1135,7 @@
     <string name="map_filter_unknown_kept_note">功率、营业时间或电价未知的站点仍会保留并附带提示。</string>
     <string name="map_location_reviewed">已核实位置</string>
     <string name="map_location_city_centroid">城市大致位置</string>
+    <string name="map_location_charging_source">充电数据来源报告的位置</string>
     <string name="map_location_unknown">位置未知</string>
     <string name="map_location_osm_mapped">由 OpenStreetMap 社区标注</string>
     <string name="map_location_anp_reported">ANP 报告的位置</string>

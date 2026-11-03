@@ -1135,6 +1135,7 @@
     <string name="map_filter_unknown_kept_note">Puissance, horaires ou tarifs inconnus restent visibles avec avertissement.</string>
     <string name="map_location_reviewed">Emplacement vérifié</string>
     <string name="map_location_city_centroid">Emplacement approximatif de la ville</string>
+    <string name="map_location_charging_source">Emplacement indiqué par la source de recharge</string>
     <string name="map_location_unknown">Emplacement inconnu</string>
     <string name="map_location_osm_mapped">Cartographié par la communauté OpenStreetMap</string>
     <string name="map_location_anp_reported">Emplacement déclaré par l\'ANP</string>

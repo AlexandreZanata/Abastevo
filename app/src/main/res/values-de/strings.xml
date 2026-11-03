@@ -1135,6 +1135,7 @@
     <string name="map_filter_unknown_kept_note">Unbekannte Leistung, Öffnungszeiten oder Tarife bleiben mit Hinweis sichtbar.</string>
     <string name="map_location_reviewed">Geprüfter Standort</string>
     <string name="map_location_city_centroid">Ungefährer Stadtstandort</string>
+    <string name="map_location_charging_source">Standortangabe aus der Ladepunktquelle</string>
     <string name="map_location_unknown">Standort unbekannt</string>
     <string name="map_location_osm_mapped">Von der OpenStreetMap-Community kartiert</string>
     <string name="map_location_anp_reported">Von der ANP gemeldeter Standort</string>

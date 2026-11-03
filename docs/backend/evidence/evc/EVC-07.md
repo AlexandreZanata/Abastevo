@@ -171,3 +171,28 @@ Status: LOCAL_DONE / INTEGRATION_PENDING. Light and dark emulator
 captures were exported after the dialog animation and visually checked.
 Both use synthetic data. App/test APK builds, whitespace and
 secret-surface checks passed.
+
+## EVC-07G national map pins
+
+B-BR-EVC-07G. Prefer the saved national map catalog and retain legacy
+fallback when it is absent. National filters use one source group with
+known minimum power. Coordinates determine pin eligibility only. Map
+selection carries the two-source badge without implying manual review,
+and missing coordinates remain list-only.
+
+BUC-EVC-07G. With only the national cache available, render the
+confirmed pin, keep the single-source pin unbadged and omit an unknown
+power site under a minimum-power filter. Preserve legacy unknown-power
+behavior and verify the selected pin's address and confidence.
+
+RED reproduced the map ignoring a national-only cache. The map now uses
+the national profile first and follows the cached row continuation.
+The two-source fact reaches the selected marker, native label and
+accessible list. The source-location label and unnamed fallback are
+localized in eight languages. The national filter rejects unknown
+power; the legacy map policy still keeps unknown power visible.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. Twenty-nine map ViewModel
+and fourteen native KML tests passed. The tests include the national-only
+cache, strict minimum power, no map refresh request, per-pin confirmation
+and legacy pagination. App compilation, whitespace and secret review passed.

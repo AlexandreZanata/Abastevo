@@ -150,6 +150,9 @@ fun MapScreen(
         osmMappedLocation = stringResource(R.string.map_location_osm_mapped),
         anpReportedLocation = stringResource(R.string.map_location_anp_reported),
         addressPointLocation = stringResource(R.string.map_location_address_point),
+        sourceChargingLocation = stringResource(R.string.map_location_charging_source),
+        unnamedCharging = stringResource(R.string.charging_place_unnamed),
+        confirmedCharging = stringResource(R.string.charging_place_two_sources),
         cityCentroidLocation = stringResource(R.string.map_location_city_centroid),
         unknownLocation = stringResource(R.string.map_location_unknown),
     )

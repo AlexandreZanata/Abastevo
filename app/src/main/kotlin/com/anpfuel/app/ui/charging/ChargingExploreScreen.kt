@@ -330,7 +330,7 @@ internal fun ChargingExploreContent(
 }
 
 @Composable
-private fun connectorLabel(connector: ChargingConnector): String = when (connector) {
+internal fun connectorLabel(connector: ChargingConnector): String = when (connector) {
     ChargingConnector.CCS2 -> "CCS 2"
     ChargingConnector.TYPE2 -> "Type 2"
     ChargingConnector.CHADEMO -> "CHAdeMO"
