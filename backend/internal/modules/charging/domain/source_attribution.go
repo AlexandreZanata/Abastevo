@@ -1,5 +1,7 @@
 package charging
 
+const NationalCatalogProfile = "charging-br-national-v1"
+
 // SourceAttribution contains only public source identity and admitted terms.
 // An OCM assertion carries its own provider ID, including in a combined site.
 type SourceAttribution struct {

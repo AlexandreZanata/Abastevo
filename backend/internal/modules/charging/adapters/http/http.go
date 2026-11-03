@@ -2,11 +2,13 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/read"
+	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/go-chi/chi/v5"
 )
@@ -52,7 +54,7 @@ func (h Handler) places(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	profile := q.Get("profile")
-	if profile != "ocm-br-20261021-v1" && profile != "pbe-2026-pdf-v1" {
+	if profile != "ocm-br-20261021-v1" && profile != "pbe-2026-pdf-v1" && profile != domain.NationalCatalogProfile {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-filter", "unknown profile",
 			[]httpapi.Detail{{Field: "profile", Code: "vocabulary"}})
 		return
@@ -72,6 +74,10 @@ func (h Handler) places(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, next, err := h.Read.Places(r.Context(), profile, revision, lastKey, limit)
+	if errors.Is(err, read.ErrNationalCursorStale) {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-cursor", "catalog generation changed", nil)
+		return
+	}
 	if err != nil {
 		sourceDown(w, r)
 		return
@@ -96,6 +102,10 @@ func (h Handler) placeOne(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 	place, err := h.Read.PlaceDetail(r.Context(), id)
+	if errors.Is(err, read.ErrNationalPlaceNotFound) {
+		httpapi.WriteError(w, r, http.StatusNotFound, "charging.not-found", "charging place is not in the active catalog", nil)
+		return
+	}
 	if err != nil {
 		sourceDown(w, r)
 		return
@@ -109,6 +119,9 @@ func (h Handler) placeOne(w http.ResponseWriter, r *http.Request) {
 		}
 		if group.ReportedQuantity != nil {
 			item["reported_quantity"] = *group.ReportedQuantity
+		}
+		if group.SourceKey != nil {
+			item["source_key"] = *group.SourceKey
 		}
 		groups = append(groups, item)
 	}
@@ -128,10 +141,24 @@ func placeFacts(place read.Place) map[string]any {
 	if len(place.Sources) != 0 {
 		facts["sources"] = place.Sources
 	}
+	if place.Confidence != "" {
+		facts["confidence"], facts["uf"] = place.Confidence, place.UF
+		if place.AccessClass != "" {
+			facts["access_class"] = place.AccessClass
+		}
+		if place.LinkedStationID != nil {
+			facts["linked_station_id"] = *place.LinkedStationID
+		}
+	}
 	return facts
 }
 
 func placeDetailETag(place read.Place, groups []map[string]any) string {
+	if place.Confidence != "" {
+		facts := placeFacts(place)
+		facts["groups"] = groups
+		return httpapi.ETag(mustMarshal(facts))
+	}
 	facts := map[string]any{"id": place.ID, "groups": groups}
 	if len(place.Sources) != 0 {
 		facts["sources"] = place.Sources

@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const NationalCatalogProfile = "charging-br-national-v1"
+const NationalCatalogProfile = domain.NationalCatalogProfile
 
 // CatalogCoverageOverride is created by the owner-controlled publication
 // path. Both digests bind the approval to one comparison.

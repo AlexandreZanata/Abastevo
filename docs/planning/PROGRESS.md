@@ -84,7 +84,9 @@
   and activation in one transaction, synthetic rollback/replay and legacy
   public ID tests pass. EVC-06G3 LOCAL_DONE: human decisions carry forward
   by public alias, preserving rejections and refusing conflicts in PostGIS.
-  Next active catalog reads and rights offer publication.
+  EVC-06H1 LOCAL_DONE: active national API, stable aliases, generation-bound
+  cursors and legacy/PostGIS regressions pass. Next serve the exact ODbL
+  offer with the public generation and wire the owner-controlled command.
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).

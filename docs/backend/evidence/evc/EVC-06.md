@@ -261,3 +261,30 @@ time and evidence lineage. Automated links are evaluated again.
 A synthetic rejection and then a newer accepted review survived
 successive imports. Conflicting alias reviews refused the write.
 PostGIS race, vet, staticcheck, formatting and secret checks passed.
+
+## EVC-06H1 opening
+
+B-BR-EVC-06H1. National place reads use the last admitted generation.
+Public aliases resolve within that generation, and page cursors cannot
+traverse across a swap. Source terms, confidence and reviewed station
+links are additive. Legacy profiles keep their current behavior.
+
+BUC-EVC-06H1. Read two synthetic generations through HTTP on PostGIS,
+verify aliases and source fields, and refuse a prior generation cursor
+after a swap.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The first HTTP test refused the national profile. National list,
+detail and coverage reads now resolve the active batch. Keyset
+cursors include its ID and reject a swap. Public aliases expose the
+active place and its canonical ID; removed national aliases return
+404. A publication hold still serves the last admitted batch.
+Optional confidence, UF, source terms, source group key and reviewed
+station link are additive. Detail cache tags bind all national facts.
+
+Synthetic HTTP traversal, legacy OpenAPI traversal on PostGIS,
+charging race tests, vet and staticcheck passed. OpenAPI lint reported
+zero errors. The national offer still needs a public serving path
+before authorized real activation.

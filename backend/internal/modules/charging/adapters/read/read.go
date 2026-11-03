@@ -26,17 +26,21 @@ func NewReader(pool *pgxpool.Pool) Reader {
 
 // Place is one public charging location.
 type Place struct {
-	ID             string
-	EntityKey      string
-	ExternalID     string
-	Name           string
-	Country        string
-	Latitude       string
-	Longitude      string
-	PublicAccess   string
-	ReportedPoints int64
-	Groups         []ConnectionGroup
-	Sources        []domain.SourceAttribution
+	ID              string
+	EntityKey       string
+	ExternalID      string
+	Name            string
+	Country         string
+	Latitude        string
+	Longitude       string
+	PublicAccess    string
+	ReportedPoints  int64
+	Groups          []ConnectionGroup
+	Sources         []domain.SourceAttribution
+	Confidence      string
+	UF              string
+	AccessClass     string
+	LinkedStationID *string
 }
 
 // ConnectionGroup is one public connector group under a place.
@@ -49,6 +53,7 @@ type ConnectionGroup struct {
 	Current          string
 	PowerW           *int64
 	ReportedQuantity *int64
+	SourceKey        *string
 }
 
 // BatchCoverage reports one batch's valid counts with its identity.
@@ -83,6 +88,9 @@ func mustUUID(text string) (pgtype.UUID, error) {
 // optional revision. Empty revision matches any revision for the profile;
 // callers prefer explicit revisions when exactness matters.
 func (r Reader) Places(ctx context.Context, profile, revision, afterID string, limit int) ([]Place, string, error) {
+	if profile == domain.NationalCatalogProfile && limit >= 1 && limit <= 100 {
+		return r.nationalPlaces(ctx, revision, afterID, limit)
+	}
 	if (profile != "ocm-br-20261021-v1" && profile != "pbe-2026-pdf-v1") || limit < 1 || limit > 100 {
 		return nil, "", fmt.Errorf("read: invalid page")
 	}
@@ -112,6 +120,9 @@ func (r Reader) PlaceDetail(ctx context.Context, id string) (Place, error) {
 	placeID, err := mustUUID(id)
 	if err != nil {
 		return Place{}, err
+	}
+	if place, found, err := r.nationalPlaceDetail(ctx, placeID); found || err != nil {
+		return place, err
 	}
 	row, err := charging.New(r.pool).ChargingPlaceDetail(ctx, placeID)
 	if err != nil {
@@ -162,6 +173,11 @@ func (r Reader) Coverage(ctx context.Context, batchID pgtype.UUID) (BatchCoverag
 func (r Reader) LatestBatch(ctx context.Context, profile string) (pgtype.UUID, error) {
 	if profile == "" {
 		return pgtype.UUID{}, fmt.Errorf("read: profile required")
+	}
+	if profile == domain.NationalCatalogProfile {
+		var id pgtype.UUID
+		err := r.pool.QueryRow(ctx, "SELECT batch_id FROM charging_catalog_current WHERE singleton AND batch_id IS NOT NULL").Scan(&id)
+		return id, err
 	}
 	row, err := charging.New(r.pool).LatestChargingBatch(ctx, profile)
 	if err != nil {
