@@ -30,6 +30,20 @@ class StagingManifests(unittest.TestCase):
         env = {e["name"]:e.get("value") for e in api["containers"][0]["env"]}
         self.assertEqual(env["ANPFUEL_DEV_STORAGE_SERVICE"], "true")
 
+    def test_rollout_keeps_serving_replica(self):
+        spec=obj("api-deployment.yaml")["spec"]
+        self.assertEqual(spec["strategy"]["rollingUpdate"],{"maxSurge":1,"maxUnavailable":0})
+        self.assertEqual(spec["minReadySeconds"],10)
+        self.assertGreaterEqual(spec["revisionHistoryLimit"],3)
+        pod=spec["template"]["spec"]
+        self.assertGreater(pod["terminationGracePeriodSeconds"],30+10+5)
+        api=pod["containers"][0]
+        self.assertEqual(api["startupProbe"]["httpGet"]["path"],"/health/live")
+        self.assertEqual(api["readinessProbe"]["periodSeconds"],3)
+        self.assertEqual(api["readinessProbe"]["failureThreshold"],2)
+        for container in pod["containers"]:
+            self.assertEqual(container["imagePullPolicy"],"IfNotPresent")
+
     def test_render_keeps_shell_variables(self):
         paths=[ROOT/n for n in ("api-deployment.yaml","storage-deployment.yaml","storage-configmap.yaml","storage-service.yaml")]
         keys=set()

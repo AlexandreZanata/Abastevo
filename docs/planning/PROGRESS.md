@@ -1,5 +1,12 @@
 # Current execution state
 
+- ZD-04 2026-11-03: rollout/capacity source LOCAL_DONE / INTEGRATION_PENDING,
+  `codex/cd-zero-downtime`, tested parent ca7a7aba plus task.
+  [Evidence](../backend/evidence/cd/ZD-04.md): 218 agent assertions, four
+  quota dimensions, storage refusal and infra/static gates pass. Source
+  default surge OFF; live 0/1 unchanged, zero-diff/measurements OWED. Next:
+  ZD-06 probe tooling; ZD-05 only on measured edge failure.
+
 - ZD-03 2026-11-03: storage separation source LOCAL_DONE /
   INTEGRATION_PENDING on `codex/cd-zero-downtime`, tested parent 30160e51
   plus task. [Evidence](../backend/evidence/cd/ZD-03.md): singleton/render,

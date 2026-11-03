@@ -149,11 +149,11 @@ case "${cmd[0]:-}" in
                 jq -n --arg schema "${KUBECTL_SCHEMA_ANNOTATION:-000132}" \
                     --argjson maxSurge "${KUBECTL_MAX_SURGE:-0}" \
                     --argjson maxUnavailable "${KUBECTL_MAX_UNAVAILABLE:-1}" \
-                    '{metadata:{annotations:{"abastevo.com/schema-version":$schema,"deployment.kubernetes.io/revision":"7"}},spec:{strategy:{rollingUpdate:{maxSurge:$maxSurge,maxUnavailable:$maxUnavailable}},template:{spec:{containers:[{name:"api",image:"local-api",imagePullPolicy:"Never"},{name:"worker",image:"local-worker",imagePullPolicy:"Never"}]}}}}'
+                    '{metadata:{annotations:{"abastevo.com/schema-version":$schema,"deployment.kubernetes.io/revision":"7"}},spec:{strategy:{rollingUpdate:{maxSurge:$maxSurge,maxUnavailable:$maxUnavailable}},template:{spec:{containers:[{name:"api",image:"local-api",imagePullPolicy:"Never",resources:{requests:{cpu:"100m",memory:"256Mi"},limits:{cpu:"1",memory:"1Gi"}}},{name:"worker",image:"local-worker",imagePullPolicy:"Never",resources:{requests:{cpu:"100m",memory:"256Mi"},limits:{cpu:"500m",memory:"512Mi"}}}]}}}}'
                 ;;
             resourcequota)
                 jq -n --arg hard "${KUBECTL_QUOTA_HARD:-6}" --arg used "${KUBECTL_QUOTA_USED:-3500m}" \
-                    '{status:{hard:{"limits.cpu":$hard},used:{"limits.cpu":$used}}}'
+                    '{status:{hard:{"limits.cpu":$hard,"limits.memory":"8Gi","requests.cpu":"2","requests.memory":"4Gi"},used:{"limits.cpu":$used,"limits.memory":"3840Mi","requests.cpu":"400m","requests.memory":"1088Mi"}}}'
                 ;;
             *) exit 1 ;;
         esac
@@ -932,16 +932,10 @@ echo "== apply: surge requires quota headroom =="
 CASE="$(new_case apply-no-headroom)"
 make_current_old "$CASE"
 prepare_landing "$CASE" 1
-ABASTEVO_ALLOW_SURGE=1 KUBECTL_QUOTA_USED=6000m expect_success "apply no-headroom success" run_agent_apply "$CASE"
-RECEIPT="$(find "$CASE/receipts" -maxdepth 1 -name 'deploy-*.json' -type f | sort | tail -n 1)"
-if [[ -n "$RECEIPT" ]]; then
-    assert_eq "no-headroom surge false" "$(jq -r '.surge' "$RECEIPT")" "false"
-    assert_eq "no-headroom maxSurge" "$(jq -r '.strategy.maxSurge' "$RECEIPT")" "0"
-    assert_eq "no-headroom maxUnavailable" "$(jq -r '.strategy.maxUnavailable' "$RECEIPT")" "1"
-    assert_eq "no-headroom gap recorded" "$(jq -r '.strategy.gap' "$RECEIPT")" "true"
-    assert_eq "no-headroom headroom" "$(jq -r '.quota_headroom_milli' "$RECEIPT")" "0"
-fi
-assert_eq "no-headroom strategy patch" "$(grep -c 'maxSurge' "$CASE/kubectl.log" || true)" "0"
+ABASTEVO_ALLOW_SURGE=1 KUBECTL_QUOTA_USED=6000m expect_failure "surge no-headroom refuses" run_agent_apply "$CASE"
+assert_eq "no-headroom current unchanged" "$(jq -r .sha "$CASE/state/current.json")" "$FIXTURE_OLD_SHA"
+assert_eq "no-headroom no image update" "$(grep -c 'set image' "$CASE/kubectl.log" || true)" "0"
+assert_no_job_role "no-headroom no migration" "$CASE" migrate
 
 . "$ROOT/infra/deploy/agent/tests/test-safety.sh"
 

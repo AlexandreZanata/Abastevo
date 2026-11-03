@@ -386,3 +386,14 @@ its original rollback revision/landing; the next run re-verifies that immutable
 artifact and converges before considering later releases. Do not baseline or
 recheck over an unfinished journal. These are source guarantees; live ZD-07
 drills remain separately owed.
+
+## ZD-04 surge admission
+
+Also install `surge-capacity.py` beside the agent libraries. Opt-in surge now
+requires separate private storage and complete live CPU/memory requests and
+limits quota headroom for one extra pod; unsupported quantities fail closed.
+Insufficient headroom refuses before migration/images. A configured surge can
+never silently fall back to 0/1; later loss of the configured CPU threshold
+also refuses while retaining the serving replica. Quota changes are operator
+choices. Default `ABASTEVO_ALLOW_SURGE=0` remains until three approved measured
+ZD-06 campaigns pass; no source manifest is evidence of live activation.

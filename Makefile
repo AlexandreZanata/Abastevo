@@ -46,6 +46,7 @@ test-deploy:
 	bash scripts/tests/test-deploy.sh
 
 test-deploy-agent:
+	python3 infra/deploy/agent/tests/test-surge-capacity.py
 	bash infra/deploy/agent/tests/test-agent.sh
 
 test-backup:

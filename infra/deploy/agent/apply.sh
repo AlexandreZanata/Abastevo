@@ -203,6 +203,10 @@ apply_preflight() {
         || fail "ABASTEVO_BACKUP_KEEP must be an integer"
     [[ "$ABASTEVO_LANDING_KEEP" =~ ^[0-9]+$ ]] \
         || fail "ABASTEVO_LANDING_KEEP must be an integer"
+    if [[ "$ABASTEVO_ALLOW_SURGE" == "1" ]]; then
+        require_tool python3
+        runtime_check_surge_capacity || apply_fail capacity "surge storage/capacity gate refused; operator review required"
+    fi
     local landing_digest manifest_landing
     landing_digest="$(jq -r '[.layers[] | select(.mediaType == "application/vnd.abastevo.landing.tar+gzip")] | if length == 1 then .[0].digest else empty end' "$workdir/oci-manifest.json")"
     [[ "$landing_digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
@@ -311,6 +315,8 @@ apply_rollout() {
         APPLY_SURGE=true
         max_surge=1
         max_unavailable=0
+    elif [[ "$ABASTEVO_ALLOW_SURGE" == "1" ]]; then
+        apply_fail capacity "surge CPU threshold unavailable; serving replica retained"
     else
         APPLY_SURGE=false
         max_surge=0
