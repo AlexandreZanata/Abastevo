@@ -25,3 +25,28 @@ and counts. Missing or changed rights and duplicate lineage refuse the
 whole output. Three focused tests, all Rust targets, all-target Clippy,
 format, whitespace and secret checks passed. The result declares the
 offer requirement; it does not by itself authorize publication.
+
+## EVC-05B opening
+
+B-BR-EV-RIGHTS-01. Keep the derived-database offer and its terms bound to
+the exact rights-checked catalog. The release candidate must refuse absent
+or modified rights or offer bytes. The offer contains admitted catalog
+records only, excluding private review files.
+
+BUC-EVC-05B. Prepare an offer from a hash-checked synthetic conflation
+manifest, revalidate it, and refuse removed rights, missing data, and
+changed offer bytes before release.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The local command verifies the exact upstream manifest and canonical
+catalog before writing an owner-only bundle. Its notice binds the
+download bytes, ODbL and OSM attribution, and distinct OCM provider
+terms. The verifier rejects missing rights or offer data, changed
+offer bytes or terms, and unrecognised record fields even when a new
+manifest digest is supplied. The initial offer test failed before
+implementation. All Rust targets, Clippy, format, whitespace and
+secret checks pass. This evidence uses synthetic inputs. Runtime
+publication and the nationwide offer await the admitted catalog and
+EVC-06 activation gate.

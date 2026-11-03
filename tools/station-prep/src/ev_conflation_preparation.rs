@@ -20,7 +20,7 @@ pub struct Inputs {
     pub boundaries: PathBuf,
     pub output: PathBuf,
 }
-fn decode<T: DeserializeOwned>(raw: &[u8], maximum: usize) -> Result<Vec<T>> {
+pub(crate) fn decode<T: DeserializeOwned>(raw: &[u8], maximum: usize) -> Result<Vec<T>> {
     let mut rows = Vec::new();
     for line in raw.split(|b| *b == b'\n').filter(|l| !l.is_empty()) {
         if line.len() > 1 << 20 || rows.len() >= maximum {

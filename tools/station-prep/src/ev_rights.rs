@@ -169,6 +169,75 @@ mod tests {
     }
 
     #[test]
+    fn rights_bundle_requires_exact_offer_bytes() {
+        use crate::ev_conflation_preparation;
+        use crate::ev_rights_bundle::{prepare_bundle, validate_bundle};
+        use crate::ev_site_preparation::{write_bytes, write_lines};
+        let root = std::env::temp_dir().join(format!(
+            "abastevo-ev-rights-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let catalog_dir = root.join("catalog");
+        let output = root.join("bundle");
+        std::fs::create_dir_all(&catalog_dir).unwrap();
+        let sites = conflate(&[source(true), source(false)]).unwrap().sites;
+        let descriptor =
+            write_lines(&catalog_dir.join("catalog.ndjson"), &sites, &|| false).unwrap();
+        let pins = SourcePins::frozen();
+        let manifest = json!({
+            "format":ev_conflation_preparation::FORMAT,
+            "conflation_profile":{"id":"ev-conflation-v1","sha256":sha256_hex(ev_conflation_preparation::PROFILE),"exposure":"PRIVATE_PREPARATION"},
+            "source_pins":pins,"files":{"catalog.ndjson":descriptor}
+        });
+        let manifest_bytes = serde_json::to_vec_pretty(&manifest).unwrap();
+        write_bytes(&catalog_dir.join("manifest.json"), &manifest_bytes).unwrap();
+        let manifest_hash = sha256_hex(&manifest_bytes);
+        let prepared = prepare_bundle(&catalog_dir, &manifest_hash, &output, &|| false).unwrap();
+        assert_eq!(
+            prepared,
+            validate_bundle(&catalog_dir, &manifest_hash, &output).unwrap()
+        );
+        assert_eq!(prepared["offer"]["data"]["sha256"], descriptor["sha256"]);
+        let offer = output.join("derived-database.ndjson");
+        let data = std::fs::read(&offer).unwrap();
+        std::fs::remove_file(&offer).unwrap();
+        assert!(validate_bundle(&catalog_dir, &manifest_hash, &output).is_err());
+        std::fs::write(&offer, b"altered").unwrap();
+        assert!(validate_bundle(&catalog_dir, &manifest_hash, &output).is_err());
+        std::fs::write(&offer, &data).unwrap();
+        let terms = output.join("derived-database-offer.json");
+        let original_terms = std::fs::read(&terms).unwrap();
+        std::fs::write(&terms, b"changed terms").unwrap();
+        assert!(validate_bundle(&catalog_dir, &manifest_hash, &output).is_err());
+        std::fs::write(&terms, original_terms).unwrap();
+        std::fs::remove_file(output.join("rights.json")).unwrap();
+        assert!(validate_bundle(&catalog_dir, &manifest_hash, &output).is_err());
+        // Even a rehashed manifest may not admit fields outside the catalog schema.
+        let text = String::from_utf8(data).unwrap();
+        let changed = text.replacen('{', "{\"unknown_field\":\"synthetic\",", 1);
+        std::fs::write(catalog_dir.join("catalog.ndjson"), changed.as_bytes()).unwrap();
+        let mut changed_manifest = manifest;
+        changed_manifest["files"]["catalog.ndjson"]["sha256"] =
+            json!(sha256_hex(changed.as_bytes()));
+        changed_manifest["files"]["catalog.ndjson"]["bytes"] = json!(changed.len());
+        let changed_bytes = serde_json::to_vec_pretty(&changed_manifest).unwrap();
+        std::fs::write(catalog_dir.join("manifest.json"), &changed_bytes).unwrap();
+        let refused = root.join("refused");
+        assert!(
+            prepare_bundle(&catalog_dir, &sha256_hex(&changed_bytes), &refused, &|| {
+                false
+            })
+            .is_err()
+        );
+        assert!(!refused.exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn preserves_extract_and_provider_rights() {
         let catalog = conflate(&[source(true), source(false)]).unwrap().sites;
         let digest = "c".repeat(64);

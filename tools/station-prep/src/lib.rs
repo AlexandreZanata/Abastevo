@@ -99,3 +99,6 @@ pub mod ev_conflation_preparation;
 
 /// Per-generation attribution and source rights.
 pub mod ev_rights;
+
+/// Local rights and derived database offer bundle.
+pub mod ev_rights_bundle;

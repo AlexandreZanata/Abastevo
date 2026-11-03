@@ -62,8 +62,9 @@
   source/manual precedence, concurrent idempotent replay and rollback on
   real PostGIS. Charging unit/race and vet pass. EVC-05A LOCAL_DONE: pinned
   generation rights validate every retained assertion and refuse missing or
-  mismatched provider terms. Full Rust tests and Clippy pass. Next derived
-  database offer and the release gate. [Rights evidence](../backend/evidence/evc/EVC-05.md).
+  mismatched provider terms. EVC-05B LOCAL_DONE: local ODbL offer and exact
+  candidate gate reject missing or changed rights/data/notice. Full Rust
+  tests and Clippy pass. Next API, Android and offline attribution. [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact
