@@ -65,3 +65,60 @@ including prior byte/identity goldens and fourteen offline Python groups.
 serde_json 1.0.151 MIT OR Apache-2.0 `raw_value=[]` adds no dependency; lockfile
 unchanged. Diff and secret checks pass. No Go/SQL/API/UI behavior or staging
 change. EVC-02B canonical model/eligibility and EVC-02C real normalization remain.
+
+## EVC-02B opening
+
+Execution bounds: EVC-02B1 common minimized site model + pure OCM reader/context;
+EVC-02B2 OSM site/equipment reader and source lineage. Both precede EVC-02C.
+
+B-BR-EV-NORM-02B: Each accepted source site preserves its own source identity,
+revision/record hash/object version when present, source clocks, geometry,
+license/provider attribution and connector groups. No cross-source merge or
+quantity addition occurs here. A missing name/address remains absent. Private
+OCM usage 2/3/6 and removed 200/210 or planned 150 records are excluded; public
+1/4/5/7 retains its access condition. Unknown codes remain explicitly unknown.
+OSM private/no and lifecycle prefixes/construction are excluded. Source status
+is dated static metadata, never current availability. Unsupported connector,
+power and quantity fields remain unknown with explicit issue counts. Conflicting
+duplicate connection IDs are all excluded, independent of input order. Contacts,
+comments, photographs and arbitrary free text do not enter the common model.
+
+BUC-EVC-02B1: Verify the supplied pinned reference hash and all three provider
+license strings before constructing OCM context. Decode numeric coordinate and
+power tokens only at their actual field paths; validate finite WGS84 bounds and
+exact power. Reject malformed/foreign/unlicensed/private/deleted/planned sites
+without rejected coordinates in the decision stream. Normalize each accepted
+site to the shared typed model, preserving source group units and explicit
+field issues. Synthetic privacy, identity, access, status, numeric, duplicate,
+ordering and changed-rights tests precede behavior. No raw-source dump or DB use.
+
+### EVC-02B1 checkpoint
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Tested parent d610ca8d plus this child. The common source-site DTO carries source
+identity/revision/record hash/clocks/rights, point provenance, nullable source
+name/operator/address/access/fee/status and distinct connector groups. OCM
+context verifies reference SHA and the three exact provider licenses/hashes
+against the new source admission; duplicate provider/operator identities refuse.
+The bounded reader permits 1 MiB/record, 8 MiB/reference, 2,000 groups/record;
+no national source limits were raised. Names/addresses remain absent when absent.
+
+Seven synthetic OCM test groups pass, plus socket/exact-power and legacy reader
+regressions (12 focused tests total). RED exposed the missing reader, nullable
+Connections handling and invalid source clocks; GREEN preserves null connectors
+as unknown, excludes private/foreign/unlicensed/removed/planned/bad-geometry
+records without rejected coordinates, strips contacts/comments/media, rejects
+duplicate numeric fields, omits every conflicting duplicate group ID regardless
+of input order, and retains exact per-path coordinate/power lexemes. Public
+membership/notice/payment conditions remain explicit; no fee is guessed for
+ordinary public usage. Static source status never claims live availability.
+Source clock syntax/calendar is validated without assigning a missing timezone;
+invalid/free-text clocks are omitted with issues. Unknown/invalid socket/power/
+quantity fields have explicit reasons; groups are never summed across sources.
+
+Fmt and clippy all targets with warnings denied pass; diff and secret checks
+pass. No new dependency, Go/SQL/API/UI change, real normalization run or staging
+action. Next EVC-02B2 adds OSM normalization into this same model, then EVC-02C
+binds both source inputs and executes the private real normalization census.

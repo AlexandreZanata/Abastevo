@@ -29,8 +29,11 @@
   EVC-02A LOCAL_DONE: frozen socket/current mapping and exact decimal power;
   corrected legacy OCM 20→AC / 30→DC, no rounded/fabricated W. Full Rust gate
   and 14 offline Python groups pass (parent fa9e43cf plus child); lockfile unchanged.
-  [EVC-02](../backend/evidence/evc/EVC-02.md). Next EVC-02B/C canonical model and
-  normalization, then EVC-03 and SNA-04..06.
+  [EVC-02](../backend/evidence/evc/EVC-02.md). EVC-02B1 LOCAL_DONE: minimized
+  common site DTO/OCM reader, pinned rights, access/status exclusions, per-path
+  exact numerics, privacy/duplicate/clock negatives; 12 focused tests + all-target
+  clippy/fmt pass (parent d610ca8d plus child). Next EVC-02B2 OSM normalization,
+  EVC-02C bound real census, then EVC-03 and SNA-04..06.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links. This is not a national EV coverage
   result. PR #183 merged d0eb9c79 with all four checks green; signed release
