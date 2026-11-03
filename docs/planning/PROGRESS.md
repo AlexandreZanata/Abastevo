@@ -1,5 +1,12 @@
 # Current execution state
 
+- ZD-06 2026-11-03: probe tooling LOCAL_DONE, LIVE_ACCEPTANCE_OWED on
+  `codex/cd-zero-downtime`, tested parent 7ceed35d plus task.
+  [Evidence](../backend/evidence/cd/ZD-06.md): seven HTTP/subprocess fixtures
+  pass, including 503/unavailable/no-rollout/saturation and privacy refusals.
+  Three actual campaigns remain OWED; surge default OFF. ZD-05 has no
+  measured trigger. Next: ZD-07 owner-controlled drill runbook, ZD-08 ops.
+
 - ZD-04 2026-11-03: rollout/capacity source LOCAL_DONE / INTEGRATION_PENDING,
   `codex/cd-zero-downtime`, tested parent ca7a7aba plus task.
   [Evidence](../backend/evidence/cd/ZD-04.md): 218 agent assertions, four
