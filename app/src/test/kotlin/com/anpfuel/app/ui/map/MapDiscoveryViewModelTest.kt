@@ -85,6 +85,10 @@ class MapDiscoveryViewModelTest {
         override fun setOnOverlaySelected(listener: (MapOverlaySelection) -> Unit) {
             this.listener = listener
         }
+        val highlights = mutableListOf<MapOverlayMarker?>()
+        override fun setHighlightedMarker(marker: MapOverlayMarker?) {
+            highlights += marker
+        }
         override fun cancelSearch() = Unit
         override fun cancelRoute() = Unit
         override fun release() = Unit
@@ -183,6 +187,37 @@ class MapDiscoveryViewModelTest {
         advanceTimeBy(400)
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", vm.ui.value.selectedUuid)
+    }
+
+    @Test fun `selected pin is highlighted natively and cleared with the selection`() = runTest {
+        val reviewedId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+        val unknownId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+        val gateway = FakeGateway(
+            stations = listOf(
+                station(reviewedId, quality = StationLocationQuality.REVIEWED),
+                station(unknownId, lat = -25.50, lon = -49.30, quality = StationLocationQuality.UNKNOWN),
+            ),
+        )
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onViewport(-25.42, -49.27)
+        advanceTimeBy(400)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        vm.onSelection(reviewedId)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(reviewedId, engine.highlights.last()?.uuid)
+
+        // A list-only (unpinned) station has no map point to highlight.
+        vm.onSelection(unknownId)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(null, engine.highlights.last())
+
+        vm.onSelection(reviewedId)
+        dispatcher.scheduler.advanceUntilIdle()
+        vm.clearSelection()
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(null, engine.highlights.last())
     }
 
     @Test fun `native cluster callback expands without technical ids in ui`() = runTest {

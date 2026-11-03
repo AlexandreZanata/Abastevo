@@ -1,5 +1,14 @@
 package com.anpfuel.app.capture
 
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.Surface
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.BorderStroke
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -623,38 +632,118 @@ private fun NominalStationPicker(viewModel: CaptureOcrViewModel, onCamera: () ->
     val loading by viewModel.stationSearchBusy.collectAsStateWithLifecycle()
     val failed by viewModel.stationSearchFailed.collectAsStateWithLifecycle()
     val busy by viewModel.gateBusy.collectAsStateWithLifecycle()
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.capture_pick_station), style = MaterialTheme.typography.titleMedium)
-        city?.let { Text("${it.name} · ${it.state.abbreviation}") }
-        TextButton(onClick = { viewModel.changeNominalStation(); onChooseCity() }, enabled = !busy) { Text(stringResource(R.string.capture_choose_city)) }
-        if (selected != null) {
-            Card(
-                Modifier.fillMaxWidth(),
-                border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surfaceContainerHighest),
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text(stringResource(R.string.capture_pick_station), style = MaterialTheme.typography.titleLarge)
+        // City context: where the search runs, with an explicit change action.
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                Modifier.padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(selected!!.displayName, style = MaterialTheme.typography.titleMedium)
-                    Text(selected!!.addressLabel.ifBlank { selected!!.cnpjNormalized.orEmpty() })
-                    TextButton(onClick = viewModel::changeNominalStation, enabled = !busy) { Text(stringResource(R.string.capture_change_station)) }
-                }
-            }
-            Button(onClick = onCamera, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.capture_take_photo)) }
-        } else {
-            OutlinedTextField(value = query, onValueChange = viewModel::searchStations,
-                label = { Text(stringResource(R.string.capture_station_name)) }, singleLine = true,
-                enabled = city != null && !busy, modifier = Modifier.fillMaxWidth())
-            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            if (failed) Text(stringResource(R.string.capture_search_failed), color = MaterialTheme.colorScheme.error)
-            if (city != null && !loading && !failed && stations.isEmpty() && query.trim().length != 1) Text(stringResource(R.string.capture_search_empty))
-            stations.forEach { station ->
-                OutlinedButton(onClick = { viewModel.selectStation(station.stationId) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.fillMaxWidth()) {
-                        Text(station.displayName)
-                        Text(station.addressLabel.ifBlank { station.cnpjNormalized.orEmpty() }, style = MaterialTheme.typography.bodySmall)
-                    }
+                Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
+                Text(
+                    city?.let { "${it.name} · ${it.state.abbreviation}" }.orEmpty(),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { viewModel.changeNominalStation(); onChooseCity() }, enabled = !busy) {
+                    Text(stringResource(R.string.capture_choose_city))
                 }
             }
         }
+        if (selected != null) {
+            StationOptionCard(
+                name = selected!!.displayName,
+                address = selected!!.displayAddress.ifBlank { selected!!.cnpjNormalized.orEmpty() },
+                selected = true,
+                enabled = !busy,
+                onClick = viewModel::changeNominalStation,
+                trailingLabel = stringResource(R.string.capture_change_station),
+            )
+            Button(onClick = onCamera, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Icon(Icons.Default.PhotoCamera, null, Modifier.padding(end = 8.dp))
+                Text(stringResource(R.string.capture_take_photo))
+            }
+        } else {
+            OutlinedTextField(
+                value = query,
+                onValueChange = viewModel::searchStations,
+                placeholder = { Text(stringResource(R.string.capture_station_name)) },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                singleLine = true,
+                shape = RoundedCornerShape(24.dp),
+                enabled = city != null && !busy,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (failed) Text(stringResource(R.string.capture_search_failed), color = MaterialTheme.colorScheme.error)
+            if (city != null && !loading && !failed && stations.isEmpty() && query.trim().length != 1) {
+                Text(stringResource(R.string.capture_search_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            stations.forEach { station ->
+                StationOptionCard(
+                    name = station.displayName,
+                    address = station.displayAddress.ifBlank { station.cnpjNormalized.orEmpty() },
+                    selected = false,
+                    enabled = !busy,
+                    onClick = { viewModel.selectStation(station.stationId) },
+                )
+            }
+        }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+    }
+}
+
+/** One station choice: pump badge, name, readable address and an affordance. */
+@Composable
+private fun StationOptionCard(
+    name: String,
+    address: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    trailingLabel: String? = null,
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(20.dp),
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        border = if (selected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(44.dp)) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.LocalGasStation, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (address.isNotBlank()) {
+                    Text(
+                        address,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (trailingLabel != null) {
+                Text(trailingLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            } else {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }

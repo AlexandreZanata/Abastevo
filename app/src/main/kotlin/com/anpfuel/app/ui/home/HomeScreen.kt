@@ -34,6 +34,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -55,6 +59,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -81,6 +86,7 @@ import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.SyncStatusBanner
+import com.anpfuel.app.ui.accessibility.liveRegionSemantics
 import com.anpfuel.app.ui.components.TankFillCostCard
 import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
 import com.anpfuel.app.ui.model.AveragePriceUiModel
@@ -137,6 +143,7 @@ fun HomeScreen(
         onPriceSortChanged = viewModel::onPriceSortChanged,
         onDismissBenefits = viewModel::dismissBenefits,
         onPriceSourceChanged = { viewModel.selectPriceSource(it, locale) },
+        onSyncNoticeShown = viewModel::onSyncNoticeShown,
         modifier = modifier,
     )
 }
@@ -156,7 +163,17 @@ internal fun HomeContent(
     onPriceSortChanged: (HomePriceSortOrder) -> Unit = {},
     onDismissBenefits: () -> Unit = {},
     onPriceSourceChanged: (HomePriceSource) -> Unit = {},
+    onSyncNoticeShown: () -> Unit = {},
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val noticeText = uiState.syncNotice?.let { syncNoticeText(it, uiState) }
+    LaunchedEffect(uiState.syncNotice) {
+        if (noticeText != null) {
+            // Read once, then gone: a verified week leaves nothing on screen.
+            snackbarHostState.showSnackbar(noticeText, duration = SnackbarDuration.Long)
+            onSyncNoticeShown()
+        }
+    }
     val scrollState = rememberSaveable(saver = ScrollState.Saver) {
         ScrollState(0)
     }
@@ -175,6 +192,7 @@ internal fun HomeContent(
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             AnpTopAppBar(
                 title = {
@@ -211,13 +229,32 @@ internal fun HomeContent(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (uiState.priceSource == HomePriceSource.ANP) SyncStatusBanner(readiness = uiState.readiness)
+            // A verified STALE week stays quiet: the user already synced and
+            // ANP has nothing newer; the transient notice explained it once.
+            if (uiState.priceSource == HomePriceSource.ANP && !uiState.isStaleVerified) {
+                SyncStatusBanner(readiness = uiState.readiness)
+            }
 
             if (uiState.isOffline && (uiState.hasCachedData || uiState.priceSource == HomePriceSource.COMMUNITY)) {
                 OfflineBanner()
             }
 
-            if (uiState.priceSource == HomePriceSource.ANP &&
+            if (uiState.priceSource == HomePriceSource.ANP && !uiState.isRefreshing) {
+                uiState.syncError?.let { syncError ->
+                    Text(
+                        text = stringResource(AppErrorMapper.toStringRes(syncError)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("home_sync_error")
+                            .liveRegionSemantics(),
+                    )
+                }
+            }
+
+            if (uiState.priceSource == HomePriceSource.ANP && !uiState.isStaleVerified &&
                 (uiState.readiness == DataReadinessState.STALE || uiState.readiness == DataReadinessState.ERROR)
             ) {
                 when {
@@ -229,13 +266,6 @@ internal fun HomeContent(
                         ) {
                             Text(text = stringResource(R.string.banner_syncing))
                         }
-                    }
-                    uiState.isStaleVerified -> {
-                        StaleVerifiedRow(
-                            uiState = uiState,
-                            onVerifyAgain = onRefresh,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
                     }
                     else -> {
                         TextButton(
@@ -572,36 +602,17 @@ private fun PriceMetadata(uiState: HomeUiState) {
     }
 }
 
-/**
- * B-BR-008: STALE stays honest after manual sync confirms ANP has no newer
- * week (NO_NEW_DATA). Shows verified time + latest available week instead
- * of looping the "Sync now" CTA. Verification is global per week, so it
- * survives city switches while the week is unchanged.
- */
 @Composable
-private fun StaleVerifiedRow(
-    uiState: HomeUiState,
-    onVerifyAgain: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val locale = LocalConfiguration.current.locales[0]
-    val weekLabel = uiState.surveyWeek?.let { SurveyWeekFormatter.formatRange(it, locale) }.orEmpty()
-    val timeLabel = uiState.lastVerifiedAtMillis?.let {
-        LastSyncFormatter.format(java.time.Instant.ofEpochMilli(it), locale)
-    }.orEmpty()
-    Column(
-        modifier = modifier.testTag("home_stale_verified"),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.home_stale_verified, timeLabel, weekLabel),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        TextButton(onClick = onVerifyAgain) {
-            Text(text = stringResource(R.string.action_verify_again))
-        }
+private fun syncNoticeText(notice: HomeSyncNotice, uiState: HomeUiState): String = when (notice) {
+    HomeSyncNotice.UPDATED -> stringResource(R.string.sync_completed)
+    HomeSyncNotice.VERIFIED_NO_NEW_WEEK -> {
+        val locale = LocalConfiguration.current.locales[0]
+        val weekLabel = uiState.surveyWeek?.let { SurveyWeekFormatter.formatRange(it, locale) }.orEmpty()
+        val timeLabel = LastSyncFormatter.format(
+            java.time.Instant.ofEpochMilli(uiState.lastVerifiedAtMillis ?: System.currentTimeMillis()),
+            locale,
+        ).orEmpty()
+        stringResource(R.string.home_stale_verified, timeLabel, weekLabel)
     }
 }
 

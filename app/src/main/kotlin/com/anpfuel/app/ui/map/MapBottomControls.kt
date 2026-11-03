@@ -1,6 +1,22 @@
 package com.anpfuel.app.ui.map
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -16,13 +32,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,9 +54,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
-import com.anpfuel.app.ui.components.ActionCardButton
 
-/** Attribution stays over the map, separate from the bounded action container. */
+/**
+ * Bottom sheet over the map: drag-handle toggle, list header (slot) and a 2x2
+ * action grid. The ODbL attribution stays visible over the map above it.
+ */
 @Composable
 internal fun MapBottomControls(
     onFilters: () -> Unit,
@@ -51,56 +66,71 @@ internal fun MapBottomControls(
     onDownloads: () -> Unit,
     onSaved: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** Height of the sheet itself (without the attribution), for map controls above it. */
+    onSheetHeightChanged: (Dp) -> Unit = {},
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
     var expanded by rememberSaveable { mutableStateOf(true) }
+    var dragDistance by remember { mutableFloatStateOf(0f) }
+    val density = LocalDensity.current
+    val dragThreshold = with(density) { 24.dp.toPx() }
     val columns = if (LocalDensity.current.fontScale > 1.3f) 1 else 2
     val maxPanelHeight = LocalConfiguration.current.screenHeightDp.dp * 0.5f
     Column(
         modifier = modifier.fillMaxWidth().testTag("map-bottom-overlay"),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Surface(
+            modifier = Modifier.padding(start = 12.dp).testTag("map-attribution"),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f),
         ) {
-            FilledTonalIconButton(
-                onClick = { expanded = !expanded },
-                modifier = Modifier.size(48.dp).testTag("map-actions-toggle"),
+            Text(
+                stringResource(R.string.map_attribution),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            )
+        }
+        Surface(
+            modifier = Modifier.fillMaxWidth().testTag("map-action-panel")
+                .onSizeChanged { size -> onSheetHeightChanged(with(density) { size.height.toDp() }) }
+                .animateContentSize(),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shadowElevation = 12.dp,
+        ) {
+            Column(
+                modifier = Modifier.heightIn(max = maxPanelHeight)
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, bottom = if (expanded) 12.dp else 0.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Icon(
-                    imageVector = if (expanded) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
-                    contentDescription = stringResource(if (expanded) R.string.map_actions_hide else R.string.map_actions_show),
-                )
-            }
-            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                Surface(
-                    modifier = Modifier.testTag("map-attribution"),
-                    shape = MaterialTheme.shapes.small,
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                val toggleLabel = stringResource(if (expanded) R.string.map_actions_hide else R.string.map_actions_show)
+                // Drag the handle down to minimize to just the handle, up to restore;
+                // a tap toggles too (accessible equivalent of the gesture).
+                Box(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(bottom = if (expanded) 0.dp else 4.dp)
+                        .draggable(
+                            state = rememberDraggableState { delta -> dragDistance += delta },
+                            orientation = Orientation.Vertical,
+                            onDragStarted = { dragDistance = 0f },
+                            onDragStopped = {
+                                if (dragDistance > dragThreshold) expanded = false
+                                if (dragDistance < -dragThreshold) expanded = true
+                            },
+                        )
+                        .clickable(role = Role.Button, onClickLabel = toggleLabel) { expanded = !expanded }
+                        .semantics { contentDescription = toggleLabel }
+                        .testTag("map-actions-toggle"),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        stringResource(R.string.map_attribution),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                    Box(
+                        Modifier.padding(top = 10.dp).size(width = 36.dp, height = 4.dp)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape),
                     )
                 }
-            }
-        }
-        if (expanded) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().testTag("map-action-panel"),
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-                shadowElevation = 3.dp,
-            ) {
-                Column(
-                    modifier = Modifier.heightIn(max = maxPanelHeight)
-                        .verticalScroll(rememberScrollState()).padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
+                if (expanded) {
                     content()
                     val actions = buildList {
                         add(MapPanelAction(R.string.map_filters, Icons.Default.FilterAlt, "map-open-filters", onFilters))
@@ -111,22 +141,37 @@ internal fun MapBottomControls(
                     actions.chunked(columns).forEach { row ->
                         Row(
                             modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             row.forEach { action ->
-                                ActionCardButton(
-                                    label = stringResource(action.label),
-                                    icon = action.icon,
-                                    onClick = action.onClick,
-                                    showChevron = false,
-                                    modifier = Modifier.weight(1f).fillMaxHeight()
-                                        .heightIn(min = 48.dp).testTag(action.tag),
-                                )
+                                MapPanelButton(action, Modifier.weight(1f).fillMaxHeight())
                             }
+                            if (row.size < columns) Spacer(Modifier.weight(1f))
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MapPanelButton(action: MapPanelAction, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = action.onClick,
+        modifier = modifier.heightIn(min = 56.dp).testTag(action.tag),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(action.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(stringResource(action.label), style = MaterialTheme.typography.titleSmall)
         }
     }
 }

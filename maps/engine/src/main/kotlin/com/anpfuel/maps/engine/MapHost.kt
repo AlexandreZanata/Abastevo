@@ -1,5 +1,17 @@
 package com.anpfuel.maps.engine
 
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Arrangement
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -61,6 +73,12 @@ fun MapHost(
     recenterBottomInset: Dp = 16.dp,
     /** Follows the app theme; null leaves the native appearance untouched. */
     darkMode: Boolean? = null,
+    /** App-owned recenter glyph (the engine module ships no icon set). */
+    recenterIcon: @Composable () -> Unit = { Text("◎", style = MaterialTheme.typography.titleLarge) },
+    /** Extra round map controls stacked above recenter (for example layers/filters). */
+    extraControls: @Composable ColumnScope.() -> Unit = {},
+    /** Height of app-owned controls drawn just above recenter; status pills clear them. */
+    statusClearance: Dp = 0.dp,
 ) {
     val vm: MapViewModel = hiltViewModel()
     MapHostContent(
@@ -77,6 +95,9 @@ fun MapHost(
         active = active,
         recenterBottomInset = recenterBottomInset,
         darkMode = darkMode,
+        recenterIcon = recenterIcon,
+        extraControls = extraControls,
+        statusClearance = statusClearance,
     )
 }
 
@@ -101,6 +122,12 @@ fun MapHost(
     recenterBottomInset: Dp = 16.dp,
     /** Follows the app theme; null leaves the native appearance untouched. */
     darkMode: Boolean? = null,
+    /** App-owned recenter glyph (the engine module ships no icon set). */
+    recenterIcon: @Composable () -> Unit = { Text("◎", style = MaterialTheme.typography.titleLarge) },
+    /** Extra round map controls stacked above recenter (for example layers/filters). */
+    extraControls: @Composable ColumnScope.() -> Unit = {},
+    /** Height of app-owned controls drawn just above recenter; status pills clear them. */
+    statusClearance: Dp = 0.dp,
 ) {
     val context = LocalContext.current
     val store = cameraStore ?: remember(context) { SharedPreferencesMapCameraStore(context) }
@@ -129,6 +156,9 @@ fun MapHost(
         active = active,
         recenterBottomInset = recenterBottomInset,
         darkMode = darkMode,
+        recenterIcon = recenterIcon,
+        extraControls = extraControls,
+        statusClearance = statusClearance,
     )
 }
 
@@ -148,6 +178,12 @@ private fun MapHostContent(
     recenterBottomInset: Dp = 16.dp,
     /** Follows the app theme; null leaves the native appearance untouched. */
     darkMode: Boolean? = null,
+    /** App-owned recenter glyph (the engine module ships no icon set). */
+    recenterIcon: @Composable () -> Unit = { Text("◎", style = MaterialTheme.typography.titleLarge) },
+    /** Extra round map controls stacked above recenter (for example layers/filters). */
+    extraControls: @Composable ColumnScope.() -> Unit = {},
+    /** Height of app-owned controls drawn just above recenter; status pills clear them. */
+    statusClearance: Dp = 0.dp,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -253,36 +289,51 @@ private fun MapHostContent(
                     end = 16.dp,
                     bottom = recenterBottomInset,
                 ),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Permission/GPS states never block browsing; they annotate recenter.
-                if (!state.hasLocationPermission && state.deniedForever) {
-                    Surface(shape = MaterialTheme.shapes.small, tonalElevation = 3.dp) {
-                        Text(
-                            locationDeniedMessage,
-                            modifier = Modifier.padding(8.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                extraControls()
+                // Permission/GPS states never block browsing; a pill beside the
+                // recenter control annotates it without covering other controls.
+                val status: Pair<String, Boolean>? = when {
+                    !state.hasLocationPermission && state.deniedForever -> locationDeniedMessage to false
+                    !state.gpsEnabled -> gpsOffMessage to false
+                    state.recenterError == "no-fix" -> waitingForFixMessage to true
+                    else -> null
+                }
+                if (status != null) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.inverseSurface,
+                        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.widthIn(max = 300.dp).semantics { liveRegion = LiveRegionMode.Polite },
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            if (status.second) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.inversePrimary,
+                                )
+                            } else {
+                                Text("!", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.inversePrimary)
+                            }
+                            Text(status.first, style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
                     }
-                } else if (!state.gpsEnabled) {
-                    Surface(shape = MaterialTheme.shapes.small, tonalElevation = 3.dp) {
-                        Text(
-                            gpsOffMessage,
-                            modifier = Modifier.padding(8.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                } else if (state.recenterError == "no-fix") {
-                    Surface(shape = MaterialTheme.shapes.small, tonalElevation = 3.dp) {
-                        Text(
-                            waitingForFixMessage,
-                            modifier = Modifier.padding(8.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
+                    // Keeps the pill above controls the app draws over this column.
+                    if (statusClearance > 0.dp) Spacer(Modifier.height(statusClearance))
                 }
                 Surface(
-                    shape = MaterialTheme.shapes.small,
-                    tonalElevation = 3.dp,
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    shadowElevation = 6.dp,
                 ) {
                     IconButton(
                         onClick = {
@@ -292,11 +343,11 @@ private fun MapHostContent(
                                 permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
                             }
                         },
-                        modifier = Modifier.size(48.dp).semantics {
+                        modifier = Modifier.size(56.dp).semantics {
                             contentDescription = recenterDescription
                         },
                     ) {
-                        Text("◎", style = MaterialTheme.typography.titleLarge)
+                        recenterIcon()
                     }
                 }
             }

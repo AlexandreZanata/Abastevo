@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class HomePriceSource { ANP, COMMUNITY }
 
@@ -67,6 +68,10 @@ data class HomeUiState(
     val lastVerifiedAtMillis: Long? = null,
     val verifiedSurveyWeek: SurveyWeek? = null,
     val lastSyncOutcome: SyncJobOutcome? = null,
+    /** B-BR-SYNC-FEEDBACK-01: a failed manual sync is shown inline; cached prices stay. */
+    val syncError: AppError? = null,
+    /** One-shot confirmation of a manual sync; the screen shows it once and consumes it. */
+    val syncNotice: HomeSyncNotice? = null,
 ) {
     /**
      * True when STALE is already verified for the displayed week:
@@ -80,6 +85,9 @@ data class HomeUiState(
             verifiedSurveyWeek != null &&
             verifiedSurveyWeek == surveyWeek
 }
+
+/** Transient outcome of a manual sync (B-BR-SYNC-FEEDBACK-01). */
+enum class HomeSyncNotice { VERIFIED_NO_NEW_WEEK, UPDATED }
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -115,6 +123,9 @@ class HomeViewModel @Inject constructor(
     private var consecutiveCommunityFailures = 0
     private var lastCommunityAttemptMillis: Long? = null
     internal var communityNow: () -> java.time.Instant = { java.time.Instant.now() }
+    /** Download, parsing and import of ANP tables never run on the main thread. */
+    internal var ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
+    internal var nowMillis: () -> Long = { System.currentTimeMillis() }
     /** A resumed screen owns a lease; cleanup from an older screen cannot cancel this one. */
     fun startCommunitySession(): Long {
         communityForeground = true
@@ -335,7 +346,13 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun load(locale: Locale, showLoadingIndicator: Boolean = false) {
+    fun load(locale: Locale, showLoadingIndicator: Boolean = false) = load(locale, showLoadingIndicator, null)
+
+    /**
+     * [checkedAtMillis] marks a manual sync that just confirmed the ANP
+     * listing; it verifies the newest imported week once readiness is known.
+     */
+    private fun load(locale: Locale, showLoadingIndicator: Boolean, checkedAtMillis: Long?) {
         if(_uiState.value.priceSource==HomePriceSource.COMMUNITY) {refreshCommunity();return}
         val ticket=++loadGeneration;loadJob?.cancel()
         loadJob=viewModelScope.launch {
@@ -350,6 +367,14 @@ class HomeViewModel @Inject constructor(
                 val preferred = selectLocationUseCase.getPreferredLocation()
                 val vehicles = listVehiclesUseCase()
                 if(ticket!=loadGeneration) return@launch
+                val newest = readinessResult.latestSurveyWeek
+                if (checkedAtMillis != null && newest != null) {
+                    manualSyncVerificationStore.saveVerified(
+                        weekStartIso = newest.startDate.toString(),
+                        weekEndIso = newest.endDate.toString(),
+                        verifiedAtMillis = checkedAtMillis,
+                    )
+                }
 
                 if (preferred == null || !readinessResult.hasCachedData) {
                     homeVehiclePresenceStore.setHasVehicle(vehicles.isNotEmpty())
@@ -456,50 +481,44 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true, error = null, errorMessage = null) }
-            var outcome: SyncJobOutcome? = null
-            runCatching {
-                syncPriceTablesUseCase(SyncRequestSource.MANUAL)
-            }.onSuccess { result ->
-                outcome = result.outcome
+            _uiState.update {
+                it.copy(isRefreshing = true, error = null, errorMessage = null, syncError = null, syncNotice = null)
+            }
+            val result = try {
+                Result.success(withContext(ioDispatcher) { syncPriceTablesUseCase(SyncRequestSource.MANUAL) })
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                Result.failure(error)
+            }
+            var checkedAtMillis: Long? = null
+            var syncError: AppError? = null
+            var notice: HomeSyncNotice? = null
+            result.onSuccess { sync ->
+                when (sync.outcome) {
+                    // The ANP listing was read: the newest imported week is verified,
+                    // even when ANP itself has not published a fresher week yet.
+                    SyncJobOutcome.NO_NEW_DATA -> {
+                        checkedAtMillis = nowMillis()
+                        notice = HomeSyncNotice.VERIFIED_NO_NEW_WEEK
+                    }
+                    SyncJobOutcome.SUCCESS, SyncJobOutcome.PARTIAL -> {
+                        manualSyncVerificationStore.clear()
+                        checkedAtMillis = nowMillis()
+                        notice = HomeSyncNotice.UPDATED
+                    }
+                    SyncJobOutcome.FAILED -> syncError = sync.error ?: AppError.SyncNetworkError
+                }
             }.onFailure { error ->
-                if (error !is DomainException) {
-                    val appError = AppErrorResolver.fromThrowable(error)
-                    _uiState.update {
-                        it.copy(
-                            isRefreshing = false,
-                            error = appError,
-                            errorMessage = error.message,
-                        )
-                    }
-                    return@launch
-                }
+                syncError = AppErrorResolver.fromThrowable(error)
             }
-            when (outcome) {
-                SyncJobOutcome.NO_NEW_DATA -> {
-                    _uiState.value.surveyWeek?.let { week ->
-                        manualSyncVerificationStore.saveVerified(
-                            weekStartIso = week.startDate.toString(),
-                            weekEndIso = week.endDate.toString(),
-                            verifiedAtMillis = System.currentTimeMillis(),
-                        )
-                    }
-                }
-                SyncJobOutcome.SUCCESS, SyncJobOutcome.PARTIAL -> {
-                    manualSyncVerificationStore.clear()
-                    _uiState.update {
-                        it.copy(
-                            lastVerifiedAtMillis = null,
-                            verifiedSurveyWeek = null,
-                            lastSyncOutcome = outcome,
-                        )
-                    }
-                }
-                else -> Unit
-            }
-            _uiState.update { it.copy(isRefreshing = false) }
-            load(locale)
+            _uiState.update { it.copy(isRefreshing = false, syncError = syncError, syncNotice = notice) }
+            load(locale, showLoadingIndicator = false, checkedAtMillis = checkedAtMillis)
         }
+    }
+
+    fun onSyncNoticeShown() {
+        _uiState.update { it.copy(syncNotice = null) }
     }
 
     /**

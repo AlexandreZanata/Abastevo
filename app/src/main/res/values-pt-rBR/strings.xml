@@ -449,7 +449,6 @@
     <string name="sync_failed">Falha na sincronização</string>
     <string name="info_sync_up_to_date">Já está atualizado.</string>
     <string name="home_stale_verified">Verificado em %1$s — ANP ainda não publicou semana nova. Exibindo %2$s (última disponível).</string>
-    <string name="action_verify_again">Verificar novamente</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">Não foi possível acessar a ANP. Verifique a conexão e tente novamente.</string>
@@ -1169,7 +1168,6 @@
     <string name="map_host_waiting_fix">Aguardando localização inicial.</string>
     <string name="map_downloads_active_generation">Ativo: %1$s</string>
     <string name="map_downloads_update_generation">Atualização: %1$s</string>
-    <string name="map_downloads_size_summary">Tamanho: %1$d KiB em %2$d pacotes</string>
     <string name="map_downloads_depends_on">Depende de: %1$s</string>
     <string name="map_downloads_wifi_only">Somente Wi-Fi</string>
     <string name="map_downloads_wifi_any">Wi-Fi ou dados móveis</string>
@@ -1177,6 +1175,17 @@
     <string name="map_downloads_in_use">Em uso pela navegação; pare a navegação e tente de novo</string>
     <string name="map_downloads_stored">Armazenado: %1$s</string>
     <string name="map_downloads_ok">OK</string>
+    <string name="map_downloads_subtitle">Baixe o mapa da sua região para navegar sem internet.</string>
+    <string name="map_downloads_size_total">%1$s em %2$d pacotes</string>
+    <string name="map_downloads_progress">%1$s de %2$s</string>
+    <string name="map_download_with_size">Baixar (%1$s)</string>
+    <string name="map_pkg_world">Mapa-base mundial</string>
+    <string name="map_pkg_world_coasts">Contornos dos continentes</string>
+    <string name="map_pkg_region">Mapa da região</string>
+    <string name="map_pkg_status_pending">Na fila</string>
+    <string name="map_pkg_status_downloading">Baixando</string>
+    <string name="map_pkg_status_complete">Baixado</string>
+    <string name="map_pkg_status_failed">Falhou</string>
     <string name="map_hours_unknown">Horários não informados pela fonte.</string>
     <string name="ev_title">Viagem elétrica</string>
     <string name="ev_vehicle">Veículo elétrico</string>
