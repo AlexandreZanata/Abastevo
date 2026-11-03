@@ -1,5 +1,13 @@
 # Current execution state
 
+- ZD-00/01 2026-11-03: read-only staging inventory and agent safety source
+  LOCAL_DONE / INTEGRATION_PENDING on `codex/cd-zero-downtime`, tested parent
+  d9fa3db0 plus task. [Inventory](../backend/evidence/cd/ZD-00.md),
+  [safety](../backend/evidence/cd/ZD-01.md); 221 harness assertions and static
+  checks pass. Live c19f0bde/timer active, surge OFF; no VPS mutation. Next:
+  ZD-02 drain, then storage separation before surge; live approvals and
+  measured acceptance OWED. Final single dev → main PR pending.
+
 - Map regional integration 2026-10-28: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/phase-map-regional-integration` (from `origin/main` 66229695, merges
   `origin/codex/map-completion`, `origin/codex/map-regional-download`,

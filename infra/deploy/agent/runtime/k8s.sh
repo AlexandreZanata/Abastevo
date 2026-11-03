@@ -238,5 +238,8 @@ runtime_rollout_status() {
 
 runtime_rollout_undo() {
     local namespace="$1" deployment="$2"
-    runtime_kubectl -n "$namespace" rollout undo "deployment/$deployment" >/dev/null
+    local revision="${3:-}"
+    local args=()
+    [[ -z "$revision" ]] || args+=("--to-revision=$revision")
+    runtime_kubectl -n "$namespace" rollout undo "deployment/$deployment" "${args[@]}" >/dev/null
 }

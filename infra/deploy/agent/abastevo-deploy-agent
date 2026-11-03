@@ -72,9 +72,18 @@ ABASTEVO_LOCK_FILE="${ABASTEVO_LOCK_FILE:-$ABASTEVO_STATE_DIR/apply.lock}"
 COMMAND="${1:-plan}"
 BASELINE_SHA=""
 BASELINE_FLOOR_ARG=""
+RECHECK_SHA=""
 case "$COMMAND" in
     plan)
-        (( $# <= 1 )) || fail "plan takes no arguments"
+        if (( $# > 1 )); then
+            [[ $# == 3 && "$2" == "--recheck" && "$3" =~ ^[0-9a-f]{40}$ ]] \
+                || fail "plan accepts only --recheck <40-hex commit>"
+            RECHECK_SHA="$3"
+            ABASTEVO_MANIFEST_TAG="sha-$RECHECK_SHA"
+        fi
+        ;;
+    release-hold)
+        (( $# == 1 )) || fail "release-hold takes no arguments"
         ;;
     baseline)
         shift
@@ -105,6 +114,22 @@ case "$COMMAND" in
         fail "usage: abastevo-deploy-agent [plan | baseline --sha <commit> [--floor <NNNNNN>]]"
         ;;
 esac
+
+# Serialize verification, state snapshots and every operator action as one run.
+require_absolute ABASTEVO_STATE_DIR
+require_tool flock
+require_tool jq
+require_absolute ABASTEVO_LOCK_FILE
+install -d -m 0700 "$ABASTEVO_STATE_DIR" "$(dirname "$ABASTEVO_LOCK_FILE")"
+exec 9>"$ABASTEVO_LOCK_FILE"
+chmod 0600 "$ABASTEVO_LOCK_FILE"
+if ! flock -n 9; then
+    log "Deferred: another deployment run owns the lock"
+    exit 0
+fi
+# shellcheck source=infra/deploy/agent/safety.sh
+. "$ABASTEVO_LIBDIR/safety.sh"
+safety_open
 
 require_var ABASTEVO_NAMESPACE
 require_var ABASTEVO_API_DEPLOYMENT
@@ -270,6 +295,8 @@ if [[ -f "$current_file" ]]; then
 else
     printf 'null\n' > "$workdir/current.json"
 fi
+
+safety_candidate
 
 current_sha="$(jq -r '.sha // empty' "$workdir/current.json")"
 current_landing="$(jq -r '.landing_sha256 // empty' "$workdir/current.json")"

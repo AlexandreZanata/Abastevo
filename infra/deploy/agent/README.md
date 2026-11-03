@@ -363,3 +363,26 @@ overlap integration test passes for the queue dispatchers, but surge remains
 disabled by default until the reviewed staging runs measure zero unavailable
 replicas and the owner enables `ABASTEVO_ALLOW_SURGE=1`. Production remains
 manual behind G09 and is out of scope.
+
+## ZD-01 safety and interrupted runs
+
+Install `safety.sh` beside `apply.sh` and `baseline.sh` when upgrading the
+agent. All commands serialize verification and state snapshots under the same
+nonblocking lock; a busy run prints `Deferred:` and exits 0. A signed candidate
+must be reachable from main **and** descend from the recorded deployed SHA;
+unavailable comparisons refuse before cluster actions and write a refusal.
+
+Failed candidates are latched in mode-600 `checked.json`. The same SHA is
+skipped on subsequent timer runs; a different SHA is eligible. After inspecting
+and correcting the failure, explicitly invoke `plan --recheck <full-sha>` with
+the usual private environment. Recheck preserves signature, main ancestry,
+deployment floor and schema checks.
+
+An incomplete rollback creates `operator-hold.json`; subsequent runs refuse.
+Inspect the failure receipt and restore service before `release-hold`; this
+command only releases the hold, leaving the rejected SHA latched. Never edit
+current or receipts by hand. `inflight.json` pins an interrupted candidate and
+its original rollback revision/landing; the next run re-verifies that immutable
+artifact and converges before considering later releases. Do not baseline or
+recheck over an unfinished journal. These are source guarantees; live ZD-07
+drills remain separately owed.
