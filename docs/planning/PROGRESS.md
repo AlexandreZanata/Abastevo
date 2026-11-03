@@ -1,5 +1,12 @@
 # Current execution state
 
+- ZD-03 2026-11-03: storage separation source LOCAL_DONE /
+  INTEGRATION_PENDING on `codex/cd-zero-downtime`, tested parent 30160e51
+  plus task. [Evidence](../backend/evidence/cd/ZD-03.md): singleton/render,
+  scoped config, HTTP race/real MinIO signatures and infra gates pass.
+  Signed public URLs preserved. Live topology unchanged; migration requires
+  signed new image and individual approval. Next: ZD-04 hardening.
+
 - ZD-02 2026-11-03: drain source LOCAL_DONE / INTEGRATION_PENDING on
   `codex/cd-zero-downtime`, tested parent 9bc48e20 plus task.
   [Evidence](../backend/evidence/cd/ZD-02.md): real SIGTERM/TCP/upload and

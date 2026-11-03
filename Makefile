@@ -34,10 +34,12 @@ test-wiki:
 	bash scripts/tests/test-wiki.sh
 
 check-infra:
+	python3 infra/k8s/staging/test-manifests.py
 	bash scripts/check-infra-config.sh staging
 	bash scripts/check-infra-config.sh prod
 
 test-infra:
+	python3 infra/k8s/staging/test-manifests.py
 	bash scripts/tests/test-infra-config.sh
 
 test-deploy:

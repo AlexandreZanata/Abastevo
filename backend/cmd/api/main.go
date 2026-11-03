@@ -1413,7 +1413,11 @@ func run() error {
 		},
 	}.RegisterRoutes(router)
 	if !cfg.DevelopmentPhotoPreviewUntil.IsZero() && cfg.R2 != nil && cfg.R2.Bucket == "abastevo-dev-photos" {
-		router.Handle("/abastevo-dev-photos/*", httpapi.DevelopmentStorageProxy(cfg.R2.Bucket))
+		proxy := httpapi.DevelopmentStorageProxy(cfg.R2.Bucket)
+		if cfg.DevelopmentStorageService {
+			proxy = httpapi.DevelopmentStorageServiceProxy(cfg.R2.Bucket)
+		}
+		router.Handle("/abastevo-dev-photos/*", proxy)
 	}
 	server, err := httpserver.New(httpserver.Options{
 		Addr:               cfg.HTTPAddr,

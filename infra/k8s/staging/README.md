@@ -91,3 +91,21 @@ Services or CronJob.
   `kubectl -n abastevo-temp exec -i <db pod> -- psql -U "$DATABASE_USER"
   -d "$DATABASE_NAME" -v ON_ERROR_STOP=1 < backend/db/seeds/project_creator.sql`
   (needs migration 000145).
+
+## ZD-03 proposed storage topology (not yet applied)
+
+The ZD-00 live inventory is the current-state receipt. The ZD-03 files are
+reviewed desired changes: API/worker no longer mount private media; the new
+storage Deployment is a singleton with `Recreate`, its own hostPath and
+ClusterIP-only Service. The signed-public host/path/bucket do not change.
+`ANPFUEL_DEV_STORAGE_SERVICE=true` selects the fixed internal Service proxy
+only for development/owned staging. Worker S3 calls keep the existing signed
+public endpoint and traverse that proxy; no public storage listener is added.
+
+Apply only after the matching signed API image exists, during the individually
+approved migration window described in [ZD-03](../../../docs/backend/evidence/cd/ZD-03.md).
+Stop the original writer before starting singleton storage; rollback stops the
+singleton before restoring the original pod. No simultaneous writer is safe.
+The historical zero-diff above predates these changes; new live zero-diff and
+private-media smoke remain OWED. `make check-infra test-infra` includes stdlib
+structural/render checks for the affected JSON-as-YAML objects.

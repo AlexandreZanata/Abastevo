@@ -215,6 +215,7 @@ type Config struct {
 	// refuses explicitly while nil instead of misbehaving.
 	R2                           *R2Config
 	DevelopmentPhotoPreviewUntil time.Time
+	DevelopmentStorageService    bool
 	// Payments holds provider switches and credentials; LogValue/Preflight
 	// expose readiness only, never key material.
 	Payments PaymentsConfig
@@ -642,6 +643,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_DEV_PHOTO_PREVIEW_UNTIL requires a valid bounded deadline in development or the owned staging host")
 		}
 		cfg.DevelopmentPhotoPreviewUntil = deadline
+	}
+	if raw, _ := getenv("ANPFUEL_DEV_STORAGE_SERVICE"); raw != "" {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil || (enabled && (cfg.Env == EnvProduction ||
+			(cfg.Env == EnvStaging && cfg.CanonicalHost != "teste.abastevo.com.br"))) {
+			return Config{}, fmt.Errorf("ANPFUEL_DEV_STORAGE_SERVICE requires development or owned staging")
+		}
+		cfg.DevelopmentStorageService = enabled
 	}
 	return cfg, nil
 }
