@@ -20,7 +20,7 @@ func TestLastCompleteRunTracksFreshness(t *testing.T) {
 	if err != nil {
 		t.Fatalf("last complete: %v", err)
 	}
-	if last.SnapshotIdentity != "fresh-1" || last.State != "complete" || last.Accepted != 3 {
+	if last.SnapshotIdentity != ParserVersion+":fresh-1" || last.State != "complete" || last.Accepted != 3 {
 		t.Fatalf("last = %+v", last)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // Canonicalizer publishes staged assertions to stable identities. The
@@ -49,6 +50,13 @@ func stationStatusFor(auth string) (string, bool) {
 // never closes anything, and no address-only merge or invented
 // price/location is ever created.
 func ReconcileRun(ctx context.Context, store Store, canon Canonicalizer, source, snapshot string) (ReconReport, error) {
+	// Jobs retain their logical snapshot input; resolve the current parser's
+	// physical identity, while explicit versioned identities remain auditable.
+	if source == SourceCSV && !strings.HasPrefix(snapshot, "registry-csv-v") {
+		snapshot = ParserVersion + ":" + snapshot
+	} else if source == SourceAPI && !strings.HasPrefix(snapshot, "registry-api-v") {
+		snapshot = APIParserVersion + ":" + snapshot
+	}
 	run, err := store.GetRun(ctx, source, snapshot)
 	if err != nil {
 		return ReconReport{}, err

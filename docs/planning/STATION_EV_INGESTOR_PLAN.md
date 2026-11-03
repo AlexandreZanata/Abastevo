@@ -98,6 +98,11 @@ new geocoding service without an ADR.
 
 ### SNA-01: Ingestor parses names and full addresses
 
+Execution bounds (2026-11-03): SNA-01A = pure Go rule and CSV/API parsing;
+SNA-01B = additive Rust v3 enrichment and Go batch admission. Finish both before
+SNA-02. Actual base emits station-assertion-v2; old v1/v2 remain readable.
+These are atomic children in one cumulative delivery, not separate PRs.
+
 - CSV (`stage.go`): read `NOME_FANTASIA` and the address columns into the
   assertion (`street`, `number`, `complement`, `district`, `postal_code`,
   `municipio`, plus `municipio_ibge`, `uf`). Use the keys that

@@ -19,7 +19,7 @@ import (
 const SourceAPI = "registry-api"
 
 // APIParserVersion freezes the discovery parser identity on every run.
-const APIParserVersion = "registry-api-v2"
+const APIParserVersion = "registry-api-v3"
 
 // ProductionAPIHost is the only host P25-T03 may fetch in production.
 const ProductionAPIHost = "revendedoresapi.anp.gov.br"

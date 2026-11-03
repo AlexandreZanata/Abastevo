@@ -16,10 +16,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	directory "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/directory"
+	domain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/domain"
 )
 
 // ParserVersion freezes the staging parser identity recorded on every run.
-const ParserVersion = "registry-csv-v1"
+const ParserVersion = "registry-csv-v2"
 
 // SourceCSV is the frozen source key for the ANP registry CSV snapshot.
 const SourceCSV = "registry-csv"
@@ -68,6 +69,8 @@ type Assertion struct {
 	SourceKey        string
 	Checksum         string
 	DisplayName      string
+	LegalName        string
+	TradeName        string
 	Address          map[string]string
 	MunicipalityCode string
 	State            string
@@ -353,6 +356,7 @@ func crsOrEmpty(crs string, present bool) string {
 // Identical replay and concurrent staging converge without duplicates
 // via the (source, source_key, checksum) key.
 func StageCSV(ctx context.Context, store Store, snapshot string, r io.Reader, limits Limits) (Report, error) {
+	snapshot = ParserVersion + ":" + snapshot
 	raw, err := io.ReadAll(io.LimitReader(r, limits.MaxBytes+1))
 	if err != nil {
 		return Report{}, err
@@ -453,8 +457,16 @@ func parseRecord(index map[string]int, record []string) (Assertion, bool) {
 	if err != nil {
 		return Assertion{}, false
 	}
-	name := at("RAZAO_SOCIAL")
-	if name == "" {
+	legalName := ""
+	if i, ok := index["RAZAO_SOCIAL"]; ok && i < len(record) {
+		legalName = record[i]
+	}
+	tradeName := ""
+	if i, ok := index["NOME_FANTASIA"]; ok && i < len(record) {
+		tradeName = record[i]
+	}
+	name := domain.StationDisplayName(legalName, tradeName, cnpj, "")
+	if strings.TrimSpace(legalName) == "" {
 		return Assertion{}, false
 	}
 	ibge := at("COD_IBGE")
@@ -467,13 +479,17 @@ func parseRecord(index map[string]int, record []string) (Assertion, bool) {
 		IdentityOK: true, AddressOK: true,
 		Authorized: auth == AuthorizationAuthorized,
 	})
-	sum := sha256.Sum256([]byte(strings.Join(record, "\x1f")))
+	sum := sha256.Sum256([]byte(ParserVersion + "\x1f" + strings.Join(record, "\x1f")))
 	return Assertion{
-		Source:           SourceCSV,
-		SourceKey:        cnpj,
-		Checksum:         hex.EncodeToString(sum[:]),
-		DisplayName:      name,
-		Address:          map[string]string{"municipio_ibge": ibge, "uf": uf},
+		Source:      SourceCSV,
+		SourceKey:   cnpj,
+		Checksum:    hex.EncodeToString(sum[:]),
+		DisplayName: name,
+		LegalName:   legalName,
+		TradeName:   tradeName,
+		Address: map[string]string{"street": at("LOGRADOURO"), "number": at("NUMERO"),
+			"complement": at("COMPLEMENTO"), "district": at("BAIRRO"), "postal_code": at("CEP"),
+			"municipio": at("MUNICIPIO"), "municipio_ibge": ibge, "uf": uf},
 		MunicipalityCode: ibge,
 		State:            uf,
 		AuthState:        string(auth),

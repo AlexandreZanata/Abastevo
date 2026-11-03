@@ -1,5 +1,16 @@
 # Current execution state
 
+- Station/EV ingestor 2026-11-03: IN_PROGRESS on isolated
+  `codex/station-ev-ingestor`, from remote dev 3efc171b (main c19f0bde).
+  Plan first commit 415c5af0. SNA-01A Go parsing LOCAL_DONE; whole SNA-01
+  awaits Rust v3 child. [Evidence](../backend/evidence/sna/SNA-01.md): domain/
+  registry race, actual Rust→Go publication recovery and real PostGIS suites
+  pass; tested parent 415c5af0 plus task. No import/download/staging write.
+  Owner approved read-only staging inventory; downloads, keys, imports and
+  mutations still require separate approval. Prior PR #183 is open with CI
+  pending at the last snapshot. Next: SNA-01B, then SNA-02/03; final single
+  cumulative dev → main PR, source coverage and automatic-deploy evidence owed.
+
 - Zero-downtime staging source 2026-11-03: LOCAL_DONE / INTEGRATION_PENDING;
   full live acceptance OWED. [Batch evidence/activation queue](../backend/evidence/cd/ZD-08.md),
   [plan](CD_ZERO_DOWNTIME_PLAN.md). Isolated `codex/cd-zero-downtime`, tested
