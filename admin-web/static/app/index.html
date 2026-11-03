@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="description" content="Painel de administração: login, contas, contribuidores e auditoria.">
+  <meta name="description" content="Painel de administração: login, contas, contribuidores, postos e auditoria.">
   <title>Painel de administração</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/admin/assets/styles.css">
@@ -17,6 +17,7 @@
     <nav aria-label="Seções" id="main-nav" hidden>
       <a href="/admin/accounts/" data-route="/admin/accounts/">Contas</a>
       <a href="/admin/contributors/" data-route="/admin/contributors/">Contribuidores</a>
+      <a href="/admin/stations/" data-route="/admin/stations/">Postos</a>
       <a href="/admin/audit/" data-route="/admin/audit/">Auditoria</a>
     </nav>
     <span class="admin-session" id="session-info" hidden>Sessão <span id="session-fingerprint">…</span> · expira em <span id="session-expiry">…</span></span>
@@ -148,6 +149,26 @@
           <button type="submit" name="visibility-action" value="hide">Ocultar</button>
           <button type="submit" name="visibility-action" value="unhide">Exibir</button>
         </form>
+      </section>
+    </div>
+    <div id="view-stations" hidden>
+      <section class="card" aria-labelledby="stations-title">
+        <h1 id="stations-title">Consultar posto</h1>
+        <form id="station-lookup" method="get" action="#">
+          <label for="station-id">ID do posto (UUID)</label>
+          <input id="station-id" type="text" maxlength="36" spellcheck="false" required>
+          <button type="submit">Consultar</button>
+        </form>
+        <p id="station-status" role="status"></p>
+        <p id="station-error" class="error" role="alert"></p>
+        <dl id="station-result" hidden>
+          <dt>Nome de exibição</dt>
+          <dd id="station-display-name"></dd>
+          <dt>Razão social</dt>
+          <dd id="station-legal-name"></dd>
+          <dt>Fonte do endereço</dt>
+          <dd id="station-address-source"></dd>
+        </dl>
       </section>
     </div>
     <div id="view-audit" hidden>

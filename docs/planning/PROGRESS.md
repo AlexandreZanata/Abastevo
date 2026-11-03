@@ -51,7 +51,9 @@
   Compose tests with light/dark evidence (parent 6d0c4fe5 plus child).
   SNA-06A LOCAL_DONE: generated portal station address with named municipality
   fallback and coordinate rejection; portal/export race suites and vet pass.
-  Main reconciled at cd78249e. Next admin/landing audit.
+  Main reconciled at cd78249e. SNA-06B LOCAL_DONE: admin station lookup
+  exposes both public names and address source, with 50 tests, typecheck,
+  build and dist checks passing (parent 02cbf7b5 plus child). Next landing.
   [Portal evidence](../backend/evidence/sna/SNA-06.md).
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact
   recovery owed after restart.
