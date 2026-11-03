@@ -15,7 +15,9 @@
   maps/engine 44 unit tests green; `check-mobile.sh --static-only` ok;
   diff-check clean; installed and exercised on a Xiaomi 2311DRK48G. Staging
   data: owner-requested PRO grant for the test account (no Git change).
-  Next: PR CI to `main`.
+  Address formatter rejects coordinate literals and municipality codes in
+  source components, with named locality fallback. Seven formatter tests
+  pass after reproducing the legacy coordinate regression. Next: PR #184 CI.
 
 - Zero-downtime staging source 2026-11-03: LOCAL_DONE / INTEGRATION_PENDING;
   full live acceptance OWED. [Batch evidence/activation queue](../backend/evidence/cd/ZD-08.md),

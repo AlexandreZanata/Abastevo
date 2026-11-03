@@ -57,4 +57,16 @@ class StationAddressFormatterTest {
         assertEquals("Rua Panambi, 350 · Centro-Sul", StationAddressFormatter.format(mapOf("street" to "RUA PANAMBI ,", "number" to "350", "district" to "CENTRO-SUL")))
         assertEquals("Rodovia BR 163", StationAddressFormatter.format(mapOf("street" to "RODOVIA BR 163")))
     }
+    @Test
+    fun `coordinate and code literals are never rendered as addresses`() {
+        for (raw in listOf("-12.12345, -51.54321", "lat: -12.12345, lon: -51.54321", "geo:-12.1,-51.2", "5103403/MT")) {
+            assertEquals("", StationAddressFormatter.format(mapOf("raw" to raw)))
+        }
+        assertEquals("Cidade Teste · MT", StationAddressFormatter.format(
+            mapOf("raw" to "-12.12345, -51.54321", "municipio" to "CIDADE TESTE", "uf" to "MT"),
+        ))
+        assertEquals("Rua Teste", StationAddressFormatter.format(
+            mapOf("street" to "RUA TESTE", "raw" to "-12.12345, -51.54321"),
+        ))
+    }
 }

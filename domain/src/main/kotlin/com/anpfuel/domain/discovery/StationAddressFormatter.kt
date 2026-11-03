@@ -16,21 +16,34 @@ object StationAddressFormatter {
     private val cityKeys = listOf("municipio", "city")
     private val connectors = setOf("de", "da", "do", "das", "dos", "e", "em", "na", "no")
     private val roman = Regex("^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII)$")
+    private val coordinateLabels = Regex("""\b(?:lat(?:itude)?|lon(?:gitude)?|lng|gps|geo)\b""", RegexOption.IGNORE_CASE)
+    private val coordinatePair = Regex("""[-+]?\d{1,3}(?:[.,]\d+)?\s*[,;/]\s*[-+]?\d{1,3}(?:[.,]\d+)?""")
+    private val municipalityCode = Regex("""\d{7}(?:\s*/\s*[a-z]{2})?""", RegexOption.IGNORE_CASE)
     private val ptBr = Locale.forLanguageTag("pt-BR")
 
     fun format(address: Map<String, String>): String {
         fun first(keys: List<String>) = keys.firstNotNullOfOrNull { key -> address[key]?.let(::clean)?.takeIf { it.isNotEmpty() } }
-        val rawParts = address["raw"].orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
-        val street = first(streetKeys) ?: rawParts.firstOrNull()
-        val number = first(numberKeys) ?: rawParts.getOrNull(1)?.takeIf { part -> part.any(Char::isDigit) }
-        val district = first(districtKeys)
+        val rawParts = address["raw"]?.trim()?.takeIf(::readableText).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        val street = first(streetKeys)?.takeIf(::readableText) ?: rawParts.firstOrNull()?.takeIf(::readableText)
+        val number = first(numberKeys)?.takeUnless(::coordinateLiteral)
+            ?: rawParts.getOrNull(1)?.takeIf { part -> part.any(Char::isDigit) && !coordinateLiteral(part) }
+        val district = first(districtKeys)?.takeIf(::readableText)
         if (street == null) {
-            val city = first(cityKeys) ?: return ""
+            val city = first(cityKeys)?.takeIf(::readableText) ?: return ""
             return listOfNotNull(titleCase(city), address["uf"]?.trim()?.takeIf { it.isNotEmpty() }?.uppercase(ptBr))
                 .joinToString(" · ")
         }
         val line = if (number != null && !street.contains(number)) "${titleCase(street)}, $number" else titleCase(street)
         return listOfNotNull(line, district?.let(::titleCase)).joinToString(" · ")
+    }
+
+    private fun readableText(value: String): Boolean =
+        value.any(Char::isLetter) && !coordinateLiteral(value) && !municipalityCode.matches(value)
+
+    private fun coordinateLiteral(value: String): Boolean {
+        val withoutLabels = coordinateLabels.replace(value, "")
+        return coordinatePair.matches(value) ||
+            (withoutLabels != value && withoutLabels.any(Char::isDigit) && withoutLabels.none(Char::isLetter))
     }
 
     /** Source fields may end with separators ("AVENIDA X ,"). */
