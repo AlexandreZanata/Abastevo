@@ -22,8 +22,13 @@
   six pure geometry/chain/boundary negatives and clippy pass. EVC-03A2 LOCAL_DONE:
   one-to-one matching/field lineage, reviewed family gate and goldens; 13 affected
   matching/hierarchy groups and all-target clippy pass (parent 7ec04382 plus child).
-  Next EVC-03B private CLI/real per-UF counts and owner 30-site imagery sample,
-  then SNA-04..06. [Conflation](../backend/evidence/evc/EVC-03.md).
+  EVC-03B LOCAL_DONE: private CLI/reproducible catalog, 1,658 sites (five
+  two-source, 400 OSM-only, 1,253 OCM-only); three probable/38 conflict pairs,
+  two attached/62 unresolved equipment. Eight byte-identical files; independent
+  509,490-pair distance audit and IBGE per-UF census agree. 25 UFs, 11 UNASSIGNED.
+  Full Rust gate/18 offline Python groups pass (parent 1981531d plus child).
+  Thirty source-linked owner imagery candidates generated; manual review OWED.
+  Next SNA-04..06. [Conflation](../backend/evidence/evc/EVC-03.md).
   Read-only staging baseline (12:40Z): 48,770 station rows / 40,388 points /
   3,003 without UF; zero charging batches/links. PR #183 merged d0eb9c79,
   all four checks green; signed images auto-deployed at 12:39:49Z, imageIDs

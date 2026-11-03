@@ -87,7 +87,7 @@ struct Inventory {
     sha256: String,
 }
 
-fn read_bounded(path: &Path, maximum: u64) -> Result<Vec<u8>> {
+pub(crate) fn read_bounded(path: &Path, maximum: u64) -> Result<Vec<u8>> {
     let metadata = io(fs::symlink_metadata(path))?;
     if !metadata.is_file() || metadata.file_type().is_symlink() || metadata.len() > maximum {
         return Err(PrepError("regular bounded source file required"));
@@ -126,7 +126,7 @@ fn hash_file(path: &Path, maximum: u64, cancel: &dyn Fn() -> bool) -> Result<(St
     }
     Ok((format!("{:x}", digest.finalize()), bytes))
 }
-fn checked_raw(path: &Path, maximum: u64, expected: &str) -> Result<Vec<u8>> {
+pub(crate) fn checked_raw(path: &Path, maximum: u64, expected: &str) -> Result<Vec<u8>> {
     let raw = read_bounded(path, maximum)?;
     if sha256_hex(&raw) != expected {
         return Err(PrepError("source hash mismatch"));
@@ -496,7 +496,7 @@ fn census(sites: &[SourceSite], index: &StateIndex) -> Value {
     }
     json!({"format":"abastevo.ev-source-census-v1","units":"source objects; CHARGE_POINT equipment is separate, not sites or summed connectors","eligibility":"normalized source assertions before cross-source conflation; not complete Brazil coverage","boundary_sha256":index.source_sha256,"boundary_license":"CC-BY-4.0","boundary_attribution":"Fonte: IBGE","by_source":counts,"classification_reasons":reasons})
 }
-fn write_bytes(path: &Path, raw: &[u8]) -> Result<Value> {
+pub(crate) fn write_bytes(path: &Path, raw: &[u8]) -> Result<Value> {
     let mut f = io(OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -506,7 +506,11 @@ fn write_bytes(path: &Path, raw: &[u8]) -> Result<Value> {
     io(f.sync_all())?;
     Ok(json!({"bytes":raw.len(),"sha256":sha256_hex(raw)}))
 }
-fn write_lines<T: Serialize>(path: &Path, rows: &[T], cancel: &dyn Fn() -> bool) -> Result<Value> {
+pub(crate) fn write_lines<T: Serialize>(
+    path: &Path,
+    rows: &[T],
+    cancel: &dyn Fn() -> bool,
+) -> Result<Value> {
     let mut out = BufWriter::new(io(OpenOptions::new()
         .write(true)
         .create_new(true)
