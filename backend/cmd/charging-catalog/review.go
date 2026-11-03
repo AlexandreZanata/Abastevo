@@ -31,51 +31,7 @@ func runReview(args []string, output io.Writer) error {
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *config == "" {
 		return errors.New("expected review --config FILE [--output-dir DIR]")
 	}
-	f, err := os.Open(*config)
-	if err != nil {
-		return errors.New("review configuration unavailable")
-	}
-	defer f.Close()
-	raw, err := readBoundedRegularFile(f, 16<<10)
-	if err != nil {
-		return err
-	}
-	var spec struct {
-		Candidate reviewBundleSpec  `json:"candidate"`
-		Baseline  *reviewBundleSpec `json:"baseline,omitempty"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if decoder.Decode(&spec) != nil || decoder.Decode(new(any)) != io.EOF {
-		return errors.New("review configuration refused")
-	}
-	candidateRoot, candidate, err := openReviewBundle(spec.Candidate)
-	if err != nil {
-		return err
-	}
-	defer candidateRoot.Close()
-	conflated, err := fs.Sub(candidateRoot.FS(), "conflated/generation")
-	if err != nil {
-		return err
-	}
-	normalized, err := fs.Sub(candidateRoot.FS(), "normalized/generation")
-	if err != nil {
-		return err
-	}
-	inventory, err := prepared.VerifyNationalSourceInventory(conflated, normalized, candidate.ManifestSHA256)
-	if err != nil {
-		return err
-	}
-	var baseline *prepared.NationalImport
-	if spec.Baseline != nil {
-		root, input, err := openReviewBundle(*spec.Baseline)
-		if err != nil {
-			return err
-		}
-		defer root.Close()
-		baseline = &input
-	}
-	report, err := prepared.CompareNationalCatalogs(baseline, candidate, inventory)
+	report, _, err := verifyReviewConfig(*config)
 	if err != nil {
 		return err
 	}
@@ -91,6 +47,54 @@ func runReview(args []string, output io.Writer) error {
 		return errors.New("catalog changes require owner review")
 	}
 	return nil
+}
+
+func verifyReviewConfig(config string) (report prepared.NationalCatalogDiff, transition prepared.NationalTransition, err error) {
+	f, err := os.Open(config)
+	if err != nil {
+		return report, transition, errors.New("review configuration unavailable")
+	}
+	defer f.Close()
+	raw, err := readBoundedRegularFile(f, 16<<10)
+	if err != nil {
+		return report, transition, err
+	}
+	var spec struct {
+		Candidate reviewBundleSpec  `json:"candidate"`
+		Baseline  *reviewBundleSpec `json:"baseline,omitempty"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&spec) != nil || decoder.Decode(new(any)) != io.EOF {
+		return report, transition, errors.New("review configuration refused")
+	}
+	candidateRoot, candidate, err := openReviewBundle(spec.Candidate)
+	if err != nil {
+		return report, transition, err
+	}
+	defer candidateRoot.Close()
+	conflated, err := fs.Sub(candidateRoot.FS(), "conflated/generation")
+	if err != nil {
+		return report, transition, err
+	}
+	normalized, err := fs.Sub(candidateRoot.FS(), "normalized/generation")
+	if err != nil {
+		return report, transition, err
+	}
+	inventory, err := prepared.VerifyNationalSourceInventory(conflated, normalized, candidate.ManifestSHA256)
+	if err != nil {
+		return report, transition, err
+	}
+	var baseline *prepared.NationalImport
+	if spec.Baseline != nil {
+		root, input, err := openReviewBundle(*spec.Baseline)
+		if err != nil {
+			return report, transition, err
+		}
+		defer root.Close()
+		baseline = &input
+	}
+	return prepared.VerifyNationalTransition(baseline, candidate, inventory)
 }
 
 func openReviewBundle(spec reviewBundleSpec) (*os.Root, prepared.NationalImport, error) {

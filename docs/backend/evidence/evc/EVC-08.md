@@ -83,3 +83,28 @@ binary. No timer was installed or started.
 Status: LOCAL_DONE / INTEGRATION_PENDING. Unit/race tests, vet,
 staticcheck, whitespace and secret review passed. Binding the reviewed
 baseline to the activation transaction remains open.
+
+## EVC-08D reviewed activation
+
+B-BR-EVC-08D. A new publication requires a verified candidate transition
+with no unresolved review items. Under the existing publication lock,
+the active digest must match the reviewed baseline. A retry of the same
+already-active candidate is idempotent. Review and explicit owner
+approval remain separate requirements.
+
+BUC-EVC-08D. Attempt a second publication with an initial-generation
+review after a baseline already exists. Reject it without staged rows,
+then admit the same candidate when reviewed against the actual baseline.
+
+RED reproduced acceptance of a second publication with no reviewed
+baseline. The command now requires and re-verifies the owner review
+configuration before opening a database. The proof binds the exact
+candidate and predecessor. Real PostGIS rejected an unreviewed first
+publication and a stale-baseline replacement, left no extra batch, and
+accepted the reviewed replacement. Existing rollback-on-write-failure,
+concurrent same-candidate retry and human link carry tests passed.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. The affected Go integration
+and command tests passed with race detection, vet, staticcheck,
+whitespace and secret review. Runtime scheduling and national activation
+still depend on the approved operator actions.

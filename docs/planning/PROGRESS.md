@@ -110,7 +110,9 @@
   review holds for ambiguous transitions. EVC-08B LOCAL_DONE: verified
   inventory binds 1,775 real source decisions to the national catalog.
   EVC-08C LOCAL_DONE: file-only review CLI and OCM weekly/OSM monthly
-  timers verified locally. Next bind review to the activation transaction.
+  timers verified locally. EVC-08D LOCAL_DONE: activation binds the
+  reviewed baseline under the publication lock and rejects stale reviews
+  in PostGIS. EVC-08 LOCAL_DONE / INTEGRATION_PENDING. Next EVC-09 coverage.
   [Refresh evidence](../backend/evidence/evc/EVC-08.md).
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).

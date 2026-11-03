@@ -85,6 +85,22 @@ func CompareNationalCatalogs(previous *NationalImport, next NationalImport, next
 	return report, nil
 }
 
+// NationalTransition binds a reviewable candidate to its verified baseline.
+type NationalTransition struct {
+	previousSHA256  string
+	candidateSHA256 string
+}
+
+// VerifyNationalTransition returns a publication proof only when the verified
+// comparison has no unresolved identity or source-presence items.
+func VerifyNationalTransition(previous *NationalImport, next NationalImport, inventory NationalSourceInventory) (NationalCatalogDiff, NationalTransition, error) {
+	report, err := CompareNationalCatalogs(previous, next, inventory)
+	if err != nil || len(report.Review) != 0 {
+		return report, NationalTransition{}, err
+	}
+	return report, NationalTransition{report.PreviousSHA256, report.CandidateSHA256}, nil
+}
+
 func compareNationalPlaces(before, after []NationalPlace, nextInventory map[string]string) NationalCatalogDiff {
 	nextByRoot := map[string]*NationalPlace{}
 	for i := range after {

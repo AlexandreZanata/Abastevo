@@ -25,6 +25,7 @@ type NationalImport struct {
 	GeographySHA256 string
 	BoundarySHA256  string
 	Override        *CatalogCoverageOverride
+	Transition      NationalTransition
 }
 
 // NationalImportPlan contains only the candidate digest and aggregate counts.
@@ -88,6 +89,9 @@ func ImportNationalCatalog(ctx context.Context, pool *pgxpool.Pool, input Nation
 	}
 	bundle, places, plan := candidate.bundle, candidate.places, candidate.plan
 	digest := plan.BatchSHA256
+	if input.Transition.candidateSHA256 != digest {
+		return "", errors.New("prepared: verified national transition required")
+	}
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return "", err
@@ -113,6 +117,15 @@ func ImportNationalCatalog(ctx context.Context, pool *pgxpool.Pool, input Nation
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return "", err
+	}
+	var activeDigest string
+	if current.Valid {
+		if err := tx.QueryRow(ctx, "SELECT source_revision FROM charging_batches WHERE id=$1", current).Scan(&activeDigest); err != nil {
+			return "", err
+		}
+	}
+	if input.Transition.previousSHA256 != activeDigest {
+		return "", errors.New("prepared: active national catalog differs from reviewed baseline")
 	}
 	previous, err := previousCatalogIdentities(ctx, tx)
 	if err != nil {

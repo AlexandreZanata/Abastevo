@@ -31,6 +31,31 @@ func TestImportNationalCatalogAtomicallyStoresSourceFacts(t *testing.T) {
 	}
 	input := NationalImport{Files: files, RightsSHA256: rights, ManifestSHA256: manifest,
 		Geography: geo, GeographySHA256: fmt.Sprintf("%x", sha256.Sum256(geo)), BoundarySHA256: boundary}
+	verify := func(previous *NationalImport, candidate NationalImport) NationalTransition {
+		t.Helper()
+		bundle, err := admitNationalImport(candidate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		inventory := NationalSourceInventory{candidate.ManifestSHA256,
+			ArtifactDescriptor{Bytes: int64(len(bundle.bundle.Catalog)), Records: bundle.bundle.Sites, SHA256: bundle.bundle.OfferSHA256},
+			map[string]string{}}
+		for _, place := range bundle.places {
+			for _, source := range place.Sources {
+				inventory.states[source.Key] = "ACCEPTED"
+			}
+		}
+		report, proof, err := VerifyNationalTransition(previous, candidate, inventory)
+		if err != nil || len(report.Review) != 0 || proof.candidateSHA256 == "" {
+			t.Fatalf("verification failed: %v", err)
+		}
+		return proof
+	}
+	if _, err := ImportNationalCatalog(ctx, pool, input); err == nil {
+		t.Fatal("initial publication without review accepted")
+	}
+	input.Transition = verify(nil, input)
+	baseline := input
 	const legacyID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 	if _, err := pool.Exec(ctx, `WITH legacy AS (
 		INSERT INTO charging_batches(id,format,profile_id,source_revision,manifest_sha256,input_count,accepted_count)
@@ -119,6 +144,14 @@ func TestImportNationalCatalogAtomicallyStoresSourceFacts(t *testing.T) {
 	input.Geography = []byte(strings.Replace(string(geo),
 		fmt.Sprintf("%x", sha256.Sum256(raw)), fmt.Sprintf("%x", sha256.Sum256(nextRaw)), 1))
 	input.GeographySHA256 = fmt.Sprintf("%x", sha256.Sum256(input.Geography))
+	input.Transition = verify(nil, input)
+	if _, err := ImportNationalCatalog(ctx, pool, input); err == nil || !strings.Contains(err.Error(), "differs from reviewed baseline") {
+		t.Fatalf("replacement with stale baseline: %v", err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM charging_batches WHERE profile_id='charging-br-national-v1'").Scan(&total); err != nil || total != 1 {
+		t.Fatalf("stale review left batches: %d, %v", total, err)
+	}
+	input.Transition = verify(&baseline, input)
 	next, err := ImportNationalCatalog(ctx, pool, input)
 	if err != nil {
 		t.Fatal(err)

@@ -38,6 +38,7 @@ func run(args []string, getenv func(string) string, output io.Writer) error {
 	flags.StringVar(&input.GeographySHA256, "geography-sha256", "", "trusted geography SHA-256")
 	flags.StringVar(&input.BoundarySHA256, "boundary-sha256", "", "trusted IBGE boundary SHA-256")
 	activate := flags.Bool("activate", false, "activate a verified national batch")
+	reviewConfig := flags.String("review-config", "", "owner-pinned candidate and baseline review configuration")
 	approved := flags.String("approve-batch-sha256", "", "owner-approved candidate digest from verification")
 	previous := flags.String("override-previous-sha256", "", "owner-approved previous digest for a UF loss")
 	actor := flags.String("override-actor", "", "owner identity for the exception audit")
@@ -47,7 +48,7 @@ func run(args []string, getenv func(string) string, output io.Writer) error {
 		return errors.New("expected --bundle DIR --geography FILE and the four trusted SHA-256 pins")
 	}
 	hasOverride := *previous != "" || *actor != "" || *reason != ""
-	if (!*activate && (*approved != "" || hasOverride)) ||
+	if (!*activate && (*approved != "" || *reviewConfig != "" || hasOverride)) ||
 		(hasOverride && (*previous == "" || *actor == "" || *reason == "")) {
 		return errors.New("activation approval and exception flags must be complete")
 	}
@@ -74,6 +75,17 @@ func run(args []string, getenv func(string) string, output io.Writer) error {
 	if *approved != plan.BatchSHA256 {
 		return errors.New("activation requires the exact verified batch digest")
 	}
+	if *reviewConfig == "" {
+		return errors.New("activation requires the owner-pinned review configuration")
+	}
+	review, transition, err := verifyReviewConfig(*reviewConfig)
+	if err != nil {
+		return err
+	}
+	if len(review.Review) != 0 || review.CandidateSHA256 != *approved {
+		return errors.New("activation requires the matching reviewed transition without open items")
+	}
+	input.Transition = transition
 	env := getenv("ANPFUEL_ENV")
 	switch env {
 	case "development", "test":

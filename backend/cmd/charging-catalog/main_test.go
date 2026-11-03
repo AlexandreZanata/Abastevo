@@ -121,13 +121,22 @@ func TestVerifyIsFileOnlyAndApprovalIsExact(t *testing.T) {
 		t.Fatal("unexpected review config accepted")
 	}
 
+	write(config, encode(map[string]any{"candidate": spec}))
+	if err := run(append(flags, "--activate", "--approve-batch-sha256", report.BatchSHA256), noDB, &output); err == nil {
+		t.Fatal("missing transition review accepted")
+	}
+	productionChecked := false
 	production := func(key string) string {
 		if key != "ANPFUEL_ENV" {
 			t.Fatalf("refused target tried to read %s", key)
 		}
+		productionChecked = true
 		return "production"
 	}
-	if err := run(append(flags, "--activate", "--approve-batch-sha256", report.BatchSHA256), production, &output); err == nil {
+	if err := run(append(flags, "--activate", "--approve-batch-sha256", report.BatchSHA256, "--review-config", config), production, &output); err == nil {
 		t.Fatal("production activation accepted")
+	}
+	if !productionChecked {
+		t.Fatal("valid review did not reach the target guard")
 	}
 }

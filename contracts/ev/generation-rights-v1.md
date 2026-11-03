@@ -54,8 +54,11 @@ go run ./cmd/charging-catalog \
 
 The JSON result includes the candidate digest, place and connector-group
 counts, and the UF census. After explicit authorization for the target,
-add `--activate --approve-batch-sha256 "$BATCH_SHA256"` to the same
-invocation. Supply the DSN privately through `ANPFUEL_DATABASE_URL`.
+add `--activate --approve-batch-sha256 "$BATCH_SHA256"` and
+`--review-config "$REVIEW_CONFIG"` to the same invocation. The review
+configuration binds the candidate and the currently active baseline.
+The importer checks that baseline under the publication lock before
+staging a replacement. Supply the DSN privately through `ANPFUEL_DATABASE_URL`.
 Development and test targets use a loopback database. Staging requires
 `ANPFUEL_CANONICAL_HOST=teste.abastevo.com.br` and the staging database
 service. Set `ANPFUEL_ENV` to the corresponding environment. A coverage

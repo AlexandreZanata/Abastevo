@@ -53,4 +53,6 @@ Reports are written atomically with mode 0600 and retain their candidate
 and baseline digests. With no output directory, the report goes to standard
 output. If a verified transition has review items, the report is still
 written and the command exits with an error. Resolve the review items
-before requesting activation. Activation is a separate authorized command.
+before requesting activation. The separate authorized activation command
+requires `--review-config` with this configuration and verifies the
+baseline again under its database publication lock.
