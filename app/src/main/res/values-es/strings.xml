@@ -330,7 +330,6 @@
     <string name="sync_failed">Error de sincronización</string>
     <string name="info_sync_up_to_date">Ya está actualizado.</string>
     <string name="home_stale_verified">Verificado %1$s — ANP aún no publicó semana nueva. Mostrando %2$s (última disponible).</string>
-    <string name="action_verify_again">Verificar de nuevo</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">No se pudo acceder a la ANP. Compruebe su conexión e inténtelo de nuevo.</string>

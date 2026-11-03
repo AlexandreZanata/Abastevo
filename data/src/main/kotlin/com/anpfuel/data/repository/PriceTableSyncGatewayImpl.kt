@@ -11,6 +11,8 @@ import com.anpfuel.domain.valueobject.PriceTableType
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Singleton
 class PriceTableSyncGatewayImpl @Inject constructor(
@@ -30,22 +32,24 @@ class PriceTableSyncGatewayImpl @Inject constructor(
         return priceTable.copy(checksum = downloadResult.sha256)
     }
 
-    override suspend fun importWeeklySummary(priceTable: PriceTable): PriceTableImported.Payload {
+    // Spreadsheet parsing is CPU/file bound: callers on the main thread
+    // (Home, Settings, week picker) must never freeze the UI while it runs.
+    override suspend fun importWeeklySummary(priceTable: PriceTable): PriceTableImported.Payload = withContext(Dispatchers.IO) {
         val result = batchImporter.importWeeklySummary(resolveLocalFile(priceTable))
-        return PriceTableImported.Payload(
+        PriceTableImported.Payload(
             surveyWeekId = DomainId.from(result.surveyWeekId),
             tableType = PriceTableType.WEEKLY_SUMMARY,
             rowCount = result.rowsImported,
         )
     }
 
-    override suspend fun importStationDetail(priceTable: PriceTable): PriceTableImported.Payload {
+    override suspend fun importStationDetail(priceTable: PriceTable): PriceTableImported.Payload = withContext(Dispatchers.IO) {
         val surveyWeekId = DomainId.forSurveyWeek(priceTable.surveyWeek).value
         val result = batchImporter.importStationDetail(
             file = resolveLocalFile(priceTable),
             surveyWeekId = surveyWeekId,
         )
-        return PriceTableImported.Payload(
+        PriceTableImported.Payload(
             surveyWeekId = DomainId.from(result.surveyWeekId),
             tableType = PriceTableType.STATION_DETAIL,
             rowCount = result.rowsImported,

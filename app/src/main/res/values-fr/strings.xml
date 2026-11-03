@@ -330,7 +330,6 @@
     <string name="sync_failed">Échec de la synchronisation</string>
     <string name="info_sync_up_to_date">Déjà à jour.</string>
     <string name="home_stale_verified">Vérifié %1$s — l\'ANP n\'a pas encore publié de semaine plus récente. Affichage %2$s (dernière disponible).</string>
-    <string name="action_verify_again">Vérifier à nouveau</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">Impossible d\'accéder à l\'ANP. Vérifiez votre connexion et réessayez.</string>

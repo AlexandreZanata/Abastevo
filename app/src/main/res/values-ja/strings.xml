@@ -330,7 +330,6 @@
     <string name="sync_failed">同期に失敗しました</string>
     <string name="info_sync_up_to_date">すでに最新です。</string>
     <string name="home_stale_verified">%1$sに確認 — ANPはまだ新しい週を公開していません。%2$sを表示中（利用可能な最新）。</string>
-    <string name="action_verify_again">再確認</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">ANPに接続できませんでした。接続を確認して再試行してください。</string>

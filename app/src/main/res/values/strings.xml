@@ -449,7 +449,6 @@
     <string name="sync_failed">Sync failed</string>
     <string name="info_sync_up_to_date">Already up to date.</string>
     <string name="home_stale_verified">Checked %1$s — ANP hasn\'t published a newer week yet. Showing %2$s (latest available).</string>
-    <string name="action_verify_again">Check again</string>
 
     <!-- Errors (AppError i18n keys) -->
     <string name="error_sync_network">Could not reach ANP. Check your connection and try again.</string>
