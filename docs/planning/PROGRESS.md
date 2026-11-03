@@ -107,8 +107,9 @@
   cache links and opens the offline charger detail. EVC-07 LOCAL_DONE /
   INTEGRATION_PENDING. EVC-08A LOCAL_DONE: source-root generation diff
   covers removals, surviving sources, movement and group changes, with
-  review holds for ambiguous transitions. Next bind the complete inventory
-  and connect the scheduled operations entry point.
+  review holds for ambiguous transitions. EVC-08B LOCAL_DONE: verified
+  inventory binds 1,775 real source decisions to the national catalog.
+  Next connect the scheduled operations entry point.
   [Refresh evidence](../backend/evidence/evc/EVC-08.md).
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).

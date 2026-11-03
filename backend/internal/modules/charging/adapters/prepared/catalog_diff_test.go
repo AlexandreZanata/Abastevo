@@ -22,7 +22,7 @@ func TestNationalDiffTracksSourceLossAndRefusesFalseRemoval(t *testing.T) {
 		diffPlace("split-osm", "0", "osm:node:5"),
 		diffPlace("split-ocm", "0", "ocm:poi:5"),
 	}
-	diff := compareNationalPlaces(before, after, map[string]bool{"ocm:poi:3": true})
+	diff := compareNationalPlaces(before, after, map[string]string{"ocm:poi:3": "QUARANTINED"})
 	if !reflect.DeepEqual(diff.Added, []string{"added"}) || !reflect.DeepEqual(diff.Removed, []string{"removed"}) {
 		t.Fatalf("added=%v removed=%v", diff.Added, diff.Removed)
 	}
@@ -39,7 +39,7 @@ func TestNationalDiffTracksSourceLossAndRefusesFalseRemoval(t *testing.T) {
 	}
 	slices.Reverse(before)
 	slices.Reverse(after)
-	if reordered := compareNationalPlaces(before, after, map[string]bool{"ocm:poi:3": true}); !reflect.DeepEqual(diff, reordered) {
+	if reordered := compareNationalPlaces(before, after, map[string]string{"ocm:poi:3": "QUARANTINED"}); !reflect.DeepEqual(diff, reordered) {
 		t.Fatalf("report depends on input order: %+v", reordered)
 	}
 }
@@ -80,12 +80,26 @@ func TestNationalDiffVerifiesBundlesAndInventory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	inventory := make(map[string]bool)
+	inventory := NationalSourceInventory{manifest, ArtifactDescriptor{Bytes: int64(len(raw)), Records: 1,
+		SHA256: fmt.Sprintf("%x", sha256.Sum256(raw))}, map[string]string{}}
 	for _, source := range bundle.places[0].Sources {
-		inventory[source.Key] = true
+		inventory.states[source.Key] = "ACCEPTED"
 	}
-	if _, err := CompareNationalCatalogs(nil, input, map[string]bool{}); err == nil {
+	if _, err := CompareNationalCatalogs(nil, input, NationalSourceInventory{}); err == nil {
 		t.Fatal("incomplete inventory accepted")
+	}
+	for key := range inventory.states {
+		inventory.states[key] = "QUARANTINED"
+		if _, err := CompareNationalCatalogs(nil, input, inventory); err == nil {
+			t.Fatal("quarantined projection accepted")
+		}
+		inventory.states[key] = "ACCEPTED"
+		break
+	}
+	wrongCatalog := inventory
+	wrongCatalog.catalog.Bytes++
+	if _, err := CompareNationalCatalogs(nil, input, wrongCatalog); err == nil {
+		t.Fatal("unrelated inventory catalog accepted")
 	}
 	first, err := CompareNationalCatalogs(nil, input, inventory)
 	if err != nil || len(first.Added) != 1 || first.CandidateSHA256 != bundle.plan.BatchSHA256 {

@@ -11,14 +11,15 @@ import (
 )
 
 type NationalCatalogDiff struct {
-	PreviousSHA256  string                `json:"previous_sha256,omitempty"`
-	CandidateSHA256 string                `json:"candidate_sha256"`
-	Added           []string              `json:"added,omitempty"`
-	Removed         []string              `json:"removed,omitempty"`
-	Sources         []CatalogSourceChange `json:"source_changes,omitempty"`
-	Moved           []CatalogMove         `json:"moved_over_50m,omitempty"`
-	Groups          []CatalogGroupChange  `json:"connector_changes,omitempty"`
-	Review          []CatalogDiffReview   `json:"review_required,omitempty"`
+	PreviousSHA256   string                `json:"previous_sha256,omitempty"`
+	CandidateSHA256  string                `json:"candidate_sha256"`
+	InventoryRecords int                   `json:"inventory_records"`
+	Added            []string              `json:"added,omitempty"`
+	Removed          []string              `json:"removed,omitempty"`
+	Sources          []CatalogSourceChange `json:"source_changes,omitempty"`
+	Moved            []CatalogMove         `json:"moved_over_50m,omitempty"`
+	Groups           []CatalogGroupChange  `json:"connector_changes,omitempty"`
+	Review           []CatalogDiffReview   `json:"review_required,omitempty"`
 }
 
 type CatalogSourceChange struct {
@@ -51,17 +52,21 @@ type CatalogDiffReview struct {
 // CompareNationalCatalogs verifies both bundles and compares their projections.
 // The caller supplies the complete, independently verified candidate source
 // inventory, including admitted assertions outside the published projection.
-func CompareNationalCatalogs(previous *NationalImport, next NationalImport, nextInventory map[string]bool) (NationalCatalogDiff, error) {
-	if nextInventory == nil {
+func CompareNationalCatalogs(previous *NationalImport, next NationalImport, nextInventory NationalSourceInventory) (NationalCatalogDiff, error) {
+	if nextInventory.manifestSHA256 != next.ManifestSHA256 || nextInventory.states == nil {
 		return NationalCatalogDiff{}, errors.New("prepared: candidate source inventory required")
 	}
 	candidate, err := admitNationalImport(next)
 	if err != nil {
 		return NationalCatalogDiff{}, err
 	}
+	if nextInventory.catalog != (ArtifactDescriptor{Bytes: int64(len(candidate.bundle.Catalog)),
+		Records: candidate.bundle.Sites, SHA256: candidate.bundle.OfferSHA256}) {
+		return NationalCatalogDiff{}, errors.New("prepared: inventory catalog mismatch")
+	}
 	for _, place := range candidate.places {
 		for _, source := range place.Sources {
-			if !nextInventory[source.Key] {
+			if nextInventory.states[source.Key] != "ACCEPTED" {
 				return NationalCatalogDiff{}, errors.New("prepared: candidate source inventory incomplete")
 			}
 		}
@@ -73,13 +78,14 @@ func CompareNationalCatalogs(previous *NationalImport, next NationalImport, next
 			return NationalCatalogDiff{}, err
 		}
 	}
-	report := compareNationalPlaces(baseline.places, candidate.places, nextInventory)
+	report := compareNationalPlaces(baseline.places, candidate.places, nextInventory.states)
 	report.PreviousSHA256 = baseline.plan.BatchSHA256
 	report.CandidateSHA256 = candidate.plan.BatchSHA256
+	report.InventoryRecords = len(nextInventory.states)
 	return report, nil
 }
 
-func compareNationalPlaces(before, after []NationalPlace, nextInventory map[string]bool) NationalCatalogDiff {
+func compareNationalPlaces(before, after []NationalPlace, nextInventory map[string]string) NationalCatalogDiff {
 	nextByRoot := map[string]*NationalPlace{}
 	for i := range after {
 		place := &after[i]
@@ -97,7 +103,7 @@ func compareNationalPlaces(before, after []NationalPlace, nextInventory map[stri
 			if place, ok := nextByRoot[root]; ok {
 				matches[place.Identity.Key] = place
 				matched[place.Identity.Key] = true
-			} else if nextInventory[root] {
+			} else if _, present := nextInventory[root]; present {
 				omittedRoots = append(omittedRoots, root)
 			}
 		}
