@@ -59,4 +59,3 @@ Superseded by current PROGRESS and the linked per-task evidence.
   No ingestor migration/backfill ran on staging. Approved downloads are local;
   any new download/key, import/backfill or staging mutation needs approval. Final cumulative dev →
   main PR, per-UF reconciliation and staging acceptance remain owed.
-
