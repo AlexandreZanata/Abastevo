@@ -541,6 +541,7 @@ func run() error {
 			Service: nil,
 			Batch:   25,
 		},
+		directoryadapters.StationFactReprojectionKind: directoryadapters.StationFactReprojection{Pool: raw},
 		"registry-reconcile": directoryjobs.Reconcile{
 			Store: &directoryregistry.PGStore{Q: dbdirectory.New(pool.Underlying())},
 			Canon: directoryadapters.RegistryCanonicalizer{Repo: directoryRepo},

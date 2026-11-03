@@ -1,6 +1,7 @@
 # SNA-02 — Stored source facts and projections
 
-Status: IN_PROGRESS
+Status: LOCAL_DONE
+Validation: PASS
 
 Execution bounds declared before behavior: SNA-02A adds nullable append-only
 storage and lossless assertion round trips; SNA-02B applies tested name/address
@@ -111,3 +112,61 @@ it. Actual prepared Rust publication, negative identity/completeness, curated
 fields and concurrent correction/source cases pass again on real PostGIS/race
 (13.925s), with sqlc vet/diff and secret/diff checks. Tested parent 159d2d5c
 plus this fix. No live importer executed; SNA-02C remains next.
+
+## SNA-02C opening
+
+B-BR-STATION-FACTS-02C: Re-projection is an explicit accountable operator
+campaign over existing identities and retained complete evidence. It never
+fetches sources, binds a new identity, guesses missing legal names, promotes
+PMQC/location-only evidence or overwrites source rows. Current accepted name
+corrections and newer source editions remain authoritative.
+
+BUC-SNA-02C: Use the existing durable platform queue's SKIP LOCKED claims,
+lease fencing and dedupe. Discover at most 100 existing source-backed station
+IDs per keyset page, transactionally enqueue one idempotent station job each
+plus the next page; preserve the immutable campaign/operator/reason record.
+Each station job selects the latest eligible evidence at execution and uses
+the tested station-lock/edition projection. A crash/retry cannot lose a page
+or duplicate a station job. Failed jobs remain visible, never counted as a
+successful projection. No new scheduler or automatic backfill activation.
+Prove two real dispatchers, replay, partial-page rollback, stale source safety
+and migration recovery in disposable PostGIS. Local fixtures are authorized;
+any staging/backfill execution still needs separate owner approval.
+
+## SNA-02C checkpoint (2026-11-03)
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Tested parent 9b886043 plus this child. RED: absent re-projection handler and
+crossed registry/PMQC row ownership. GREEN: an explicit immutable campaign
+(operator/reason) schedules keyset pages capped at 100, one deduped station
+job per identity and the next page in one transaction. Platform queue claims
+already use SKIP LOCKED; its existing lease/retry fencing is reused. No new
+scheduler, startup enqueue or national source fetch. The station job selects
+current eligible evidence under the station lock. Ops start/status commands
+require an accountable restricted operator; no public route is added.
+
+Real PostGIS proves two dispatchers concurrently execute separate station
+jobs, a second-enqueue page failure leaves no partial page, retries converge,
+newer retained sources win, a missing source becomes a real dead letter and
+leaves metadata untouched, and failed/cancelled work is not reported complete.
+The final dead-letter case (1.668s) checks the actual dispatcher contract: it
+persists handler failure instead of returning it as a dispatcher error.
+Migration 000148 failure/upgrade/recovery joins the existing 146/147 matrix.
+No historical assertion or identity is rewritten.
+
+Review also tightened the frozen batch ownership: only registry-13col may
+produce station assertions and only pmqc may produce coordinate candidates.
+Prepared fact projection requires a nonempty manifest binding, registry run
+membership, no coordinates and the frozen registry address metadata shape.
+This preserves legacy registry batches and excludes location-only candidates.
+
+Full real PostGIS/race: adapters 35.853s, registry 42.943s, read 38.804s,
+directory jobs 5.886s and platform jobs 12.049s. Affected unit/race suites
+(ops, worker, Directory and platform jobs), full backend build, affected vet,
+sqlc vet/diff, formatting, secret review and diff-check pass. Operational
+commands/limitations: [re-projection runbook](SNA-02-reprojection.md).
+
+SNA-02A/B/C are LOCAL_DONE / INTEGRATION_PENDING. No live migration, campaign,
+source download or import was executed. Next: SNA-03 additive public API.

@@ -34,6 +34,7 @@ sql:
       - db/migrations/000102_directory_source_identity_history_index.sql
       - db/migrations/000146_station_source_facts.sql
       - db/migrations/000147_station_fact_projection_clock.sql
+      - db/migrations/000148_station_fact_reprojection_campaigns.sql
     gen:
       go:
         package: directory

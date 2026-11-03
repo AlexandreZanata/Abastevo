@@ -15,15 +15,16 @@ import (
 )
 
 func TestStationFactsMigrationFailureRecoveryPreservesLegacy(t *testing.T) {
-	for _, tc := range []struct{ version, file, column string }{
-		{"000146", "000146_station_source_facts.sql", "legal_name"},
-		{"000147", "000147_station_fact_projection_clock.sql", "facts_source_clock"},
+	for _, tc := range []struct{ version, file, table, column string }{
+		{"000146", "000146_station_source_facts.sql", "directory_stations", "legal_name"},
+		{"000147", "000147_station_fact_projection_clock.sql", "directory_stations", "facts_source_clock"},
+		{"000148", "000148_station_fact_reprojection_campaigns.sql", "directory_station_fact_reprojection_campaigns", "campaign_id"},
 	} {
-		t.Run(tc.version, func(t *testing.T) { testStationFactsUpgrade(t, tc.version, tc.file, tc.column) })
+		t.Run(tc.version, func(t *testing.T) { testStationFactsUpgrade(t, tc.version, tc.file, tc.table, tc.column) })
 	}
 }
 
-func testStationFactsUpgrade(t *testing.T, version, file, column string) {
+func testStationFactsUpgrade(t *testing.T, version, file, table, column string) {
 	files := fstest.MapFS{}
 	entries, err := fs.ReadDir(dbmigrations.Files, ".")
 	if err != nil {
@@ -58,7 +59,7 @@ func testStationFactsUpgrade(t *testing.T, version, file, column string) {
 		t.Fatal("failed upgrade committed")
 	}
 	var columns int
-	if err := pool.QueryRow(ctx, "SELECT count(*) FROM information_schema.columns WHERE table_name='directory_stations' AND column_name=$1", column).Scan(&columns); err != nil || columns != 0 {
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM information_schema.columns WHERE table_name=$1 AND column_name=$2", table, column).Scan(&columns); err != nil || columns != 0 {
 		t.Fatal("partial migration", columns, err)
 	}
 	if _, err := migrate.Apply(ctx, dsn, dbmigrations.Files); err != nil {

@@ -47,6 +47,14 @@ type DirectoryStation struct {
 	FactsSourceChecksum pgtype.Text        `json:"facts_source_checksum"`
 }
 
+type DirectoryStationFactReprojectionCampaign struct {
+	CampaignID     pgtype.UUID        `json:"campaign_id"`
+	ProfileVersion int32              `json:"profile_version"`
+	OperatorRef    string             `json:"operator_ref"`
+	Reason         string             `json:"reason"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type RegistryAssertion struct {
 	ID                  pgtype.UUID        `json:"id"`
 	RunID               pgtype.UUID        `json:"run_id"`

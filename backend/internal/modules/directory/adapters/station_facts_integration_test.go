@@ -27,7 +27,7 @@ func factVersion(t *testing.T, pool *pgxpool.Pool, store *registry.PGStore, cano
 		t.Fatal(err)
 	}
 	checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(version))))
-	a := registry.Assertion{Source: source, SourceKey: "91000000000066", Checksum: checksum, DisplayName: fmt.Sprintf("[P25-TEST] Source label %d", version), SourceDisplayName: "[P25-TEST] Own source", LegalName: fmt.Sprintf(" [P25-TEST] Legal %d LTDA ", version), TradeName: trade, Address: map[string]string{"street": fmt.Sprintf("[P25-TEST] STREET %d", version), "number": "100", "municipio": "TEST CITY", "uf": "SP"}, MunicipalityCode: "3550308", State: "SP", AuthState: "unknown", Eligibility: "pending", LocationQuality: "unknown"}
+	a := registry.Assertion{Source: source, SourceKey: "91000000000066", Checksum: checksum, DisplayName: fmt.Sprintf("[P25-TEST] Source label %d", version), SourceDisplayName: "[P25-TEST] Own source", LegalName: fmt.Sprintf(" [P25-TEST] Legal %d LTDA ", version), TradeName: trade, Address: map[string]string{"street": fmt.Sprintf("[P25-TEST] STREET %d", version), "number": "100", "municipio": "TEST CITY", "municipio_ibge": "3550308", "uf": "SP"}, MunicipalityCode: "3550308", State: "SP", AuthState: "unknown", Eligibility: "pending", LocationQuality: "unknown"}
 	if _, err := store.StageAssertion(ctx, a.WithRun(run)); err != nil {
 		t.Fatal(err)
 	}

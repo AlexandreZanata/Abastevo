@@ -1,22 +1,23 @@
 # Current execution state
 
 - Station/EV ingestor 2026-11-03: IN_PROGRESS on isolated
-  `codex/station-ev-ingestor`, synchronized with merged main d0eb9c79.
-  Plan first commit 415c5af0; SNA-01A 1078b2a6 and SNA-01B a3cebed4 LOCAL_DONE; SNA-02A LOCAL_DONE.
-  [Evidence](../backend/evidence/sna/SNA-01.md): locked Rust/clippy, Go race/vet,
-  actual Rust v3→Go admission and real PostGIS rollback/replay pass. Tested
-  parent 5cfa2717 plus SNA-01B. SNA-02A nullable storage passes real PostGIS recovery/immutable replay;
-  SNA-02B canonical projection LOCAL_DONE: audited corrections, edition fences
-  and concurrent ordering pass real PostGIS. Tested parent 159d2d5c plus the empty-manifest binding fix;
-  actual prepared/negative/concurrent PostGIS cases pass again (13.925s).
-  SNA-02C explicit bounded re-projection job remains next.
+  `codex/station-ev-ingestor`, synchronized with main d0eb9c79. Plan first
+  commit 415c5af0; SNA-01A/B and SNA-02A/B/C LOCAL_DONE / INTEGRATION_PENDING.
+  [SNA-01](../backend/evidence/sna/SNA-01.md),
+  [SNA-02](../backend/evidence/sna/SNA-02.md): named pinned Rust batches, nullable
+  source metadata, audited name/address projection, edition fences and explicit
+  queued re-projection pass real PostGIS/race (two dispatchers, page rollback,
+  replay, source/identity negatives, audit concurrency, migrations 146..148).
+  Tested parent 9b886043 plus SNA-02C; ops/worker/Directory/job units, full build,
+  vet/sqlc/secret/diff checks pass. Next: SNA-03, then EVC-00..03 in plan order.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
-  without UF; zero charging batches/links in this database. This is not
-  a national EV coverage result. PR #183 merged d0eb9c79, all four PR checks
-  green and signed release published; staging receipt advanced automatically
-  to d0eb9c79, ready API/worker digests match the signed manifest, health HTTP 200. Downloads, keys,
-  imports and staging mutations require separate approval. Final cumulative
-  dev → main PR, per-UF source reconciliation and staging acceptance owed.
+  without UF; zero charging batches/links. This is not a national EV coverage
+  result. PR #183 merged d0eb9c79 with all four checks green; signed release
+  deployed automatically at 12:39:49Z, ready API/worker imageIDs match its
+  manifest, public health HTTP 200. ZD live strategy/drills remain OWED.
+  No ingestor migration/backfill ran on staging. Downloads, OCM key, imports
+  and any staging action still need specific approval. Final cumulative dev →
+  main PR, per-UF reconciliation and staging acceptance remain owed.
 
 - Zero-downtime staging source 2026-11-03: LOCAL_DONE / INTEGRATION_PENDING;
   full live acceptance OWED. [Batch evidence/activation queue](../backend/evidence/cd/ZD-08.md),

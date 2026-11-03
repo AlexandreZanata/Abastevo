@@ -115,3 +115,31 @@ func TestStationNamesV3RefusesMalformedNamesAndLegacySmuggling(t *testing.T) {
 		})
 	}
 }
+
+func TestStationPrepRowSourceOwnership(t *testing.T) {
+	streams := prepStreams(t)
+	assertions, _ := splitJSONL(streams.Assertions, "fixture")
+	var assertion BatchAssertion
+	if err := decodeStrict(assertions[0], &assertion, "fixture"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := mapAssertionRow(assertion); err != nil {
+		t.Fatal(err)
+	}
+	assertion.Source = "pmqc"
+	if _, err := mapAssertionRow(assertion); err == nil {
+		t.Fatal("registry assertion accepted PMQC ownership")
+	}
+	candidates, _ := splitJSONL(streams.Candidates, "fixture")
+	var candidate BatchCandidate
+	if err := decodeStrict(candidates[0], &candidate, "fixture"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := mapCandidateRow(candidate); err != nil {
+		t.Fatal(err)
+	}
+	candidate.Source = "registry-13col"
+	if _, err := mapCandidateRow(candidate); err == nil {
+		t.Fatal("PMQC candidate accepted registry ownership")
+	}
+}

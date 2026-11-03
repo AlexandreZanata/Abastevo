@@ -449,6 +449,9 @@ func mapAssertionRow(row BatchAssertion) (Assertion, error) {
 	} else if row.BrandLinkedAt != "" {
 		return invalid("brand_linked_at requires assertion v2")
 	}
+	if row.Source != "registry-13col" {
+		return invalid("assertion source must be registry-13col")
+	}
 	cnpj, err := ValidCNPJText(row.SourceKey)
 	if err != nil {
 		return invalid("assertion with invalid CNPJ")
@@ -527,6 +530,9 @@ func mapCandidateRow(row BatchCandidate) (Assertion, error) {
 	}
 	if row.SchemaVersion != SchemaCandidate {
 		return invalid("candidate row with schema %q", row.SchemaVersion)
+	}
+	if row.Source != "pmqc" {
+		return invalid("coordinate candidate source must be pmqc")
 	}
 	cnpj, err := ValidCNPJText(row.SourceKey)
 	if err != nil {

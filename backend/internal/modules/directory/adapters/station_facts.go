@@ -29,7 +29,13 @@ func (c RegistryCanonicalizer) ProjectSourceFacts(ctx context.Context, stationID
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	q := directory.New(tx)
+	if err := projectSourceFacts(ctx, directory.New(tx), station, assertion); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func projectSourceFacts(ctx context.Context, q *directory.Queries, station, assertion pgtype.UUID) error {
 	current, err := q.LockStationFacts(ctx, station)
 	if err != nil {
 		return err
@@ -39,7 +45,7 @@ func (c RegistryCanonicalizer) ProjectSourceFacts(ctx context.Context, stationID
 		return fmt.Errorf("directory: complete source facts unavailable: %w", err)
 	}
 	if current.FactsSourceClock.Valid && (source.SourceClock.Time.Before(current.FactsSourceClock.Time) || (source.SourceClock.Time.Equal(current.FactsSourceClock.Time) && source.Checksum <= current.FactsSourceChecksum.String)) {
-		return tx.Commit(ctx)
+		return nil
 	}
 	correction, err := acceptedStationName(ctx, q, station)
 	if err != nil {
@@ -80,7 +86,7 @@ func (c RegistryCanonicalizer) ProjectSourceFacts(ctx context.Context, stationID
 	if err := q.UpdateStationSourceFacts(ctx, directory.UpdateStationSourceFactsParams{ID: station, LegalName: source.LegalName, TradeName: source.TradeName, DisplayName: display, Address: address, AddressSource: addressSource, SourceClock: source.SourceClock, SourceChecksum: pgtype.Text{String: source.Checksum, Valid: true}}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 func acceptedStationName(ctx context.Context, q *directory.Queries, station pgtype.UUID) (string, error) {
@@ -102,4 +108,30 @@ func projectAcceptedStationName(ctx context.Context, q *directory.Queries, stati
 	}
 	name = domain.StationDisplayName("", "", "", name)
 	return q.UpdateStationAcceptedName(ctx, directory.UpdateStationAcceptedNameParams{ID: station, DisplayName: name})
+}
+
+// ProjectLatestSourceFacts resolves fresh eligible evidence while holding the
+// station lock. Retried jobs cannot become tied to superseded source rows.
+func (c RegistryCanonicalizer) ProjectLatestSourceFacts(ctx context.Context, stationID string) error {
+	station, err := mustUUID(stationID)
+	if err != nil {
+		return err
+	}
+	tx, err := c.Repo.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := directory.New(tx)
+	if _, err := q.LockStationFacts(ctx, station); err != nil {
+		return err
+	}
+	assertion, err := q.LatestStationFactAssertion(ctx, station)
+	if err != nil {
+		return err
+	}
+	if err := projectSourceFacts(ctx, q, station, assertion); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
