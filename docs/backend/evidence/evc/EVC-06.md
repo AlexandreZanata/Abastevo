@@ -91,3 +91,25 @@ over-budget artifacts are refused. Prepared race tests, vet,
 staticcheck, formatting and secret checks passed. This boundary reads
 files only. Parsing the national rows, deriving the UF census and
 staging the batch are the next import step.
+
+## EVC-06D opening
+
+B-BR-EVC-06D. A new charging generation keeps the public IDs associated
+with admitted source records. If sources converge into a single site,
+old IDs remain aliases. If a prior public ID would address multiple
+candidate sites, refuse the generation until the conflict is reviewed.
+
+BUC-EVC-06D. Exercise a continuing legacy OCM identity, a source merge,
+loss of one source, a split conflict, and deterministic fresh identity.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The merge regression initially failed because no public identity was
+resolved. Existing public IDs and historical aliases now follow the
+root source IDs. A merge retains every old ID, a disappearing source
+does not drop aliases while another root continues, and a conflicting
+split refuses admission. New sites have deterministic IDs. Prepared
+race tests, vet, staticcheck, whitespace and secret checks passed.
+The national store still needs to persist this mapping and use it
+for active-generation lookup.
