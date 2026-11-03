@@ -80,7 +80,9 @@
   EVC-06F LOCAL_DONE: pinned per-site IBGE sidecar and Go census binder,
   with missing/duplicate/invalid geography negatives. EVC-06G1 LOCAL_DONE:
   migration 000152 adds national details, source-owned groups and same-batch
-  public aliases, validated on PostGIS. Next wire the import transaction.
+  public aliases, validated on PostGIS. EVC-06G2 LOCAL_DONE: verified staging
+  and activation in one transaction, synthetic rollback/replay and legacy
+  public ID tests pass. Next reviewed decision carry-forward and active reads.
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).

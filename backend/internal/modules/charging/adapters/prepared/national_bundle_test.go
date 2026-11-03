@@ -10,8 +10,11 @@ import (
 )
 
 func nationalFixture(t *testing.T) (fstest.MapFS, string, string) {
+	return nationalFixtureWithCatalog(t, []byte("{\"key\":\"synthetic\"}\n"))
+}
+
+func nationalFixtureWithCatalog(t *testing.T, data []byte) (fstest.MapFS, string, string) {
 	t.Helper()
-	data := []byte("{\"key\":\"synthetic\"}\n")
 	digest := func(raw []byte) string {
 		hash := sha256.Sum256(raw)
 		return hex.EncodeToString(hash[:])

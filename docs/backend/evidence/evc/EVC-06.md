@@ -209,3 +209,32 @@ Go verified the files and re-derived the previous catalog site counts
 across 27 UF buckets and UNASSIGNED. Eleven sites remain unassigned.
 The run read private local artifacts only. No real database import or
 staging publication was performed.
+
+## EVC-06G2 opening
+
+B-BR-EVC-06G2. Admit the pinned national offer and IBGE evidence before
+database writes. Serialise staging and activation with the publication
+row lock. A failed hold, coverage check, source-link write or alias
+decision rolls back the entire import. An identical replay is idempotent.
+
+BUC-EVC-06G2. Import a synthetic two-source catalog, check the persisted
+separate groups and alias, then verify a refused import leaves no rows
+or pointer change.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The initial synthetic catalog failed because the import entry point
+was absent. The verified catalog, per-UF sidecar, stable aliases,
+source-owned connectors and source links now pass through one
+transaction. The publication lock prevents concurrent duplicate
+imports. A synthetic group-write failure after place and alias
+insertion left zero national batches. A hold refused admission.
+Five concurrent replays returned the same active batch, retaining an
+existing legacy OCM public ID. PostGIS race tests, vet, staticcheck,
+whitespace and secret review passed.
+
+This checkpoint has no public serving or operator command. Carrying
+human decisions to the new physical rows and serving active aliases
+and the rights offer are still pending. The national corpus was
+verified in memory only.
