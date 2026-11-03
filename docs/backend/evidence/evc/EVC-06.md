@@ -67,3 +67,27 @@ The next import step must derive and verify the per-UF counts and offer
 bytes before registering this metadata and calling the gate in the same
 transaction. This checkpoint does not provide a serving path or authorize
 a real import.
+
+## EVC-06C opening
+
+B-BR-EV-RIGHTS-01. The backend admits only a pinned rights receipt for
+the expected conflation manifest. The required national ODbL data and
+notice must both match their exact descriptors. The verified offer
+payload is the catalog input, so import cannot silently substitute
+different data.
+
+BUC-EVC-06C. Admit a synthetic national bundle and refuse missing,
+modified, oversized, unexpected, or misbound artifacts before storage.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The synthetic bundle first failed on the absent backend verifier. Go
+now requires independently supplied receipt and conflation manifest
+hashes, the exact file set and sizes, and a notice whose ODbL and data
+descriptor match the receipt. The catalog returned to the importer is
+the verified offer payload. Missing, modified, extra, misbound and
+over-budget artifacts are refused. Prepared race tests, vet,
+staticcheck, formatting and secret checks passed. This boundary reads
+files only. Parsing the national rows, deriving the UF census and
+staging the batch are the next import step.
