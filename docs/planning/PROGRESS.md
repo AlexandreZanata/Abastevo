@@ -1,5 +1,20 @@
 # Current execution state
 
+- Zero-downtime staging source 2026-11-03: LOCAL_DONE / INTEGRATION_PENDING;
+  full live acceptance OWED. [Batch evidence/activation queue](../backend/evidence/cd/ZD-08.md),
+  [plan](CD_ZERO_DOWNTIME_PLAN.md). Isolated `codex/cd-zero-downtime`, tested
+  parent 0792eb35 plus final operations task; atomic history retained. 229
+  agent assertions, seven probe cases, capacity/manifest/status, Go race/vet,
+  real PostGIS jobs/worker overlap and S3 signatures pass; 21-case gate and
+  static/secret checks pass. Read-only staging remains c19f0bde/schema145,
+  timer/apply active, surge OFF; no live write. Remote protection verified:
+  strict required Quick verification. Issue: none; PR: pending creation from
+  remote dev to main, checks NOT_RUN at this source checkpoint. Occupied
+  local dev/three unmerged Android commits preserved. Next: publish one source
+  PR; obtain individual approval for agent install, then signed-image storage
+  migration, three measured rollouts and drills. ZD-05 untriggered, ZD-09 not
+  opted in; no merge, production certification or wiki claim.
+
 - Map regional integration 2026-10-28: LOCAL_DONE / INTEGRATION_PENDING on
   `codex/phase-map-regional-integration` (from `origin/main` 66229695, merges
   `origin/codex/map-completion`, `origin/codex/map-regional-download`,

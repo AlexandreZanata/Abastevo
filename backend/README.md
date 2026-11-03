@@ -299,3 +299,14 @@ go test -count=1 -v -tags=integration,qualitysource ./internal/modules/quality/a
 
 The manual source test pins exact acquisition hashes, logs counts only and
 publishes nothing. January 2025 source clocks are preserved by [FQ-02C](../docs/backend/evidence/fuel-quality/FQ02C_SOURCE_CLOCKS.md), with zero date-format quarantine and unchanged September manifest. Native Directory/fetch/worker composition is still required before historical activation. See [FQ-05W2](../docs/backend/evidence/fuel-quality/FQ05W2_ARCHIVE_PROCESS.md).
+
+## Shutdown during staging rollouts
+
+`ANPFUEL_SHUTDOWN_DRAIN_DELAY` defaults to `10s` and accepts `0s` through
+`30s`. SIGTERM immediately makes `/health/ready` return 503/no-store while
+normal traffic and liveness remain available during that delay. The listener
+then drains active requests for `ANPFUEL_SHUTDOWN_TIMEOUT` (default `10s`).
+Keep **delay + timeout + 5s < terminationGracePeriodSeconds**. The staging
+manifest pins both values and 60s grace. Workers stop new claims, join all
+loops and finalize held leases using a separate bounded 5s fenced operation;
+expiry remains recovery when the database cannot acknowledge shutdown.

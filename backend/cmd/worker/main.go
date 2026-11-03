@@ -110,7 +110,7 @@ func (s sweepStoragePorts) DeleteFinal(ctx context.Context, key string) error {
 }
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(); err != nil && !errors.Is(err, context.Canceled) {
 		fmt.Fprintln(os.Stderr, "anpfuel worker:", err)
 		os.Exit(1)
 	}
@@ -1039,7 +1039,10 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	dispatchErr := make(chan error, 1)
+	dispatchStopped := make(chan struct{})
+	defer func() { stop(); <-dispatchStopped }()
 	go func() {
+		defer close(dispatchStopped)
 		if err := runDispatchers(ctx, dispatchers); err != nil && !errors.Is(err, context.Canceled) {
 			dispatchErr <- err
 			return

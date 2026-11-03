@@ -4,7 +4,8 @@ Description=Run the Abastevo staging release planner every two minutes
 [Timer]
 OnBootSec=2min
 OnUnitActiveSec=2min
-AccuracySec=15s
+RandomizedDelaySec=15s
+AccuracySec=1s
 Unit=abastevo-deploy-agent.service
 
 [Install]

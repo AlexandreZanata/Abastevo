@@ -6,7 +6,7 @@
 # sources this file. Jobs carry ttlSecondsAfterFinished=86400 and backoffLimit=0.
 
 runtime_kubectl() {
-    "${ABASTEVO_KUBECTL:-kubectl}" "$@"
+    "${ABASTEVO_KUBECTL:-kubectl}" "$@" 2>/dev/null
 }
 
 runtime_apply_job() {
@@ -238,5 +238,18 @@ runtime_rollout_status() {
 
 runtime_rollout_undo() {
     local namespace="$1" deployment="$2"
-    runtime_kubectl -n "$namespace" rollout undo "deployment/$deployment" >/dev/null
+    local revision="${3:-}"
+    local args=()
+    [[ -z "$revision" ]] || args+=("--to-revision=$revision")
+    runtime_kubectl -n "$namespace" rollout undo "deployment/$deployment" "${args[@]}" >/dev/null
+}
+
+# Reads only namespace-local deployment/quota; output contains resource numbers.
+runtime_check_surge_capacity() {
+    local deployment quota
+    deployment="$(runtime_kubectl -n "$ABASTEVO_NAMESPACE" get deployment "$ABASTEVO_API_DEPLOYMENT" -o json)" || return 1
+    quota="$(runtime_kubectl -n "$ABASTEVO_NAMESPACE" get resourcequota "$ABASTEVO_SURGE_RESOURCE_QUOTA" -o json)" || return 1
+    jq -n --argjson deployment "$deployment" --argjson quota "$quota" \
+        '{deployment:$deployment,quota:$quota}' \
+        | python3 "$ABASTEVO_LIBDIR/surge-capacity.py" >/dev/null
 }
