@@ -2,9 +2,11 @@ package portalgen
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 func brl(milli int64) string {
@@ -148,20 +150,43 @@ func ufName(value string) string {
 	return value
 }
 
+var (
+	addressCoordinateLabels = regexp.MustCompile(`(?i)\b(?:lat(?:itude)?|lon(?:gitude)?|lng|gps|geo)\b`)
+	addressCoordinatePair   = regexp.MustCompile(`^[-+]?\d{1,3}(?:[.,]\d+)?\s*[,;/]\s*[-+]?\d{1,3}(?:[.,]\d+)?$`)
+	addressMunicipalityCode = regexp.MustCompile(`(?i)^\d{7}(?:\s*/\s*[a-z]{2})?$`)
+)
+
+func addressComponent(value string) string {
+	value = strings.TrimSpace(value)
+	unlabelled := addressCoordinateLabels.ReplaceAllString(value, "")
+	if strings.ContainsFunc(value, unicode.IsControl) || addressCoordinatePair.MatchString(value) ||
+		(unlabelled != value && strings.ContainsFunc(unlabelled, unicode.IsDigit) && !strings.ContainsFunc(unlabelled, unicode.IsLetter)) {
+		return ""
+	}
+	return value
+}
+
 func addressLine(address map[string]string) string {
-	parts := make([]string, 0, 7)
-	street := strings.TrimSpace(address["street"])
-	number := strings.TrimSpace(address["number"])
-	if street != "" {
-		if number != "" {
+	parts := make([]string, 0, 5)
+	street := addressComponent(address["street"])
+	if strings.ContainsFunc(street, unicode.IsLetter) && !addressMunicipalityCode.MatchString(street) {
+		if number := addressComponent(address["number"]); number != "" {
 			street += ", " + number
 		}
 		parts = append(parts, street)
 	}
 	for _, key := range []string{"complement", "district", "postal_code"} {
-		if value := strings.TrimSpace(address[key]); value != "" {
+		if value := addressComponent(address[key]); value != "" {
 			parts = append(parts, value)
 		}
+	}
+	municipality := addressComponent(address["municipio"])
+	if strings.ContainsFunc(municipality, unicode.IsLetter) && !addressMunicipalityCode.MatchString(municipality) {
+		uf := strings.ToUpper(strings.TrimSpace(address["uf"]))
+		if ufName(uf) != uf {
+			municipality += "/" + uf
+		}
+		parts = append(parts, municipality)
 	}
 	return strings.Join(parts, " · ")
 }
