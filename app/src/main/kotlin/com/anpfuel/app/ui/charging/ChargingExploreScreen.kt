@@ -52,6 +52,8 @@ import com.anpfuel.domain.charging.ChargingCurrent
 import com.anpfuel.domain.charging.Compatibility
 import com.anpfuel.domain.valueobject.DomainId
 import java.text.DateFormat
+import java.text.NumberFormat
+import java.math.BigDecimal
 import java.util.Date
 import java.util.Locale
 
@@ -255,21 +257,36 @@ internal fun ChargingExploreContent(
     uiState.detail?.let { detail ->
         AlertDialog(
             onDismissRequest = onDismissDetail,
-            title = { Text(text = detail.place.name) },
+            title = { Text(text = detail.place.name.ifBlank { stringResource(R.string.charging_place_unnamed) }) },
             text = {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text(text = stringResource(R.string.charging_explore_detail_access, detail.place.publicAccess.name))
-                    detail.place.latitude?.let { Text(text = "Lat $it") }
-                    detail.place.longitude?.let { Text(text = "Lon $it") }
-                    Text(text = stringResource(R.string.charging_explore_detail_points, detail.place.reportedPoints.toInt()))
-                    detail.place.groups.forEach { group ->
+                    val place = detail.place
+                    if (place.confirmedByTwoSources) {
+                        Text(text = stringResource(R.string.charging_place_two_sources))
+                    }
+                    place.operator?.let {
+                        Text(text = stringResource(R.string.charging_place_operator, it))
+                    }
+                    place.addressLine?.let { Text(text = it) }
+                    Text(text = stringResource(R.string.charging_explore_detail_access, place.publicAccess.name))
+                    if (place.catalogConfidence == null) {
+                        place.latitude?.let { Text(text = "Lat $it") }
+                        place.longitude?.let { Text(text = "Lon $it") }
+                        Text(text = stringResource(R.string.charging_explore_detail_points, place.reportedPoints.toInt()))
+                    }
+                    val owners = place.sources.associateBy { it.sourceKey }
+                    val powerFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 3 }
+                    place.groups.forEach { group ->
+                        val connector = group.rawConnectorCode.ifBlank { connectorLabel(group.connector) }
+                        val power = group.powerW?.let { "${powerFormat.format(BigDecimal.valueOf(it, 3))} kW" }
+                            ?: stringResource(R.string.charging_explore_unknown)
+                        val owner = owners[group.sourceKey]?.attribution
                         Text(
-                            text = "${group.rawConnectorCode} · ${group.current} · " +
-                                (group.powerW?.let { "${it / 1000} kW" } ?: "?") +
-                                (group.reportedQuantity?.let { " · ×$it" } ?: ""),
+                            text = listOfNotNull(connector, group.current.name, power, group.reportedQuantity?.let { "×$it" }, owner)
+                                .joinToString(" · "),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -300,7 +317,7 @@ internal fun ChargingExploreContent(
                     onOpenCommunity(detail.place.id)
                     onDismissDetail()
                 }) {
-                    Text(text = stringResource(R.string.charging_community_title))
+                    Text(text = stringResource(R.string.charging_place_report_status))
                 }
             },
             dismissButton = {
@@ -341,7 +358,13 @@ private fun ChargingPlaceRow(
         border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text = row.place.name, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = row.place.name.ifBlank { stringResource(R.string.charging_place_unnamed) },
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (row.place.confirmedByTwoSources) {
+                Text(text = stringResource(R.string.charging_place_two_sources), style = MaterialTheme.typography.labelMedium)
+            }
             Text(
                 text = when (row.verdict) {
                     Compatibility.COMPATIBLE -> stringResource(R.string.charging_explore_compatible)

@@ -45,7 +45,9 @@ class V34ToV35ChargingProfileMigrationTest {
                 )
             }
             helper.runMigrationsAndValidate(name, 35, true, AnpFuelDatabaseMigrations.MIGRATION_34_35).close()
-            val db = Room.databaseBuilder(context, AnpFuelDatabase::class.java, name).build()
+            val db = Room.databaseBuilder(context, AnpFuelDatabase::class.java, name)
+                .addMigrations(AnpFuelDatabaseMigrations.MIGRATION_35_36)
+                .build()
             try {
                 val dao = db.chargingSnapshotDao()
                 val legacyRow = requireNotNull(dao.findPlace(placeId, legacy, generation))

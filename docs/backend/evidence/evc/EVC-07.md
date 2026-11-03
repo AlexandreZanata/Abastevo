@@ -138,3 +138,36 @@ The screen reuses the eight-locale minimum-power label and offers 22,
 Status: LOCAL_DONE / INTEGRATION_PENDING. Fourteen domain, repository
 and ViewModel tests, app compilation, whitespace and secret review passed.
 Map pins and national detail presentation remain open.
+
+## EVC-07F national charging detail
+
+B-BR-EVC-07F. Preserve the source operator and the shared, coordinate-safe
+address line offline. A nameless location uses a localized presentation
+label only. A two-source badge is shown only for confirmed matches.
+Display each connector group's own power and provider attribution without
+rounding or combining groups. Retain the existing community report route.
+
+BUC-EVC-07F. Decode and persist synthetic operator/address facts, reject
+coordinate text as an address, and show offline details with an unnamed
+place, two sources and distinct powers. Legacy rows retain their fields.
+
+RED reproduced omitted operator and address fields. The codec now
+admits only supported address components and uses the SNA formatter.
+Room 36 stores the resulting address line and operator as nullable
+fields. Existing caches keep their rows and gain neither value until
+the next refresh. The offline mapping round-trips both fields.
+
+The detail shows exact source-attributed powers, the admitted operator
+and address, and a localized fallback label when no name is available.
+A two-source match shows the confirmation badge. The existing community
+route receives the same public place ID. The four UI labels are present
+in all eight locales.
+
+Twenty-one snapshot unit tests, two Room migration tests and three
+Compose detail tests passed. The Compose tests exercised both themes
+and verified distinct reported powers and the report action.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. Light and dark emulator
+captures were exported after the dialog animation and visually checked.
+Both use synthetic data. App/test APK builds, whitespace and
+secret-surface checks passed.

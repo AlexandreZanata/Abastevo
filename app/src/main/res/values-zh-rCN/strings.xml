@@ -193,6 +193,10 @@
     <string name="charging_explore_unknown">未知</string>
     <string name="charging_explore_no_groups">未报告接口数据</string>
     <string name="charging_explore_row_meta">%1$s · 更新于 %2$s</string>
+    <string name="charging_place_unnamed">未命名的充电站</string>
+    <string name="charging_place_two_sources">经 2 个来源确认</string>
+    <string name="charging_place_operator">运营商 · %1$s</string>
+    <string name="charging_place_report_status">报告状态</string>
     <string name="charging_explore_detail_access">访问: %1$s</string>
     <string name="charging_explore_detail_points">报告点数: %1$d (设备数可能与接口数不同)</string>
     <string name="charging_explore_detail_source">来源版本: %1$s</string>

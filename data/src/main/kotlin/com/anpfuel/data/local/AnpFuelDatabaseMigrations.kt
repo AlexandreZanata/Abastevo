@@ -874,4 +874,11 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("ALTER TABLE charging_snapshot_place_v35 RENAME TO charging_snapshot_place")
         }
     }
+
+    val MIGRATION_35_36: Migration = object : Migration(35, 36) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE charging_snapshot_place ADD COLUMN operator TEXT")
+            db.execSQL("ALTER TABLE charging_snapshot_place ADD COLUMN address_line TEXT")
+        }
+    }
 }

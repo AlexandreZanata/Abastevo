@@ -99,7 +99,9 @@
   Android verifies revision, exact counts and same-origin offer paths before
   atomically replacing the offline generation. EVC-07E LOCAL_DONE:
   Explore prefers cached national rows and filters on one source-owned
-  group, with offline continuation and minimum power. Next map and detail.
+  group, with offline continuation and minimum power. EVC-07F LOCAL_DONE:
+  Room 36 and Compose show offline operator, safe address, source powers,
+  confirmed badge and reporting route. Next map pins and linked stations.
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).

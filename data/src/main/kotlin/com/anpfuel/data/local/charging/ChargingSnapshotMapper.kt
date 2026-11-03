@@ -30,6 +30,7 @@ object ChargingSnapshotMapper {
             reportedPoints = row.reportedPoints, groupsJson = row.groupsJson,
             tombstone = row.tombstone, savedAtMillis = savedAtMillis, sourcesJson = row.sourcesJson,
             catalogConfidence = row.catalogConfidence, linkedStationId = row.linkedStationId,
+            operator = row.operator, addressLine = row.addressLine,
         )
 
     fun toMetaEntity(meta: StoredPackMeta, key: String): ChargingSnapshotMetaEntity =
@@ -77,6 +78,7 @@ object ChargingSnapshotMapper {
             sources = entity.sourcesJson?.let { ChargingSourceAttributionJson.decode(JSONArray(it)) }.orEmpty(),
             catalogConfidence = entity.catalogConfidence?.let(ChargingCatalogConfidence::valueOf),
             linkedStationId = entity.linkedStationId,
+            operator = entity.operator, addressLine = entity.addressLine,
         )
     }
 

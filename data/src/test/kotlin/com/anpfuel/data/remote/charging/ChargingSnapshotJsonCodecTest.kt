@@ -90,6 +90,17 @@ class ChargingSnapshotJsonCodecTest {
     }
 
     @Test
+    fun `national operator and formatted address survive wire without coordinates`() {
+        val sources = org.json.JSONArray().put(JSONObject("""{"source":"OSM","external_id":"node:7","revision":"synthetic","license":"ODbL-1.0","attribution":"Synthetic OSM"}"""))
+        val address = JSONObject("""{"street":"-23.5, -46.6","municipio":"Synthetic City","uf":"SP","raw":"Private field"}""")
+        val national = detail().put("confidence", "single-source").put("sources", sources)
+            .put("groups", org.json.JSONArray()).put("operator", "Synthetic operator").put("address", address)
+        val place = ChargingSnapshotJsonCodec.decodePlaceDetail(national)
+        assertEquals("Synthetic operator", place.operator)
+        assertEquals("Synthetic City/SP", place.addressLine)
+    }
+
+    @Test
     fun `valid page detail and coverage decode with raw retention`() {
         val parsed = ChargingSnapshotJsonCodec.decodePlacePage(page())
         assertEquals(1, parsed.items.size)

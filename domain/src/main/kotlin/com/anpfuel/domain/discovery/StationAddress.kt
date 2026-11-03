@@ -32,7 +32,7 @@ private fun Map<String, String>.component(vararg keys: String, usable: (String) 
     keys.firstNotNullOfOrNull { key -> this[key]?.trim()?.takeIf(usable) }
 
 /** A bounded set of textual address components; never reads map coordinates. */
-internal fun formatStationAddress(address: Map<String, String>, stationState: String?): String {
+fun formatStationAddress(address: Map<String, String>, stationState: String? = null): String {
     val city = address.component("municipio", "municipality_name", "municipality", "city", usable = ::textComponent)
     val uf = sequenceOf(address["uf"], stationState).filterNotNull()
         .map { it.trim().uppercase() }.firstOrNull { it in states }

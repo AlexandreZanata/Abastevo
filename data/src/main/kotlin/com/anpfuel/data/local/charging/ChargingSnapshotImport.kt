@@ -39,6 +39,8 @@ data class StoredChargingPlace(
     val sourcesJson: String? = null,
     val catalogConfidence: String? = null,
     val linkedStationId: String? = null,
+    val operator: String? = null,
+    val addressLine: String? = null,
 )
 
 /** Validated generation metadata row. */
@@ -215,6 +217,7 @@ object ChargingSnapshotImport {
             sourcesJson = ChargingSourceAttributionJson.encode(place.sources),
             catalogConfidence = place.catalogConfidence?.name,
             linkedStationId = place.linkedStationId,
+            operator = place.operator, addressLine = place.addressLine,
         )
     }
 
@@ -225,7 +228,10 @@ object ChargingSnapshotImport {
     }
 
     private fun estimateBytes(rows: List<StoredChargingPlace>): Long =
-        rows.sumOf { (it.name.length + it.groupsJson.length + (it.sourcesJson?.toByteArray()?.size ?: 0) + 512).toLong() }
+        rows.sumOf {
+            (it.name.length + it.groupsJson.length + (it.sourcesJson?.toByteArray()?.size ?: 0) +
+                (it.operator?.toByteArray()?.size ?: 0) + (it.addressLine?.toByteArray()?.size ?: 0) + 512).toLong()
+        }
 
     private fun sha256Hex(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

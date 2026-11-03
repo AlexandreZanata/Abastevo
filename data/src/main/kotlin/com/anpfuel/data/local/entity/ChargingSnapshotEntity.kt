@@ -39,6 +39,8 @@ data class ChargingSnapshotPlaceEntity(
     @ColumnInfo(name = "sources_json") val sourcesJson: String? = null,
     @ColumnInfo(name = "catalog_confidence") val catalogConfidence: String? = null,
     @ColumnInfo(name = "linked_station_id") val linkedStationId: String? = null,
+    @ColumnInfo(name = "operator") val operator: String? = null,
+    @ColumnInfo(name = "address_line") val addressLine: String? = null,
 )
 
 /**

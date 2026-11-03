@@ -1,5 +1,6 @@
 package com.anpfuel.domain.charging
 
+import com.anpfuel.domain.discovery.isCoordinateLiteral
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -85,6 +86,9 @@ data class ChargingSourceAttribution(
     val license: String,
     val attribution: String,
 ) {
+    val sourceKey: String
+        get() = if (source == "OSM") "osm:$externalId" else "ocm:poi:$externalId"
+
     init {
         require(source == "OSM" || source == "OCM")
         require(if (source == "OCM") providerId != null && providerId > 0 else providerId == null)
@@ -111,6 +115,8 @@ data class ChargingPlace(
     val sources: List<ChargingSourceAttribution> = emptyList(),
     val catalogConfidence: ChargingCatalogConfidence? = null,
     val linkedStationId: String? = null,
+    val operator: String? = null,
+    val addressLine: String? = null,
 ) {
     val confirmedByTwoSources: Boolean
         get() = catalogConfidence == ChargingCatalogConfidence.TWO_SOURCE
@@ -121,6 +127,8 @@ data class ChargingPlace(
         require(externalId.isNotBlank() && externalId.length <= 256)
         require(name.length <= 512 && (name.isNotBlank() || catalogConfidence != null && name.isEmpty()))
         require(linkedStationId == null || catalogConfidence != null && canonicalId.matches(linkedStationId))
+        require(operator == null || operator.isNotBlank() && operator.length <= 512 && operator.none(Char::isISOControl))
+        require(addressLine == null || addressLine.isNotBlank() && addressLine.length <= 1200 && addressLine.none(Char::isISOControl) && !isCoordinateLiteral(addressLine))
         require(country == "BR")
         val coordinateScale = if (catalogConfidence == null) 12 else 16
         require(latitude == null || validDecimal(latitude, BigDecimal("-90"), BigDecimal("90"), coordinateScale))
@@ -133,9 +141,7 @@ data class ChargingPlace(
         } else {
             require(sources.isNotEmpty())
             if (confirmedByTwoSources) require(sources.map { it.source }.toSet() == setOf("OSM", "OCM"))
-            val ownerKeys = sources.mapTo(hashSetOf()) {
-                if (it.source == "OSM") "osm:${it.externalId}" else "ocm:poi:${it.externalId}"
-            }
+            val ownerKeys = sources.mapTo(hashSetOf()) { it.sourceKey }
             require(groups.all { it.sourceKey in ownerKeys })
         }
     }

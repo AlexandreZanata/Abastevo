@@ -10,6 +10,7 @@ import com.anpfuel.domain.charging.ChargingPlacePage
 import com.anpfuel.domain.charging.wireAccess
 import com.anpfuel.domain.charging.wireConnector
 import com.anpfuel.domain.charging.wireCurrent
+import com.anpfuel.domain.discovery.formatStationAddress
 import java.io.IOException
 import org.json.JSONArray
 import org.json.JSONObject
@@ -24,6 +25,8 @@ class ChargingSnapshotUnavailable(message: String? = null, cause: Throwable? = n
 object ChargingSnapshotJsonCodec {
 
     private const val MAX_ROWS = 100
+
+    private val addressKeys = listOf("street", "number", "district", "municipio", "uf")
 
     private val privateFields = setOf(
         "reporter", "price", "contributor", "contribution",
@@ -105,6 +108,16 @@ object ChargingSnapshotJsonCodec {
                 else -> invalid("bad confidence")
             },
             linkedStationId = optText(item, "linked_station_id"),
+            operator = optText(item, "operator"),
+            addressLine = if (item.has("address")) {
+                val address = item.getJSONObject("address")
+                val parts = addressKeys.mapNotNull { key ->
+                    optText(address, key)?.also {
+                        if (it.length > 256) invalid("address component over bound")
+                    }?.let { key to it }
+                }.toMap()
+                formatStationAddress(parts).takeIf { it.isNotEmpty() }
+            } else null,
             sources = if (item.has("sources")) ChargingSourceAttributionJson.decode(item.getJSONArray("sources")) else emptyList(),
         )
     }

@@ -193,6 +193,10 @@
     <string name="charging_explore_unknown">Inconnu</string>
     <string name="charging_explore_no_groups">Aucune donnée de connecteur déclarée</string>
     <string name="charging_explore_row_meta">%1$s · mis à jour %2$s</string>
+    <string name="charging_place_unnamed">Site de recharge sans nom</string>
+    <string name="charging_place_two_sources">Confirmé par 2 sources</string>
+    <string name="charging_place_operator">Opérateur · %1$s</string>
+    <string name="charging_place_report_status">Signaler le statut</string>
     <string name="charging_explore_detail_access">Accès : %1$s</string>
     <string name="charging_explore_detail_points">Points déclarés : %1$d (le nombre d’équipements peut différer)</string>
     <string name="charging_explore_detail_source">Révision source : %1$s</string>

@@ -60,6 +60,7 @@ class ChargingSnapshotImportTest {
     fun `national pack round trips confidence linked station and source owned groups`() {
         val national = place().copy(
             name = "", latitude = "-15.7939123456789012", linkedStationId = placeTwo,
+            operator = "Synthetic operator", addressLine = "Synthetic Street, 7 – Synthetic City/SP",
             catalogConfidence = ChargingCatalogConfidence.SINGLE_SOURCE,
             sources = listOf(ChargingSourceAttribution("OSM", "node:7", "osm-edition", null, "ODbL-1.0", "Synthetic attribution")),
             groups = listOf(ChargingConnectionGroup(
