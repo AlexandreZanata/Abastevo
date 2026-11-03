@@ -4,6 +4,7 @@ package linking
 
 import (
 	"context"
+	"sync"
 	"testing"
 )
 
@@ -88,7 +89,61 @@ func TestFindStationCandidate(t *testing.T) {
 	check(StationSourceFacts{Combined: &OSMObject{Type: "node", ID: 101}}, "")
 	combined := StationSourceFacts{Combined: &OSMObject{Type: "way", ID: 101}}
 	check(combined, "combined-osm")
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, found, err := ApplySourceLinkTx(ctx, tx, placeID, combined); err != nil || !found {
+		t.Fatalf("transactional source link found=%v err=%v", found, err)
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, found, err := store.Active(ctx, placeID); err != nil || found {
+		t.Fatalf("rolled-back source link found=%v err=%v", found, err)
+	}
+
+	// Concurrent source replays must all observe one immutable identity link.
+	var attempts sync.WaitGroup
+	for range 5 {
+		attempts.Go(func() {
+			link, found, err := store.ApplySourceLink(ctx, placeID, combined)
+			if err != nil || !found || link.StationID != stationA || link.State != Reviewed ||
+				link.Method != MethodOSMObject || link.Evidence["rule"] != "combined-osm" || link.Evidence["osm_id"] != "101" {
+				t.Errorf("source link=%+v found=%v err=%v", link, found, err)
+			}
+		})
+	}
+	attempts.Wait()
+	var linkCount int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM charging_place_station_links WHERE place_id=$1", placeID).Scan(&linkCount); err != nil || linkCount != 1 {
+		t.Fatalf("source replay count=%d err=%v", linkCount, err)
+	}
 	exec(`INSERT INTO map_assertion_revocations(id,assertion_id,reason,source_reference)
 		VALUES(gen_random_uuid(),$1,'synthetic test','test')`, mapAssertion)
 	check(combined, "")
+	unresolved, found, err := store.ApplySourceLink(ctx, placeID, combined)
+	if err != nil || found || unresolved.State != Unresolved {
+		t.Fatalf("revoked source link=%+v found=%v err=%v", unresolved, found, err)
+	}
+	if replay, found, err := store.ApplySourceLink(ctx, placeID, combined); err != nil || found || replay.ID != unresolved.ID {
+		t.Fatalf("unresolved replay=%+v found=%v err=%v", replay, found, err)
+	}
+	if _, err := store.Review(ctx, Link{PlaceID: placeID, StationID: stationB, State: Reviewed, Method: MethodManual, ReviewerRef: "test-reviewer"}); err != nil {
+		t.Fatal(err)
+	}
+	if link, found, err := store.ApplySourceLink(ctx, placeID, combined); err != nil || !found || link.StationID != stationB || link.Method != MethodManual {
+		t.Fatalf("source replay replaced the manual link: %+v, %v, %v", link, found, err)
+	}
+	if _, err := store.Review(ctx, Link{PlaceID: placeID, StationID: stationA, State: Rejected, Method: MethodManual, ReviewerRef: "test-reviewer"}); err != nil {
+		t.Fatal(err)
+	}
+	if link, found, err := store.ApplySourceLink(ctx, placeID, combined); err != nil || found {
+		t.Fatalf("source replay replaced a rejection: %+v, %v, %v", link, found, err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM charging_place_station_links WHERE place_id=$1", placeID).Scan(&linkCount); err != nil || linkCount != 4 {
+		t.Fatalf("link history count=%d err=%v", linkCount, err)
+	}
+
 }

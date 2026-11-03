@@ -58,7 +58,9 @@
   immutable search path with existing CSV URLs preserved. Portal/export race
   suites, vet and 76 landing tests pass. EVC-04A LOCAL_DONE: real PostGIS
   candidate rules for exact OSM or 75 m with sourced name/reviewed brand,
-  including ambiguity and revocation. Next atomic reviewed link replay.
+  including ambiguity and revocation. EVC-04B LOCAL_DONE: migration 000150,
+  source/manual precedence, concurrent idempotent replay and rollback on
+  real PostGIS. Charging unit/race and vet pass. Next EVC-05 rights.
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact

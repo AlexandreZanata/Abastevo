@@ -25,3 +25,32 @@ provenance, ambiguity, exact OSM type and ID without a distance requirement,
 and revocation. The pin query uses indexed geography and never rounds
 the threshold. The resolver reads existing records; it performs no import,
 link insertion or staging action. Vet, format, diff and secret checks pass.
+
+## EVC-04B opening
+
+B-BR-EV-STATION-01. Record a source-backed decision through the existing
+identity-link store. Serialise automated and manual decisions on the place
+row. An existing human decision, including a rejection, remains authoritative.
+A replay returns the existing reviewed link without adding history.
+
+BUC-EVC-04B. On real PostGIS, replay an admitted source link concurrently,
+verify manual supersession and preserve a rejection. Upgrade the existing
+link table to distinguish exact OSM object evidence from name and address
+evidence, preserving prior decisions.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The write/replay regression initially found zero links. The shared place
+lock now serialises source and manual decisions. Five concurrent replays
+wrote one exact OSM link. Loss of source evidence superseded the automated
+link with an unresolved decision and replay did not append another row.
+Manual supersession and rejection remained authoritative. An outer rollback
+removed the source link along with its transaction.
+
+Migration 000150 distinguishes OSM_OBJECT from previous review methods.
+A real upgrade preserved the charging place and its pre-existing manual
+review, and the migration replay applied zero changes. All linking
+integration tests and charging unit suites passed with the race detector.
+Vet, whitespace and secret checks passed. National generation import and
+serving the links remain in EVC-06 and the subsequent consumers.
