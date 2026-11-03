@@ -78,7 +78,7 @@ class NationalAcquisitionTests(unittest.TestCase):
         for url in ["http://api.openchargemap.io/v3/poi", "https://example.invalid/poi", "https://key@example.invalid/poi"]:
             with self.assertRaises(source.SourceError): source.request(url, "synthetic-key")
         with self.assertRaises(source.SourceError):
-            source.NoRedirect().redirect_request(None, None, 302, "redirect", {}, "https://example.invalid")
+            source.PublisherRedirects().redirect_request(None, None, 302, "redirect", {}, "https://example.invalid")
 
 
 if __name__ == "__main__": unittest.main()
@@ -113,3 +113,15 @@ class AcquisitionContinuationTests(unittest.TestCase):
                     pin = source.collect_ocm(target, "synthetic-key", fetch, lambda _: None)
                     self.assertEqual([0, 100, 101], calls)
                     self.assertEqual(2, pin["rows"])
+
+
+class PublisherAliasTests(unittest.TestCase):
+    def test_only_geofabrik_latest_to_its_dated_brazil_file_is_allowed(self):
+        handler=source.PublisherRedirects()
+        alias=source.request(source.OSM_URL)
+        dated="https://download.geofabrik.de/south-america/brazil-261102.osm.pbf"
+        redirected=handler.redirect_request(alias,None,307,"temporary",{},dated)
+        self.assertEqual(dated,redirected.full_url)
+        for origin,target in [(source.request(source.OCM_ROOT+"poi/","synthetic-key"),dated),(alias,dated.replace("brazil-","argentina-")),(alias,dated.replace("download.geofabrik.de","example.invalid")),(source.request(dated),source.OSM_URL)]:
+            with self.subTest(target=target),self.assertRaises(source.SourceError):
+                handler.redirect_request(origin,None,307,"temporary",{},target)

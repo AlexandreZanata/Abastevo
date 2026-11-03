@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 import time
@@ -25,14 +26,18 @@ class SourceError(Exception):
     """Safe operator message; never include source bodies or credential values."""
 
 
-class NoRedirect(urllib.request.HTTPRedirectHandler):
+class PublisherRedirects(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # The public latest alias redirects to the immutable daily BR file.
+        # No credential-bearing OCM request or further redirect is eligible.
+        if req is not None and req.full_url == OSM_URL and req.get_method() == "GET" and re.fullmatch(r"https://download\.geofabrik\.de/south-america/brazil-[0-9]{6}\.osm\.pbf", newurl) and not any(name.lower() == "x-api-key" for name in req.headers):
+            return super().redirect_request(req, fp, code, msg, headers, newurl)
         raise SourceError("publisher redirect refused")
 
 
 def transport(request):
     try:
-        return urllib.request.build_opener(NoRedirect()).open(request, timeout=30)
+        return urllib.request.build_opener(PublisherRedirects()).open(request, timeout=30)
     except urllib.error.HTTPError as error:
         raise SourceError(f"publisher HTTP status {error.code}") from None
     except (urllib.error.URLError, OSError):
@@ -89,6 +94,7 @@ def download_osm(output, expected_bytes, etag, modified, fetch=transport):
         with fetch(req) as response:
             if response.status != 200 or response.headers.get("ETag") != etag or response.headers.get("Last-Modified") != modified:
                 raise SourceError("publisher pin changed")
+            final_url = getattr(response, "geturl", lambda: OSM_URL)()
             if int(response.headers.get("Content-Length", "-1")) != expected_bytes:
                 raise SourceError("publisher byte pin changed")
             with open(partial, "xb", opener=lambda p, f: os.open(p, f, 0o600)) as target:
@@ -105,7 +111,7 @@ def download_osm(output, expected_bytes, etag, modified, fetch=transport):
         # link refuses overwrite; the source file and receipt are private.
         os.link(partial, destination)
         partial.unlink()
-        pin = {"profile": PROFILE, "source": "OSM", "url": OSM_URL,
+        pin = {"profile": PROFILE, "source": "OSM", "url": OSM_URL, "resolved_url": final_url,
                "bytes": total, "sha256": digest.hexdigest(), "etag": etag,
                "last_modified": modified, "license": "ODbL-1.0",
                "attribution": "© OpenStreetMap contributors", "acquired_at": utc_now()}

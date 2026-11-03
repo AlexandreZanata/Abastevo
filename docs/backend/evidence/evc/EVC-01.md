@@ -65,3 +65,12 @@ to /tmp/abastevo-evc01-osm-20261103. This covers acquisition only, not a DB impo
 or staging mutation. Existing-key OCM collection was authorized separately;
 the owner has not yet supplied/created a key. Code preparation proceeds while
 that credential input remains pending. EVC-01 as a whole remains IN_PROGRESS.
+
+### Publisher alias retry
+
+The approved PBF attempt refused Geofabrik's HTTP 307 latest alias without
+downloading data. Metadata identified the same-origin Brazil-261102 daily
+file. RED/GREEN added the narrow latest→dated-Brazil redirect rule; every OCM,
+foreign-origin, other-country or further redirect stays refused. Header pin
+checks still run on the final response and the resolved URL is recorded. Six
+acquisition test groups pass; no change to the authorized byte cap/scope.
