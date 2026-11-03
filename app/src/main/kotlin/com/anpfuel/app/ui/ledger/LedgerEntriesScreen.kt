@@ -1,6 +1,25 @@
 package com.anpfuel.app.ui.ledger
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.Surface
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.EvStation
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -19,6 +38,8 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -219,6 +240,26 @@ internal fun LedgerEntriesContent(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // Primary actions first: what a driver does most, side by side.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (uiState.vehicleHasFuel) {
+                    LedgerQuickAction(
+                        label = stringResource(R.string.ledger_entry_add_refuel),
+                        icon = Icons.Default.LocalGasStation,
+                        onClick = onAddRefuel,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                LedgerQuickAction(
+                    label = stringResource(R.string.ledger_entry_add_expense),
+                    icon = Icons.AutoMirrored.Filled.ReceiptLong,
+                    onClick = onAddExpense,
+                    modifier = Modifier.weight(1f),
+                )
+            }
             EstimateSection(
                 estimateInput = uiState.estimateInput,
                 estimateSaved = uiState.estimateSaved,
@@ -227,41 +268,12 @@ internal fun LedgerEntriesContent(
                 onSaveEstimate = onSaveEstimate,
                 onClearEstimate = onClearEstimate,
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (uiState.vehicleHasFuel) {
-                    ActionCardButton(
-                        label = stringResource(R.string.ledger_entry_add_refuel),
-                        icon = Icons.Default.Add,
-                        onClick = onAddRefuel,
-                        style = ActionCardStyle.Primary,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                ActionCardButton(
-                    label = stringResource(R.string.ledger_entry_add_expense),
-                    icon = Icons.Default.Add,
-                    onClick = onAddExpense,
-                    style = ActionCardStyle.Primary,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-                ActionCardButton(
-                    label = stringResource(R.string.ledger_entry_reset),
-                    icon = Icons.Default.Add,
-                    onClick = onRequestReset,
-                    style = ActionCardStyle.Destructive,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                ActionCardButton(
-                    label = stringResource(R.string.monthly_open),
-                    icon = Icons.Default.DateRange,
-                    onClick = onOpenMonthly,
-                    style = ActionCardStyle.Primary,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            LedgerToolsCard(onOpenMonthly = onOpenMonthly, onRequestReset = onRequestReset)
+            Text(
+                text = stringResource(R.string.ledger_entries_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             if (uiState.entries.isEmpty()) {
                 EmptyState(
                     message = stringResource(R.string.ledger_entries_empty),
@@ -408,59 +420,133 @@ private fun EstimateSection(
     onSaveEstimate: () -> Unit,
     onClearEstimate: () -> Unit,
 ) {
-    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = AnpContainerDefaults.borderStroke(containerColor),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.ledger_entry_estimate_label),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            if (estimateSaved != null) {
+    LedgerCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            LedgerIconBadge(Icons.Default.Speed)
+            Column(Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.ledger_entry_estimate_saved, estimateSaved),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            OutlinedTextField(
-                value = estimateInput,
-                onValueChange = onEstimateChanged,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(text = stringResource(R.string.ledger_entry_estimate_hint)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                isError = estimateError,
-                supportingText = if (estimateError) {
-                    { Text(text = stringResource(R.string.ledger_entry_estimate_invalid)) }
-                } else {
-                    null
-                },
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionCardButton(
-                    label = stringResource(R.string.vehicle_save),
-                    icon = Icons.Default.Check,
-                    onClick = onSaveEstimate,
-                    style = ActionCardStyle.Primary,
-                    modifier = Modifier.weight(1f),
+                    text = stringResource(R.string.ledger_entry_estimate_label),
+                    style = MaterialTheme.typography.titleSmall,
                 )
                 if (estimateSaved != null) {
-                    ActionCardButton(
-                        label = stringResource(R.string.ledger_entry_estimate_clear),
-                        icon = Icons.Default.Close,
-                        onClick = onClearEstimate,
-                        style = ActionCardStyle.Destructive,
-                        modifier = Modifier.weight(1f),
+                    Text(
+                        text = stringResource(R.string.ledger_entry_estimate_saved, estimateSaved),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
+            if (estimateSaved != null) {
+                TextButton(onClick = onClearEstimate) {
+                    Text(text = stringResource(R.string.ledger_entry_estimate_clear))
+                }
+            }
         }
+        OutlinedTextField(
+            value = estimateInput,
+            onValueChange = onEstimateChanged,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(text = stringResource(R.string.ledger_entry_estimate_hint)) },
+            suffix = { Text("km/L") },
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            isError = estimateError,
+            supportingText = if (estimateError) {
+                { Text(text = stringResource(R.string.ledger_entry_estimate_invalid)) }
+            } else {
+                null
+            },
+            trailingIcon = {
+                FilledIconButton(onClick = onSaveEstimate) {
+                    Icon(imageVector = Icons.Default.Check, contentDescription = stringResource(R.string.vehicle_save))
+                }
+            },
+        )
+    }
+}
+
+/** Large tonal action with the icon above a single-line label (never wraps mid-word). */
+@Composable
+private fun LedgerQuickAction(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        modifier = modifier.heightIn(min = 96.dp),
+    ) {
+        Column(
+            Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(icon, contentDescription = null)
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
+            Text(label, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** Secondary tools grouped as a list: monthly report and the destructive reset. */
+@Composable
+private fun LedgerToolsCard(onOpenMonthly: () -> Unit, onRequestReset: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            LedgerToolRow(
+                label = stringResource(R.string.monthly_open),
+                icon = Icons.Default.DateRange,
+                tint = MaterialTheme.colorScheme.primary,
+                onClick = onOpenMonthly,
+            )
+            HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            LedgerToolRow(
+                label = stringResource(R.string.ledger_entry_reset),
+                icon = Icons.Default.RestartAlt,
+                tint = MaterialTheme.colorScheme.error,
+                onClick = onRequestReset,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LedgerToolRow(label: String, icon: ImageVector, tint: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 56.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = tint)
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = if (tint == MaterialTheme.colorScheme.error) tint else MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun LedgerIconBadge(icon: ImageVector) {
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(40.dp)) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun LedgerCard(content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }
 
@@ -478,17 +564,18 @@ private fun LedgerEntryCard(
         LedgerEntryState.PENDING -> R.string.ledger_entry_state_pending
         LedgerEntryState.CONFLICT -> R.string.ledger_entry_state_conflict
     }
-    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = AnpContainerDefaults.borderStroke(containerColor),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(text = entrySummaryText(row, locale), style = MaterialTheme.typography.titleMedium)
+    LedgerCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            LedgerIconBadge(
+                when (row.summary) {
+                    is LedgerEntrySummary.Refuel -> Icons.Default.LocalGasStation
+                    is LedgerEntrySummary.Expense -> Icons.AutoMirrored.Filled.ReceiptLong
+                    is LedgerEntrySummary.Charge -> Icons.Default.EvStation
+                },
+            )
+            Text(text = entrySummaryText(row, locale), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (row.odometerNeedsReview) Text(stringResource(R.string.ledger_review_entry), style = MaterialTheme.typography.bodySmall)
             Text(
                 text = stringResource(stateRes),
@@ -572,6 +659,10 @@ private fun LedgerEntryFormDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        // Data entry needs room: near full width with a 16 dp gutter.
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(28.dp),
         title = {
             Text(
                 text = stringResource(
@@ -586,7 +677,7 @@ private fun LedgerEntryFormDialog(
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (vehicleHasFuel) {
@@ -609,27 +700,40 @@ private fun LedgerEntryFormDialog(
                         )
                     }
                 }
-                OutlinedTextField(
-                    value = form.dateInput,
-                    onValueChange = onDateChanged,
-                    label = { Text(text = stringResource(R.string.ledger_entry_date)) },
-                    singleLine = true,
-                    isError = form.validationErrorKey == LedgerEntryValidationError.DATE_INVALID,
-                    supportingText = errorText(LedgerEntryValidationError.DATE_INVALID, form),
-                )
-                OutlinedTextField(
-                    value = form.timeInput,
-                    onValueChange = onTimeChanged,
-                    label = { Text(text = stringResource(R.string.ledger_entry_time)) },
-                    singleLine = true,
-                    isError = form.validationErrorKey == LedgerEntryValidationError.DATE_INVALID,
-                    supportingText = errorText(LedgerEntryValidationError.DATE_INVALID, form),
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = form.dateInput,
+                        onValueChange = onDateChanged,
+                        label = { Text(text = stringResource(R.string.ledger_entry_date)) },
+                        leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        isError = form.validationErrorKey == LedgerEntryValidationError.DATE_INVALID,
+                        modifier = Modifier.weight(1.4f),
+                    )
+                    OutlinedTextField(
+                        value = form.timeInput,
+                        onValueChange = onTimeChanged,
+                        label = { Text(text = stringResource(R.string.ledger_entry_time)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        isError = form.validationErrorKey == LedgerEntryValidationError.DATE_INVALID,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                errorText(LedgerEntryValidationError.DATE_INVALID, form)?.let { message ->
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.error,
+                    ) { message() }
+                }
                 if (form.dataset == LedgerDataset.REFUEL) {
                     OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         value = form.quantityInput,
                         onValueChange = onQuantityChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_quantity)) },
+                        suffix = { Text("L") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = form.validationErrorKey == LedgerEntryValidationError.QUANTITY_INVALID,
@@ -647,6 +751,8 @@ private fun LedgerEntryFormDialog(
                 }
                 if (form.dataset == LedgerDataset.CHARGE) {
                     OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         value = form.quantityInput,
                         onValueChange = onQuantityChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_charge_energy)) },
@@ -656,6 +762,8 @@ private fun LedgerEntryFormDialog(
                         supportingText = errorText(LedgerEntryValidationError.QUANTITY_INVALID, form),
                     )
                     OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         value = form.rateInput,
                         onValueChange = onRateChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_charge_rate)) },
@@ -672,6 +780,8 @@ private fun LedgerEntryFormDialog(
                         )
                     }
                     OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         value = form.feesInput,
                         onValueChange = onFeesChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_charge_fees)) },
@@ -681,6 +791,8 @@ private fun LedgerEntryFormDialog(
                         supportingText = errorText(LedgerEntryValidationError.FEES_INVALID, form),
                     )
                     OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         value = form.socStartInput,
                         onValueChange = onSocStartChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_charge_soc_start)) },
@@ -690,6 +802,8 @@ private fun LedgerEntryFormDialog(
                         supportingText = errorText(LedgerEntryValidationError.SOC_INVALID, form),
                     )
                     OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         value = form.socEndInput,
                         onValueChange = onSocEndChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_charge_soc_end)) },
@@ -699,6 +813,8 @@ private fun LedgerEntryFormDialog(
                         supportingText = errorText(LedgerEntryValidationError.SOC_INVALID, form),
                     )
                     OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         value = form.tariffIdInput,
                         onValueChange = onTariffIdChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_charge_tariff)) },
@@ -707,6 +823,8 @@ private fun LedgerEntryFormDialog(
                         supportingText = errorText(LedgerEntryValidationError.TARIFF_INVALID, form),
                     )
                     OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         value = form.tariffRevisionInput,
                         onValueChange = onTariffRevisionChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_charge_tariff_revision)) },
@@ -740,9 +858,12 @@ private fun LedgerEntryFormDialog(
                     }
                 }
                 OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
                     value = form.totalInput,
                     onValueChange = onTotalChanged,
                     label = { Text(text = stringResource(R.string.ledger_entry_total)) },
+                    prefix = { Text("R$ ") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = form.validationErrorKey == LedgerEntryValidationError.TOTAL_INVALID,
@@ -750,6 +871,8 @@ private fun LedgerEntryFormDialog(
                 )
                 if (form.dataset == LedgerDataset.REFUEL) {
                     OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         value = form.unitPriceInput,
                         onValueChange = onUnitPriceChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_unit_price)) },
@@ -776,6 +899,8 @@ private fun LedgerEntryFormDialog(
                     errorText(LedgerEntryValidationError.ODOMETER_REVIEW_REQUIRED,form)?.invoke()
                 }
                 OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
                     value = form.odometerInput,
                     enabled = !form.odometerNeedsReview && !isSaving,
                     onValueChange = onOdometerChanged,
@@ -787,6 +912,8 @@ private fun LedgerEntryFormDialog(
                 )
                 if (form.dataset == LedgerDataset.REFUEL) {
                     OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
                         value = form.stationInput,
                         onValueChange = onStationChanged,
                         label = { Text(text = stringResource(R.string.ledger_entry_station)) },
@@ -796,6 +923,8 @@ private fun LedgerEntryFormDialog(
                     )
                 }
                 OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
                     value = form.noteInput,
                     onValueChange = onNoteChanged,
                     label = { Text(text = stringResource(R.string.ledger_entry_note)) },
@@ -810,7 +939,8 @@ private fun LedgerEntryFormDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onSave, enabled = !isSaving) {
+            Button(onClick = onSave, enabled = !isSaving) {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.padding(end = 6.dp).size(18.dp))
                 Text(text = stringResource(R.string.vehicle_save))
             }
         },
