@@ -155,12 +155,25 @@ func readPortal(t *testing.T, dir, rel string) string {
 	return string(raw)
 }
 
+func fixtureSearchRelease(t *testing.T, out string) string {
+	t.Helper()
+	dirs, err := filepath.Glob(filepath.Join(out, "dados", "busca", "*"))
+	if err != nil || len(dirs) != 1 {
+		t.Fatalf("search releases = %v, err = %v", dirs, err)
+	}
+	return filepath.Base(dirs[0])
+}
+
 func TestGenerateFixturePages(t *testing.T) {
 	snapshot := writeFixture(t)
 	out := filepath.Join(t.TempDir(), "portal")
 	result, err := Generate(Options{SnapshotDir: snapshot, OutputDir: out})
 	if err != nil {
 		t.Fatal(err)
+	}
+	searchRelease := fixtureSearchRelease(t, out)
+	if searchRelease == "fixture" {
+		t.Fatal("search shards must not reuse the immutable snapshot URL")
 	}
 	// 28 page/asset/download files + 15 search index files: 10 prefix shards
 	// (7 name terms, 3 CNPJ prefixes), 2 cities, 2 fuels and indice.json.
@@ -175,8 +188,8 @@ func TestGenerateFixturePages(t *testing.T) {
 		"metodologia/index.html", "fiscalizacao/index.html", "404.html",
 		"curiosidades/index.html", "dados/index.html",
 		"robots.txt", "portal-manifest.json",
-		"dados/busca/fixture/SP.json", "dados/busca/fixture/MG.json",
-		"dados/busca/fixture/sem-uf.json",
+		"dados/busca/" + searchRelease + "/SP.json", "dados/busca/" + searchRelease + "/MG.json",
+		"dados/busca/" + searchRelease + "/sem-uf.json",
 		"dados/fixture/estacoes.csv", "dados/fixture/precos.csv",
 		"dados/fixture/resumos.csv", "dados/fixture/manifest.json",
 	} {
@@ -191,14 +204,14 @@ func TestGenerateFixturePages(t *testing.T) {
 	consultar := readPortal(t, out, "consultar/index.html")
 	for _, want := range []string{
 		"São Paulo (SP)", "Minas Gerais (MG)", "5 postos", "1 posto",
-		`data-portal-finder`, `data-release="fixture"`, `data-shard-base="/dados/busca/"`,
+		`data-portal-finder`, `data-release="` + searchRelease + `"`, `data-shard-base="/dados/busca/"`,
 		`data-finder-input`, `data-finder-suggestions`, `data-finder-status`, `data-finder-results`,
 	} {
 		if !strings.Contains(consultar, want) {
 			t.Errorf("consultar missing %q", want)
 		}
 	}
-	shardRaw, err := os.ReadFile(filepath.Join(out, "dados/busca/fixture/SP.json"))
+	shardRaw, err := os.ReadFile(filepath.Join(out, "dados/busca/"+searchRelease+"/SP.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +219,7 @@ func TestGenerateFixturePages(t *testing.T) {
 	if err := json.Unmarshal(shardRaw, &sp); err != nil {
 		t.Fatal(err)
 	}
-	if sp.Schema != SearchSchema || sp.Release != "fixture" || sp.UF != "SP" || sp.Count != 5 || len(sp.Stations) != 5 {
+	if sp.Schema != SearchSchema || sp.Release != searchRelease || sp.UF != "SP" || sp.Count != 5 || len(sp.Stations) != 5 {
 		t.Errorf("SP shard = %+v", sp)
 	}
 	foundA, foundE, foundG := false, false, false
@@ -234,10 +247,10 @@ func TestGenerateFixturePages(t *testing.T) {
 	if !foundA || !foundE || !foundG {
 		t.Errorf("SP shard missing fixture stations")
 	}
-	if _, err := os.Stat(filepath.Join(out, "dados/busca/fixture/epsilon.json")); err == nil {
+	if _, err := os.Stat(filepath.Join(out, "dados/busca/"+searchRelease+"/epsilon.json")); err == nil {
 		t.Error("unexpected national/extra shard")
 	}
-	if _, err := os.Stat(filepath.Join(out, "dados/busca/fixture/all.json")); err == nil {
+	if _, err := os.Stat(filepath.Join(out, "dados/busca/"+searchRelease+"/all.json")); err == nil {
 		t.Error("national shard must not be generated")
 	}
 	curiosidades := readPortal(t, out, "curiosidades/index.html")

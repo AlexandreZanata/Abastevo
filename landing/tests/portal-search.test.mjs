@@ -263,7 +263,7 @@ test('consultar searches nationally by name without choosing a state', async () 
     fetch: jsonFetch({
       '/dados/busca/rel/indice.json': INDEX,
       '/dados/busca/rel/p/n-she.json': { schema: 'abastevo-search-prefix-v1', release: 'rel', key: 'n-she', count: 2, stations: [
-        station({ n: 'Auto Posto Shell Centro', s: 'auto posto shell centro', mn: 'Sorriso', u: 'MT' }),
+        station({ n: 'Auto Posto Shell Centro', s: 'auto posto shell centro', a: 'Rua Exemplo, 10 – Sorriso/MT', mn: 'Sorriso', u: 'MT' }),
         station({ i: '00000000-0000-4000-8000-000000000002', n: 'Shell Avenida', s: 'shell avenida', mn: 'Curitiba', u: 'PR' }),
       ] },
     }, urls),
@@ -275,7 +275,7 @@ test('consultar searches nationally by name without choosing a state', async () 
   const results = page.el['[data-finder-results]'].children;
   assert.equal(results.length, 1);
   assert.equal(results[0].children[0].textContent, 'Auto Posto Shell Centro');
-  assert.match(results[0].children[1].textContent, /Sorriso\/MT/);
+  assert.match(results[0].children[1].textContent, /Rua Exemplo, 10 – Sorriso\/MT/);
   assert.match(page.el['[data-finder-status]'].textContent, /1 posto encontrado no Brasil/);
 });
 
@@ -293,6 +293,7 @@ test('consultar applies the landing hand-off as a state scope', async () => {
   assert.equal(page.el['[data-finder-input]'].value, 'alfa');
   assert.match(page.el['[data-finder-scope]'].children[0].textContent, /Estado: São Paulo \(SP\)/);
   assert.equal(page.el['[data-finder-results]'].children.length, 1);
+  assert.match(page.el['[data-finder-results]'].children[0].children[1].textContent, /São Paulo\/SP/);
 });
 
 test('prices explorer ranks one fuel and links each price to its station', async () => {

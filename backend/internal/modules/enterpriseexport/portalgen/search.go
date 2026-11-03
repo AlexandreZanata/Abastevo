@@ -28,6 +28,7 @@ type searchShard struct {
 type searchStation struct {
 	ID               string           `json:"i"`
 	Name             string           `json:"n"`
+	AddressLine      string           `json:"a,omitempty"`
 	SearchName       string           `json:"s"`
 	CNPJ             string           `json:"c,omitempty"`
 	Municipality     string           `json:"m,omitempty"`
@@ -106,6 +107,7 @@ func buildSearchShards(snapshot enterpriseexport.Snapshot, observations []observ
 			row := searchStation{
 				ID: station.StationID, Name: station.DisplayName,
 				SearchName:       normalizeSearchName(station.DisplayName),
+				AddressLine:      addressLine(station.Address),
 				CNPJ:             normalizeCNPJValue(station.CNPJ),
 				Municipality:     station.MunicipalityCode,
 				MunicipalityName: municipalityLabel(station.MunicipalityCode, station.Address["municipio"]),

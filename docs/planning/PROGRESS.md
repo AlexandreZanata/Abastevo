@@ -53,7 +53,10 @@
   fallback and coordinate rejection; portal/export race suites and vet pass.
   Main reconciled at cd78249e. SNA-06B LOCAL_DONE: admin station lookup
   exposes both public names and address source, with 50 tests, typecheck,
-  build and dist checks passing (parent 02cbf7b5 plus child). Next landing.
+  build and dist checks passing (parent 02cbf7b5 plus child). SNA-06C
+  LOCAL_DONE: sourced address in landing search, legacy shard fallback, new
+  immutable search path with existing CSV URLs preserved. Portal/export race
+  suites, vet and 76 landing tests pass. Next EVC-04 real PostGIS links.
   [Portal evidence](../backend/evidence/sna/SNA-06.md).
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact
   recovery owed after restart.
