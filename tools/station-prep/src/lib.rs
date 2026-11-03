@@ -96,3 +96,6 @@ pub mod ev_hierarchy;
 pub mod ev_conflation;
 
 pub mod ev_conflation_preparation;
+
+/// Per-generation attribution and source rights.
+pub mod ev_rights;

@@ -60,7 +60,10 @@
   candidate rules for exact OSM or 75 m with sourced name/reviewed brand,
   including ambiguity and revocation. EVC-04B LOCAL_DONE: migration 000150,
   source/manual precedence, concurrent idempotent replay and rollback on
-  real PostGIS. Charging unit/race and vet pass. Next EVC-05 rights.
+  real PostGIS. Charging unit/race and vet pass. EVC-05A LOCAL_DONE: pinned
+  generation rights validate every retained assertion and refuse missing or
+  mismatched provider terms. Full Rust tests and Clippy pass. Next derived
+  database offer and the release gate. [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact
