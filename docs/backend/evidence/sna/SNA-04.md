@@ -1,6 +1,6 @@
 # SNA-04 — Source-backed address enrichment
 
-Status: IN_PROGRESS
+Status: LOCAL_DONE / INTEGRATION_PENDING
 
 Bounded children: SNA-04A pure address selection and proof/rights gates;
 SNA-04B pinned private preparation and additive loader provenance;
@@ -152,3 +152,62 @@ specific owner approval; the earlier VPS inventory approval covered images,
 receipts and aggregate charging counts only. Raw temporary EV artifacts were
 also absent after the host session changed; their committed fingerprints and
 censuses remain evidence, and exact-pin recovery is needed before review/import.
+
+## SNA-04C opening
+
+B-BR-STATION-ADDRESS-04C: Compare two private preparations of identical station,
+municipality and name inputs. The baseline has no supplemental address sources;
+the second adds only admitted pinned address evidence. Audit each current unique
+CNPJ and its unchanged identity/original facts, excluding history and repeats.
+Both sets must reconcile independently to before/after national and per-UF
+counts. Emit only aggregate evidence and hashes, never addresses or IDs.
+
+BUC-SNA-04C: Verify both prepared manifest identities and assertion bytes,
+recompute the paired census, refuse changed universes, malformed input and
+unreconciled counters. First prove the audit with synthetic inputs; perform the
+real run only after the owner approves the exact source transfer/acquisition.
+No database import or staging write is implied by source transfer approval.
+
+
+## SNA-04C checkpoint
+
+Status: LOCAL_DONE
+Validation: PASS
+
+Tested parent 8bb0d1df plus this child. The independent file auditor verifies
+both manifest and assertion-stream hashes, exact repeat accounting, historical
+links to the current assertion of the same CNPJ, unchanged original facts and
+identical current station universes. It recomputes national/per-UF transitions
+from those rows and refuses contradictory summaries. Four synthetic groups pass,
+including corruption, false history, altered source facts and miscount. The
+actual Rust preparer also passes a paired synthetic baseline/enrichment check.
+The 22 offline Python groups and shell/diff/secret checks pass.
+
+The owner authorized only a bounded read/copy of existing minimized public test
+cache data. The transfer used 8,221,285 bytes for the pinned ANP registry, IBGE
+aliases and OSM address evidence, with no database access, staging write or
+external source download. Registry input and alias bytes were verified against
+the existing prepared manifest; cached registry assertions, OSM references and
+match decision/clock files matched their recorded hashes. The OSM stream retains
+raw `addr:*` components only from unique accepted exact-CNPJ fuel POI matches,
+verifies each CNPJ against the source tags (`ref:vatin`/`ref:CNPJ`), and binds the
+observed match date 2026-10-27. No contact tags, coordinates or raw extracts were
+copied. The 19 qualifying matches yield 17 address rows (two without a street).
+[Transfer receipt and source fingerprints](SNA-04-cache-20261103.json).
+
+**Real result:** 45,688 current distinct stations in all 27 UFs. Before and after
+both have 45,687 ANP addresses and one municipality fallback in TO. All 17 OSM
+candidates bind to the registry and already have usable ANP addresses; the
+precedence rule correctly preserves them. There is no measured coverage gain
+from this cached OSM subset. RFB's cached 6,714 minimized records lack explicit
+active status, so none are admitted; CNEFE remains skipped for unverified reuse.
+The data does not establish that those sources cannot fill the remaining gap
+with different admitted inputs. Neither raw source matches nor personal data
+are included in the [national/per-UF census](SNA-04-census-20261103.json).
+
+Baseline and enriched manifests are independently pinned in that census. The
+Go validator accepts both real artifacts fully in memory; the Rust preparation
+took 7.771 s and 7.685 s respectively. This is file coverage for the pinned ANP
+registry, not a live database comparison or a national physical inventory.
+No backfill, real import, publication or new staging acceptance occurred.
+Next source task: SNA-05 Android names and address display/search.

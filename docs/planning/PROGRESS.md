@@ -35,8 +35,12 @@
   LOCAL_DONE: v4 hash-bound preparation, immutable JSONB provenance (migration
   149), before/after distinct-current-CNPJ census; v1..v3 preserved. Full Rust
   gate and directory race/real PostGIS, replay, rollback and upgrade tests pass
-  on parent c4a5b1d6 plus child. Next SNA-04C authorized real inputs/census,
-  then SNA-05..06. Exact-pin EV raw artifact recovery owed after host restart.
+  on parent c4a5b1d6 plus child. SNA-04C LOCAL_DONE: owner-approved read-only
+  cache copy, 45,688 current CNPJs in 27 UFs; before/after both 45,687 ANP
+  addresses and one municipality fallback (TO). All 17 exact OSM candidates
+  retain ANP precedence; RFB status absent and CNEFE rights pending. Independent
+  paired census and real file-only Go admission pass (parent 8bb0d1df plus
+  child). Next SNA-05..06. Exact-pin EV raw artifact recovery owed after restart.
   [Address evidence](../backend/evidence/sna/SNA-04.md). [Conflation](../backend/evidence/evc/EVC-03.md).
   Read-only staging baseline (12:40Z): 48,770 station rows / 40,388 points /
   3,003 without UF; zero charging batches/links. PR #183 merged d0eb9c79,

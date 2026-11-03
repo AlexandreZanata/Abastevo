@@ -1,0 +1,245 @@
+{
+  "baseline_manifest_sha256": "da0ee923e8dd17fb65b61a9d60e701c11250e7584c09791c139ad2f61594db80",
+  "by_uf": {
+    "AC": {
+      "after": {
+        "anp": 192
+      },
+      "before": {
+        "anp": 192
+      }
+    },
+    "AL": {
+      "after": {
+        "anp": 568
+      },
+      "before": {
+        "anp": 568
+      }
+    },
+    "AM": {
+      "after": {
+        "anp": 857
+      },
+      "before": {
+        "anp": 857
+      }
+    },
+    "AP": {
+      "after": {
+        "anp": 145
+      },
+      "before": {
+        "anp": 145
+      }
+    },
+    "BA": {
+      "after": {
+        "anp": 3710
+      },
+      "before": {
+        "anp": 3710
+      }
+    },
+    "CE": {
+      "after": {
+        "anp": 2026
+      },
+      "before": {
+        "anp": 2026
+      }
+    },
+    "DF": {
+      "after": {
+        "anp": 390
+      },
+      "before": {
+        "anp": 390
+      }
+    },
+    "ES": {
+      "after": {
+        "anp": 799
+      },
+      "before": {
+        "anp": 799
+      }
+    },
+    "GO": {
+      "after": {
+        "anp": 2062
+      },
+      "before": {
+        "anp": 2062
+      }
+    },
+    "MA": {
+      "after": {
+        "anp": 1789
+      },
+      "before": {
+        "anp": 1789
+      }
+    },
+    "MG": {
+      "after": {
+        "anp": 5037
+      },
+      "before": {
+        "anp": 5037
+      }
+    },
+    "MS": {
+      "after": {
+        "anp": 632
+      },
+      "before": {
+        "anp": 632
+      }
+    },
+    "MT": {
+      "after": {
+        "anp": 1170
+      },
+      "before": {
+        "anp": 1170
+      }
+    },
+    "PA": {
+      "after": {
+        "anp": 1739
+      },
+      "before": {
+        "anp": 1739
+      }
+    },
+    "PB": {
+      "after": {
+        "anp": 885
+      },
+      "before": {
+        "anp": 885
+      }
+    },
+    "PE": {
+      "after": {
+        "anp": 1634
+      },
+      "before": {
+        "anp": 1634
+      }
+    },
+    "PI": {
+      "after": {
+        "anp": 1239
+      },
+      "before": {
+        "anp": 1239
+      }
+    },
+    "PR": {
+      "after": {
+        "anp": 2957
+      },
+      "before": {
+        "anp": 2957
+      }
+    },
+    "RJ": {
+      "after": {
+        "anp": 1994
+      },
+      "before": {
+        "anp": 1994
+      }
+    },
+    "RN": {
+      "after": {
+        "anp": 736
+      },
+      "before": {
+        "anp": 736
+      }
+    },
+    "RO": {
+      "after": {
+        "anp": 534
+      },
+      "before": {
+        "anp": 534
+      }
+    },
+    "RR": {
+      "after": {
+        "anp": 148
+      },
+      "before": {
+        "anp": 148
+      }
+    },
+    "RS": {
+      "after": {
+        "anp": 3156
+      },
+      "before": {
+        "anp": 3156
+      }
+    },
+    "SC": {
+      "after": {
+        "anp": 2094
+      },
+      "before": {
+        "anp": 2094
+      }
+    },
+    "SE": {
+      "after": {
+        "anp": 339
+      },
+      "before": {
+        "anp": 339
+      }
+    },
+    "SP": {
+      "after": {
+        "anp": 8381
+      },
+      "before": {
+        "anp": 8381
+      }
+    },
+    "TO": {
+      "after": {
+        "anp": 474,
+        "municipality": 1
+      },
+      "before": {
+        "anp": 474,
+        "municipality": 1
+      }
+    }
+  },
+  "enriched_manifest_sha256": "f1b7afbba4b5c072d6917043d847d8ee84f9d82fb194c6b432c8d622cf51aba3",
+  "format": "abastevo.station-address-census-audit-v1",
+  "go_in_memory_admission": "PASS_BOTH_ARTIFACTS",
+  "national": {
+    "after": {
+      "anp": 45687,
+      "municipality": 1
+    },
+    "before": {
+      "anp": 45687,
+      "municipality": 1
+    }
+  },
+  "no_database_import": true,
+  "prep_elapsed_seconds": {
+    "baseline": 7.771,
+    "enriched": 7.685
+  },
+  "source_policy_sha256": "ec242e9c5ec8f40cee1e49c025ffb4826201c84b5595ef3ee24b794fda6fa454",
+  "station_count": 45688,
+  "status": "LOCAL_REAL_CENSUS_VERIFIED",
+  "units": "current distinct station CNPJs in the same pinned registry input"
+}
