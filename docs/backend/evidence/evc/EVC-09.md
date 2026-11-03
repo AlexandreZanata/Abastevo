@@ -75,3 +75,30 @@ and the subsequent full suite passed. Debug APK and test APK builds,
 whitespace and secret review passed.
 
 Status: LOCAL_DONE / INTEGRATION_PENDING.
+
+## EVC-09C typed community charging intake
+
+B-BR-EVC-09C. A missing charger is a typed private proposal through
+the existing authenticated, quota-limited, idempotent intake. A public
+name or street address is required. A charger proposal carries neither
+a fuel CNPJ nor contributor coordinates. Fuel directory moderation cannot
+approve it as a fuel station. A proposal never becomes a public pin.
+
+BUC-EVC-09C. Submit an address-only charging proposal, replay it, refuse
+a changed payload or invalid target, and verify persistence and owner
+isolation in PostGIS. A forged charging proposal with a fuel identifier
+cannot pass either fuel verification path.
+
+RED received HTTP 400 for a typed address-only charging proposal. The
+existing private intake now accepts the additive `charging_site` kind
+and keeps prior fuel payloads and idempotent replay compatible. Typed
+records stay outside the automatic fuel queue and cannot be linked by
+the fuel approval path. The existing owner status and cancellation
+remain available. This checkpoint creates no public charging record.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. Real PostGIS covered typed
+persistence, replay, owner isolation and exclusion from the fuel queue.
+HTTP and application tests covered invalid fields and approval refusal.
+Race checks, SQLc generation/vet, Go vet, staticcheck, OpenAPI lint with
+zero errors, whitespace and secret review passed. Android submission
+and the gap action are the next task.

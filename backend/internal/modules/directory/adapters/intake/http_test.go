@@ -193,3 +193,25 @@ func TestStatusCancelAreOwnerOnly(t *testing.T) {
 		t.Fatalf("mine = %d: %s", mine.Code, mine.Body.String())
 	}
 }
+
+func TestChargingProposalUsesPrivateIntakeWithoutFuelIdentity(t *testing.T) {
+	h := testHandler(signedIn)
+	body := `{"family_id":"fam","access_token":"tok","client_submission_id":"charge-1","proposal":{"kind":"charging_site","display_name":"","public_address":"Synthetic Street, 7","municipality_code":"3550308","state":"SP"}}`
+	first := doRequest(h, http.MethodPost, "/v1/stations/suggestions", body)
+	if first.Code != http.StatusCreated || first.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("private charger intake = %d: %s", first.Code, first.Body.String())
+	}
+	if response := doRequest(h, http.MethodPost, "/v1/stations/suggestions", body); response.Code != http.StatusOK {
+		t.Fatalf("charging replay = %d: %s", response.Code, response.Body.String())
+	}
+	changed := strings.Replace(body, "Synthetic Street, 7", "Synthetic Street, 8", 1)
+	if response := doRequest(h, http.MethodPost, "/v1/stations/suggestions", changed); response.Code != http.StatusConflict {
+		t.Fatalf("charging conflict = %d: %s", response.Code, response.Body.String())
+	}
+	for _, extra := range []string{`,"cnpj_normalized":"04218406000104"`, `,"has_coordinates":true,"latitude":-23.5,"longitude":-46.6`} {
+		invalid := strings.Replace(body, `"state":"SP"`, `"state":"SP"`+extra, 1)
+		if response := doRequest(h, http.MethodPost, "/v1/stations/suggestions", invalid); response.Code != http.StatusBadRequest {
+			t.Fatalf("invalid charging input = %d: %s", response.Code, response.Body.String())
+		}
+	}
+}

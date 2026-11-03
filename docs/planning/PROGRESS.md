@@ -116,7 +116,9 @@
   1,658 sites reconcile to 567 municipality codes and 25 UFs; 11 sites
   remain unassigned. ABVE/Tupi uses a distinct points unit. EVC-09B
   LOCAL_DONE: open-source and gap wording in eight locales and owner
-  candidate list. Next typed missing-charger intake. [Coverage](../backend/evidence/evc/EVC-09.md).
+  candidate list. EVC-09C LOCAL_DONE: authenticated private charging
+  suggestions cannot enter fuel approval. Next Android gap action and
+  submission. [Coverage](../backend/evidence/evc/EVC-09.md).
   [Refresh evidence](../backend/evidence/evc/EVC-08.md).
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).

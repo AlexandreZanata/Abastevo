@@ -1094,7 +1094,7 @@ const listPendingSuggestions = `-- name: ListPendingSuggestions :many
 SELECT id, account_id, client_submission_id, proposal, evidence_ref,
     state, created_at, decided_at
 FROM station_suggestions
-WHERE state = 'pending'
+WHERE state = 'pending' AND COALESCE(proposal->>'kind', '') = ''
 ORDER BY created_at ASC
 LIMIT $1::int
 `

@@ -11426,10 +11426,20 @@ components:
         Structured station suggestion body (P27-T01, B-BR-D07/D08):
         display name plus municipality code and state; optional
         kernel-validated CNPJ text, optional bounded coordinates and
-        an opaque private-evidence reference. Never grants ownership.
+        an opaque private-evidence reference. A charging_site proposal
+        carries a name or public address and has no CNPJ or coordinates.
+        Never grants ownership or creates a public place.
       type: object
       required: [display_name, municipality_code, state]
       properties:
+        kind:
+          description: Omit for a fuel station suggestion.
+          type: string
+          enum: [charging_site]
+        public_address:
+          description: Optional public street address for a charging site suggestion.
+          type: string
+          maxLength: 240
         display_name:
           type: string
           example: Posto Novo

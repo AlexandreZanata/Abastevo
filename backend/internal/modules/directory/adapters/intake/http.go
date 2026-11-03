@@ -41,6 +41,8 @@ type sessionDTO struct {
 }
 
 type proposalDTO struct {
+	Kind             string  `json:"kind"`
+	PublicAddress    string  `json:"public_address"`
 	DisplayName      string  `json:"display_name"`
 	MunicipalityCode string  `json:"municipality_code"`
 	State            string  `json:"state"`
@@ -122,6 +124,7 @@ func (h Handler) submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	suggestion, created, err := h.Service.Submit(r.Context(), accountID, dto.ClientSubmissionID, application.ProposalInput{
+		Kind: dto.Proposal.Kind, PublicAddress: dto.Proposal.PublicAddress,
 		DisplayName: dto.Proposal.DisplayName, MunicipalityCode: dto.Proposal.MunicipalityCode,
 		State: dto.Proposal.State, CNPJ: dto.Proposal.CNPJ,
 		Latitude: dto.Proposal.Latitude, Longitude: dto.Proposal.Longitude,
