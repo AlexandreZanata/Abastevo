@@ -1,5 +1,8 @@
 package com.anpfuel.maps.engine
 
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Arrangement
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -61,6 +64,10 @@ fun MapHost(
     recenterBottomInset: Dp = 16.dp,
     /** Follows the app theme; null leaves the native appearance untouched. */
     darkMode: Boolean? = null,
+    /** App-owned recenter glyph (the engine module ships no icon set). */
+    recenterIcon: @Composable () -> Unit = { Text("◎", style = MaterialTheme.typography.titleLarge) },
+    /** Extra round map controls stacked above recenter (for example layers/filters). */
+    extraControls: @Composable ColumnScope.() -> Unit = {},
 ) {
     val vm: MapViewModel = hiltViewModel()
     MapHostContent(
@@ -77,6 +84,8 @@ fun MapHost(
         active = active,
         recenterBottomInset = recenterBottomInset,
         darkMode = darkMode,
+        recenterIcon = recenterIcon,
+        extraControls = extraControls,
     )
 }
 
@@ -101,6 +110,10 @@ fun MapHost(
     recenterBottomInset: Dp = 16.dp,
     /** Follows the app theme; null leaves the native appearance untouched. */
     darkMode: Boolean? = null,
+    /** App-owned recenter glyph (the engine module ships no icon set). */
+    recenterIcon: @Composable () -> Unit = { Text("◎", style = MaterialTheme.typography.titleLarge) },
+    /** Extra round map controls stacked above recenter (for example layers/filters). */
+    extraControls: @Composable ColumnScope.() -> Unit = {},
 ) {
     val context = LocalContext.current
     val store = cameraStore ?: remember(context) { SharedPreferencesMapCameraStore(context) }
@@ -129,6 +142,8 @@ fun MapHost(
         active = active,
         recenterBottomInset = recenterBottomInset,
         darkMode = darkMode,
+        recenterIcon = recenterIcon,
+        extraControls = extraControls,
     )
 }
 
@@ -148,6 +163,10 @@ private fun MapHostContent(
     recenterBottomInset: Dp = 16.dp,
     /** Follows the app theme; null leaves the native appearance untouched. */
     darkMode: Boolean? = null,
+    /** App-owned recenter glyph (the engine module ships no icon set). */
+    recenterIcon: @Composable () -> Unit = { Text("◎", style = MaterialTheme.typography.titleLarge) },
+    /** Extra round map controls stacked above recenter (for example layers/filters). */
+    extraControls: @Composable ColumnScope.() -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -253,7 +272,10 @@ private fun MapHostContent(
                     end = 16.dp,
                     bottom = recenterBottomInset,
                 ),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                extraControls()
                 // Permission/GPS states never block browsing; they annotate recenter.
                 if (!state.hasLocationPermission && state.deniedForever) {
                     Surface(shape = MaterialTheme.shapes.small, tonalElevation = 3.dp) {
@@ -281,8 +303,10 @@ private fun MapHostContent(
                     }
                 }
                 Surface(
-                    shape = MaterialTheme.shapes.small,
-                    tonalElevation = 3.dp,
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    shadowElevation = 6.dp,
                 ) {
                     IconButton(
                         onClick = {
@@ -292,11 +316,11 @@ private fun MapHostContent(
                                 permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
                             }
                         },
-                        modifier = Modifier.size(48.dp).semantics {
+                        modifier = Modifier.size(56.dp).semantics {
                             contentDescription = recenterDescription
                         },
                     ) {
-                        Text("◎", style = MaterialTheme.typography.titleLarge)
+                        recenterIcon()
                     }
                 }
             }

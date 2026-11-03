@@ -1,5 +1,6 @@
 package com.anpfuel.app.navigation
 
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
@@ -141,6 +142,12 @@ fun AnpNavGraph(
                     onReady = { mapReady = it },
                     active = isMapRoute,
                     recenterBottomInset = mapBottomOverlayInset,
+                    recenterIcon = {
+                        androidx.compose.material3.Icon(
+                            androidx.compose.material.icons.Icons.Default.MyLocation,
+                            contentDescription = null,
+                        )
+                    },
                 )
             }
             if (!isMapRoute) {
