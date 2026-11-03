@@ -24,6 +24,31 @@ class ChargingSnapshotJsonCodecTest {
         JSONObject("""{"items":[$items],"next_cursor":$next,"generated_at":"2026-10-22T00:00:00Z"}""")
 
     @Test
+    fun `retains distinct provider attribution and accepts legacy omission`() {
+        val osm = JSONObject("""{"source":"OSM","external_id":"node:7","revision":"synthetic-osm","license":"ODbL-1.0","attribution":"© OpenStreetMap contributors (ODbL)"}""")
+        val ocm = JSONObject("""{"source":"OCM","external_id":"7","revision":"synthetic-ocm","provider_id":40,"license":"CC-0","attribution":"Easy Volt"}""")
+        val sources = org.json.JSONArray().put(osm).put(ocm)
+        val decoded = ChargingSnapshotJsonCodec.decodePlaceDetail(detail().put("sources", sources))
+        assertEquals(listOf("© OpenStreetMap contributors (ODbL)", "Easy Volt"), decoded.sources.map { it.attribution })
+        assertEquals(listOf(null, 40L), decoded.sources.map { it.providerId })
+        assertEquals(listOf("ODbL-1.0", "CC-0"), decoded.sources.map { it.license })
+        assertEquals(decoded.sources, ChargingSnapshotJsonCodec.decodePlacePage(page(place(",\"sources\":$sources"))).items.single().sources)
+        assertEquals(emptyList<Any>(), ChargingSnapshotJsonCodec.decodePlaceDetail(detail()).sources)
+        ocm.put("provider_id", 40.5)
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(detail().put("sources", sources))
+        }
+        ocm.remove("provider_id")
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(detail().put("sources", sources))
+        }
+        ocm.put("provider_id", 40).put("contact", "synthetic private")
+        assertThrows(ChargingSnapshotUnavailable::class.java) {
+            ChargingSnapshotJsonCodec.decodePlaceDetail(detail().put("sources", sources))
+        }
+    }
+
+    @Test
     fun `valid page detail and coverage decode with raw retention`() {
         val parsed = ChargingSnapshotJsonCodec.decodePlacePage(page())
         assertEquals(1, parsed.items.size)

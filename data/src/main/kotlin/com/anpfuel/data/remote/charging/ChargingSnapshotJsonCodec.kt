@@ -1,5 +1,6 @@
 package com.anpfuel.data.remote.charging
 
+import com.anpfuel.data.mapper.ChargingSourceAttributionJson
 import com.anpfuel.domain.charging.ChargingAccess
 import com.anpfuel.domain.charging.ChargingConnectionGroup
 import com.anpfuel.domain.charging.ChargingCoverage
@@ -89,6 +90,7 @@ object ChargingSnapshotJsonCodec {
             publicAccess = wireAccess(reqText(item, "public_access")),
             reportedPoints = reqCount(item, "reported_points"),
             groups = emptyList(),
+            sources = if (item.has("sources")) ChargingSourceAttributionJson.decode(item.getJSONArray("sources")) else emptyList(),
         )
     }
 

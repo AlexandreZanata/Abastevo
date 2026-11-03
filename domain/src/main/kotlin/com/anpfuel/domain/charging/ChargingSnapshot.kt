@@ -67,6 +67,25 @@ data class ChargingConnectionGroup(
     }
 }
 
+/** Public attribution for one admitted source assertion. */
+data class ChargingSourceAttribution(
+    val source: String,
+    val externalId: String,
+    val revision: String,
+    val providerId: Long?,
+    val license: String,
+    val attribution: String,
+) {
+    init {
+        require(source == "OSM" || source == "OCM")
+        require(if (source == "OCM") providerId != null && providerId > 0 else providerId == null)
+        require(externalId.isNotBlank() && externalId.length <= 128 && externalId.none(Char::isISOControl))
+        require(revision.isNotBlank() && revision.length <= 128 && revision.none(Char::isISOControl))
+        require(license.isNotBlank() && license.length <= 512 && license.none(Char::isISOControl))
+        require(attribution.isNotBlank() && attribution.length <= 512 && attribution.none(Char::isISOControl))
+    }
+}
+
 /** One public charging location. Absent coordinates stay null (unknown);
  * no centroid is ever fabricated. No private fields cross this type. */
 data class ChargingPlace(
@@ -80,6 +99,7 @@ data class ChargingPlace(
     val publicAccess: ChargingAccess,
     val reportedPoints: Long,
     val groups: List<ChargingConnectionGroup>,
+    val sources: List<ChargingSourceAttribution> = emptyList(),
 ) {
     init {
         require(canonicalId.matches(id))
@@ -91,6 +111,7 @@ data class ChargingPlace(
         require(longitude == null || validDecimal(longitude, BigDecimal("-180"), BigDecimal("180")))
         require(reportedPoints >= 0)
         require(groups.map { it.id }.distinct().size == groups.size)
+        require(sources.size <= 100 && sources.distinctBy { it.source to it.externalId }.size == sources.size)
     }
 }
 

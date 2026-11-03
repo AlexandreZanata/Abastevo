@@ -66,7 +66,9 @@
   candidate gate reject missing or changed rights/data/notice. Full Rust
   tests and Clippy pass. EVC-05C LOCAL_DONE: optional charging API source
   terms and cache tags; charging race, real legacy HTTP and OpenAPI pass.
-  Next Android and offline attribution. [Rights evidence](../backend/evidence/evc/EVC-05.md).
+  EVC-05D1 LOCAL_DONE: Android page/detail attribution decode, with
+  legacy compatibility and strict nested validation. Next offline persistence
+  and detail presentation. [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact

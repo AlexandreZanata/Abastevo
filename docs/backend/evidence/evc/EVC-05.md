@@ -71,3 +71,21 @@ synthetic wire test failed on missing terms and unchanged detail ETag
 before the change. Charging race tests, legacy HTTP traversal on real
 PostGIS, vet, OpenAPI lint (zero errors), format and secret checks pass.
 The national reader will populate the field when EVC-06 admits a batch.
+
+## EVC-05D1 opening
+
+B-BR-EV-RIGHTS-01. Decode each charging source's public identity and exact
+licence and attribution. A legacy response may omit the source list.
+A malformed source assertion must not become an unattributed place.
+
+BUC-EVC-05D1. Decode a combined place and verify both distinct notices.
+Reject unknown nested fields, missing OCM provider and fractional IDs.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The new codec test first failed because source terms were discarded.
+Page and detail decoding now retain distinct provider terms and reject
+private or unknown nested fields, absent provider identity and fractional
+provider IDs. The existing no-sources response still decodes. The domain,
+codec and transport suites, whitespace and secret checks pass.
