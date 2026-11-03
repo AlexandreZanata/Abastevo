@@ -180,3 +180,52 @@ pub fn validate_bundle(catalog: &Path, manifest_sha256: &str, bundle: &Path) -> 
     validate_files(bundle, &admission)?;
     Ok(admission.rights)
 }
+
+pub(crate) fn catalog_geography(
+    index: &crate::ev_geography::StateIndex,
+    catalog_digest: &str,
+    sites: &[CanonicalSite],
+) -> Value {
+    let mut records: Vec<_> = sites.iter().collect();
+    records.sort_by(|a, b| a.key.cmp(&b.key));
+    let decisions: Vec<_> = records
+        .into_iter()
+        .map(|site| {
+            let result = index.classify(
+                site.point.latitude_decimal.parse().unwrap_or(f64::NAN),
+                site.point.longitude_decimal.parse().unwrap_or(f64::NAN),
+            );
+            json!({"key":site.key,"uf":result.uf.as_deref().unwrap_or("UNASSIGNED"),"reason":result.reason})
+        })
+        .collect();
+    json!({
+        "format":"abastevo.ev-catalog-geography-v1",
+        "catalog_sha256":catalog_digest,
+        "boundary_sha256":index.source_sha256,
+        "sites":decisions
+    })
+}
+
+/// Produce the geography sidecar separately from the three-file rights offer.
+pub fn prepare_geography(
+    catalog: &Path,
+    manifest_sha256: &str,
+    boundaries: &Path,
+    output: &Path,
+) -> Result<Value> {
+    let admission = admit(catalog, manifest_sha256)?;
+    let boundary_digest = SourcePins::frozen().boundary_sha256;
+    let raw = checked_raw(boundaries, 8 << 20, &boundary_digest)?;
+    let index = crate::ev_geography::StateIndex::from_bytes(&raw)
+        .map_err(|_| PrepError("boundary model refused"))?;
+    let catalog_digest = admission.rights["catalog_sha256"]
+        .as_str()
+        .expect("admitted digest");
+    let geography = catalog_geography(&index, catalog_digest, &admission.sites);
+    let bytes =
+        serde_json::to_vec(&geography).map_err(|_| PrepError("geography encoding refused"))?;
+    if bytes.len() > 64 << 20 {
+        return Err(PrepError("geography file budget exceeded"));
+    }
+    write_bytes(output, &bytes)
+}

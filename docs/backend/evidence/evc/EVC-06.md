@@ -136,3 +136,27 @@ confidence and duplicate identities refuse the entire projection.
 Prepared race tests, vet, staticcheck, whitespace and secret review
 passed. Database persistence and the pinned geography sidecar are
 pending.
+
+## EVC-06F opening
+
+B-BR-EVC-06F. Classify each canonical point with the pinned IBGE
+polygon index. Keep unassigned locations explicit. Bind each result
+to the site key and exact catalog and boundary digests. Derive the
+publication census from this one-to-one mapping.
+
+BUC-EVC-06F. Classify a synthetic site with a polygon and a site
+outside it. Refuse a sidecar with missing or duplicate rows, bad UFs,
+wrong hashes, or a site key from another catalog.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The initial Rust and Go tests failed without the classifier sidecar.
+The local command now uses the pinned polygon index and emits
+deterministically sorted decisions. The Go binder checks the exact
+sidecar, catalog and boundary digests and joins every row exactly
+once. Its output derives the UF totals, with UNASSIGNED separate.
+Missing or repeated sites, invalid UFs and conflicting reasons were
+refused. Rust rights tests and all-target Clippy, Go prepared race
+tests, vet, staticcheck, format and secret review passed. The real
+catalog replay remains separate from these synthetic tests.

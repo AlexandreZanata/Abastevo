@@ -77,7 +77,9 @@
   parsing. EVC-06D LOCAL_DONE: deterministic identity resolver retains prior
   public aliases and rejects ambiguous splits. EVC-06E LOCAL_DONE: verified
   rows project with nullable names and source-owned connectors and lineage.
-  Next bind UF evidence, stage national rows and expose the active batch.
+  EVC-06F LOCAL_DONE: pinned per-site IBGE sidecar and Go census binder,
+  with missing/duplicate/invalid geography negatives. Next stage national
+  rows and expose the active batch.
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).

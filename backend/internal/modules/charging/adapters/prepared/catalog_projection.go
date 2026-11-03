@@ -24,6 +24,7 @@ type NationalPlace struct {
 	Network        *string
 	Address        map[string]string
 	PointSourceKey string
+	UF             string
 	Latitude       string
 	Longitude      string
 	Access         string

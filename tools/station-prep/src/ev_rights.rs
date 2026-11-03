@@ -169,6 +169,34 @@ mod tests {
     }
 
     #[test]
+    fn geography_binds_each_canonical_site_without_inventing_state() {
+        let boundary = br#"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"codarea":"3550308"},"geometry":{"type":"Polygon","coordinates":[[[-47,-24],[-46,-24],[-46,-23],[-47,-23],[-47,-24]]]}}]}"#;
+        let index = crate::ev_geography::StateIndex::from_bytes(boundary).unwrap();
+        let mut outside = source(false);
+        outside.point.latitude_decimal = "-10".into();
+        outside.point.longitude_decimal = "-50".into();
+        let sites = conflate(&[source(true), outside]).unwrap().sites;
+        let hash = "a".repeat(64);
+        let receipt = crate::ev_rights_bundle::catalog_geography(&index, &hash, &sites);
+        assert_eq!(receipt["catalog_sha256"], hash);
+        assert_eq!(receipt["boundary_sha256"], sha256_hex(boundary));
+        for site in sites {
+            let uf = if site.point.latitude_decimal == "-23.5" {
+                "SP"
+            } else {
+                "UNASSIGNED"
+            };
+            let row = receipt["sites"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|row| row["key"] == site.key)
+                .unwrap();
+            assert_eq!(row["uf"], uf);
+        }
+    }
+
+    #[test]
     fn rights_bundle_requires_exact_offer_bytes() {
         use crate::ev_conflation_preparation;
         use crate::ev_rights_bundle::{prepare_bundle, validate_bundle};

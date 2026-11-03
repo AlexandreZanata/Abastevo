@@ -27,3 +27,15 @@ A public generation must validate its rights bundle and make its
 required data and notice available together with its API and offline
 pack. Missing, changed or extra files are refused. The local command
 only prepares and verifies files.
+
+## Geography sidecar
+
+```text
+prepare_ev_rights geography CATALOG_DIR MANIFEST_SHA256 IBGE_FILE OUTPUT_FILE
+```
+
+The separate `abastevo.ev-catalog-geography-v1` document binds the
+catalog SHA-256 and pinned IBGE boundary SHA-256 to one classification
+per canonical key. The importer takes an independently pinned sidecar
+digest, refuses missing or repeated keys, and derives the census from
+the joined rows. `UNASSIGNED` is explicit and conveys no address.
