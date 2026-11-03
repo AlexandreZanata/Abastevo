@@ -1155,7 +1155,6 @@
     <string name="map_host_waiting_fix">Ожидание сигнала GPS.</string>
     <string name="map_downloads_active_generation">Активно: %1$s</string>
     <string name="map_downloads_update_generation">Обновление: %1$s</string>
-    <string name="map_downloads_size_summary">Размер: %1$d КиБ в %2$d пакетах</string>
     <string name="map_downloads_depends_on">Зависит от: %1$s</string>
     <string name="map_downloads_wifi_only">Только Wi-Fi</string>
     <string name="map_downloads_wifi_any">Wi-Fi или мобильные данные</string>
@@ -1163,6 +1162,17 @@
     <string name="map_downloads_in_use">Используется навигацией; остановите ведение и повторите</string>
     <string name="map_downloads_stored">Сохранено: %1$s</string>
     <string name="map_downloads_ok">ОК</string>
+    <string name="map_downloads_subtitle">Скачайте карту своего региона, чтобы пользоваться ею без интернета.</string>
+    <string name="map_downloads_size_total">%1$s в %2$d пакетах</string>
+    <string name="map_downloads_progress">%1$s из %2$s</string>
+    <string name="map_download_with_size">Скачать (%1$s)</string>
+    <string name="map_pkg_world">Базовая карта мира</string>
+    <string name="map_pkg_world_coasts">Береговые линии мира</string>
+    <string name="map_pkg_region">Карта региона</string>
+    <string name="map_pkg_status_pending">В очереди</string>
+    <string name="map_pkg_status_downloading">Загрузка</string>
+    <string name="map_pkg_status_complete">Загружено</string>
+    <string name="map_pkg_status_failed">Ошибка</string>
     <string name="map_hours_unknown">Источник не сообщает часы работы.</string>
     <string name="ev_title">Электрическая поездка</string>
     <string name="ev_vehicle">Электромобиль</string>
