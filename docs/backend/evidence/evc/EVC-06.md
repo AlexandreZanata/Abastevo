@@ -160,3 +160,26 @@ Missing or repeated sites, invalid UFs and conflicting reasons were
 refused. Rust rights tests and all-target Clippy, Go prepared race
 tests, vet, staticcheck, format and secret review passed. The real
 catalog replay remains separate from these synthetic tests.
+
+## EVC-06G1 opening
+
+B-BR-EVC-06G1. Reuse charging batch, place and connector storage. National
+rows preserve an absent name, their UF and confidence, and each connector's
+source identity. A public alias refers to one physical place in the same
+generation. Legacy row constraints remain intact.
+
+BUC-EVC-06G1. In disposable PostGIS, store legacy and national shapes,
+refuse nameless legacy rows and extended legacy connector codes, and
+prevent ambiguous or cross-generation alias references.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The initial PostGIS test failed on the absent national storage fields.
+Migration 000152 retains legacy name and connector checks when no
+national metadata is present. National rows can preserve a missing
+name and the wider connector vocabulary. The alias key is unique per
+generation and its foreign key refuses a place from another batch.
+PostGIS storage and activation race tests, SQLc generation and vet,
+whitespace and secret review passed. The importer transaction is the
+next step.

@@ -353,6 +353,8 @@ sql:
       - db/migrations/000117_charging_community_observations.sql
       - db/migrations/000118_charging_helpfulness_reports.sql
       - db/migrations/000132_charging_operational_commands.sql
+      - db/migrations/000151_charging_catalog_publication.sql
+      - db/migrations/000152_charging_national_place_details.sql
     gen:
       go:
         package: charging
