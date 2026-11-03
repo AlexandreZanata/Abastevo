@@ -28,7 +28,12 @@
   509,490-pair distance audit and IBGE per-UF census agree. 25 UFs, 11 UNASSIGNED.
   Full Rust gate/18 offline Python groups pass (parent 1981531d plus child).
   Thirty source-linked owner imagery candidates generated; manual review OWED.
-  Next SNA-04..06. [Conflation](../backend/evidence/evc/EVC-03.md).
+  SNA-04A LOCAL_DONE: pure whole-address precedence, proof/rights gates and
+  deterministic review; six test groups/fmt/all-target clippy pass (parent
+  f08a4df6 plus child). RFB primary catalog declares unversioned CC Attribution;
+  CNEFE dataset licence still PENDING (no inferred malha licence). Next SNA-04B
+  hash-bound preparation/loader provenance, then real coverage and SNA-05..06.
+  [Address evidence](../backend/evidence/sna/SNA-04.md). [Conflation](../backend/evidence/evc/EVC-03.md).
   Read-only staging baseline (12:40Z): 48,770 station rows / 40,388 points /
   3,003 without UF; zero charging batches/links. PR #183 merged d0eb9c79,
   all four checks green; signed images auto-deployed at 12:39:49Z, imageIDs
