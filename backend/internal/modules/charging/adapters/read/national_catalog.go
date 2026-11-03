@@ -38,11 +38,14 @@ func scanNationalPlace(row rowScanner) (Place, pgtype.UUID, error) {
 		UF         string                     `json:"uf"`
 		Access     string                     `json:"access"`
 		Sources    []domain.SourceAttribution `json:"sources"`
+		Operator   string                     `json:"operator"`
+		Address    PlaceAddress               `json:"address"`
 	}
 	if err := json.Unmarshal(raw, &details); err != nil || details.Confidence == "" || len(details.Sources) == 0 {
 		return Place{}, physical, errors.New("charging: stored catalog metadata unavailable")
 	}
 	place.Confidence, place.UF, place.AccessClass, place.Sources = details.Confidence, details.UF, details.Access, details.Sources
+	place.Operator, place.Address = details.Operator, details.Address
 	return place, physical, nil
 }
 
@@ -96,17 +99,32 @@ func (r Reader) nationalPlaces(ctx context.Context, revision, cursor string, lim
 	}
 	defer rows.Close()
 	out := make([]Place, 0, limit)
+	physicalIDs := make([]pgtype.UUID, 0, limit)
+	var next string
 	for rows.Next() {
 		if len(out) == limit {
-			return out, active.String() + ":" + out[limit-1].ID, nil
+			next = active.String() + ":" + out[limit-1].ID
+			break
 		}
-		place, _, err := scanNationalPlace(rows)
+		place, physical, err := scanNationalPlace(rows)
 		if err != nil {
 			return nil, "", err
 		}
 		out = append(out, place)
+		physicalIDs = append(physicalIDs, physical)
 	}
-	return out, "", rows.Err()
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, "", err
+	}
+	groups, err := nationalConnectionGroups(ctx, tx, physicalIDs)
+	if err != nil {
+		return nil, "", err
+	}
+	for i, physical := range physicalIDs {
+		out[i].Groups = groups[physical]
+	}
+	return out, next, nil
 }
 
 func (r Reader) nationalPlaceDetail(ctx context.Context, id pgtype.UUID) (Place, bool, error) {
@@ -138,20 +156,36 @@ func (r Reader) nationalPlaceDetail(ctx context.Context, id pgtype.UUID) (Place,
 	if err != nil {
 		return Place{}, false, err
 	}
-	rows, err := tx.Query(ctx, `SELECT id::text,entity_key,external_id,connector_code,raw_connector_code,
-		current,power_w,reported_quantity,catalog_source_key
-		FROM charging_connection_groups WHERE place_id=$1 ORDER BY entity_key`, physical)
+	groups, err := nationalConnectionGroups(ctx, tx, []pgtype.UUID{physical})
 	if err != nil {
 		return Place{}, false, err
 	}
+	place.Groups = groups[physical]
+	return place, true, nil
+}
+
+func nationalConnectionGroups(ctx context.Context, tx pgx.Tx, physicalIDs []pgtype.UUID) (map[pgtype.UUID][]ConnectionGroup, error) {
+	groups := make(map[pgtype.UUID][]ConnectionGroup, len(physicalIDs))
+	if len(physicalIDs) == 0 {
+		return groups, nil
+	}
+	rows, err := tx.Query(ctx, `SELECT g.place_id,g.id::text,g.entity_key,g.external_id,g.connector_code,g.raw_connector_code,
+		g.current,g.power_w,g.reported_quantity,g.catalog_source_key
+		FROM charging_places p
+		JOIN charging_connection_groups g ON g.batch_id=p.batch_id AND g.place_id=p.id
+		WHERE p.id=ANY($1::uuid[]) ORDER BY g.place_id,g.entity_key`, physicalIDs)
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 	for rows.Next() {
+		var physical pgtype.UUID
 		var group ConnectionGroup
-		if err := rows.Scan(&group.ID, &group.EntityKey, &group.ExternalID, &group.ConnectorCode,
+		if err := rows.Scan(&physical, &group.ID, &group.EntityKey, &group.ExternalID, &group.ConnectorCode,
 			&group.RawConnectorCode, &group.Current, &group.PowerW, &group.ReportedQuantity, &group.SourceKey); err != nil {
-			return Place{}, false, err
+			return nil, err
 		}
-		place.Groups = append(place.Groups, group)
+		groups[physical] = append(groups[physical], group)
 	}
-	return place, true, rows.Err()
+	return groups, rows.Err()
 }

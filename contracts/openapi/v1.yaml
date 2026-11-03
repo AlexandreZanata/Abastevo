@@ -1985,6 +1985,7 @@ paths:
   /v1/charging/places:
     get:
       summary: Keyset public charging places from stored batches (anonymous).
+      description: National pages include the source-owned connector groups for offline snapshots.
       operationId: chargingPlaces
       tags: [charging]
       security: []
@@ -10493,12 +10494,28 @@ components:
           description: Source-backed access classification for a national place.
           type: string
           enum: [PUBLIC, UNKNOWN, PERMISSIVE, CUSTOMERS, DESTINATION, MEMBERSHIP, NOTICE_REQUIRED]
+        operator:
+          description: Source-backed operator name, when available for a national place.
+          type: string
+        address:
+          description: Source-backed public address components. Coordinates are excluded.
+          type: object
+          additionalProperties: false
+          properties:
+            street: {type: string}
+            number: {type: string}
+            complement: {type: string}
+            district: {type: string}
+            municipio: {type: string}
+            postal_code: {type: string}
+            uf: {type: string}
         sources:
           description: Source identities and exact provider terms. Omitted when legacy data lacks admitted source terms.
           type: array
           minItems: 1
           items: {$ref: '#/components/schemas/ChargingSourceAttribution'}
         groups:
+          description: Included in place detail and national pages. Legacy pages may omit it.
           type: array
           items: {$ref: '#/components/schemas/ChargingConnectionGroup'}
     ChargingSourceAttribution:

@@ -59,3 +59,28 @@ payload and rights checks.
 
 Status: LOCAL_DONE / INTEGRATION_PENDING. App debug unit-test Kotlin
 compilation, whitespace and secret-surface checks passed.
+
+## EVC-07C national page payload
+
+B-BR-EVC-07C. Each national page includes that page's source-owned
+connector groups, as observed in the same database snapshot as the
+places and cursor. Emit an empty groups array for a national place
+without groups. Publish only admitted operator text and allowlisted
+address components. Legacy page shape remains compatible.
+
+BUC-EVC-07C. In real PostGIS, read two pages with a sourced group
+on the first row and no groups on the second. Confirm the group, address,
+and operator agree with detail. A cursor from a replaced generation
+still fails, and revision filtering cannot mix the generations.
+
+The RED PostGIS fixture received a national page with the group absent.
+The national reader now loads groups for the selected physical IDs in
+one query inside the same repeatable-read transaction. Public list and
+detail agree on each source key, power, operator and address. The test
+also verifies an empty array, strips an unknown address field and
+checks that an obsolete revision and cursor cannot read the new batch.
+Legacy pages still omit groups.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. Charging HTTP integration with
+race detection, vet, staticcheck, OpenAPI lint with zero errors,
+whitespace and secret review passed.

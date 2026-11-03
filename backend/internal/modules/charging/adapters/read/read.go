@@ -41,6 +41,19 @@ type Place struct {
 	UF              string
 	AccessClass     string
 	LinkedStationID *string
+	Operator        string
+	Address         PlaceAddress
+}
+
+// PlaceAddress contains only admitted public address components.
+type PlaceAddress struct {
+	Street       string `json:"street,omitempty"`
+	Number       string `json:"number,omitempty"`
+	Complement   string `json:"complement,omitempty"`
+	District     string `json:"district,omitempty"`
+	Municipality string `json:"municipio,omitempty"`
+	PostalCode   string `json:"postal_code,omitempty"`
+	UF           string `json:"uf,omitempty"`
 }
 
 // ConnectionGroup is one public connector group under a place.

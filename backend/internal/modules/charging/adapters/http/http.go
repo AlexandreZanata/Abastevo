@@ -85,7 +85,11 @@ func (h Handler) places(w http.ResponseWriter, r *http.Request) {
 	}
 	wire := make([]map[string]any, 0, len(rows))
 	for _, place := range rows {
-		wire = append(wire, placeFacts(place))
+		facts := placeFacts(place)
+		if profile == domain.NationalCatalogProfile {
+			facts["groups"] = connectionGroupFacts(place.Groups)
+		}
+		wire = append(wire, facts)
 	}
 	var nextCursor *string
 	if next != "" {
@@ -111,8 +115,17 @@ func (h Handler) placeOne(w http.ResponseWriter, r *http.Request) {
 		sourceDown(w, r)
 		return
 	}
-	groups := make([]map[string]any, 0, len(place.Groups))
-	for _, group := range place.Groups {
+	groups := connectionGroupFacts(place.Groups)
+	facts := placeFacts(place)
+	facts["groups"] = groups
+	facts["generated_at"] = generatedAt(h.now())
+	body, _ := json.Marshal(facts)
+	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body, placeDetailETag(place, groups))
+}
+
+func connectionGroupFacts(groups []read.ConnectionGroup) []map[string]any {
+	wire := make([]map[string]any, 0, len(groups))
+	for _, group := range groups {
 		item := map[string]any{"id": group.ID, "entity_key": group.EntityKey, "external_id": group.ExternalID,
 			"connector_code": group.ConnectorCode, "raw_connector_code": group.RawConnectorCode, "current": group.Current}
 		if group.PowerW != nil {
@@ -124,13 +137,9 @@ func (h Handler) placeOne(w http.ResponseWriter, r *http.Request) {
 		if group.SourceKey != nil {
 			item["source_key"] = *group.SourceKey
 		}
-		groups = append(groups, item)
+		wire = append(wire, item)
 	}
-	facts := placeFacts(place)
-	facts["groups"] = groups
-	facts["generated_at"] = generatedAt(h.now())
-	body, _ := json.Marshal(facts)
-	httpapi.WriteJSONWithETag(w, r, http.StatusOK, "public, max-age=60", body, placeDetailETag(place, groups))
+	return wire
 }
 
 func placeFacts(place read.Place) map[string]any {
@@ -144,6 +153,12 @@ func placeFacts(place read.Place) map[string]any {
 	}
 	if place.Confidence != "" {
 		facts["confidence"], facts["uf"] = place.Confidence, place.UF
+		if place.Operator != "" {
+			facts["operator"] = place.Operator
+		}
+		if place.Address != (read.PlaceAddress{}) {
+			facts["address"] = place.Address
+		}
 		if place.AccessClass != "" {
 			facts["access_class"] = place.AccessClass
 		}

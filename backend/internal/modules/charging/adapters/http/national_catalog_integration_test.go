@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -42,13 +43,16 @@ func TestNationalCatalogReadsActiveAliasesAndRejectsStaleCursor(t *testing.T) {
 			err := pool.QueryRow(ctx, `INSERT INTO charging_places(id,batch_id,entity_key,external_id,name,
 				country,latitude,longitude,public_access,reported_points,catalog_details)
 				VALUES(gen_random_uuid(),$1,lpad($2,64,'0'),$2,$3,'BR','-23.5','-46.6','PUBLIC',0,
-				'{"confidence":"single-source","uf":"SP","sources":[{"source":"OSM","external_id":"node:9","revision":"synthetic","license":"ODbL-1.0","attribution":"Synthetic attribution"}]}')
+				'{"confidence":"single-source","uf":"SP","operator":"Synthetic operator","address":{"street":"Synthetic street","number":"7","municipio":"Synthetic city","internal":"private sentinel"},"sources":[{"source":"OSM","external_id":"node:9","revision":"synthetic","license":"ODbL-1.0","attribution":"Synthetic attribution"}]}')
 				RETURNING id::text`, batch, fmt.Sprint(i), name).Scan(&place)
 			if err != nil {
 				t.Fatal(err)
 			}
 			exec("INSERT INTO charging_catalog_place_aliases VALUES($1,$2,$3,TRUE)", batch, id, place)
 			if i == 0 {
+				exec(`INSERT INTO charging_connection_groups
+					(id,batch_id,place_id,entity_key,external_id,connector_code,raw_connector_code,current,power_w,catalog_source_key)
+					VALUES(gen_random_uuid(),$1,$2,repeat('a',64),'osm:node:9:socket:gb_dc','GBT_DC','gb_dc','DC',150000,'osm:node:9')`, batch, place)
 				exec("INSERT INTO charging_catalog_place_aliases VALUES($1,$2,$3,FALSE)", batch, oldAlias, place)
 				if name == "Old" {
 					exec("INSERT INTO charging_catalog_place_aliases VALUES($1,$2,$3,FALSE)", batch, removedAlias, place)
@@ -79,19 +83,40 @@ func TestNationalCatalogReadsActiveAliasesAndRejectsStaleCursor(t *testing.T) {
 	if code != http.StatusOK || !ok || cursor == "" {
 		t.Fatalf("page=%+v code=%d", page, code)
 	}
+	item := page["items"].([]any)[0].(map[string]any)
+	groups, ok := item["groups"].([]any)
+	if !ok || len(groups) != 1 {
+		t.Fatalf("national page lost source groups: %+v", item)
+	}
+	group := groups[0].(map[string]any)
+	address, ok := item["address"].(map[string]any)
+	if group["source_key"] != "osm:node:9" || group["power_w"] != float64(150000) ||
+		item["operator"] != "Synthetic operator" || !ok || address["street"] != "Synthetic street" || len(address) != 3 {
+		t.Fatalf("national page lost public facts: %+v", item)
+	}
 	code, nextPage := get(query + "&cursor=" + url.QueryEscape(cursor))
 	if code != http.StatusOK || nextPage["next_cursor"] != nil ||
 		nextPage["items"].([]any)[0].(map[string]any)["id"] != second {
 		t.Fatalf("active second page=%+v code=%d", nextPage, code)
 	}
+	secondItem := nextPage["items"].([]any)[0].(map[string]any)
+	if groups, ok := secondItem["groups"].([]any); !ok || len(groups) != 0 {
+		t.Fatalf("second page groups=%+v", secondItem["groups"])
+	}
 	code, detail := get("/v1/charging/places/" + oldAlias)
 	if code != http.StatusOK || detail["id"] != publicID || detail["linked_station_id"] != stationID ||
-		detail["confidence"] != "single-source" || detail["sources"] == nil {
+		detail["confidence"] != "single-source" || detail["sources"] == nil ||
+		detail["operator"] != item["operator"] || !reflect.DeepEqual(detail["address"], address) ||
+		!reflect.DeepEqual(detail["groups"], groups) {
 		t.Fatalf("detail=%+v code=%d", detail, code)
 	}
 	seed("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", strings.Repeat("2", 64), "New")
 	if code, _ := get(query + "&cursor=" + url.QueryEscape(cursor)); code != http.StatusBadRequest {
 		t.Fatalf("stale cursor returned %d", code)
+	}
+	if code, staleRevision := get(query + "&revision=" + strings.Repeat("1", 64)); code != http.StatusOK ||
+		len(staleRevision["items"].([]any)) != 0 {
+		t.Fatalf("old revision page=%+v code=%d", staleRevision, code)
 	}
 	code, detail = get("/v1/charging/places/" + oldAlias)
 	if code != http.StatusOK || detail["name"] != "New" {
