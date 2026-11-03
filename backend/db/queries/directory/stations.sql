@@ -7,7 +7,7 @@ VALUES (@id, @display_name, @address, @municipality_code, @state)
 RETURNING id, display_name, municipality_code, state, status, created_at;
 
 -- name: GetStation :one
-SELECT id, display_name, address, municipality_code, state, status,
+SELECT id, display_name, legal_name, address_source, address, municipality_code, state, status,
     ST_AsText(current_point) AS current_point_wkt, current_quality,
     current_revision_id, created_at
 FROM directory_stations
@@ -64,7 +64,7 @@ SET current_point = ST_GeogFromText(NULLIF(@point_wkt, '')),
 WHERE id = @id;
 
 -- name: SearchStations :many
-SELECT id, display_name, address, municipality_code, state, status,
+SELECT id, display_name, legal_name, address_source, address, municipality_code, state, status,
     ST_AsText(current_point) AS current_point_wkt, current_quality,
     current_revision_id, created_at
 FROM directory_stations
@@ -78,7 +78,7 @@ ORDER BY id ASC
 LIMIT @limit_plus_one::int;
 
 -- name: NearbyStations :many
-SELECT id, display_name, address, municipality_code, state, status,
+SELECT id, display_name, legal_name, address_source, address, municipality_code, state, status,
     ST_AsText(current_point) AS current_point_wkt, current_quality,
     current_revision_id, created_at,
     ST_Distance(current_point, ST_SetSRID(ST_MakePoint(@lon::float8, @lat::float8), 4326)::geography) AS distance_m

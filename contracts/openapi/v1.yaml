@@ -10628,10 +10628,26 @@ components:
         display_name:
           type: string
           example: Posto Central
+        legal_name:
+          type: [string, "null"]
+          description: >
+            Source legal name, separate from the display label. Source formatting
+            is retained except that public privacy filtering removes CPF-shaped
+            personal identifiers. Unknown or fully minimized names are null.
+          example: "[P25-TEST] Legal LTDA"
+        address_source:
+          type: [string, "null"]
+          enum: [anp, rfb, osm, cnefe, municipality, null]
+          description: Source of the displayed address; unknown/curated legacy values are null.
+          example: anp
         address:
           type: [object, "null"]
-          description: Source address components verbatim.
-          example: {logradouro: AV PAULISTA, numero: '1000', municipio: SAO PAULO, uf: SP}
+          description: >
+            Source address components. Canonical keys are street, number,
+            complement, district, postal_code, municipio (name), municipio_ibge
+            (code) and uf. Older component aliases may also be present.
+            Coordinates are never substituted as address text.
+          example: {street: '[P25-TEST] Street', number: '100', municipio: '[P25-TEST] City', uf: SP}
         cnpj_normalized:
           type: [string, "null"]
           example: "04218406000104"

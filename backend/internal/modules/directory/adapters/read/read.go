@@ -99,7 +99,7 @@ func wktString(v any) string {
 // station maps one row plus its active CNPJ to the public DTO. Coordinates
 // surface only when a reviewed point exists; otherwise quality reports
 // unknown and coordinates stay null — honest, never fabricated.
-func (r *Reader) station(ctx context.Context, q *directory.Queries, id pgtype.UUID, display string, muni, state pgtype.Text, wkt any, quality pgtype.Text, rev pgtype.UUID, address []byte) (application.Station, error) {
+func (r *Reader) station(ctx context.Context, q *directory.Queries, id pgtype.UUID, display string, legalName, addressSource, muni, state pgtype.Text, wkt any, quality pgtype.Text, rev pgtype.UUID, address []byte) (application.Station, error) {
 	var cnpj *string
 	if value, err := q.StationCNPJ(ctx, id); err == nil {
 		cnpj = &value
@@ -127,11 +127,11 @@ func (r *Reader) station(ctx context.Context, q *directory.Queries, id pgtype.UU
 			return application.Station{}, err
 		}
 	}
-	return stationView(id, display, muni, state, wkt, quality, rev, address, cnpj, official)
+	return stationView(id, display, legalName, addressSource, muni, state, wkt, quality, rev, address, cnpj, official)
 }
 
 // stationView maps the same DTO for single and batched reference reads.
-func stationView(id pgtype.UUID, display string, muni, state pgtype.Text, wkt any, quality pgtype.Text, rev pgtype.UUID, address []byte, cnpj *string, official *application.OfficialAnchor) (application.Station, error) {
+func stationView(id pgtype.UUID, display string, legalName, addressSource, muni, state pgtype.Text, wkt any, quality pgtype.Text, rev pgtype.UUID, address []byte, cnpj *string, official *application.OfficialAnchor) (application.Station, error) {
 	coords, err := parseWKT(wktString(wkt))
 	if err != nil {
 		return application.Station{}, err
@@ -147,8 +147,15 @@ func stationView(id pgtype.UUID, display string, muni, state pgtype.Text, wkt an
 			addr = m
 		}
 	}
+	var publicLegal *string
+	if legalName.Valid {
+		if value := kernel.PublicStationLegalName(legalName.String); value != "" {
+			publicLegal = &value
+		}
+	}
 	st := application.Station{
-		ID:               uuidString(id),
+		ID:        uuidString(id),
+		LegalName: publicLegal, AddressSource: textPtr(addressSource),
 		DisplayName:      kernel.PublicStationName(display, stringValue(cnpj)),
 		CNPJNormalized:   cnpj,
 		MunicipalityCode: textPtr(muni),
@@ -214,7 +221,7 @@ func (r *Reader) Search(ctx context.Context, f application.SearchFilter) ([]appl
 				official.FinishedAt = &finished
 			}
 		}
-		st, err := stationView(row.ID, row.DisplayName, row.MunicipalityCode, row.State,
+		st, err := stationView(row.ID, row.DisplayName, row.LegalName, row.AddressSource, row.MunicipalityCode, row.State,
 			row.CurrentPointWkt, row.CurrentQuality, row.CurrentRevisionID, row.Address, cnpj, official)
 		if err != nil {
 			return nil, "", err
@@ -278,7 +285,7 @@ func (r *Reader) Nearby(ctx context.Context, f application.NearbyFilter) ([]appl
 				official.FinishedAt = &finished
 			}
 		}
-		st, err := stationView(row.ID, row.DisplayName, row.MunicipalityCode, row.State,
+		st, err := stationView(row.ID, row.DisplayName, row.LegalName, row.AddressSource, row.MunicipalityCode, row.State,
 			row.CurrentPointWkt, row.CurrentQuality, row.CurrentRevisionID, row.Address, cnpj, official)
 		if err != nil {
 			return nil, "", err
@@ -308,7 +315,7 @@ func (r *Reader) Detail(ctx context.Context, id string) (application.Station, er
 		}
 		return application.Station{}, err
 	}
-	return r.station(ctx, q, row.ID, row.DisplayName, row.MunicipalityCode, row.State,
+	return r.station(ctx, q, row.ID, row.DisplayName, row.LegalName, row.AddressSource, row.MunicipalityCode, row.State,
 		row.CurrentPointWkt, row.CurrentQuality, row.CurrentRevisionID, row.Address)
 }
 

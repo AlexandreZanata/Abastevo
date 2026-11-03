@@ -2,14 +2,16 @@
 
 - Station/EV ingestor 2026-11-03: IN_PROGRESS on isolated
   `codex/station-ev-ingestor`, synchronized with main d0eb9c79. Plan first
-  commit 415c5af0; SNA-01A/B and SNA-02A/B/C LOCAL_DONE / INTEGRATION_PENDING.
+  commit 415c5af0; SNA-01A/B, SNA-02A/B/C and SNA-03 LOCAL_DONE / INTEGRATION_PENDING.
   [SNA-01](../backend/evidence/sna/SNA-01.md),
   [SNA-02](../backend/evidence/sna/SNA-02.md): named pinned Rust batches, nullable
   source metadata, audited name/address projection, edition fences and explicit
   queued re-projection pass real PostGIS/race (two dispatchers, page rollback,
   replay, source/identity negatives, audit concurrency, migrations 146..148).
-  Tested parent 9b886043 plus SNA-02C; ops/worker/Directory/job units, full build,
-  vet/sqlc/secret/diff checks pass. Next: SNA-03, then EVC-00..03 in plan order.
+  Tested parent 91305b9e plus SNA-03: additive API/source separation/CPF privacy,
+  all affected PostGIS, unit/race, build/vet/staticcheck/sqlc, OpenAPI, secret
+  and diff checks pass. [SNA-03](../backend/evidence/sna/SNA-03.md).
+  Next: EVC-00..03, then SNA-04..06 in plan order.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links. This is not a national EV coverage
   result. PR #183 merged d0eb9c79 with all four checks green; signed release

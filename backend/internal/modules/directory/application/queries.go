@@ -29,6 +29,8 @@ var (
 type Station struct {
 	ID                string         `json:"station_id"`
 	DisplayName       string         `json:"display_name"`
+	LegalName         *string        `json:"legal_name"`
+	AddressSource     *string        `json:"address_source"`
 	CNPJNormalized    *string        `json:"cnpj_normalized"`
 	Address           map[string]any `json:"address"`
 	MunicipalityCode  *string        `json:"municipality_code"`
