@@ -74,3 +74,13 @@ file. RED/GREEN added the narrow latest→dated-Brazil redirect rule; every OCM,
 foreign-origin, other-country or further redirect stays refused. Header pin
 checks still run on the final response and the resolved URL is recorded. Six
 acquisition test groups pass; no change to the authorized byte cap/scope.
+
+### Administrative boundaries
+
+The owner separately approved the approximately 4 MB IBGE municipal malha for
+local UF classification. The source collector now has an 8 MiB, 6,000-feature
+country-scoped GeoJSON path; synthetic shape/identity, private-output and receipt
+tests pass. No boundary bytes have been used in a claimed national census yet.
+Seven acquisition test groups run in the Rust fast gate with only synthetic
+transports, no live network. The checkout test handles both normal and linked
+checkouts. IBGE CC BY 4.0 evidence: [technical/legal note](https://www.ibge.gov.br/biblioteca/visualizacao/livros/liv102152.pdf).

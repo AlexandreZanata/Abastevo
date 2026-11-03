@@ -14,6 +14,8 @@ import urllib.request
 
 OSM_URL = "https://download.geofabrik.de/south-america/brazil-latest.osm.pbf"
 OCM_ROOT = "https://api.openchargemap.io/v3/"
+IBGE_URL = "https://servicodados.ibge.gov.br/api/v4/malhas/paises/BR?" + urllib.parse.urlencode({"formato":"application/vnd.geo+json","intrarregiao":"municipio","qualidade":"minima"})
+MAX_BOUNDARY_BYTES = 8 << 20
 PROFILE = "ev-national-acquisition-v1"
 MAX_OSM_BYTES = 3 << 30
 MAX_PAGE_BYTES = 8 << 20
@@ -46,7 +48,7 @@ def transport(request):
 
 def request(url, key=None, headers=None):
     parsed = urllib.parse.urlsplit(url)
-    if parsed.scheme != "https" or parsed.hostname not in {"download.geofabrik.de", "api.openchargemap.io"}:
+    if parsed.scheme != "https" or parsed.hostname not in {"download.geofabrik.de", "api.openchargemap.io", "servicodados.ibge.gov.br"}:
         raise SourceError("unapproved publisher origin")
     if parsed.username or parsed.password or parsed.fragment:
         raise SourceError("invalid publisher URL")
@@ -227,6 +229,34 @@ def collect_ocm(output, key, fetch=transport, pause=time.sleep):
             directory.rmdir()
 
 
+def download_ibge(output, fetch=transport):
+    directory = new_directory(output)
+    completed = False
+    try:
+        with fetch(request(IBGE_URL)) as response:
+            raw, value = read_json_response(response, MAX_BOUNDARY_BYTES)
+        features = value.get("features") if isinstance(value, dict) else None
+        if not isinstance(value, dict) or value.get("type") != "FeatureCollection" or not isinstance(features, list) or not 0 < len(features) <= 6000:
+            raise SourceError("IBGE boundary scope/shape refused")
+        for feature in features:
+            properties = feature.get("properties") if isinstance(feature, dict) else None
+            if not isinstance(properties, dict) or not re.fullmatch(r"[0-9]{7}", str(properties.get("codarea", ""))):
+                raise SourceError("IBGE municipality identity refused")
+        with open(directory / "municipalities.geojson", "xb", opener=lambda p, f: os.open(p, f, 0o600)) as target:
+            target.write(raw)
+        pin = {"profile": PROFILE, "source": "IBGE", "url": IBGE_URL, "acquired_at": utc_now(),
+               "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(), "features": len(features),
+               "license": "CC-BY-4.0", "attribution": "Fonte: IBGE", "use": "derived UF census only"}
+        write_json(directory / "source-pin.json", pin)
+        completed = True
+        return pin
+    finally:
+        if not completed:
+            for child in directory.iterdir():
+                if child.is_file(): child.unlink()
+            directory.rmdir()
+
+
 def utc_now():
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -237,6 +267,7 @@ def main():
     action.add_argument("--plan", action="store_true")
     action.add_argument("--fetch-osm", action="store_true")
     action.add_argument("--collect-ocm", action="store_true")
+    action.add_argument("--fetch-ibge", action="store_true")
     parser.add_argument("--output")
     parser.add_argument("--expected-bytes", type=int)
     parser.add_argument("--etag")
@@ -257,6 +288,8 @@ def main():
         raise SourceError("national acquisition is local-only")
     if args.fetch_osm:
         pin = download_osm(args.output, args.expected_bytes or 0, args.etag, args.last_modified)
+    elif args.fetch_ibge:
+        pin = download_ibge(args.output)
     else:
         pin = collect_ocm(args.output, read_key(args.key_file, args.key_env))
     print(json.dumps({"profile": pin["profile"], "source": pin["source"], "bytes": pin["bytes"], "rows": pin.get("rows"), "sha256": pin.get("sha256")}))

@@ -86,7 +86,9 @@ if __name__ == "__main__": unittest.main()
 class AcquisitionContinuationTests(unittest.TestCase):
     def test_raw_sources_cannot_enter_any_ancestor_checkout(self):
         checkout = Path(source.__file__).resolve().parents[3]
-        for path in [checkout / "raw", checkout.parents[1] / "raw"]:
+        import subprocess
+        primary = Path(subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "--path-format=absolute", "--git-common-dir"], text=True).strip()).resolve().parent
+        for path in [checkout / "raw", primary / "raw"]:
             with self.subTest(path=path), self.assertRaises(source.SourceError):
                 source.outside_checkout(path)
 
@@ -125,3 +127,23 @@ class PublisherAliasTests(unittest.TestCase):
         for origin,target in [(source.request(source.OCM_ROOT+"poi/","synthetic-key"),dated),(alias,dated.replace("brazil-","argentina-")),(alias,dated.replace("download.geofabrik.de","example.invalid")),(source.request(dated),source.OSM_URL)]:
             with self.subTest(target=target),self.assertRaises(source.SourceError):
                 handler.redirect_request(origin,None,307,"temporary",{},target)
+
+class BoundaryAcquisitionTests(unittest.TestCase):
+    def test_ibge_scope_and_bounded_receipt(self):
+        for fault in [None,"foreign_shape"]:
+            with self.subTest(fault=fault),tempfile.TemporaryDirectory() as root:
+                value={"type":"FeatureCollection","features":[{"type":"Feature","properties":{"codarea":"3550308"},"geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}]}
+                if fault:value["type"]="unexpected"
+                def fetch(req):
+                    self.assertTrue(req.full_url.startswith("https://servicodados.ibge.gov.br/api/v4/malhas/paises/BR?"))
+                    self.assertIsNone(req.get_header("X-api-key"))
+                    return Response(json.dumps(value).encode())
+                target=Path(root)/"boundaries"
+                if fault:
+                    with self.assertRaises(source.SourceError):source.download_ibge(target,fetch)
+                    self.assertFalse(target.exists())
+                else:
+                    pin=source.download_ibge(target,fetch)
+                    self.assertEqual(1,pin["features"])
+                    self.assertEqual("CC-BY-4.0",pin["license"])
+                    self.assertEqual(0o600,(target/"municipalities.geojson").stat().st_mode&0o777)
