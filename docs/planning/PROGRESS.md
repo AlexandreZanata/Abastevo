@@ -46,7 +46,9 @@
   cache persistence, 15 unit tests and real emulator migration pass.
   SNA-05B2 LOCAL_DONE: private-token-safe search of both names, real PostGIS
   directory read/HTTP race checks and 26 offline map ViewModel tests pass
-  (parent bfa7f1a9 plus child). Next UI/locales/visual proof and SNA-06.
+  (parent bfa7f1a9 plus child). SNA-05C LOCAL_DONE: textual map/list/detail
+  address, eight locales, 27 map ViewModel tests and two real emulator
+  Compose tests with light/dark evidence (parent 6d0c4fe5 plus child). Next SNA-06.
   [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact
   recovery owed after restart.
   [Address evidence](../backend/evidence/sna/SNA-04.md). [Conflation](../backend/evidence/evc/EVC-03.md).

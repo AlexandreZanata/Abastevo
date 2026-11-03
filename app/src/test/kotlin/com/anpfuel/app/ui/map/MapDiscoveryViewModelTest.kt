@@ -112,6 +112,7 @@ class MapDiscoveryViewModelTest {
         quality: StationLocationQuality = StationLocationQuality.REVIEWED,
         name: String = "Posto $id",
         legalName: String? = null,
+        address: Map<String, String> = emptyMap(),
     ) = ServerStation.create(
         stationId = id,
         displayName = name,
@@ -123,6 +124,7 @@ class MapDiscoveryViewModelTest {
         state = "PR",
         currentRevisionId = null,
         legalName = legalName,
+        address = address,
     )
 
     @BeforeEach fun setup() {
@@ -456,6 +458,39 @@ class MapDiscoveryViewModelTest {
 
         assertEquals(listOf(matched.displayName), vm.ui.value.listItems.map { it.title })
         assertTrue(vm.ui.value.offlineCached)
+    }
+
+    @Test fun `offline markers show the textual address or municipality name`() = runTest {
+        val addressed = station(
+            "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            address = mapOf("street" to "Rua Exemplo", "number" to "10", "city" to "Curitiba"),
+        )
+        val unlocated = station(
+            "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            lat = null,
+            lon = null,
+            quality = StationLocationQuality.UNKNOWN,
+            address = mapOf("raw" to "-25.42, -49.27", "city" to "Curitiba"),
+        )
+        val unknownCity = station("cccccccc-cccc-4ccc-8ccc-cccccccccccc")
+        val cache = FakeStationCache()
+        cache.saveScopedPage("map:4106902", ServerStationPage(listOf(addressed, unlocated, unknownCity), null))
+        val vm = MapDiscoveryViewModel(
+            FakeGateway(failSearch = true), ChargingMarkersSource { emptyList() }, FakeEngine(),
+            null, null, cache,
+        )
+
+        vm.onSearch("4106902", "Posto")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(
+            mapOf(
+                addressed.stationId to "Rua Exemplo, 10 – Curitiba/PR",
+                unlocated.stationId to "Curitiba/PR",
+                unknownCity.stationId to "",
+            ),
+            vm.ui.value.selectableByUuid.mapValues { it.value.subtitle },
+        )
     }
 
     @Test fun `offline viewport uses the last saved public map page and marks it cached`() = runTest {

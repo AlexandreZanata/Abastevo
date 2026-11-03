@@ -682,6 +682,8 @@
     <string name="server_station_quality_osm_mapped">由 OpenStreetMap 社区标注</string>
     <string name="server_station_quality_anp_reported">ANP 报告的位置</string>
     <string name="server_station_quality_address_point">根据地址估算的位置（IBGE）</string>
+    <string name="server_station_approximate_address">大致地址</string>
+    <string name="server_station_copy_coordinates">复制坐标</string>
     <string name="server_station_unknown_location">位置未验证，不显示坐标。</string>
     <string name="server_station_cached">正在显示离线缓存中的最后已知数据。</string>
     <string name="server_stations_unavailable">服务器目录不可用，仍可浏览ANP官方数据。</string>

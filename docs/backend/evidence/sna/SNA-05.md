@@ -85,3 +85,33 @@ cannot affect result membership. The directory read and HTTP integration
 suites passed with race detection. SQLc generation and vet passed. All 26
 map ViewModel tests passed, including a network failure followed by offline
 legal-name search with the trade name retained as the result label.
+
+## SNA-05C opening
+
+B-BR-STATION-MOBILE-05C. Keep the display name primary and show a distinct
+public legal name as secondary text. Use the shared textual address in the
+detail, list, map and capture picker. Label known approximate addresses
+without inferring provenance from missing fields. Coordinates are available
+only through explicit secondary actions, independent of address text.
+
+BUC-SNA-05C. Exercise addressed and municipality-only map markers, then
+verify the detail sheet with and without coordinates in both themes.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The new ViewModel regression first failed because every offline subtitle
+contained the IBGE code. All 27 map ViewModel tests now pass. The marker
+uses the shared textual formatter for both located and unlocated results.
+The directory row preserves the location quality and shows the textual
+address when available. The capture picker already uses the domain label
+and the directory search from SNA-05B2.
+
+The detail sheet displays the public legal name only when distinct and
+labels the address for known approximate sources. Raw coordinates moved to
+an explicit copy button alongside the existing navigation action. Both
+new labels are present in all eight locales. The debug app and Android
+test APKs compiled with the installed SDK and JDK 21. Both Compose tests
+passed on the disposable Android 35 emulator. The
+[light](screenshots/SNA-05-light.png) and [dark](screenshots/SNA-05-dark.png)
+screenshots use synthetic fixtures and were inspected at full size.

@@ -868,7 +868,7 @@ private fun ServerStation.toMarker(): MapOverlayMarker? {
             StationLocationQuality.CITY_CENTROID -> MapStationLocationQuality.CITY_CENTROID
             StationLocationQuality.UNKNOWN -> MapStationLocationQuality.UNKNOWN
         },
-        subtitle = addressLabel(),
+        subtitle = addressLine,
         hasValidCoordinates = true,
     )
 }
@@ -881,12 +881,9 @@ private fun ServerStation.toUnlocatedMarker(): MapOverlayMarker = MapOverlayMark
     fuel = true,
     charging = false,
     locationQuality = MapStationLocationQuality.UNKNOWN,
-    subtitle = addressLabel(),
+    subtitle = addressLine,
     hasValidCoordinates = false,
 )
-
-private fun ServerStation.addressLabel(): String =
-    listOfNotNull(municipalityCode, state).joinToString("/")
 
 private fun ChargingPlace.toMarker(): MapOverlayMarker? {
     val lat = latitude?.toDoubleOrNull() ?: return null

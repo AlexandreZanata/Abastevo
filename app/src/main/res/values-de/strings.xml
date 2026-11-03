@@ -682,6 +682,8 @@
     <string name="server_station_quality_osm_mapped">Von der OpenStreetMap-Community kartiert</string>
     <string name="server_station_quality_anp_reported">Von der ANP gemeldeter Standort</string>
     <string name="server_station_quality_address_point">Ungefährer Standort laut Adresse (IBGE)</string>
+    <string name="server_station_approximate_address">Ungefähre Adresse</string>
+    <string name="server_station_copy_coordinates">Koordinaten kopieren</string>
     <string name="server_station_unknown_location">Standort nicht geprüft · ohne Koordinaten angezeigt.</string>
     <string name="server_station_cached">Letzte bekannte Daten aus dem Offline-Cache.</string>
     <string name="server_stations_unavailable">Serververzeichnis nicht verfügbar. Offizielle ANP-Daten bleiben zugänglich.</string>

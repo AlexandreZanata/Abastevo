@@ -691,6 +691,8 @@
     <string name="server_station_quality_osm_mapped">Mapeado pela comunidade OpenStreetMap</string>
     <string name="server_station_quality_anp_reported">Localização informada pela ANP</string>
     <string name="server_station_quality_address_point">Localização aproximada pelo endereço (IBGE)</string>
+    <string name="server_station_approximate_address">Endereço aproximado</string>
+    <string name="server_station_copy_coordinates">Copiar coordenadas</string>
     <string name="server_station_unknown_location">Local não verificado — exibido sem coordenadas.</string>
     <string name="server_station_cached">Exibindo últimos dados conhecidos (cache offline).</string>
     <string name="server_stations_unavailable">Diretório do servidor indisponível. A navegação oficial ANP continua funcionando.</string>

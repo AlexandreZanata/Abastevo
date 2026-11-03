@@ -1,5 +1,7 @@
 package com.anpfuel.app.ui.stations
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,9 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -39,6 +41,7 @@ import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.StationLocationQuality
 import com.anpfuel.domain.feedback.FeedbackTarget
+import java.util.Locale
 
 /**
  * P35-T02 — canonical server station row and detail.
@@ -60,15 +63,9 @@ fun ServerStationRow(
         leadingContent = { StationArtworkIcon(Modifier.size(48.dp), station.artwork) },
         headlineContent = { Text(text = station.displayName) },
         supportingContent = {
-            Text(text = qualityLabel(station))
-        },
-        trailingContent = {
-            if (station.latitude != null) {
-                Text(
-                    text = "%.3f, %.3f".format(station.latitude, station.longitude),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Column {
+                if (station.addressLine.isNotBlank()) Text(station.addressLine)
+                Text(qualityLabel(station), style = MaterialTheme.typography.labelSmall)
             }
         },
         modifier = modifier.clickable { onSelect(station.stationId) },
@@ -112,7 +109,6 @@ fun ServerStationDetailSheet(
     ) {
         // Single virtualized list: station header, discussion rows keyed by
         // comment id, then actions. No nested scrollable lives here.
-        val feedbackViewModel: FeedbackViewModel = hiltViewModel()
         val feedbackTarget = remember(station.stationId, fuelProductWire, accountId) {
             if (fuelProductWire == null) {
                 null
@@ -120,9 +116,10 @@ fun ServerStationDetailSheet(
                 runCatching { FeedbackTarget.create(station.stationId, fuelProductWire, accountId) }.getOrNull()
             }
         }
-        val feedbackState by feedbackViewModel.state.collectAsStateWithLifecycle()
-        LaunchedEffect(feedbackTarget) {
-            if (feedbackTarget != null) {
+        val feedbackViewModel = if (feedbackTarget != null) hiltViewModel<FeedbackViewModel>() else null
+        val feedbackState = feedbackViewModel?.state?.collectAsStateWithLifecycle()?.value
+        if (feedbackTarget != null && feedbackViewModel != null) {
+            LaunchedEffect(feedbackTarget) {
                 feedbackViewModel.prepare(
                     feedbackTarget.stationId,
                     feedbackTarget.fuelProductWire,
@@ -131,6 +128,10 @@ fun ServerStationDetailSheet(
                 feedbackViewModel.loadFirstPage()
                 feedbackViewModel.loadStats()
             }
+        }
+        val context = LocalContext.current
+        val coordinates = station.latitude?.let { latitude ->
+            station.longitude?.let { longitude -> String.format(Locale.ROOT, "%.5f, %.5f", latitude, longitude) }
         }
         LazyColumn(
             state = rememberLazyListState(),
@@ -148,6 +149,25 @@ fun ServerStationDetailSheet(
                     modifier = Modifier.semantics { heading() },
                 )
             }
+            station.secondaryLegalName?.let { name ->
+                item(key = "detail-legal-name") {
+                    Text(name, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            if (station.addressLine.isNotBlank()) {
+                item(key = "detail-address") {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(station.addressLine, style = MaterialTheme.typography.bodyLarge)
+                        if (station.hasApproximateAddress) {
+                            Text(
+                                stringResource(R.string.server_station_approximate_address),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
             item(key = "detail-quality") {
                 Text(
                     text = qualityLabel(station),
@@ -164,15 +184,7 @@ fun ServerStationDetailSheet(
                     )
                 }
             }
-            if (station.latitude != null && station.longitude != null) {
-                item(key = "detail-coords") {
-                    Text(
-                        text = "%.5f, %.5f".format(station.latitude, station.longitude),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            } else {
+            if (coordinates == null) {
                 item(key = "detail-no-coords") {
                     Text(
                         text = stringResource(R.string.server_station_unknown_location),
@@ -192,7 +204,7 @@ fun ServerStationDetailSheet(
             }
 
             val target = feedbackTarget
-            if (target != null) {
+            if (target != null && feedbackViewModel != null && feedbackState != null) {
                 stationFeedbackItems(
                     state = feedbackState,
                     isSignedIn = target.isSignedIn,
@@ -240,6 +252,21 @@ fun ServerStationDetailSheet(
             item(key = "detail-profile") {
                 OutlinedButton(onClick = onProfile, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.station_profile_title))
+                }
+            }
+
+            if (coordinates != null) {
+                item(key = "detail-copy-coordinates") {
+                    val label = stringResource(R.string.server_station_copy_coordinates)
+                    OutlinedButton(
+                        onClick = {
+                            context.getSystemService(ClipboardManager::class.java)
+                                ?.setPrimaryClip(ClipData.newPlainText(label, coordinates))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(label)
+                    }
                 }
             }
 

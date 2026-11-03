@@ -682,6 +682,8 @@
     <string name="server_station_quality_osm_mapped">OpenStreetMapコミュニティによるマッピング</string>
     <string name="server_station_quality_anp_reported">ANPが報告した位置</string>
     <string name="server_station_quality_address_point">住所に基づくおおよその位置（IBGE）</string>
+    <string name="server_station_approximate_address">おおよその住所</string>
+    <string name="server_station_copy_coordinates">座標をコピー</string>
     <string name="server_station_unknown_location">場所未確認のため、座標を表示しません。</string>
     <string name="server_station_cached">オフライン保存された最後の情報を表示しています。</string>
     <string name="server_stations_unavailable">サーバーの一覧は利用できません。公式ANPデータの閲覧は引き続き可能です。</string>
