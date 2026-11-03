@@ -1,6 +1,14 @@
 package com.anpfuel.app.ui.map
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
@@ -58,9 +66,14 @@ internal fun MapBottomControls(
     onDownloads: () -> Unit,
     onSaved: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** Height of the sheet itself (without the attribution), for map controls above it. */
+    onSheetHeightChanged: (Dp) -> Unit = {},
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
     var expanded by rememberSaveable { mutableStateOf(true) }
+    var dragDistance by remember { mutableFloatStateOf(0f) }
+    val density = LocalDensity.current
+    val dragThreshold = with(density) { 24.dp.toPx() }
     val columns = if (LocalDensity.current.fontScale > 1.3f) 1 else 2
     val maxPanelHeight = LocalConfiguration.current.screenHeightDp.dp * 0.5f
     Column(
@@ -80,7 +93,9 @@ internal fun MapBottomControls(
             )
         }
         Surface(
-            modifier = Modifier.fillMaxWidth().testTag("map-action-panel"),
+            modifier = Modifier.fillMaxWidth().testTag("map-action-panel")
+                .onSizeChanged { size -> onSheetHeightChanged(with(density) { size.height.toDp() }) }
+                .animateContentSize(),
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
             shadowElevation = 12.dp,
@@ -88,12 +103,23 @@ internal fun MapBottomControls(
             Column(
                 modifier = Modifier.heightIn(max = maxPanelHeight)
                     .verticalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                    .padding(start = 16.dp, end = 16.dp, bottom = if (expanded) 12.dp else 0.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 val toggleLabel = stringResource(if (expanded) R.string.map_actions_hide else R.string.map_actions_show)
+                // Drag the handle down to minimize to just the handle, up to restore;
+                // a tap toggles too (accessible equivalent of the gesture).
                 Box(
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(bottom = if (expanded) 0.dp else 4.dp)
+                        .draggable(
+                            state = rememberDraggableState { delta -> dragDistance += delta },
+                            orientation = Orientation.Vertical,
+                            onDragStarted = { dragDistance = 0f },
+                            onDragStopped = {
+                                if (dragDistance > dragThreshold) expanded = false
+                                if (dragDistance < -dragThreshold) expanded = true
+                            },
+                        )
                         .clickable(role = Role.Button, onClickLabel = toggleLabel) { expanded = !expanded }
                         .semantics { contentDescription = toggleLabel }
                         .testTag("map-actions-toggle"),
@@ -104,8 +130,8 @@ internal fun MapBottomControls(
                             .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), CircleShape),
                     )
                 }
-                content()
                 if (expanded) {
+                    content()
                     val actions = buildList {
                         add(MapPanelAction(R.string.map_filters, Icons.Default.FilterAlt, "map-open-filters", onFilters))
                         add(MapPanelAction(R.string.map_search, Icons.Default.Search, "map-open-search", onSearch))

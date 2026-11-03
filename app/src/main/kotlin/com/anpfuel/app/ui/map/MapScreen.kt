@@ -108,6 +108,8 @@ fun MapScreen(
 ) {
     val density = LocalDensity.current
     var bottomOverlayInset by remember { mutableStateOf(164.dp) }
+    var sheetHeight by remember { mutableStateOf(0.dp) }
+    var controlsHeight by remember { mutableStateOf(0.dp) }
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val discUi = discovery?.ui?.collectAsStateWithLifecycle()?.value
     var showRoute by remember { mutableStateOf(false) }
@@ -264,7 +266,9 @@ fun MapScreen(
                 }
 
                 Spacer(Modifier.weight(1f))
-                // Layers sits above the host's 56 dp recenter control (16 dp inset + 12 dp gap).
+                // The two round controls sit together just above the sheet, beside
+                // the attribution: recenter (host) at sheet + gap, layers one gap above.
+                val layersBottom = (sheetHeight + MAP_CONTROL_GAP * 2 + 56.dp - controlsHeight).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                     Surface(
                         onClick = { showFilters = true },
@@ -272,7 +276,7 @@ fun MapScreen(
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         contentColor = MaterialTheme.colorScheme.primary,
                         shadowElevation = 6.dp,
-                        modifier = Modifier.padding(end = 16.dp, bottom = 84.dp).size(56.dp).testTag("map-layers"),
+                        modifier = Modifier.padding(end = 16.dp, bottom = layersBottom).size(56.dp).testTag("map-layers"),
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(Icons.Default.Layers, contentDescription = stringResource(R.string.map_filters))
@@ -286,7 +290,11 @@ fun MapScreen(
                     onDownloads = onOpenDownloads,
                     onSaved = onOpenSaved.takeIf { saved != null },
                     modifier = Modifier.onSizeChanged { size ->
-                        val inset = with(density) { size.height.toDp() } + 16.dp
+                        controlsHeight = with(density) { size.height.toDp() }
+                    },
+                    onSheetHeightChanged = { height ->
+                        sheetHeight = height
+                        val inset = height + MAP_CONTROL_GAP
                         if (bottomOverlayInset != inset) {
                             bottomOverlayInset = inset
                             onBottomOverlayInsetChanged(inset)
@@ -502,3 +510,6 @@ fun MapScreen(
         )
     }
 }
+
+/** Gap between the bottom sheet and the round map controls, and between the controls. */
+private val MAP_CONTROL_GAP = 10.dp
