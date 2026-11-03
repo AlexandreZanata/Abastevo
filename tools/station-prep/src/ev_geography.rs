@@ -20,6 +20,7 @@ struct Polygon {
 #[derive(Debug)]
 pub struct StateIndex {
     pub source_sha256: String,
+    extent: [f64; 4],
     polygons: Vec<Polygon>,
     grid: BTreeMap<(i16, i16), Vec<usize>>,
 }
@@ -179,11 +180,38 @@ impl StateIndex {
                 }
             }
         }
+        let extent = polygons.iter().fold(
+            [
+                f64::INFINITY,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+            ],
+            |b, p| {
+                [
+                    b[0].min(p.bounds[0]),
+                    b[1].min(p.bounds[1]),
+                    b[2].max(p.bounds[2]),
+                    b[3].max(p.bounds[3]),
+                ]
+            },
+        );
         Ok(Self {
+            extent,
             source_sha256: sha256_hex(raw),
             polygons,
             grid,
         })
+    }
+
+    /// Country-wide bounding extent only; absence of a polygon match still stays unassigned.
+    pub fn within_country_extent(&self, lat: f64, lon: f64) -> bool {
+        lat.is_finite()
+            && lon.is_finite()
+            && lon >= self.extent[0]
+            && lat >= self.extent[1]
+            && lon <= self.extent[2]
+            && lat <= self.extent[3]
     }
 
     pub fn classify(&self, lat: f64, lon: f64) -> StateDecision {

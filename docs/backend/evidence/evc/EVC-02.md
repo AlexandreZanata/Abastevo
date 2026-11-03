@@ -265,3 +265,51 @@ Next: EVC-03 deterministic conflation, parent containment/aggregation and actual
 matched/single/probable/conflict counts. The owner imagery spot check and later
 public rights/import/staging gates remain owed; this checkpoint does not claim
 those acceptances.
+
+## EVC-02C1 country-consistency correction opening
+
+B-BR-EV-NORM-02C1: A declared OCM Brazil country does not override a point outside
+the whole admitted IBGE country extent. Such a source assertion is quarantined,
+never coordinate-swapped/repaired or assigned a nearest UF. Points inside that
+extent without a unique municipality polygon keep UNASSIGNED status for review.
+The already-committed v1 profile/artifacts remain historical; v2 adds this guard
+and supersedes v1 for dependent conflation. No new source download or DB action.
+
+BUC-EVC-02C1: Derive country extent from the pinned municipality geometry, test
+an otherwise valid BR-labelled source point outside the extent, retain all
+inventory decisions/reasons, and regenerate/reconcile two private real runs
+under a new immutable profile hash. The independent real audit identified OCM
+311700, provider 1; no rejected coordinates or personal source text enters Git.
+
+### EVC-02C1 accepted successor checkpoint
+
+Status: LOCAL_DONE
+Validation: PASS
+Integration: INTEGRATION_PENDING
+
+Tested parent 886e8eae plus this child. RED proved an otherwise valid BR-declared
+point outside the admitted boundary extent was accepted. V2 derives a cached
+country extent from the pinned polygons and quarantines those points before
+record/census publication. Existing v1 profile and receipts remain unchanged;
+new dependent work must bind normalization-profile-v2 / ev-normalization-v2.
+The stream format and input source pins remain compatible. Full Rust gate and
+16 offline Python groups pass; no dependency, SQL/API/staging/import change.
+
+Real [independent reconciliation](EVC-02-v2-reconciliation.json) removed two
+out-of-extent source assertions: OCM 311700 and OSM node 11524381344. It repaired
+neither coordinate. OCM now has 1,258 source sites; OSM 399 charging + six combined
+source sites, 64 separate equipment records. All 1,775 decisions reconcile:
+1,663 source-site assertions + 64 equipment + 48 exclusions (44 private, two
+planned, two outside extent). The full OCM file-ID inventory still matches all
+decisions. All accepted points are inside the independently calculated IBGE
+extent; eleven OCM sites still lack a unique UF polygon match and remain
+UNASSIGNED, not nearest-state guesses. [Per-source UF census](EVC-02-v2-uf-census.json).
+
+Both corrected v2 real runs are [byte-identical](EVC-02-v2-reproducibility.json)
+for all five artifacts, manifest SHA-256
+61a0d64aaf2eda85dae247b3948a9d0df49a49baa1c019a83bab2bca1af4877b.
+Accepted [replay](EVC-02-v2-execution.json): 118.780 s, peak RSS 370,384,896 bytes,
+working disk 2,111,667,977 bytes, within unchanged frozen resource limits. Native
+binary SHA and both profile identities are retained. Diff/secret review pass.
+No national raw rows/coordinates were committed. Continue EVC-03A2 from this
+successor, not the historical v1 normalization artifacts.

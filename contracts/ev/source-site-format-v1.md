@@ -1,7 +1,8 @@
 # Private EV source-site preparation v1
 
-Format: `abastevo.ev-source-sites-v1`. Parser: `ev-normalization-v1`.
-Behavior profile: `normalization-profile-v1.json` (SHA-256 bound in the manifest).
+Format: `abastevo.ev-source-sites-v1`. Accepted parser: `ev-normalization-v2`.
+Behavior profile: `normalization-profile-v2.json` (SHA-256 bound in the manifest).
+The original v1 parser/profile remains historical; see the successor section.
 Exposure: PRIVATE_PREPARATION. This is the EVC-02 input to EVC-03 conflation,
 not a public import/publication format and not proof of complete Brazil coverage.
 
@@ -67,3 +68,13 @@ unsupported fractional watts stay unknown. The tested socket mapping is
 
 Public publication additionally needs EVC-03 conflation, EVC-05 rights/source
 offer, EVC-06 guarded atomic import and the later staging acceptance gates.
+
+## Accepted parser successor
+
+`ev-normalization-v2`, bound to `normalization-profile-v2.json`, supersedes the
+v1 parser for dependent work after the EVC-02C1 real-data audit. Stream format
+v1 and source pins remain unchanged. V2 quarantines points outside the whole
+pinned IBGE country extent despite a declared Brazil country. Polygon misses
+inside that extent remain UNASSIGNED; no coordinate repair/nearest UF. The v1
+profile and historical artifacts are retained unchanged and are not accepted
+inputs for the subsequent conflation generation.

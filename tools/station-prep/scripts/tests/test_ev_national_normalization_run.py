@@ -16,7 +16,7 @@ class NormalizationRunTests(unittest.TestCase):
         pin_raw=(runner.PROFILE_FILE.parent/'national-source-pins-20261103-v1.json').read_bytes()
         profile={'profile_id':json.loads(pin_raw)['profile_id'],'sha256':hashlib.sha256(pin_raw).hexdigest(),'exposure':'PRIVATE_PREPARATION'}
         manifest={'format':'abastevo.ev-source-sites-v1','source_profile':profile,'summary':{'accepted_source_sites':0},'files':{name:{'bytes':0,'sha256':hashlib.sha256(b'').hexdigest()} for name in ['sites.ndjson','decisions.ndjson','issues.ndjson','uf-census.json']}}
-        manifest['normalization_profile_sha256']=hashlib.sha256((runner.PROFILE_FILE.parent/'normalization-profile-v1.json').read_bytes()).hexdigest()
+        manifest['normalization_profile_sha256']=hashlib.sha256((runner.PROFILE_FILE.parent/'normalization-profile-v2.json').read_bytes()).hexdigest()
         if fault=='normalization':manifest['normalization_profile_sha256']='0'*64
         if fault=='profile':manifest['source_profile']['sha256']='0'*64
         if fault=='format':manifest['format']='wrong-private-format'

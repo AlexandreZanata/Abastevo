@@ -31,7 +31,7 @@ def main():
     manifest=json.loads(manifest_raw)
     pins_raw=(PROFILE_FILE.parent/'national-source-pins-20261103-v1.json').read_bytes()
     expected_profile={'profile_id':json.loads(pins_raw)['profile_id'],'sha256':hashlib.sha256(pins_raw).hexdigest(),'exposure':'PRIVATE_PREPARATION'}
-    normalization_hash=hashlib.sha256((PROFILE_FILE.parent/'normalization-profile-v1.json').read_bytes()).hexdigest()
+    normalization_hash=hashlib.sha256((PROFILE_FILE.parent/'normalization-profile-v2.json').read_bytes()).hexdigest()
     if manifest.get('normalization_profile_sha256')!=normalization_hash:
         raise RunError('normalization profile differs')
     if manifest.get('format')!='abastevo.ev-source-sites-v1' or manifest.get('source_profile')!=expected_profile:

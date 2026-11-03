@@ -1,0 +1,31 @@
+{
+  "id": "ev-normalization-v2",
+  "format": "abastevo.ev-source-sites-v1",
+  "exposure": "PRIVATE_PREPARATION",
+  "source_profile": "brazil-ev-sources-20261103-v1",
+  "osm_budget_profile": "brazil-ev-national-v1",
+  "source_roles": "retain explicit site/equipment markers; unparented dual-marked objects retain explicit site evidence; equipment-only objects never become invented sites",
+  "hierarchy": "explicit source membership only in normalization; EVC-03 owns unambiguous containment/aggregation and review",
+  "geometry": "node or centroid point; preserve available closed-way source rings without fabricated closure; fragmented relation footprints remain absent",
+  "footprint_budget": {
+    "polygons": 32,
+    "vertices": 4096
+  },
+  "ocm_budget": {
+    "files": 5000,
+    "record_bytes": 1048576,
+    "total_bytes": 134217728,
+    "reference_bytes": 8388608,
+    "groups_per_record": 2000
+  },
+  "artifact_budget": {
+    "record_bytes": 1048576,
+    "file_bytes": 536870912
+  },
+  "socket_profile": "abastevo.ev-socket-families-v1",
+  "numeric_policy": "exact integer W; unsupported fractional W and unknown quantity remain null",
+  "privacy": "discard contacts/comments/photos and rejected coordinates; source clocks validated without guessing timezone",
+  "units": "separate source site assertions and equipment; no cross-source connector sum or complete-coverage claim",
+  "supersedes": "ev-normalization-v1",
+  "country_consistency": "quarantine accepted points outside the whole pinned IBGE country extent; keep within-extent polygon misses UNASSIGNED; never repair coordinates or infer a nearest UF"
+}

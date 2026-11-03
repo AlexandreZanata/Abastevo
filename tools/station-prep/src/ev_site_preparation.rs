@@ -559,7 +559,14 @@ pub fn prepare(
     let mut decisions = Vec::new();
     let mut issues = Vec::new();
     let mut reasons: BTreeMap<String, u64> = BTreeMap::new();
-    for outcome in outcomes {
+    for mut outcome in outcomes {
+        if let Some(site) = &outcome.site {
+            let lat = site.point.latitude_decimal.parse().unwrap_or(f64::NAN);
+            let lon = site.point.longitude_decimal.parse().unwrap_or(f64::NAN);
+            if !index.within_country_extent(lat, lon) {
+                outcome = Normalization::refused(Some(site.key.clone()), "outside_country_extent");
+            }
+        }
         if let Some(key) = &outcome.decision.key {
             if !seen.insert(key.clone()) {
                 return Err(PrepError("duplicate source decision identity"));
@@ -612,7 +619,7 @@ pub fn prepare(
             "uf-census.json",
             write_bytes(&inputs.output.join("uf-census.json"), &census)?,
         );
-        let manifest = json!({"format":"abastevo.ev-source-sites-v1","parser_version":"ev-normalization-v1","normalization_profile_sha256":sha256_hex(include_bytes!("../../../contracts/ev/normalization-profile-v1.json")),"source_profile":{"profile_id":pins.profile_id,"sha256":pins.profile_sha256,"exposure":"PRIVATE_PREPARATION"},"source_pins":pins,"osm_limits":limits,"national_profile_sha256":NationalProfile::sha256(),"summary":summary,"quarantine_reasons":reasons,"files":files});
+        let manifest = json!({"format":"abastevo.ev-source-sites-v1","parser_version":"ev-normalization-v2","normalization_profile_sha256":sha256_hex(include_bytes!("../../../contracts/ev/normalization-profile-v2.json")),"source_profile":{"profile_id":pins.profile_id,"sha256":pins.profile_sha256,"exposure":"PRIVATE_PREPARATION"},"source_pins":pins,"osm_limits":limits,"national_profile_sha256":NationalProfile::sha256(),"summary":summary,"quarantine_reasons":reasons,"files":files});
         let raw =
             serde_json::to_vec_pretty(&manifest).map_err(|_| PrepError("manifest JSON refused"))?;
         if cancel() {

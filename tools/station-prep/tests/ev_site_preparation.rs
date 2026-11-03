@@ -301,3 +301,39 @@ fn native_cli_refuses_runtime_and_profile_overrides_before_source_io() {
     assert!(!out.status.success());
     assert!(String::from_utf8_lossy(&out.stderr).contains("overrides refused"));
 }
+
+#[test]
+fn declared_country_does_not_publish_a_point_outside_admitted_country_extent() {
+    let mut f = Fixture::new();
+    let path = f.root.join("ocm/pois/OCM-90004.json");
+    let mut row: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    row["AddressInfo"]["Latitude"] = json!(60);
+    row["AddressInfo"]["Longitude"] = json!(120);
+    let raw = serde_json::to_vec(&row).unwrap();
+    std::fs::write(&path, &raw).unwrap();
+    let inv = f.root.join("ocm/source-inventory.json");
+    let mut inventory: Value = serde_json::from_slice(&std::fs::read(&inv).unwrap()).unwrap();
+    inventory[0]["bytes"] = json!(raw.len());
+    inventory[0]["sha256"] = json!(hash(&raw));
+    let inventory = serde_json::to_vec(&inventory).unwrap();
+    std::fs::write(inv, &inventory).unwrap();
+    f.pins.ocm_inventory_sha256 = hash(&inventory);
+    let input = f.inputs("country-checked");
+    let summary = prepare(&input, &f.pins, &NationalProfile::frozen().limits, &|| {
+        false
+    })
+    .unwrap();
+    assert_eq!(summary.quarantined, 1);
+    assert_eq!(summary.accepted_source_sites, 1);
+    let decisions: Vec<Value> = std::fs::read_to_string(input.output.join("decisions.ndjson"))
+        .unwrap()
+        .lines()
+        .map(|s| serde_json::from_str(s).unwrap())
+        .collect();
+    let rejected = decisions
+        .iter()
+        .find(|r| r["key"] == "ocm:poi:90004")
+        .unwrap();
+    assert_eq!(rejected["reason"], "outside_country_extent");
+    assert!(!rejected.to_string().contains("latitude"));
+}
