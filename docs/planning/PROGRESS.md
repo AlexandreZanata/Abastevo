@@ -19,8 +19,10 @@
   RSS within frozen budgets.
   [Normalization evidence](../backend/evidence/evc/EVC-02.md).
   EVC-03A1 LOCAL_DONE: footprint-grid hierarchy, explicit derivation sidecar;
-  six pure geometry/chain/boundary negatives and clippy pass. Next:
-  EVC-03A2/B matching/real per-UF counts and owner 30-site imagery sample,
+  six pure geometry/chain/boundary negatives and clippy pass. EVC-03A2 LOCAL_DONE:
+  one-to-one matching/field lineage, reviewed family gate and goldens; 13 affected
+  matching/hierarchy groups and all-target clippy pass (parent 7ec04382 plus child).
+  Next EVC-03B private CLI/real per-UF counts and owner 30-site imagery sample,
   then SNA-04..06. [Conflation](../backend/evidence/evc/EVC-03.md).
   Read-only staging baseline (12:40Z): 48,770 station rows / 40,388 points /
   3,003 without UF; zero charging batches/links. PR #183 merged d0eb9c79,

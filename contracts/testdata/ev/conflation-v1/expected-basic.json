@@ -1,0 +1,80 @@
+[
+  {
+    "scenario": "confirmed",
+    "sites": [
+      {
+        "key": "ev-site-v1:c931e41808627352ad0cca86f8ee4a034932d95745df4ad33c62a5cc8a9b44e0",
+        "source_keys": [
+          "ocm:poi:90002",
+          "osm:node:90001"
+        ],
+        "confidence": "two-source",
+        "point_source": "osm:node:90001",
+        "distance_mm": 10000,
+        "shared_families": [
+          "TYPE2"
+        ]
+      }
+    ],
+    "review_reasons": [],
+    "conflict_reasons": []
+  },
+  {
+    "scenario": "conflict",
+    "sites": [
+      {
+        "key": "ev-site-v1:4ffcf2cbf23eeaa4bbb099fe76a7b428528e82bef939dbb3b6dd9f0a6a6f5756",
+        "source_keys": [
+          "ocm:poi:90002"
+        ],
+        "confidence": "single-source",
+        "point_source": "ocm:poi:90002",
+        "distance_mm": null,
+        "shared_families": []
+      },
+      {
+        "key": "ev-site-v1:c931e41808627352ad0cca86f8ee4a034932d95745df4ad33c62a5cc8a9b44e0",
+        "source_keys": [
+          "osm:node:90001"
+        ],
+        "confidence": "single-source",
+        "point_source": "osm:node:90001",
+        "distance_mm": null,
+        "shared_families": []
+      }
+    ],
+    "review_reasons": [],
+    "conflict_reasons": [
+      "socket_conflict"
+    ]
+  },
+  {
+    "scenario": "probable",
+    "sites": [
+      {
+        "key": "ev-site-v1:4ffcf2cbf23eeaa4bbb099fe76a7b428528e82bef939dbb3b6dd9f0a6a6f5756",
+        "source_keys": [
+          "ocm:poi:90002"
+        ],
+        "confidence": "single-source",
+        "point_source": "ocm:poi:90002",
+        "distance_mm": null,
+        "shared_families": []
+      },
+      {
+        "key": "ev-site-v1:c931e41808627352ad0cca86f8ee4a034932d95745df4ad33c62a5cc8a9b44e0",
+        "source_keys": [
+          "osm:node:90001"
+        ],
+        "confidence": "single-source",
+        "point_source": "osm:node:90001",
+        "distance_mm": null,
+        "shared_families": []
+      }
+    ],
+    "review_reasons": [
+      "probable_same_label"
+    ],
+    "conflict_reasons": []
+  }
+]

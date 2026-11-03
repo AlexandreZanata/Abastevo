@@ -18,7 +18,7 @@ pub const REVIEW_FORMAT: &str = "abastevo.station-location-review-v1";
 pub const REVIEW_PARSER_VERSION: &str = "station-location-review-v1";
 pub const REVIEW_SCHEMA_VERSION: &str = "station-location-review-v1";
 pub const DEFAULT_MAX_DISTANCE_M: f64 = 50.0;
-const EARTH_RADIUS_M: f64 = 6_371_000.0;
+pub(crate) const EARTH_RADIUS_M: f64 = 6_371_000.0;
 
 #[derive(Debug)]
 pub enum ReviewError {

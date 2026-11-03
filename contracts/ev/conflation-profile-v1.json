@@ -1,0 +1,18 @@
+{
+  "id": "ev-conflation-v1",
+  "exposure": "PRIVATE_PREPARATION",
+  "normalization_parser": "ev-normalization-v2",
+  "distance": {"metric":"project-haversine-reported-source-points","earth_radius_m":6371000,"confirmed_max_m":50,"probable_max_m":150,"numerical_boundary_epsilon_m":"0.0000001","wire":"rounded integer mm; compare unrounded metres"},
+  "index": {"kind":"three-dimensional spherical Cartesian grid","cell_m":150,"max_candidate_comparisons":2000000},
+  "selection": "confirmed edges sorted by actual distance, OSM qualified key, OCM qualified key; each site consumed once",
+  "confirmation": "within 50 m and at least one shared reviewed socket family; UNKNOWN/unreviewed labels cannot confirm",
+  "probable": "greater than 50 and at most 150 m plus shared normalized operator/network/name; review only, no merge",
+  "conflict": "within 50 m without a shared reviewed socket family; no merge",
+  "fields": "OSM point/name/address; OSM operator/network then OCM; source fallback with explicit field lineage; select one usable address object",
+  "quantities": "preserve every source assertion/group/equipment; never total or maximize across sources",
+  "hierarchy": {"parent":"unique explicit source membership or unambiguous footprint containment","boundary":"review; no nearest-parent guess","max_source_records":205000,"grid_degrees":"0.01","max_grid_entries":100000,"max_parent_depth":64,"max_parent_candidates":64},
+  "identity": "sha256 of domain abastevo:ev-site:v1 plus NUL and primary qualified source key; source alias preservation belongs to publication",
+  "confidence": ["two-source","single-source"],
+  "status": "static source metadata, never live availability",
+  "coverage": "catalog/source units, not a complete Brazil physical inventory"
+}
