@@ -82,7 +82,9 @@
   migration 000152 adds national details, source-owned groups and same-batch
   public aliases, validated on PostGIS. EVC-06G2 LOCAL_DONE: verified staging
   and activation in one transaction, synthetic rollback/replay and legacy
-  public ID tests pass. Next reviewed decision carry-forward and active reads.
+  public ID tests pass. EVC-06G3 LOCAL_DONE: human decisions carry forward
+  by public alias, preserving rejections and refusing conflicts in PostGIS.
+  Next active catalog reads and rights offer publication.
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).

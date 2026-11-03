@@ -238,3 +238,26 @@ This checkpoint has no public serving or operator command. Carrying
 human decisions to the new physical rows and serving active aliases
 and the rights offer are still pending. The national corpus was
 verified in memory only.
+
+## EVC-06G3 opening
+
+B-BR-EVC-06G3. When a public alias moves to a new physical place, retain
+the newest human decision for that identity, including rejections.
+Recompute automated decisions. If aliases converge with conflicting
+human decisions, refuse the transaction for review.
+
+BUC-EVC-06G3. Verify a legacy rejection is carried forward and that
+the newer human decision on the national generation takes precedence
+on the next import. Refuse conflicting prior place reviews.
+
+Status: LOCAL_DONE
+Validation: PASS
+
+The legacy rejection regression failed before the carry-forward step.
+The importer resolves each public alias to its latest previously
+published physical place, with legacy OCM fallback. It locks those
+places and copies the human decision with its original reviewer,
+time and evidence lineage. Automated links are evaluated again.
+A synthetic rejection and then a newer accepted review survived
+successive imports. Conflicting alias reviews refused the write.
+PostGIS race, vet, staticcheck, formatting and secret checks passed.

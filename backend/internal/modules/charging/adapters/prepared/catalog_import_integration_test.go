@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/linking"
 )
 
 func TestImportNationalCatalogAtomicallyStoresSourceFacts(t *testing.T) {
@@ -36,6 +38,15 @@ func TestImportNationalCatalogAtomicallyStoresSourceFacts(t *testing.T) {
 		RETURNING id
 	) INSERT INTO charging_places(id,batch_id,entity_key,external_id,name,country,latitude,longitude,public_access,reported_points)
 	SELECT $1,id,repeat('b',64),'9','Synthetic legacy','BR','-23.5','-46.6','PUBLIC',0 FROM legacy`, legacyID); err != nil {
+		t.Fatal(err)
+	}
+	const stationID = "11111111-1111-4111-8111-111111111111"
+	if _, err := pool.Exec(ctx, "INSERT INTO directory_stations(id,display_name) VALUES($1,'Synthetic Fuel')", stationID); err != nil {
+		t.Fatal(err)
+	}
+	reviewer := linking.Store{Pool: pool}
+	if _, err := reviewer.Review(ctx, linking.Link{PlaceID: legacyID, StationID: stationID,
+		State: linking.Rejected, Method: linking.MethodManual, ReviewerRef: "test-owner"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, "UPDATE charging_catalog_current SET held=TRUE"); err != nil {
@@ -91,4 +102,33 @@ func TestImportNationalCatalogAtomicallyStoresSourceFacts(t *testing.T) {
 	if err != nil || current != id || name != "" || uf != "SP" || groups != 2 || aliases != 1 || activations != 1 || publicID != legacyID {
 		t.Fatalf("current=%s name=%q UF=%s groups=%d aliases=%d activations=%d publicID=%s err=%v", current, name, uf, groups, aliases, activations, publicID, err)
 	}
+	var placeID string
+	if err := pool.QueryRow(ctx, "SELECT id::text FROM charging_places WHERE batch_id=$1", id).Scan(&placeID); err != nil {
+		t.Fatal(err)
+	}
+	prior, found, err := reviewer.Active(ctx, placeID)
+	if err != nil || !found || prior.State != linking.Rejected || prior.ReviewerRef != "test-owner" {
+		t.Fatalf("human rejection did not survive: %+v %v %v", prior, found, err)
+	}
+	if _, err := reviewer.Review(ctx, linking.Link{PlaceID: placeID, StationID: stationID,
+		State: linking.Reviewed, Method: linking.MethodManual, ReviewerRef: "new-reviewer"}); err != nil {
+		t.Fatal(err)
+	}
+	nextRaw := []byte(strings.Replace(string(raw), `"name":null`, `"name":"Synthetic Update"`, 1))
+	input.Files, input.RightsSHA256, input.ManifestSHA256 = nationalFixtureWithCatalog(t, nextRaw)
+	input.Geography = []byte(strings.Replace(string(geo),
+		fmt.Sprintf("%x", sha256.Sum256(raw)), fmt.Sprintf("%x", sha256.Sum256(nextRaw)), 1))
+	input.GeographySHA256 = fmt.Sprintf("%x", sha256.Sum256(input.Geography))
+	next, err := ImportNationalCatalog(ctx, pool, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT id::text FROM charging_places WHERE batch_id=$1", next).Scan(&placeID); err != nil {
+		t.Fatal(err)
+	}
+	prior, found, err = reviewer.Active(ctx, placeID)
+	if err != nil || !found || prior.State != linking.Reviewed || prior.ReviewerRef != "new-reviewer" {
+		t.Fatalf("newer national decision did not survive: %+v %v %v", prior, found, err)
+	}
+
 }

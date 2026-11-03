@@ -175,6 +175,26 @@ func previousCatalogIdentities(ctx context.Context, tx pgx.Tx) (map[string]Catal
 	return previous, legacy.Err()
 }
 
+func previousPlacesForPublicIDs(ctx context.Context, tx pgx.Tx, publicIDs []string) ([]string, error) {
+	rows, err := tx.Query(ctx, `SELECT DISTINCT COALESCE(prior.place_id, legacy.id)::text
+		FROM unnest($1::text[]) AS public(id)
+		LEFT JOIN LATERAL (
+			SELECT a.place_id FROM charging_catalog_place_aliases a
+			JOIN charging_catalog_activations activation ON activation.batch_id=a.batch_id
+			WHERE a.public_id=public.id::uuid
+			ORDER BY activation.id DESC LIMIT 1
+		) prior ON TRUE
+		LEFT JOIN (
+			SELECT p.id FROM charging_places p JOIN charging_batches b ON b.id=p.batch_id
+			WHERE b.profile_id='ocm-br-20261021-v1'
+		) legacy ON legacy.id=public.id::uuid
+		WHERE COALESCE(prior.place_id,legacy.id) IS NOT NULL`, publicIDs)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
+}
+
 func stageNationalPlace(ctx context.Context, tx pgx.Tx, batch pgtype.UUID, place NationalPlace, public CatalogPublicIdentity) error {
 	id, err := newUUID()
 	if err != nil {
@@ -202,7 +222,8 @@ func stageNationalPlace(ctx context.Context, tx pgx.Tx, batch pgtype.UUID, place
 		place.Identity.Key, name, place.Latitude, place.Longitude, access, details); err != nil {
 		return err
 	}
-	for _, publicID := range append([]string{public.ID}, public.Aliases...) {
+	publicIDs := append([]string{public.ID}, public.Aliases...)
+	for _, publicID := range publicIDs {
 		if _, err := tx.Exec(ctx, `INSERT INTO charging_catalog_place_aliases(batch_id,public_id,place_id,is_primary)
 			VALUES($1,$2,$3,$4)`, batch, publicID, id, publicID == public.ID); err != nil {
 			return err
@@ -220,6 +241,13 @@ func stageNationalPlace(ctx context.Context, tx pgx.Tx, batch pgtype.UUID, place
 			group.Family, group.RawSocket, group.Current, group.PowerW, group.Quantity, group.SourceKey); err != nil {
 			return err
 		}
+	}
+	prior, err := previousPlacesForPublicIDs(ctx, tx, publicIDs)
+	if err != nil {
+		return err
+	}
+	if err := linking.CarryCatalogReviewTx(ctx, tx, hexUUID(id), prior); err != nil {
+		return err
 	}
 	facts := linking.StationSourceFacts{TradeName: name}
 	if place.Brand != nil {
