@@ -1,7 +1,7 @@
 # anpfuel backend images.
 #
-# One pinned builder compiles all four process roles (api, worker, migrate, station-load)
-# from the same base layers; each target ships only its static binary on a
+# One pinned builder compiles the process roles and catalog operator
+# from the same base layers; each target ships its static binaries on a
 # non-root distroless runtime with no shell. Same revision label across roles
 # is the release provenance. Secrets travel at runtime (env), never in layers.
 #
@@ -39,7 +39,8 @@ COPY backend/db ./db
 RUN go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api \
  && go build -trimpath -ldflags="-s -w" -o /out/worker ./cmd/worker \
  && go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate \
- && go build -trimpath -ldflags="-s -w" -o /out/station-load ./cmd/station-load
+ && go build -trimpath -ldflags="-s -w" -o /out/station-load ./cmd/station-load \
+ && go build -trimpath -ldflags="-s -w" -o /out/charging-catalog ./cmd/charging-catalog
 
 FROM ${RUNTIME_IMAGE} AS api
 ARG REVISION
@@ -55,6 +56,7 @@ ARG REVISION
 LABEL org.opencontainers.image.title="anpfuel-worker" \
       org.opencontainers.image.revision="${REVISION}"
 COPY --from=builder --chown=65532:65532 /out/worker /worker
+COPY --from=builder --chown=65532:65532 /out/charging-catalog /charging-catalog
 # Trusted native quality preparer: immutable image path, mode 755, static
 # musl build, never a hostPath or job-provided executable.
 COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-musl/release/prepare_quality /prepare_quality

@@ -31,3 +31,20 @@ Operator interface: `charging-catalog control --action hold|resume|rollback
 requires `--restore-sha256 PREDECESSOR`; use `none` for the pre-catalog
 state. A lost response requires checking the pointer and audit before
 issuing another command.
+
+## EVC-10B signed operator executable
+
+B-BR-EVC-10B. Ship the national catalog operator executable in the
+existing signed worker image. Keep its worker entrypoint and non-root
+runtime. Catalog execution remains an explicit owner action.
+
+BUC-EVC-10B. Verify the worker target includes a static catalog operator
+built from the same source revision as the worker. It is available for
+a separately authorized run with private configuration and pinned files.
+
+Local result: the worker target lacked the catalog executable before the
+change. The exact Go 1.27.3 static build flags produced a Linux/amd64
+executable, which refused a production target when invoked. All 11
+security harness checks passed. The release workflow builds and signs
+the worker target. Full image build and digest verification are pending
+the GitHub release and staging acceptance.
