@@ -40,7 +40,12 @@
   addresses and one municipality fallback (TO). All 17 exact OSM candidates
   retain ANP precedence; RFB status absent and CNEFE rights pending. Independent
   paired census and real file-only Go admission pass (parent 8bb0d1df plus
-  child). Next SNA-05..06. Exact-pin EV raw artifact recovery owed after restart.
+  child). SNA-05A LOCAL_DONE: Android domain/codec optional legal name and
+  address source, textual formatter and name matching; 883 domain/eight codec
+  tests pass (parent 404a560a plus child). Next Room persistence and private-
+  token-safe search, then UI/locales/visual proof and SNA-06.
+  [Mobile evidence](../backend/evidence/sna/SNA-05.md). Exact-pin EV raw artifact
+  recovery owed after restart.
   [Address evidence](../backend/evidence/sna/SNA-04.md). [Conflation](../backend/evidence/evc/EVC-03.md).
   Read-only staging baseline (12:40Z): 48,770 station rows / 40,388 points /
   3,003 without UF; zero charging batches/links. PR #183 merged d0eb9c79,
