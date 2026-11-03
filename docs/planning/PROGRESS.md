@@ -42,8 +42,12 @@
   64 equipment; 46 exclusions. All 1,775 decisions reconcile; dual-role audit
   preserved ten explicit sites/44 closed footprints. Accepted replay 70.747 s /
   370.4 MB RSS. These are pre-conflation source assertions, not unique locations.
-  Next EVC-03 deterministic matching/parent aggregation and actual per-UF counts,
-  then SNA-04..06. Owner imagery spot check remains owed.
+  EVC-03A1 LOCAL_DONE: deterministic parent hierarchy/footprint grid, explicit
+  derivation sidecar, six pure geometry/chain/privacy negatives + clippy/fmt pass.
+  [EVC-03](../backend/evidence/evc/EVC-03.md). Before matching, data audit found one
+  OCM coordinate far outside Brazil despite CountryID=36: a versioned IBGE extent
+  guard/regeneration is next; v1 private output is superseded for dependent work.
+  Then EVC-03A2/B matching/real counts, SNA-04..06. Owner imagery check remains owed.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links. This is not a national EV coverage
   result. PR #183 merged d0eb9c79 with all four checks green; signed release
