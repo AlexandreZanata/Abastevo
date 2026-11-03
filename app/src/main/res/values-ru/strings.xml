@@ -193,6 +193,7 @@
     <string name="charging_explore_unknown">Неизвестно</string>
     <string name="charging_explore_no_groups">Нет данных о разъёмах</string>
     <string name="charging_explore_row_meta">%1$s · обновлено %2$s</string>
+    <string name="station_linked_chargers">Связанные зарядные площадки</string>
     <string name="charging_place_unnamed">Зарядная площадка без названия</string>
     <string name="charging_place_two_sources">Подтверждено двумя источниками</string>
     <string name="charging_place_operator">Оператор · %1$s</string>

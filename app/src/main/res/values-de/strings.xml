@@ -193,6 +193,7 @@
     <string name="charging_explore_unknown">Unbekannt</string>
     <string name="charging_explore_no_groups">Keine Steckerdaten gemeldet</string>
     <string name="charging_explore_row_meta">%1$s · aktualisiert %2$s</string>
+    <string name="station_linked_chargers">Verknüpfte Ladestandorte</string>
     <string name="charging_place_unnamed">Ladestandort ohne Namen</string>
     <string name="charging_place_two_sources">Von 2 Quellen bestätigt</string>
     <string name="charging_place_operator">Betreiber · %1$s</string>

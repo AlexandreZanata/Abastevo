@@ -21,6 +21,8 @@ import com.anpfuel.application.usecase.price.GetStationPricesUseCase
 import com.anpfuel.application.usecase.price.StationPricesOutcome
 import com.anpfuel.application.usecase.profile.GetStationProfileUseCase
 import com.anpfuel.application.usecase.profile.StationProfileOutcome
+import com.anpfuel.data.repository.ChargingDiscoveryRepository
+import com.anpfuel.data.repository.PlaceDetail
 import com.anpfuel.domain.discovery.ServerStation
 import com.anpfuel.domain.discovery.StationDetailRule
 import com.anpfuel.domain.discovery.StationDetailState
@@ -61,6 +63,7 @@ data class StationPageState(
     val pricesStale: Boolean = false,
     val priceUnavailable: Boolean = false,
     val accountId: String = "",
+    val linkedChargers: List<PlaceDetail> = emptyList(),
 ) {
     val canParticipate: Boolean get() = canonical != null && !identityStale && !loading
 }
@@ -76,6 +79,7 @@ class StationPageViewModel @Inject constructor(
     private val profiles: GetStationProfileUseCase,
     private val cityFeed: GetCityCommunityFeedUseCase,
     private val auth: AuthFlow,
+    private val charging: ChargingDiscoveryRepository,
 ) : ViewModel() {
     private val identity = StationPageIdentity.parse(saved.get<String>("stationKey") ?: saved.get<String>("stationId").orEmpty())
     private val mutable = MutableStateFlow(StationPageState(fuel = saved.get<String>("fuelProduct")
@@ -110,7 +114,8 @@ class StationPageViewModel @Inject constructor(
         loadJob?.cancel()
         val fuel = mutable.value.fuel
         mutable.update { it.copy(loading = true, unavailable = false, localDetail = null,
-            officialGroups = emptyList(), communityItem = null, profile = null, priceUnavailable = false, pricesStale = false) }
+            officialGroups = emptyList(), communityItem = null, profile = null, priceUnavailable = false, pricesStale = false,
+            linkedChargers = emptyList()) }
         if (identity == null) {
             mutable.update { it.copy(loading = false, unavailable = true, canonical = null) }
             return
@@ -137,6 +142,8 @@ class StationPageViewModel @Inject constructor(
                 mutable.update { it.copy(name = local.station.displayName(), address = local.station.address,
                     brand = local.station.brand, navigationQuery = detail?.station?.navigationQuery, location = "${legacy.municipality}, ${legacy.state.abbreviation}", localDetail = detail) }
             }
+            val canonicalRoute = identity as? StationPageIdentity.Canonical
+            if (canonicalRoute != null) loadLinkedChargers(canonicalRoute.stationId, request)
             val outcome = withContext(ioDispatcher) {
                 try {
                     when (identity) {
@@ -162,6 +169,7 @@ class StationPageViewModel @Inject constructor(
                 location = it.location.ifEmpty { station?.state.orEmpty() },
                 unavailable = station == null && it.name.isEmpty(), priceUnavailable = station == null) }
             if (station != null) {
+                if (canonicalRoute == null) loadLinkedChargers(station.stationId, request)
                 val groups = withContext(ioDispatcher) {
                     try { prices(station.stationId, fuel) }
                     catch (cancelled: CancellationException) { throw cancelled }
@@ -199,5 +207,14 @@ class StationPageViewModel @Inject constructor(
             }
             if (request == generation) mutable.update { it.copy(loading = false) }
         }
+    }
+
+    private suspend fun loadLinkedChargers(stationId: String, request: Int) {
+        val linked = withContext(ioDispatcher) {
+            try { charging.linkedToStation(stationId) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { emptyList() }
+        }
+        if (request == generation) mutable.update { it.copy(linkedChargers = linked) }
     }
 }

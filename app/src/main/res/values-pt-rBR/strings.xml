@@ -310,6 +310,7 @@
     <string name="charging_explore_unknown">Desconhecido</string>
     <string name="charging_explore_no_groups">Sem dados de conector informados</string>
     <string name="charging_explore_row_meta">%1$s · atualizado em %2$s</string>
+    <string name="station_linked_chargers">Eletropostos vinculados</string>
     <string name="charging_place_unnamed">Eletroposto sem nome</string>
     <string name="charging_place_two_sources">Confirmado por 2 fontes</string>
     <string name="charging_place_operator">Operadora · %1$s</string>

@@ -193,6 +193,7 @@
     <string name="charging_explore_unknown">Desconocido</string>
     <string name="charging_explore_no_groups">Sin datos de conector informados</string>
     <string name="charging_explore_row_meta">%1$s · actualizado %2$s</string>
+    <string name="station_linked_chargers">Puntos de recarga vinculados</string>
     <string name="charging_place_unnamed">Punto de recarga sin nombre</string>
     <string name="charging_place_two_sources">Confirmado por 2 fuentes</string>
     <string name="charging_place_operator">Operador · %1$s</string>

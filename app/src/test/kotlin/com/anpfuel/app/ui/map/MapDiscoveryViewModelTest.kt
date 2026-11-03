@@ -731,6 +731,9 @@ class MapDiscoveryViewModelTest {
                     it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
             }.take(limit)
 
+            override suspend fun readLinkedPlaces(packKey: String, stationId: String) =
+                emptyList<com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity>()
+
             override suspend fun countPlaces(profile: String, generation: Long) = allPlaces.size.toLong()
             override suspend fun estimatedBytes(profile: String, generation: Long) = 1024L
         }

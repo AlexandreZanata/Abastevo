@@ -83,6 +83,13 @@ class ChargingDiscoveryRepositoryTest {
                 it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
         }.sortedBy { it.placeId }.take(limit)
 
+        override suspend fun readLinkedPlaces(packKey: String, stationId: String): List<ChargingSnapshotPlaceEntity> {
+            val meta = metas[packKey]?.takeIf { it.state == "COMPLETE" } ?: return emptyList()
+            return places.values.filter {
+                it.profile == meta.profile && it.generation == meta.generation && it.linkedStationId == stationId && !it.tombstone
+            }.sortedWith(compareBy({ it.name }, { it.placeId }))
+        }
+
         override suspend fun countPlaces(profile: String, generation: Long) =
             places.values.count { it.profile == profile && it.generation == generation && !it.tombstone }.toLong()
 
@@ -206,6 +213,31 @@ class ChargingDiscoveryRepositoryTest {
         assertRefreshRefused { repo.refresh(profile) }
         assertEquals(original.generation, repo.generationMeta(profile)?.generation)
         assertEquals(national(id), repo.detail(id, profile, null)?.place)
+    }
+
+    @Test fun `linked charger lookup uses only the active national station identity`() = runTest {
+        val profile = ChargingDiscoveryRepository.NATIONAL_PROFILE
+        val station = "11111111-1111-4111-8111-111111111111"
+        val other = "33333333-3333-4333-8333-333333333333"
+        val key = com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity.packKey(profile)
+        dao.upsertMeta(com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity(
+            key, 2, profile, "synthetic", "https://example.test", "ODbL-1.0", 1, 1, 2, 0, null, "COMPLETE", 1,
+        ))
+        fun row(id: String, link: String, generation: Long = 2, tombstone: Boolean = false) =
+            com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity(
+                id, "a".repeat(64), "synthetic", generation, profile, "synthetic", "https://example.test",
+                "ODbL-1.0", "Synthetic Charge", "BR", null, null, "PUBLIC", 0, "[]", tombstone, 1,
+                """[{"source":"OSM","external_id":"node:7","revision":"synthetic","license":"ODbL-1.0","attribution":"Synthetic OSM"}]""",
+                "SINGLE_SOURCE", link,
+            )
+        val linked = row("22222222-2222-4222-8222-222222222222", station)
+        dao.upsertPlaces(listOf(
+            linked, row("44444444-4444-4444-8444-444444444444", other),
+            row("55555555-5555-4555-8555-555555555555", station, generation = 1),
+            row("66666666-6666-4666-8666-666666666666", station, tombstone = true),
+        ))
+        assertEquals(listOf(linked.placeId), repo.linkedToStation(station).map { it.place.id })
+        assertTrue(repo.linkedToStation("04218406000104").isEmpty())
     }
 
     @Test fun `pbe profile refuses while mixed sources coexist without merging`() = runTest {

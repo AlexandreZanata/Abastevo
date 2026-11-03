@@ -15,6 +15,7 @@ import com.anpfuel.domain.charging.ChargingCurrent
 import com.anpfuel.domain.charging.ChargingPackMeta
 import com.anpfuel.domain.charging.ChargingPlace
 import com.anpfuel.domain.charging.Compatibility
+import com.anpfuel.domain.discovery.StationPageIdentity
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -189,6 +190,14 @@ class ChargingDiscoveryRepository @Inject constructor(
             }
             if (window.size < PAGE_SIZE) return ChargingExplorePage(matches, null)
             rawOffset += window.size
+        }
+    }
+
+    suspend fun linkedToStation(stationId: String): List<PlaceDetail> {
+        val canonical = StationPageIdentity.parse(stationId) as? StationPageIdentity.Canonical ?: return emptyList()
+        return dao.readLinkedPlaces(key(NATIONAL_PROFILE), canonical.stationId).mapNotNull { row ->
+            val place = runCatching { ChargingSnapshotMapper.toDomain(row) }.getOrNull() ?: return@mapNotNull null
+            PlaceDetail(place, row.profile, row.sourceRevision, row.generation, row.savedAtMillis)
         }
     }
 

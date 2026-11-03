@@ -117,6 +117,17 @@ interface ChargingSnapshotDao {
     @Query("SELECT * FROM charging_snapshot_place WHERE place_id = :placeId AND profile = :profile AND generation = :generation AND tombstone = 0 LIMIT 1")
     suspend fun findPlace(placeId: String, profile: String, generation: Long): ChargingSnapshotPlaceEntity?
 
+    @Query(
+        """
+        SELECT p.* FROM charging_snapshot_place p
+        JOIN charging_snapshot_meta m
+          ON m.key = :packKey AND m.profile = p.profile AND m.generation = p.generation
+        WHERE m.state = 'COMPLETE' AND p.linked_station_id = :stationId AND p.tombstone = 0
+        ORDER BY p.name COLLATE NOCASE, p.place_id
+        """,
+    )
+    suspend fun readLinkedPlaces(packKey: String, stationId: String): List<ChargingSnapshotPlaceEntity>
+
     @Query("SELECT COUNT(*) FROM charging_snapshot_place WHERE profile = :profile AND generation = :generation AND tombstone = 0")
     suspend fun countPlaces(profile: String, generation: Long): Long
 

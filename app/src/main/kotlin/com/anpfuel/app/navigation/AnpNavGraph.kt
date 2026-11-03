@@ -263,6 +263,7 @@ fun AnpNavGraph(
         ) {
             com.anpfuel.app.ui.stations.StationPageScreen(
                 onBack = { navController.popBackStack() },
+                onReportCharging = { navController.navigate(Routes.mapChargingCommunity(it)) },
                 onSignIn = { navController.navigate(Routes.AUTH) },
                 onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
                 onQuality = { stationId, fuel -> navController.navigate(Routes.stationQuality(stationId, fuel)) },
@@ -337,6 +338,7 @@ fun AnpNavGraph(
         )) {
             com.anpfuel.app.ui.stations.StationPageScreen(
                 onBack = { navController.popBackStack() },
+                onReportCharging = { navController.navigate(Routes.chargingCommunity(it)) },
                 onSignIn = { navController.navigate(Routes.AUTH) },
                 onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
                 onQuality = {stationId,fuel -> navController.navigate(Routes.stationQuality(stationId,fuel))},

@@ -193,6 +193,7 @@
     <string name="charging_explore_unknown">不明</string>
     <string name="charging_explore_no_groups">コネクタデータの報告なし</string>
     <string name="charging_explore_row_meta">%1$s · 更新 %2$s</string>
+    <string name="station_linked_chargers">関連する充電施設</string>
     <string name="charging_place_unnamed">名称不明の充電施設</string>
     <string name="charging_place_two_sources">2つの情報源で確認済み</string>
     <string name="charging_place_operator">運営事業者 · %1$s</string>

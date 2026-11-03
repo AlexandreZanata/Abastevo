@@ -255,78 +255,88 @@ internal fun ChargingExploreContent(
     }
 
     uiState.detail?.let { detail ->
-        AlertDialog(
-            onDismissRequest = onDismissDetail,
-            title = { Text(text = detail.place.name.ifBlank { stringResource(R.string.charging_place_unnamed) }) },
-            text = {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    val place = detail.place
-                    if (place.confirmedByTwoSources) {
-                        Text(text = stringResource(R.string.charging_place_two_sources))
-                    }
-                    place.operator?.let {
-                        Text(text = stringResource(R.string.charging_place_operator, it))
-                    }
-                    place.addressLine?.let { Text(text = it) }
-                    Text(text = stringResource(R.string.charging_explore_detail_access, place.publicAccess.name))
-                    if (place.catalogConfidence == null) {
-                        place.latitude?.let { Text(text = "Lat $it") }
-                        place.longitude?.let { Text(text = "Lon $it") }
-                        Text(text = stringResource(R.string.charging_explore_detail_points, place.reportedPoints.toInt()))
-                    }
-                    val owners = place.sources.associateBy { it.sourceKey }
-                    val powerFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 3 }
-                    place.groups.forEach { group ->
-                        val connector = group.rawConnectorCode.ifBlank { connectorLabel(group.connector) }
-                        val power = group.powerW?.let { "${powerFormat.format(BigDecimal.valueOf(it, 3))} kW" }
-                            ?: stringResource(R.string.charging_explore_unknown)
-                        val owner = owners[group.sourceKey]?.attribution
-                        Text(
-                            text = listOfNotNull(connector, group.current.name, power, group.reportedQuantity?.let { "×$it" }, owner)
-                                .joinToString(" · "),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.charging_explore_detail_source, detail.sourceRevision),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    if (detail.place.sources.isNotEmpty()) {
-                        Text(
-                            text = stringResource(R.string.settings_attribution_section),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                        detail.place.sources
-                            .map { it.attribution to it.license }
-                            .distinct()
-                            .forEach { (attribution, license) ->
-                                Text(text = "$attribution · $license", style = MaterialTheme.typography.bodySmall)
-                            }
-                    }
-                    Text(
-                        text = stringResource(R.string.charging_explore_detail_no_tariff),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onOpenCommunity(detail.place.id)
-                    onDismissDetail()
-                }) {
-                    Text(text = stringResource(R.string.charging_place_report_status))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissDetail) {
-                    Text(text = stringResource(R.string.action_cancel))
-                }
-            },
-        )
+        ChargingPlaceDetailDialog(detail, locale, onDismissDetail, onOpenCommunity)
     }
+}
+
+@Composable
+internal fun ChargingPlaceDetailDialog(
+    detail: PlaceDetail,
+    locale: Locale,
+    onDismissDetail: () -> Unit,
+    onOpenCommunity: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismissDetail,
+        title = { Text(text = detail.place.name.ifBlank { stringResource(R.string.charging_place_unnamed) }) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                val place = detail.place
+                if (place.confirmedByTwoSources) {
+                    Text(text = stringResource(R.string.charging_place_two_sources))
+                }
+                place.operator?.let {
+                    Text(text = stringResource(R.string.charging_place_operator, it))
+                }
+                place.addressLine?.let { Text(text = it) }
+                Text(text = stringResource(R.string.charging_explore_detail_access, place.publicAccess.name))
+                if (place.catalogConfidence == null) {
+                    place.latitude?.let { Text(text = "Lat $it") }
+                    place.longitude?.let { Text(text = "Lon $it") }
+                    Text(text = stringResource(R.string.charging_explore_detail_points, place.reportedPoints.toInt()))
+                }
+                val owners = place.sources.associateBy { it.sourceKey }
+                val powerFormat = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 3 }
+                place.groups.forEach { group ->
+                    val connector = group.rawConnectorCode.ifBlank { connectorLabel(group.connector) }
+                    val power = group.powerW?.let { "${powerFormat.format(BigDecimal.valueOf(it, 3))} kW" }
+                        ?: stringResource(R.string.charging_explore_unknown)
+                    val owner = owners[group.sourceKey]?.attribution
+                    Text(
+                        text = listOfNotNull(connector, group.current.name, power, group.reportedQuantity?.let { "×$it" }, owner)
+                            .joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.charging_explore_detail_source, detail.sourceRevision),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (detail.place.sources.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.settings_attribution_section),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    detail.place.sources
+                        .map { it.attribution to it.license }
+                        .distinct()
+                        .forEach { (attribution, license) ->
+                            Text(text = "$attribution · $license", style = MaterialTheme.typography.bodySmall)
+                        }
+                }
+                Text(
+                    text = stringResource(R.string.charging_explore_detail_no_tariff),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onOpenCommunity(detail.place.id)
+                onDismissDetail()
+            }) {
+                Text(text = stringResource(R.string.charging_place_report_status))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissDetail) {
+                Text(text = stringResource(R.string.action_cancel))
+            }
+        },
+    )
 }
 
 @Composable

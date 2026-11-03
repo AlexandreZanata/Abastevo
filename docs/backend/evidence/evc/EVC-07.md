@@ -196,3 +196,30 @@ Status: LOCAL_DONE / INTEGRATION_PENDING. Twenty-nine map ViewModel
 and fourteen native KML tests passed. The tests include the national-only
 cache, strict minimum power, no map refresh request, per-pin confirmation
 and legacy pagination. App compilation, whitespace and secret review passed.
+
+## EVC-07H chargers linked to fuel stations
+
+B-BR-EVC-07H. Fuel station detail reads only active national cache
+rows carrying its exact canonical station ID. A canonical route can
+read those public links offline. A legacy CNPJ must resolve to a
+matching directory identity first. No proximity inference is made.
+
+BUC-EVC-07H. Read only the station's linked rows, omit other and
+retired rows, and open the same offline charging detail with its
+attribution and report action. An unresolved legacy CNPJ reads no links.
+
+RED reproduced the missing station cache lookup. The Room query joins
+the complete national generation with its exact station ID in one read.
+A SQLite replay of the generated schema and query excluded a different
+station, a previous generation, a tombstone and an incomplete pack.
+Both fuel station routes open the shared offline charger dialog and
+preserve the correct community route for the selected charger.
+
+The seven charging repository and eleven station ViewModel tests passed.
+The ViewModel tests covered canonical offline links and unresolved legacy
+CNPJs. The linked-site section label is present in all eight locales.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING. Four Compose tests passed
+in a combined rerun, including selection and the reported charger ID.
+The first device run was interrupted during emulator memory pressure.
+App/test builds, whitespace and secret-surface checks passed.

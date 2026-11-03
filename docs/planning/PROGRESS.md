@@ -103,7 +103,9 @@
   Room 36 and Compose show offline operator, safe address, source powers,
   confirmed badge and reporting route. EVC-07G LOCAL_DONE: national map
   pins show source agreement and use the saved generation and strict power
-  filters. Next linked chargers in the fuel station detail.
+  filters. EVC-07H LOCAL_DONE: fuel station detail reads exact national
+  cache links and opens the offline charger detail. EVC-07 LOCAL_DONE /
+  INTEGRATION_PENDING. Next EVC-08 refresh cadence and generation diff.
   [App evidence](../backend/evidence/evc/EVC-07.md).
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).

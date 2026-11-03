@@ -67,6 +67,13 @@ class ChargingSnapshotDaoTest {
                 it.longitude?.toDoubleOrNull()?.let { lon -> lon in minLongitude..maxLongitude } == true
         }.sortedBy { it.placeId }.take(limit)
 
+        override suspend fun readLinkedPlaces(packKey: String, stationId: String): List<ChargingSnapshotPlaceEntity> {
+            val meta = metas[packKey]?.takeIf { it.state == "COMPLETE" } ?: return emptyList()
+            return places.values.filter {
+                it.profile == meta.profile && it.generation == meta.generation && it.linkedStationId == stationId && !it.tombstone
+            }.sortedWith(compareBy({ it.name }, { it.placeId }))
+        }
+
         override suspend fun countPlaces(profile: String, generation: Long) =
             places.values.count { it.profile == profile && it.generation == generation && !it.tombstone }.toLong()
 
