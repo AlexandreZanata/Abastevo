@@ -39,3 +39,25 @@ catalog SHA-256 and pinned IBGE boundary SHA-256 to one classification
 per canonical key. The importer takes an independently pinned sidecar
 digest, refuses missing or repeated keys, and derives the census from
 the joined rows. `UNASSIGNED` is explicit and conveys no address.
+
+## Owner verification and activation
+
+From the backend module, verify the private local bundle with independently
+trusted pins. This invocation needs no database configuration.
+
+```sh
+go run ./cmd/charging-catalog \
+  --bundle "$BUNDLE" --geography "$GEOGRAPHY" \
+  --rights-sha256 "$RIGHTS_SHA256" --manifest-sha256 "$MANIFEST_SHA256" \
+  --geography-sha256 "$GEOGRAPHY_SHA256" --boundary-sha256 "$BOUNDARY_SHA256"
+```
+
+The JSON result includes the candidate digest, place and connector-group
+counts, and the UF census. After explicit authorization for the target,
+add `--activate --approve-batch-sha256 "$BATCH_SHA256"` to the same
+invocation. Supply the DSN privately through `ANPFUEL_DATABASE_URL`.
+Development and test targets use a loopback database. Staging requires
+`ANPFUEL_CANONICAL_HOST=teste.abastevo.com.br` and the staging database
+service. Set `ANPFUEL_ENV` to the corresponding environment. A coverage
+exception requires all three override flags for the previous digest,
+actor and reason and is recorded in the activation audit.

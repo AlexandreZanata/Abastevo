@@ -87,7 +87,9 @@
   EVC-06H1 LOCAL_DONE: active national API, stable aliases, generation-bound
   cursors and legacy/PostGIS regressions pass. EVC-06H2 LOCAL_DONE: migration
   000154 gates activation on complete offer chunks and serves exact revision
-  bytes with cache tests. Next owner-controlled import command.
+  bytes with cache tests. EVC-06I LOCAL_DONE: owner command verifies the
+  national files without a DB and gates activation on the exact candidate
+  and allowed target. Synthetic PostGIS import passes. Next EVC-07 app.
   [Publication evidence](../backend/evidence/evc/EVC-06.md). [Rights evidence](../backend/evidence/evc/EVC-05.md).
   [Link evidence](../backend/evidence/evc/EVC-04.md).
   [Portal evidence](../backend/evidence/sna/SNA-06.md).

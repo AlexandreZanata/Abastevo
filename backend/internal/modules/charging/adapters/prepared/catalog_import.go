@@ -27,25 +27,67 @@ type NationalImport struct {
 	Override        *CatalogCoverageOverride
 }
 
-// ImportNationalCatalog stages and activates one verified catalog in the
-// same transaction. Callers must obtain operator approval before invoking it.
-func ImportNationalCatalog(ctx context.Context, pool *pgxpool.Pool, input NationalImport) (string, error) {
-	if pool == nil || input.Files == nil {
-		return "", errors.New("prepared: national import unavailable")
+// NationalImportPlan contains only the candidate digest and aggregate counts.
+type NationalImportPlan struct {
+	BatchSHA256 string           `json:"batch_sha256"`
+	Places      int              `json:"places"`
+	Groups      int              `json:"groups"`
+	UFCounts    map[string]int64 `json:"uf_counts"`
+}
+
+type admittedNationalImport struct {
+	bundle NationalBundle
+	places []NationalPlace
+	plan   NationalImportPlan
+}
+
+// PlanNationalImport verifies the candidate without touching the database.
+func PlanNationalImport(input NationalImport) (NationalImportPlan, error) {
+	candidate, err := admitNationalImport(input)
+	return candidate.plan, err
+}
+
+func admitNationalImport(input NationalImport) (admittedNationalImport, error) {
+	if input.Files == nil {
+		return admittedNationalImport{}, errors.New("prepared: national import unavailable")
 	}
 	bundle, err := VerifyNationalBundle(input.Files, input.RightsSHA256, input.ManifestSHA256)
 	if err != nil {
-		return "", err
+		return admittedNationalImport{}, err
 	}
 	projected, err := ProjectNationalCatalog(bundle)
 	if err != nil {
-		return "", err
+		return admittedNationalImport{}, err
 	}
 	places, counts, err := BindCatalogGeography(bundle, projected, input.Geography, input.GeographySHA256, input.BoundarySHA256)
 	if err != nil {
-		return "", err
+		return admittedNationalImport{}, err
+	}
+	groups := 0
+	for _, place := range places {
+		groups += len(place.Groups)
+		if len(places)+groups > MaxRecords {
+			return admittedNationalImport{}, errOversize
+		}
 	}
 	digest := fmt.Sprintf("%x", sha256.Sum256([]byte("abastevo:charging-batch:v1\x00"+input.RightsSHA256+input.GeographySHA256)))
+	return admittedNationalImport{bundle: bundle, places: places, plan: NationalImportPlan{
+		BatchSHA256: digest, Places: len(places), Groups: groups, UFCounts: counts,
+	}}, nil
+}
+
+// ImportNationalCatalog stages and activates one verified catalog in the
+// same transaction. Callers must obtain operator approval before invoking it.
+func ImportNationalCatalog(ctx context.Context, pool *pgxpool.Pool, input NationalImport) (string, error) {
+	if pool == nil {
+		return "", errors.New("prepared: national import unavailable")
+	}
+	candidate, err := admitNationalImport(input)
+	if err != nil {
+		return "", err
+	}
+	bundle, places, plan := candidate.bundle, candidate.places, candidate.plan
+	digest := plan.BatchSHA256
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return "", err
@@ -77,14 +119,10 @@ func ImportNationalCatalog(ctx context.Context, pool *pgxpool.Pool, input Nation
 		return "", err
 	}
 	identities := make([]CatalogIdentity, len(places))
-	entities := len(places)
 	for i, place := range places {
 		identities[i] = place.Identity
-		entities += len(place.Groups)
-		if entities > MaxRecords {
-			return "", errOversize
-		}
 	}
+	entities := plan.Places + plan.Groups
 	publicIDs, err := ResolveCatalogIdentities(identities, previous)
 	if err != nil {
 		return "", err
@@ -100,7 +138,7 @@ func ImportNationalCatalog(ctx context.Context, pool *pgxpool.Pool, input Nation
 	}); err != nil {
 		return "", err
 	}
-	census, err := json.Marshal(counts)
+	census, err := json.Marshal(plan.UFCounts)
 	if err != nil {
 		return "", err
 	}

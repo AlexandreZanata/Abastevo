@@ -316,3 +316,32 @@ PostGIS activation, import, HTTP and legacy compatibility tests
 passed with race detection. SQLc, vet, staticcheck, OpenAPI lint
 (zero errors), formatting and secret review passed. The operator
 entry point and authorized national activation remain separate.
+
+## EVC-06I opening
+
+B-BR-EVC-06I. Provide an owner-run import command. Verification reads
+local pinned files without opening a database. A write requires the
+exact verified candidate digest and an explicit allowed target
+environment. A coverage exception also names the previous digest,
+approver and reason. There is no automatic scheduler.
+
+BUC-EVC-06I. Verify the national replay through the command with no
+database credentials. Refuse partial write approval and invalid
+targets before connecting. The transaction remains covered by the
+synthetic real-PostGIS tests.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING
+Validation: PASS
+
+The CLI test first failed without an entry point. It now verifies
+without reading environment settings, rejects a mismatched approval
+digest, and rejects production before reading the DSN. The activation
+transaction passed separately on real PostGIS with synthetic data.
+Vet and staticcheck passed for the command and prepared adapter.
+
+File-only verification of the pinned national replay produced candidate
+`6fcdd044cb5f88c0655772172ef413c064c0ba9a214be13a59a7059d19b88b30`
+with 1,658 sites and 2,094 source-owned connector groups. It classified
+sites in 25 UFs and returned 11 as UNASSIGNED. The national replay was
+verified with database configuration absent. National activation is
+pending explicit owner authorization.
