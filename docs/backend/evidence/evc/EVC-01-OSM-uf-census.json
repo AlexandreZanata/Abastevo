@@ -1,0 +1,160 @@
+{
+  "format": "abastevo.osm-national-census-v1",
+  "eligibility": "raw candidates; not an eligible/public catalog or complete coverage",
+  "units": "OSM objects; three site kinds kept separate; not connectors",
+  "source_sha256": "176a899d86f1bf2f77964577c482c119a3dcc772b8ee214e78387a5dfe4d3366",
+  "boundary_sha256": "5491bd548fe381cd388ba81c9edfbf4cf2749891e2fd32c1079ac71f7aba1c10",
+  "boundary_license": "CC-BY-4.0",
+  "boundary_attribution": "Fonte: IBGE",
+  "totals": {
+    "FUEL_STATION": 28579,
+    "CHARGING_SITE": 407,
+    "COMBINED_SITE": 0
+  },
+  "by_uf": {
+    "AC": {
+      "FUEL_STATION": 68,
+      "CHARGING_SITE": 0,
+      "COMBINED_SITE": 0
+    },
+    "AL": {
+      "FUEL_STATION": 349,
+      "CHARGING_SITE": 1,
+      "COMBINED_SITE": 0
+    },
+    "AM": {
+      "FUEL_STATION": 381,
+      "CHARGING_SITE": 5,
+      "COMBINED_SITE": 0
+    },
+    "AP": {
+      "FUEL_STATION": 97,
+      "CHARGING_SITE": 0,
+      "COMBINED_SITE": 0
+    },
+    "BA": {
+      "FUEL_STATION": 2008,
+      "CHARGING_SITE": 22,
+      "COMBINED_SITE": 0
+    },
+    "CE": {
+      "FUEL_STATION": 1112,
+      "CHARGING_SITE": 24,
+      "COMBINED_SITE": 0
+    },
+    "DF": {
+      "FUEL_STATION": 361,
+      "CHARGING_SITE": 7,
+      "COMBINED_SITE": 0
+    },
+    "ES": {
+      "FUEL_STATION": 648,
+      "CHARGING_SITE": 4,
+      "COMBINED_SITE": 0
+    },
+    "GO": {
+      "FUEL_STATION": 894,
+      "CHARGING_SITE": 21,
+      "COMBINED_SITE": 0
+    },
+    "MA": {
+      "FUEL_STATION": 617,
+      "CHARGING_SITE": 6,
+      "COMBINED_SITE": 0
+    },
+    "MG": {
+      "FUEL_STATION": 2985,
+      "CHARGING_SITE": 28,
+      "COMBINED_SITE": 0
+    },
+    "MS": {
+      "FUEL_STATION": 320,
+      "CHARGING_SITE": 7,
+      "COMBINED_SITE": 0
+    },
+    "MT": {
+      "FUEL_STATION": 610,
+      "CHARGING_SITE": 15,
+      "COMBINED_SITE": 0
+    },
+    "PA": {
+      "FUEL_STATION": 638,
+      "CHARGING_SITE": 18,
+      "COMBINED_SITE": 0
+    },
+    "PB": {
+      "FUEL_STATION": 666,
+      "CHARGING_SITE": 0,
+      "COMBINED_SITE": 0
+    },
+    "PE": {
+      "FUEL_STATION": 1101,
+      "CHARGING_SITE": 53,
+      "COMBINED_SITE": 0
+    },
+    "PI": {
+      "FUEL_STATION": 639,
+      "CHARGING_SITE": 2,
+      "COMBINED_SITE": 0
+    },
+    "PR": {
+      "FUEL_STATION": 1627,
+      "CHARGING_SITE": 25,
+      "COMBINED_SITE": 0
+    },
+    "RJ": {
+      "FUEL_STATION": 1575,
+      "CHARGING_SITE": 15,
+      "COMBINED_SITE": 0
+    },
+    "RN": {
+      "FUEL_STATION": 481,
+      "CHARGING_SITE": 9,
+      "COMBINED_SITE": 0
+    },
+    "RO": {
+      "FUEL_STATION": 151,
+      "CHARGING_SITE": 2,
+      "COMBINED_SITE": 0
+    },
+    "RR": {
+      "FUEL_STATION": 120,
+      "CHARGING_SITE": 2,
+      "COMBINED_SITE": 0
+    },
+    "RS": {
+      "FUEL_STATION": 2450,
+      "CHARGING_SITE": 38,
+      "COMBINED_SITE": 0
+    },
+    "SC": {
+      "FUEL_STATION": 1585,
+      "CHARGING_SITE": 26,
+      "COMBINED_SITE": 0
+    },
+    "SE": {
+      "FUEL_STATION": 299,
+      "CHARGING_SITE": 0,
+      "COMBINED_SITE": 0
+    },
+    "SP": {
+      "FUEL_STATION": 6452,
+      "CHARGING_SITE": 74,
+      "COMBINED_SITE": 0
+    },
+    "TO": {
+      "FUEL_STATION": 217,
+      "CHARGING_SITE": 2,
+      "COMBINED_SITE": 0
+    },
+    "UNASSIGNED": {
+      "FUEL_STATION": 128,
+      "CHARGING_SITE": 1,
+      "COMBINED_SITE": 0
+    }
+  },
+  "classification_reasons": {
+    "ibge_polygon": 28857,
+    "no_boundary_match": 129
+  }
+}

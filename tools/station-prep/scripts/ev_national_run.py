@@ -79,6 +79,14 @@ def run_process(command, root, extras, limits):
             child.wait()
 
 
+def require_local_environment():
+    modes = [os.environ.get(key, '').lower() for key in
+             ['APP_ENV', 'ANPFUEL_ENV', 'ANPFUEL_RUN_ENV', 'DEPLOY_ENV']]
+    if os.environ.get('KUBERNETES_SERVICE_HOST') or any(
+            mode in ('prod', 'production', 'stage', 'staging') for mode in modes):
+        raise RunError('national preparation is local only')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', required=True)
@@ -86,8 +94,7 @@ def main():
     parser.add_argument('--boundaries', required=True)
     parser.add_argument('--output', required=True, help='new private working directory outside checkout')
     args = parser.parse_args()
-    if os.environ.get('KUBERNETES_SERVICE_HOST') or os.environ.get('APP_ENV', '').lower() in ('production', 'staging'):
-        raise RunError('national preparation is local only')
+    require_local_environment()
     os.umask(0o077)
     profile_raw = PROFILE_FILE.read_bytes()
     profile = json.loads(profile_raw)

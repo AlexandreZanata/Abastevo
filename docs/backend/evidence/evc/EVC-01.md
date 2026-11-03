@@ -135,3 +135,68 @@ The owner now explicitly authorized downloading/using the dated OCM export
 (2026-04-22) instead of supplying an API key. No key/account creation is needed.
 Do not relabel the snapshot as fresh or infer public/live coverage from raw
 preparation counts. Source pins and real preparation measurements follow.
+
+## EVC-01C opening
+
+B-BR-EV-SRC-01C: The owner-approved dated OCM fallback remains pinned to its
+2026-04-22 commit. A GitHub Contents listing capped at 1,000 files is not a
+whole-country inventory. Read the nonrecursive Git commit/tree chain through
+`data/BR`, refuse truncated trees, verify Git tree/blob hashes and exact provider
+licenses, and fetch only Brazil POIs plus reference metadata. Raw contacts stay
+private outside Git; retain dated provenance and aggregate counts only.
+
+BUC-EVC-01C: Prepare approved national OSM/IBGE bytes through the tested resource
+runner. Obtain the full pinned Brazil OCM inventory and verify each file before
+local preparation. Refuse partial/foreign/changed/budget-exceeding input without
+replacing prior output. Record reproducibility, resource measurements and source
+pins. No import/backfill/staging mutation is included in this source task.
+
+### EVC-01C national-source checkpoint
+
+Status: LOCAL_DONE
+Validation: PASS
+Integration: INTEGRATION_PENDING
+
+Owner-approved private acquisition/preparation is complete. The owner explicitly
+selected the dated OCM fallback after being told the API key was unavailable.
+[Source pins](EVC-01-source-pins.json) and the new immutable
+[national source profile](../../../../contracts/ev/national-source-pins-20261103-v1.json)
+record the OSM daily file, IBGE malha and April OCM snapshot separately. The old
+OCM preparation profile/artifacts remain unchanged; the new profile corrects
+provider 57's exact license digest and remains PRIVATE_PREPARATION. Public
+admission awaits eligibility, conflation and rights/publication gates.
+
+The GitHub connector Contents view returned only 1,000 files. The bounded local
+export collector follows the nonrecursive commit → root → data → BR Git tree
+chain instead, refuses truncation and verifies every tree and blob. It acquired
+all 1,298 country POIs / 1,816,497 bytes / 2,089 connection groups, with provider
+counts 768/422/108. Reference hash and exact licenses match the admitted bytes.
+Only those BR files and reference metadata were fetched, never the world.
+Raw contact-bearing payload is private outside the checkout, not a Git fixture
+or a product artifact. No OCM key/account was obtained or retained.
+
+The frozen OSM profile processed 363,988,420 elements (below the 400M cap),
+28,987 candidates: 28,986 prepared and one quarantined (`tag out of bounds`).
+Raw object totals: 28,579 fuel, 407 charging, zero combined. Of these, 128 fuel
+and one charging object have no unique IBGE polygon match and remain UNASSIGNED.
+[All 27 UF buckets](EVC-01-OSM-uf-census.json) include zeros and the unassigned
+bucket; coordinates were not turned into an address. Counts are raw source
+objects, not eligible public sites, connectors or complete Brazil coverage.
+
+Two real national outputs are byte-identical for all four artifacts, with
+[hashes](EVC-01-reproducibility.json). The first wrapper was interrupted after
+artifact production and has no accepted execution receipt. A fresh replay
+completed normally: 109.163 s wall time, peak RSS 926,662,656 bytes, owned working
+disk 2,125,409,654 bytes, all below frozen budgets. Its
+[measured receipt](EVC-01-OSM-execution.json) binds the exact profile/PBF/manifest.
+
+Actual checks: the 4a0937d3 Rust fast gate remains valid (no Rust changes in
+this child); fourteen offline Python groups now pass, including complete pinned
+Git graph, truncation/blob/country/provider/license failures, no overwrite,
+owner-only modes and corrected-license profile binding. Runtime environment
+aliases are explicitly refused by the local runner. Diff and secret review
+pass; no new dependency. No source bytes, contacts or private coordinates were
+committed. No database import/backfill or staging mutation ran.
+
+Next: EVC-02 canonical normalization and eligibility; then EVC-03 conflation.
+The source pins alone do not validate a cross-match or authorize publication.

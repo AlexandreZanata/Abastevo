@@ -13,26 +13,31 @@
   and diff checks pass. [SNA-03](../backend/evidence/sna/SNA-03.md).
   EVC-00 inventory/register reconciliation LOCAL_DONE: staging has zero EV
   catalog/overlay assertions; active overlay holds 66 OSM fuel rows. Historical
-  OCM admission restored with scope; malformed provider-57 license digest is
-  an EVC-01 hold. [EVC-00](../backend/evidence/evc/EVC-00.md).
+  OCM admission restored with scope; provider-57 digest is corrected in the
+  new EVC-01 pin while historical artifact identity stays unchanged. [EVC-00](../backend/evidence/evc/EVC-00.md).
   EVC-01A acquisition code LOCAL_DONE: strict pins/budgets/private output and
-  OCM header/pagination tests pass. Owner approved the local 2.10 GB Brazil
-  PBF download and existing-key OCM collection; key not yet provided.
+  OCM header/pagination tests pass. Owner-approved local OSM/IBGE downloads
+  and dated OCM fallback completed; no API key required.
   EVC-01B national profile/geography/census/resource fences LOCAL_DONE: full Rust
   gate and ten offline Python groups pass (parent 188e7bea plus child). OSM/IBGE
   downloads verified; owner approved dated OCM export fallback (22 Apr 2026).
-  EVC-01C actual private preparation/source pins IN_PROGRESS.
-  Then EVC-02/03 and SNA-04..06.
+  EVC-01C LOCAL_DONE: all 1,298 BR OCM blobs/licenses verified (dated fallback),
+  national OSM 363,988,420 elements → 28,579 fuel / 407 charging / 0 combined raw
+  objects; 129 unassigned UF, one quarantine. Two outputs byte-identical; accepted
+  replay 109.163 s / 926.7 MB RSS within frozen budgets. Fourteen offline Python
+  groups pass; source pins/UF census/receipts in EVC-01 evidence. No import.
+  Next EVC-02/03, then SNA-04..06.
   Read-only staging baseline: 48,770 station rows, 40,388 with points, 3,003
   without UF; zero charging batches/links. This is not a national EV coverage
   result. PR #183 merged d0eb9c79 with all four checks green; signed release
   deployed automatically at 12:39:49Z, ready API/worker imageIDs match its
   manifest, public health HTTP 200. ZD live strategy/drills remain OWED.
-  No ingestor migration/backfill ran on staging. Downloads, OCM key, imports
-  and any staging action still need specific approval. Final cumulative dev →
+  No ingestor migration/backfill ran on staging. Approved downloads are local;
+  any new download/key, import/backfill or staging mutation needs approval. Final cumulative dev →
   main PR, per-UF reconciliation and staging acceptance remain owed.
 
-- Zero-downtime staging source 2026-11-03: LOCAL_DONE / INTEGRATION_PENDING;
+- Historical zero-downtime source checkpoint (before merged PR #183 above):
+  LOCAL_DONE / INTEGRATION_PENDING;
   full live acceptance OWED. [Batch evidence/activation queue](../backend/evidence/cd/ZD-08.md),
   [plan](CD_ZERO_DOWNTIME_PLAN.md). Isolated `codex/cd-zero-downtime`, tested
   parent 0792eb35 plus final operations task; atomic history retained. 229

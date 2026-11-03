@@ -44,3 +44,10 @@ class ResourceTests(unittest.TestCase):
             (path/'owned'/'link').symlink_to(path/'unrelated')
             with self.assertRaises(runner.RunError):
                 runner.working_bytes(path/'owned', [])
+
+    def test_runtime_environment_aliases_refuse_national_preparation(self):
+        from unittest.mock import patch
+        import os
+        for key in ['APP_ENV', 'ANPFUEL_ENV', 'ANPFUEL_RUN_ENV', 'DEPLOY_ENV', 'KUBERNETES_SERVICE_HOST']:
+            with self.subTest(key=key), patch.dict(os.environ, {key:'staging'}, clear=True):
+                with self.assertRaises(runner.RunError): runner.require_local_environment()
