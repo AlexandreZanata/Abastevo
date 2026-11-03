@@ -16,6 +16,14 @@ func DevelopmentStorageProxy(bucket string) http.Handler {
 	return developmentStorageProxy(bucket, target)
 }
 
+// DevelopmentStorageServiceProxy preserves public S3 signatures while moving
+// the private writer into its singleton staging Service. No arbitrary proxy
+// destination is accepted from requests or operator configuration.
+func DevelopmentStorageServiceProxy(bucket string) http.Handler {
+	target, _ := url.Parse("http://abastevo-temp-storage:9000")
+	return developmentStorageProxy(bucket, target)
+}
+
 func developmentStorageProxy(bucket string, target *url.URL) http.Handler {
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, _ error) {

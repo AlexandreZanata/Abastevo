@@ -100,14 +100,7 @@ baseline_trap() {
     baseline_fail "$BASELINE_STAGE" "command failed with status $status"
 }
 
-baseline_acquire_lock() {
-    install -d -m 0700 "$(dirname "$ABASTEVO_LOCK_FILE")"
-    exec 8>"$ABASTEVO_LOCK_FILE"
-    chmod 0600 "$ABASTEVO_LOCK_FILE"
-    if ! flock -n 8; then
-        baseline_fail "lock" "another deploy operation is running"
-    fi
-}
+
 
 baseline_preflight() {
     require_var KUBECONFIG
@@ -122,7 +115,6 @@ baseline_preflight() {
         || fail "ABASTEVO_SMOKE_BASE_URL must be an http(s) URL"
     [[ "$ABASTEVO_JOB_TIMEOUT" =~ ^[0-9]+$ ]] \
         || fail "ABASTEVO_JOB_TIMEOUT must be an integer"
-    baseline_acquire_lock
 }
 
 baseline_read_images() {

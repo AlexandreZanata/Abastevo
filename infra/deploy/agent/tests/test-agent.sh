@@ -81,7 +81,9 @@ while (( $# )); do
 done
 [[ -n "$out" ]] || exit 1
 if [[ "$url" == *"/compare/"* ]]; then
-    case "${CURL_MODE:-behind}" in
+    mode="${CURL_MODE:-behind}"
+    if [[ "$url" != *"/compare/main..."* ]]; then mode="${CURL_FLOOR_MODE:-ahead}"; fi
+    case "$mode" in
         behind) printf '{"status":"behind"}\n' > "$out"; [[ "$want_code" == "1" ]] && printf '200' ;;
         identical) printf '{"status":"identical"}\n' > "$out"; [[ "$want_code" == "1" ]] && printf '200' ;;
         ahead) printf '{"status":"ahead"}\n' > "$out"; [[ "$want_code" == "1" ]] && printf '200' ;;
@@ -95,6 +97,13 @@ if [[ "$url" == *"/compare/"* ]]; then
 fi
 case "${SMOKE_MODE:-ok}" in
     fail) exit 22 ;;
+    after-landing)
+        [[ "$(readlink "$ORAS_FIXTURE_DIR/landing/current" || true)" != "releases/1111111111111111111111111111111111111111" ]] || exit 22
+        case "$url" in
+            */portal-manifest.json) printf '{"files":[{"path":"dados/busca/test/SP.json"}]}\n' > "$out" ;;
+            *) printf 'ok\n' > "$out" ;;
+        esac
+        ;;
     ok)
         case "$url" in
             */portal-manifest.json) printf '{"files":[{"path":"dados/busca/test/SP.json"}]}\n' > "$out" ;;
@@ -126,6 +135,13 @@ while (( i < ${#args[@]} )); do
     cmd+=("${args[$i]}")
     i=$((i + 1))
 done
+if [[ -n "${KUBECTL_KILL_POINT:-}" && ! -e "$ORAS_FIXTURE_DIR/killed" ]]; then
+    if [[ ( "$KUBECTL_KILL_POINT" == "migrate" && "${cmd[0]:-}" == "logs" && "${cmd[-1]}" == *migrate-* ) ||
+          ( "$KUBECTL_KILL_POINT" == "rollout" && "${cmd[0]:-}" == "rollout" && "${cmd[1]:-}" == "status" ) ]]; then
+        touch "$ORAS_FIXTURE_DIR/killed"
+        kill -KILL "$KILL_AGENT_PID"
+    fi
+fi
 case "${cmd[0]:-}" in
     get)
         case "${cmd[1]:-}" in
@@ -133,11 +149,11 @@ case "${cmd[0]:-}" in
                 jq -n --arg schema "${KUBECTL_SCHEMA_ANNOTATION:-000132}" \
                     --argjson maxSurge "${KUBECTL_MAX_SURGE:-0}" \
                     --argjson maxUnavailable "${KUBECTL_MAX_UNAVAILABLE:-1}" \
-                    '{metadata:{annotations:{"abastevo.com/schema-version":$schema}},spec:{strategy:{rollingUpdate:{maxSurge:$maxSurge,maxUnavailable:$maxUnavailable}},template:{spec:{containers:[{name:"api",image:"local-api",imagePullPolicy:"Never"},{name:"worker",image:"local-worker",imagePullPolicy:"Never"}]}}}}'
+                    '{metadata:{annotations:{"abastevo.com/schema-version":$schema,"deployment.kubernetes.io/revision":"7"}},spec:{strategy:{rollingUpdate:{maxSurge:$maxSurge,maxUnavailable:$maxUnavailable}},template:{spec:{containers:[{name:"api",image:"local-api",imagePullPolicy:"Never",resources:{requests:{cpu:"100m",memory:"256Mi"},limits:{cpu:"1",memory:"1Gi"}}},{name:"worker",image:"local-worker",imagePullPolicy:"Never",resources:{requests:{cpu:"100m",memory:"256Mi"},limits:{cpu:"500m",memory:"512Mi"}}}]}}}}'
                 ;;
             resourcequota)
                 jq -n --arg hard "${KUBECTL_QUOTA_HARD:-6}" --arg used "${KUBECTL_QUOTA_USED:-3500m}" \
-                    '{status:{hard:{"limits.cpu":$hard},used:{"limits.cpu":$used}}}'
+                    '{status:{hard:{"limits.cpu":$hard,"limits.memory":"8Gi","requests.cpu":"2","requests.memory":"4Gi"},used:{"limits.cpu":$used,"limits.memory":"3840Mi","requests.cpu":"400m","requests.memory":"1088Mi"}}}'
                 ;;
             *) exit 1 ;;
         esac
@@ -188,13 +204,32 @@ case "${cmd[0]:-}" in
         ;;
     rollout)
         case "${cmd[1]:-}" in
-            status) [[ "${KUBECTL_ROLLOUT_FAIL:-0}" == "0" ]] || exit 1 ;;
-            undo) ;;
+            status)
+                if [[ -e "$ORAS_FIXTURE_DIR/undo-requested" ]]; then
+                    [[ "${KUBECTL_UNDO_STATUS_FAIL:-0}" == "0" ]] || exit 1
+                else
+                    [[ "${KUBECTL_ROLLOUT_FAIL:-0}" == "0" ]] || exit 1
+                fi
+                ;;
+            undo) touch "$ORAS_FIXTURE_DIR/undo-requested"; [[ "${KUBECTL_UNDO_FAIL:-0}" == "0" ]] || exit 1 ;;
             *) exit 1 ;;
         esac
         ;;
     *) exit 1 ;;
 esac
+STUB
+
+cat > "$STUB_BIN/mv" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${LANDING_ROLLBACK_FAIL:-0}" == "1" && "$*" == *'.current.rollback.'* ]]; then exit 1; fi
+if [[ -n "${KILL_CURRENT_COMMIT:-}" && "${@: -1}" == "$ORAS_FIXTURE_DIR/state/current.json" && ! -e "$ORAS_FIXTURE_DIR/killed" ]]; then
+    touch "$ORAS_FIXTURE_DIR/killed"
+    if [[ "$KILL_CURRENT_COMMIT" == "after" ]]; then command -p mv "$@"; fi
+    kill -KILL "$KILL_AGENT_PID"
+    exit 0
+fi
+command -p mv "$@"
 STUB
 
 chmod +x "$STUB_BIN"/*
@@ -311,7 +346,7 @@ run_agent() {
         export ABASTEVO_GITHUB_API="https://api.github.invalid"
         export ABASTEVO_MANIFEST_REPOSITORY="ghcr.io/alexandrezanata/abastevo-release"
         export ABASTEVO_MANIFEST_TAG="staging"
-        "$AGENT"
+        bash -c 'export KILL_AGENT_PID=$$; exec "$@"' _ "$AGENT" "${@:2}"
     ) >"$dir/stdout.log" 2>"$dir/stderr.log"
 }
 
@@ -394,7 +429,7 @@ run_agent_apply() {
         export KUBECTL_APPLY_FAIL="${KUBECTL_APPLY_FAIL:-0}"
         export KUBECTL_BACKUP_BAD_HASH="${KUBECTL_BACKUP_BAD_HASH:-0}"
         mkdir -p "$KUBECTL_JOBS_DIR" "$dir/state"
-        "$AGENT"
+        bash -c 'export KILL_AGENT_PID=$$; exec "$@"' _ "$AGENT" "${@:2}"
     ) >"$dir/stdout.log" 2>"$dir/stderr.log"
 }
 
@@ -882,7 +917,7 @@ assert_eq "smoke failure current unchanged" "$(sha256sum "$CASE/state/current.js
 assert_eq "smoke failure landing unchanged" "$(readlink "$CASE/landing/current")" "releases/$FIXTURE_OLD_SHA"
 assert_absent "smoke failure no new landing" "$CASE/landing/releases/$FIXTURE_SHA"
 
-echo "== apply: concurrent lock is refused =="
+echo "== apply: concurrent lock defers =="
 CASE="$(new_case apply-lock)"
 make_current_old "$CASE"
 prepare_landing "$CASE" 1
@@ -890,7 +925,7 @@ CURRENT_BEFORE="$(sha256sum "$CASE/state/current.json" | cut -d' ' -f1)"
 flock "$CASE/state/apply.lock" -c 'sleep 2' &
 LOCK_PID=$!
 sleep 0.3
-expect_failure "apply concurrent lock refused" run_agent_apply "$CASE"
+expect_success "apply concurrent lock deferred" run_agent_apply "$CASE"
 wait "$LOCK_PID" 2>/dev/null || true
 RECEIPT="$(find "$CASE/receipts" -maxdepth 1 -name 'failure-*.json' -type f | sort | tail -n 1)"
 if [[ -n "$RECEIPT" ]]; then
@@ -903,16 +938,12 @@ echo "== apply: surge requires quota headroom =="
 CASE="$(new_case apply-no-headroom)"
 make_current_old "$CASE"
 prepare_landing "$CASE" 1
-ABASTEVO_ALLOW_SURGE=1 KUBECTL_QUOTA_USED=6000m expect_success "apply no-headroom success" run_agent_apply "$CASE"
-RECEIPT="$(find "$CASE/receipts" -maxdepth 1 -name 'deploy-*.json' -type f | sort | tail -n 1)"
-if [[ -n "$RECEIPT" ]]; then
-    assert_eq "no-headroom surge false" "$(jq -r '.surge' "$RECEIPT")" "false"
-    assert_eq "no-headroom maxSurge" "$(jq -r '.strategy.maxSurge' "$RECEIPT")" "0"
-    assert_eq "no-headroom maxUnavailable" "$(jq -r '.strategy.maxUnavailable' "$RECEIPT")" "1"
-    assert_eq "no-headroom gap recorded" "$(jq -r '.strategy.gap' "$RECEIPT")" "true"
-    assert_eq "no-headroom headroom" "$(jq -r '.quota_headroom_milli' "$RECEIPT")" "0"
-fi
-assert_eq "no-headroom strategy patch" "$(grep -c 'maxSurge' "$CASE/kubectl.log" || true)" "0"
+ABASTEVO_ALLOW_SURGE=1 KUBECTL_QUOTA_USED=6000m expect_failure "surge no-headroom refuses" run_agent_apply "$CASE"
+assert_eq "no-headroom current unchanged" "$(jq -r .sha "$CASE/state/current.json")" "$FIXTURE_OLD_SHA"
+assert_eq "no-headroom no image update" "$(grep -c 'set image' "$CASE/kubectl.log" || true)" "0"
+assert_no_job_role "no-headroom no migration" "$CASE" migrate
+
+. "$ROOT/infra/deploy/agent/tests/test-safety.sh"
 
 echo "== summary: $PASS passed, $FAIL failed =="
 [[ "$FAIL" -eq 0 ]]

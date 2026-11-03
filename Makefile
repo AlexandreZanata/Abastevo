@@ -34,16 +34,21 @@ test-wiki:
 	bash scripts/tests/test-wiki.sh
 
 check-infra:
+	python3 infra/k8s/staging/test-manifests.py
 	bash scripts/check-infra-config.sh staging
 	bash scripts/check-infra-config.sh prod
 
 test-infra:
+	python3 infra/k8s/staging/test-manifests.py
 	bash scripts/tests/test-infra-config.sh
 
 test-deploy:
 	bash scripts/tests/test-deploy.sh
 
 test-deploy-agent:
+	bash infra/deploy/agent/tests/test-status.sh
+	python3 infra/scripts/test-rollout-probe.py
+	python3 infra/deploy/agent/tests/test-surge-capacity.py
 	bash infra/deploy/agent/tests/test-agent.sh
 
 test-backup:

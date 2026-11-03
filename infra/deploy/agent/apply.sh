@@ -10,6 +10,8 @@ APPLY_ROLLOUT_STARTED=0
 APPLY_LANDING_SWITCHED=0
 APPLY_STRATEGY_PATCHED=0
 APPLY_PREVIOUS_LANDING=""
+APPLY_PREVIOUS_REVISION=""
+APPLY_PREVIOUS_WORKER_REVISION=""
 APPLY_PREVIOUS_STRATEGY_JSON=""
 APPLY_SURGE=false
 APPLY_MAX_SURGE=0
@@ -146,24 +148,33 @@ apply_fail() {
     trap - ERR
     local rollout_undone=false landing_rolled_back=false strategy_restored=false
     if [[ "$APPLY_LANDING_SWITCHED" == "1" ]]; then
-        if apply_restore_landing; then landing_rolled_back=true; else log "landing rollback failed"; fi
+        if apply_restore_landing; then landing_rolled_back=true; else log "landing rollback failed"; safety_hold; fi
     fi
     if [[ "$APPLY_ROLLOUT_STARTED" == "1" ]]; then
-        if runtime_rollout_undo "$ABASTEVO_NAMESPACE" "$ABASTEVO_API_DEPLOYMENT"; then
+        if runtime_rollout_undo "$ABASTEVO_NAMESPACE" "$ABASTEVO_API_DEPLOYMENT" "$APPLY_PREVIOUS_REVISION" \
+            && runtime_rollout_status "$ABASTEVO_NAMESPACE" "$ABASTEVO_API_DEPLOYMENT" "$ABASTEVO_ROLLOUT_TIMEOUT"; then
             rollout_undone=true
         else
             log "rollout undo failed for the api deployment"
+            safety_hold
         fi
         if [[ "$ABASTEVO_WORKER_DEPLOYMENT" != "$ABASTEVO_API_DEPLOYMENT" ]]; then
-            runtime_rollout_undo "$ABASTEVO_NAMESPACE" "$ABASTEVO_WORKER_DEPLOYMENT" \
-                || log "rollout undo failed for the worker deployment"
+            if ! runtime_rollout_undo "$ABASTEVO_NAMESPACE" "$ABASTEVO_WORKER_DEPLOYMENT" "$APPLY_PREVIOUS_WORKER_REVISION" \
+                || ! runtime_rollout_status "$ABASTEVO_NAMESPACE" "$ABASTEVO_WORKER_DEPLOYMENT" "$ABASTEVO_ROLLOUT_TIMEOUT"; then
+                rollout_undone=false
+                log "rollout undo failed for the worker deployment"
+                safety_hold
+            fi
         fi
     elif [[ "$APPLY_STRATEGY_PATCHED" == "1" ]]; then
-        if apply_restore_strategy; then strategy_restored=true; else log "strategy restore failed"; fi
+        if apply_restore_strategy; then strategy_restored=true; else log "strategy restore failed"; safety_hold; fi
     fi
     log "apply failed at $stage: $message"
     apply_write_receipt "failed" "$stage" "$message" "$rollout_undone" \
         "$landing_rolled_back" "$strategy_restored"
+    safety_reject || exit 1
+    safety_notify
+    rm -f "$ABASTEVO_STATE_DIR/inflight.json"
     exit 1
 }
 
@@ -171,15 +182,6 @@ apply_trap() {
     local status="$1"
     trap - ERR
     apply_fail "$APPLY_STAGE" "command failed with status $status"
-}
-
-apply_acquire_lock() {
-    install -d -m 0700 "$(dirname "$ABASTEVO_LOCK_FILE")"
-    exec 9>"$ABASTEVO_LOCK_FILE"
-    chmod 0600 "$ABASTEVO_LOCK_FILE"
-    if ! flock -n 9; then
-        apply_fail "lock" "another apply is already running"
-    fi
 }
 
 apply_preflight() {
@@ -208,6 +210,10 @@ apply_preflight() {
         || fail "ABASTEVO_BACKUP_KEEP must be an integer"
     [[ "$ABASTEVO_LANDING_KEEP" =~ ^[0-9]+$ ]] \
         || fail "ABASTEVO_LANDING_KEEP must be an integer"
+    if [[ "$ABASTEVO_ALLOW_SURGE" == "1" ]]; then
+        require_tool python3
+        runtime_check_surge_capacity || apply_fail capacity "surge storage/capacity gate refused; operator review required"
+    fi
     local landing_digest manifest_landing
     landing_digest="$(jq -r '[.layers[] | select(.mediaType == "application/vnd.abastevo.landing.tar+gzip")] | if length == 1 then .[0].digest else empty end' "$workdir/oci-manifest.json")"
     [[ "$landing_digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
@@ -218,7 +224,6 @@ apply_preflight() {
         || fail "landing archive digest does not match the OCI layer"
     [[ "${manifest_landing#sha256:}" == "$(jq -r '.landing_sha256' "$manifest_file")" ]] \
         || fail "landing archive digest does not match the signed manifest"
-    apply_acquire_lock
 }
 
 apply_schema_gate() {
@@ -306,16 +311,19 @@ apply_rollout() {
         "$ABASTEVO_SURGE_RESOURCE_QUOTA")" || headroom=0
     [[ "$headroom" =~ ^[0-9]+$ ]] || headroom=0
     APPLY_QUOTA_HEADROOM_MILLI="$headroom"
-    APPLY_PREVIOUS_STRATEGY_JSON="$(runtime_deployment_strategy \
+    local current_strategy
+    current_strategy="$(runtime_deployment_strategy \
         "$ABASTEVO_NAMESPACE" "$ABASTEVO_API_DEPLOYMENT")" \
         || apply_fail "rollout" "cannot read the deployment strategy"
-    prev_surge="$(printf '%s' "$APPLY_PREVIOUS_STRATEGY_JSON" | jq -r '.maxSurge // 0 | tostring')"
-    prev_unavailable="$(printf '%s' "$APPLY_PREVIOUS_STRATEGY_JSON" | jq -r '.maxUnavailable // 1 | tostring')"
+    prev_surge="$(printf '%s' "$current_strategy" | jq -r '.maxSurge // 0 | tostring')"
+    prev_unavailable="$(printf '%s' "$current_strategy" | jq -r '.maxUnavailable // 1 | tostring')"
     if [[ "$ABASTEVO_ALLOW_SURGE" == "1" ]] \
         && (( headroom >= ABASTEVO_SURGE_CPU_MILLI )); then
         APPLY_SURGE=true
         max_surge=1
         max_unavailable=0
+    elif [[ "$ABASTEVO_ALLOW_SURGE" == "1" ]]; then
+        apply_fail capacity "surge CPU threshold unavailable; serving replica retained"
     else
         APPLY_SURGE=false
         max_surge=0
@@ -388,7 +396,11 @@ apply_landing() {
     tar -xzf "$workdir/landing-dist.tar.gz" -C "$staged" \
         || apply_fail "landing" "landing archive extraction failed"
     chmod -R a+rX "$staged"
-    APPLY_PREVIOUS_LANDING="$(readlink "$landing_root/current" 2>/dev/null || true)"
+    if [[ "$(readlink "$landing_root/current" 2>/dev/null || true)" == "releases/$release_sha" ]]; then
+        rm -rf "$staged"
+        APPLY_LANDING_SWITCHED=1
+        return
+    fi
     rm -rf "$release_dir"
     mv "$staged" "$release_dir"
     ln -sfn "releases/$release_sha" "$landing_root/.current.$$"
@@ -398,7 +410,7 @@ apply_landing() {
     local old
     while IFS= read -r old; do
         [[ "$old" =~ ^[0-9a-f]{40}$ ]] || continue
-        [[ "$old" == "$release_sha" ]] && continue
+        [[ "$old" == "$release_sha" || "releases/$old" == "$APPLY_PREVIOUS_LANDING" ]] && continue
         rm -rf "${releases:?}/$old"
     done < <(find "$releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %f\n' \
         | sort -nr | tail -n +$((ABASTEVO_LANDING_KEEP + 1)) | cut -d' ' -f2-)
@@ -437,12 +449,17 @@ apply_write_current_state() {
 
 apply_release() {
     if [[ "$action" != "plan-only" ]]; then
+        if [[ -f "$ABASTEVO_STATE_DIR/inflight.json" ]]; then
+            apply_smoke || apply_fail recovery "committed candidate failed smoke"
+            rm -f "$ABASTEVO_STATE_DIR/inflight.json"
+        fi
         log "no changes to apply"
         return 0
     fi
     trap 'apply_trap $?' ERR
     APPLY_STAGE="preflight"
     apply_preflight
+    safety_journal
     APPLY_STAGE="schema"
     apply_schema_gate
     APPLY_STAGE="backup"
@@ -455,6 +472,7 @@ apply_release() {
     apply_smoke || apply_fail "smoke" "smoke check failed"
     APPLY_STAGE="landing"
     apply_landing
+    apply_smoke || apply_fail landing-smoke "new landing failed smoke"
     APPLY_STAGE="state"
     apply_write_current_state
     trap - ERR
@@ -463,5 +481,6 @@ apply_release() {
     runtime_annotate_source "$ABASTEVO_NAMESPACE" "$ABASTEVO_API_DEPLOYMENT" \
         "$release_sha" "$(jq -r '.schema_min_supported' "$manifest_file")" \
         || log "source annotations were not updated"
+    rm -f "$ABASTEVO_STATE_DIR/inflight.json"
     log "release $release_sha deployed"
 }

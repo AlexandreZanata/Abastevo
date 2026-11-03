@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -36,13 +37,14 @@ type Router = chi.Router
 // Options configures the server. Durations map to http.Server semantics;
 // ShutdownTimeout bounds the drain after cancellation.
 type Options struct {
-	Addr              string
-	ReadTimeout       time.Duration
-	ReadHeaderTimeout time.Duration
-	WriteTimeout      time.Duration
-	IdleTimeout       time.Duration
-	ShutdownTimeout   time.Duration
-	MaxBodyBytes      int64
+	Addr               string
+	ReadTimeout        time.Duration
+	ReadHeaderTimeout  time.Duration
+	WriteTimeout       time.Duration
+	IdleTimeout        time.Duration
+	ShutdownTimeout    time.Duration
+	ShutdownDrainDelay time.Duration
+	MaxBodyBytes       int64
 	// BodyLimit optionally supplies a route-specific cap. Nonpositive values
 	// preserve the default; the composition root owns exceptional routes.
 	BodyLimit func(*http.Request) int64
@@ -51,9 +53,11 @@ type Options struct {
 
 // Server is a gracefully draining HTTP server bound at construction.
 type Server struct {
-	http     *http.Server
-	listener net.Listener
-	shutdown time.Duration
+	http       *http.Server
+	listener   net.Listener
+	shutdown   time.Duration
+	drainDelay time.Duration
+	draining   atomic.Bool
 }
 
 // New binds Addr immediately so misconfiguration fails fast, before serving.
@@ -69,6 +73,9 @@ func New(opts Options, handler http.Handler) (*Server, error) {
 	}
 	if opts.ShutdownTimeout <= 0 {
 		return nil, fmt.Errorf("httpserver: shutdown timeout must be positive")
+	}
+	if opts.ShutdownDrainDelay < 0 || opts.ShutdownDrainDelay > 30*time.Second {
+		return nil, fmt.Errorf("httpserver: shutdown drain delay must be between 0 and 30 seconds")
 	}
 	if opts.MaxBodyBytes <= 0 {
 		return nil, fmt.Errorf("httpserver: body cap must be positive")
@@ -87,7 +94,15 @@ func New(opts Options, handler http.Handler) (*Server, error) {
 	// access logging lives inside the router where the matched template is
 	// visible (chi skips Use middlewares on its default 404 path, which is
 	// why NewRouter sets explicit handlers below).
+	srv := &Server{listener: listener, shutdown: opts.ShutdownTimeout, drainDelay: opts.ShutdownDrainDelay}
 	bounded := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if srv.draining.Load() && r.URL.Path == "/health/ready" {
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("{\"status\":\"not_ready\"}\n"))
+			return
+		}
 		limit := opts.MaxBodyBytes
 		if opts.BodyLimit != nil {
 			if selected := opts.BodyLimit(r); selected > 0 {
@@ -98,17 +113,14 @@ func New(opts Options, handler http.Handler) (*Server, error) {
 		handler.ServeHTTP(w, r)
 	})
 	chained := requestID(bounded)
-	return &Server{
-		http: &http.Server{
-			Handler:           chained,
-			ReadTimeout:       opts.ReadTimeout,
-			ReadHeaderTimeout: opts.ReadHeaderTimeout,
-			WriteTimeout:      opts.WriteTimeout,
-			IdleTimeout:       opts.IdleTimeout,
-		},
-		listener: listener,
-		shutdown: opts.ShutdownTimeout,
-	}, nil
+	srv.http = &http.Server{
+		Handler:           chained,
+		ReadTimeout:       opts.ReadTimeout,
+		ReadHeaderTimeout: opts.ReadHeaderTimeout,
+		WriteTimeout:      opts.WriteTimeout,
+		IdleTimeout:       opts.IdleTimeout,
+	}
+	return srv, nil
 }
 
 // Addr reports the bound address (useful with port 0 in tests).
@@ -129,6 +141,16 @@ func (s *Server) Run(ctx context.Context) error {
 	case err := <-serveErr:
 		return err
 	case <-ctx.Done():
+	}
+	s.draining.Store(true)
+	// Keep the listener open while endpoint removal propagates. Request
+	// contexts remain independent from the signal context during this delay.
+	timer := time.NewTimer(s.drainDelay)
+	defer timer.Stop()
+	select {
+	case err := <-serveErr:
+		return err
+	case <-timer.C:
 	}
 	drain, cancel := context.WithTimeout(context.Background(), s.shutdown)
 	defer cancel()

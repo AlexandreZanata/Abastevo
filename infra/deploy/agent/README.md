@@ -1,10 +1,13 @@
 # Abastevo staging deploy agent (dry run and k8s apply)
 
-Status: dry-run and apply implementation LOCAL_DONE / INTEGRATION_PENDING.
-`ABASTEVO_APPLY=0` (default) only plans. `ABASTEVO_APPLY=1` executes the
-reviewed R3-R6 release order against namespace `abastevo-temp`. The RBAC is not
-applied, the agent is not installed and the timer is not enabled in this
-delivery; live staging acceptance is OWED.
+Status (2026-11-03): the older signed pull agent is installed on staging,
+RBAC is active and its apply timer is enabled. Read-only [ZD-00](../../../docs/backend/evidence/cd/ZD-00.md)
+and [ZD-08](../../../docs/backend/evidence/cd/ZD-08.md) receipts show release
+`c19f0bde`, successful no-change polling and surge OFF. The ZD source below is
+LOCAL_DONE / INTEGRATION_PENDING; it has **not** been installed or activated.
+Storage separation, new probes/strategy, three measured rollouts and drills
+remain OWED. Production stays outside this work. `ABASTEVO_APPLY=0` plans;
+`ABASTEVO_APPLY=1` applies through the existing signed pull pipeline.
 
 The agent runs from a systemd timer on the staging host. In dry-run mode each
 run:
@@ -22,7 +25,7 @@ run:
 
 In apply mode it keeps that verification and plan, then executes the schema
 floor gate, verified backup, migration Job, one api/worker image rollout,
-rollout status, smoke, landing switch, `current.json` last and a deployment
+rollout status, smoke, landing switch, post-switch smoke, `current.json` last and a deployment
 receipt. Any failure after the image update runs `rollout undo`; a switched
 landing is restored; earlier failures leave the deployment untouched and write
 a failure receipt. A dedicated `baseline` subcommand records the first real
@@ -43,7 +46,8 @@ repository, never by a `curl | bash` step):
 
 - `cosign` v3.1.x (tested with v3.1.4)
 - `oras` v1.3.x (tested with v1.3.4)
-- `curl`, `jq`, `sha256sum`, `mktemp`, `install`, `date`
+- `curl`, `jq`, `sha256sum`, `mktemp`, `install`, `date`, `flock`
+- surge checks/status fixtures: Python 3 stdlib; optional failure hook: `timeout`, `stat`
 - apply mode: `kubectl` (or `ABASTEVO_KUBECTL`), `flock`, `tar`
 
 No GHCR credential is needed: the release packages are public. No GitHub token
@@ -111,11 +115,19 @@ systemd drop-in (see Install).
 
 ## Install
 
+The following bootstrap is for a **new** host only. Do not recreate the user,
+blank the environment or replace an existing unit/drop-in on the active host.
+For an upgrade, first approve the exact bundle and rollback, stage a complete
+versioned bundle, acquire the existing service lock and switch atomically;
+retain the prior bundle/environment/unit for rollback. Never install partial
+libraries while a timer run can source them. No command here grants live scope.
+
 ```sh
 install -m 0755 infra/deploy/agent/abastevo-deploy-agent /usr/local/bin/abastevo-deploy-agent
 install -d -m 0755 /usr/local/lib/abastevo-deploy-agent/runtime
 install -m 0644 infra/deploy/agent/apply.sh /usr/local/lib/abastevo-deploy-agent/
 install -m 0644 infra/deploy/agent/baseline.sh /usr/local/lib/abastevo-deploy-agent/
+install -m 0644 infra/deploy/agent/safety.sh infra/deploy/agent/surge-capacity.py infra/deploy/agent/status.sh /usr/local/lib/abastevo-deploy-agent/
 install -m 0644 infra/deploy/agent/runtime/k8s.sh /usr/local/lib/abastevo-deploy-agent/runtime/
 install -m 0644 infra/deploy/agent/systemd/abastevo-deploy-agent.service /etc/systemd/system/
 install -m 0644 infra/deploy/agent/systemd/abastevo-deploy-agent.timer /etc/systemd/system/
@@ -142,8 +154,11 @@ journalctl -u abastevo-deploy-agent.service -n 50 --no-pager
 ls -l /var/lib/abastevo-deploy/receipts/
 ```
 
-The timer runs every two minutes. The service uses `flock` so overlapping runs
-are skipped; apply mode also takes an internal `apply.lock`. `ProtectSystem=strict`,
+The reviewed timer runs every two minutes with up to 15s randomized delay and
+1s accuracy; its 20-minute service bound covers the backup/migration/rollout
+timeouts. These unit changes are not live yet. Every command takes the same
+internal `apply.lock`; a busy operation defers successfully. The service also
+uses its existing external `flock`. `ProtectSystem=strict`,
 `NoNewPrivileges=yes`, `PrivateTmp=yes` and a dedicated user limit the blast
 radius.
 
@@ -212,11 +227,12 @@ restored. Failures before the image update write a failure receipt and leave
 the deployment untouched. Migrations are never rolled back automatically; the
 additive window keeps the previous image valid.
 
-Surge is opt-in. `ABASTEVO_ALLOW_SURGE=1` is allowed only after the R5 worker
-overlap proof and only when the ResourceQuota headroom is at least
-`ABASTEVO_SURGE_CPU_MILLI`; otherwise the agent keeps
-`maxSurge: 0` / `maxUnavailable: 1` and records the measured gap in the receipt.
-The R5 overlap proof is still OWED, so the shipped default is no surge.
+Surge is opt-in. The R5 overlap proof passes (and was repeated for ZD-02).
+`ABASTEVO_ALLOW_SURGE=1` additionally requires independent storage, all four
+CPU/memory quota dimensions and `ABASTEVO_SURGE_CPU_MILLI` headroom; refusal
+retains the serving pod and never degrades an opted-in campaign to 0/1.
+With surge OFF the historical 0/1 strategy remains; it does not provide zero
+downtime. Default activation awaits three live ZD-06 reports and owner approval.
 
 ## RBAC and kubeconfig (R8)
 
@@ -332,15 +348,16 @@ The harness stubs `oras`, `cosign`, `curl`, `kubectl`, `docker`, `helm` and
 unsigned manifests, foreign identity, non-ancestor/diverged commits, API and
 registry failures, invalid schema, digest mismatch, missing signature layer,
 invalid current state, missing configuration and absence of deployment calls.
-Apply cases cover success with surge and no-headroom gap, contract-floor
+Apply cases cover success with surge and no-headroom refusal, contract-floor
 refusal, apply without `current.json`, backup Job failure, backup checksum
 mismatch, migration failure, broken rollout undo, smoke failure with the
-previous landing kept, concurrent lock refusal, `current.json` unchanged on
+previous landing kept, concurrent lock deferral, `current.json` unchanged on
 every failure, Job TTL/backoff, one shared set-image command, `schema-floor`
 annotation, backup retention 7 and landing retention 5. Baseline cases cover
 success, checksum drift and a SHA outside `main`. It makes no network request
-and writes only under a temporary directory. Current count: 157 passed,
-0 failed.
+and writes only under a temporary directory. Current shell count: 229 passed, 0 failed; the target also runs status
+privacy, capacity and public-probe process tests. The required Quick gate
+invokes that complete target and the manifest structural/render tests.
 
 The R5 overlap proof is a separate PostGIS integration test:
 
@@ -355,11 +372,83 @@ both workers consumed work, every job has exactly one effect and no job has
 
 ## Scope limits
 
-The dry-run and apply code is reviewed here. RBAC is not applied, the agent is
-not installed, the timer is not enabled and no staging release is executed in
-this delivery. Live acceptance (two consecutive merges, broken-image rollback,
-contract refusal, landing switch and rollback) is OWED after review. The R5
-overlap integration test passes for the queue dispatchers, but surge remains
-disabled by default until the reviewed staging runs measure zero unavailable
-replicas and the owner enables `ABASTEVO_ALLOW_SURGE=1`. Production remains
-manual behind G09 and is out of scope.
+The installed older agent and timer were inspected, not changed. All ZD
+source is reviewable in this PR; it does not certify live storage separation,
+new readiness/strategy, zero downtime or drill acceptance. The owner must
+approve each live step with rollback. Two unattended distinct releases,
+broken-image/contract/landing drills, restored-data rehearsal, notification
+channel, image-GC verification, pause and three campaigns remain OWED. No
+ZD-05 nginx edit is justified yet. ZD-09 compatibility expansion has no opt-in.
+Production remains manual behind G09 and is out of scope.
+
+## ZD-01 safety and interrupted runs
+
+Install `safety.sh` beside `apply.sh` and `baseline.sh` when upgrading the
+agent. All commands serialize verification and state snapshots under the same
+nonblocking lock; a busy run prints `Deferred:` and exits 0. A signed candidate
+must be reachable from main **and** descend from the recorded deployed SHA;
+unavailable comparisons refuse before cluster actions and write a refusal.
+
+Failed candidates are latched in mode-600 `checked.json`. The same SHA is
+skipped on subsequent timer runs; a different SHA is eligible. After inspecting
+and correcting the failure, explicitly invoke `plan --recheck <full-sha>` with
+the usual private environment. Recheck preserves signature, main ancestry,
+deployment floor and schema checks.
+
+An incomplete rollback creates `operator-hold.json`; subsequent runs refuse.
+Inspect the failure receipt and restore service before `release-hold`; this
+command only releases the hold, leaving the rejected SHA latched. Never edit
+current or receipts by hand. `inflight.json` pins an interrupted candidate and
+its original rollback revision/landing; the next run re-verifies that immutable
+artifact and converges before considering later releases. Do not baseline or
+recheck over an unfinished journal. These are source guarantees; live ZD-07
+drills remain separately owed.
+
+## ZD-04 surge admission
+
+Also install `surge-capacity.py` beside the agent libraries. Opt-in surge now
+requires separate private storage and complete live CPU/memory requests and
+limits quota headroom for one extra pod; unsupported quantities fail closed.
+Insufficient headroom refuses before migration/images. A configured surge can
+never silently fall back to 0/1; later loss of the configured CPU threshold
+also refuses while retaining the serving replica. Quota changes are operator
+choices. Default `ABASTEVO_ALLOW_SURGE=0` remains until three approved measured
+ZD-06 campaigns pass; no source manifest is evidence of live activation.
+
+## ZD-08 status, notifications and pause
+
+Run `bash <installed-library>/status.sh` with the private agent environment
+provided to the process (never print/source-dump that environment into logs).
+It reports timer/service state, current release/time, latest receipt,
+checked/hold/inflight flags, namespace pod/active ReplicaSet health and quota.
+Raw kubectl stderr is suppressed to protect private cluster addresses; inspect
+private operator diagnostics if needed. Status has no write operation.
+
+`ABASTEVO_FAILURE_HOOK` optionally names an absolute executable owned by root
+or the service UID, without group/world write permission. It receives only
+schema/result/verified SHA/stage on stdin for failed applies, has a 10s bound,
+and cannot change the deployment result. It chooses the channel and reads its
+own local token; stdout/stderr are suppressed. Rejected candidates do not send
+repeat notifications. No hook/channel/token was installed or message sent.
+Registry/signature failures remain visible through service result/journal;
+channel coverage and its actual delivery must be reviewed during activation.
+
+Pause, only after the owner's specific yes:
+
+```sh
+systemctl disable --now abastevo-deploy-agent.timer
+systemctl show abastevo-deploy-agent.service --property=ActiveState,SubState,Result
+```
+
+Disabling the timer does not cancel an already-running apply. Inspect its
+receipt/hold before further operations. Resume is a separately approved
+`systemctl enable --now abastevo-deploy-agent.timer`. Do not edit current,
+receipts or a journal by hand. Keep landing's last five plus the original
+rollback target, backups seven and ReplicaSet history ten. Image GC thresholds
+need live verification; no shared k3s setting is changed here.
+
+Portal-refresh ownership is formally amended in the staging plan: the worker
+uses the existing deduplicated 15-minute schedule and a stable script path
+through landing `current`. No extra env rollout/queue write is performed by
+the deploy agent; verify the actual private path and one scheduled refresh
+when activating this source. Up to one schedule interval is allowed.

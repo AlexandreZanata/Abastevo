@@ -73,13 +73,18 @@ func (d *Dispatcher) RunOnce(ctx context.Context) (bool, error) {
 		}
 		return true, nil
 	}
-	if err := handler.Handle(ctx, job); err != nil {
-		if _, ferr := d.Queue.Fail(ctx, job.ID, job.LeaseToken, d.retryDelay(), err.Error()); ferr != nil {
+	handlerErr := handler.Handle(ctx, job)
+	// Signal cancellation stops claims and handlers, but cannot cancel the
+	// fenced acknowledgment of an effect already completed or interrupted.
+	ackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if handlerErr != nil {
+		if _, ferr := d.Queue.Fail(ackCtx, job.ID, job.LeaseToken, d.retryDelay(), handlerErr.Error()); ferr != nil {
 			return true, ferr
 		}
 		return true, nil
 	}
-	if err := d.Queue.Complete(ctx, job.ID, job.LeaseToken); err != nil {
+	if err := d.Queue.Complete(ackCtx, job.ID, job.LeaseToken); err != nil {
 		return true, err
 	}
 	return true, nil

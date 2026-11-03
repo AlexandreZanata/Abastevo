@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# Pull-based staging release planner, Phase 2 (dry run).
-#
-# Fetches the signed staging release manifest from GHCR, verifies the keyless
-# Sigstore identity and that the commit is an ancestor of main, compares the
-# target with the last applied release, and writes a plan receipt. It never
-# deploys, migrates, switches landing content or updates current.json.
+# Signed pull staging planner and opt-in k3s executor.
+# Verification, deployment ancestry, rejection/hold and interrupted-run state
+# are serialized before applying the reviewed backup/migrate/rollout sequence.
+# Default mode plans without cluster mutation; apply writes current last.
 #
 # Host configuration comes only from the environment (systemd loads
 # /etc/abastevo-deploy/agent.env, mode 600, never committed). No secret or
@@ -57,6 +55,7 @@ ABASTEVO_WORKER_CONTAINER="${ABASTEVO_WORKER_CONTAINER:-worker}"
 ABASTEVO_SURGE_RESOURCE_QUOTA="${ABASTEVO_SURGE_RESOURCE_QUOTA:-abastevo-temp-quota}"
 ABASTEVO_SURGE_CPU_MILLI="${ABASTEVO_SURGE_CPU_MILLI:-2000}"
 ABASTEVO_ALLOW_SURGE="${ABASTEVO_ALLOW_SURGE:-0}"
+ABASTEVO_FAILURE_HOOK="${ABASTEVO_FAILURE_HOOK:-}"
 ABASTEVO_ROLLOUT_TIMEOUT="${ABASTEVO_ROLLOUT_TIMEOUT:-300}"
 ABASTEVO_JOB_TIMEOUT="${ABASTEVO_JOB_TIMEOUT:-300}"
 ABASTEVO_DB_IMAGE="${ABASTEVO_DB_IMAGE:-postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677}"
@@ -72,9 +71,18 @@ ABASTEVO_LOCK_FILE="${ABASTEVO_LOCK_FILE:-$ABASTEVO_STATE_DIR/apply.lock}"
 COMMAND="${1:-plan}"
 BASELINE_SHA=""
 BASELINE_FLOOR_ARG=""
+RECHECK_SHA=""
 case "$COMMAND" in
     plan)
-        (( $# <= 1 )) || fail "plan takes no arguments"
+        if (( $# > 1 )); then
+            [[ $# == 3 && "$2" == "--recheck" && "$3" =~ ^[0-9a-f]{40}$ ]] \
+                || fail "plan accepts only --recheck <40-hex commit>"
+            RECHECK_SHA="$3"
+            ABASTEVO_MANIFEST_TAG="sha-$RECHECK_SHA"
+        fi
+        ;;
+    release-hold)
+        (( $# == 1 )) || fail "release-hold takes no arguments"
         ;;
     baseline)
         shift
@@ -102,9 +110,25 @@ case "$COMMAND" in
         ABASTEVO_MANIFEST_TAG="sha-${BASELINE_SHA}"
         ;;
     *)
-        fail "usage: abastevo-deploy-agent [plan | baseline --sha <commit> [--floor <NNNNNN>]]"
+        fail "usage: abastevo-deploy-agent [plan [--recheck <sha>] | baseline --sha <commit> [--floor <NNNNNN>] | release-hold]"
         ;;
 esac
+
+# Serialize verification, state snapshots and every operator action as one run.
+require_absolute ABASTEVO_STATE_DIR
+require_tool flock
+require_tool jq
+require_absolute ABASTEVO_LOCK_FILE
+install -d -m 0700 "$ABASTEVO_STATE_DIR" "$(dirname "$ABASTEVO_LOCK_FILE")"
+exec 9>"$ABASTEVO_LOCK_FILE"
+chmod 0600 "$ABASTEVO_LOCK_FILE"
+if ! flock -n 9; then
+    log "Deferred: another deployment run owns the lock"
+    exit 0
+fi
+# shellcheck source=infra/deploy/agent/safety.sh
+. "$ABASTEVO_LIBDIR/safety.sh"
+safety_open
 
 require_var ABASTEVO_NAMESPACE
 require_var ABASTEVO_API_DEPLOYMENT
@@ -230,6 +254,9 @@ jq -e \
     || fail "release manifest does not match abastevo-release-manifest-v1"
 
 release_sha="$(jq -r '.sha' "$manifest_file")"
+if [[ -f "$ABASTEVO_STATE_DIR/inflight.json" && "$release_sha" != "$(jq -r .sha "$ABASTEVO_STATE_DIR/inflight.json")" ]]; then
+    fail "signed manifest differs from the pinned interrupted candidate"
+fi
 
 if [[ "$COMMAND" == "baseline" && "$release_sha" != "$BASELINE_SHA" ]]; then
     fail "baseline release manifest does not match --sha"
@@ -270,6 +297,8 @@ if [[ -f "$current_file" ]]; then
 else
     printf 'null\n' > "$workdir/current.json"
 fi
+
+safety_candidate
 
 current_sha="$(jq -r '.sha // empty' "$workdir/current.json")"
 current_landing="$(jq -r '.landing_sha256 // empty' "$workdir/current.json")"

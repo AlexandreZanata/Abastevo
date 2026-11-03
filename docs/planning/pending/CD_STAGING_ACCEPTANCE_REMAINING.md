@@ -117,3 +117,16 @@ if that mechanism is chosen, are a documented exception (they must reach
 Still open: two consecutive unattended `main` deploys (the first comes with
 the trigger fix), broken-image rollback drill, contract-floor refusal drill,
 landing rollback drill, surge measurement, data rehearsal.
+
+## ZD source checkpoint — 2026-11-03
+
+The zero-downtime source batch is locally validated; see
+[ZD-08](../../backend/evidence/cd/ZD-08.md) for the complete scope and approval
+queue. Read-only staging is c19f0bde/schema145, timer/apply active, surge OFF.
+No new topology, agent/unit/timer installation or drill was applied. Current
+acceptance still owes data rehearsal, two distinct unattended main receipts,
+broken-image/contract/landing drills, three measured zero-failure/zero-unavailable
+rollouts, live notification/pause/retention/GC and scheduled portal proof.
+Source-only PR creation does not satisfy those obligations. Phase 3 step 5's
+stable script path and existing 15-minute scheduler are formally amended in
+the canonical staging plan; no extra agent DB/env authority is introduced.
