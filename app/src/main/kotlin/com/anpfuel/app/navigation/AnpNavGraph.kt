@@ -142,6 +142,8 @@ fun AnpNavGraph(
                     onReady = { mapReady = it },
                     active = isMapRoute,
                     recenterBottomInset = mapBottomOverlayInset,
+                    // The map tab draws its 56 dp layers control above recenter (10 dp gap).
+                    statusClearance = 66.dp,
                     recenterIcon = {
                         androidx.compose.material3.Icon(
                             androidx.compose.material.icons.Icons.Default.MyLocation,

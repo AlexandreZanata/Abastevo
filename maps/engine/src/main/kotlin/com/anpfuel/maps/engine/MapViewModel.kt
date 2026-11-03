@@ -125,9 +125,19 @@ class MapViewModel @Inject constructor(
                     ),
                 )
             }
+            // Keep the my-position marker live while the map is on screen.
+            engine.startMyLocation { }
         } else {
-            // First fix not yet available; browsing stays usable.
+            // First fix not yet available; browsing stays usable and the
+            // camera centers on the user as soon as the fix arrives.
             _state.update { it.copy(recenterError = "no-fix") }
+            engine.startMyLocation { fix ->
+                if (disposed) return@startMyLocation
+                _state.update {
+                    val base = it.camera ?: defaultCamera
+                    it.copy(recenterError = null, camera = base.copy(latitude = fix.latitude, longitude = fix.longitude, zoom = 15))
+                }
+            }
         }
     }
 
@@ -168,6 +178,8 @@ class MapViewModel @Inject constructor(
 
     fun onHostStop() {
         if (disposed) return
+        // No background location: the explicit recenter session ends with the screen.
+        engine.stopMyLocation()
         val camera = syncCameraFromEngine() ?: return
         cameraStore.save(camera)
         _state.update { it.copy(camera = camera) }

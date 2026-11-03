@@ -10,6 +10,9 @@ import app.organicmaps.sdk.Framework
 import app.organicmaps.sdk.MapViewHelper
 import app.organicmaps.sdk.OrganicMaps
 import app.organicmaps.sdk.PlacePageActivationListener
+import app.organicmaps.sdk.location.LocationState
+import app.organicmaps.sdk.location.LocationListener
+import android.location.Location
 import app.organicmaps.sdk.bookmarks.data.BookmarkCategory
 import app.organicmaps.sdk.bookmarks.data.BookmarkManager
 import app.organicmaps.sdk.bookmarks.data.DataChangedListener
@@ -64,6 +67,7 @@ class ComapsMapEngine(
     // so a category left by an earlier process can never match the current one.
     private var highlightGeneration = System.currentTimeMillis()
     private var highlightListener: DataChangedListener? = null
+    private var firstFixListener: LocationListener? = null
     private val readyCallbacks = MapReadyCallbacks()
     private var searchGeneration = 0L
     @Volatile
@@ -217,6 +221,44 @@ class ComapsMapEngine(
         val position = organicMaps?.locationHelper?.myPosition ?: return false
         setViewport(position.lat, position.lon, 15)
         return true
+    }
+
+    override fun startMyLocation(onFix: (MapCenter) -> Unit): Boolean {
+        if (!initialized) return false
+        val helper = organicMaps?.locationHelper ?: return false
+        callOnMain {
+            try {
+                // Pending mode makes the core draw the my-position marker on the first fix.
+                if (LocationState.getMode() == LocationState.NOT_FOLLOW_NO_POSITION) {
+                    LocationState.nativeStartPendingPositionMode()
+                }
+                firstFixListener?.let(helper::removeListener)
+                val listener = object : LocationListener {
+                    override fun onLocationUpdated(location: Location) {
+                        helper.removeListener(this)
+                        if (firstFixListener === this) firstFixListener = null
+                        setViewport(location.latitude, location.longitude, 15)
+                        onFix(MapCenter(location.latitude, location.longitude))
+                    }
+                }
+                firstFixListener = listener
+                helper.addListener(listener)
+                if (!helper.isActive) helper.start()
+            } catch (error: Exception) {
+                Log.e("ComapsMapEngine", "my-location start failed", error)
+            }
+        }
+        return true
+    }
+
+    override fun stopMyLocation() {
+        if (!initialized) return
+        val helper = organicMaps?.locationHelper ?: return
+        callOnMain {
+            firstFixListener?.let(helper::removeListener)
+            firstFixListener = null
+            if (helper.isActive) helper.stop()
+        }
     }
 
     override fun isInitialized(): Boolean = initialized

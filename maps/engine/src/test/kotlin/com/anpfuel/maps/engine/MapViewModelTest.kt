@@ -18,6 +18,15 @@ class MapViewModelTest {
         var camera: MapCamera? = null
         var labelsVisibleCalls = mutableListOf<Boolean>()
         var recenterResult = true
+        var startMyLocationCalls = 0
+        var stopMyLocationCalls = 0
+        var onFix: ((MapCenter) -> Unit)? = null
+        override fun startMyLocation(onFix: (MapCenter) -> Unit): Boolean {
+            startMyLocationCalls++
+            this.onFix = onFix
+            return true
+        }
+        override fun stopMyLocation() { stopMyLocationCalls++ }
         override fun initialize(context: Context, onReady: () -> Unit): Boolean = true
         override fun newMapView(context: Context): View = throw UnsupportedOperationException()
         override fun setViewport(latitude: Double, longitude: Double, zoom: Int) { viewport = Triple(latitude, longitude, zoom) }
@@ -58,6 +67,7 @@ class MapViewModelTest {
         vm.onPermissionState(fine = false, coarse = false, deniedForever = true)
         vm.onRecenter()
         assertEquals(0, engine.recenterCalls)
+        assertEquals(0, engine.startMyLocationCalls)
         assertFalse(vm.state.value.hasLocationPermission)
         assertTrue(vm.state.value.deniedForever)
     }
@@ -70,6 +80,39 @@ class MapViewModelTest {
         vm.onRecenter()
         assertEquals(1, engine.recenterCalls)
         assertTrue(vm.state.value.approximateLocation)
+    }
+
+    @Test fun `explicit recenter without a fix starts foreground location and centers on the first fix`() {
+        val engine = FakeEngine().apply { recenterResult = false }
+        val vm = MapViewModel(engine, FakeStore())
+        vm.onEngineReady()
+        vm.onPermissionState(fine = true, coarse = true, deniedForever = false)
+        vm.onRecenter()
+
+        assertEquals(1, engine.startMyLocationCalls)
+        assertEquals("no-fix", vm.state.value.recenterError)
+
+        engine.onFix!!.invoke(MapCenter(-12.54, -55.72))
+        assertEquals(null, vm.state.value.recenterError)
+        assertEquals(-12.54, vm.state.value.camera!!.latitude)
+        assertEquals(15, vm.state.value.camera!!.zoom)
+    }
+
+    @Test fun `centered recenter keeps the my-location marker running`() {
+        val engine = FakeEngine()
+        val vm = MapViewModel(engine, FakeStore())
+        vm.onEngineReady()
+        vm.onPermissionState(fine = true, coarse = true, deniedForever = false)
+        vm.onRecenter()
+        assertEquals(1, engine.startMyLocationCalls)
+    }
+
+    @Test fun `leaving the screen stops location updates`() {
+        val engine = FakeEngine()
+        val vm = MapViewModel(engine, FakeStore())
+        vm.onEngineReady()
+        vm.onHostStop()
+        assertEquals(1, engine.stopMyLocationCalls)
     }
 
     @Test fun `host stop persists the current center without changing zoom`() {
