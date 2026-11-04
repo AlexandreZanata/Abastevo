@@ -1,6 +1,7 @@
 package com.anpfuel.data.remote
 
 import java.io.IOException
+import java.util.UUID
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,6 +45,29 @@ class StationIntakeHttpClient(
             .put("proposal", proposal)
             .toString()
         return post("/v1/stations/suggestions", body)
+    }
+
+    fun submitCorrection(
+        familyId: String,
+        accessToken: String,
+        stationId: String,
+        clientSubmissionId: String,
+        field: String,
+        proposedValue: JSONObject,
+    ) {
+        val canonicalId = UUID.fromString(stationId).toString()
+        require(stationId == canonicalId) { "invalid station identifier" }
+        val body = JSONObject()
+            .put("family_id", familyId)
+            .put("access_token", accessToken)
+            .put("client_submission_id", clientSubmissionId)
+            .put("field", field)
+            .put("proposed_value", proposedValue)
+        val receipt = JSONObject(post("/v1/stations/$canonicalId/corrections", body.toString()))
+        if (receipt.optString("station_id") != canonicalId ||
+            receipt.optString("client_submission_id") != clientSubmissionId ||
+            receipt.optString("id").isBlank()
+        ) throw IOException("invalid correction receipt")
     }
 
     fun mine(familyId: String, accessToken: String): String {

@@ -61,6 +61,15 @@ fun StationPageScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
     val context = LocalContext.current
+    var suggestCorrection by rememberSaveable { mutableStateOf(false) }
+    if (suggestCorrection) {
+        state.canonical?.let { station ->
+            StationCorrectionDialog(station, onDismiss = { suggestCorrection = false }, onSignIn = {
+                suggestCorrection = false
+                onSignIn()
+            })
+        }
+    }
     LaunchedEffect(viewModel, locale) { viewModel.load(locale) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshAccount() }
     StationPageContent(state, onBack, { viewModel.load(locale) }, { viewModel.selectFuel(it, locale) },
@@ -70,7 +79,8 @@ fun StationPageScreen(
             if (query != null && MapAppChooser.openNavigation(context, query) == MapNavigationResult.NoAppFound) {
                 Toast.makeText(context, context.getString(R.string.stations_navigate_no_app), Toast.LENGTH_SHORT).show()
             }
-        }, onQuality = onQuality, onReportCharging = onReportCharging)
+        }, onQuality = onQuality, onReportCharging = onReportCharging,
+        onSuggestCorrection = { suggestCorrection = true })
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -85,6 +95,7 @@ internal fun StationPageContent(
     onRoute: () -> Unit,
     onQuality: (String, FuelProduct) -> Unit = {_,_->},
     onReportCharging: (String) -> Unit = {},
+    onSuggestCorrection: () -> Unit = {},
 ) {
     var showGuide by remember { mutableStateOf(false) }
     var selectedChargingId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -146,6 +157,11 @@ internal fun StationPageContent(
                     }
                     OutlinedButton(onClick = { state.canonical?.let { onUpdatePrice(it.stationId, WireFuelMapper.toWire(state.fuel)) } },
                         enabled = state.canParticipate, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.nav_update_price)) }
+                    if (state.canParticipate) {
+                        OutlinedButton(onClick = onSuggestCorrection, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.station_correction_title))
+                        }
+                    }
                 }
             }
             if (state.linkedChargers.isNotEmpty()) {

@@ -36,12 +36,16 @@ func main() {
 	}
 }
 func run() error {
+	referenceDir := flag.String("reference-dir", "", "write aliases.json from a local ibge.json and exit")
 	root := flag.String("root", "/state", "private persistent state directory")
 	preparer := flag.String("prepare", "/tools/prepare_registry", "trusted Rust executable")
 	loader := flag.String("loader", "/tools/station-load", "trusted Go loader executable")
 	timeout := flag.Duration("timeout", 18*time.Minute, "overall bounded refresh duration")
 	budgetWait := flag.Duration("budget-wait", 6*time.Minute, "bounded wait for the host safety budget before starting (inside --timeout)")
 	flag.Parse()
+	if *referenceDir != "" {
+		return syncer.WriteAliases(*referenceDir)
+	}
 	if *timeout <= 0 || *timeout > 20*time.Minute || *budgetWait < 0 || *budgetWait >= *timeout/2 || os.Getenv("ANPFUEL_DATABASE_URL") == "" || !filepath.IsAbs(*root) || !filepath.IsAbs(*preparer) || !filepath.IsAbs(*loader) {
 		return fmt.Errorf("invalid bounded refresh configuration")
 	}

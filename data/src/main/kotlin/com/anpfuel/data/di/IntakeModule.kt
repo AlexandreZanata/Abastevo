@@ -25,15 +25,17 @@ object IntakeModule {
 
     @Provides
     @Singleton
-    fun provideStationIntakeGateway(
+    fun provideStationIntakeClient(
         @Named("apiOrigin") environment: ApiEnvironment,
-    ): StationIntakeGateway =
-        StationIntakeGatewayImpl(
-            StationIntakeHttpClient(
-                client = OkHttpClientFactory.create(),
-                baseUrl = environment.origin,
-            ),
-        )
+    ): StationIntakeHttpClient = StationIntakeHttpClient(
+        client = OkHttpClientFactory.create(),
+        baseUrl = environment.origin,
+    )
+
+    @Provides
+    @Singleton
+    fun provideStationIntakeGateway(client: StationIntakeHttpClient): StationIntakeGateway =
+        StationIntakeGatewayImpl(client)
 }
 
 private class StationIntakeGatewayImpl(

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.json.JSONObject
 
 class StationIntakeHttpClientTest {
 
@@ -44,6 +45,33 @@ class StationIntakeHttpClientTest {
             assertTrue(body.contains("client_submission_id"))
         } finally {
             server.shutdown()
+        }
+    }
+
+    @Test
+    fun `correction sends a private proposal and refuses a mismatched receipt`() {
+        MockWebServer().use { server ->
+            val station = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+            val key = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+            server.enqueue(MockResponse().setResponseCode(201).setBody(
+                """{"id":"correction-1","station_id":"$station","client_submission_id":"$key"}""",
+            ))
+            val client = client(server)
+            val value = JSONObject().put("status", "permanently_closed")
+            client.submitCorrection("family", "token", station, key, "operating_status", value)
+            val request = server.takeRequest()
+            assertEquals("/v1/stations/$station/corrections", request.path)
+            assertEquals("no-store", request.getHeader("Cache-Control"))
+            val body = JSONObject(request.body.readUtf8())
+            assertEquals("token", body.getString("access_token"))
+            assertEquals(key, body.getString("client_submission_id"))
+            assertEquals("operating_status", body.getString("field"))
+            assertEquals("permanently_closed", body.getJSONObject("proposed_value").getString("status"))
+
+            server.enqueue(MockResponse().setResponseCode(201).setBody("""{"id":"unbound"}"""))
+            assertThrows(IOException::class.java) {
+                client.submitCorrection("family", "token", station, key, "operating_status", value)
+            }
         }
     }
 

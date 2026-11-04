@@ -1287,4 +1287,10 @@
     <string name="driver_hub_quick_charge">Быстрая зарядка</string>
     <string name="ledger_entry_charge_fees">Комиссии за зарядку (R$)</string>
     <string name="ledger_entry_validation_fees">Введите корректную сумму комиссий.</string>
+    <string name="station_correction_title">Предложить исправление</string>
+    <string name="station_correction_address">Улица и номер дома</string>
+    <string name="station_correction_closed">Сообщить об окончательном закрытии</string>
+    <string name="station_correction_review">Предложение проверят перед изменением карты.</string>
+    <string name="station_correction_sent">Предложение отправлено на проверку.</string>
+    <string name="station_correction_failed">Не удалось отправить предложение. Попробуйте ещё раз.</string>
 </resources>

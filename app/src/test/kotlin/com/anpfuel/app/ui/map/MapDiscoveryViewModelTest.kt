@@ -775,6 +775,23 @@ class MapDiscoveryViewModelTest {
         assertEquals(false, vm.ui.value.selectedMarker?.canRouteByCoordinates)
     }
 
+    @Test fun `municipal map retains pins and unlocated stations across directory pages`() = runTest {
+        val gateway = mockk<ServerStationGateway>()
+        val first = station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+        val second = station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", lat = null, lon = null)
+        val city = "5103403"
+        coEvery { gateway.listInMunicipality(city, 100, null) } returns ServerStationPage(listOf(first), "page-2")
+        coEvery { gateway.listInMunicipality(city, 100, "page-2") } returns ServerStationPage(listOf(second), null)
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+
+        vm.onSelectCity(city, "Cuiabá")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(first.stationId), engine.markers.map { it.uuid })
+        assertEquals(setOf(first.stationId, second.stationId), vm.ui.value.listItems.map { it.uuid }.toSet())
+    }
+
     @Test fun `every pin tier reaches the native overlay with its own tier`() = runTest {
         val gateway = FakeGateway(
             stations = listOf(

@@ -1307,4 +1307,10 @@
     <string name="ledger_entry_validation_fees">Informe um valor de taxas válido.</string>
     <string name="map_actions_hide">Hide map actions</string>
     <string name="map_actions_show">Show map actions</string>
+    <string name="station_correction_title">Suggest a correction</string>
+    <string name="station_correction_address">Street address</string>
+    <string name="station_correction_closed">Report permanent closure</string>
+    <string name="station_correction_review">Your suggestion will be reviewed before it changes the map.</string>
+    <string name="station_correction_sent">Suggestion sent for review.</string>
+    <string name="station_correction_failed">Could not send your suggestion. Try again.</string>
 </resources>

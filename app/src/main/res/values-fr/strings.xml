@@ -1287,4 +1287,10 @@
     <string name="driver_hub_quick_charge">Recharge rapide</string>
     <string name="ledger_entry_charge_fees">Frais de recharge (R$)</string>
     <string name="ledger_entry_validation_fees">Saisissez un montant de frais valide.</string>
+    <string name="station_correction_title">Proposer une correction</string>
+    <string name="station_correction_address">Rue et numéro</string>
+    <string name="station_correction_closed">Signaler une fermeture définitive</string>
+    <string name="station_correction_review">Votre suggestion sera examinée avant toute modification de la carte.</string>
+    <string name="station_correction_sent">Suggestion envoyée pour examen.</string>
+    <string name="station_correction_failed">Impossible d’envoyer la suggestion. Réessayez.</string>
 </resources>

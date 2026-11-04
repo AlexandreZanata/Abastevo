@@ -1287,4 +1287,10 @@
     <string name="driver_hub_quick_charge">快速充电</string>
     <string name="ledger_entry_charge_fees">充电费用（R$）</string>
     <string name="ledger_entry_validation_fees">请输入有效的费用金额。</string>
+    <string name="station_correction_title">建议更正</string>
+    <string name="station_correction_address">街道和门牌号</string>
+    <string name="station_correction_closed">报告永久关闭</string>
+    <string name="station_correction_review">建议经审核后才会反映在地图上。</string>
+    <string name="station_correction_sent">建议已提交审核。</string>
+    <string name="station_correction_failed">无法发送建议，请重试。</string>
 </resources>

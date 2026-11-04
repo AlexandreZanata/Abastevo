@@ -1287,4 +1287,10 @@
     <string name="driver_hub_quick_charge">Schnell laden</string>
     <string name="ledger_entry_charge_fees">Ladegebühren (R$)</string>
     <string name="ledger_entry_validation_fees">Geben Sie einen gültigen Gebührenbetrag ein.</string>
+    <string name="station_correction_title">Korrektur vorschlagen</string>
+    <string name="station_correction_address">Straße und Hausnummer</string>
+    <string name="station_correction_closed">Dauerhafte Schließung melden</string>
+    <string name="station_correction_review">Dein Vorschlag wird vor einer Änderung der Karte geprüft.</string>
+    <string name="station_correction_sent">Vorschlag zur Prüfung gesendet.</string>
+    <string name="station_correction_failed">Der Vorschlag konnte nicht gesendet werden. Versuche es erneut.</string>
 </resources>

@@ -1287,4 +1287,10 @@
     <string name="driver_hub_quick_charge">クイック充電</string>
     <string name="ledger_entry_charge_fees">充電手数料 (R$)</string>
     <string name="ledger_entry_validation_fees">有効な手数料を入力してください。</string>
+    <string name="station_correction_title">修正を提案</string>
+    <string name="station_correction_address">町名・番地</string>
+    <string name="station_correction_closed">閉店を報告</string>
+    <string name="station_correction_review">地図を変更する前に提案内容を確認します。</string>
+    <string name="station_correction_sent">確認のため提案を送信しました。</string>
+    <string name="station_correction_failed">提案を送信できませんでした。もう一度お試しください。</string>
 </resources>

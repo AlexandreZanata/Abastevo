@@ -1300,4 +1300,10 @@
     <string name="driver_hub_quick_charge">Recarga rápida</string>
     <string name="ledger_entry_charge_fees">Taxas da recarga (R$)</string>
     <string name="ledger_entry_validation_fees">Informe um valor de taxas válido.</string>
+    <string name="station_correction_title">Sugerir correção</string>
+    <string name="station_correction_address">Logradouro e número</string>
+    <string name="station_correction_closed">Informar fechamento definitivo</string>
+    <string name="station_correction_review">Sua sugestão será analisada antes de alterar o mapa.</string>
+    <string name="station_correction_sent">Sugestão enviada para análise.</string>
+    <string name="station_correction_failed">Não foi possível enviar a sugestão. Tente novamente.</string>
 </resources>

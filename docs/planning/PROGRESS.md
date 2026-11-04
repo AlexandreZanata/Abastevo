@@ -1,5 +1,14 @@
 # Current execution state
 
+- Mato Grosso station catalog 2026-11-04: LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `29bef268`. The [pilot and replay procedure](../backend/MT_STATION_CATALOG_PILOT.md)
+  record 1,179 official CNPJs across 142 municipalities, 1,077 pins and 102
+  list-only entries in staging after the bounded registry and location load.
+  Tested the source in this commit with PostGIS, Go race/vet, audit replay,
+  Android unit tests/lint and a physical-device smoke. The app reads all city
+  pages within its budget and submits private corrections for review.
+  Next: protected dev → main PR and deployment of the corrected sync artifact.
+
 - Admin web visual alignment 2026-11-04: LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `51638a80`. Login, accounts, contributors, stations,
   audit and the standalone fallback reuse the staging landing CSS, brand and

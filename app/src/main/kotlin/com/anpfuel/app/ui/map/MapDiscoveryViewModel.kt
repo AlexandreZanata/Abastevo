@@ -272,13 +272,24 @@ class MapDiscoveryViewModel @Inject constructor(
         _ui.update { it.copy(loading = true, error = null, generation = gen) }
         cityJob = viewModelScope.launch {
             try {
-                val page = stations.listInMunicipality(code, 100, null)
-                if (cityGen != cityGeneration) return@launch
+                val cityStations = linkedMapOf<String, ServerStation>()
+                val cursors = mutableSetOf<String>()
+                var cursor: String? = null
+                do {
+                    val page = stations.listInMunicipality(code, 100, cursor)
+                    if (cityGen != cityGeneration) return@launch
+                    page.items.forEach { cityStations[it.stationId] = it }
+                    cursor = page.nextCursor
+                    check(cursor == null || (cursors.size < 24 && cursors.add(cursor))) {
+                        "Municipal station pages exceeded the cursor budget"
+                    }
+                } while (cursor != null)
+                val items = cityStations.values.toList()
                 // Center on the best pin tier (reviewed > osm-mapped > anp-reported > address-point).
-                val pinned = page.items.bestPinnedStation()
+                val pinned = items.bestPinnedStation()
                 val cityPoint = chooseCityRegionPoint(
                     pinned?.let { MapRegionPoint(checkNotNull(it.latitude), checkNotNull(it.longitude)) },
-                    page.items.stationPoints(),
+                    items.stationPoints(),
                     builtInCityPoint(code),
                 )
                 _ui.update {
@@ -289,11 +300,11 @@ class MapDiscoveryViewModel @Inject constructor(
                         cityLongitude = cityPoint?.longitude,
                     )
                 }
-                saveMapCache(code, page.items)
+                saveMapCache(code, items)
                 if (gen == generation) {
                     pushMarkers(
-                        page.items.mapNotNull { it.toMarker() }, gen,
-                        page.items.filter { it.latitude == null || it.longitude == null },
+                        items.mapNotNull { it.toMarker() }, gen,
+                        items.filter { it.latitude == null || it.longitude == null },
                     )
                 }
                 if (pinned != null && moveViewport) {
