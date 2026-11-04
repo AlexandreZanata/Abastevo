@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.anpfuel.app.community.CommunityPriceDisplay
 import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.valueobject.FuelProduct
+import com.anpfuel.domain.valueobject.SurveyWeek
 import com.anpfuel.maps.engine.MapOverlayMarker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -23,10 +25,11 @@ data class SheetPrice(
     val unit: String,
     val amount: String,
     val source: MapPriceSource,
-    val dateLabel: String,
+    val observedOn: LocalDate?,
     val stale: Boolean = false,
     val conditionKind: String = "STANDARD",
     val conditionQualifier: String? = null,
+    val surveyWeek: SurveyWeek? = null,
 ) {
     init {
         require(conditionKind.isNotBlank()) { "conditionKind must not be blank" }

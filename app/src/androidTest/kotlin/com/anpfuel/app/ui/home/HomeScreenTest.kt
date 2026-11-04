@@ -342,16 +342,20 @@ class HomeScreenTest {
             var sort by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(HomePriceSortOrder.DEFAULT) }
             AnpFuelTheme { HomeContent(HomeUiState(priceSource=HomePriceSource.COMMUNITY,isLoading=false,hasLocation=true,
                 municipality="Synthetic city",state=BrazilianState.MATO_GROSSO,hasCachedData=false,showBenefits=false,
-                communityPrices=listOf(AveragePriceUiModel(FuelProduct.ETHANOL,"R$ 4,500","R$ 4,000","R$ 5,000",65)),priceSort=sort),
+                communityPrices=listOf(AveragePriceUiModel(FuelProduct.ETHANOL,"R$ 4,500","R$ 4,000","R$ 5,000",65,
+                    com.anpfuel.domain.community.CommunityConfirmationCounts(19, 0, 7))),priceSort=sort),
                 false,{}, {}, {}, {}, {},includeSurveyWeekChip=false,onPriceSortChanged={sort=it}) }
         }
         composeTestRule.onNodeWithText("R$ 4,500").assertExists()
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.community_confirmation_count, "19")).assertExists()
         composeTestRule.onNodeWithText(context.getString(R.string.home_filter_button)).performScrollTo().performClick()
         composeTestRule.onNodeWithText(context.getString(R.string.home_filter_lowest)).performClick()
         composeTestRule.onNodeWithText("R$ 4,000").assertExists()
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.community_confirmation_count, "0")).assertExists()
         composeTestRule.onNodeWithText(context.getString(R.string.home_filter_button)).performScrollTo().performClick()
         composeTestRule.onNodeWithText(context.getString(R.string.home_filter_highest)).performClick()
         composeTestRule.onNodeWithText("R$ 5,000").assertExists()
+        composeTestRule.onNodeWithContentDescription(context.getString(R.string.community_confirmation_count, "7")).assertExists()
     }
 
 }

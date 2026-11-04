@@ -1,0 +1,409 @@
+{
+  "profile": "charging-mt-top10-pilot-v1",
+  "revision": "2026-11-04",
+  "ibge_population_sha256": "4ed4eb38997ebb348fc3127d8a7a1b59749821b49a51b4426507ab0ecb79999a",
+  "ibge_boundaries_sha256": "5491bd548fe381cd388ba81c9edfbf4cf2749891e2fd32c1079ac71f7aba1c10",
+  "license": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "attribution": [
+    "© OpenStreetMap contributors — https://www.openstreetmap.org/copyright",
+    "Open Charge Map Contributors (CC BY 4.0), Easy Volt (CC0), YellotMob (CC0) — see each place source",
+    "Additional independently reviewed public facility facts are sourced per place."
+  ],
+  "municipalities": [
+    {
+      "code": "5103403",
+      "name": "Cuiabá",
+      "population": 698917
+    },
+    {
+      "code": "5108402",
+      "name": "Várzea Grande",
+      "population": 323172
+    },
+    {
+      "code": "5107602",
+      "name": "Rondonópolis",
+      "population": 268202
+    },
+    {
+      "code": "5107909",
+      "name": "Sinop",
+      "population": 231452
+    },
+    {
+      "code": "5107925",
+      "name": "Sorriso",
+      "population": 128727
+    },
+    {
+      "code": "5107958",
+      "name": "Tangará da Serra",
+      "population": 116637
+    },
+    {
+      "code": "5105259",
+      "name": "Lucas do Rio Verde",
+      "population": 99291
+    },
+    {
+      "code": "5107040",
+      "name": "Primavera do Leste",
+      "population": 99053
+    },
+    {
+      "code": "5102504",
+      "name": "Cáceres",
+      "population": 91908
+    },
+    {
+      "code": "5101803",
+      "name": "Barra do Garças",
+      "population": 75524
+    }
+  ],
+  "places": [
+    {
+      "id": "fa3accee-e3e1-5dda-a28f-053d1260c00b",
+      "external_id": "forbs-santa-cruz",
+      "municipality_code": "5103403",
+      "name": "FORBS Santa Cruz II",
+      "address": "Loteamento Santa Cruz II",
+      "latitude": "-15.60718",
+      "longitude": "-56.04369",
+      "access": "PUBLIC",
+      "sources": [
+        "https://forbseletropostos.com.br/"
+      ]
+    },
+    {
+      "id": "2a3cd526-01ea-5bc3-ba0d-2b0e82bc9a5a",
+      "external_id": "faston-biglar-miguel-sutil",
+      "municipality_code": "5103403",
+      "name": "FastOn — BigLar Miguel Sutil",
+      "address": "Av. Miguel Sutil, 10223",
+      "latitude": "-15.58379",
+      "longitude": "-56.11136",
+      "access": "PUBLIC",
+      "sources": [
+        "https://fastonbr.com.br/estacao-de-recargas",
+        "https://carregados.com.br/estacoes/estacao-biglar-miguel-sutil-9139"
+      ]
+    },
+    {
+      "id": "1223b0a2-c8e1-56f8-bf9b-cbf1b1287393",
+      "external_id": "pantanal-shopping",
+      "municipality_code": "5103403",
+      "name": "Pantanal Shopping",
+      "address": "Av. Historiador Rubens de Mendonça, 3300",
+      "latitude": "-15.57541",
+      "longitude": "-56.07226",
+      "access": "PUBLIC",
+      "sources": [
+        "https://fastonbr.com.br/estacao-de-recargas",
+        "https://www.wevoltz.com.br/",
+        "https://carregados.com.br/estacoes/estacao-pantanal-shopping-10723",
+        "https://www.openstreetmap.org/node/9846894535"
+      ]
+    },
+    {
+      "id": "ce38d921-2096-5ae8-9be3-4238604fa51e",
+      "external_id": "shopping-estacao-cuiaba",
+      "municipality_code": "5103403",
+      "name": "Shopping Estação Cuiabá",
+      "address": "Av. Miguel Sutil, 9300",
+      "latitude": "-15.59018",
+      "longitude": "-56.12072",
+      "access": "PUBLIC",
+      "sources": [
+        "https://www.neocharge.com.br/projeto/carro-eletrico/estacao-carregamento-shopping-estacao-cuiaba-mt",
+        "https://carregados.com.br/estacoes/estacao-shopping-esta%C3%A7%C3%A3o-cuiab%C3%A1-3167"
+      ]
+    },
+    {
+      "id": "9f66ab51-b8c9-5820-9ead-52f935a38570",
+      "external_id": "goiabeiras-shopping",
+      "municipality_code": "5103403",
+      "name": "Goiabeiras Shopping",
+      "address": "Av. José Monteiro de Figueiredo, 500",
+      "latitude": "-15.58821",
+      "longitude": "-56.11233",
+      "access": "PUBLIC",
+      "sources": [
+        "https://www.goiabeirasshopping.com.br/",
+        "https://carregados.com.br/estacoes/estacao-goiabeiras-shopping-3182"
+      ]
+    },
+    {
+      "id": "6d0571be-0da5-5705-b7b1-89fef1ea8d6f",
+      "external_id": "atacadao-miguel-sutil",
+      "municipality_code": "5103403",
+      "name": "ChargeOn — Atacadão Miguel Sutil",
+      "address": "Av. Miguel Sutil, 7582",
+      "latitude": "-15.57814",
+      "longitude": "-56.11104",
+      "access": "PUBLIC",
+      "sources": [
+        "https://www.openstreetmap.org/node/14006867032",
+        "https://carregados.com.br/estacoes/estacao-atacadao-supermercado-2011891"
+      ]
+    },
+    {
+      "id": "955f9aa2-3327-5be4-9f7f-437aeeb9d573",
+      "external_id": "estocolmo-volvo-cuiaba",
+      "municipality_code": "5103403",
+      "name": "Estocolmo Volvo Cars",
+      "address": "Av. Fernando Corrêa da Costa, 770",
+      "latitude": "-15.60643",
+      "longitude": "-56.08346",
+      "access": "UNKNOWN",
+      "sources": [
+        "https://www.estocolmovolvocars.com.br/",
+        "https://www.iomat.mt.gov.br/portal/edicoes/download/18315",
+        "https://openchargemap.org/site/poi/details/481323"
+      ]
+    },
+    {
+      "id": "34a8ad58-6ebf-5a07-af35-88c5836bfcb9",
+      "external_id": "gwm-canopus-cuiaba",
+      "municipality_code": "5103403",
+      "name": "GWM Canopus Cuiabá",
+      "address": "Av. Fernando Corrêa da Costa, 535",
+      "latitude": "-15.60468",
+      "longitude": "-56.08425",
+      "access": "UNKNOWN",
+      "sources": [
+        "https://www.gwmcanopus.com.br/institucional/fale-conosco",
+        "https://www.openstreetmap.org/node/12183014713"
+      ]
+    },
+    {
+      "id": "4ef5b81f-f085-592e-835e-63839dada805",
+      "external_id": "energize-cuiaba",
+      "municipality_code": "5103403",
+      "name": "Energize-C Cuiabá",
+      "address": "R. Dr. Euricles Mota, 560",
+      "latitude": "-15.60314",
+      "longitude": "-56.07785",
+      "access": "PUBLIC",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-energize-c-cuiaba-2072827",
+        "https://recarregados.com/eletropostos/mt/cuiaba"
+      ]
+    },
+    {
+      "id": "0ee76b80-6957-51d6-8ebb-d47c838cb545",
+      "external_id": "faston-amazon-aeroporto",
+      "municipality_code": "5108402",
+      "name": "FastOn — Amazon Hotel Aeroporto",
+      "address": "Av. Senador Filinto Müller, 62",
+      "latitude": "-15.65198",
+      "longitude": "-56.12166",
+      "access": "PUBLIC",
+      "sources": [
+        "https://fastonbr.com.br/estacao-de-recargas",
+        "https://carregados.com.br/estacoes/estacao-hotel-amazon-aeroporto-10375"
+      ]
+    },
+    {
+      "id": "fa8164ca-13e3-5cdf-83d3-49a5e048585c",
+      "external_id": "nova-rota-sau-08",
+      "municipality_code": "5108402",
+      "name": "Nova Rota do Oeste — SAU 08",
+      "address": "Av. Gov. Júlio Campos, 8015",
+      "latitude": "-15.64943",
+      "longitude": "-56.19492",
+      "access": "PUBLIC",
+      "sources": [
+        "https://novarotadooeste.com.br/nova-rota-do-oeste-neutraliza-100-das-emissoes-de-carbono-na-operacao-da-br-163/",
+        "https://carregados.com.br/estacoes/estacao-efx---sau08-rota-do-oeste-3162"
+      ]
+    },
+    {
+      "id": "d3cdbdef-81f4-5fa4-b878-a3f8d8757e97",
+      "external_id": "atacadao-varzea-grande",
+      "municipality_code": "5108402",
+      "name": "ChargeOn — Atacadão Várzea Grande",
+      "address": "R. Santa Rita, 5458",
+      "latitude": "-15.63901",
+      "longitude": "-56.16891",
+      "access": "PUBLIC",
+      "sources": [
+        "https://www.chargeon.com.br/onde-estamos",
+        "https://carregados.com.br/estacoes/estacao-chargeon-atacadao-varzea-grande-2077066"
+      ]
+    },
+    {
+      "id": "2a96184c-5db4-5128-a5d3-db0457174b40",
+      "external_id": "volvo-sinuelo-rondonopolis",
+      "municipality_code": "5107602",
+      "name": "Volvo — Sinuelo Rondonópolis",
+      "address": "BR-364, km 211",
+      "latitude": "-16.42087",
+      "longitude": "-54.70362",
+      "access": "PUBLIC",
+      "sources": [
+        "https://www.volvocars.com/br/media/press-releases/2E148C53BFFA8942/",
+        "https://openchargemap.org/site/poi/details/481317",
+        "https://carregados.com.br/estacoes/estacao-loja-sinuelo-rondon%C3%B3polis-4530"
+      ]
+    },
+    {
+      "id": "c0656931-2365-57ff-858f-6245a681690b",
+      "external_id": "nova-rota-sau-02",
+      "municipality_code": "5107602",
+      "name": "Nova Rota do Oeste — SAU 02",
+      "address": "Base SAU 02, km 73",
+      "latitude": "-16.87228",
+      "longitude": "-54.71211",
+      "access": "PUBLIC",
+      "sources": [
+        "https://novarotadooeste.com.br/nova-rota-do-oeste-neutraliza-100-das-emissoes-de-carbono-na-operacao-da-br-163/",
+        "https://carregados.com.br/estacoes/estacao-efx---sau02-rota-do-oeste-3220"
+      ]
+    },
+    {
+      "id": "20a7e564-b7e1-5580-a390-17e50918ec4c",
+      "external_id": "aster-rondonopolis",
+      "municipality_code": "5107602",
+      "name": "Eletroposto Aster",
+      "address": "Av. Cuiabá, 653",
+      "latitude": "-16.47296",
+      "longitude": "-54.63418",
+      "access": "PUBLIC",
+      "sources": [
+        "https://www.agoramt.com.br/2025/10/alta-demanda-de-carros-eletricos-leva-a-abertura-de-posto-com-recarga-rapida-e-conforto-em-rondonopolis/",
+        "https://carregados.com.br/estacoes/estacao-aster-1430881"
+      ]
+    },
+    {
+      "id": "23dab197-848b-5854-b676-464eae694707",
+      "external_id": "atacadao-rondonopolis",
+      "municipality_code": "5107602",
+      "name": "ChargeOn — Atacadão Rondonópolis",
+      "address": "Av. Bandeirantes, 2432",
+      "latitude": "-16.46525",
+      "longitude": "-54.62960",
+      "access": "PUBLIC",
+      "sources": [
+        "https://www.chargeon.com.br/onde-estamos",
+        "https://carregados.com.br/estacoes/estacao-chargeon-atacadao-rondonopolis-2077069"
+      ]
+    },
+    {
+      "id": "f93b5f54-ef1d-5b06-b8bf-0e514ceeb36f",
+      "external_id": "volvo-trevao-sinop",
+      "municipality_code": "5107909",
+      "name": "Volvo — Posto Trevão",
+      "address": "BR-163, km 844",
+      "latitude": "-11.77844",
+      "longitude": "-55.47222",
+      "access": "PUBLIC",
+      "sources": [
+        "https://www.volvocars.com/br/media/press-releases/2E148C53BFFA8942/",
+        "https://openchargemap.org/site/poi/details/481335"
+      ]
+    },
+    {
+      "id": "23d0648f-4d3f-5212-8a65-b5865f977ae6",
+      "external_id": "gerencar-sinop",
+      "municipality_code": "5107909",
+      "name": "Gerencar Mobilidade Elétrica",
+      "address": "R. Vila Rica, 203",
+      "latitude": "-11.82308",
+      "longitude": "-55.48321",
+      "access": "PUBLIC",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-gerencar-mobilidade-eletrica-2072971"
+      ]
+    },
+    {
+      "id": "98c2c163-441b-516a-bd3e-b3343567e989",
+      "external_id": "ibis-tangara",
+      "municipality_code": "5107958",
+      "name": "Ibis Tangará da Serra",
+      "address": "Av. Vereador Nilo Torres, 601 W",
+      "latitude": "-14.61803",
+      "longitude": "-57.49460",
+      "access": "UNKNOWN",
+      "sources": [
+        "https://all.accor.com/hotel/B9G7/index.pt-br.shtml",
+        "https://pt.hoteis.com/ho3542289440/",
+        "https://carregados.com.br/estacoes/estacao-hotel-ibis-tangara-da-serra-2076144"
+      ]
+    },
+    {
+      "id": "3a8d00f2-6482-5be7-a8dd-198a7ea74d6c",
+      "external_id": "tangara-shopping",
+      "municipality_code": "5107958",
+      "name": "Tangará Shopping Center",
+      "address": "Av. Nilo Torres, estacionamento",
+      "latitude": "-14.61765",
+      "longitude": "-57.49595",
+      "access": "PUBLIC",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-estacionamento-tangara-shopping-center-3132",
+        "https://www.electromaps.com/pt/estacoes-de-carregamento/brasil/tangara-da-serra/78300-000/tangara-shopping-center-avenida-ver-nilo-torres-w"
+      ]
+    },
+    {
+      "id": "0af17881-8ddc-5ae7-8714-17012d98ba5e",
+      "external_id": "hotel-mandino-lucas",
+      "municipality_code": "5105259",
+      "name": "Hotel Mandino — hóspedes",
+      "address": "Av. Rio Grande do Sul, 2349",
+      "latitude": "-13.08036",
+      "longitude": "-55.93591",
+      "access": "UNKNOWN",
+      "sources": [
+        "https://site.hotelmandino.com/contato",
+        "https://www.expedia.com.br/Lucas-Do-Rio-Verde-Hoteis-Hotel-Mandino.h19656615.Hotel-Reservas",
+        "https://carregados.com.br/estacoes/estacao-hotel-mandino-5876",
+        "https://buscacomercio.com/cidades/lucas-do-rio-verde/hoteis-e-pousadas/hotel-mandino/"
+      ]
+    },
+    {
+      "id": "d0c062b9-c4a1-515d-9add-9374e616aeb6",
+      "external_id": "volvo-alvorada-primavera",
+      "municipality_code": "5107040",
+      "name": "Volvo — Posto Alvorada",
+      "address": "BR-070, Parque Industrial",
+      "latitude": "-15.57507",
+      "longitude": "-54.32637",
+      "access": "PUBLIC",
+      "sources": [
+        "https://www.volvocars.com/br/media/press-releases/2E148C53BFFA8942/",
+        "https://revendedoresapi.anp.gov.br/swagger/index.html",
+        "https://carregados.com.br/estacoes/estacao-volvo---posto-alvorada-5312"
+      ]
+    },
+    {
+      "id": "5fb37552-7131-5210-95f6-f119557e7998",
+      "external_id": "faston-caceres-seeg",
+      "municipality_code": "5102504",
+      "name": "FastOn — Cáceres (SEEG Fibras)",
+      "address": "Av. Sete de Setembro, 1166",
+      "latitude": "-16.07137",
+      "longitude": "-57.67778",
+      "access": "PUBLIC",
+      "sources": [
+        "https://fastonbr.com.br/estacao-de-recargas",
+        "https://openchargemap.org/site/poi/details/484720"
+      ]
+    },
+    {
+      "id": "d73c53ed-e699-5b8d-866f-459e32e7180f",
+      "external_id": "barra-center-shopping",
+      "municipality_code": "5101803",
+      "name": "Barra Center Shopping",
+      "address": "Av. Senador Valdon Varjão, 2077",
+      "latitude": "-15.88536",
+      "longitude": "-52.27219",
+      "access": "PUBLIC",
+      "sources": [
+        "https://barracentershopping.com.br/servicos/",
+        "https://www.barradogarcas.mt.gov.br/fotos_secretarias_downloads/129.pdf",
+        "https://recarregados.com/eletropostos/mt/barra-do-garcas/barra-center-shopping-epz4bste4kd6"
+      ]
+    }
+  ]
+}

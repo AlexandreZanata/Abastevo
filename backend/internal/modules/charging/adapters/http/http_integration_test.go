@@ -90,6 +90,82 @@ func seedBatch(t *testing.T, pool *pgxpool.Pool) {
 	_ = q
 }
 
+func TestSorrisoPilotSeedReplayAndReadIsolation(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	_, file, _, _ := runtime.Caller(0)
+	seed, err := os.ReadFile(filepath.Join(filepath.Dir(file), "../../../../../db/seeds/sorriso_charging_pilot.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Release()
+	if _, err := conn.Exec(ctx, string(seed)); err == nil {
+		t.Fatal("seed accepted an unspecified target")
+	}
+	if _, err := conn.Exec(ctx, "ROLLBACK"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(ctx, "SET abastevo.sorriso_pilot_target = 'test'"); err != nil {
+		t.Fatal(err)
+	}
+	results := make(chan error, 2)
+	go func() {
+		_, err := conn.Exec(ctx, string(seed))
+		results <- err
+	}()
+	go func() {
+		_, err := pool.Exec(ctx, "SET abastevo.sorriso_pilot_target = 'test'; "+string(seed))
+		results <- err
+	}()
+	for range 2 {
+		if err := <-results; err != nil {
+			t.Fatal("concurrent pilot replay", err)
+		}
+	}
+	var batches, generations int
+	if err := conn.QueryRow(ctx, "SELECT (SELECT count(*) FROM charging_batches), (SELECT count(*) FROM charging_catalog_generations)").Scan(&batches, &generations); err != nil || batches != 1 || generations != 0 {
+		t.Fatalf("unexpected census: batches=%d national=%d err=%v", batches, generations, err)
+	}
+	get := func(enabled bool, path string) *httptest.ResponseRecorder {
+		router := chi.NewRouter()
+		Handler{Read: read.NewReader(pool), PilotEnabled: enabled}.RegisterRoutes(router)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		return w
+	}
+	const list = "/v1/charging/places?limit=10&profile="
+	const sau = "67c3d1f0-5898-54f0-bca3-689e9b48b099"
+	if response := get(false, list+read.SorrisoPilotProfile); response.Code != 400 {
+		t.Fatal("pilot profile accepted outside staging", response.Code)
+	}
+	if response := get(false, "/v1/charging/places/"+sau); response.Code != 404 {
+		t.Fatal("pilot detail accepted outside staging", response.Code)
+	}
+	if response := get(false, "/v1/charging/coverage?profile="+read.SorrisoPilotProfile); response.Code != 400 {
+		t.Fatal("pilot coverage accepted outside staging", response.Code)
+	}
+	response := get(true, list+read.SorrisoPilotProfile)
+	var body struct {
+		Items []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); response.Code != 200 || err != nil ||
+		len(body.Items) != 2 || body.Items[0].Name != "BYD Disbrava Sorriso" ||
+		body.Items[1].ID != sau {
+		t.Fatalf("pilot response %d %s (%v)", response.Code, response.Body, err)
+	}
+	if response := get(true, list+"ocm-br-20261021-v1"); response.Code != 200 ||
+		json.Unmarshal(response.Body.Bytes(), &body) != nil || len(body.Items) != 0 {
+		t.Fatal("pilot rows leaked into OCM", response.Code, response.Body)
+	}
+}
+
 func TestChargingReadsTraversalCoverageAndOpenAPI(t *testing.T) {
 	pool := testPool(t)
 	seedBatch(t, pool)

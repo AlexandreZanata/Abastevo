@@ -1,10 +1,18 @@
 package com.anpfuel.data.repository
 
 import com.anpfuel.data.local.charging.ChargingSnapshotImport
+import com.anpfuel.data.local.charging.CUIABA_SUPPLEMENT_PROFILE
+import com.anpfuel.data.local.charging.MATO_GROSSO_NEXT_TEN_PROFILE
+import com.anpfuel.data.local.charging.MATO_GROSSO_PILOT_PROFILE
+import com.anpfuel.data.local.charging.SORRISO_PILOT_PROFILE
+import com.anpfuel.data.local.charging.SORRISO_SUPPLEMENT_PROFILE
+import com.anpfuel.data.local.charging.StoredPackMeta
 import com.anpfuel.data.local.dao.ChargingSnapshotDao
 import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity
+import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.charging.ChargingSnapshotHttpClient
+import com.anpfuel.data.remote.charging.ChargingSnapshotUnavailable
 import com.anpfuel.domain.charging.ChargingCatalogConfidence
 import com.anpfuel.domain.charging.ChargingCoverage
 import com.anpfuel.domain.charging.ChargingSourceAttribution
@@ -15,12 +23,14 @@ import com.anpfuel.domain.charging.ChargingPlace
 import com.anpfuel.domain.charging.ChargingPlacePage
 import com.anpfuel.domain.charging.Compatibility
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.json.JSONObject
 
 class ChargingDiscoveryRepositoryTest {
 
@@ -125,6 +135,115 @@ class ChargingDiscoveryRepositoryTest {
     @BeforeEach
     fun setUp() {
         repo = ChargingDiscoveryRepository(client, dao, origin)
+    }
+
+    @Test fun `staging map fills an empty pilot cache and preserves it on refresh failure`() = runTest {
+        val profile = SORRISO_PILOT_PROFILE
+        val id = "11111111-1111-4111-8111-111111111111"
+        val gateway = coEvery { client.places(profile, null, 100, null) }
+        gateway returns ChargingPlacePage(
+            listOf(place(id).copy(name = "Synthetic charger", latitude = "-12.5", longitude = "-55.7", groups = emptyList())),
+            null,
+            "2026-11-04T00:00:00Z",
+        )
+        assertEquals(null, repo.sorrisoPilotForMap())
+        coVerify(exactly = 0) { client.places(any(), any(), any(), any()) }
+
+        val staging = ChargingDiscoveryRepository(client, dao, ApiEnvironment.STAGING)
+        val first = requireNotNull(staging.sorrisoPilotForMap())
+        assertEquals(1L, first.placeCount)
+        assertEquals(first, staging.sorrisoPilotForMap())
+        coVerify(exactly = 1) { client.places(profile, null, 100, null) }
+        assertEquals(id, staging.explorePage(profile, first.generation, null, null, null, null, 100, 0)
+            .rows.single().place.id)
+
+        dao.metas[first.key] = dao.metas.getValue(first.key).copy(savedAtMillis = 1)
+        coEvery { client.places(profile, null, 100, null) } throws ChargingSnapshotUnavailable("offline")
+        val reopened = ChargingDiscoveryRepository(client, dao, ApiEnvironment.STAGING)
+        assertEquals(first.generation, reopened.sorrisoPilotForMap()?.generation)
+        coVerify(exactly = 2) { client.places(profile, null, 100, null) }
+    }
+
+    @Test fun `older staging API only bootstraps the exact reviewed pilot edition`() = runTest {
+        val profile = SORRISO_PILOT_PROFILE
+        val sau = "67c3d1f0-5898-54f0-bca3-689e9b48b099"
+        val byd = "451a0ea1-2a8c-5ed3-98ae-a6d11753dbdb"
+        val edition = ChargingCoverage(profile, "2026-11-04", 2, 0, 0, "2026-11-04T00:00:00Z")
+        val staging = ChargingDiscoveryRepository(client, dao, ApiEnvironment.STAGING)
+        coEvery { client.places(profile, null, 100, null) } throws ChargingSnapshotUnavailable(httpStatus = 400)
+        coEvery { client.coverage(profile) } returns edition.copy(sourceRevision = "unreviewed")
+        assertRefreshRefused { staging.refresh(profile) }
+        assertEquals(0, dao.places.size)
+        coVerify(exactly = 0) { client.placeDetail(any()) }
+
+        coEvery { client.coverage(profile) } returns edition
+        coEvery { client.placeDetail(sau) } returns place(sau).copy(groups = emptyList())
+        coEvery { client.placeDetail(byd) } returns place(byd).copy(groups = emptyList())
+        assertEquals(2L, staging.sorrisoPilotForMap()?.placeCount)
+        assertEquals(setOf(sau, byd), dao.places.values.map { it.placeId }.toSet())
+    }
+
+    @Test fun `regional pilot rejects an incomplete page and bootstraps every reviewed ID`() = runTest {
+        val resource = checkNotNull(javaClass.getResourceAsStream("/charging/mt-top10-pilot-v1.json"))
+        val manifest = JSONObject(resource.bufferedReader().use { it.readText() })
+        val rows = manifest.getJSONArray("places")
+        val ids = (0 until rows.length()).map { rows.getJSONObject(it).getString("id") }
+        val profile = MATO_GROSSO_PILOT_PROFILE
+        val edition = ChargingCoverage(profile, manifest.getString("revision"), ids.size.toLong(), 0, 0, "2026-11-04T00:00:00Z")
+        val staging = ChargingDiscoveryRepository(client, dao, ApiEnvironment.STAGING)
+        coEvery { client.places(profile, null, 100, null) } returns page(ids.first())
+        assertRefreshRefused { staging.refresh(profile) }
+        assertEquals(0, dao.places.size)
+
+        coEvery { client.places(profile, null, 100, null) } throws ChargingSnapshotUnavailable(httpStatus = 400)
+        coEvery { client.coverage(profile) } returns edition
+        coEvery { client.placeDetail(any()) } answers { place(firstArg()).copy(groups = emptyList()) }
+        assertEquals(ids.size.toLong(), staging.matoGrossoPilotForMap()?.placeCount)
+        assertEquals(ids.toSet(), dao.places.values.map { it.placeId }.toSet())
+    }
+
+    @Test fun `Sorriso supplement is staging only and keeps the first pilot generation`() =
+        verifyReviewedPilot(SORRISO_SUPPLEMENT_PROFILE, "sorriso-supplement-v1.json") {
+            sorrisoSupplementForMap()
+        }
+
+    @Test fun `Cuiaba supplement is staging only and keeps the first pilot generation`() =
+        verifyReviewedPilot(CUIABA_SUPPLEMENT_PROFILE, "cuiaba-supplement-v1.json") {
+            cuiabaSupplementForMap()
+        }
+
+    @Test fun `next ten pilot is staging only and keeps the first pilot generation`() =
+        verifyReviewedPilot(MATO_GROSSO_NEXT_TEN_PROFILE, "mt-next10-pilot-v1.json") {
+            matoGrossoNextTenForMap()
+        }
+
+    private fun verifyReviewedPilot(
+        profile: String,
+        resourceName: String,
+        load: suspend ChargingDiscoveryRepository.() -> StoredPackMeta?,
+    ) = runTest {
+        val first = SORRISO_PILOT_PROFILE
+        val sau = "67c3d1f0-5898-54f0-bca3-689e9b48b099"
+        val resource = checkNotNull(javaClass.getResourceAsStream("/charging/$resourceName"))
+        val manifest = JSONObject(resource.bufferedReader().use { it.readText() })
+        val rows = manifest.getJSONArray("places")
+        val ids = (0 until rows.length()).map { rows.getJSONObject(it).getString("id") }
+        val edition = ChargingCoverage(profile, manifest.getString("revision"), ids.size.toLong(), 0, 0, "2026-11-04T00:00:00Z")
+        val staging = ChargingDiscoveryRepository(client, dao, ApiEnvironment.STAGING)
+
+        coEvery { client.places(first, null, 100, null) } returns page(sau)
+        val firstMeta = staging.refresh(first)
+        assertRefreshRefused { ChargingDiscoveryRepository(client, dao, ApiEnvironment.PREVIEW).refresh(profile) }
+        coVerify(exactly = 0) { client.places(profile, any(), any(), any()) }
+
+        coEvery { client.places(profile, null, 100, null) } returns page(ids.first())
+        assertRefreshRefused { staging.refresh(profile) }
+        coEvery { client.places(profile, null, 100, null) } throws ChargingSnapshotUnavailable(httpStatus = 400)
+        coEvery { client.coverage(profile) } returns edition
+        coEvery { client.placeDetail(any()) } answers { place(firstArg()).copy(groups = emptyList()) }
+        assertEquals(ids.size.toLong(), staging.load()?.placeCount)
+        assertEquals(firstMeta, staging.generationMeta(first))
+        assertEquals(ids.toSet() + sau, dao.places.values.map { it.placeId }.toSet())
     }
 
     @Test fun `refresh commits a generation and lists with verdicts`() = runTest {

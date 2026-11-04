@@ -22,9 +22,12 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.anpfuel.app.R
 import com.anpfuel.data.local.map.MapGenerationEntity
 import com.anpfuel.data.local.map.MapPackageEntity
 import com.anpfuel.data.map.MapPackageStore
@@ -63,7 +66,11 @@ class MapScreenInstrumentedTest {
         // Functional entries.
         compose.onNodeWithText("Filters", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithTag("map-search-field", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("map-search-field", useUnmergedTree = true).performTextInput("Station")
         compose.onNodeWithTag("map-search-submit", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("map-search-clear", useUnmergedTree = true).assertIsDisplayed().performClick()
+        compose.onNodeWithTag("map-search-clear", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithText("Station", substring = false).assertDoesNotExist()
         compose.onNodeWithTag("map-open-downloads").assertIsDisplayed()
         // OSM attribution stays visible.
         compose.onNodeWithText("OpenStreetMap", substring = true, ignoreCase = true).assertExists()
@@ -100,7 +107,7 @@ class MapScreenInstrumentedTest {
         )
         val sheetVm = MapSheetViewModel(SheetPriceSource { uuid, source, _ ->
             if (uuid == charger.uuid && source == MapPriceSource.COMMUNITY) {
-                SheetPrice("CCS2", "kWh", "2.45", MapPriceSource.COMMUNITY, "2026-10-25")
+                SheetPrice("CCS2", "kWh", "2.45", MapPriceSource.COMMUNITY, java.time.LocalDate.parse("2026-10-25"))
             } else {
                 null
             }
@@ -122,12 +129,19 @@ class MapScreenInstrumentedTest {
             sheetVm.select(charger, vm.ui.value.source)
         }
         compose.waitForIdle()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.onNodeWithTag("map-sheet-source-label")
+            .assert(hasText(context.getString(R.string.charging_open_sources)))
+        compose.onNodeWithText(
+            context.getString(R.string.map_sheet_source_label, context.getString(R.string.map_source_anp)),
+        ).assertDoesNotExist()
         // In ANP mode, charging shows anp-no-tariff message and "Show Community" button.
         compose.onNodeWithTag("map-sheet-switch-community").assertIsDisplayed()
         compose.onNodeWithTag("map-sheet-switch-community").performClick()
         compose.waitUntil(5_000) { sheetVm.ui.value.price?.source == MapPriceSource.COMMUNITY }
         compose.waitForIdle()
-        compose.onNodeWithText("CCS2 2.45 kWh", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("CCS2").assertIsDisplayed()
+        compose.onNodeWithTag("map-sheet-price").assert(hasText("2.45 / kWh")).assertIsDisplayed()
 
         // Clicking top ANP chip switches back to ANP and shows Show Community button again.
         compose.onNodeWithTag("map-sheet-source-anp").performClick()
@@ -138,7 +152,8 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithTag("map-sheet-source-community").performClick()
         compose.waitUntil(5_000) { sheetVm.ui.value.price?.source == MapPriceSource.COMMUNITY }
         compose.waitForIdle()
-        compose.onNodeWithText("CCS2 2.45 kWh", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("CCS2").assertIsDisplayed()
+        compose.onNodeWithTag("map-sheet-price").assert(hasText("2.45 / kWh")).assertIsDisplayed()
 
         // Clicking Report on a charging-only station passes CHARGING (not GASOLINE_REGULAR).
         compose.onNodeWithTag("map-sheet-report").performScrollTo().performClick()
@@ -283,8 +298,11 @@ class MapScreenInstrumentedTest {
                 offlineCached = false,
                 onOpenCity = {},
                 onSelectSource = {},
+                searchQuery = "",
+                onSearchQueryChanged = {},
                 onSearch = {},
-                onClearSearch = {},
+                searching = false,
+                searchStatus = null,
                 onRetry = {},
                 onOpenDownloads = {},
                 onOpenRoute = null,

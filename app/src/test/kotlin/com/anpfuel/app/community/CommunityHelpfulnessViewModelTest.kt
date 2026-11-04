@@ -139,7 +139,7 @@ class CommunityHelpfulnessViewModelTest {
     }
 
     @Test
-    fun `rejection stays explicit`() = runTest(dispatcher) {
+    fun `older backend self vote refusal also shows the ownership label`() = runTest(dispatcher) {
         enabled = true
         coEvery {
             useCase.cast(any())
@@ -148,9 +148,26 @@ class CommunityHelpfulnessViewModelTest {
         advanceUntilIdle()
         vm.vote("HELPFUL")
         advanceUntilIdle()
-        val state = vm.state.value
-        assertTrue(state is CommunityHelpfulnessUiState.Rejected)
-        assertEquals(CommunityHelpfulnessRejectKind.SELF_VOTE, (state as CommunityHelpfulnessUiState.Rejected).kind)
+        assertEquals(CommunityHelpfulnessUiState.OwnContribution, vm.state.value)
+        vm.prepare(observationId, 2, "acct-1")
+        advanceUntilIdle()
+        assertEquals(CommunityHelpfulnessUiState.OwnContribution, vm.state.value)
+        coVerify(exactly = 1) { useCase.cast(any()) }
+    }
+
+    @Test
+    fun `owner sees the label before voting and no vote or removal is submitted`() = runTest(dispatcher) {
+        enabled = true
+        coEvery { useCase.tally(any()) } returns HelpfulnessVoteOutcome.Tallied(tally().copy(ownContribution = true))
+        val vm = CommunityHelpfulnessViewModel(useCase, flags).also { it.ioDispatcher = dispatcher }
+        vm.prepare(observationId, 2, "acct-1")
+        advanceUntilIdle()
+        assertEquals(CommunityHelpfulnessUiState.OwnContribution, vm.state.value)
+        vm.vote("HELPFUL")
+        vm.remove()
+        advanceUntilIdle()
+        coVerify(exactly = 0) { useCase.cast(any()) }
+        coVerify(exactly = 0) { useCase.remove(any()) }
     }
     @Test fun `late old account tally cannot overwrite current account state`()=runTest(dispatcher) {
         enabled=true
@@ -167,7 +184,7 @@ class CommunityHelpfulnessViewModelTest {
         runCurrent()
         vm.prepare(observationId,2,"account-new")
         runCurrent()
-        old.complete(HelpfulnessVoteOutcome.Tallied(CommunityHelpfulnessTally(observationId,2,1,0,1,10000,"HELPFUL")))
+        old.complete(HelpfulnessVoteOutcome.Tallied(CommunityHelpfulnessTally(observationId,2,1,0,1,10000,null,ownContribution=true)))
         advanceUntilIdle()
         val state=vm.state.value as CommunityHelpfulnessUiState.Content
         assertEquals(9L,state.helpful)

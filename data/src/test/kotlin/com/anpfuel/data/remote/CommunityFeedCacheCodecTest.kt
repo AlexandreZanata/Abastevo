@@ -38,6 +38,7 @@ class CommunityFeedCacheCodecTest {
 
     private fun price() = CommunitySummaryPrice(
         FuelProduct.ETHANOL, 5032, 5000, 5064, 65, at.minusSeconds(3600), at.plusSeconds(3600),
+        com.anpfuel.domain.community.CommunityConfirmationCounts(total = 13, minimumPrice = 0, maximumPrice = 4),
     )
 
     @Test fun `feed round trip preserves rows dates and source through strict decode`() {

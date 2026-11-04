@@ -1,5 +1,137 @@
 # Current execution state
 
+- DRV-18/19 work screen form layout, 2026-11-04, LOCAL_DONE /
+  INTEGRATION_PENDING on maintained `dev` from `877240d8`.
+  [Form and Room evidence](../backend/evidence/driver-suite/DRV-18-22.md#work-screen-form-layout)
+  records the grouped shift and earning forms, accessible fields and seven
+  emulator tests. Protected PR #188 carries integration.
+
+- DRV-16 driver hub layout, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `a16de53c`. [Layout and Android evidence](../backend/evidence/driver-suite/DRV-16.md#driver-hub-action-layout)
+  records the grouped actions, 200% text verification and device install.
+  Protected PR #188 carries integration.
+
+- CS08B Home community confirmation counts, 2026-11-04, LOCAL_DONE /
+  INTEGRATION_PENDING on maintained `dev` from `30333e3c`.
+  [Summary and Android evidence](../backend/evidence/community-safety/CS08B_HELPFULNESS_VIEW.md#home-community-confirmation-counts)
+  records average and extreme-price counts, legacy payload handling, PostGIS
+  checks and emulator filter verification. Protected PR #188 carries
+  integration. Staging still serves the older summary contract.
+
+- CS08B ownership during backend rollout, 2026-11-04, LOCAL_DONE /
+  INTEGRATION_PENDING on maintained `dev` from `97643604`. The Android
+  client uses private observation status when the signed tally omits
+  ownership. [Device and test evidence](../backend/evidence/community-safety/CS08B_HELPFULNESS_VIEW.md#ownership-during-backend-rollout).
+  The device APK was updated and verified against staging. Protected
+  PR #188 carries integration.
+
+- CS08B contribution ownership and report action, 2026-11-04,
+  LOCAL_DONE / INTEGRATION_PENDING on maintained `dev` from `dc332b80`.
+  [Signed read and Android evidence](../backend/evidence/community-safety/CS08B_HELPFULNESS_VIEW.md#contribution-ownership-and-reporting)
+  records owner-only disclosure, the passive label and the full-width report
+  action. Builds, lint, 53 JVM tests, two emulator tests and PostGIS ownership,
+  proof and concurrency tests passed. Protected PR #188 carries integration.
+
+- MAP-22 route-origin CI regression, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `c7158ef7`. [Location policy and replay](../backend/evidence/maps/MAP-22_23_DIRECT_NAVIGATION.md#map-22-route-origin-location-policy-regression)
+  record the fix for Quick verification, cancellation tests and the fused-only
+  emulator route. Debug build, lint, 19 focused JVM tests, 25 gate-selection
+  checks and local `make quick-verify` passed. The tested source is in this
+  commit for integration through PR #188.
+
+- MAP-23 active navigation controls, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `5c7b2b6c`. [Device and camera evidence](../backend/evidence/maps/MAP-23.md#active-navigation-controls-verification--2026-11-04)
+  records the accessible stop action, the physical guidance fix, route
+  overview and recenter, and the 200% text test. Debug and instrumentation
+  APK builds, lint and 64 focused JVM tests passed. This commit carries the
+  tested source for integration in protected PR #188.
+
+- MAP-23 responsive guidance startup, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `0e2134ed`. [ANR and navigation evidence](../backend/evidence/maps/MAP-23.md#voice-startup-verification--2026-11-04)
+  records the blocked speech initialization, corrected physical start/stop,
+  and maneuver progress with emulator GPS. Debug and instrumentation APK
+  builds, lint, seven JVM tests and two Android tests passed. Protected PR
+  #188 carries the tested source in this commit.
+
+- MAP-19 station sheet presentation, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `2fd71bc0`. [Station sheet evidence](../backend/evidence/maps/MAP-19.md#station-sheet-verification--2026-11-04)
+  records the live station card in light and dark themes, 200% font scale,
+  charging source switching and route entry. Debug and instrumentation APK
+  builds, lint, 19 focused tests and the emulator test passed. Protected
+  PR #188 carries the tested source in this commit.
+
+- MAP-20 station search focus, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `abf7f865`. [Search and device evidence](../backend/evidence/maps/MAP-20.md#station-search-focus-verification--2026-11-04)
+  records the Smile route preview, the independent native pin layer, clear
+  action and empty-result case on physical Android. Debug and instrumentation
+  APK builds, lint and 94 focused tests passed. Protected PR #188 carries the
+  tested source in this commit.
+
+- MAP-22 automatic station origin, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `abb2f461`. [Origin regression evidence](../backend/evidence/maps/MAP-22_23_DIRECT_NAVIGATION.md#map-22-station-origin-regression--2026-11-04)
+  records automatic station routing on physical Android and fused-only replay
+  in the emulator. Debug build, lint and 62 focused tests passed. The tested
+  revision is the source in this commit. Protected PR #188 carries integration.
+
+- MAP-22/MAP-23 direct navigation, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `3dd9c97e`. [Navigation and test evidence](../backend/evidence/maps/MAP-22_23_DIRECT_NAVIGATION.md)
+  records the physical map route preview from a synthetic origin, the search
+  and charging-card entries, and GPS guidance in the emulator. Debug build,
+  instrumentation APK build, lint and 102 focused tests passed. The tested
+  revision is the source in this commit. Protected PR #188 carries integration.
+
+- Mato Grosso charging ranks 11–20, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `6f82d3ae`. [Sources, counts and replay](../backend/evidence/evc/MT_NEXT10_CHARGING_PILOT.md)
+  record 13 additional places in six municipalities. Staging details match
+  the 13 new places and retain all 60 earlier records. PostGIS concurrency
+  and refusal checks, Go race/vet, 47 focused Android tests, debug build
+  and lint passed. Opened three charging cards on physical Android.
+  Tested revision is the source in this commit. Paginated staging API
+  integration is pending in protected PR #188.
+
+- Cuiabá charging supplement 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `c3edcb3b`. [Source and replay evidence](../backend/evidence/evc/CUIABA_CHARGING_SUPPLEMENT.md)
+  records 30 additional facilities, for 39 in Cuiabá and 60 across the ten
+  staging municipalities. API details match the 30 added and nine retained
+  sites. PostGIS replay and refusal tests, Go race/vet, 46 focused Android
+  tests, debug build/lint and three physical charging-card checks passed.
+  Tested revision is the source in this commit. API list integration is
+  pending in protected PR #188.
+
+- Sorriso charging supplement 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `a89e4e94`. The [review and replay evidence](../backend/evidence/evc/SORRISO_CHARGING_SUPPLEMENT.md)
+  records four additional charging facilities, for six in Sorriso and 30
+  across the ten staging municipalities. Public staging details match the
+  reviewed locations. Real PostGIS replay and rejection tests, Go race/vet,
+  45 focused Android tests, debug build and lint passed. All four new cards
+  opened on a physical Android device. Tested revision is the source in
+  this commit. The API list change is included in protected PR #188.
+
+- Mato Grosso charging expansion 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `b99329be`. [Regional census and evidence](../backend/evidence/evc/MT_TOP10_CHARGING_PILOT.md)
+  record 26 facilities in the ten largest municipalities by the 2026 IBGE
+  estimate. Public staging details match the 24 added and two retained sites.
+  Real PostGIS replay and negative cases, Go race/vet, 44 Android tests, debug
+  lint/build and a physical Cuiabá map smoke passed. PR #188 carries the API
+  list change. Staging Android can read the published records today.
+
+- Sorriso charging pilot 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `39f4e57f`. [Source, seed and staging evidence](../backend/evidence/evc/SORRISO_CHARGING_PILOT.md)
+  record two reviewed facilities, SAU 17 and BYD Disbrava. Staging serves
+  both detail records and the updated Android debug map reads them. The
+  integrated API will also serve a paginated pilot profile. Disposable
+  PostGIS, charging Go checks, 48 focused Android tests and debug lint pass.
+  The scope is appended to the existing protected dev → main PR #188.
+
+- Mato Grosso station catalog 2026-11-04: LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `29bef268`. The [pilot and replay procedure](../backend/MT_STATION_CATALOG_PILOT.md)
+  record 1,179 official CNPJs across 142 municipalities, 1,077 pins and 102
+  list-only entries in staging after the bounded registry and location load.
+  Tested the source in this commit with PostGIS, Go race/vet, audit replay,
+  Android unit tests/lint and a physical-device smoke. The app reads all city
+  pages within its budget and submits private corrections for review.
+  Next: protected dev → main PR and deployment of the corrected sync artifact.
+
 - Admin web visual alignment 2026-11-04: LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `51638a80`. Login, accounts, contributors, stations,
   audit and the standalone fallback reuse the staging landing CSS, brand and

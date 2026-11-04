@@ -20,36 +20,47 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.locale.AppLocaleHolder
 import com.anpfuel.domain.routing.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
 @Composable
 fun NativeRouteSheet(viewModel:NativeRouteViewModel, onDismiss:()->Unit, onDownloads:()->Unit,
     onSavePlan: ((String, List<Pair<Double, Double>>, Set<String>) -> Unit)? = null, savedMessage: String? = null,
     evTrip: EvTripViewModel = hiltViewModel(),
+    initialDestinationQuery: String = "",
+    onDestinationPicked: ((RoutePoint) -> Unit)? = null,
     guidance: @Composable (NativeRoutePreview, NativeRouteRequest) -> Unit = { _,_ -> }) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
     val context=LocalContext.current
     var target by remember { mutableStateOf(RouteInputSlot.DESTINATION) }
-    var query by remember { mutableStateOf("") }
+    var query by remember(initialDestinationQuery) { mutableStateOf(initialDestinationQuery) }
+    LaunchedEffect(initialDestinationQuery) {
+        if (initialDestinationQuery.isNotBlank()) viewModel.search(context, initialDestinationQuery)
+    }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
-    var cancelFix by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val scope = rememberCoroutineScope()
+    var fixJob by remember { mutableStateOf<Job?>(null) }
     var fixing by remember { mutableStateOf(false) }
-    var fixGeneration by remember { mutableLongStateOf(0L) }
-    fun cancelPosition() { ++fixGeneration;cancelFix?.invoke();cancelFix=null;fixing=false }
+    fun cancelPosition() {
+        fixJob?.cancel()
+        fixJob = null
+        fixing = false
+    }
     val currentLabel=stringResource(R.string.map22_current)
     val centerLabel=stringResource(R.string.map22_center)
     val upLabel=stringResource(R.string.map22_move_up)
     val downLabel=stringResource(R.string.map22_move_down)
     val manualLabel=stringResource(R.string.map22_coordinates)
     fun fix() {
-        cancelPosition();fixing=true
-        val token=fixGeneration
-        val selectedTarget=target
-        cancelFix=requestRouteFix(context,currentLabel) { point ->
-            if(token!=fixGeneration) return@requestRouteFix
-            fixing=false
-            if(point!=null) viewModel.point(selectedTarget,point) else viewModel.fail("no-fix")
+        cancelPosition()
+        fixing = true
+        val selectedTarget = target
+        fixJob = scope.launch {
+            val point = viewModel.currentRoutePoint(context, currentLabel)
+            fixing = false
+            if (point != null) viewModel.point(selectedTarget, point) else viewModel.fail("no-fix")
         }
     }
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
@@ -89,7 +100,14 @@ fun NativeRouteSheet(viewModel:NativeRouteViewModel, onDismiss:()->Unit, onDownl
             OutlinedTextField(query,{query=it},label={Text(stringResource(R.string.map22_search_hint))},modifier=Modifier.fillMaxWidth())
             Button(onClick={viewModel.search(context,query)},enabled=!state.searching) {Text(stringResource(R.string.map_search))}
             if(state.searching) LinearProgressIndicator(Modifier.fillMaxWidth())
-            state.results.forEach { result -> TextButton(onClick={cancelPosition();viewModel.point(target,RoutePoint(result.latitude,result.longitude,result.name))}) {Text(result.name)} }
+            state.results.forEach { result ->
+                TextButton(onClick = {
+                    cancelPosition()
+                    val point = RoutePoint(result.latitude, result.longitude, result.name.take(512))
+                    if (target == RouteInputSlot.DESTINATION && onDestinationPicked != null) onDestinationPicked(point)
+                    else viewModel.point(target, point)
+                }) { Text(result.name) }
+            }
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(latitude,{latitude=it},label={Text(stringResource(R.string.map22_latitude))},modifier=Modifier.weight(1f))
                 OutlinedTextField(longitude,{longitude=it},label={Text(stringResource(R.string.map22_longitude))},modifier=Modifier.weight(1f))

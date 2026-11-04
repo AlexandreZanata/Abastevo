@@ -1,10 +1,13 @@
 package com.anpfuel.app.ui.map
 
 import android.content.Context
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.domain.routing.*
+import com.anpfuel.maps.engine.GuidanceCameraAction
 import com.anpfuel.maps.engine.MapEngine
 import com.anpfuel.maps.engine.MapSearchResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +24,7 @@ data class NativeRouteUi(
     val origin: RoutePoint? = null, val destination: RoutePoint? = null,
     val stops: List<RoutePoint> = emptyList(), val avoid: Set<RoadAvoidance> = emptySet(),
     val building: Boolean = false, val preview: NativeRoutePreview? = null,
+    val findingOrigin: Boolean = false,
     val error: String? = null, val missingMaps: List<String> = emptyList(),
     val searching: Boolean = false, val results: List<MapSearchResult> = emptyList(),
 )
@@ -32,6 +36,7 @@ class NativeRouteViewModel @Inject constructor(private val engine: MapEngine, pr
     private var generation = 0L
     private var searchGeneration = 0L
     private var deadline: Job? = null
+    private var originJob: Job? = null
     private var searchDeadline: Job? = null
     init {
         val coordinates = saved.get<ArrayList<String>>("route-coordinates").orEmpty()
@@ -45,6 +50,41 @@ class NativeRouteViewModel @Inject constructor(private val engine: MapEngine, pr
             state.value=NativeRouteUi(origin=points.first(),destination=points.last(),stops=points.drop(1).dropLast(1),avoid=avoid.toSet())
         }
     }
+    fun setGuidanceViewport(visible: IntRect, surface: IntSize) = engine.setGuidanceViewport(visible, surface)
+
+    fun controlGuidanceCamera(action: GuidanceCameraAction) = engine.controlGuidanceCamera(action)
+
+    fun guidanceManeuvers(language: String) = engine.guidanceManeuvers(language)
+
+    fun prepareDestination(destination: RoutePoint?) {
+        invalidate()
+        stopSearch()
+        state.update { it.copy(origin = null, destination = destination, stops = emptyList()) }
+        persist()
+    }
+
+    suspend fun currentRoutePoint(context: Context, label: String): RoutePoint? =
+        findCurrentRoutePoint(context, label, engine::lastMapLocation)
+
+    fun buildFromCurrentLocation(language: String, findOrigin: suspend () -> RoutePoint?) {
+        if (state.value.destination == null) return
+        invalidate()
+        val token = generation
+        state.update { it.copy(findingOrigin = true) }
+        originJob = viewModelScope.launch {
+            val fix = findOrigin()
+            if (token != generation) return@launch
+            originJob = null
+            state.update { it.copy(findingOrigin = false) }
+            if (fix == null) {
+                fail("no-fix")
+            } else {
+                point(RouteInputSlot.ORIGIN, fix)
+                build(language)
+            }
+        }
+    }
+
     fun point(slot:RouteInputSlot, point:RoutePoint) {
         invalidate()
         state.update { when(slot) {
@@ -112,10 +152,23 @@ class NativeRouteViewModel @Inject constructor(private val engine: MapEngine, pr
         )
         persist()
     }
+    fun cancelOriginLookup() {
+        if (state.value.findingOrigin) invalidate()
+    }
+
     fun fail(reason:String) { state.update { it.copy(error=reason) } }
     fun stopSearch() { ++searchGeneration;searchDeadline?.cancel();engine.cancelSearch();state.update { it.copy(searching=false,results=emptyList()) } }
     fun cancel() { invalidate();stopSearch() }
-    private fun invalidate() { ++generation;deadline?.cancel();engine.cancelRoute();state.update { it.copy(building=false,preview=null,error=null,missingMaps=emptyList()) } }
+    private fun invalidate() {
+        ++generation
+        deadline?.cancel()
+        originJob?.cancel()
+        originJob = null
+        if (!engine.isGuiding()) engine.cancelRoute()
+        state.update {
+            it.copy(building = false, findingOrigin = false, preview = null, error = null, missingMaps = emptyList())
+        }
+    }
     private fun persist() {
         val s=state.value;val points=if(s.origin!=null && s.destination!=null) listOf(s.origin)+s.stops+s.destination else emptyList()
         saved["route-avoid"]=ArrayList(s.avoid.map { it.name })

@@ -32,7 +32,7 @@ fun CommunityContributionActions(item:CommunityFeedItem,onSignIn:()->Unit) {
         }
         if(received) Text(stringResource(R.string.community_action_received))
     }
-    if(showReport) AlertDialog(
+    if(showReport && state is CommunityHelpfulnessUiState.Content) AlertDialog(
         onDismissRequest={showReport=false},
         title={Text(stringResource(R.string.community_helpful_report))},
         text={Column {

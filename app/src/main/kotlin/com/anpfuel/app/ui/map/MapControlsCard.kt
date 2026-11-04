@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocationOn
@@ -59,8 +60,11 @@ internal fun MapControlsCard(
     offlineCached: Boolean,
     onOpenCity: () -> Unit,
     onSelectSource: (MapPriceSource) -> Unit,
+    searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
     onSearch: (String) -> Unit,
-    onClearSearch: () -> Unit,
+    searching: Boolean,
+    searchStatus: String?,
     onRetry: () -> Unit,
     onOpenDownloads: () -> Unit,
     onOpenRoute: (() -> Unit)?,
@@ -68,9 +72,8 @@ internal fun MapControlsCard(
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
-    var query by rememberSaveable { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
-    val submitSearch = { focusManager.clearFocus(); onSearch(query) }
+    val submitSearch = { focusManager.clearFocus(); onSearch(searchQuery) }
     val sourceLabel = stringResource(if (ui.source == MapPriceSource.ANP) R.string.map_source_anp else R.string.map_source_community)
     Surface(
         modifier = modifier.fillMaxWidth().testTag("map-controls-card"),
@@ -113,17 +116,25 @@ internal fun MapControlsCard(
                 }
             }
             OutlinedTextField(
-                value = query,
-                onValueChange = { value ->
-                    query = value
-                    if (value.trim().length < 2) onClearSearch()
-                },
+                value = searchQuery,
+                onValueChange = onSearchQueryChanged,
                 placeholder = { Text(stringResource(R.string.map_search_hint), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
-                trailingIcon = if (query.isNotBlank()) {
+                trailingIcon = if (searchQuery.isNotBlank()) {
                     {
-                        IconButton(onClick = submitSearch, modifier = Modifier.testTag("map-search-submit")) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.map_search), tint = MaterialTheme.colorScheme.primary)
+                        Row {
+                            IconButton(
+                                onClick = {
+                                    onSearchQueryChanged("")
+                                    focusManager.clearFocus()
+                                },
+                                modifier = Modifier.testTag("map-search-clear"),
+                            ) {
+                                Icon(Icons.Default.Close, stringResource(R.string.map_clear_search))
+                            }
+                            IconButton(onClick = submitSearch, modifier = Modifier.testTag("map-search-submit")) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.map_route_search), tint = MaterialTheme.colorScheme.primary)
+                            }
                         }
                     }
                 } else {
@@ -153,7 +164,10 @@ internal fun MapControlsCard(
                     modifier = Modifier.padding(start = 4.dp),
                 )
             }
-            if (ui.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            searchStatus?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 4.dp))
+            }
+            if (ui.loading || searching) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (expanded) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

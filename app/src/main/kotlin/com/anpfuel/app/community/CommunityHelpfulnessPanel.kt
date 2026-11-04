@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,7 +35,8 @@ import com.anpfuel.app.ui.theme.AnpContainerDefaults
  * Single-flight submitting shows progress with no second tap target.
  */
 @Composable
-fun CommunityHelpfulnessPanel(    state: CommunityHelpfulnessUiState,
+fun CommunityHelpfulnessPanel(
+    state: CommunityHelpfulnessUiState,
     onVote: (choiceWire: String) -> Unit,
     onRemove: () -> Unit,
     onRetry: () -> Unit,
@@ -44,6 +47,20 @@ fun CommunityHelpfulnessPanel(    state: CommunityHelpfulnessUiState,
     when (state) {
         is CommunityHelpfulnessUiState.Disabled -> Unit
         is CommunityHelpfulnessUiState.Idle -> Unit
+        is CommunityHelpfulnessUiState.OwnContribution -> {
+            Surface(
+                modifier = modifier,
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ) {
+                Text(
+                    text = stringResource(R.string.community_own_contribution),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        }
         is CommunityHelpfulnessUiState.Loading -> {
             CircularProgressIndicator(modifier = modifier.padding(16.dp))
         }
@@ -133,17 +150,19 @@ fun CommunityHelpfulnessPanel(    state: CommunityHelpfulnessUiState,
                             Text(text = stringResource(R.string.community_helpful_not_helpful))
                         }
                     }
-                    Row(
+                    Button(
+                        onClick = onReport,
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
                     ) {
-                        if (state.myChoice != null) {
-                            TextButton(onClick = onRemove) {
-                                Text(text = stringResource(R.string.community_helpful_remove))
-                            }
-                        }
-                        TextButton(onClick = onReport) {
-                            Text(text = stringResource(R.string.community_helpful_report))
+                        Text(text = stringResource(R.string.community_helpful_report))
+                    }
+                    if (state.myChoice != null) {
+                        TextButton(onClick = onRemove) {
+                            Text(text = stringResource(R.string.community_helpful_remove))
                         }
                     }
                 }

@@ -301,6 +301,29 @@ func TestRetryWithSameSubmissionConverges(t *testing.T) {
 	}
 }
 
+func TestTallyOwnContributionUsesAttribution(t *testing.T) {
+	store := newFakeHelpfulnessStore()
+	owner := Caller{ContributorID: "author-account", Token: store.target.AuthorRef}
+	other := Caller{ContributorID: owner.ContributorID, Token: "different-attribution"}
+	for _, tc := range []struct {
+		name   string
+		caller Caller
+		owned  bool
+	}{
+		{"owner", owner, true},
+		{"different attribution", other, false},
+		{"anonymous", Caller{}, false},
+		{"unverified attribution", Caller{Token: owner.Token}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := TallyFor(context.Background(), helpfulPorts(store), tc.caller, "obs-1", 3)
+			if err != nil || got.OwnContribution != tc.owned || got.MyChoice != nil {
+				t.Fatalf("unexpected ownership or vote: %+v, err=%v", got, err)
+			}
+		})
+	}
+}
+
 func TestRemoveIsIdempotentAndClearsOverlay(t *testing.T) {
 	store := newFakeHelpfulnessStore()
 	ports := helpfulPorts(store)

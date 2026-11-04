@@ -383,7 +383,6 @@
     <string name="stations_brand_label">Enseigne : %1$s</string>
     <string name="stations_collected_at_label">Collecté : %1$s</string>
     <string name="stations_navigate_action">Y aller</string>
-    <string name="stations_navigate_no_app">Aucune application de cartes trouvée pour ouvrir l\'itinéraire.</string>
     <string name="stations_nearest_action">Le moins cher près de moi</string>
     <string name="stations_nearest_needs_location">Activez la localisation pour trouver la station la plus proche.</string>
     <string name="stations_nearest_no_fix">Pas de signal GPS pour le moment. Activez la localisation puis réessayez.</string>
@@ -999,6 +998,8 @@
     <string name="community_helpful_removed">Vote retiré.</string>
     <string name="community_helpful_rejected">Non enregistré (%1$s)</string>
     <string name="community_helpful_under_review">Décomptes en cours de vérification par la communauté</string>
+    <string name="community_confirmation_count">Confirmations : %1$s</string>
+    <string name="community_own_contribution">Votre contribution</string>
     <string name="community_helpful_report">Signaler</string>
     <string name="community_helpful_guest">Connectez-vous à un compte gratuit pour voter</string>
     <string name="community_helpful_guest_body">Un compte gratuit est nécessaire pour voter. Les votes répétés de votre identité ne sont pas comptés à nouveau. La consultation reste anonyme.</string>
@@ -1156,11 +1157,16 @@
     <string name="map_sheet_show_community">Voir Communauté</string>
     <string name="map_sheet_price_load_failed">Échec de la consultation du prix.</string>
     <string name="map_sheet_no_price">Aucun prix pour cette station.</string>
-    <string name="map_sheet_route">Itinéraire</string>
     <string name="map_sheet_route_unavailable">Itinéraire indisponible : station sans coordonnées vérifiées.</string>
-    <string name="map_sheet_route_failed">Impossible d\'ouvrir une application de navigation externe.</string>
-    <string name="map_sheet_profile">Profil</string>
-    <string name="map_sheet_report">Signaler</string>
+    <string name="map_sheet_profile">Voir le profil</string>
+    <string name="map_sheet_report">Signaler un prix</string>
+    <string name="map_sheet_charge_report">Contribuer</string>
+    <string name="map_sheet_price_source">Source du prix</string>
+    <string name="map_sheet_observed_on">Signalé le %1$s</string>
+    <string name="map_sheet_condition_cash">Paiement en espèces</string>
+    <string name="map_sheet_condition_loyalty">Programme de fidélité</string>
+    <string name="map_sheet_condition_app">Dans l’application</string>
+    <string name="map_sheet_condition_other">Autre condition</string>
     <string name="map_cluster_title">Regroupement (%1$d stations)</string>
     <string name="map_cluster_expand">Développer le regroupement (%1$d)</string>
     <string name="map_list_toggle">Liste (%1$d)</string>
@@ -1278,6 +1284,17 @@
     <string name="driver_hub_first_vehicle_title">Commencez par le véhicule</string>
     <string name="driver_hub_first_vehicle_body">Enregistrez un véhicule pour accéder aux écritures et aux indicateurs mensuels réels.</string>
     <string name="driver_hub_add_vehicle">Ouvrir les véhicules</string>
+    <string name="driver_hub_current_vehicle">Véhicule utilisé</string>
+    <string name="driver_hub_register_group">Saisir les dépenses</string>
+    <string name="driver_hub_work_group">Suivre le travail</string>
+    <string name="driver_hub_vehicle_group">Vos véhicules</string>
+    <string name="driver_hub_open_work">Service et revenus</string>
+    <string name="driver_hub_quick_refuel_body">Saisissez les litres, le montant payé et le kilométrage.</string>
+    <string name="driver_hub_quick_charge_body">Saisissez la quantité d’énergie et le coût de la recharge.</string>
+    <string name="driver_hub_open_work_body">Gérez votre service et saisissez vos revenus.</string>
+    <string name="driver_hub_open_entries_body">Consultez et corrigez vos saisies.</string>
+    <string name="driver_hub_open_export_body">Consultez le bilan mensuel et exportez vos données.</string>
+    <string name="driver_hub_open_vehicles_body">Ajoutez ou modifiez un véhicule.</string>
     <string name="driver_hub_open_entries">Ouvrir les écritures</string>
     <string name="driver_hub_open_export">Indicateurs et exportation</string>
     <string name="driver_hub_open_vehicles">Gérer les véhicules</string>
@@ -1287,4 +1304,10 @@
     <string name="driver_hub_quick_charge">Recharge rapide</string>
     <string name="ledger_entry_charge_fees">Frais de recharge (R$)</string>
     <string name="ledger_entry_validation_fees">Saisissez un montant de frais valide.</string>
+    <string name="station_correction_title">Proposer une correction</string>
+    <string name="station_correction_address">Rue et numéro</string>
+    <string name="station_correction_closed">Signaler une fermeture définitive</string>
+    <string name="station_correction_review">Votre suggestion sera examinée avant toute modification de la carte.</string>
+    <string name="station_correction_sent">Suggestion envoyée pour examen.</string>
+    <string name="station_correction_failed">Impossible d’envoyer la suggestion. Réessayez.</string>
 </resources>

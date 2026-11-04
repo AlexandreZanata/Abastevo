@@ -1,34 +1,64 @@
 package com.anpfuel.app.ui.map
 
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EvStation
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.community.CommunityPriceDisplay
 import com.anpfuel.app.mapper.FuelProductI18n
+import com.anpfuel.app.mapper.SurveyWeekFormatter
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.valueobject.FuelProduct
 import com.anpfuel.maps.engine.MapStationLocationQuality
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 @Composable
@@ -61,24 +91,19 @@ internal fun localizedMapProductLabel(rawProduct: String): String {
 @Composable
 internal fun localizedMapConditionLabel(conditionKind: String, qualifier: String?): String {
     val norm = conditionKind.trim().uppercase(Locale.ROOT)
-    val baseLabel = when (norm) {
-        "STANDARD" -> stringResource(R.string.charging_community_condition_standard)
-        "OFF_PEAK" -> stringResource(R.string.charging_community_condition_off_peak)
-        "PEAK" -> stringResource(R.string.charging_community_condition_peak)
-        "MEMBER" -> stringResource(R.string.charging_community_condition_member)
-        "UNKNOWN" -> stringResource(R.string.charging_community_condition_unknown)
-        else -> CommunityPriceDisplay.formatCondition(norm, qualifier)
+    val label = when (norm) {
+        "STANDARD" -> R.string.charging_community_condition_standard
+        "OFF_PEAK" -> R.string.charging_community_condition_off_peak
+        "PEAK" -> R.string.charging_community_condition_peak
+        "MEMBER" -> R.string.charging_community_condition_member
+        "UNKNOWN" -> R.string.charging_community_condition_unknown
+        "CASH" -> R.string.map_sheet_condition_cash
+        "LOYALTY" -> R.string.map_sheet_condition_loyalty
+        "APP" -> R.string.map_sheet_condition_app
+        "OTHER" -> R.string.map_sheet_condition_other
+        else -> return CommunityPriceDisplay.formatCondition(norm, qualifier)
     }
-    return if (norm == "STANDARD") {
-        baseLabel
-    } else {
-        val contractNote = CommunityPriceDisplay.formatCondition(norm, qualifier)
-        if (baseLabel.contains(norm, ignoreCase = true)) {
-            baseLabel
-        } else {
-            "$baseLabel ($contractNote)"
-        }
-    }
+    return listOfNotNull(stringResource(label), qualifier?.takeIf { it.isNotBlank() }).joinToString(" · ")
 }
 
 /**
@@ -103,11 +128,12 @@ fun MapBottomSheet(
 ) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val marker = ui.marker ?: return
-    val sourceName = if (ui.source == MapPriceSource.ANP) {
-        stringResource(R.string.map_source_anp)
-    } else {
-        stringResource(R.string.map_source_community)
-    }
+    val chargingOnly = marker.charging && !marker.fuel
+    val serviceLabel = stringResource(when {
+        marker.fuel && marker.charging -> R.string.map_filter_fuel_charging
+        chargingOnly -> R.string.map_filter_charging
+        else -> R.string.map_filter_fuel
+    })
     val locationQualityLabel = when (marker.locationQuality) {
         MapStationLocationQuality.REVIEWED -> stringResource(R.string.map_location_reviewed)
         MapStationLocationQuality.OSM_MAPPED -> stringResource(R.string.map_location_osm_mapped)
@@ -123,96 +149,66 @@ fun MapBottomSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp).heightIn(min = 48.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(marker.title, style = MaterialTheme.typography.titleLarge)
-            if (marker.confirmedByTwoSources) {
-                Text(
-                    stringResource(R.string.charging_place_two_sources),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            if (marker.locationQuality == MapStationLocationQuality.CHARGING_SOURCE && marker.subtitle.isNotBlank()) {
-                Text(marker.subtitle, style = MaterialTheme.typography.bodyMedium)
-            }
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                MapPriceSource.entries.forEach { source ->
-                    FilterChip(
-                        selected = ui.source == source,
-                        onClick = { onSelectSource(source) },
-                        label = { Text(stringResource(if (source == MapPriceSource.ANP) R.string.map_source_anp else R.string.map_source_community)) },
-                        modifier = Modifier.heightIn(min = 48.dp).testTag("map-sheet-source-${source.name.lowercase(Locale.ROOT)}"),
-                    )
-                }
-            }
-            Text(
-                when {
-                    marker.fuel && marker.charging -> stringResource(R.string.map_filter_fuel_charging)
-                    marker.charging -> stringResource(R.string.map_filter_charging)
-                    else -> stringResource(R.string.map_filter_fuel)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                stringResource(R.string.map_sheet_source_label, sourceName),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            when {
-                ui.loading -> Text(stringResource(R.string.map_sheet_loading_price))
-                ui.price != null -> {
-                    val p = ui.price!!
-                    val productLabel = localizedMapProductLabel(p.product)
-                    Text(
-                        "$productLabel ${p.amount} ${p.unit}",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.testTag("map-sheet-price"),
-                    )
-                    Text(
-                        localizedMapConditionLabel(p.conditionKind, p.conditionQualifier),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (p.isConditional) {
-                            MaterialTheme.colorScheme.tertiary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = Modifier.testTag("map-sheet-condition"),
-                    )
-                    Text(p.dateLabel, style = MaterialTheme.typography.bodySmall)
-                    if (p.stale) {
-                        Text(
-                            stringResource(R.string.map_sheet_cached_price),
-                            style = MaterialTheme.typography.labelSmall,
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ) {
+                        Icon(
+                            if (chargingOnly) Icons.Default.EvStation else Icons.Default.LocalGasStation,
+                            contentDescription = null,
+                            modifier = Modifier.padding(10.dp).size(20.dp),
                         )
                     }
-                }
-                ui.absentReason == "anp-no-tariff" -> {
-                    Text(stringResource(R.string.map_sheet_anp_no_tariff))
-                    Button(
-                        onClick = onSwitchToCommunity,
-                        modifier = Modifier.heightIn(min = 48.dp).testTag("map-sheet-switch-community"),
-                    ) {
-                        Text(stringResource(R.string.map_sheet_show_community))
+                    Text(
+                        serviceLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                    )
+                    IconButton(onClick = onDismiss, modifier = Modifier.testTag("map-sheet-close")) {
+                        Icon(Icons.Default.Close, stringResource(R.string.feed_close))
                     }
                 }
-                ui.absentReason == "load-failed" -> {
-                    Text(stringResource(R.string.map_sheet_price_load_failed))
+                Text(
+                    marker.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.semantics { heading() },
+                )
+                if (marker.subtitle.isNotBlank()) {
+                    Text(marker.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                else -> Text(stringResource(R.string.map_sheet_no_price))
+                if (marker.confirmedByTwoSources) {
+                    Text(
+                        stringResource(R.string.charging_place_two_sources),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
-            Text(
-                stringResource(R.string.map_sheet_location_label, locationQualityLabel),
-                style = MaterialTheme.typography.bodySmall,
-            )
+
+            StationPricePanel(ui, chargingOnly, onSelectSource, onSwitchToCommunity)
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                Icon(
+                    Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(locationQualityLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (!marker.canRouteByCoordinates) {
                 Text(
                     stringResource(R.string.map_sheet_route_unavailable),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.testTag("map-sheet-route-unavailable"),
                 )
             }
@@ -224,32 +220,159 @@ fun MapBottomSheet(
                     modifier = Modifier.testTag("map-sheet-route-error"),
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Button(
                     onClick = { onRoute(marker.uuid) },
                     enabled = marker.canRouteByCoordinates,
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-sheet-route"),
-                ) { Text(stringResource(R.string.map_sheet_route)) }
-                TextButton(
-                    onClick = { onOpenProfile(marker.uuid) },
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-sheet-profile"),
-                ) { Text(stringResource(R.string.map_sheet_profile)) }
-                TextButton(
-                    onClick = { onReport(marker.uuid) },
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-sheet-report"),
-                ) { Text(stringResource(R.string.map_sheet_report)) }
-            }
-            if (onToggleFavorite != null) {
-                TextButton(
-                    onClick = onToggleFavorite,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("map-sheet-favorite"),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("map-sheet-route"),
                 ) {
-                    Text(stringResource(if (isFavorite) R.string.map25_favorite_remove else R.string.map25_favorite_add))
+                    StationActionLabel(Icons.Default.Navigation, stringResource(R.string.map_route_go))
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { onOpenProfile(marker.uuid) },
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-sheet-profile"),
+                    ) {
+                        StationActionLabel(Icons.Default.Storefront, stringResource(R.string.map_sheet_profile))
+                    }
+                    OutlinedButton(
+                        onClick = { onReport(marker.uuid) },
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-sheet-report"),
+                    ) {
+                        StationActionLabel(
+                            Icons.Default.Edit,
+                            stringResource(if (chargingOnly) R.string.map_sheet_charge_report else R.string.map_sheet_report),
+                        )
+                    }
+                }
+                if (onToggleFavorite != null) {
+                    TextButton(
+                        onClick = onToggleFavorite,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("map-sheet-favorite"),
+                    ) {
+                        StationActionLabel(
+                            if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            stringResource(if (isFavorite) R.string.map25_favorite_remove else R.string.map25_favorite_add),
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StationPricePanel(
+    ui: MapSheetUi,
+    chargingOnly: Boolean,
+    onSelectSource: (MapPriceSource) -> Unit,
+    onSwitchToCommunity: () -> Unit,
+) {
+    val container = MaterialTheme.colorScheme.surfaceContainerHigh
+    val secondaryText = MaterialTheme.colorScheme.onSurfaceVariant
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
+        color = container,
+        border = AnpContainerDefaults.borderStroke(container),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.map_sheet_price_source), style = MaterialTheme.typography.labelLarge, color = secondaryText)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MapPriceSource.entries.forEach { source ->
+                    FilterChip(
+                        selected = ui.source == source,
+                        onClick = { onSelectSource(source) },
+                        label = {
+                            Text(stringResource(if (source == MapPriceSource.ANP) R.string.map_source_anp else R.string.map_source_community))
+                        },
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("map-sheet-source-${source.name.lowercase(Locale.ROOT)}"),
+                    )
+                }
+            }
+
+            val price = ui.price
+            when {
+                ui.loading -> {
+                    Text(stringResource(R.string.map_sheet_loading_price), style = MaterialTheme.typography.bodyMedium)
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+                price != null -> StationPriceDetails(price)
+                ui.absentReason == "anp-no-tariff" -> {
+                    Text(stringResource(R.string.map_sheet_anp_no_tariff), style = MaterialTheme.typography.bodyMedium)
+                    TextButton(
+                        onClick = onSwitchToCommunity,
+                        modifier = Modifier.heightIn(min = 48.dp).testTag("map-sheet-switch-community"),
+                    ) { Text(stringResource(R.string.map_sheet_show_community)) }
+                }
+                else -> Text(
+                    stringResource(
+                        if (ui.absentReason == "load-failed") R.string.map_sheet_price_load_failed else R.string.map_sheet_no_price,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            if (chargingOnly) {
+                Text(
+                    stringResource(R.string.charging_open_sources),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = secondaryText,
+                    modifier = Modifier.testTag("map-sheet-source-label"),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StationPriceDetails(price: SheetPrice) {
+    val locale = LocalConfiguration.current.locales[0]
+    val secondaryText = MaterialTheme.colorScheme.onSurfaceVariant
+    val unitStyle = MaterialTheme.typography.bodyLarge.toSpanStyle().copy(color = secondaryText)
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(localizedMapProductLabel(price.product), style = MaterialTheme.typography.titleSmall)
+        Text(
+            buildAnnotatedString {
+                append(price.amount)
+                withStyle(unitStyle) { append(" / ${price.unit}") }
+            },
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.testTag("map-sheet-price"),
+        )
+        Text(
+            localizedMapConditionLabel(price.conditionKind, price.conditionQualifier),
+            style = MaterialTheme.typography.labelMedium,
+            color = if (price.isConditional) MaterialTheme.colorScheme.tertiary else secondaryText,
+            modifier = Modifier.testTag("map-sheet-condition"),
+        )
+        price.surveyWeek?.let { week ->
+            Text(
+                stringResource(R.string.station_detail_survey_week, SurveyWeekFormatter.formatRangeCompact(week, locale)),
+                style = MaterialTheme.typography.bodySmall,
+                color = secondaryText,
+            )
+        }
+        price.observedOn?.let { day ->
+            Text(
+                stringResource(
+                    if (price.source == MapPriceSource.ANP) R.string.stations_collected_at_label else R.string.map_sheet_observed_on,
+                    day.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = secondaryText,
+            )
+        }
+        if (price.stale) {
+            Text(stringResource(R.string.map_sheet_cached_price), style = MaterialTheme.typography.labelSmall, color = secondaryText)
+        }
+    }
+}
+
+@Composable
+private fun StationActionLabel(icon: ImageVector, label: String) {
+    Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+    Spacer(Modifier.width(8.dp))
+    Text(label)
 }

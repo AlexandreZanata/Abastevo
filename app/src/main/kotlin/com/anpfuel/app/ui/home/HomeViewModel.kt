@@ -239,7 +239,7 @@ class HomeViewModel @Inject constructor(
                     AveragePriceUiModel(price.fuel,
                         com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.averageMilliBrl),
                         com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.minimumMilliBrl),
-                        com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.maximumMilliBrl), price.stationCount)
+                        com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.maximumMilliBrl), price.stationCount, price.confirmationCounts)
                 }
                 _uiState.update { it.copy(communityLoading = false, communityFailed = false, communityStale = false, communityPrices = prices,
                     communityGeneratedAt = summary.generatedAt, communityUpdatedAt = live.maxOfOrNull { row -> row.updatedAt },
@@ -282,7 +282,7 @@ class HomeViewModel @Inject constructor(
             AveragePriceUiModel(price.fuel,
                 com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.averageMilliBrl),
                 com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.minimumMilliBrl),
-                com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.maximumMilliBrl), price.stationCount)
+                com.anpfuel.app.community.CommunityPriceDisplay.formatMilliBrl(price.maximumMilliBrl), price.stationCount, price.confirmationCounts)
         }
         _uiState.update {
             it.copy(communityLoading = false, communityFailed = false, communityPrices = prices,

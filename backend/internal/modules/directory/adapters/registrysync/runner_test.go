@@ -227,3 +227,25 @@ func TestRedirectAndDecodedGzipBoundsAreRefused(t *testing.T) {
 		t.Fatal("decompressed bytes exceeded bound")
 	}
 }
+
+func TestAliasesResolveANPLevergerSpellingToTheOfficialIBGECode(t *testing.T) {
+	dir := t.TempDir()
+	input := `[
+		{"id":5107800,"nome":"Santo Antônio de Leverger","microrregiao":{"mesorregiao":{"UF":{"sigla":"MT"}}}},
+		{"id":3550308,"nome":"São Paulo","microrregiao":{"mesorregiao":{"UF":{"sigla":"SP"}}}}
+	]`
+	if err := os.WriteFile(filepath.Join(dir, "ibge.json"), []byte(input), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteAliases(dir); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(dir, "aliases.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"entries":[{"uf":"SP","ibge":"3550308","aliases":["São Paulo"]},{"uf":"MT","ibge":"5107800","aliases":["Santo Antônio de Leverger","Santo Antônio do Leverger"]}]}`
+	if strings.TrimSpace(string(got)) != want {
+		t.Fatalf("alias reference: %s", got)
+	}
+}

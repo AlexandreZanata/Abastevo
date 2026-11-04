@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.anpfuel.domain.routing.*
 import com.anpfuel.maps.engine.MapEngine
 import io.mockk.*
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.*
@@ -70,4 +71,62 @@ class NativeRouteViewModelTest {
         val restored=NativeRouteViewModel(engine,saved)
         assertEquals(start,restored.ui.value.origin);assertEquals(setOf(RoadAvoidance.MOTORWAY),restored.ui.value.avoid);assertNull(restored.ui.value.preview)
     }
+
+    @Test fun `a station route replaces the old origin and stops then builds from the fresh fix`() = runTest {
+        val engine = mockk<MapEngine>(relaxed = true)
+        val request = slot<NativeRouteRequest>()
+        every { engine.buildRoute(capture(request), any()) } answers {
+            secondArg<(NativeRouteResult) -> Unit>().invoke(NativeRouteResult.Ready(preview))
+            true
+        }
+        val vm = NativeRouteViewModel(engine, SavedStateHandle())
+        vm.restorePlan(listOf(start, RoutePoint(-25.425, -49.265, "Old stop"), end), setOf(RoadAvoidance.TOLL))
+        val station = RoutePoint(-25.41, -49.25, "Station")
+        val fresh = RoutePoint(-25.44, -49.28, "Current position")
+        vm.prepareDestination(station)
+        assertNull(vm.ui.value.origin)
+        assertTrue(vm.ui.value.stops.isEmpty())
+        vm.buildFromCurrentLocation("pt") { fresh }
+        runCurrent()
+        assertEquals(listOf(fresh, station), request.captured.points)
+        assertEquals(setOf(RoadAvoidance.TOLL), request.captured.avoid)
+        assertEquals(preview, vm.ui.value.preview)
+        vm.cancel()
+    }
+
+    @Test fun `unavailable or obsolete location cannot build a route`() = runTest {
+        val engine = mockk<MapEngine>(relaxed = true)
+        val vm = NativeRouteViewModel(engine, SavedStateHandle())
+        vm.prepareDestination(end)
+        vm.buildFromCurrentLocation("en") { null }
+        runCurrent()
+        assertEquals("no-fix", vm.ui.value.error)
+        assertEquals(end, vm.ui.value.destination)
+
+        val delayed = CompletableDeferred<RoutePoint?>()
+        vm.buildFromCurrentLocation("en") { delayed.await() }
+        runCurrent()
+        assertTrue(vm.ui.value.findingOrigin)
+        vm.cancelOriginLookup()
+        delayed.complete(start)
+        runCurrent()
+        assertFalse(vm.ui.value.findingOrigin)
+        assertNull(vm.ui.value.origin)
+        verify(exactly = 0) { engine.buildRoute(any(), any()) }
+    }
+
+    @Test fun `discarding the planner leaves an active service route alone`() {
+        val engine = mockk<MapEngine>(relaxed = true)
+        every { engine.isGuiding() } returns true
+        NativeRouteViewModel(engine, SavedStateHandle()).cancel()
+        verify(exactly = 0) { engine.cancelRoute() }
+    }
+
+    @Test fun `route handoff validates coordinate pairs and keeps addresses for selection`() {
+        assertEquals(MapRouteTarget.Point(end), MapRouteTarget.fromStationQuery("-25.42,-49.26", "Destination"))
+        assertNull(MapRouteTarget.fromStationQuery("NaN,-49.26", "Invalid"))
+        assertNull(MapRouteTarget.fromStationQuery("91,-49.26", "Invalid"))
+        assertEquals(MapRouteTarget.Address("Rua XV, 100"), MapRouteTarget.fromStationQuery("Rua XV, 100", "Station"))
+    }
+
 }

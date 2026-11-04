@@ -103,22 +103,28 @@ if grep -rn "testInjected *= *true" "$ROOT/data/src/main" "$ROOT/app/src/main" 2
 fi
 pass "no test-injection hooks in release sources"
 
-# 5. No-background-tracking assertion (P16-T04, B-BR-L02/L04, MAP-23/MAP-25 exceptions):
-# location-integrity browsing stays one-shot only. Continuous GPS is authorized
-# solely inside two explicit user-started foreground services, each pinned to its
-# own file, GPS provider and interval, foregroundServiceType=location, no
-# background permission: MAP-23 GuidanceService, MAP-25 TripRecordingService and the
-# DRV-21 DriverGpsService (explicit user start/stop, local-only, no background);
-# it must not appear elsewhere. Static only; energy/latency device matrices stay
-# release-horizon and are never claimed here.
+# 5. No-background-tracking assertion (P16-T04, B-BR-L02/L04).
+# Browsing and route preview use one-shot requests. Only the three explicitly
+# started location foreground services may subscribe to updates. Guidance can
+# use high-accuracy fused location or GPS, and the two recorders use GPS.
+[[ -d "$ROOT/app/src/main" && -d "$ROOT/data/src/main" ]] || fail "missing Android location guard source roots"
 if grep -rn "ACCESS_BACKGROUND_LOCATION" "$ROOT/app/src/main" "$ROOT/data/src/main" 2>/dev/null; then
     fail "background location permission found in shipped sources"
 fi
 if grep -rn "requestLocationUpdates\|requestUpdates(" "$ROOT/data/src/main" "$ROOT/app/src/main" 2>/dev/null | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt" | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/map/TripRecordingService.kt" | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/driver/work/DriverGpsService.kt"; then
-    fail "continuous location polling found outside the explicit MAP-23 foreground service (one-shot only elsewhere)"
+    fail "continuous location polling found outside the permitted location foreground services (one-shot only elsewhere)"
 fi
-if grep -rn "requestLocationUpdates" "$ROOT/app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt" 2>/dev/null | grep -v "GPS_PROVIDER, 1000L" | grep -v "removeUpdates"; then
+guidance="$ROOT/app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt"
+if grep -nE 'requestLocationUpdates|requestUpdates\(' "$guidance" | grep -Ev '^[0-9]+:[[:space:]]*LocationManagerCompat\.requestLocationUpdates\(manager, LocationManager\.(FUSED|GPS)_PROVIDER, request, active, Looper\.getMainLooper\(\)\)$'; then
     fail "unexpected continuous location source in GuidanceService"
+fi
+if ! grep -Fq 'val request = LocationRequestCompat.Builder(1_000L)' "$guidance" ||
+   ! grep -Fq '.setQuality(LocationRequestCompat.QUALITY_HIGH_ACCURACY)' "$guidance"; then
+    fail "GuidanceService must request one-second high-accuracy location updates"
+fi
+guidance_block=$(awk '/GuidanceService/ {found=1} found {print} found && /\/>/ {exit}' "$ROOT/app/src/main/AndroidManifest.xml")
+if ! echo "$guidance_block" | grep -q 'android:exported="false"' || ! echo "$guidance_block" | grep -q 'foregroundServiceType="location"'; then
+    fail "GuidanceService must stay a non-exported location foreground service"
 fi
 if grep -rn "requestLocationUpdates" "$ROOT/app/src/main/kotlin/com/anpfuel/app/ui/map/TripRecordingService.kt" 2>/dev/null | grep -v "GPS_PROVIDER, 2000L" | grep -v "removeUpdates"; then
     fail "unexpected continuous location source in TripRecordingService"

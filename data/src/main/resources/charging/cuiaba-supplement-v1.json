@@ -1,0 +1,485 @@
+{
+  "profile": "charging-mt-cuiaba-supplement-v1",
+  "revision": "2026-11-04",
+  "ibge_boundaries_sha256": "5491bd548fe381cd388ba81c9edfbf4cf2749891e2fd32c1079ac71f7aba1c10",
+  "license": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "attribution": [
+    "© OpenStreetMap contributors — https://www.openstreetmap.org/copyright",
+    "Independently reviewed public facility facts and charging reports are cited per place."
+  ],
+  "municipalities": [
+    {
+      "code": "5103403",
+      "name": "Cuiabá"
+    }
+  ],
+  "places": [
+    {
+      "municipality_code": "5103403",
+      "id": "ed836b94-b3b0-5a0c-8fa8-14f9bf32c2d4",
+      "external_id": "shopping-3-americas",
+      "name": "Shopping 3 Américas",
+      "address": "Av. Brasília, 146, Jardim das Américas",
+      "latitude": "-15.61140",
+      "longitude": "-56.07364",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-shopping-3-americas-cuiaba-2073427",
+        "https://recarregados.com/eletropostos/mt/cuiaba/zon-mt-shopping-3-americas-cuiaba-80-kw-epkt7e04rn1w",
+        "https://promocao.shopping3americas.com.br/assets/marketing/promotion/5ywx21tm/regulamento-01k10qwbx785ac5xw1g30awxkt.pdf",
+        "https://www.openstreetmap.org/relation/10253982"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "907b019e-11da-5b24-aa31-6517594ba2e0",
+      "external_id": "energreen-rotatoria-ufmt",
+      "name": "EnerGreen — Posto BR Rotatória UFMT",
+      "address": "Av. Fernando Corrêa da Costa, 162, Jardim Petrópolis",
+      "latitude": "-15.61387",
+      "longitude": "-56.07422",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-energreen-40kw-estacao-posto-br-rotatoria-ufmt-1035733",
+        "https://recarregados.com/eletropostos/mt/cuiaba/energreen-40kw-estacao-posto-br-rotatoria-ufmt-epehz27hxdsg"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "5cc6f1d7-93c0-5e57-86d0-09d0a1a2bfa0",
+      "external_id": "hub-quilombo",
+      "name": "WeVoltz — Hub Quilombo",
+      "address": "Av. Senador Filinto Müller, 1610, Quilombo",
+      "latitude": "-15.58360",
+      "longitude": "-56.10210",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-25",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-hub-quilombo-1370892",
+        "https://recarregados.com/eletropostos/mt/cuiaba/estacao-de-recarga-da-wevoltz-ep6jpcjzcz69",
+        "https://mapavolt.com.br/eletropostos/mapavolt-wevoltz-hub-quilombo-cuiaba-mt"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "73877213-1c78-5068-ab41-529a319d43d0",
+      "external_id": "posto-br-praca-8-de-abril",
+      "name": "Posto BR — Praça 8 de Abril",
+      "address": "Praça 8 de Abril, 99, Popular",
+      "latitude": "-15.59103",
+      "longitude": "-56.10745",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-25",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-posto-petrobras-br-1905416",
+        "https://recarregados.com/eletropostos/mt/cuiaba/estacao-40kw-recarga-rapida-posto-petrobras-br-epga4t2b9j6h",
+        "https://www.postospetrobras.com.br/sites/default/files/2025-11/Lista%20de%20Postos%20%28nov-25%29.pdf"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "5010b948-324c-570d-9abf-fef86c6edcd8",
+      "external_id": "piloto-accelerato-gowash",
+      "name": "Piloto — Accelerato GoWash",
+      "address": "Av. Miguel Sutil, 12335, Cidade Alta",
+      "latitude": "-15.60049",
+      "longitude": "-56.12655",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-25",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-piloto-accelerato-gowash-2072490",
+        "https://recarregados.com/eletropostos/mt/cuiaba/piloto-eletroposto-60kw-accelerato-gowash-ep7jjva4ebkq"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "28247195-9fbc-56ea-a32b-bb216e358515",
+      "external_id": "piloto-aclimacao",
+      "name": "Piloto — Avenida Aclimação",
+      "address": "Av. Aclimação, 699, Bosque da Saúde",
+      "latitude": "-15.58825",
+      "longitude": "-56.07669",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-14",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-piloto-2072491",
+        "https://recarregados.com/eletropostos/mt/cuiaba/estacao-de-recarga-da-tupi-ephhpxkpbt74"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "be5b1af6-e81c-5065-9980-15c9556f5fca",
+      "external_id": "bora-cidade-alta",
+      "name": "Bora Carrega — Cidade Alta",
+      "address": "R. Dom Luís de Castro Pereira, 760, Cidade Alta",
+      "latitude": "-15.60913",
+      "longitude": "-56.12831",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-25",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-bora-carrega-cidade-alta-2072642",
+        "https://recarregados.com/eletropostos/mt/cuiaba/estacao-de-recarga-datupi-epx4vztfw8b9",
+        "https://boracarrega.com.br/"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "4bcb6f98-4ffa-5400-b65b-f4cee625cc19",
+      "external_id": "comper-belvedere",
+      "name": "Comper Belvedere",
+      "address": "R. Rouxinol, Recanto dos Pássaros",
+      "latitude": "-15.60722",
+      "longitude": "-56.03102",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-07-14",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-comper-belvedere-2072826",
+        "https://recarregados.com/eletropostos/mt/cuiaba/comper-belvedere-ep1f0rdps3d1",
+        "https://www.comper.com.br/3049/nossas-lojas"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "b6816714-2745-5763-8cfb-407c1a949b58",
+      "external_id": "wevoltz-jeronimo-madero",
+      "name": "WeVoltz — Jeronimo e Madero",
+      "address": "Av. Historiador Rubens de Mendonça, 2513, Alvorada",
+      "latitude": "-15.58032",
+      "longitude": "-56.07716",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-wevoltz-rest-jeronimo-madero-2073050",
+        "https://recarregados.com/eletropostos/mt/cuiaba/wevoltz-rest-jeronimo-madero-epp8xwtft4cm",
+        "https://master.restaurantemadero.com.br/pt/restaurante/mt/cuiaba/madero-jeronimo-burger-track-cuiaba-pt"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "aad2b437-aa48-5d84-86a7-1db127451565",
+      "external_id": "comper-cpa",
+      "name": "Comper CPA",
+      "address": "Av. Historiador Rubens de Mendonça, 3000, Bosque da Saúde",
+      "latitude": "-15.57768",
+      "longitude": "-56.07599",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-08-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-comper-supermercados-2073564",
+        "https://recarregados.com/eletropostos/mt/cuiaba/comper-supermercados-ep1q53qf3b7s",
+        "https://www.comper.com.br/3049/nossas-lojas"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "1fe2bf8b-ead5-52e5-8ff5-054c19c5c0c2",
+      "external_id": "piloto-posto-br-av-brasil",
+      "name": "Piloto — Posto BR Avenida Brasil",
+      "address": "R. Santo Antônio do Leverger, 28, Morada da Serra",
+      "latitude": "-15.56691",
+      "longitude": "-56.05499",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-piloto-posto-br-av-brasil-2073823",
+        "https://recarregados.com/eletropostos/mt/cuiaba/estacao-de-recarga-da-tupi-eprqhda8z0nt"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "7817e69a-c218-5528-a601-d9bd5a1f8b25",
+      "external_id": "comper-prainha",
+      "name": "Comper Prainha",
+      "address": "Av. Tenente Coronel Duarte, 1517, Dom Aquino",
+      "latitude": "-15.60696",
+      "longitude": "-56.09801",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-08-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-comper-supermercado-2073946",
+        "https://recarregados.com/eletropostos/mt/cuiaba/comper-supermercado-epa8072yxrce",
+        "https://www.comper.com.br/3049/nossas-lojas"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "1717a381-449f-5ebc-a601-3b391b423e24",
+      "external_id": "carneiro-eletro-car",
+      "name": "Carneiro Eletro Car",
+      "address": "Av. Archimedes Pereira Lima, 2998, Santa Cruz",
+      "latitude": "-15.61284",
+      "longitude": "-56.05071",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-12",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-carneiro-eletro-car-2075177",
+        "https://recarregados.com/eletropostos/mt/cuiaba/estacao-de-recarga-da-tupi-epndefezabam"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "81ef3f36-f3ef-54b4-b9ff-f8ecfdc11d45",
+      "external_id": "enerzee-jardim-paulista",
+      "name": "Enerzee — Jardim Paulista",
+      "address": "Av. Miguel Sutil, Edifício Verona Tower, Jardim Paulista",
+      "latitude": "-15.61324",
+      "longitude": "-56.08565",
+      "access": "UNKNOWN",
+      "charging_report_date": "2026-10-31",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-enerzee-2075178",
+        "https://recarregados.com/eletropostos/mt/cuiaba/enerzee-recharge-epx15pvbw6ka"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "7b539305-9544-50a6-bf3b-decc936fe877",
+      "external_id": "atacadao-tijucal",
+      "name": "ChargeOn — Atacadão Tijucal",
+      "address": "Av. Fernando Corrêa da Costa, 7975, Tijucal",
+      "latitude": "-15.63795",
+      "longitude": "-56.02822",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-atacadao-tijucal-2075288",
+        "https://recarregados.com/eletropostos/mt/cuiaba/estacao-de-recarga-chargeon-atacadao-cuiaba-tijucal-epn50fxtcf81",
+        "https://www.atacadao.com.br/loja/cuiaba-tijucal"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "a8f1b233-611b-5215-9ea9-93b621c7cdd9",
+      "external_id": "comper-fernando-correa",
+      "name": "Comper Fernando Corrêa",
+      "address": "Av. Fernando Corrêa da Costa, 1902, Jardim Kennedy",
+      "latitude": "-15.61341",
+      "longitude": "-56.07568",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-19",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-supermercado-comper-2075692",
+        "https://www.comper.com.br/3049/nossas-lojas"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "b0f35139-5297-5f45-ae7d-c2ad8fec24b8",
+      "external_id": "piloto-posto-gontijo",
+      "name": "Piloto — Posto Gontijo",
+      "address": "Av. Fernando Corrêa da Costa, 8800, Jardim Presidente",
+      "latitude": "-15.64202",
+      "longitude": "-56.02037",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-piloto-posto-gontijo-2075718",
+        "https://recarregados.com/eletropostos/mt/cuiaba/piloto-eletroposto-2-80kw-gontijo-epww27v3d38q"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "fcfbe128-f641-5fcf-86d9-314c2d4abbcc",
+      "external_id": "hrc-helio-ribeiro",
+      "name": "HRC Eletropostos — Hélio Ribeiro",
+      "address": "Av. Dr. Hélio Ribeiro, região do Alvorada",
+      "latitude": "-15.57147",
+      "longitude": "-56.07833",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-05",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-hrc-2075959",
+        "https://recarregados.com/eletropostos/mt/cuiaba/hrc-eletropostos-epdyhaf37p4n",
+        "https://www.openstreetmap.org/way/1549065270"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "ab933e8d-fefd-5e02-87c4-d980510e5cd3",
+      "external_id": "joy-parque-ohara",
+      "name": "Joy Energy — Parque Ohara",
+      "address": "Av. dos Tamoios, 603, Parque Ohara",
+      "latitude": "-15.63151",
+      "longitude": "-56.04461",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-17",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-joy-cuiaba-2076335",
+        "https://recarregados.com/eletropostos/mt/cuiaba/eletroposto-joy-energy-cuiaba-ep065w10gms2"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "103af46e-1e2d-553d-917c-0fbebc238e65",
+      "external_id": "despraiado-santa-marta",
+      "name": "Eletroposto Despraiado",
+      "address": "R. Osvaldo da Silva Corrêa, 102, Santa Marta",
+      "latitude": "-15.57895",
+      "longitude": "-56.09739",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-18",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-helicharge-despraiado-2076423",
+        "https://recarregados.com/eletropostos/mt/cuiaba/estacao-de-recarga-da-tupi-epn5vg4a0q3h",
+        "https://www.openstreetmap.org/way/1556472559"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "1d5b7c3b-75d0-5f0d-9f45-3895547725ae",
+      "external_id": "piloto-pet-shop-imperial",
+      "name": "Piloto — Pet Shop Imperial",
+      "address": "Av. das Torres, 620, Recanto dos Pássaros",
+      "latitude": "-15.61071",
+      "longitude": "-56.03442",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-05",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-piloto-petshop-imperial-2076440",
+        "https://recarregados.com/eletropostos/mt/cuiaba/piloto-eletropostos-80kw-imperial-pet-shop-eptabh5swa7t"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "4f0b902d-cb72-5ca9-9675-97e5132e64bf",
+      "external_id": "velotech-viola-de-cocho",
+      "name": "Velotech — Viola de Cocho",
+      "address": "Av. das Torres, rotatória Viola de Cocho, Jardim Imperial",
+      "latitude": "-15.61162",
+      "longitude": "-56.03252",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-08-24",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-velotech-viola-de-cocho-jd-imperial-2076657",
+        "https://recarregados.com/eletropostos/mt/cuiaba/eletroposto-velotech-viola-de-cocho-ep73ysvpn5s4"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "692970d1-6ecf-577c-ad16-3edb6d4f30cd",
+      "external_id": "cia-charge-miguel-sutil",
+      "name": "Cia Charge — Avenida Miguel Sutil",
+      "address": "Av. Miguel Sutil, 1841, Jardim Guanabara",
+      "latitude": "-15.60435",
+      "longitude": "-56.07773",
+      "access": "UNKNOWN",
+      "charging_report_date": "2026-09-01",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-cia-charge-gramarca-cuiaba-2076851",
+        "https://recarregados.com/eletropostos/mt/cuiaba/cia-charge-gramarca-cuiaba-epfdqwf6hyex",
+        "https://www.ondecarregar.com.br/eletropostos/mt/cuiaba/estacao-de-recarga-ciacharge-cuiaba"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "0e882182-2cfc-52e5-b157-b74019013d60",
+      "external_id": "piloto-ultra-academia",
+      "name": "Piloto — Ultra Academia Jardim das Américas",
+      "address": "R. Guadalajara, Jardim das Américas",
+      "latitude": "-15.61122",
+      "longitude": "-56.07516",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-25",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-piloto-ultra-academia-2077180",
+        "https://ultraacademia.com.br/index.php?AC=Unidade&a1=92",
+        "https://www.openstreetmap.org/way/1503614065"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "d3b2b74d-fac2-50a2-b1ae-e2bc945cfcdd",
+      "external_id": "piloto-posto-bonitao",
+      "name": "Piloto — Posto Bonitão",
+      "address": "Av. Historiador Rubens de Mendonça, 119, Morada da Serra",
+      "latitude": "-15.55399",
+      "longitude": "-56.05668",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-26",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-posto-bonitao-2078071",
+        "https://recarregados.com/eletropostos/mt/cuiaba/piloto-eletroposto-80kw-posto-bonitao-epzp8n3p609x"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "018a20b2-64d6-501a-9402-4b584a71fc50",
+      "external_id": "prime-park-galeria-italia",
+      "name": "Energize-C — Prime Park Galeria Itália",
+      "address": "R. Guadalajara, 44, Jardim das Américas",
+      "latitude": "-15.61181",
+      "longitude": "-56.07479",
+      "access": "UNKNOWN",
+      "charging_report_date": "2026-10-23",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-energize-c---prime-park-galeria-it%C3%A1lia-6846",
+        "https://www.openstreetmap.org/way/162805784"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "49260a95-981a-56b1-b69b-413e4ea07a7a",
+      "external_id": "fiemt-centro-politico",
+      "name": "Sistema Fiemt",
+      "address": "Av. Historiador Rubens de Mendonça, 4193, Centro Político Administrativo",
+      "latitude": "-15.56763",
+      "longitude": "-56.06847",
+      "access": "UNKNOWN",
+      "charging_report_date": "2025-10-09",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-sistema-fiemt-3170",
+        "https://recarregados.com/eletropostos/mt/cuiaba/eletroposto-fiemt-ep1c8348ac5f",
+        "https://www.cuiaba.mt.gov.br/noticias/cuiaba-ganha-o-primeiro-posto-para-carros-eletricos"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "13ac78cb-c224-5034-b488-05100026fd30",
+      "external_id": "wevoltz-nativas-grill",
+      "name": "WeVoltz — Nativas Grill",
+      "address": "Av. Miguel Sutil, 6741, Duque de Caxias",
+      "latitude": "-15.57566",
+      "longitude": "-56.10251",
+      "access": "UNKNOWN",
+      "charging_report_date": "2025-11-29",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-nativas-grill-1811389",
+        "https://recarregados.com/eletropostos/mt/cuiaba/wevoltz-nativas-grill-eppc4wah0qp4",
+        "https://www.nativasgrill.com.br/unidades"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "29482113-5a3b-53f7-bdb4-c94780bd8065",
+      "external_id": "hotel-taiama",
+      "name": "Hotel Taiamã",
+      "address": "Av. Historiador Rubens de Mendonça, 1184, Baú",
+      "latitude": "-15.58950",
+      "longitude": "-56.08447",
+      "access": "UNKNOWN",
+      "charging_report_date": "2025-11-13",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-hotel-taiam%C3%A3-3187",
+        "https://recarregados.com/eletropostos/mt/cuiaba/hotel-taiama-ephx5749tc7m",
+        "https://www.openstreetmap.org/node/11373288894"
+      ]
+    },
+    {
+      "municipality_code": "5103403",
+      "id": "6058b4e3-5a7e-5708-b4e0-f01e2f414dfb",
+      "external_id": "rede-loja-matriz",
+      "name": "Eletroposto Rede Loja — Matriz",
+      "address": "Av. Fernando Corrêa da Costa, 1484",
+      "latitude": "-15.61047",
+      "longitude": "-56.07818",
+      "access": "UNKNOWN",
+      "sources": [
+        "https://www.openstreetmap.org/node/12277259176",
+        "https://redeloja.com/",
+        "https://www.ondecarregar.com.br/eletropostos/mt/cuiaba/eletroposto-rede-loja-matriz-cuiaba"
+      ]
+    }
+  ]
+}

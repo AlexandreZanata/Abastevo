@@ -91,7 +91,8 @@ type alias struct {
 	Aliases []string `json:"aliases"`
 }
 
-func aliases(dir string) error {
+// WriteAliases converts an official IBGE response in dir into the registry reference.
+func WriteAliases(dir string) error {
 	f, e := os.Open(filepath.Join(dir, "ibge.json"))
 	if e != nil {
 		return e
@@ -119,7 +120,14 @@ func aliases(dir string) error {
 			return fmt.Errorf("invalid or duplicate IBGE identity")
 		}
 		seen[row.ID] = true
-		entries = append(entries, alias{state, code, []string{row.Name}})
+		names := []string{row.Name}
+		// ANP publishes this spelling for eight current establishments.
+		// Bind it to the IBGE identity, never to a fuzzy name match.
+		const levergerANP = "Santo Antônio do Leverger"
+		if state == "MT" && code == "5107800" && row.Name != levergerANP {
+			names = append(names, levergerANP)
+		}
+		entries = append(entries, alias{state, code, names})
 	}
 	if token, e = d.Token(); e != nil || token != json.Delim(']') || len(entries) == 0 {
 		return fmt.Errorf("incomplete IBGE list")

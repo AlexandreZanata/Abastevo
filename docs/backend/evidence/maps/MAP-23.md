@@ -137,3 +137,77 @@ proof.
 Still OWED: real long wrong-turn field timing beyond the synthetic replay,
 physical 16 KB runtime (the phone has 4 KB pages), two-account/device manual
 traversal and rendered TalkBack beyond the Compose semantics tests.
+
+## Voice startup and interface responsiveness
+
+B-BR-MAP23-VOICE-START-01: Starting guidance schedules local voice initialization
+without waiting on the Android UI thread. Native guidance and GPS progress can
+start while voice is pending. Missing or timed-out local voice uses textual
+instructions. Stop or replacement discards late callbacks and releases the
+voice engine. Speech uses an installed voice that can run offline.
+
+BUC-MAP23-VOICE-START: Tap Start guidance with a rendered route, keep the map
+responsive while the speech engine initializes, see progress, and stop even if
+the voice engine is still pending. Test delayed, failed and obsolete callbacks.
+
+### Voice startup verification — 2026-11-04
+
+Two Android input-dispatch ANRs on the physical test device showed the main
+thread blocked in `LocalGuidanceVoice.start` waiting for its TTS callback. The
+wait could last eight seconds, while Android recorded input timeout at five
+seconds. The new adapter completes through `TextToSpeech.OnInitListener`,
+with a queued timeout and a generation fence. It declares the system speech
+service intent for engine discovery and selects an installed offline voice
+explicitly. [Android TTS reference](https://developer.android.com/reference/android/speech/tts/TextToSpeech)
+
+With the corrected debug APK, the Abrantes route in Sorriso entered guidance
+and stopped on the physical device without a new ANR or process restart. The
+phone did not supply its first eligible guidance fix during this check. The
+same station route in the Android 15 emulator accepted synthetic GPS fixes,
+updated the upcoming maneuver distance and stopped normally. The emulator
+showed the text fallback because a local voice was unavailable. No physical
+coordinates were captured in the evidence.
+
+Debug and instrumentation APK builds, debug lint, seven focused JVM tests
+and two Android voice tests passed. The tested source is this commit on
+maintained `dev` from `0e2134ed`, included in protected PR #188.
+
+## Active navigation controls
+
+B-BR-MAP23-CONTROLS-01: Keep Stop guidance above system navigation insets and
+outside scrolling status content. Active guidance exposes recenter, north or
+heading orientation, zoom and route overview using the live native route. Map
+camera actions preserve the navigation session. The maneuver list reads the
+current native route, and voice mute applies only to the current session.
+Precise fused location can feed the same guidance service when the platform
+offers it, with GPS as a fallback and the existing fix quality policy.
+
+BUC-MAP23-CONTROLS: Start guidance with system navigation visible, open overview
+and maneuvers, return to position following, toggle voice and stop. Check touch
+bounds under three-button navigation, a pending first fix and large text.
+
+### Active navigation controls verification — 2026-11-04
+
+The native camera receives the unobstructed map viewport between the maneuver
+banner and the controls. The overview uses the active route geometry, and
+recenter returns to location following. The interaction patterns were checked
+against [Google Maps navigation](https://support.google.com/maps/answer/3273406?hl=en)
+and [CoMaps location and orientation controls](https://www.comaps.app/support/what-do-the-icons-below-the-zoom-buttons-mean/).
+
+The Abrantes route in Sorriso accepted a precise fix on a physical Android 16
+device and displayed the upcoming maneuver. The stop touch target ended at
+2522 px and the three-button navigation bar began at 2570 px. Tapping stop
+restored the map tabs with the same app process. Also checked the voice toggle
+and the eight steps in the native maneuver list. No physical coordinates were
+recorded.
+
+On the Android 15 emulator, synthetic location produced the first maneuver.
+Overview showed the full blue route, its origin and the destination flag above
+the controls. Recenter moved the position back to the following anchor with
+guidance still active. The stop touch target ended at 2232 px and the Android
+bar began at 2274 px at both default and 200% font size.
+Tapping stop at 200% returned to the map tabs.
+
+Debug and instrumentation APK builds, debug lint and 64 focused JVM tests
+passed. This commit records the verified source on `dev` from `5c7b2b6c`
+for protected PR #188.

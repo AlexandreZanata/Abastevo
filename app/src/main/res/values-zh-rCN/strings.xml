@@ -383,7 +383,6 @@
     <string name="stations_brand_label">品牌：%1$s</string>
     <string name="stations_collected_at_label">采集时间：%1$s</string>
     <string name="stations_navigate_action">导航</string>
-    <string name="stations_navigate_no_app">未找到可打开路线的地图应用。</string>
     <string name="stations_nearest_action">附近最便宜</string>
     <string name="stations_nearest_needs_location">开启定位以查找最近的加油站。</string>
     <string name="stations_nearest_no_fix">暂时没有GPS信号。请开启位置信息后重试。</string>
@@ -999,6 +998,8 @@
     <string name="community_helpful_removed">投票已撤销。</string>
     <string name="community_helpful_rejected">未记录（%1$s）</string>
     <string name="community_helpful_under_review">社区正在审核计票结果</string>
+    <string name="community_confirmation_count">确认数：%1$s</string>
+    <string name="community_own_contribution">您的贡献</string>
     <string name="community_helpful_report">举报</string>
     <string name="community_helpful_guest">登录免费账户即可投票</string>
     <string name="community_helpful_guest_body">投票需要免费账户。同一身份的重复投票不会重复计票。浏览仍可匿名进行。</string>
@@ -1156,11 +1157,16 @@
     <string name="map_sheet_show_community">查看社区</string>
     <string name="map_sheet_price_load_failed">查询价格失败。</string>
     <string name="map_sheet_no_price">该站点暂无价格。</string>
-    <string name="map_sheet_route">路线</string>
     <string name="map_sheet_route_unavailable">路线不可用：站点无已核实坐标。</string>
-    <string name="map_sheet_route_failed">无法打开外部地图导航应用。</string>
-    <string name="map_sheet_profile">详情</string>
-    <string name="map_sheet_report">上报</string>
+    <string name="map_sheet_profile">查看详情</string>
+    <string name="map_sheet_report">上报价格</string>
+    <string name="map_sheet_charge_report">提供信息</string>
+    <string name="map_sheet_price_source">价格来源</string>
+    <string name="map_sheet_observed_on">上报日期：%1$s</string>
+    <string name="map_sheet_condition_cash">现金支付</string>
+    <string name="map_sheet_condition_loyalty">会员优惠</string>
+    <string name="map_sheet_condition_app">通过应用</string>
+    <string name="map_sheet_condition_other">其他条件</string>
     <string name="map_cluster_title">聚合点（%1$d 个站点）</string>
     <string name="map_cluster_expand">展开聚合点（%1$d）</string>
     <string name="map_list_toggle">列表（%1$d）</string>
@@ -1278,6 +1284,17 @@
     <string name="driver_hub_first_vehicle_title">从车辆开始</string>
     <string name="driver_hub_first_vehicle_body">添加车辆以查看实际记录和月度指标。</string>
     <string name="driver_hub_add_vehicle">打开车辆</string>
+    <string name="driver_hub_current_vehicle">当前车辆</string>
+    <string name="driver_hub_register_group">记录支出</string>
+    <string name="driver_hub_work_group">查看工作记录</string>
+    <string name="driver_hub_vehicle_group">您的车辆</string>
+    <string name="driver_hub_open_work">班次和收入</string>
+    <string name="driver_hub_quick_refuel_body">记录加油量、金额和里程。</string>
+    <string name="driver_hub_quick_charge_body">记录充电量和支付金额。</string>
+    <string name="driver_hub_open_work_body">管理班次并记录收入。</string>
+    <string name="driver_hub_open_entries_body">查看并更正记录。</string>
+    <string name="driver_hub_open_export_body">查看月度汇总并导出数据。</string>
+    <string name="driver_hub_open_vehicles_body">添加或编辑车辆。</string>
     <string name="driver_hub_open_entries">打开记录</string>
     <string name="driver_hub_open_export">指标与导出</string>
     <string name="driver_hub_open_vehicles">管理车辆</string>
@@ -1287,4 +1304,10 @@
     <string name="driver_hub_quick_charge">快速充电</string>
     <string name="ledger_entry_charge_fees">充电费用（R$）</string>
     <string name="ledger_entry_validation_fees">请输入有效的费用金额。</string>
+    <string name="station_correction_title">建议更正</string>
+    <string name="station_correction_address">街道和门牌号</string>
+    <string name="station_correction_closed">报告永久关闭</string>
+    <string name="station_correction_review">建议经审核后才会反映在地图上。</string>
+    <string name="station_correction_sent">建议已提交审核。</string>
+    <string name="station_correction_failed">无法发送建议，请重试。</string>
 </resources>

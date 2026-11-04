@@ -540,7 +540,7 @@ paths:
           example: 2
       responses:
         '200':
-          description: Exact counts; my_choice present only on the signed read path.
+          description: Exact counts with private viewer fields available on signed reads.
           headers:
             Cache-Control:
               schema: {type: string, example: 'no-store'}
@@ -1993,8 +1993,8 @@ paths:
         - name: profile
           in: query
           required: true
-          description: Admitted source profile.
-          schema: {type: string, enum: [ocm-br-20261021-v1, pbe-2026-pdf-v1, charging-br-national-v1]}
+          description: Admitted source profile. Mato Grosso pilots are available only in staging.
+          schema: {type: string, enum: [ocm-br-20261021-v1, pbe-2026-pdf-v1, charging-br-national-v1, charging-mt-sorriso-pilot-v1, charging-mt-top10-pilot-v1, charging-mt-sorriso-supplement-v1, charging-mt-cuiaba-supplement-v1, charging-mt-next10-pilot-v1]}
         - name: revision
           in: query
           description: Optional source revision. The national profile resolves only its active generation.
@@ -9769,6 +9769,15 @@ components:
         minimum_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
         maximum_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
         station_count: {type: integer, minimum: 1}
+        confirmation_counts:
+          type: object
+          description: Confirmations across the current station prices, with counts for all prices and for each price extreme.
+          additionalProperties: false
+          required: [total, minimum_price, maximum_price]
+          properties:
+            total: {type: integer, minimum: 0}
+            minimum_price: {type: integer, minimum: 0}
+            maximum_price: {type: integer, minimum: 0}
         updated_at: {type: string, format: date-time}
         expires_at: {type: string, format: date-time}
     CommunityFeedPage:
@@ -12078,7 +12087,7 @@ components:
           format: date-time
           example: '2026-10-11T00:00:00Z'
     HelpfulnessTally:
-      description: Exact per-revision counts; my_choice present only on the signed read path.
+      description: Exact per-revision counts with private viewer fields available on signed reads.
       type: object
       required: [observation_id, decision_sequence, helpful, not_helpful, total]
       properties:
@@ -12109,6 +12118,10 @@ components:
           example: 10000
         my_choice:
           $ref: '#/components/schemas/HelpfulnessChoice'
+        own_contribution:
+          type: boolean
+          description: Present for verified viewers. True when the caller owns the contribution.
+          example: true
         under_review:
           type: boolean
           description: True while an open contribution review case names this target; counts stay exact.

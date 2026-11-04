@@ -146,3 +146,34 @@ B-BR-MAP-PERIOD-02: ANP map prices reuse the existing survey-week picker.
 Unavailable opening-hours metadata is explicitly unknown; no open-now claim
 or synthetic opening-hours filter is introduced. Native combined artwork
 remains an explicit product criterion until its own glyph is admitted.
+
+## Station search focus
+
+B-BR-MAP20-01: the map's text search owns its result list and a single optional
+focused pin. It leaves the viewport's station and charging overlays under the
+active service filters, including during pending, empty or failed searches.
+An admitted single match or a chosen result can center and highlight its pin.
+The route arrow retains the single-destination route preview. Clearing the
+input removes the search focus and results immediately and cancels stale work.
+
+BUC-MAP20-SEARCH-FOCUS: open a populated map -> search one station -> inspect
+its route preview -> return to the map -> confirm surrounding stations and the
+focused match -> clear with the X -> browse or search again. Also verify
+ambiguous matches, empty results and a clear during an in-flight search.
+
+### Station search focus verification — 2026-11-04
+
+On physical Android in Sorriso, the previous APK committed a single native
+pin after a search for Smile. On the updated APK, the route arrow opened the
+Smile Posto preview. Returning to the map showed one search result alongside
+23 native pins in the current viewport. The clear button beside the route
+arrow emptied the input and restored the 23-entry viewport list. A query with
+no matches kept the same native layer and showed its own empty message. These
+checks used the debug APK and the existing staging catalog.
+
+The debug and instrumentation APK builds, debug lint and 94 focused unit
+tests passed. Regression cases include independent viewport refresh, retained
+fuel and charging pins, selection, clearing while a search is in flight,
+empty results, search failure, offline results and native highlight selection.
+The tested source is this commit on maintained `dev` from `abf7f865`, included
+in protected PR #188.

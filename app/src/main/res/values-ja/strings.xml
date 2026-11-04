@@ -383,7 +383,6 @@
     <string name="stations_brand_label">ブランド：%1$s</string>
     <string name="stations_collected_at_label">収集日：%1$s</string>
     <string name="stations_navigate_action">行く</string>
-    <string name="stations_navigate_no_app">ルートを開く地図アプリが見つかりません。</string>
     <string name="stations_nearest_action">近くの最安値</string>
     <string name="stations_nearest_needs_location">位置情報をオンにすると最寄りのスタンドを検索できます。</string>
     <string name="stations_nearest_no_fix">現在GPSの信号を取得できません。位置情報を有効にして、もう一度お試しください。</string>
@@ -999,6 +998,8 @@
     <string name="community_helpful_removed">投票を取り消しました。</string>
     <string name="community_helpful_rejected">記録されませんでした（%1$s）</string>
     <string name="community_helpful_under_review">コミュニティが集計結果を確認中</string>
+    <string name="community_confirmation_count">確認数: %1$s</string>
+    <string name="community_own_contribution">あなたの投稿</string>
     <string name="community_helpful_report">報告する</string>
     <string name="community_helpful_guest">投票するには無料アカウントにログインしてください</string>
     <string name="community_helpful_guest_body">投票には無料アカウントが必要です。同じ識別情報による重複投票は再集計されません。閲覧は引き続き匿名で利用できます。</string>
@@ -1156,11 +1157,16 @@
     <string name="map_sheet_show_community">コミュニティを表示</string>
     <string name="map_sheet_price_load_failed">価格の取得に失敗しました。</string>
     <string name="map_sheet_no_price">このステーションの価格はありません。</string>
-    <string name="map_sheet_route">ルート</string>
     <string name="map_sheet_route_unavailable">ルート利用不可: 確認済みの座標がありません。</string>
-    <string name="map_sheet_route_failed">外部の地図アプリを開けませんでした。</string>
-    <string name="map_sheet_profile">詳細</string>
-    <string name="map_sheet_report">報告</string>
+    <string name="map_sheet_profile">詳細を表示</string>
+    <string name="map_sheet_report">価格を報告</string>
+    <string name="map_sheet_charge_report">情報を提供</string>
+    <string name="map_sheet_price_source">価格の出典</string>
+    <string name="map_sheet_observed_on">報告日：%1$s</string>
+    <string name="map_sheet_condition_cash">現金払い</string>
+    <string name="map_sheet_condition_loyalty">ポイント・会員特典</string>
+    <string name="map_sheet_condition_app">アプリ経由</string>
+    <string name="map_sheet_condition_other">その他の条件</string>
     <string name="map_cluster_title">グループ (%1$d 件)</string>
     <string name="map_cluster_expand">グループを展開 (%1$d)</string>
     <string name="map_list_toggle">一覧 (%1$d)</string>
@@ -1278,6 +1284,17 @@
     <string name="driver_hub_first_vehicle_title">まず車両を登録しましょう</string>
     <string name="driver_hub_first_vehicle_body">車両を登録すると、記録と実際の月次指標を表示できます。</string>
     <string name="driver_hub_add_vehicle">車両を開く</string>
+    <string name="driver_hub_current_vehicle">使用中の車両</string>
+    <string name="driver_hub_register_group">支出を記録</string>
+    <string name="driver_hub_work_group">業務を確認</string>
+    <string name="driver_hub_vehicle_group">登録車両</string>
+    <string name="driver_hub_open_work">シフトと収入</string>
+    <string name="driver_hub_quick_refuel_body">給油量、支払額、走行距離を記録します。</string>
+    <string name="driver_hub_quick_charge_body">充電量と支払額を記録します。</string>
+    <string name="driver_hub_open_work_body">シフトを管理し、収入を記録します。</string>
+    <string name="driver_hub_open_entries_body">記録を確認・修正します。</string>
+    <string name="driver_hub_open_export_body">月次サマリーを確認し、データを書き出します。</string>
+    <string name="driver_hub_open_vehicles_body">車両を追加・編集します。</string>
     <string name="driver_hub_open_entries">記録を開く</string>
     <string name="driver_hub_open_export">指標とエクスポート</string>
     <string name="driver_hub_open_vehicles">車両を管理</string>
@@ -1287,4 +1304,10 @@
     <string name="driver_hub_quick_charge">クイック充電</string>
     <string name="ledger_entry_charge_fees">充電手数料 (R$)</string>
     <string name="ledger_entry_validation_fees">有効な手数料を入力してください。</string>
+    <string name="station_correction_title">修正を提案</string>
+    <string name="station_correction_address">町名・番地</string>
+    <string name="station_correction_closed">閉店を報告</string>
+    <string name="station_correction_review">地図を変更する前に提案内容を確認します。</string>
+    <string name="station_correction_sent">確認のため提案を送信しました。</string>
+    <string name="station_correction_failed">提案を送信できませんでした。もう一度お試しください。</string>
 </resources>

@@ -19,6 +19,24 @@ type Reader struct {
 	pool *pgxpool.Pool
 }
 
+const (
+	SorrisoPilotProfile           = "charging-mt-sorriso-pilot-v1"
+	MatoGrossoPilotProfile        = "charging-mt-top10-pilot-v1"
+	SorrisoSupplementProfile      = "charging-mt-sorriso-supplement-v1"
+	CuiabaSupplementProfile       = "charging-mt-cuiaba-supplement-v1"
+	MatoGrossoNextTenPilotProfile = "charging-mt-next10-pilot-v1"
+)
+
+func IsStagingPilotProfile(profile string) bool {
+	switch profile {
+	case SorrisoPilotProfile, MatoGrossoPilotProfile, MatoGrossoNextTenPilotProfile,
+		SorrisoSupplementProfile, CuiabaSupplementProfile:
+		return true
+	default:
+		return false
+	}
+}
+
 // NewReader wires a pool-local reader; queries stay in owned sqlc.
 func NewReader(pool *pgxpool.Pool) Reader {
 	return Reader{pool: pool}
@@ -27,6 +45,7 @@ func NewReader(pool *pgxpool.Pool) Reader {
 // Place is one public charging location.
 type Place struct {
 	ID              string
+	Profile         string
 	EntityKey       string
 	ExternalID      string
 	Name            string
@@ -104,7 +123,8 @@ func (r Reader) Places(ctx context.Context, profile, revision, afterID string, l
 	if profile == domain.NationalCatalogProfile && limit >= 1 && limit <= 100 {
 		return r.nationalPlaces(ctx, revision, afterID, limit)
 	}
-	if (profile != "ocm-br-20261021-v1" && profile != "pbe-2026-pdf-v1") || limit < 1 || limit > 100 {
+	if (profile != "ocm-br-20261021-v1" && profile != "pbe-2026-pdf-v1" && !IsStagingPilotProfile(profile)) ||
+		limit < 1 || limit > 100 {
 		return nil, "", fmt.Errorf("read: invalid page")
 	}
 	rows, err := charging.New(r.pool).ChargingPlacePage(ctx, charging.ChargingPlacePageParams{
@@ -142,7 +162,7 @@ func (r Reader) PlaceDetail(ctx context.Context, id string) (Place, error) {
 		return Place{}, err
 	}
 	place := Place{
-		ID: uuidString(row.ID), EntityKey: row.EntityKey, ExternalID: row.ExternalID,
+		ID: uuidString(row.ID), Profile: row.ProfileID, EntityKey: row.EntityKey, ExternalID: row.ExternalID,
 		Name: row.Name, Country: row.Country, Latitude: row.Latitude, Longitude: row.Longitude,
 		PublicAccess: row.PublicAccess, ReportedPoints: int64(row.ReportedPoints),
 	}

@@ -1,0 +1,24 @@
+<resources>
+    <string name="map_route_go">Route und los</string>
+    <string name="map_route_search">Ziel suchen</string>
+    <string name="map_route_edit">Route bearbeiten</string>
+    <string name="map_route_locating">Aktueller Standort wird gesucht…</string>
+    <string name="map_route_calculating">Route wird berechnet…</string>
+    <string name="map_route_steps">Wegbeschreibung</string>
+    <string name="map_route_arrived">Sie sind angekommen</string>
+    <string name="map_route_stop_first">Beenden Sie die aktuelle Navigation, bevor Sie ein neues Ziel wählen.</string>
+    <string name="map_route_estimate">%1$s · %2$s</string>
+    <string name="map_route_meters">%1$s m</string>
+    <string name="map_route_kilometers">%1$s km</string>
+    <string name="map_route_minutes">%1$d min</string>
+    <string name="map_route_hours_minutes">%1$d h %2$d min</string>
+    <string name="map_clear_search">Suche löschen</string>
+    <string name="map_station_search_failed">Die Tankstellensuche ist nicht verfügbar.</string>
+    <string name="map_guidance_recenter">Auf meine Position zentrieren</string>
+    <string name="map_guidance_orientation">Kartenausrichtung wechseln</string>
+    <string name="map_guidance_overview">Gesamte Route anzeigen</string>
+    <string name="map_guidance_zoom_in">Karte vergrößern</string>
+    <string name="map_guidance_zoom_out">Karte verkleinern</string>
+    <string name="map_guidance_mute">Sprachausgabe stummschalten</string>
+    <string name="map_guidance_unmute">Sprachausgabe einschalten</string>
+</resources>

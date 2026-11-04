@@ -1,0 +1,24 @@
+<resources>
+    <string name="map_route_go">Rota e ir</string>
+    <string name="map_route_search">Buscar destino</string>
+    <string name="map_route_edit">Editar rota</string>
+    <string name="map_route_locating">Buscando sua posição atual…</string>
+    <string name="map_route_calculating">Calculando rota…</string>
+    <string name="map_route_steps">Manobras</string>
+    <string name="map_route_arrived">Você chegou</string>
+    <string name="map_route_stop_first">Encerre a navegação atual para escolher outro destino.</string>
+    <string name="map_route_estimate">%1$s · %2$s</string>
+    <string name="map_route_meters">%1$s m</string>
+    <string name="map_route_kilometers">%1$s km</string>
+    <string name="map_route_minutes">%1$d min</string>
+    <string name="map_route_hours_minutes">%1$d h %2$d min</string>
+    <string name="map_clear_search">Limpar pesquisa</string>
+    <string name="map_station_search_failed">A pesquisa de postos está indisponível.</string>
+    <string name="map_guidance_recenter">Recentralizar na minha posição</string>
+    <string name="map_guidance_orientation">Mudar orientação do mapa</string>
+    <string name="map_guidance_overview">Ver rota inteira</string>
+    <string name="map_guidance_zoom_in">Aproximar mapa</string>
+    <string name="map_guidance_zoom_out">Afastar mapa</string>
+    <string name="map_guidance_mute">Silenciar voz da navegação</string>
+    <string name="map_guidance_unmute">Ativar voz da navegação</string>
+</resources>

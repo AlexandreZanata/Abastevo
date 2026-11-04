@@ -5,6 +5,8 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
 import app.organicmaps.sdk.util.Config
 import app.organicmaps.sdk.Framework
 import app.organicmaps.sdk.MapViewHelper
@@ -36,6 +38,13 @@ import com.anpfuel.domain.routing.NativeRouteResult
 import com.anpfuel.domain.routing.NavigationFix
 import com.anpfuel.domain.routing.NavigationFixPolicy
 import com.anpfuel.domain.routing.NavigationProgress
+import com.anpfuel.domain.routing.RouteManeuver
+import kotlin.math.atan
+import kotlin.math.exp
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.log2
+import kotlin.math.tan
 import java.io.File
 
 /**
@@ -66,6 +75,7 @@ class ComapsMapEngine(
     // Seeded per process: highlight categories persist in the bookmark store,
     // so a category left by an earlier process can never match the current one.
     private var highlightGeneration = System.currentTimeMillis()
+    private var highlightedMarker: MapOverlayMarker? = null
     private var highlightListener: DataChangedListener? = null
     private var firstFixListener: LocationListener? = null
     private val readyCallbacks = MapReadyCallbacks()
@@ -78,6 +88,9 @@ class ComapsMapEngine(
     private var guidanceGeneration = 0L
     private var rerouteStartNanos: Long? = null
     private var lastProgress: NavigationProgress? = null
+    private var receivedGuidanceFix = false
+    private var recenterAfterFirstFix = false
+    private var guidanceSurfaceSize: IntSize? = null
 
     @Synchronized
     override fun initialize(context: Context, onReady: () -> Unit): Boolean {
@@ -153,6 +166,7 @@ class ComapsMapEngine(
 
 
     override fun setViewport(latitude: Double, longitude: Double, zoom: Int) {
+        if (guiding) return
         val clampedZoom = zoom.coerceIn(1, 20)
         lastViewport = MapCamera(latitude, longitude, clampedZoom)
         if (initialized) {
@@ -216,6 +230,9 @@ class ComapsMapEngine(
         return lastViewport ?: currentCenter()?.let { MapCamera(it.latitude, it.longitude, 13) }
     }
 
+    override fun lastMapLocation(): Location? =
+        organicMaps?.locationHelper?.savedLocation?.let { Location(it) }
+
     override fun recenter(): Boolean {
         if (!initialized) return false
         val position = organicMaps?.locationHelper?.myPosition ?: return false
@@ -224,7 +241,7 @@ class ComapsMapEngine(
     }
 
     override fun startMyLocation(onFix: (MapCenter) -> Unit): Boolean {
-        if (!initialized) return false
+        if (!initialized || guiding) return false
         val helper = organicMaps?.locationHelper ?: return false
         callOnMain {
             try {
@@ -403,10 +420,10 @@ class ComapsMapEngine(
     }
 
     override fun buildRoute(request: NativeRouteRequest, onResult: (NativeRouteResult) -> Unit): Boolean {
+        if (guiding) return false
+        lastReadyRequest = null
         val accepted = routePlanner.buildRoute(request) { result ->
-            if (result is NativeRouteResult.Ready) {
-                lastReadyRequest = request
-            }
+            lastReadyRequest = request.takeIf { result is NativeRouteResult.Ready }
             onResult(result)
         }
         return accepted
@@ -415,11 +432,11 @@ class ComapsMapEngine(
     override fun startGuidance(request: NativeRouteRequest): Boolean {
         check(Looper.myLooper() == Looper.getMainLooper()) { "Guidance requires Main" }
         request.validate()
-        if (!initialized) return false
-        if (guiding) return false
+        if (!initialized || !renderingReady || guiding || !Framework.nativeIsRouteBuilt()) return false
         val ready = lastReadyRequest ?: return false
         if (!GuidancePolicy.sameRoute(ready, request)) return false
         return try {
+            stopMyLocation()
             // Never record a trace while guiding; the service owns no saved track.
             runCatching {
                 if (TrackRecorder.nativeIsTrackRecordingEnabled()) {
@@ -439,6 +456,8 @@ class ComapsMapEngine(
             guidanceGeneration++
             rerouteStartNanos = null
             lastProgress = null
+            receivedGuidanceFix = false
+            recenterAfterFirstFix = false
             true
         } catch (_: Exception) {
             guiding = false
@@ -468,6 +487,11 @@ class ComapsMapEngine(
                 fix.speedMetersPerSecond,
                 fix.bearingDegrees,
             )
+            receivedGuidanceFix = true
+            if (recenterAfterFirstFix) {
+                recenterAfterFirstFix = false
+                resumeGuidanceFollow()
+            }
             val info = Framework.nativeGetRouteFollowingInfo()
             val notifications = Framework.nativeGenerateNotifications(true).orEmpty().toList()
             val progress = info?.toNavigationProgress(notifications)
@@ -484,7 +508,11 @@ class ComapsMapEngine(
                 rerouteStartNanos = null
             }
             if (progress != null) lastProgress = progress
-            GuidanceFeed(progress = progress ?: lastProgress, notifications = notifications, rerouteRecoverable = false)
+            GuidanceFeed(
+                progress = progress ?: lastProgress,
+                notifications = notifications,
+                arrived = Framework.nativeIsRouteFinished(),
+            )
         } catch (_: Exception) {
             GuidanceFeed(progress = lastProgress, notifications = emptyList(), rerouteRecoverable = false)
         }
@@ -501,14 +529,84 @@ class ComapsMapEngine(
         }
     }
 
+    override fun setGuidanceViewport(visible: IntRect, surface: IntSize) {
+        if (!guiding || visible.width < 100 || visible.height < 100) return
+        guidanceSurfaceSize = surface
+        Framework.nativeSetVisibleRect(visible.left, visible.top, visible.right, visible.bottom)
+    }
+
+    private fun restoreGuidanceViewport() {
+        val surface = guidanceSurfaceSize ?: return
+        guidanceSurfaceSize = null
+        Framework.nativeSetVisibleRect(0, 0, surface.width, surface.height)
+    }
+
+    override fun controlGuidanceCamera(action: GuidanceCameraAction) {
+        if (!guiding || !renderingReady) return
+        when (action) {
+            GuidanceCameraAction.RECENTER -> {
+                if (receivedGuidanceFix) resumeGuidanceFollow() else recenterAfterFirstFix = true
+            }
+            GuidanceCameraAction.ORIENTATION -> if (receivedGuidanceFix) {
+                val mode = LocationState.getMode()
+                if (mode == LocationState.FOLLOW || mode == LocationState.FOLLOW_AND_ROTATE) {
+                    LocationState.nativeSwitchToNextMode()
+                } else {
+                    resumeGuidanceFollow()
+                }
+            }
+            GuidanceCameraAction.OVERVIEW -> showGuidanceOverview()
+            GuidanceCameraAction.ZOOM_IN -> app.organicmaps.sdk.Map.zoomIn()
+            GuidanceCameraAction.ZOOM_OUT -> app.organicmaps.sdk.Map.zoomOut()
+        }
+    }
+
+    private fun resumeGuidanceFollow() {
+        val mode = LocationState.getMode()
+        if (mode == LocationState.NOT_FOLLOW || mode == LocationState.NOT_FOLLOW_NO_POSITION) {
+            LocationState.nativeSwitchToNextMode()
+        }
+    }
+
+    private fun showGuidanceOverview() {
+        val points = Framework.nativeGetRouteJunctionPoints(Double.POSITIVE_INFINITY).orEmpty()
+        if (points.size < 2) return
+        // Match the native Mercator draw scale and reserve room for the guidance panels.
+        fun mercatorY(latitude: Double): Double = Math.toDegrees(
+            ln(tan(Math.PI / 4 + Math.toRadians(latitude.coerceIn(-85.0, 85.0)) / 2)),
+        )
+        val reference = points.first().mLon
+        fun longitudeOffset(lon: Double): Double = (lon - reference + 540.0) % 360.0 - 180.0
+        val west = points.minOf { longitudeOffset(it.mLon) }
+        val east = points.maxOf { longitudeOffset(it.mLon) }
+        val south = points.minOf { mercatorY(it.mLat) }
+        val north = points.maxOf { mercatorY(it.mLat) }
+        val latitude = Math.toDegrees(2 * atan(exp(Math.toRadians((south + north) / 2))) - Math.PI / 2)
+        val longitude = (reference + (west + east) / 2 + 540.0) % 360.0 - 180.0
+        val span = maxOf(east - west, north - south, 1e-6)
+        val zoom = floor(log2(360.0 / (2.5 * span))).toInt().coerceIn(1, 18)
+        recenterAfterFirstFix = false
+        Framework.nativeStopLocationFollow()
+        Framework.nativeZoomToPoint(latitude, longitude, zoom, false)
+    }
+
+    override fun guidanceManeuvers(language: String): List<RouteManeuver> =
+        if (!guiding) emptyList() else Framework.nativeGetRouteSteps(language).orEmpty().map {
+            RouteManeuver(it.textualInstruction, it.distMeters, it.toStreetName.orEmpty())
+        }
+
     override fun stopGuidance() {
+        lastReadyRequest = null
         guidanceGeneration++
         guiding = false
         guidanceRequest = null
         rerouteStartNanos = null
         lastProgress = null
+        receivedGuidanceFix = false
+        recenterAfterFirstFix = false
         if (!initialized) return
         if (Looper.myLooper() == Looper.getMainLooper()) {
+            runCatching { restoreGuidanceViewport() }
             runCatching { TtsPlayer.configureNativeNotifications("en", false) }
             runCatching { Framework.nativeDisableFollowing() }
             runCatching { Framework.nativeCloseRouting() }
@@ -517,6 +615,7 @@ class ComapsMapEngine(
             val latch = java.util.concurrent.CountDownLatch(1)
             Handler(Looper.getMainLooper()).post {
                 try {
+                    runCatching { restoreGuidanceViewport() }
                     runCatching { TtsPlayer.configureNativeNotifications("en", false) }
                     runCatching { Framework.nativeDisableFollowing() }
                     runCatching { Framework.nativeCloseRouting() }
@@ -661,6 +760,7 @@ class ComapsMapEngine(
         val context = appContext ?: return
         val generation = ++highlightGeneration
         callOnMain {
+            highlightedMarker = marker?.takeIf { it.canRouteByCoordinates }
             try {
                 installHighlightListener()
                 settleHighlightCategories(generation)
@@ -716,7 +816,11 @@ class ComapsMapEngine(
         if (initialized) SearchEngine.INSTANCE.cancel()
     }
 
-    override fun cancelRoute() = routePlanner.cancelRoute()
+    override fun cancelRoute() {
+        if (guiding) return
+        lastReadyRequest = null
+        routePlanner.cancelRoute()
+    }
 
     @Synchronized
     override fun release() {
@@ -730,6 +834,7 @@ class ComapsMapEngine(
         lastReadyRequest = null
         clearOverlayListeners()
         highlightGeneration++
+        highlightedMarker = null
         highlightListener?.let { BookmarkManager.INSTANCE.removeCategoriesUpdatesListener(it) }
         highlightListener = null
         placePageListener?.let { Framework.nativeRemovePlacePageActivationListener(it) }
@@ -757,6 +862,7 @@ class ComapsMapEngine(
                     objectData.lon,
                     overlayMarkers,
                     overlayClusters,
+                    highlightedMarker,
                 )?.let { selection ->
                     // Abastevo pins show their own enlarged art (setHighlightedMarker),
                     // never the SDK's translucent selection circle.
@@ -783,10 +889,13 @@ internal fun overlaySelectionFor(
     longitude: Double,
     markers: List<MapOverlayMarker>,
     clusters: List<MapOverlayCluster>,
+    highlightedMarker: MapOverlayMarker? = null,
 ): MapOverlaySelection? {
     fun matches(lat: Double, lon: Double): Boolean =
         kotlin.math.abs(lat - latitude) < 1e-6 && kotlin.math.abs(lon - longitude) < 1e-6
 
+    highlightedMarker?.takeIf { matches(it.latitude, it.longitude) }
+        ?.let { return MapOverlaySelection.Station(it.uuid) }
     val cluster = clusters.firstOrNull { matches(it.latitude, it.longitude) }
     if (cluster != null) {
         return if (cluster.markers.size == 1) {

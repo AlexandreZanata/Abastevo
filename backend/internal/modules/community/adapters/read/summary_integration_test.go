@@ -22,7 +22,7 @@ func TestCitySummaryUsesAllStationsNotFirstPageAndSeparatesExpiryAndConditions(t
 	if _, err := pool.Exec(ctx, `UPDATE directory_stations SET state='MT',municipality_code='5103403' WHERE id=$1`, id); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE community_current_prices SET amount_milli_brl=4000,anchor_received_at=$1::timestamptz-interval '1 hour',expires_at=$1::timestamptz+interval '1 hour'`, now); err != nil {
+	if _, err := pool.Exec(ctx, `UPDATE community_current_prices SET amount_milli_brl=4000,confirmation_count=3,anchor_received_at=$1::timestamptz-interval '1 hour',expires_at=$1::timestamptz+interval '1 hour'`, now); err != nil {
 		t.Fatal(err)
 	}
 	for i := 1; i <= 64; i++ {
@@ -30,13 +30,13 @@ func TestCitySummaryUsesAllStationsNotFirstPageAndSeparatesExpiryAndConditions(t
 		if _, err := pool.Exec(ctx, `INSERT INTO directory_stations(id,display_name,state,municipality_code) VALUES($1,'Synthetic summary station','MT','5103403')`, sid); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := pool.Exec(ctx, `INSERT INTO community_current_prices(station_id,fuel_product,unit,condition_kind,qualifier_key,amount_milli_brl,availability,confidence,anchor_received_at,expires_at,algorithm_version,policy_config_version) SELECT $1,fuel_product,unit,condition_kind,qualifier_key,$3,availability,confidence,anchor_received_at,expires_at,algorithm_version,policy_config_version FROM community_current_prices WHERE station_id=$2`, sid, id, 4000+i); err != nil {
+		if _, err := pool.Exec(ctx, `INSERT INTO community_current_prices(station_id,fuel_product,unit,condition_kind,qualifier_key,amount_milli_brl,availability,confidence,anchor_received_at,expires_at,algorithm_version,policy_config_version,confirmation_count) SELECT $1,fuel_product,unit,condition_kind,qualifier_key,$3,availability,confidence,anchor_received_at,expires_at,algorithm_version,policy_config_version,2 FROM community_current_prices WHERE station_id=$2`, sid, id, 4000+i); err != nil {
 			t.Fatal(err)
 		}
 	}
 	f, _ := application.ValidateFeed("MT", "5103403", "GASOLINE_REGULAR", "cheapest", 20, "")
 	summary, err := r.CitySummary(ctx, f)
-	if err != nil || len(summary) != 1 || summary[0].StationCount != 65 || summary[0].AverageMilliBrl != 4032 || summary[0].MinimumMilliBrl != 4000 || summary[0].MaximumMilliBrl != 4064 {
+	if err != nil || len(summary) != 1 || summary[0].StationCount != 65 || summary[0].AverageMilliBrl != 4032 || summary[0].MinimumMilliBrl != 4000 || summary[0].MaximumMilliBrl != 4064 || summary[0].ConfirmationCounts != (SummaryConfirmationCounts{Total: 131, MinimumPrice: 3, MaximumPrice: 2}) {
 		t.Fatalf("summary %+v %v", summary, err)
 	}
 	for _, order := range []string{"cheapest", "recent", "best", "worst"} {
@@ -68,6 +68,13 @@ func TestCitySummaryUsesAllStationsNotFirstPageAndSeparatesExpiryAndConditions(t
 			t.Fatalf("%s skipped/repeated stations: %d sum=%d", order, len(seen), sum)
 		}
 	}
+	if _, err := pool.Exec(ctx, `UPDATE community_current_prices SET amount_milli_brl=4000 WHERE station_id='00000000-0000-4000-8000-000000000007'`); err != nil {
+		t.Fatal(err)
+	}
+	summary, err = r.CitySummary(ctx, f)
+	if err != nil || len(summary) != 1 || summary[0].ConfirmationCounts.MinimumPrice != 5 {
+		t.Fatalf("tied minimum %+v %v", summary, err)
+	}
 	// Exclude different city, inactive, exact expiry, disputed, nonstandard, future anchor, hidden representative.
 	changes := []string{`UPDATE directory_stations SET municipality_code='5107925' WHERE id='00000000-0000-4000-8000-000000000001'`, `UPDATE directory_stations SET status='inactive' WHERE id='00000000-0000-4000-8000-000000000002'`, `UPDATE community_current_prices SET expires_at=$1 WHERE station_id='00000000-0000-4000-8000-000000000003'`, `UPDATE community_current_prices SET availability='DISPUTED' WHERE station_id='00000000-0000-4000-8000-000000000004'`, `UPDATE community_current_prices SET condition_kind='CASH' WHERE station_id='00000000-0000-4000-8000-000000000005'`, `UPDATE community_current_prices SET anchor_received_at=$1::timestamptz+interval '1 minute' WHERE station_id='00000000-0000-4000-8000-000000000006'`}
 	for i, q := range changes {
@@ -83,7 +90,7 @@ func TestCitySummaryUsesAllStationsNotFirstPageAndSeparatesExpiryAndConditions(t
 		t.Fatal(err)
 	}
 	summary, err = r.CitySummary(ctx, f)
-	if err != nil || len(summary) != 1 || summary[0].StationCount != 58 {
+	if err != nil || len(summary) != 1 || summary[0].StationCount != 58 || summary[0].ConfirmationCounts.Total != 116 {
 		t.Fatalf("exclusions %+v %v", summary, err)
 	}
 	// Committed projection changes appear immediately; query-time expiry needs no worker.

@@ -38,6 +38,7 @@ import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.BouncyToggleIcon
+import com.anpfuel.app.ui.components.CommunityConfirmationBadge
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.FuelProductSelectorButton
 import com.anpfuel.app.ui.components.FuelProductSelectorDialog
@@ -280,10 +281,7 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(stringResource(FuelProductI18n.toStringRes(item.fuel)), style = MaterialTheme.typography.bodyMedium)
-                        Icon(Icons.Default.Verified, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                        Text("${item.confirmations}", style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        CommunityConfirmationBadge(item.confirmations.toLong())
                     }
                     Text(price, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = FuelProductTint.colorFor(item.fuel, darkTheme))
                     Text(stringResource(when (item.unit) { "M3" -> R.string.feed_unit_m3; "KG_13" -> R.string.feed_unit_cylinder; else -> R.string.feed_unit_litre }),

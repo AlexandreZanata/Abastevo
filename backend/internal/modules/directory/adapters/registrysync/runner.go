@@ -66,7 +66,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if e = r.download(ctx, IBGEURL, filepath.Join(temp, "ibge.json"), ReferenceCap); e != nil {
 		return e
 	}
-	if e = aliases(temp); e != nil {
+	if e = WriteAliases(temp); e != nil {
 		return e
 	}
 	source, e := fileHash(filepath.Join(temp, "registry.csv"), SourceCap)

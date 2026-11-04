@@ -3,7 +3,11 @@ package com.anpfuel.app.ui.driver.work
 import androidx.activity.ComponentActivity
 import android.os.SystemClock
 import android.provider.Settings
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -68,8 +72,15 @@ class DriverWorkScreenRoomTest {
     }
 
     private fun model(): DriverWorkViewModel = DriverWorkViewModel(store, sessions, context).also { models.add(it) }
-    private fun render(vm: DriverWorkViewModel) {
-        compose.setContent { AnpFuelTheme(dynamicColor = false) { DriverWorkScreen(vehicle, {}, viewModel = vm) } }
+    private fun render(vm: DriverWorkViewModel, fontScale: Float = 1f) {
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                AnpFuelTheme(dynamicColor = false) {
+                    DriverWorkScreen(vehicle, {}, viewModel = vm)
+                }
+            }
+        }
         compose.waitUntil(10_000) { !vm.uiState.value.loading }
     }
     private fun waitFor(vm: DriverWorkViewModel, condition: (DriverWorkState) -> Boolean) {
@@ -110,6 +121,19 @@ class DriverWorkScreenRoomTest {
         waitFor(vm) { it.shift?.state == "RUNNING" }
         assertNotEquals(first.shiftId, vm.uiState.value.shift!!.shiftId)
         assertEquals(2, shiftCount("owner-a"))
+    }
+
+    @Test fun earningsCanBeSavedAtLargeFontWithOnlyRequiredFields() {
+        val vm = model()
+        render(vm, fontScale = 2f)
+        compose.onNodeWithText("Salvar ganho").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Valor líquido (R$)").performScrollTo().performTextInput("12,50")
+        compose.onNodeWithText("Salvar ganho").performScrollTo().performClick()
+        waitFor(vm) { it.earnings.size == 1 }
+        val earning = vm.uiState.value.earnings.single()
+        assertEquals(1250L, earning.netCentavos)
+        assertNull(earning.tipsCentavos)
+        assertNull(earning.feesCentavos)
     }
 
     @Test fun recreatedViewModelRequiresReviewAndPreservesPersistedKnownTime() {

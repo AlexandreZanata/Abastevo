@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.FuelProductI18n
+import com.anpfuel.app.ui.components.CommunityConfirmationBadge
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
@@ -57,7 +58,24 @@ internal fun HomeReferencePriceCard(
         ) {
             FuelProductIcon(price.fuelProduct, size = 36.dp, contentDescription = null)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(fuelLabel, style = MaterialTheme.typography.bodyMedium)
+                val confirmations = if (community) price.confirmationCounts?.let { counts ->
+                    when (priceSort) {
+                        HomePriceSortOrder.DEFAULT -> counts.total
+                        HomePriceSortOrder.PRICE_ASC -> counts.minimumPrice
+                        HomePriceSortOrder.PRICE_DESC -> counts.maximumPrice
+                    }
+                } else null
+                if (confirmations == null) {
+                    Text(fuelLabel, style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(fuelLabel, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyMedium)
+                        CommunityConfirmationBadge(confirmations)
+                    }
+                }
                 Text(
                     featured,
                     style = MaterialTheme.typography.headlineSmall,

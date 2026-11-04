@@ -321,12 +321,16 @@ class MapDiscoveryViewModelTest {
         )
         val engine = FakeEngine()
         val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
-        vm.onSearch("4106902", "Central")
+        val completed = mutableListOf<List<MapOverlayMarker>>()
+        vm.onSearch("4106902", "Norte") { completed += it }
+        vm.onSearch("4106902", "Central") { completed += it }
         advanceTimeBy(400)
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("4106902" to "Central", gateway.lastSearch)
-        assertEquals(1, vm.ui.value.listItems.size)
-        assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", vm.ui.value.listItems.single().uuid)
+        assertEquals(1, completed.size)
+        assertEquals("Posto Central Curitiba", completed.single().single().title)
+        assertTrue(completed.single().single().canRouteByCoordinates)
+        assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", vm.ui.value.searchResults?.items?.single()?.uuid)
         // Short queries never hit the wire.
         val before = gateway.calls
         vm.onSearch("4106902", "x")
@@ -461,32 +465,91 @@ class MapDiscoveryViewModelTest {
         assertEquals(3, vm.ui.value.selectedMembers.size)
     }
 
-    @Test fun `unchanged native viewport refresh does not replace an active search`() = runTest {
-        val gateway = FakeGateway(
-            stations = listOf(
-                station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name = "Posto Central"),
-                station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name = "Posto Bairro"),
-            ),
+    @Test fun `search highlights one station while viewport loads and clearing restores the full list`() = runTest {
+        val target = station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name = "Posto Central")
+        val other = station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", lat = -25.43, name = "Posto Bairro")
+        val gateway = FakeGateway(stations = listOf(target, other))
+        val charging = ChargingPlace(
+            id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+            entityKey = "c".repeat(64),
+            externalId = "charge-1",
+            name = "Recarga Bairro",
+            country = "BR",
+            latitude = "-25.421",
+            longitude = "-49.269",
+            publicAccess = ChargingAccess.PUBLIC,
+            reportedPoints = 2,
+            groups = emptyList(),
         )
-        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, FakeEngine())
-        vm.onSearch("4106902", "Central")
-        advanceTimeBy(400)
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { listOf(charging) }, engine)
+        vm.onViewport(-25.42, -49.27)
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals(listOf("Posto Central"), vm.ui.value.listItems.map { it.title })
+        val pins = engine.markers
+        assertEquals(setOf(target.stationId, other.stationId, charging.id), pins.map { it.uuid }.toSet())
+        val baseList = vm.ui.value.listItems
+        val clusters = vm.ui.value.clusters
+
+        vm.onSearch("4106902", "Central")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(listOf("Posto Central"), vm.ui.value.searchResults?.items?.map { it.title })
+        assertEquals(baseList, vm.ui.value.listItems)
+        assertEquals(clusters, vm.ui.value.clusters)
+        assertEquals(pins, engine.markers)
+        assertEquals(target.stationId, engine.highlights.last()?.uuid)
+        assertEquals(listOf(-25.42 to -49.27), engine.viewports)
         val callsAfterSearch = gateway.calls
 
         vm.onViewport(-25.43, -49.28, 15_000)
-        advanceTimeBy(400)
         dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(callsAfterSearch + 1, gateway.calls)
+        assertEquals(listOf("Posto Central"), vm.ui.value.searchResults?.items?.map { it.title })
+        assertEquals(pins, engine.markers)
+        assertEquals(1, engine.viewports.size)
 
-        assertEquals(listOf("Posto Central"), vm.ui.value.listItems.map { it.title })
-        assertEquals(callsAfterSearch, gateway.calls, "viewport sync must not refetch while search is active")
-
-        vm.onSearch("4106902", "")
-        advanceTimeBy(400)
+        vm.clearSearch()
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("", vm.ui.value.searchQuery)
-        assertTrue(vm.ui.value.listItems.size == 2, "clearing search must return to nearby results")
+        assertEquals(null, vm.ui.value.searchResults)
+        assertEquals(null, engine.highlights.last())
+        assertEquals(baseList, vm.ui.value.listItems)
+        assertEquals(pins, engine.markers)
+        assertEquals(callsAfterSearch + 1, gateway.calls)
+    }
+
+    @Test fun `choosing a result focuses its pin and empty or failed search preserves the viewport`() = runTest {
+        val first = station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name = "Posto Central")
+        val second = station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", lat = -25.43, name = "Posto Bairro")
+        val gateway = FakeGateway(stations = listOf(first, second))
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+        vm.onViewport(-25.42, -49.27)
+        dispatcher.scheduler.advanceUntilIdle()
+        val pins = engine.markers
+
+        vm.onSearch("4106902", "Posto")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2, vm.ui.value.searchResults?.items?.size)
+        assertTrue(engine.viewports.isEmpty())
+        vm.onSearchResultSelected(second.stationId)
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(second.stationId, vm.ui.value.selectedUuid)
+        assertEquals(second.stationId, engine.highlights.last()?.uuid)
+        assertEquals(listOf(-25.43 to -49.27), engine.viewports)
+        assertEquals(pins, engine.markers)
+
+        vm.onSearch("4106902", "No match")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertEquals(emptyList<com.anpfuel.maps.engine.MapOverlayListItem>(), vm.ui.value.searchResults?.items)
+        assertEquals(null, engine.highlights.last())
+        assertEquals(pins, engine.markers)
+
+        gateway.failSearch = true
+        vm.onSearch("4106902", "Offline")
+        dispatcher.scheduler.advanceUntilIdle()
+        assertTrue(vm.ui.value.searchFailed)
+        assertEquals(null, vm.ui.value.error)
+        assertEquals(pins, engine.markers)
     }
 
     @Test fun `offline search finds cached station by its legal name`() = runTest {
@@ -506,8 +569,8 @@ class MapDiscoveryViewModelTest {
         vm.onSearch("4106902", "razão exemplo")
         dispatcher.scheduler.advanceUntilIdle()
 
-        assertEquals(listOf(matched.displayName), vm.ui.value.listItems.map { it.title })
-        assertTrue(vm.ui.value.offlineCached)
+        assertEquals(listOf(matched.displayName), vm.ui.value.searchResults?.items?.map { it.title })
+        assertEquals(true, vm.ui.value.searchResults?.offlineCached)
     }
 
     @Test fun `offline markers show the textual address or municipality name`() = runTest {
@@ -539,7 +602,7 @@ class MapDiscoveryViewModelTest {
                 unlocated.stationId to "Curitiba/PR",
                 unknownCity.stationId to "",
             ),
-            vm.ui.value.selectableByUuid.mapValues { it.value.subtitle },
+            vm.ui.value.searchResults?.byUuid?.mapValues { it.value.subtitle },
         )
     }
 
@@ -573,14 +636,15 @@ class MapDiscoveryViewModelTest {
         val engine = FakeEngine()
         val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
 
+        vm.onViewport(-25.42, -49.27)
+        dispatcher.scheduler.advanceUntilIdle()
         // Case 1: Clear search during the 300ms debounce window.
         vm.onSearch("4106902", "Central")
         advanceTimeBy(150)
         vm.onSearch("4106902", "")
         advanceTimeBy(1_000)
         dispatcher.scheduler.advanceUntilIdle()
-        // Clearing search returns to viewport mode, but the canceled search
-        // must never have reached the gateway.
+        // The canceled search must never have reached the gateway.
         org.junit.jupiter.api.Assertions.assertNull(gateway.lastSearch)
         assertEquals("", vm.ui.value.searchQuery)
         assertEquals(1, vm.ui.value.listItems.size)
@@ -594,7 +658,9 @@ class MapDiscoveryViewModelTest {
         vm.onSearch("4106902", "c") // Shortened to < 2 chars while in-flight.
         advanceTimeBy(1_000)
         dispatcher.scheduler.advanceUntilIdle()
-        assertEquals("c", vm.ui.value.searchQuery)
+        assertEquals("", vm.ui.value.searchQuery)
+        assertEquals(null, vm.ui.value.searchResults)
+        assertEquals(null, engine.highlights.last())
         assertEquals(listBeforeCase2, vm.ui.value.listItems.map { it.title }, "In-flight search must not overwrite cleared state")
     }
 
@@ -773,6 +839,23 @@ class MapDiscoveryViewModelTest {
         vm.onSelection(id)
         assertEquals(id, vm.ui.value.selectedMarker?.uuid)
         assertEquals(false, vm.ui.value.selectedMarker?.canRouteByCoordinates)
+    }
+
+    @Test fun `municipal map retains pins and unlocated stations across directory pages`() = runTest {
+        val gateway = mockk<ServerStationGateway>()
+        val first = station("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+        val second = station("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", lat = null, lon = null)
+        val city = "5103403"
+        coEvery { gateway.listInMunicipality(city, 100, null) } returns ServerStationPage(listOf(first), "page-2")
+        coEvery { gateway.listInMunicipality(city, 100, "page-2") } returns ServerStationPage(listOf(second), null)
+        val engine = FakeEngine()
+        val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
+
+        vm.onSelectCity(city, "Cuiabá")
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf(first.stationId), engine.markers.map { it.uuid })
+        assertEquals(setOf(first.stationId, second.stationId), vm.ui.value.listItems.map { it.uuid }.toSet())
     }
 
     @Test fun `every pin tier reaches the native overlay with its own tier`() = runTest {

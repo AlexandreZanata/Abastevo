@@ -320,6 +320,12 @@ func TestHelpfulnessTargetOwnershipAndEligibility(t *testing.T) {
 	if got.AuthorRef != "ref-1" || !got.Eligible() || got.LatestSequence != 2 {
 		t.Fatalf("target must resolve author, eligibility and sequence: %+v", got)
 	}
+	for _, caller := range []application.Caller{helpfulAuthorCaller(), helpfulCaller("other"), {}} {
+		tally, err := application.TallyFor(ctx, helpfulPorts(hs), caller, obsID, 2)
+		if err != nil || tally.OwnContribution != (caller.Token == got.AuthorRef) {
+			t.Fatalf("unexpected ownership overlay: %+v, err=%v", tally, err)
+		}
+	}
 	// A forged caller cannot become the author: the stored author stays
 	// ref-1, so application self-vote logic keeps refusing the owner.
 	if _, err := application.Cast(ctx, helpfulPorts(hs), helpfulAuthorCaller(), application.CastDTO{

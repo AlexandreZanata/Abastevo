@@ -1,0 +1,283 @@
+{
+  "profile": "charging-mt-next10-pilot-v1",
+  "revision": "2026-11-04",
+  "ibge_population_sha256": "4ed4eb38997ebb348fc3127d8a7a1b59749821b49a51b4426507ab0ecb79999a",
+  "ibge_boundaries_sha256": "5491bd548fe381cd388ba81c9edfbf4cf2749891e2fd32c1079ac71f7aba1c10",
+  "license": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "attribution": [
+    "© OpenStreetMap contributors — https://www.openstreetmap.org/copyright",
+    "Open Charge Map and Easy Volt — the linked Águia Branca catalog record is CC0.",
+    "Independently reviewed public facility facts and charging reports are cited per place."
+  ],
+  "municipalities": [
+    {
+      "code": "5106224",
+      "name": "Nova Mutum",
+      "population": 65663,
+      "rank": 11
+    },
+    {
+      "code": "5100250",
+      "name": "Alta Floresta",
+      "population": 63017,
+      "rank": 12
+    },
+    {
+      "code": "5106752",
+      "name": "Pontes e Lacerda",
+      "population": 56720,
+      "rank": 13
+    },
+    {
+      "code": "5102637",
+      "name": "Campo Novo do Parecis",
+      "population": 53393,
+      "rank": 14
+    },
+    {
+      "code": "5102678",
+      "name": "Campo Verde",
+      "population": 51969,
+      "rank": 15
+    },
+    {
+      "code": "5105150",
+      "name": "Juína",
+      "population": 48987,
+      "rank": 16
+    },
+    {
+      "code": "5103353",
+      "name": "Confresa",
+      "population": 39368,
+      "rank": 17
+    },
+    {
+      "code": "5105101",
+      "name": "Juara",
+      "population": 36276,
+      "rank": 18
+    },
+    {
+      "code": "5106422",
+      "name": "Peixoto de Azevedo",
+      "population": 33907,
+      "rank": 19
+    },
+    {
+      "code": "5107875",
+      "name": "Sapezal",
+      "population": 33520,
+      "rank": 20
+    }
+  ],
+  "places": [
+    {
+      "municipality_code": "5106224",
+      "id": "44e82ea7-e2e5-519e-9097-f996170033a7",
+      "external_id": "posto-aguia-branca",
+      "name": "Posto Águia Branca — Nova Mutum",
+      "address": "BR-163, km 582, Industrial Sul",
+      "latitude": "-13.85944",
+      "longitude": "-56.08636",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-28",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-posto-%C3%A1guia-branca-4471",
+        "https://mb.cision.com/Main/23605/4171536/3532665.pdf",
+        "https://www.openstreetmap.org/node/6110487391",
+        "https://openchargemap.org/site/poi/details/481327"
+      ]
+    },
+    {
+      "municipality_code": "5106224",
+      "id": "87eb6a11-24dc-5f6d-827e-55e1a88cc328",
+      "external_id": "energize-c-parque-do-sol",
+      "name": "Energize-C — Parque do Sol",
+      "address": "R. das Seringueiras, 2467, Parque do Sol",
+      "latitude": "-13.83857",
+      "longitude": "-56.09446",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-11-01",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-energize-c-1657252",
+        "https://recarregados.com/eletropostos/mt/nova-mutum/eletroposto-energize-c-60kw-epw6j9rnak2y"
+      ]
+    },
+    {
+      "municipality_code": "5106224",
+      "id": "cb65d019-46d2-53cc-b307-57f3f62b6c48",
+      "external_id": "posto-bem-brasil",
+      "name": "Eletroposto Posto Bem Brasil",
+      "address": "Av. Perimetral das Samambaias, 93N, Reserva Técnica",
+      "latitude": "-13.81853",
+      "longitude": "-56.07700",
+      "access": "UNKNOWN",
+      "sources": [
+        "https://recarregados.com/eletropostos/mt/nova-mutum/estacao-de-recarga-da-ezvolt-epjc6fv0n0rh",
+        "https://apiportal.femic.com.br/project/docs/a4ba-a37c-1537-1696474379184.pdf",
+        "https://rotas.ninja/carregador/1488291746-posto-bem-brasil-av-perimetral-das-samambaias-s-n-centro-nova-mutum-mt-78450-000"
+      ]
+    },
+    {
+      "municipality_code": "5100250",
+      "id": "86f2af83-7416-55f8-bcbf-fb852c350611",
+      "external_id": "bionova-alta-floresta",
+      "name": "Bionova Energia Solar — Alta Floresta",
+      "address": "R. Euclídes da Cunha, 100, Setor J",
+      "latitude": "-9.89155",
+      "longitude": "-56.08496",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-bionova-energia-solar-1630668",
+        "https://bionovasolar.com.br/unidades",
+        "https://recarregados.com/eletropostos/mt/alta-floresta/recarga-bionova-energia-solar-epfsccj2gffj"
+      ]
+    },
+    {
+      "municipality_code": "5100250",
+      "id": "0259ccd6-d1bf-5e2c-bb7c-57d017b90b36",
+      "external_id": "mirante-universitario",
+      "name": "Eletroposto Mirante",
+      "address": "R. Mário Quintana, 28, Residencial Universitário",
+      "latitude": "-9.90665",
+      "longitude": "-56.09704",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-mirante-2074941",
+        "https://recarregados.com/eletropostos/mt/alta-floresta/eletroposto-mirante-40kw-ep0ygs6w0bca",
+        "https://www.openstreetmap.org/way/765566051"
+      ]
+    },
+    {
+      "municipality_code": "5106752",
+      "id": "53f0aaac-b145-5932-a322-2516ff86ac63",
+      "external_id": "favorito-marechal-rondon",
+      "name": "Supermercado Favorito — Centro",
+      "address": "Estacionamento próximo à Av. Marechal Rondon e à R. Rio Grande do Sul",
+      "latitude": "-15.23271",
+      "longitude": "-59.33117",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-supermercado-favorito-625720",
+        "https://www.openstreetmap.org/way/749311473",
+        "https://recarregados.com/eletropostos/mt/pontes-e-lacerda/estacao-mercado-favorito-pontes-e-lacerda-epey13s2jq8y"
+      ]
+    },
+    {
+      "municipality_code": "5106752",
+      "id": "5cd1f4a8-6551-5db5-b0c1-17fb047a8153",
+      "external_id": "posto-tuiuiu",
+      "name": "Posto Tuiuiú — Pontes e Lacerda",
+      "address": "BR-174, Jardim das Palmeiras",
+      "latitude": "-15.24858",
+      "longitude": "-59.31059",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-09-20",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-posto-tuiuiu-9185",
+        "https://www.postotuiuiu.com.br/",
+        "https://www.openstreetmap.org/node/4757143221"
+      ]
+    },
+    {
+      "municipality_code": "5106752",
+      "id": "030900de-3f03-5401-bb21-ba558927544c",
+      "external_id": "magalhaes-engenharia",
+      "name": "Magalhães Engenharia",
+      "address": "R. Mariano Pires de Campos, 25, esquina com a BR-174",
+      "latitude": "-15.24270",
+      "longitude": "-59.33361",
+      "access": "UNKNOWN",
+      "charging_report_date": "2024-11-09",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-magalh%C3%A3es-engenharia-5512",
+        "https://recarregados.com/eletropostos/mt/pontes-e-lacerda/magalhaes-engenharia-eptsabrbcbmt",
+        "https://www.solutudo.com.br/empresas/mt/pontes-e-lacerda/moveis-planejados-marcenarias/jr-marcenaria-e-moveis-planejados-19717351"
+      ]
+    },
+    {
+      "municipality_code": "5102637",
+      "id": "cc0651b4-37b0-56fc-9230-fbc55876d131",
+      "external_id": "real-auto-posto-centro",
+      "name": "Real Auto Posto — Centro",
+      "address": "R. Santa Catarina, 1260, Centro",
+      "latitude": "-13.66372",
+      "longitude": "-57.89115",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-05-01",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-shell-4465",
+        "https://carregados.com.br/estacoes/estacao-real-auto-posto-8982",
+        "https://www.openstreetmap.org/node/13578432201",
+        "https://recarregados.com/eletropostos/mt/campo-novo-do-parecis/estacao-de-carregamento-para-veiculos-eletricos-epb2v2gyjsq3"
+      ]
+    },
+    {
+      "municipality_code": "5102678",
+      "id": "6e26aa69-6c42-50b1-96ee-7eb5fc73077c",
+      "external_id": "retrofit-energias-centro",
+      "name": "Retrofit Energias — Centro",
+      "address": "Av. Brasil, 655, Centro",
+      "latitude": "-15.54775",
+      "longitude": "-55.17565",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-29",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-retrofit-energias-1566936",
+        "https://recarregados.com/eletropostos/mt/campo-verde/estacao-de-recarga-da-plugin-ep7f1de77v0y",
+        "https://portalmaconariabrasil.com.br/campo-verde/mt/energia-solar-motos-eletrica/fabio-schmiele/76910"
+      ]
+    },
+    {
+      "municipality_code": "5102678",
+      "id": "e789dd78-053c-595b-8ed6-140092da54df",
+      "external_id": "campo-real-atacado",
+      "name": "Campo Real Atacado",
+      "address": "Av. Mato Grosso, Campo Verde",
+      "latitude": "-15.53728",
+      "longitude": "-55.16459",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-camporeal-3141",
+        "https://recarregados.com/eletropostos/mt/campo-verde/camporeal-eph74qxaqa5r"
+      ]
+    },
+    {
+      "municipality_code": "5102678",
+      "id": "a8c400f9-0917-571e-8897-9e251dcee276",
+      "external_id": "supermercado-italia-centro",
+      "name": "Supermercado Itália — Centro",
+      "address": "Av. Cuiabá, 445, Centro",
+      "latitude": "-15.55162",
+      "longitude": "-55.17370",
+      "access": "PUBLIC",
+      "charging_report_date": "2026-10-30",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-supermercado-italia-1035731",
+        "https://recarregados.com/eletropostos/mt/campo-verde/supermercado-italia-ep0bh9ypv70x",
+        "https://www.openstreetmap.org/way/314533053"
+      ]
+    },
+    {
+      "municipality_code": "5103353",
+      "id": "13809c6f-2369-5a82-b1a0-390e21aa8598",
+      "external_id": "casa-dos-para-choques",
+      "name": "Estacionamento Casa dos Para-Choques",
+      "address": "R. Lázaro Nogueira, Babinski",
+      "latitude": "-10.64890",
+      "longitude": "-51.58193",
+      "access": "UNKNOWN",
+      "charging_report_date": "2026-07-22",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-estacionamento-casa-dos-para-choques-8015",
+        "https://www.electromaps.com/fr/stations-de-recharge/bresil/confresa",
+        "https://www.solutudo.com.br/empresas/mt/confresa/funilaria-e-pintura/casa-dos-para-choques-pinturas-automotivas-ltda-16740249"
+      ]
+    }
+  ]
+}

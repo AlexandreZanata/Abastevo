@@ -84,6 +84,12 @@ object CommunityFeedCacheCodec {
                     .put("minimum_milli_brl", price.minimumMilliBrl)
                     .put("maximum_milli_brl", price.maximumMilliBrl)
                     .put("station_count", price.stationCount)
+                    .put("confirmation_counts", price.confirmationCounts?.let { counts ->
+                        JSONObject()
+                            .put("total", counts.total)
+                            .put("minimum_price", counts.minimumPrice)
+                            .put("maximum_price", counts.maximumPrice)
+                    })
                     .put("updated_at", price.updatedAt.toString())
                     .put("expires_at", price.expiresAt.toString()),
             )

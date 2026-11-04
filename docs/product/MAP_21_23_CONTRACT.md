@@ -85,3 +85,35 @@ SDK TTS auto-initialization is removed; the host initializes local voice only af
 explicit service start. Native track recording is disabled before feeding fixes;
 no track save or trace serialization is introduced. Recovery saves only the private
 owner-bound planning request, never the sampled stream, and requires explicit resume.
+
+## Direct navigation from map results
+
+B-BR-MAP22-03: the map search action opens a route preview for one routable
+match. Multiple matches remain selectable, and list-only places never acquire
+a fabricated pin. A station route action brings the actual destination into
+the same map. Address-only entries use offline search and explicit selection.
+Start a new destination without inheriting the prior origin or stops. Use a
+fresh fix only after the user requests a route. Keep manual origin selection
+and map downloads available when permission, GPS or a routing map is missing.
+
+B-BR-MAP23-04: the map remains visible during preview and guidance. Show native
+distance, time and maneuvers, permission failures and map dependencies. Start
+continuous location and local voice only after the user starts navigation.
+Leaving the map must preserve an active service-owned trip. Stop explicitly
+or when the native core reports arrival. Neither preview nor guidance sends
+coordinates to an external map app.
+
+BUC-MAP22-23-DIRECT: search a unique pin or select Route and go -> calculate
+from a fresh fix -> inspect the line and estimate on the map -> start ->
+follow native progress -> end. Verify ambiguous results, denied or cancelled
+location, missing maps, stale requests and returning to active guidance.
+
+B-BR-MAP22-04: Route and go calculates immediately from a suitable recent
+foreground map fix or device fix. If neither is available, await an accurate
+fix from the permitted enabled providers for a bounded interval. Use neither
+an expired position nor the camera center as an automatic origin. Automatic
+planning still requires the user to start guidance explicitly.
+
+BUC-MAP22-STATION-ORIGIN: tap Route and go on a station card with a recent map
+fix -> see the route preview without editing the origin. Verify fused and
+network fallback, expired and inaccurate fixes, and cancellation before a fix.

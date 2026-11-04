@@ -1,12 +1,19 @@
 package com.anpfuel.data.repository
 
+import com.anpfuel.data.local.charging.CUIABA_SUPPLEMENT_PROFILE
 import com.anpfuel.data.local.charging.NATIONAL_CHARGING_PROFILE
+import com.anpfuel.data.local.charging.MATO_GROSSO_NEXT_TEN_PROFILE
+import com.anpfuel.data.local.charging.MATO_GROSSO_PILOT_PROFILE
+import com.anpfuel.data.local.charging.SORRISO_PILOT_PROFILE
+import com.anpfuel.data.local.charging.SORRISO_SUPPLEMENT_PROFILE
 import com.anpfuel.data.local.charging.ChargingSnapshotImport
 import com.anpfuel.data.local.charging.ChargingSnapshotMapper
 import com.anpfuel.data.local.charging.StoredPackMeta
 import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.dao.ChargingSnapshotDao
+import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.charging.ChargingSnapshotHttpClient
+import com.anpfuel.data.remote.charging.ChargingSnapshotUnavailable
 import com.anpfuel.domain.charging.ChargingAccess
 import com.anpfuel.domain.charging.ChargingCatalogOffer
 import com.anpfuel.domain.charging.ChargingCompatibility
@@ -14,11 +21,20 @@ import com.anpfuel.domain.charging.ChargingConnector
 import com.anpfuel.domain.charging.ChargingCurrent
 import com.anpfuel.domain.charging.ChargingPackMeta
 import com.anpfuel.domain.charging.ChargingPlace
+import com.anpfuel.domain.charging.ChargingPlacePage
 import com.anpfuel.domain.charging.Compatibility
 import com.anpfuel.domain.discovery.StationPageIdentity
+import java.io.IOException
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.json.JSONObject
 
 class ChargingDiscoveryUnavailable(val code: String) : IllegalStateException(code)
 
@@ -67,16 +83,89 @@ data class CorridorRow(
 class ChargingDiscoveryRepository @Inject constructor(
     private val client: ChargingSnapshotHttpClient,
     private val dao: ChargingSnapshotDao,
-    @javax.inject.Named("apiOrigin") environment: com.anpfuel.data.remote.ApiEnvironment,
+    @javax.inject.Named("apiOrigin") private val environment: ApiEnvironment,
 ) {
     private val origin: String = environment.origin
+    private val pilotRefresh = Mutex()
+    private val pilotRetryAfterMillis = mutableMapOf<String, Long>()
 
     companion object {
         const val OCM_PROFILE = "ocm-br-20261021-v1"
         const val OCM_LICENSE = "CC-BY-4.0 (provider metadata, attribution required)"
         const val NATIONAL_PROFILE = NATIONAL_CHARGING_PROFILE
         private const val NATIONAL_LICENSE = "ODbL-1.0 and source-specific OCM provider terms"
+        private const val PILOT_SOURCE = "Abastevo staging pilot; independently reviewed public site facts"
+        private const val MT_PILOT_SOURCE = "ODbL-1.0; OpenStreetMap and Open Charge Map source attribution in pilot manifest"
+        private const val SUPPLEMENT_SOURCE = "ODbL-1.0; reviewed public location and charging evidence in the city manifest"
+        private const val PILOT_BOOTSTRAP_REVISION = "2026-11-04"
+        private val PILOT_BOOTSTRAP_IDS = listOf(
+            "67c3d1f0-5898-54f0-bca3-689e9b48b099",
+            "451a0ea1-2a8c-5ed3-98ae-a6d11753dbdb",
+        )
         const val PAGE_SIZE = 100
+    }
+
+    private val mtPilotIDs by lazy { pilotManifestIDs(MATO_GROSSO_PILOT_PROFILE, "mt-top10-pilot-v1.json") }
+    private val sorrisoSupplementIDs by lazy {
+        pilotManifestIDs(SORRISO_SUPPLEMENT_PROFILE, "sorriso-supplement-v1.json")
+    }
+
+    private val cuiabaSupplementIDs by lazy {
+        pilotManifestIDs(CUIABA_SUPPLEMENT_PROFILE, "cuiaba-supplement-v1.json")
+    }
+
+    private val mtNextTenIDs by lazy {
+        pilotManifestIDs(MATO_GROSSO_NEXT_TEN_PROFILE, "mt-next10-pilot-v1.json")
+    }
+
+    private fun pilotManifestIDs(profile: String, filename: String): List<String> {
+        val resource = checkNotNull(javaClass.getResourceAsStream("/charging/$filename"))
+        val manifest = JSONObject(resource.bufferedReader().use { it.readText() })
+        check(manifest.getString("profile") == profile &&
+            manifest.getString("revision") == PILOT_BOOTSTRAP_REVISION)
+        val rows = manifest.getJSONArray("places")
+        check(rows.length() in 1..PAGE_SIZE)
+        return (0 until rows.length()).map { rows.getJSONObject(it).getString("id") }.also { ids ->
+            check(ids.distinct().size == ids.size && ids.none { it in PILOT_BOOTSTRAP_IDS })
+        }
+    }
+
+    suspend fun sorrisoPilotForMap(): StoredPackMeta? =
+        pilotForMap(SORRISO_PILOT_PROFILE, PILOT_SOURCE)
+
+    suspend fun matoGrossoPilotForMap(): StoredPackMeta? =
+        pilotForMap(MATO_GROSSO_PILOT_PROFILE, MT_PILOT_SOURCE)
+
+    suspend fun matoGrossoNextTenForMap(): StoredPackMeta? =
+        pilotForMap(MATO_GROSSO_NEXT_TEN_PROFILE, MT_PILOT_SOURCE)
+
+    suspend fun sorrisoSupplementForMap(): StoredPackMeta? =
+        pilotForMap(SORRISO_SUPPLEMENT_PROFILE, SUPPLEMENT_SOURCE)
+
+    suspend fun cuiabaSupplementForMap(): StoredPackMeta? =
+        pilotForMap(CUIABA_SUPPLEMENT_PROFILE, SUPPLEMENT_SOURCE)
+
+    private suspend fun pilotForMap(profile: String, source: String): StoredPackMeta? {
+        if (environment != ApiEnvironment.STAGING) return null
+        return pilotRefresh.withLock {
+            val cached = generationMeta(profile)?.takeIf { it.placeCount > 0 }
+            val now = Instant.now().toEpochMilli()
+            if (now < (pilotRetryAfterMillis[profile] ?: 0L) ||
+                (cached != null && now - cached.savedAtMillis < 900_000)) {
+                return@withLock cached
+            }
+            pilotRetryAfterMillis[profile] = now + 60_000
+            try {
+                refresh(profile, licenseNote = source, nowMillis = now)
+            } catch (cancelled: CancellationException) {
+                pilotRetryAfterMillis.remove(profile)
+                throw cancelled
+            } catch (_: IOException) {
+                cached
+            } catch (_: IllegalStateException) {
+                cached
+            }
+        }
     }
 
     suspend fun refresh(
@@ -86,8 +175,19 @@ class ChargingDiscoveryRepository @Inject constructor(
         licenseNote: String = OCM_LICENSE,
         nowMillis: Long = Instant.now().toEpochMilli(),
     ): StoredPackMeta {
-        if (profile != OCM_PROFILE && profile != NATIONAL_CHARGING_PROFILE) {
+        val pilot = profile == SORRISO_PILOT_PROFILE || profile == MATO_GROSSO_PILOT_PROFILE ||
+            profile == SORRISO_SUPPLEMENT_PROFILE || profile == CUIABA_SUPPLEMENT_PROFILE ||
+            profile == MATO_GROSSO_NEXT_TEN_PROFILE
+        if (profile != OCM_PROFILE && profile != NATIONAL_CHARGING_PROFILE &&
+            !(pilot && environment == ApiEnvironment.STAGING)) {
             throw ChargingDiscoveryUnavailable("pbe-rights-pending")
+        }
+        val reviewedIDs = when (profile) {
+            MATO_GROSSO_PILOT_PROFILE -> mtPilotIDs
+            MATO_GROSSO_NEXT_TEN_PROFILE -> mtNextTenIDs
+            SORRISO_SUPPLEMENT_PROFILE -> sorrisoSupplementIDs
+            CUIABA_SUPPLEMENT_PROFILE -> cuiabaSupplementIDs
+            else -> null
         }
         val stored = dao.findMeta(key(profile))?.generation ?: 0L
         if (baseGeneration != null && baseGeneration != stored) {
@@ -103,14 +203,22 @@ class ChargingDiscoveryRepository @Inject constructor(
         val requestedRevision = coverage?.sourceRevision ?: revision
         val current = stored
         val meta = ChargingPackMeta(
-            profile = profile, sourceRevision = requestedRevision ?: currentRevision(profile, current),
+            profile = profile, sourceRevision = requestedRevision ?: if (pilot) {
+                PILOT_BOOTSTRAP_REVISION
+            } else currentRevision(profile, current),
             origin = origin, license = if (coverage == null) licenseNote else NATIONAL_LICENSE, schemaVersion = 1,
             baseGeneration = current, generatedAt = Instant.ofEpochMilli(nowMillis).toString(),
         )
         val session = ChargingSnapshotImport.beginLivePack(meta, origin, current)
         var cursor: String? = null
         do {
-            val page = client.places(profile, requestedRevision, PAGE_SIZE, cursor)
+            val page = try {
+                client.places(profile, requestedRevision, PAGE_SIZE, cursor)
+            } catch (unavailable: ChargingSnapshotUnavailable) {
+                if (!pilot || requestedRevision != null || cursor != null ||
+                    unavailable.httpStatus != 400) throw unavailable
+                bootstrapPilot(profile, reviewedIDs ?: PILOT_BOOTSTRAP_IDS)
+            }
             // Live packs carry no pre-published manifest: the hash is an
             // audit trail over the decoded page, while TLS plus strict
             // decode remain the integrity boundary.
@@ -119,6 +227,9 @@ class ChargingDiscoveryRepository @Inject constructor(
             cursor = page.nextCursor
         } while (cursor != null)
         val committed = ChargingSnapshotImport.commitPack(session, emptyList(), coverage)
+        if (reviewedIDs != null) {
+            check(committed.places.map { it.placeId }.toSet() == reviewedIDs.toSet()) { "Mato Grosso pilot census refused" }
+        }
         if (coverage != null) {
             check(committed.meta.placeCount == coverage.places && committed.meta.groupCount == coverage.groups) {
                 "national snapshot counts differ from coverage"
@@ -133,6 +244,23 @@ class ChargingDiscoveryRepository @Inject constructor(
             committed.places.map { ChargingSnapshotMapper.toEntity(it, nowMillis) },
         )
         return committed.meta
+    }
+
+    /** Compatibility with the staging API until it serves the pilot page. */
+    private suspend fun bootstrapPilot(profile: String, ids: List<String>): ChargingPlacePage {
+        val coverage = client.coverage(profile)
+        check(coverage.profile == profile && coverage.sourceRevision == PILOT_BOOTSTRAP_REVISION &&
+            coverage.places == ids.size.toLong() && coverage.groups == 0L) {
+            "staging pilot bootstrap edition refused"
+        }
+        val places = coroutineScope {
+            ids.chunked(6).flatMap { batch ->
+                batch.map { id ->
+                    async { client.placeDetail(id).also { check(it.id == id) { "staging pilot place identity changed" } } }
+                }.awaitAll()
+            }
+        }
+        return ChargingPlacePage(places, null, coverage.generatedAt)
     }
 
     suspend fun list(

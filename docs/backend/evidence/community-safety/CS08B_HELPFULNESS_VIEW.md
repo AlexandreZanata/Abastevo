@@ -39,3 +39,71 @@ Plan: [phased plan](../../../planning/COMMUNITY_SAFETY_EXECUTION_PLAN.md),
   pass later. Device matrix: CS14-owned.
 
 Next microtask: CS09 — consent/inventory/rights (server).
+
+## Contribution ownership and reporting
+
+B-BR-CS01-OWNER: The signed helpfulness tally may tell the caller that the
+observation is theirs. Compare the same stored attribution reference used by
+self-vote protection. Never include attribution identifiers or the ownership
+indicator in anonymous or other callers' responses.
+
+BUC-CS02-OWNER: In the community prices list, the author sees the passive
+ownership label in place of evaluation and confirmation. Another signed-in
+viewer keeps the evaluation actions and a full-width error-colored report
+button below the two vote buttons. Guest sign-in and report reasons are
+preserved.
+
+### Verification — 2026-11-04
+
+The helpfulness GET returns `own_contribution: true` to the verified author
+and omits it for other viewers. The signed PostGIS HTTP test verifies the
+owner and another account before any vote, plus anonymous reads and refused
+self-votes. The public feed remains cacheable without identity data. Android
+also maps the existing self-vote refusal to the ownership label during a
+rolling backend update.
+
+The shared Android panel shows the localized passive label for the author.
+The report action uses the theme error color and spans both vote buttons.
+Two dark-theme emulator tests verified the author-only label, report bounds,
+report callback and removal action for a viewer with a vote.
+
+Debug and instrumentation APK builds, lint, 53 focused JVM tests, Go race
+and vet, PostGIS ownership/proof/concurrency tests, mobile static checks and
+OpenAPI lint passed. This commit carries the tested source from `dc332b80`
+for integration through protected PR #188.
+
+### Ownership during backend rollout
+
+B-BR-CS01-OWNER compatibility: a signed tally from an older backend may
+omit ownership. Before offering actions, resolve that case through the
+existing signed observation status endpoint. Only a matching observation
+returned by that owner-only endpoint proves ownership. An explicit
+not-found response leaves the normal actions available. Other failures
+leave the actions unresolved and allow a retry. New backends return a
+boolean for verified viewers and omit the field for anonymous reads.
+
+The debug APK was updated over ADB and verified on the connected device
+against the staging backend. The author's card changed from the voting
+panel to the ownership label without a vote. Android build, lint and 23
+focused JVM tests passed. Go race and vet checks and PostGIS tests covered
+signed owner and other-viewer reads, anonymous reads, invalid proofs and
+the private observation status endpoint.
+
+### Home community confirmation counts
+
+B-BR-CS01-HOME: Use the confirmation counts of the same live standard
+station prices in the city summary. The average uses the full population.
+The minimum and maximum use all stations tied at the respective price.
+Unknown counts from older servers or caches stay absent.
+
+BUC-CS02-HOME: Select Community on Home, then switch between average,
+minimum and maximum. The verification icon and count follow the price
+being displayed, including zero when the service reports it. ANP prices
+have no community confirmation badge.
+
+The existing city summary remains a single query. PostGIS tests cover the
+full population, excluded prices, tied extremes, expiry, concurrent
+projection updates and the query plan. Android build, lint and 45 focused
+JVM tests passed. The emulator verified that the Home badge shows 19 for
+the average, 0 for the minimum and 7 for the maximum in a synthetic city.
+The staging endpoint for Sorriso did not yet send confirmation counts.

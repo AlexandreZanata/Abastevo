@@ -18,10 +18,11 @@ import (
 // full filters and batch; no ingestion, provider fan-out or private
 // fields occur here.
 type Handler struct {
-	Read    read.Reader
-	Secrets []byte
-	Now     func() time.Time
-	Enabled func() bool
+	Read         read.Reader
+	Secrets      []byte
+	Now          func() time.Time
+	Enabled      func() bool
+	PilotEnabled bool
 }
 
 // RegisterRoutes mounts the charging read surface without disturbing
@@ -55,7 +56,8 @@ func (h Handler) places(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	profile := q.Get("profile")
-	if profile != "ocm-br-20261021-v1" && profile != "pbe-2026-pdf-v1" && profile != domain.NationalCatalogProfile {
+	if profile != "ocm-br-20261021-v1" && profile != "pbe-2026-pdf-v1" &&
+		profile != domain.NationalCatalogProfile && !(h.PilotEnabled && read.IsStagingPilotProfile(profile)) {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-filter", "unknown profile",
 			[]httpapi.Detail{{Field: "profile", Code: "vocabulary"}})
 		return
@@ -107,7 +109,7 @@ func (h Handler) placeOne(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 	place, err := h.Read.PlaceDetail(r.Context(), id)
-	if errors.Is(err, read.ErrNationalPlaceNotFound) {
+	if errors.Is(err, read.ErrNationalPlaceNotFound) || (err == nil && read.IsStagingPilotProfile(place.Profile) && !h.PilotEnabled) {
 		httpapi.WriteError(w, r, http.StatusNotFound, "charging.not-found", "charging place is not in the active catalog", nil)
 		return
 	}
@@ -191,6 +193,10 @@ func (h Handler) coverage(w http.ResponseWriter, r *http.Request) {
 	if profile == "" {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-filter", "profile required",
 			[]httpapi.Detail{{Field: "profile", Code: "required"}})
+		return
+	}
+	if read.IsStagingPilotProfile(profile) && !h.PilotEnabled {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-filter", "unknown profile", nil)
 		return
 	}
 	batchID, err := h.Read.LatestBatch(r.Context(), profile)

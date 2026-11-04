@@ -425,9 +425,10 @@ func run() error {
 	// ANPFUEL_CHARGING_READS_ENABLED=false, which answers 404 without
 	// touching storage.
 	charginghttp.Handler{
-		Read:    chargingread.NewReader(pool.Underlying()),
-		Secrets: cfg.CursorSecret,
-		Enabled: func() bool { return cfg.ChargingReadsEnabled },
+		Read:         chargingread.NewReader(pool.Underlying()),
+		Secrets:      cfg.CursorSecret,
+		Enabled:      func() bool { return cfg.ChargingReadsEnabled },
+		PilotEnabled: cfg.Env == config.EnvStaging && cfg.CanonicalHost == "teste.abastevo.com.br",
 	}.RegisterRoutes(router)
 	// Community writes and owner reads (P04-T04). Same closure rule: every
 	// cross-module collaborator arrives as a narrow function built here.

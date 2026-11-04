@@ -383,7 +383,6 @@
     <string name="stations_brand_label">Бренд: %1$s</string>
     <string name="stations_collected_at_label">Собрано: %1$s</string>
     <string name="stations_navigate_action">Маршрут</string>
-    <string name="stations_navigate_no_app">Не найдено приложение карт для построения маршрута.</string>
     <string name="stations_nearest_action">Самая дешёвая рядом</string>
     <string name="stations_nearest_needs_location">Включите геолокацию, чтобы найти ближайшую АЗС.</string>
     <string name="stations_nearest_no_fix">Сигнал GPS сейчас недоступен. Включите определение местоположения и повторите попытку.</string>
@@ -999,6 +998,8 @@
     <string name="community_helpful_removed">Голос удалён.</string>
     <string name="community_helpful_rejected">Не сохранено (%1$s)</string>
     <string name="community_helpful_under_review">Сообщество проверяет результаты голосования</string>
+    <string name="community_confirmation_count">Подтверждения: %1$s</string>
+    <string name="community_own_contribution">Ваш вклад</string>
     <string name="community_helpful_report">Пожаловаться</string>
     <string name="community_helpful_guest">Войдите в бесплатный аккаунт, чтобы голосовать</string>
     <string name="community_helpful_guest_body">Для голосования нужен бесплатный аккаунт. Повторные голоса вашей идентичности не учитываются снова. Просмотр остаётся анонимным.</string>
@@ -1156,11 +1157,16 @@
     <string name="map_sheet_show_community">Показать сообщество</string>
     <string name="map_sheet_price_load_failed">Не удалось загрузить цену.</string>
     <string name="map_sheet_no_price">Нет цены для этой станции.</string>
-    <string name="map_sheet_route">Маршрут</string>
     <string name="map_sheet_route_unavailable">Маршрут недоступен: нет проверенных координат.</string>
-    <string name="map_sheet_route_failed">Не удалось открыть внешнее приложение навигации.</string>
-    <string name="map_sheet_profile">Профиль</string>
-    <string name="map_sheet_report">Сообщить</string>
+    <string name="map_sheet_profile">Открыть профиль</string>
+    <string name="map_sheet_report">Сообщить цену</string>
+    <string name="map_sheet_charge_report">Добавить сведения</string>
+    <string name="map_sheet_price_source">Источник цены</string>
+    <string name="map_sheet_observed_on">Сообщено: %1$s</string>
+    <string name="map_sheet_condition_cash">Оплата наличными</string>
+    <string name="map_sheet_condition_loyalty">Программа лояльности</string>
+    <string name="map_sheet_condition_app">В приложении</string>
+    <string name="map_sheet_condition_other">Другое условие</string>
     <string name="map_cluster_title">Группа (%1$d станций)</string>
     <string name="map_cluster_expand">Раскрыть группу (%1$d)</string>
     <string name="map_list_toggle">Список (%1$d)</string>
@@ -1278,6 +1284,17 @@
     <string name="driver_hub_first_vehicle_title">Начните с автомобиля</string>
     <string name="driver_hub_first_vehicle_body">Добавьте автомобиль, чтобы открыть реальные записи и месячные показатели.</string>
     <string name="driver_hub_add_vehicle">Открыть автомобили</string>
+    <string name="driver_hub_current_vehicle">Текущий автомобиль</string>
+    <string name="driver_hub_register_group">Учёт расходов</string>
+    <string name="driver_hub_work_group">Работа и отчёты</string>
+    <string name="driver_hub_vehicle_group">Ваши автомобили</string>
+    <string name="driver_hub_open_work">Смена и доходы</string>
+    <string name="driver_hub_quick_refuel_body">Запишите объём топлива, сумму и пробег.</string>
+    <string name="driver_hub_quick_charge_body">Запишите объём энергии и стоимость зарядки.</string>
+    <string name="driver_hub_open_work_body">Управляйте сменой и записывайте доходы.</string>
+    <string name="driver_hub_open_entries_body">Просматривайте и исправляйте записи.</string>
+    <string name="driver_hub_open_export_body">Просматривайте месячный отчёт и экспортируйте данные.</string>
+    <string name="driver_hub_open_vehicles_body">Добавьте или измените автомобиль.</string>
     <string name="driver_hub_open_entries">Открыть записи</string>
     <string name="driver_hub_open_export">Показатели и экспорт</string>
     <string name="driver_hub_open_vehicles">Управление автомобилями</string>
@@ -1287,4 +1304,10 @@
     <string name="driver_hub_quick_charge">Быстрая зарядка</string>
     <string name="ledger_entry_charge_fees">Комиссии за зарядку (R$)</string>
     <string name="ledger_entry_validation_fees">Введите корректную сумму комиссий.</string>
+    <string name="station_correction_title">Предложить исправление</string>
+    <string name="station_correction_address">Улица и номер дома</string>
+    <string name="station_correction_closed">Сообщить об окончательном закрытии</string>
+    <string name="station_correction_review">Предложение проверят перед изменением карты.</string>
+    <string name="station_correction_sent">Предложение отправлено на проверку.</string>
+    <string name="station_correction_failed">Не удалось отправить предложение. Попробуйте ещё раз.</string>
 </resources>

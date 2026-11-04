@@ -44,6 +44,9 @@ class NativeRouteScreenInstrumentedTest {
         compose.waitUntil(60_000) {compose.onAllNodesWithTag("native-route-preview").fetchSemanticsNodes().isNotEmpty()}
         compose.onNodeWithTag("native-route-preview").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText(text(R.string.map22_show)).performScrollTo().performClick()
+        compose.onNodeWithTag("map-route-overlay").assertIsDisplayed()
+        compose.onNodeWithTag("map-route-estimate").assertIsDisplayed()
+        compose.onNodeWithTag("guidance-start").assertIsDisplayed()
         compose.waitForIdle()
         compose.waitUntil(30_000) {
             val camera=MapEngineHolder.engine.currentCamera()

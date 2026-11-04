@@ -147,7 +147,7 @@ func TestRemoveHelpfulnessHappyPath(t *testing.T) {
 	if !strings.Contains(w.Body.String(), `"helpful":0`) {
 		t.Errorf("body lacks zeroed tally: %s", w.Body.String())
 	}
-	if strings.Contains(w.Body.String(), "my_choice") {
+	if strings.Contains(w.Body.String(), "my_choice") || strings.Contains(w.Body.String(), "own_contribution") {
 		t.Errorf("removed vote must clear the overlay: %s", w.Body.String())
 	}
 }
@@ -185,6 +185,27 @@ func TestTallyHelpfulnessWithAuthOverlaysChoice(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), `"my_choice":"HELPFUL"`) {
 		t.Errorf("authenticated tally must overlay the owner choice: %s", w.Body.String())
+	}
+}
+
+func TestTallyHelpfulnessOwnContributionIsPrivate(t *testing.T) {
+	h := helpfulHandler()
+	h.HelpfulnessTally = func(_ context.Context, caller application.Caller, _ string, _ int64) (application.TallyResult, error) {
+		return application.TallyResult{
+			Tally: domain.Tally{DecisionSequence: 2}, OwnContribution: caller.Token == "tok-c9",
+		}, nil
+	}
+	w := serveVotes(h, http.MethodGet, helpfulTarget+"?decision_sequence=2", "")
+	if w.Code != http.StatusOK || w.Header().Get("Cache-Control") != "no-store" ||
+		!strings.Contains(w.Body.String(), `"own_contribution":true`) || strings.Contains(w.Body.String(), "tok-c9") {
+		t.Fatalf("unexpected owner tally: status %d, cache %q, body %s", w.Code, w.Header().Get("Cache-Control"), w.Body.String())
+	}
+	h.Authenticate = func(*http.Request) (application.Caller, error) {
+		return application.Caller{ContributorID: "other", Token: "tok-other"}, nil
+	}
+	w = serveVotes(h, http.MethodGet, helpfulTarget+"?decision_sequence=2", "")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"own_contribution":false`) {
+		t.Fatalf("unexpected other-account tally: status %d, body %s", w.Code, w.Body.String())
 	}
 }
 
