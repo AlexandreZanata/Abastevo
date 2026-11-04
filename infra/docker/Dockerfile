@@ -22,11 +22,14 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends musl-tools \
  && rm -rf /var/lib/apt/lists/* \
  && rustup target add x86_64-unknown-linux-musl
-WORKDIR /src
+ENV CARGO_TARGET_DIR=/src/target
+WORKDIR /src/tools/station-prep
 COPY tools/station-prep/Cargo.toml tools/station-prep/Cargo.lock ./
 COPY tools/station-prep/src ./src
+COPY contracts/ev /src/contracts/ev
+COPY contracts/station-prep /src/contracts/station-prep
 RUN cargo build --locked --release --target x86_64-unknown-linux-musl --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --bin prepare_enforcement --bin prepare_charging --bin prepare_vehicle \
- && chmod 755 target/x86_64-unknown-linux-musl/release/prepare_quality target/x86_64-unknown-linux-musl/release/prepare_sanctions target/x86_64-unknown-linux-musl/release/prepare_fine_history target/x86_64-unknown-linux-musl/release/prepare_enforcement target/x86_64-unknown-linux-musl/release/prepare_charging target/x86_64-unknown-linux-musl/release/prepare_vehicle
+ && chmod 755 /src/target/x86_64-unknown-linux-musl/release/prepare_quality /src/target/x86_64-unknown-linux-musl/release/prepare_sanctions /src/target/x86_64-unknown-linux-musl/release/prepare_fine_history /src/target/x86_64-unknown-linux-musl/release/prepare_enforcement /src/target/x86_64-unknown-linux-musl/release/prepare_charging /src/target/x86_64-unknown-linux-musl/release/prepare_vehicle
 
 FROM ${GOLANG_IMAGE} AS builder
 ENV CGO_ENABLED=0 GOOS=linux GOTOOLCHAIN=local

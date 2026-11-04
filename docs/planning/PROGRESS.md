@@ -1,5 +1,12 @@
 # Current execution state
 
+- PR #185 INTEGRATED as `00a6f648`; all main checks passed. The
+  automatic release stopped before signing at the worker Docker build.
+  EVC-10C LOCAL_DONE / INTEGRATION_PENDING: six embedded policy inputs
+  restored in the worker build context; full local worker image and
+  static security checks pass. [Recovery evidence](../backend/evidence/evc/EVC-10.md).
+  SNA-07 and EVC-10 staging acceptance remain pending.
+
 - Station/EV ingestor 2026-11-03: IN_PROGRESS, isolated
   `codex/station-ev-ingestor` from main d0eb9c79; first plan commit 415c5af0.
   SNA-01..03 LOCAL_DONE / INTEGRATION_PENDING: source names/full CSV/API addresses,

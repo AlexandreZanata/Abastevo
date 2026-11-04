@@ -48,3 +48,28 @@ executable, which refused a production target when invoked. All 11
 security harness checks passed. The release workflow builds and signs
 the worker target. Full image build and digest verification are pending
 the GitHub release and staging acceptance.
+
+## Worker release recovery
+
+B-BR-EVC-10C. The worker image build uses the same pinned station and EV
+contracts as the source build. The Docker context admits only the JSON
+files embedded by the Rust preparer.
+
+BUC-EVC-10C. Reproduce the worker build using the Docker build context,
+compile its Rust binaries with the embedded contracts, and verify the
+national catalog command and existing worker entrypoint are packaged.
+
+Status: LOCAL_DONE / INTEGRATION_PENDING.
+
+The protected PR #185 merged as
+`00a6f64830adcf5f192812972d164cf8e9b9dc78`. All three main
+workflows passed. The automatic [staging release run](https://github.com/AlexandreZanata/Abastevo/actions/runs/41735414162)
+failed before signing because the worker Docker context omitted the
+six Rust policy inputs and flattened the crate path.
+
+The local Docker worker build passed with all six Rust binaries, the
+existing non-root worker entrypoint and the catalog command. The
+container refused a production control request with networking disabled.
+An independent offline release build in the corrected source layout and
+the static security, whitespace and secret checks also passed. Staging
+deployment and acceptance remain pending.

@@ -1,6 +1,6 @@
 # Image builds run from the repository root (see infra/docker/Dockerfile).
 # Default-ignore everything; re-include only the Go build inputs plus the
-# pinned Rust quality preparer source so Android sources, docs, samples, raw
+# pinned Rust preparer source and embedded contracts. Android sources, docs, samples, raw
 # fixtures and local env files never enter the build context.
 *
 !backend/
@@ -17,3 +17,15 @@ tools/station-prep/*
 !tools/station-prep/Cargo.toml
 !tools/station-prep/Cargo.lock
 !tools/station-prep/src/
+!contracts/
+contracts/*
+!contracts/ev/
+contracts/ev/*
+!contracts/ev/conflation-profile-v1.json
+!contracts/ev/national-source-pins-20261103-v1.json
+!contracts/ev/normalization-profile-v2.json
+!contracts/ev/osm-national-limits-v1.json
+!contracts/ev/socket-families-v1.json
+!contracts/station-prep/
+contracts/station-prep/*
+!contracts/station-prep/address-source-policy-v1.json
