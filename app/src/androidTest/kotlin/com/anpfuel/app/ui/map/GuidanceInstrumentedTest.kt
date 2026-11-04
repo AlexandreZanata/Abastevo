@@ -82,8 +82,8 @@ class GuidanceInstrumentedTest {
         assertEquals(java.util.Locale.SIMPLIFIED_CHINESE, voice.ttsLocaleFor("zh-CN"))
         assertNull(voice.ttsLocaleFor("xx"))
         // No engine must be started by this policy check; start with unknown language refuses fast.
-        assertFalse(voice.start("xx"))
-        voice.stop()
+        main { voice.start("xx") { available -> assertFalse(available) } }
+        main { voice.stop() }
     }
 
     @Test fun localVoiceSpeaksOfflineWhenInstalledEngineAvailable() {
@@ -92,17 +92,25 @@ class GuidanceInstrumentedTest {
         try {
             // Google TTS on the owned phone provides offline English; if no local
             // voice is installed this stays a textual-only PASS and does not claim speech.
-            val started = voice.start("en")
-            if (!started) {
+            val result = AtomicReference<Boolean>()
+            val completed = CountDownLatch(1)
+            main {
+                voice.start("en") { available ->
+                    result.set(available)
+                    completed.countDown()
+                }
+            }
+            assertTrue("voice initialization must report availability", completed.await(10, TimeUnit.SECONDS))
+            if (result.get() != true) {
                 assertFalse(voice.available)
                 return
             }
             assertTrue(voice.available)
-            assertTrue("offline speech must enqueue", voice.speak("Turn right"))
+            main { assertTrue("offline speech must enqueue", voice.speak("Turn right")) }
             Thread.sleep(1500)
-            voice.pause()
+            main { voice.pause() }
         } finally {
-            voice.stop()
+            main { voice.stop() }
         }
     }
 }

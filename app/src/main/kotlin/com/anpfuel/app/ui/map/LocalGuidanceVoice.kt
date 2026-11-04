@@ -6,14 +6,11 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
-import android.speech.tts.Voice
 import java.util.Locale
 import java.util.UUID
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Local Android TTS only, owned explicitly during foreground guidance.
@@ -22,9 +19,17 @@ import java.util.concurrent.atomic.AtomicReference
  * Uses navigation audio focus, stops on focus loss/calls and fences stale
  * engine callbacks by generation.
  */
-class LocalGuidanceVoice(private val appContext: Context) {
+class LocalGuidanceVoice internal constructor(
+    private val appContext: Context,
+    private val mainHandler: Handler,
+    private val createSpeech: (TextToSpeech.OnInitListener, String?) -> TextToSpeech,
+) {
+    constructor(appContext: Context) : this(appContext, Handler(Looper.getMainLooper()), { listener, engine ->
+        if (engine == null) TextToSpeech(appContext, listener) else TextToSpeech(appContext, listener, engine)
+    })
+
     private var tts: TextToSpeech? = null
-    private var enginePackage: String? = null
+    private var initTimeout: Runnable? = null
     private var generation = 0L
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
@@ -60,79 +65,67 @@ class LocalGuidanceVoice(private val appContext: Context) {
         }
     }
 
-    fun start(language: String, preferredEngine: String? = null): Boolean {
+    fun start(language: String, preferredEngine: String? = null, onAvailability: (Boolean) -> Unit) {
         stop()
-        val token = ++generation
-        val target = ttsLocaleFor(language) ?: return false
-        val latch = CountDownLatch(1)
-        val statusRef = AtomicReference<Int>(TextToSpeech.ERROR)
-        return try {
-            val instance = if (!preferredEngine.isNullOrEmpty()) {
-                enginePackage = preferredEngine
-                TextToSpeech(appContext, { status ->
-                    statusRef.set(status)
-                    latch.countDown()
-                }, preferredEngine)
-            } else {
-                enginePackage = null
-                TextToSpeech(appContext, { status ->
-                    statusRef.set(status)
-                    latch.countDown()
-                })
-            }
-            // Bound init wait; a hung engine must not block guidance start.
-            latch.await(8, TimeUnit.SECONDS)
-            if (token != generation) {
-                runCatching { instance.shutdown() }
-                return false
-            }
-            if (statusRef.get() != TextToSpeech.SUCCESS) {
-                runCatching { instance.shutdown() }
-                return false
-            }
-            tts = instance
-            instance.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                override fun onStart(utteranceId: String?) = Unit
-                override fun onDone(utteranceId: String?) = Unit
-                @Deprecated("Deprecated in Java")
-                override fun onError(utteranceId: String?) = Unit
-                override fun onError(utteranceId: String?, errorCode: Int) = Unit
-            })
-            // Accept only an installed local voice that needs no network.
-            val setStatus = instance.setLanguage(target)
-            if (setStatus == TextToSpeech.LANG_MISSING_DATA || setStatus == TextToSpeech.LANG_NOT_SUPPORTED) {
-                runCatching { instance.shutdown() }
-                tts = null
-                return false
-            }
-            if (!hasLocalVoice(instance, target)) {
-                runCatching { instance.shutdown() }
-                tts = null
-                return false
-            }
-            instance.setSpeechRate(1.0f)
-            audioManager = appContext.getSystemService(AudioManager::class.java)
-            available = true
-            true
-        } catch (_: Exception) {
-            runCatching { tts?.shutdown() }
-            tts = null
-            available = false
-            false
+        val target = ttsLocaleFor(language)
+        if (target == null) {
+            onAvailability(false)
+            return
         }
+        val token = generation
+        val listener = TextToSpeech.OnInitListener { status ->
+            // Android can call this listener before the constructor returns.
+            // Queue completion so the instance exists and state stays on Main.
+            mainHandler.post {
+                if (token != generation || initTimeout == null) return@post
+                val instance = tts ?: return@post
+                cancelInitTimeout()
+                if (status == TextToSpeech.SUCCESS && configureLocalVoice(instance, target)) {
+                    available = true
+                    onAvailability(true)
+                } else {
+                    stop()
+                    onAvailability(false)
+                }
+            }
+        }
+        tts = try {
+            createSpeech(listener, preferredEngine?.takeIf { it.isNotEmpty() })
+        } catch (_: Exception) {
+            onAvailability(false)
+            return
+        }
+        val timeout = Runnable {
+            if (token == generation) {
+                stop()
+                onAvailability(false)
+            }
+        }
+        initTimeout = timeout
+        mainHandler.postDelayed(timeout, VOICE_INIT_TIMEOUT_MILLIS)
     }
 
-    private fun hasLocalVoice(instance: TextToSpeech, target: Locale): Boolean {
-        return try {
-            val voices: Set<Voice> = instance.voices ?: return true
-            voices.any { voice ->
-                !voice.isNetworkConnectionRequired &&
-                    voice.locale.language == target.language &&
-                    (voice.locale.country.isEmpty() || target.country.isEmpty() || voice.locale.country == target.country)
-            }
-        } catch (_: Exception) {
-            false
+    private fun configureLocalVoice(instance: TextToSpeech, target: Locale): Boolean = try {
+        val candidates = instance.voices.orEmpty().filter { voice ->
+            !voice.isNetworkConnectionRequired &&
+                TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in voice.features.orEmpty() &&
+                voice.locale.language == target.language &&
+                (voice.locale.country.isEmpty() || target.country.isEmpty() || voice.locale.country == target.country)
         }
+        val selected = candidates.firstOrNull { it.locale == target } ?: candidates.firstOrNull()
+        if (selected == null || instance.setVoice(selected) != TextToSpeech.SUCCESS) {
+            false
+        } else {
+            instance.setSpeechRate(1.0f)
+            true
+        }
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun cancelInitTimeout() {
+        initTimeout?.let(mainHandler::removeCallbacks)
+        initTimeout = null
     }
 
     fun speak(text: String): Boolean {
@@ -156,6 +149,7 @@ class LocalGuidanceVoice(private val appContext: Context) {
 
     fun stop() {
         generation++
+        cancelInitTimeout()
         runCatching { tts?.stop() }
         runCatching { tts?.shutdown() }
         tts = null
@@ -209,5 +203,9 @@ class LocalGuidanceVoice(private val appContext: Context) {
         } catch (_: Exception) {
             // Never fail stop for audio cleanup.
         }
+    }
+
+    private companion object {
+        const val VOICE_INIT_TIMEOUT_MILLIS = 8_000L
     }
 }

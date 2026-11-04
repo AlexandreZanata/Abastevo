@@ -1,5 +1,12 @@
 # Current execution state
 
+- MAP-23 responsive guidance startup, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `0e2134ed`. [ANR and navigation evidence](../backend/evidence/maps/MAP-23.md#voice-startup-verification--2026-11-04)
+  records the blocked speech initialization, corrected physical start/stop,
+  and maneuver progress with emulator GPS. Debug and instrumentation APK
+  builds, lint, seven JVM tests and two Android tests passed. Protected PR
+  #188 carries the tested source in this commit.
+
 - MAP-19 station sheet presentation, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `2fd71bc0`. [Station sheet evidence](../backend/evidence/maps/MAP-19.md#station-sheet-verification--2026-11-04)
   records the live station card in light and dark themes, 200% font scale,

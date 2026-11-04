@@ -137,3 +137,37 @@ proof.
 Still OWED: real long wrong-turn field timing beyond the synthetic replay,
 physical 16 KB runtime (the phone has 4 KB pages), two-account/device manual
 traversal and rendered TalkBack beyond the Compose semantics tests.
+
+## Voice startup and interface responsiveness
+
+B-BR-MAP23-VOICE-START-01: Starting guidance schedules local voice initialization
+without waiting on the Android UI thread. Native guidance and GPS progress can
+start while voice is pending. Missing or timed-out local voice uses textual
+instructions. Stop or replacement discards late callbacks and releases the
+voice engine. Speech uses an installed voice that can run offline.
+
+BUC-MAP23-VOICE-START: Tap Start guidance with a rendered route, keep the map
+responsive while the speech engine initializes, see progress, and stop even if
+the voice engine is still pending. Test delayed, failed and obsolete callbacks.
+
+### Voice startup verification — 2026-11-04
+
+Two Android input-dispatch ANRs on the physical test device showed the main
+thread blocked in `LocalGuidanceVoice.start` waiting for its TTS callback. The
+wait could last eight seconds, while Android recorded input timeout at five
+seconds. The new adapter completes through `TextToSpeech.OnInitListener`,
+with a queued timeout and a generation fence. It declares the system speech
+service intent for engine discovery and selects an installed offline voice
+explicitly. [Android TTS reference](https://developer.android.com/reference/android/speech/tts/TextToSpeech)
+
+With the corrected debug APK, the Abrantes route in Sorriso entered guidance
+and stopped on the physical device without a new ANR or process restart. The
+phone did not supply its first eligible guidance fix during this check. The
+same station route in the Android 15 emulator accepted synthetic GPS fixes,
+updated the upcoming maneuver distance and stopped normally. The emulator
+showed the text fallback because a local voice was unavailable. No physical
+coordinates were captured in the evidence.
+
+Debug and instrumentation APK builds, debug lint, seven focused JVM tests
+and two Android voice tests passed. The tested source is this commit on
+maintained `dev` from `0e2134ed`, included in protected PR #188.

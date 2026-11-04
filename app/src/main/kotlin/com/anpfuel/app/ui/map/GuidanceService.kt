@@ -179,8 +179,9 @@ class GuidanceService : Service() {
             override fun startLocation() = startLocationUpdates()
             override fun stopLocation() = stopLocationUpdates()
             override fun startVoice() {
-                val started = voice.start(request.language, preferredEngine = null)
-                GuidanceServiceState.update { it.copy(voiceUnavailable = !started) }
+                voice.start(request.language) { available ->
+                    GuidanceServiceState.update { it.copy(voiceUnavailable = !available) }
+                }
             }
             override fun pauseVoice() = voice.pause()
             override fun stopVoice() = voice.stop()
