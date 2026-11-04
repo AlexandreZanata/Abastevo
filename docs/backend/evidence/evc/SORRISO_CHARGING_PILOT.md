@@ -1,5 +1,8 @@
 # Sorriso charging pilot
 
+The [Sorriso supplement](SORRISO_CHARGING_SUPPLEMENT.md) documents four
+additional facilities alongside these two original records.
+
 B-BR-EVC-SORRISO-01. Publish a reviewed Sorriso charging batch in staging
 through a dedicated profile. Keep national and OCM source identities
 separate. A pin requires public evidence of charging at the facility and

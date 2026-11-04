@@ -159,8 +159,13 @@ fun MapBottomSheet(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                stringResource(R.string.map_sheet_source_label, sourceName),
+                if (marker.charging && !marker.fuel) {
+                    stringResource(R.string.charging_open_sources)
+                } else {
+                    stringResource(R.string.map_sheet_source_label, sourceName)
+                },
                 style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag("map-sheet-source-label"),
             )
             when {
                 ui.loading -> Text(stringResource(R.string.map_sheet_loading_price))

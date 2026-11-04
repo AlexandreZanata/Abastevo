@@ -1,0 +1,79 @@
+{
+  "profile": "charging-mt-sorriso-supplement-v1",
+  "revision": "2026-11-04",
+  "ibge_boundaries_sha256": "5491bd548fe381cd388ba81c9edfbf4cf2749891e2fd32c1079ac71f7aba1c10",
+  "license": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "attribution": [
+    "© OpenStreetMap contributors — https://www.openstreetmap.org/copyright",
+    "Independently reviewed public facility facts and charging reports are cited per place."
+  ],
+  "municipalities": [
+    {
+      "code": "5107925",
+      "name": "Sorriso"
+    }
+  ],
+  "places": [
+    {
+      "municipality_code": "5107925",
+      "id": "123e0499-9583-50fa-a659-00c611352cd9",
+      "external_id": "machado-parque-universitario",
+      "name": "Machado Supermercados – Parque Universitário",
+      "address": "Av. Noêmia Tonello Dalmolin, 2501",
+      "latitude": "-12.5335396",
+      "longitude": "-55.7471459",
+      "access": "PUBLIC",
+      "sources": [
+        "https://www.openstreetmap.org/node/13190847895",
+        "https://www.abras.com.br/clipping/redes-de-supermercados/118041/machado-supermercados-inaugura-primeira-loja-em-sorriso-mt",
+        "https://www.procon.mt.gov.br/documents/d/procon/tabela-produtos-analisados-pascoa-final",
+        "https://carregados.com.br/estacoes/estacao-mercado-machado-663702"
+      ]
+    },
+    {
+      "municipality_code": "5107925",
+      "id": "4cc20d19-244f-55ce-b59f-a8ebcd0aedf8",
+      "external_id": "delmoro-centro-sul",
+      "name": "DelMoro Supermercados – Centro Sul",
+      "address": "Av. Belo Horizonte, 94",
+      "latitude": "-12.5441461",
+      "longitude": "-55.7108628",
+      "access": "UNKNOWN",
+      "sources": [
+        "https://www.openstreetmap.org/way/766396829",
+        "https://delmoro.com.br/cidades/sorriso/",
+        "https://carregados.com.br/estacoes/estacao-delmoro-supermercados-3173"
+      ]
+    },
+    {
+      "municipality_code": "5107925",
+      "id": "52e84f82-752f-5957-9535-24bd824d181b",
+      "external_id": "hotel-uipi",
+      "name": "Hotel Uipi",
+      "address": "Rua Idemar Riedi, 13348, Verdes Campos",
+      "latitude": "-12.5308912",
+      "longitude": "-55.7038951",
+      "access": "UNKNOWN",
+      "sources": [
+        "https://www.openstreetmap.org/way/786899226",
+        "https://turismo.sorriso.mt.gov.br/atrativos-turisticos/hospedagem/hotel-uipi",
+        "https://carregados.com.br/estacoes/estacao-hotel-uipe-941094"
+      ]
+    },
+    {
+      "municipality_code": "5107925",
+      "id": "4d73988d-8ab3-53cf-be10-74771cb6276a",
+      "external_id": "turia-santa-maria",
+      "name": "Turia – Av. Santa Maria",
+      "address": "Av. Santa Maria, 950, Centro Norte",
+      "latitude": "-12.53699",
+      "longitude": "-55.73571",
+      "access": "PUBLIC",
+      "sources": [
+        "https://carregados.com.br/estacoes/estacao-solturi-solar-1139797",
+        "https://recarregados.com/eletropostos/mt/sorriso/turia-epzbymrhr99h",
+        "https://www.ondecarregar.com.br/eletropostos/mt/sorriso/estacao-de-recarga-da-tupi-sorriso"
+      ]
+    }
+  ]
+}

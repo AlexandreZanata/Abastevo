@@ -1,5 +1,14 @@
 # Current execution state
 
+- Sorriso charging supplement 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `a89e4e94`. The [review and replay evidence](../backend/evidence/evc/SORRISO_CHARGING_SUPPLEMENT.md)
+  records four additional charging facilities, for six in Sorriso and 30
+  across the ten staging municipalities. Public staging details match the
+  reviewed locations. Real PostGIS replay and rejection tests, Go race/vet,
+  45 focused Android tests, debug build and lint passed. All four new cards
+  opened on a physical Android device. Tested revision is the source in
+  this commit. The API list change is included in protected PR #188.
+
 - Mato Grosso charging expansion 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `b99329be`. [Regional census and evidence](../backend/evidence/evc/MT_TOP10_CHARGING_PILOT.md)
   record 26 facilities in the ten largest municipalities by the 2026 IBGE

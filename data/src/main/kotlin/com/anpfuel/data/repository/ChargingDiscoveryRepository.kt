@@ -3,6 +3,7 @@ package com.anpfuel.data.repository
 import com.anpfuel.data.local.charging.NATIONAL_CHARGING_PROFILE
 import com.anpfuel.data.local.charging.MATO_GROSSO_PILOT_PROFILE
 import com.anpfuel.data.local.charging.SORRISO_PILOT_PROFILE
+import com.anpfuel.data.local.charging.SORRISO_SUPPLEMENT_PROFILE
 import com.anpfuel.data.local.charging.ChargingSnapshotImport
 import com.anpfuel.data.local.charging.ChargingSnapshotMapper
 import com.anpfuel.data.local.charging.StoredPackMeta
@@ -93,6 +94,7 @@ class ChargingDiscoveryRepository @Inject constructor(
         private const val NATIONAL_LICENSE = "ODbL-1.0 and source-specific OCM provider terms"
         private const val PILOT_SOURCE = "Abastevo staging pilot; independently reviewed public site facts"
         private const val MT_PILOT_SOURCE = "ODbL-1.0; OpenStreetMap and Open Charge Map source attribution in pilot manifest"
+        private const val SORRISO_SUPPLEMENT_SOURCE = "ODbL-1.0; OpenStreetMap and public charging evidence in the Sorriso manifest"
         private const val PILOT_BOOTSTRAP_REVISION = "2026-11-04"
         private val PILOT_BOOTSTRAP_IDS = listOf(
             "67c3d1f0-5898-54f0-bca3-689e9b48b099",
@@ -101,14 +103,19 @@ class ChargingDiscoveryRepository @Inject constructor(
         const val PAGE_SIZE = 100
     }
 
-    private val mtPilotIDs by lazy {
-        val resource = checkNotNull(javaClass.getResourceAsStream("/charging/mt-top10-pilot-v1.json"))
+    private val mtPilotIDs by lazy { pilotManifestIDs(MATO_GROSSO_PILOT_PROFILE, "mt-top10-pilot-v1.json") }
+    private val sorrisoSupplementIDs by lazy {
+        pilotManifestIDs(SORRISO_SUPPLEMENT_PROFILE, "sorriso-supplement-v1.json")
+    }
+
+    private fun pilotManifestIDs(profile: String, filename: String): List<String> {
+        val resource = checkNotNull(javaClass.getResourceAsStream("/charging/$filename"))
         val manifest = JSONObject(resource.bufferedReader().use { it.readText() })
-        check(manifest.getString("profile") == MATO_GROSSO_PILOT_PROFILE &&
+        check(manifest.getString("profile") == profile &&
             manifest.getString("revision") == PILOT_BOOTSTRAP_REVISION)
         val rows = manifest.getJSONArray("places")
         check(rows.length() in 1..PAGE_SIZE)
-        (0 until rows.length()).map { rows.getJSONObject(it).getString("id") }.also { ids ->
+        return (0 until rows.length()).map { rows.getJSONObject(it).getString("id") }.also { ids ->
             check(ids.distinct().size == ids.size && ids.none { it in PILOT_BOOTSTRAP_IDS })
         }
     }
@@ -118,6 +125,9 @@ class ChargingDiscoveryRepository @Inject constructor(
 
     suspend fun matoGrossoPilotForMap(): StoredPackMeta? =
         pilotForMap(MATO_GROSSO_PILOT_PROFILE, MT_PILOT_SOURCE)
+
+    suspend fun sorrisoSupplementForMap(): StoredPackMeta? =
+        pilotForMap(SORRISO_SUPPLEMENT_PROFILE, SORRISO_SUPPLEMENT_SOURCE)
 
     private suspend fun pilotForMap(profile: String, source: String): StoredPackMeta? {
         if (environment != ApiEnvironment.STAGING) return null
@@ -149,10 +159,16 @@ class ChargingDiscoveryRepository @Inject constructor(
         licenseNote: String = OCM_LICENSE,
         nowMillis: Long = Instant.now().toEpochMilli(),
     ): StoredPackMeta {
-        val pilot = profile == SORRISO_PILOT_PROFILE || profile == MATO_GROSSO_PILOT_PROFILE
+        val pilot = profile == SORRISO_PILOT_PROFILE || profile == MATO_GROSSO_PILOT_PROFILE ||
+            profile == SORRISO_SUPPLEMENT_PROFILE
         if (profile != OCM_PROFILE && profile != NATIONAL_CHARGING_PROFILE &&
             !(pilot && environment == ApiEnvironment.STAGING)) {
             throw ChargingDiscoveryUnavailable("pbe-rights-pending")
+        }
+        val reviewedIDs = when (profile) {
+            MATO_GROSSO_PILOT_PROFILE -> mtPilotIDs
+            SORRISO_SUPPLEMENT_PROFILE -> sorrisoSupplementIDs
+            else -> null
         }
         val stored = dao.findMeta(key(profile))?.generation ?: 0L
         if (baseGeneration != null && baseGeneration != stored) {
@@ -182,7 +198,7 @@ class ChargingDiscoveryRepository @Inject constructor(
             } catch (unavailable: ChargingSnapshotUnavailable) {
                 if (!pilot || requestedRevision != null || cursor != null ||
                     unavailable.httpStatus != 400) throw unavailable
-                bootstrapPilot(profile, if (profile == SORRISO_PILOT_PROFILE) PILOT_BOOTSTRAP_IDS else mtPilotIDs)
+                bootstrapPilot(profile, reviewedIDs ?: PILOT_BOOTSTRAP_IDS)
             }
             // Live packs carry no pre-published manifest: the hash is an
             // audit trail over the decoded page, while TLS plus strict
@@ -192,8 +208,8 @@ class ChargingDiscoveryRepository @Inject constructor(
             cursor = page.nextCursor
         } while (cursor != null)
         val committed = ChargingSnapshotImport.commitPack(session, emptyList(), coverage)
-        if (profile == MATO_GROSSO_PILOT_PROFILE) {
-            check(committed.places.map { it.placeId }.toSet() == mtPilotIDs.toSet()) { "Mato Grosso pilot census refused" }
+        if (reviewedIDs != null) {
+            check(committed.places.map { it.placeId }.toSet() == reviewedIDs.toSet()) { "Mato Grosso pilot census refused" }
         }
         if (coverage != null) {
             check(committed.meta.placeCount == coverage.places && committed.meta.groupCount == coverage.groups) {

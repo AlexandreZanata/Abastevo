@@ -4,14 +4,17 @@ SET LOCAL statement_timeout = '15s';
 DO $seed$
 DECLARE
     manifest CONSTANT jsonb := current_setting('abastevo.mt_ev_manifest')::jsonb;
-    profile CONSTANT text := 'charging-mt-top10-pilot-v1';
+    profile CONSTANT text := manifest->>'profile';
     edition CONSTANT text := manifest->>'revision';
-    batch CONSTANT uuid := '27c19cf6-cce4-5455-894d-be7be1f47469';
+    batch CONSTANT uuid := CASE profile
+        WHEN 'charging-mt-top10-pilot-v1' THEN '27c19cf6-cce4-5455-894d-be7be1f47469'
+        WHEN 'charging-mt-sorriso-supplement-v1' THEN '75b1de98-a227-54fc-b600-74856588ef17'
+    END;
     total CONSTANT integer := jsonb_array_length(manifest->'places');
     fingerprint CONSTANT text := encode(sha256(convert_to(manifest::text, 'UTF8')), 'hex');
 BEGIN
     IF coalesce(current_setting('abastevo.sorriso_pilot_target', true), '') NOT IN ('test', 'staging')
-        OR manifest->>'profile' IS DISTINCT FROM profile
+        OR batch IS NULL
         OR edition IS DISTINCT FROM '2026-11-04'
         OR total IS NULL OR total NOT BETWEEN 1 AND 100 THEN
         RAISE EXCEPTION 'Mato Grosso pilot requires its reviewed edition and a test or staging target';

@@ -25,6 +25,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.anpfuel.app.R
 import com.anpfuel.data.local.map.MapGenerationEntity
 import com.anpfuel.data.local.map.MapPackageEntity
 import com.anpfuel.data.map.MapPackageStore
@@ -122,6 +124,12 @@ class MapScreenInstrumentedTest {
             sheetVm.select(charger, vm.ui.value.source)
         }
         compose.waitForIdle()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        compose.onNodeWithTag("map-sheet-source-label")
+            .assert(hasText(context.getString(R.string.charging_open_sources)))
+        compose.onNodeWithText(
+            context.getString(R.string.map_sheet_source_label, context.getString(R.string.map_source_anp)),
+        ).assertDoesNotExist()
         // In ANP mode, charging shows anp-no-tariff message and "Show Community" button.
         compose.onNodeWithTag("map-sheet-switch-community").assertIsDisplayed()
         compose.onNodeWithTag("map-sheet-switch-community").performClick()
