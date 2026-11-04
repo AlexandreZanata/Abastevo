@@ -79,6 +79,7 @@ fun MapHost(
     extraControls: @Composable ColumnScope.() -> Unit = {},
     /** Height of app-owned controls drawn just above recenter; status pills clear them. */
     statusClearance: Dp = 0.dp,
+    showRecenterControls: Boolean = true,
 ) {
     val vm: MapViewModel = hiltViewModel()
     MapHostContent(
@@ -98,6 +99,7 @@ fun MapHost(
         recenterIcon = recenterIcon,
         extraControls = extraControls,
         statusClearance = statusClearance,
+        showRecenterControls = showRecenterControls,
     )
 }
 
@@ -128,6 +130,7 @@ fun MapHost(
     extraControls: @Composable ColumnScope.() -> Unit = {},
     /** Height of app-owned controls drawn just above recenter; status pills clear them. */
     statusClearance: Dp = 0.dp,
+    showRecenterControls: Boolean = true,
 ) {
     val context = LocalContext.current
     val store = cameraStore ?: remember(context) { SharedPreferencesMapCameraStore(context) }
@@ -159,6 +162,7 @@ fun MapHost(
         recenterIcon = recenterIcon,
         extraControls = extraControls,
         statusClearance = statusClearance,
+        showRecenterControls = showRecenterControls,
     )
 }
 
@@ -184,6 +188,7 @@ private fun MapHostContent(
     extraControls: @Composable ColumnScope.() -> Unit = {},
     /** Height of app-owned controls drawn just above recenter; status pills clear them. */
     statusClearance: Dp = 0.dp,
+    showRecenterControls: Boolean = true,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -281,7 +286,7 @@ private fun MapHostContent(
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        if (state.ready) {
+        if (state.ready && showRecenterControls) {
             Column(
                 modifier = Modifier.align(Alignment.BottomEnd).padding(
                     start = 16.dp,

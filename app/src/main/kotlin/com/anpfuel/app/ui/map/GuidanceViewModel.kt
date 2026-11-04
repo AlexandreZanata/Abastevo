@@ -44,15 +44,22 @@ class GuidanceViewModel @Inject constructor(
     }
 
     fun start(request: NativeRouteRequest): Boolean {
+        if (GuidanceServiceState.current().let { it.active || it.starting }) return false
         return try {
             request.validate()
+            GuidanceServiceState.update { GuidanceUiState(starting = true, destinationLabel = request.points.last().label) }
             val intent = GuidanceService.startIntent(appContext, currentOwner(), request)
             ContextCompat.startForegroundService(appContext, intent)
             refreshResume()
             true
         } catch (_: Exception) {
+            GuidanceServiceState.update { GuidanceUiState(error = "start-refused") }
             false
         }
+    }
+
+    fun clearInactiveStatus() {
+        GuidanceServiceState.update { if (it.active || it.starting) it else GuidanceUiState() }
     }
 
     fun resumeSaved(): Boolean {

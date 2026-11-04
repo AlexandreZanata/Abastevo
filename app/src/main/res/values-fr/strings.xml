@@ -383,7 +383,6 @@
     <string name="stations_brand_label">Enseigne : %1$s</string>
     <string name="stations_collected_at_label">Collecté : %1$s</string>
     <string name="stations_navigate_action">Y aller</string>
-    <string name="stations_navigate_no_app">Aucune application de cartes trouvée pour ouvrir l\'itinéraire.</string>
     <string name="stations_nearest_action">Le moins cher près de moi</string>
     <string name="stations_nearest_needs_location">Activez la localisation pour trouver la station la plus proche.</string>
     <string name="stations_nearest_no_fix">Pas de signal GPS pour le moment. Activez la localisation puis réessayez.</string>
@@ -1156,9 +1155,7 @@
     <string name="map_sheet_show_community">Voir Communauté</string>
     <string name="map_sheet_price_load_failed">Échec de la consultation du prix.</string>
     <string name="map_sheet_no_price">Aucun prix pour cette station.</string>
-    <string name="map_sheet_route">Itinéraire</string>
     <string name="map_sheet_route_unavailable">Itinéraire indisponible : station sans coordonnées vérifiées.</string>
-    <string name="map_sheet_route_failed">Impossible d\'ouvrir une application de navigation externe.</string>
     <string name="map_sheet_profile">Profil</string>
     <string name="map_sheet_report">Signaler</string>
     <string name="map_cluster_title">Regroupement (%1$d stations)</string>

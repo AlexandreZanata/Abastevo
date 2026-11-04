@@ -16,6 +16,7 @@ data class GuidanceFeed(
     val progress: com.anpfuel.domain.routing.NavigationProgress?,
     val notifications: List<String> = emptyList(),
     val rerouteRecoverable: Boolean = false,
+    val arrived: Boolean = false,
 )
 
 /** Narrow Abastevo-owned surface over the pinned native map core. */

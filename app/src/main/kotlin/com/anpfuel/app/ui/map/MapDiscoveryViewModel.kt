@@ -452,7 +452,12 @@ class MapDiscoveryViewModel @Inject constructor(
      * Short/cleared queries immediately invalidate in-flight searches so a
      * prior debounced query can never overwrite cleared state.
      */
-    fun onSearch(municipalityCode: String, query: String, limit: Int = 50) {
+    fun onSearch(
+        municipalityCode: String,
+        query: String,
+        limit: Int = 50,
+        onResults: ((List<MapOverlayMarker>) -> Unit)? = null,
+    ) {
         val q = query.trim()
         val matchedCity = DEFAULT_MAP_CITIES.firstOrNull {
             it.name.equals(q, ignoreCase = true) || it.ibgeCode == q
@@ -540,6 +545,7 @@ class MapDiscoveryViewModel @Inject constructor(
                     nullCoordsStations = nullCoords,
                     nullCoordsCharging = nullCharging,
                 )
+                onResults?.invoke(_ui.value.selectableByUuid.values.toList())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -553,6 +559,7 @@ class MapDiscoveryViewModel @Inject constructor(
                         cached.filter { it.latitude == null || it.longitude == null },
                     )
                     _ui.update { it.copy(loading = false, error = null, offlineCached = true) }
+                    onResults?.invoke(_ui.value.selectableByUuid.values.toList())
                 } else {
                     _ui.update { it.copy(loading = false, error = e.message ?: "search-failed") }
                 }

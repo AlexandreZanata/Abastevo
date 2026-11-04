@@ -26,11 +26,16 @@ import com.anpfuel.domain.routing.*
 fun NativeRouteSheet(viewModel:NativeRouteViewModel, onDismiss:()->Unit, onDownloads:()->Unit,
     onSavePlan: ((String, List<Pair<Double, Double>>, Set<String>) -> Unit)? = null, savedMessage: String? = null,
     evTrip: EvTripViewModel = hiltViewModel(),
+    initialDestinationQuery: String = "",
+    onDestinationPicked: ((RoutePoint) -> Unit)? = null,
     guidance: @Composable (NativeRoutePreview, NativeRouteRequest) -> Unit = { _,_ -> }) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
     val context=LocalContext.current
     var target by remember { mutableStateOf(RouteInputSlot.DESTINATION) }
-    var query by remember { mutableStateOf("") }
+    var query by remember(initialDestinationQuery) { mutableStateOf(initialDestinationQuery) }
+    LaunchedEffect(initialDestinationQuery) {
+        if (initialDestinationQuery.isNotBlank()) viewModel.search(context, initialDestinationQuery)
+    }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
     var cancelFix by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -89,7 +94,14 @@ fun NativeRouteSheet(viewModel:NativeRouteViewModel, onDismiss:()->Unit, onDownl
             OutlinedTextField(query,{query=it},label={Text(stringResource(R.string.map22_search_hint))},modifier=Modifier.fillMaxWidth())
             Button(onClick={viewModel.search(context,query)},enabled=!state.searching) {Text(stringResource(R.string.map_search))}
             if(state.searching) LinearProgressIndicator(Modifier.fillMaxWidth())
-            state.results.forEach { result -> TextButton(onClick={cancelPosition();viewModel.point(target,RoutePoint(result.latitude,result.longitude,result.name))}) {Text(result.name)} }
+            state.results.forEach { result ->
+                TextButton(onClick = {
+                    cancelPosition()
+                    val point = RoutePoint(result.latitude, result.longitude, result.name.take(512))
+                    if (target == RouteInputSlot.DESTINATION && onDestinationPicked != null) onDestinationPicked(point)
+                    else viewModel.point(target, point)
+                }) { Text(result.name) }
+            }
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(latitude,{latitude=it},label={Text(stringResource(R.string.map22_latitude))},modifier=Modifier.weight(1f))
                 OutlinedTextField(longitude,{longitude=it},label={Text(stringResource(R.string.map22_longitude))},modifier=Modifier.weight(1f))

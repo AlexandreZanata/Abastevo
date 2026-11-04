@@ -80,7 +80,7 @@ class GuidanceService : Service() {
             ACTION_START -> {
                 val owner = currentOwner()
                 val request = intent.toRouteRequest() ?: run {
-                    GuidanceServiceState.update { it.copy(active = false, error = "invalid") }
+                    GuidanceServiceState.update { it.copy(active = false, starting = false, error = "invalid") }
                     stopSelf()
                     return START_NOT_STICKY
                 }
@@ -107,33 +107,33 @@ class GuidanceService : Service() {
         runCatching { startForegroundWithAction(request) }
         // Fence 1: precise foreground location, enabled GPS, visible notifications.
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            GuidanceServiceState.update { it.copy(active = false, error = "no-permission") }
+            GuidanceServiceState.update { it.copy(active = false, starting = false, error = "no-permission") }
             runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             stopSelf()
             return
         }
         val manager = getSystemService(LocationManager::class.java) ?: run {
-            GuidanceServiceState.update { it.copy(active = false, error = "gps-off") }
+            GuidanceServiceState.update { it.copy(active = false, starting = false, error = "gps-off") }
             runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             stopSelf()
             return
         }
         if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            GuidanceServiceState.update { it.copy(active = false, error = "gps-off") }
+            GuidanceServiceState.update { it.copy(active = false, starting = false, error = "gps-off") }
             runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             stopSelf()
             return
         }
         if (Build.VERSION.SDK_INT >= 33) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                GuidanceServiceState.update { it.copy(active = false, error = "notification-blocked") }
+                GuidanceServiceState.update { it.copy(active = false, starting = false, error = "notification-blocked") }
                 runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
                 stopSelf()
                 return
             }
         }
         if (!isChannelVisible()) {
-            GuidanceServiceState.update { it.copy(active = false, error = "notification-blocked") }
+            GuidanceServiceState.update { it.copy(active = false, starting = false, error = "notification-blocked") }
             runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             stopSelf()
             return
@@ -187,7 +187,7 @@ class GuidanceService : Service() {
         }
         val next = GuidanceRun(owner, ::currentOwner, runtime)
         if (!next.start()) {
-            GuidanceServiceState.update { it.copy(active = false, error = "start-refused") }
+            GuidanceServiceState.update { it.copy(active = false, starting = false, error = "start-refused") }
             runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             stopSelf()
             return
@@ -216,13 +216,17 @@ class GuidanceService : Service() {
             next.stop()
             run = null
             leaseEpoch.incrementAndGet()
-            GuidanceServiceState.update { it.copy(active = false, error = "storage-failed") }
+            GuidanceServiceState.update { it.copy(active = false, starting = false, error = "storage-failed") }
             runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             stopSelf()
             return
         }
         GuidanceServiceState.update {
-            it.copy(active = true, owner = owner, error = null, rerouteFailed = false, resumeAvailable = false)
+            it.copy(
+                active = true, starting = false, arrived = false, owner = owner,
+                destinationLabel = request.points.last().label, error = null,
+                rerouteFailed = false, resumeAvailable = false,
+            )
         }
     }
 
@@ -323,6 +327,7 @@ class GuidanceService : Service() {
         GuidanceServiceState.update { it.copy(gpsPoor = false, gpsLost = false) }
         // Feed on Main: the pinned core requires it and recalculates internally.
         mainHandler.post {
+            if (run !== current) return@post
             val feed = try {
                 engine.feedGuidanceFix(fix, nowNanos)
             } catch (_: Exception) {
@@ -344,17 +349,23 @@ class GuidanceService : Service() {
                 val locale = GuidancePolicy.nativeLocaleFor(activeRequest?.language ?: "en")
                 if (locale != null) voice.speak(first)
             }
-            if (feed.rerouteRecoverable) {
+            if (feed.arrived) {
+                stopGuidance("arrived")
+                stopSelf()
+            } else if (feed.rerouteRecoverable) {
                 GuidanceServiceState.update { it.copy(recalculating = false) }
             }
         }
     }
 
     private fun stopGuidance(reason: String) {
+        val destination = activeRequest?.points?.lastOrNull()?.label.orEmpty()
         runCatching { voice.stop() }
         runCatching { stopLocationUpdates() }
-        runCatching { run?.stop() }
+        val current = run
         run = null
+        if (current != null) runCatching { current.stop() }
+        else if (engine.isGuiding()) runCatching { engine.stopGuidance() }
         activeRequest = null
         leaseEpoch.incrementAndGet()
         leasedGeneration?.let { leased ->
@@ -363,11 +374,12 @@ class GuidanceService : Service() {
         }
         // Explicit stop invalidates callbacks, audio, location, native and recovery.
         recovery.clear()
-        mainHandler.post {
-            runCatching { engine.stopGuidance() }
-        }
         GuidanceServiceState.update {
-            GuidanceUiState(active = false, resumeAvailable = false, error = if (reason == "explicit-stop" || reason == "owner-changed") null else reason)
+            GuidanceUiState(
+                arrived = reason == "arrived",
+                destinationLabel = destination.takeIf { reason == "arrived" }.orEmpty(),
+                error = reason.takeUnless { it in setOf("explicit-stop", "owner-changed", "arrived") },
+            )
         }
         runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
     }
@@ -384,6 +396,7 @@ class GuidanceService : Service() {
             runCatching { mapRepository.releaseGenerationLease(leased) }
         }
         ioScope.cancel()
+        GuidanceServiceState.update { if (it.active) GuidanceUiState() else it }
         super.onDestroy()
     }
 

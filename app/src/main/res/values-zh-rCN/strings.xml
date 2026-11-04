@@ -383,7 +383,6 @@
     <string name="stations_brand_label">品牌：%1$s</string>
     <string name="stations_collected_at_label">采集时间：%1$s</string>
     <string name="stations_navigate_action">导航</string>
-    <string name="stations_navigate_no_app">未找到可打开路线的地图应用。</string>
     <string name="stations_nearest_action">附近最便宜</string>
     <string name="stations_nearest_needs_location">开启定位以查找最近的加油站。</string>
     <string name="stations_nearest_no_fix">暂时没有GPS信号。请开启位置信息后重试。</string>
@@ -1156,9 +1155,7 @@
     <string name="map_sheet_show_community">查看社区</string>
     <string name="map_sheet_price_load_failed">查询价格失败。</string>
     <string name="map_sheet_no_price">该站点暂无价格。</string>
-    <string name="map_sheet_route">路线</string>
     <string name="map_sheet_route_unavailable">路线不可用：站点无已核实坐标。</string>
-    <string name="map_sheet_route_failed">无法打开外部地图导航应用。</string>
     <string name="map_sheet_profile">详情</string>
     <string name="map_sheet_report">上报</string>
     <string name="map_cluster_title">聚合点（%1$d 个站点）</string>

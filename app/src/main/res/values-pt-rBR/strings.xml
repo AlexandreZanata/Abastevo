@@ -507,7 +507,6 @@
     <string name="stations_brand_label">Bandeira: %1$s</string>
     <string name="stations_collected_at_label">Coleta: %1$s</string>
     <string name="stations_navigate_action">Ir</string>
-    <string name="stations_navigate_no_app">Não foi possível abrir o Google Maps. Instale o app ou use o navegador.</string>
     <string name="stations_nearest_action">Mais barato perto de mim</string>
     <string name="stations_nearest_needs_location">Ative a localização para encontrar o posto mais próximo.</string>
     <string name="stations_nearest_no_fix">Sem sinal de GPS agora. Ative a localização e tente novamente.</string>
@@ -1169,9 +1168,7 @@
     <string name="map_sheet_show_community">Ver Comunidade</string>
     <string name="map_sheet_price_load_failed">Falha ao consultar o preço.</string>
     <string name="map_sheet_no_price">Sem preço para esta estação.</string>
-    <string name="map_sheet_route">Rota</string>
     <string name="map_sheet_route_unavailable">Rota indisponível: estação sem coordenadas revisadas.</string>
-    <string name="map_sheet_route_failed">Não foi possível abrir um aplicativo externo de rotas.</string>
     <string name="map_sheet_profile">Perfil</string>
     <string name="map_sheet_report">Informar</string>
     <string name="map_cluster_title">Agrupamento (%1$d estações)</string>

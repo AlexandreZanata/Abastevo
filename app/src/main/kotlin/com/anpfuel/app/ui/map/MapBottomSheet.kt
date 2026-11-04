@@ -237,7 +237,7 @@ fun MapBottomSheet(
                     onClick = { onRoute(marker.uuid) },
                     enabled = marker.canRouteByCoordinates,
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-sheet-route"),
-                ) { Text(stringResource(R.string.map_sheet_route)) }
+                ) { Text(stringResource(R.string.map_route_go)) }
                 TextButton(
                     onClick = { onOpenProfile(marker.uuid) },
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-sheet-profile"),

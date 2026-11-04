@@ -1,5 +1,12 @@
 # Current execution state
 
+- MAP-22/MAP-23 direct navigation, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `3dd9c97e`. [Navigation and test evidence](../backend/evidence/maps/MAP-22_23_DIRECT_NAVIGATION.md)
+  records the physical map route preview from a synthetic origin, the search
+  and charging-card entries, and GPS guidance in the emulator. Debug build,
+  instrumentation APK build, lint and 102 focused tests passed. The tested
+  revision is the source in this commit. Protected PR #188 carries integration.
+
 - Mato Grosso charging ranks 11–20, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `6f82d3ae`. [Sources, counts and replay](../backend/evidence/evc/MT_NEXT10_CHARGING_PILOT.md)
   record 13 additional places in six municipalities. Staging details match

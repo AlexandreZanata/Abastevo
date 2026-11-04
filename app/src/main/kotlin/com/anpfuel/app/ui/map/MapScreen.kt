@@ -1,5 +1,14 @@
 package com.anpfuel.app.ui.map
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -28,14 +37,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -44,13 +56,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.app.locale.AppLocaleHolder
 import com.anpfuel.domain.map.saved.SavedTrip
+import com.anpfuel.domain.routing.NativeRouteRequest
 import com.anpfuel.domain.routing.RoadAvoidance
 import com.anpfuel.domain.routing.RoutePoint
 import com.anpfuel.maps.engine.MapHost
 import com.anpfuel.maps.engine.MapOverlayLabels
 import com.anpfuel.maps.engine.MapOverlayList
 import com.anpfuel.maps.engine.MapOverlayMarker
+import java.util.Locale
 
 @Composable
 private fun RealMapHost(
@@ -106,6 +121,8 @@ fun MapScreen(
     onBottomOverlayInsetChanged: (Dp) -> Unit = {},
     mapContent: (@Composable (Modifier) -> Unit)? = null,
     onAddChargingSite: (() -> Unit)? = null,
+    routeTarget: MapRouteTarget? = null,
+    onRouteTargetConsumed: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     var bottomOverlayInset by remember { mutableStateOf(164.dp) }
@@ -113,35 +130,165 @@ fun MapScreen(
     var controlsHeight by remember { mutableStateOf(0.dp) }
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val discUi = discovery?.ui?.collectAsStateWithLifecycle()?.value
-    var showRoute by remember { mutableStateOf(false) }
-    androidx.compose.runtime.LaunchedEffect(showRoute) {
-        if (showRoute) guidance.refreshResume()
-    }
-    androidx.compose.runtime.LaunchedEffect(initialPlan?.id, planner) {
-        val plan = initialPlan ?: return@LaunchedEffect
-        val activePlanner = planner ?: return@LaunchedEffect
-        activePlanner.restorePlan(
-            plan.points.map { point ->
-                RoutePoint(point.point.latitude, point.point.longitude, plan.name)
-            },
-            plan.avoid.mapNotNull { name -> RoadAvoidance.entries.firstOrNull { it.name == name } }.toSet(),
-        )
-        showRoute = true
-    }
-    val savedUi = saved?.ui?.collectAsStateWithLifecycle()?.value
-    if (showRoute && planner != null) NativeRouteSheet(
-        planner,
-        onDismiss = { showRoute = false },
-        onDownloads = { showRoute = false; onOpenDownloads() },
-        onSavePlan = saved?.let { vm -> { name, points, avoid -> vm.saveRoutePlan(name, points, avoid) } },
-        savedMessage = savedUi?.message,
-    ) { preview, request ->
-        GuidanceControls(preview = preview, request = request, viewModel = guidance)
-    }
+    val context = LocalContext.current
+    val routeLanguage = Locale.forLanguageTag(AppLocaleHolder.localeTag).language
+    val currentPositionLabel = stringResource(R.string.map22_current)
+    val guidanceUi by guidance.serviceState.collectAsStateWithLifecycle()
+    val routeUi = planner?.ui?.collectAsStateWithLifecycle()?.value ?: NativeRouteUi()
+    var showRoute by rememberSaveable { mutableStateOf(false) }
+    var routeOnMap by rememberSaveable { mutableStateOf(false) }
+    var requestOrigin by rememberSaveable { mutableStateOf(false) }
+    var destinationQuery by remember { mutableStateOf("") }
+    var searchText by rememberSaveable { mutableStateOf("") }
+    var pendingStart by remember { mutableStateOf<NativeRouteRequest?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     var showFilterLocation by remember { mutableStateOf(false) }
     var showList by remember { mutableStateOf(false) }
     var routeError by remember(discUi?.selectedUuid) { mutableStateOf(false) }
+
+    fun updateBottomInset(inset: Dp) {
+        if (bottomOverlayInset != inset) {
+            bottomOverlayInset = inset
+            onBottomOverlayInsetChanged(inset)
+        }
+    }
+
+    fun granted(permission: String) =
+        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+    fun buildFromCurrentLocation() {
+        planner?.buildFromCurrentLocation(routeLanguage) { findCurrentRoutePoint(context, currentPositionLabel) }
+    }
+
+    val originPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        if (routeOnMap && !showRoute) {
+            if (granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)) {
+                buildFromCurrentLocation()
+            } else {
+                planner?.fail("no-permission")
+            }
+        }
+    }
+
+    fun chooseCurrentOrigin() {
+        if (granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)) {
+            buildFromCurrentLocation()
+        } else {
+            originPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+        }
+    }
+
+    val guidancePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        val request = pendingStart
+        pendingStart = null
+        if (request != null && routeOnMap && request == planner?.request(routeLanguage)) {
+            when {
+                !granted(Manifest.permission.ACCESS_FINE_LOCATION) ->
+                    GuidanceServiceState.update { it.copy(error = "no-permission") }
+                Build.VERSION.SDK_INT >= 33 && !granted(Manifest.permission.POST_NOTIFICATIONS) ->
+                    GuidanceServiceState.update { it.copy(error = "notification-blocked") }
+                else -> {
+                    guidance.start(request)
+                }
+            }
+        }
+    }
+
+    fun startGuidance() {
+        val request = planner?.request(routeLanguage) ?: return
+        val permissions = buildList {
+            if (!granted(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                add(Manifest.permission.ACCESS_FINE_LOCATION)
+                add(Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+            if (Build.VERSION.SDK_INT >= 33 && !granted(Manifest.permission.POST_NOTIFICATIONS)) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        if (permissions.isEmpty()) guidance.start(request)
+        else {
+            pendingStart = request
+            guidancePermission.launch(permissions.toTypedArray())
+        }
+    }
+
+    fun closeRoute() {
+        requestOrigin = false
+        pendingStart = null
+        if (guidanceUi.active || guidanceUi.starting) guidance.stop()
+        else guidance.clearInactiveStatus()
+        planner?.cancel()
+        routeOnMap = false
+    }
+
+    fun openPoint(point: RoutePoint) {
+        val activePlanner = planner ?: return
+        guidance.clearInactiveStatus()
+        activePlanner.prepareDestination(point)
+        discovery?.clearSelection()
+        sheet?.clear()
+        routeError = false
+        showList = false
+        showRoute = false
+        routeOnMap = true
+        requestOrigin = true
+    }
+
+    LaunchedEffect(requestOrigin, mapReady) {
+        if (requestOrigin && mapReady) {
+            requestOrigin = false
+            chooseCurrentOrigin()
+        }
+    }
+
+    LaunchedEffect(routeTarget, mapReady, planner) {
+        if (routeTarget != null && mapReady && planner != null) {
+            onRouteTargetConsumed()
+            if (guidanceUi.active || guidanceUi.starting) {
+                Toast.makeText(context, context.getString(R.string.map_route_stop_first), Toast.LENGTH_SHORT).show()
+            } else when (routeTarget) {
+                is MapRouteTarget.Point -> openPoint(routeTarget.point)
+                is MapRouteTarget.Address -> {
+                    guidance.clearInactiveStatus()
+                    planner.prepareDestination(null)
+                    discovery?.clearSelection()
+                    sheet?.clear()
+                    destinationQuery = routeTarget.query
+                    routeOnMap = false
+                    showRoute = true
+                }
+            }
+        }
+    }
+
+    DisposableEffect(planner) { onDispose { planner?.cancelOriginLookup() } }
+    BackHandler(enabled = (routeOnMap || guidanceUi.arrived) && !guidanceUi.active && !showRoute) { closeRoute() }
+
+    LaunchedEffect(initialPlan?.id, planner) {
+        val plan = initialPlan ?: return@LaunchedEffect
+        val activePlanner = planner ?: return@LaunchedEffect
+        if (guidanceUi.active || guidanceUi.starting) return@LaunchedEffect
+        activePlanner.restorePlan(
+            plan.points.map { point -> RoutePoint(point.point.latitude, point.point.longitude, plan.name) },
+            plan.avoid.mapNotNull { name -> RoadAvoidance.entries.firstOrNull { it.name == name } }.toSet(),
+        )
+        showRoute = true
+    }
+
+    val savedUi = saved?.ui?.collectAsStateWithLifecycle()?.value
+    if (showRoute && planner != null && !guidanceUi.active && !guidanceUi.starting) NativeRouteSheet(
+        planner,
+        onDismiss = {
+            showRoute = false
+            destinationQuery = ""
+            if (planner.ui.value.preview != null) routeOnMap = true
+        },
+        onDownloads = { showRoute = false; onOpenDownloads() },
+        onSavePlan = saved?.let { vm -> { name, points, avoid -> vm.saveRoutePlan(name, points, avoid) } },
+        savedMessage = savedUi?.message,
+        initialDestinationQuery = destinationQuery,
+        onDestinationPicked = if (destinationQuery.isBlank()) null else ::openPoint,
+    )
 
     val overlayLabels = MapOverlayLabels(
         fuel = stringResource(R.string.map_filter_fuel),
@@ -166,7 +313,7 @@ fun MapScreen(
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 viewModel.refreshAvailability()
-                discovery?.refreshPreferredMunicipality()
+                if (!GuidanceServiceState.current().active) discovery?.refreshPreferredMunicipality()
                 saved?.refresh()
             }
         }
@@ -235,7 +382,23 @@ fun MapScreen(
             )
         }
 
-        if (mapReady) {
+        val routeVisible = routeOnMap || guidanceUi.active || guidanceUi.starting || guidanceUi.arrived
+        if (mapReady && routeVisible) {
+            MapRouteOverlay(
+                route = routeUi,
+                guidance = guidanceUi,
+                onCurrentOrigin = ::chooseCurrentOrigin,
+                onEdit = {
+                    planner?.cancelOriginLookup()
+                    destinationQuery = ""
+                    showRoute = true
+                },
+                onDownloads = onOpenDownloads,
+                onStart = ::startGuidance,
+                onClose = ::closeRoute,
+                onInsetChanged = ::updateBottomInset,
+            )
+        } else if (mapReady) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -248,7 +411,20 @@ fun MapScreen(
                     offlineCached = discUi?.offlineCached == true,
                     onOpenCity = { onOpenCity?.invoke() ?: run { showFilters = true } },
                     onSelectSource = viewModel::selectSource,
-                    onSearch = { query -> discovery?.onSearch(discUi?.municipalityCode ?: "4106902", query) },
+                    searchQuery = searchText,
+                    onSearchQueryChanged = { searchText = it },
+                    onSearch = { query ->
+                        discovery?.onSearch(discUi?.municipalityCode ?: "4106902", query) { results ->
+                            if (searchText.trim() == query.trim()) {
+                                val marker = results.singleOrNull()?.takeIf { it.canRouteByCoordinates }
+                                if (marker != null && planner != null) {
+                                    openPoint(RoutePoint(marker.latitude, marker.longitude, marker.title.take(512)))
+                                } else {
+                                    showList = results.isNotEmpty()
+                                }
+                            }
+                        }
+                    },
                     onClearSearch = {
                         if (!discUi?.searchQuery.isNullOrEmpty()) {
                             discovery?.onSearch(discUi?.municipalityCode ?: "4106902", "")
@@ -256,7 +432,7 @@ fun MapScreen(
                     },
                     onRetry = viewModel::retry,
                     onOpenDownloads = onOpenDownloads,
-                    onOpenRoute = if (planner != null) { { showRoute = true } } else null,
+                    onOpenRoute = if (planner != null) { { destinationQuery = ""; showRoute = true } } else null,
                     periodContent = { periodContent { viewModel.refreshAvailability() } },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 )
@@ -298,11 +474,7 @@ fun MapScreen(
                     },
                     onSheetHeightChanged = { height ->
                         sheetHeight = height
-                        val inset = height + MAP_CONTROL_GAP
-                        if (bottomOverlayInset != inset) {
-                            bottomOverlayInset = inset
-                            onBottomOverlayInsetChanged(inset)
-                        }
+                        updateBottomInset(height + MAP_CONTROL_GAP)
                     },
                 ) {
                 if (discUi != null && discUi.showCharging && !discUi.loading && discUi.generation > 0) {
@@ -487,7 +659,6 @@ fun MapScreen(
     // MAP-19 sheet with source truth and real actions.
     val sheetUi = sheet?.ui?.collectAsStateWithLifecycle()?.value
     if (sheet != null && (discUi?.selectedUuid != null || sheetUi?.marker != null)) {
-        val context = androidx.compose.ui.platform.LocalContext.current
         val activeMarker = sheetUi?.marker
             ?: discUi?.selectedMarker
             ?: discUi?.selectedUuid?.let { discUi.selectableByUuid[it] }
@@ -505,8 +676,7 @@ fun MapScreen(
                 val marker = activeMarker?.takeIf { it.uuid == uuid }
                     ?: discUi?.selectableByUuid?.get(uuid)
                 if (marker != null && marker.canRouteByCoordinates && planner != null) {
-                    planner.point(RouteInputSlot.DESTINATION, com.anpfuel.domain.routing.RoutePoint(marker.latitude,marker.longitude,marker.title))
-                    discovery?.clearSelection(); sheet.clear();routeError=false;showRoute=true
+                    openPoint(RoutePoint(marker.latitude, marker.longitude, marker.title.take(512)))
                 } else { routeError=true }
             },
             onReport = { uuid -> onReportStation(uuid, targetFuel) },

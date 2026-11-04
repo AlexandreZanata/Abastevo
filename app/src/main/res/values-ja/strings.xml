@@ -383,7 +383,6 @@
     <string name="stations_brand_label">ブランド：%1$s</string>
     <string name="stations_collected_at_label">収集日：%1$s</string>
     <string name="stations_navigate_action">行く</string>
-    <string name="stations_navigate_no_app">ルートを開く地図アプリが見つかりません。</string>
     <string name="stations_nearest_action">近くの最安値</string>
     <string name="stations_nearest_needs_location">位置情報をオンにすると最寄りのスタンドを検索できます。</string>
     <string name="stations_nearest_no_fix">現在GPSの信号を取得できません。位置情報を有効にして、もう一度お試しください。</string>
@@ -1156,9 +1155,7 @@
     <string name="map_sheet_show_community">コミュニティを表示</string>
     <string name="map_sheet_price_load_failed">価格の取得に失敗しました。</string>
     <string name="map_sheet_no_price">このステーションの価格はありません。</string>
-    <string name="map_sheet_route">ルート</string>
     <string name="map_sheet_route_unavailable">ルート利用不可: 確認済みの座標がありません。</string>
-    <string name="map_sheet_route_failed">外部の地図アプリを開けませんでした。</string>
     <string name="map_sheet_profile">詳細</string>
     <string name="map_sheet_report">報告</string>
     <string name="map_cluster_title">グループ (%1$d 件)</string>

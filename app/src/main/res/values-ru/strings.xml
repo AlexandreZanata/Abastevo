@@ -383,7 +383,6 @@
     <string name="stations_brand_label">Бренд: %1$s</string>
     <string name="stations_collected_at_label">Собрано: %1$s</string>
     <string name="stations_navigate_action">Маршрут</string>
-    <string name="stations_navigate_no_app">Не найдено приложение карт для построения маршрута.</string>
     <string name="stations_nearest_action">Самая дешёвая рядом</string>
     <string name="stations_nearest_needs_location">Включите геолокацию, чтобы найти ближайшую АЗС.</string>
     <string name="stations_nearest_no_fix">Сигнал GPS сейчас недоступен. Включите определение местоположения и повторите попытку.</string>
@@ -1156,9 +1155,7 @@
     <string name="map_sheet_show_community">Показать сообщество</string>
     <string name="map_sheet_price_load_failed">Не удалось загрузить цену.</string>
     <string name="map_sheet_no_price">Нет цены для этой станции.</string>
-    <string name="map_sheet_route">Маршрут</string>
     <string name="map_sheet_route_unavailable">Маршрут недоступен: нет проверенных координат.</string>
-    <string name="map_sheet_route_failed">Не удалось открыть внешнее приложение навигации.</string>
     <string name="map_sheet_profile">Профиль</string>
     <string name="map_sheet_report">Сообщить</string>
     <string name="map_cluster_title">Группа (%1$d станций)</string>

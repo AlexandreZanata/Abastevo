@@ -1,0 +1,15 @@
+<resources>
+    <string name="map_route_go">ルートを作成</string>
+    <string name="map_route_search">目的地を検索</string>
+    <string name="map_route_edit">ルートを編集</string>
+    <string name="map_route_locating">現在地を取得しています…</string>
+    <string name="map_route_calculating">ルートを計算しています…</string>
+    <string name="map_route_steps">案内手順</string>
+    <string name="map_route_arrived">目的地に到着しました</string>
+    <string name="map_route_stop_first">別の目的地を選ぶ前に現在のナビを終了してください。</string>
+    <string name="map_route_estimate">%1$s · %2$s</string>
+    <string name="map_route_meters">%1$s m</string>
+    <string name="map_route_kilometers">%1$s km</string>
+    <string name="map_route_minutes">%1$d min</string>
+    <string name="map_route_hours_minutes">%1$d h %2$d min</string>
+</resources>

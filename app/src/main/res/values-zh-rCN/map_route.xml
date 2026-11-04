@@ -1,0 +1,15 @@
+<resources>
+    <string name="map_route_go">规划路线并出发</string>
+    <string name="map_route_search">搜索目的地</string>
+    <string name="map_route_edit">编辑路线</string>
+    <string name="map_route_locating">正在获取当前位置…</string>
+    <string name="map_route_calculating">正在计算路线…</string>
+    <string name="map_route_steps">路线指引</string>
+    <string name="map_route_arrived">已到达目的地</string>
+    <string name="map_route_stop_first">请先结束当前导航，再选择其他目的地。</string>
+    <string name="map_route_estimate">%1$s · %2$s</string>
+    <string name="map_route_meters">%1$s 米</string>
+    <string name="map_route_kilometers">%1$s 公里</string>
+    <string name="map_route_minutes">%1$d 分钟</string>
+    <string name="map_route_hours_minutes">%1$d 小时 %2$d 分钟</string>
+</resources>

@@ -22,6 +22,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -65,6 +66,7 @@ class MapScreenInstrumentedTest {
         // Functional entries.
         compose.onNodeWithText("Filters", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithTag("map-search-field", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("map-search-field", useUnmergedTree = true).performTextInput("Station")
         compose.onNodeWithTag("map-search-submit", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithTag("map-open-downloads").assertIsDisplayed()
         // OSM attribution stays visible.
@@ -291,6 +293,8 @@ class MapScreenInstrumentedTest {
                 offlineCached = false,
                 onOpenCity = {},
                 onSelectSource = {},
+                searchQuery = "",
+                onSearchQueryChanged = {},
                 onSearch = {},
                 onClearSearch = {},
                 onRetry = {},

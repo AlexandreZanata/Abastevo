@@ -96,6 +96,14 @@ fun AnpNavGraph(
         }
     }
     val mapDiscovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel = hiltViewModel()
+    var pendingRouteTarget by remember { mutableStateOf<com.anpfuel.app.ui.map.MapRouteTarget?>(null) }
+    val guidance by com.anpfuel.app.ui.map.GuidanceServiceState.flow.collectAsStateWithLifecycle()
+    val onRouteToStation: (String, String) -> Unit = { query, label ->
+        com.anpfuel.app.ui.map.MapRouteTarget.fromStationQuery(query, label)?.let { target ->
+            pendingRouteTarget = target
+            navController.navigateToTabBase(Routes.MAP)
+        }
+    }
     val isMapRoute = currentRoute == Routes.MAP || currentRoute == Routes.MAP_PLAN
     var mapHostStarted by rememberSaveable { mutableStateOf(isMapRoute) }
     var mapReady by remember { mutableStateOf(false) }
@@ -115,10 +123,12 @@ fun AnpNavGraph(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            AbastevoBottomBar(
-                currentRoute = currentRoute,
-                onNavigateToTab = navController::navigateToTabBase,
-            )
+            if (!isMapRoute || !guidance.active) {
+                AbastevoBottomBar(
+                    currentRoute = currentRoute,
+                    onNavigateToTab = navController::navigateToTabBase,
+                )
+            }
         },
     ) { innerPadding ->
         Box(
@@ -141,6 +151,7 @@ fun AnpNavGraph(
                     },
                     onReady = { mapReady = it },
                     active = isMapRoute,
+                    showRecenterControls = !guidance.active && !guidance.starting,
                     recenterBottomInset = mapBottomOverlayInset,
                     // The map tab draws its 56 dp layers control above recenter (10 dp gap).
                     statusClearance = 66.dp,
@@ -197,6 +208,7 @@ fun AnpNavGraph(
                 darkTheme = darkTheme,
                 onToggleTheme = onToggleTheme,
                 onNavigate = navController::navigate,
+                onRouteToStation = onRouteToStation,
             )
         }
         composable(Routes.COMMUNITY) {
@@ -212,7 +224,12 @@ fun AnpNavGraph(
                 navDeepLink { uriPattern = "anpfuel://map" },
             ),
         ) {
-            MapDestination(navController, mapDiscovery, mapReady, onBottomOverlayInsetChanged = { mapBottomOverlayInset = it })
+            MapDestination(
+                navController, mapDiscovery, mapReady,
+                routeTarget = pendingRouteTarget,
+                onRouteTargetConsumed = { pendingRouteTarget = null },
+                onBottomOverlayInsetChanged = { mapBottomOverlayInset = it },
+            )
         }
         composable(
             route = Routes.MAP_PLAN,
@@ -267,6 +284,7 @@ fun AnpNavGraph(
                 onSignIn = { navController.navigate(Routes.AUTH) },
                 onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
                 onQuality = { stationId, fuel -> navController.navigate(Routes.stationQuality(stationId, fuel)) },
+                onRouteToStation = onRouteToStation,
             )
         }
         composable(Routes.PROFILE) {
@@ -342,6 +360,7 @@ fun AnpNavGraph(
                 onSignIn = { navController.navigate(Routes.AUTH) },
                 onUpdatePrice = { stationId, fuel -> navController.navigate(Routes.capture(stationId, fuel)) },
                 onQuality = {stationId,fuel -> navController.navigate(Routes.stationQuality(stationId,fuel))},
+                onRouteToStation = onRouteToStation,
             )
         }
         composable(Routes.STATION_QUALITY,arguments=listOf(
@@ -382,6 +401,7 @@ fun AnpNavGraph(
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
                 onOpenMasterExplore = { navController.navigate(Routes.MASTER_EXPLORE) },
                 onOpenStation = { stationKey, fuel -> navController.navigate(Routes.stationPage(stationKey, fuel)) },
+                onRouteToStation = onRouteToStation,
             )
         }
         composable(
@@ -395,6 +415,7 @@ fun AnpNavGraph(
                 onSuggestStation = { navController.navigate(Routes.SUGGEST) },
                 onOpenMasterExplore = { navController.navigate(Routes.MASTER_EXPLORE) },
                 onOpenStation = { stationKey, fuel -> navController.navigate(Routes.stationPage(stationKey, fuel)) },
+                onRouteToStation = onRouteToStation,
             )
         }
         composable(Routes.MASTER_EXPLORE) {
@@ -652,11 +673,15 @@ private fun MapDestination(
     discovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel,
     mapReady: Boolean,
     initialPlan: com.anpfuel.domain.map.saved.SavedTrip? = null,
+    routeTarget: com.anpfuel.app.ui.map.MapRouteTarget? = null,
+    onRouteTargetConsumed: () -> Unit = {},
     onBottomOverlayInsetChanged: (androidx.compose.ui.unit.Dp) -> Unit,
 ) {
         val sheet: com.anpfuel.app.ui.map.MapSheetViewModel = hiltViewModel()
         com.anpfuel.app.ui.map.MapScreen(
         initialPlan = initialPlan,
+        routeTarget = routeTarget,
+        onRouteTargetConsumed = onRouteTargetConsumed,
         mapReady = mapReady,
         discovery = discovery,
         mapContent = {},

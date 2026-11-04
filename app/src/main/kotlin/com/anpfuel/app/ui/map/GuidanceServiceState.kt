@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class GuidanceUiState(
     val active: Boolean = false,
+    val starting: Boolean = false,
+    val arrived: Boolean = false,
+    val destinationLabel: String = "",
     val owner: String = "",
     val progress: NavigationProgress? = null,
     val notifications: List<String> = emptyList(),

@@ -321,10 +321,15 @@ class MapDiscoveryViewModelTest {
         )
         val engine = FakeEngine()
         val vm = MapDiscoveryViewModel(gateway, ChargingMarkersSource { emptyList() }, engine)
-        vm.onSearch("4106902", "Central")
+        val completed = mutableListOf<List<MapOverlayMarker>>()
+        vm.onSearch("4106902", "Norte") { completed += it }
+        vm.onSearch("4106902", "Central") { completed += it }
         advanceTimeBy(400)
         dispatcher.scheduler.advanceUntilIdle()
         assertEquals("4106902" to "Central", gateway.lastSearch)
+        assertEquals(1, completed.size)
+        assertEquals("Posto Central Curitiba", completed.single().single().title)
+        assertTrue(completed.single().single().canRouteByCoordinates)
         assertEquals(1, vm.ui.value.listItems.size)
         assertEquals("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", vm.ui.value.listItems.single().uuid)
         // Short queries never hit the wire.

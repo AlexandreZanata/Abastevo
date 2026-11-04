@@ -51,8 +51,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
-import com.anpfuel.app.navigation.MapAppChooser
-import com.anpfuel.app.navigation.MapNavigationResult
 import com.anpfuel.app.ui.components.EmptyState
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.FuelProductSelectorButton
@@ -80,6 +78,7 @@ fun StationsScreen(
     onOpenStation: (String, FuelProduct) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     viewModel: StationsViewModel = hiltViewModel(),
+    onRouteToStation: (String, String) -> Unit = { _, _ -> },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
@@ -120,18 +119,7 @@ fun StationsScreen(
     LaunchedEffect(viewModel) {
         viewModel.navigationEffects.collect { effect ->
             when (effect) {
-                is StationsNavigationEffect.LaunchMaps -> {
-                    when (MapAppChooser.openNavigation(context, effect.navigationQuery)) {
-                        MapNavigationResult.NoAppFound -> {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.stations_navigate_no_app),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
-                        MapNavigationResult.Launched -> Unit
-                    }
-                }
+                is StationsNavigationEffect.LaunchMaps -> onRouteToStation(effect.navigationQuery, "")
             }
         }
     }

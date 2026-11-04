@@ -383,7 +383,6 @@
     <string name="stations_brand_label">Marke: %1$s</string>
     <string name="stations_collected_at_label">Erfasst: %1$s</string>
     <string name="stations_navigate_action">Route</string>
-    <string name="stations_navigate_no_app">Keine Karten-App zum Öffnen der Route gefunden.</string>
     <string name="stations_nearest_action">Günstigste in meiner Nähe</string>
     <string name="stations_nearest_needs_location">Aktiviere den Standort, um die nächste Tankstelle zu finden.</string>
     <string name="stations_nearest_no_fix">Derzeit kein GPS-Signal. Aktiviere die Standortbestimmung und versuche es erneut.</string>
@@ -1156,9 +1155,7 @@
     <string name="map_sheet_show_community">Community anzeigen</string>
     <string name="map_sheet_price_load_failed">Preisabfrage fehlgeschlagen.</string>
     <string name="map_sheet_no_price">Kein Preis für diese Station.</string>
-    <string name="map_sheet_route">Route</string>
     <string name="map_sheet_route_unavailable">Route nicht verfügbar: Station ohne geprüfte Koordinaten.</string>
-    <string name="map_sheet_route_failed">Externe Kartenanwendung für die Route konnte nicht geöffnet werden.</string>
     <string name="map_sheet_profile">Profil</string>
     <string name="map_sheet_report">Melden</string>
     <string name="map_cluster_title">Gruppe (%1$d Stationen)</string>

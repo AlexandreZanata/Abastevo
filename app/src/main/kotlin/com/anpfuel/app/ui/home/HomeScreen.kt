@@ -1,6 +1,5 @@
 package com.anpfuel.app.ui.home
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -57,7 +56,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
@@ -74,8 +72,6 @@ import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
 import com.anpfuel.app.mapper.LastSyncFormatter
 import com.anpfuel.app.mapper.SurveyWeekFormatter
-import com.anpfuel.app.navigation.MapAppChooser
-import com.anpfuel.app.navigation.MapNavigationResult
 import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.Br010EmptyState
 import com.anpfuel.app.ui.components.EmptyState
@@ -107,6 +103,7 @@ fun HomeScreen(
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
+    onRouteToStation: (String, String) -> Unit = { _, _ -> },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
@@ -144,6 +141,7 @@ fun HomeScreen(
         onDismissBenefits = viewModel::dismissBenefits,
         onPriceSourceChanged = { viewModel.selectPriceSource(it, locale) },
         onSyncNoticeShown = viewModel::onSyncNoticeShown,
+        onRouteToStation = onRouteToStation,
         modifier = modifier,
     )
 }
@@ -164,6 +162,7 @@ internal fun HomeContent(
     onDismissBenefits: () -> Unit = {},
     onPriceSourceChanged: (HomePriceSource) -> Unit = {},
     onSyncNoticeShown: () -> Unit = {},
+    onRouteToStation: (String, String) -> Unit = { _, _ -> },
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val noticeText = uiState.syncNotice?.let { syncNoticeText(it, uiState) }
@@ -286,6 +285,7 @@ internal fun HomeContent(
                 VehicleCarousel(
                     estimates = uiState.tankFillCostEstimates,
                     onNavigate = onNavigate,
+                    onRouteToStation = onRouteToStation,
                 )
             } else if (uiState.isLoading && uiState.hasVehicle) {
                 VehicleCarouselSkeleton()
@@ -534,9 +534,9 @@ private fun HomeLoadingSkeleton() {
 private fun VehicleCarousel(
     estimates: List<TankFillCostEstimateUiModel>,
     onNavigate: (String) -> Unit,
+    onRouteToStation: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val cardWidth = screenWidth * 0.85f
 
@@ -550,18 +550,7 @@ private fun VehicleCarousel(
                 estimate = estimate,
                 onClick = { onNavigate(Routes.VEHICLES) },
                 onGoToStation = estimate.stationNavigationQuery?.let { query ->
-                    {
-                        when (MapAppChooser.openNavigation(context, query)) {
-                            MapNavigationResult.NoAppFound -> {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.stations_navigate_no_app),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
-                            MapNavigationResult.Launched -> Unit
-                        }
-                    }
+                    { onRouteToStation(query, estimate.stationDisplayName.orEmpty()) }
                 },
                 modifier = Modifier.width(cardWidth),
             )

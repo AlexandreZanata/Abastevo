@@ -1,0 +1,15 @@
+<resources>
+    <string name="map_route_go">Itinéraire et départ</string>
+    <string name="map_route_search">Rechercher une destination</string>
+    <string name="map_route_edit">Modifier l’itinéraire</string>
+    <string name="map_route_locating">Recherche de votre position…</string>
+    <string name="map_route_calculating">Calcul de l’itinéraire…</string>
+    <string name="map_route_steps">Indications</string>
+    <string name="map_route_arrived">Vous êtes arrivé</string>
+    <string name="map_route_stop_first">Terminez la navigation actuelle avant de choisir une autre destination.</string>
+    <string name="map_route_estimate">%1$s · %2$s</string>
+    <string name="map_route_meters">%1$s m</string>
+    <string name="map_route_kilometers">%1$s km</string>
+    <string name="map_route_minutes">%1$d min</string>
+    <string name="map_route_hours_minutes">%1$d h %2$d min</string>
+</resources>

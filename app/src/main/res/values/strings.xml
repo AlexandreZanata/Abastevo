@@ -507,7 +507,6 @@
     <string name="stations_brand_label">Brand: %1$s</string>
     <string name="stations_collected_at_label">Collected: %1$s</string>
     <string name="stations_navigate_action">Navigate</string>
-    <string name="stations_navigate_no_app">Could not open Google Maps. Install it or use a browser.</string>
     <string name="stations_nearest_action">Cheapest near me</string>
     <string name="stations_nearest_needs_location">Turn on location to find the nearest station.</string>
     <string name="stations_nearest_no_fix">No GPS signal right now. Turn on location and try again.</string>
@@ -1175,9 +1174,7 @@
     <string name="map_sheet_show_community">Show Community</string>
     <string name="map_sheet_price_load_failed">Price lookup failed.</string>
     <string name="map_sheet_no_price">No price for this station.</string>
-    <string name="map_sheet_route">Route</string>
     <string name="map_sheet_route_unavailable">Route unavailable: station has no reviewed coordinates.</string>
-    <string name="map_sheet_route_failed">Could not open an external map application for routing.</string>
     <string name="map_sheet_profile">Profile</string>
     <string name="map_sheet_report">Report</string>
     <string name="map_cluster_title">Cluster (%1$d stations)</string>

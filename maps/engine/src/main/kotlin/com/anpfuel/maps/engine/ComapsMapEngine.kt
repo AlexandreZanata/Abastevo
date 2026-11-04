@@ -153,6 +153,7 @@ class ComapsMapEngine(
 
 
     override fun setViewport(latitude: Double, longitude: Double, zoom: Int) {
+        if (guiding) return
         val clampedZoom = zoom.coerceIn(1, 20)
         lastViewport = MapCamera(latitude, longitude, clampedZoom)
         if (initialized) {
@@ -224,7 +225,7 @@ class ComapsMapEngine(
     }
 
     override fun startMyLocation(onFix: (MapCenter) -> Unit): Boolean {
-        if (!initialized) return false
+        if (!initialized || guiding) return false
         val helper = organicMaps?.locationHelper ?: return false
         callOnMain {
             try {
@@ -403,10 +404,10 @@ class ComapsMapEngine(
     }
 
     override fun buildRoute(request: NativeRouteRequest, onResult: (NativeRouteResult) -> Unit): Boolean {
+        if (guiding) return false
+        lastReadyRequest = null
         val accepted = routePlanner.buildRoute(request) { result ->
-            if (result is NativeRouteResult.Ready) {
-                lastReadyRequest = request
-            }
+            lastReadyRequest = request.takeIf { result is NativeRouteResult.Ready }
             onResult(result)
         }
         return accepted
@@ -415,11 +416,11 @@ class ComapsMapEngine(
     override fun startGuidance(request: NativeRouteRequest): Boolean {
         check(Looper.myLooper() == Looper.getMainLooper()) { "Guidance requires Main" }
         request.validate()
-        if (!initialized) return false
-        if (guiding) return false
+        if (!initialized || !renderingReady || guiding || !Framework.nativeIsRouteBuilt()) return false
         val ready = lastReadyRequest ?: return false
         if (!GuidancePolicy.sameRoute(ready, request)) return false
         return try {
+            stopMyLocation()
             // Never record a trace while guiding; the service owns no saved track.
             runCatching {
                 if (TrackRecorder.nativeIsTrackRecordingEnabled()) {
@@ -484,7 +485,11 @@ class ComapsMapEngine(
                 rerouteStartNanos = null
             }
             if (progress != null) lastProgress = progress
-            GuidanceFeed(progress = progress ?: lastProgress, notifications = notifications, rerouteRecoverable = false)
+            GuidanceFeed(
+                progress = progress ?: lastProgress,
+                notifications = notifications,
+                arrived = Framework.nativeIsRouteFinished(),
+            )
         } catch (_: Exception) {
             GuidanceFeed(progress = lastProgress, notifications = emptyList(), rerouteRecoverable = false)
         }
@@ -502,6 +507,7 @@ class ComapsMapEngine(
     }
 
     override fun stopGuidance() {
+        lastReadyRequest = null
         guidanceGeneration++
         guiding = false
         guidanceRequest = null
@@ -716,7 +722,11 @@ class ComapsMapEngine(
         if (initialized) SearchEngine.INSTANCE.cancel()
     }
 
-    override fun cancelRoute() = routePlanner.cancelRoute()
+    override fun cancelRoute() {
+        if (guiding) return
+        lastReadyRequest = null
+        routePlanner.cancelRoute()
+    }
 
     @Synchronized
     override fun release() {
