@@ -1,5 +1,14 @@
 # Current execution state
 
+- Cuiabá charging supplement 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `c3edcb3b`. [Source and replay evidence](../backend/evidence/evc/CUIABA_CHARGING_SUPPLEMENT.md)
+  records 30 additional facilities, for 39 in Cuiabá and 60 across the ten
+  staging municipalities. API details match the 30 added and nine retained
+  sites. PostGIS replay and refusal tests, Go race/vet, 46 focused Android
+  tests, debug build/lint and three physical charging-card checks passed.
+  Tested revision is the source in this commit. API list integration is
+  pending in protected PR #188.
+
 - Sorriso charging supplement 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `a89e4e94`. The [review and replay evidence](../backend/evidence/evc/SORRISO_CHARGING_SUPPLEMENT.md)
   records four additional charging facilities, for six in Sorriso and 30

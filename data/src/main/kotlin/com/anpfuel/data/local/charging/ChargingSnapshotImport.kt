@@ -15,10 +15,11 @@ internal const val NATIONAL_CHARGING_PROFILE = "charging-br-national-v1"
 internal const val SORRISO_PILOT_PROFILE = "charging-mt-sorriso-pilot-v1"
 internal const val MATO_GROSSO_PILOT_PROFILE = "charging-mt-top10-pilot-v1"
 internal const val SORRISO_SUPPLEMENT_PROFILE = "charging-mt-sorriso-supplement-v1"
+internal const val CUIABA_SUPPLEMENT_PROFILE = "charging-mt-cuiaba-supplement-v1"
 
 val ADMITTED_CHARGING_PROFILES = setOf(
     "ocm-br-20261021-v1", "pbe-2026-pdf-v1", NATIONAL_CHARGING_PROFILE,
-    SORRISO_PILOT_PROFILE, MATO_GROSSO_PILOT_PROFILE, SORRISO_SUPPLEMENT_PROFILE,
+    SORRISO_PILOT_PROFILE, MATO_GROSSO_PILOT_PROFILE, SORRISO_SUPPLEMENT_PROFILE, CUIABA_SUPPLEMENT_PROFILE,
 )
 
 private val canonicalId = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")

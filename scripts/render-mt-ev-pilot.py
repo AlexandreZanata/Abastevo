@@ -10,12 +10,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFESTS = ROOT / "data/src/main/resources/charging"
+PILOTS = {
+    "mt-top10": ("mt-top10-pilot-v1.json", "charging-mt-top10-pilot-v1", None),
+    "sorriso-supplement": ("sorriso-supplement-v1.json", "charging-mt-sorriso-supplement-v1", "5107925"),
+    "cuiaba-supplement": ("cuiaba-supplement-v1.json", "charging-mt-cuiaba-supplement-v1", "5103403"),
+}
 
 
-def render(boundaries, sorriso=False):
-    edition = "sorriso-supplement" if sorriso else "mt-top10"
-    resource = "sorriso-supplement-v1.json" if sorriso else "mt-top10-pilot-v1.json"
-    profile = "charging-mt-sorriso-supplement-v1" if sorriso else "charging-mt-top10-pilot-v1"
+def render(boundaries, edition="mt-top10"):
+    resource, profile, city = PILOTS[edition]
     source = boundaries.read_bytes()
     catalog = json.loads((MANIFESTS / resource).read_bytes())
     if catalog["profile"] != profile:
@@ -23,9 +26,9 @@ def render(boundaries, sorriso=False):
     if hashlib.sha256(source).hexdigest() != catalog["ibge_boundaries_sha256"]:
         raise ValueError("IBGE boundary pin mismatch")
     municipalities = {m["code"] for m in catalog["municipalities"]}
-    expected_count = 1 if sorriso else 10
+    expected_count = 1 if city else 10
     if (len(municipalities) != expected_count or len(catalog["municipalities"]) != expected_count
-            or (sorriso and municipalities != {"5107925"})):
+            or (city and municipalities != {city})):
         raise ValueError("unexpected municipalities for the pilot")
     geometry = {f["properties"]["codarea"]: f["geometry"] for f in json.loads(source)["features"]}
     contains = runpy.run_path(str(ROOT / "scripts/audit-station-uf.py"))["contains"]
@@ -52,6 +55,10 @@ def render(boundaries, sorriso=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--boundaries", required=True, type=Path)
-    parser.add_argument("--sorriso", action="store_true", help="render the Sorriso supplement")
+    supplements = parser.add_mutually_exclusive_group()
+    supplements.add_argument("--sorriso", dest="edition", action="store_const", const="sorriso-supplement",
+                             help="render the Sorriso supplement")
+    supplements.add_argument("--cuiaba", dest="edition", action="store_const", const="cuiaba-supplement",
+                             help="render the Cuiabá supplement")
     args = parser.parse_args()
-    print(render(args.boundaries, args.sorriso), end="")
+    print(render(args.boundaries, args.edition or "mt-top10"), end="")

@@ -25,7 +25,8 @@ object MapDiscoveryModule {
                 val full = repo.generationMeta(ChargingDiscoveryRepository.NATIONAL_PROFILE)
                     ?: repo.generationMeta(ChargingDiscoveryRepository.OCM_PROFILE)?.takeIf { it.placeCount > 0 }
                 val snapshots = if (full != null) listOf(full) else listOfNotNull(
-                    repo.sorrisoPilotForMap(), repo.sorrisoSupplementForMap(), repo.matoGrossoPilotForMap(),
+                    repo.sorrisoPilotForMap(), repo.sorrisoSupplementForMap(),
+                    repo.matoGrossoPilotForMap(), repo.cuiabaSupplementForMap(),
                 ).filter { it.placeCount > 0 }
                 val targetLimit = request.limit.coerceIn(1, 200)
                 val matched = ArrayList<ChargingPlace>(targetLimit)

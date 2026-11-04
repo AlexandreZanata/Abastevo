@@ -21,7 +21,8 @@ The 2026-10-29 IBGE publication provided 142 unique Mato Grosso
 municipalities. The reviewed census has 26 facilities. The regional
 edition adds 24 and the original Sorriso edition supplies the other two.
 The later [Sorriso supplement](SORRISO_CHARGING_SUPPLEMENT.md) adds four
-more, bringing the combined staging census to 30.
+more, bringing the combined staging census to 30. The later [Cuiabá supplement](CUIABA_CHARGING_SUPPLEMENT.md)
+adds 30 more, bringing the combined staging census to 60.
 
 - Cuiabá — 9
 - Várzea Grande — 3

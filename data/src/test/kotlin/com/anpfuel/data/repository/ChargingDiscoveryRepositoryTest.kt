@@ -1,9 +1,11 @@
 package com.anpfuel.data.repository
 
 import com.anpfuel.data.local.charging.ChargingSnapshotImport
+import com.anpfuel.data.local.charging.CUIABA_SUPPLEMENT_PROFILE
 import com.anpfuel.data.local.charging.MATO_GROSSO_PILOT_PROFILE
 import com.anpfuel.data.local.charging.SORRISO_PILOT_PROFILE
 import com.anpfuel.data.local.charging.SORRISO_SUPPLEMENT_PROFILE
+import com.anpfuel.data.local.charging.StoredPackMeta
 import com.anpfuel.data.local.dao.ChargingSnapshotDao
 import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity
@@ -199,15 +201,28 @@ class ChargingDiscoveryRepositoryTest {
         assertEquals(ids.toSet(), dao.places.values.map { it.placeId }.toSet())
     }
 
-    @Test fun `Sorriso supplement is staging only and keeps the first pilot generation`() = runTest {
-        val profile = SORRISO_SUPPLEMENT_PROFILE
+    @Test fun `Sorriso supplement is staging only and keeps the first pilot generation`() =
+        verifyCitySupplement(SORRISO_SUPPLEMENT_PROFILE, "sorriso-supplement-v1.json") {
+            sorrisoSupplementForMap()
+        }
+
+    @Test fun `Cuiaba supplement is staging only and keeps the first pilot generation`() =
+        verifyCitySupplement(CUIABA_SUPPLEMENT_PROFILE, "cuiaba-supplement-v1.json") {
+            cuiabaSupplementForMap()
+        }
+
+    private fun verifyCitySupplement(
+        profile: String,
+        resourceName: String,
+        load: suspend ChargingDiscoveryRepository.() -> StoredPackMeta?,
+    ) = runTest {
         val first = SORRISO_PILOT_PROFILE
         val sau = "67c3d1f0-5898-54f0-bca3-689e9b48b099"
-        val resource = checkNotNull(javaClass.getResourceAsStream("/charging/sorriso-supplement-v1.json"))
+        val resource = checkNotNull(javaClass.getResourceAsStream("/charging/$resourceName"))
         val manifest = JSONObject(resource.bufferedReader().use { it.readText() })
         val rows = manifest.getJSONArray("places")
         val ids = (0 until rows.length()).map { rows.getJSONObject(it).getString("id") }
-        val edition = ChargingCoverage(profile, manifest.getString("revision"), 4, 0, 0, "2026-11-04T00:00:00Z")
+        val edition = ChargingCoverage(profile, manifest.getString("revision"), ids.size.toLong(), 0, 0, "2026-11-04T00:00:00Z")
         val staging = ChargingDiscoveryRepository(client, dao, ApiEnvironment.STAGING)
 
         coEvery { client.places(first, null, 100, null) } returns page(sau)
@@ -220,7 +235,7 @@ class ChargingDiscoveryRepositoryTest {
         coEvery { client.places(profile, null, 100, null) } throws ChargingSnapshotUnavailable(httpStatus = 400)
         coEvery { client.coverage(profile) } returns edition
         coEvery { client.placeDetail(any()) } answers { place(firstArg()).copy(groups = emptyList()) }
-        assertEquals(4L, staging.sorrisoSupplementForMap()?.placeCount)
+        assertEquals(ids.size.toLong(), staging.load()?.placeCount)
         assertEquals(firstMeta, staging.generationMeta(first))
         assertEquals(ids.toSet() + sau, dao.places.values.map { it.placeId }.toSet())
     }

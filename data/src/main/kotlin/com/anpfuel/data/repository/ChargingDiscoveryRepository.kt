@@ -1,5 +1,6 @@
 package com.anpfuel.data.repository
 
+import com.anpfuel.data.local.charging.CUIABA_SUPPLEMENT_PROFILE
 import com.anpfuel.data.local.charging.NATIONAL_CHARGING_PROFILE
 import com.anpfuel.data.local.charging.MATO_GROSSO_PILOT_PROFILE
 import com.anpfuel.data.local.charging.SORRISO_PILOT_PROFILE
@@ -94,7 +95,7 @@ class ChargingDiscoveryRepository @Inject constructor(
         private const val NATIONAL_LICENSE = "ODbL-1.0 and source-specific OCM provider terms"
         private const val PILOT_SOURCE = "Abastevo staging pilot; independently reviewed public site facts"
         private const val MT_PILOT_SOURCE = "ODbL-1.0; OpenStreetMap and Open Charge Map source attribution in pilot manifest"
-        private const val SORRISO_SUPPLEMENT_SOURCE = "ODbL-1.0; OpenStreetMap and public charging evidence in the Sorriso manifest"
+        private const val SUPPLEMENT_SOURCE = "ODbL-1.0; reviewed public location and charging evidence in the city manifest"
         private const val PILOT_BOOTSTRAP_REVISION = "2026-11-04"
         private val PILOT_BOOTSTRAP_IDS = listOf(
             "67c3d1f0-5898-54f0-bca3-689e9b48b099",
@@ -106,6 +107,10 @@ class ChargingDiscoveryRepository @Inject constructor(
     private val mtPilotIDs by lazy { pilotManifestIDs(MATO_GROSSO_PILOT_PROFILE, "mt-top10-pilot-v1.json") }
     private val sorrisoSupplementIDs by lazy {
         pilotManifestIDs(SORRISO_SUPPLEMENT_PROFILE, "sorriso-supplement-v1.json")
+    }
+
+    private val cuiabaSupplementIDs by lazy {
+        pilotManifestIDs(CUIABA_SUPPLEMENT_PROFILE, "cuiaba-supplement-v1.json")
     }
 
     private fun pilotManifestIDs(profile: String, filename: String): List<String> {
@@ -127,7 +132,10 @@ class ChargingDiscoveryRepository @Inject constructor(
         pilotForMap(MATO_GROSSO_PILOT_PROFILE, MT_PILOT_SOURCE)
 
     suspend fun sorrisoSupplementForMap(): StoredPackMeta? =
-        pilotForMap(SORRISO_SUPPLEMENT_PROFILE, SORRISO_SUPPLEMENT_SOURCE)
+        pilotForMap(SORRISO_SUPPLEMENT_PROFILE, SUPPLEMENT_SOURCE)
+
+    suspend fun cuiabaSupplementForMap(): StoredPackMeta? =
+        pilotForMap(CUIABA_SUPPLEMENT_PROFILE, SUPPLEMENT_SOURCE)
 
     private suspend fun pilotForMap(profile: String, source: String): StoredPackMeta? {
         if (environment != ApiEnvironment.STAGING) return null
@@ -160,7 +168,7 @@ class ChargingDiscoveryRepository @Inject constructor(
         nowMillis: Long = Instant.now().toEpochMilli(),
     ): StoredPackMeta {
         val pilot = profile == SORRISO_PILOT_PROFILE || profile == MATO_GROSSO_PILOT_PROFILE ||
-            profile == SORRISO_SUPPLEMENT_PROFILE
+            profile == SORRISO_SUPPLEMENT_PROFILE || profile == CUIABA_SUPPLEMENT_PROFILE
         if (profile != OCM_PROFILE && profile != NATIONAL_CHARGING_PROFILE &&
             !(pilot && environment == ApiEnvironment.STAGING)) {
             throw ChargingDiscoveryUnavailable("pbe-rights-pending")
@@ -168,6 +176,7 @@ class ChargingDiscoveryRepository @Inject constructor(
         val reviewedIDs = when (profile) {
             MATO_GROSSO_PILOT_PROFILE -> mtPilotIDs
             SORRISO_SUPPLEMENT_PROFILE -> sorrisoSupplementIDs
+            CUIABA_SUPPLEMENT_PROFILE -> cuiabaSupplementIDs
             else -> null
         }
         val stored = dao.findMeta(key(profile))?.generation ?: 0L

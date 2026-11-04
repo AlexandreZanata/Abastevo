@@ -23,10 +23,16 @@ const (
 	SorrisoPilotProfile      = "charging-mt-sorriso-pilot-v1"
 	MatoGrossoPilotProfile   = "charging-mt-top10-pilot-v1"
 	SorrisoSupplementProfile = "charging-mt-sorriso-supplement-v1"
+	CuiabaSupplementProfile  = "charging-mt-cuiaba-supplement-v1"
 )
 
 func IsStagingPilotProfile(profile string) bool {
-	return profile == SorrisoPilotProfile || profile == MatoGrossoPilotProfile || profile == SorrisoSupplementProfile
+	switch profile {
+	case SorrisoPilotProfile, MatoGrossoPilotProfile, SorrisoSupplementProfile, CuiabaSupplementProfile:
+		return true
+	default:
+		return false
+	}
 }
 
 // NewReader wires a pool-local reader; queries stay in owned sqlc.
