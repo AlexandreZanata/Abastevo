@@ -121,6 +121,31 @@ export function build(options = {}) {
       fs.copyFileSync(path.join(fontsStaticDir, license), path.join(fontsOutDir, license));
     }
 
+    // Copy only the landing assets used by the admin shell. Fingerprint
+    // stable brand names for the admin mount's immutable asset cache.
+    const landingAssets = new Map();
+    const artDir = path.join(landing, 'static', 'assets', 'art');
+    const artFiles = fs.readdirSync(artDir);
+    for (const rel of [
+      'brand/abastevo-logo.svg',
+      'brand/abastevo-wordmark.svg',
+      'brand/favicon.svg',
+      ...['skyline', 'trees', 'road', 'car'].map((layer) => {
+        const pattern = new RegExp(`^${layer}-640w\\.[a-f0-9]{8}\\.webp$`);
+        const matches = artFiles.filter((file) => pattern.test(file));
+        if (matches.length !== 1) throw new Error(`Expected one landing hero asset for ${layer}`);
+        return `art/${matches[0]}`;
+      }),
+    ]) {
+      const content = fs.readFileSync(path.join(landing, 'static', 'assets', rel));
+      const source = rel.replace(/\.[a-f0-9]{8}(?=\.webp$)/, '');
+      const dest = source.replace(/\.(svg|webp)$/, `.${computeHash(content)}.$1`);
+      const out = path.join(outDir, 'assets', dest);
+      fs.mkdirSync(path.dirname(out), { recursive: true });
+      fs.writeFileSync(out, content);
+      landingAssets.set(source, dest);
+    }
+
     // 6. Process HTML files and rewrite asset references. The single app
     // shell is served at the admin routes; the JS router picks the view.
     const htmlFiles = [
@@ -141,6 +166,9 @@ export function build(options = {}) {
       html = html.replaceAll(`"${ASSETS_URL}/admin.css"`, `"${ASSETS_URL}/${adminCssName}"`);
       for (const [file, fingerprintedName] of fingerprinted) {
         html = html.replaceAll(`"${ASSETS_URL}/${file}"`, `"${ASSETS_URL}/${fingerprintedName}"`);
+      }
+      for (const [source, dest] of landingAssets) {
+        html = html.replaceAll(`"${ASSETS_URL}/${source}"`, `"${ASSETS_URL}/${dest}"`);
       }
       const unmounted = [...html.matchAll(/(?:src|href)="(\/[^"]*)"/g)]
         .map((match) => match[1])

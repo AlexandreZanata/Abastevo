@@ -1,5 +1,15 @@
 # Current execution state
 
+- Admin web visual alignment 2026-11-04: LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `51638a80`. Login, accounts, contributors, stations,
+  audit and the standalone fallback reuse the staging landing CSS, brand and
+  typography. [Presentation contract](../../admin-web/README.md#presentation-contract).
+  Admin and landing typecheck/build/dist gates pass (50 and 76 tests). Chromium
+  with synthetic API data passes at 1440, 390 and 320 px, including wrong-key
+  feedback, account search and grant validation, station lookup, navigation and
+  sign-out. Tested revision is the source in this commit. Delivery is through
+  the protected dev → main PR. Staging browser acceptance follows deployment.
+
 - PR #185 INTEGRATED as `00a6f648`; all main checks passed. The
   automatic release stopped before signing at the worker Docker build.
   EVC-10C LOCAL_DONE / INTEGRATION_PENDING: six embedded policy inputs

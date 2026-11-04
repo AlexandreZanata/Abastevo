@@ -8,9 +8,11 @@ Static owner panel for the **abastevo** administrative API (Front B).
   no runtime dependency. Node built-in test runner only.
 - Visual standard identical to the landing: same CSS tokens, Manrope +
   Source Sans 3 local fonts. `scripts/build.mjs` copies
-  `landing/static/assets/styles.css` and the hash-verified fonts into
-  `dist/` at build time; admin-only rules live in
-  `static/assets/admin.css` and may only use existing tokens.
+  `landing/static/assets/styles.css`, the hash-verified fonts, and the selected
+  landing brand and hero artwork into `dist/` at build time. The admin shell
+  opts into the landing's shared `landing-home` styles for its palette,
+  typography, header, footer and primary buttons. Admin-only layout and form
+  rules live in `static/assets/admin.css` and use existing tokens.
 - All data is rendered with `textContent`/`createElement`. The CSRF token
   lives in a module variable only (never `localStorage`/`sessionStorage`).
   Because a full page load would wipe it, both admin routes serve the same
@@ -21,6 +23,18 @@ Static owner panel for the **abastevo** administrative API (Front B).
   stays on the form and shows the invalid-key message.
   The raw admin key is never displayed or logged; the login input is
   `type=password`, `autocomplete=off`, cleared after submit.
+
+## Presentation contract
+
+The same visual system covers login, accounts (including grants and staff roles),
+contributors, station lookup, audit, and the standalone fallback. At narrow
+widths, navigation and forms reflow with labels, status messages and actions
+still readable. The current authenticated section is indicated visually and
+with `aria-current`.
+
+This presentation applies to BUC-ADM-01–05, 07, 10–12 and the existing
+station lookup. B-BR-ADM authentication and audit rules, same-origin session
+handling and existing mutation confirmations apply as before.
 
 ## Layout
 
