@@ -71,3 +71,20 @@ Debug and instrumentation APK builds, lint, 53 focused JVM tests, Go race
 and vet, PostGIS ownership/proof/concurrency tests, mobile static checks and
 OpenAPI lint passed. This commit carries the tested source from `dc332b80`
 for integration through protected PR #188.
+
+### Ownership during backend rollout
+
+B-BR-CS01-OWNER compatibility: a signed tally from an older backend may
+omit ownership. Before offering actions, resolve that case through the
+existing signed observation status endpoint. Only a matching observation
+returned by that owner-only endpoint proves ownership. An explicit
+not-found response leaves the normal actions available. Other failures
+leave the actions unresolved and allow a retry. New backends return a
+boolean for verified viewers and omit the field for anonymous reads.
+
+The debug APK was updated over ADB and verified on the connected device
+against the staging backend. The author's card changed from the voting
+panel to the ownership label without a vote. Android build, lint and 23
+focused JVM tests passed. Go race and vet checks and PostGIS tests covered
+signed owner and other-viewer reads, anonymous reads, invalid proofs and
+the private observation status endpoint.

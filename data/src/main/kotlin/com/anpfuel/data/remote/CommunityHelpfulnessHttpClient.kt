@@ -96,7 +96,12 @@ class CommunityHelpfulnessHttpClient(
         if (proof != null) {
             try {
                 val scope = expectedOwnerScope ?: proof.identityScope()
-                return parseTally(observationId,proof.get("/v1/observations/"+encode(observationId)+"/helpfulness",scope,"decision_sequence=$decisionSequence").toString())
+                val path = "/v1/observations/" + encode(observationId)
+                val body = proof.get("$path/helpfulness", scope, "decision_sequence=$decisionSequence")
+                val tally = parseTally(observationId, body.toString())
+                // A recorded vote already establishes that this viewer is not the author.
+                if (body.has("own_contribution") || tally.myChoice != null) return tally
+                return tally.copy(ownContribution = ownsObservation(proof, path, scope, observationId))
             } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
             catch (failure: PhotoOperationRefused) { throw mapHelpfulnessError(failure.status,JSONObject().put("code",failure.code).toString()) }
             catch (_: Exception) { throw CommunityHelpfulnessException(CommunityHelpfulnessRejectKind.TRANSPORT,"helpfulness transport failed") }
@@ -136,6 +141,24 @@ class CommunityHelpfulnessHttpClient(
                 "helpfulness request failed: transport",
             )
         }
+    }
+
+    private suspend fun ownsObservation(
+        proof: PhotoProofTransport,
+        path: String,
+        scope: String,
+        observationId: String,
+    ): Boolean {
+        val status = try {
+            proof.get(path, scope)
+        } catch (failure: PhotoOperationRefused) {
+            if (failure.status == 404 && failure.code == CODE_NOT_FOUND) return false
+            throw failure
+        }
+        if (status.optJSONObject("observation")?.optString("id") != observationId) {
+            throw IOException("helpfulness ownership response did not match the observation")
+        }
+        return true
     }
 
     private fun parseTally(observationId: String, raw: String): CommunityHelpfulnessTally {

@@ -32,6 +32,41 @@ class SignedCommunityHelpfulnessTest {
     val tally = gateway.tallyFor("123e4567-e89b-12d3-a456-426614174000", 2, "account:synthetic:key")
     assertTrue(tally.ownContribution)
  }
+ @Test fun `legacy signed tally checks private status before offering votes`() = runTest {
+    val id = "123e4567-e89b-12d3-a456-426614174000"
+    val scope = "account:synthetic:key"
+    val path = "/v1/observations/$id"
+    val proof = mockk<PhotoProofTransport>()
+    coEvery { proof.get("$path/helpfulness", scope, "decision_sequence=2") } returns
+        JSONObject("""{"decision_sequence":2,"helpful":0,"not_helpful":0,"total":0}""")
+    val gateway = CommunityHelpfulnessHttpClient(OkHttpClient(), "https://example.invalid", proof)
+
+    coEvery { proof.get(path, scope) } returns JSONObject("""{"observation":{"id":"$id"}}""")
+    assertTrue(gateway.tallyFor(id, 2, scope).ownContribution)
+
+    coEvery { proof.get(path, scope) } throws PhotoOperationRefused(404, "community.not-found")
+    assertFalse(gateway.tallyFor(id, 2, scope).ownContribution)
+
+    coEvery { proof.get(path, scope) } throws PhotoOperationRefused(503)
+    val failure = runCatching { gateway.tallyFor(id, 2, scope) }.exceptionOrNull()
+    assertEquals(
+        com.anpfuel.domain.repository.CommunityHelpfulnessRejectKind.TRANSPORT,
+        (failure as? com.anpfuel.domain.repository.CommunityHelpfulnessException)?.kind,
+    )
+ }
+
+ @Test fun `explicit nonowner skips the compatibility read`() = runTest {
+    val id = "123e4567-e89b-12d3-a456-426614174000"
+    val scope = "account:synthetic:key"
+    val path = "/v1/observations/$id"
+    val proof = mockk<PhotoProofTransport>()
+    coEvery { proof.get("$path/helpfulness", scope, "decision_sequence=2") } returns
+        JSONObject("""{"decision_sequence":2,"helpful":0,"not_helpful":0,"total":0,"own_contribution":false}""")
+    val gateway = CommunityHelpfulnessHttpClient(OkHttpClient(), "https://example.invalid", proof)
+    assertFalse(gateway.tallyFor(id, 2, scope).ownContribution)
+    coVerify(exactly = 0) { proof.get(path, scope) }
+ }
+
  @Test fun `bound owner reaches transport without being replaced by the latest owner`()=runTest {
     val proof=mockk<PhotoProofTransport>()
     coEvery {proof.post(any(),any(),any(),"account:original:key")} returns JSONObject("""{"vote_id":"v1","helpful":1,"not_helpful":0,"total":1,"my_choice":"HELPFUL"}""")

@@ -174,8 +174,8 @@ func (h Handler) helpfulnessTally(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := helpfulTallyBody(observationID, res.Tally.DecisionSequence, res.Tally, res.Share, res.MyChoice, res.UnderReview)
-	if res.OwnContribution && caller.ContributorID != "" {
-		out["own_contribution"] = true
+	if caller.ContributorID != "" && caller.Token != "" {
+		out["own_contribution"] = res.OwnContribution
 	}
 	body, _ := json.Marshal(out)
 	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", body)

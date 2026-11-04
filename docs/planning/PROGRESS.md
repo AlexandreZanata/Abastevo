@@ -1,5 +1,12 @@
 # Current execution state
 
+- CS08B ownership during backend rollout, 2026-11-04, LOCAL_DONE /
+  INTEGRATION_PENDING on maintained `dev` from `97643604`. The Android
+  client uses private observation status when the signed tally omits
+  ownership. [Device and test evidence](../backend/evidence/community-safety/CS08B_HELPFULNESS_VIEW.md#ownership-during-backend-rollout).
+  The device APK was updated and verified against staging. Protected
+  PR #188 carries integration.
+
 - CS08B contribution ownership and report action, 2026-11-04,
   LOCAL_DONE / INTEGRATION_PENDING on maintained `dev` from `dc332b80`.
   [Signed read and Android evidence](../backend/evidence/community-safety/CS08B_HELPFULNESS_VIEW.md#contribution-ownership-and-reporting)

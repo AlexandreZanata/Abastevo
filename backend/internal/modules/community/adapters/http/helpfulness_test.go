@@ -204,7 +204,7 @@ func TestTallyHelpfulnessOwnContributionIsPrivate(t *testing.T) {
 		return application.Caller{ContributorID: "other", Token: "tok-other"}, nil
 	}
 	w = serveVotes(h, http.MethodGet, helpfulTarget+"?decision_sequence=2", "")
-	if w.Code != http.StatusOK || strings.Contains(w.Body.String(), "own_contribution") {
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"own_contribution":false`) {
 		t.Fatalf("unexpected other-account tally: status %d, body %s", w.Code, w.Body.String())
 	}
 }

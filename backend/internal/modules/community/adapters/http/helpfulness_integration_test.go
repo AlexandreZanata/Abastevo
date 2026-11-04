@@ -115,7 +115,7 @@ func TestHelpfulnessEndToEnd(t *testing.T) {
 	}{{author, true}, {voter, false}} {
 		read := doRequest(t, r, signedRequest(t, pool, viewer.key, http.MethodGet, readTarget, ""))
 		if read.Code != http.StatusOK || read.Header().Get("Cache-Control") != "no-store" ||
-			strings.Contains(read.Body.String(), `"own_contribution":true`) != viewer.owned {
+			!strings.Contains(read.Body.String(), fmt.Sprintf(`"own_contribution":%t`, viewer.owned)) {
 			t.Fatalf("tally for viewer (owner=%v) = %d: %s", viewer.owned, read.Code, read.Body.String())
 		}
 	}

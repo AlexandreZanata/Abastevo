@@ -12111,7 +12111,7 @@ components:
           $ref: '#/components/schemas/HelpfulnessChoice'
         own_contribution:
           type: boolean
-          description: Present with value true only when a verified caller owns the contribution.
+          description: Present for verified viewers. True when the caller owns the contribution.
           example: true
         under_review:
           type: boolean
