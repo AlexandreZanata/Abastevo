@@ -37,3 +37,27 @@ uses the device's installed voice when available.
   device flows were exercised directly.
 - The tested source is this commit on maintained `dev` from `3dd9c97e`. The
   change is included in protected PR #188. Runtime checks used debug builds.
+
+## MAP-22 station origin regression — 2026-11-04
+
+The earlier APK could display a native position and still wait for a GPS-only
+route lookup. The route action now consumes a recent, accurate map snapshot
+when precise permission is present. Otherwise it checks enabled providers'
+recent device fixes and waits for the first suitable new fix, with a 15-second
+limit and removal of listeners after success, timeout or cancellation. The
+route preview still requires a separate action to start guidance.
+
+On the updated physical APK, tapping **Rota e ir** on the Smile Posto card
+in Sorriso and on the Auto Posto Cidade Alta card each calculated a native
+route from the current position without entering an origin. On the Android 15
+emulator, the Auto Posto Cidade Alta card waited
+through a 250 m accuracy sample and calculated the route after a 10 m sample
+from the fused test provider, with no injected GPS sample. A recent sample
+from that provider also calculated the Smile Posto route in Sorriso from its
+card, with a 2.2 km and 6 minute preview. No physical fix was recorded in the
+evidence.
+
+Debug build, lint and 62 tests passed, including regressions for the recent
+map fix, fused cache fallback, poor fixes, timeout cleanup and coarse
+permission. The tested source is this commit on maintained `dev` from
+`abb2f461`, included in protected PR #188.

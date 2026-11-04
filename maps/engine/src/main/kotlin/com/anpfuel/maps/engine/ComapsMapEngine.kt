@@ -217,6 +217,9 @@ class ComapsMapEngine(
         return lastViewport ?: currentCenter()?.let { MapCamera(it.latitude, it.longitude, 13) }
     }
 
+    override fun lastMapLocation(): Location? =
+        organicMaps?.locationHelper?.savedLocation?.let { Location(it) }
+
     override fun recenter(): Boolean {
         if (!initialized) return false
         val position = organicMaps?.locationHelper?.myPosition ?: return false

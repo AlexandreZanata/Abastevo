@@ -54,6 +54,9 @@ class NativeRouteViewModel @Inject constructor(private val engine: MapEngine, pr
         persist()
     }
 
+    suspend fun currentRoutePoint(context: Context, label: String): RoutePoint? =
+        findCurrentRoutePoint(context, label, engine::lastMapLocation)
+
     fun buildFromCurrentLocation(language: String, findOrigin: suspend () -> RoutePoint?) {
         if (state.value.destination == null) return
         invalidate()

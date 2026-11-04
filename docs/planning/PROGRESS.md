@@ -1,5 +1,11 @@
 # Current execution state
 
+- MAP-22 automatic station origin, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `abb2f461`. [Origin regression evidence](../backend/evidence/maps/MAP-22_23_DIRECT_NAVIGATION.md#map-22-station-origin-regression--2026-11-04)
+  records automatic station routing on physical Android and fused-only replay
+  in the emulator. Debug build, lint and 62 focused tests passed. The tested
+  revision is the source in this commit. Protected PR #188 carries integration.
+
 - MAP-22/MAP-23 direct navigation, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `3dd9c97e`. [Navigation and test evidence](../backend/evidence/maps/MAP-22_23_DIRECT_NAVIGATION.md)
   records the physical map route preview from a synthetic origin, the search

@@ -107,3 +107,13 @@ BUC-MAP22-23-DIRECT: search a unique pin or select Route and go -> calculate
 from a fresh fix -> inspect the line and estimate on the map -> start ->
 follow native progress -> end. Verify ambiguous results, denied or cancelled
 location, missing maps, stale requests and returning to active guidance.
+
+B-BR-MAP22-04: Route and go calculates immediately from a suitable recent
+foreground map fix or device fix. If neither is available, await an accurate
+fix from the permitted enabled providers for a bounded interval. Use neither
+an expired position nor the camera center as an automatic origin. Automatic
+planning still requires the user to start guidance explicitly.
+
+BUC-MAP22-STATION-ORIGIN: tap Route and go on a station card with a recent map
+fix -> see the route preview without editing the origin. Verify fused and
+network fallback, expired and inaccurate fixes, and cancellation before a fix.

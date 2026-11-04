@@ -20,6 +20,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.locale.AppLocaleHolder
 import com.anpfuel.domain.routing.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class,ExperimentalLayoutApi::class)
 @Composable
@@ -38,23 +40,27 @@ fun NativeRouteSheet(viewModel:NativeRouteViewModel, onDismiss:()->Unit, onDownl
     }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
-    var cancelFix by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val scope = rememberCoroutineScope()
+    var fixJob by remember { mutableStateOf<Job?>(null) }
     var fixing by remember { mutableStateOf(false) }
-    var fixGeneration by remember { mutableLongStateOf(0L) }
-    fun cancelPosition() { ++fixGeneration;cancelFix?.invoke();cancelFix=null;fixing=false }
+    fun cancelPosition() {
+        fixJob?.cancel()
+        fixJob = null
+        fixing = false
+    }
     val currentLabel=stringResource(R.string.map22_current)
     val centerLabel=stringResource(R.string.map22_center)
     val upLabel=stringResource(R.string.map22_move_up)
     val downLabel=stringResource(R.string.map22_move_down)
     val manualLabel=stringResource(R.string.map22_coordinates)
     fun fix() {
-        cancelPosition();fixing=true
-        val token=fixGeneration
-        val selectedTarget=target
-        cancelFix=requestRouteFix(context,currentLabel) { point ->
-            if(token!=fixGeneration) return@requestRouteFix
-            fixing=false
-            if(point!=null) viewModel.point(selectedTarget,point) else viewModel.fail("no-fix")
+        cancelPosition()
+        fixing = true
+        val selectedTarget = target
+        fixJob = scope.launch {
+            val point = viewModel.currentRoutePoint(context, currentLabel)
+            fixing = false
+            if (point != null) viewModel.point(selectedTarget, point) else viewModel.fail("no-fix")
         }
     }
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->

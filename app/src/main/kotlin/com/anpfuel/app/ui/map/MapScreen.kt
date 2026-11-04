@@ -157,7 +157,7 @@ fun MapScreen(
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
     fun buildFromCurrentLocation() {
-        planner?.buildFromCurrentLocation(routeLanguage) { findCurrentRoutePoint(context, currentPositionLabel) }
+        planner?.buildFromCurrentLocation(routeLanguage) { planner.currentRoutePoint(context, currentPositionLabel) }
     }
 
     val originPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {

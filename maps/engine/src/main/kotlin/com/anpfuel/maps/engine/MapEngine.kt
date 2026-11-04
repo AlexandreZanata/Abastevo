@@ -1,6 +1,7 @@
 package com.anpfuel.maps.engine
 
 import android.content.Context
+import android.location.Location
 import android.view.View
 
 data class MapSearchResult(val name: String, val latitude: Double, val longitude: Double)
@@ -35,6 +36,8 @@ interface MapEngine : com.anpfuel.domain.routing.NativeRoutePlanner {
      */
     fun startMyLocation(onFix: (MapCenter) -> Unit): Boolean = false
     fun stopMyLocation() = Unit
+    /** The foreground map’s last sample, including its original time and accuracy. */
+    fun lastMapLocation(): Location? = null
     fun isRenderingReady(): Boolean = isInitialized()
     fun isInitialized(): Boolean
     fun reloadMaps(): Boolean = false
