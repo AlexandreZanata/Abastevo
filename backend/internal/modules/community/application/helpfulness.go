@@ -104,14 +104,15 @@ type CastResult struct {
 
 // TallyResult is the public count snapshot plus the private owner
 // overlay. Public caches must carry only the counts; MyChoice travels
-// on the caller-bound read path. UnderReview annotates counts whose
+// on the caller-bound read path, as does OwnContribution. UnderReview annotates counts whose
 // target carries an open contribution review; the frozen wording lives
 // at the wire layer.
 type TallyResult struct {
-	Tally       domain.Tally
-	Share       domain.Share
-	MyChoice    *domain.Choice
-	UnderReview bool
+	Tally           domain.Tally
+	Share           domain.Share
+	MyChoice        *domain.Choice
+	UnderReview     bool
+	OwnContribution bool
 }
 
 // Cast records one helpfulness vote on a validated, visible
@@ -254,7 +255,8 @@ func TallyFor(ctx context.Context, p HelpfulnessPorts, caller Caller, observatio
 		return TallyResult{}, err
 	}
 	res := TallyResult{Tally: tally, Share: share}
-	if strings.TrimSpace(caller.Token) != "" {
+	if strings.TrimSpace(caller.ContributorID) != "" && strings.TrimSpace(caller.Token) != "" {
+		res.OwnContribution = caller.Token == target.AuthorRef
 		if choice, ok, err := p.Store.MyVote(ctx, caller.Token, target.ObservationID, sequence); err != nil {
 			return TallyResult{}, err
 		} else if ok {

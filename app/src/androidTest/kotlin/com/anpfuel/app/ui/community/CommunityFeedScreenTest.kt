@@ -11,6 +11,8 @@ import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.anpfuel.app.R
+import com.anpfuel.app.community.CommunityHelpfulnessPanel
+import com.anpfuel.app.community.CommunityHelpfulnessUiState
 import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.theme.AnpFuelTheme
@@ -19,6 +21,7 @@ import com.anpfuel.domain.valueobject.BrazilianState
 import com.anpfuel.domain.valueobject.FuelProduct
 import java.time.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -86,6 +89,39 @@ class CommunityFeedScreenTest {
         compose.onNodeWithText(context.getString(R.string.feed_change_city)).performScrollTo().performClick()
         assertEquals(Routes.LOCATION, route)
     }
+    @Test fun authorGetsOnlyTheOwnershipLabel() {
+        renderHelpfulness(CommunityHelpfulnessUiState.OwnContribution)
+        compose.onNodeWithText(context.getString(R.string.community_own_contribution)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.community_helpful_title)).assertDoesNotExist()
+        compose.onNodeWithText(context.getString(R.string.community_helpful_report)).assertDoesNotExist()
+    }
+
+    @Test fun reportSpansTheTwoVoteButtonsAndOpensTheReportAction() {
+        var reported = false
+        renderHelpfulness(
+            CommunityHelpfulnessUiState.Content("synthetic", 1, "synthetic", 0, 0, 0, null, "HELPFUL", false),
+        ) { reported = true }
+        fun node(label: Int) = compose.onNodeWithText(context.getString(label))
+        val helpful = node(R.string.community_helpful_helpful).fetchSemanticsNode().boundsInRoot
+        val notHelpful = node(R.string.community_helpful_not_helpful).fetchSemanticsNode().boundsInRoot
+        val report = node(R.string.community_helpful_report)
+        val reportBounds = report.fetchSemanticsNode().boundsInRoot
+        assertEquals(helpful.left, reportBounds.left, 1f)
+        assertEquals(notHelpful.right, reportBounds.right, 1f)
+        assertTrue(reportBounds.top >= helpful.bottom)
+        report.performClick()
+        compose.runOnIdle { assertTrue(reported) }
+        node(R.string.community_helpful_remove).assertIsDisplayed()
+    }
+
+    private fun renderHelpfulness(state: CommunityHelpfulnessUiState, onReport: () -> Unit = {}) {
+        compose.setContent {
+            AnpFuelTheme(darkTheme = true) {
+                CommunityHelpfulnessPanel(state, {}, {}, {}, onReport, {})
+            }
+        }
+    }
+
     private fun capture(name: String) {
         val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
         File(context.cacheDir, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }

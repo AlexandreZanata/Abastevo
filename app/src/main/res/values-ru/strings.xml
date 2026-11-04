@@ -998,6 +998,7 @@
     <string name="community_helpful_removed">Голос удалён.</string>
     <string name="community_helpful_rejected">Не сохранено (%1$s)</string>
     <string name="community_helpful_under_review">Сообщество проверяет результаты голосования</string>
+    <string name="community_own_contribution">Ваш вклад</string>
     <string name="community_helpful_report">Пожаловаться</string>
     <string name="community_helpful_guest">Войдите в бесплатный аккаунт, чтобы голосовать</string>
     <string name="community_helpful_guest_body">Для голосования нужен бесплатный аккаунт. Повторные голоса вашей идентичности не учитываются снова. Просмотр остаётся анонимным.</string>

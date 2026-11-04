@@ -108,6 +108,18 @@ func TestHelpfulnessEndToEnd(t *testing.T) {
 	target := "/v1/observations/" + obsID + "/helpfulness"
 	cast := `{"choice":"HELPFUL","decision_sequence":2,"client_submission_id":"help-vote-1"}`
 
+	readTarget := target + "?decision_sequence=2"
+	for _, viewer := range []struct {
+		key   *callerKey
+		owned bool
+	}{{author, true}, {voter, false}} {
+		read := doRequest(t, r, signedRequest(t, pool, viewer.key, http.MethodGet, readTarget, ""))
+		if read.Code != http.StatusOK || read.Header().Get("Cache-Control") != "no-store" ||
+			strings.Contains(read.Body.String(), `"own_contribution":true`) != viewer.owned {
+			t.Fatalf("tally for viewer (owner=%v) = %d: %s", viewer.owned, read.Code, read.Body.String())
+		}
+	}
+
 	// Signed voter casts through real proof: 201 with exact tally.
 	w := doRequest(t, r, signedRequest(t, pool, voter, http.MethodPost, target, cast))
 	if w.Code != http.StatusCreated {
@@ -148,7 +160,7 @@ func TestHelpfulnessEndToEnd(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("tally = %d: %s", w.Code, w.Body.String())
 	}
-	if strings.Contains(w.Body.String(), "my_choice") {
+	if strings.Contains(w.Body.String(), "my_choice") || strings.Contains(w.Body.String(), "own_contribution") {
 		t.Fatalf("anonymous tally leaks overlay: %s", w.Body.String())
 	}
 

@@ -1,5 +1,12 @@
 # Current execution state
 
+- CS08B contribution ownership and report action, 2026-11-04,
+  LOCAL_DONE / INTEGRATION_PENDING on maintained `dev` from `dc332b80`.
+  [Signed read and Android evidence](../backend/evidence/community-safety/CS08B_HELPFULNESS_VIEW.md#contribution-ownership-and-reporting)
+  records owner-only disclosure, the passive label and the full-width report
+  action. Builds, lint, 53 JVM tests, two emulator tests and PostGIS ownership,
+  proof and concurrency tests passed. Protected PR #188 carries integration.
+
 - MAP-22 route-origin CI regression, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `c7158ef7`. [Location policy and replay](../backend/evidence/maps/MAP-22_23_DIRECT_NAVIGATION.md#map-22-route-origin-location-policy-regression)
   record the fix for Quick verification, cancellation tests and the fused-only

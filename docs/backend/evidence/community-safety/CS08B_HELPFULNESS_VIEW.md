@@ -39,3 +39,35 @@ Plan: [phased plan](../../../planning/COMMUNITY_SAFETY_EXECUTION_PLAN.md),
   pass later. Device matrix: CS14-owned.
 
 Next microtask: CS09 — consent/inventory/rights (server).
+
+## Contribution ownership and reporting
+
+B-BR-CS01-OWNER: The signed helpfulness tally may tell the caller that the
+observation is theirs. Compare the same stored attribution reference used by
+self-vote protection. Never include attribution identifiers or the ownership
+indicator in anonymous or other callers' responses.
+
+BUC-CS02-OWNER: In the community prices list, the author sees the passive
+ownership label in place of evaluation and confirmation. Another signed-in
+viewer keeps the evaluation actions and a full-width error-colored report
+button below the two vote buttons. Guest sign-in and report reasons are
+preserved.
+
+### Verification — 2026-11-04
+
+The helpfulness GET returns `own_contribution: true` to the verified author
+and omits it for other viewers. The signed PostGIS HTTP test verifies the
+owner and another account before any vote, plus anonymous reads and refused
+self-votes. The public feed remains cacheable without identity data. Android
+also maps the existing self-vote refusal to the ownership label during a
+rolling backend update.
+
+The shared Android panel shows the localized passive label for the author.
+The report action uses the theme error color and spans both vote buttons.
+Two dark-theme emulator tests verified the author-only label, report bounds,
+report callback and removal action for a viewer with a vote.
+
+Debug and instrumentation APK builds, lint, 53 focused JVM tests, Go race
+and vet, PostGIS ownership/proof/concurrency tests, mobile static checks and
+OpenAPI lint passed. This commit carries the tested source from `dc332b80`
+for integration through protected PR #188.

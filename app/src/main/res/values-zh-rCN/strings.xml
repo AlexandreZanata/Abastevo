@@ -998,6 +998,7 @@
     <string name="community_helpful_removed">投票已撤销。</string>
     <string name="community_helpful_rejected">未记录（%1$s）</string>
     <string name="community_helpful_under_review">社区正在审核计票结果</string>
+    <string name="community_own_contribution">您的贡献</string>
     <string name="community_helpful_report">举报</string>
     <string name="community_helpful_guest">登录免费账户即可投票</string>
     <string name="community_helpful_guest_body">投票需要免费账户。同一身份的重复投票不会重复计票。浏览仍可匿名进行。</string>

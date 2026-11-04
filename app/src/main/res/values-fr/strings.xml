@@ -998,6 +998,7 @@
     <string name="community_helpful_removed">Vote retiré.</string>
     <string name="community_helpful_rejected">Non enregistré (%1$s)</string>
     <string name="community_helpful_under_review">Décomptes en cours de vérification par la communauté</string>
+    <string name="community_own_contribution">Votre contribution</string>
     <string name="community_helpful_report">Signaler</string>
     <string name="community_helpful_guest">Connectez-vous à un compte gratuit pour voter</string>
     <string name="community_helpful_guest_body">Un compte gratuit est nécessaire pour voter. Les votes répétés de votre identité ne sont pas comptés à nouveau. La consultation reste anonyme.</string>

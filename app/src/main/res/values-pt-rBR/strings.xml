@@ -1011,6 +1011,7 @@
     <string name="community_helpful_removed">Voto removido.</string>
     <string name="community_helpful_rejected">Não registrado (%1$s)</string>
     <string name="community_helpful_under_review">Contagens em análise pela comunidade</string>
+    <string name="community_own_contribution">Sua contribuição</string>
     <string name="community_helpful_report">Denunciar</string>
     <string name="community_helpful_guest">Entre em uma conta gratuita para votar</string>
     <string name="community_helpful_guest_body">É preciso ter uma conta gratuita para votar. Votos repetidos da sua identidade não são contados novamente. A consulta continua anônima.</string>

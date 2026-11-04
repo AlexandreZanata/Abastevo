@@ -173,7 +173,11 @@ func (h Handler) helpfulnessTally(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, r, err)
 		return
 	}
-	body, _ := json.Marshal(helpfulTallyBody(observationID, res.Tally.DecisionSequence, res.Tally, res.Share, res.MyChoice, res.UnderReview))
+	out := helpfulTallyBody(observationID, res.Tally.DecisionSequence, res.Tally, res.Share, res.MyChoice, res.UnderReview)
+	if res.OwnContribution && caller.ContributorID != "" {
+		out["own_contribution"] = true
+	}
+	body, _ := json.Marshal(out)
 	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", body)
 }
 

@@ -540,7 +540,7 @@ paths:
           example: 2
       responses:
         '200':
-          description: Exact counts; my_choice present only on the signed read path.
+          description: Exact counts with private viewer fields available on signed reads.
           headers:
             Cache-Control:
               schema: {type: string, example: 'no-store'}
@@ -12078,7 +12078,7 @@ components:
           format: date-time
           example: '2026-10-11T00:00:00Z'
     HelpfulnessTally:
-      description: Exact per-revision counts; my_choice present only on the signed read path.
+      description: Exact per-revision counts with private viewer fields available on signed reads.
       type: object
       required: [observation_id, decision_sequence, helpful, not_helpful, total]
       properties:
@@ -12109,6 +12109,10 @@ components:
           example: 10000
         my_choice:
           $ref: '#/components/schemas/HelpfulnessChoice'
+        own_contribution:
+          type: boolean
+          description: Present with value true only when a verified caller owns the contribution.
+          example: true
         under_review:
           type: boolean
           description: True while an open contribution review case names this target; counts stay exact.

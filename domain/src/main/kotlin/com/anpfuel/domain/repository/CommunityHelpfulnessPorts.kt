@@ -45,6 +45,7 @@ data class CommunityHelpfulnessTally(
     val helpfulBasisPoints: Long?,
     val myChoice: String?,
     val underReview: Boolean = false,
+    val ownContribution: Boolean = false,
 )
 
 class CommunityHelpfulnessException(

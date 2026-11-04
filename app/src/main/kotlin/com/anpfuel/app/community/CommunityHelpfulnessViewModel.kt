@@ -23,6 +23,7 @@ sealed interface CommunityHelpfulnessUiState {
     data object Guest : CommunityHelpfulnessUiState
     data object Idle : CommunityHelpfulnessUiState
     data object Loading : CommunityHelpfulnessUiState
+    data object OwnContribution : CommunityHelpfulnessUiState
     data class Content(
         val observationId: String,
         val decisionSequence: Long,
@@ -67,7 +68,10 @@ class CommunityHelpfulnessViewModel @Inject constructor(
             _state.value=if(flagProvider.isEnabled()) CommunityHelpfulnessUiState.Guest else CommunityHelpfulnessUiState.Disabled
             return
         }
-        if(target?.let { it.observationId==observationId && it.decisionSequence==decisionSequence && it.scope==scopeStamp() && it.accountId==accountId }==true) { refresh();return }
+        if(target?.let { it.observationId==observationId && it.decisionSequence==decisionSequence && it.scope==scopeStamp() && it.accountId==accountId }==true) {
+            if (_state.value !is CommunityHelpfulnessUiState.OwnContribution) refresh()
+            return
+        }
         generation++;submitting=false;pendingChoice=null;actionIds.clear();_actionReceived.value=false
         target=Target(observationId,decisionSequence,UUID.randomUUID().toString(),scopeStamp(),accountId,proof?.ownerScope())
         refresh()
@@ -76,7 +80,7 @@ class CommunityHelpfulnessViewModel @Inject constructor(
     private fun perform(loading:Boolean=false,onAccepted:()->Unit={},action:suspend (Target)->CommunityHelpfulnessUiState) {
         val current=target ?: return
         if(proof!=null && current.scope!=scopeStamp()) {clear();_state.value=CommunityHelpfulnessUiState.Guest;return}
-        if(submitting) return
+        if(submitting || (!loading && _state.value is CommunityHelpfulnessUiState.OwnContribution)) return
         val ticket=++generation
         submitting=true
         _state.value=if(loading) CommunityHelpfulnessUiState.Loading else CommunityHelpfulnessUiState.Submitting
@@ -95,20 +99,28 @@ class CommunityHelpfulnessViewModel @Inject constructor(
     fun refresh()=perform(loading=true) { current ->
         when(val outcome=useCase.tally(SubmitHelpfulnessVoteUseCase.TallyRequest(current.observationId,current.decisionSequence,current.ownerScope))) {
             HelpfulnessVoteOutcome.Disabled -> CommunityHelpfulnessUiState.Disabled
-            is HelpfulnessVoteOutcome.Tallied -> content(current,outcome.tally.helpful,outcome.tally.notHelpful,outcome.tally.total,outcome.tally.helpfulBasisPoints,outcome.tally.myChoice,outcome.tally.underReview)
+            is HelpfulnessVoteOutcome.Tallied -> if (outcome.tally.ownContribution) {
+                CommunityHelpfulnessUiState.OwnContribution
+            } else {
+                content(current,outcome.tally.helpful,outcome.tally.notHelpful,outcome.tally.total,outcome.tally.helpfulBasisPoints,outcome.tally.myChoice,outcome.tally.underReview)
+            }
             is HelpfulnessVoteOutcome.Rejected -> CommunityHelpfulnessUiState.Rejected(outcome.kind,outcome.message)
             else -> CommunityHelpfulnessUiState.Rejected(CommunityHelpfulnessRejectKind.TRANSPORT,"community action unavailable")
         }
     }
     fun vote(choiceWire:String) {
-        if(submitting) return
+        if(submitting || _state.value is CommunityHelpfulnessUiState.OwnContribution) return
         if(pendingChoice!=null && pendingChoice!=choiceWire) target=target?.copy(clientSubmissionId=UUID.randomUUID().toString())
         pendingChoice=choiceWire
         perform {current ->
             when(val outcome=useCase.cast(SubmitHelpfulnessVoteUseCase.CastRequest(current.observationId,current.clientSubmissionId,choiceWire,current.decisionSequence,current.ownerScope))) {
                 HelpfulnessVoteOutcome.Disabled -> CommunityHelpfulnessUiState.Disabled
                 is HelpfulnessVoteOutcome.Voted -> content(current,outcome.receipt.helpful,outcome.receipt.notHelpful,outcome.receipt.total,outcome.receipt.helpfulBasisPoints,outcome.receipt.myChoice,false)
-                is HelpfulnessVoteOutcome.Rejected -> CommunityHelpfulnessUiState.Rejected(outcome.kind,outcome.message)
+                is HelpfulnessVoteOutcome.Rejected -> if (outcome.kind == CommunityHelpfulnessRejectKind.SELF_VOTE) {
+                    CommunityHelpfulnessUiState.OwnContribution
+                } else {
+                    CommunityHelpfulnessUiState.Rejected(outcome.kind,outcome.message)
+                }
                 else -> CommunityHelpfulnessUiState.Rejected(CommunityHelpfulnessRejectKind.TRANSPORT,"community action unavailable")
             }
         }
