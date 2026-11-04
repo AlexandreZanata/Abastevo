@@ -1,6 +1,7 @@
 package com.anpfuel.data.repository
 
 import com.anpfuel.data.local.charging.ChargingSnapshotImport
+import com.anpfuel.data.local.charging.MATO_GROSSO_PILOT_PROFILE
 import com.anpfuel.data.local.charging.SORRISO_PILOT_PROFILE
 import com.anpfuel.data.local.dao.ChargingSnapshotDao
 import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.json.JSONObject
 
 class ChargingDiscoveryRepositoryTest {
 
@@ -175,6 +177,25 @@ class ChargingDiscoveryRepositoryTest {
         coEvery { client.placeDetail(byd) } returns place(byd).copy(groups = emptyList())
         assertEquals(2L, staging.sorrisoPilotForMap()?.placeCount)
         assertEquals(setOf(sau, byd), dao.places.values.map { it.placeId }.toSet())
+    }
+
+    @Test fun `regional pilot rejects an incomplete page and bootstraps every reviewed ID`() = runTest {
+        val resource = checkNotNull(javaClass.getResourceAsStream("/charging/mt-top10-pilot-v1.json"))
+        val manifest = JSONObject(resource.bufferedReader().use { it.readText() })
+        val rows = manifest.getJSONArray("places")
+        val ids = (0 until rows.length()).map { rows.getJSONObject(it).getString("id") }
+        val profile = MATO_GROSSO_PILOT_PROFILE
+        val edition = ChargingCoverage(profile, manifest.getString("revision"), ids.size.toLong(), 0, 0, "2026-11-04T00:00:00Z")
+        val staging = ChargingDiscoveryRepository(client, dao, ApiEnvironment.STAGING)
+        coEvery { client.places(profile, null, 100, null) } returns page(ids.first())
+        assertRefreshRefused { staging.refresh(profile) }
+        assertEquals(0, dao.places.size)
+
+        coEvery { client.places(profile, null, 100, null) } throws ChargingSnapshotUnavailable(httpStatus = 400)
+        coEvery { client.coverage(profile) } returns edition
+        coEvery { client.placeDetail(any()) } answers { place(firstArg()).copy(groups = emptyList()) }
+        assertEquals(ids.size.toLong(), staging.matoGrossoPilotForMap()?.placeCount)
+        assertEquals(ids.toSet(), dao.places.values.map { it.placeId }.toSet())
     }
 
     @Test fun `refresh commits a generation and lists with verdicts`() = runTest {

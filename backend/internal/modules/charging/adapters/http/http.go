@@ -57,7 +57,7 @@ func (h Handler) places(w http.ResponseWriter, r *http.Request) {
 	}
 	profile := q.Get("profile")
 	if profile != "ocm-br-20261021-v1" && profile != "pbe-2026-pdf-v1" &&
-		profile != domain.NationalCatalogProfile && !(h.PilotEnabled && profile == read.SorrisoPilotProfile) {
+		profile != domain.NationalCatalogProfile && !(h.PilotEnabled && read.IsStagingPilotProfile(profile)) {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-filter", "unknown profile",
 			[]httpapi.Detail{{Field: "profile", Code: "vocabulary"}})
 		return
@@ -109,7 +109,7 @@ func (h Handler) placeOne(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 	place, err := h.Read.PlaceDetail(r.Context(), id)
-	if errors.Is(err, read.ErrNationalPlaceNotFound) || (err == nil && place.Profile == read.SorrisoPilotProfile && !h.PilotEnabled) {
+	if errors.Is(err, read.ErrNationalPlaceNotFound) || (err == nil && read.IsStagingPilotProfile(place.Profile) && !h.PilotEnabled) {
 		httpapi.WriteError(w, r, http.StatusNotFound, "charging.not-found", "charging place is not in the active catalog", nil)
 		return
 	}
@@ -195,7 +195,7 @@ func (h Handler) coverage(w http.ResponseWriter, r *http.Request) {
 			[]httpapi.Detail{{Field: "profile", Code: "required"}})
 		return
 	}
-	if profile == read.SorrisoPilotProfile && !h.PilotEnabled {
+	if read.IsStagingPilotProfile(profile) && !h.PilotEnabled {
 		httpapi.WriteError(w, r, http.StatusBadRequest, "charging.bad-filter", "unknown profile", nil)
 		return
 	}

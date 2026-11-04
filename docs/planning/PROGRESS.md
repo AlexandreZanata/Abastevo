@@ -1,5 +1,13 @@
 # Current execution state
 
+- Mato Grosso charging expansion 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `b99329be`. [Regional census and evidence](../backend/evidence/evc/MT_TOP10_CHARGING_PILOT.md)
+  record 26 facilities in the ten largest municipalities by the 2026 IBGE
+  estimate. Public staging details match the 24 added and two retained sites.
+  Real PostGIS replay and negative cases, Go race/vet, 44 Android tests, debug
+  lint/build and a physical Cuiabá map smoke passed. PR #188 carries the API
+  list change. Staging Android can read the published records today.
+
 - Sorriso charging pilot 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `39f4e57f`. [Source, seed and staging evidence](../backend/evidence/evc/SORRISO_CHARGING_PILOT.md)
   record two reviewed facilities, SAU 17 and BYD Disbrava. Staging serves

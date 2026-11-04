@@ -22,40 +22,39 @@ object MapDiscoveryModule {
 
         override suspend fun query(request: ChargingMarkersQuery): ChargingMarkersResult {
             try {
-                val meta = repo.generationMeta(ChargingDiscoveryRepository.NATIONAL_PROFILE)
+                val full = repo.generationMeta(ChargingDiscoveryRepository.NATIONAL_PROFILE)
                     ?: repo.generationMeta(ChargingDiscoveryRepository.OCM_PROFILE)?.takeIf { it.placeCount > 0 }
-                    ?: repo.sorrisoPilotForMap()?.takeIf { it.placeCount > 0 }
-                    ?: return ChargingMarkersResult(
-                        places = emptyList(),
-                        snapshotPresent = false,
-                        error = null,
-                    )
+                val snapshots = if (full != null) listOf(full) else listOfNotNull(
+                    repo.sorrisoPilotForMap(), repo.matoGrossoPilotForMap(),
+                ).filter { it.placeCount > 0 }
                 val targetLimit = request.limit.coerceIn(1, 200)
-                val maxScan = meta.placeCount.toInt().coerceIn(ChargingDiscoveryRepository.PAGE_SIZE, 10_000)
                 val matched = ArrayList<ChargingPlace>(targetLimit)
-                var offset = 0
-                while (offset < maxScan && matched.size < targetLimit) {
-                    val page = repo.explorePage(
-                        profile = meta.profile,
-                        generation = meta.generation,
-                        connector = null,
-                        current = null,
-                        access = null,
-                        minPowerW = null,
-                        limit = ChargingDiscoveryRepository.PAGE_SIZE,
-                        offset = offset,
-                    )
-                    for (row in page.rows) {
-                        if (matchesChargingQuery(row.place, request)) {
-                            matched.add(row.place)
-                            if (matched.size >= targetLimit) break
+                for (meta in snapshots) {
+                    val maxScan = meta.placeCount.toInt().coerceIn(ChargingDiscoveryRepository.PAGE_SIZE, 10_000)
+                    var offset = 0
+                    while (offset < maxScan && matched.size < targetLimit) {
+                        val page = repo.explorePage(
+                            profile = meta.profile,
+                            generation = meta.generation,
+                            connector = null,
+                            current = null,
+                            access = null,
+                            minPowerW = null,
+                            limit = ChargingDiscoveryRepository.PAGE_SIZE,
+                            offset = offset,
+                        )
+                        for (row in page.rows) {
+                            if (matchesChargingQuery(row.place, request)) {
+                                matched.add(row.place)
+                                if (matched.size >= targetLimit) break
+                            }
                         }
+                        offset = page.nextOffset ?: break
                     }
-                    offset = page.nextOffset ?: break
                 }
                 return ChargingMarkersResult(
                     places = matched,
-                    snapshotPresent = true,
+                    snapshotPresent = snapshots.isNotEmpty(),
                     error = null,
                 )
             } catch (e: CancellationException) {
