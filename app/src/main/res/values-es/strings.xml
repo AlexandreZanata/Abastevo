@@ -1284,6 +1284,17 @@
     <string name="driver_hub_first_vehicle_title">Empieza por el vehículo</string>
     <string name="driver_hub_first_vehicle_body">Registra un vehículo para abrir los registros y los indicadores mensuales reales.</string>
     <string name="driver_hub_add_vehicle">Abrir vehículos</string>
+    <string name="driver_hub_current_vehicle">Vehículo en uso</string>
+    <string name="driver_hub_register_group">Registrar gastos</string>
+    <string name="driver_hub_work_group">Seguimiento del trabajo</string>
+    <string name="driver_hub_vehicle_group">Tus vehículos</string>
+    <string name="driver_hub_open_work">Turno e ingresos</string>
+    <string name="driver_hub_quick_refuel_body">Registra los litros, el importe y el kilometraje.</string>
+    <string name="driver_hub_quick_charge_body">Registra la energía y el importe de la recarga.</string>
+    <string name="driver_hub_open_work_body">Controla el turno y registra tus ingresos.</string>
+    <string name="driver_hub_open_entries_body">Consulta y corrige tus registros.</string>
+    <string name="driver_hub_open_export_body">Consulta el resumen mensual y exporta tus datos.</string>
+    <string name="driver_hub_open_vehicles_body">Añade o edita un vehículo.</string>
     <string name="driver_hub_open_entries">Abrir registros</string>
     <string name="driver_hub_open_export">Indicadores y exportación</string>
     <string name="driver_hub_open_vehicles">Administrar vehículos</string>

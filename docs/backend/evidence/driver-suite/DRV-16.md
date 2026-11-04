@@ -38,3 +38,19 @@ No shift form/control, GPS, driver command UI or field/device-matrix acceptance;
 DRV-18 owns shift control. Strings are added to the default locale; full
 eight-locale/accessibility proof remains DRV-29. No push/PR/merge in this
 checkpoint.
+
+## Driver hub action layout
+
+B-BR-DRV-16-UI: Show the selected vehicle before its actions. Present
+refuel and charge together, then work and records, then vehicle management.
+Every action uses a full-width row with a descriptive title, a short
+explanation, and a touch target at least 48 dp high.
+
+BUC-DRV-16-UI: Open the hub with a vehicle and navigate from each action,
+including at large font scale. Preserve the existing destination, vehicle
+argument, access states and first-use flow.
+
+The debug build, lint, mobile static checks, ViewModel suite and five
+emulator tests passed. At 200% font scale, all six vehicle actions could
+be reached and invoked with their expected arguments. The updated hub
+was installed over ADB and opened on the connected device.

@@ -1284,6 +1284,17 @@
     <string name="driver_hub_first_vehicle_title">まず車両を登録しましょう</string>
     <string name="driver_hub_first_vehicle_body">車両を登録すると、記録と実際の月次指標を表示できます。</string>
     <string name="driver_hub_add_vehicle">車両を開く</string>
+    <string name="driver_hub_current_vehicle">使用中の車両</string>
+    <string name="driver_hub_register_group">支出を記録</string>
+    <string name="driver_hub_work_group">業務を確認</string>
+    <string name="driver_hub_vehicle_group">登録車両</string>
+    <string name="driver_hub_open_work">シフトと収入</string>
+    <string name="driver_hub_quick_refuel_body">給油量、支払額、走行距離を記録します。</string>
+    <string name="driver_hub_quick_charge_body">充電量と支払額を記録します。</string>
+    <string name="driver_hub_open_work_body">シフトを管理し、収入を記録します。</string>
+    <string name="driver_hub_open_entries_body">記録を確認・修正します。</string>
+    <string name="driver_hub_open_export_body">月次サマリーを確認し、データを書き出します。</string>
+    <string name="driver_hub_open_vehicles_body">車両を追加・編集します。</string>
     <string name="driver_hub_open_entries">記録を開く</string>
     <string name="driver_hub_open_export">指標とエクスポート</string>
     <string name="driver_hub_open_vehicles">車両を管理</string>

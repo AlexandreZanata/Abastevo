@@ -1284,6 +1284,17 @@
     <string name="driver_hub_first_vehicle_title">Начните с автомобиля</string>
     <string name="driver_hub_first_vehicle_body">Добавьте автомобиль, чтобы открыть реальные записи и месячные показатели.</string>
     <string name="driver_hub_add_vehicle">Открыть автомобили</string>
+    <string name="driver_hub_current_vehicle">Текущий автомобиль</string>
+    <string name="driver_hub_register_group">Учёт расходов</string>
+    <string name="driver_hub_work_group">Работа и отчёты</string>
+    <string name="driver_hub_vehicle_group">Ваши автомобили</string>
+    <string name="driver_hub_open_work">Смена и доходы</string>
+    <string name="driver_hub_quick_refuel_body">Запишите объём топлива, сумму и пробег.</string>
+    <string name="driver_hub_quick_charge_body">Запишите объём энергии и стоимость зарядки.</string>
+    <string name="driver_hub_open_work_body">Управляйте сменой и записывайте доходы.</string>
+    <string name="driver_hub_open_entries_body">Просматривайте и исправляйте записи.</string>
+    <string name="driver_hub_open_export_body">Просматривайте месячный отчёт и экспортируйте данные.</string>
+    <string name="driver_hub_open_vehicles_body">Добавьте или измените автомобиль.</string>
     <string name="driver_hub_open_entries">Открыть записи</string>
     <string name="driver_hub_open_export">Показатели и экспорт</string>
     <string name="driver_hub_open_vehicles">Управление автомобилями</string>

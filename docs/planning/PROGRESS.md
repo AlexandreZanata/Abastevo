@@ -1,5 +1,10 @@
 # Current execution state
 
+- DRV-16 driver hub layout, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `a16de53c`. [Layout and Android evidence](../backend/evidence/driver-suite/DRV-16.md#driver-hub-action-layout)
+  records the grouped actions, 200% text verification and device install.
+  Protected PR #188 carries integration.
+
 - CS08B Home community confirmation counts, 2026-11-04, LOCAL_DONE /
   INTEGRATION_PENDING on maintained `dev` from `30333e3c`.
   [Summary and Android evidence](../backend/evidence/community-safety/CS08B_HELPFULNESS_VIEW.md#home-community-confirmation-counts)

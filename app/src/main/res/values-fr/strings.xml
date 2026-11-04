@@ -1284,6 +1284,17 @@
     <string name="driver_hub_first_vehicle_title">Commencez par le véhicule</string>
     <string name="driver_hub_first_vehicle_body">Enregistrez un véhicule pour accéder aux écritures et aux indicateurs mensuels réels.</string>
     <string name="driver_hub_add_vehicle">Ouvrir les véhicules</string>
+    <string name="driver_hub_current_vehicle">Véhicule utilisé</string>
+    <string name="driver_hub_register_group">Saisir les dépenses</string>
+    <string name="driver_hub_work_group">Suivre le travail</string>
+    <string name="driver_hub_vehicle_group">Vos véhicules</string>
+    <string name="driver_hub_open_work">Service et revenus</string>
+    <string name="driver_hub_quick_refuel_body">Saisissez les litres, le montant payé et le kilométrage.</string>
+    <string name="driver_hub_quick_charge_body">Saisissez la quantité d’énergie et le coût de la recharge.</string>
+    <string name="driver_hub_open_work_body">Gérez votre service et saisissez vos revenus.</string>
+    <string name="driver_hub_open_entries_body">Consultez et corrigez vos saisies.</string>
+    <string name="driver_hub_open_export_body">Consultez le bilan mensuel et exportez vos données.</string>
+    <string name="driver_hub_open_vehicles_body">Ajoutez ou modifiez un véhicule.</string>
     <string name="driver_hub_open_entries">Ouvrir les écritures</string>
     <string name="driver_hub_open_export">Indicateurs et exportation</string>
     <string name="driver_hub_open_vehicles">Gérer les véhicules</string>

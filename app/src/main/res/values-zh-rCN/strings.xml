@@ -1284,6 +1284,17 @@
     <string name="driver_hub_first_vehicle_title">从车辆开始</string>
     <string name="driver_hub_first_vehicle_body">添加车辆以查看实际记录和月度指标。</string>
     <string name="driver_hub_add_vehicle">打开车辆</string>
+    <string name="driver_hub_current_vehicle">当前车辆</string>
+    <string name="driver_hub_register_group">记录支出</string>
+    <string name="driver_hub_work_group">查看工作记录</string>
+    <string name="driver_hub_vehicle_group">您的车辆</string>
+    <string name="driver_hub_open_work">班次和收入</string>
+    <string name="driver_hub_quick_refuel_body">记录加油量、金额和里程。</string>
+    <string name="driver_hub_quick_charge_body">记录充电量和支付金额。</string>
+    <string name="driver_hub_open_work_body">管理班次并记录收入。</string>
+    <string name="driver_hub_open_entries_body">查看并更正记录。</string>
+    <string name="driver_hub_open_export_body">查看月度汇总并导出数据。</string>
+    <string name="driver_hub_open_vehicles_body">添加或编辑车辆。</string>
     <string name="driver_hub_open_entries">打开记录</string>
     <string name="driver_hub_open_export">指标与导出</string>
     <string name="driver_hub_open_vehicles">管理车辆</string>
