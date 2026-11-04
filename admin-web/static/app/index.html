@@ -5,188 +5,282 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <meta name="description" content="Painel de administração: login, contas, contribuidores, postos e auditoria.">
-  <title>Painel de administração</title>
-  <link rel="icon" href="data:,">
+  <title>Administração · abastevo</title>
+  <link rel="icon" href="/admin/assets/brand/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/admin/assets/styles.css">
   <link rel="stylesheet" href="/admin/assets/admin.css">
 </head>
-<body>
+<body class="landing-home admin-page">
   <a class="skip-link" href="#main">Pular para o conteúdo</a>
-  <header class="admin-topbar">
-    <span class="admin-brand">Painel de administração</span>
-    <nav aria-label="Seções" id="main-nav" hidden>
-      <a href="/admin/accounts/" data-route="/admin/accounts/">Contas</a>
-      <a href="/admin/contributors/" data-route="/admin/contributors/">Contribuidores</a>
-      <a href="/admin/stations/" data-route="/admin/stations/">Postos</a>
-      <a href="/admin/audit/" data-route="/admin/audit/">Auditoria</a>
-    </nav>
-    <span class="admin-session" id="session-info" hidden>Sessão <span id="session-fingerprint">…</span> · expira em <span id="session-expiry">…</span></span>
-    <nav aria-label="Sessão"><button id="logout-button" type="button" hidden>Sair</button></nav>
+  <header class="topbar admin-topbar">
+    <div class="shell topbar-inner">
+      <div class="brand">
+        <img src="/admin/assets/brand/abastevo-logo.svg" alt="" width="28" height="28">
+        <img src="/admin/assets/brand/abastevo-wordmark.svg" alt="abastevo" class="brand-word" width="96" height="12">
+      </div>
+      <nav class="topnav admin-nav" aria-label="Seções do painel" id="main-nav" hidden>
+        <a href="/admin/accounts/" data-route="/admin/accounts/">Contas</a>
+        <a href="/admin/contributors/" data-route="/admin/contributors/">Contribuidores</a>
+        <a href="/admin/stations/" data-route="/admin/stations/">Postos</a>
+        <a href="/admin/audit/" data-route="/admin/audit/">Auditoria</a>
+      </nav>
+      <div class="topbar-actions">
+        <button class="pill-light" id="logout-button" type="button" hidden>Sair</button>
+      </div>
+    </div>
   </header>
-  <main id="main">
-    <noscript><p>Este painel precisa de JavaScript para falar com a API.</p></noscript>
-    <section class="card" id="view-login" aria-labelledby="login-title" hidden>
-      <h1 id="login-title">Entrar</h1>
-      <p>Use a chave de administração do ambiente. Ela nunca é exibida nem registrada.</p>
-      <form id="login-form" method="post" action="#">
-        <label for="admin-key">Chave de administração</label>
-        <input id="admin-key" name="key" type="password" autocomplete="off" required>
-        <p id="login-error" class="error" role="alert"></p>
-        <button type="submit">Entrar</button>
-      </form>
+  <main id="main" tabindex="-1">
+    <noscript><p class="shell admin-noscript">Ative o JavaScript para acessar o painel de administração.</p></noscript>
+    <section class="hero admin-login" id="view-login" aria-labelledby="login-title" hidden>
+      <div class="shell lp-hero">
+        <div class="admin-login-copy">
+          <p class="kicker"><span class="dot" aria-hidden="true"></span>Acesso restrito</p>
+          <h1 class="lp-title" id="login-title">Painel de administração</h1>
+          <p class="lp-lead" id="login-help">Use a chave de administração deste ambiente para entrar.</p>
+          <form class="admin-form lp-search" id="login-form" method="post" action="#">
+            <label class="admin-control" for="admin-key">
+              Chave de administração
+              <span class="field">
+                <span class="field-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3m-4 5v2"/>
+                  </svg>
+                </span>
+                <input id="admin-key" name="key" type="password" autocomplete="off" aria-describedby="login-help" required>
+              </span>
+            </label>
+            <p id="login-error" class="error" role="alert"></p>
+            <button class="btn-dark" type="submit">Entrar</button>
+          </form>
+        </div>
+        <figure class="lp-hero-art" aria-hidden="true">
+          <div class="art-stage">
+            <img class="art-skyline" src="/admin/assets/art/skyline-640w.webp" width="640" height="317" alt="">
+            <img class="art-trees" src="/admin/assets/art/trees-640w.webp" width="640" height="427" alt="">
+            <img class="art-road" src="/admin/assets/art/road-640w.webp" width="640" height="360" alt="">
+            <img class="art-car" src="/admin/assets/art/car-640w.webp" width="640" height="427" alt="">
+          </div>
+        </figure>
+      </div>
     </section>
-    <div id="view-accounts" hidden>
-      <section class="card" aria-labelledby="search-title">
-        <h1 id="search-title">Buscar contas</h1>
-        <form id="search-form" method="get" action="#">
-          <label for="search-q">UUID, apelido ou e-mail</label>
-          <input id="search-q" name="q" type="search" minlength="3" required>
-          <button type="submit">Buscar</button>
+    <div class="shell admin-session" id="session-info" hidden>
+      <span>Sessão <strong id="session-fingerprint">…</strong></span>
+      <span>Expira em <time id="session-expiry">…</time></span>
+    </div>
+    <div class="shell admin-view admin-grid" id="view-accounts" hidden>
+      <div class="admin-view-heading">
+        <p class="kicker"><span class="dot" aria-hidden="true"></span>Painel de administração</p>
+        <h1 class="lp-title">Contas</h1>
+        <p class="lp-lead">Busque contas e consulte seus benefícios e papéis na equipe.</p>
+      </div>
+      <section class="admin-card" aria-labelledby="search-title">
+        <h2 id="search-title">Buscar contas</h2>
+        <form class="admin-form" id="search-form" method="get" action="#">
+          <label class="admin-control" for="search-q">
+            UUID, apelido ou e-mail
+            <input id="search-q" name="q" type="search" minlength="3" required>
+          </label>
+          <button class="btn-dark" type="submit">Buscar</button>
         </form>
         <p id="search-error" class="error" role="alert"></p>
-        <ul id="results" aria-live="polite"></ul>
+        <ul class="admin-list" id="results" aria-live="polite"></ul>
       </section>
-      <section class="card" aria-labelledby="detail-title">
+      <section class="admin-card" aria-labelledby="detail-title">
         <h2 id="detail-title">Detalhe da conta</h2>
         <p id="detail-error" class="error" role="alert"></p>
-        <dl>
-          <dt>Apelido</dt><dd id="detail-alias">—</dd>
-          <dt>Estado</dt><dd id="detail-status">—</dd>
-          <dt>Criada em</dt><dd id="detail-created">—</dd>
-          <dt>Pagante</dt><dd id="detail-paid">—</dd>
+        <dl class="admin-facts">
+          <div><dt>Apelido</dt><dd id="detail-alias">—</dd></div>
+          <div><dt>Estado</dt><dd id="detail-status">—</dd></div>
+          <div><dt>Criada em</dt><dd id="detail-created">—</dd></div>
+          <div><dt>Pagante</dt><dd id="detail-paid">—</dd></div>
         </dl>
-        <h3>Grants</h3>
-        <ul id="grants"></ul>
-        <h3>Conceder grant</h3>
-        <form id="grant-form" method="post" action="#">
-          <label for="grant-tier">Tier</label>
-          <select id="grant-tier" name="tier">
-            <option value="PRO">PRO</option>
-            <option value="CONTRIBUTOR">CONTRIBUTOR</option>
-            <option value="ENTERPRISE">ENTERPRISE</option>
-          </select>
-          <label for="grant-end">Data final (opcional)</label>
-          <input id="grant-end" name="end" type="date">
+      </section>
+      <section class="admin-card" aria-labelledby="grants-title">
+        <h2 id="grants-title">Benefícios concedidos</h2>
+        <p id="revoke-grant-error" class="error" role="alert"></p>
+        <ul class="admin-list" id="grants"></ul>
+        <h3>Conceder benefício</h3>
+        <form class="admin-form" id="grant-form" method="post" action="#">
+          <label class="admin-control" for="grant-tier">
+            Categoria
+            <select id="grant-tier" name="tier">
+              <option value="PRO">PRO</option>
+              <option value="CONTRIBUTOR">CONTRIBUTOR</option>
+              <option value="ENTERPRISE">ENTERPRISE</option>
+            </select>
+          </label>
+          <label class="admin-control" for="grant-end">
+            Data final (opcional)
+            <input id="grant-end" name="end" type="date">
+          </label>
           <label class="checkbox"><input id="grant-no-end" name="no-end" type="checkbox"> Sem data final</label>
-          <label for="grant-reason">Motivo (10 a 500 caracteres)</label>
-          <textarea id="grant-reason" name="reason" rows="3" required></textarea>
+          <label class="admin-control" for="grant-reason">
+            Motivo (10 a 500 caracteres)
+            <textarea id="grant-reason" name="reason" rows="3" required></textarea>
+          </label>
           <p id="grant-error" class="error" role="alert"></p>
-          <button type="submit">Conceder</button>
+          <button class="btn-dark" type="submit">Conceder</button>
         </form>
-        <h3>Papéis da equipe</h3>
+      </section>
+      <section class="admin-card" aria-labelledby="roles-title">
+        <h2 id="roles-title">Papéis da equipe</h2>
         <p>Os papéis não concedem permissões por si sós. Eventos recentes aparecem abaixo.</p>
-        <ul id="role-events" aria-live="polite"></ul>
-        <form id="role-form" method="post" action="#">
-          <label for="role-select">Papel</label>
-          <select id="role-select" name="role">
-            <option value="project_creator">Criador do projeto</option>
-            <option value="community_moderator">Moderação da comunidade</option>
-            <option value="station_reviewer">Revisão de postos</option>
-            <option value="contributor_curator">Curadoria de contribuidores</option>
-            <option value="support_agent">Suporte</option>
-          </select>
-          <label for="role-end">Data final (opcional)</label>
-          <input id="role-end" name="end" type="date">
+        <ul class="admin-list" id="role-events" aria-live="polite"></ul>
+        <form class="admin-form" id="role-form" method="post" action="#">
+          <label class="admin-control" for="role-select">
+            Papel
+            <select id="role-select" name="role">
+              <option value="project_creator">Criador do projeto</option>
+              <option value="community_moderator">Moderação da comunidade</option>
+              <option value="station_reviewer">Revisão de postos</option>
+              <option value="contributor_curator">Curadoria de contribuidores</option>
+              <option value="support_agent">Suporte</option>
+            </select>
+          </label>
+          <label class="admin-control" for="role-end">
+            Data final (opcional)
+            <input id="role-end" name="end" type="date">
+          </label>
           <label class="checkbox"><input id="role-no-end" name="no-end" type="checkbox"> Sem data final</label>
-          <label for="role-reason">Motivo (10 a 500 caracteres)</label>
-          <textarea id="role-reason" name="reason" rows="3" required></textarea>
+          <label class="admin-control" for="role-reason">
+            Motivo (10 a 500 caracteres)
+            <textarea id="role-reason" name="reason" rows="3" required></textarea>
+          </label>
           <p id="role-error" class="error" role="alert"></p>
-          <button type="submit">Atribuir papel</button>
+          <button class="btn-dark" type="submit">Atribuir papel</button>
         </form>
       </section>
     </div>
-    <div id="view-contributors" hidden>
-      <section class="card" aria-labelledby="snapshot-title">
-        <h1 id="snapshot-title">Contribuidores do GitHub</h1>
+    <div class="shell admin-view admin-grid" id="view-contributors" hidden>
+      <div class="admin-view-heading">
+        <p class="kicker"><span class="dot" aria-hidden="true"></span>Painel de administração</p>
+        <h1 class="lp-title">Contribuidores</h1>
+        <p class="lp-lead">Acompanhe os vínculos com o GitHub e gerencie a visibilidade dos perfis.</p>
+      </div>
+      <section class="admin-card" aria-labelledby="snapshot-title">
+        <h2 id="snapshot-title">Contribuidores do GitHub</h2>
         <p id="snapshot-error" class="error" role="alert"></p>
-        <p>Repositório <span id="snapshot-repo">…</span> · atualizado em <span id="snapshot-fetched">…</span>
-          <span id="snapshot-stale" hidden> · desatualizado</span></p>
-        <form id="snapshot-form" method="get" action="#">
-          <button type="submit">Atualizar agora</button>
+        <dl class="admin-facts">
+          <div><dt>Repositório</dt><dd id="snapshot-repo">—</dd></div>
+          <div><dt>Atualizado em</dt><dd id="snapshot-fetched">—</dd></div>
+        </dl>
+        <p class="admin-badge" id="snapshot-stale" hidden>Dados desatualizados</p>
+        <form class="admin-form" id="snapshot-form" method="get" action="#">
+          <button class="admin-secondary" type="submit">Atualizar agora</button>
         </form>
-        <ul id="snapshot-list"></ul>
+        <ul class="admin-list" id="snapshot-list"></ul>
       </section>
-      <section class="card" aria-labelledby="claims-title">
-        <h2 id="claims-title">Fila de claims</h2>
-        <form id="claims-filter-form" method="get" action="#">
-          <label for="claims-state">Estado</label>
-          <select id="claims-state" name="state">
-            <option value="">Todos</option>
-            <option value="PENDING">PENDING</option>
-            <option value="APPROVED">APPROVED</option>
-            <option value="REJECTED">REJECTED</option>
-            <option value="WITHDRAWN">WITHDRAWN</option>
-            <option value="EXPIRED">EXPIRED</option>
-          </select>
-          <button type="submit">Filtrar</button>
+      <section class="admin-card" aria-labelledby="claims-title">
+        <h2 id="claims-title">Solicitações de vínculo</h2>
+        <form class="admin-form" id="claims-filter-form" method="get" action="#">
+          <label class="admin-control" for="claims-state">
+            Estado
+            <select id="claims-state" name="state">
+              <option value="">Todos</option>
+              <option value="PENDING">PENDING</option>
+              <option value="APPROVED">APPROVED</option>
+              <option value="REJECTED">REJECTED</option>
+              <option value="WITHDRAWN">WITHDRAWN</option>
+              <option value="EXPIRED">EXPIRED</option>
+            </select>
+          </label>
+          <button class="btn-dark" type="submit">Filtrar</button>
         </form>
         <p id="claims-error" class="error" role="alert"></p>
-        <ul id="claims-list"></ul>
-        <button id="claims-more" type="button" hidden>Carregar mais</button>
+        <ul class="admin-list" id="claims-list"></ul>
+        <button class="admin-secondary" id="claims-more" type="button" hidden>Carregar mais</button>
       </section>
-      <section class="card" aria-labelledby="link-title">
+      <section class="admin-card" aria-labelledby="link-title">
         <h2 id="link-title">Vincular GitHub</h2>
-        <form id="link-form" method="post" action="#">
-          <label for="link-account">ID da conta</label>
-          <input id="link-account" name="account" type="text" required>
-          <label for="link-login">Login do GitHub</label>
-          <input id="link-login" name="login" type="text" required>
-          <label for="link-reason">Motivo (10 a 500 caracteres)</label>
-          <textarea id="link-reason" name="reason" rows="3" required></textarea>
+        <form class="admin-form" id="link-form" method="post" action="#">
+          <label class="admin-control" for="link-account">
+            ID da conta
+            <input id="link-account" name="account" type="text" required>
+          </label>
+          <label class="admin-control" for="link-login">
+            Login do GitHub
+            <input id="link-login" name="login" type="text" required>
+          </label>
+          <label class="admin-control" for="link-reason">
+            Motivo (10 a 500 caracteres)
+            <textarea id="link-reason" name="reason" rows="3" required></textarea>
+          </label>
           <label class="checkbox"><input id="link-override" name="override" type="checkbox"> Override (login fora do snapshot)</label>
           <p id="link-error" class="error" role="alert"></p>
-          <button type="submit">Vincular</button>
+          <button class="btn-dark" type="submit">Vincular</button>
         </form>
       </section>
-      <section class="card" aria-labelledby="visibility-title">
+      <section class="admin-card" aria-labelledby="visibility-title">
         <h2 id="visibility-title">Visibilidade do perfil</h2>
-        <form id="visibility-form" method="post" action="#">
-          <label for="visibility-account">ID da conta</label>
-          <input id="visibility-account" name="account" type="text" required>
-          <label for="visibility-reason">Motivo (10 a 500 caracteres)</label>
-          <textarea id="visibility-reason" name="reason" rows="3" required></textarea>
+        <form class="admin-form" id="visibility-form" method="post" action="#">
+          <label class="admin-control" for="visibility-account">
+            ID da conta
+            <input id="visibility-account" name="account" type="text" required>
+          </label>
+          <label class="admin-control" for="visibility-reason">
+            Motivo (10 a 500 caracteres)
+            <textarea id="visibility-reason" name="reason" rows="3" required></textarea>
+          </label>
           <p id="visibility-error" class="error" role="alert"></p>
-          <button type="submit" name="visibility-action" value="hide">Ocultar</button>
-          <button type="submit" name="visibility-action" value="unhide">Exibir</button>
+          <div class="admin-actions">
+            <button class="btn-dark" type="submit" name="visibility-action" value="hide">Ocultar</button>
+            <button class="admin-secondary" type="submit" name="visibility-action" value="unhide">Exibir</button>
+          </div>
         </form>
       </section>
     </div>
-    <div id="view-stations" hidden>
-      <section class="card" aria-labelledby="stations-title">
-        <h1 id="stations-title">Consultar posto</h1>
-        <form id="station-lookup" method="get" action="#">
-          <label for="station-id">ID do posto (UUID)</label>
-          <input id="station-id" type="text" maxlength="36" spellcheck="false" required>
-          <button type="submit">Consultar</button>
+    <div class="shell admin-view" id="view-stations" hidden>
+      <div class="admin-view-heading">
+        <p class="kicker"><span class="dot" aria-hidden="true"></span>Painel de administração</p>
+        <h1 class="lp-title">Postos</h1>
+        <p class="lp-lead">Consulte os dados públicos de um posto pelo seu identificador.</p>
+      </div>
+      <section class="admin-card" aria-labelledby="stations-title">
+        <h2 id="stations-title">Consultar posto</h2>
+        <form class="admin-form" id="station-lookup" method="get" action="#">
+          <label class="admin-control" for="station-id">
+            ID do posto (UUID)
+            <input id="station-id" type="text" maxlength="36" spellcheck="false" required>
+          </label>
+          <button class="btn-dark" type="submit">Consultar</button>
         </form>
         <p id="station-status" role="status"></p>
         <p id="station-error" class="error" role="alert"></p>
-        <dl id="station-result" hidden>
-          <dt>Nome de exibição</dt>
-          <dd id="station-display-name"></dd>
-          <dt>Razão social</dt>
-          <dd id="station-legal-name"></dd>
-          <dt>Fonte do endereço</dt>
-          <dd id="station-address-source"></dd>
+        <dl class="admin-facts" id="station-result" hidden>
+          <div><dt>Nome de exibição</dt><dd id="station-display-name"></dd></div>
+          <div><dt>Razão social</dt><dd id="station-legal-name"></dd></div>
+          <div><dt>Fonte do endereço</dt><dd id="station-address-source"></dd></div>
         </dl>
       </section>
     </div>
-    <div id="view-audit" hidden>
-      <section class="card" aria-labelledby="audit-title">
-        <h1 id="audit-title">Trilha de auditoria</h1>
-        <form id="audit-filter-form" method="get" action="#">
-          <label for="audit-action">Ação</label>
-          <input id="audit-action" name="action" type="text">
-          <label for="audit-target">ID do alvo</label>
-          <input id="audit-target" name="target" type="text">
-          <button type="submit">Filtrar</button>
+    <div class="shell admin-view" id="view-audit" hidden>
+      <div class="admin-view-heading">
+        <p class="kicker"><span class="dot" aria-hidden="true"></span>Painel de administração</p>
+        <h1 class="lp-title">Auditoria</h1>
+        <p class="lp-lead">Consulte o histórico de ações administrativas.</p>
+      </div>
+      <section class="admin-card" aria-labelledby="audit-title">
+        <h2 id="audit-title">Trilha de auditoria</h2>
+        <form class="admin-form admin-filter" id="audit-filter-form" method="get" action="#">
+          <label class="admin-control" for="audit-action">
+            Ação
+            <input id="audit-action" name="action" type="text">
+          </label>
+          <label class="admin-control" for="audit-target">
+            ID do alvo
+            <input id="audit-target" name="target" type="text">
+          </label>
+          <button class="btn-dark" type="submit">Filtrar</button>
         </form>
         <p id="audit-error" class="error" role="alert"></p>
-        <ul id="audit-list"></ul>
-        <button id="audit-more" type="button" hidden>Carregar mais</button>
+        <ul class="admin-list" id="audit-list"></ul>
+        <button class="admin-secondary" id="audit-more" type="button" hidden>Carregar mais</button>
       </section>
     </div>
   </main>
+  <footer class="footer admin-footer">
+    <div class="shell">abastevo <span aria-hidden="true">·</span> Painel de administração</div>
+  </footer>
   <script type="module" src="/admin/assets/app.js"></script>
 </body>
 </html>

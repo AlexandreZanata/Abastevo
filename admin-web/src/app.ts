@@ -1,7 +1,7 @@
 // Page wiring for the admin panel. All data is rendered with textContent
 // and createElement only.
 //
-// Single shell, two routes: the CSRF token lives in a module variable, so
+// Single shell across admin routes: the CSRF token lives in a module variable, so
 // in-app transitions use history.pushState and never reload the document.
 // Every full load starts unauthenticated: without the in-memory token the
 // only honest state is the login view.
@@ -137,7 +137,12 @@ function showLogin(): void {
 function showAuthed(viewId: string): void {
   hideAllViews();
   el<HTMLElement>(viewId).hidden = false;
-  el<HTMLElement>('main-nav').hidden = false;
+  const nav = el<HTMLElement>('main-nav');
+  nav.hidden = false;
+  const path = window.location.pathname;
+  for (const link of nav.querySelectorAll('a[data-route]')) {
+    link.setAttribute('aria-current', link.getAttribute('data-route') === path ? 'page' : 'false');
+  }
   el<HTMLElement>('session-info').hidden = false;
   el<HTMLButtonElement>('logout-button').hidden = false;
 }
@@ -230,7 +235,9 @@ async function refreshContributors(): Promise<void> {
 
 function renderHeader(fingerprint: string, expiresAt: string): void {
   el<HTMLElement>('session-fingerprint').textContent = fingerprint;
-  el<HTMLElement>('session-expiry').textContent = formatDateTime(expiresAt);
+  const expiry = el<HTMLTimeElement>('session-expiry');
+  expiry.dateTime = expiresAt;
+  expiry.textContent = formatDateTime(expiresAt);
 }
 
 function renderResults(items: AccountSummary[]): void {
@@ -277,7 +284,7 @@ function renderDetail(detail: AccountDetail): void {
   clearChildren(grants);
   if (detail.grants.length === 0) {
     const empty = document.createElement('li');
-    empty.textContent = 'Sem grants.';
+    empty.textContent = 'Nenhum benefício concedido.';
     grants.appendChild(empty);
     return;
   }
@@ -288,9 +295,9 @@ function renderDetail(detail: AccountDetail): void {
 
 function renderGrant(detail: AccountDetail, grant: GrantView): HTMLLIElement {
   const row = document.createElement('li');
-  const until = grant.end_at === null || grant.end_at === '' ? 'sem data final' : formatDateTime(grant.end_at);
+  const duration = grant.end_at ? `válido até ${formatDateTime(grant.end_at)}` : 'sem data final';
   row.appendChild(text('strong', `${grant.tier} · ${grant.state}`));
-  row.appendChild(text('span', ` válido até ${until}`));
+  row.appendChild(text('span', ` · ${duration}`));
   if (grant.state === 'ACTIVE') {
     const revokeForm = document.createElement('form');
     revokeForm.className = 'inline-form';
@@ -309,7 +316,7 @@ function renderGrant(detail: AccountDetail, grant: GrantView): HTMLLIElement {
       const reason = reasonInput.value;
       const invalid = reasonError(reason);
       if (invalid !== null) {
-        setAlert('detail-error', invalid);
+        setAlert('revoke-grant-error', invalid);
         return;
       }
       if (!window.confirm(`Revogar grant ${grant.tier} de ${detail.alias}?`)) {
@@ -318,11 +325,11 @@ function renderGrant(detail: AccountDetail, grant: GrantView): HTMLLIElement {
       void (async () => {
         try {
           await api.revokeGrant(grant.id, reason.trim());
-          setAlert('detail-error', '');
+          setAlert('revoke-grant-error', '');
           await loadDetail(detail.account_id);
         } catch (error) {
           if (!isUnauthorized(error)) {
-            setAlert('detail-error', errorMessage(error));
+            setAlert('revoke-grant-error', errorMessage(error));
           }
         }
       })();
@@ -334,6 +341,7 @@ function renderGrant(detail: AccountDetail, grant: GrantView): HTMLLIElement {
 
 async function loadDetail(accountId: string): Promise<void> {
   setAlert('detail-error', '');
+  setAlert('revoke-grant-error', '');
   try {
     renderDetail(await api.getAccount(accountId));
   } catch (error) {
