@@ -1,5 +1,11 @@
 # Current execution state
 
+- DRV-18/19 work screen form layout, 2026-11-04, LOCAL_DONE /
+  INTEGRATION_PENDING on maintained `dev` from `877240d8`.
+  [Form and Room evidence](../backend/evidence/driver-suite/DRV-18-22.md#work-screen-form-layout)
+  records the grouped shift and earning forms, accessible fields and seven
+  emulator tests. Protected PR #188 carries integration.
+
 - DRV-16 driver hub layout, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `a16de53c`. [Layout and Android evidence](../backend/evidence/driver-suite/DRV-16.md#driver-hub-action-layout)
   records the grouped actions, 200% text verification and device install.
