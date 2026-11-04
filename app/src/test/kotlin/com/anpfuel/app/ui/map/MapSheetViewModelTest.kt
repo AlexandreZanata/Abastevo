@@ -1,7 +1,9 @@
 package com.anpfuel.app.ui.map
 
+import com.anpfuel.domain.valueobject.SurveyWeek
 import com.anpfuel.maps.engine.MapOverlayMarker
 import com.anpfuel.maps.engine.MapStationLocationQuality
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -39,7 +41,7 @@ class MapSheetViewModelTest {
 
     @Test fun `anp price shows exact product unit and date`() = runTest {
         val vm = MapSheetViewModel(SheetPriceSource { _, source, _ ->
-            if (source == MapPriceSource.ANP) SheetPrice("GASOLINE_REGULAR", "L", "5.99", source, "2026-10-20") else null
+            if (source == MapPriceSource.ANP) SheetPrice("GASOLINE_REGULAR", "L", "5.99", source, LocalDate.parse("2026-10-20")) else null
         })
         vm.select(marker(), MapPriceSource.ANP)
         advanceTimeBy(200)
@@ -68,7 +70,7 @@ class MapSheetViewModelTest {
         val vm = MapSheetViewModel(SheetPriceSource { _, source, _ ->
             calls++
             kotlinx.coroutines.delay(200)
-            SheetPrice("GASOLINE_REGULAR", "L", if (source == MapPriceSource.ANP) "5.99" else "6.10", source, "2026-10-20")
+            SheetPrice("GASOLINE_REGULAR", "L", if (source == MapPriceSource.ANP) "5.99" else "6.10", source, LocalDate.parse("2026-10-20"))
         })
         vm.select(marker(), MapPriceSource.ANP)
         advanceTimeBy(50)
@@ -83,7 +85,7 @@ class MapSheetViewModelTest {
         var lookups = 0
         val vm = MapSheetViewModel(SheetPriceSource { _, _, _ ->
             lookups++
-            SheetPrice("TARIFF", "kWh", "1.20", MapPriceSource.COMMUNITY, "2026-10-20")
+            SheetPrice("TARIFF", "kWh", "1.20", MapPriceSource.COMMUNITY, LocalDate.parse("2026-10-20"))
         })
         vm.select(marker(charging = true, fuel = false), MapPriceSource.ANP)
         dispatcher.scheduler.advanceUntilIdle()
@@ -111,7 +113,7 @@ class MapSheetViewModelTest {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
                     release.await()
                 }
-                return SheetPrice("GASOLINE_REGULAR", "L", "5.99", MapPriceSource.ANP, "2026-10-20")
+                return SheetPrice("GASOLINE_REGULAR", "L", "5.99", MapPriceSource.ANP, LocalDate.parse("2026-10-20"))
             }
 
             override suspend fun lookup(stationUuid: String, source: MapPriceSource, marker: MapOverlayMarker): SheetPrice? =
@@ -153,7 +155,7 @@ class MapSheetViewModelTest {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
                     release.await()
                 }
-                return SheetPrice("GASOLINE_REGULAR", "L", "5.99", request.source, "2026-10-20")
+                return SheetPrice("GASOLINE_REGULAR", "L", "5.99", request.source, LocalDate.parse("2026-10-20"))
             }
 
             override suspend fun lookup(stationUuid: String, source: MapPriceSource, marker: MapOverlayMarker): SheetPrice? =
@@ -277,7 +279,8 @@ class MapSheetViewModelTest {
         assertEquals("L", anpResult?.unit)
         assertEquals("R$ 3,89", anpResult?.amount)
         assertEquals(MapPriceSource.ANP, anpResult?.source)
-        assertEquals("2026-09-27..2026-10-03 (2026-09-29)", anpResult?.dateLabel)
+        assertEquals(SurveyWeek.fromIsoDates("2026-09-27", "2026-10-03"), anpResult?.surveyWeek)
+        assertEquals(LocalDate.parse("2026-09-29"), anpResult?.observedOn)
 
         // 2. ANP lookup for a mismatched survey period returns null (never silent cross-period fallback).
         io.mockk.coEvery {
@@ -374,7 +377,7 @@ class MapSheetViewModelTest {
         assertEquals("L", communityResult?.unit)
         assertEquals("R$ 6,150", communityResult?.amount)
         assertEquals(MapPriceSource.COMMUNITY, communityResult?.source)
-        assertEquals("2026-10-24", communityResult?.dateLabel)
+        assertEquals(LocalDate.parse("2026-10-24"), communityResult?.observedOn)
 
         // 4. Community charging lookup reads ChargingObservationGateway and formats kWh price.
         val chargerId = "33333333-3333-4333-8333-333333333333"
@@ -402,6 +405,6 @@ class MapSheetViewModelTest {
         assertEquals("kWh", chargingResult?.unit)
         assertEquals("R$ 2,450", chargingResult?.amount)
         assertEquals(MapPriceSource.COMMUNITY, chargingResult?.source)
-        assertEquals("2026-10-25", chargingResult?.dateLabel)
+        assertEquals(LocalDate.parse("2026-10-25"), chargingResult?.observedOn)
     }
 }

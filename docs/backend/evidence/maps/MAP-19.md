@@ -67,3 +67,33 @@ wiring (profile/route/report navigation) is exercised in MAP-20 gate.
   Live on-device station-price acceptance still needs admitted staging data.
 - Native route preview (`buildCarRoute`) owns MAP-22; the interim external
   `geo:` action is explicit and never claimed as native navigation.
+
+## Station sheet presentation
+
+B-BR-MAP19-PRESENTATION-01: The quick sheet identifies the station and service,
+then groups the selected price source, product, exact amount and unit, condition,
+and dated evidence. Format the survey range and observation day for the active
+locale. Keep pricing provenance separate from location quality. Make the route
+button the primary action, with labeled profile, contribution and favorite
+controls and an explicit close button.
+
+BUC-MAP19-PRESENTATION: Open a fuel or charging pin, identify its price and source,
+switch source, and use the appropriate route or station action. Confirm the sheet
+also explains missing tariffs and approximate locations and scrolls with large
+text.
+
+### Station sheet verification — 2026-11-04
+
+The debug APK displayed the real Posto Paraíso card from the Sorriso staging
+catalog in the Android 15 emulator. The light theme showed its address, ANP
+source, regular gasoline at R$ 6.79 per liter, survey week and collection day.
+The dark theme at 200% font scale retained the full name, price, and dates.
+Scrolling exposed the profile, report and favorite actions. Tapping the route
+button opened the in-map preview for the same station. A separate instrumented
+charging test exercised ANP tariff absence, switching sources, the reported
+price and the charging contribution action.
+
+Debug and instrumentation APK builds, debug lint, 19 focused unit tests and
+the targeted emulator instrumentation test passed. The updated debug APK was
+installed on the physical test device. The tested source is this commit on
+maintained `dev` from `2fd71bc0`, included in protected PR #188.

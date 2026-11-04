@@ -1156,8 +1156,15 @@
     <string name="map_sheet_price_load_failed">Не удалось загрузить цену.</string>
     <string name="map_sheet_no_price">Нет цены для этой станции.</string>
     <string name="map_sheet_route_unavailable">Маршрут недоступен: нет проверенных координат.</string>
-    <string name="map_sheet_profile">Профиль</string>
-    <string name="map_sheet_report">Сообщить</string>
+    <string name="map_sheet_profile">Открыть профиль</string>
+    <string name="map_sheet_report">Сообщить цену</string>
+    <string name="map_sheet_charge_report">Добавить сведения</string>
+    <string name="map_sheet_price_source">Источник цены</string>
+    <string name="map_sheet_observed_on">Сообщено: %1$s</string>
+    <string name="map_sheet_condition_cash">Оплата наличными</string>
+    <string name="map_sheet_condition_loyalty">Программа лояльности</string>
+    <string name="map_sheet_condition_app">В приложении</string>
+    <string name="map_sheet_condition_other">Другое условие</string>
     <string name="map_cluster_title">Группа (%1$d станций)</string>
     <string name="map_cluster_expand">Раскрыть группу (%1$d)</string>
     <string name="map_list_toggle">Список (%1$d)</string>

@@ -1156,8 +1156,15 @@
     <string name="map_sheet_price_load_failed">Échec de la consultation du prix.</string>
     <string name="map_sheet_no_price">Aucun prix pour cette station.</string>
     <string name="map_sheet_route_unavailable">Itinéraire indisponible : station sans coordonnées vérifiées.</string>
-    <string name="map_sheet_profile">Profil</string>
-    <string name="map_sheet_report">Signaler</string>
+    <string name="map_sheet_profile">Voir le profil</string>
+    <string name="map_sheet_report">Signaler un prix</string>
+    <string name="map_sheet_charge_report">Contribuer</string>
+    <string name="map_sheet_price_source">Source du prix</string>
+    <string name="map_sheet_observed_on">Signalé le %1$s</string>
+    <string name="map_sheet_condition_cash">Paiement en espèces</string>
+    <string name="map_sheet_condition_loyalty">Programme de fidélité</string>
+    <string name="map_sheet_condition_app">Dans l’application</string>
+    <string name="map_sheet_condition_other">Autre condition</string>
     <string name="map_cluster_title">Regroupement (%1$d stations)</string>
     <string name="map_cluster_expand">Développer le regroupement (%1$d)</string>
     <string name="map_list_toggle">Liste (%1$d)</string>

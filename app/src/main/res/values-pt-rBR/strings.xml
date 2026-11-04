@@ -1169,8 +1169,15 @@
     <string name="map_sheet_price_load_failed">Falha ao consultar o preço.</string>
     <string name="map_sheet_no_price">Sem preço para esta estação.</string>
     <string name="map_sheet_route_unavailable">Rota indisponível: estação sem coordenadas revisadas.</string>
-    <string name="map_sheet_profile">Perfil</string>
-    <string name="map_sheet_report">Informar</string>
+    <string name="map_sheet_profile">Ver perfil</string>
+    <string name="map_sheet_report">Informar preço</string>
+    <string name="map_sheet_charge_report">Colaborar</string>
+    <string name="map_sheet_price_source">Fonte do preço</string>
+    <string name="map_sheet_observed_on">Registro: %1$s</string>
+    <string name="map_sheet_condition_cash">Pagamento em dinheiro</string>
+    <string name="map_sheet_condition_loyalty">Programa de fidelidade</string>
+    <string name="map_sheet_condition_app">Pelo aplicativo</string>
+    <string name="map_sheet_condition_other">Outra condição</string>
     <string name="map_cluster_title">Agrupamento (%1$d estações)</string>
     <string name="map_cluster_expand">Expandir agrupamento (%1$d)</string>
     <string name="map_list_toggle">Lista (%1$d)</string>

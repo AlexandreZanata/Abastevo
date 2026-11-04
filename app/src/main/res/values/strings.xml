@@ -1175,8 +1175,15 @@
     <string name="map_sheet_price_load_failed">Price lookup failed.</string>
     <string name="map_sheet_no_price">No price for this station.</string>
     <string name="map_sheet_route_unavailable">Route unavailable: station has no reviewed coordinates.</string>
-    <string name="map_sheet_profile">Profile</string>
-    <string name="map_sheet_report">Report</string>
+    <string name="map_sheet_profile">View profile</string>
+    <string name="map_sheet_report">Report price</string>
+    <string name="map_sheet_charge_report">Contribute</string>
+    <string name="map_sheet_price_source">Price source</string>
+    <string name="map_sheet_observed_on">Reported: %1$s</string>
+    <string name="map_sheet_condition_cash">Cash payment</string>
+    <string name="map_sheet_condition_loyalty">Loyalty program</string>
+    <string name="map_sheet_condition_app">In the app</string>
+    <string name="map_sheet_condition_other">Other condition</string>
     <string name="map_cluster_title">Cluster (%1$d stations)</string>
     <string name="map_cluster_expand">Expand cluster (%1$d)</string>
     <string name="map_list_toggle">List (%1$d)</string>

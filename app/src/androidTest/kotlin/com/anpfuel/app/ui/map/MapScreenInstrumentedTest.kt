@@ -107,7 +107,7 @@ class MapScreenInstrumentedTest {
         )
         val sheetVm = MapSheetViewModel(SheetPriceSource { uuid, source, _ ->
             if (uuid == charger.uuid && source == MapPriceSource.COMMUNITY) {
-                SheetPrice("CCS2", "kWh", "2.45", MapPriceSource.COMMUNITY, "2026-10-25")
+                SheetPrice("CCS2", "kWh", "2.45", MapPriceSource.COMMUNITY, java.time.LocalDate.parse("2026-10-25"))
             } else {
                 null
             }
@@ -140,7 +140,8 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithTag("map-sheet-switch-community").performClick()
         compose.waitUntil(5_000) { sheetVm.ui.value.price?.source == MapPriceSource.COMMUNITY }
         compose.waitForIdle()
-        compose.onNodeWithText("CCS2 2.45 kWh", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("CCS2").assertIsDisplayed()
+        compose.onNodeWithTag("map-sheet-price").assert(hasText("2.45 / kWh")).assertIsDisplayed()
 
         // Clicking top ANP chip switches back to ANP and shows Show Community button again.
         compose.onNodeWithTag("map-sheet-source-anp").performClick()
@@ -151,7 +152,8 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithTag("map-sheet-source-community").performClick()
         compose.waitUntil(5_000) { sheetVm.ui.value.price?.source == MapPriceSource.COMMUNITY }
         compose.waitForIdle()
-        compose.onNodeWithText("CCS2 2.45 kWh", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("CCS2").assertIsDisplayed()
+        compose.onNodeWithTag("map-sheet-price").assert(hasText("2.45 / kWh")).assertIsDisplayed()
 
         // Clicking Report on a charging-only station passes CHARGING (not GASOLINE_REGULAR).
         compose.onNodeWithTag("map-sheet-report").performScrollTo().performClick()

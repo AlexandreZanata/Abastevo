@@ -31,6 +31,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -185,14 +186,13 @@ class RealSheetPriceSource @Inject constructor(
                     val amount = PriceFormatter.formatAmount(localPrice.price, PT_BR_LOCALE)
                         ?.replace('\u00a0', ' ')
                         ?: "R$ ${localPrice.price.value.toPlainString()}"
-                    val periodLabel = "${targetWeek.startDate}..${targetWeek.endDate}"
-                    val dateLabel = localPrice.collectedAt?.let { "$periodLabel ($it)" } ?: periodLabel
                     return SheetPrice(
                         product = wireProduct,
                         unit = defaultUnit,
                         amount = amount,
                         source = MapPriceSource.ANP,
-                        dateLabel = dateLabel,
+                        observedOn = localPrice.collectedAt,
+                        surveyWeek = targetWeek,
                         stale = stationStale,
                         conditionKind = "STANDARD",
                     )
@@ -272,13 +272,14 @@ class RealSheetPriceSource @Inject constructor(
         val conditionKind = normalizeFuelCondition(group.conditionKind) ?: return null
         val amount = formatExactMilliBrl(official.amountMilliBrl)
         val unit = formatWireUnit(group.unit, defaultUnit)
-        val dateLabel = "${official.surveyWeekStart}..${official.surveyWeekEnd} (${official.collectedOn})"
+        val surveyWeek = SurveyWeek.fromIsoDates(official.surveyWeekStart.trim(), official.surveyWeekEnd.trim())
         return SheetPrice(
             product = group.fuelProductWire,
             unit = unit,
             amount = amount,
             source = MapPriceSource.ANP,
-            dateLabel = dateLabel,
+            observedOn = LocalDate.parse(official.collectedOn.trim()),
+            surveyWeek = surveyWeek,
             stale = stale,
             conditionKind = conditionKind,
         )
@@ -352,7 +353,7 @@ class RealSheetPriceSource @Inject constructor(
                             unit = formatWireUnit(item.unit, defaultUnit),
                             amount = formatExactMilliBrl(item.amountMilliBrl),
                             source = MapPriceSource.COMMUNITY,
-                            dateLabel = item.updatedAt.toString().take(10),
+                            observedOn = item.updatedAt.atOffset(ZoneOffset.UTC).toLocalDate(),
                             stale = false,
                             conditionKind = "STANDARD",
                         )
@@ -388,7 +389,7 @@ class RealSheetPriceSource @Inject constructor(
                         unit = "kWh",
                         amount = formatExactMilliBrl(milli),
                         source = MapPriceSource.COMMUNITY,
-                        dateLabel = obs.observedDay,
+                        observedOn = LocalDate.parse(obs.observedDay.trim()),
                         stale = false,
                         conditionKind = obs.condition.name,
                     )
@@ -437,13 +438,12 @@ class RealSheetPriceSource @Inject constructor(
         val comm = group.community ?: return null
         val milli = comm.amountMilliBrl ?: return null
         val conditionKind = normalizeFuelCondition(group.conditionKind) ?: return null
-        val dateLabel = comm.lastReceivedAt?.toString()?.take(10) ?: "COMMUNITY"
         return SheetPrice(
             product = group.fuelProductWire,
             unit = formatWireUnit(group.unit, defaultUnit),
             amount = formatExactMilliBrl(milli),
             source = MapPriceSource.COMMUNITY,
-            dateLabel = dateLabel,
+            observedOn = comm.lastReceivedAt?.atOffset(ZoneOffset.UTC)?.toLocalDate(),
             stale = stale,
             conditionKind = conditionKind,
         )

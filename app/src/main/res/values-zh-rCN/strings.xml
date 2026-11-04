@@ -1156,8 +1156,15 @@
     <string name="map_sheet_price_load_failed">查询价格失败。</string>
     <string name="map_sheet_no_price">该站点暂无价格。</string>
     <string name="map_sheet_route_unavailable">路线不可用：站点无已核实坐标。</string>
-    <string name="map_sheet_profile">详情</string>
-    <string name="map_sheet_report">上报</string>
+    <string name="map_sheet_profile">查看详情</string>
+    <string name="map_sheet_report">上报价格</string>
+    <string name="map_sheet_charge_report">提供信息</string>
+    <string name="map_sheet_price_source">价格来源</string>
+    <string name="map_sheet_observed_on">上报日期：%1$s</string>
+    <string name="map_sheet_condition_cash">现金支付</string>
+    <string name="map_sheet_condition_loyalty">会员优惠</string>
+    <string name="map_sheet_condition_app">通过应用</string>
+    <string name="map_sheet_condition_other">其他条件</string>
     <string name="map_cluster_title">聚合点（%1$d 个站点）</string>
     <string name="map_cluster_expand">展开聚合点（%1$d）</string>
     <string name="map_list_toggle">列表（%1$d）</string>

@@ -1,5 +1,12 @@
 # Current execution state
 
+- MAP-19 station sheet presentation, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `2fd71bc0`. [Station sheet evidence](../backend/evidence/maps/MAP-19.md#station-sheet-verification--2026-11-04)
+  records the live station card in light and dark themes, 200% font scale,
+  charging source switching and route entry. Debug and instrumentation APK
+  builds, lint, 19 focused tests and the emulator test passed. Protected
+  PR #188 carries the tested source in this commit.
+
 - MAP-20 station search focus, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `abf7f865`. [Search and device evidence](../backend/evidence/maps/MAP-20.md#station-search-focus-verification--2026-11-04)
   records the Smile route preview, the independent native pin layer, clear
