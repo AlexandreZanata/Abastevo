@@ -16,7 +16,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** Typed transport failure: corrupt, oversize, foreign or private bodies. */
-class ChargingSnapshotUnavailable(message: String? = null, cause: Throwable? = null) : IOException(message, cause)
+class ChargingSnapshotUnavailable(
+    message: String? = null,
+    cause: Throwable? = null,
+    val httpStatus: Int? = null,
+) : IOException(message, cause)
 
 /** Strict wire decode for EE-09 public charging reads (anonymous only).
  * Unknown connector/current/access values decode as UNKNOWN with raw

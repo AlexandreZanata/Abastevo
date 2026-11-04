@@ -76,7 +76,9 @@ class ChargingSnapshotHttpClient(http: OkHttpClient, baseUrl: String) {
                             response.use {
                                 if (!continuation.isActive) return
                                 val parsed = try {
-                                    if (!response.isSuccessful) throw ChargingSnapshotUnavailable("status ${response.code}")
+                                    if (!response.isSuccessful) throw ChargingSnapshotUnavailable(
+                                        "status ${response.code}", httpStatus = response.code,
+                                    )
                                     val source = response.body?.source() ?: throw ChargingSnapshotUnavailable("empty body")
                                     if (source.request(BODY_BUDGET)) throw ChargingSnapshotUnavailable("body over budget")
                                     JSONObject(source.readUtf8())

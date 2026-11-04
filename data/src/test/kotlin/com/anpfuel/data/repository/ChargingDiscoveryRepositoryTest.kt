@@ -1,10 +1,13 @@
 package com.anpfuel.data.repository
 
 import com.anpfuel.data.local.charging.ChargingSnapshotImport
+import com.anpfuel.data.local.charging.SORRISO_PILOT_PROFILE
 import com.anpfuel.data.local.dao.ChargingSnapshotDao
 import com.anpfuel.data.local.entity.ChargingSnapshotMetaEntity
 import com.anpfuel.data.local.entity.ChargingSnapshotPlaceEntity
+import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.charging.ChargingSnapshotHttpClient
+import com.anpfuel.data.remote.charging.ChargingSnapshotUnavailable
 import com.anpfuel.domain.charging.ChargingCatalogConfidence
 import com.anpfuel.domain.charging.ChargingCoverage
 import com.anpfuel.domain.charging.ChargingSourceAttribution
@@ -15,6 +18,7 @@ import com.anpfuel.domain.charging.ChargingPlace
 import com.anpfuel.domain.charging.ChargingPlacePage
 import com.anpfuel.domain.charging.Compatibility
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -125,6 +129,52 @@ class ChargingDiscoveryRepositoryTest {
     @BeforeEach
     fun setUp() {
         repo = ChargingDiscoveryRepository(client, dao, origin)
+    }
+
+    @Test fun `staging map fills an empty pilot cache and preserves it on refresh failure`() = runTest {
+        val profile = SORRISO_PILOT_PROFILE
+        val id = "11111111-1111-4111-8111-111111111111"
+        val gateway = coEvery { client.places(profile, null, 100, null) }
+        gateway returns ChargingPlacePage(
+            listOf(place(id).copy(name = "Synthetic charger", latitude = "-12.5", longitude = "-55.7", groups = emptyList())),
+            null,
+            "2026-11-04T00:00:00Z",
+        )
+        assertEquals(null, repo.sorrisoPilotForMap())
+        coVerify(exactly = 0) { client.places(any(), any(), any(), any()) }
+
+        val staging = ChargingDiscoveryRepository(client, dao, ApiEnvironment.STAGING)
+        val first = requireNotNull(staging.sorrisoPilotForMap())
+        assertEquals(1L, first.placeCount)
+        assertEquals(first, staging.sorrisoPilotForMap())
+        coVerify(exactly = 1) { client.places(profile, null, 100, null) }
+        assertEquals(id, staging.explorePage(profile, first.generation, null, null, null, null, 100, 0)
+            .rows.single().place.id)
+
+        dao.metas[first.key] = dao.metas.getValue(first.key).copy(savedAtMillis = 1)
+        coEvery { client.places(profile, null, 100, null) } throws ChargingSnapshotUnavailable("offline")
+        val reopened = ChargingDiscoveryRepository(client, dao, ApiEnvironment.STAGING)
+        assertEquals(first.generation, reopened.sorrisoPilotForMap()?.generation)
+        coVerify(exactly = 2) { client.places(profile, null, 100, null) }
+    }
+
+    @Test fun `older staging API only bootstraps the exact reviewed pilot edition`() = runTest {
+        val profile = SORRISO_PILOT_PROFILE
+        val sau = "67c3d1f0-5898-54f0-bca3-689e9b48b099"
+        val byd = "451a0ea1-2a8c-5ed3-98ae-a6d11753dbdb"
+        val edition = ChargingCoverage(profile, "2026-11-04", 2, 0, 0, "2026-11-04T00:00:00Z")
+        val staging = ChargingDiscoveryRepository(client, dao, ApiEnvironment.STAGING)
+        coEvery { client.places(profile, null, 100, null) } throws ChargingSnapshotUnavailable(httpStatus = 400)
+        coEvery { client.coverage(profile) } returns edition.copy(sourceRevision = "unreviewed")
+        assertRefreshRefused { staging.refresh(profile) }
+        assertEquals(0, dao.places.size)
+        coVerify(exactly = 0) { client.placeDetail(any()) }
+
+        coEvery { client.coverage(profile) } returns edition
+        coEvery { client.placeDetail(sau) } returns place(sau).copy(groups = emptyList())
+        coEvery { client.placeDetail(byd) } returns place(byd).copy(groups = emptyList())
+        assertEquals(2L, staging.sorrisoPilotForMap()?.placeCount)
+        assertEquals(setOf(sau, byd), dao.places.values.map { it.placeId }.toSet())
     }
 
     @Test fun `refresh commits a generation and lists with verdicts`() = runTest {

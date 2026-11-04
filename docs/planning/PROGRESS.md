@@ -1,5 +1,13 @@
 # Current execution state
 
+- Sorriso charging pilot 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `39f4e57f`. [Source, seed and staging evidence](../backend/evidence/evc/SORRISO_CHARGING_PILOT.md)
+  record two reviewed facilities, SAU 17 and BYD Disbrava. Staging serves
+  both detail records and the updated Android debug map reads them. The
+  integrated API will also serve a paginated pilot profile. Disposable
+  PostGIS, charging Go checks, 48 focused Android tests and debug lint pass.
+  The scope is appended to the existing protected dev → main PR #188.
+
 - Mato Grosso station catalog 2026-11-04: LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `29bef268`. The [pilot and replay procedure](../backend/MT_STATION_CATALOG_PILOT.md)
   record 1,179 official CNPJs across 142 municipalities, 1,077 pins and 102

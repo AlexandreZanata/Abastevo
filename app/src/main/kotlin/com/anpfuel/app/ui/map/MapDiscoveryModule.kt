@@ -23,7 +23,8 @@ object MapDiscoveryModule {
         override suspend fun query(request: ChargingMarkersQuery): ChargingMarkersResult {
             try {
                 val meta = repo.generationMeta(ChargingDiscoveryRepository.NATIONAL_PROFILE)
-                    ?: repo.generationMeta(ChargingDiscoveryRepository.OCM_PROFILE)
+                    ?: repo.generationMeta(ChargingDiscoveryRepository.OCM_PROFILE)?.takeIf { it.placeCount > 0 }
+                    ?: repo.sorrisoPilotForMap()?.takeIf { it.placeCount > 0 }
                     ?: return ChargingMarkersResult(
                         places = emptyList(),
                         snapshotPresent = false,

@@ -12,8 +12,11 @@ import org.json.JSONObject
 /** Admitted public snapshot profiles (EE-09). Licensed-operator or any
  * other profile refuses here, never reaching storage. */
 internal const val NATIONAL_CHARGING_PROFILE = "charging-br-national-v1"
+internal const val SORRISO_PILOT_PROFILE = "charging-mt-sorriso-pilot-v1"
 
-val ADMITTED_CHARGING_PROFILES = setOf("ocm-br-20261021-v1", "pbe-2026-pdf-v1", NATIONAL_CHARGING_PROFILE)
+val ADMITTED_CHARGING_PROFILES = setOf(
+    "ocm-br-20261021-v1", "pbe-2026-pdf-v1", NATIONAL_CHARGING_PROFILE, SORRISO_PILOT_PROFILE,
+)
 
 private val canonicalId = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 

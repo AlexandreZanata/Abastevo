@@ -1993,8 +1993,8 @@ paths:
         - name: profile
           in: query
           required: true
-          description: Admitted source profile.
-          schema: {type: string, enum: [ocm-br-20261021-v1, pbe-2026-pdf-v1, charging-br-national-v1]}
+          description: Admitted source profile. The Sorriso pilot is available only in staging.
+          schema: {type: string, enum: [ocm-br-20261021-v1, pbe-2026-pdf-v1, charging-br-national-v1, charging-mt-sorriso-pilot-v1]}
         - name: revision
           in: query
           description: Optional source revision. The national profile resolves only its active generation.
