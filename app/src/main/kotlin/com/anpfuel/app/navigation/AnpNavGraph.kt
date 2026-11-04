@@ -98,6 +98,7 @@ fun AnpNavGraph(
     val mapDiscovery: com.anpfuel.app.ui.map.MapDiscoveryViewModel = hiltViewModel()
     var pendingRouteTarget by remember { mutableStateOf<com.anpfuel.app.ui.map.MapRouteTarget?>(null) }
     val guidance by com.anpfuel.app.ui.map.GuidanceServiceState.flow.collectAsStateWithLifecycle()
+    val followingRoute = guidance.active || guidance.starting
     val onRouteToStation: (String, String) -> Unit = { query, label ->
         com.anpfuel.app.ui.map.MapRouteTarget.fromStationQuery(query, label)?.let { target ->
             pendingRouteTarget = target
@@ -146,12 +147,10 @@ fun AnpNavGraph(
                     locationDeniedMessage = mapLocationDenied,
                     gpsOffMessage = mapGpsOff,
                     waitingForFixMessage = mapWaitingFix,
-                    onViewportChanged = { lat, lon, radius ->
-                        mapDiscovery.onViewport(lat, lon, radius)
-                    },
+                    onViewportChanged = if (followingRoute) null else mapDiscovery::onViewport,
                     onReady = { mapReady = it },
                     active = isMapRoute,
-                    showRecenterControls = !guidance.active && !guidance.starting,
+                    showRecenterControls = !followingRoute,
                     recenterBottomInset = mapBottomOverlayInset,
                     // The map tab draws its 56 dp layers control above recenter (10 dp gap).
                     statusClearance = 66.dp,

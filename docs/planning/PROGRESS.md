@@ -1,5 +1,12 @@
 # Current execution state
 
+- MAP-20 station search focus, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `abf7f865`. [Search and device evidence](../backend/evidence/maps/MAP-20.md#station-search-focus-verification--2026-11-04)
+  records the Smile route preview, the independent native pin layer, clear
+  action and empty-result case on physical Android. Debug and instrumentation
+  APK builds, lint and 94 focused tests passed. Protected PR #188 carries the
+  tested source in this commit.
+
 - MAP-22 automatic station origin, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `abb2f461`. [Origin regression evidence](../backend/evidence/maps/MAP-22_23_DIRECT_NAVIGATION.md#map-22-station-origin-regression--2026-11-04)
   records automatic station routing on physical Android and fused-only replay

@@ -65,6 +65,12 @@ val DEFAULT_MAP_CITIES: List<MapCityOption> = listOf(
     MapCityOption("1302603", "Manaus", "AM", -3.1190, -60.0217),
 )
 
+data class MapStationSearchResults(
+    val items: List<MapOverlayListItem>,
+    val byUuid: Map<String, MapOverlayMarker>,
+    val offlineCached: Boolean,
+)
+
 data class MapDiscoveryUi(
     val clusters: List<MapOverlayCluster> = emptyList(),
     val listItems: List<MapOverlayListItem> = emptyList(),
@@ -85,6 +91,10 @@ data class MapDiscoveryUi(
     val minPowerKw: Int? = null,
     val surveyPeriod: String? = null,
     val searchQuery: String = "",
+    val searchResults: MapStationSearchResults? = null,
+    val searchFocus: MapOverlayMarker? = null,
+    val searching: Boolean = false,
+    val searchFailed: Boolean = false,
     val municipalityCode: String = "4106902",
     val municipalityName: String = "Curitiba",
     val availableCities: List<MapCityOption> = DEFAULT_MAP_CITIES,
@@ -140,6 +150,8 @@ class MapDiscoveryViewModel @Inject constructor(
 
     private var fetchJob: Job? = null
     private var generation = 0L
+    private var searchJob: Job? = null
+    private var searchGeneration = 0L
     private var cityJob: Job? = null
     private var cityGeneration = 0L
     private var lastMarkers: List<MapOverlayMarker> = emptyList()
@@ -159,7 +171,7 @@ class MapDiscoveryViewModel @Inject constructor(
         engine.setOnOverlaySelected(::onNativeSelection)
         viewModelScope.launch {
             // Only pins have a map point; list-only stations clear the highlight.
-            _ui.map { ui -> ui.selectedMarker?.takeIf { it.canRouteByCoordinates } }
+            _ui.map { ui -> (ui.selectedMarker ?: ui.searchFocus)?.takeIf { it.canRouteByCoordinates } }
                 .distinctUntilChanged()
                 .collect(engine::setHighlightedMarker)
         }
@@ -218,7 +230,8 @@ class MapDiscoveryViewModel @Inject constructor(
     }
 
     fun onSelectCity(ibgeCode: String, cityName: String = "", moveViewport: Boolean = true) {
-        val normalizedCode = ibgeCode.trim().ifBlank { _ui.value.municipalityCode }
+        val previousCode = _ui.value.municipalityCode
+        val normalizedCode = ibgeCode.trim().ifBlank { previousCode }
         val knownCity = DEFAULT_MAP_CITIES.firstOrNull { it.ibgeCode == normalizedCode }
         val resolvedName = cityName.trim().ifBlank { knownCity?.name ?: normalizedCode }
         // The camera moves only when the city actually changes: a repeated
@@ -238,16 +251,18 @@ class MapDiscoveryViewModel @Inject constructor(
                 cityLongitude = cityPoint?.longitude,
             )
         }
-        val activeQuery = _ui.value.searchQuery.trim()
-        if (activeQuery.length >= 2) {
-            onSearch(normalizedCode, activeQuery)
-        } else if (shouldMoveViewport && knownCity != null) {
+        if (shouldMoveViewport && knownCity != null) {
             moveCameraToCity(knownCity.latitude, knownCity.longitude)
             onViewport(knownCity.latitude, knownCity.longitude, _ui.value.viewportRadiusMeters)
         } else if (knownCity == null && moveViewport) {
             // Directory city: (re)load its stations, recentering only when the
             // city actually changed. Same-city reselect/refresh keeps the camera.
             loadCityStations(normalizedCode, moveViewport = shouldMoveViewport)
+        }
+        if (normalizedCode != previousCode) {
+            val query = _ui.value.searchQuery
+            clearSearch()
+            if (query.isNotBlank()) onSearch(normalizedCode, query)
         }
     }
 
@@ -307,7 +322,7 @@ class MapDiscoveryViewModel @Inject constructor(
                         items.filter { it.latitude == null || it.longitude == null },
                     )
                 }
-                if (pinned != null && moveViewport) {
+                if (pinned != null && moveViewport && _ui.value.searchFocus == null) {
                     moveCameraToCity(checkNotNull(pinned.latitude), checkNotNull(pinned.longitude))
                 }
             } catch (e: CancellationException) {
@@ -346,20 +361,6 @@ class MapDiscoveryViewModel @Inject constructor(
     fun onViewport(latitude: Double, longitude: Double, radiusMeters: Int = 10_000) {
         if (!latitude.isFinite() || !longitude.isFinite()) return
         val boundedRadius = radiusMeters.coerceIn(100, 15_000)
-        // Search is a mode: native camera sync must not silently replace
-        // searched pins and the list with nearby results. Clearing the query
-        // below re-enters viewport mode explicitly.
-        val current = _ui.value
-        if (current.searchQuery.isNotBlank()) {
-            _ui.update {
-                it.copy(
-                    viewportLatitude = latitude,
-                    viewportLongitude = longitude,
-                    viewportRadiusMeters = boundedRadius,
-                )
-            }
-            return
-        }
         // B-BR-MAP-DISCOVERY-01: Cancel in-flight job and advance generation BEFORE debounce.
         fetchJob?.cancel()
         val gen = ++generation
@@ -447,124 +448,121 @@ class MapDiscoveryViewModel @Inject constructor(
         }
     }
 
-    /**
-     * MAP-20 search by city/name/address. Bounded, debounced, stale-safe.
-     * Short/cleared queries immediately invalidate in-flight searches so a
-     * prior debounced query can never overwrite cleared state.
-     */
+    /** Station results and viewport overlays have independent cancellation and state. */
     fun onSearch(
         municipalityCode: String,
         query: String,
         limit: Int = 50,
         onResults: ((List<MapOverlayMarker>) -> Unit)? = null,
     ) {
-        val q = query.trim()
-        val matchedCity = DEFAULT_MAP_CITIES.firstOrNull {
-            it.name.equals(q, ignoreCase = true) || it.ibgeCode == q
+        val text = query.trim()
+        clearSearch()
+        if (text.length < 2) return
+        val code = municipalityCode.trim().ifBlank {
+            DEFAULT_MAP_CITIES.firstOrNull { it.name.equals(text, ignoreCase = true) || it.ibgeCode == text }
+                ?.ibgeCode ?: _ui.value.municipalityCode
         }
-        val effectiveCode = municipalityCode.trim().ifBlank {
-            matchedCity?.ibgeCode ?: _ui.value.municipalityCode
-        }
-        val effectiveName = DEFAULT_MAP_CITIES.firstOrNull { it.ibgeCode == effectiveCode }?.name
-            ?: _ui.value.municipalityName
-        // B-BR-MAP-DISCOVERY-01: Always cancel and increment generation immediately,
-        // even when query < 2 chars, so no prior debounced search can overwrite.
-        fetchJob?.cancel()
-        val gen = ++generation
-        if (q.length < 2) {
-            _ui.update {
-                it.copy(
-                    searchQuery = q,
-                    municipalityCode = effectiveCode,
-                    municipalityName = effectiveName,
-                    loading = false,
-                    error = null,
-                    generation = gen,
-                )
-            }
-            if (q.isEmpty()) {
-                val state = _ui.value
-                onViewport(state.viewportLatitude, state.viewportLongitude, state.viewportRadiusMeters)
-            }
-            return
-        }
+        loadSearch(code, text, limit.coerceIn(1, 100), moveToMatch = true, onResults)
+    }
+
+    fun clearSearch() {
+        searchJob?.cancel()
+        ++searchGeneration
+        if (_ui.value.selectedUuid in _ui.value.searchResults?.byUuid.orEmpty()) clearSelection()
         _ui.update {
-            it.copy(
-                loading = true,
-                error = null,
-                generation = gen,
-                searchQuery = q,
-                municipalityCode = effectiveCode,
-                municipalityName = effectiveName,
-            )
+            it.copy(searchQuery = "", searchResults = null, searchFocus = null, searching = false, searchFailed = false)
         }
-        fetchJob = viewModelScope.launch {
+    }
+
+    private fun refreshSearch() {
+        val state = _ui.value
+        if (state.searchQuery.isNotBlank()) {
+            loadSearch(state.municipalityCode, state.searchQuery, 50, moveToMatch = false)
+        }
+    }
+
+    private fun loadSearch(
+        code: String,
+        query: String,
+        limit: Int,
+        moveToMatch: Boolean,
+        onResults: ((List<MapOverlayMarker>) -> Unit)? = null,
+    ) {
+        searchJob?.cancel()
+        val token = ++searchGeneration
+        _ui.update { it.copy(searchQuery = query, searching = true, searchFailed = false) }
+        searchJob = viewModelScope.launch {
             delay(300)
-            if (gen != generation) return@launch
             try {
-                val page = stations.search(effectiveCode, q, limit.coerceIn(1, 100), null)
-                if (gen != generation) return@launch
-                val markers = page.items.mapNotNull { it.toMarker() }
-                val nullCoords = page.items.filter { it.latitude == null || it.longitude == null }
-                val uiSnapshot = _ui.value
-                val chargingResult = try {
+                val page = stations.search(code, query, limit, null)
+                if (token != searchGeneration) return@launch
+                val filters = _ui.value
+                val places = try {
                     charging.query(
                         ChargingMarkersQuery(
-                            searchQuery = q,
-                            connector = uiSnapshot.connector,
-                            current = uiSnapshot.current,
-                            access = uiSnapshot.access,
-                            minPowerKw = uiSnapshot.minPowerKw,
-                            limit = limit.coerceIn(1, 100),
-                        )
-                    )
+                            searchQuery = query,
+                            connector = filters.connector,
+                            current = filters.current,
+                            access = filters.access,
+                            minPowerKw = filters.minPowerKw,
+                            limit = limit,
+                        ),
+                    ).places
                 } catch (e: CancellationException) {
                     throw e
-                } catch (e: Exception) {
-                    ChargingMarkersResult(
-                        places = emptyList(),
-                        snapshotPresent = false,
-                        error = e.message ?: "charging-snapshot-failed",
-                    )
+                } catch (_: Exception) {
+                    emptyList()
                 }
-                if (gen != generation) return@launch
-                val chargeMarkers = chargingResult.places.mapNotNull { it.toMarker() }
-                val nullCharging = chargingResult.places.filter {
-                    it.latitude?.toDoubleOrNull() == null || it.longitude?.toDoubleOrNull() == null
-                }
-                _ui.update {
-                    it.copy(
-                        chargingSnapshotPresent = chargingResult.snapshotPresent,
-                        chargingError = chargingResult.error,
-                    )
-                }
-                _ui.update { it.copy(offlineCached = false) }
-                pushMarkers(
-                    markers = markers + chargeMarkers,
-                    gen = gen,
-                    nullCoordsStations = nullCoords,
-                    nullCoordsCharging = nullCharging,
-                )
-                onResults?.invoke(_ui.value.selectableByUuid.values.toList())
+                if (token != searchGeneration) return@launch
+                publishSearch(page.items, places, offlineCached = false, moveToMatch, onResults)
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                if (gen != generation) return@launch
-                val cached = loadMapCache(effectiveCode).filter {
-                    it.matchesName(q)
-                }
+            } catch (_: Exception) {
+                val cached = loadMapCache(code).filter { it.matchesName(query) }
+                if (token != searchGeneration) return@launch
                 if (cached.isNotEmpty()) {
-                    pushMarkers(
-                        cached.mapNotNull { it.toMarker() }, gen,
-                        cached.filter { it.latitude == null || it.longitude == null },
-                    )
-                    _ui.update { it.copy(loading = false, error = null, offlineCached = true) }
-                    onResults?.invoke(_ui.value.selectableByUuid.values.toList())
+                    publishSearch(cached, emptyList(), offlineCached = true, moveToMatch, onResults)
                 } else {
-                    _ui.update { it.copy(loading = false, error = e.message ?: "search-failed") }
+                    _ui.update {
+                        it.copy(searching = false, searchFailed = true, searchResults = null, searchFocus = null)
+                    }
                 }
             }
         }
+    }
+
+    private fun publishSearch(
+        stations: List<ServerStation>,
+        places: List<ChargingPlace>,
+        offlineCached: Boolean,
+        moveToMatch: Boolean,
+        onResults: ((List<MapOverlayMarker>) -> Unit)?,
+    ) {
+        val result = prepareDiscoveryOverlay(
+            markers = stations.mapNotNull { it.toMarker() } + places.mapNotNull { it.toMarker() },
+            gen = searchGeneration,
+            nullCoordsStations = stations.filter { it.latitude == null || it.longitude == null },
+            nullCoordsCharging = places.filter { it.latitude?.toDoubleOrNull() == null || it.longitude?.toDoubleOrNull() == null },
+        )
+        val matches = result.byUuid.values.toList()
+        val pin = if (moveToMatch) matches.singleOrNull()?.takeIf { it.canRouteByCoordinates }
+            else result.byUuid[_ui.value.searchFocus?.uuid]?.takeIf { it.canRouteByCoordinates }
+        _ui.update {
+            it.copy(
+                searching = false,
+                searchResults = MapStationSearchResults(result.items, result.byUuid, offlineCached),
+                searchFocus = pin,
+            )
+        }
+        if (moveToMatch && pin != null) engine.setViewport(pin.latitude, pin.longitude, 15)
+        onResults?.invoke(matches)
+    }
+
+    fun onSearchResultSelected(uuid: String) {
+        val marker = _ui.value.searchResults?.byUuid?.get(uuid) ?: return
+        _ui.update { it.copy(searchFocus = marker.takeIf { it.canRouteByCoordinates }) }
+        if (marker.canRouteByCoordinates) engine.setViewport(marker.latitude, marker.longitude, 15)
+        onSelection(uuid)
     }
 
     fun onServiceFilter(showFuel: Boolean, showCharging: Boolean) {
@@ -572,18 +570,8 @@ class MapDiscoveryViewModel @Inject constructor(
         val charge = showCharging || !showFuel
         val gen = ++generation
         _ui.update { it.copy(showFuel = fuel, showCharging = charge, generation = gen) }
-        val filtered = lastMarkers.filter {
-            (it.fuel && fuel) || (it.charging && charge)
-        }
-        val nullFiltered = if (fuel) lastNullStations else emptyList()
-        val nullChargingFiltered = if (charge) lastNullCharging else emptyList()
-        pushMarkers(
-            markers = filtered,
-            gen = gen,
-            nullCoordsStations = nullFiltered,
-            nullCoordsCharging = nullChargingFiltered,
-            preserveLast = false,
-        )
+        pushMarkers(lastMarkers, gen, lastNullStations, lastNullCharging, preserveLast = false)
+        refreshSearch()
     }
 
     fun onApplyFilters(
@@ -613,6 +601,7 @@ class MapDiscoveryViewModel @Inject constructor(
                 generation = gen,
             )
         }
+        refreshSearch()
         viewModelScope.launch {
             val uiSnapshot = _ui.value
             val fuelOnlyMarkers = lastMarkers.filter { it.fuel && !it.charging }
@@ -620,10 +609,9 @@ class MapDiscoveryViewModel @Inject constructor(
                 try {
                     charging.query(
                         ChargingMarkersQuery(
-                            latitude = uiSnapshot.viewportLatitude.takeIf { uiSnapshot.searchQuery.length < 2 },
-                            longitude = uiSnapshot.viewportLongitude.takeIf { uiSnapshot.searchQuery.length < 2 },
+                            latitude = uiSnapshot.viewportLatitude,
+                            longitude = uiSnapshot.viewportLongitude,
                             radiusMeters = uiSnapshot.viewportRadiusMeters,
-                            searchQuery = uiSnapshot.searchQuery.takeIf { it.length >= 2 },
                             connector = connector,
                             current = current,
                             access = access,
@@ -649,16 +637,7 @@ class MapDiscoveryViewModel @Inject constructor(
             }
             lastMarkers = fuelOnlyMarkers + chargeMarkers
             lastNullCharging = nullCharging
-            val filtered = lastMarkers.filter {
-                (it.fuel && fuel) || (it.charging && charge)
-            }
-            pushMarkers(
-                markers = filtered,
-                gen = gen,
-                nullCoordsStations = if (fuel) lastNullStations else emptyList(),
-                nullCoordsCharging = if (charge) lastNullCharging else emptyList(),
-                preserveLast = false,
-            )
+            pushMarkers(lastMarkers, gen, lastNullStations, lastNullCharging, preserveLast = false)
         }
     }
 
@@ -672,6 +651,7 @@ class MapDiscoveryViewModel @Inject constructor(
         val current = _ui.value
         val marker = current.selectableByUuid[key]
             ?: current.clusters.flatMap { it.markers }.firstOrNull { it.uuid == key }
+            ?: current.searchResults?.byUuid?.get(key)
             ?: current.selectedMembers.firstOrNull { it.uuid == key }
         _ui.update {
             val keepClusterMembers = it.selectedMembers.size > 1 && it.selectedMembers.any { m -> m.uuid == key }
@@ -759,6 +739,53 @@ class MapDiscoveryViewModel @Inject constructor(
             lastNullStations = nullCoordsStations
             lastNullCharging = nullCoordsCharging
         }
+        val overlay = prepareDiscoveryOverlay(markers, gen, nullCoordsStations, nullCoordsCharging)
+        engine.setOverlayMarkers(overlay.clusters.flatMap { it.markers })
+        _ui.update { prev ->
+            val preservedMarker = prev.selectedUuid?.let { uuid ->
+                overlay.byUuid[uuid] ?: prev.searchResults?.byUuid?.get(uuid)
+            }
+            val preservedUuid = preservedMarker?.uuid
+            val reconciledMembers = if (prev.selectedMembers.size > 1) {
+                prev.selectedMembers.mapNotNull { overlay.byUuid[it.uuid.lowercase(Locale.ROOT)] }
+            } else {
+                preservedMarker?.let { listOf(it) } ?: emptyList()
+            }
+            val preservedExpandedClusterId = if (prev.expandedClusterId != null && reconciledMembers.size > 1) {
+                val memberSet = reconciledMembers.map { it.uuid }.toSet()
+                overlay.clusters.firstOrNull { c ->
+                    c.markers.map { it.uuid }.toSet() == memberSet
+                }?.id ?: prev.expandedClusterId
+            } else {
+                null
+            }
+            prev.copy(
+                clusters = overlay.clusters,
+                listItems = overlay.items,
+                selectableByUuid = overlay.byUuid,
+                selectedUuid = preservedUuid,
+                selectedMarker = preservedMarker,
+                expandedClusterId = preservedExpandedClusterId,
+                selectedMembers = reconciledMembers,
+                loading = false,
+                error = null,
+                offlineCached = false,
+            )
+        }
+    }
+
+    private data class DiscoveryOverlay(
+        val clusters: List<MapOverlayCluster>,
+        val items: List<MapOverlayListItem>,
+        val byUuid: Map<String, MapOverlayMarker>,
+    )
+
+    private fun prepareDiscoveryOverlay(
+        markers: List<MapOverlayMarker>,
+        gen: Long,
+        nullCoordsStations: List<ServerStation>,
+        nullCoordsCharging: List<ChargingPlace>,
+    ): DiscoveryOverlay {
         val uiState = _ui.value
         val labels = overlayLabels
         val filtered = markers.filter {
@@ -768,11 +795,8 @@ class MapDiscoveryViewModel @Inject constructor(
             else marker
         }
         val preparation = prepareOverlay(filtered, radiusMeters = 60.0, generation = gen)
-        engine.setOverlayMarkers(
-            preparation.clusters.flatMap { it.markers },
-        )
-        val nullStationMarkers = nullCoordsStations.map { it.toUnlocatedMarker() }
-        val nullChargingMarkers = nullCoordsCharging.map { it.toUnlocatedMarker(labels.unnamedCharging) }
+        val nullStationMarkers = nullCoordsStations.filter { uiState.showFuel }.map { it.toUnlocatedMarker() }
+        val nullChargingMarkers = nullCoordsCharging.filter { uiState.showCharging }.map { it.toUnlocatedMarker(labels.unnamedCharging) }
         val nullItems = nullStationMarkers.map { m ->
             MapOverlayListItem(
                 uuid = m.uuid,
@@ -822,37 +846,7 @@ class MapDiscoveryViewModel @Inject constructor(
             byUuid.putIfAbsent(m.uuid, m)
         }
 
-        _ui.update { prev ->
-            val preservedUuid = prev.selectedUuid?.takeIf { sel ->
-                byUuid.containsKey(sel) || items.any { it.uuid == sel }
-            }
-            val preservedMarker = preservedUuid?.let { byUuid[it] }
-            val reconciledMembers = if (prev.selectedMembers.size > 1) {
-                prev.selectedMembers.mapNotNull { byUuid[it.uuid.lowercase(Locale.ROOT)] }
-            } else {
-                preservedMarker?.let { listOf(it) } ?: emptyList()
-            }
-            val preservedExpandedClusterId = if (prev.expandedClusterId != null && reconciledMembers.size > 1) {
-                val memberSet = reconciledMembers.map { it.uuid }.toSet()
-                preparation.clusters.firstOrNull { c ->
-                    c.markers.map { it.uuid }.toSet() == memberSet
-                }?.id ?: prev.expandedClusterId
-            } else {
-                null
-            }
-            prev.copy(
-                clusters = preparation.clusters,
-                listItems = items,
-                selectableByUuid = byUuid,
-                selectedUuid = preservedUuid,
-                selectedMarker = preservedMarker,
-                expandedClusterId = preservedExpandedClusterId,
-                selectedMembers = reconciledMembers,
-                loading = false,
-                error = null,
-                offlineCached = false,
-            )
-        }
+        return DiscoveryOverlay(preparation.clusters, items, byUuid)
     }
 
     private suspend fun saveMapCache(code: String, stations: List<ServerStation>) {

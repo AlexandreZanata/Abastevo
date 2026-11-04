@@ -12,4 +12,6 @@
     <string name="map_route_kilometers">%1$s 公里</string>
     <string name="map_route_minutes">%1$d 分钟</string>
     <string name="map_route_hours_minutes">%1$d 小时 %2$d 分钟</string>
+    <string name="map_clear_search">清除搜索</string>
+    <string name="map_station_search_failed">暂时无法搜索加油站。</string>
 </resources>

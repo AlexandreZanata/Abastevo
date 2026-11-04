@@ -68,6 +68,9 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithTag("map-search-field", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithTag("map-search-field", useUnmergedTree = true).performTextInput("Station")
         compose.onNodeWithTag("map-search-submit", useUnmergedTree = true).assertIsDisplayed()
+        compose.onNodeWithTag("map-search-clear", useUnmergedTree = true).assertIsDisplayed().performClick()
+        compose.onNodeWithTag("map-search-clear", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithText("Station", substring = false).assertDoesNotExist()
         compose.onNodeWithTag("map-open-downloads").assertIsDisplayed()
         // OSM attribution stays visible.
         compose.onNodeWithText("OpenStreetMap", substring = true, ignoreCase = true).assertExists()
@@ -296,7 +299,8 @@ class MapScreenInstrumentedTest {
                 searchQuery = "",
                 onSearchQueryChanged = {},
                 onSearch = {},
-                onClearSearch = {},
+                searching = false,
+                searchStatus = null,
                 onRetry = {},
                 onOpenDownloads = {},
                 onOpenRoute = null,

@@ -361,6 +361,8 @@ class OverlayKmlTest {
         assertEquals(2, (clusterSelection as MapOverlaySelection.Cluster).members.size)
 
         assertNull(overlaySelectionFor(-25.5, -49.5, markers, clusters))
+        val focus = marker("dddddddd-dddd-4ddd-8ddd-dddddddddddd", latitude = -25.5, longitude = -49.5)
+        assertEquals(MapOverlaySelection.Station(focus.uuid), overlaySelectionFor(-25.5, -49.5, markers, clusters, focus))
     }
 
     private fun marker(

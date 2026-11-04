@@ -130,6 +130,8 @@ fun MapScreen(
     var controlsHeight by remember { mutableStateOf(0.dp) }
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val discUi = discovery?.ui?.collectAsStateWithLifecycle()?.value
+    val searchResults = discUi?.searchResults
+    val stationListItems = searchResults?.items ?: discUi?.listItems.orEmpty()
     val context = LocalContext.current
     val routeLanguage = Locale.forLanguageTag(AppLocaleHolder.localeTag).language
     val currentPositionLabel = stringResource(R.string.map22_current)
@@ -376,7 +378,7 @@ fun MapScreen(
         } else {
             RealMapHost(
                 modifier = Modifier.fillMaxSize(),
-                onViewportChanged = { lat, lon, radius -> discovery?.onViewport(lat, lon, radius) },
+                onViewportChanged = if (guidanceUi.active || guidanceUi.starting) null else discovery?.let { it::onViewport },
                 onReady = onMapReady,
                 recenterBottomInset = bottomOverlayInset,
             )
@@ -408,11 +410,18 @@ fun MapScreen(
                     ui = ui,
                     municipalityName = discUi?.municipalityName,
                     cityLocationUnknown = discUi?.cityLocationUnknown == true,
-                    offlineCached = discUi?.offlineCached == true,
+                    offlineCached = discUi?.offlineCached == true || searchResults?.offlineCached == true,
                     onOpenCity = { onOpenCity?.invoke() ?: run { showFilters = true } },
                     onSelectSource = viewModel::selectSource,
                     searchQuery = searchText,
-                    onSearchQueryChanged = { searchText = it },
+                    onSearchQueryChanged = { value ->
+                        searchText = value
+                        val submitted = discovery?.ui?.value?.searchQuery.orEmpty()
+                        if (submitted.isNotEmpty() && value.trim() != submitted) {
+                            discovery?.clearSearch()
+                            showList = false
+                        }
+                    },
                     onSearch = { query ->
                         discovery?.onSearch(discUi?.municipalityCode ?: "4106902", query) { results ->
                             if (searchText.trim() == query.trim()) {
@@ -425,10 +434,11 @@ fun MapScreen(
                             }
                         }
                     },
-                    onClearSearch = {
-                        if (!discUi?.searchQuery.isNullOrEmpty()) {
-                            discovery?.onSearch(discUi?.municipalityCode ?: "4106902", "")
-                        }
+                    searching = discUi?.searching == true,
+                    searchStatus = when {
+                        discUi?.searchFailed == true -> stringResource(R.string.map_station_search_failed)
+                        searchResults?.items?.isEmpty() == true -> stringResource(R.string.map_no_results)
+                        else -> null
                     },
                     onRetry = viewModel::retry,
                     onOpenDownloads = onOpenDownloads,
@@ -564,7 +574,7 @@ fun MapScreen(
 
                 // MAP-18 accessible equivalent: real stations with distinct fuel/
                 // electric pictograms, 48dp targets and TalkBack descriptions.
-                if (discUi != null && discUi.listItems.isNotEmpty()) {
+                if (discUi != null && stationListItems.isNotEmpty()) {
                     TextButton(
                         onClick = { showList = !showList },
                         modifier = Modifier
@@ -582,7 +592,7 @@ fun MapScreen(
                             if (showList) {
                                 stringResource(R.string.action_dismiss)
                             } else {
-                                stringResource(R.string.map_list_toggle, discUi.listItems.size)
+                                stringResource(R.string.map_list_toggle, stationListItems.size)
                             },
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -590,8 +600,11 @@ fun MapScreen(
                     }
                     if (showList) {
                         MapOverlayList(
-                            items = discUi.listItems,
-                            onSelect = { discovery?.onSelection(it) },
+                            items = stationListItems,
+                            onSelect = { uuid ->
+                                if (searchResults != null) discovery?.onSearchResultSelected(uuid)
+                                else discovery?.onSelection(uuid)
+                            },
                             modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp).testTag("map-overlay-list"),
                         )
                     }

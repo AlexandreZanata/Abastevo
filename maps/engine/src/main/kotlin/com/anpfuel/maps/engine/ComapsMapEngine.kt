@@ -66,6 +66,7 @@ class ComapsMapEngine(
     // Seeded per process: highlight categories persist in the bookmark store,
     // so a category left by an earlier process can never match the current one.
     private var highlightGeneration = System.currentTimeMillis()
+    private var highlightedMarker: MapOverlayMarker? = null
     private var highlightListener: DataChangedListener? = null
     private var firstFixListener: LocationListener? = null
     private val readyCallbacks = MapReadyCallbacks()
@@ -670,6 +671,7 @@ class ComapsMapEngine(
         val context = appContext ?: return
         val generation = ++highlightGeneration
         callOnMain {
+            highlightedMarker = marker?.takeIf { it.canRouteByCoordinates }
             try {
                 installHighlightListener()
                 settleHighlightCategories(generation)
@@ -743,6 +745,7 @@ class ComapsMapEngine(
         lastReadyRequest = null
         clearOverlayListeners()
         highlightGeneration++
+        highlightedMarker = null
         highlightListener?.let { BookmarkManager.INSTANCE.removeCategoriesUpdatesListener(it) }
         highlightListener = null
         placePageListener?.let { Framework.nativeRemovePlacePageActivationListener(it) }
@@ -770,6 +773,7 @@ class ComapsMapEngine(
                     objectData.lon,
                     overlayMarkers,
                     overlayClusters,
+                    highlightedMarker,
                 )?.let { selection ->
                     // Abastevo pins show their own enlarged art (setHighlightedMarker),
                     // never the SDK's translucent selection circle.
@@ -796,10 +800,13 @@ internal fun overlaySelectionFor(
     longitude: Double,
     markers: List<MapOverlayMarker>,
     clusters: List<MapOverlayCluster>,
+    highlightedMarker: MapOverlayMarker? = null,
 ): MapOverlaySelection? {
     fun matches(lat: Double, lon: Double): Boolean =
         kotlin.math.abs(lat - latitude) < 1e-6 && kotlin.math.abs(lon - longitude) < 1e-6
 
+    highlightedMarker?.takeIf { matches(it.latitude, it.longitude) }
+        ?.let { return MapOverlaySelection.Station(it.uuid) }
     val cluster = clusters.firstOrNull { matches(it.latitude, it.longitude) }
     if (cluster != null) {
         return if (cluster.markers.size == 1) {
