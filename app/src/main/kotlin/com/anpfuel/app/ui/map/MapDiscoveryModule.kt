@@ -27,6 +27,7 @@ object MapDiscoveryModule {
                 val snapshots = if (full != null) listOf(full) else listOfNotNull(
                     repo.sorrisoPilotForMap(), repo.sorrisoSupplementForMap(),
                     repo.matoGrossoPilotForMap(), repo.cuiabaSupplementForMap(),
+                    repo.matoGrossoNextTenForMap(),
                 ).filter { it.placeCount > 0 }
                 val targetLimit = request.limit.coerceIn(1, 200)
                 val matched = ArrayList<ChargingPlace>(targetLimit)

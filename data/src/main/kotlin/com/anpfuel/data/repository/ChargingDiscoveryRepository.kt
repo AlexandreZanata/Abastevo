@@ -2,6 +2,7 @@ package com.anpfuel.data.repository
 
 import com.anpfuel.data.local.charging.CUIABA_SUPPLEMENT_PROFILE
 import com.anpfuel.data.local.charging.NATIONAL_CHARGING_PROFILE
+import com.anpfuel.data.local.charging.MATO_GROSSO_NEXT_TEN_PROFILE
 import com.anpfuel.data.local.charging.MATO_GROSSO_PILOT_PROFILE
 import com.anpfuel.data.local.charging.SORRISO_PILOT_PROFILE
 import com.anpfuel.data.local.charging.SORRISO_SUPPLEMENT_PROFILE
@@ -113,6 +114,10 @@ class ChargingDiscoveryRepository @Inject constructor(
         pilotManifestIDs(CUIABA_SUPPLEMENT_PROFILE, "cuiaba-supplement-v1.json")
     }
 
+    private val mtNextTenIDs by lazy {
+        pilotManifestIDs(MATO_GROSSO_NEXT_TEN_PROFILE, "mt-next10-pilot-v1.json")
+    }
+
     private fun pilotManifestIDs(profile: String, filename: String): List<String> {
         val resource = checkNotNull(javaClass.getResourceAsStream("/charging/$filename"))
         val manifest = JSONObject(resource.bufferedReader().use { it.readText() })
@@ -130,6 +135,9 @@ class ChargingDiscoveryRepository @Inject constructor(
 
     suspend fun matoGrossoPilotForMap(): StoredPackMeta? =
         pilotForMap(MATO_GROSSO_PILOT_PROFILE, MT_PILOT_SOURCE)
+
+    suspend fun matoGrossoNextTenForMap(): StoredPackMeta? =
+        pilotForMap(MATO_GROSSO_NEXT_TEN_PROFILE, MT_PILOT_SOURCE)
 
     suspend fun sorrisoSupplementForMap(): StoredPackMeta? =
         pilotForMap(SORRISO_SUPPLEMENT_PROFILE, SUPPLEMENT_SOURCE)
@@ -168,13 +176,15 @@ class ChargingDiscoveryRepository @Inject constructor(
         nowMillis: Long = Instant.now().toEpochMilli(),
     ): StoredPackMeta {
         val pilot = profile == SORRISO_PILOT_PROFILE || profile == MATO_GROSSO_PILOT_PROFILE ||
-            profile == SORRISO_SUPPLEMENT_PROFILE || profile == CUIABA_SUPPLEMENT_PROFILE
+            profile == SORRISO_SUPPLEMENT_PROFILE || profile == CUIABA_SUPPLEMENT_PROFILE ||
+            profile == MATO_GROSSO_NEXT_TEN_PROFILE
         if (profile != OCM_PROFILE && profile != NATIONAL_CHARGING_PROFILE &&
             !(pilot && environment == ApiEnvironment.STAGING)) {
             throw ChargingDiscoveryUnavailable("pbe-rights-pending")
         }
         val reviewedIDs = when (profile) {
             MATO_GROSSO_PILOT_PROFILE -> mtPilotIDs
+            MATO_GROSSO_NEXT_TEN_PROFILE -> mtNextTenIDs
             SORRISO_SUPPLEMENT_PROFILE -> sorrisoSupplementIDs
             CUIABA_SUPPLEMENT_PROFILE -> cuiabaSupplementIDs
             else -> null

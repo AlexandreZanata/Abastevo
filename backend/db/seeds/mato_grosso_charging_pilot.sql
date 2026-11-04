@@ -10,6 +10,7 @@ DECLARE
         WHEN 'charging-mt-top10-pilot-v1' THEN '27c19cf6-cce4-5455-894d-be7be1f47469'
         WHEN 'charging-mt-sorriso-supplement-v1' THEN '75b1de98-a227-54fc-b600-74856588ef17'
         WHEN 'charging-mt-cuiaba-supplement-v1' THEN 'b203cddc-9737-5f19-ba94-81799788b05f'
+        WHEN 'charging-mt-next10-pilot-v1' THEN 'a062c04f-c11d-56c6-a4e5-9c06397858d4'
     END;
     total CONSTANT integer := jsonb_array_length(manifest->'places');
     fingerprint CONSTANT text := encode(sha256(convert_to(manifest::text, 'UTF8')), 'hex');

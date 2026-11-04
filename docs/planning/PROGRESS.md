@@ -1,5 +1,14 @@
 # Current execution state
 
+- Mato Grosso charging ranks 11–20, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `6f82d3ae`. [Sources, counts and replay](../backend/evidence/evc/MT_NEXT10_CHARGING_PILOT.md)
+  record 13 additional places in six municipalities. Staging details match
+  the 13 new places and retain all 60 earlier records. PostGIS concurrency
+  and refusal checks, Go race/vet, 47 focused Android tests, debug build
+  and lint passed. Opened three charging cards on physical Android.
+  Tested revision is the source in this commit. Paginated staging API
+  integration is pending in protected PR #188.
+
 - Cuiabá charging supplement 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `c3edcb3b`. [Source and replay evidence](../backend/evidence/evc/CUIABA_CHARGING_SUPPLEMENT.md)
   records 30 additional facilities, for 39 in Cuiabá and 60 across the ten

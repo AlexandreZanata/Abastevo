@@ -20,15 +20,17 @@ type Reader struct {
 }
 
 const (
-	SorrisoPilotProfile      = "charging-mt-sorriso-pilot-v1"
-	MatoGrossoPilotProfile   = "charging-mt-top10-pilot-v1"
-	SorrisoSupplementProfile = "charging-mt-sorriso-supplement-v1"
-	CuiabaSupplementProfile  = "charging-mt-cuiaba-supplement-v1"
+	SorrisoPilotProfile           = "charging-mt-sorriso-pilot-v1"
+	MatoGrossoPilotProfile        = "charging-mt-top10-pilot-v1"
+	SorrisoSupplementProfile      = "charging-mt-sorriso-supplement-v1"
+	CuiabaSupplementProfile       = "charging-mt-cuiaba-supplement-v1"
+	MatoGrossoNextTenPilotProfile = "charging-mt-next10-pilot-v1"
 )
 
 func IsStagingPilotProfile(profile string) bool {
 	switch profile {
-	case SorrisoPilotProfile, MatoGrossoPilotProfile, SorrisoSupplementProfile, CuiabaSupplementProfile:
+	case SorrisoPilotProfile, MatoGrossoPilotProfile, MatoGrossoNextTenPilotProfile,
+		SorrisoSupplementProfile, CuiabaSupplementProfile:
 		return true
 	default:
 		return false

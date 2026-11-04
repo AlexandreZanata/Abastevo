@@ -12,23 +12,29 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFESTS = ROOT / "data/src/main/resources/charging"
 PILOTS = {
     "mt-top10": ("mt-top10-pilot-v1.json", "charging-mt-top10-pilot-v1", None),
-    "sorriso-supplement": ("sorriso-supplement-v1.json", "charging-mt-sorriso-supplement-v1", "5107925"),
-    "cuiaba-supplement": ("cuiaba-supplement-v1.json", "charging-mt-cuiaba-supplement-v1", "5103403"),
+    "sorriso-supplement": ("sorriso-supplement-v1.json", "charging-mt-sorriso-supplement-v1", ("5107925",)),
+    "cuiaba-supplement": ("cuiaba-supplement-v1.json", "charging-mt-cuiaba-supplement-v1", ("5103403",)),
+    "mt-next10": (
+        "mt-next10-pilot-v1.json", "charging-mt-next10-pilot-v1",
+        ("5106224", "5100250", "5106752", "5102637", "5102678",
+         "5105150", "5103353", "5105101", "5106422", "5107875"),
+    ),
 }
 
 
 def render(boundaries, edition="mt-top10"):
-    resource, profile, city = PILOTS[edition]
+    resource, profile, expected_municipalities = PILOTS[edition]
     source = boundaries.read_bytes()
     catalog = json.loads((MANIFESTS / resource).read_bytes())
     if catalog["profile"] != profile:
         raise ValueError("unexpected manifest profile")
     if hashlib.sha256(source).hexdigest() != catalog["ibge_boundaries_sha256"]:
         raise ValueError("IBGE boundary pin mismatch")
-    municipalities = {m["code"] for m in catalog["municipalities"]}
-    expected_count = 1 if city else 10
-    if (len(municipalities) != expected_count or len(catalog["municipalities"]) != expected_count
-            or (city and municipalities != {city})):
+    ranked_codes = tuple(m["code"] for m in catalog["municipalities"])
+    municipalities = set(ranked_codes)
+    expected_count = len(expected_municipalities) if expected_municipalities is not None else 10
+    if (len(municipalities) != expected_count or len(ranked_codes) != expected_count
+            or (expected_municipalities is not None and ranked_codes != expected_municipalities)):
         raise ValueError("unexpected municipalities for the pilot")
     geometry = {f["properties"]["codarea"]: f["geometry"] for f in json.loads(source)["features"]}
     contains = runpy.run_path(str(ROOT / "scripts/audit-station-uf.py"))["contains"]
@@ -60,5 +66,7 @@ if __name__ == "__main__":
                              help="render the Sorriso supplement")
     supplements.add_argument("--cuiaba", dest="edition", action="store_const", const="cuiaba-supplement",
                              help="render the Cuiabá supplement")
+    supplements.add_argument("--next-ten", dest="edition", action="store_const", const="mt-next10",
+                             help="render the municipalities ranked 11 to 20")
     args = parser.parse_args()
     print(render(args.boundaries, args.edition or "mt-top10"), end="")

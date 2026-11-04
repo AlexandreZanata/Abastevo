@@ -2,6 +2,7 @@ package com.anpfuel.data.repository
 
 import com.anpfuel.data.local.charging.ChargingSnapshotImport
 import com.anpfuel.data.local.charging.CUIABA_SUPPLEMENT_PROFILE
+import com.anpfuel.data.local.charging.MATO_GROSSO_NEXT_TEN_PROFILE
 import com.anpfuel.data.local.charging.MATO_GROSSO_PILOT_PROFILE
 import com.anpfuel.data.local.charging.SORRISO_PILOT_PROFILE
 import com.anpfuel.data.local.charging.SORRISO_SUPPLEMENT_PROFILE
@@ -202,16 +203,21 @@ class ChargingDiscoveryRepositoryTest {
     }
 
     @Test fun `Sorriso supplement is staging only and keeps the first pilot generation`() =
-        verifyCitySupplement(SORRISO_SUPPLEMENT_PROFILE, "sorriso-supplement-v1.json") {
+        verifyReviewedPilot(SORRISO_SUPPLEMENT_PROFILE, "sorriso-supplement-v1.json") {
             sorrisoSupplementForMap()
         }
 
     @Test fun `Cuiaba supplement is staging only and keeps the first pilot generation`() =
-        verifyCitySupplement(CUIABA_SUPPLEMENT_PROFILE, "cuiaba-supplement-v1.json") {
+        verifyReviewedPilot(CUIABA_SUPPLEMENT_PROFILE, "cuiaba-supplement-v1.json") {
             cuiabaSupplementForMap()
         }
 
-    private fun verifyCitySupplement(
+    @Test fun `next ten pilot is staging only and keeps the first pilot generation`() =
+        verifyReviewedPilot(MATO_GROSSO_NEXT_TEN_PROFILE, "mt-next10-pilot-v1.json") {
+            matoGrossoNextTenForMap()
+        }
+
+    private fun verifyReviewedPilot(
         profile: String,
         resourceName: String,
         load: suspend ChargingDiscoveryRepository.() -> StoredPackMeta?,
