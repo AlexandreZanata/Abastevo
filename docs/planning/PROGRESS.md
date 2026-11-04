@@ -1,5 +1,12 @@
 # Current execution state
 
+- CS08B Home community confirmation counts, 2026-11-04, LOCAL_DONE /
+  INTEGRATION_PENDING on maintained `dev` from `30333e3c`.
+  [Summary and Android evidence](../backend/evidence/community-safety/CS08B_HELPFULNESS_VIEW.md#home-community-confirmation-counts)
+  records average and extreme-price counts, legacy payload handling, PostGIS
+  checks and emulator filter verification. Protected PR #188 carries
+  integration. Staging still serves the older summary contract.
+
 - CS08B ownership during backend rollout, 2026-11-04, LOCAL_DONE /
   INTEGRATION_PENDING on maintained `dev` from `97643604`. The Android
   client uses private observation status when the signed tally omits

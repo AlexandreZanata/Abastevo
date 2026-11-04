@@ -998,6 +998,7 @@
     <string name="community_helpful_removed">投票を取り消しました。</string>
     <string name="community_helpful_rejected">記録されませんでした（%1$s）</string>
     <string name="community_helpful_under_review">コミュニティが集計結果を確認中</string>
+    <string name="community_confirmation_count">確認数: %1$s</string>
     <string name="community_own_contribution">あなたの投稿</string>
     <string name="community_helpful_report">報告する</string>
     <string name="community_helpful_guest">投票するには無料アカウントにログインしてください</string>

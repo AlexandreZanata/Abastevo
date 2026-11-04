@@ -998,6 +998,7 @@
     <string name="community_helpful_removed">Stimme entfernt.</string>
     <string name="community_helpful_rejected">Nicht gespeichert (%1$s)</string>
     <string name="community_helpful_under_review">Stimmenzahlen werden von der Community geprüft</string>
+    <string name="community_confirmation_count">Bestätigungen: %1$s</string>
     <string name="community_own_contribution">Dein Beitrag</string>
     <string name="community_helpful_report">Melden</string>
     <string name="community_helpful_guest">Zum Abstimmen bei einem kostenlosen Konto anmelden</string>

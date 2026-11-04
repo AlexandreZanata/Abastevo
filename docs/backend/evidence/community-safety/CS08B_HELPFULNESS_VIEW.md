@@ -88,3 +88,22 @@ panel to the ownership label without a vote. Android build, lint and 23
 focused JVM tests passed. Go race and vet checks and PostGIS tests covered
 signed owner and other-viewer reads, anonymous reads, invalid proofs and
 the private observation status endpoint.
+
+### Home community confirmation counts
+
+B-BR-CS01-HOME: Use the confirmation counts of the same live standard
+station prices in the city summary. The average uses the full population.
+The minimum and maximum use all stations tied at the respective price.
+Unknown counts from older servers or caches stay absent.
+
+BUC-CS02-HOME: Select Community on Home, then switch between average,
+minimum and maximum. The verification icon and count follow the price
+being displayed, including zero when the service reports it. ANP prices
+have no community confirmation badge.
+
+The existing city summary remains a single query. PostGIS tests cover the
+full population, excluded prices, tied extremes, expiry, concurrent
+projection updates and the query plan. Android build, lint and 45 focused
+JVM tests passed. The emulator verified that the Home badge shows 19 for
+the average, 0 for the minimum and 7 for the maximum in a synthetic city.
+The staging endpoint for Sorriso did not yet send confirmation counts.

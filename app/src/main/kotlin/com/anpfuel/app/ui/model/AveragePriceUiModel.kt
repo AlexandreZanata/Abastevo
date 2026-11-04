@@ -1,5 +1,6 @@
 package com.anpfuel.app.ui.model
 
+import com.anpfuel.domain.community.CommunityConfirmationCounts
 import com.anpfuel.domain.valueobject.FuelProduct
 
 data class AveragePriceUiModel(
@@ -8,4 +9,5 @@ data class AveragePriceUiModel(
     val minimumFormatted: String?,
     val maximumFormatted: String?,
     val stationCount: Int?,
+    val confirmationCounts: CommunityConfirmationCounts? = null,
 )

@@ -9769,6 +9769,15 @@ components:
         minimum_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
         maximum_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
         station_count: {type: integer, minimum: 1}
+        confirmation_counts:
+          type: object
+          description: Confirmations across the current station prices, with counts for all prices and for each price extreme.
+          additionalProperties: false
+          required: [total, minimum_price, maximum_price]
+          properties:
+            total: {type: integer, minimum: 0}
+            minimum_price: {type: integer, minimum: 0}
+            maximum_price: {type: integer, minimum: 0}
         updated_at: {type: string, format: date-time}
         expires_at: {type: string, format: date-time}
     CommunityFeedPage:

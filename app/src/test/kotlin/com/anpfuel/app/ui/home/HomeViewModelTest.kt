@@ -655,7 +655,8 @@ class HomeViewModelTest {
     private fun summary(city:com.anpfuel.domain.community.FeedCity,amount:Long=4500):com.anpfuel.domain.community.CityCommunitySummary {
         val now=java.time.Instant.now()
         return com.anpfuel.domain.community.CityCommunitySummary(city,listOf(
-            com.anpfuel.domain.community.CommunitySummaryPrice(FuelProduct.ETHANOL,amount,4000,5000,65,now.minusSeconds(60),now.plusSeconds(3600))),now)
+            com.anpfuel.domain.community.CommunitySummaryPrice(FuelProduct.ETHANOL,amount,4000,5000,65,now.minusSeconds(60),now.plusSeconds(3600),
+                com.anpfuel.domain.community.CommunityConfirmationCounts(19, 5, 7))),now)
     }
     @Test fun `community source uses all three statistics without ANP cache GPS or sync`()=runTest(dispatcher) {
         val city=summaryCity();coEvery {communitySummary.city()} returns city;coEvery {communitySummary(city)} returns summary(city)
@@ -663,6 +664,7 @@ class HomeViewModelTest {
         assertEquals(HomePriceSource.COMMUNITY,viewModel.uiState.value.priceSource)
         val price=viewModel.uiState.value.communityPrices.single()
         assertEquals("R$ 4,500",price.averageFormatted);assertEquals("R$ 4,000",price.minimumFormatted);assertEquals("R$ 5,000",price.maximumFormatted);assertEquals(65,price.stationCount)
+        assertEquals(com.anpfuel.domain.community.CommunityConfirmationCounts(19, 5, 7), price.confirmationCounts)
         HomePriceSortOrder.entries.forEach {viewModel.onPriceSortChanged(it);assertEquals(it,viewModel.uiState.value.priceSort);assertEquals(price,viewModel.uiState.value.communityPrices.single())}
         assertEquals("R$ 4,500",HomePriceSortOrder.DEFAULT.featuredPrice(price))
         assertEquals("R$ 4,000",HomePriceSortOrder.PRICE_ASC.featuredPrice(price))

@@ -90,7 +90,12 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
                 val count = integer(row,"station_count"); require(count in 1..Int.MAX_VALUE.toLong())
                 CommunitySummaryPrice(WireFuelMapper.fromWire(row.getString("fuel_product")).getOrThrow(),
                     integer(row,"average_milli_brl"), integer(row,"minimum_milli_brl"), integer(row,"maximum_milli_brl"), count.toInt(),
-                    Instant.parse(row.getString("updated_at")), Instant.parse(row.getString("expires_at"))).also {
+                    Instant.parse(row.getString("updated_at")), Instant.parse(row.getString("expires_at")),
+                    confirmationCounts = if (row.has("confirmation_counts")) {
+                        val counts = row.getJSONObject("confirmation_counts")
+                        CommunityConfirmationCounts(integer(counts, "total"), integer(counts, "minimum_price"), integer(counts, "maximum_price"))
+                    } else null,
+                ).also {
                     require(it.unit == row.getString("unit"))
                 }
             }

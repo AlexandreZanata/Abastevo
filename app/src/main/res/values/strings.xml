@@ -773,6 +773,7 @@
     <string name="community_helpful_removed">Vote removed.</string>
     <string name="community_helpful_rejected">Not recorded (%1$s)</string>
     <string name="community_helpful_under_review">Counts under community review</string>
+    <string name="community_confirmation_count">Confirmations: %1$s</string>
     <string name="community_own_contribution">Your contribution</string>
     <string name="community_helpful_report">Report</string>
     <string name="community_helpful_guest">Sign in to a free account to vote</string>

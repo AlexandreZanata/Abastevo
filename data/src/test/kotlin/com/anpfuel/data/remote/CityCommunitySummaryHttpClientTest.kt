@@ -22,6 +22,7 @@ class CityCommunitySummaryHttpClientTest {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody(payload().toString()));server.start()
             val summary=CityCommunityFeedHttpClient(OkHttpClient(),server.url("/").toString()).readSummary(city)
+            assertNull(summary.items.single().confirmationCounts)
             assertEquals(65,summary.items.single().stationCount);assertEquals(5032L,summary.items.single().averageMilliBrl)
             val request=server.takeRequest();assertEquals("/v1/community/summary?state=MT&municipality_code=5103403",request.path)
             assertNull(request.getHeader("Authorization"));assertEquals(0,request.bodySize)
