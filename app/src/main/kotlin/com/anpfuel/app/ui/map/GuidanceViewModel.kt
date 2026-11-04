@@ -68,6 +68,12 @@ class GuidanceViewModel @Inject constructor(
         return start(saved.request)
     }
 
+    fun setVoiceMuted(muted: Boolean) {
+        if (GuidanceServiceState.current().active) {
+            runCatching { appContext.startService(GuidanceService.voiceIntent(appContext, muted)) }
+        }
+    }
+
     fun stop() {
         runCatching {
             appContext.startService(GuidanceService.stopIntent(appContext))

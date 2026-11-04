@@ -1,10 +1,13 @@
 package com.anpfuel.app.ui.map
 
 import android.content.Context
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.domain.routing.*
+import com.anpfuel.maps.engine.GuidanceCameraAction
 import com.anpfuel.maps.engine.MapEngine
 import com.anpfuel.maps.engine.MapSearchResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,6 +50,12 @@ class NativeRouteViewModel @Inject constructor(private val engine: MapEngine, pr
             state.value=NativeRouteUi(origin=points.first(),destination=points.last(),stops=points.drop(1).dropLast(1),avoid=avoid.toSet())
         }
     }
+    fun setGuidanceViewport(visible: IntRect, surface: IntSize) = engine.setGuidanceViewport(visible, surface)
+
+    fun controlGuidanceCamera(action: GuidanceCameraAction) = engine.controlGuidanceCamera(action)
+
+    fun guidanceManeuvers(language: String) = engine.guidanceManeuvers(language)
+
     fun prepareDestination(destination: RoutePoint?) {
         invalidate()
         stopSearch()

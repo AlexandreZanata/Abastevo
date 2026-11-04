@@ -14,4 +14,11 @@
     <string name="map_route_hours_minutes">%1$d h %2$d min</string>
     <string name="map_clear_search">検索をクリア</string>
     <string name="map_station_search_failed">給油所の検索を利用できません。</string>
+    <string name="map_guidance_recenter">現在地に戻る</string>
+    <string name="map_guidance_orientation">地図の向きを切り替える</string>
+    <string name="map_guidance_overview">ルート全体を表示</string>
+    <string name="map_guidance_zoom_in">地図を拡大</string>
+    <string name="map_guidance_zoom_out">地図を縮小</string>
+    <string name="map_guidance_mute">音声案内をミュート</string>
+    <string name="map_guidance_unmute">音声案内をオンにする</string>
 </resources>

@@ -18,6 +18,7 @@ data class GuidanceUiState(
     val gpsPoor: Boolean = false,
     val gpsLost: Boolean = false,
     val voiceUnavailable: Boolean = false,
+    val voiceMuted: Boolean = false,
     val error: String? = null,
     val resumeAvailable: Boolean = false,
 )

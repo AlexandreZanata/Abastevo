@@ -1,5 +1,12 @@
 # Current execution state
 
+- MAP-23 active navigation controls, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `5c7b2b6c`. [Device and camera evidence](../backend/evidence/maps/MAP-23.md#active-navigation-controls-verification--2026-11-04)
+  records the accessible stop action, the physical guidance fix, route
+  overview and recenter, and the 200% text test. Debug and instrumentation
+  APK builds, lint and 64 focused JVM tests passed. This commit carries the
+  tested source for integration in protected PR #188.
+
 - MAP-23 responsive guidance startup, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `0e2134ed`. [ANR and navigation evidence](../backend/evidence/maps/MAP-23.md#voice-startup-verification--2026-11-04)
   records the blocked speech initialization, corrected physical start/stop,

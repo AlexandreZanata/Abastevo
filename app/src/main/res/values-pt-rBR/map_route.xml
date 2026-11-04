@@ -14,4 +14,11 @@
     <string name="map_route_hours_minutes">%1$d h %2$d min</string>
     <string name="map_clear_search">Limpar pesquisa</string>
     <string name="map_station_search_failed">A pesquisa de postos está indisponível.</string>
+    <string name="map_guidance_recenter">Recentralizar na minha posição</string>
+    <string name="map_guidance_orientation">Mudar orientação do mapa</string>
+    <string name="map_guidance_overview">Ver rota inteira</string>
+    <string name="map_guidance_zoom_in">Aproximar mapa</string>
+    <string name="map_guidance_zoom_out">Afastar mapa</string>
+    <string name="map_guidance_mute">Silenciar voz da navegação</string>
+    <string name="map_guidance_unmute">Ativar voz da navegação</string>
 </resources>

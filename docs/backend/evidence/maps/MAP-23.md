@@ -171,3 +171,43 @@ coordinates were captured in the evidence.
 Debug and instrumentation APK builds, debug lint, seven focused JVM tests
 and two Android voice tests passed. The tested source is this commit on
 maintained `dev` from `0e2134ed`, included in protected PR #188.
+
+## Active navigation controls
+
+B-BR-MAP23-CONTROLS-01: Keep Stop guidance above system navigation insets and
+outside scrolling status content. Active guidance exposes recenter, north or
+heading orientation, zoom and route overview using the live native route. Map
+camera actions preserve the navigation session. The maneuver list reads the
+current native route, and voice mute applies only to the current session.
+Precise fused location can feed the same guidance service when the platform
+offers it, with GPS as a fallback and the existing fix quality policy.
+
+BUC-MAP23-CONTROLS: Start guidance with system navigation visible, open overview
+and maneuvers, return to position following, toggle voice and stop. Check touch
+bounds under three-button navigation, a pending first fix and large text.
+
+### Active navigation controls verification — 2026-11-04
+
+The native camera receives the unobstructed map viewport between the maneuver
+banner and the controls. The overview uses the active route geometry, and
+recenter returns to location following. The interaction patterns were checked
+against [Google Maps navigation](https://support.google.com/maps/answer/3273406?hl=en)
+and [CoMaps location and orientation controls](https://www.comaps.app/support/what-do-the-icons-below-the-zoom-buttons-mean/).
+
+The Abrantes route in Sorriso accepted a precise fix on a physical Android 16
+device and displayed the upcoming maneuver. The stop touch target ended at
+2522 px and the three-button navigation bar began at 2570 px. Tapping stop
+restored the map tabs with the same app process. Also checked the voice toggle
+and the eight steps in the native maneuver list. No physical coordinates were
+recorded.
+
+On the Android 15 emulator, synthetic location produced the first maneuver.
+Overview showed the full blue route, its origin and the destination flag above
+the controls. Recenter moved the position back to the following anchor with
+guidance still active. The stop touch target ended at 2232 px and the Android
+bar began at 2274 px at both default and 200% font size.
+Tapping stop at 200% returned to the map tabs.
+
+Debug and instrumentation APK builds, debug lint and 64 focused JVM tests
+passed. This commit records the verified source on `dev` from `5c7b2b6c`
+for protected PR #188.

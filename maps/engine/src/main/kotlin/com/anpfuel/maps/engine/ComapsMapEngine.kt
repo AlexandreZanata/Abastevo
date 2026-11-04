@@ -5,6 +5,8 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
 import app.organicmaps.sdk.util.Config
 import app.organicmaps.sdk.Framework
 import app.organicmaps.sdk.MapViewHelper
@@ -36,6 +38,13 @@ import com.anpfuel.domain.routing.NativeRouteResult
 import com.anpfuel.domain.routing.NavigationFix
 import com.anpfuel.domain.routing.NavigationFixPolicy
 import com.anpfuel.domain.routing.NavigationProgress
+import com.anpfuel.domain.routing.RouteManeuver
+import kotlin.math.atan
+import kotlin.math.exp
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.log2
+import kotlin.math.tan
 import java.io.File
 
 /**
@@ -79,6 +88,9 @@ class ComapsMapEngine(
     private var guidanceGeneration = 0L
     private var rerouteStartNanos: Long? = null
     private var lastProgress: NavigationProgress? = null
+    private var receivedGuidanceFix = false
+    private var recenterAfterFirstFix = false
+    private var guidanceSurfaceSize: IntSize? = null
 
     @Synchronized
     override fun initialize(context: Context, onReady: () -> Unit): Boolean {
@@ -444,6 +456,8 @@ class ComapsMapEngine(
             guidanceGeneration++
             rerouteStartNanos = null
             lastProgress = null
+            receivedGuidanceFix = false
+            recenterAfterFirstFix = false
             true
         } catch (_: Exception) {
             guiding = false
@@ -473,6 +487,11 @@ class ComapsMapEngine(
                 fix.speedMetersPerSecond,
                 fix.bearingDegrees,
             )
+            receivedGuidanceFix = true
+            if (recenterAfterFirstFix) {
+                recenterAfterFirstFix = false
+                resumeGuidanceFollow()
+            }
             val info = Framework.nativeGetRouteFollowingInfo()
             val notifications = Framework.nativeGenerateNotifications(true).orEmpty().toList()
             val progress = info?.toNavigationProgress(notifications)
@@ -510,6 +529,72 @@ class ComapsMapEngine(
         }
     }
 
+    override fun setGuidanceViewport(visible: IntRect, surface: IntSize) {
+        if (!guiding || visible.width < 100 || visible.height < 100) return
+        guidanceSurfaceSize = surface
+        Framework.nativeSetVisibleRect(visible.left, visible.top, visible.right, visible.bottom)
+    }
+
+    private fun restoreGuidanceViewport() {
+        val surface = guidanceSurfaceSize ?: return
+        guidanceSurfaceSize = null
+        Framework.nativeSetVisibleRect(0, 0, surface.width, surface.height)
+    }
+
+    override fun controlGuidanceCamera(action: GuidanceCameraAction) {
+        if (!guiding || !renderingReady) return
+        when (action) {
+            GuidanceCameraAction.RECENTER -> {
+                if (receivedGuidanceFix) resumeGuidanceFollow() else recenterAfterFirstFix = true
+            }
+            GuidanceCameraAction.ORIENTATION -> if (receivedGuidanceFix) {
+                val mode = LocationState.getMode()
+                if (mode == LocationState.FOLLOW || mode == LocationState.FOLLOW_AND_ROTATE) {
+                    LocationState.nativeSwitchToNextMode()
+                } else {
+                    resumeGuidanceFollow()
+                }
+            }
+            GuidanceCameraAction.OVERVIEW -> showGuidanceOverview()
+            GuidanceCameraAction.ZOOM_IN -> app.organicmaps.sdk.Map.zoomIn()
+            GuidanceCameraAction.ZOOM_OUT -> app.organicmaps.sdk.Map.zoomOut()
+        }
+    }
+
+    private fun resumeGuidanceFollow() {
+        val mode = LocationState.getMode()
+        if (mode == LocationState.NOT_FOLLOW || mode == LocationState.NOT_FOLLOW_NO_POSITION) {
+            LocationState.nativeSwitchToNextMode()
+        }
+    }
+
+    private fun showGuidanceOverview() {
+        val points = Framework.nativeGetRouteJunctionPoints(Double.POSITIVE_INFINITY).orEmpty()
+        if (points.size < 2) return
+        // Match the native Mercator draw scale and reserve room for the guidance panels.
+        fun mercatorY(latitude: Double): Double = Math.toDegrees(
+            ln(tan(Math.PI / 4 + Math.toRadians(latitude.coerceIn(-85.0, 85.0)) / 2)),
+        )
+        val reference = points.first().mLon
+        fun longitudeOffset(lon: Double): Double = (lon - reference + 540.0) % 360.0 - 180.0
+        val west = points.minOf { longitudeOffset(it.mLon) }
+        val east = points.maxOf { longitudeOffset(it.mLon) }
+        val south = points.minOf { mercatorY(it.mLat) }
+        val north = points.maxOf { mercatorY(it.mLat) }
+        val latitude = Math.toDegrees(2 * atan(exp(Math.toRadians((south + north) / 2))) - Math.PI / 2)
+        val longitude = (reference + (west + east) / 2 + 540.0) % 360.0 - 180.0
+        val span = maxOf(east - west, north - south, 1e-6)
+        val zoom = floor(log2(360.0 / (2.5 * span))).toInt().coerceIn(1, 18)
+        recenterAfterFirstFix = false
+        Framework.nativeStopLocationFollow()
+        Framework.nativeZoomToPoint(latitude, longitude, zoom, false)
+    }
+
+    override fun guidanceManeuvers(language: String): List<RouteManeuver> =
+        if (!guiding) emptyList() else Framework.nativeGetRouteSteps(language).orEmpty().map {
+            RouteManeuver(it.textualInstruction, it.distMeters, it.toStreetName.orEmpty())
+        }
+
     override fun stopGuidance() {
         lastReadyRequest = null
         guidanceGeneration++
@@ -517,8 +602,11 @@ class ComapsMapEngine(
         guidanceRequest = null
         rerouteStartNanos = null
         lastProgress = null
+        receivedGuidanceFix = false
+        recenterAfterFirstFix = false
         if (!initialized) return
         if (Looper.myLooper() == Looper.getMainLooper()) {
+            runCatching { restoreGuidanceViewport() }
             runCatching { TtsPlayer.configureNativeNotifications("en", false) }
             runCatching { Framework.nativeDisableFollowing() }
             runCatching { Framework.nativeCloseRouting() }
@@ -527,6 +615,7 @@ class ComapsMapEngine(
             val latch = java.util.concurrent.CountDownLatch(1)
             Handler(Looper.getMainLooper()).post {
                 try {
+                    runCatching { restoreGuidanceViewport() }
                     runCatching { TtsPlayer.configureNativeNotifications("en", false) }
                     runCatching { Framework.nativeDisableFollowing() }
                     runCatching { Framework.nativeCloseRouting() }

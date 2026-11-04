@@ -14,4 +14,11 @@
     <string name="map_route_hours_minutes">%1$d h %2$d min</string>
     <string name="map_clear_search">Очистить поиск</string>
     <string name="map_station_search_failed">Поиск заправок недоступен.</string>
+    <string name="map_guidance_recenter">Центрировать на моём местоположении</string>
+    <string name="map_guidance_orientation">Изменить ориентацию карты</string>
+    <string name="map_guidance_overview">Показать весь маршрут</string>
+    <string name="map_guidance_zoom_in">Приблизить карту</string>
+    <string name="map_guidance_zoom_out">Отдалить карту</string>
+    <string name="map_guidance_mute">Выключить голосовые подсказки</string>
+    <string name="map_guidance_unmute">Включить голосовые подсказки</string>
 </resources>

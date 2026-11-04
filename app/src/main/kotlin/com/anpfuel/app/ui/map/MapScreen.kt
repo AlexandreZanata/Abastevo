@@ -399,6 +399,10 @@ fun MapScreen(
                 onStart = ::startGuidance,
                 onClose = ::closeRoute,
                 onInsetChanged = ::updateBottomInset,
+                onGuidanceViewport = { visible, surface -> planner?.setGuidanceViewport(visible, surface) },
+                onCameraAction = { planner?.controlGuidanceCamera(it) },
+                onVoiceMuted = guidance::setVoiceMuted,
+                loadManeuvers = { planner?.guidanceManeuvers(routeLanguage).orEmpty() },
             )
         } else if (mapReady) {
             Column(
