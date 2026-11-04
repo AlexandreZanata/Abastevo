@@ -7,10 +7,12 @@ import com.anpfuel.domain.repository.IntakeReceipt
 import com.anpfuel.domain.repository.IntakeStatus
 import com.anpfuel.domain.repository.IntakeSummary
 import com.anpfuel.domain.repository.StationIntakeGateway
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 import org.json.JSONArray
@@ -31,14 +33,17 @@ object IntakeModule {
         client = OkHttpClientFactory.create(),
         baseUrl = environment.origin,
     )
-
-    @Provides
-    @Singleton
-    fun provideStationIntakeGateway(client: StationIntakeHttpClient): StationIntakeGateway =
-        StationIntakeGatewayImpl(client)
 }
 
-private class StationIntakeGatewayImpl(
+@Module
+@InstallIn(SingletonComponent::class)
+internal abstract class StationIntakeGatewayModule {
+    @Binds
+    @Singleton
+    abstract fun bindStationIntakeGateway(impl: StationIntakeGatewayImpl): StationIntakeGateway
+}
+
+internal class StationIntakeGatewayImpl @Inject constructor(
     private val client: StationIntakeHttpClient,
 ) : StationIntakeGateway {
 
