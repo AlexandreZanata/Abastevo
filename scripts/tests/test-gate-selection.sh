@@ -142,6 +142,26 @@ else
     echo "FAIL: planted platform import not detected: $OUT" >&2
     FAIL=$((FAIL + 1))
 fi
+printf 'package ok\n' > "$SKELETON/domain/src/main/kotlin/com/anpfuel/domain/portable/Bad.kt"
+cp contracts/testdata/compat/money-portable-v1.json "$SKELETON/contracts/testdata/compat/"
+MAP_SOURCES=app/src/main/kotlin/com/anpfuel/app/ui/map
+mkdir -p "$SKELETON/$MAP_SOURCES" "$SKELETON/data/src/main"
+cp app/src/main/AndroidManifest.xml "$SKELETON/app/src/main/AndroidManifest.xml"
+cp "$MAP_SOURCES/GuidanceService.kt" "$MAP_SOURCES/RouteCurrentFix.kt" "$SKELETON/$MAP_SOURCES/"
+assert_pass "one-shot preview and approved foreground guidance accepted" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+printf '\nmanager.requestLocationUpdates(provider, listener)\n' >> "$SKELETON/$MAP_SOURCES/RouteCurrentFix.kt"
+assert_fail "continuous location subscription in route preview refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+cp "$MAP_SOURCES/RouteCurrentFix.kt" "$SKELETON/$MAP_SOURCES/"
+sed 's/requestLocationUpdates(manager, LocationManager.FUSED_PROVIDER/requestLocationUpdates(manager, LocationManager.NETWORK_PROVIDER/' \
+    "$MAP_SOURCES/GuidanceService.kt" > "$SKELETON/$MAP_SOURCES/GuidanceService.kt"
+assert_fail "unapproved continuous provider in foreground guidance refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+sed 's/LocationRequestCompat.Builder(1_000L)/LocationRequestCompat.Builder(100L)/' \
+    "$MAP_SOURCES/GuidanceService.kt" > "$SKELETON/$MAP_SOURCES/GuidanceService.kt"
+assert_fail "unexpected guidance interval refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
 rm -rf "$SKELETON"
 
 echo "== bounded landing selection (P25-T02) =="

@@ -1,5 +1,12 @@
 # Current execution state
 
+- MAP-22 route-origin CI regression, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev` from `c7158ef7`. [Location policy and replay](../backend/evidence/maps/MAP-22_23_DIRECT_NAVIGATION.md#map-22-route-origin-location-policy-regression)
+  record the fix for Quick verification, cancellation tests and the fused-only
+  emulator route. Debug build, lint, 19 focused JVM tests, 25 gate-selection
+  checks and local `make quick-verify` passed. The tested source is in this
+  commit for integration through PR #188.
+
 - MAP-23 active navigation controls, 2026-11-04, LOCAL_DONE / INTEGRATION_PENDING
   on maintained `dev` from `5c7b2b6c`. [Device and camera evidence](../backend/evidence/maps/MAP-23.md#active-navigation-controls-verification--2026-11-04)
   records the accessible stop action, the physical guidance fix, route

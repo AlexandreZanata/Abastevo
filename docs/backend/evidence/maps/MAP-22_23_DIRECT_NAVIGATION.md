@@ -61,3 +61,31 @@ Debug build, lint and 62 tests passed, including regressions for the recent
 map fix, fused cache fallback, poor fixes, timeout cleanup and coarse
 permission. The tested source is this commit on maintained `dev` from
 `abb2f461`, included in protected PR #188.
+
+## MAP-22 route origin location policy regression
+
+B-BR-MAP22-ORIGIN-01: An explicit route preview may request current fixes
+through cancellable one-shot calls. An unsuitable fix can be retried at a
+bounded cadence within the existing preview timeout. Accept the first fresh,
+accurate fix and cancel pending calls when the preview completes or closes.
+Continuous guidance remains in the private location foreground service,
+with one high-accuracy provider at a time and the existing one-second request.
+
+BUC-MAP22-ORIGIN-CI: Build a station preview with an empty location cache.
+Reject an unsuitable fix, recover when an enabled provider returns a suitable
+fix, and stop pending lookups on success, timeout or cancellation. Verify the
+mobile guard still refuses continuous subscriptions in the preview and
+unexpected providers in guidance.
+
+GitHub Actions [Quick verification job 126670910848](https://github.com/AlexandreZanata/Abastevo/actions/runs/41857770150/job/126670910848?pr=188)
+rejected the continuous subscription in the preview. The same mobile static
+check failed locally before this change. The gate still rejects a planted
+continuous subscription in preview, an unapproved guidance provider and a
+shortened guidance interval. It verifies that guidance is a non-exported
+location foreground service.
+
+On the Android 15 emulator, the Abrantes preview in Sorriso waited after a
+250 m accuracy sample and calculated a 2.8 km route after receiving a 10 m
+fused sample, with no accurate GPS sample. The debug APK, lint, 19 focused JVM
+tests, 25 gate-selection checks and local `make quick-verify` passed. This
+commit records the tested source on `dev` from `c7158ef7` for PR #188.

@@ -6,18 +6,22 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
-import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
-import androidx.core.location.LocationListenerCompat
 import androidx.core.location.LocationManagerCompat
-import androidx.core.location.LocationRequestCompat
+import androidx.core.os.CancellationSignal
 import com.anpfuel.domain.routing.RoutePoint
+import java.util.concurrent.Executor
 import kotlin.coroutines.resume
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 
 private const val ROUTE_FIX_TIMEOUT_MS = 15_000L
+private const val ROUTE_FIX_RETRY_MS = 1_000L
 private const val ROUTE_FIX_MAX_AGE_NS = 15_000_000_000L
 
 @SuppressLint("MissingPermission")
@@ -54,43 +58,48 @@ internal suspend fun findCurrentRoutePoint(
 
     val activeProviders = providers.filterNot { it == LocationManager.PASSIVE_PROVIDER }
     if (activeProviders.isEmpty()) return null
+    val executor = ContextCompat.getMainExecutor(context)
     return withTimeoutOrNull(ROUTE_FIX_TIMEOUT_MS) {
-        awaitRouteOrigin(manager, activeProviders, label)
+        channelFlow {
+            for (provider in activeProviders) {
+                launch {
+                    awaitUsableRouteOrigin(manager, provider, executor, label)?.let { send(it) }
+                }
+            }
+        }.firstOrNull()
+    }
+}
+
+private suspend fun awaitUsableRouteOrigin(
+    manager: LocationManager,
+    provider: String,
+    executor: Executor,
+    label: String,
+): RoutePoint? {
+    while (true) {
+        val location = awaitCurrentLocation(manager, provider, executor) ?: return null
+        location.toRouteOrigin(label, SystemClock.elapsedRealtimeNanos())?.let { return it }
+        // A one-shot result can be a recent but unsuitable cached fix.
+        delay(ROUTE_FIX_RETRY_MS)
     }
 }
 
 @SuppressLint("MissingPermission")
-private suspend fun awaitRouteOrigin(
+@Suppress("DEPRECATION")
+private suspend fun awaitCurrentLocation(
     manager: LocationManager,
-    providers: List<String>,
-    label: String,
-): RoutePoint? = suspendCancellableCoroutine { continuation ->
-    val listener = object : LocationListenerCompat {
-        override fun onLocationChanged(location: Location) {
-            if (!continuation.isActive) return
-            val origin = location.toRouteOrigin(label, SystemClock.elapsedRealtimeNanos()) ?: return
-            LocationManagerCompat.removeUpdates(manager, this)
-            continuation.resume(origin)
+    provider: String,
+    executor: Executor,
+): Location? = suspendCancellableCoroutine { continuation ->
+    val cancellation = CancellationSignal()
+    try {
+        LocationManagerCompat.getCurrentLocation(manager, provider, cancellation, executor) { location ->
+            continuation.resume(location)
         }
-    }
-    val request = LocationRequestCompat.Builder(1_000L)
-        .setQuality(LocationRequestCompat.QUALITY_HIGH_ACCURACY)
-        .setDurationMillis(ROUTE_FIX_TIMEOUT_MS)
-        .build()
-    var registered = false
-    for (provider in providers) {
-        try {
-            LocationManagerCompat.requestLocationUpdates(manager, provider, request, listener, Looper.getMainLooper())
-            registered = true
-        } catch (_: SecurityException) {
-            // A grant may have changed since the caller check.
-        } catch (_: IllegalArgumentException) {
-            // The provider may have disappeared since enumeration.
-        }
-    }
-    if (registered) {
-        continuation.invokeOnCancellation { LocationManagerCompat.removeUpdates(manager, listener) }
-    } else {
+        continuation.invokeOnCancellation { cancellation.cancel() }
+    } catch (_: SecurityException) {
+        continuation.resume(null)
+    } catch (_: IllegalArgumentException) {
         continuation.resume(null)
     }
 }
