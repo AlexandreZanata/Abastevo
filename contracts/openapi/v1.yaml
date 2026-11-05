@@ -7368,6 +7368,259 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/forum/posts/{post_id}/comments:
+    post:
+      summary: Submit a comment or reply on a published forum post.
+      description: Signed owner command creating a pending-review comment or reply. Replays return the existing receipt.
+      operationId: createForumComment
+      tags: [forum]
+      security: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the post to comment on.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumCreateCommentRequest'
+      responses:
+        '200':
+          description: Comment receipt returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumCommentReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    get:
+      summary: Read paginated visible top-level comments on a published post.
+      description: Anonymous public read endpoint returning approved visible top-level comments.
+      operationId: getForumPostComments
+      tags: [forum]
+      security: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the post.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          description: Number of comments to return (1–50, default 20).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: Monotonic sequence cursor from previous response.
+      responses:
+        '200':
+          description: Comments page returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumCommentsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/comments/{comment_id}/edit:
+    post:
+      summary: Edit an existing comment.
+      description: Signed owner command updating comment body text under optimistic CAS revision check.
+      operationId: editForumComment
+      tags: [forum]
+      security: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the comment to edit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumEditCommentRequest'
+      responses:
+        '200':
+          description: Updated comment receipt returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumCommentReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/comments/{comment_id}/remove:
+    post:
+      summary: Remove an existing comment.
+      description: Signed owner command setting comment to tombstone REMOVED state and wiping body text.
+      operationId: removeForumComment
+      tags: [forum]
+      security: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the comment to remove.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumRemoveCommentRequest'
+      responses:
+        '200':
+          description: Removed comment receipt returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumCommentReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/comments/{comment_id}/replies:
+    get:
+      summary: Read paginated visible replies to a parent comment.
+      description: Anonymous public read endpoint returning approved visible replies for a parent comment.
+      operationId: getForumCommentReplies
+      tags: [forum]
+      security: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the parent comment.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          description: Number of replies to return (1–50, default 20).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: Monotonic sequence cursor from previous response.
+      responses:
+        '200':
+          description: Replies page returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumRepliesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/owner/read:
+    post:
+      summary: Private owner read of authored comment.
+      description: Signed owner endpoint returning authored comment and moderation state. Returns 404 for foreign comments.
+      operationId: readForumOwnerComment
+      tags: [forum]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumOwnerReadRequest'
+      responses:
+        '200':
+          description: Author comment returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumOwnerCommentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   parameters:
     QualityCompanyStationSelector:
@@ -12862,6 +13115,244 @@ components:
       properties:
         post:
           $ref: '#/components/schemas/ForumPostDetail'
+    ForumCreateCommentRequest:
+      type: object
+      description: Signed owner request payload to create a comment or reply.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, body_text]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Unique client operation ID for idempotent submission.
+        parent_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional parent comment UUID for a reply.
+        body_text:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Plain UTF-8 comment body (1..280 Unicode scalar values).
+    ForumEditCommentRequest:
+      type: object
+      description: Signed owner request payload to edit a comment under CAS revision check.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, expected_revision, body_text]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Unique client operation ID for idempotent CAS edit.
+        expected_revision:
+          type: integer
+          minimum: 1
+          description: Expected revision number of the comment.
+        body_text:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Updated plain UTF-8 comment body (1..280 Unicode scalar values).
+    ForumRemoveCommentRequest:
+      type: object
+      description: Signed owner request payload to tombstone a comment.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, expected_revision]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Unique client operation ID for idempotent removal.
+        expected_revision:
+          type: integer
+          minimum: 1
+          description: Expected revision number of the comment.
+    ForumOwnerReadRequest:
+      type: object
+      description: Signed owner request payload to read private authored comments.
+      additionalProperties: false
+      required: [family_id, access_token]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        comment_id:
+          type: [string, 'null']
+          format: uuid
+          description: Unique identifier of the authored comment to read.
+        post_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional post UUID context.
+    ForumCommentReceipt:
+      type: object
+      description: Private owner receipt for comment creation, edit, removal, or owner read.
+      additionalProperties: false
+      required: [id, post_id, depth, sequence, revision, publication_state, visibility, body_text, created_at, updated_at, replayed]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Comment unique identifier.
+        post_id:
+          type: string
+          format: uuid
+          description: Post unique identifier.
+        parent_id:
+          type: [string, 'null']
+          format: uuid
+          description: Parent comment unique identifier if this is a reply.
+        depth:
+          type: integer
+          minimum: 0
+          maximum: 1
+          description: Comment hierarchy depth (0 for top-level, 1 for reply).
+        sequence:
+          type: integer
+          minimum: 1
+          description: Scoped monotonic sequence number within the post.
+        revision:
+          type: integer
+          minimum: 1
+          description: Incremental revision number for CAS updates.
+        publication_state:
+          type: string
+          enum: [PENDING_REVIEW, PUBLISHED, REJECTED, REMOVED]
+          description: Current moderation and publication state.
+        visibility:
+          type: string
+          enum: [VISIBLE, HIDDEN]
+          description: Display visibility status.
+        body_text:
+          type: string
+          description: Plain comment body text. Blank if removed.
+        created_at:
+          type: string
+          format: date-time
+          description: Comment creation timestamp in UTC RFC3339.
+        updated_at:
+          type: string
+          format: date-time
+          description: Comment last update timestamp in UTC RFC3339.
+        published_at:
+          type: [string, 'null']
+          format: date-time
+          description: Publication approval timestamp in UTC RFC3339 if published.
+        replayed:
+          type: boolean
+          description: True if this response is an idempotent replay of an existing operation.
+    ForumOwnerCommentResponse:
+      type: object
+      description: Private owner response containing authored comment projection.
+      additionalProperties: false
+      required: [comment]
+      properties:
+        comment:
+          $ref: '#/components/schemas/ForumCommentReceipt'
+    ForumCommentItem:
+      type: object
+      description: Publicly visible comment item on a published post.
+      additionalProperties: false
+      required: [id, post_id, depth, sequence, revision, public_alias, body_text, created_at, reply_count]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Comment unique identifier.
+        post_id:
+          type: string
+          format: uuid
+          description: Post unique identifier.
+        parent_id:
+          type: [string, 'null']
+          format: uuid
+          description: Parent comment unique identifier if this is a reply.
+        depth:
+          type: integer
+          minimum: 0
+          maximum: 1
+          description: Comment hierarchy depth (0 for top-level, 1 for reply).
+        sequence:
+          type: integer
+          minimum: 1
+          description: Scoped monotonic sequence number within the post.
+        revision:
+          type: integer
+          minimum: 1
+          description: Current revision number.
+        public_alias:
+          type: string
+          description: Pseudonymous public display alias of the author.
+        body_text:
+          type: string
+          description: Approved public comment text.
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp in UTC RFC3339.
+        reply_count:
+          type: integer
+          minimum: 0
+          description: Number of approved visible replies to this comment.
+    ForumCommentsResponse:
+      type: object
+      description: Public paginated comments response for a post.
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForumCommentItem'
+        next_cursor:
+          type: [string, 'null']
+          description: Opaque pagination cursor for fetching the next page.
+    ForumRepliesResponse:
+      type: object
+      description: Public paginated replies response for a parent comment.
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForumCommentItem'
+        next_cursor:
+          type: [string, 'null']
+          description: Opaque pagination cursor for fetching the next page.
   responses:
     BadRequest:
       description: Malformed input, cursor or bounds.

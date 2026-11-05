@@ -1,5 +1,30 @@
 # Current execution state
 
+- FOR-15 Forum signed owner and command admission, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `8a27d3a0`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  advances Phase 3 (Safe discussion on published posts):
+  wired session family credentials, signed owner contributor/key binding, and
+  transaction-time guard (`Guard`) to comment create, edit, remove, and private
+  owner read operations;
+  stable logical intent hashing (`CanonicalCreateIntent`, `CanonicalEditIntent`,
+  `CanonicalRemoveIntent`, `CanonicalOwnerReadIntent`, `HashLogicalIntent`)
+  strictly excluding rotating session credentials (`family_id`, `access_token`)
+  and request nonces;
+  private owner projection (`CommentReceiptDTO`, `OwnerCommentResponseDTO`)
+  returned only to authentic authors;
+  foreign-owner attempts return indistinguishable 404 (IDOR prevention per B-BR-FOR-04);
+  mandatory `Cache-Control: no-store` on all command responses and owner reads;
+  OpenAPI specification extended with 5 discussion paths and 9 schemas (`vacuum lint` 0 errors);
+  9 golden contract vectors added in `contracts/testdata/api/`;
+  contract tests in `forum_discussion_test.go` and admission unit test suite in `for15_admission_test.go`;
+  real PostgreSQL integration test suite in `for15_admission_integration_test.go`
+  verifying all 11 gates (create success, session refresh replay, changed body 409 conflict,
+  cross-key replay, commit-time suspension fail-closed, commit-time revoked session fail-closed,
+  edit/remove/read IDOR 404, private receipt vs public feed isolation, 7-day attempt expiry)
+  with `-race` and `-tags=integration`. Tested revision: source in this commit.
+  Next microtask: FOR-16 (Privacy, notices and moderation readiness).
+
 - FOR-14 Forum comment/reply domain and persistence, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `2d469779`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)

@@ -99,6 +99,12 @@ func (s *Store) CreateComment(ctx context.Context, cmd application.CreateComment
 	}
 	defer tx.Rollback(ctx)
 
+	if cmd.Guard != nil {
+		if err := cmd.Guard(ctx, tx); err != nil {
+			return application.CommentResult{}, err
+		}
+	}
+
 	qtx := s.queries.WithTx(tx)
 
 	// 1. Quota check (if limiter configured)
@@ -243,6 +249,12 @@ func (s *Store) EditComment(ctx context.Context, cmd application.EditCommentComm
 	}
 	defer tx.Rollback(ctx)
 
+	if cmd.Guard != nil {
+		if err := cmd.Guard(ctx, tx); err != nil {
+			return nil, err
+		}
+	}
+
 	qtx := s.queries.WithTx(tx)
 
 	existing, err := qtx.GetCommentByIDForUpdate(ctx, commentUUID)
@@ -318,6 +330,12 @@ func (s *Store) RemoveComment(ctx context.Context, cmd application.RemoveComment
 		return nil, fmt.Errorf("forum: begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
+
+	if cmd.Guard != nil {
+		if err := cmd.Guard(ctx, tx); err != nil {
+			return nil, err
+		}
+	}
 
 	qtx := s.queries.WithTx(tx)
 

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
+	"github.com/jackc/pgx/v5"
 )
 
 // Clock abstracts system time for deterministic testing.
@@ -141,6 +142,7 @@ type CreateCommentCommand struct {
 	ParentID        *string
 	BodyText        string
 	OperationID     string
+	Guard           func(context.Context, pgx.Tx) error
 }
 
 // EditCommentCommand represents validated parameters to CAS-edit an existing comment.
@@ -149,6 +151,7 @@ type EditCommentCommand struct {
 	AuthorAccountID  string
 	ExpectedRevision int
 	BodyText         string
+	Guard            func(context.Context, pgx.Tx) error
 }
 
 // RemoveCommentCommand represents parameters to tombstone an existing comment.
@@ -156,6 +159,7 @@ type RemoveCommentCommand struct {
 	CommentID        string
 	AuthorAccountID  string
 	ExpectedRevision int
+	Guard            func(context.Context, pgx.Tx) error
 }
 
 // ListPostCommentsQuery represents pagination parameters for top-level post comments.
