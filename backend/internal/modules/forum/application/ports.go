@@ -192,4 +192,6 @@ type CommentStore interface {
 	ListRepliesByParent(ctx context.Context, query ListCommentRepliesQuery) ([]domain.Comment, error)
 	PublishComment(ctx context.Context, commentID string) (*domain.Comment, error)
 	RejectComment(ctx context.Context, commentID string) (*domain.Comment, error)
+	ListCommentsByAccount(ctx context.Context, accountID string) ([]domain.Comment, error)
+	EraseAccountBatch(ctx context.Context, accountID string, limit int) (done bool, erasedCount int, err error)
 }

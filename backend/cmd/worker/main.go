@@ -42,6 +42,7 @@ import (
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	evidencedomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 	feedbackadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters"
+	forumadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
@@ -366,6 +367,7 @@ func run() error {
 	}
 	feedbackStore := feedbackadapters.NewPGStore(pool.Underlying())
 	qualityReportStore := &qualityadapters.ReportStore{Pool: raw, Now: time.Now}
+	forumStore := forumadapters.NewStore(pool.Underlying())
 	accountRecovery := accountapp.ErasureRecovery{
 		Store: accountadapters.NewPGStore(pool.Underlying()), NewNonce: jobs.NewUUIDv4, Now: time.Now,
 		EraseFeedback: func(ctx context.Context, id string) error {
@@ -381,7 +383,18 @@ func run() error {
 			if err == nil && !done {
 				return accountapp.ErrErasurePending
 			}
-			return err
+			if err != nil {
+				return err
+			}
+
+			forumDone, _, forumErr := forumStore.EraseAccountBatch(ctx, id, 100)
+			if forumErr != nil {
+				return forumErr
+			}
+			if !forumDone {
+				return accountapp.ErrErasurePending
+			}
+			return nil
 		},
 		EraseContributor: func(ctx context.Context, accountID, contributorID string) error {
 			_, err := privacyapp.Erase(ctx, privacyErasePorts, contributorID, privacyapp.EraseDTO{ClientSubmissionID: "account-erasure:" + accountID + ":" + contributorID, Reason: "account-deletion"})

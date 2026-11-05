@@ -168,6 +168,30 @@ func (m *mockCommentStore) RejectComment(ctx context.Context, commentID string) 
 	return c, nil
 }
 
+func (m *mockCommentStore) ListCommentsByAccount(ctx context.Context, accountID string) ([]domain.Comment, error) {
+	var out []domain.Comment
+	for _, c := range m.comments {
+		if c.AuthorAccountID == accountID {
+			out = append(out, *c)
+		}
+	}
+	return out, nil
+}
+
+func (m *mockCommentStore) EraseAccountBatch(ctx context.Context, accountID string, limit int) (bool, int, error) {
+	count := 0
+	for _, c := range m.comments {
+		if c.AuthorAccountID == accountID && (c.PublicationState != domain.StateRemoved || c.BodyText != "") {
+			c.BodyText = ""
+			c.PublicationState = domain.StateRemoved
+			c.Visibility = domain.VisibilityHidden
+			count++
+		}
+	}
+	return true, count, nil
+}
+
+
 func TestCanonicalIntentHashingStabilityAndConflict(t *testing.T) {
 	opID := "22222222-2222-4222-8222-000000000001"
 	postID := "44444444-4444-4444-8444-000000000001"

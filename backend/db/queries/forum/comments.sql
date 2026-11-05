@@ -129,3 +129,36 @@ SET publication_state = 'REMOVED',
 WHERE id = $1
   AND publication_state = 'PENDING_REVIEW'
 RETURNING *;
+
+-- name: ListCommentsByAuthor :many
+SELECT *
+FROM forum_comments
+WHERE author_account_id = $1
+ORDER BY id ASC;
+
+-- name: PendingEraseCommentsByAuthor :many
+SELECT id
+FROM forum_comments
+WHERE author_account_id = $1
+  AND (publication_state <> 'REMOVED' OR body_text <> '')
+ORDER BY id ASC
+LIMIT $2;
+
+-- name: ScrubCommentForErasure :one
+UPDATE forum_comments
+SET body_text = '',
+    body_sha256 = '',
+    publication_state = 'REMOVED',
+    visibility = 'HIDDEN',
+    revision = revision + 1,
+    updated_at = now()
+WHERE id = $1
+RETURNING *;
+
+-- name: HasPendingAuthorCommentErasure :one
+SELECT EXISTS (
+    SELECT 1
+    FROM forum_comments
+    WHERE author_account_id = $1
+      AND (publication_state <> 'REMOVED' OR body_text <> '')
+);

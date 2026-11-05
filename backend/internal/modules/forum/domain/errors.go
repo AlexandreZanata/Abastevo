@@ -45,6 +45,7 @@ var (
 	ErrCommentNotFound          = errors.New("forum: comment not found")
 	ErrCommentAuthorMismatch    = errors.New("forum: comment author mismatch")
 	ErrCommentAlreadyRemoved    = errors.New("forum: comment is already removed")
+	ErrTargetInvalid            = errors.New("forum: invalid account id or target")
 )
 
 const (

@@ -134,6 +134,22 @@ func (q *Queries) GetCommentByOperationID(ctx context.Context, arg GetCommentByO
 	return i, err
 }
 
+const hasPendingAuthorCommentErasure = `-- name: HasPendingAuthorCommentErasure :one
+SELECT EXISTS (
+    SELECT 1
+    FROM forum_comments
+    WHERE author_account_id = $1
+      AND (publication_state <> 'REMOVED' OR body_text <> '')
+)
+`
+
+func (q *Queries) HasPendingAuthorCommentErasure(ctx context.Context, authorAccountID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasPendingAuthorCommentErasure, authorAccountID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const insertComment = `-- name: InsertComment :one
 INSERT INTO forum_comments (
     id,
@@ -216,6 +232,50 @@ func (q *Queries) InsertComment(ctx context.Context, arg InsertCommentParams) (F
 		&i.BodySha256,
 	)
 	return i, err
+}
+
+const listCommentsByAuthor = `-- name: ListCommentsByAuthor :many
+SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+FROM forum_comments
+WHERE author_account_id = $1
+ORDER BY id ASC
+`
+
+func (q *Queries) ListCommentsByAuthor(ctx context.Context, authorAccountID pgtype.UUID) ([]ForumComment, error) {
+	rows, err := q.db.Query(ctx, listCommentsByAuthor, authorAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ForumComment
+	for rows.Next() {
+		var i ForumComment
+		if err := rows.Scan(
+			&i.ID,
+			&i.PostID,
+			&i.AuthorAccountID,
+			&i.PublicAlias,
+			&i.ParentID,
+			&i.Depth,
+			&i.Sequence,
+			&i.BodyText,
+			&i.Revision,
+			&i.PublicationState,
+			&i.Visibility,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PublishedAt,
+			&i.CreateOperationID,
+			&i.BodySha256,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCommentsByPost = `-- name: ListCommentsByPost :many
@@ -383,6 +443,40 @@ func (q *Queries) LockPostForComment(ctx context.Context, id pgtype.UUID) (LockP
 	return i, err
 }
 
+const pendingEraseCommentsByAuthor = `-- name: PendingEraseCommentsByAuthor :many
+SELECT id
+FROM forum_comments
+WHERE author_account_id = $1
+  AND (publication_state <> 'REMOVED' OR body_text <> '')
+ORDER BY id ASC
+LIMIT $2
+`
+
+type PendingEraseCommentsByAuthorParams struct {
+	AuthorAccountID pgtype.UUID `json:"author_account_id"`
+	Limit           int32       `json:"limit"`
+}
+
+func (q *Queries) PendingEraseCommentsByAuthor(ctx context.Context, arg PendingEraseCommentsByAuthorParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, pendingEraseCommentsByAuthor, arg.AuthorAccountID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const publishComment = `-- name: PublishComment :one
 UPDATE forum_comments
 SET publication_state = 'PUBLISHED',
@@ -431,6 +525,42 @@ RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequen
 
 func (q *Queries) RejectComment(ctx context.Context, id pgtype.UUID) (ForumComment, error) {
 	row := q.db.QueryRow(ctx, rejectComment, id)
+	var i ForumComment
+	err := row.Scan(
+		&i.ID,
+		&i.PostID,
+		&i.AuthorAccountID,
+		&i.PublicAlias,
+		&i.ParentID,
+		&i.Depth,
+		&i.Sequence,
+		&i.BodyText,
+		&i.Revision,
+		&i.PublicationState,
+		&i.Visibility,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublishedAt,
+		&i.CreateOperationID,
+		&i.BodySha256,
+	)
+	return i, err
+}
+
+const scrubCommentForErasure = `-- name: ScrubCommentForErasure :one
+UPDATE forum_comments
+SET body_text = '',
+    body_sha256 = '',
+    publication_state = 'REMOVED',
+    visibility = 'HIDDEN',
+    revision = revision + 1,
+    updated_at = now()
+WHERE id = $1
+RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+`
+
+func (q *Queries) ScrubCommentForErasure(ctx context.Context, id pgtype.UUID) (ForumComment, error) {
+	row := q.db.QueryRow(ctx, scrubCommentForErasure, id)
 	var i ForumComment
 	err := row.Scan(
 		&i.ID,

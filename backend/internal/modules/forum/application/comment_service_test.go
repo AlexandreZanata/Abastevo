@@ -77,6 +77,15 @@ func (m *mockCommentStore) RejectComment(ctx context.Context, id string) (*domai
 	return nil, errors.New("unimplemented")
 }
 
+func (m *mockCommentStore) ListCommentsByAccount(ctx context.Context, accountID string) ([]domain.Comment, error) {
+	return nil, nil
+}
+
+func (m *mockCommentStore) EraseAccountBatch(ctx context.Context, accountID string, limit int) (bool, int, error) {
+	return true, 0, nil
+}
+
+
 
 
 func TestCommentService_CreateComment_Validation(t *testing.T) {

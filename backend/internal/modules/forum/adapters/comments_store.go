@@ -613,3 +613,93 @@ func (s *Store) RejectComment(ctx context.Context, commentID string) (*domain.Co
 
 	return mapCommentRowToDomain(rejected), nil
 }
+
+// ListCommentsByAccount returns all comments authored by the specified account ID,
+// including unapproved (PENDING_REVIEW), published, and removed comments, sorted by ID.
+func (s *Store) ListCommentsByAccount(ctx context.Context, accountID string) ([]domain.Comment, error) {
+	accUUID, err := mustUUID(accountID)
+	if err != nil {
+		return nil, domain.ErrTargetInvalid
+	}
+
+	rows, err := s.queries.ListCommentsByAuthor(ctx, accUUID)
+	if err != nil {
+		return nil, fmt.Errorf("forum: list comments by author: %w", err)
+	}
+
+	out := make([]domain.Comment, 0, len(rows))
+	for _, row := range rows {
+		c := mapCommentRowToDomain(row)
+		out = append(out, *c)
+	}
+	return out, nil
+}
+
+// EraseAccountBatch scrubs and tombstones at most limit comments for the specified account ID.
+// Returns done = true when no more unscrubbed comments remain for the account.
+func (s *Store) EraseAccountBatch(ctx context.Context, accountID string, limit int) (bool, int, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	accUUID, err := mustUUID(accountID)
+	if err != nil {
+		return false, 0, domain.ErrTargetInvalid
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return false, 0, fmt.Errorf("forum: begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	pendingIDs, err := qtx.PendingEraseCommentsByAuthor(ctx, forumsql.PendingEraseCommentsByAuthorParams{
+		AuthorAccountID: accUUID,
+		Limit:           int32(limit),
+	})
+	if err != nil {
+		return false, 0, fmt.Errorf("forum: pending erase comments: %w", err)
+	}
+
+	now := time.Now().UTC()
+	erasedCount := 0
+	for _, cid := range pendingIDs {
+		scrubbed, err := qtx.ScrubCommentForErasure(ctx, cid)
+		if err != nil {
+			return false, 0, fmt.Errorf("forum: scrub comment: %w", err)
+		}
+
+		changeID := newUUIDBytes()
+		if err := qtx.RecordForumChange(ctx, forumsql.RecordForumChangeParams{
+			ID:             changeID,
+			TargetType:     "COMMENT",
+			TargetID:       cid,
+			Revision:       scrubbed.Revision,
+			Action:         "REMOVE",
+			ActorKind:      "SYSTEM",
+			ActorAccountID: accUUID,
+			AdminAuditRef:  "account-erasure",
+			PolicyVersion:  1,
+			ReasonCode:     "erasure-scrub",
+			PriorState:     scrubbed.PublicationState,
+			NewState:       string(domain.StateRemoved),
+			CreatedAt:      pgtype.Timestamptz{Time: now, Valid: true},
+		}); err != nil {
+			return false, 0, fmt.Errorf("forum: record erasure change: %w", err)
+		}
+		erasedCount++
+	}
+
+	hasPending, err := qtx.HasPendingAuthorCommentErasure(ctx, accUUID)
+	if err != nil {
+		return false, 0, fmt.Errorf("forum: has pending erasure: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return false, 0, fmt.Errorf("forum: commit erasure tx: %w", err)
+	}
+
+	done := !hasPending
+	return done, erasedCount, nil
+}

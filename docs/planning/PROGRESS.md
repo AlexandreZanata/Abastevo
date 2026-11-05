@@ -1,5 +1,23 @@
 # Current execution state
 
+- FOR-16 Forum privacy, notices and moderation readiness, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `001b4cc4`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  advances Phase 3 (Safe discussion on published posts):
+  Forum export and batched account erasure integrated with existing recovery;
+  `application.ExportAccount` and `ExportAccountBytes` in `export.go` providing owner
+  data portability (`forum-export-v1`) with deterministic sorting and defense-in-depth isolation;
+  `ListCommentsByAccount` and `EraseAccountBatch` in `comments_store.go` scrubbing body text,
+  resetting SHA-256, tombstoning to `REMOVED` + `HIDDEN`, and logging `forum_changes`;
+  `cmd/worker/main.go` wired to `accountapp.ErasureRecovery` enforcing that erasure never
+  completes until all modules succeed (`ErrErasurePending` on remaining rows);
+  `docs/backend/FORUM_POLICIES.md` defines reviewed terms, character/rate bounds,
+  legal-notice contact (`juridico@abastevo.com.br`, `privacidade@abastevo.com.br`),
+  premoderation disclosure, author/reporter appeal workflow, and Marco Civil (art. 19) / LGPD operator coverage;
+  unit test suite in `for16_export_test.go` and PostgreSQL integration test suite in `for16_erasure_integration_test.go`
+  verifying all 6 gates with `-race` and `-tags=integration`. Tested revision: source in this commit.
+  Next microtask: FOR-17 (Discussion HTTP endpoints).
+
 - FOR-15 Forum signed owner and command admission, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `8a27d3a0`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
