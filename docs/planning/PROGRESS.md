@@ -1,5 +1,13 @@
 # Current execution state
 
+- NAT signed landing search input, 2026-11-05, LOCAL_DONE /
+  INTEGRATION_PENDING. [Runtime finding and regression](../backend/evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md#signed-landing-search-input-continuity)
+  records the stale hashed worker config and stable signed-build input.
+  78 landing tests, typecheck/build/check, reproducibility and scoped static
+  checks pass. Tested source is in this commit. PR #193 is integrated as
+  `5bf9d08a`; its signed deployment and national publication remain in progress.
+  Isolated main delivery was explicitly authorized while dev carries the forum.
+
 - NAT national continuity and static fiscal discovery, 2026-11-05,
   LOCAL_DONE / INTEGRATION_PENDING. [Current evidence](../backend/evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md)
   records static state/city filters, canonical trade/secondary legal names,

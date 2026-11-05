@@ -145,3 +145,26 @@ verify the exact signed deployed revision, install the tested immutable tools
 and source schedule, run a guarded registry publication, then read names and
 static fiscal filters through staging and the actual Android app. No release
 certification or unrelated forum delivery is implied.
+
+## Signed landing search input continuity
+
+B-BR-NAT-05: The portal worker reads the search program through a stable
+filesystem input in each signed landing release. Its bytes equal that
+release's fingerprinted search asset. Browsers continue using immutable
+fingerprinted portal URLs, and website search remains static. A changed
+TypeScript build must not require manually replacing a hash in worker config.
+
+Observed staging config still names `assets/search.f37c980d.js`; the new
+filter build emits another hash. A stable `portal-search.js` build input,
+with revalidation caching, will move atomically with the signed landing
+`current` pointer. Configure the worker and operator render input to use it
+only after verifying that the deployed signed artifact contains it.
+
+Alias checkpoint: LOCAL_DONE / INTEGRATION_PENDING. The actual old-hash
+configuration was observed read-only before activation. A regression first
+failed with ENOENT for `portal-search.js`, then passed after adding the alias
+and no-cache header. All 78 landing tests, typecheck, build/check, byte-identical
+build checks, whitespace and secret review pass. No backend or schema behavior
+changes in this follow-up. The user-authorized isolated main delivery continues
+without including the forum branch. Runtime config changes remain gated on
+verification of the signed artifact's alias and fingerprinted bytes.

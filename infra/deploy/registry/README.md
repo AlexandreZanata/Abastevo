@@ -5,6 +5,13 @@ no website search API is introduced. The static portal consumes immutable
 export files; its state/city filters run against release-addressed JSON.
 The Android API and static generator share the canonical station identity.
 
+Configure `ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS` (operator render key
+`PORTAL_SEARCH_JS`) to the signed landing release's stable `portal-search.js`
+filesystem input through its `current` pointer. Verify its bytes match that
+release's `assets/search.HASH.js` before changing the config. The generator
+copies those bytes into an immutable fingerprinted browser asset. No manual
+hash replacement is needed on later signed landing deployments.
+
 ## Sources and ownership
 
 ANP's complete authorized-reseller CSV is checked daily at 03:17 America/Cuiaba.
