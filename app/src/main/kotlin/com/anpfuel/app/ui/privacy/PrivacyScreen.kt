@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -28,9 +29,8 @@ import com.anpfuel.app.ui.theme.AnpContainerDefaults
 /**
  * Perfil > Privacidade (B-BR-CS06 / BUC-CS05).
  *
- * Guarantees (no public precise GPS, 24h photo expiry across
- * all copies, free account independent of the training choice),
- * rights contact and the shared optional training-consent settings
+ * Privacy summary, public HTML policy/deletion links, rights contact and
+ * the shared optional training-consent settings
  * (default OFF, server authoritative, explicit terms review) in one
  * account-container standard column. Reached from the Perfil tools
  * list below Help; same consent component Configurações linked to,
@@ -43,6 +43,7 @@ fun PrivacyScreen(
     onNavigateToAuth: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val uriHandler = LocalUriHandler.current
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -85,6 +86,8 @@ fun PrivacyScreen(
                     )
                 }
             }
+
+            PrivacyDocumentLinksCard(onOpen = uriHandler::openUri)
 
             TrainingConsentRightsCard()
 

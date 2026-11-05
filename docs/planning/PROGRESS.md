@@ -1,5 +1,20 @@
 # Current execution state
 
+- STOREPRIV, 2026-11-05, LOCAL_DONE / INTEGRATION_PENDING on isolated
+  `codex/store-privacy-policy`, source commit `52fd6fd4` reconciled with main
+  `f7bec13f`. [Policy and store-readiness evidence](../release-evidence/STORE_PRIVACY_READINESS.md)
+  covers the canonical static privacy/deletion HTML, confirmed controller and
+  private contact, actual data/SDK/location/financial flows, Android document
+  links and browser-failure recovery. Final combined landing checks (82 tests),
+  Android assembly/lint (zero errors), isolated API-30 device tests (3), mobile
+  static/secret/diff checks pass. No search API or backend retention/auth change.
+  The owner declares Brazil as intended production hosting; providers/DPO,
+  rights-handling and every-copy purge/restore proof, final store declarations
+  and API-36/AAB publication remain release obligations. PR #195 was found
+  already merged remotely during this task; this task did not perform its merge.
+  Review PR and delivery exception are pending while dev carries the forum;
+  no privacy deployment, production certification or iOS implementation claimed.
+
 - ANDREL/Licensing, 2026-11-05, LOCAL_DONE / INTEGRATION_PENDING on isolated
   `codex/phase-35-android-release-attribution` from main `972df4f4`.
   [Behavior and acceptance](../release-evidence/ANDROID_AUTOMATED_RELEASE_ATTRIBUTION.md)

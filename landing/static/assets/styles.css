@@ -1359,3 +1359,25 @@ a.store-pill {
   .learning-page .journey-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .learning-hub .lesson-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Privacy/deletion documents use the shared landing palette and chrome. */
+.privacy-policy section { scroll-margin-top: 6rem; }
+.privacy-policy .policy-eyebrow { font-size: .875rem; font-weight: 700; letter-spacing: .025em; color: var(--ink); }
+.privacy-policy .policy-intro { max-width: 48rem; font-size: 1.25rem; line-height: 1.65; }
+.privacy-policy .policy-version { font-size: .9375rem; }
+.policy-summary, .policy-index { margin-block: 2rem; padding: clamp(1.25rem, 4vw, 2rem); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--card); }
+.privacy-policy .policy-summary h2 { margin-top: 0; }
+.policy-index ol { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem 2rem; margin: 0; padding-left: 1.4rem; }
+.policy-index a { display: inline-flex; align-items: center; min-height: 44px; }
+.policy-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-block: 1.25rem; }
+.policy-actions a { min-height: 48px; max-width: 100%; text-align: center; justify-content: center; white-space: normal; }
+.policy-data-list { margin-block: 1.25rem 2rem; }
+.policy-data-list > div { padding-block: 1.25rem; border-bottom: 1px solid var(--line); }
+.policy-data-list dt { margin-bottom: .5rem; font-size: 1.125rem; font-weight: 700; color: var(--ink); }
+.policy-data-list dd { margin: 0; color: var(--text-muted); font-size: 1.125rem; line-height: 1.7; }
+.privacy-policy .policy-steps { padding-left: 1.5rem; font-size: 1.125rem; line-height: 1.7; color: var(--text-muted); }
+.privacy-policy a, .privacy-policy code { overflow-wrap: anywhere; }
+@media (max-width: 40rem) { .policy-index ol { grid-template-columns: minmax(0, 1fr); } .policy-actions a { width: 100%; } }
+
+.privacy-policy .btn-outline { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: .75rem 1.5rem; border: 1px solid var(--ink); border-radius: 10px; color: var(--ink); background: var(--card); font-family: var(--display); font-weight: 600; text-decoration: none; }
+.privacy-policy .btn-outline:hover { background: var(--surface); }
