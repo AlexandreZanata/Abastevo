@@ -231,3 +231,33 @@ were moved to a bounded VPS-local monitor, preserving each 8-second probe and
 12-second sample deadline; initial host load 5.714 then refused starting the Job.
 These are failed/refused attempts, not publication evidence. No unrelated service
 was stopped, no names were logged, and the previous success remains intact.
+
+B-BR-NAT-08: A replay whose every input was already complete and bound to the
+identical admitted manifest verifies all immutable output bytes/row counts,
+stored input accounting and membership counts, then resumes publication without
+repeating per-row staging writes/lookups. Hold the existing transaction advisory
+fence throughout. Unbound legacy/incomplete inputs still take full admission;
+changed manifests, missing membership, altered streams and cancellation fail
+closed. Preserve completion clocks, canonical identity and community facts.
+This avoids repeating the completed national staging phase after a guarded stop.
+
+Recovery checkpoint: LOCAL_DONE / INTEGRATION_PENDING. A real PostGIS trigger
+first rejected the old completed replay because it attempted a membership INSERT.
+The optimized path passes with that trigger enabled, while corrupted streams,
+missing membership, changed stored accounting, cancellation and unbound legacy
+inputs still refuse. Existing prepared input/manifest/rollback/disconnection,
+concurrent replay and station-name/fact tests pass under race detection.
+The actual 45,695-assertion national batch was admitted into disposable PostGIS;
+its exact completed replay, with membership writes forbidden, took 580.339 ms
+and retained 45,695 accepted / 112 quarantined. It reads all three streams and
+keeps the original completion clock. No migration or publication rule changes.
+
+Exact minimized-cache hits also now verify full ANP/RFB hash binding, competence
+and descriptor provenance. The forged-owner regression failed before the fix,
+then passed together with race, vet and pinned staticcheck. These checks apply
+even when no name rebuilding is needed.
+
+The last guarded VPS attempt committed the input staging phase and began
+publishing source facts before load pressure stopped it. It is not a complete
+edition: 250 trade names were observed at that point. The frozen pending batch
+remains intact; recovery must continue it rather than fetch or erase it.

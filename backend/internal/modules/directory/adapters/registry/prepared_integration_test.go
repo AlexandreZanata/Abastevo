@@ -307,3 +307,80 @@ func TestPreparedDatabaseDisconnectRollsBackAndRetryConverges(t *testing.T) {
 		}
 	}
 }
+
+func TestCompleteBoundReplayVerifiesStreamsWithoutRestagingMembership(t *testing.T) {
+	pool, _ := preparedPool(t)
+	ctx := context.Background()
+	manifest, streams := prepIntegrationBatch(t)
+	first, err := LoadPreparedBatch(ctx, pool, manifest, preparedOpener(streams))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = pool.Exec(ctx, `CREATE FUNCTION reject_completed_membership_write() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'completed membership must not be restaged'; END $$;
+ CREATE TRIGGER completed_membership_write BEFORE INSERT ON registry_run_assertions FOR EACH ROW EXECUTE FUNCTION reject_completed_membership_write()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadPreparedBatch(ctx, pool, manifest, preparedOpener(streams))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(got) != fmt.Sprint(first) {
+		t.Fatal("completed accounting changed", got, first)
+	}
+	bad := streams
+	bad.Assertions = append(append([]byte{}, streams.Assertions...), 'x')
+	if _, err = LoadPreparedBatch(ctx, pool, manifest, preparedOpener(bad)); err == nil {
+		t.Fatal("corrupt completed replay accepted")
+	}
+	_, err = pool.Exec(ctx, `DELETE FROM registry_run_assertions WHERE assertion_id=(SELECT assertion_id FROM registry_run_assertions LIMIT 1)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = LoadPreparedBatch(ctx, pool, manifest, preparedOpener(streams)); err == nil {
+		t.Fatal("missing completed membership accepted")
+	}
+}
+
+func TestCompletedBoundReplayStillRejectsCancellationAndAccountingDrift(t *testing.T) {
+	for _, mode := range []string{"cancel", "accounting", "legacy_unbound"} {
+		t.Run(mode, func(t *testing.T) {
+			pool, _ := preparedPool(t)
+			ctx := context.Background()
+			manifest, streams := prepIntegrationBatch(t)
+			first, err := LoadPreparedBatch(ctx, pool, manifest, preparedOpener(streams))
+			if err != nil {
+				t.Fatal(err)
+			}
+			uid, _ := mustUUID(first["registry-13col"].RunID)
+			open := preparedOpener(streams)
+			switch mode {
+			case "cancel":
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithCancel(ctx)
+				defer cancel()
+				base := open
+				open = func(name string) (io.ReadCloser, error) {
+					if name == PrepQuarantineFile {
+						cancel()
+					}
+					return base(name)
+				}
+			case "accounting":
+				if _, err = pool.Exec(ctx, `UPDATE registry_source_runs SET accepted=accepted+1 WHERE id=$1`, uid); err != nil {
+					t.Fatal(err)
+				}
+			case "legacy_unbound":
+				if _, err = pool.Exec(ctx, `UPDATE registry_source_runs SET prepared_manifest_sha256='' WHERE id=$1`, uid); err != nil {
+					t.Fatal(err)
+				}
+				if _, err = pool.Exec(ctx, `CREATE FUNCTION reject_legacy_shortcut() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'legacy needs full admission'; END $$; CREATE TRIGGER reject_legacy_shortcut BEFORE INSERT ON registry_run_assertions FOR EACH ROW EXECUTE FUNCTION reject_legacy_shortcut()`); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err = LoadPreparedBatch(ctx, pool, manifest, open); err == nil {
+				t.Fatal("unsafe completed replay accepted")
+			}
+		})
+	}
+}

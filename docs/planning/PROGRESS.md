@@ -5,6 +5,9 @@
   records the stable signed-build input, concurrent read-only probes and
   exact-RFB/full-CNPJ projection reuse across ANP editions. The DB-free monthly
   oneshot prepares names before completion; daily workers refuse a missing seed.
+  Complete bound inputs now verify immutable streams and accounting without
+  repeating row staging: real national replay passed in 580.339 ms with DB
+  membership writes forbidden; failure and concurrent PostGIS tests pass.
   Race/failure/concurrency checks and 11 guard/accounting tests pass. A real
   45,807-CNPJ metadata-change replay completed in 12.66s at 512Mi/0.5 CPU,
   offline with export disabled and byte-identical names. Real VPS samples passed.

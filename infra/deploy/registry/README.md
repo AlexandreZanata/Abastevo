@@ -77,6 +77,11 @@ An absence is not an official closure. Canonical station IDs, coordinates,
 prices, historical assertions and accepted community corrections survive.
 Operation status changes only through existing official evidence/correction
 ports; operators review the missing count rather than bulk-delete stations.
+A completed manifest-bound replay verifies all immutable streams, stored counts
+and membership counts under the existing transaction fence, then resumes
+publication without repeating per-row staging. Unbound legacy or incomplete
+inputs still receive full admission. Tampering or missing membership refuses
+recovery rather than claiming completion.
 The owned loader publishes and verifies idempotently; unrelated curated facts
 are not overwritten. A name-only metadata change invalidates the enterprise
 export fingerprint and therefore regenerates the static portal.
