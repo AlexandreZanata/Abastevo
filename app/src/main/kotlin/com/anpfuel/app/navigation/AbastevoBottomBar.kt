@@ -62,6 +62,7 @@ enum class NavigationTab(
             route == null -> null
             route.startsWith("map/") -> MAP
             route.startsWith("station/") -> EXPLORE
+            route.startsWith("forum/") -> COMMUNITY
             route == Routes.STATION_PAGE -> EXPLORE
             route == Routes.MAP_STATION_PAGE || route == Routes.MAP_CHARGING_COMMUNITY -> MAP
             route == Routes.PREMIUM || route == Routes.PREMIUM_MANAGEMENT || route == Routes.DRIVER_HUB -> PROFILE

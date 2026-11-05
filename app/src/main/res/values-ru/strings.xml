@@ -1310,4 +1310,32 @@
     <string name="station_correction_review">Предложение проверят перед изменением карты.</string>
     <string name="station_correction_sent">Предложение отправлено на проверку.</string>
     <string name="station_correction_failed">Не удалось отправить предложение. Попробуйте ещё раз.</string>
+
+    <!-- Forum Abastevo (FOR-08) -->
+    <string name="forum_card_title">Форум Abastevo</string>
+    <string name="forum_card_description">Новости, обновления и обсуждения автомобильного мира.</string>
+    <string name="forum_card_cta">Перейти на форум</string>
+    <string name="forum_screen_title">Форум Abastevo</string>
+    <string name="forum_detail_title">Публикация</string>
+    <string name="forum_category_all">Все</string>
+    <string name="forum_kind_editorial">Редакционная статья</string>
+    <string name="forum_kind_news">Новость</string>
+    <string name="forum_kind_topic">Тема</string>
+    <string name="forum_kind_bulletin">Бюллетень</string>
+    <string name="forum_feed_empty_title">Публикации не найдены</string>
+    <string name="forum_feed_empty_hint">В этой категории пока нет публикаций. Загляните позже.</string>
+    <string name="forum_load_more">Загрузить еще</string>
+    <string name="forum_retry">Повторить</string>
+    <string name="forum_offline_notice">Автономный режим: показаны сохраненные данные.</string>
+    <string name="forum_unavailable_title">Форум недоступен</string>
+    <string name="forum_unavailable_hint">Не удалось подключиться к форуму. Проверьте соединение и повторите попытку.</string>
+    <string name="forum_post_not_found_title">Публикация не найдена</string>
+    <string name="forum_post_not_found_hint">Эта публикация была удалена или временно недоступна.</string>
+    <string name="forum_read_source">Читать в источнике: %1$s</string>
+    <string name="forum_external_link_dialog_title">Внешняя ссылка</string>
+    <string name="forum_external_link_dialog_message">Вы собираетесь покинуть Abastevo и открыть внешний сайт (%1$s). Продолжить?</string>
+    <string name="forum_external_link_dialog_confirm">Открыть</string>
+    <string name="forum_external_link_dialog_cancel">Отмена</string>
+    <string name="forum_external_link_invalid">Недействительная или небезопасная ссылка. Разрешены только безопасные ссылки HTTPS.</string>
+    <string name="forum_updated_label">Обновлено</string>
 </resources>

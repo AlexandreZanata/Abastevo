@@ -1310,4 +1310,32 @@
     <string name="station_correction_review">地図を変更する前に提案内容を確認します。</string>
     <string name="station_correction_sent">確認のため提案を送信しました。</string>
     <string name="station_correction_failed">提案を送信できませんでした。もう一度お試しください。</string>
+
+    <!-- Forum Abastevo (FOR-08) -->
+    <string name="forum_card_title">Abastevoフォーラム</string>
+    <string name="forum_card_description">自動車の世界に関するニュース、最新情報、ディスカッション。</string>
+    <string name="forum_card_cta">フォーラムを見る</string>
+    <string name="forum_screen_title">Abastevoフォーラム</string>
+    <string name="forum_detail_title">投稿</string>
+    <string name="forum_category_all">すべて</string>
+    <string name="forum_kind_editorial">社説</string>
+    <string name="forum_kind_news">ニュース</string>
+    <string name="forum_kind_topic">トピック</string>
+    <string name="forum_kind_bulletin">会報</string>
+    <string name="forum_feed_empty_title">投稿が見つかりませんでした</string>
+    <string name="forum_feed_empty_hint">このカテゴリにはまだ投稿がありません。後でもう一度ご確認ください。</string>
+    <string name="forum_load_more">さらに読み込む</string>
+    <string name="forum_retry">再試行</string>
+    <string name="forum_offline_notice">オフラインモード：キャッシュされたコンテンツを表示しています。</string>
+    <string name="forum_unavailable_title">フォーラムは利用できません</string>
+    <string name="forum_unavailable_hint">フォーラムに接続できませんでした。接続を確認して再試行してください。</string>
+    <string name="forum_post_not_found_title">投稿が見つかりません</string>
+    <string name="forum_post_not_found_hint">この投稿は削除されたか、一時的に利用できない可能性があります。</string>
+    <string name="forum_read_source">元のソースで読む: %1$s</string>
+    <string name="forum_external_link_dialog_title">外部リンク</string>
+    <string name="forum_external_link_dialog_message">Abastevoを離れて外部リンク（%1$s）を開こうとしています。続行しますか？</string>
+    <string name="forum_external_link_dialog_confirm">リンクを開く</string>
+    <string name="forum_external_link_dialog_cancel">キャンセル</string>
+    <string name="forum_external_link_invalid">無効または安全でないリンクです。安全なHTTPSリンクのみが許可されています。</string>
+    <string name="forum_updated_label">更新済み</string>
 </resources>

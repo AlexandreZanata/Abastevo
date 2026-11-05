@@ -217,6 +217,22 @@ fun AnpNavGraph(
                 onNavigate = navController::navigate,
             )
         }
+        composable(Routes.FORUM_FEED) {
+            com.anpfuel.app.ui.forum.ForumScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPost = { postId -> navController.navigate(Routes.forumPost(postId)) },
+            )
+        }
+        composable(
+            route = Routes.FORUM_POST,
+            arguments = listOf(
+                navArgument("postId") { type = NavType.StringType },
+            ),
+        ) {
+            com.anpfuel.app.ui.forum.ForumDetailScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
         composable(
             route = Routes.MAP,
             deepLinks = listOf(

@@ -1310,4 +1310,32 @@
     <string name="station_correction_review">Dein Vorschlag wird vor einer Änderung der Karte geprüft.</string>
     <string name="station_correction_sent">Vorschlag zur Prüfung gesendet.</string>
     <string name="station_correction_failed">Der Vorschlag konnte nicht gesendet werden. Versuche es erneut.</string>
+
+    <!-- Forum Abastevo (FOR-08) -->
+    <string name="forum_card_title">Abastevo-Forum</string>
+    <string name="forum_card_description">Neuigkeiten, Updates und Diskussionen rund um die Automobilwelt.</string>
+    <string name="forum_card_cta">Forum erkunden</string>
+    <string name="forum_screen_title">Abastevo-Forum</string>
+    <string name="forum_detail_title">Veröffentlichung</string>
+    <string name="forum_category_all">Alle</string>
+    <string name="forum_kind_editorial">Leitartikel</string>
+    <string name="forum_kind_news">Nachrichten</string>
+    <string name="forum_kind_topic">Thema</string>
+    <string name="forum_kind_bulletin">Bulletin</string>
+    <string name="forum_feed_empty_title">Keine Veröffentlichungen gefunden</string>
+    <string name="forum_feed_empty_hint">In dieser Kategorie gibt es noch keine Veröffentlichungen. Schauen Sie später wieder vorbei.</string>
+    <string name="forum_load_more">Mehr laden</string>
+    <string name="forum_retry">Erneut versuchen</string>
+    <string name="forum_offline_notice">Offline-Modus: Zwischengespeicherte Inhalte werden angezeigt.</string>
+    <string name="forum_unavailable_title">Forum nicht verfügbar</string>
+    <string name="forum_unavailable_hint">Keine Verbindung zum Forum möglich. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.</string>
+    <string name="forum_post_not_found_title">Veröffentlichung nicht gefunden</string>
+    <string name="forum_post_not_found_hint">Dieser Beitrag wurde möglicherweise entfernt oder ist vorübergehend nicht verfügbar.</string>
+    <string name="forum_read_source">Bei Quelle lesen: %1$s</string>
+    <string name="forum_external_link_dialog_title">Externer Link</string>
+    <string name="forum_external_link_dialog_message">Sie verlassen Abastevo, um eine externe Website zu öffnen (%1$s). Möchten Sie fortfahren?</string>
+    <string name="forum_external_link_dialog_confirm">Link öffnen</string>
+    <string name="forum_external_link_dialog_cancel">Abbrechen</string>
+    <string name="forum_external_link_invalid">Ungültiger oder unsicherer Link. Es sind nur sichere HTTPS-Links zulässig.</string>
+    <string name="forum_updated_label">Aktualisiert</string>
 </resources>

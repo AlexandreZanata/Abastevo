@@ -1310,4 +1310,32 @@
     <string name="station_correction_review">Tu sugerencia se revisará antes de cambiar el mapa.</string>
     <string name="station_correction_sent">Sugerencia enviada para revisión.</string>
     <string name="station_correction_failed">No se pudo enviar la sugerencia. Inténtalo de nuevo.</string>
+
+    <!-- Forum Abastevo (FOR-08) -->
+    <string name="forum_card_title">Foro Abastevo</string>
+    <string name="forum_card_description">Noticias, novedades y debates sobre el mundo automotriz.</string>
+    <string name="forum_card_cta">Explorar foro</string>
+    <string name="forum_screen_title">Foro Abastevo</string>
+    <string name="forum_detail_title">Publicación</string>
+    <string name="forum_category_all">Todos</string>
+    <string name="forum_kind_editorial">Editorial</string>
+    <string name="forum_kind_news">Noticia</string>
+    <string name="forum_kind_topic">Tema</string>
+    <string name="forum_kind_bulletin">Boletín</string>
+    <string name="forum_feed_empty_title">No se encontraron publicaciones</string>
+    <string name="forum_feed_empty_hint">Aún no hay publicaciones en esta categoría. Vuelva pronto.</string>
+    <string name="forum_load_more">Cargar más</string>
+    <string name="forum_retry">Reintentar</string>
+    <string name="forum_offline_notice">Modo sin conexión: mostrando contenido en caché.</string>
+    <string name="forum_unavailable_title">Foro no disponible</string>
+    <string name="forum_unavailable_hint">No se pudo conectar al foro. Verifique su conexión e intente nuevamente.</string>
+    <string name="forum_post_not_found_title">Publicación no encontrada</string>
+    <string name="forum_post_not_found_hint">Es posible que esta publicación haya sido eliminada o no esté disponible temporalmente.</string>
+    <string name="forum_read_source">Leer en la fuente: %1$s</string>
+    <string name="forum_external_link_dialog_title">Enlace Externo</string>
+    <string name="forum_external_link_dialog_message">Está a punto de salir de Abastevo para abrir un sitio web externo (%1$s). ¿Desea continuar?</string>
+    <string name="forum_external_link_dialog_confirm">Abrir enlace</string>
+    <string name="forum_external_link_dialog_cancel">Cancelar</string>
+    <string name="forum_external_link_invalid">Enlace inválido o no seguro. Solo se permiten enlaces HTTPS seguros.</string>
+    <string name="forum_updated_label">Actualizado</string>
 </resources>

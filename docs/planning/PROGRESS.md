@@ -1,5 +1,25 @@
 # Current execution state
 
+- FOR-08 Forum Community card, feed/detail routes, screens, and viewmodels, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `9e5ee899`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements Compose UI and navigation: `Routes.FORUM_FEED` (`"forum/feed"`),
+  `Routes.FORUM_POST` (`"forum/posts/{postId}"`), `forumPost(postId: String)`
+  helper with UUID validation, `AbastevoBottomBar` route mapping preserving
+  `COMMUNITY` tab, `AnpNavGraph` composable routes, `ForumCommunityCard`
+  in `CommunityScreen` (`B-BR-FOR-01`, placed directly after city header and before
+  contributions), `ForumScreen` (top bar, category chips, offline banner, skeleton
+  loading, error retry, empty feed, cards with pagination), `ForumDetailScreen`
+  (typography, metadata, author/source attribution, "Ler na fonte" CTA with safe link
+  confirmation dialog), `ForumFeedViewModel` and `ForumDetailViewModel` with safe link
+  validation via `ValidateForumSafeLinkUseCase`, and 26 forum string resources across
+  all 8 locales (`values`, `values-pt-rBR`, `values-es`, `values-de`, `values-fr`,
+  `values-ja`, `values-ru`, `values-zh-rCN`). Full JVM test suites passed:
+  `ForumNavigationTest`, `ForumStringsTest`, `ForumFeedViewModelTest` (7 tests),
+  `ForumDetailViewModelTest` (7 tests), and updated `CommunityFeedScreenTest`.
+  Tested revision: source in this commit. Next microtask: FOR-09 (MVP checkpoint
+  and safe degraded operation).
+
 - FOR-07 Forum HTTP, Room cache and Hilt, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `bc29184d`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)

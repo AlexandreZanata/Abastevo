@@ -1310,4 +1310,32 @@
     <string name="station_correction_review">建议经审核后才会反映在地图上。</string>
     <string name="station_correction_sent">建议已提交审核。</string>
     <string name="station_correction_failed">无法发送建议，请重试。</string>
+
+    <!-- Forum Abastevo (FOR-08) -->
+    <string name="forum_card_title">Abastevo论坛</string>
+    <string name="forum_card_description">关于汽车领域的新闻、动态与讨论。</string>
+    <string name="forum_card_cta">探索论坛</string>
+    <string name="forum_screen_title">Abastevo论坛</string>
+    <string name="forum_detail_title">文章详情</string>
+    <string name="forum_category_all">全部</string>
+    <string name="forum_kind_editorial">社论</string>
+    <string name="forum_kind_news">新闻</string>
+    <string name="forum_kind_topic">话题</string>
+    <string name="forum_kind_bulletin">简报</string>
+    <string name="forum_feed_empty_title">暂无文章</string>
+    <string name="forum_feed_empty_hint">该分类下暂无文章，请稍后再试。</string>
+    <string name="forum_load_more">加载更多</string>
+    <string name="forum_retry">重试</string>
+    <string name="forum_offline_notice">离线模式：正在显示缓存内容。</string>
+    <string name="forum_unavailable_title">论坛暂不可用</string>
+    <string name="forum_unavailable_hint">无法连接到论坛，请检查网络连接后重试。</string>
+    <string name="forum_post_not_found_title">未找到该文章</string>
+    <string name="forum_post_not_found_hint">此文章可能已被移除或暂时不可用。</string>
+    <string name="forum_read_source">阅读原文: %1$s</string>
+    <string name="forum_external_link_dialog_title">外部链接</string>
+    <string name="forum_external_link_dialog_message">您即将离开Abastevo并打开外部网站（%1$s）。是否继续？</string>
+    <string name="forum_external_link_dialog_confirm">打开链接</string>
+    <string name="forum_external_link_dialog_cancel">取消</string>
+    <string name="forum_external_link_invalid">无效或不安全的链接。仅允许安全的HTTPS链接。</string>
+    <string name="forum_updated_label">已更新</string>
 </resources>

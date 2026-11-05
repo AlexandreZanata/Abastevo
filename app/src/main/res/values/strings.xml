@@ -1330,4 +1330,32 @@
     <string name="station_correction_review">Your suggestion will be reviewed before it changes the map.</string>
     <string name="station_correction_sent">Suggestion sent for review.</string>
     <string name="station_correction_failed">Could not send your suggestion. Try again.</string>
+
+    <!-- Forum Abastevo (FOR-08) -->
+    <string name="forum_card_title">Abastevo Forum</string>
+    <string name="forum_card_description">News, updates and discussions about the automotive world.</string>
+    <string name="forum_card_cta">Explore forum</string>
+    <string name="forum_screen_title">Abastevo Forum</string>
+    <string name="forum_detail_title">Publication</string>
+    <string name="forum_category_all">All</string>
+    <string name="forum_kind_editorial">Editorial</string>
+    <string name="forum_kind_news">News</string>
+    <string name="forum_kind_topic">Topic</string>
+    <string name="forum_kind_bulletin">Bulletin</string>
+    <string name="forum_feed_empty_title">No publications found</string>
+    <string name="forum_feed_empty_hint">There are no publications in this category yet. Check back later.</string>
+    <string name="forum_load_more">Load more</string>
+    <string name="forum_retry">Retry</string>
+    <string name="forum_offline_notice">Offline mode: showing cached content.</string>
+    <string name="forum_unavailable_title">Forum unavailable</string>
+    <string name="forum_unavailable_hint">Could not connect to the forum. Check your connection and try again.</string>
+    <string name="forum_post_not_found_title">Publication not found</string>
+    <string name="forum_post_not_found_hint">This publication may have been removed or is temporarily unavailable.</string>
+    <string name="forum_read_source">Read at source: %1$s</string>
+    <string name="forum_external_link_dialog_title">External Link</string>
+    <string name="forum_external_link_dialog_message">You are about to leave Abastevo and open an external website (%1$s). Do you wish to continue?</string>
+    <string name="forum_external_link_dialog_confirm">Open link</string>
+    <string name="forum_external_link_dialog_cancel">Cancel</string>
+    <string name="forum_external_link_invalid">Invalid or unsafe link. Only secure HTTPS links are allowed.</string>
+    <string name="forum_updated_label">Updated</string>
 </resources>

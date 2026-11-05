@@ -1310,4 +1310,32 @@
     <string name="station_correction_review">Votre suggestion sera examinée avant toute modification de la carte.</string>
     <string name="station_correction_sent">Suggestion envoyée pour examen.</string>
     <string name="station_correction_failed">Impossible d’envoyer la suggestion. Réessayez.</string>
+
+    <!-- Forum Abastevo (FOR-08) -->
+    <string name="forum_card_title">Forum Abastevo</string>
+    <string name="forum_card_description">Actualités, nouveautés et discussions sur le monde automobile.</string>
+    <string name="forum_card_cta">Explorer le forum</string>
+    <string name="forum_screen_title">Forum Abastevo</string>
+    <string name="forum_detail_title">Publication</string>
+    <string name="forum_category_all">Tous</string>
+    <string name="forum_kind_editorial">Éditorial</string>
+    <string name="forum_kind_news">Actualité</string>
+    <string name="forum_kind_topic">Sujet</string>
+    <string name="forum_kind_bulletin">Bulletin</string>
+    <string name="forum_feed_empty_title">Aucune publication trouvée</string>
+    <string name="forum_feed_empty_hint">Il n\'y a pas encore de publication dans cette catégorie. Revenez bientôt.</string>
+    <string name="forum_load_more">Charger plus</string>
+    <string name="forum_retry">Réessayer</string>
+    <string name="forum_offline_notice">Mode hors ligne : affichage du contenu en cache.</string>
+    <string name="forum_unavailable_title">Forum indisponible</string>
+    <string name="forum_unavailable_hint">Impossible de se connecter au forum. Vérifiez votre connexion et réessayez.</string>
+    <string name="forum_post_not_found_title">Publication introuvable</string>
+    <string name="forum_post_not_found_hint">Cette publication a peut-être été supprimée ou est temporairement indisponible.</string>
+    <string name="forum_read_source">Lire sur la source : %1$s</string>
+    <string name="forum_external_link_dialog_title">Lien Externe</string>
+    <string name="forum_external_link_dialog_message">Vous êtes sur le point de quitter Abastevo pour ouvrir un site web externe (%1$s). Souhaitez-vous continuer ?</string>
+    <string name="forum_external_link_dialog_confirm">Ouvrir le lien</string>
+    <string name="forum_external_link_dialog_cancel">Annuler</string>
+    <string name="forum_external_link_invalid">Lien non valide ou non sécurisé. Seuls les liens HTTPS sécurisés sont autorisés.</string>
+    <string name="forum_updated_label">Mis à jour</string>
 </resources>

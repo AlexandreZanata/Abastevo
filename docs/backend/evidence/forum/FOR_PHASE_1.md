@@ -52,19 +52,19 @@ Phase 1 delivers the editorial foundation and MVP read experience:
 | **FOR-05** | Public read API and composition | LOCAL_DONE | Current commit | Public read endpoints mounted on API router (`GET /v1/forum/categories`, `GET /v1/forum/posts`, `GET /v1/forum/posts/{post_id}`), wired in `cmd/api/main.go` with `SystemClock` and runtime feature gating. Keyset pagination with sealed HMAC cursors (15m TTL, filter hash binding, base64 payload), UUID input validation, 404 privacy enforcement for draft and hidden posts, and `Cache-Control: no-store`. Unit tests with HMAC tamper/expiry/scope vectors + real PostgreSQL integration test passed under `-race`. |
 | **FOR-06** | Android domain/application contracts | LOCAL_DONE | Current commit | Pure Kotlin domain models (`ForumCategory`, `ForumPostKind`, `ForumSourceAttribution`, `ForumRegion`, `ForumPostSummary`, `ForumPostDetail`, `ForumFeedPage`, `ForumException`), `ForumSafeLinks` (HTTPS-only, user-info/port/length guards), `ForumGateway` repository port, application use cases (`GetForumCategoriesUseCase`, `GetForumFeedUseCase`, `GetForumPostDetailUseCase`, `ValidateForumSafeLinkUseCase`). Full A1 test suite (19 JVM tests passing: mapping, null provenance, stale scope/bounds, UUID validation, auth-free, HTTPS link refusal). |
 | **FOR-07** | HTTP, Room cache and Hilt | LOCAL_DONE | Current commit | Bounded transport client (`ForumHttpClient`), Room v37 schema migration 36→37 (`forum_cache` with composite PK `[origin, key]`), 24h TTL, 2 MiB byte budget, 5 feed scopes max, live 404 cache invalidation, deterministic codecs, `ForumRepository` implementing `ForumGateway`, Hilt DI wiring (`ForumModule`, `DatabaseModule`). JVM unit tests (migration, mapper, http client, repository with mock engine/DAO) passed. |
-| **FOR-08** | Community card, Forum feed/detail routes | NEXT | - | CommunityScreen card, ForumScreen, ForumDetailScreen, navigation graph, strings. |
-| **FOR-09** | MVP checkpoint and safe degraded operation | PLANNED | - | End-to-end integration proof, offline degradation, default-off verification. |
+| **FOR-08** | Community card, Forum feed/detail routes | LOCAL_DONE | Current commit | CommunityScreen card, ForumScreen, ForumDetailScreen, navigation graph, ViewModels with safe links, 26 strings across 8 locales, unit tests (Strings, Nav, ViewModels) and Android test passed. |
+| **FOR-09** | MVP checkpoint and safe degraded operation | NEXT | - | End-to-end integration proof, offline degradation, default-off verification. |
 
 ## Verification and quality gates
 
 - `git diff --check`: PASSED (no trailing whitespace or merge conflict markers).
 - Secret surface review: PASSED (`scripts/scan-secrets.sh` clean, no credentials or PII introduced).
 - OpenAPI lint (`vacuum lint`): PASSED (0 errors).
-- Android JVM test suite (A1): PASSED (19 tests: 12 in `:domain` + 7 in `:application`, 0 failures, 0 skipped).
+- Android JVM test suite: PASSED (`:domain:test`, `:application:test`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest` with 100% pass across all forum navigation, strings, and viewmodel test suites).
 - Go unit test suite with `-race`: PASSED (`./internal/modules/forum/...` adapters, http, domain & application + `./internal/platform/config/...` + `./cmd/api/...`).
 - PostgreSQL integration test suite with `-race`: PASSED (`TestForumMigration_AppliedAndIdempotent`, `TestForumConstraints_NegativeChecks`, `TestForumPublication_MonotonicSequenceAndConcurrency`, `TestForumFeed_KeysetPaginationAndSnapshot`, `TestForumUpdateAndVisibility_RollbackAndFeedInvalidation`, `TestForumExplainPlan_UsesPartialIndex`, `TestStore_AdminEditorialMutationsAndAuditing`, `TestHandler_Integration_PublicReadLifecycle`).
 - Frontend test suite: PASSED (`npm test` in `admin-web/`: 53 tests passing, 0 failures, `npm run build && npm run check` valid dist, 0 unsafe DOM violations).
 - Static analysis: `go vet` PASSED (0 errors).
 - Code formatting: `gofmt` verified.
 - Repository worktree isolation: PASSED (persistent worktree on maintained dev; occupied checkouts untouched).
-- Next action: FOR-08 (Community card, Forum feed/detail routes).
+- Next action: FOR-09 (MVP checkpoint and safe degraded operation).
