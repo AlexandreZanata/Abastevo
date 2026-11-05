@@ -9,33 +9,21 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -63,8 +51,8 @@ import com.anpfuel.domain.routing.RoadAvoidance
 import com.anpfuel.domain.routing.RoutePoint
 import com.anpfuel.maps.engine.MapHost
 import com.anpfuel.maps.engine.MapOverlayLabels
-import com.anpfuel.maps.engine.MapOverlayList
 import com.anpfuel.maps.engine.MapOverlayMarker
+import com.anpfuel.maps.engine.overlayListItems
 import java.util.Locale
 
 @Composable
@@ -94,7 +82,7 @@ private fun RealMapHost(
 /**
  * MAP-17 shell + MAP-18 markers + MAP-19 sheet + MAP-20 discovery/filters:
  * fourth tab with real native host, source selector, city selector, cluster
- * expansion, accessible marker list, and functional entries. Pins come from
+ * expansion, explicit accessible result pickers, and compact map actions. Pins come from
  * canonical UUIDs with pin-tier coordinates (reviewed, osm-mapped,
  * anp-reported, address-point); unknown/city-centroid and
  * coordinate-less stations stay list-only and remain selectable by UUID.
@@ -102,9 +90,7 @@ private fun RealMapHost(
 @Composable
 fun MapScreen(
     onOpenStation: (stationKey: String, fuel: String) -> Unit,
-    onOpenSearch: () -> Unit,
     onOpenDownloads: () -> Unit,
-    onOpenSaved: () -> Unit = {},
     onReportStation: (stationId: String, fuel: String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     initialPlan: SavedTrip? = null,
@@ -131,7 +117,6 @@ fun MapScreen(
     val ui by viewModel.ui.collectAsStateWithLifecycle()
     val discUi = discovery?.ui?.collectAsStateWithLifecycle()?.value
     val searchResults = discUi?.searchResults
-    val stationListItems = searchResults?.items ?: discUi?.listItems.orEmpty()
     val context = LocalContext.current
     val routeLanguage = Locale.forLanguageTag(AppLocaleHolder.localeTag).language
     val currentPositionLabel = stringResource(R.string.map22_current)
@@ -145,7 +130,7 @@ fun MapScreen(
     var pendingStart by remember { mutableStateOf<NativeRouteRequest?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     var showFilterLocation by remember { mutableStateOf(false) }
-    var showList by remember { mutableStateOf(false) }
+    var showSearchResults by remember { mutableStateOf(false) }
     var routeError by remember(discUi?.selectedUuid) { mutableStateOf(false) }
 
     fun updateBottomInset(inset: Dp) {
@@ -230,7 +215,7 @@ fun MapScreen(
         discovery?.clearSelection()
         sheet?.clear()
         routeError = false
-        showList = false
+        showSearchResults = false
         showRoute = false
         routeOnMap = true
         requestOrigin = true
@@ -423,7 +408,7 @@ fun MapScreen(
                         val submitted = discovery?.ui?.value?.searchQuery.orEmpty()
                         if (submitted.isNotEmpty() && value.trim() != submitted) {
                             discovery?.clearSearch()
-                            showList = false
+                            showSearchResults = false
                         }
                     },
                     onSearch = { query ->
@@ -433,7 +418,7 @@ fun MapScreen(
                                 if (marker != null && planner != null) {
                                     openPoint(RoutePoint(marker.latitude, marker.longitude, marker.title.take(512)))
                                 } else {
-                                    showList = results.isNotEmpty()
+                                    showSearchResults = results.isNotEmpty()
                                 }
                             }
                         }
@@ -480,9 +465,7 @@ fun MapScreen(
 
                 MapBottomControls(
                     onFilters = { showFilters = true },
-                    onSearch = onOpenSearch,
                     onDownloads = onOpenDownloads,
-                    onSaved = onOpenSaved.takeIf { saved != null },
                     modifier = Modifier.onSizeChanged { size ->
                         controlsHeight = with(density) { size.height.toDp() }
                     },
@@ -490,136 +473,42 @@ fun MapScreen(
                         sheetHeight = height
                         updateBottomInset(height + MAP_CONTROL_GAP)
                     },
-                ) {
-                if (discUi != null && discUi.showCharging && !discUi.loading && discUi.generation > 0) {
-                    val message = when {
-                        !discUi.chargingSnapshotPresent || discUi.chargingError != null ->
-                            R.string.charging_catalog_unavailable
-                        discUi.error == null && discUi.selectableByUuid.values.none { it.charging } ->
-                            R.string.charging_map_gap
-                        else -> R.string.charging_open_sources
-                    }
-                    Text(
-                        text = stringResource(message),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    )
-                    if (message == R.string.charging_map_gap && onAddChargingSite != null) {
-                        TextButton(onClick = onAddChargingSite, modifier = Modifier.padding(horizontal = 12.dp)) {
-                            Text(stringResource(R.string.charging_add_site))
-                        }
-                    }
-                }
-                // B-BR-MAP-CLUSTER-01: Accessible cluster expansion controls and member chooser.
-                val multiClusters = discUi?.clusters?.filter { it.isCluster }.orEmpty()
-                if (multiClusters.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        multiClusters.forEach { cluster ->
-                            FilterChip(
-                                selected = discUi?.expandedClusterId == cluster.id,
-                                onClick = { discovery?.onClusterExpanded(cluster.id) },
-                                label = { Text(stringResource(R.string.map_cluster_expand, cluster.count)) },
-                                modifier = Modifier
-                                    .heightIn(min = 48.dp)
-                                    .testTag("map-cluster-expand-${cluster.id}"),
-                            )
-                        }
-                    }
-                }
-
-                if (discUi != null && discUi.expandedClusterId != null && discUi.selectedMembers.size > 1) {
-                    Surface(
-                        tonalElevation = 2.dp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                            .testTag("map-cluster-chooser"),
-                    ) {
-                        Column(modifier = Modifier.padding(8.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    stringResource(R.string.map_cluster_title, discUi.selectedMembers.size),
-                                    style = MaterialTheme.typography.titleSmall,
-                                )
-                                TextButton(
-                                    onClick = { discovery?.dismissClusterExpansion() },
-                                    modifier = Modifier
-                                        .heightIn(min = 48.dp)
-                                        .testTag("map-cluster-dismiss"),
-                                ) {
-                                    Text(stringResource(R.string.action_dismiss))
-                                }
-                            }
-                            discUi.selectedMembers.forEach { member ->
-                                TextButton(
-                                    onClick = { discovery?.onSelection(member.uuid) },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(min = 48.dp)
-                                        .testTag("map-cluster-member-${member.uuid}"),
-                                ) {
-                                    Text(member.title)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // MAP-18 accessible equivalent: real stations with distinct fuel/
-                // electric pictograms, 48dp targets and TalkBack descriptions.
-                if (discUi != null && stationListItems.isNotEmpty()) {
-                    TextButton(
-                        onClick = { showList = !showList },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .testTag("map-list-toggle"),
-                    ) {
-                        Icon(
-                            if (showList) Icons.Default.Close else Icons.AutoMirrored.Filled.List,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            if (showList) {
-                                stringResource(R.string.action_dismiss)
-                            } else {
-                                stringResource(R.string.map_list_toggle, stationListItems.size)
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                    if (showList) {
-                        MapOverlayList(
-                            items = stationListItems,
-                            onSelect = { uuid ->
-                                if (searchResults != null) discovery?.onSearchResultSelected(uuid)
-                                else discovery?.onSelection(uuid)
-                            },
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp).testTag("map-overlay-list"),
-                        )
-                    }
-                }
-
-                }
+                )
 
             }
         } else {
             MapScreenSkeleton()
         }
+    }
+
+    // Explicit station choices are independent of discovery-driven panel geometry.
+    if (showSearchResults && searchResults != null) {
+        MapStationPicker(
+            title = stringResource(R.string.vehicle_select_station),
+            items = searchResults.items,
+            onSelect = { uuid ->
+                showSearchResults = false
+                discovery?.onSearchResultSelected(uuid)
+            },
+            onDismiss = { showSearchResults = false },
+            tag = "map-search-results",
+        )
+    }
+    if (discUi?.expandedClusterId != null && discUi.selectedMembers.size > 1) {
+        MapStationPicker(
+            title = stringResource(R.string.map_cluster_title, discUi.selectedMembers.size),
+            items = overlayListItems(emptyList(), overlayLabels, discUi.selectedMembers),
+            onSelect = { uuid -> discovery?.onSelection(uuid) },
+            onDismiss = { discovery?.dismissClusterExpansion() },
+            tag = "map-cluster-chooser",
+        )
+    }
+
+    val chargingCoverage = when {
+        discUi == null || discUi.loading -> R.string.charging_open_sources
+        !discUi.chargingSnapshotPresent || discUi.chargingError != null -> R.string.charging_catalog_unavailable
+        discUi.error == null && discUi.selectableByUuid.values.none { it.charging } -> R.string.charging_map_gap
+        else -> R.string.charging_open_sources
     }
 
     if (showFilters) {
@@ -630,6 +519,8 @@ fun MapScreen(
             onSelectSource = viewModel::selectSource,
             onServiceFilter = { f, c -> discovery?.onServiceFilter(f, c) },
             onDismiss = { showFilters = false },
+            chargingCoverageMessage = stringResource(chargingCoverage),
+            onAddChargingSite = onAddChargingSite.takeIf { chargingCoverage == R.string.charging_map_gap },
             selectedFuelProduct = ui.selectedFuelProduct,
             selectedConnector = discUi?.connector,
             selectedCurrent = discUi?.current,

@@ -54,7 +54,6 @@ class MapScreenInstrumentedTest {
             MapScreen(
                 guidance = testGuidance(),
                 onOpenStation = { _, _ -> },
-                onOpenSearch = {},
                 onOpenDownloads = {},
                 viewModel = MapScreenViewModel(emptyStore()),
                 mapContent = { Box(Modifier.size(10.dp)) },
@@ -63,7 +62,10 @@ class MapScreenInstrumentedTest {
         compose.waitForIdle()
         // Top ANP/Community selector.
         compose.onNodeWithText("ANP", ignoreCase = true).assertIsDisplayed()
-        // Functional entries.
+        // Only the two compact bottom actions remain; search stays in the header.
+        compose.onNodeWithTag("map-list-toggle").assertDoesNotExist()
+        compose.onNodeWithTag("map-open-search").assertDoesNotExist()
+        compose.onNodeWithTag("map-open-saved").assertDoesNotExist()
         compose.onNodeWithText("Filters", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithTag("map-search-field", useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithTag("map-search-field", useUnmergedTree = true).performTextInput("Station")
@@ -82,7 +84,6 @@ class MapScreenInstrumentedTest {
             MapScreen(
                 guidance = testGuidance(),
                 onOpenStation = { _, _ -> },
-                onOpenSearch = {},
                 onOpenDownloads = {},
                 viewModel = vm,
                 mapContent = { Box(Modifier.size(10.dp)) },
@@ -117,7 +118,6 @@ class MapScreenInstrumentedTest {
             MapScreen(
                 guidance = testGuidance(),
                 onOpenStation = { _, _ -> },
-                onOpenSearch = {},
                 onOpenDownloads = {},
                 onReportStation = { _, product -> reportedProduct = product },
                 viewModel = vm,
@@ -273,7 +273,6 @@ class MapScreenInstrumentedTest {
             MapScreen(
                 guidance = testGuidance(),
                 onOpenStation = { _, _ -> },
-                onOpenSearch = {},
                 onOpenDownloads = {},
                 viewModel = MapScreenViewModel(emptyStore()),
                 mapContent = { Box(Modifier.size(10.dp).testTag("test-native-map")) },
@@ -312,7 +311,10 @@ class MapScreenInstrumentedTest {
         }
         val label = compose.onNodeWithTag("map-city-label", useUnmergedTree = true)
         val cardLeft = compose.onNodeWithTag("map-controls-card").getUnclippedBoundsInRoot().left
-        org.junit.Assert.assertTrue(label.getUnclippedBoundsInRoot().left - cardLeft <= 48.dp)
+        val chipLeft = compose.onNodeWithTag("map-city-chip").getUnclippedBoundsInRoot().left
+        // Check the chip alignment separately from its location icon and padding.
+        org.junit.Assert.assertTrue(chipLeft - cardLeft <= 16.dp)
+        org.junit.Assert.assertTrue(label.getUnclippedBoundsInRoot().left - chipLeft <= 44.dp)
         val longCity = "Vila Bela da Santíssima Trindade — a very long municipality name"
         compose.runOnIdle { city.value = longCity }
         val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
@@ -334,9 +336,7 @@ class MapScreenInstrumentedTest {
                 com.anpfuel.app.ui.theme.AnpFuelTheme(darkTheme = presentation.value.first, dynamicColor = false) {
                     MapBottomControls(
                         onFilters = { calls += "filters" },
-                        onSearch = { calls += "search" },
                         onDownloads = { calls += "downloads" },
-                        onSaved = { calls += "saved" },
                         modifier = Modifier.width(360.dp),
                     )
                 }
@@ -348,14 +348,16 @@ class MapScreenInstrumentedTest {
             val panel = compose.onNodeWithTag("map-action-panel").getUnclippedBoundsInRoot()
             org.junit.Assert.assertTrue(attribution.bottom <= panel.top)
             compose.onNode(hasTestTag("map-attribution") and hasAnyAncestor(hasTestTag("map-action-panel"))).assertDoesNotExist()
-            listOf("filters", "search", "downloads", "saved").forEach { action ->
+            listOf("filters", "downloads").forEach { action ->
+                compose.onNodeWithTag("map-open-search").assertDoesNotExist()
+                compose.onNodeWithTag("map-open-saved").assertDoesNotExist()
                 val node = compose.onNodeWithTag("map-open-$action").performScrollTo().assertIsDisplayed()
                 val bounds = node.getUnclippedBoundsInRoot()
                 org.junit.Assert.assertTrue(bounds.bottom - bounds.top >= 48.dp)
                 node.performClick()
                 compose.onNodeWithTag("map-attribution").assertIsDisplayed()
             }
-            org.junit.Assert.assertEquals(listOf("filters", "search", "downloads", "saved"), calls)
+            org.junit.Assert.assertEquals(listOf("filters", "downloads"), calls)
             calls.clear()
             compose.onNodeWithTag("map-open-filters").performScrollTo()
             val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
@@ -379,7 +381,6 @@ class MapScreenInstrumentedTest {
                     modifier = Modifier.testTag("tested-map-screen"),
                     guidance = testGuidance(),
                     onOpenStation = { _, _ -> },
-                    onOpenSearch = {},
                     onOpenDownloads = {},
                     onBottomOverlayInsetChanged = { measuredInset = it },
                     viewModel = MapScreenViewModel(emptyStore()),
@@ -389,8 +390,10 @@ class MapScreenInstrumentedTest {
         }
         compose.waitForIdle()
         val normalInset = measuredInset
-        val overlay = compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot()
-        org.junit.Assert.assertTrue(normalInset >= (overlay.bottom - overlay.top) + 16.dp)
+        val panel = compose.onNodeWithTag("map-action-panel").getUnclippedBoundsInRoot()
+        // Recenter shares the attribution row on the opposite side, above the panel.
+        // Bounds and onSizeChanged convert pixels independently; allow subpixel rounding.
+        org.junit.Assert.assertEquals((panel.bottom - panel.top).value + 10f, normalInset.value, 0.01f)
         compose.onNodeWithTag("map-actions-toggle").performClick()
         compose.waitForIdle()
         org.junit.Assert.assertTrue(measuredInset < normalInset)
@@ -415,9 +418,7 @@ class MapScreenInstrumentedTest {
             com.anpfuel.app.ui.theme.AnpFuelTheme(darkTheme = true, dynamicColor = false) {
                 MapBottomControls(
                     onFilters = {},
-                    onSearch = {},
                     onDownloads = { downloads++ },
-                    onSaved = {},
                     modifier = Modifier.width(360.dp),
                 )
             }
@@ -429,15 +430,16 @@ class MapScreenInstrumentedTest {
         org.junit.Assert.assertTrue(toggleBounds.right - toggleBounds.left >= 48.dp)
         org.junit.Assert.assertTrue(toggleBounds.bottom - toggleBounds.top >= 48.dp)
         toggle.assert(hasContentDescription(context.getString(com.anpfuel.app.R.string.map_actions_hide))).performClick()
-        compose.onNodeWithTag("map-action-panel").assertDoesNotExist()
-        listOf("filters", "search", "downloads", "saved").forEach { action ->
+        compose.onNodeWithTag("map-action-panel").assertIsDisplayed()
+        listOf("filters", "downloads").forEach { action ->
             compose.onNodeWithTag("map-open-$action").assertDoesNotExist()
         }
         compose.onNodeWithTag("map-attribution").assertIsDisplayed()
         val collapsed = compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot()
         org.junit.Assert.assertTrue(collapsed.bottom - collapsed.top < expanded.bottom - expanded.top)
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNodeWithTag("map-action-panel").assertDoesNotExist()
+        compose.onNodeWithTag("map-action-panel").assertIsDisplayed()
+        compose.onNodeWithTag("map-open-downloads").assertDoesNotExist()
         compose.onNodeWithTag("map-attribution").assertIsDisplayed()
         val directory = java.io.File(context.getExternalFilesDir(null), "map-panel-collapse-20261026").apply { mkdirs() }
         java.io.FileOutputStream(java.io.File(directory, "collapsed.png")).use { output ->
@@ -465,20 +467,13 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithTag("map-filter-fuel-selector").assert(hasText(label))
     }
 
-    @Test fun clusterExpandAllowsSelectingSecondAndLastMemberAndUnpinnedDisablesRoute() {
+    @Test fun discoveryRefreshKeepsPanelStableAndExplicitPickersPreserveStationActions() {
         val aId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
         val bId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
         val cId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
         val unpinnedId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
 
-        val gateway = object : com.anpfuel.domain.repository.ServerStationGateway {
-            override suspend fun list(limit: Int, cursor: String?) =
-                com.anpfuel.domain.discovery.ServerStationPage(emptyList(), null)
-            override suspend fun listInMunicipality(municipalityCode: String, limit: Int, cursor: String?) =
-                com.anpfuel.domain.discovery.ServerStationPage(emptyList(), null)
-            override suspend fun search(municipalityCode: String, query: String, limit: Int, cursor: String?) =
-                com.anpfuel.domain.discovery.ServerStationPage(emptyList(), null)
-            override suspend fun nearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int) = listOf(
+        val nearbyRows = listOf(
                 com.anpfuel.domain.discovery.NearbyServerStation(
                     com.anpfuel.domain.discovery.ServerStation.create(
                         aId, "Posto Alpha", com.anpfuel.domain.discovery.StationLocationQuality.REVIEWED,
@@ -508,6 +503,20 @@ class MapScreenInstrumentedTest {
                     40.0,
                 ),
             )
+        var resultCount = nearbyRows.size
+        var refreshGate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+        var selectionListener: ((com.anpfuel.maps.engine.MapOverlaySelection) -> Unit)? = null
+        val gateway = object : com.anpfuel.domain.repository.ServerStationGateway {
+            override suspend fun list(limit: Int, cursor: String?) =
+                com.anpfuel.domain.discovery.ServerStationPage(emptyList(), null)
+            override suspend fun listInMunicipality(municipalityCode: String, limit: Int, cursor: String?) =
+                com.anpfuel.domain.discovery.ServerStationPage(emptyList(), null)
+            override suspend fun search(municipalityCode: String, query: String, limit: Int, cursor: String?) =
+                com.anpfuel.domain.discovery.ServerStationPage(nearbyRows.map { it.station }, null)
+            override suspend fun nearby(lat: Double, lon: Double, radiusMeters: Int, limit: Int): List<com.anpfuel.domain.discovery.NearbyServerStation> {
+                refreshGate?.await()
+                return nearbyRows.take(resultCount)
+            }
             override suspend fun byCnpj(cnpj: String) = null
             override suspend fun detail(stationId: String) = error("not used")
         }
@@ -522,7 +531,9 @@ class MapScreenInstrumentedTest {
             override fun buildCarRoute(sLat: Double, sLon: Double, eLat: Double, eLon: Double, onResult: (com.anpfuel.maps.engine.MapRouteInfo?) -> Unit) = true
             override fun setOverlayMarkers(markers: List<com.anpfuel.maps.engine.MapOverlayMarker>) = true
             override fun overlayClusters() = emptyList<com.anpfuel.maps.engine.MapOverlayCluster>()
-            override fun setOnOverlaySelected(listener: (com.anpfuel.maps.engine.MapOverlaySelection) -> Unit) = Unit
+            override fun setOnOverlaySelected(listener: (com.anpfuel.maps.engine.MapOverlaySelection) -> Unit) {
+                selectionListener = listener
+            }
             override fun cancelSearch() = Unit
             override fun cancelRoute() = Unit
             override fun release() = Unit
@@ -535,7 +546,6 @@ class MapScreenInstrumentedTest {
             MapScreen(
                 guidance = testGuidance(),
                 onOpenStation = { uuid, _ -> openedProfileUuid = uuid },
-                onOpenSearch = {},
                 onOpenDownloads = {},
                 viewModel = MapScreenViewModel(emptyStore()),
                 discovery = discoveryVm,
@@ -544,31 +554,59 @@ class MapScreenInstrumentedTest {
             )
         }
         compose.waitUntil(5_000) { discoveryVm.ui.value.clusters.size == 1 }
-        val clusterId = discoveryVm.ui.value.clusters.single().id
-        compose.onNodeWithTag("map-cluster-expand-$clusterId").performClick()
+        // Background empty/populated/clustered results cannot move or reopen actions.
+        for (expanded in listOf(true, false)) {
+            if (!expanded) compose.onNodeWithTag("map-actions-toggle").performClick()
+            val before = compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot()
+            for (count in listOf(0, 1, 4)) {
+                val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+                compose.runOnIdle {
+                    resultCount = count
+                    refreshGate = gate
+                    discoveryVm.onViewport(-25.42, -49.27, 10_000)
+                }
+                compose.waitUntil(5_000) { discoveryVm.ui.value.loading }
+                org.junit.Assert.assertEquals(before, compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot())
+                compose.runOnIdle { gate.complete(Unit) }
+                compose.waitUntil(5_000) { !discoveryVm.ui.value.loading }
+                org.junit.Assert.assertEquals(before, compose.onNodeWithTag("map-bottom-overlay").getUnclippedBoundsInRoot())
+                compose.onNodeWithTag("map-list-toggle").assertDoesNotExist()
+                compose.onNodeWithTag("map-search-results").assertDoesNotExist()
+                compose.onNodeWithTag("map-cluster-chooser").assertDoesNotExist()
+                if (expanded) compose.onNodeWithTag("map-open-downloads").assertIsDisplayed()
+                else compose.onNodeWithTag("map-open-downloads").assertDoesNotExist()
+            }
+        }
+        compose.onNodeWithTag("map-actions-toggle").performClick()
+        compose.runOnIdle {
+            selectionListener?.invoke(com.anpfuel.maps.engine.MapOverlaySelection.Cluster(discoveryVm.ui.value.clusters.single().markers))
+        }
         compose.waitForIdle()
         compose.onNodeWithTag("map-cluster-chooser").assertIsDisplayed()
 
         // Select 2nd member (Posto Beta).
-        compose.onNodeWithTag("map-cluster-member-$bId").performClick()
+        compose.onNodeWithText("Posto Beta", substring = true).performClick()
         compose.waitUntil(5_000) { sheetVm.ui.value.marker?.uuid == bId }
         compose.onNodeWithText("Posto Beta").assertIsDisplayed()
         androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
         compose.waitUntil(5_000) { discoveryVm.ui.value.selectedUuid == null }
 
         // Expand again and select last member (Posto Gamma).
-        compose.onNodeWithTag("map-cluster-expand-$clusterId").performClick()
+        compose.runOnIdle {
+            selectionListener?.invoke(com.anpfuel.maps.engine.MapOverlaySelection.Cluster(discoveryVm.ui.value.clusters.single().markers))
+        }
         compose.waitForIdle()
-        compose.onNodeWithTag("map-cluster-member-$cId").performClick()
+        compose.onNodeWithText("Posto Gamma", substring = true).performClick()
         compose.waitUntil(5_000) { sheetVm.ui.value.marker?.uuid == cId }
         compose.onNodeWithText("Posto Gamma").assertIsDisplayed()
         androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
         compose.waitUntil(5_000) { discoveryVm.ui.value.selectedUuid == null }
 
-        // Open accessible list and select coordinate-less station: sheet opens with route unavailable and profile enabled.
-        compose.onNodeWithTag("map-list-toggle").performClick()
-        compose.waitForIdle()
-        compose.onNodeWithTag("map-overlay-list").performScrollToNode(hasText("Posto Sem Coordenada", substring = true))
+        // Submit the top search to reach coordinate-less results without a permanent list.
+        compose.onNodeWithTag("map-search-field").performTextInput("Posto")
+        compose.onNodeWithTag("map-search-submit", useUnmergedTree = true).performClick()
+        compose.waitUntil(5_000) { discoveryVm.ui.value.searchResults != null }
+        compose.onNodeWithTag("map-picker-list").performScrollToNode(hasText("Posto Sem Coordenada", substring = true))
         compose.onNodeWithText("Posto Sem Coordenada", substring = true).performClick()
         compose.waitUntil(5_000) { sheetVm.ui.value.marker?.uuid == unpinnedId }
         compose.onNodeWithTag("map-sheet-route-unavailable").performScrollTo().assertIsDisplayed()

@@ -1,12 +1,20 @@
 # Current execution state
 
+- MAP-20 compact map actions, 2026-11-05, LOCAL_DONE / INTEGRATION_PENDING
+  on maintained `dev`, synchronized with main at `efe915c4` (merged PR #189).
+  [Presentation and refresh evidence](../backend/evidence/maps/MAP-20.md#compact-map-actions--2026-11-05)
+  records the stable two-action panel, explicit result pickers, 44 JVM tests,
+  13 emulator tests and physical Android installation. Debug/instrumentation
+  builds, lint, mobile static guards, whitespace and secret checks passed.
+  Tested revision: source in this commit. Next: publish the protected dev → main
+  PR; current-head CI and merge remain pending.
+
 - P25-T03 legal page presentation, 2026-11-05, LOCAL_DONE /
-  INTEGRATION_PENDING on maintained `dev`, synchronized to merged PR #188
+  INTEGRATED through PR #189 as `efe915c4`, from merged PR #188
   (`c7f9bd3b`). [Presentation evidence](../release-evidence/legal-page-chrome.md)
   records canonical home headers/footers, preserved policy copy, 76 passing
   landing tests and browser checks at 320, 390 and 1440 px. The tested
-  revision is the source in this commit. Next: publish the protected
-  dev → main PR; CI, merge and staging deployment remain pending.
+  revision is `ed9876b9`. Staging deployment acceptance remains pending.
 
 - DRV-18/19 work screen form layout, 2026-11-04, LOCAL_DONE /
   INTEGRATION_PENDING on maintained `dev` from `877240d8`.

@@ -72,6 +72,8 @@ fun MapFiltersDialog(
     selectedMinPowerKw: Int? = null,
     cityLabel: String = "",
     onOpenCity: () -> Unit = {},
+    chargingCoverageMessage: String? = null,
+    onAddChargingSite: (() -> Unit)? = null,
     onApplyExtendedFilters: (
         fuel: Boolean,
         charging: Boolean,
@@ -182,6 +184,19 @@ fun MapFiltersDialog(
                 }
 
                 if (charging) {
+                    chargingCoverageMessage?.let { message ->
+                        Text(
+                            message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("map-charging-coverage"),
+                        )
+                    }
+                    onAddChargingSite?.let { addSite ->
+                        OutlinedButton(onClick = addSite) {
+                            Text(stringResource(R.string.charging_add_site))
+                        }
+                    }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     MapFilterSection(stringResource(R.string.map_filter_connector)) {
                         FlowRow(

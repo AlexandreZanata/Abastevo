@@ -74,7 +74,7 @@ class SavedPlacesDeviceTest {
         val sheetVm = MapSheetViewModel(SheetPriceSource { _, _, _ -> null })
         compose.setContent {
             MapScreen(
-                onOpenStation = { _, _ -> }, onOpenSearch = {}, onOpenDownloads = {},
+                onOpenStation = { _, _ -> }, onOpenDownloads = {},
                 viewModel = MapScreenViewModel(object : com.anpfuel.data.map.MapPackageStore {
                     override suspend fun insertGeneration(generation: com.anpfuel.data.local.map.MapGenerationEntity, packages: List<com.anpfuel.data.local.map.MapPackageEntity>) = Unit
                     override suspend fun generation(generation: String): com.anpfuel.data.local.map.MapGenerationEntity? = null

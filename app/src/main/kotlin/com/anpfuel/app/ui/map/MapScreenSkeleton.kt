@@ -102,7 +102,7 @@ fun MapScreenSkeleton(modifier: Modifier = Modifier) {
                 tonalElevation = 2.dp,
             ) {
                 SkeletonGroup(Modifier.padding(12.dp)) {
-                    repeat(4 / columns) {
+                    repeat(2 / columns) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             repeat(columns) { SkeletonButton(Modifier.weight(1f)) }
                         }

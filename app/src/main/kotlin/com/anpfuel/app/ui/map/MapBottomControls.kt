@@ -8,18 +8,15 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.animation.animateContentSize
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -32,10 +29,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -56,19 +51,17 @@ import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 
 /**
- * Bottom sheet over the map: drag-handle toggle, list header (slot) and a 2x2
- * action grid. The ODbL attribution stays visible over the map above it.
+ * Stable map actions: an explicit drag-handle toggle and Filters/Download.
+ * Discovery results never participate in this panel's layout. The ODbL
+ * attribution stays visible over the map above it.
  */
 @Composable
 internal fun MapBottomControls(
     onFilters: () -> Unit,
-    onSearch: () -> Unit,
     onDownloads: () -> Unit,
-    onSaved: (() -> Unit)?,
     modifier: Modifier = Modifier,
     /** Height of the sheet itself (without the attribution), for map controls above it. */
     onSheetHeightChanged: (Dp) -> Unit = {},
-    content: @Composable ColumnScope.() -> Unit = {},
 ) {
     var expanded by rememberSaveable { mutableStateOf(true) }
     var dragDistance by remember { mutableFloatStateOf(0f) }
@@ -94,8 +87,7 @@ internal fun MapBottomControls(
         }
         Surface(
             modifier = Modifier.fillMaxWidth().testTag("map-action-panel")
-                .onSizeChanged { size -> onSheetHeightChanged(with(density) { size.height.toDp() }) }
-                .animateContentSize(),
+                .onSizeChanged { size -> onSheetHeightChanged(with(density) { size.height.toDp() }) },
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
             shadowElevation = 12.dp,
@@ -110,7 +102,7 @@ internal fun MapBottomControls(
                 // Drag the handle down to minimize to just the handle, up to restore;
                 // a tap toggles too (accessible equivalent of the gesture).
                 Box(
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(bottom = if (expanded) 0.dp else 4.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(bottom = if (expanded) 0.dp else 4.dp)
                         .draggable(
                             state = rememberDraggableState { delta -> dragDistance += delta },
                             orientation = Orientation.Vertical,
@@ -131,12 +123,9 @@ internal fun MapBottomControls(
                     )
                 }
                 if (expanded) {
-                    content()
                     val actions = buildList {
                         add(MapPanelAction(R.string.map_filters, Icons.Default.FilterAlt, "map-open-filters", onFilters))
-                        add(MapPanelAction(R.string.map_search, Icons.Default.Search, "map-open-search", onSearch))
                         add(MapPanelAction(R.string.map_download, Icons.Default.Download, "map-open-downloads", onDownloads))
-                        if (onSaved != null) add(MapPanelAction(R.string.map25_open_saved, Icons.Default.BookmarkBorder, "map-open-saved", onSaved))
                     }
                     actions.chunked(columns).forEach { row ->
                         Row(
@@ -146,7 +135,6 @@ internal fun MapBottomControls(
                             row.forEach { action ->
                                 MapPanelButton(action, Modifier.weight(1f).fillMaxHeight())
                             }
-                            if (row.size < columns) Spacer(Modifier.weight(1f))
                         }
                     }
                 }

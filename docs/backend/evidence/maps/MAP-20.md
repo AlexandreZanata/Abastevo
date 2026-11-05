@@ -1,5 +1,74 @@
 # MAP-20 — Discovery, accessibility and minimum gate
 
+## Compact map actions — 2026-11-05
+
+B-BR-MAP20-COMPACT-01: The resting map bottom panel contains only Filters
+and Download, in that order. Remove the permanent station-list toggle,
+Search and Saved shortcuts and automatic cluster chips. Keep the top search,
+native station selection, filtering and offline download behavior.
+
+B-BR-MAP20-COMPACT-02: Background discovery loading, marker counts, cluster
+counts and coverage results must not resize or toggle the bottom panel.
+Only the explicit handle gesture/tap changes its expansion state. Retain
+that state across recreation, OSM attribution and measured control insets.
+
+B-BR-MAP20-COMPACT-03: Multiple search results and a tapped native cluster
+open an explicit selection sheet, separate from the bottom action panel.
+Preserve selectable coordinate-less search results and their routing guard.
+Keep charging provenance and coverage/add-site information in Filters.
+
+BUC-MAP20-COMPACT: Pan/zoom while points load without bottom-panel motion;
+open Filters or Download; minimize/restore the actions intentionally; use
+the top search or tap a native cluster to choose a station and view its card.
+Validate both themes, 200% text, refreshes with empty/populated results,
+state restoration and native-map selection.
+
+### Compact action verification
+
+Status: LOCAL_DONE
+Validation: PASS
+Integration: INTEGRATION_PENDING
+
+The bottom panel no longer accepts discovery content. Its only actions are
+Filters and Download, side by side at normal font size and stacked for large
+text. Its handle is at least 48dp and retains explicit saved expansion state.
+Removed `animateContentSize`: marker arrivals, loading transitions, charging
+notices and cluster/list counts no longer animate the panel's height or feed
+changing offsets back into map controls.
+
+Submitted search results and native cluster selections use a separate modal
+picker. Coordinate-less search results still open their station sheet with
+routing unavailable. Charging coverage and the add-site action are retained
+inside Filters. The first-frame skeleton mirrors the two-action layout.
+
+Checks on the source in this commit:
+
+- Debug APK, instrumentation APK and `:app:lintDebug` passed.
+- Focused JVM tests passed: `MapDiscoveryViewModelTest` (31),
+  `MapScreenViewModelTest` (4), `MapSheetViewModelTest` (9).
+- All 13 `MapScreenInstrumentedTest` cases passed on Android 15. Six gated
+  refreshes alternate zero, one and four results, with the panel open and
+  minimized. Bounds and expansion remain unchanged during loading and after
+  completion; no station picker opens automatically. Explicit native cluster
+  callbacks select the second and last members. A submitted top search reaches
+  the coordinate-less result and preserves its profile action/routing guard.
+- The suite also verifies light/dark action buttons, 200% text, filter drafts,
+  top search clearing, measured recenter offsets and saved-state restoration.
+  Geometry assertions measure city-chip alignment separately from icon padding
+  and allow 0.01dp rounding between independent pixel-to-dp conversions.
+- `bash scripts/check-mobile.sh --static-only`, `git diff --check` and the
+  tracked secret scan passed. No backend, account, money or storage change.
+- Installed the debug APK on the connected Android 16 phone, preserving data.
+  The Sorriso map renders the native fuel/charging pins, attribution and only
+  Filters/Download in the bottom panel. A pan retained identical action/handle
+  bounds. Download opened the active Mato Grosso offline-map page. Filters
+  opened the source/service controls and the partial charging-coverage notice.
+
+Delivery uses maintained `dev` and a protected dev → main PR. Before the task
+commit, dev was fast-forwarded to PR #189's merge `efe915c4`; its tree was
+verified identical to the tested parent `ed9876b9`. Remote checks/merge and a
+distributed release are not certified by local builds or the ADB installation.
+
 Current assessment: [local real-data acceptance](MAP-20_MINIMUM_LOCAL_20261025.md) (2026-10-25) supersedes the earlier “no real pins/prices” blocker for **local proof only**. Staging/production data and distribution remain pending. Historical evidence below is retained.
 
 Status: LOCAL_DONE / INTEGRATION_PENDING
