@@ -207,3 +207,20 @@ func TestMonthlyPreparationDownloadCancellationAndSourceLock(t *testing.T) {
 		})
 	}
 }
+
+func TestExactCacheHitRejectsForgedSourceProvenance(t *testing.T) {
+	p, dir, calls := openCNPJFixture(t)
+	manifest, err := p.Generate(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := filepath.Join(filepath.Dir(filepath.Dir(manifest)), "owner.json")
+	raw, _ := os.ReadFile(owner)
+	raw = []byte(strings.ReplaceAll(string(raw), `"registry_sha256":"`, `"registry_sha256":"00`))
+	if err = os.WriteFile(owner, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = p.Generate(context.Background(), dir); err == nil || *calls != 2 {
+		t.Fatal("exact cache hit accepted forged source binding", err, *calls)
+	}
+}

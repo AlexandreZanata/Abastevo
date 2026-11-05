@@ -501,13 +501,25 @@ func validateNameCache(dir string) error {
 	if err != nil {
 		return err
 	}
-	var owner struct{ Schema, Key string }
-	if json.Unmarshal(raw, &owner) != nil || owner.Schema != "abastevo-name-cache-v1" || owner.Key != filepath.Base(dir) {
+	var owner nameCacheOwner
+	if json.Unmarshal(raw, &owner) != nil || owner.Schema != "abastevo-name-cache-v1" || owner.Key != filepath.Base(dir) || !validHash(owner.Registry) || !validHash(owner.Snapshot) {
 		return fmt.Errorf("unowned name cache")
 	}
-	raw, _, err = readNameDescriptor(filepath.Join(dir, "names", "manifest.json"))
+	key := sha256.Sum256([]byte("opencnpj-minimized-v1\n" + owner.Registry + "\n" + owner.Snapshot))
+	if owner.Key != hex.EncodeToString(key[:]) {
+		return fmt.Errorf("name cache source binding mismatch")
+	}
+	var descriptor nameDescriptor
+	raw, descriptor, err = readNameDescriptor(filepath.Join(dir, "names", "manifest.json"))
 	if err != nil {
 		return err
+	}
+	if len(descriptor.Inputs) != 1 {
+		return fmt.Errorf("invalid name cache inputs")
+	}
+	pin := descriptor.Inputs[0]
+	if _, err := time.Parse("2006-01", owner.Competence); err != nil || pin.Source != "rfb" || pin.Edition != "opencnpj-"+owner.Competence+"-sha256:"+owner.Snapshot || pin.Rows != owner.Matched {
+		return fmt.Errorf("name cache source pin mismatch")
 	}
 	hash := sha256.Sum256(raw)
 	return verifyNameInputs(dir, hex.EncodeToString(hash[:]))
