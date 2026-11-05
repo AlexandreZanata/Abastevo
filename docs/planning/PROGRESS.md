@@ -1,5 +1,25 @@
 # Current execution state
 
+- FOR-04 Forum admin editorial publication and controls, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `e0f9e8e5`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements audited editorial controls in backend and web panel:
+  admin handlers (`GET /v1/admin/forum/posts`, `GET /v1/admin/forum/posts/{id}`,
+  `POST /v1/admin/forum/posts`, `POST /v1/admin/forum/posts/{id}/edit`,
+  `POST /v1/admin/forum/posts/{id}/publish`, `POST /v1/admin/forum/posts/{id}/hide`,
+  `POST /v1/admin/forum/posts/{id}/unhide`), `AdminService`, pgx Store mutations
+  with optimistic revision conflict rollback, monotonic feed snapshot sequence,
+  and strict privacy invariant (body text and excerpts omitted from audit records
+  and transaction log payloads). Web panel (`admin-web`) integrates forum
+  editorial management: post list with status/category filter and keyset paging,
+  create draft form, edit form, publication and visibility moderation with mandatory
+  reason, DOM-safe rendering (zero innerHTML/eval/storage), routing `/admin/forum/`,
+  and dist validation. Tests passed with zero failures under `-race`:
+  Go unit tests (100%), PostgreSQL integration test with real PostGIS (`StoreAdmin`),
+  Node test runner (53 passed, 100%), vacuum lint (0 errors), build and dist check clean.
+  Occupied primary checkout and existing worktrees preserved. Tested revision: source
+  in this commit. Next microtask: FOR-05 (public read API and composition).
+
 - FOR-03 Forum foundation SQL and migration recovery, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `3a91262d`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)

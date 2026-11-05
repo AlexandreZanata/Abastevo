@@ -449,3 +449,55 @@ func (p *Post) ToDetail() (*PostDetail, error) {
 		StationID:         p.StationID,
 	}, nil
 }
+
+// ChangeRecord represents an audited change record in forum_changes.
+type ChangeRecord struct {
+	TargetType     string
+	TargetID       string
+	Revision       int
+	Action         string
+	ActorKind      string
+	ActorAccountID *string
+	AdminAuditRef  *string
+	PolicyVersion  int
+	ReasonCode     string
+	PriorState     *string
+	NewState       string
+	CreatedAt      time.Time
+}
+
+// PostAuditView is the privacy-safe, sanitized representation of a post for audit events.
+// CRITICAL PRIVACY RULE: BodyText and Excerpt are strictly excluded to avoid leaking
+// editorial draft text or PII into admin_audit logs.
+type PostAuditView struct {
+	ID                  string     `json:"id"`
+	Kind                string     `json:"kind"`
+	Category            string     `json:"category"`
+	Title               string     `json:"title"`
+	SourceID            string     `json:"source_id,omitempty"`
+	AuthorAccountID     string     `json:"author_account_id,omitempty"`
+	FirstPublicationSeq int64      `json:"first_publication_seq,omitempty"`
+	PublicationState    string     `json:"publication_state"`
+	Visibility          string     `json:"visibility"`
+	Revision            int        `json:"revision"`
+	FirstPublishedAt    *time.Time `json:"first_published_at,omitempty"`
+	LocalUpdatedAt      time.Time  `json:"local_updated_at"`
+}
+
+// AuditView returns the privacy-sanitized view of a post for administrative audit logs.
+func (p *Post) AuditView() PostAuditView {
+	return PostAuditView{
+		ID:                  p.ID,
+		Kind:                string(p.Kind),
+		Category:            string(p.Category),
+		Title:               p.Title,
+		SourceID:            p.SourceID,
+		AuthorAccountID:     p.AuthorAccountID,
+		FirstPublicationSeq: p.FirstPublicationSeq,
+		PublicationState:    string(p.PublicationState),
+		Visibility:          string(p.Visibility),
+		Revision:            p.Revision,
+		FirstPublishedAt:    p.FirstPublishedAt,
+		LocalUpdatedAt:      p.LocalUpdatedAt,
+	}
+}

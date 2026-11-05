@@ -70,6 +70,10 @@ import (
 	feedbackhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters/http"
 	feedbackapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/application"
 	feedbackdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/domain"
+	forumadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters"
+	forumhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters/http"
+	forumapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
+	forumdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	identityauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/http"
@@ -810,10 +814,26 @@ func run() error {
 		contributorAdmin := contributorhttp.AdminHandler{Service: contributorService, Admin: adminSurface}
 		staffService := &staffapp.Service{Store: staffStore, Runner: adminSurface.Service.Store, Clock: time.Now, NewID: newUUID}
 		staffAdmin := staffhttp.AdminHandler{Service: staffService, Admin: adminSurface}
+
+		forumStore := forumadapters.NewStore(pool.Underlying())
+		forumCfg := forumdomain.DefaultConfig()
+		forumCfg.AdminEnabled = cfg.ForumEnabled
+		forumAdminService := &forumapp.AdminService{
+			Store:  forumStore,
+			Runner: adminSurface.Service.Store,
+			Config: forumCfg,
+			Clock:  time.Now,
+			NewID:  newUUID,
+		}
+		forumAdmin := forumhttp.NewAdminHandler(forumAdminService, adminSurface)
+
 		router.Group(func(g chi.Router) {
 			g.Use(adminSurface.AdminMiddleware()...)
 			contributorAdmin.RegisterRoutes(g)
 			staffAdmin.RegisterRoutes(g)
+			if cfg.ForumEnabled {
+				forumAdmin.RegisterRoutes(g)
+			}
 		})
 	}
 	// Free document-free quality participation; payment capabilities never enter.

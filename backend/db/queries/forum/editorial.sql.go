@@ -11,6 +11,126 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const adminListPosts = `-- name: AdminListPosts :many
+SELECT
+    p.id, p.kind, p.category, p.title, p.excerpt,
+    p.source_id, p.canonical_url,
+    p.author_account_id, p.public_alias,
+    p.source_published_at,
+    p.local_created_at, p.local_updated_at,
+    p.first_published_at, p.first_publication_seq,
+    p.publication_state, p.visibility, p.revision,
+    p.comments_enabled, p.correction,
+    p.region_uf, p.region_municipality_ibge,
+    p.fuel_product, p.station_id,
+    s.name AS source_name,
+    s.origin_url AS source_origin_url,
+    s.attribution AS source_attribution
+FROM forum_posts p
+LEFT JOIN forum_sources s ON s.id = p.source_id
+WHERE ($1::text IS NULL OR p.publication_state = $1::text)
+  AND ($2::text IS NULL OR p.category = $2::text)
+  AND ($3::text IS NULL OR p.kind = $3::text)
+  AND (
+    $4::timestamptz IS NULL OR
+    (p.local_created_at, p.id) < ($4::timestamptz, $5::uuid)
+  )
+ORDER BY p.local_created_at DESC, p.id DESC
+LIMIT $6
+`
+
+type AdminListPostsParams struct {
+	PublicationState pgtype.Text        `json:"publication_state"`
+	Category         pgtype.Text        `json:"category"`
+	Kind             pgtype.Text        `json:"kind"`
+	CursorCreatedAt  pgtype.Timestamptz `json:"cursor_created_at"`
+	CursorID         pgtype.UUID        `json:"cursor_id"`
+	PageLimit        int32              `json:"page_limit"`
+}
+
+type AdminListPostsRow struct {
+	ID                     pgtype.UUID        `json:"id"`
+	Kind                   string             `json:"kind"`
+	Category               string             `json:"category"`
+	Title                  string             `json:"title"`
+	Excerpt                string             `json:"excerpt"`
+	SourceID               pgtype.UUID        `json:"source_id"`
+	CanonicalUrl           string             `json:"canonical_url"`
+	AuthorAccountID        pgtype.UUID        `json:"author_account_id"`
+	PublicAlias            pgtype.Text        `json:"public_alias"`
+	SourcePublishedAt      pgtype.Timestamptz `json:"source_published_at"`
+	LocalCreatedAt         pgtype.Timestamptz `json:"local_created_at"`
+	LocalUpdatedAt         pgtype.Timestamptz `json:"local_updated_at"`
+	FirstPublishedAt       pgtype.Timestamptz `json:"first_published_at"`
+	FirstPublicationSeq    int64              `json:"first_publication_seq"`
+	PublicationState       string             `json:"publication_state"`
+	Visibility             string             `json:"visibility"`
+	Revision               int32              `json:"revision"`
+	CommentsEnabled        bool               `json:"comments_enabled"`
+	Correction             pgtype.Text        `json:"correction"`
+	RegionUf               pgtype.Text        `json:"region_uf"`
+	RegionMunicipalityIbge pgtype.Int4        `json:"region_municipality_ibge"`
+	FuelProduct            pgtype.Text        `json:"fuel_product"`
+	StationID              pgtype.UUID        `json:"station_id"`
+	SourceName             pgtype.Text        `json:"source_name"`
+	SourceOriginUrl        pgtype.Text        `json:"source_origin_url"`
+	SourceAttribution      pgtype.Text        `json:"source_attribution"`
+}
+
+func (q *Queries) AdminListPosts(ctx context.Context, arg AdminListPostsParams) ([]AdminListPostsRow, error) {
+	rows, err := q.db.Query(ctx, adminListPosts,
+		arg.PublicationState,
+		arg.Category,
+		arg.Kind,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AdminListPostsRow
+	for rows.Next() {
+		var i AdminListPostsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Category,
+			&i.Title,
+			&i.Excerpt,
+			&i.SourceID,
+			&i.CanonicalUrl,
+			&i.AuthorAccountID,
+			&i.PublicAlias,
+			&i.SourcePublishedAt,
+			&i.LocalCreatedAt,
+			&i.LocalUpdatedAt,
+			&i.FirstPublishedAt,
+			&i.FirstPublicationSeq,
+			&i.PublicationState,
+			&i.Visibility,
+			&i.Revision,
+			&i.CommentsEnabled,
+			&i.Correction,
+			&i.RegionUf,
+			&i.RegionMunicipalityIbge,
+			&i.FuelProduct,
+			&i.StationID,
+			&i.SourceName,
+			&i.SourceOriginUrl,
+			&i.SourceAttribution,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const bumpFeedRevision = `-- name: BumpFeedRevision :one
 UPDATE forum_feed_state
 SET revision = revision + 1, updated_at = $1

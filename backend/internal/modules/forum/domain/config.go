@@ -6,6 +6,7 @@ type Config struct {
 	WritesEnabled          bool
 	NewsCollectionEnabled  bool
 	AutoPublicationEnabled bool
+	AdminEnabled           bool
 	TaxonomyVersion        int
 }
 
@@ -16,8 +17,14 @@ func DefaultConfig() Config {
 		WritesEnabled:          false,
 		NewsCollectionEnabled:  false,
 		AutoPublicationEnabled: false,
+		AdminEnabled:           false,
 		TaxonomyVersion:        1,
 	}
+}
+
+// AdminAllowed returns true if administrative forum editorial operations are enabled.
+func (c Config) AdminAllowed() bool {
+	return c.AdminEnabled
 }
 
 // ReadsAllowed returns true if public forum read operations are enabled.

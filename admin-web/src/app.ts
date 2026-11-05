@@ -15,6 +15,8 @@ import {
   type AccountSummary,
   type AuditEvent,
   type ClaimView,
+  type ForumPostDetail,
+  type ForumPostSummary,
   type GrantView,
   type SnapshotContributor,
   type StaffAssignment,
@@ -22,6 +24,9 @@ import {
 import {
   defaultEndDate,
   endDateError,
+  forumBodyError,
+  forumExcerptError,
+  forumTitleError,
   githubLoginError,
   isClaimState,
   isRole,
@@ -36,8 +41,13 @@ const LOGOUT_REASON = 'admin logout via web panel';
 const LOGIN_PATH = '/admin/login/';
 const ACCOUNTS_PATH = '/admin/accounts/';
 const CONTRIBUTORS_PATH = '/admin/contributors/';
+const FORUM_PATH = '/admin/forum/';
 const AUDIT_PATH = '/admin/audit/';
 const STATIONS_PATH = '/admin/stations/';
+let selectedForumPost: ForumPostDetail | null = null;
+let forumCursor = '';
+let forumFilterStatus = 'all';
+let forumFilterCategory = '';
 const ADDRESS_SOURCE_LABELS = new Map([
   ['anp', 'ANP (anp)'],
   ['rfb', 'Receita Federal (rfb)'],
@@ -119,7 +129,7 @@ function wireNav(): void {
 }
 
 function hideAllViews(): void {
-  for (const id of ['view-login', 'view-accounts', 'view-contributors', 'view-audit', 'view-stations']) {
+  for (const id of ['view-login', 'view-accounts', 'view-contributors', 'view-forum', 'view-audit', 'view-stations']) {
     el<HTMLElement>(id).hidden = true;
   }
 }
@@ -131,6 +141,7 @@ function showLogin(): void {
   el<HTMLElement>('session-info').hidden = true;
   el<HTMLButtonElement>('logout-button').hidden = true;
   selected = null;
+  selectedForumPost = null;
   resetRoleEvents();
 }
 
@@ -158,10 +169,14 @@ function route(): void {
     showAuthed('view-stations');
     return;
   }
-  if (api.hasSession() && (path === ACCOUNTS_PATH || path === CONTRIBUTORS_PATH || path === AUDIT_PATH)) {
+  if (api.hasSession() && (path === ACCOUNTS_PATH || path === CONTRIBUTORS_PATH || path === FORUM_PATH || path === AUDIT_PATH)) {
     if (path === CONTRIBUTORS_PATH) {
       showAuthed('view-contributors');
       void refreshContributors();
+    } else if (path === FORUM_PATH) {
+      showAuthed('view-forum');
+      forumCursor = '';
+      void loadForumPosts(false);
     } else if (path === AUDIT_PATH) {
       showAuthed('view-audit');
       auditCursor = '';
@@ -478,6 +493,7 @@ function boot(): void {
   wireRoles();
   wireAudit();
   wireStationLookup();
+  wireForum();
   window.addEventListener('popstate', route);
   route();
 }
@@ -510,6 +526,7 @@ interface PagedList {
 }
 const claimsPaging: PagedList = { seq: 0, busy: false };
 const auditPaging: PagedList = { seq: 0, busy: false };
+const forumPaging: PagedList = { seq: 0, busy: false };
 
 function beginPage(paging: PagedList, append: boolean, moreId: string): number | null {
   if (append && paging.busy) {
@@ -926,5 +943,323 @@ function wireAudit(): void {
   });
   el<HTMLButtonElement>('audit-more').addEventListener('click', () => {
     void loadAudit(true);
+  });
+}
+
+function renderForumPostRow(post: ForumPostSummary): HTMLElement {
+  const row = document.createElement('li');
+  row.className = 'admin-list-item forum-post-item';
+
+  const header = document.createElement('div');
+  header.className = 'forum-post-header';
+
+  const title = document.createElement('strong');
+  title.textContent = post.title;
+  header.appendChild(title);
+
+  const meta = document.createElement('span');
+  meta.className = 'forum-post-meta';
+  meta.textContent = ` · ${post.publication_state} · ${post.visibility} · ${post.category} · rev ${post.revision} · ${formatDateTime(post.created_at)}`;
+  header.appendChild(meta);
+
+  row.appendChild(header);
+
+  if (post.excerpt !== '') {
+    const excerpt = document.createElement('p');
+    excerpt.className = 'forum-post-excerpt';
+    excerpt.textContent = post.excerpt;
+    row.appendChild(excerpt);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'forum-post-actions';
+  const viewBtn = document.createElement('button');
+  viewBtn.type = 'button';
+  viewBtn.className = 'admin-secondary';
+  viewBtn.textContent = 'Ver / Editar';
+  viewBtn.addEventListener('click', () => {
+    void selectForumPost(post.id);
+  });
+  actions.appendChild(viewBtn);
+  row.appendChild(actions);
+
+  return row;
+}
+
+async function loadForumPosts(append: boolean): Promise<void> {
+  const seq = beginPage(forumPaging, append, 'forum-more');
+  if (seq === null) {
+    return;
+  }
+  setAlert('forum-list-error', '');
+  try {
+    const page = await api.listForumPosts(
+      forumFilterStatus,
+      forumFilterCategory,
+      append ? forumCursor : '',
+      20,
+    );
+    if (!isCurrentPage(forumPaging, seq)) {
+      return;
+    }
+    const list = el<HTMLUListElement>('forum-posts');
+    if (!append) {
+      clearChildren(list);
+    }
+    for (const post of page.items) {
+      list.appendChild(renderForumPostRow(post));
+    }
+    forumCursor = page.next_cursor;
+    el<HTMLButtonElement>('forum-more').hidden = page.next_cursor === '';
+  } catch (error) {
+    if (isCurrentPage(forumPaging, seq) && !isUnauthorized(error)) {
+      setAlert('forum-list-error', errorMessage(error));
+    }
+  } finally {
+    endPage(forumPaging, seq, 'forum-more');
+  }
+}
+
+async function selectForumPost(postId: string): Promise<void> {
+  setAlert('forum-list-error', '');
+  setAlert('forum-detail-error', '');
+  setAlert('forum-edit-error', '');
+  try {
+    const detail = await api.getForumPost(postId);
+    selectedForumPost = detail;
+    renderSelectedForumPost(detail);
+  } catch (error) {
+    if (!isUnauthorized(error)) {
+      setAlert('forum-list-error', errorMessage(error));
+    }
+  }
+}
+
+function renderSelectedForumPost(detail: ForumPostDetail): void {
+  el<HTMLElement>('forum-detail-card').hidden = false;
+  el<HTMLElement>('forum-detail-id').textContent = detail.id;
+  el<HTMLElement>('forum-detail-state').textContent = detail.publication_state;
+  el<HTMLElement>('forum-detail-visibility').textContent = detail.visibility;
+  el<HTMLElement>('forum-detail-revision').textContent = String(detail.revision);
+  el<HTMLElement>('forum-detail-source').textContent = detail.source_name;
+  el<HTMLElement>('forum-detail-created').textContent = formatDateTime(detail.created_at);
+  el<HTMLElement>('forum-detail-updated').textContent = formatDateTime(detail.updated_at);
+  el<HTMLElement>('forum-detail-published').textContent = formatDateTime(detail.published_at);
+
+  el<HTMLSelectElement>('forum-edit-category').value = detail.category;
+  el<HTMLInputElement>('forum-edit-title-input').value = detail.title;
+  el<HTMLTextAreaElement>('forum-edit-excerpt-input').value = detail.excerpt;
+  el<HTMLTextAreaElement>('forum-edit-body-input').value = detail.body_text;
+  el<HTMLTextAreaElement>('forum-edit-reason').value = '';
+  setAlert('forum-edit-error', '');
+
+  const publishBtn = el<HTMLButtonElement>('forum-publish-btn');
+  const publishReason = el<HTMLInputElement>('forum-publish-reason');
+  if (detail.publication_state === 'PUBLISHED') {
+    publishBtn.disabled = true;
+    publishBtn.textContent = 'Já publicado';
+    publishReason.disabled = true;
+  } else {
+    publishBtn.disabled = false;
+    publishBtn.textContent = 'Publicar';
+    publishReason.disabled = false;
+  }
+  publishReason.value = '';
+
+  const visBtn = el<HTMLButtonElement>('forum-visibility-btn');
+  const visReason = el<HTMLInputElement>('forum-visibility-reason');
+  visReason.value = '';
+  if (detail.visibility === 'HIDDEN') {
+    visBtn.textContent = 'Exibir';
+  } else {
+    visBtn.textContent = 'Ocultar';
+  }
+}
+
+function wireForum(): void {
+  const filterForm = el<HTMLFormElement>('forum-filter-form');
+  filterForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    forumFilterStatus = el<HTMLSelectElement>('forum-filter-status').value;
+    forumFilterCategory = el<HTMLSelectElement>('forum-filter-category').value;
+    forumCursor = '';
+    void loadForumPosts(false);
+  });
+
+  el<HTMLButtonElement>('forum-more').addEventListener('click', () => {
+    void loadForumPosts(true);
+  });
+
+  el<HTMLFormElement>('forum-create-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    setAlert('forum-create-error', '');
+    const category = el<HTMLSelectElement>('forum-create-category').value;
+    const title = el<HTMLInputElement>('forum-create-title-input').value;
+    const excerpt = el<HTMLTextAreaElement>('forum-create-excerpt-input').value;
+    const bodyText = el<HTMLTextAreaElement>('forum-create-body-input').value;
+    const reason = el<HTMLTextAreaElement>('forum-create-reason').value;
+
+    const tErr = forumTitleError(title);
+    if (tErr !== null) {
+      setAlert('forum-create-error', tErr);
+      return;
+    }
+    const eErr = forumExcerptError(excerpt);
+    if (eErr !== null) {
+      setAlert('forum-create-error', eErr);
+      return;
+    }
+    const bErr = forumBodyError(bodyText);
+    if (bErr !== null) {
+      setAlert('forum-create-error', bErr);
+      return;
+    }
+    const rErr = reasonError(reason);
+    if (rErr !== null) {
+      setAlert('forum-create-error', rErr);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const post = await api.createForumPost({
+          category,
+          title: title.trim(),
+          excerpt: excerpt.trim(),
+          bodyText: bodyText.trim(),
+          reason: reason.trim(),
+        });
+        el<HTMLInputElement>('forum-create-title-input').value = '';
+        el<HTMLTextAreaElement>('forum-create-excerpt-input').value = '';
+        el<HTMLTextAreaElement>('forum-create-body-input').value = '';
+        el<HTMLTextAreaElement>('forum-create-reason').value = '';
+        setAlert('forum-create-error', '');
+        selectedForumPost = post;
+        renderSelectedForumPost(post);
+        await loadForumPosts(false);
+      } catch (error) {
+        if (!isUnauthorized(error)) {
+          setAlert('forum-create-error', errorMessage(error));
+        }
+      }
+    })();
+  });
+
+  el<HTMLFormElement>('forum-edit-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (selectedForumPost === null) return;
+    setAlert('forum-edit-error', '');
+    const category = el<HTMLSelectElement>('forum-edit-category').value;
+    const title = el<HTMLInputElement>('forum-edit-title-input').value;
+    const excerpt = el<HTMLTextAreaElement>('forum-edit-excerpt-input').value;
+    const bodyText = el<HTMLTextAreaElement>('forum-edit-body-input').value;
+    const reason = el<HTMLTextAreaElement>('forum-edit-reason').value;
+
+    const tErr = forumTitleError(title);
+    if (tErr !== null) {
+      setAlert('forum-edit-error', tErr);
+      return;
+    }
+    const eErr = forumExcerptError(excerpt);
+    if (eErr !== null) {
+      setAlert('forum-edit-error', eErr);
+      return;
+    }
+    const bErr = forumBodyError(bodyText);
+    if (bErr !== null) {
+      setAlert('forum-edit-error', bErr);
+      return;
+    }
+    const rErr = reasonError(reason);
+    if (rErr !== null) {
+      setAlert('forum-edit-error', rErr);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const updated = await api.editForumPost(selectedForumPost.id, {
+          category,
+          title: title.trim(),
+          excerpt: excerpt.trim(),
+          bodyText: bodyText.trim(),
+          expectedRevision: selectedForumPost.revision,
+          reason: reason.trim(),
+        });
+        selectedForumPost = updated;
+        renderSelectedForumPost(updated);
+        await loadForumPosts(false);
+      } catch (error) {
+        if (!isUnauthorized(error)) {
+          setAlert('forum-edit-error', errorMessage(error));
+        }
+      }
+    })();
+  });
+
+  el<HTMLFormElement>('forum-publish-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (selectedForumPost === null) return;
+    if (selectedForumPost.publication_state === 'PUBLISHED') return;
+    setAlert('forum-detail-error', '');
+    const reason = el<HTMLInputElement>('forum-publish-reason').value;
+    const rErr = reasonError(reason);
+    if (rErr !== null) {
+      setAlert('forum-detail-error', rErr);
+      return;
+    }
+    if (!window.confirm(`Publicar "${selectedForumPost.title}" no feed editorial?`)) {
+      return;
+    }
+    void (async () => {
+      try {
+        const updated = await api.publishForumPost(
+          selectedForumPost.id,
+          selectedForumPost.revision,
+          reason.trim(),
+        );
+        selectedForumPost = updated;
+        renderSelectedForumPost(updated);
+        await loadForumPosts(false);
+      } catch (error) {
+        if (!isUnauthorized(error)) {
+          setAlert('forum-detail-error', errorMessage(error));
+        }
+      }
+    })();
+  });
+
+  el<HTMLFormElement>('forum-visibility-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (selectedForumPost === null) return;
+    setAlert('forum-detail-error', '');
+    const reason = el<HTMLInputElement>('forum-visibility-reason').value;
+    const rErr = reasonError(reason);
+    if (rErr !== null) {
+      setAlert('forum-detail-error', rErr);
+      return;
+    }
+    const hide = selectedForumPost.visibility !== 'HIDDEN';
+    const actionLabel = hide ? 'Ocultar' : 'Exibir';
+    if (!window.confirm(`${actionLabel} "${selectedForumPost.title}"?`)) {
+      return;
+    }
+    void (async () => {
+      try {
+        const updated = await api.setForumPostVisibility(
+          selectedForumPost.id,
+          hide,
+          selectedForumPost.revision,
+          reason.trim(),
+        );
+        selectedForumPost = updated;
+        renderSelectedForumPost(updated);
+        await loadForumPosts(false);
+      } catch (error) {
+        if (!isUnauthorized(error)) {
+          setAlert('forum-detail-error', errorMessage(error));
+        }
+      }
+    })();
   });
 }

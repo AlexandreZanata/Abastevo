@@ -2,6 +2,7 @@ package adapters
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -138,6 +139,15 @@ func (s *Store) ListPublicPosts(ctx context.Context, query application.ListPubli
 
 // CreateEditorialPost inserts an editorial post in draft or specified initial state.
 func (s *Store) CreateEditorialPost(ctx context.Context, p *domain.Post) error {
+	return s.insertEditorialPost(ctx, s.queries, p)
+}
+
+// CreateDraftTx inserts an editorial post inside an existing transaction.
+func (s *Store) CreateDraftTx(ctx context.Context, tx pgx.Tx, p *domain.Post) error {
+	return s.insertEditorialPost(ctx, s.queries.WithTx(tx), p)
+}
+
+func (s *Store) insertEditorialPost(ctx context.Context, q *forumsql.Queries, p *domain.Post) error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
@@ -232,7 +242,7 @@ func (s *Store) CreateEditorialPost(ctx context.Context, p *domain.Post) error {
 		localUpdated = localCreated
 	}
 
-	return s.queries.InsertEditorialPost(ctx, forumsql.InsertEditorialPostParams{
+	return q.InsertEditorialPost(ctx, forumsql.InsertEditorialPostParams{
 		ID:                     postUUID,
 		Kind:                   string(p.Kind),
 		Category:               string(p.Category),
@@ -729,5 +739,504 @@ func mapSummaryRowToDomain(r forumsql.ListPublicPostsRow) domain.PostSummary {
 		Region:            region,
 		FuelProduct:       fuelProduct,
 		StationID:         stationID,
+	}
+}
+
+// GetPostTx retrieves a post by ID inside an active transaction.
+func (s *Store) GetPostTx(ctx context.Context, tx pgx.Tx, id string) (*domain.Post, error) {
+	postUUID, err := mustUUID(id)
+	if err != nil {
+		return nil, domain.ErrPostNotFound
+	}
+	row, err := s.queries.WithTx(tx).GetPostByID(ctx, postUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrPostNotFound
+		}
+		return nil, fmt.Errorf("forum: get post by id: %w", err)
+	}
+	return mapPostRowToDomain(row), nil
+}
+
+// GetPostForUpdateTx retrieves and locks a post by ID inside an active transaction.
+func (s *Store) GetPostForUpdateTx(ctx context.Context, tx pgx.Tx, id string) (*domain.Post, error) {
+	postUUID, err := mustUUID(id)
+	if err != nil {
+		return nil, domain.ErrPostNotFound
+	}
+	row, err := s.queries.WithTx(tx).GetPostByIDForUpdate(ctx, postUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrPostNotFound
+		}
+		return nil, fmt.Errorf("forum: get post by id for update: %w", err)
+	}
+	return mapPostForUpdateRowToDomain(row), nil
+}
+
+// UpdateEditorialTx modifies post contents under optimistic revision locking inside an active transaction.
+func (s *Store) UpdateEditorialTx(ctx context.Context, tx pgx.Tx, p *domain.Post, expectedRevision int) error {
+	if err := p.Validate(); err != nil {
+		return err
+	}
+	postUUID, err := mustUUID(p.ID)
+	if err != nil {
+		return domain.ErrPostNotFound
+	}
+
+	var correction pgtype.Text
+	if p.Correction != nil {
+		correction = pgtype.Text{String: *p.Correction, Valid: true}
+	}
+
+	var regionUf pgtype.Text
+	var regionIBGE pgtype.Int4
+	if p.Region != nil {
+		if p.Region.UF != "" {
+			regionUf = pgtype.Text{String: p.Region.UF, Valid: true}
+		}
+		if p.Region.MunicipalityIBGE != nil {
+			regionIBGE = pgtype.Int4{Int32: int32(*p.Region.MunicipalityIBGE), Valid: true}
+		}
+	}
+
+	var fuelProduct pgtype.Text
+	if p.FuelProduct != nil {
+		fuelProduct = pgtype.Text{String: *p.FuelProduct, Valid: true}
+	}
+
+	var stationUUID pgtype.UUID
+	if p.StationID != nil && *p.StationID != "" {
+		stationUUID, err = mustUUID(*p.StationID)
+		if err != nil {
+			return fmt.Errorf("forum: invalid station id: %w", err)
+		}
+	}
+
+	now := time.Now().UTC()
+	rows, err := s.queries.WithTx(tx).UpdateEditorialPost(ctx, forumsql.UpdateEditorialPostParams{
+		ID:                     postUUID,
+		Title:                  p.Title,
+		Excerpt:                p.Excerpt,
+		BodyText:               p.BodyText,
+		Category:               string(p.Category),
+		FuelProduct:            fuelProduct,
+		RegionUf:               regionUf,
+		RegionMunicipalityIbge: regionIBGE,
+		StationID:              stationUUID,
+		CommentsEnabled:        p.CommentsEnabled,
+		Correction:             correction,
+		UpdatedAt:              pgtype.Timestamptz{Time: now, Valid: true},
+		ExpectedRevision:       int32(expectedRevision),
+	})
+	if err != nil {
+		return fmt.Errorf("forum: update post: %w", err)
+	}
+	if rows == 0 {
+		return domain.ErrRevisionMismatch
+	}
+	return nil
+}
+
+// PublishEditorialTx transitions post to PUBLISHED state inside an active transaction.
+func (s *Store) PublishEditorialTx(ctx context.Context, tx pgx.Tx, id string, publishedAt time.Time, seq int64) error {
+	postUUID, err := mustUUID(id)
+	if err != nil {
+		return domain.ErrPostNotFound
+	}
+	rows, err := s.queries.WithTx(tx).PublishEditorialPost(ctx, forumsql.PublishEditorialPostParams{
+		ID:                  postUUID,
+		FirstPublicationSeq: seq,
+		PublishedAt:         pgtype.Timestamptz{Time: publishedAt, Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("forum: publish post: %w", err)
+	}
+	if rows == 0 {
+		return domain.ErrPostNotFound
+	}
+	return nil
+}
+
+// SetPostVisibilityTx updates post visibility inside an active transaction.
+func (s *Store) SetPostVisibilityTx(ctx context.Context, tx pgx.Tx, id string, visibility domain.Visibility, updatedAt time.Time) error {
+	postUUID, err := mustUUID(id)
+	if err != nil {
+		return domain.ErrPostNotFound
+	}
+	rows, err := s.queries.WithTx(tx).SetPostVisibility(ctx, forumsql.SetPostVisibilityParams{
+		ID:         postUUID,
+		Visibility: string(visibility),
+		UpdatedAt:  pgtype.Timestamptz{Time: updatedAt, Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("forum: set post visibility: %w", err)
+	}
+	if rows == 0 {
+		return domain.ErrPostNotFound
+	}
+	return nil
+}
+
+// BumpFeedRevisionTx increments the feed state revision inside an active transaction.
+func (s *Store) BumpFeedRevisionTx(ctx context.Context, tx pgx.Tx, now time.Time) (int64, error) {
+	row, err := s.queries.WithTx(tx).BumpFeedRevision(ctx, pgtype.Timestamptz{Time: now, Valid: true})
+	if err != nil {
+		return 0, fmt.Errorf("forum: bump feed revision: %w", err)
+	}
+	return row, nil
+}
+
+// RecordForumChangeTx appends an audit change record to forum_changes inside an active transaction.
+func (s *Store) RecordForumChangeTx(ctx context.Context, tx pgx.Tx, rec domain.ChangeRecord) error {
+	targetUUID, err := mustUUID(rec.TargetID)
+	if err != nil {
+		return fmt.Errorf("forum: invalid target id: %w", err)
+	}
+
+	var actorUUID pgtype.UUID
+	if rec.ActorAccountID != nil && *rec.ActorAccountID != "" {
+		actorUUID, err = mustUUID(*rec.ActorAccountID)
+		if err != nil {
+			return fmt.Errorf("forum: invalid actor account id: %w", err)
+		}
+	}
+
+	createdAt := rec.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	policyVer := rec.PolicyVersion
+	if policyVer < 1 {
+		policyVer = 1
+	}
+
+	adminAuditRef := ""
+	if rec.AdminAuditRef != nil {
+		adminAuditRef = *rec.AdminAuditRef
+	}
+
+	priorState := ""
+	if rec.PriorState != nil {
+		priorState = *rec.PriorState
+	}
+
+	return s.queries.WithTx(tx).RecordForumChange(ctx, forumsql.RecordForumChangeParams{
+		ID:             newUUIDBytes(),
+		TargetType:     rec.TargetType,
+		TargetID:       targetUUID,
+		Revision:       int32(rec.Revision),
+		Action:         rec.Action,
+		ActorKind:      rec.ActorKind,
+		ActorAccountID: actorUUID,
+		AdminAuditRef:  adminAuditRef,
+		PolicyVersion:  int32(policyVer),
+		ReasonCode:     rec.ReasonCode,
+		PriorState:     priorState,
+		NewState:       rec.NewState,
+		CreatedAt:      pgtype.Timestamptz{Time: createdAt, Valid: true},
+	})
+}
+
+// GetSourceByID retrieves source metadata by UUID.
+func (s *Store) GetSourceByID(ctx context.Context, id string) (*domain.Source, error) {
+	sourceUUID, err := mustUUID(id)
+	if err != nil {
+		return nil, domain.ErrMissingSource
+	}
+	row, err := s.queries.GetSourceByID(ctx, sourceUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrMissingSource
+		}
+		return nil, fmt.Errorf("forum: get source by id: %w", err)
+	}
+	return mapSourceRowToDomain(row), nil
+}
+
+// AdminListPosts returns a paginated list of posts for administration.
+func (s *Store) AdminListPosts(ctx context.Context, filter application.AdminListFilter) ([]domain.Post, *string, error) {
+	var pubStateParam pgtype.Text
+	if filter.PublicationState != nil && *filter.PublicationState != "" {
+		pubStateParam = pgtype.Text{String: *filter.PublicationState, Valid: true}
+	}
+
+	var catParam pgtype.Text
+	if filter.Category != nil && *filter.Category != "" {
+		catParam = pgtype.Text{String: *filter.Category, Valid: true}
+	}
+
+	var kindParam pgtype.Text
+	if filter.Kind != nil && *filter.Kind != "" {
+		kindParam = pgtype.Text{String: *filter.Kind, Valid: true}
+	}
+
+	var cursorCreatedAt pgtype.Timestamptz
+	var cursorID pgtype.UUID
+	if filter.CursorCreatedAt != nil && filter.CursorID != nil && *filter.CursorID != "" {
+		uid, err := mustUUID(*filter.CursorID)
+		if err != nil {
+			return nil, nil, domain.ErrInvalidCursor
+		}
+		cursorCreatedAt = pgtype.Timestamptz{Time: *filter.CursorCreatedAt, Valid: true}
+		cursorID = uid
+	}
+
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	} else if limit > 50 {
+		limit = 50
+	}
+
+	rows, err := s.queries.AdminListPosts(ctx, forumsql.AdminListPostsParams{
+		PublicationState: pubStateParam,
+		Category:         catParam,
+		Kind:             kindParam,
+		CursorCreatedAt:  cursorCreatedAt,
+		CursorID:         cursorID,
+		PageLimit:        int32(limit),
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("forum: admin list posts: %w", err)
+	}
+
+	posts := make([]domain.Post, 0, len(rows))
+	for _, r := range rows {
+		posts = append(posts, mapAdminListRowToDomain(r))
+	}
+
+	var nextCursor *string
+	if len(rows) == limit {
+		last := rows[len(rows)-1]
+		c := EncodeAdminCursor(last.LocalCreatedAt.Time, uuidString(last.ID))
+		nextCursor = &c
+	}
+
+	return posts, nextCursor, nil
+}
+
+// EncodeAdminCursor serializes an admin pagination cursor.
+func EncodeAdminCursor(createdAt time.Time, id string) string {
+	raw := fmt.Sprintf("%s:%s", createdAt.UTC().Format(time.RFC3339Nano), id)
+	return base64.RawURLEncoding.EncodeToString([]byte(raw))
+}
+
+// DecodeAdminCursor parses an admin pagination cursor.
+func DecodeAdminCursor(token string) (time.Time, string, error) {
+	if strings.TrimSpace(token) == "" {
+		return time.Time{}, "", domain.ErrInvalidCursor
+	}
+	b, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil {
+		return time.Time{}, "", domain.ErrInvalidCursor
+	}
+	rawStr := string(b)
+	idx := strings.LastIndex(rawStr, ":")
+	if idx <= 0 || idx >= len(rawStr)-1 {
+		return time.Time{}, "", domain.ErrInvalidCursor
+	}
+	timePart := rawStr[:idx]
+	idPart := rawStr[idx+1:]
+	t, err := time.Parse(time.RFC3339Nano, timePart)
+	if err != nil {
+		return time.Time{}, "", domain.ErrInvalidCursor
+	}
+	if _, err := mustUUID(idPart); err != nil {
+		return time.Time{}, "", domain.ErrInvalidCursor
+	}
+	return t, idPart, nil
+}
+
+func newUUIDBytes() pgtype.UUID {
+	var b [16]byte
+	_, _ = rand.Read(b[:])
+	b[6] = (b[6] & 0x0f) | 0x40 // Version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // RFC 4122
+	return pgtype.UUID{Bytes: b, Valid: true}
+}
+
+func mapSourceRowToDomain(r forumsql.ForumSource) *domain.Source {
+	var checkedAt *time.Time
+	if r.CheckedAt.Valid {
+		t := r.CheckedAt.Time.UTC()
+		checkedAt = &t
+	}
+	return &domain.Source{
+		ID:             uuidString(r.ID),
+		Code:           r.Code,
+		Name:           r.Name,
+		Kind:           domain.SourceKind(r.Kind),
+		OriginURL:      r.OriginUrl,
+		RightsStatus:   domain.RightsStatus(r.RightsStatus),
+		TitleAllowed:   r.TitleAllowed,
+		ExcerptAllowed: r.ExcerptAllowed,
+		ImageAllowed:   r.ImageAllowed,
+		TermsURL:       r.TermsUrl,
+		TermsSHA256:    r.TermsSha256,
+		CheckedAt:      checkedAt,
+		Attribution:    r.Attribution,
+	}
+}
+
+func mapAdminListRowToDomain(r forumsql.AdminListPostsRow) domain.Post {
+	var publicAlias *string
+	if r.PublicAlias.Valid {
+		cp := r.PublicAlias.String
+		publicAlias = &cp
+	}
+	var correction *string
+	if r.Correction.Valid {
+		cp := r.Correction.String
+		correction = &cp
+	}
+	var fuelProduct *string
+	if r.FuelProduct.Valid {
+		cp := r.FuelProduct.String
+		fuelProduct = &cp
+	}
+	var stationID *string
+	if r.StationID.Valid {
+		cp := uuidString(r.StationID)
+		stationID = &cp
+	}
+	var region *domain.Region
+	if r.RegionUf.Valid {
+		var ibge *int
+		if r.RegionMunicipalityIbge.Valid {
+			val := int(r.RegionMunicipalityIbge.Int32)
+			ibge = &val
+		}
+		region = &domain.Region{
+			UF:               r.RegionUf.String,
+			MunicipalityIBGE: ibge,
+		}
+	}
+	var srcAttr *domain.SourceAttribution
+	if r.SourceName.Valid && r.SourceOriginUrl.Valid {
+		srcAttr = &domain.SourceAttribution{
+			Name:        r.SourceName.String,
+			URL:         r.SourceOriginUrl.String,
+			Attribution: r.SourceAttribution.String,
+		}
+	}
+	var srcPubAt *time.Time
+	if r.SourcePublishedAt.Valid {
+		t := r.SourcePublishedAt.Time.UTC()
+		srcPubAt = &t
+	}
+	var firstPubAt *time.Time
+	if r.FirstPublishedAt.Valid {
+		t := r.FirstPublishedAt.Time.UTC()
+		firstPubAt = &t
+	}
+	return domain.Post{
+		ID:                  uuidString(r.ID),
+		Kind:                domain.PostKind(r.Kind),
+		Category:            domain.Category(r.Category),
+		Title:               r.Title,
+		Excerpt:             r.Excerpt,
+		BodyText:            "", // List projection omits body text
+		SourceID:            uuidString(r.SourceID),
+		SourceAttribution:   srcAttr,
+		CanonicalURL:        r.CanonicalUrl,
+		AuthorAccountID:     uuidString(r.AuthorAccountID),
+		PublicAlias:         publicAlias,
+		SourcePublishedAt:   srcPubAt,
+		FirstPublishedAt:    firstPubAt,
+		LocalCreatedAt:      r.LocalCreatedAt.Time.UTC(),
+		LocalUpdatedAt:      r.LocalUpdatedAt.Time.UTC(),
+		FirstPublicationSeq: r.FirstPublicationSeq,
+		PublicationState:    domain.PublicationState(r.PublicationState),
+		Visibility:          domain.Visibility(r.Visibility),
+		Revision:            int(r.Revision),
+		CommentsEnabled:     r.CommentsEnabled,
+		Correction:          correction,
+		Region:              region,
+		FuelProduct:         fuelProduct,
+		StationID:           stationID,
+	}
+}
+
+func mapPostForUpdateRowToDomain(r forumsql.GetPostByIDForUpdateRow) *domain.Post {
+	var publicAlias *string
+	if r.PublicAlias.Valid {
+		cp := r.PublicAlias.String
+		publicAlias = &cp
+	}
+	var correction *string
+	if r.Correction.Valid {
+		cp := r.Correction.String
+		correction = &cp
+	}
+	var fuelProduct *string
+	if r.FuelProduct.Valid {
+		cp := r.FuelProduct.String
+		fuelProduct = &cp
+	}
+	var stationID *string
+	if r.StationID.Valid {
+		cp := uuidString(r.StationID)
+		stationID = &cp
+	}
+	var rightsSnapshot *string
+	if r.RightsSnapshot.Valid {
+		cp := r.RightsSnapshot.String
+		rightsSnapshot = &cp
+	}
+	var region *domain.Region
+	if r.RegionUf.Valid {
+		var ibge *int
+		if r.RegionMunicipalityIbge.Valid {
+			val := int(r.RegionMunicipalityIbge.Int32)
+			ibge = &val
+		}
+		region = &domain.Region{
+			UF:               r.RegionUf.String,
+			MunicipalityIBGE: ibge,
+		}
+	}
+	var srcPubAt *time.Time
+	if r.SourcePublishedAt.Valid {
+		t := r.SourcePublishedAt.Time.UTC()
+		srcPubAt = &t
+	}
+	var srcUpdAt *time.Time
+	if r.SourceUpdatedAt.Valid {
+		t := r.SourceUpdatedAt.Time.UTC()
+		srcUpdAt = &t
+	}
+	var firstPubAt *time.Time
+	if r.FirstPublishedAt.Valid {
+		t := r.FirstPublishedAt.Time.UTC()
+		firstPubAt = &t
+	}
+	return &domain.Post{
+		ID:                  uuidString(r.ID),
+		Kind:                domain.PostKind(r.Kind),
+		Category:            domain.Category(r.Category),
+		Title:               r.Title,
+		Excerpt:             r.Excerpt,
+		BodyText:            r.BodyText,
+		SourceID:            uuidString(r.SourceID),
+		CanonicalURL:        r.CanonicalUrl,
+		AuthorAccountID:     uuidString(r.AuthorAccountID),
+		PublicAlias:         publicAlias,
+		SourcePublishedAt:   srcPubAt,
+		SourceUpdatedAt:     srcUpdAt,
+		FirstPublishedAt:    firstPubAt,
+		LocalCreatedAt:      r.LocalCreatedAt.Time.UTC(),
+		LocalUpdatedAt:      r.LocalUpdatedAt.Time.UTC(),
+		FirstPublicationSeq: r.FirstPublicationSeq,
+		PublicationState:    domain.PublicationState(r.PublicationState),
+		Visibility:          domain.Visibility(r.Visibility),
+		Revision:            int(r.Revision),
+		CommentsEnabled:     r.CommentsEnabled,
+		Correction:          correction,
+		Region:              region,
+		FuelProduct:         fuelProduct,
+		StationID:           stationID,
+		RightsSnapshot:      rightsSnapshot,
 	}
 }

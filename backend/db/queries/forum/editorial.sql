@@ -109,6 +109,33 @@ WHERE p.publication_state = 'PUBLISHED'
 ORDER BY p.first_publication_seq DESC, p.id DESC
 LIMIT @page_limit;
 
+-- name: AdminListPosts :many
+SELECT
+    p.id, p.kind, p.category, p.title, p.excerpt,
+    p.source_id, p.canonical_url,
+    p.author_account_id, p.public_alias,
+    p.source_published_at,
+    p.local_created_at, p.local_updated_at,
+    p.first_published_at, p.first_publication_seq,
+    p.publication_state, p.visibility, p.revision,
+    p.comments_enabled, p.correction,
+    p.region_uf, p.region_municipality_ibge,
+    p.fuel_product, p.station_id,
+    s.name AS source_name,
+    s.origin_url AS source_origin_url,
+    s.attribution AS source_attribution
+FROM forum_posts p
+LEFT JOIN forum_sources s ON s.id = p.source_id
+WHERE (sqlc.narg('publication_state')::text IS NULL OR p.publication_state = sqlc.narg('publication_state')::text)
+  AND (sqlc.narg('category')::text IS NULL OR p.category = sqlc.narg('category')::text)
+  AND (sqlc.narg('kind')::text IS NULL OR p.kind = sqlc.narg('kind')::text)
+  AND (
+    sqlc.narg('cursor_created_at')::timestamptz IS NULL OR
+    (p.local_created_at, p.id) < (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+  )
+ORDER BY p.local_created_at DESC, p.id DESC
+LIMIT @page_limit;
+
 -- name: InsertEditorialPost :exec
 INSERT INTO forum_posts (
     id, kind, category, title, excerpt, body_text,

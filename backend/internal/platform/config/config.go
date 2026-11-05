@@ -110,6 +110,7 @@ const (
 	keyGitHubToken      = "ANPFUEL_GITHUB_TOKEN"
 	keyPublicWebOrigins = "ANPFUEL_PUBLIC_WEB_ORIGINS"
 	keyDriverEnabled    = "ANPFUEL_DRIVER_ENABLED"
+	keyForumEnabled     = "ANPFUEL_FORUM_ENABLED"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -161,6 +162,8 @@ type Config struct {
 	QualityRevalidationEnabled         bool
 	// DriverEnabled gates private driver report/command routes and worker cleanup.
 	DriverEnabled bool
+	// ForumEnabled gates forum read endpoints, news collection and admin surface.
+	ForumEnabled bool
 	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
 	QualityReadsEnabled        bool
 	QualityCompanyReadsEnabled bool
@@ -247,6 +250,7 @@ func (c Config) LogValue() slog.Value {
 		slog.Duration("shutdown_drain_delay", c.ShutdownDrainDelay),
 		slog.Bool("db_configured", c.DatabaseURL != ""),
 		slog.Bool("admin_configured", len(c.AdminKeyHashes) > 0),
+		slog.Bool("forum_enabled", c.ForumEnabled),
 		slog.String("github_repo", c.GitHubRepo),
 		slog.Bool("github_token_configured", c.GitHubToken != ""),
 		slog.Int("public_web_origins", len(c.PublicWebOrigins)),
@@ -401,6 +405,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_DRIVER_ENABLED must be boolean")
 		}
 		cfg.DriverEnabled = enabled
+	}
+
+	if raw, present := getenv(keyForumEnabled); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_FORUM_ENABLED must be boolean")
+		}
+		cfg.ForumEnabled = enabled
 	}
 
 	cfg.PriceRankingEnabled = true
