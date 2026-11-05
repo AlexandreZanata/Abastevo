@@ -1,5 +1,21 @@
 # Current execution state
 
+- FOR-07 Forum HTTP, Room cache and Hilt, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `bc29184d`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements bounded Android transport and offline caching: `ForumHttpClient`
+  (OkHttp, suspendCancellableCoroutine, 15s timeout, 512 KiB byte limit, single
+  configured origin, typed error mapping), Room v37 schema migration 36→37
+  (`forum_cache` table with composite primary key `(origin, key)` for cross-origin
+  isolation, TTL 24h, 2 MiB byte budget, 5 feed scopes max, live 404 cache
+  invalidation), `ForumCacheCodec` (deterministic JSON encode/decode),
+  `ForumRepository` implementing `ForumGateway` (cache-first / offline fallback
+  stripping cursor, automatic quota pruning), and Hilt DI wiring (`ForumModule`,
+  `DatabaseModule`). Tested revision: source in this commit. JVM test suite
+  passed with zero failures (migration test, mapper test, transport test with
+  mock engine, repository test with Room DAO/in-memory cache). Next microtask:
+  FOR-08 (Community card, Forum feed/detail routes).
+
 - FOR-06 Forum Android domain and application contracts, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `3fa1342f`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
