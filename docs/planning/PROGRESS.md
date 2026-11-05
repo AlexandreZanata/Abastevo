@@ -1,5 +1,13 @@
 # Current execution state
 
+- P25-T03 legal page presentation, 2026-11-05, LOCAL_DONE /
+  INTEGRATION_PENDING on maintained `dev`, synchronized to merged PR #188
+  (`c7f9bd3b`). [Presentation evidence](../release-evidence/legal-page-chrome.md)
+  records canonical home headers/footers, preserved policy copy, 76 passing
+  landing tests and browser checks at 320, 390 and 1440 px. The tested
+  revision is the source in this commit. Next: publish the protected
+  dev → main PR; CI, merge and staging deployment remain pending.
+
 - DRV-18/19 work screen form layout, 2026-11-04, LOCAL_DONE /
   INTEGRATION_PENDING on maintained `dev` from `877240d8`.
   [Form and Room evidence](../backend/evidence/driver-suite/DRV-18-22.md#work-screen-form-layout)
