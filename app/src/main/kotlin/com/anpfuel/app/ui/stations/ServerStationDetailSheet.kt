@@ -64,6 +64,7 @@ fun ServerStationRow(
         headlineContent = { Text(text = station.displayName) },
         supportingContent = {
             Column {
+                station.secondaryLegalName?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 if (station.addressLine.isNotBlank()) Text(station.addressLine)
                 Text(qualityLabel(station), style = MaterialTheme.typography.labelSmall)
             }

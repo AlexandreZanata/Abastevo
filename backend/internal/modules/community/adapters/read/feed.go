@@ -2,13 +2,14 @@ package read
 
 import (
 	"context"
-	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	"encoding/json"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	community "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/community"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 )
 
 // ContributionReference is a public opaque revision target for signed community actions, never attribution/media.
@@ -19,21 +20,23 @@ type ContributionReference struct {
 
 // FeedItem is an explicit public allowlist; raw observations and media stay private.
 type FeedItem struct {
-	Contribution   *ContributionReference `json:"contribution,omitempty"`
-	StationID      string                 `json:"station_id"`
-	StationName    string                 `json:"station_name"`
-	FuelProduct    string                 `json:"fuel_product"`
-	Unit           string                 `json:"unit"`
-	AmountMilliBrl int64                  `json:"amount_milli_brl"`
-	Currency       string                 `json:"currency"`
-	Source         string                 `json:"source"`
-	Condition      string                 `json:"condition"`
-	Confidence     string                 `json:"confidence"`
-	UpdatedAt      time.Time              `json:"updated_at"`
-	ExpiresAt      time.Time              `json:"expires_at"`
-	Supporters     int                    `json:"supporters"`
-	Confirmations  int                    `json:"confirmations"`
-	Version        int64                  `json:"version"`
+	Contribution     *ContributionReference `json:"contribution,omitempty"`
+	StationID        string                 `json:"station_id"`
+	StationName      string                 `json:"station_name"`
+	StationLegalName *string                `json:"station_legal_name,omitempty"`
+	StationAddress   map[string]string      `json:"station_address,omitempty"`
+	FuelProduct      string                 `json:"fuel_product"`
+	Unit             string                 `json:"unit"`
+	AmountMilliBrl   int64                  `json:"amount_milli_brl"`
+	Currency         string                 `json:"currency"`
+	Source           string                 `json:"source"`
+	Condition        string                 `json:"condition"`
+	Confidence       string                 `json:"confidence"`
+	UpdatedAt        time.Time              `json:"updated_at"`
+	ExpiresAt        time.Time              `json:"expires_at"`
+	Supporters       int                    `json:"supporters"`
+	Confirmations    int                    `json:"confirmations"`
+	Version          int64                  `json:"version"`
 	// Community star average of the same station+fuel; nil when unrated.
 	RatingsCount int      `json:"ratings_count"`
 	RatingsAvg   *float64 `json:"ratings_avg,omitempty"`
@@ -79,7 +82,22 @@ func (r *Reader) Feed(ctx context.Context, f application.FeedFilter) ([]FeedItem
 		if row.ContributionObservationID.Valid && row.ContributionDecisionSequence > 0 && row.ContributionState == "VALIDATED" {
 			contribution = &ContributionReference{ObservationID: uuidString(row.ContributionObservationID), DecisionSequence: row.ContributionDecisionSequence}
 		}
+		var legal *string
+		if value := kernel.PublicStationLegalName(row.StationLegalName.String); row.StationLegalName.Valid && value != "" {
+			legal = &value
+		}
+		var address map[string]any
+		if err := json.Unmarshal(row.StationAddress, &address); err != nil {
+			return nil, "", err
+		}
+		publicAddress := map[string]string{}
+		for _, key := range []string{"street", "number", "complement", "district", "postal_code", "municipio", "uf"} {
+			if value, ok := address[key].(string); ok && value != "" {
+				publicAddress[key] = value
+			}
+		}
 		items = append(items, FeedItem{Contribution: contribution, StationID: uuidString(row.StationID), StationName: kernel.PublicStationName(row.DisplayName, ""),
+			StationLegalName: legal, StationAddress: publicAddress,
 			FuelProduct: row.FuelProduct, Unit: row.Unit, AmountMilliBrl: row.AmountMilliBrl.Int64,
 			Currency: "BRL", Source: "COMMUNITY", Condition: "STANDARD", Confidence: confidence,
 			UpdatedAt: row.AnchorReceivedAt.Time, ExpiresAt: row.ExpiresAt.Time,

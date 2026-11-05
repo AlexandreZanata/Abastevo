@@ -77,9 +77,7 @@ class ServerStation private constructor(
     val addressLine: String = formatStationAddress(address, state)
     val addressLabel: String get() = addressLine
 
-    val secondaryLegalName: String? = legalName?.trim()?.takeUnless {
-        normalizedStationName(it).equals(normalizedStationName(displayName), ignoreCase = true)
-    }
+    val secondaryLegalName: String? = secondaryStationLegalName(displayName, legalName)
 
     val hasApproximateAddress: Boolean get() =
         addressLine.isNotBlank() && addressSource != null && addressSource != StationAddressSource.ANP

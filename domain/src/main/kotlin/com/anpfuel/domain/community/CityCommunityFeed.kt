@@ -29,7 +29,11 @@ data class CommunityFeedItem(
     val ratingsCount: Int = 0,
     val ratingsAvg: Double? = null,
     val contribution: ContributionReference? = null,
+    val stationLegalName: String? = null,
+    val stationAddress: Map<String, String> = emptyMap(),
 ) {
+    val secondaryLegalName: String? get() = com.anpfuel.domain.discovery.secondaryStationLegalName(stationName, stationLegalName)
+    val stationAddressLine: String get() = com.anpfuel.domain.discovery.formatStationAddress(stationAddress)
     init {
         require(UUID.fromString(stationId).toString() == stationId)
         require(stationName.isNotBlank())

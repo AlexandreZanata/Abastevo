@@ -12,7 +12,8 @@ import (
 )
 
 const cityFeed = `-- name: CityFeed :many
-SELECT p.station_id, s.display_name, p.fuel_product, p.unit,
+SELECT p.station_id, s.display_name, s.legal_name AS station_legal_name,
+ s.address AS station_address, p.fuel_product, p.unit,
  p.amount_milli_brl, p.confidence, p.independent_supporters,
  p.confirmation_count, p.anchor_received_at, p.expires_at, p.projection_version,
  COALESCE(rs.ratings_count, 0)::bigint AS ratings_count,
@@ -75,6 +76,8 @@ type CityFeedParams struct {
 type CityFeedRow struct {
 	StationID                    pgtype.UUID        `json:"station_id"`
 	DisplayName                  string             `json:"display_name"`
+	StationLegalName             pgtype.Text        `json:"station_legal_name"`
+	StationAddress               []byte             `json:"station_address"`
 	FuelProduct                  string             `json:"fuel_product"`
 	Unit                         string             `json:"unit"`
 	AmountMilliBrl               pgtype.Int8        `json:"amount_milli_brl"`
@@ -120,6 +123,8 @@ func (q *Queries) CityFeed(ctx context.Context, arg CityFeedParams) ([]CityFeedR
 		if err := rows.Scan(
 			&i.StationID,
 			&i.DisplayName,
+			&i.StationLegalName,
+			&i.StationAddress,
 			&i.FuelProduct,
 			&i.Unit,
 			&i.AmountMilliBrl,

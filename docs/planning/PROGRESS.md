@@ -1,20 +1,33 @@
 # Current execution state
 
-- MAP-20 compact map actions, 2026-11-05, LOCAL_DONE / INTEGRATION_PENDING
+- SNA/OpenCNPJ station identity and MAP-20 expanded controls, 2026-11-05,
+  LOCAL_DONE / INTEGRATION_PENDING on maintained `dev`, synchronized from
+  `b8e93a41` (merged PR #190). [Source, privacy and replay evidence](../backend/evidence/sna/OPENCNPJ_STATION_NAMES.md)
+  records the full-CNPJ minimized export, pinned daily inputs, public feed
+  metadata, canonical Android names and grouped map controls. All 45,816
+  current ANP CNPJs matched the pinned RFB snapshot; 45,696 assertions passed
+  preparation with 31,636 usable trade names. Immediate PostGIS failure/race/
+  privacy tests, migration recovery/query-plan checks, 71 JVM tests, 23 emulator
+  tests, builds, lint and scoped static checks pass. Tested revision: source in
+  this commit. Next: protected dev → main PR, signed staging deployment and
+  actual named-edition publication/readback. No release certification implied.
+
+- MAP-20 compact map actions, 2026-11-05, LOCAL_DONE / INTEGRATED
   on maintained `dev`, synchronized with main at `efe915c4` (merged PR #189).
   [Presentation and refresh evidence](../backend/evidence/maps/MAP-20.md#compact-map-actions--2026-11-05)
   records the stable two-action panel, explicit result pickers, 44 JVM tests,
   13 emulator tests and physical Android installation. Debug/instrumentation
   builds, lint, mobile static guards, whitespace and secret checks passed.
-  Tested revision: source in this commit. Next: publish the protected dev → main
-  PR; current-head CI and merge remain pending.
+  Tested revision: `cf994b55`. Integrated through PR #190 as `b8e93a41` and deployed to
+  staging (actual receipt read 2026-11-05).
 
 - P25-T03 legal page presentation, 2026-11-05, LOCAL_DONE /
   INTEGRATED through PR #189 as `efe915c4`, from merged PR #188
   (`c7f9bd3b`). [Presentation evidence](../release-evidence/legal-page-chrome.md)
   records canonical home headers/footers, preserved policy copy, 76 passing
   landing tests and browser checks at 320, 390 and 1440 px. The tested
-  revision is `ed9876b9`. Staging deployment acceptance remains pending.
+  revision is `ed9876b9`. Staging now reports descendant `b8e93a41`; the
+  signed deployment receipt was read on 2026-11-05.
 
 - DRV-18/19 work screen form layout, 2026-11-04, LOCAL_DONE /
   INTEGRATION_PENDING on maintained `dev` from `877240d8`.

@@ -271,6 +271,12 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(Modifier.weight(1f)) {
                     Text(item.stationName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    item.secondaryLegalName?.let { name ->
+                        Text(name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (item.stationAddressLine.isNotBlank()) {
+                        Text(item.stationAddressLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Text("${stringResource(R.string.feed_community_source)} · $timestamp", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Icon(Icons.Default.ChevronRight, stringResource(R.string.feed_station_detail), Modifier.size(20.dp))

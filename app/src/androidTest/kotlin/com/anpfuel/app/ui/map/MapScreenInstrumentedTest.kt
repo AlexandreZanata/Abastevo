@@ -287,6 +287,39 @@ class MapScreenInstrumentedTest {
         compose.onNodeWithTag("test-native-map").assertExists()
     }
 
+    @Test fun expandedDetailsSeparateSourceSurveyAndRouteAcrossThemesAndLargeText() {
+        val mode = androidx.compose.runtime.mutableStateOf(false to 1f)
+        val source = androidx.compose.runtime.mutableStateOf(MapPriceSource.ANP)
+        var routes = 0
+        var weeks = 0
+        compose.setContent {
+            val base = androidx.compose.ui.platform.LocalDensity.current
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(base.density,mode.value.second),
+            ) {
+                com.anpfuel.app.ui.theme.AnpFuelTheme(darkTheme=mode.value.first,dynamicColor=false) {
+                    MapControlsCard(MapScreenUi(source=source.value),"Sorriso",false,false,{}, {source.value=it},
+                        "",{}, {},false,null,{}, {},{routes++},
+                        periodContent={ androidx.compose.material3.OutlinedButton(onClick={weeks++},modifier=Modifier.testTag("test-map-week")) {
+                            androidx.compose.material3.Text("25–31 out. 2026")
+                        } },modifier=Modifier.width(320.dp))
+                }
+            }
+        }
+        compose.onNodeWithTag("map-controls-toggle").performClick()
+        listOf(false to 1f,true to 1f,true to 2f).forEach { presentation ->
+            compose.runOnIdle {mode.value=presentation;source.value=MapPriceSource.ANP}
+            compose.onNodeWithTag("map-source-anp").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("test-map-week").performScrollTo().assertIsDisplayed().performClick()
+            compose.onNodeWithTag("native-route-open").performScrollTo().assertIsDisplayed().performClick()
+            compose.onNodeWithTag("map-source-community").performScrollTo().performClick()
+            compose.onNodeWithTag("map-survey-period").assertDoesNotExist()
+            compose.onNodeWithTag("native-route-open").performScrollTo().assertIsDisplayed()
+        }
+        org.junit.Assert.assertEquals(3,routes)
+        org.junit.Assert.assertEquals(3,weeks)
+    }
+
     @Test fun cityStartsAtTheLeftAndLongNamesAreVisuallyEllipsized() {
         val city = androidx.compose.runtime.mutableStateOf("Sorriso")
         compose.setContent {

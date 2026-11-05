@@ -18,6 +18,11 @@ private val nameSpacing = Regex("""[\s\p{Z}]+""")
 
 internal fun normalizedStationName(name: String): String = nameSpacing.replace(name, " ").trim()
 
+/** A single known name is shown once, regardless of case or source spacing. */
+fun secondaryStationLegalName(displayName: String, legalName: String?): String? =
+    legalName?.trim()?.takeIf { it.isNotEmpty() &&
+        !normalizedStationName(it).equals(normalizedStationName(displayName), ignoreCase = true) }
+
 internal fun isCoordinateLiteral(value: String): Boolean {
     val withoutLabels = coordinateLabels.replace(value, "")
     return coordinatePair.matches(value) ||

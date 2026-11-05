@@ -571,6 +571,7 @@ class MapDiscoveryViewModelTest {
 
         assertEquals(listOf(matched.displayName), vm.ui.value.searchResults?.items?.map { it.title })
         assertEquals(true, vm.ui.value.searchResults?.offlineCached)
+        assertEquals(matched.secondaryLegalName, vm.ui.value.searchResults?.byUuid?.get(matched.stationId)?.legalName)
     }
 
     @Test fun `offline markers show the textual address or municipality name`() = runTest {

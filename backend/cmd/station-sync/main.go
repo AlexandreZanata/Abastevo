@@ -40,6 +40,7 @@ func run() error {
 	root := flag.String("root", "/state", "private persistent state directory")
 	preparer := flag.String("prepare", "/tools/prepare_registry", "trusted Rust executable")
 	loader := flag.String("loader", "/tools/station-load", "trusted Go loader executable")
+	nameInputs := flag.String("name-inputs", "", "optional pinned local names manifest; defaults to ROOT/name-inputs/manifest.json when present")
 	timeout := flag.Duration("timeout", 18*time.Minute, "overall bounded refresh duration")
 	budgetWait := flag.Duration("budget-wait", 6*time.Minute, "bounded wait for the host safety budget before starting (inside --timeout)")
 	flag.Parse()
@@ -80,8 +81,21 @@ func run() error {
 		}
 	}()
 	r := syncer.Runner{Root: *root, Now: time.Now, Client: &http.Client{Timeout: 30 * time.Second}, Observe: func(code string) { event(code, nil) }}
+	r.NameInputs = *nameInputs
+	if r.NameInputs == "" {
+		candidate := filepath.Join(*root, "name-inputs", "manifest.json")
+		if _, err := os.Lstat(candidate); err == nil {
+			r.NameInputs = candidate
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("name input configuration unavailable")
+		}
+	}
 	r.Prepare = func(ctx context.Context, dir string, s syncer.Snapshot) error {
-		return child(ctx, "prepare", *preparer, []string{filepath.Join(dir, "registry.csv"), filepath.Join(dir, "aliases.json"), filepath.Join(dir, "prepared"), syncer.ANPURL, "content-sha256:" + s.SourceHash, s.RunID, s.FetchedAt}, false)
+		args := []string{filepath.Join(dir, "registry.csv"), filepath.Join(dir, "aliases.json"), filepath.Join(dir, "prepared"), syncer.ANPURL, "content-sha256:" + s.SourceHash, s.RunID, s.FetchedAt}
+		if s.NameInputsHash != "" {
+			args = append(args, "--name-inputs", filepath.Join(dir, "names", "manifest.json"))
+		}
+		return child(ctx, "prepare", *preparer, args, false)
 	}
 	r.Apply = func(ctx context.Context, dir string) error {
 		return child(ctx, "load_publish", *loader, []string{"--emit-dir", dir, "--publish", "--attempts", "3", "--timeout", "14m"}, true)

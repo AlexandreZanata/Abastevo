@@ -8,4 +8,5 @@ data class StationPriceUiModel(
     val priceFormatted: String,
     val collectedAtLabel: String?,
     val navigationQuery: String,
+    val legalName: String? = null,
 )

@@ -165,7 +165,8 @@ class StationPageViewModel @Inject constructor(
                 }
             }
             mutable.update { it.copy(canonical = station, identityStale = outcome is ServerStationDetailOutcome.StaleCache,
-                name = it.name.ifEmpty { station?.displayName.orEmpty() },
+                name = station?.displayName ?: it.name,
+                address = station?.addressLine?.takeIf { address -> address.isNotBlank() } ?: it.address,
                 location = it.location.ifEmpty { station?.state.orEmpty() },
                 unavailable = station == null && it.name.isEmpty(), priceUnavailable = station == null) }
             if (station != null) {

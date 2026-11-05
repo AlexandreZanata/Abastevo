@@ -144,6 +144,13 @@ class CityCommunityFeedHttpClient(private val client: OkHttpClient, private val 
                     },
                     ratingsCount = row.optInt("ratings_count"),
                     ratingsAvg = if (row.isNull("ratings_avg")) null else row.getDouble("ratings_avg"),
+                    stationLegalName = if (row.isNull("station_legal_name")) null else row.get("station_legal_name").let {
+                        require(it is String && it.length <= 1024); it
+                    },
+                    stationAddress = if (row.isNull("station_address")) emptyMap() else row.getJSONObject("station_address").let { address ->
+                        address.keys().asSequence().filter { it in setOf("street", "number", "complement", "district", "postal_code", "municipio", "uf") }
+                            .associateWith { key -> address.get(key).let { require(it is String && it.length <= 2048); it } }
+                    },
                 )
                 require(item.fuel == query.fuel && item.unit == row.getString("unit") && item.updatedAt <= generated)
                 item

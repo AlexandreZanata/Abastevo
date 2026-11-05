@@ -25,6 +25,27 @@ import org.junit.jupiter.api.Test
 
 class StationPriceRepositoryPagingTest {
 
+    @Test fun `canonical trade name participates in price search before pagination`() = runTest {
+        val gateway=mockk<com.anpfuel.domain.repository.ServerStationGateway>()
+        val cache=mockk<com.anpfuel.domain.repository.ServerStationCache>(relaxed=true)
+        val catalog=mockk<com.anpfuel.domain.repository.MunicipalityCatalogRepository>()
+        coEvery { catalog.findCatalogEntry(any(),any()) } returns com.anpfuel.domain.valueobject.MunicipalityCatalogEntry(
+            BrazilianState.SAO_PAULO,"SAO PAULO","3550308")
+        coEvery { cache.loadScopedPage(any()) } returns null
+        coEvery { gateway.listInMunicipality("3550308",100,null) } returns com.anpfuel.domain.discovery.ServerStationPage(listOf(
+            com.anpfuel.domain.discovery.ServerStation.create("00000000-0000-4000-8000-000000000001","New Trade",
+                com.anpfuel.domain.discovery.StationLocationQuality.UNKNOWN,null,null,"61602199002409","3550308","SP",null,
+                legalName="Current Legal")),null)
+        coEvery { dao.findByLocationAndProduct(surveyWeekId,"SP","SAO PAULO","GASOLINE_REGULAR") } returns listOf(entity())
+        val enriched=StationPriceRepositoryImpl(dao,weekDao,CanonicalStationNames(gateway,cache,catalog))
+        val page=enriched.getStationPricesPage(BrazilianState.SAO_PAULO,"SAO PAULO",FuelProduct.GASOLINE_REGULAR,surveyWeek,
+            "New Trade",DiscoverySort.PRICE_ASC,0,20)
+        assertEquals(1,page.totalCount)
+        assertEquals("New Trade",page.items.single().station.displayName())
+        assertEquals("Current Legal",page.items.single().station.secondaryLegalName)
+        coVerify(exactly=0) { gateway.detail(any()) }
+    }
+
     private val surveyWeek = SurveyWeek.fromIsoDates("2026-06-07", "2026-06-13")
     private val surveyWeekId = DomainId.forSurveyWeek(surveyWeek).value
 

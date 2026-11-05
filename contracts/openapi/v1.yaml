@@ -9812,6 +9812,21 @@ components:
             decision_sequence: {type: integer, minimum: 1}
         station_id: {type: string, format: uuid}
         station_name: {type: string}
+        station_legal_name:
+          type: string
+          description: Public CPF-minimized legal name, when known. Display only when distinct from station_name.
+        station_address:
+          type: object
+          additionalProperties: false
+          description: Allowlisted public street, number, complement, district, postal_code, municipio and uf components.
+          properties:
+            street: {type: string}
+            number: {type: string}
+            complement: {type: string}
+            district: {type: string}
+            postal_code: {type: string}
+            municipio: {type: string}
+            uf: {type: string}
         fuel_product: {$ref: '#/components/schemas/FuelProduct'}
         unit: {$ref: '#/components/schemas/PriceUnit'}
         amount_milli_brl: {type: integer, minimum: 1, maximum: 1000000}

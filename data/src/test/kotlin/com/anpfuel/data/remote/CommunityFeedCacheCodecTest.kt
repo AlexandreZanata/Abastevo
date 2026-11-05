@@ -23,6 +23,8 @@ class CommunityFeedCacheCodecTest {
     private fun item() = CommunityFeedItem(
         stationId = "00000000-0000-0000-0000-000000000001",
         stationName = "Synthetic station",
+        stationLegalName = "Synthetic Legal LTDA",
+        stationAddress = mapOf("street" to "Synthetic Avenue", "number" to "1", "municipio" to "Synthetic city", "uf" to "MT"),
         fuel = FuelProduct.ETHANOL,
         amountMilliBrl = 5032,
         updatedAt = at.minusSeconds(60),

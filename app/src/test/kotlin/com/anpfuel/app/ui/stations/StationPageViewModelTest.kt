@@ -165,12 +165,26 @@ class StationPageViewModelTest {
         val vm = vm("04218406000104"); vm.load(Locale.US); advanceUntilIdle()
         assertEquals("Example", vm.state.value.name)
         assertNotNull(vm.state.value.localDetail)
+        val datedDetail = vm.state.value.localDetail
         assertNotNull(vm.state.value.navigationQuery)
         assertFalse(vm.state.value.canParticipate)
         vm.selectFuel(FuelProduct.DIESEL_S10, Locale.US); advanceUntilIdle()
         assertNull(vm.state.value.localDetail)
         assertEquals("Example", vm.state.value.name)
         assertNotNull(vm.state.value.navigationQuery)
+
+        // Resolving current identity must replace the historical price heading
+        // without changing the dated ANP price or its collection period.
+        coEvery { resolve(any()) } returns ServerStationDetailOutcome.Fresh(
+            ServerStation.create(id, "Current Trade", StationLocationQuality.UNKNOWN,
+                null, null, "04218406000104", null, "PR", null,
+                legalName = "Current Legal", address = mapOf("street" to "Current Street", "number" to "12")))
+        vm.selectFuel(FuelProduct.ETHANOL, Locale.US); advanceUntilIdle()
+        assertEquals("Current Trade", vm.state.value.name)
+        assertEquals("Current Legal", vm.state.value.canonical?.secondaryLegalName)
+        assertEquals("Current Street, 12", vm.state.value.address)
+        assertEquals(datedDetail?.surveyWeekLabel, vm.state.value.localDetail?.surveyWeekLabel)
+        assertEquals(datedDetail?.station?.priceFormatted, vm.state.value.localDetail?.station?.priceFormatted)
     }
 
 }
