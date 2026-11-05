@@ -1,3 +1,5 @@
+> Historical brand preview. Current project licensing is the [Abastevo Visible Attribution License](LICENSE); prior MIT wording below records the preview at its original revision.
+
 <!-- Approved composition preview; canonical README uses the same SVG. -->
 
 ![abastevo — original blue and green A logo and reference ABASTEVO lettering](docs/assets/brand/abastevo-readme-banner-v2.svg)

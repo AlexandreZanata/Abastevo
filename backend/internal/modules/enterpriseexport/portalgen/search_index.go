@@ -388,7 +388,7 @@ func buildSearchIndexes(snapshot enterpriseexport.Snapshot, observations []obser
 
 // GeneratorRevision names the generator's output contract; bump it when
 // pure Go changes alter the emitted files without touching templates/assets.
-const GeneratorRevision = "2026-11-03-search-station-address"
+const GeneratorRevision = "2026-11-05-partitioned-static-search"
 
 // GenerationKey identifies every non-data input of a generation: generator
 // revision, templates, embedded assets, the search script bytes and the

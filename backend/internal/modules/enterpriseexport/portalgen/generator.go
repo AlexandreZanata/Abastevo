@@ -270,16 +270,17 @@ type observation struct {
 }
 
 type generator struct {
-	opts      Options
-	outDir    string
-	tmpl      *template.Template
-	files     map[string]FileDigest
-	pages     int
-	bytes     int64
-	indexable bool
-	siteURL   string
-	cssURL    string
-	scriptURL string
+	opts             Options
+	outDir           string
+	tmpl             *template.Template
+	files            map[string]FileDigest
+	pages            int
+	bytes            int64
+	indexable        bool
+	siteURL          string
+	cssURL           string
+	scriptURL        string
+	searchPartsReady bool
 	// searchRelease/searchFuels/searchFiscal describe the v2 search index
 	// of a full build; empty in official-only builds.
 	searchRelease string
@@ -754,6 +755,25 @@ func (g *generator) writePage(rel, templateName string, data any) error {
 }
 
 func (g *generator) writeAsset(rel string, data []byte) error {
+	if strings.HasPrefix(rel, "dados/busca/") && strings.HasSuffix(rel, ".json") {
+		files, err := partitionSearchFile(rel, data)
+		if err != nil {
+			return err
+		}
+		if len(files) > 1 && g.opts.SearchScriptPath != "" && !g.searchPartsReady {
+			return fmt.Errorf("portalgen: multipart search requires matching search script")
+		}
+		for _, file := range files {
+			if err := g.writeAssetRaw(file.Path, file.Data); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return g.writeAssetRaw(rel, data)
+}
+
+func (g *generator) writeAssetRaw(rel string, data []byte) error {
 	if g.bytes+int64(len(data)) > g.opts.MaxBytes {
 		return &BudgetError{Msg: "portalgen: byte budget exceeded"}
 	}
@@ -780,6 +800,7 @@ func (g *generator) copySearchScript(path string) error {
 	if len(data) == 0 {
 		return fmt.Errorf("portalgen: empty search script")
 	}
+	g.searchPartsReady = bytes.Contains(data, []byte(SearchPartsSchema))
 	sum := sha256.Sum256(data)
 	name := "portal." + hex.EncodeToString(sum[:4]) + ".js"
 	if err := g.writeAsset("assets/"+name, data); err != nil {

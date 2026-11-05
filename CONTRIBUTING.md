@@ -140,6 +140,6 @@ When filing a bug or feature request, include:
 
 ## License and attribution
 
-By contributing, you agree that your contributions are licensed under the same [MIT License](LICENSE) as the project. When reusing or redistributing, **attribute the original source** — see [docs/license.md](docs/license.md).
+By contributing, you agree that your contributions are licensed under the same [Abastevo Visible Attribution License](LICENSE) as the project. When using, reusing or redistributing, **retain visible project and creator credit with the original links** — see [docs/license.md](docs/license.md).
 
 Fuel price data is published by [ANP](https://www.gov.br/anp); the app is not affiliated with ANP.

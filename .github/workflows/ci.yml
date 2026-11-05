@@ -33,5 +33,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - name: Test Android release versioning and publication guards
+        run: python3 -m unittest discover -s scripts/android -p 'test_*.py'
       - name: Run unit tests
         run: ./gradlew test --no-daemon --max-workers=1

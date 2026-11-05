@@ -110,7 +110,7 @@ tasks.register<Exec>("validateGate15Release") {
 
 tasks.register<Exec>("publishGithubRelease") {
     group = "release"
-    description = "Dry-run GitHub Release publish for v2.0.0 (pass --args='--publish' to release)"
+    description = "Show the current Android release target; use scripts/publish-github-release.sh --publish to retry"
     commandLine("bash", "scripts/publish-github-release.sh")
     isIgnoreExitValue = false
 }

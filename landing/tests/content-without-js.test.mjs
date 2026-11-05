@@ -21,11 +21,11 @@ test('essential content and links are present in static HTML without JS', () => 
     assert.match(indexHtml, /Encontre preços de combustíveis, veja dados da ANP e conte com a comunidade de motoristas\./);
 
     // 2. Status line
-    assert.match(indexHtml, /Em desenvolvimento · Android não publicado/);
+    assert.match(indexHtml, /Em desenvolvimento · Google Play não publicado/);
 
     // LH04 synchronizes truthful copy and branded two-line actions from 8099.
     assert.match(indexHtml, /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*target="_blank"[^>]*rel="noopener"/);
-    assert.match(indexHtml, /Projeto open source/);
+    assert.match(indexHtml, /Código com atribuição visível/);
     assert.match(indexHtml, /Em breve no Google Play/);
     assert.doesNotMatch(indexHtml, /melhor preço|pagando menos|tempo real|milhares de usuários/i);
 
@@ -47,7 +47,7 @@ test('essential content and links are present in static HTML without JS', () => 
     // 6. Non-affiliation and licensing
     assert.match(indexHtml, /Não afiliado à ANP/);
     assert.match(indexHtml, /sem afiliação à ANP/);
-    assert.match(indexHtml, /Código aberto sob licença MIT/);
+    assert.match(indexHtml, /Código sob licença de atribuição visível Abastevo/);
     assert.match(indexHtml, /gov\.br\/anp/);
     assert.match(indexHtml, /href="\/guias\/"[^>]*>Guias<\/a>/);
 

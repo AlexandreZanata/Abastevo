@@ -1,21 +1,66 @@
-MIT License
+Abastevo Visible Attribution License 1.0
+License identifier: LicenseRef-Abastevo-Visible-Attribution-1.0
 
-Copyright (c) 2026 Alexandre Zanata
+Copyright (c) 2026 Alexandre Zanata de Oliveira Vasconcelos
+GitHub account: AlexandreZanata
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Permission
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+You may use this software and the project materials covered by this license
+for any purpose, including commercial activities. You may copy, study,
+modify, combine, host, redistribute, sublicense and sell them, in source
+or executable form, subject to the attribution conditions below. There is
+no requirement to publish your source code or to pay a royalty.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. Attribution visible on screen
+
+The visible-attribution requirements in this section apply to third-party
+users and redistributors. They do not bind the original copyright holder's
+own distributions of Abastevo.
+
+When this software, a modified version, or a product incorporating a
+substantial part of it is presented to users on a screen, the normal
+interface must visibly credit the original system and creator and provide
+these references:
+
+  Original system: Abastevo
+  Creator credit: Alexandre Zanata (@AlexandreZanata)
+  Creator's GitHub: https://github.com/AlexandreZanata
+  Original repository:
+    https://github.com/AlexandreZanata/Abastevo
+
+The credit must remain readable during normal use, including use of the map
+and navigation. A footer or comparable persistent credit is acceptable. It
+must not be removed, made illegible, covered, or confined to source code,
+documentation, an optional credits screen or an acknowledgment shown only
+at first launch.
+The creator and repository references must be clearly labeled clickable
+links. If an interface cannot offer clickable links, display the full URLs
+as readable text with the credit instead. You may translate or restyle the
+credit while retaining the system's identity, the creator's identity and both
+original destinations.
+
+3. Copies and downstream use
+
+Keep this license and its copyright notice with redistributed copies and
+substantial portions of the covered material. You may choose additional
+terms for your own contributions, but must preserve the permissions and
+visible-attribution obligations for the material covered here. Passing a
+copy to another party does not remove that party's attribution obligations.
+Credit identifies the original author; it must not imply that the author
+endorses your changes or business.
+
+4. Third-party material
+
+This license applies only to material for which the project owner can grant
+these rights. Third-party code, fonts and other materials retain their own
+licenses and notices. Consult THIRD_PARTY_NOTICES.md and the notices shipped
+with those materials.
+
+5. Warranty and liability
+
+The material is supplied without promises about its quality, reliability,
+suitability for a particular use, or freedom from defects. You are responsible
+for your use and modifications. To the extent the law permits, the authors
+and contributors accept no liability for claims, losses or damages arising
+from the material or its use.

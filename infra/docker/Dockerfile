@@ -17,7 +17,7 @@ FROM ${RUST_IMAGE} AS rust-builder
 # Static musl build so the distroless/static runtime needs no glibc. The
 # musl toolchain is build-only; only the pinned native preparer binaries are
 # copied into the worker image. The locked crate dependency set is reused
-# unchanged (MIT crate licenses already reviewed for station-prep).
+# unchanged (dependency licenses already reviewed for station-prep).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends musl-tools \
  && rm -rf /var/lib/apt/lists/* \
@@ -25,6 +25,7 @@ RUN apt-get update \
 ENV CARGO_TARGET_DIR=/src/target
 WORKDIR /src/tools/station-prep
 COPY tools/station-prep/Cargo.toml tools/station-prep/Cargo.lock ./
+COPY LICENSE /src/LICENSE
 COPY tools/station-prep/src ./src
 COPY contracts/ev /src/contracts/ev
 COPY contracts/station-prep /src/contracts/station-prep
@@ -48,8 +49,11 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api \
 FROM ${RUNTIME_IMAGE} AS api
 ARG REVISION
 LABEL org.opencontainers.image.title="anpfuel-api" \
-      org.opencontainers.image.revision="${REVISION}"
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.licenses="LicenseRef-Abastevo-Visible-Attribution-1.0"
 COPY --from=builder --chown=65532:65532 /out/api /api
+COPY --chown=65532:65532 LICENSE THIRD_PARTY_NOTICES.md /usr/share/doc/abastevo/
+COPY --chown=65532:65532 LICENSES/MIT-original.txt /usr/share/doc/abastevo/MIT-original.txt
 USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["/api"]
@@ -57,7 +61,8 @@ ENTRYPOINT ["/api"]
 FROM ${RUNTIME_IMAGE} AS worker
 ARG REVISION
 LABEL org.opencontainers.image.title="anpfuel-worker" \
-      org.opencontainers.image.revision="${REVISION}"
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.licenses="LicenseRef-Abastevo-Visible-Attribution-1.0"
 COPY --from=builder --chown=65532:65532 /out/worker /worker
 COPY --from=builder --chown=65532:65532 /out/charging-catalog /charging-catalog
 # Trusted native quality preparer: immutable image path, mode 755, static
@@ -68,21 +73,29 @@ COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-mu
 COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-musl/release/prepare_enforcement /prepare_enforcement
 COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-musl/release/prepare_charging /prepare_charging
 COPY --from=rust-builder --chown=65532:65532 /src/target/x86_64-unknown-linux-musl/release/prepare_vehicle /prepare_vehicle
+COPY --chown=65532:65532 LICENSE THIRD_PARTY_NOTICES.md /usr/share/doc/abastevo/
+COPY --chown=65532:65532 LICENSES/MIT-original.txt /usr/share/doc/abastevo/MIT-original.txt
 USER 65532:65532
 ENTRYPOINT ["/worker"]
 
 FROM ${RUNTIME_IMAGE} AS migrate
 ARG REVISION
 LABEL org.opencontainers.image.title="anpfuel-migrate" \
-      org.opencontainers.image.revision="${REVISION}"
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.licenses="LicenseRef-Abastevo-Visible-Attribution-1.0"
 COPY --from=builder --chown=65532:65532 /out/migrate /migrate
+COPY --chown=65532:65532 LICENSE THIRD_PARTY_NOTICES.md /usr/share/doc/abastevo/
+COPY --chown=65532:65532 LICENSES/MIT-original.txt /usr/share/doc/abastevo/MIT-original.txt
 USER 65532:65532
 ENTRYPOINT ["/migrate"]
 
 FROM ${RUNTIME_IMAGE} AS station-load
 ARG REVISION
 LABEL org.opencontainers.image.title="anpfuel-station-load" \
-      org.opencontainers.image.revision="${REVISION}"
+      org.opencontainers.image.revision="${REVISION}" \
+      org.opencontainers.image.licenses="LicenseRef-Abastevo-Visible-Attribution-1.0"
 COPY --from=builder --chown=65532:65532 /out/station-load /station-load
+COPY --chown=65532:65532 LICENSE THIRD_PARTY_NOTICES.md /usr/share/doc/abastevo/
+COPY --chown=65532:65532 LICENSES/MIT-original.txt /usr/share/doc/abastevo/MIT-original.txt
 USER 65532:65532
 ENTRYPOINT ["/station-load"]
