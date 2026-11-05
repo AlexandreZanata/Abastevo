@@ -89,6 +89,7 @@ func (r *ExportReader) ExportPage(ctx context.Context, afterID string, limit int
 		out = append(out, application.ExportStation{
 			ID:                uuidString(row.ID),
 			DisplayName:       row.DisplayName,
+			LegalName:         row.LegalName.String,
 			CNPJ:              row.Cnpj,
 			Address:           exportAddress(row.Address),
 			MunicipalityCode:  row.MunicipalityCode.String,

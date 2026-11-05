@@ -245,6 +245,61 @@ const FINDER = {
 
 const wait = (ms = 30) => new Promise((resolve) => setTimeout(resolve, ms));
 
+test('fiscal state and city selectors narrow the entire edition and clear incompatible cities', async () => {
+  const { setupPortalSearch } = await searchModule();
+  const { doc, el } = fakePage('[data-portal-fiscal]', {
+    ...FINDER, '[data-fiscal-state]':'select', '[data-fiscal-city]':'select',
+    '[data-fiscal-status]':'p', '[data-fiscal-results]':'ul', '[data-fiscal-clear]':'button',
+  });
+  const records = [
+    {r:'1'.repeat(24),c:'04218406000104',st:'Pago',n:'Posto Alfa',ln:'Comercial Exemplo LTDA',m:'5107925',mn:'Sorriso',u:'MT'},
+    {r:'2'.repeat(24),c:'11222333000181',st:'Pago',n:'Posto Beta',m:'3550308',mn:'São Paulo',u:'SP'},
+    {r:'3'.repeat(24),c:'11444777000161',st:'Pago'},
+  ];
+  setupPortalSearch({document:doc,search:'',fetch:jsonFetch({
+    '/dados/busca/rel/indice.json':INDEX,
+    '/dados/busca/rel/fiscalizacao.json':{schema:'abastevo-search-fiscal-v1',release:'rel',count:3,records},
+  },[])});
+  await wait();
+  el['[data-fiscal-state]'].value='MT';el['[data-fiscal-state]'].dispatch('change');await wait();
+  el['[data-fiscal-city]'].value='5107925';el['[data-fiscal-city]'].dispatch('change');await wait();
+  assert.equal(el['[data-fiscal-results]'].children.length,1);
+  assert.match(el['[data-fiscal-status]'].textContent,/1 registro.*Sorriso/);
+  el['[data-finder-input]'].value='comercial';el['[data-finder-input]'].dispatch('keydown',{key:'Enter'});await wait();
+  assert.match(el['[data-fiscal-status]'].textContent,/1 registro/);
+  el['[data-fiscal-state]'].value='SP';el['[data-fiscal-state]'].dispatch('change');await wait();
+  assert.equal(el['[data-fiscal-city]'].value,'');
+  assert.match(el['[data-fiscal-status]'].textContent,/0 registros/);
+  el['[data-fiscal-clear]'].dispatch('click');await wait();
+  assert.equal(el['[data-fiscal-state]'].value,'');
+  assert.equal(el['[data-finder-input]'].value,'');
+  assert.equal(el['[data-fiscal-results]'].children.length,3);
+});
+
+test('late fiscal response keeps the latest state and static URLs', async () => {
+  const {setupPortalSearch}=await searchModule();
+  const {doc,el}=fakePage('[data-portal-fiscal]',{...FINDER,'[data-fiscal-state]':'select','[data-fiscal-city]':'select','[data-fiscal-status]':'p','[data-fiscal-results]':'ul'});
+  let release;
+  const pending=new Promise(resolve=>{release=resolve;});
+  const urls=[];
+  setupPortalSearch({document:doc,search:'',fetch:async url=>{
+    urls.push(String(url));
+    if(String(url).endsWith('indice.json'))return {ok:true,json:async()=>INDEX};
+    return {ok:true,json:async()=>pending};
+  }});
+  await wait();
+  el['[data-fiscal-state]'].value='MT';el['[data-fiscal-state]'].dispatch('change');
+  el['[data-fiscal-state]'].value='SP';el['[data-fiscal-state]'].dispatch('change');
+  release({schema:'abastevo-search-fiscal-v1',release:'rel',count:2,records:[
+    {r:'1'.repeat(24),c:'04218406000104',st:'Pago',n:'Posto MT',u:'MT'},
+    {r:'2'.repeat(24),c:'11222333000181',st:'Pago',n:'Posto SP',u:'SP'},
+  ]});
+  await wait();
+  assert.match(el['[data-fiscal-status]'].textContent,/1 registro.*São Paulo/);
+  assert.equal(el['[data-fiscal-results]'].children[0].children[0].textContent,'Posto SP');
+  assert.ok(urls.every(url=>/^\/dados\/busca\/rel\/(indice|fiscalizacao)\.json$/.test(url)));
+});
+
 function jsonFetch(map, urls) {
   return async (url) => {
     urls.push(String(url));

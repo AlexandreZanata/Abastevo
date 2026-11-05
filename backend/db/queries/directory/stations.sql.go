@@ -179,7 +179,7 @@ const exportFingerprint = `-- name: ExportFingerprint :one
 SELECT (SELECT count(*) FROM directory_stations)::bigint AS stations,
     COALESCE((
         SELECT md5(string_agg(
-            id::text || ':' || display_name || ':' || address::text || ':' ||
+            id::text || ':' || display_name || ':' || COALESCE(legal_name, '') || ':' || address::text || ':' ||
             COALESCE(municipality_code, '') || ':' || COALESCE(state, '') || ':' ||
             status || ':' || COALESCE(current_quality, '') || ':' ||
             COALESCE(current_revision_id::text, ''), ',' ORDER BY id::text))
@@ -209,7 +209,7 @@ func (q *Queries) ExportFingerprint(ctx context.Context) (ExportFingerprintRow, 
 }
 
 const exportStations = `-- name: ExportStations :many
-SELECT s.id, s.display_name, s.address, s.municipality_code, s.state,
+SELECT s.id, s.display_name, s.legal_name, s.address, s.municipality_code, s.state,
     s.status, ST_AsText(s.current_point) AS current_point_wkt,
     s.current_quality, s.current_revision_id,
     COALESCE(i.normalized_value, '') AS cnpj
@@ -233,6 +233,7 @@ type ExportStationsParams struct {
 type ExportStationsRow struct {
 	ID                pgtype.UUID `json:"id"`
 	DisplayName       string      `json:"display_name"`
+	LegalName         pgtype.Text `json:"legal_name"`
 	Address           []byte      `json:"address"`
 	MunicipalityCode  pgtype.Text `json:"municipality_code"`
 	State             pgtype.Text `json:"state"`
@@ -257,6 +258,7 @@ func (q *Queries) ExportStations(ctx context.Context, arg ExportStationsParams) 
 		if err := rows.Scan(
 			&i.ID,
 			&i.DisplayName,
+			&i.LegalName,
 			&i.Address,
 			&i.MunicipalityCode,
 			&i.State,

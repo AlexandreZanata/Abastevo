@@ -135,6 +135,7 @@ type summaryRow struct {
 type rankingRow struct {
 	Position  int
 	Name      string
+	LegalName string
 	StationID string
 	CNPJ      string
 	Place     string
@@ -211,6 +212,7 @@ type municipalityPage struct {
 type stationView struct {
 	ID               string
 	Name             string
+	LegalName        string
 	CNPJ             string
 	Address          string
 	Status           string
@@ -1174,7 +1176,7 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 			place = ufName(station.State)
 		}
 		view := stationView{
-			ID: station.StationID, Name: station.DisplayName, CNPJ: cnpjBR(station.CNPJ),
+			ID: station.StationID, Name: station.DisplayName, LegalName: stationLegalName(station), CNPJ: cnpjBR(station.CNPJ),
 			Address: addressLine(station.Address), Status: statusLabel(station.OperationStatus),
 			Location: locationLabel(station.LocationQuality), Place: place,
 		}
@@ -1277,7 +1279,7 @@ func rankingViews(rankings []analytics.Ranking, level, code string, stations map
 				return nil, fmt.Errorf("portalgen: ranking references unknown station")
 			}
 			rows = append(rows, rankingRow{
-				Position: entry.Position, Name: station.DisplayName, StationID: entry.StationID,
+				Position: entry.Position, Name: station.DisplayName, LegalName: stationLegalName(station), StationID: entry.StationID,
 				CNPJ: cnpjBR(station.CNPJ), Place: stationPlace(station),
 				Status: statusLabel(entry.OperationStatus), Amount: entry.AmountMilliBRL,
 				Collected: dateBR(entry.CollectedOn), TieCount: entry.TieCount,
@@ -1336,7 +1338,7 @@ func observationRows(items []observation, limit int, ranked bool) []rankingRow {
 			position = i + 1
 		}
 		rows = append(rows, rankingRow{
-			Position: position, Name: item.station.DisplayName, StationID: item.station.StationID,
+			Position: position, Name: item.station.DisplayName, LegalName: stationLegalName(item.station), StationID: item.station.StationID,
 			CNPJ: cnpjBR(item.station.CNPJ), Place: stationPlace(item.station),
 			Status: statusLabel(item.station.OperationStatus), Amount: item.price.AmountMilliBRL,
 			Collected: dateBR(item.price.CollectedOn), TieCount: counts[item.price.AmountMilliBRL],

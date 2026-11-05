@@ -83,6 +83,7 @@ type searchPriceShard struct {
 
 type searchPriceRow struct {
 	ID               string `json:"i"`
+	LegalName        string `json:"ln,omitempty"`
 	Name             string `json:"n"`
 	CNPJ             string `json:"c,omitempty"`
 	Municipality     string `json:"m,omitempty"`
@@ -107,6 +108,7 @@ type searchFiscalRow struct {
 	Date             string `json:"d,omitempty"`
 	StationID        string `json:"i,omitempty"`
 	StationName      string `json:"n,omitempty"`
+	LegalName        string `json:"ln,omitempty"`
 	Municipality     string `json:"m,omitempty"`
 	MunicipalityName string `json:"mn,omitempty"`
 	UF               string `json:"u,omitempty"`
@@ -191,7 +193,7 @@ func prefixKeys(station enterpriseexport.Station) []string {
 		stop[word] = true
 	}
 	keys := map[string]bool{}
-	for _, token := range searchTokens(normalizeSearchName(station.DisplayName)) {
+	for _, token := range searchTokens(normalizeSearchName(station.DisplayName + " " + stationLegalName(station))) {
 		if len(token) < searchPrefixLength || stop[token] || strings.Trim(token, "0123456789") == "" {
 			continue
 		}
@@ -210,8 +212,8 @@ func prefixKeys(station enterpriseexport.Station) []string {
 
 func searchRow(station enterpriseexport.Station, prices map[string]int64, withPrices bool) searchStation {
 	row := searchStation{
-		ID: station.StationID, Name: station.DisplayName,
-		SearchName:       normalizeSearchName(station.DisplayName),
+		ID: station.StationID, Name: station.DisplayName, LegalName: stationLegalName(station),
+		SearchName:       normalizeSearchName(station.DisplayName + " " + stationLegalName(station)),
 		AddressLine:      addressLine(station.Address),
 		CNPJ:             normalizeCNPJValue(station.CNPJ),
 		Municipality:     station.MunicipalityCode,
@@ -324,7 +326,7 @@ func buildSearchIndexes(snapshot enterpriseexport.Snapshot, observations []obser
 	for _, item := range observations {
 		station := item.station
 		byFuel[item.price.FuelProduct] = append(byFuel[item.price.FuelProduct], searchPriceRow{
-			ID: station.StationID, Name: station.DisplayName, CNPJ: normalizeCNPJValue(station.CNPJ),
+			ID: station.StationID, Name: station.DisplayName, LegalName: stationLegalName(station), CNPJ: normalizeCNPJValue(station.CNPJ),
 			Municipality: station.MunicipalityCode, UF: station.State,
 			MunicipalityName: municipalityLabel(station.MunicipalityCode, station.Address["municipio"]),
 			Milli:            item.price.AmountMilliBRL, CollectedOn: item.price.CollectedOn,
@@ -442,6 +444,7 @@ func fiscalSearchRows(official *officialDataset, stations map[string]enterprisee
 			if station, ok := stations[record.StationID]; ok {
 				row.StationID = station.StationID
 				row.StationName = station.DisplayName
+				row.LegalName = stationLegalName(station)
 				row.Municipality = station.MunicipalityCode
 				row.MunicipalityName = municipalityLabel(station.MunicipalityCode, station.Address["municipio"])
 				row.UF = station.State

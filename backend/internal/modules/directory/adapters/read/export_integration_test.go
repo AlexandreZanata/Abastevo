@@ -61,3 +61,28 @@ func TestExportPageStatusIdentityAndCoordinates(t *testing.T) {
 		t.Errorf("suspended station = %+v", suspended)
 	}
 }
+
+func TestExportLegalNameOnlyChangeInvalidatesStaticPublication(t *testing.T) {
+	pool := freshPool(t)
+	ctx := context.Background()
+	station, err := parent.NewRepository(pool).ResolveCNPJ(ctx, "04218406000104", "[P25-TEST] Trade", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := NewExportReader(pool)
+	before, err := reader.Fingerprint(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE directory_stations SET legal_name='[P25-TEST] Legal LTDA' WHERE id=$1", station.ID); err != nil {
+		t.Fatal(err)
+	}
+	after, err := reader.Fingerprint(ctx)
+	if err != nil || before.Hash == after.Hash || before.Stations != after.Stations {
+		t.Fatal("name-only change was invisible", err)
+	}
+	rows, _, err := reader.ExportPage(ctx, "", 10)
+	if err != nil || len(rows) != 1 || rows[0].DisplayName != "[P25-TEST] Trade" || rows[0].LegalName != "[P25-TEST] Legal LTDA" {
+		t.Fatal(rows, err)
+	}
+}
