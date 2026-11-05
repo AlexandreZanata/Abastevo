@@ -8,6 +8,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ForumReport struct {
+	ID               pgtype.UUID        `json:"id"`
+	AccountID        pgtype.UUID        `json:"account_id"`
+	TargetType       string             `json:"target_type"`
+	TargetID         pgtype.UUID        `json:"target_id"`
+	Reason           string             `json:"reason"`
+	Detail           string             `json:"detail"`
+	Status           string             `json:"status"`
+	ModerationCaseID pgtype.UUID        `json:"moderation_case_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
 type ModerationAction struct {
 	ID            pgtype.UUID        `json:"id"`
 	CaseID        pgtype.UUID        `json:"case_id"`

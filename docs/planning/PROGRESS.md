@@ -1,5 +1,29 @@
 # Current execution state
 
+- FOR-18 Forum reports, review queue and action integration, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `c00d96a3`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  advances Phase 3 (Safe discussion on published posts):
+  append-only migration 000160 adding `FORUM_POST` and `FORUM_COMMENT` to moderation target checks
+  and creating `forum_reports` table with `UNIQUE(account_id, target_type, target_id)`;
+  domain integration adding report reasons (`SPAM`, `OFFENSIVE`, `MISINFORMATION`, `COMMERCIAL`, `LEGAL_NOTICE`, `OTHER`),
+  `ReportReceipt`, and verdict codes in `forum/domain`;
+  moderation integration updating `TargetForumPost` / `TargetForumComment` in `moderation/domain` and dispatching
+  `InvalidateForumTarget` to `ActPorts` for operator `INVALIDATE` actions;
+  transactional reports store in `reports_store.go` enforcing 10 reports/day quota per account (`ErrReportQuotaExceeded` -> 429 with `Retry-After: 86400`),
+  self-report prevention (`ErrSelfReportForbidden` -> 400), target existence/publication guard (`ErrReportTargetMissing` -> 404),
+  and convergent case association with `moderation_cases`;
+  operator invalidation setting visibility to `HIDDEN` and appending an audited `forum_changes` record;
+  author removal precedence invariant (removed comments remain `REMOVED` + `HIDDEN` and cannot be resurrected to `VISIBLE`);
+  parent suppression in replies query (hidden parent returns 0 replies and rejects new child comments with 404);
+  endpoints `POST /v1/forum/posts/{post_id}/report` and `POST /v1/forum/comments/{comment_id}/report` in `DiscussionHandler` and OpenAPI spec;
+  golden vectors in `contracts/testdata/api/`;
+  unit tests in `for18_reports_test.go` and real PostgreSQL integration suite in `for18_reports_integration_test.go`
+  verifying all 10 gates (duplicate report race and convergence, report does not hide, target missing 404, self-report forbidden 400,
+  bounded quota 10/day, operator invalidate hides target and audit, audit failure rollback, admin denial,
+  hide vs remove and stale restore, safe reporter and author receipts) with `-race` and `-tags=integration`.
+  Tested revision: source in this commit. Next microtask: FOR-19 (Android discussion and social checkpoint).
+
 - FOR-17 Forum discussion HTTP endpoints, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `732fadfa`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)

@@ -46,6 +46,10 @@ var (
 	ErrCommentAuthorMismatch    = errors.New("forum: comment author mismatch")
 	ErrCommentAlreadyRemoved    = errors.New("forum: comment is already removed")
 	ErrTargetInvalid            = errors.New("forum: invalid account id or target")
+	ErrReportInvalid            = errors.New("forum: invalid report")
+	ErrReportQuotaExceeded      = errors.New("forum: report quota exceeded")
+	ErrSelfReportForbidden      = errors.New("forum: cannot report own content")
+	ErrReportTargetMissing      = errors.New("forum: reported target not found")
 )
 
 const (
@@ -140,6 +144,14 @@ func VerdictCode(err error) string {
 		return "comment-author-mismatch"
 	case errors.Is(err, ErrCommentAlreadyRemoved):
 		return "comment-already-removed"
+	case errors.Is(err, ErrReportInvalid):
+		return "report-invalid"
+	case errors.Is(err, ErrReportQuotaExceeded):
+		return "report-quota-exceeded"
+	case errors.Is(err, ErrSelfReportForbidden):
+		return "self-report-forbidden"
+	case errors.Is(err, ErrReportTargetMissing):
+		return "report-target-missing"
 	default:
 		return "unknown-error"
 	}

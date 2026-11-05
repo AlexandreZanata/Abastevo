@@ -28,9 +28,10 @@ type QuotaChecker interface {
 
 // Store provides PostgreSQL persistence for Forum Abastevo.
 type Store struct {
-	pool    *pgxpool.Pool
-	queries *forumsql.Queries
-	limiter QuotaChecker
+	pool       *pgxpool.Pool
+	queries    *forumsql.Queries
+	limiter    QuotaChecker
+	CaseOpener application.ModerationCaseOpener
 }
 
 // SetQuotaChecker configures an optional transactional quota checker for rate limiting.
@@ -954,7 +955,12 @@ func (s *Store) RecordForumChangeTx(ctx context.Context, tx pgx.Tx, rec domain.C
 		priorState = *rec.PriorState
 	}
 
-	return s.queries.WithTx(tx).RecordForumChange(ctx, forumsql.RecordForumChangeParams{
+	q := s.queries
+	if tx != nil {
+		q = s.queries.WithTx(tx)
+	}
+
+	return q.RecordForumChange(ctx, forumsql.RecordForumChangeParams{
 		ID:             newUUIDBytes(),
 		TargetType:     rec.TargetType,
 		TargetID:       targetUUID,

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	communityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters"
+	forumadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters"
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	moderationapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/application"
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
@@ -120,6 +121,7 @@ func moderationAct(a actArgs, getenv func(string) string) error {
 		NewID:                 newUUID,
 		Store:                 store,
 		InvalidateObservation: communityadapters.NewStore(raw).InvalidateTx,
+		InvalidateForumTarget: forumadapters.NewStore(raw).InvalidateForumTargetTx,
 		BlockContributor: func(ctx context.Context, tx pgx.Tx, contributorRef, caseID, reason string, at time.Time) error {
 			id, err := newUUID()
 			if err != nil {

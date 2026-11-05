@@ -59,6 +59,30 @@ type OwnerReadRequest struct {
 	PostID    *string `json:"post_id,omitempty"`
 }
 
+// ReportRequest is the wire request body to report a post or comment for moderation.
+type ReportRequest struct {
+	SessionEnvelope
+	Reason string `json:"reason"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// ReportReceiptDTO represents the receipt returned for a filed moderation report.
+type ReportReceiptDTO struct {
+	ReportID   string `json:"report_id"`
+	CaseID     string `json:"case_id"`
+	TargetType string `json:"target_type"`
+	TargetID   string `json:"target_id"`
+	Reason     string `json:"reason"`
+	Status     string `json:"status"`
+	CreatedAt  string `json:"created_at"`
+	Replayed   bool   `json:"replayed"`
+}
+
+// ReportResponseDTO wraps a report receipt response.
+type ReportResponseDTO struct {
+	Receipt ReportReceiptDTO `json:"receipt"`
+}
+
 // CommentReceiptDTO represents the private owner projection returned upon
 // command execution, idempotent replay, or private owner read.
 type CommentReceiptDTO struct {
@@ -193,6 +217,7 @@ func HashLogicalIntent(b []byte) string {
 // DiscussionHandler implements signed owner admission and discussion endpoints.
 type DiscussionHandler struct {
 	Comments    application.CommentStore
+	Reports     application.ReportStore
 	Sessions    func(ctx context.Context, familyID, accessToken string) (accountID string, err error)
 	SignedOwner func(r *http.Request, accountID string) (contributorID string, keyID string, err error)
 	Guard       func(ctx context.Context, tx pgx.Tx, accountID, familyID, accessToken, contributorID, keyID string) error
@@ -231,9 +256,11 @@ func (h *DiscussionHandler) writeBadRequest(w http.ResponseWriter, r *http.Reque
 func (h *DiscussionHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/forum/posts/{post_id}/comments", h.CreateComment)
 	r.Get("/v1/forum/posts/{post_id}/comments", h.ListComments)
+	r.Post("/v1/forum/posts/{post_id}/report", h.ReportPost)
 	r.Post("/v1/forum/comments/{comment_id}/edit", h.EditComment)
 	r.Post("/v1/forum/comments/{comment_id}/remove", h.RemoveComment)
 	r.Get("/v1/forum/comments/{comment_id}/replies", h.ListReplies)
+	r.Post("/v1/forum/comments/{comment_id}/report", h.ReportComment)
 	r.Post("/v1/forum/owner/read", h.OwnerRead)
 }
 
@@ -346,6 +373,19 @@ func (h *DiscussionHandler) writeError(w http.ResponseWriter, r *http.Request, e
 		code = "forum.budget-exceeded"
 		msg = "live comment budget exceeded across forum"
 		w.Header().Set("Retry-After", "3600")
+	case errors.Is(err, domain.ErrReportQuotaExceeded):
+		status = http.StatusTooManyRequests
+		code = "forum.rate-limited"
+		msg = "report quota exceeded (maximum 10 reports per day)"
+		w.Header().Set("Retry-After", "86400")
+	case errors.Is(err, domain.ErrSelfReportForbidden):
+		status = http.StatusBadRequest
+		code = "forum.bad-request"
+		msg = "cannot report own content"
+	case errors.Is(err, domain.ErrReportInvalid):
+		status = http.StatusBadRequest
+		code = "forum.bad-request"
+		msg = "invalid report reason or detail"
 	case errors.Is(err, domain.ErrCommentBodyEmpty),
 		errors.Is(err, domain.ErrCommentBodyTooLong),
 		errors.Is(err, domain.ErrInvalidCommentDepth),
@@ -356,6 +396,8 @@ func (h *DiscussionHandler) writeError(w http.ResponseWriter, r *http.Request, e
 	case errors.Is(err, domain.ErrPostNotFound),
 		errors.Is(err, domain.ErrCommentNotFound),
 		errors.Is(err, domain.ErrParentCommentNotFound),
+		errors.Is(err, domain.ErrParentCommentNotVisible),
+		errors.Is(err, domain.ErrReportTargetMissing),
 		errors.Is(err, domain.ErrCommentAuthorMismatch):
 		// Per B-BR-FOR-04: IDOR protection. Author mismatch or missing resource returns 404.
 		status = http.StatusNotFound
@@ -915,4 +957,144 @@ func (h *DiscussionHandler) ListReplies(w http.ResponseWriter, r *http.Request) 
 	bodyBytes, _ := json.Marshal(resp)
 	w.Header().Set("Cache-Control", "no-store")
 	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", bodyBytes)
+}
+
+// ReportPost handles reporting a published post for moderation review.
+func (h *DiscussionHandler) ReportPost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	if !h.writesAllowed() {
+		httpapi.WriteError(w, r, http.StatusServiceUnavailable, "forum.service-unavailable", "forum writes are temporarily disabled", nil)
+		return
+	}
+	postID := strings.TrimSpace(chi.URLParam(r, "post_id"))
+	if !isUUID(postID) {
+		h.writeBadRequest(w, r, "invalid post id")
+		return
+	}
+
+	var req ReportRequest
+	if err := readJSONBody(r, &req); err != nil {
+		if errors.Is(err, httpapi.ErrBodyTooLarge) {
+			h.writeBadRequest(w, r, "request body exceeds 16KiB limit")
+			return
+		}
+		h.writeBadRequest(w, r, "invalid request body")
+		return
+	}
+
+	principal, status, code, msg := h.authenticatePrincipal(r, req.SessionEnvelope)
+	if status != 0 {
+		httpapi.WriteError(w, r, status, code, msg, nil)
+		return
+	}
+
+	cleanReason := strings.TrimSpace(req.Reason)
+	if cleanReason == "" || len([]rune(cleanReason)) > 200 || !domain.ValidReportReason(cleanReason) {
+		h.writeBadRequest(w, r, "valid report reason required (SPAM, HARASSMENT, DEFAMATION, OFF_TOPIC, ILLEGAL, OTHER)")
+		return
+	}
+	if len([]rune(req.Detail)) > 500 {
+		h.writeBadRequest(w, r, "report detail exceeds 500 characters")
+		return
+	}
+
+	guard := h.makeTxGuard(principal)
+	receipt, err := h.Reports.Report(r.Context(), application.ReportCommand{
+		ReporterAccountID: principal.AccountID,
+		TargetType:        "FORUM_POST",
+		TargetID:          postID,
+		Reason:            cleanReason,
+		Detail:            req.Detail,
+		Guard:             guard,
+	})
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	resp := ReportResponseDTO{
+		Receipt: ReportReceiptDTO{
+			ReportID:   receipt.ID,
+			CaseID:     receipt.ModerationCaseID,
+			TargetType: receipt.TargetType,
+			TargetID:   receipt.TargetID,
+			Reason:     receipt.Reason,
+			Status:     receipt.Status,
+			CreatedAt:  receipt.CreatedAt.UTC().Format(time.RFC3339),
+			Replayed:   receipt.Replayed,
+		},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// ReportComment handles reporting a comment for moderation review.
+func (h *DiscussionHandler) ReportComment(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	if !h.writesAllowed() {
+		httpapi.WriteError(w, r, http.StatusServiceUnavailable, "forum.service-unavailable", "forum writes are temporarily disabled", nil)
+		return
+	}
+	commentID := strings.TrimSpace(chi.URLParam(r, "comment_id"))
+	if !isUUID(commentID) {
+		h.writeBadRequest(w, r, "invalid comment id")
+		return
+	}
+
+	var req ReportRequest
+	if err := readJSONBody(r, &req); err != nil {
+		if errors.Is(err, httpapi.ErrBodyTooLarge) {
+			h.writeBadRequest(w, r, "request body exceeds 16KiB limit")
+			return
+		}
+		h.writeBadRequest(w, r, "invalid request body")
+		return
+	}
+
+	principal, status, code, msg := h.authenticatePrincipal(r, req.SessionEnvelope)
+	if status != 0 {
+		httpapi.WriteError(w, r, status, code, msg, nil)
+		return
+	}
+
+	cleanReason := strings.TrimSpace(req.Reason)
+	if cleanReason == "" || len([]rune(cleanReason)) > 200 || !domain.ValidReportReason(cleanReason) {
+		h.writeBadRequest(w, r, "valid report reason required (SPAM, HARASSMENT, DEFAMATION, OFF_TOPIC, ILLEGAL, OTHER)")
+		return
+	}
+	if len([]rune(req.Detail)) > 500 {
+		h.writeBadRequest(w, r, "report detail exceeds 500 characters")
+		return
+	}
+
+	guard := h.makeTxGuard(principal)
+	receipt, err := h.Reports.Report(r.Context(), application.ReportCommand{
+		ReporterAccountID: principal.AccountID,
+		TargetType:        "FORUM_COMMENT",
+		TargetID:          commentID,
+		Reason:            cleanReason,
+		Detail:            req.Detail,
+		Guard:             guard,
+	})
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	resp := ReportResponseDTO{
+		Receipt: ReportReceiptDTO{
+			ReportID:   receipt.ID,
+			CaseID:     receipt.ModerationCaseID,
+			TargetType: receipt.TargetType,
+			TargetID:   receipt.TargetID,
+			Reason:     receipt.Reason,
+			Status:     receipt.Status,
+			CreatedAt:  receipt.CreatedAt.UTC().Format(time.RFC3339),
+			Replayed:   receipt.Replayed,
+		},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(resp)
 }

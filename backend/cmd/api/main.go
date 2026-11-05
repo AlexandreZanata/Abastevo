@@ -806,6 +806,26 @@ func run() error {
 	}.RegisterRoutes(router)
 
 	forumStore := forumadapters.NewStore(pool.Underlying())
+	forumStore.CaseOpener = func(ctx context.Context, tx pgx.Tx, targetType, targetID, reason, detail string) (string, bool, error) {
+		caseID, err := newUUID()
+		if err != nil {
+			return "", false, err
+		}
+		caseObj, _, err := moderationdomain.NewCase(moderationdomain.CaseParams{
+			ID:            caseID,
+			TargetType:    targetType,
+			TargetID:      targetID,
+			Priority:      moderationdomain.PriorityP2,
+			Reason:        reason,
+			Detail:        detail,
+			OpenedAt:      time.Now(),
+			PolicyVersion: moderationdomain.PolicyV1,
+		})
+		if err != nil {
+			return "", false, err
+		}
+		return moderationStore.OpenCaseTx(ctx, tx, caseObj)
+	}
 	forumCfg := forumdomain.DefaultConfig()
 	forumCfg.ReadsEnabled = cfg.ForumEnabled
 	forumCfg.WritesEnabled = cfg.ForumEnabled
@@ -816,6 +836,7 @@ func run() error {
 
 	forumDiscussionHandler := &forumhttp.DiscussionHandler{
 		Comments: forumStore,
+		Reports:  forumStore,
 		Runner:   identityRunner,
 		Clock:    time.Now,
 		Config:   &forumCfg,

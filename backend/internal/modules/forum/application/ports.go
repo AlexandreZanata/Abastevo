@@ -195,3 +195,21 @@ type CommentStore interface {
 	ListCommentsByAccount(ctx context.Context, accountID string) ([]domain.Comment, error)
 	EraseAccountBatch(ctx context.Context, accountID string, limit int) (done bool, erasedCount int, err error)
 }
+
+// ReportCommand represents parameters to report a forum post or comment.
+type ReportCommand struct {
+	ReporterAccountID string
+	TargetType        string // "FORUM_POST" or "FORUM_COMMENT"
+	TargetID          string
+	Reason            string
+	Detail            string
+	Guard             func(context.Context, pgx.Tx) error
+}
+
+// ReportStore defines persistence operations for forum reports and moderation triage.
+type ReportStore interface {
+	Report(ctx context.Context, cmd ReportCommand) (*domain.ReportReceipt, error)
+}
+
+// ModerationCaseOpener opens or converges a moderation case in an authorized transaction.
+type ModerationCaseOpener func(ctx context.Context, tx pgx.Tx, targetType, targetID, reason, detail string) (caseID string, replayed bool, err error)

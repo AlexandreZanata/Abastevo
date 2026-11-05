@@ -556,3 +556,40 @@ func ValidateCommentBody(body string) (string, error) {
 	}
 	return trimmed, nil
 }
+
+// ReportReason names a standard report category.
+type ReportReason string
+
+const (
+	ReportReasonSpam       ReportReason = "SPAM"
+	ReportReasonHarassment ReportReason = "HARASSMENT"
+	ReportReasonDefamation ReportReason = "DEFAMATION"
+	ReportReasonOffTopic   ReportReason = "OFF_TOPIC"
+	ReportReasonIllegal    ReportReason = "ILLEGAL"
+	ReportReasonOther      ReportReason = "OTHER"
+)
+
+// ValidReportReason checks whether reason is in the standard report categories.
+func ValidReportReason(reason string) bool {
+	switch ReportReason(strings.TrimSpace(reason)) {
+	case ReportReasonSpam, ReportReasonHarassment, ReportReasonDefamation,
+		ReportReasonOffTopic, ReportReasonIllegal, ReportReasonOther:
+		return true
+	default:
+		return false
+	}
+}
+
+// ReportReceipt represents an immutable acknowledgment of a filed report.
+type ReportReceipt struct {
+	ID               string    `json:"id"`
+	AccountID        string    `json:"account_id"`
+	TargetType       string    `json:"target_type"`
+	TargetID         string    `json:"target_id"`
+	Reason           string    `json:"reason"`
+	Detail           string    `json:"detail"`
+	Status           string    `json:"status"`
+	ModerationCaseID string    `json:"moderation_case_id"`
+	CreatedAt        time.Time `json:"created_at"`
+	Replayed         bool      `json:"replayed"`
+}

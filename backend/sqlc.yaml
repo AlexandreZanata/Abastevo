@@ -175,6 +175,7 @@ sql:
       - db/migrations/000016_moderation.sql
       - db/migrations/000017_moderation_actions.sql
       - db/migrations/000026_moderation_comment_target.sql
+      - db/migrations/000160_forum_moderation_targets.sql
     gen:
       go:
         package: moderation
@@ -444,10 +445,12 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
+      - db/migrations/000016_moderation.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000157_forum_editorial_foundation.sql
       - db/migrations/000158_forum_source_runs.sql
       - db/migrations/000159_forum_comments.sql
+      - db/migrations/000160_forum_moderation_targets.sql
     gen:
       go:
         package: forum

@@ -154,6 +154,18 @@ type ForumPost struct {
 	NextCommentSequence    int64              `json:"next_comment_sequence"`
 }
 
+type ForumReport struct {
+	ID               pgtype.UUID        `json:"id"`
+	AccountID        pgtype.UUID        `json:"account_id"`
+	TargetType       string             `json:"target_type"`
+	TargetID         pgtype.UUID        `json:"target_id"`
+	Reason           string             `json:"reason"`
+	Detail           string             `json:"detail"`
+	Status           string             `json:"status"`
+	ModerationCaseID pgtype.UUID        `json:"moderation_case_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
 type ForumSource struct {
 	ID                 pgtype.UUID        `json:"id"`
 	Code               string             `json:"code"`
@@ -201,4 +213,17 @@ type ForumSourceRun struct {
 	ErrorMessage    string             `json:"error_message"`
 	StartedAt       pgtype.Timestamptz `json:"started_at"`
 	CompletedAt     pgtype.Timestamptz `json:"completed_at"`
+}
+
+type ModerationCase struct {
+	ID            pgtype.UUID        `json:"id"`
+	TargetType    string             `json:"target_type"`
+	TargetID      string             `json:"target_id"`
+	Status        string             `json:"status"`
+	Priority      string             `json:"priority"`
+	Reason        string             `json:"reason"`
+	Detail        string             `json:"detail"`
+	EvidenceID    pgtype.UUID        `json:"evidence_id"`
+	OpenedAt      pgtype.Timestamptz `json:"opened_at"`
+	PolicyVersion string             `json:"policy_version"`
 }

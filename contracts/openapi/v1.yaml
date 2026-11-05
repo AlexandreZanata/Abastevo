@@ -7456,6 +7456,49 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/forum/posts/{post_id}/report:
+    post:
+      summary: Report a published forum post for moderation review.
+      description: Files a moderation case (FORUM_POST target) and records a report receipt. Reports never hide content automatically, carry no reporter identity into the case, and converge on already-open targets. Volume is quota bounded (10/day).
+      operationId: reportForumPost
+      tags: [forum]
+      security: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the post to report.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumReportRequest'
+      responses:
+        '200':
+          description: Report receipt returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/forum/comments/{comment_id}/edit:
     post:
       summary: Edit an existing comment.
@@ -7586,6 +7629,49 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/comments/{comment_id}/report:
+    post:
+      summary: Report a forum comment for moderation review.
+      description: Files a moderation case (FORUM_COMMENT target) and records a report receipt. Reports never hide content automatically, carry no reporter identity into the case, and converge on already-open targets. Volume is quota bounded (10/day).
+      operationId: reportForumComment
+      tags: [forum]
+      security: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the comment to report.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumReportRequest'
+      responses:
+        '200':
+          description: Report receipt returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
   /v1/forum/owner/read:
@@ -13353,6 +13439,75 @@ components:
         next_cursor:
           type: [string, 'null']
           description: Opaque pagination cursor for fetching the next page.
+    ForumReportRequest:
+      type: object
+      description: Signed owner request payload to report a post or comment.
+      additionalProperties: false
+      required: [family_id, access_token, reason]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Standard report category or reason.
+          enum: [SPAM, HARASSMENT, DEFAMATION, OFF_TOPIC, ILLEGAL, OTHER]
+        detail:
+          type: string
+          maxLength: 500
+          description: Optional report detail.
+    ForumReportReceipt:
+      type: object
+      description: Unique receipt returned for a filed report.
+      additionalProperties: false
+      required: [report_id, case_id, target_type, target_id, reason, status, created_at, replayed]
+      properties:
+        report_id:
+          type: string
+          format: uuid
+          description: Unique report receipt identifier.
+        case_id:
+          type: string
+          format: uuid
+          description: Associated moderation case identifier.
+        target_type:
+          type: string
+          enum: [FORUM_POST, FORUM_COMMENT]
+          description: Target type of the reported item.
+        target_id:
+          type: string
+          format: uuid
+          description: Unique identifier of the reported item.
+        reason:
+          type: string
+          description: Stated report reason.
+        status:
+          type: string
+          enum: [RECEIVED, RESOLVED, DISMISSED]
+          description: Current lifecycle status of the report.
+        created_at:
+          type: string
+          format: date-time
+          description: RFC3339 timestamp of receipt creation.
+        replayed:
+          type: boolean
+          description: Indicates whether this response is an idempotent replay of an existing report.
+    ForumReportResponse:
+      type: object
+      description: Wrapper envelope for forum report receipt.
+      additionalProperties: false
+      required: [receipt]
+      properties:
+        receipt:
+          $ref: '#/components/schemas/ForumReportReceipt'
   responses:
     BadRequest:
       description: Malformed input, cursor or bounds.

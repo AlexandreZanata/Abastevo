@@ -617,6 +617,63 @@ func (q *Queries) ScrubCommentForErasure(ctx context.Context, id pgtype.UUID) (F
 	return i, err
 }
 
+const setCommentVisibility = `-- name: SetCommentVisibility :one
+UPDATE forum_comments
+SET visibility = $2,
+    updated_at = $3
+WHERE id = $1
+  AND (
+      ($2 = 'VISIBLE' AND publication_state <> 'REMOVED')
+      OR $2 <> 'VISIBLE'
+  )
+RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at
+`
+
+type SetCommentVisibilityParams struct {
+	ID         pgtype.UUID        `json:"id"`
+	Visibility string             `json:"visibility"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+type SetCommentVisibilityRow struct {
+	ID               pgtype.UUID        `json:"id"`
+	PostID           pgtype.UUID        `json:"post_id"`
+	AuthorAccountID  pgtype.UUID        `json:"author_account_id"`
+	PublicAlias      string             `json:"public_alias"`
+	ParentID         pgtype.UUID        `json:"parent_id"`
+	Depth            int16              `json:"depth"`
+	Sequence         int64              `json:"sequence"`
+	BodyText         string             `json:"body_text"`
+	Revision         int32              `json:"revision"`
+	PublicationState string             `json:"publication_state"`
+	Visibility       string             `json:"visibility"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	PublishedAt      pgtype.Timestamptz `json:"published_at"`
+}
+
+func (q *Queries) SetCommentVisibility(ctx context.Context, arg SetCommentVisibilityParams) (SetCommentVisibilityRow, error) {
+	row := q.db.QueryRow(ctx, setCommentVisibility, arg.ID, arg.Visibility, arg.UpdatedAt)
+	var i SetCommentVisibilityRow
+	err := row.Scan(
+		&i.ID,
+		&i.PostID,
+		&i.AuthorAccountID,
+		&i.PublicAlias,
+		&i.ParentID,
+		&i.Depth,
+		&i.Sequence,
+		&i.BodyText,
+		&i.Revision,
+		&i.PublicationState,
+		&i.Visibility,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublishedAt,
+	)
+	return i, err
+}
+
 const tombstoneComment = `-- name: TombstoneComment :one
 UPDATE forum_comments
 SET body_text = '',

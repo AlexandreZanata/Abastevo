@@ -170,3 +170,14 @@ WHERE parent_id = ANY(@parent_ids::uuid[])
   AND publication_state = 'PUBLISHED'
   AND visibility = 'VISIBLE'
 GROUP BY parent_id;
+
+-- name: SetCommentVisibility :one
+UPDATE forum_comments
+SET visibility = $2,
+    updated_at = $3
+WHERE id = $1
+  AND (
+      ($2 = 'VISIBLE' AND publication_state <> 'REMOVED')
+      OR $2 <> 'VISIBLE'
+  )
+RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at;
