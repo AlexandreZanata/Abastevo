@@ -168,3 +168,21 @@ build checks, whitespace and secret review pass. No backend or schema behavior
 changes in this follow-up. The user-authorized isolated main delivery continues
 without including the forum branch. Runtime config changes remain gated on
 verification of the signed artifact's alias and fingerprinted bytes.
+
+B-BR-NAT-06: Independent read-only Kubernetes pod, metrics and database probes
+are collected concurrently within their existing eight-second individual
+budgets and the existing twelve-second SSH snapshot deadline. Any missing,
+failed or timed-out probe still refuses publication and stops only the exact
+owned Job. Preserve pressure thresholds, identity checks and the frozen import.
+The first live attempt was correctly stopped after the sequential probe chain
+exceeded the snapshot deadline; no guard timeout is relaxed for the retry.
+
+Telemetry checkpoint: LOCAL_DONE / INTEGRATION_PENDING. The old sequential
+collector failed the three-probe barrier regression. The parallel collector
+passed all 11 guard/accounting tests, including missing metrics, timeout,
+pressure and ownership failures. Three real read-only VPS samples completed
+in 3.327, 1.821 and 1.350 seconds with no resource violations. Individual
+8-second and outer 12-second timeouts, pressure thresholds, source Job limits
+and exact-owned-Job stop behavior are unchanged. After the interruption,
+last success still referenced the previous ANP hash; there was no pending
+publication or published minimized cache. The old Job was confirmed absent.
