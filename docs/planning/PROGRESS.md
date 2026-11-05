@@ -1,5 +1,17 @@
 # Current execution state
 
+- FOR-00 Forum Phase 1 opening and baseline reconciliation, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from verified
+  GitHub main `3fc77acc` (PR #191) and PR #192 planning baseline `6857ec63`.
+  [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md) opens the
+  editorial foundation (FOR-00–FOR-09) covering B-BR-FOR-01–07/12/14/16 and
+  BUC-FOR-01/02. Reconciled database migrations (next: 000157), Room database
+  version (v36, next: 37), OpenAPI v1 baseline, and four-tab Android integration
+  point on CommunityScreen. Occupied primary checkout and existing worktrees
+  preserved. D-group verification: diff clean, no secrets/PII, docs/contract
+  consistency verified. Tested revision: source in this commit. Next microtask:
+  FOR-01 (freeze v1 behavior, editorial wire contract and test vectors).
+
 - FORUM-PLAN, 2026-11-05: planning LOCAL_DONE / INTEGRATION_PENDING
   in an isolated delivery worktree
   from verified GitHub main `3fc77acc` (PR #191), advanced normally from initial

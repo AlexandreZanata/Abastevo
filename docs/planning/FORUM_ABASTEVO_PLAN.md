@@ -1,6 +1,6 @@
 # Forum Abastevo implementation plan
 
-Status: PLANNED / NOT IMPLEMENTED. Planning only, 2026-11-05.
+Status: PHASE 1 IN_PROGRESS. Planning completed 2026-11-05; Phase 1 opened at FOR-00.
 Inspected source: **GitHub main `3fc77acc6d3dc85819cbc9d00cadaec056448d0a`**
 (PR #191), normally fast-forwarded from the initially inspected PR #190
 `b8e93a41` after main advanced during planning. The detached local checkout at `e22824db` and all its uncommitted
@@ -96,8 +96,12 @@ B-BR-FOR-01–07/12/14/16 and BUC-FOR-01/02. SQL/auth changes are critical;
 Compose entry is low-risk presentation. Proposed evidence:
 `docs/backend/evidence/forum/FOR_PHASE_1.md` (created during implementation).
 
-### FOR-00 — Reconcile actual main and freeze scope
+### FOR-00 — Reconcile actual main and freeze scope (LOCAL_DONE)
 
+- Status: LOCAL_DONE. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md).
+  Baseline reconciled to GitHub main `3fc77acc` and `dev` `6857ec63`.
+  Database migration `000157` and Room version `37` allocated; worktrees
+  isolated; scope frozen to B-BR-FOR-01–07/12/14/16 and BUC-FOR-01/02.
 - Fetch GitHub main; inspect status/diff/worktrees, current API/admin/Room schema,
   accepted app-first evidence and source inventory. Synchronize maintained dev
   normally without overwriting occupied work. Record exact baseline and preserve
