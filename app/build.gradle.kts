@@ -31,6 +31,25 @@ fun hasReleaseSigningConfig(): Boolean {
     return storeFilePath != null
 }
 
+val automatedVersionName = providers.gradleProperty("androidReleaseVersionName").orNull
+val automatedVersionCode = providers.gradleProperty("androidReleaseVersionCode").orNull
+require((automatedVersionName == null) == (automatedVersionCode == null)) {
+    "Release version name and code must be supplied together"
+}
+if (automatedVersionName != null) {
+    require(Regex("[0-9]+\\.[0-9]+\\.[0-9]+").matches(automatedVersionName)) { "Invalid release version name" }
+    require(automatedVersionCode!!.toIntOrNull() in 5..2100000000) { "Invalid release version code" }
+}
+val prepareLicenseAssets by tasks.registering(Sync::class) {
+    into(layout.buildDirectory.dir("generated/projectLicenses/licenses"))
+    from(rootProject.file("LICENSE")) { rename { "Abastevo-LICENSE.txt" } }
+    from(rootProject.file("LICENSES/MIT-original.txt"))
+    from(rootProject.file("THIRD_PARTY_NOTICES.md"))
+    from(rootProject.file("maps/engine/vendor/LICENSE")) { rename { "CoMaps-LICENSE.txt" } }
+    from(rootProject.file("maps/engine/vendor/NOTICE")) { rename { "CoMaps-NOTICE.txt" } }
+    from(rootProject.file("docs/backend/evidence/maps/map14-t07/THIRD_PARTY_NOTICES.md")) { rename { "CoMaps-THIRD_PARTY_NOTICES.md" } }
+}
+
 android {
     namespace = "com.anpfuel.app"
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -39,8 +58,8 @@ android {
         applicationId = "com.anpfuel.app"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 4
-        versionName = "3.1.0"
+        versionCode = automatedVersionCode?.toInt() ?: 4
+        versionName = automatedVersionName ?: "3.1.0"
         buildConfigField("boolean", "QUALITY_UI_ENABLED",
             providers.gradleProperty("qualityUiEnabled").orElse("true").get().toBooleanStrict().toString())
         buildConfigField("boolean", "OCCURRENCE_UI_ENABLED",
@@ -58,6 +77,7 @@ android {
             val storeFilePath = signingProperty("storeFile", "ANPFUEL_KEYSTORE_PATH")
                 ?: return@create
             storeFile = rootProject.file(storeFilePath)
+            storeType = "PKCS12"
             storePassword = signingProperty("storePassword", "ANPFUEL_KEYSTORE_PASSWORD")
             keyAlias = signingProperty("keyAlias", "ANPFUEL_KEY_ALIAS")
             keyPassword = signingProperty("keyPassword", "ANPFUEL_KEY_PASSWORD")
@@ -117,6 +137,7 @@ android {
     require(engineAbis.isNotEmpty()) { "The map candidate must contain its native engine" }
     // Every advertised ABI must contain the core, including auxiliary AndroidX libs.
     defaultConfig.ndk.abiFilters += engineAbis
+    sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/projectLicenses"))
     sourceSets.getByName("debug") {
         kotlin.srcDir("src/comapsProbe/kotlin")
         manifest.srcFile("src/comapsProbe/AndroidManifest.xml")
@@ -215,3 +236,5 @@ tasks.register("verifyReleaseApkSize") {
         }
     }
 }
+
+tasks.named("preBuild") { dependsOn(prepareLicenseAssets) }

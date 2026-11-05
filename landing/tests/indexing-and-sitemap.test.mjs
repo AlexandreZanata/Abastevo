@@ -120,7 +120,7 @@ test('discovery files: llms.txt and .well-known/security.txt exist and are popul
     assert.ok(fs.existsSync(llmsPath), 'llms.txt must exist');
     const llmsContent = fs.readFileSync(llmsPath, 'utf8');
     assert.ok(llmsContent.includes('# abastevo'), 'llms.txt must have title');
-    assert.ok(llmsContent.includes('licença MIT'), 'llms.txt must mention MIT license');
+    assert.ok(llmsContent.includes('licença de atribuição visível Abastevo'), 'llms.txt must identify the current Abastevo license');
     assert.ok(llmsContent.includes('24 horas'), 'llms.txt must mention 24h photo retention');
     assert.ok(llmsContent.includes('https://abastevo.com.br/'), 'llms.txt must have resolved canonical origin');
     assert.ok(!llmsContent.includes('{{CANONICAL_ORIGIN}}'), 'llms.txt must not contain unresolved placeholders');

@@ -1,7 +1,23 @@
 # Current execution state
 
+- ANDREL/Licensing, 2026-11-05, LOCAL_DONE / INTEGRATION_PENDING on isolated
+  `codex/phase-35-android-release-attribution` from main `972df4f4`.
+  [Behavior and acceptance](../release-evidence/ANDROID_AUTOMATED_RELEASE_ATTRIBUTION.md)
+  cover automatic signed Android APKs/versioning and Abastevo visible attribution.
+  The maintainer confirmed first-release key creation for GitHub Actions.
+  The key is preserved privately and encrypted in a main-only release environment;
+  20 release-rule tests, 79 landing tests, 50 admin tests, builds/static checks and
+  a signed 75.34-MiB APK smoke check passed. The owner clarified that official
+  distributions must have no creator-credit strip; the draft UI was removed.
+  Downstream visible-credit instructions and the owner exemption are documented.
+  The owner-exempt signed APK passed certificate/package/native/notices/80-MiB
+  checks and emulator startup; the phone was updated without clearing data.
+  Current-main checks are revalidated before signing and publication. Remote
+  PR/CI, protected integration and first GitHub release readback remain pending.
+  iOS remains deferred; internal staging artifacts do not certify production.
+
 - NAT monthly projection reuse, signed landing input and telemetry, 2026-11-05, LOCAL_DONE /
-  INTEGRATION_PENDING. [Runtime finding and regression](../backend/evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md#signed-landing-search-input-continuity)
+  INTEGRATED through PR #194 as `972df4f4`. [Runtime finding and regression](../backend/evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md#signed-landing-search-input-continuity)
   records the stable signed-build input, concurrent read-only probes and
   exact-RFB/full-CNPJ projection reuse across ANP editions. The DB-free monthly
   oneshot prepares names before completion; daily workers refuse a missing seed.
@@ -16,6 +32,10 @@
   `5bf9d08a`; its signed deployment is confirmed. National publication is pending
   resource-safe execution; interrupted attempts preserved the prior edition.
   Isolated main delivery was explicitly authorized while dev carries the forum.
+  Exact-head four-signal CI and local quick passed; wiki mirrors main as
+  `ecfafa9`. Physical Android confirmed primary trade/secondary legal name.
+  Complete national publication and monthly timer activation remain pending
+  the guarded VPS resource window; the admitted frozen edition is retained.
 
 - NAT national continuity and static fiscal discovery, 2026-11-05,
   LOCAL_DONE / INTEGRATION_PENDING. [Current evidence](../backend/evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md)

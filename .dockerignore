@@ -29,3 +29,10 @@ contracts/ev/*
 !contracts/station-prep/
 contracts/station-prep/*
 !contracts/station-prep/address-source-policy-v1.json
+
+# Public owner/origin notices only; private release keys remain excluded.
+!LICENSE
+!THIRD_PARTY_NOTICES.md
+!LICENSES/
+LICENSES/*
+!LICENSES/MIT-original.txt

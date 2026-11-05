@@ -66,6 +66,9 @@ done < "$MANIFEST"
 echo "== release workflow guard =="
 bash "$ROOT/scripts/check-release-workflow.sh"
 
+echo "== Android release guards =="
+python3 -m unittest discover -s "$ROOT/scripts/android" -p 'test_*.py'
+
 echo "== staging deploy agent =="
 make -C "$ROOT" test-deploy-agent
 python3 "$ROOT/infra/k8s/staging/test-manifests.py"
@@ -98,7 +101,7 @@ else
         case "$f" in
             *.md|*.mdc|docs/*|.cursor/*|README*|ROADMAP*|TRADEMARKS*|LICENSE*|.gitignore)
                 ;;
-            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|admin-web/*|tools/*)
+            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|admin-web/*|tools/*|release/*)
                 DOCS_ONLY=0
                 ;;
             *)
