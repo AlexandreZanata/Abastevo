@@ -129,8 +129,13 @@ Compose entry is low-risk presentation. Proposed evidence:
   PLANNED still means no routes claimed live. Commit `docs(forum): freeze v1
   behavior and editorial wire contract` (tests/contract changes in same commit).
 
-### FOR-02 — Pure editorial domain and ports
+### FOR-02 — Pure editorial domain and ports (LOCAL_DONE)
 
+- Status: LOCAL_DONE. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md).
+  Pure Go stdlib domain (`Post`, `Source`, `Category`, `PublicationState`,
+  `Visibility`, state machine transitions, UTF-8 rune bounds and public
+  projections `ToSummary`/`ToDetail`) and application read ports/service with
+  default-off feature gates pass table tests under `-race` with stdlib-only guard.
 - New Forum domain/application: post/source/category validation, rights/state
   transitions, public projection, edit revision, feature switches. Inject
   clock/IDs. No net/http/pgx in pure domain.

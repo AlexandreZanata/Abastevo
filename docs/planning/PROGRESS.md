@@ -1,5 +1,16 @@
 # Current execution state
 
+- FOR-02 Forum pure domain and application ports, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `c196b742`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements pure stdlib domain aggregate (`Post`, `Source`, `Category`,
+  `PublicationState`, `Visibility`, state machine transitions, UTF-8 rune bounds
+  and public projections `ToSummary`/`ToDetail`) and application read ports/service
+  with default-off feature gates. Tests passed with zero failures under `-race`
+  (`domain`: 26 assertions; `application`: 7 scenarios; `stdlib-only` guard verified).
+  Occupied primary checkout and existing worktrees preserved. Tested revision:
+  source in this commit. Next microtask: FOR-03 (foundation SQL and migration recovery).
+
 - FOR-01 Forum wire contract and boundary vectors, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `1156340f`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
