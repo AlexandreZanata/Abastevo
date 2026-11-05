@@ -89,6 +89,54 @@ func TestOpenCNPJNamesAutomaticallyCoversNewANPIdentitiesAndCachesUnchangedPairs
 	}
 }
 
+func TestRFBProjectionReusesRowsAcrossANPChangesAndQueriesOnlyNewCNPJs(t *testing.T) {
+	p, dir, calls := openCNPJFixture(t)
+	first, err := p.Generate(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstData, err := os.ReadFile(filepath.Join(filepath.Dir(first), "rfb-names.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = os.WriteFile(filepath.Join(dir, "registry.csv"), []byte("CNPJ;RAZAOSOCIAL\n00123456000100;Changed legal name\n"), 0600)
+	second, err := p.Generate(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *calls != 3 {
+		t.Fatal("unchanged RFB identity was exported again", *calls)
+	}
+	secondData, _ := os.ReadFile(filepath.Join(filepath.Dir(second), "rfb-names.jsonl"))
+	if string(firstData) != string(secondData) {
+		t.Fatal("ANP legal change changed RFB projection")
+	}
+	_ = os.WriteFile(filepath.Join(dir, "registry.csv"), []byte("CNPJ;RAZAOSOCIAL\n00123456000100;Changed legal name\n00123456000290;New branch\n"), 0600)
+	run := p.Run
+	p.Run = func(ctx context.Context, args ...string) ([]byte, error) {
+		if args[0] == "export" && args[3] != "cnpj=00123456000290" {
+			t.Fatal("previous identities queried", args[3])
+		}
+		return run(ctx, args...)
+	}
+	third, err := p.Generate(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, freshDir, _ := openCNPJFixture(t)
+	raw, _ := os.ReadFile(filepath.Join(dir, "registry.csv"))
+	_ = os.WriteFile(filepath.Join(freshDir, "registry.csv"), raw, 0600)
+	full, err := fresh.Generate(context.Background(), freshDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(filepath.Join(filepath.Dir(third), "rfb-names.jsonl"))
+	want, _ := os.ReadFile(filepath.Join(filepath.Dir(full), "rfb-names.jsonl"))
+	if string(got) != string(want) {
+		t.Fatal("cache-dependent output ordering")
+	}
+}
+
 func TestOpenCNPJSourceLockCorruptionAndForeignRowsFailClosed(t *testing.T) {
 	for _, mode := range []string{"busy", "cache_busy", "checksum", "traversal", "foreign", "duplicate", "status", "cancel"} {
 		t.Run(mode, func(t *testing.T) {

@@ -186,3 +186,48 @@ in 3.327, 1.821 and 1.350 seconds with no resource violations. Individual
 and exact-owned-Job stop behavior are unchanged. After the interruption,
 last success still referenced the previous ANP hash; there was no pending
 publication or published minimized cache. The old Job was confirmed absent.
+
+B-BR-NAT-07: Reuse verified minimized rows by full CNPJ and exact monthly RFB
+snapshot hash across ANP editions. Changed ANP legal/address fields do not
+require re-querying every RFB establishment. Query only identities not covered
+by matching verified projections, retain deterministic output and reject
+conflicting or malformed caches. The daily worker requires a matching source
+projection before an uncached full-edition build. The existing DB-free monthly
+oneshot prepares that projection under its existing larger resource budget;
+its completion includes name preparation. No HTTP name service is installed.
+
+The second live attempt was correctly stopped at host load1 5.382, above the
+unchanged 5.2 reserve. Neither stopped attempt promoted a pending publication
+or a minimized cache. A verified first cache may be bootstrapped from the
+already accepted complete offline export, bound to the identical ANP and RFB
+hashes. This is initialization; subsequent monthly/daily projections remain
+automatic and new ANP CNPJs are queried rather than silently omitted.
+
+Projection checkpoint: LOCAL_DONE / INTEGRATION_PENDING. The first regression
+failed because an ANP legal-only change re-exported an existing CNPJ. Matching
+RFB projections now supply verified rows across ANP editions, and only uncovered
+CNPJs reach the CLI. Global CNPJ ordering keeps the descriptor/name bytes stable.
+Daily mode refuses a new RFB snapshot without a matching projection; the DB-free
+source oneshot downloads ANP and prepares names within its existing 110-minute,
+8-GiB/one-CPU budget. No deadline, pressure reserve or daily limit was increased.
+
+Race tests cover monthly/daily cache overlap, source writer exclusion, missing
+seeds, changed RFB bytes, conflicting valid projections, forged provenance,
+private fields, false counts, cancellation and failed downloads/cleanup. The
+complete 45,807-CNPJ ANP set with one metadata-only change passed in a read-only,
+network-disabled container limited to 512 MiB/0.5 CPU in 12.66 seconds. The CLI
+wrapper refused every `export` command. Both outputs had name SHA-256
+`3517e0f062154831bf9e477b435b7ff1319fb870a2520b4ac4f7f21415cdc160`,
+with 45,807 matches and no missing identities. The earlier real complete
+PostGIS publication/verification/replay therefore uses identical minimized
+name bytes; this follow-up does not change SQL or publication policy.
+Go race/vet and the repository-pinned Go 1.27.1 staticcheck pass.
+
+Runtime continuation: the signed staging receipt confirms `5bf9d08a` and schema
+156. The identical accepted offline projection was initialized privately in both
+cache roots. A later external sampling attempt stopped before pending publication
+when its SSH round trip exceeded 12 seconds. The same probes and ownership guard
+were moved to a bounded VPS-local monitor, preserving each 8-second probe and
+12-second sample deadline; initial host load 5.714 then refused starting the Job.
+These are failed/refused attempts, not publication evidence. No unrelated service
+was stopped, no names were logged, and the previous success remains intact.
