@@ -1,5 +1,15 @@
 # abastevo documentation
 
+[Forum Abastevo plan](planning/FORUM_ABASTEVO_PLAN.md),
+[product contract](product/FORUM_ABASTEVO_CONTRACT.md),
+[backend/schema/API](backend/FORUM_ABASTEVO_ARCHITECTURE.md),
+[source and rights research](backend/FORUM_ABASTEVO_SOURCES.md),
+[Android design](mobile/FORUM_ABASTEVO_ANDROID.md),
+[validation matrix](planning/FORUM_ABASTEVO_VALIDATION.md) and
+[implementation prompt](planning/FORUM_ABASTEVO_IMPLEMENTATION_PROMPT.md)
+define the future editorial/news/discussion/bulletin baseline in 30 microtasks.
+Planning only; no Forum code, source activation, Android change or deploy.
+
 [Full EV/hybrid extension](planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md),
 [25-source research register](planning/EV_SOURCE_RESEARCH.md),
 [EV product rules](product/EV_SUPPORT_CONTRACT.md),

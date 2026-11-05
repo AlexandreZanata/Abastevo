@@ -1,5 +1,19 @@
 # Current execution state
 
+- FORUM-PLAN, 2026-11-05: planning LOCAL_DONE / INTEGRATION_PENDING
+  in an isolated delivery worktree
+  from verified GitHub main `3fc77acc` (PR #191), advanced normally from initial
+  `b8e93a41`. [Plan](FORUM_ABASTEVO_PLAN.md),
+  [validation/evidence](FORUM_ABASTEVO_PLANNING_EVIDENCE.md) and
+  [implementation prompt](FORUM_ABASTEVO_IMPLEMENTATION_PROMPT.md) define
+  FOR-00–FOR-29; every feature task remains PLANNED / NOT IMPLEMENTED.
+  Documentation-only PR authorized; original dirty checkout and occupied local
+  dev preserved. Local docs/reference/secret and current-base contract checks
+  passed; aggregate interruption and existing lint warnings are recorded.
+  PR_PENDING / CI_PENDING, no new issue. Required check: Quick verification.
+  Next: publish the isolated documentation delta through dev → main;
+  no implementation, merge, deploy, source activation or wiki publication.
+
 - SNA/OpenCNPJ station identity and MAP-20 expanded controls, 2026-11-05,
   LOCAL_DONE / INTEGRATION_PENDING on maintained `dev`, synchronized from
   `b8e93a41` (merged PR #190). [Source, privacy and replay evidence](../backend/evidence/sna/OPENCNPJ_STATION_NAMES.md)
