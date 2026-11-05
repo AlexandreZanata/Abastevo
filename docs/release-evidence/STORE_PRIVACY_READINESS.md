@@ -387,8 +387,32 @@ Opening-baseline source acceptance (972df4f4 plus this task):
   dependency, auth/SQL/job/backend implementation changed; this is not a fresh
   backend deletion/production acceptance campaign.
 
-Reconciliation with newly observed main f7bec13f and its affected final checks
-must be recorded before publication. No remote policy deployment,
+Final reconciliation: merged main f7bec13f normally into the isolated task
+branch. The sole conflict was the obsolete policy paragraph's licensing wording;
+the complete replacement notice is retained and the incoming shared landing
+license/footer, Android packaging and other main changes are preserved. No dev
+or unrelated worktree was modified. Final combined validation:
+
+- Landing typecheck, all **82/82** tests, production build and dist check PASS.
+- Android debug app/test assembly and lint PASS (2m15s); zero lint errors,
+  326 warnings and 2 informational entries. Reinstalled only in the
+  isolated emulator and ran the exact final test APK: **OK (3 tests)**.
+- Rechecked 320/390/1440px static pages after rebuilding; no horizontal overflow,
+  updated main license/footer, all 13 policy sections, conditional billing
+  disclosure and private deletion actions retained. No contact message sent.
+- Final mobile static, tracked-secret, whitespace/conflict and local-document
+  checks PASS. No backend, schema, retention-job or auth change was introduced.
+- Main protection readback: required Quick verification, strict freshness,
+  administrator enforcement; force pushes/deletion disabled. The connector could
+  not read complete protection administration data, so authorized gh read-only
+  fallback verified it. No protection setting changed.
+
+State: LOCAL_DONE / INTEGRATION_PENDING. Remote review PR publication is the next
+step. The occupied dev includes the forum (20 commits beyond main at readback),
+so an isolated main integration requires the maintainer's delivery exception;
+opening a review PR does not authorize that merge. Required exact-head/base
+checks still gate any eventual integration. No aggregate quick run or CI polling
+was performed during construction. No remote policy deployment,
 store form submission, production certification or merge is implied. PR #195
 remains an independent change; its externally completed merge is not attributed
 to this task. Rollback is a normal reviewed revert of the static

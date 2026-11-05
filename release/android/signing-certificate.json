@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "application_id": "com.anpfuel.app",
+  "certificate_sha256": "406597ba94a5bb53b139c1f5049ecd51f0d93b6b638a16f1590c6e8af5cabd1b",
+  "key_algorithm": "RSA-4096",
+  "store_type": "PKCS12",
+  "purpose": "Abastevo Android staging release signing; preserve identity for updates"
+}

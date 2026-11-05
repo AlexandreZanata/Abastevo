@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "channel": "staging",
+  "application_id": "com.anpfuel.app",
+  "epoch": "972df4f48fef3c01c1b146e1f0c6e969024ce222",
+  "base_version": "3.1.0",
+  "base_code": 4
+}

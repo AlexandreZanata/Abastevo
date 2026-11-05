@@ -225,7 +225,7 @@ export function checkDist(options = {}) {
     if (!indexContent.includes('Mais informação<br>para quem vive<br><span>na estrada.</span>')) {
       errors.push('index.html is missing main H1 text');
     }
-    if (!indexContent.includes('class="store-btn btn-github"') || !indexContent.includes('Projeto open source')) {
+    if (!indexContent.includes('class="store-btn btn-github"') || !indexContent.includes('Código com atribuição visível')) {
       errors.push('index.html is missing primary GitHub action');
     }
     if (!indexContent.includes('https://github.com/AlexandreZanata/abastevo')) {

@@ -3,7 +3,7 @@
 > Preços de combustíveis com a comunidade. Transparência, fonte, data e condição à vista.
 
 ## Visão Geral
-O abastevo é um projeto de código aberto sob licença MIT desenvolvido para dar visibilidade aos preços de combustíveis no Brasil. O projeto separa com clareza observações colaborativas da comunidade e referências oficiais da pesquisa semanal de preços da ANP.
+O abastevo é um projeto com código disponível sob licença de atribuição visível Abastevo desenvolvido para dar visibilidade aos preços de combustíveis no Brasil. O projeto separa com clareza observações colaborativas da comunidade e referências oficiais da pesquisa semanal de preços da ANP.
 
 ## Princípios Fundamentais
 - **Fonte e data à vista**: todo preço indica explicitamente sua procedência (colaboração da comunidade ou referência ANP) e a data do registro.

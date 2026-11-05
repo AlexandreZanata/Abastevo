@@ -1,0 +1,123 @@
+name: android-release
+run-name: Android release ${{ github.event.workflow_run.head_sha || inputs.sha }}
+
+on:
+  workflow_run:
+    workflows: [quick, CI, backend]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Current full main SHA (all three push workflows must pass)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-staging-release
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      ready: ${{ steps.gate.outputs.ready }}
+      sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Require trusted event and all exact current-main checks
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/android/release_flow.py gate
+
+  release:
+    needs: gate
+    if: needs.gate.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    environment: android-staging-release
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Verify current main again and derive version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ needs.gate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/AlexandreZanata/Abastevo/git/ref/heads/main --jq .object.sha)" = "$RELEASE_SHA"
+          python3 scripts/android/release_flow.py version --sha "$RELEASE_SHA" --output "$RUNNER_TEMP/android-version.json"
+          python3 -m unittest discover -s scripts/android -p 'test_*.py'
+      - name: Install pinned Android build tools
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Reuse a verified same-head release on retries
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/android/existing.py --version "$RUNNER_TEMP/android-version.json" \
+            --output "$RUNNER_TEMP/android-existing-release" --build-tools "$ANDROID_HOME/build-tools/35.0.0"
+      - name: Recheck current main checks before accessing signing material
+        if: steps.existing.outputs.existing != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ needs.gate.outputs.sha }}
+        run: python3 scripts/android/release_flow.py assert-ready --sha "$RELEASE_SHA"
+      - name: Restore signing identity and build release APK
+        if: steps.existing.outputs.existing != 'true'
+        env:
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANPFUEL_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEYSTORE_PASSWORD }}
+          ANPFUEL_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANPFUEL_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          export ANPFUEL_KEYSTORE_PATH="$RUNNER_TEMP/abastevo-release.p12"
+          trap 'rm -f "$ANPFUEL_KEYSTORE_PATH"' EXIT
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          for name in ['ANDROID_RELEASE_KEYSTORE_BASE64', 'ANPFUEL_KEYSTORE_PASSWORD', 'ANPFUEL_KEY_ALIAS', 'ANPFUEL_KEY_PASSWORD']:
+              if not os.environ.get(name):
+                  raise SystemExit('required Android signing secret is missing')
+          Path(os.environ['ANPFUEL_KEYSTORE_PATH']).write_bytes(base64.b64decode(os.environ['ANDROID_RELEASE_KEYSTORE_BASE64'], validate=True))
+          PY
+          version_name="$(jq -r .version_name "$RUNNER_TEMP/android-version.json")"
+          version_code="$(jq -r .version_code "$RUNNER_TEMP/android-version.json")"
+          ./gradlew :app:assembleRelease :app:verifyReleaseApkSize --no-daemon --max-workers=1 \
+            -PandroidReleaseVersionName="$version_name" -PandroidReleaseVersionCode="$version_code"
+      - name: Verify certificate, manifest, native engine, size and license bundle
+        if: steps.existing.outputs.existing != 'true'
+        run: |
+          python3 scripts/android/artifact.py --apk app/build/outputs/apk/release/app-release.apk \
+            --version "$RUNNER_TEMP/android-version.json" --output "$RUNNER_TEMP/android-public-release" \
+            --build-tools "$ANDROID_HOME/build-tools/35.0.0"
+      - name: Publish immutable GitHub prerelease
+        if: steps.existing.outputs.existing != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/android/publish.py "$RUNNER_TEMP/android-public-release"
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/abastevo-release.p12"

@@ -23,7 +23,7 @@ const templates = `
         <a href="{{.Landing}}/guias/">Guias</a>{{else}}<a href="/metodologia/">Metodologia</a>{{end}}
       </nav>
       <div class="topbar-actions">
-        <a class="topbar-link" href="https://github.com/AlexandreZanata/abastevo" target="_blank" rel="noopener" aria-label="Ver no GitHub — Projeto open source"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg><span class="hide-sm">GitHub</span></a>
+        <a class="topbar-link" href="https://github.com/AlexandreZanata/abastevo" target="_blank" rel="noopener" aria-label="Ver no GitHub — Código com atribuição visível"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg><span class="hide-sm">GitHub</span></a>
         {{if .OfficialOnly}}<a class="pill-light hide-sm" href="/fiscalizacao/">Fiscalização</a>{{else}}<a class="pill-light hide-sm" href="/consultar/">Consultar dados</a>{{end}}
         <details class="nav-toggle">
           <summary class="nav-button" aria-label="Abrir menu de navegação"><span aria-hidden="true"></span></summary>
@@ -74,11 +74,11 @@ const templates = `
         {{if .OfficialOnly}}
         <p><strong>Fonte:</strong> ANP — multas aplicadas. Cálculo e exibição: Abastevo.</p>
         <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Recorte oficial de fiscalização, event-level.</p>
-        <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; multa não prova adulteração, culpa ou definitividade.</p>
+        <p>Não afiliado à ANP. Código sob licença de atribuição visível Abastevo. Dados datados; multa não prova adulteração, culpa ou definitividade.</p>
         {{else}}
         <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo.</p>
         <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Pesquisa: {{if .Period}}{{.Period}}{{else}}sem pesquisa publicada{{end}}</p>
-        <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; não é preço ao vivo.</p>
+        <p>Não afiliado à ANP. Código sob licença de atribuição visível Abastevo. Dados datados; não é preço ao vivo.</p>
         {{end}}
       </div>
     </div>
@@ -269,7 +269,7 @@ const templates = `
   </ul>
   <h2>Notas</h2>
   <ul>{{range .Notes}}<li>{{.}}</li>{{end}}</ul>
-  <div class="source"><p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença MIT.</p></div>
+  <div class="source"><p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p></div>
   <div class="links"><a href="/curiosidades/">Perguntas aprovadas</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
@@ -341,7 +341,7 @@ const templates = `
   </section>
   </div>
   <div class="source">
-    <p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença MIT.</p>
+    <p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p>
     <p class="muted source-url">Snapshot: {{.InputHash}} · versão dos cálculos: abastevo-metrics-v1 · publicação: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}}</p>
   </div>
 </main>

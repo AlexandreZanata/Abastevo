@@ -35,7 +35,7 @@ drills remain pending explicit approval; no zero-downtime acceptance is claimed.
 
 ## Origin and license
 
-Based on [brazil-fuel-prices-app](https://github.com/AlexandreZanata/brazil-fuel-prices-app), commit `b8a52049e0294cd2d07612cedcc52b3017c5271e`. Existing modules, `com.anpfuel` and [MIT notices](LICENSE) remain preserved. Production photos, credentials, contributor precise location and personal data do not belong in Git or public activity.
+Based on [brazil-fuel-prices-app](https://github.com/AlexandreZanata/brazil-fuel-prices-app), commit `b8a52049e0294cd2d07612cedcc52b3017c5271e`. Existing modules, `com.anpfuel` and [original MIT notices](LICENSES/MIT-original.txt) remain preserved. Production photos, credentials, contributor precise location and personal data do not belong in Git or public activity.
 
 ## Imported Android documentation
 
@@ -46,12 +46,12 @@ The following original README describes the upstream Android application and its
 # ANP Fuel Prices
 
 [![CI](https://github.com/AlexandreZanata/TABELA-ANP-COMBUSTIVEIS/actions/workflows/ci.yml/badge.svg)](https://github.com/AlexandreZanata/TABELA-ANP-COMBUSTIVEIS/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Visible Attribution](https://img.shields.io/badge/License-Visible%20Attribution-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/badge/release-v3.1.0-blue.svg)](https://github.com/AlexandreZanata/brazil-fuel-prices-app/releases/tag/v3.1.0)
 
 Open-source Android app to browse Brazilian ANP (National Petroleum Agency) weekly fuel price surveys — fully offline-capable, no backend required.
 
-**100% open source and free to use** under the [MIT License](LICENSE). The only requirement when reusing or redistributing this project is to **reference the original source** — see [docs/license.md](docs/license.md).
+**Source available and free to use**, including commercially, under the [Abastevo Visible Attribution License](LICENSE). Third-party interfaces must visibly credit **Abastevo** and **Alexandre Zanata (@AlexandreZanata)** with the original links; the original owner’s own distributions are exempt — see [docs/license.md](docs/license.md).
 
 ## Download
 
@@ -135,7 +135,7 @@ See [docs/data-sources.md](docs/data-sources.md) for column schemas and download
 | [docs/data-sources.md](docs/data-sources.md) | ANP file formats and URL patterns |
 | [docs/commit-conventions.md](docs/commit-conventions.md) | Git commit and PR standards |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute — TDD, layers, i18n, PRs |
-| [docs/license.md](docs/license.md) | MIT license — free use, attribution required |
+| [docs/license.md](docs/license.md) | Visible-attribution license and retained original/third-party notices |
 | [docs/play-store-listing.md](docs/play-store-listing.md) | Play Store listing draft (en + pt-BR) |
 | [docs/privacy-policy.md](docs/privacy-policy.md) | Privacy policy — no personal data collected |
 | [docs/local-build.md](docs/local-build.md) | **Local compile** — debug APK, install, prerequisites |
@@ -188,10 +188,22 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## License
 
-This project is released under the **[MIT License](LICENSE)** — free for any use (personal, commercial, modification, distribution). The only obligation is **attribution**: keep the copyright notice and reference the [project origin](https://github.com/AlexandreZanata/TABELA-ANP-COMBUSTIVEIS).
+This project uses the **[Abastevo Visible Attribution License 1.0](LICENSE)** for material the owner can license. Third-party use, including commercial use, is permitted subject to its visible project/creator credit and redistribution conditions. The original copyright holder’s own distributions are exempt from visible self-credit. [Original MIT and third-party notices](THIRD_PARTY_NOTICES.md) remain preserved.
 
 Full details, examples, and FAQ: **[docs/license.md](docs/license.md)**.
 
 ## Data attribution
 
 Fuel price data is published by [ANP](https://www.gov.br/anp) under open government data policies.
+
+### Reusing Abastevo in another project
+
+If you use, modify, host or distribute covered Abastevo material as a third party,
+keep a readable credit visible during normal use (including map/navigation):
+**Abastevo**, with a labeled [original-project link](https://github.com/AlexandreZanata/Abastevo),
+and **Alexandre Zanata (@AlexandreZanata)**, with a labeled
+[creator link](https://github.com/AlexandreZanata). An optional About screen or
+first-launch message alone is insufficient. Keep LICENSE and third-party notices
+with your copies. The official app distributed by the original copyright holder
+does not need an author-credit strip. See the [implementation example and full
+compliance steps](docs/license.md#example-for-third-party-interfaces).
