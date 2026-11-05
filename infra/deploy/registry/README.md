@@ -5,6 +5,13 @@ no website search API is introduced. The static portal consumes immutable
 export files; its state/city filters run against release-addressed JSON.
 The Android API and static generator share the canonical station identity.
 
+Configure `ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS` (operator render key
+`PORTAL_SEARCH_JS`) to the signed landing release's stable `portal-search.js`
+filesystem input through its `current` pointer. Verify its bytes match that
+release's `assets/search.HASH.js` before changing the config. The generator
+copies those bytes into an immutable fingerprinted browser asset. No manual
+hash replacement is needed on later signed landing deployments.
+
 ## Sources and ownership
 
 ANP's complete authorized-reseller CSV is checked daily at 03:17 America/Cuiaba.
@@ -25,7 +32,11 @@ a same-month upstream correction cannot overwrite the current snapshot inode.
 verification, two download workers, bounded retries and one workspace edition.
 It independently verifies a changed snapshot against its source ZIPs, hashes
 and copies it to an immutable file, then atomically changes `current`.
-Failure leaves the published pointer and previous DB publication intact.
+It then downloads the bounded current ANP CNPJ set and prepares its minimized
+name projection under `name-cache/`, inside the same source oneshot budget.
+A snapshot-build failure leaves the prior pointer intact. A later name-build
+failure marks the oneshot failed; daily jobs refuse an unprepared snapshot
+and retain the previous DB publication until the next successful retry.
 Source update takes an exclusive nonblocking lock; ANP name preparation takes
 a shared lock. Overlap fails safely and retries at the next scheduled run.
 
@@ -42,8 +53,15 @@ The current ANP CNPJ set is exported from the local snapshot in exact full
 establishment-CNPJ batches. Leading zeros and branches remain distinct.
 Only CNPJ, trade name, active flag and observation date enter the versioned
 name input; partner/contact fields are discarded in memory. A deterministic
-cache is bound to both complete source hashes. A new ANP establishment or
-new monthly snapshot automatically invalidates that cache. Pending jobs reuse
+cache is bound to both complete source hashes. On a new ANP edition, verified
+rows from the identical RFB snapshot are reused by full CNPJ; only uncovered
+identities are queried. Output stays globally sorted and byte-identical
+regardless of projection coverage. The daily worker reads the monthly source
+projection through its read-only mount and refuses an uncached full-edition
+build when no matching projection exists. A new RFB hash requires the monthly
+oneshot to prepare names first; old-month names cannot stand in for it.
+Both cache roots are locked during reads/writes, hashes/counts and minimized
+fields are checked, and conflicting projections fail closed. Pending jobs reuse
 their frozen bytes, including the edition comparison report, after a crash.
 
 The national CSV must be nonempty, bounded and structurally complete with
@@ -59,6 +77,11 @@ An absence is not an official closure. Canonical station IDs, coordinates,
 prices, historical assertions and accepted community corrections survive.
 Operation status changes only through existing official evidence/correction
 ports; operators review the missing count rather than bulk-delete stations.
+A completed manifest-bound replay verifies all immutable streams, stored counts
+and membership counts under the existing transaction fence, then resumes
+publication without repeating per-row staging. Unbound legacy or incomplete
+inputs still receive full admission. Tampering or missing membership refuses
+recovery rather than claiming completion.
 The owned loader publishes and verifies idempotently; unrelated curated facts
 are not overwritten. A name-only metadata change invalidates the enterprise
 export fingerprint and therefore regenerates the static portal.
@@ -72,7 +95,11 @@ release directory. Render `__REVISION__` in the service with that exact tested
 revision and verify the unit before enabling the timer. Provision a mode-700
 `/opt/abastevo-temp/opencnpj` owned by UID/GID 1000. An initial verified snapshot
 may be bootstrapped there with the same independent copy/hash/source receipt
-rules; an incomplete upload must not create `current`.
+rules; an incomplete upload must not create `current`. A first minimized
+projection may be initialized from a fully verified offline export with the
+identical source hashes, descriptor, counts and cache ownership. Initialize
+both the daily and monthly cache roots, including their `.lock` files. This
+bootstrap does not replace the ongoing monthly preparation step.
 
 The real full-national offline export peaked at 316 MiB RSS before container
 overhead. Daily registry limits are therefore 512 MiB and 500m CPU, retaining
@@ -111,7 +138,11 @@ competence, content hash and whether it changed. The registry CronJob/job
 status and its `state.json` expose last check, last success, pending edition
 and source/name/report/manifest hashes. Review stale checks, failed jobs,
 quarantine and missing counts; a running timer is not freshness evidence.
-Public exports expose their actual generated edition/time separately.
+A successful snapshot receipt alone does not certify name readiness: the
+oneshot must also finish its projection and emit `rfb_refresh_complete`.
+Public exports expose their actual generated edition/time separately. Existing
+enterprise export reconciliation runs every six hours and portal refresh every
+fifteen minutes; name-only corrections invalidate the export fingerprint.
 
 A failed download/build/verification keeps the previous published source.
 Retry the same bounded updater after resolving source or host availability;

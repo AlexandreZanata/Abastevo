@@ -84,6 +84,9 @@ func (u SourceUpdater) Update(ctx context.Context) error {
 	if err = cleanOpenCNPJPartialCopies(u.Root); err != nil {
 		return err
 	}
+	if err = cleanTemporary(u.Root, `^\.name-source-[0-9]+$`); err != nil {
+		return err
+	}
 	if err = CheckOpenCNPJDisk(u.Root); err != nil {
 		return err
 	}

@@ -389,6 +389,9 @@ test('search asset is fingerprintable and contains no unsafe HTML injection', as
   try {
     assert.match(result.fingerprintedSearch, /^search\.[a-f0-9]{8}\.js$/);
     const asset = fs.readFileSync(path.join(result.outDir, 'assets', result.fingerprintedSearch), 'utf8');
+    const stable = fs.readFileSync(path.join(result.outDir, 'portal-search.js'), 'utf8');
+    assert.equal(stable, asset, 'portal input must follow the signed landing release');
+    assert.match(fs.readFileSync(path.join(result.outDir, '_headers'), 'utf8'), /\/portal-search\.js\n  Cache-Control: no-cache/);
     assert.match(asset, /textContent/);
     assert.doesNotMatch(asset, /innerHTML/);
     assert.doesNotMatch(asset, /\/v1\//);

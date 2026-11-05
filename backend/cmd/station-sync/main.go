@@ -43,7 +43,7 @@ func run() error {
 	nameInputs := flag.String("name-inputs", "", "optional pinned local names manifest; defaults to ROOT/name-inputs/manifest.json when present")
 	opencnpj := flag.String("opencnpj", "/tools/opencnpj", "trusted offline OpenCNPJ executable")
 	opencnpjRoot := flag.String("opencnpj-root", "", "private published OpenCNPJ source directory")
-	rfbUpdate := flag.Bool("rfb-update", false, "refresh and verify the monthly RFB snapshot only; never accesses the application DB")
+	rfbUpdate := flag.Bool("rfb-update", false, "refresh and verify the monthly RFB snapshot and names projection; never accesses the application DB")
 	namesDir := flag.String("names-dir", "", "prepare minimized names for registry.csv in this directory, then exit without DB access")
 	timeout := flag.Duration("timeout", 18*time.Minute, "overall bounded refresh duration")
 	budgetWait := flag.Duration("budget-wait", 6*time.Minute, "bounded wait for the host safety budget before starting (inside --timeout)")
@@ -63,7 +63,7 @@ func run() error {
 	defer stop()
 	ctx, cancel := context.WithTimeout(signalContext, *timeout)
 	defer cancel()
-	provider := syncer.OpenCNPJNames{Binary: *opencnpj, DataRoot: *opencnpjRoot, CacheRoot: filepath.Join(*root, "name-cache"), Now: time.Now}
+	provider := syncer.OpenCNPJNames{Binary: *opencnpj, DataRoot: *opencnpjRoot, CacheRoot: filepath.Join(*root, "name-cache"), RequireSeed: needsDB, Now: time.Now}
 	if *namesDir != "" {
 		if *opencnpjRoot == "" || !filepath.IsAbs(*namesDir) {
 			return fmt.Errorf("offline name preparation configuration missing")
@@ -114,6 +114,9 @@ func run() error {
 			return child(ctx, stage, binary, args, false)
 		}}
 		err := updater.Update(ctx)
+		if err == nil {
+			err = provider.PrepareMonthly(ctx, &http.Client{Timeout: 30 * time.Second})
+		}
 		cancel()
 		<-done
 		select {

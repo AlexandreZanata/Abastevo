@@ -145,3 +145,119 @@ verify the exact signed deployed revision, install the tested immutable tools
 and source schedule, run a guarded registry publication, then read names and
 static fiscal filters through staging and the actual Android app. No release
 certification or unrelated forum delivery is implied.
+
+## Signed landing search input continuity
+
+B-BR-NAT-05: The portal worker reads the search program through a stable
+filesystem input in each signed landing release. Its bytes equal that
+release's fingerprinted search asset. Browsers continue using immutable
+fingerprinted portal URLs, and website search remains static. A changed
+TypeScript build must not require manually replacing a hash in worker config.
+
+Observed staging config still names `assets/search.f37c980d.js`; the new
+filter build emits another hash. A stable `portal-search.js` build input,
+with revalidation caching, will move atomically with the signed landing
+`current` pointer. Configure the worker and operator render input to use it
+only after verifying that the deployed signed artifact contains it.
+
+Alias checkpoint: LOCAL_DONE / INTEGRATION_PENDING. The actual old-hash
+configuration was observed read-only before activation. A regression first
+failed with ENOENT for `portal-search.js`, then passed after adding the alias
+and no-cache header. All 78 landing tests, typecheck, build/check, byte-identical
+build checks, whitespace and secret review pass. No backend or schema behavior
+changes in this follow-up. The user-authorized isolated main delivery continues
+without including the forum branch. Runtime config changes remain gated on
+verification of the signed artifact's alias and fingerprinted bytes.
+
+B-BR-NAT-06: Independent read-only Kubernetes pod, metrics and database probes
+are collected concurrently within their existing eight-second individual
+budgets and the existing twelve-second SSH snapshot deadline. Any missing,
+failed or timed-out probe still refuses publication and stops only the exact
+owned Job. Preserve pressure thresholds, identity checks and the frozen import.
+The first live attempt was correctly stopped after the sequential probe chain
+exceeded the snapshot deadline; no guard timeout is relaxed for the retry.
+
+Telemetry checkpoint: LOCAL_DONE / INTEGRATION_PENDING. The old sequential
+collector failed the three-probe barrier regression. The parallel collector
+passed all 11 guard/accounting tests, including missing metrics, timeout,
+pressure and ownership failures. Three real read-only VPS samples completed
+in 3.327, 1.821 and 1.350 seconds with no resource violations. Individual
+8-second and outer 12-second timeouts, pressure thresholds, source Job limits
+and exact-owned-Job stop behavior are unchanged. After the interruption,
+last success still referenced the previous ANP hash; there was no pending
+publication or published minimized cache. The old Job was confirmed absent.
+
+B-BR-NAT-07: Reuse verified minimized rows by full CNPJ and exact monthly RFB
+snapshot hash across ANP editions. Changed ANP legal/address fields do not
+require re-querying every RFB establishment. Query only identities not covered
+by matching verified projections, retain deterministic output and reject
+conflicting or malformed caches. The daily worker requires a matching source
+projection before an uncached full-edition build. The existing DB-free monthly
+oneshot prepares that projection under its existing larger resource budget;
+its completion includes name preparation. No HTTP name service is installed.
+
+The second live attempt was correctly stopped at host load1 5.382, above the
+unchanged 5.2 reserve. Neither stopped attempt promoted a pending publication
+or a minimized cache. A verified first cache may be bootstrapped from the
+already accepted complete offline export, bound to the identical ANP and RFB
+hashes. This is initialization; subsequent monthly/daily projections remain
+automatic and new ANP CNPJs are queried rather than silently omitted.
+
+Projection checkpoint: LOCAL_DONE / INTEGRATION_PENDING. The first regression
+failed because an ANP legal-only change re-exported an existing CNPJ. Matching
+RFB projections now supply verified rows across ANP editions, and only uncovered
+CNPJs reach the CLI. Global CNPJ ordering keeps the descriptor/name bytes stable.
+Daily mode refuses a new RFB snapshot without a matching projection; the DB-free
+source oneshot downloads ANP and prepares names within its existing 110-minute,
+8-GiB/one-CPU budget. No deadline, pressure reserve or daily limit was increased.
+
+Race tests cover monthly/daily cache overlap, source writer exclusion, missing
+seeds, changed RFB bytes, conflicting valid projections, forged provenance,
+private fields, false counts, cancellation and failed downloads/cleanup. The
+complete 45,807-CNPJ ANP set with one metadata-only change passed in a read-only,
+network-disabled container limited to 512 MiB/0.5 CPU in 12.66 seconds. The CLI
+wrapper refused every `export` command. Both outputs had name SHA-256
+`3517e0f062154831bf9e477b435b7ff1319fb870a2520b4ac4f7f21415cdc160`,
+with 45,807 matches and no missing identities. The earlier real complete
+PostGIS publication/verification/replay therefore uses identical minimized
+name bytes; this follow-up does not change SQL or publication policy.
+Go race/vet and the repository-pinned Go 1.27.1 staticcheck pass.
+
+Runtime continuation: the signed staging receipt confirms `5bf9d08a` and schema
+156. The identical accepted offline projection was initialized privately in both
+cache roots. A later external sampling attempt stopped before pending publication
+when its SSH round trip exceeded 12 seconds. The same probes and ownership guard
+were moved to a bounded VPS-local monitor, preserving each 8-second probe and
+12-second sample deadline; initial host load 5.714 then refused starting the Job.
+These are failed/refused attempts, not publication evidence. No unrelated service
+was stopped, no names were logged, and the previous success remains intact.
+
+B-BR-NAT-08: A replay whose every input was already complete and bound to the
+identical admitted manifest verifies all immutable output bytes/row counts,
+stored input accounting and membership counts, then resumes publication without
+repeating per-row staging writes/lookups. Hold the existing transaction advisory
+fence throughout. Unbound legacy/incomplete inputs still take full admission;
+changed manifests, missing membership, altered streams and cancellation fail
+closed. Preserve completion clocks, canonical identity and community facts.
+This avoids repeating the completed national staging phase after a guarded stop.
+
+Recovery checkpoint: LOCAL_DONE / INTEGRATION_PENDING. A real PostGIS trigger
+first rejected the old completed replay because it attempted a membership INSERT.
+The optimized path passes with that trigger enabled, while corrupted streams,
+missing membership, changed stored accounting, cancellation and unbound legacy
+inputs still refuse. Existing prepared input/manifest/rollback/disconnection,
+concurrent replay and station-name/fact tests pass under race detection.
+The actual 45,695-assertion national batch was admitted into disposable PostGIS;
+its exact completed replay, with membership writes forbidden, took 580.339 ms
+and retained 45,695 accepted / 112 quarantined. It reads all three streams and
+keeps the original completion clock. No migration or publication rule changes.
+
+Exact minimized-cache hits also now verify full ANP/RFB hash binding, competence
+and descriptor provenance. The forged-owner regression failed before the fix,
+then passed together with race, vet and pinned staticcheck. These checks apply
+even when no name rebuilding is needed.
+
+The last guarded VPS attempt committed the input staging phase and began
+publishing source facts before load pressure stopped it. It is not a complete
+edition: 250 trade names were observed at that point. The frozen pending batch
+remains intact; recovery must continue it rather than fetch or erase it.

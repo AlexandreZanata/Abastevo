@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Safety and accounting regressions for the bounded staging probe."""
 import copy
+import threading
+from types import SimpleNamespace
+import abastevo_guard
 from argparse import Namespace
 import json
 from pathlib import Path
@@ -24,6 +27,32 @@ def healthy():
 
 
 class SafetyTests(unittest.TestCase):
+    def test_readonly_telemetry_probes_overlap_and_missing_probe_refuses(self):
+        pods=[]
+        for name,containers in [("abastevo-temp-api-test",["api","worker","private-storage"]),("abastevo-temp-db-0",["postgres"])]:
+            pods.append({"metadata":{"name":name},"status":{"containerStatuses":[{"name":c,"ready":True,"restartCount":0} for c in containers]}})
+        metrics="\n".join(p["metadata"]["name"]+" "+c["name"]+" 1m 100Mi" for p in pods for c in p["status"]["containerStatuses"])
+        for fail in (False,True,"missing"):
+            barrier=threading.Barrier(3)
+            def probe(args,**kwargs):
+                self.assertEqual(kwargs["timeout"],8)
+                self.assertEqual(args[:3],["kubectl","-n","abastevo-temp"])
+                barrier.wait(timeout=1)
+                if args[3]=="get":return json.dumps({"items":pods})
+                if args[3]=="top":return "" if fail=="missing" else metrics
+                self.assertEqual(args[3],"exec")
+                if fail is True:raise TimeoutError("synthetic telemetry timeout")
+                return '{"stations":2}'
+            with patch.object(abastevo_guard.subprocess,"check_output",side_effect=probe), patch.object(abastevo_guard.Path,"read_text",return_value="MemAvailable: 24000000 kB"), patch.object(abastevo_guard.shutil,"disk_usage",return_value=SimpleNamespace(free=200000*1048576)):
+                if fail is True:
+                    with self.assertRaises(TimeoutError):abastevo_guard.collect()
+                elif fail=="missing":
+                    with self.assertRaises(ValueError):abastevo_guard.collect()
+                else:
+                    row=abastevo_guard.collect()
+                    self.assertEqual(len(row["containers"]),4)
+                    self.assertEqual(row["db"]["stations"],2)
+
     def test_https_transport_reuses_success_and_never_retries_timeout(self):
         guarded_http.CONNECTIONS.http = None
         conn = MagicMock()

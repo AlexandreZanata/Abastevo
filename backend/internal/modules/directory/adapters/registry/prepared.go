@@ -74,6 +74,8 @@ func LoadPreparedBatch(ctx context.Context, pool *pgxpool.Pool, raw []byte, open
 	store := &PGStore{Q: directory.New(tx)}
 	reports := map[string]Report{}
 	complete := map[string]bool{}
+	boundReports := map[string]Report{}
+	allBoundComplete := len(manifest.Inputs) > 0
 	for _, input := range manifest.Inputs {
 		counts := manifest.Counts[input.Key]
 		if counts.Input < 0 || counts.Input > preparedMaxRows || counts.Accepted < 0 || counts.Duplicates < 0 || counts.Quarantined < 0 {
@@ -93,10 +95,22 @@ func LoadPreparedBatch(ctx context.Context, pool *pgxpool.Pool, raw []byte, open
 				return nil, fmt.Errorf("registry: quarantined input requires review")
 			}
 			complete[input.Key] = run.State == "complete"
+			boundReports[input.Key] = run
 		}
 		uid, err := mustUUID(id)
 		if err != nil {
 			return nil, err
+		}
+		// An old unbound legacy run must still pass full row admission. Only
+		// an already admitted identical manifest can take the replay path.
+		if complete[input.Key] {
+			binding, err := store.Q.GetPreparedRunBinding(ctx, uid)
+			if err != nil {
+				return nil, err
+			}
+			allBoundComplete = allBoundComplete && binding == digest
+		} else {
+			allBoundComplete = false
 		}
 		if _, err = store.Q.BindPreparedManifest(ctx, directory.BindPreparedManifestParams{ID: uid, Checksum: input.SHA256, ManifestSha256: digest}); err != nil {
 			return nil, fmt.Errorf("registry: input %q manifest identity conflict: %w", input.Key, err)
@@ -111,6 +125,31 @@ func LoadPreparedBatch(ctx context.Context, pool *pgxpool.Pool, raw []byte, open
 			}
 		}
 		reports[input.Key] = Report{RunID: id, State: "running"}
+	}
+	if allBoundComplete {
+		for _, input := range manifest.Inputs {
+			report, want := boundReports[input.Key], manifest.Counts[input.Key]
+			if report.Accepted != int64(want.Accepted) || report.Duplicates != int64(want.Duplicates) || report.Rejected != int64(want.Quarantined) {
+				return nil, fmt.Errorf("registry: completed input accounting mismatch")
+			}
+			uid, _ := mustUUID(report.RunID)
+			var members int64
+			if err := tx.QueryRow(ctx, `SELECT count(*) FROM registry_run_assertions WHERE run_id=$1`, uid).Scan(&members); err != nil {
+				return nil, err
+			}
+			if members != report.Accepted {
+				return nil, fmt.Errorf("registry: completed input membership mismatch")
+			}
+		}
+		for _, name := range []string{PrepAssertionsFile, PrepCandidatesFile, PrepQuarantineFile} {
+			if err := scanPrepared(ctx, open, name, outputs[name], func([]byte) error { return nil }); err != nil {
+				return nil, err
+			}
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return nil, err
+		}
+		return boundReports, nil
 	}
 	stage := func(key string, a Assertion, supersedes string) error {
 		report, ok := reports[key]
