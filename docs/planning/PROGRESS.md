@@ -1,5 +1,23 @@
 # Current execution state
 
+- FOR-09 Forum editorial MVP acceptance and rollback checkpoint, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `29e60e14`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  proves end-to-end editorial foundation and safe degraded operation:
+  `TestFOR09_EditorialChainAndSafeRollback` in Go verifies the complete admin
+  draft creation, publication, privacy hiding/retraction, and unhide cycle;
+  verifies public feed and detail 404 privacy invariants; verifies safe source
+  link preservation; verifies default-off switches returning 404 `forum.disabled`
+  without data loss or corruption. `ForumEditorialMvpAcceptanceTest` in Android
+  verifies admin-to-Android wire mapping, offline degradation serving cached feed
+  with `isOffline = true`, strict source link refusal (rejecting non-HTTPS, user-info
+  credentials, custom ports, and oversized URLs), live 404 cache purge, and
+  clean fallback when forum reads are disabled without affecting core station/pricing
+  features. Phase 1 (FOR-00 through FOR-09) is complete and validated across all
+  modules (`:domain`, `:application`, `:data`, `:app`, backend, admin-web).
+  Tested revision: source in this commit. Next action: Phase 1 complete; Phase 2
+  (FOR-10) pending explicit user directive.
+
 - FOR-08 Forum Community card, feed/detail routes, screens, and viewmodels, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `9e5ee899`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
