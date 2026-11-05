@@ -47,8 +47,8 @@ Phase 1 delivers the editorial foundation and MVP read experience:
 | **FOR-00** | Reconcile main baseline and freeze scope | LOCAL_DONE | Current commit | Baseline `3fc77acc` + `6857ec63`; migration 000157 and Room v37 allocated; Phase 1 evidence opened; worktrees isolated. |
 | **FOR-01** | Freeze behavior, privacy and contracts | LOCAL_DONE | Current commit | Normative OpenAPI v1 routes (`/v1/forum/categories`, `/v1/forum/posts`, `/v1/forum/posts/{post_id}`), schemas, 9 testdata vectors, structural & boundary tests (title 1–120, excerpt max 400, body max 4000, forbidden leaks). Vacuum lint clean (0 errors). |
 | **FOR-02** | Pure editorial domain and ports | LOCAL_DONE | Current commit | Pure Go stdlib domain (`Post`, `Source`, `Category`, `PublicationState`, `Visibility`, state machine transitions, UTF-8/rune bounds validation, public projections `ToSummary`/`ToDetail`) and application layer (`Service`, `CategoryReader`, `PostReader`, `Clock`, default-off gates). Full unit suite + stdlib-only guard + `-race` PASSED. |
-| **FOR-03** | Foundation SQL and migration recovery | NEXT | - | Migration 000157, sqlc queries, pgx adapter, concurrency/rollback tests. |
-| **FOR-04** | Existing admin editorial publication | PLANNED | - | Draft, edit, publish, hide actions, audit trail, CSRF/RBAC integration. |
+| **FOR-03** | Foundation SQL and migration recovery | LOCAL_DONE | Current commit | Migration 000157 (forum_sources, forum_feed_state, forum_posts, forum_changes), sqlc-generated pgx queries, Store adapter (PostReader/CategoryReader), opaque keyset cursor, monotonic feed serialization under lock, optimistic revision checks, 11 constraint negative checks, migration idempotency, and EXPLAIN partial index plan verified under `-race`. |
+| **FOR-04** | Existing admin editorial publication | NEXT | - | Draft, edit, publish, hide actions, audit trail, CSRF/RBAC integration. |
 | **FOR-05** | Public read API and composition | PLANNED | - | GET /v1/forum/categories, /v1/forum/posts, /v1/forum/posts/{id}, HMAC cursor. |
 | **FOR-06** | Android domain/application contracts | PLANNED | - | Kotlin models, use cases, error contracts, pure JVM unit tests. |
 | **FOR-07** | HTTP, Room cache and Hilt | PLANNED | - | Transport client, Room v37 entities/DAO, 24h/2 MiB offline cache, DI wiring. |
@@ -60,6 +60,9 @@ Phase 1 delivers the editorial foundation and MVP read experience:
 - `git diff --check`: PASSED (no trailing whitespace or merge conflict markers).
 - Secret surface review: PASSED (no credentials, tokens, or PII introduced).
 - OpenAPI lint (`vacuum lint`): PASSED (0 errors).
-- Go test suite with `-race`: PASSED (`./internal/modules/forum/...` domain & application + `./internal/platform/apicontract/...`).
-- Repository worktree isolation: PASSED (occupied dev and detached checkouts untouched).
-- Next action: FOR-03 (foundation SQL and migration recovery).
+- Go unit test suite with `-race`: PASSED (`./internal/modules/forum/...` adapters, domain & application + `./internal/platform/apicontract/...`).
+- PostgreSQL integration test suite with `-race`: PASSED (`TestForumMigration_AppliedAndIdempotent`, `TestForumConstraints_NegativeChecks`, `TestForumPublication_MonotonicSequenceAndConcurrency`, `TestForumFeed_KeysetPaginationAndSnapshot`, `TestForumUpdateAndVisibility_RollbackAndFeedInvalidation`, `TestForumExplainPlan_UsesPartialIndex`).
+- Static analysis: `go vet` and `sqlc vet` PASSED (0 errors).
+- Code formatting: `gofmt` verified.
+- Repository worktree isolation: PASSED (persistent worktree on maintained dev; occupied checkouts untouched).
+- Next action: FOR-04 (existing admin editorial publication).

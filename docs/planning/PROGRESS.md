@@ -1,5 +1,19 @@
 # Current execution state
 
+- FOR-03 Forum foundation SQL and migration recovery, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `3a91262d`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements foundation migration 000157 (`forum_sources`, `forum_feed_state`,
+  `forum_posts`, `forum_changes`), sqlc queries and pgx `Store` adapter implementing
+  `PostReader` and `CategoryReader`. Tested under `-race` with real PostgreSQL / PostGIS:
+  empty/upgrade/idempotent migration apply, 11 schema negative checks (scalar bounds,
+  kind/source/author/date constraints, unique external/hash constraints), concurrent
+  publication serialization on monotonic sequence, keyset pagination with opaque base64
+  cursor (`seq:uuid`), category/kind filters, optimistic revision check rollback,
+  visibility hide invalidation and EXPLAIN partial index plan. Occupied primary
+  checkout and existing worktrees preserved. Tested revision: source in this commit.
+  Next microtask: FOR-04 (existing admin editorial publication).
+
 - FOR-02 Forum pure domain and application ports, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `c196b742`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)

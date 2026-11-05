@@ -438,3 +438,17 @@ sql:
         out: db/queries/driver
         sql_package: pgx/v5
         emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/forum
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000157_forum_editorial_foundation.sql
+    gen:
+      go:
+        package: forum
+        out: db/queries/forum
+        sql_package: pgx/v5
+        emit_json_tags: true

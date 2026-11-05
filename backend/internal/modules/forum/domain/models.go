@@ -141,6 +141,50 @@ type CategoryItem struct {
 	Description string
 }
 
+// CurrentTaxonomyVersion is the current normative taxonomy version.
+const CurrentTaxonomyVersion = 1
+
+// DefaultCategories returns the normative 7 forum taxonomy categories.
+func DefaultCategories() []CategoryItem {
+	return []CategoryItem{
+		{
+			Code:        CategoryFuels,
+			Name:        "Combustíveis",
+			Description: "Preços, tributação, composição e qualidade de combustíveis.",
+		},
+		{
+			Code:        CategoryElectric,
+			Name:        "Eletromobilidade",
+			Description: "Recarga elétrica, conectores, tarifas e infraestrutura.",
+		},
+		{
+			Code:        CategoryTrafficRules,
+			Name:        "Legislação de Trânsito",
+			Description: "Normas, sinalização, fiscalização e regulamentação.",
+		},
+		{
+			Code:        CategoryVehiclesTech,
+			Name:        "Veículos e Tecnologia",
+			Description: "Manutenção, consumo, eficiência energética e mecânica.",
+		},
+		{
+			Code:        CategoryRoadsMobility,
+			Name:        "Rodovias e Mobilidade",
+			Description: "Condições de estradas, pedágios, rotas e tráfego.",
+		},
+		{
+			Code:        CategoryDriverEconomy,
+			Name:        "Economia do Motorista",
+			Description: "Gestão de custos, cálculo de autonomia e dicas financeiras.",
+		},
+		{
+			Code:        CategoryAbastevoData,
+			Name:        "Dados Abastevo",
+			Description: "Transparência, estatísticas de mercado e análises agregadas.",
+		},
+	}
+}
+
 // Post is the aggregate root for forum publications.
 type Post struct {
 	ID                  string

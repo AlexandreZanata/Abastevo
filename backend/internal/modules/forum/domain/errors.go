@@ -25,6 +25,7 @@ var (
 	ErrRevisionMismatch        = errors.New("forum: revision mismatch")
 	ErrForumDisabled           = errors.New("forum: forum subsystem is disabled")
 	ErrPostNotFound            = errors.New("forum: post not found")
+	ErrInvalidCursor           = errors.New("forum: invalid cursor")
 )
 
 const (
@@ -79,6 +80,8 @@ func VerdictCode(err error) string {
 		return "forum-disabled"
 	case errors.Is(err, ErrPostNotFound):
 		return "post-not-found"
+	case errors.Is(err, ErrInvalidCursor):
+		return "invalid-cursor"
 	default:
 		return "unknown-error"
 	}

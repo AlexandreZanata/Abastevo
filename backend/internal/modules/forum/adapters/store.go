@@ -1,0 +1,733 @@
+package adapters
+
+import (
+	"context"
+	"encoding/base64"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	forumsql "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/forum"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
+)
+
+// Store provides PostgreSQL persistence for Forum Abastevo.
+type Store struct {
+	pool    *pgxpool.Pool
+	queries *forumsql.Queries
+}
+
+// NewStore initializes a new Store backed by pgxpool.
+func NewStore(pool *pgxpool.Pool) *Store {
+	return &Store{
+		pool:    pool,
+		queries: forumsql.New(pool),
+	}
+}
+
+// ListCategories returns the static forum taxonomy with current version.
+func (s *Store) ListCategories(ctx context.Context) ([]domain.CategoryItem, int, error) {
+	return domain.DefaultCategories(), domain.CurrentTaxonomyVersion, nil
+}
+
+// GetFeedSnapshot returns the current feed revision formatted as a string.
+func (s *Store) GetFeedSnapshot(ctx context.Context) (string, error) {
+	row, err := s.queries.GetFeedRevision(ctx)
+	if err != nil {
+		return "", fmt.Errorf("forum: get feed revision: %w", err)
+	}
+	return fmt.Sprintf("rev-%d", row.Revision), nil
+}
+
+// GetPostByID fetches a single post by ID including source metadata.
+func (s *Store) GetPostByID(ctx context.Context, id string) (*domain.Post, error) {
+	postUUID, err := mustUUID(id)
+	if err != nil {
+		return nil, domain.ErrPostNotFound
+	}
+
+	row, err := s.queries.GetPostByID(ctx, postUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrPostNotFound
+		}
+		return nil, fmt.Errorf("forum: get post by id: %w", err)
+	}
+
+	return mapPostRowToDomain(row), nil
+}
+
+// ListPublicPosts returns a keyset-paginated slice of public post summaries.
+func (s *Store) ListPublicPosts(ctx context.Context, query application.ListPublicPostsQuery) (domain.FeedPage, error) {
+	var cursorSeq pgtype.Int8
+	var cursorID pgtype.UUID
+
+	if query.Cursor != nil && *query.Cursor != "" {
+		seq, id, err := DecodeCursor(*query.Cursor)
+		if err != nil {
+			return domain.FeedPage{}, err
+		}
+		uid, err := mustUUID(id)
+		if err != nil {
+			return domain.FeedPage{}, domain.ErrInvalidCursor
+		}
+		cursorSeq = pgtype.Int8{Int64: seq, Valid: true}
+		cursorID = uid
+	}
+
+	var categoryParam pgtype.Text
+	if query.Category != nil {
+		categoryParam = pgtype.Text{String: string(*query.Category), Valid: true}
+	}
+
+	var kindParam pgtype.Text
+	if query.Kind != nil {
+		kindParam = pgtype.Text{String: string(*query.Kind), Valid: true}
+	}
+
+	limit := query.Limit
+	if limit <= 0 {
+		limit = 20
+	} else if limit > 50 {
+		limit = 50
+	}
+
+	rows, err := s.queries.ListPublicPosts(ctx, forumsql.ListPublicPostsParams{
+		Category:  categoryParam,
+		Kind:      kindParam,
+		CursorSeq: cursorSeq,
+		CursorID:  cursorID,
+		PageLimit: int32(limit),
+	})
+	if err != nil {
+		return domain.FeedPage{}, fmt.Errorf("forum: list public posts: %w", err)
+	}
+
+	items := make([]domain.PostSummary, 0, len(rows))
+	for _, r := range rows {
+		items = append(items, mapSummaryRowToDomain(r))
+	}
+
+	var nextCursor *string
+	if len(rows) == limit {
+		last := rows[len(rows)-1]
+		c := EncodeCursor(last.FirstPublicationSeq, uuidString(last.ID))
+		nextCursor = &c
+	}
+
+	snapshot, err := s.GetFeedSnapshot(ctx)
+	if err != nil {
+		return domain.FeedPage{}, err
+	}
+
+	return domain.FeedPage{
+		Items:      items,
+		NextCursor: nextCursor,
+		Snapshot:   snapshot,
+		FetchedAt:  time.Now().UTC(),
+	}, nil
+}
+
+// CreateEditorialPost inserts an editorial post in draft or specified initial state.
+func (s *Store) CreateEditorialPost(ctx context.Context, p *domain.Post) error {
+	if err := p.Validate(); err != nil {
+		return err
+	}
+
+	postUUID, err := mustUUID(p.ID)
+	if err != nil {
+		return fmt.Errorf("forum: invalid post id: %w", err)
+	}
+
+	var sourceUUID pgtype.UUID
+	if p.SourceID != "" {
+		sourceUUID, err = mustUUID(p.SourceID)
+		if err != nil {
+			return fmt.Errorf("forum: invalid source id: %w", err)
+		}
+	}
+
+	var authorUUID pgtype.UUID
+	if p.AuthorAccountID != "" {
+		authorUUID, err = mustUUID(p.AuthorAccountID)
+		if err != nil {
+			return fmt.Errorf("forum: invalid author id: %w", err)
+		}
+	}
+
+	var publicAlias pgtype.Text
+	if p.PublicAlias != nil {
+		publicAlias = pgtype.Text{String: *p.PublicAlias, Valid: true}
+	}
+
+	var sourcePubAt pgtype.Timestamptz
+	if p.SourcePublishedAt != nil {
+		sourcePubAt = pgtype.Timestamptz{Time: *p.SourcePublishedAt, Valid: true}
+	}
+
+	var sourceUpdAt pgtype.Timestamptz
+	if p.SourceUpdatedAt != nil {
+		sourceUpdAt = pgtype.Timestamptz{Time: *p.SourceUpdatedAt, Valid: true}
+	}
+
+	var firstPubAt pgtype.Timestamptz
+	if p.FirstPublishedAt != nil {
+		firstPubAt = pgtype.Timestamptz{Time: *p.FirstPublishedAt, Valid: true}
+	}
+
+	var correction pgtype.Text
+	if p.Correction != nil {
+		correction = pgtype.Text{String: *p.Correction, Valid: true}
+	}
+
+	var regionUf pgtype.Text
+	var regionIBGE pgtype.Int4
+	if p.Region != nil {
+		if p.Region.UF != "" {
+			regionUf = pgtype.Text{String: p.Region.UF, Valid: true}
+		}
+		if p.Region.MunicipalityIBGE != nil {
+			regionIBGE = pgtype.Int4{Int32: int32(*p.Region.MunicipalityIBGE), Valid: true}
+		}
+	}
+
+	var fuelProduct pgtype.Text
+	if p.FuelProduct != nil {
+		fuelProduct = pgtype.Text{String: *p.FuelProduct, Valid: true}
+	}
+
+	var stationUUID pgtype.UUID
+	if p.StationID != nil && *p.StationID != "" {
+		stationUUID, err = mustUUID(*p.StationID)
+		if err != nil {
+			return fmt.Errorf("forum: invalid station id: %w", err)
+		}
+	}
+
+	var rightsSnapshot pgtype.Text
+	if p.RightsSnapshot != nil {
+		rightsSnapshot = pgtype.Text{String: *p.RightsSnapshot, Valid: true}
+	}
+
+	revision := p.Revision
+	if revision < 1 {
+		revision = 1
+	}
+
+	localCreated := p.LocalCreatedAt
+	if localCreated.IsZero() {
+		localCreated = time.Now().UTC()
+	}
+
+	localUpdated := p.LocalUpdatedAt
+	if localUpdated.IsZero() {
+		localUpdated = localCreated
+	}
+
+	return s.queries.InsertEditorialPost(ctx, forumsql.InsertEditorialPostParams{
+		ID:                     postUUID,
+		Kind:                   string(p.Kind),
+		Category:               string(p.Category),
+		Title:                  p.Title,
+		Excerpt:                p.Excerpt,
+		BodyText:               p.BodyText,
+		SourceID:               sourceUUID,
+		CanonicalUrl:           p.CanonicalURL,
+		CanonicalUrlHash:       "",
+		ExternalID:             "",
+		AuthorAccountID:        authorUUID,
+		PublicAlias:            publicAlias,
+		SourcePublishedAt:      sourcePubAt,
+		SourceUpdatedAt:        sourceUpdAt,
+		LocalCreatedAt:         pgtype.Timestamptz{Time: localCreated, Valid: true},
+		LocalUpdatedAt:         pgtype.Timestamptz{Time: localUpdated, Valid: true},
+		FirstPublishedAt:       firstPubAt,
+		FirstPublicationSeq:    p.FirstPublicationSeq,
+		PublicationState:       string(p.PublicationState),
+		Visibility:             string(p.Visibility),
+		Revision:               int32(revision),
+		CommentsEnabled:        p.CommentsEnabled,
+		Correction:             correction,
+		RegionUf:               regionUf,
+		RegionMunicipalityIbge: regionIBGE,
+		FuelProduct:            fuelProduct,
+		StationID:              stationUUID,
+		AuthorOperationID:      pgtype.UUID{},
+		BodySha256:             "",
+		RightsSnapshot:         rightsSnapshot,
+		BulletinKey:            pgtype.Text{},
+		SupersedesPostID:       pgtype.UUID{},
+	})
+}
+
+// PublishEditorialPost assigns the next monotonic publication sequence and sets state to PUBLISHED.
+func (s *Store) PublishEditorialPost(ctx context.Context, id string, publishedAt time.Time) (int64, error) {
+	postUUID, err := mustUUID(id)
+	if err != nil {
+		return 0, domain.ErrPostNotFound
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("forum: begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	txQueries := s.queries.WithTx(tx)
+
+	if publishedAt.IsZero() {
+		publishedAt = time.Now().UTC()
+	}
+
+	seq, err := txQueries.BumpFeedRevision(ctx, pgtype.Timestamptz{Time: publishedAt, Valid: true})
+	if err != nil {
+		return 0, fmt.Errorf("forum: bump feed revision: %w", err)
+	}
+
+	rows, err := txQueries.PublishEditorialPost(ctx, forumsql.PublishEditorialPostParams{
+		ID:                  postUUID,
+		FirstPublicationSeq: seq,
+		PublishedAt:         pgtype.Timestamptz{Time: publishedAt, Valid: true},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("forum: publish post: %w", err)
+	}
+	if rows == 0 {
+		return 0, domain.ErrPostNotFound
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, fmt.Errorf("forum: commit publication: %w", err)
+	}
+
+	return seq, nil
+}
+
+// UpdateEditorialPost modifies post contents under optimistic revision locking.
+func (s *Store) UpdateEditorialPost(ctx context.Context, p *domain.Post, expectedRevision int) error {
+	if err := p.Validate(); err != nil {
+		return err
+	}
+
+	postUUID, err := mustUUID(p.ID)
+	if err != nil {
+		return domain.ErrPostNotFound
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("forum: begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	txQueries := s.queries.WithTx(tx)
+
+	var correction pgtype.Text
+	if p.Correction != nil {
+		correction = pgtype.Text{String: *p.Correction, Valid: true}
+	}
+
+	var regionUf pgtype.Text
+	var regionIBGE pgtype.Int4
+	if p.Region != nil {
+		if p.Region.UF != "" {
+			regionUf = pgtype.Text{String: p.Region.UF, Valid: true}
+		}
+		if p.Region.MunicipalityIBGE != nil {
+			regionIBGE = pgtype.Int4{Int32: int32(*p.Region.MunicipalityIBGE), Valid: true}
+		}
+	}
+
+	var fuelProduct pgtype.Text
+	if p.FuelProduct != nil {
+		fuelProduct = pgtype.Text{String: *p.FuelProduct, Valid: true}
+	}
+
+	var stationUUID pgtype.UUID
+	if p.StationID != nil && *p.StationID != "" {
+		stationUUID, err = mustUUID(*p.StationID)
+		if err != nil {
+			return fmt.Errorf("forum: invalid station id: %w", err)
+		}
+	}
+
+	now := time.Now().UTC()
+
+	rows, err := txQueries.UpdateEditorialPost(ctx, forumsql.UpdateEditorialPostParams{
+		ID:                     postUUID,
+		Title:                  p.Title,
+		Excerpt:                p.Excerpt,
+		BodyText:               p.BodyText,
+		Category:               string(p.Category),
+		FuelProduct:            fuelProduct,
+		RegionUf:               regionUf,
+		RegionMunicipalityIbge: regionIBGE,
+		StationID:              stationUUID,
+		CommentsEnabled:        p.CommentsEnabled,
+		Correction:             correction,
+		UpdatedAt:              pgtype.Timestamptz{Time: now, Valid: true},
+		ExpectedRevision:       int32(expectedRevision),
+	})
+	if err != nil {
+		return fmt.Errorf("forum: update post: %w", err)
+	}
+	if rows == 0 {
+		return domain.ErrRevisionMismatch
+	}
+
+	// Bump feed revision if post is published
+	if p.PublicationState == domain.StatePublished {
+		if _, err := txQueries.BumpFeedRevision(ctx, pgtype.Timestamptz{Time: now, Valid: true}); err != nil {
+			return fmt.Errorf("forum: bump feed revision: %w", err)
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
+// SetPostVisibility changes the public visibility of a post.
+func (s *Store) SetPostVisibility(ctx context.Context, id string, visibility domain.Visibility) error {
+	postUUID, err := mustUUID(id)
+	if err != nil {
+		return domain.ErrPostNotFound
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("forum: begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	txQueries := s.queries.WithTx(tx)
+	now := time.Now().UTC()
+
+	rows, err := txQueries.SetPostVisibility(ctx, forumsql.SetPostVisibilityParams{
+		ID:         postUUID,
+		Visibility: string(visibility),
+		UpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("forum: set post visibility: %w", err)
+	}
+	if rows == 0 {
+		return domain.ErrPostNotFound
+	}
+
+	if _, err := txQueries.BumpFeedRevision(ctx, pgtype.Timestamptz{Time: now, Valid: true}); err != nil {
+		return fmt.Errorf("forum: bump feed revision: %w", err)
+	}
+
+	return tx.Commit(ctx)
+}
+
+// ChangeRecord represents an audit change to a forum entity.
+type ChangeRecord struct {
+	ID            string
+	TargetType    string
+	TargetID      string
+	Revision      int
+	Action        string
+	ActorKind     string
+	ActorAccount  string
+	AdminAuditRef string
+	PolicyVersion int
+	ReasonCode    string
+	PriorState    string
+	NewState      string
+	CreatedAt     time.Time
+}
+
+// RecordChange appends an audit change record.
+func (s *Store) RecordChange(ctx context.Context, rec ChangeRecord) error {
+	changeUUID, err := mustUUID(rec.ID)
+	if err != nil {
+		return fmt.Errorf("forum: invalid change id: %w", err)
+	}
+
+	targetUUID, err := mustUUID(rec.TargetID)
+	if err != nil {
+		return fmt.Errorf("forum: invalid target id: %w", err)
+	}
+
+	var actorUUID pgtype.UUID
+	if rec.ActorAccount != "" {
+		actorUUID, err = mustUUID(rec.ActorAccount)
+		if err != nil {
+			return fmt.Errorf("forum: invalid actor account id: %w", err)
+		}
+	}
+
+	createdAt := rec.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	policyVer := rec.PolicyVersion
+	if policyVer < 1 {
+		policyVer = 1
+	}
+
+	return s.queries.RecordForumChange(ctx, forumsql.RecordForumChangeParams{
+		ID:             changeUUID,
+		TargetType:     rec.TargetType,
+		TargetID:       targetUUID,
+		Revision:       int32(rec.Revision),
+		Action:         rec.Action,
+		ActorKind:      rec.ActorKind,
+		ActorAccountID: actorUUID,
+		AdminAuditRef:  rec.AdminAuditRef,
+		PolicyVersion:  int32(policyVer),
+		ReasonCode:     rec.ReasonCode,
+		PriorState:     rec.PriorState,
+		NewState:       rec.NewState,
+		CreatedAt:      pgtype.Timestamptz{Time: createdAt, Valid: true},
+	})
+}
+
+// EncodeCursor builds an opaque pagination cursor token.
+func EncodeCursor(seq int64, id string) string {
+	raw := fmt.Sprintf("%d:%s", seq, id)
+	return base64.RawURLEncoding.EncodeToString([]byte(raw))
+}
+
+// DecodeCursor decodes and validates an opaque pagination cursor token.
+func DecodeCursor(token string) (int64, string, error) {
+	if strings.TrimSpace(token) == "" {
+		return 0, "", domain.ErrInvalidCursor
+	}
+	b, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil {
+		return 0, "", domain.ErrInvalidCursor
+	}
+	parts := strings.SplitN(string(b), ":", 2)
+	if len(parts) != 2 {
+		return 0, "", domain.ErrInvalidCursor
+	}
+	seq, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil || seq <= 0 {
+		return 0, "", domain.ErrInvalidCursor
+	}
+	id := parts[1]
+	if _, err := mustUUID(id); err != nil {
+		return 0, "", domain.ErrInvalidCursor
+	}
+	return seq, id, nil
+}
+
+func mustUUID(text string) (pgtype.UUID, error) {
+	if text == "" {
+		return pgtype.UUID{}, errors.New("empty uuid")
+	}
+	raw, err := hex.DecodeString(stripDashes(text))
+	if err != nil || len(raw) != 16 {
+		return pgtype.UUID{}, errors.New("malformed uuid")
+	}
+	var id pgtype.UUID
+	copy(id.Bytes[:], raw)
+	id.Valid = true
+	return id, nil
+}
+
+func stripDashes(s string) string {
+	out := make([]byte, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] != '-' {
+			out = append(out, s[i])
+		}
+	}
+	return string(out)
+}
+
+func uuidString(id pgtype.UUID) string {
+	if !id.Valid {
+		return ""
+	}
+	hexed := hex.EncodeToString(id.Bytes[:])
+	return hexed[0:8] + "-" + hexed[8:12] + "-" + hexed[12:16] + "-" +
+		hexed[16:20] + "-" + hexed[20:32]
+}
+
+func mapPostRowToDomain(r forumsql.GetPostByIDRow) *domain.Post {
+	var publicAlias *string
+	if r.PublicAlias.Valid {
+		cp := r.PublicAlias.String
+		publicAlias = &cp
+	}
+
+	var correction *string
+	if r.Correction.Valid {
+		cp := r.Correction.String
+		correction = &cp
+	}
+
+	var fuelProduct *string
+	if r.FuelProduct.Valid {
+		cp := r.FuelProduct.String
+		fuelProduct = &cp
+	}
+
+	var stationID *string
+	if r.StationID.Valid {
+		cp := uuidString(r.StationID)
+		stationID = &cp
+	}
+
+	var rightsSnapshot *string
+	if r.RightsSnapshot.Valid {
+		cp := r.RightsSnapshot.String
+		rightsSnapshot = &cp
+	}
+
+	var region *domain.Region
+	if r.RegionUf.Valid {
+		var ibge *int
+		if r.RegionMunicipalityIbge.Valid {
+			val := int(r.RegionMunicipalityIbge.Int32)
+			ibge = &val
+		}
+		region = &domain.Region{
+			UF:               r.RegionUf.String,
+			MunicipalityIBGE: ibge,
+		}
+	}
+
+	var srcAttr *domain.SourceAttribution
+	if r.SourceName.Valid && r.SourceOriginUrl.Valid {
+		srcAttr = &domain.SourceAttribution{
+			Name:        r.SourceName.String,
+			URL:         r.SourceOriginUrl.String,
+			Attribution: r.SourceAttribution.String,
+		}
+	}
+
+	var srcPubAt *time.Time
+	if r.SourcePublishedAt.Valid {
+		t := r.SourcePublishedAt.Time.UTC()
+		srcPubAt = &t
+	}
+
+	var srcUpdAt *time.Time
+	if r.SourceUpdatedAt.Valid {
+		t := r.SourceUpdatedAt.Time.UTC()
+		srcUpdAt = &t
+	}
+
+	var firstPubAt *time.Time
+	if r.FirstPublishedAt.Valid {
+		t := r.FirstPublishedAt.Time.UTC()
+		firstPubAt = &t
+	}
+
+	return &domain.Post{
+		ID:                  uuidString(r.ID),
+		Kind:                domain.PostKind(r.Kind),
+		Category:            domain.Category(r.Category),
+		Title:               r.Title,
+		Excerpt:             r.Excerpt,
+		BodyText:            r.BodyText,
+		SourceID:            uuidString(r.SourceID),
+		SourceAttribution:   srcAttr,
+		CanonicalURL:        r.CanonicalUrl,
+		AuthorAccountID:     uuidString(r.AuthorAccountID),
+		PublicAlias:         publicAlias,
+		SourcePublishedAt:   srcPubAt,
+		SourceUpdatedAt:     srcUpdAt,
+		FirstPublishedAt:    firstPubAt,
+		LocalCreatedAt:      r.LocalCreatedAt.Time.UTC(),
+		LocalUpdatedAt:      r.LocalUpdatedAt.Time.UTC(),
+		FirstPublicationSeq: r.FirstPublicationSeq,
+		PublicationState:    domain.PublicationState(r.PublicationState),
+		Visibility:          domain.Visibility(r.Visibility),
+		Revision:            int(r.Revision),
+		CommentsEnabled:     r.CommentsEnabled,
+		Correction:          correction,
+		Region:              region,
+		FuelProduct:         fuelProduct,
+		StationID:           stationID,
+		RightsSnapshot:      rightsSnapshot,
+	}
+}
+
+func mapSummaryRowToDomain(r forumsql.ListPublicPostsRow) domain.PostSummary {
+	var excerpt *string
+	if r.Excerpt != "" {
+		cp := r.Excerpt
+		excerpt = &cp
+	}
+
+	var publicAlias *string
+	if r.PublicAlias.Valid {
+		cp := r.PublicAlias.String
+		publicAlias = &cp
+	}
+
+	var fuelProduct *string
+	if r.FuelProduct.Valid {
+		cp := r.FuelProduct.String
+		fuelProduct = &cp
+	}
+
+	var stationID *string
+	if r.StationID.Valid {
+		cp := uuidString(r.StationID)
+		stationID = &cp
+	}
+
+	var region *domain.Region
+	if r.RegionUf.Valid {
+		var ibge *int
+		if r.RegionMunicipalityIbge.Valid {
+			val := int(r.RegionMunicipalityIbge.Int32)
+			ibge = &val
+		}
+		region = &domain.Region{
+			UF:               r.RegionUf.String,
+			MunicipalityIBGE: ibge,
+		}
+	}
+
+	var srcAttr *domain.SourceAttribution
+	if r.SourceName.Valid && r.SourceOriginUrl.Valid {
+		srcAttr = &domain.SourceAttribution{
+			Name:        r.SourceName.String,
+			URL:         r.SourceOriginUrl.String,
+			Attribution: r.SourceAttribution.String,
+		}
+	}
+
+	var srcPubAt *time.Time
+	if r.SourcePublishedAt.Valid {
+		t := r.SourcePublishedAt.Time.UTC()
+		srcPubAt = &t
+	}
+
+	firstPub := time.Time{}
+	if r.FirstPublishedAt.Valid {
+		firstPub = r.FirstPublishedAt.Time.UTC()
+	}
+
+	return domain.PostSummary{
+		ID:                uuidString(r.ID),
+		Kind:              domain.PostKind(r.Kind),
+		Category:          domain.Category(r.Category),
+		Title:             r.Title,
+		Excerpt:           excerpt,
+		Source:            srcAttr,
+		PublicAlias:       publicAlias,
+		SourcePublishedAt: srcPubAt,
+		FirstPublishedAt:  firstPub,
+		UpdatedAt:         r.LocalUpdatedAt.Time.UTC(),
+		Revision:          int(r.Revision),
+		Region:            region,
+		FuelProduct:       fuelProduct,
+		StationID:         stationID,
+	}
+}
