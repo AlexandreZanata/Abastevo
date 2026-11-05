@@ -3,7 +3,8 @@
 -- Best/worst orders rank by the community star average of the same
 -- station+fuel (feedback_rating_stats); unrated rows sort last in both.
 -- name: CityFeed :many
-SELECT p.station_id, s.display_name, p.fuel_product, p.unit,
+SELECT p.station_id, s.display_name, s.legal_name AS station_legal_name,
+ s.address AS station_address, p.fuel_product, p.unit,
  p.amount_milli_brl, p.confidence, p.independent_supporters,
  p.confirmation_count, p.anchor_received_at, p.expires_at, p.projection_version,
  COALESCE(rs.ratings_count, 0)::bigint AS ratings_count,

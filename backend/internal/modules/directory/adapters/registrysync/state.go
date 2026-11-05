@@ -15,13 +15,14 @@ import (
 
 // Snapshot contains only provenance, never a source row or a credential.
 type Snapshot struct {
-	Key          string `json:"key"`
-	Fingerprint  string `json:"fingerprint"`
-	SourceHash   string `json:"source_hash"`
-	AliasHash    string `json:"alias_hash"`
-	RunID        string `json:"run_id"`
-	FetchedAt    string `json:"fetched_at"`
-	ManifestHash string `json:"manifest_hash,omitempty"`
+	Key            string `json:"key"`
+	Fingerprint    string `json:"fingerprint"`
+	SourceHash     string `json:"source_hash"`
+	AliasHash      string `json:"alias_hash"`
+	RunID          string `json:"run_id"`
+	FetchedAt      string `json:"fetched_at"`
+	ManifestHash   string `json:"manifest_hash,omitempty"`
+	NameInputsHash string `json:"name_inputs_hash,omitempty"`
 }
 type state struct {
 	Version   int       `json:"version"`
@@ -69,7 +70,7 @@ func readState(root string) (state, error) {
 				return s, fmt.Errorf("invalid frozen timestamp/UUID")
 			}
 		}
-		if v != nil && (!validHash(v.Key) || !validHash(v.Fingerprint) || !validHash(v.SourceHash) || !validHash(v.AliasHash) || (v.ManifestHash != "" && !validHash(v.ManifestHash))) {
+		if v != nil && (!validHash(v.Key) || !validHash(v.Fingerprint) || !validHash(v.SourceHash) || !validHash(v.AliasHash) || (v.ManifestHash != "" && !validHash(v.ManifestHash)) || (v.NameInputsHash != "" && !validHash(v.NameInputsHash))) {
 			return s, fmt.Errorf("invalid snapshot identity")
 		}
 	}

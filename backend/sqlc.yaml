@@ -60,6 +60,8 @@ sql:
     schema:
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
+      - db/migrations/000031_registry_sources.sql
+      - db/migrations/000146_station_source_facts.sql
       - db/migrations/000008_community.sql
       - db/migrations/000012_community_signals.sql
       - db/migrations/000013_community_votes.sql

@@ -27,6 +27,8 @@ object CommunityFeedCacheCodec {
             val row = JSONObject()
                 .put("station_id", item.stationId)
                 .put("station_name", item.stationName)
+                .put("station_legal_name", item.stationLegalName ?: JSONObject.NULL)
+                .put("station_address", JSONObject(item.stationAddress))
                 .put("fuel_product", WireFuelMapper.toWire(item.fuel))
                 .put("unit", item.unit)
                 .put("currency", "BRL")

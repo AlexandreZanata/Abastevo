@@ -85,6 +85,9 @@ fun StationPriceRow(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                station.legalName?.let { name ->
+                    Text(name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 station.brand?.takeIf { it.isNotBlank() }?.let { brand ->
                     Text(
                         text = stringResource(R.string.stations_brand_label, brand),

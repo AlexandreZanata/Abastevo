@@ -40,6 +40,7 @@ object StationPriceUiMapper {
         return StationPriceUiModel(
             cnpjDigits = stationPrice.station.cnpj.digits,
             displayName = stationPrice.station.displayName(),
+            legalName = stationPrice.station.secondaryLegalName,
             brand = stationPrice.station.brand,
             address = stationPrice.station.address,
             priceFormatted = PriceFormatter.formatAmount(stationPrice.price, locale)

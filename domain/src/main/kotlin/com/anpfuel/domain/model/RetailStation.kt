@@ -35,6 +35,9 @@ class RetailStation private constructor(
     fun matchesLocation(state: BrazilianState, municipality: String): Boolean =
         this.state == state && this.municipality.equals(municipality, ignoreCase = true)
 
+    val secondaryLegalName: String? get() =
+        com.anpfuel.domain.discovery.secondaryStationLegalName(displayName(), legalName)
+
     companion object {
         fun create(
             cnpj: Cnpj,

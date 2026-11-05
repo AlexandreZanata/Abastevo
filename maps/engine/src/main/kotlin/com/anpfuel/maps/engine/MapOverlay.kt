@@ -38,6 +38,7 @@ data class MapOverlayMarker(
     val subtitle: String = "",
     val hasValidCoordinates: Boolean = true,
     val confirmedByTwoSources: Boolean = false,
+    val legalName: String? = null,
 ) {
     val canRouteByCoordinates: Boolean
         get() = hasValidCoordinates &&
@@ -92,6 +93,7 @@ data class MapOverlayListItem(
     val typeLabel: String,
     val locationLabel: String,
     val contentDescription: String,
+    val legalName: String? = null,
 )
 
 private val CANONICAL_UUID = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -186,7 +188,7 @@ fun overlayListItems(
             "${typeLabel(marker, labels)} · ${labels.confirmedCharging}"
         } else typeLabel(marker, labels)
         val locationLabel = locationLabel(marker.locationQuality, labels)
-        val description = listOf(marker.title, typeLabel, locationLabel, marker.subtitle)
+        val description = listOfNotNull(marker.title, marker.legalName, typeLabel, locationLabel, marker.subtitle)
             .filter { it.isNotBlank() }
             .joinToString(", ")
         MapOverlayListItem(
@@ -196,6 +198,7 @@ fun overlayListItems(
             typeLabel = typeLabel,
             locationLabel = locationLabel,
             contentDescription = description,
+            legalName = marker.legalName,
         )
     }
 

@@ -118,6 +118,9 @@ internal fun StationPageContent(
                             Text(state.name.ifEmpty { stringResource(R.string.station_profile_title) },
                                 style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
                                 modifier = Modifier.semantics { heading() })
+                            state.canonical?.secondaryLegalName?.let { name ->
+                                Text(name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                             state.brand?.takeIf { it.isNotBlank() }?.let {
                                 Text(stringResource(R.string.stations_brand_label, it), style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)

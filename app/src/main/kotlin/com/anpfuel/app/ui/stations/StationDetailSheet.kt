@@ -94,6 +94,9 @@ internal fun StationDetailSheetContent(
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.semantics { heading() },
             )
+            detail.station.legalName?.let { name ->
+                Text(name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             detail.station.brand?.takeIf { it.isNotBlank() }?.let { brand ->
                 Text(
                     text = stringResource(R.string.stations_brand_label, brand),

@@ -3,7 +3,6 @@ package com.anpfuel.app.ui.map
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -21,11 +20,15 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -42,6 +45,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -169,46 +176,74 @@ internal fun MapControlsCard(
             }
             if (ui.loading || searching) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (expanded) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Column(
+                    Modifier.fillMaxWidth()
+                        .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.45f)
+                        .verticalScroll(rememberScrollState())
+                        .testTag("map-controls-details"),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    MapPriceSource.entries.forEach { source ->
-                        FilterChip(
-                            selected = ui.source == source,
-                            onClick = { onSelectSource(source) },
-                            label = { Text(stringResource(if (source == MapPriceSource.ANP) R.string.map_source_anp else R.string.map_source_community)) },
-                            modifier = Modifier.heightIn(min = 48.dp).testTag("map-source-${source.name.lowercase()}"),
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(stringResource(R.string.map_filter_source), style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val columns = if (LocalDensity.current.fontScale > 1.3f) 1 else 2
+                        MapPriceSource.entries.chunked(columns).forEach { options ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                options.forEach { source ->
+                                    FilterChip(
+                                        selected = ui.source == source,
+                                        onClick = { onSelectSource(source) },
+                                        label = { Text(stringResource(if (source == MapPriceSource.ANP) R.string.map_source_anp else R.string.map_source_community)) },
+                                        leadingIcon = if (ui.source == source) { { Icon(Icons.Default.Check, null, Modifier.size(18.dp)) } } else null,
+                                        shape = MaterialTheme.shapes.medium,
+                                        modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("map-source-${source.name.lowercase()}"),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (ui.source == MapPriceSource.ANP) {
+                        Column(Modifier.fillMaxWidth().testTag("map-survey-period"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(stringResource(R.string.week_picker_title), style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            periodContent()
+                        }
                     }
                     if (onOpenRoute != null) {
-                        TextButton(onClick = onOpenRoute, modifier = Modifier.heightIn(min = 48.dp).testTag("native-route-open")) {
+                        OutlinedButton(
+                            onClick = onOpenRoute,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("native-route-open"),
+                        ) {
+                            Icon(Icons.Default.Route, null, Modifier.size(20.dp))
+                            Spacer(Modifier.size(10.dp))
                             Text(stringResource(R.string.map22_title))
                         }
                     }
-                    if (ui.source == MapPriceSource.ANP) periodContent()
-                }
-                if (cityLocationUnknown) {
-                    Text(
-                        "${municipalityName.orEmpty()}: ${stringResource(R.string.map_location_unknown)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (offlineCached) {
-                    Text(
-                        stringResource(R.string.server_station_cached),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.testTag("map-offline-cache-banner"),
-                    )
-                }
-                if (ui.error != null) {
-                    TextButton(onClick = onRetry) { Text(stringResource(R.string.map_retry)) }
-                }
-                // The region suggestion card replaces the generic row when shown.
-                if (ui.noPackage && ui.regionSuggestion == null) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.map_no_package), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                        TextButton(onClick = onOpenDownloads) { Text(stringResource(R.string.map_download)) }
+                    if (cityLocationUnknown) {
+                        Text(
+                            "${municipalityName.orEmpty()}: ${stringResource(R.string.map_location_unknown)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (offlineCached) {
+                        Text(
+                            stringResource(R.string.server_station_cached),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.testTag("map-offline-cache-banner"),
+                        )
+                    }
+                    if (ui.error != null) {
+                        TextButton(onClick = onRetry) { Text(stringResource(R.string.map_retry)) }
+                    }
+                    // The region suggestion card replaces the generic row when shown.
+                    if (ui.noPackage && ui.regionSuggestion == null) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.map_no_package), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                            TextButton(onClick = onOpenDownloads) { Text(stringResource(R.string.map_download)) }
+                        }
                     }
                 }
             }

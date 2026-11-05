@@ -24,6 +24,22 @@ import org.junit.jupiter.api.Test
 class CityCommunityFeedHttpClientTest {
     private val query = FeedQuery(FeedCity("5107925", BrazilianState.MATO_GROSSO, "Sorriso"), FuelProduct.GASOLINE_PREMIUM)
     private val payload = """{"state":"MT","municipality_code":"5107925","fuel_product":"GASOLINE_ADDITIVED","sort":"recent","generated_at":"2026-10-06T12:00:00Z","next_cursor":null,"items":[{"station_id":"00000000-0000-0000-0000-000000000001","station_name":"Synthetic station","fuel_product":"GASOLINE_ADDITIVED","unit":"L","amount_milli_brl":5999,"currency":"BRL","source":"COMMUNITY","condition":"STANDARD","confidence":"LOW","updated_at":"2026-10-06T11:00:00Z","expires_at":"2026-10-07T11:00:00Z","supporters":1,"confirmations":0,"version":1}]}"""
+    @Test fun `optional public names remain distinct and legacy payloads stay readable`() {
+        val legacy = CityCommunityFeedHttpClient.decode(payload, query).items.single()
+        assertNull(legacy.secondaryLegalName)
+        assertEquals("", legacy.stationAddressLine)
+        val enriched = org.json.JSONObject(payload)
+        enriched.getJSONArray("items").getJSONObject(0)
+            .put("station_legal_name", "Synthetic Legal LTDA")
+            .put("station_address", org.json.JSONObject().put("street", "Synthetic Avenue").put("number", "1")
+                .put("municipio", "Synthetic city").put("uf", "MT").put("private", "ignored"))
+        val item = CityCommunityFeedHttpClient.decode(enriched.toString(), query).items.single()
+        assertEquals("Synthetic Legal LTDA", item.secondaryLegalName)
+        assertTrue(item.stationAddressLine.contains("Synthetic Avenue, 1"))
+        assertFalse(item.stationAddress.containsKey("private"))
+        enriched.getJSONArray("items").getJSONObject(0).put("station_legal_name", " synthetic  STATION ")
+        assertNull(CityCommunityFeedHttpClient.decode(enriched.toString(), query).items.single().secondaryLegalName)
+    }
     @Test fun `exact money and named legacy fuel bridge are preserved`() = runTest {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody(payload))

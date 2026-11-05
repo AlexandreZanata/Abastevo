@@ -101,6 +101,18 @@ only; no live sync used that superseded refusal policy.
 
 ## Reproduction and scoped operations
 
+The optional pinned name descriptor is auto-discovered at
+`<root>/name-inputs/manifest.json`, or selected with `--name-inputs`.
+The supervisor freezes its files and binds their hashes into the edition
+fingerprint. Missing/corrupt previously configured inputs refuse publication;
+pending retries use the frozen edition. The
+[OpenCNPJ procedure](evidence/sna/OPENCNPJ_STATION_NAMES.md) documents the
+minimized offline export, source/license attribution, exact full-CNPJ join,
+monthly refresh and Android presentation. Migration 156 indexes station
+ownership lookups for national publication without changing source facts.
+Source support alone does not establish deployment of the updated tools or
+publication of a named edition.
+
 Source checks (from the repository root):
 
 ```sh

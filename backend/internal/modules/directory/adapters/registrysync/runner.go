@@ -18,13 +18,14 @@ import (
 const Pipeline = "station-prep-v0.3.1-policy-v2-sync-v1"
 
 type Runner struct {
-	Root    string
-	Client  *http.Client
-	Now     func() time.Time
-	Prepare func(context.Context, string, Snapshot) error
-	Apply   func(context.Context, string) error
-	Verify  func(context.Context, string) error
-	Observe func(string)
+	Root       string
+	NameInputs string
+	Client     *http.Client
+	Now        func() time.Time
+	Prepare    func(context.Context, string, Snapshot) error
+	Apply      func(context.Context, string) error
+	Verify     func(context.Context, string) error
+	Observe    func(string)
 }
 
 func (r *Runner) Run(ctx context.Context) error {
@@ -77,7 +78,18 @@ func (r *Runner) Run(ctx context.Context) error {
 	if e != nil {
 		return e
 	}
-	hash := sha256.Sum256([]byte(Pipeline + "\n" + source + "\n" + reference))
+	fingerprintInput := Pipeline + "\n" + source + "\n" + reference
+	namesHash := ""
+	if r.NameInputs != "" {
+		namesHash, e = freezeNameInputs(r.NameInputs, temp)
+		if e != nil {
+			return e
+		}
+		fingerprintInput += "\nnames:" + namesHash
+	} else if s.Success != nil && s.Success.NameInputsHash != "" {
+		return fmt.Errorf("previously configured name inputs are missing")
+	}
+	hash := sha256.Sum256([]byte(fingerprintInput))
 	fingerprint := hex.EncodeToString(hash[:])
 	if s.Success != nil && s.Success.Fingerprint == fingerprint {
 		dir, e := snapshotDir(r.Root, *s.Success)
@@ -106,7 +118,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	identity[8] = (identity[8] & 63) | 0x80
 	h := hex.EncodeToString(identity[:16])
 	id := h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
-	snap := Snapshot{Key: key, Fingerprint: fingerprint, SourceHash: source, AliasHash: reference, RunID: id, FetchedAt: stamp}
+	snap := Snapshot{Key: key, Fingerprint: fingerprint, SourceHash: source, AliasHash: reference, RunID: id, FetchedAt: stamp, NameInputsHash: namesHash}
 	dir := filepath.Join(r.Root, key)
 	if _, err := os.Lstat(dir); !os.IsNotExist(err) {
 		return fmt.Errorf("snapshot identity collision")
@@ -139,6 +151,11 @@ func snapshotDir(root string, s Snapshot) (string, error) {
 	return dir, nil
 }
 func (r *Runner) validateFiles(dir string, s Snapshot) error {
+	if s.NameInputsHash != "" {
+		if err := verifyNameInputs(dir, s.NameInputsHash); err != nil {
+			return err
+		}
+	}
 	for _, v := range []struct {
 		name, hash string
 		cap        int64

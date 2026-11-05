@@ -898,6 +898,7 @@ private fun ServerStation.toMarker(): MapOverlayMarker? {
             StationLocationQuality.UNKNOWN -> MapStationLocationQuality.UNKNOWN
         },
         subtitle = addressLine,
+        legalName = secondaryLegalName,
         hasValidCoordinates = true,
     )
 }
@@ -911,6 +912,7 @@ private fun ServerStation.toUnlocatedMarker(): MapOverlayMarker = MapOverlayMark
     charging = false,
     locationQuality = MapStationLocationQuality.UNKNOWN,
     subtitle = addressLine,
+    legalName = secondaryLegalName,
     hasValidCoordinates = false,
 )
 

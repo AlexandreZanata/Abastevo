@@ -22,6 +22,7 @@ import javax.inject.Singleton
 class StationPriceRepositoryImpl @Inject constructor(
     private val stationPriceDao: StationPriceDao,
     private val surveyWeekDao: SurveyWeekDao,
+    private val canonicalNames: CanonicalStationNames? = null,
 ) : StationPriceRepository {
 
     override suspend fun getStationPrices(
@@ -31,7 +32,7 @@ class StationPriceRepositoryImpl @Inject constructor(
         surveyWeek: SurveyWeek,
     ): List<StationPrice> {
         val surveyWeekId = DomainId.forSurveyWeek(surveyWeek).value
-        return stationPriceDao.findByLocationAndProduct(
+        val rows = stationPriceDao.findByLocationAndProduct(
             surveyWeekId = surveyWeekId,
             state = state.abbreviation,
             municipality = normalizeMunicipality(municipality),
@@ -39,6 +40,7 @@ class StationPriceRepositoryImpl @Inject constructor(
         ).map { entity ->
             EntityDomainMapper.toStationPrice(entity, surveyWeek)
         }
+        return canonicalNames?.enrich(rows, state, municipality) ?: rows
     }
 
     override suspend fun getStationPricesPage(
@@ -54,6 +56,10 @@ class StationPriceRepositoryImpl @Inject constructor(
         if (page < 0) throw DomainException("discovery page must be >= 0")
         if (pageSize !in 1..DiscoveryQuery.MAX_PAGE_SIZE) {
             throw DomainException("discovery pageSize must be 1..${DiscoveryQuery.MAX_PAGE_SIZE}")
+        }
+        if (canonicalNames != null) {
+            val rows = getStationPrices(state, municipality, fuelProduct, surveyWeek)
+            return DiscoveryStationsRule.paginate(DiscoveryStationsRule.filterAndSort(rows, search, sort), page, pageSize)
         }
         val surveyWeekId = DomainId.forSurveyWeek(surveyWeek).value
         val normalizedMunicipality = normalizeMunicipality(municipality)
@@ -101,13 +107,14 @@ class StationPriceRepositoryImpl @Inject constructor(
         cnpjDigits: String,
     ): StationPrice? {
         val surveyWeekId = DomainId.forSurveyWeek(surveyWeek).value
-        return stationPriceDao.findByCnpj(
+        val row = stationPriceDao.findByCnpj(
             surveyWeekId = surveyWeekId,
             state = state.abbreviation,
             municipality = normalizeMunicipality(municipality),
             fuelProduct = fuelProduct.name,
             cnpjDigits = cnpjDigits,
         )?.let { entity -> EntityDomainMapper.toStationPrice(entity, surveyWeek) }
+        return row?.let { canonicalNames?.enrich(listOf(it), state, municipality)?.singleOrNull() ?: it }
     }
 
     override suspend fun hasStationData(
