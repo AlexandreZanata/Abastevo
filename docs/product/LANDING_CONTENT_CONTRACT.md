@@ -343,6 +343,24 @@ under the hero, with larger art, one short line each and an arrow; on phones
 they scroll horizontally with snap points.
 
 
+## Legal pages shared UI — 2026-11-05
+
+Scope: the user-requested presentation alignment of `/privacidade/`,
+`/excluir-conta/` and `/termos/` with the current home and learning pages.
+
+- **B-BR-L07-UI01:** generate the three pages with the canonical home header
+  and footer, including branding, desktop navigation, native mobile menu,
+  consultation CTA and all footer groups. Nested home-section links use `/`.
+- **B-BR-L07-UI02:** reuse the home color tokens, local fonts and shell, and
+  the learning pages' readable article width, heading scale and spacing.
+  Preserve legal copy, contact destinations, metadata and account behavior.
+- **BUC-L07-UI01:** a reader opens any legal page from the footer, reads it
+  on desktop or mobile and reaches the other public pages through the same
+  navigation, including when JavaScript is unavailable.
+- **Acceptance:** emitted header/footer parity with home, retained legal
+  content and metadata, working home-section links, keyboard/native menu
+  access and no horizontal overflow at 320, 390 and 1440 CSS pixels.
+
 ## LH10 Learning pages shared UI — 2026-10-26
 
 Owner scope: align `/guias/` and `/como-usar/` with the existing home and

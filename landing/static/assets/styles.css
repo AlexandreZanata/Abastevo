@@ -1324,20 +1324,21 @@ a.store-pill {
   .landing-home .explore-card, .landing-home .explore-card img, .landing-home .explore-arrow, .landing-home .faq-item, .landing-home .faq-summary::after { transition: none; }
 }
 
-/* LH10: learning pages reuse the home shell, neutral cards and typography. */
-.learning-page {
+/* Learning and legal documents reuse the home shell and article typography. */
+:is(.learning-page, .legal-document) {
   --text-muted: var(--muted);
   --link: var(--ink);
   --brand-blue: var(--accent);
 }
-.learning-page .legal-page { flex: 1; padding-block: clamp(2rem, 5vw, 4rem) clamp(3.5rem, 7vw, 6rem); }
-.learning-page .breadcrumb-nav { margin-bottom: 2rem; }
-.learning-page .breadcrumb-list a { display: inline-flex; align-items: center; min-height: 44px; }
-.learning-page .legal-article { max-width: 52rem; }
+:is(.learning-page, .legal-document) .legal-page { flex: 1; padding-block: clamp(2rem, 5vw, 4rem) clamp(3.5rem, 7vw, 6rem); }
+:is(.learning-page, .legal-document) .breadcrumb-nav { margin-bottom: 2rem; }
+:is(.learning-page, .legal-document) .breadcrumb-list a { display: inline-flex; align-items: center; min-height: 44px; }
+:is(.learning-page, .legal-document) .legal-article { max-width: 52rem; }
 .learning-hub .legal-article { max-width: none; }
-.learning-page .legal-article h1 { max-width: 52rem; margin-bottom: 1.25rem; font-size: clamp(2.25rem, 1.5rem + 2.5vw, 3.5rem); line-height: 1.08; letter-spacing: -0.04em; }
-.learning-page .legal-article h2 { margin-block: 3rem 1.25rem; font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); line-height: 1.2; letter-spacing: -0.025em; scroll-margin-top: 6rem; }
-.learning-page .legal-article > p { max-width: 48rem; font-size: 1.125rem; }
+:is(.learning-page, .legal-document) .legal-article h1 { max-width: 52rem; margin-bottom: 1.25rem; font-size: clamp(2.25rem, 1.5rem + 2.5vw, 3.5rem); line-height: 1.08; letter-spacing: -0.04em; }
+:is(.learning-page, .legal-document) .legal-article h2 { margin-block: 3rem 1.25rem; font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); line-height: 1.2; letter-spacing: -0.025em; scroll-margin-top: 6rem; }
+:is(.learning-page, .legal-document) .legal-article > p { max-width: 48rem; font-size: 1.125rem; }
+.legal-document .legal-article ul { max-width: 48rem; font-size: 1.125rem; line-height: 1.65; }
 .learning-page .grid-3 { display: grid; grid-template-columns: 1fr; gap: 1rem; }
 .learning-page .step-card { display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; padding: 1.5rem; border: 0; border-radius: 16px; background: var(--surface); color: var(--ink); text-decoration: none; }
 .learning-page .step-card:hover { background: var(--surface-2); box-shadow: none; }

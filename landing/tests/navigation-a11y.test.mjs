@@ -89,7 +89,7 @@ test('mobile hamburger menu is native disclosure on every page', () => {
   }
 });
 
-test('shared learning header keeps GitHub and the home consultation CTA', () => {
+test('shared article headers keep GitHub and the home consultation CTA', () => {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-header-'));
   try {
     build({ projectRoot: root, outDir });
@@ -100,7 +100,7 @@ test('shared learning header keeps GitHub and the home consultation CTA', () => 
         /href="https:\/\/github\.com\/AlexandreZanata\/abastevo"[^>]*target="_blank"[^>]*rel="noopener"/,
         `${rel} GitHub button opens a new tab`
       );
-      if (/^(guias|como-usar)\//.test(rel)) {
+      if (/^(guias|como-usar|privacidade|excluir-conta|termos)\//.test(rel)) {
         assert.match(html, /class="pill-light hide-sm" href="\/consultar\/">Consultar dados<\/a>/, `${rel} home consultation CTA`);
         assert.match(html, /href="\/#aplicativo"/, `${rel} app availability remains on the home`);
       } else {
