@@ -1,5 +1,21 @@
 # Current execution state
 
+- FOR-06 Forum Android domain and application contracts, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `3fa1342f`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements pure Kotlin Android domain models (`ForumCategory`, `ForumPostKind`,
+  `ForumSourceAttribution`, `ForumRegion`, `ForumPostSummary`, `ForumPostDetail`,
+  `ForumFeedPage`), typed exception hierarchy (`ForumException.Invalid`, `NotFound`,
+  `Disabled`, `SecurityViolation`, `Unavailable`, `Offline`), `ForumSafeLinks`
+  security rules (HTTPS-only, user-info/port/length guards), `ForumGateway`
+  repository port, and application use cases (`GetForumCategoriesUseCase`,
+  `GetForumFeedUseCase`, `GetForumPostDetailUseCase`, `ValidateForumSafeLinkUseCase`).
+  Full A1 JVM test suite passed with zero failures: 12 tests in `:domain` +
+  7 tests in `:application` covering wire mapping, null provenance, limit/cursor
+  bounds, UUID validation, auth-free public reading, and HTTPS link refusal.
+  Occupied primary checkout and existing worktrees preserved. Tested revision: source
+  in this commit. Next microtask: FOR-07 (HTTP, Room cache and Hilt).
+
 - FOR-05 Forum public read API and composition, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `c430d0ba`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
