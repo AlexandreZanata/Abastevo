@@ -526,6 +526,66 @@ func (q *Queries) GetSourceByID(ctx context.Context, id pgtype.UUID) (ForumSourc
 	return i, err
 }
 
+const getSourceCheckpoint = `-- name: GetSourceCheckpoint :one
+SELECT source_id, etag, last_modified, last_run_id, last_success_at, last_status, consecutive_failures, updated_at
+FROM forum_source_checkpoints
+WHERE source_id = $1
+`
+
+func (q *Queries) GetSourceCheckpoint(ctx context.Context, sourceID pgtype.UUID) (ForumSourceCheckpoint, error) {
+	row := q.db.QueryRow(ctx, getSourceCheckpoint, sourceID)
+	var i ForumSourceCheckpoint
+	err := row.Scan(
+		&i.SourceID,
+		&i.Etag,
+		&i.LastModified,
+		&i.LastRunID,
+		&i.LastSuccessAt,
+		&i.LastStatus,
+		&i.ConsecutiveFailures,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const hasPostByExternalID = `-- name: HasPostByExternalID :one
+SELECT EXISTS (
+    SELECT 1 FROM forum_posts
+    WHERE source_id = $1 AND external_id = $2
+) AS exists
+`
+
+type HasPostByExternalIDParams struct {
+	SourceID   pgtype.UUID `json:"source_id"`
+	ExternalID string      `json:"external_id"`
+}
+
+func (q *Queries) HasPostByExternalID(ctx context.Context, arg HasPostByExternalIDParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasPostByExternalID, arg.SourceID, arg.ExternalID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const hasPostByUrlHash = `-- name: HasPostByUrlHash :one
+SELECT EXISTS (
+    SELECT 1 FROM forum_posts
+    WHERE source_id = $1 AND canonical_url_hash = $2
+) AS exists
+`
+
+type HasPostByUrlHashParams struct {
+	SourceID         pgtype.UUID `json:"source_id"`
+	CanonicalUrlHash string      `json:"canonical_url_hash"`
+}
+
+func (q *Queries) HasPostByUrlHash(ctx context.Context, arg HasPostByUrlHashParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasPostByUrlHash, arg.SourceID, arg.CanonicalUrlHash)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const insertEditorialPost = `-- name: InsertEditorialPost :exec
 INSERT INTO forum_posts (
     id, kind, category, title, excerpt, body_text,
@@ -696,6 +756,93 @@ func (q *Queries) InsertSource(ctx context.Context, arg InsertSourceParams) erro
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const insertSourceRun = `-- name: InsertSourceRun :exec
+INSERT INTO forum_source_runs (
+    id, source_id, status, etag, last_modified,
+    items_discovered, items_ingested, error_message, started_at, completed_at
+) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8, $9, $10
+)
+`
+
+type InsertSourceRunParams struct {
+	ID              pgtype.UUID        `json:"id"`
+	SourceID        pgtype.UUID        `json:"source_id"`
+	Status          string             `json:"status"`
+	Etag            string             `json:"etag"`
+	LastModified    string             `json:"last_modified"`
+	ItemsDiscovered int32              `json:"items_discovered"`
+	ItemsIngested   int32              `json:"items_ingested"`
+	ErrorMessage    string             `json:"error_message"`
+	StartedAt       pgtype.Timestamptz `json:"started_at"`
+	CompletedAt     pgtype.Timestamptz `json:"completed_at"`
+}
+
+func (q *Queries) InsertSourceRun(ctx context.Context, arg InsertSourceRunParams) error {
+	_, err := q.db.Exec(ctx, insertSourceRun,
+		arg.ID,
+		arg.SourceID,
+		arg.Status,
+		arg.Etag,
+		arg.LastModified,
+		arg.ItemsDiscovered,
+		arg.ItemsIngested,
+		arg.ErrorMessage,
+		arg.StartedAt,
+		arg.CompletedAt,
+	)
+	return err
+}
+
+const listEnabledSources = `-- name: ListEnabledSources :many
+SELECT id, code, name, kind, origin_url, fetch_url, fetch_format, collection_enabled, publication_enabled, rights_status, title_allowed, excerpt_allowed, image_allowed, terms_url, terms_sha256, checked_at, review_expires_at, policy_version, attribution, admin_audit_ref, created_at, updated_at FROM forum_sources
+WHERE collection_enabled = true
+`
+
+func (q *Queries) ListEnabledSources(ctx context.Context) ([]ForumSource, error) {
+	rows, err := q.db.Query(ctx, listEnabledSources)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ForumSource
+	for rows.Next() {
+		var i ForumSource
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Name,
+			&i.Kind,
+			&i.OriginUrl,
+			&i.FetchUrl,
+			&i.FetchFormat,
+			&i.CollectionEnabled,
+			&i.PublicationEnabled,
+			&i.RightsStatus,
+			&i.TitleAllowed,
+			&i.ExcerptAllowed,
+			&i.ImageAllowed,
+			&i.TermsUrl,
+			&i.TermsSha256,
+			&i.CheckedAt,
+			&i.ReviewExpiresAt,
+			&i.PolicyVersion,
+			&i.Attribution,
+			&i.AdminAuditRef,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPublicPosts = `-- name: ListPublicPosts :many
@@ -958,4 +1105,45 @@ func (q *Queries) UpdateEditorialPost(ctx context.Context, arg UpdateEditorialPo
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const upsertSourceCheckpoint = `-- name: UpsertSourceCheckpoint :exec
+INSERT INTO forum_source_checkpoints (
+    source_id, etag, last_modified, last_run_id, last_success_at, last_status, consecutive_failures, updated_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8
+)
+ON CONFLICT (source_id) DO UPDATE
+SET etag = EXCLUDED.etag,
+    last_modified = EXCLUDED.last_modified,
+    last_run_id = EXCLUDED.last_run_id,
+    last_success_at = COALESCE(EXCLUDED.last_success_at, forum_source_checkpoints.last_success_at),
+    last_status = EXCLUDED.last_status,
+    consecutive_failures = EXCLUDED.consecutive_failures,
+    updated_at = EXCLUDED.updated_at
+`
+
+type UpsertSourceCheckpointParams struct {
+	SourceID            pgtype.UUID        `json:"source_id"`
+	Etag                string             `json:"etag"`
+	LastModified        string             `json:"last_modified"`
+	LastRunID           pgtype.UUID        `json:"last_run_id"`
+	LastSuccessAt       pgtype.Timestamptz `json:"last_success_at"`
+	LastStatus          string             `json:"last_status"`
+	ConsecutiveFailures int32              `json:"consecutive_failures"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpsertSourceCheckpoint(ctx context.Context, arg UpsertSourceCheckpointParams) error {
+	_, err := q.db.Exec(ctx, upsertSourceCheckpoint,
+		arg.SourceID,
+		arg.Etag,
+		arg.LastModified,
+		arg.LastRunID,
+		arg.LastSuccessAt,
+		arg.LastStatus,
+		arg.ConsecutiveFailures,
+		arg.UpdatedAt,
+	)
+	return err
 }

@@ -228,3 +228,48 @@ INSERT INTO forum_changes (
     @actor_kind, @actor_account_id, @admin_audit_ref,
     @policy_version, @reason_code, @prior_state, @new_state, @created_at
 );
+
+-- name: ListEnabledSources :many
+SELECT * FROM forum_sources
+WHERE collection_enabled = true;
+
+-- name: GetSourceCheckpoint :one
+SELECT source_id, etag, last_modified, last_run_id, last_success_at, last_status, consecutive_failures, updated_at
+FROM forum_source_checkpoints
+WHERE source_id = @source_id;
+
+-- name: UpsertSourceCheckpoint :exec
+INSERT INTO forum_source_checkpoints (
+    source_id, etag, last_modified, last_run_id, last_success_at, last_status, consecutive_failures, updated_at
+) VALUES (
+    @source_id, @etag, @last_modified, @last_run_id, @last_success_at, @last_status, @consecutive_failures, @updated_at
+)
+ON CONFLICT (source_id) DO UPDATE
+SET etag = EXCLUDED.etag,
+    last_modified = EXCLUDED.last_modified,
+    last_run_id = EXCLUDED.last_run_id,
+    last_success_at = COALESCE(EXCLUDED.last_success_at, forum_source_checkpoints.last_success_at),
+    last_status = EXCLUDED.last_status,
+    consecutive_failures = EXCLUDED.consecutive_failures,
+    updated_at = EXCLUDED.updated_at;
+
+-- name: InsertSourceRun :exec
+INSERT INTO forum_source_runs (
+    id, source_id, status, etag, last_modified,
+    items_discovered, items_ingested, error_message, started_at, completed_at
+) VALUES (
+    @id, @source_id, @status, @etag, @last_modified,
+    @items_discovered, @items_ingested, @error_message, @started_at, @completed_at
+);
+
+-- name: HasPostByExternalID :one
+SELECT EXISTS (
+    SELECT 1 FROM forum_posts
+    WHERE source_id = @source_id AND external_id = @external_id
+) AS exists;
+
+-- name: HasPostByUrlHash :one
+SELECT EXISTS (
+    SELECT 1 FROM forum_posts
+    WHERE source_id = @source_id AND canonical_url_hash = @canonical_url_hash
+) AS exists;

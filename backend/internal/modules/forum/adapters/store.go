@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -1057,26 +1058,49 @@ func newUUIDBytes() pgtype.UUID {
 	return pgtype.UUID{Bytes: b, Valid: true}
 }
 
+func sha256Hex(s string) string {
+	h := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(h[:])
+}
+
 func mapSourceRowToDomain(r forumsql.ForumSource) *domain.Source {
 	var checkedAt *time.Time
 	if r.CheckedAt.Valid {
 		t := r.CheckedAt.Time.UTC()
 		checkedAt = &t
 	}
+	var reviewExpiresAt *time.Time
+	if r.ReviewExpiresAt.Valid {
+		t := r.ReviewExpiresAt.Time.UTC()
+		reviewExpiresAt = &t
+	}
+	var fetchURL string
+	if r.FetchUrl.Valid {
+		fetchURL = r.FetchUrl.String
+	}
+	var fetchFormat string
+	if r.FetchFormat.Valid {
+		fetchFormat = r.FetchFormat.String
+	}
 	return &domain.Source{
-		ID:             uuidString(r.ID),
-		Code:           r.Code,
-		Name:           r.Name,
-		Kind:           domain.SourceKind(r.Kind),
-		OriginURL:      r.OriginUrl,
-		RightsStatus:   domain.RightsStatus(r.RightsStatus),
-		TitleAllowed:   r.TitleAllowed,
-		ExcerptAllowed: r.ExcerptAllowed,
-		ImageAllowed:   r.ImageAllowed,
-		TermsURL:       r.TermsUrl,
-		TermsSHA256:    r.TermsSha256,
-		CheckedAt:      checkedAt,
-		Attribution:    r.Attribution,
+		ID:                 uuidString(r.ID),
+		Code:               r.Code,
+		Name:               r.Name,
+		Kind:               domain.SourceKind(r.Kind),
+		OriginURL:          r.OriginUrl,
+		FetchURL:           fetchURL,
+		FetchFormat:        fetchFormat,
+		CollectionEnabled:  r.CollectionEnabled,
+		PublicationEnabled: r.PublicationEnabled,
+		RightsStatus:       domain.RightsStatus(r.RightsStatus),
+		TitleAllowed:       r.TitleAllowed,
+		ExcerptAllowed:     r.ExcerptAllowed,
+		ImageAllowed:       r.ImageAllowed,
+		TermsURL:           r.TermsUrl,
+		TermsSHA256:        r.TermsSha256,
+		CheckedAt:          checkedAt,
+		ReviewExpiresAt:    reviewExpiresAt,
+		Attribution:        r.Attribution,
 	}
 }
 
@@ -1221,6 +1245,7 @@ func mapPostForUpdateRowToDomain(r forumsql.GetPostByIDForUpdateRow) *domain.Pos
 		BodyText:            r.BodyText,
 		SourceID:            uuidString(r.SourceID),
 		CanonicalURL:        r.CanonicalUrl,
+		ExternalID:          r.ExternalID,
 		AuthorAccountID:     uuidString(r.AuthorAccountID),
 		PublicAlias:         publicAlias,
 		SourcePublishedAt:   srcPubAt,
@@ -1239,4 +1264,223 @@ func mapPostForUpdateRowToDomain(r forumsql.GetPostByIDForUpdateRow) *domain.Pos
 		StationID:           stationID,
 		RightsSnapshot:      rightsSnapshot,
 	}
+}
+
+// ListEnabledSources returns all sources with collection_enabled = true.
+func (s *Store) ListEnabledSources(ctx context.Context) ([]domain.Source, error) {
+	rows, err := s.queries.ListEnabledSources(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("forum: list enabled sources: %w", err)
+	}
+	sources := make([]domain.Source, len(rows))
+	for i, r := range rows {
+		sources[i] = *mapSourceRowToDomain(r)
+	}
+	return sources, nil
+}
+
+// GetSourceCheckpoint retrieves the conditional GET and execution state for a source.
+func (s *Store) GetSourceCheckpoint(ctx context.Context, sourceID string) (application.SourceCheckpoint, error) {
+	uid, err := mustUUID(sourceID)
+	if err != nil {
+		return application.SourceCheckpoint{}, domain.ErrMissingSource
+	}
+	row, err := s.queries.GetSourceCheckpoint(ctx, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return application.SourceCheckpoint{
+				SourceID: sourceID,
+			}, nil
+		}
+		return application.SourceCheckpoint{}, fmt.Errorf("forum: get source checkpoint: %w", err)
+	}
+	var lastRunID *string
+	if row.LastRunID.Valid {
+		idStr := uuidString(row.LastRunID)
+		lastRunID = &idStr
+	}
+	var lastSuccessAt *time.Time
+	if row.LastSuccessAt.Valid {
+		t := row.LastSuccessAt.Time.UTC()
+		lastSuccessAt = &t
+	}
+	return application.SourceCheckpoint{
+		SourceID:            uuidString(row.SourceID),
+		ETag:                row.Etag,
+		LastModified:        row.LastModified,
+		LastRunID:           lastRunID,
+		LastSuccessAt:       lastSuccessAt,
+		LastStatus:          row.LastStatus,
+		ConsecutiveFailures: int(row.ConsecutiveFailures),
+		UpdatedAt:           row.UpdatedAt.Time.UTC(),
+	}, nil
+}
+
+// UpsertSourceCheckpoint updates or inserts source checkpoint information.
+func (s *Store) UpsertSourceCheckpoint(ctx context.Context, cp application.SourceCheckpoint) error {
+	uid, err := mustUUID(cp.SourceID)
+	if err != nil {
+		return domain.ErrMissingSource
+	}
+	var lastRunUUID pgtype.UUID
+	if cp.LastRunID != nil && *cp.LastRunID != "" {
+		lastRunUUID, _ = mustUUID(*cp.LastRunID)
+	}
+	var lastSuccessAt pgtype.Timestamptz
+	if cp.LastSuccessAt != nil {
+		lastSuccessAt = pgtype.Timestamptz{Time: cp.LastSuccessAt.UTC(), Valid: true}
+	}
+	updatedAt := cp.UpdatedAt
+	if updatedAt.IsZero() {
+		updatedAt = time.Now().UTC()
+	}
+	params := forumsql.UpsertSourceCheckpointParams{
+		SourceID:            uid,
+		Etag:                cp.ETag,
+		LastModified:        cp.LastModified,
+		LastRunID:           lastRunUUID,
+		LastSuccessAt:       lastSuccessAt,
+		LastStatus:          cp.LastStatus,
+		ConsecutiveFailures: int32(cp.ConsecutiveFailures),
+		UpdatedAt:           pgtype.Timestamptz{Time: updatedAt.UTC(), Valid: true},
+	}
+	if err := s.queries.UpsertSourceCheckpoint(ctx, params); err != nil {
+		return fmt.Errorf("forum: upsert source checkpoint: %w", err)
+	}
+	return nil
+}
+
+// RecordSourceRun inserts an audit record for a source ingestion attempt.
+func (s *Store) RecordSourceRun(ctx context.Context, run application.SourceRun) error {
+	runUUID, err := mustUUID(run.ID)
+	if err != nil {
+		return fmt.Errorf("forum: invalid run id: %w", err)
+	}
+	srcUUID, err := mustUUID(run.SourceID)
+	if err != nil {
+		return domain.ErrMissingSource
+	}
+	var completedAt pgtype.Timestamptz
+	if run.CompletedAt != nil {
+		completedAt = pgtype.Timestamptz{Time: run.CompletedAt.UTC(), Valid: true}
+	}
+	params := forumsql.InsertSourceRunParams{
+		ID:              runUUID,
+		SourceID:        srcUUID,
+		Status:          run.Status,
+		Etag:            run.ETag,
+		LastModified:    run.LastModified,
+		ItemsDiscovered: int32(run.ItemsDiscovered),
+		ItemsIngested:   int32(run.ItemsIngested),
+		ErrorMessage:    run.ErrorMessage,
+		StartedAt:       pgtype.Timestamptz{Time: run.StartedAt.UTC(), Valid: true},
+		CompletedAt:     completedAt,
+	}
+	if err := s.queries.InsertSourceRun(ctx, params); err != nil {
+		return fmt.Errorf("forum: record source run: %w", err)
+	}
+	return nil
+}
+
+// HasPostByExternalID checks whether a post already exists for this source and external ID.
+func (s *Store) HasPostByExternalID(ctx context.Context, sourceID, externalID string) (bool, error) {
+	if externalID == "" {
+		return false, nil
+	}
+	srcUUID, err := mustUUID(sourceID)
+	if err != nil {
+		return false, domain.ErrMissingSource
+	}
+	exists, err := s.queries.HasPostByExternalID(ctx, forumsql.HasPostByExternalIDParams{
+		SourceID:   srcUUID,
+		ExternalID: externalID,
+	})
+	if err != nil {
+		return false, fmt.Errorf("forum: check post by external id: %w", err)
+	}
+	return exists, nil
+}
+
+// HasPostByUrlHash checks whether a post already exists for this source and URL hash.
+func (s *Store) HasPostByUrlHash(ctx context.Context, sourceID, urlHash string) (bool, error) {
+	if urlHash == "" {
+		return false, nil
+	}
+	srcUUID, err := mustUUID(sourceID)
+	if err != nil {
+		return false, domain.ErrMissingSource
+	}
+	exists, err := s.queries.HasPostByUrlHash(ctx, forumsql.HasPostByUrlHashParams{
+		SourceID:         srcUUID,
+		CanonicalUrlHash: urlHash,
+	})
+	if err != nil {
+		return false, fmt.Errorf("forum: check post by url hash: %w", err)
+	}
+	return exists, nil
+}
+
+// InsertNewsCandidatePost persists an ingested news candidate post as DRAFT.
+func (s *Store) InsertNewsCandidatePost(ctx context.Context, post *domain.Post) error {
+	if post.PublicationState == domain.StatePublished {
+		return fmt.Errorf("forum: candidate news cannot be directly published")
+	}
+	if post.FirstPublicationSeq != 0 || post.FirstPublishedAt != nil {
+		return fmt.Errorf("forum: candidate news cannot have publication sequence or timestamp")
+	}
+	if post.SourcePublishedAt == nil {
+		return fmt.Errorf("forum: candidate news requires source publication timestamp")
+	}
+	postUUID, err := mustUUID(post.ID)
+	if err != nil {
+		return fmt.Errorf("forum: invalid candidate post id: %w", err)
+	}
+	srcUUID, err := mustUUID(post.SourceID)
+	if err != nil {
+		return domain.ErrMissingSource
+	}
+
+	var canonicalUrlHash string
+	if post.CanonicalURL != "" {
+		canonicalUrlHash = sha256Hex(post.CanonicalURL)
+	}
+
+	params := forumsql.InsertEditorialPostParams{
+		ID:                  postUUID,
+		Kind:                string(domain.KindNews),
+		Category:            string(post.Category),
+		Title:               post.Title,
+		Excerpt:             post.Excerpt,
+		BodyText:            post.BodyText,
+		SourceID:            srcUUID,
+		CanonicalUrl:        post.CanonicalURL,
+		CanonicalUrlHash:    canonicalUrlHash,
+		ExternalID:          post.ExternalID,
+		AuthorAccountID:     pgtype.UUID{},
+		PublicAlias:         pgtype.Text{},
+		SourcePublishedAt:   pgtype.Timestamptz{Time: post.SourcePublishedAt.UTC(), Valid: true},
+		SourceUpdatedAt:     pgtype.Timestamptz{},
+		LocalCreatedAt:      pgtype.Timestamptz{Time: post.LocalCreatedAt.UTC(), Valid: true},
+		LocalUpdatedAt:      pgtype.Timestamptz{Time: post.LocalUpdatedAt.UTC(), Valid: true},
+		FirstPublishedAt:    pgtype.Timestamptz{},
+		FirstPublicationSeq: 0,
+		PublicationState:    string(domain.StateDraft),
+		Visibility:          string(domain.VisibilityVisible),
+		Revision:            1,
+		CommentsEnabled:     post.CommentsEnabled,
+		Correction:          pgtype.Text{},
+		RegionUf:            pgtype.Text{},
+		RegionMunicipalityIbge: pgtype.Int4{},
+		FuelProduct:         pgtype.Text{},
+		StationID:           pgtype.UUID{},
+		AuthorOperationID:   pgtype.UUID{},
+		BodySha256:          sha256Hex(post.BodyText),
+		RightsSnapshot:      pgtype.Text{},
+		BulletinKey:         pgtype.Text{},
+		SupersedesPostID:    pgtype.UUID{},
+	}
+	if err := s.queries.InsertEditorialPost(ctx, params); err != nil {
+		return fmt.Errorf("forum: insert candidate post: %w", err)
+	}
+	return nil
 }

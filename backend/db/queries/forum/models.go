@@ -158,3 +158,27 @@ type ForumSource struct {
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }
+
+type ForumSourceCheckpoint struct {
+	SourceID            pgtype.UUID        `json:"source_id"`
+	Etag                string             `json:"etag"`
+	LastModified        string             `json:"last_modified"`
+	LastRunID           pgtype.UUID        `json:"last_run_id"`
+	LastSuccessAt       pgtype.Timestamptz `json:"last_success_at"`
+	LastStatus          string             `json:"last_status"`
+	ConsecutiveFailures int32              `json:"consecutive_failures"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ForumSourceRun struct {
+	ID              pgtype.UUID        `json:"id"`
+	SourceID        pgtype.UUID        `json:"source_id"`
+	Status          string             `json:"status"`
+	Etag            string             `json:"etag"`
+	LastModified    string             `json:"last_modified"`
+	ItemsDiscovered int32              `json:"items_discovered"`
+	ItemsIngested   int32              `json:"items_ingested"`
+	ErrorMessage    string             `json:"error_message"`
+	StartedAt       pgtype.Timestamptz `json:"started_at"`
+	CompletedAt     pgtype.Timestamptz `json:"completed_at"`
+}

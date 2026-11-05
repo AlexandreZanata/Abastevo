@@ -105,19 +105,24 @@ const (
 
 // Source represents an approved or candidate publication source.
 type Source struct {
-	ID             string
-	Code           string
-	Name           string
-	Kind           SourceKind
-	OriginURL      string
-	RightsStatus   RightsStatus
-	TitleAllowed   bool
-	ExcerptAllowed bool
-	ImageAllowed   bool
-	TermsURL       string
-	TermsSHA256    string
-	CheckedAt      *time.Time
-	Attribution    string
+	ID                 string
+	Code               string
+	Name               string
+	Kind               SourceKind
+	OriginURL          string
+	FetchURL           string
+	FetchFormat        string
+	CollectionEnabled  bool
+	PublicationEnabled bool
+	RightsStatus       RightsStatus
+	TitleAllowed       bool
+	ExcerptAllowed     bool
+	ImageAllowed       bool
+	TermsURL           string
+	TermsSHA256        string
+	CheckedAt          *time.Time
+	ReviewExpiresAt    *time.Time
+	Attribution        string
 }
 
 // Region describes coarse subject-matter geography.
@@ -197,6 +202,7 @@ type Post struct {
 	Source              *Source
 	SourceAttribution   *SourceAttribution
 	CanonicalURL        string
+	ExternalID          string
 	AuthorAccountID     string
 	PublicAlias         *string
 	SourcePublishedAt   *time.Time

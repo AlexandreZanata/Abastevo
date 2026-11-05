@@ -446,6 +446,7 @@ sql:
       - db/migrations/000002_directory.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000157_forum_editorial_foundation.sql
+      - db/migrations/000158_forum_source_runs.sql
     gen:
       go:
         package: forum

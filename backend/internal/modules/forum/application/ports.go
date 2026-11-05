@@ -87,3 +87,41 @@ type SourceFetcher interface {
 type FeedParser interface {
 	Parse(raw []byte, now time.Time) ([]FeedItem, error)
 }
+
+// SourceCheckpoint represents conditional GET state and execution status for a source.
+type SourceCheckpoint struct {
+	SourceID            string
+	ETag                string
+	LastModified        string
+	LastRunID           *string
+	LastSuccessAt       *time.Time
+	LastStatus          string
+	ConsecutiveFailures int
+	UpdatedAt           time.Time
+}
+
+// SourceRun represents an audit record of a candidate ingestion execution.
+type SourceRun struct {
+	ID              string
+	SourceID        string
+	Status          string // 'RUNNING', 'SUCCESS', 'NOT_MODIFIED', 'FAILED', 'BLOCKED'
+	ETag            string
+	LastModified    string
+	ItemsDiscovered int
+	ItemsIngested   int
+	ErrorMessage    string
+	StartedAt       time.Time
+	CompletedAt     *time.Time
+}
+
+// IngestionStore defines persistence operations for candidate feed collection.
+type IngestionStore interface {
+	GetSourceByID(ctx context.Context, id string) (*domain.Source, error)
+	ListEnabledSources(ctx context.Context) ([]domain.Source, error)
+	GetSourceCheckpoint(ctx context.Context, sourceID string) (SourceCheckpoint, error)
+	UpsertSourceCheckpoint(ctx context.Context, cp SourceCheckpoint) error
+	RecordSourceRun(ctx context.Context, run SourceRun) error
+	HasPostByExternalID(ctx context.Context, sourceID, externalID string) (bool, error)
+	HasPostByUrlHash(ctx context.Context, sourceID, urlHash string) (bool, error)
+	InsertNewsCandidatePost(ctx context.Context, post *domain.Post) error
+}

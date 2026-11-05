@@ -1,5 +1,25 @@
 # Current execution state
 
+- FOR-12 Forum scheduled collection and deduplication, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `253b15ec`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)
+  implements scheduled worker collection, conditional GET checkpoints, and
+  transactional deduplication:
+  append-only migration 000158 (`forum_source_runs`, `forum_source_checkpoints`);
+  `ForumSourceFetchHandler` and `SourceFetchRunner` implementing `forum-source-fetch`
+  worker and hourly schedule; deterministic category classifier `ClassifyCategory`
+  mapping Portuguese automotive news stems to 7 domain categories;
+  conditional GET (304 Not Modified) updating checkpoints without re-ingestion;
+  transactional GUID and canonical URL hash deduplication in `forum_posts`;
+  strict DRAFT publication state invariant (`first_publication_seq = 0`,
+  `first_published_at = nil`, never direct publication); rights revocation and
+  `NEWS_SOURCE_BLOCKED` enforcement preventing network egress and recording BLOCKED run;
+  verified non-interference and coexistence with platform queue privacy safety jobs.
+  Unit and PostgreSQL integration tests (`fetch_test.go`, `fetch_integration_test.go`,
+  `classifier_test.go`, `store_integration_test.go`) passed with `-race` and
+  `-tags=integration`. Tested revision: source in this commit. Next microtask:
+  FOR-13 (Editorial review and news checkpoint).
+
 - FOR-11 Forum safe feed parser and fetch adapter, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `80b0fd71`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)

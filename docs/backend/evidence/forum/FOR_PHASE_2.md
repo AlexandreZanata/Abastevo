@@ -51,18 +51,18 @@ Representative synthetic test fixtures created in `backend/testdata/forum-source
 |---|---|---|---|---|
 | **FOR-10** | Approve one real source or record block | LOCAL_DONE | Current commit | Source register frozen in `source_register.json`; rights evaluated for 8 candidates; operational status `NEWS_SOURCE_BLOCKED` recorded with editorial fallback; parse contract vectors frozen for RSS/Atom; validation suite in `source_register_test.go` PASSED. |
 | **FOR-11** | Safe feed parser and fetch adapter | LOCAL_DONE | Current commit | Bounded RSS 2.0 and Atom 1.0 parser with strict XXE refusal, max depth 32, max body 2 MiB, max 100 items, title/excerpt HTML sanitization; safe fetcher with origin allowlist, HTTPS-only, IPPolicy refusing private/loopback/cloud-metadata addresses, DNS rebinding TOCTOU prevention (pinned IP dialer), bounded body reader, redirect limiter, conditional GET (304). Complete unit and security suite PASSED. |
-| **FOR-12** | Scheduled collection and deduplication | NEXT | - | Worker handler, conditional GET (ETag/304), transactional GUID/URL deduplication. |
-| **FOR-13** | Editorial review and news checkpoint | PLANNED | - | Admin candidate queue, rights view, verification that blocked sources remain off. |
+| **FOR-12** | Scheduled collection and deduplication | LOCAL_DONE | Current commit | Append-only migration 000158 (forum_source_runs, forum_source_checkpoints); ForumSourceFetchHandler and SourceFetchRunner; deterministic category classifier; conditional GET (304); transactional deduplication by GUID and canonical URL hash; blocked/revoked rights refusal without egress; coexistence test with privacy safety job. Full unit and PostgreSQL integration test suite PASSED. |
+| **FOR-13** | Editorial review and news checkpoint | NEXT | - | Admin candidate queue, rights view, verification that blocked sources remain off. |
 
 ## Verification and quality gates
 
 - `git diff --check`: PASSED.
 - Secret surface review: PASSED (`scripts/scan-secrets.sh` clean).
 - OpenAPI lint (`vacuum lint`): PASSED (0 errors).
-- Go unit test suite with `-race`: PASSED (`./internal/modules/forum/...` including `TestFeedParser_*` and `TestSafeFeedFetcher_*`).
+- Go unit and integration test suite with `-race` and `-tags=integration`: PASSED (`./internal/modules/forum/...` including `TestForumJobs_*`, `TestForumSourceFetch_*`, and `TestClassifyCategory_*`).
 - Android JVM test suite: PASSED (`:domain:test`, `:application:test`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest`).
 - Frontend test suite: PASSED (`npm test` in `admin-web/`: 53 tests passing).
-- Static analysis: `go vet` PASSED (0 errors).
+- Static analysis: `go vet` and `sqlc vet` PASSED (0 errors).
 - Code formatting: `gofmt` verified.
 - Repository worktree isolation: PASSED (persistent worktree on maintained dev; occupied checkouts untouched).
-- Next action: FOR-12 (Scheduled collection and deduplication).
+- Next action: FOR-13 (Editorial review and news checkpoint).
