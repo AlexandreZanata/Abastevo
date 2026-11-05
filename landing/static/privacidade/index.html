@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Política de Privacidade — abastevo</title>
-  <meta name="description" content="Como o abastevo trata dados de navegação, contas e fotos de comprovação. Sem cookies, sem rastreadores, com fotos apagadas em até 24 horas.">
+  <meta name="description" content="Conheça os dados usados pelo Abastevo, as permissões do app, os prazos de conservação e os canais privados para acesso, correção e exclusão.">
   <link rel="canonical" href="{{CANONICAL_ORIGIN}}/privacidade/">
 
   <meta property="og:type" content="article">
@@ -12,7 +12,7 @@
   <meta property="og:locale" content="pt_BR">
   <meta property="og:url" content="{{CANONICAL_ORIGIN}}/privacidade/">
   <meta property="og:title" content="Política de Privacidade — abastevo">
-  <meta property="og:description" content="Como o abastevo trata dados de navegação, contas e fotos de comprovação. Sem cookies, sem rastreadores, com fotos apagadas em até 24 horas.">
+  <meta property="og:description" content="Conheça os dados usados pelo Abastevo, as permissões do app, os prazos de conservação e os canais privados para acesso, correção e exclusão.">
   <meta property="og:image" content="{{CANONICAL_ORIGIN}}/assets/brand/og-image-v1.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -20,7 +20,7 @@
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Política de Privacidade — abastevo">
-  <meta name="twitter:description" content="Como o abastevo trata dados de navegação, contas e fotos de comprovação. Sem cookies, sem rastreadores, com fotos apagadas em até 24 horas.">
+  <meta name="twitter:description" content="Conheça os dados usados pelo Abastevo, as permissões do app, os prazos de conservação e os canais privados para acesso, correção e exclusão.">
   <meta name="twitter:image" content="{{CANONICAL_ORIGIN}}/assets/brand/og-image-v1.png">
   <meta name="twitter:image:alt" content="abastevo — Política de Privacidade">
 
@@ -69,25 +69,155 @@
           <li><span aria-current="page">Privacidade</span></li>
         </ol>
       </nav>
-      <article class="legal-article">
+      <article class="legal-article privacy-policy" data-policy-version="2026-11-05-v1">
+        <p class="policy-eyebrow">Abastevo · Seus dados e suas escolhas</p>
         <h1>Política de Privacidade</h1>
-        <p><strong>Última atualização:</strong> Outubro de 2026 (política do projeto).</p>
+        <p class="policy-intro">Entenda quais dados são usados no site e no aplicativo, o que fica no seu aparelho, quando uma informação é enviada ao serviço e como exercer seus direitos.</p>
+        <p class="policy-version"><strong>Versão 1.0</strong> · Atualizada em <time datetime="2026-11-05">5 de novembro de 2026</time> · Aplicativo Android: <code>com.anpfuel.app</code>.</p>
 
-        <h2>1. Princípios fundamentais</h2>
-        <p>O abastevo é um projeto de código aberto fundamentado na transparência e na minimização de dados. O projeto adota a premissa de que a consulta a preços públicos não deve exigir identificação do usuário ou concessão de privilégios invasivos.</p>
+        <aside class="policy-summary" aria-label="Resumo de privacidade">
+          <h2>O essencial, antes de continuar</h2>
+          <ul>
+            <li>Consultar preços públicos não exige conta. Você pode escolher sua cidade manualmente.</li>
+            <li>Conta, câmera e localização são usadas nas ações que precisam desses recursos; negar uma permissão não autoriza outro uso dos seus dados.</li>
+            <li>Seus registros financeiros e trajetos privados não são uma publicação para a comunidade.</li>
+            <li>Você pode pedir acesso, correção ou exclusão por um canal privado, sem publicar seus dados no GitHub.</li>
+          </ul>
+          <div class="policy-actions"><a class="btn-dark" href="#direitos">Conhecer meus direitos</a><a class="btn-outline" href="/excluir-conta/">Excluir conta e dados</a></div>
+        </aside>
 
-        <h2>2. Dados coletados neste website</h2>
-        <p>Este website estático não utiliza cookies, não carrega scripts de telemetria ou rastreamento de terceiros e não coleta localização geográfica do navegador. As requisições HTTP podem gerar registros padrão de acesso nos servidores de hospedagem para fins de segurança e mitigação de ataques.</p>
+        <nav class="policy-index" aria-label="Nesta política">
+          <p><strong>Encontre o que você precisa</strong></p>
+          <ol>
+            <li><a href="#controlador">Responsável e contato</a></li><li><a href="#dados">Dados e finalidades</a></li>
+            <li><a href="#localizacao">Localização e permissões</a></li><li><a href="#fotos">Fotos e reconhecimento</a></li>
+            <li><a href="#bases-legais">Bases legais</a></li><li><a href="#compartilhamento">Compartilhamento</a></li>
+            <li><a href="#transferencias">Brasil e outros países</a></li><li><a href="#retencao">Prazos de conservação</a></li>
+            <li><a href="#direitos">Seus direitos</a></li><li><a href="#exclusao">Exclusão de conta</a></li>
+            <li><a href="#seguranca">Segurança e incidentes</a></li><li><a href="#criancas">Crianças e adolescentes</a></li>
+            <li><a href="#alteracoes">Mudanças e novos recursos</a></li>
+          </ol>
+        </nav>
 
-        <h2>3. Dados no aplicativo móvel</h2>
-        <p>No aplicativo móvel, a consulta de preços de combustíveis da ANP e da comunidade não exige cadastro nem fornecimento de GPS obrigatório. O envio de observações colaborativas poderá utilizar identificadores de sessão técnica ou fotos de comprovação.</p>
-        <p><strong>Retenção de fotos:</strong> Conforme política de mídia do projeto, fotos de auditoria e comprovantes enviados por voluntários expiram e são removidos em até 24 horas em todas as cópias internas de armazenamento.</p>
+        <section id="controlador" aria-labelledby="controlador-titulo">
+          <h2 id="controlador-titulo">1. Quem é responsável pelos seus dados</h2>
+          <p>O Abastevo é operado por <strong>ZAFLAS INOVA SIMPLES (I.S.)</strong>, CNPJ <strong>67.852.667/0001-93</strong>, controladora dos dados tratados para oferecer o serviço. Endereço: Rua Florenca, nº 922, Bairro Mont Serrat, Sorriso/MT, CEP 78891-109, Brasil.</p>
+          <p><strong>Canal oficial de privacidade:</strong> WhatsApp <a href="https://wa.me/556696314240?text=Ol%C3%A1%2C%20quero%20exercer%20um%20direito%20de%20privacidade%20no%20Abastevo." rel="noopener noreferrer">+55 (66) 9631-4240</a>. Você também pode <a href="tel:+556696314240">ligar para esse número</a> ou enviar correspondência ao endereço acima, aos cuidados de “Privacidade — Abastevo”.</p>
+          <p>Use esse canal para falar com a equipe responsável pelo atendimento aos titulares, inclusive para obter informações sobre o encarregado ou responsável pela privacidade. <strong>Não envie senhas, chave de acesso, chave privada, códigos de autenticação ou documentos sem uma solicitação justificada.</strong> Pedidos de privacidade não devem ser publicados em issues, comentários ou outros espaços públicos.</p>
+        </section>
 
-        <h2>4. Direitos do titular</h2>
-        <p>Usuários que criarem contas para colaborações têm o direito de solicitar a exclusão de suas contas e a eliminação de dados pessoais a qualquer momento. Para solicitar exclusão sem uso do app, consulte nossa página de <a href="/excluir-conta/">Exclusão de Conta</a>.</p>
+        <section id="dados" aria-labelledby="dados-titulo">
+          <h2 id="dados-titulo">2. Quais dados usamos e para quê</h2>
+          <p>O tratamento depende da ação que você realiza e dos recursos disponíveis na sua versão. Identificadores técnicos ou nomes de usuário podem continuar sendo dados pessoais, mesmo quando não mostram seu nome civil.</p>
+          <dl class="policy-data-list">
+            <div><dt>Consulta no site e no app</dt><dd>Cidade, estado, combustível, filtros, área do mapa e consultas necessárias para encontrar postos e preços. A consulta pública não exige cadastro. O servidor e os prestadores de rede podem receber IP, data e hora, endereço solicitado, tipo de navegador ou aplicativo e informações técnicas necessárias à conexão e à proteção do serviço. Um termo incluído na URL também pode ficar no histórico do navegador ou no registro de acesso.</dd></div>
+            <div><dt>Conta e autenticação</dt><dd>Nome de usuário, identificadores de conta ou instalação, credenciais protegidas, sessões e registros de segurança para criar, acessar e proteger a conta. Nos métodos de e-mail ou login por provedor que forem oferecidos, também usamos o e-mail e os identificadores necessários à autenticação. Não recebemos a senha da sua conta Google ou Apple. Uma identificação pseudônima não significa que todos esses dados sejam anônimos.</dd></div>
+            <div><dt>Participação na comunidade</dt><dd>Posto, combustível, preço, condições, data, correções, comentários, confirmações, avaliações e denúncias que você envia, além dos dados necessários para comprovar autoria, prevenir abuso e analisar contestações. Conteúdo destinado à comunidade e contagens agregadas podem ser públicos; votos individuais, identidade de denunciantes, credenciais e coordenadas precisas do colaborador não são apresentados como dados públicos.</dd></div>
+            <div><dt>Veículos e registros financeiros</dt><dd>Nome e características do veículo, foto escolhida, hodômetro, abastecimentos, recargas, despesas, manutenção, turnos, ganhos, gorjetas e taxas informados por você. Esses dados servem aos cálculos e ao seu histórico privado. São mantidos no aparelho; os lançamentos elegíveis só são enviados ao serviço do Abastevo quando você ativa a sincronização privada correspondente. A foto local do veículo e os trajetos salvos não passam a ser sincronizados por essa escolha. Não informe cartão, código de segurança ou senha bancária nos campos de despesas.</dd></div>
+            <div><dt>Contratações, quando disponibilizadas</dt><dd>Identificador da conta, oferta, pedido, valor, situação do pagamento, assinatura, cancelamento e reembolso para executar a contratação e cumprir obrigações fiscais e de segurança. No Pix, o provedor pode receber nome, CPF/CNPJ e e-mail informado; no checkout de cartão, os dados do meio de pagamento são fornecidos diretamente ao processador. Não coloque número de cartão ou código de segurança em contribuições ou mensagens ao suporte. O meio e o provedor são informados antes da contratação; a consulta pública e a participação gratuita não dependem de contratar um plano.</dd></div>
+            <div><dt>Mapas, salvos e preferências</dt><dd>Cidade escolhida, idioma, configurações, mapas baixados, lugares favoritos, planos de rota e trajetos que você decide salvar, gravar, importar ou exportar. Rotas e gravações locais podem revelar lugares visitados. Ao exportar um arquivo ou abri-lo em outro aplicativo, você controla a entrega dessa cópia ao destino escolhido.</dd></div>
+            <div><dt>Relatos e representação de estabelecimentos</dt><dd>Descrição de um relato, evidências e situação do atendimento; em pedidos para representar um posto, dados de identificação e documentos de autorização ou procuração. Um PDF assinado pode conter nome, CPF do signatário e informações de certificado. Esses documentos são privados e usados na análise do pedido. Nunca envie arquivos PFX/P12, senhas ou chaves privadas.</dd></div>
+            <div><dt>Atendimento e escolhas de privacidade</dt><dd>Dados que você fornece ao suporte, referência da conta ou conteúdo, solicitação apresentada, verificações de identidade proporcionais e registros de consentimento, revogação e exclusão. Ao usar WhatsApp ou telefone, o canal pode informar seu número e os dados que você decidir compartilhar.</dd></div>
+          </dl>
+          <p>Dados comerciais de postos, nomes, CNPJs, endereços e coordenadas podem vir de fontes públicas, como ANP, RFB/OpenCNPJ, IBGE e OpenStreetMap. Coordenadas de um posto não são a localização pessoal de quem contribuiu. Dados públicos que identifiquem uma pessoa natural, inclusive em um negócio individual, continuam sujeitos à legislação: você pode pedir correção e avaliação de uma exposição indevida pelo canal de privacidade.</p>
+        </section>
 
-        <h2>5. Canal de contato</h2>
-        <p>Dúvidas sobre privacidade, segurança ou tratamento de dados podem ser encaminhadas através do repositório oficial no GitHub ou pelo canal de suporte indicado na seção de contato.</p>
+        <section id="localizacao" aria-labelledby="localizacao-titulo">
+          <h2 id="localizacao-titulo">3. Localização, câmera e notificações</h2>
+          <p><strong>Escolher uma cidade:</strong> você pode fazer isso manualmente. Se escolher usar sua posição, o app solicita a permissão apropriada e pode enviar latitude e longitude ao serviço Nominatim, da OpenStreetMap Foundation, para identificar a cidade. Consultas de proximidade também podem transmitir a área do mapa necessária para obter os resultados.</p>
+          <p><strong>Navegação, gravação de trajetos e GPS do turno:</strong> quando você inicia uma dessas ações, o app pode acompanhar sua localização precisa durante a atividade, inclusive com a tela bloqueada ou outro app em primeiro plano. O Android mostra uma notificação da atividade. Você pode parar pelo app ou pela notificação. A gravação opcional salva o trajeto no aparelho; o GPS do turno auxilia o cálculo da distância. A permissão não autoriza publicar esses deslocamentos nem manter rastreamento oculto fora da ação iniciada.</p>
+          <p><strong>Câmera e arquivos:</strong> são usados quando você decide fotografar ou selecionar um comprovante, uma foto de veículo, documento ou arquivo de mapa. Não solicitamos acesso ao microfone, contatos, SMS ou chamadas para essas funções. A navegação por voz utiliza as vozes locais compatíveis do sintetizador do sistema, sem gravar sua voz.</p>
+          <p><strong>Notificações:</strong> servem a avisos escolhidos por você e à indicação de atividades em andamento, como a navegação. Você pode alterar permissões nas configurações do aparelho. Alguns recursos deixam de funcionar quando a permissão necessária é negada; a consulta pública e a escolha manual de cidade continuam disponíveis.</p>
+        </section>
+
+        <section id="fotos" aria-labelledby="fotos-titulo">
+          <h2 id="fotos-titulo">4. Fotos, OCR e treinamento de modelos</h2>
+          <p>Uma fotografia enviada como comprovação pode ser processada pelo Abastevo para extrair e verificar o preço e permitir a revisão por pessoas autorizadas. Não fotografe pessoas, placas de veículos, documentos ou outros dados desnecessários. A remoção de metadados EXIF, inclusive GPS embutido, não apaga informações que estejam visíveis na própria imagem.</p>
+          <p><strong>Comprovação temporária:</strong> a janela operacional de acesso à foto é limitada a <strong>24 horas</strong>, contadas do primeiro recebimento pelo servidor. Reenvio ou revisão não reinicia essa janela. O serviço bloqueia o acesso após o vencimento e executa a eliminação dos arquivos temporários pelas rotinas de retenção. Expiração do acesso e conclusão da eliminação física são operações distintas; um recibo de pedido não certifica que a limpeza de todas as cópias já terminou. Você pode solicitar informação sobre a conclusão.</p>
+          <p>No aparelho, cópias temporárias de captura têm sua própria validade. Um aparelho desligado não consegue executar uma limpeza: a verificação e a remoção acontecem quando o app volta a executar. Isso não estende o acesso no servidor. A regra das evidências temporárias não é o prazo de uma foto de veículo, de um trajeto salvo ou de uma autorização documental; veja <a href="#retencao">os critérios de conservação</a>.</p>
+          <p><strong>Google ML Kit:</strong> no Android, o reconhecimento de texto é executado no aparelho. Segundo a documentação do Google, esse SDK não envia a imagem nem o texto reconhecido ao Google para esse processamento. O SDK, porém, pode se comunicar com o Google para baixar ou atualizar modelos e enviar dados técnicos: características do aparelho, sistema e aplicativo, identificadores de instalação ou dispositivo, eventos de uso, erros, configuração e desempenho. Isso é diferente do envio de uma foto que você escolhe anexar a uma contribuição ao Abastevo. Consulte os <a href="https://developers.google.com/ml-kit/terms" rel="noopener noreferrer">termos e privacidade do ML Kit</a> e a <a href="https://policies.google.com/privacy?hl=pt-BR" rel="noopener noreferrer">Política de Privacidade do Google</a>.</p>
+          <p><strong>A coleta para treinamento de modelos do Abastevo permanece desativada.</strong> O registro de uma preferência opcional e da versão dos termos não ativa a coleta nem seleciona suas fotos. Para novas finalidades será necessário explicar os dados, operadores e prazos e obter novo consentimento específico quando exigido. Não enviamos suas contribuições a uma IA de terceiros para uma nova finalidade com base em uma autorização genérica desta política.</p>
+        </section>
+
+        <section id="bases-legais" aria-labelledby="bases-titulo">
+          <h2 id="bases-titulo">5. Em que bases legais nos apoiamos</h2>
+          <ul>
+            <li><strong>Execução do serviço solicitado e procedimentos relacionados:</strong> conta, contribuição, atendimento e recursos privados que você decide utilizar.</li>
+            <li><strong>Consentimento, quando necessário:</strong> escolhas opcionais que exigem uma manifestação específica, além das permissões do sistema. Abertura desta página, silêncio e caixas pré-marcadas não são consentimento.</li>
+            <li><strong>Obrigação legal ou regulatória e exercício regular de direitos:</strong> atendimento a autoridades competentes, registros exigidos e defesa em processos ou contestações.</li>
+            <li><strong>Legítimo interesse, quando cabível:</strong> segurança, prevenção de fraude, funcionamento e melhoria técnica estritamente necessários, após avaliação de finalidade, necessidade e equilíbrio com seus direitos. Não é uma autorização para qualquer coleta.</li>
+          </ul>
+          <p>A base aplicável depende da operação. Você pode solicitar informações sobre a finalidade e a base de um tratamento específico. Autorizar a câmera ou a localização no sistema não equivale a aceitar publicidade, treinamento de modelos ou compartilhamento para outra finalidade.</p>
+        </section>
+
+        <section id="compartilhamento" aria-labelledby="compartilhamento-titulo">
+          <h2 id="compartilhamento-titulo">6. Quem pode receber informações</h2>
+          <ul>
+            <li><strong>Prestadores de infraestrutura e segurança:</strong> hospedagem, banco, armazenamento e recuperação, com acesso restrito à finalidade do serviço e proteção compatível com esta política e a legislação. A equipe autorizada pode analisar dados necessários a suporte, verificação e moderação.</li>
+            <li><strong>Google:</strong> componentes do Android/Play Services e ML Kit, com os dados técnicos descritos acima; métodos de autenticação Google, quando utilizados, seguem sua finalidade específica.</li>
+            <li><strong>OpenStreetMap Foundation/Nominatim:</strong> coordenadas ou endereços consultados e dados de conexão necessários à geocodificação. Veja a <a href="https://osmfoundation.org/wiki/Privacy_Policy" rel="noopener noreferrer">política da OpenStreetMap Foundation</a>.</li>
+            <li><strong>Processadores de pagamento, conforme o meio oferecido:</strong> Stripe no checkout de cartão e Asaas no Pix, quando disponibilizados, recebem os dados necessários à contratação e à prevenção de fraude. Consulte as políticas da <a href="https://stripe.com/br/privacy" rel="noopener noreferrer">Stripe</a> e do <a href="https://central.ajuda.asaas.com/hc/pt-br/articles/32098003163035-Pol%C3%ADtica-de-Privacidade" rel="noopener noreferrer">Asaas</a>. Esta descrição não ativa cobranças nem afirma que todos os meios estejam disponíveis na sua versão.</li>
+            <li><strong>WhatsApp/Meta e outros destinos escolhidos por você:</strong> ao abrir um canal de atendimento ou um link externo, o respectivo provedor recebe os dados necessários ao uso. Abrir esta página não inicia uma conversa nem envia um pedido por você. Consulte a <a href="https://www.whatsapp.com/legal/privacy-policy" rel="noopener noreferrer">política do WhatsApp</a>.</li>
+            <li><strong>Comunidade, autoridades ou sucessão do serviço:</strong> somente conteúdo destinado à publicação, obrigações legais ou uma transferência legítima com preservação de direitos e informação adequada, conforme cada caso.</li>
+          </ul>
+          <p>Não vendemos dados pessoais. Registros financeiros privados, fotos de comprovação, documentos de representação, coordenadas precisas de colaboradores e identidades de denunciantes não são publicados como conjuntos de dados do portal. Compartilhamentos necessários não autorizam um prestador a reutilizar esses dados livremente para outras finalidades.</p>
+          <p>O site é estático: não usa cookies publicitários nem scripts de rastreamento de terceiros. A busca pública usa páginas e arquivos estáticos, sem uma API de busca. Isso não impede o processamento dos dados de conexão explicado nesta política nem transforma os SDKs do aplicativo em componentes sem coleta.</p>
+        </section>
+
+        <section id="transferencias" aria-labelledby="transferencias-titulo">
+          <h2 id="transferencias-titulo">7. Hospedagem no Brasil e transferências internacionais</h2>
+          <p>A controladora está no Brasil e definiu o <strong>Brasil como local da hospedagem principal da operação de produção</strong>. Essa definição não significa que todo tratamento de terceiros ocorra exclusivamente no país. Google, serviços de mapas, canais de atendimento e outros prestadores utilizados podem operar infraestrutura em outros países.</p>
+          <p>Quando houver transferência internacional sob nossa responsabilidade, ela deve ocorrer com uma hipótese e garantias admitidas pela LGPD e pela regulamentação da ANPD, como cláusulas contratuais aplicáveis ou outro mecanismo válido. Você pode solicitar informações sobre destinatários, países e garantias pertinentes à sua utilização. Mudanças materiais nesses destinos serão informadas antes de uma nova finalidade de tratamento.</p>
+        </section>
+
+        <section id="retencao" aria-labelledby="retencao-titulo">
+          <h2 id="retencao-titulo">8. Por quanto tempo conservamos os dados</h2>
+          <p>Conservamos cada categoria pelo tempo necessário à finalidade, às escolhas do usuário e às obrigações aplicáveis. Não existe um prazo único de 24 horas para todos os dados do Abastevo.</p>
+          <dl class="policy-data-list">
+            <div><dt>Conta, preferências e registros privados</dt><dd>Enquanto forem necessários à conta ou à funcionalidade escolhida, ou até sua exclusão, respeitadas as exceções legais. Dados mantidos apenas no aparelho dependem dos controles locais; remover uma conta no servidor não apaga arquivos que você exportou para outro destino.</dd></div>
+            <div><dt>Fotos temporárias de comprovação e exportações de acesso</dt><dd>Fotos têm a janela operacional de acesso de até 24 horas descrita acima. Arquivos gerados para exercício do direito de acesso têm janela de download de até 24 horas após ficarem disponíveis. Esses prazos não são uma garantia de apagamento remoto de um aparelho desligado.</dd></div>
+            <div><dt>Autorizações e procurações de representantes</dt><dd>Têm finalidade e prazo próprios, distintos das fotos de preço. O prazo padrão de documentos de autorização é de até dois anos; digitalizações classificadas como evidência temporária têm prazo de 24 horas. Uma conservação por obrigação legal ou defesa de direitos é restrita ao necessário e deve ser justificada no atendimento.</dd></div>
+            <div><dt>Contratações e pagamentos</dt><dd>Dados necessários à execução, conciliação, cancelamento, reembolso e obrigações fiscais ou defesa de direitos seguem os prazos legais aplicáveis a cada registro. A exclusão de uma conta não elimina uma obrigação legal de conservação; o motivo e o prazo ou critério devem ser informados. O processador também pode ter obrigações próprias, descritas na política apresentada na contratação.</dd></div>
+            <div><dt>Histórico público e moderação</dt><dd>Preços, fontes e estatísticas podem permanecer para preservar o histórico, desde que não mantenham um vínculo pessoal indevido. Pedidos de exclusão abrangem o vínculo com a conta e dados pessoais existentes no conteúdo; informações efetivamente anônimas e fatos de fontes públicas têm tratamento distinto. Dados de moderação e defesa de direitos ficam restritos pelo período necessário ao caso, com eliminação ou anonimização ao término.</dd></div>
+            <div><dt>Segurança e obrigações legais</dt><dd>Credenciais e registros técnicos possuem ciclos de expiração e descarte próprios. Para os registros de acesso à aplicação — IP, data e hora — o art. 15 do Marco Civil da Internet prevê conservação sob sigilo por <strong>6 meses</strong>, quando aplicável, ressalvadas determinações legítimas de preservação. Essa regra não determina guardar fotos, conversas ou trajetos por seis meses.</dd></div>
+            <div><dt>Backups e cópias no aparelho</dt><dd>Backups restritos são usados para recuperação e obedecem ao ciclo de retenção do ambiente e às solicitações de exclusão; dados excluídos não devem retornar ao uso em uma restauração. A indisponibilidade na conta não significa destruição imediata de toda cópia de segurança. O sistema operacional também pode incluir arquivos locais elegíveis em backup ou transferência conforme as configurações do aparelho. Você pode pedir os prazos e a situação das cópias relacionadas aos seus dados.</dd></div>
+          </dl>
+          <p>Quando uma informação for conservada após um pedido de exclusão por fundamento legítimo, informaremos sua categoria, motivo e prazo ou critério de término. Ela não será reutilizada para publicidade ou uma finalidade incompatível com essa conservação.</p>
+        </section>
+
+        <section id="direitos" aria-labelledby="direitos-titulo">
+          <h2 id="direitos-titulo">9. Como exercer seus direitos</h2>
+          <p>Você pode solicitar confirmação e acesso ao tratamento; correção; informações sobre compartilhamento; anonimização, bloqueio ou eliminação de dados desnecessários, excessivos ou tratados irregularmente; portabilidade nos limites aplicáveis; eliminação dos dados tratados com consentimento, observadas as exceções legais; e revogação do consentimento. Pode também se opor a tratamento irregular baseado em outra hipótese legal e pedir revisão de decisões tomadas unicamente por tratamento automatizado que afetem seus interesses, com informação sobre seus critérios, observados os limites legais.</p>
+          <p>Entre em contato pelo <a href="https://wa.me/556696314240?text=Ol%C3%A1%2C%20quero%20exercer%20um%20direito%20de%20privacidade%20no%20Abastevo." rel="noopener noreferrer">WhatsApp oficial de privacidade</a>, telefone ou endereço da <a href="#controlador">controladora</a>. Informe que o pedido é sobre o Abastevo e qual direito deseja exercer. O atendimento pela controladora é gratuito. A verificação de identidade será proporcional e não deve exigir a publicação de dados ou a entrega da sua chave de acesso.</p>
+          <p>A confirmação ou o acesso podem ser fornecidos de forma simplificada imediatamente ou por declaração completa em até 15 dias, conforme a LGPD e as regras aplicáveis. Esse prazo não é uma promessa única de exclusão física de todas as categorias. Para os demais pedidos, informamos os passos necessários, a previsão de conclusão e o motivo de eventual conservação ou impossibilidade legal.</p>
+          <p>Se não houver solução, você pode apresentar uma petição ou denúncia à <a href="https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados/direito-dos-titulares" rel="noopener noreferrer">ANPD</a>, sem prejuízo dos demais meios previstos em lei.</p>
+        </section>
+
+        <section id="exclusao" aria-labelledby="exclusao-titulo">
+          <h2 id="exclusao-titulo">10. Exclusão da conta e dos dados associados</h2>
+          <p>No app, acesse <strong>Perfil → Gerenciar conta → Excluir minha conta</strong> e confirme. Não é necessário conversar com o suporte para usar essa opção. Para solicitar sem reinstalar o aplicativo, use o canal privado em <a href="/excluir-conta/">Excluir conta e dados</a>.</p>
+          <p>O pedido abrange a conta e os dados pessoais associados, e não apenas uma desativação temporária. Após o recebimento válido pelo servidor, o acesso é revogado e os procedimentos de desvinculação e eliminação são iniciados. A confirmação do pedido é diferente da confirmação de que todos os procedimentos terminaram. Solicitações feitas sem conexão podem precisar de envio ou confirmação posterior.</p>
+          <p>Histórico efetivamente anônimo, dados cuja retenção tenha fundamento legal e fatos de fontes públicas podem permanecer, nos limites da seção de <a href="#retencao">conservação</a>. Desinstalar o aplicativo não solicita exclusão da conta no servidor. Excluir a conta também não cancela automaticamente uma eventual assinatura: o gerenciamento de cobrança segue o meio da contratação, sem transformar uma dívida em autorização para conservar dados desnecessários.</p>
+        </section>
+
+        <section id="seguranca" aria-labelledby="seguranca-titulo">
+          <h2 id="seguranca-titulo">11. Segurança e comunicação de incidentes</h2>
+          <p>Adotamos comunicação HTTPS nos serviços, autenticação das ações protegidas, acesso restrito, separação de dados públicos e privados e controles de expiração e recuperação. Isso não significa risco zero nem que todo arquivo local esteja protegido pelo mesmo mecanismo de criptografia. Proteja o acesso ao aparelho e as credenciais da conta.</p>
+          <p>Se um incidente puder causar risco ou dano relevante aos titulares, a controladora avaliará e comunicará o ocorrido à ANPD e às pessoas afetadas nos termos da LGPD e da Resolução CD/ANPD nº 15/2024, observando o prazo regulamentar de três dias úteis e as ressalvas legalmente aplicáveis. O canal de privacidade também recebe relatos sobre exposição indevida de dados.</p>
+        </section>
+
+        <section id="criancas" aria-labelledby="criancas-titulo">
+          <h2 id="criancas-titulo">12. Crianças e adolescentes</h2>
+          <p>O serviço é voltado à consulta de abastecimento e a recursos de motoristas e proprietários de veículos; não é apresentado como um serviço infantil. Isso não elimina as proteções de quem seja menor de idade. O tratamento deve observar o melhor interesse, a LGPD e as obrigações aplicáveis do Estatuto Digital da Criança e do Adolescente, inclusive quando houver acesso provável por esse público.</p>
+          <p>Não usamos esta política como autorização genérica para coletar dados de crianças ou realizar publicidade comportamental dirigida a menores. Responsáveis podem usar o canal de privacidade para pedir informações, comunicar uma coleta indevida ou solicitar as providências cabíveis.</p>
+        </section>
+
+        <section id="alteracoes" aria-labelledby="alteracoes-titulo">
+          <h2 id="alteracoes-titulo">13. Atualizações e novos recursos</h2>
+          <p>Esta política descreve o tratamento relacionado aos recursos efetivamente oferecidos. Uma expansão para outra plataforma ou região de distribuição, um novo prestador, uma cobrança, nova forma de análise ou uso de imagens para IA exige revisão antes da ativação. Não significa que todas essas possibilidades estejam disponíveis hoje.</p>
+          <p>Publicaremos a nova versão com sua data e destacaremos mudanças materiais pelos meios adequados no serviço. Para novas finalidades, atualizaremos as informações e solicitaremos consentimento específico ou outra manifestação quando exigidos. Continuar usando o app não substitui uma autorização que a lei ou a loja exijam de forma expressa.</p>
+          <p>Esta política deve ser lida com os <a href="/termos/">Termos de Uso</a> e com as instruções de <a href="/excluir-conta/">exclusão de conta</a>. Em caso de dúvida sobre seus dados, procure o <a href="#controlador">canal oficial de privacidade</a>.</p>
+        </section>
       </article>
     </div>
   </main>

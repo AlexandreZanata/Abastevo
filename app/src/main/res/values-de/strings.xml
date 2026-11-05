@@ -1310,4 +1310,7 @@
     <string name="station_correction_review">Dein Vorschlag wird vor einer Änderung der Karte geprüft.</string>
     <string name="station_correction_sent">Vorschlag zur Prüfung gesendet.</string>
     <string name="station_correction_failed">Der Vorschlag konnte nicht gesendet werden. Versuche es erneut.</string>
+    <string name="privacy_full_policy">Vollständige Datenschutzerklärung lesen</string>
+    <string name="privacy_external_deletion">Konto und Daten auf der Website löschen</string>
+    <string name="privacy_document_open_failed">Der Browser konnte nicht geöffnet werden. Öffne diese Adresse in deinem Browser: %1$s</string>
 </resources>
