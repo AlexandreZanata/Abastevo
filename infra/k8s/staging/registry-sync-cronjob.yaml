@@ -31,6 +31,10 @@ spec:
             - /tools/station-load
             - --timeout
             - 18m
+            - --opencnpj
+            - /tools/opencnpj
+            - --opencnpj-root
+            - /rfb
             command:
             - /tools/station-sync
             env:
@@ -48,8 +52,8 @@ spec:
             name: registry-sync
             resources:
               limits:
-                cpu: 250m
-                memory: 256Mi
+                cpu: 500m
+                memory: 512Mi
               requests:
                 cpu: 25m
                 memory: 32Mi
@@ -67,6 +71,9 @@ spec:
               readOnly: true
             - mountPath: /state
               name: state
+            - mountPath: /rfb
+              name: rfb
+              readOnly: true
           dnsPolicy: ClusterFirst
           restartPolicy: Never
           schedulerName: default-scheduler
@@ -86,6 +93,10 @@ spec:
               path: ${REGISTRY_SYNC_STATE_PATH}
               type: Directory
             name: state
+          - hostPath:
+              path: ${REGISTRY_RFB_SOURCE_PATH}
+              type: Directory
+            name: rfb
   schedule: 17 3 * * *
   startingDeadlineSeconds: 3600
   successfulJobsHistoryLimit: 2

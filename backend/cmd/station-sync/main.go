@@ -41,21 +41,50 @@ func run() error {
 	preparer := flag.String("prepare", "/tools/prepare_registry", "trusted Rust executable")
 	loader := flag.String("loader", "/tools/station-load", "trusted Go loader executable")
 	nameInputs := flag.String("name-inputs", "", "optional pinned local names manifest; defaults to ROOT/name-inputs/manifest.json when present")
+	opencnpj := flag.String("opencnpj", "/tools/opencnpj", "trusted offline OpenCNPJ executable")
+	opencnpjRoot := flag.String("opencnpj-root", "", "private published OpenCNPJ source directory")
+	rfbUpdate := flag.Bool("rfb-update", false, "refresh and verify the monthly RFB snapshot only; never accesses the application DB")
+	namesDir := flag.String("names-dir", "", "prepare minimized names for registry.csv in this directory, then exit without DB access")
 	timeout := flag.Duration("timeout", 18*time.Minute, "overall bounded refresh duration")
 	budgetWait := flag.Duration("budget-wait", 6*time.Minute, "bounded wait for the host safety budget before starting (inside --timeout)")
 	flag.Parse()
 	if *referenceDir != "" {
 		return syncer.WriteAliases(*referenceDir)
 	}
-	if *timeout <= 0 || *timeout > 20*time.Minute || *budgetWait < 0 || *budgetWait >= *timeout/2 || os.Getenv("ANPFUEL_DATABASE_URL") == "" || !filepath.IsAbs(*root) || !filepath.IsAbs(*preparer) || !filepath.IsAbs(*loader) {
+	maximum := 20 * time.Minute
+	if *rfbUpdate {
+		maximum = 2 * time.Hour
+	}
+	needsDB := !(*rfbUpdate || *namesDir != "")
+	if *timeout <= 0 || *timeout > maximum || *budgetWait < 0 || *budgetWait >= *timeout/2 || (needsDB && os.Getenv("ANPFUEL_DATABASE_URL") == "") || !filepath.IsAbs(*root) || !filepath.IsAbs(*preparer) || !filepath.IsAbs(*loader) || (*opencnpjRoot != "" && (!filepath.IsAbs(*opencnpjRoot) || !filepath.IsAbs(*opencnpj))) || (*rfbUpdate && (*opencnpjRoot != *root || *namesDir != "")) {
 		return fmt.Errorf("invalid bounded refresh configuration")
 	}
 	signalContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(signalContext, *timeout)
 	defer cancel()
+	provider := syncer.OpenCNPJNames{Binary: *opencnpj, DataRoot: *opencnpjRoot, CacheRoot: filepath.Join(*root, "name-cache"), Now: time.Now}
+	if *namesDir != "" {
+		if *opencnpjRoot == "" || !filepath.IsAbs(*namesDir) {
+			return fmt.Errorf("offline name preparation configuration missing")
+		}
+		path, err := provider.Generate(ctx, *namesDir)
+		if err != nil {
+			return err
+		}
+		event("names_prepared", map[string]any{"manifest": path})
+		return nil
+	}
 	safetyClient := &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return fmt.Errorf("readiness redirect refused") }}
-	check := func(ctx context.Context) error { return safety(ctx, *root, safetyClient) }
+	check := func(ctx context.Context) error {
+		if err := safety(ctx, *root, safetyClient); err != nil {
+			return err
+		}
+		if *rfbUpdate {
+			return syncer.CheckOpenCNPJDisk(*root)
+		}
+		return nil
+	}
 	if err := waitForBudget(ctx, check, *budgetWait, 15*time.Second, func(err error) {
 		event("budget_deferred", map[string]any{"reason": err.Error()})
 	}); err != nil {
@@ -72,7 +101,7 @@ func run() error {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if err := safety(ctx, *root, safetyClient); err != nil {
+				if err := check(ctx); err != nil {
 					guardError <- err
 					cancel()
 					return
@@ -80,9 +109,35 @@ func run() error {
 			}
 		}
 	}()
-	r := syncer.Runner{Root: *root, Now: time.Now, Client: &http.Client{Timeout: 30 * time.Second}, Observe: func(code string) { event(code, nil) }}
+	if *rfbUpdate {
+		updater := syncer.SourceUpdater{Root: *root, Binary: *opencnpj, Now: time.Now, Info: provider.Info, Invoke: func(ctx context.Context, stage, binary string, args []string) error {
+			return child(ctx, stage, binary, args, false)
+		}}
+		err := updater.Update(ctx)
+		cancel()
+		<-done
+		select {
+		case failure := <-guardError:
+			return failure
+		default:
+		}
+		if err != nil {
+			return err
+		}
+		event("rfb_refresh_complete", nil)
+		return nil
+	}
+	r := syncer.Runner{Root: *root, Now: time.Now, Client: &http.Client{Timeout: 30 * time.Second}, Observe: func(code string) { event(code, nil) }, ValidatePrepared: syncer.ValidateRegistryAdmission}
+	r.Analyze = func(previous, current string) error {
+		report, err := syncer.AnalyzeRegistryEdition(previous, current)
+		event("registry_edition", map[string]any{"admitted": err == nil, "source_sha256": report.SourceSHA256, "previous_sha256": report.PreviousSHA256, "rows": report.Rows, "added": report.Added, "changed": report.Changed, "missing": report.Missing, "unchanged": report.Unchanged})
+		return err
+	}
 	r.NameInputs = *nameInputs
-	if r.NameInputs == "" {
+	if *opencnpjRoot != "" {
+		r.GenerateNames = provider.Generate
+	}
+	if r.NameInputs == "" && r.GenerateNames == nil {
 		candidate := filepath.Join(*root, "name-inputs", "manifest.json")
 		if _, err := os.Lstat(candidate); err == nil {
 			r.NameInputs = candidate

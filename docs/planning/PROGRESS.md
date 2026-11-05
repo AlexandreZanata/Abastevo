@@ -1,12 +1,18 @@
 # Current execution state
 
-- NAT static fiscal discovery and station names, 2026-11-05, LOCAL_DONE /
-  INTEGRATION_PENDING in an isolated persistent worktree because maintained
-  dev is occupied by the forum effort. [Current evidence](../backend/evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md)
-  covers static state/city filters, secondary legal names and name-only export
-  invalidation. 78 landing tests, portal suites and real PostGIS checks passed.
-  Tested source is in this checkpoint; monthly source automation continues
-  from it. No new portal deployment or source activation is claimed.
+- NAT national continuity and static fiscal discovery, 2026-11-05,
+  LOCAL_DONE / INTEGRATION_PENDING. [Current evidence](../backend/evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md)
+  records static state/city filters, canonical trade/secondary legal names,
+  automatic full-CNPJ enrichment and a verified monthly VPS-local source.
+  The real 45,807-row ANP edition passed bounded container preparation and
+  complete disposable PostGIS publication/verification/replay: 45,695 admitted,
+  112 quarantined, 31,634 usable trade names. Race/failure/SQL checks, 78 landing
+  tests, builds and scoped static checks pass. Tested source is in this commit.
+  Maintained dev is occupied by the forum effort; isolated
+  `codex/national-refresh-portal` preserves its work. The verified snapshot is
+  prepared privately on VPS; schedule/database/portal activation is pending
+  protected delivery coordination. No unrelated forum publication or release
+  certification is authorized by this task.
 
 - SNA/OpenCNPJ station identity and MAP-20 expanded controls, 2026-11-05,
   LOCAL_DONE / INTEGRATED through PR #191 as `3fc77acc`, from

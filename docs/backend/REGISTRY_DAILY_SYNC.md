@@ -259,3 +259,26 @@ credentials) is retained mode0600 at
 SHA-256: `2539b17df9ff518b723aca0e84f25aaa2ef7548c66ec8f74782c638bb16799da`.
 It preserves the failed global-media comparison as an unaccepted diagnostic,
 and never treats it as successful integrity evidence.
+
+## Automatic national names and monthly RFB source (NAT, 2026-11-05)
+
+The VPS-local mode uses `--opencnpj-root /rfb --opencnpj /tools/opencnpj`.
+It joins each newly fetched ANP membership against the verified local monthly
+snapshot and pins the minimized result before preparation. No manually
+maintained CNPJ list is used. It cannot be combined with `--name-inputs`.
+Pending editions resume from their existing pins before any regeneration.
+
+The CLI also exposes DB-free `--rfb-update` for the bounded monthly-source
+oneshot, and `--names-dir /absolute/frozen-input-directory` for offline
+acceptance. The latter requires a private `--root` for its serialized cache.
+Source refresh and name export share a filesystem lock; a changed monthly
+snapshot invalidates an unchanged ANP cache pair. The new edition audit and
+admission threshold precede any DB load. Missing rows remain review evidence,
+not deletion or closure instructions.
+
+See [source operations](../../infra/deploy/registry/README.md) for resource
+limits, source verification, private ownership, retention, staleness and
+recovery. See [current acceptance](evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md)
+for the tested source and separate activation state. The portal remains static
+and publishes generated immutable search files; none of these jobs provide a
+website search API.
