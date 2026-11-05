@@ -1,5 +1,21 @@
 # Current execution state
 
+- FOR-11 Forum safe feed parser and fetch adapter, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `80b0fd71`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)
+  implements bounded XML parsing and safe egress adapters:
+  `DefaultFeedParser` supporting RSS 2.0 and Atom 1.0, strict DOCTYPE/ENTITY
+  rejection (XXE prevention), recursion depth limit (32), payload bound (2 MiB),
+  max 100 entries, HTML stripping, RFC-822/RFC-3339 timezone parsing, 5-minute future
+  clock skew protection; `SafeFeedFetcher` implementing `SourceFetcher` with
+  origin allowlist (`AllowedTarget`), HTTPS-only, port validation, user credentials refusal,
+  `PublicUnicastOnly` IP policy rejecting loopback, private, link-local, and cloud metadata
+  addresses (`169.254.169.254`), pinned IP dialer preventing DNS rebinding TOCTOU,
+  redirect limit (2 max), bounded 2 MiB body reader, conditional GET (If-None-Match/If-Modified-Since
+  handling 304 Not Modified). Test suite in `fetcher_test.go` and `parser_test.go`
+  passed with `-race`. Tested revision: source in this commit. Next microtask:
+  FOR-12 (Scheduled collection and deduplication).
+
 - FOR-10 Forum source access and publication decisions, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `b0a46c6c`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)

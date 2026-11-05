@@ -26,6 +26,12 @@ var (
 	ErrForumDisabled           = errors.New("forum: forum subsystem is disabled")
 	ErrPostNotFound            = errors.New("forum: post not found")
 	ErrInvalidCursor           = errors.New("forum: invalid cursor")
+	ErrFeedOversized           = errors.New("forum: feed exceeds maximum byte size")
+	ErrFeedMalformed           = errors.New("forum: feed is malformed or invalid xml")
+	ErrFeedSecurityRefusal     = errors.New("forum: feed contains forbidden entity declaration or excessive depth")
+	ErrFeedItemOversized       = errors.New("forum: feed item metadata exceeds size limit")
+	ErrEgressForbidden         = errors.New("forum: target host or address violates egress policy")
+	ErrRedirectDisallowed      = errors.New("forum: redirect target rejected")
 )
 
 const (
@@ -82,6 +88,18 @@ func VerdictCode(err error) string {
 		return "post-not-found"
 	case errors.Is(err, ErrInvalidCursor):
 		return "invalid-cursor"
+	case errors.Is(err, ErrFeedOversized):
+		return "feed-oversized"
+	case errors.Is(err, ErrFeedMalformed):
+		return "feed-malformed"
+	case errors.Is(err, ErrFeedSecurityRefusal):
+		return "feed-security-refusal"
+	case errors.Is(err, ErrFeedItemOversized):
+		return "feed-item-oversized"
+	case errors.Is(err, ErrEgressForbidden):
+		return "egress-forbidden"
+	case errors.Is(err, ErrRedirectDisallowed):
+		return "redirect-disallowed"
 	default:
 		return "unknown-error"
 	}

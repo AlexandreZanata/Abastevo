@@ -50,8 +50,8 @@ Representative synthetic test fixtures created in `backend/testdata/forum-source
 | Task | Scope | Status | Tested revision | Evidence / Notes |
 |---|---|---|---|---|
 | **FOR-10** | Approve one real source or record block | LOCAL_DONE | Current commit | Source register frozen in `source_register.json`; rights evaluated for 8 candidates; operational status `NEWS_SOURCE_BLOCKED` recorded with editorial fallback; parse contract vectors frozen for RSS/Atom; validation suite in `source_register_test.go` PASSED. |
-| **FOR-11** | Safe feed parser and fetch adapter | NEXT | - | Bounded stdlib XML parser (rejecting DOCTYPE/XXE, max 2 MiB, max 100 entries) and allowlisted safe HTTP client (HTTPS-only, SSRF prevention). |
-| **FOR-12** | Scheduled collection and deduplication | PLANNED | - | Worker handler, conditional GET (ETag/304), transactional GUID/URL deduplication. |
+| **FOR-11** | Safe feed parser and fetch adapter | LOCAL_DONE | Current commit | Bounded RSS 2.0 and Atom 1.0 parser with strict XXE refusal, max depth 32, max body 2 MiB, max 100 items, title/excerpt HTML sanitization; safe fetcher with origin allowlist, HTTPS-only, IPPolicy refusing private/loopback/cloud-metadata addresses, DNS rebinding TOCTOU prevention (pinned IP dialer), bounded body reader, redirect limiter, conditional GET (304). Complete unit and security suite PASSED. |
+| **FOR-12** | Scheduled collection and deduplication | NEXT | - | Worker handler, conditional GET (ETag/304), transactional GUID/URL deduplication. |
 | **FOR-13** | Editorial review and news checkpoint | PLANNED | - | Admin candidate queue, rights view, verification that blocked sources remain off. |
 
 ## Verification and quality gates
@@ -59,10 +59,10 @@ Representative synthetic test fixtures created in `backend/testdata/forum-source
 - `git diff --check`: PASSED.
 - Secret surface review: PASSED (`scripts/scan-secrets.sh` clean).
 - OpenAPI lint (`vacuum lint`): PASSED (0 errors).
-- Go unit test suite with `-race`: PASSED (`./internal/modules/forum/...` including `TestSourceRegister_StructureAndRightsInvariants` and `TestSourceRegister_TestVectorsConformToParseContract`).
+- Go unit test suite with `-race`: PASSED (`./internal/modules/forum/...` including `TestFeedParser_*` and `TestSafeFeedFetcher_*`).
 - Android JVM test suite: PASSED (`:domain:test`, `:application:test`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest`).
 - Frontend test suite: PASSED (`npm test` in `admin-web/`: 53 tests passing).
 - Static analysis: `go vet` PASSED (0 errors).
 - Code formatting: `gofmt` verified.
 - Repository worktree isolation: PASSED (persistent worktree on maintained dev; occupied checkouts untouched).
-- Next action: FOR-11 (Safe feed parser and fetch adapter).
+- Next action: FOR-12 (Scheduled collection and deduplication).
