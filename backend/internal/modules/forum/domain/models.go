@@ -526,6 +526,7 @@ type Comment struct {
 	PublishedAt       *time.Time       `json:"published_at,omitempty"`
 	CreateOperationID string           `json:"create_operation_id"`
 	BodySHA256        string           `json:"body_sha256"`
+	ReplyCount        int              `json:"reply_count,omitempty"`
 }
 
 // IsPubliclyVisible reports whether the comment is visible to anonymous readers.

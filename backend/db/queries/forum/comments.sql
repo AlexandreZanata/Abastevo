@@ -162,3 +162,11 @@ SELECT EXISTS (
     WHERE author_account_id = $1
       AND (publication_state <> 'REMOVED' OR body_text <> '')
 );
+
+-- name: CountPublishedRepliesForParents :many
+SELECT parent_id, count(*)::int AS reply_count
+FROM forum_comments
+WHERE parent_id = ANY(@parent_ids::uuid[])
+  AND publication_state = 'PUBLISHED'
+  AND visibility = 'VISIBLE'
+GROUP BY parent_id;

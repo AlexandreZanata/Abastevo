@@ -808,10 +808,31 @@ func run() error {
 	forumStore := forumadapters.NewStore(pool.Underlying())
 	forumCfg := forumdomain.DefaultConfig()
 	forumCfg.ReadsEnabled = cfg.ForumEnabled
+	forumCfg.WritesEnabled = cfg.ForumEnabled
 	forumCfg.AdminEnabled = cfg.ForumEnabled
 	forumService := forumapp.NewService(forumCfg, forumStore, forumStore, forumapp.SystemClock{})
 	forumHandler := forumhttp.NewHandler(forumService, cfg.CursorSecret)
 	forumHandler.RegisterRoutes(router)
+
+	forumDiscussionHandler := &forumhttp.DiscussionHandler{
+		Comments: forumStore,
+		Runner:   identityRunner,
+		Clock:    time.Now,
+		Config:   &forumCfg,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			return accountService.ValidateAccess(ctx, family, access)
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			return premiumHTTP.SignedOwner(r, owner)
+		},
+		Guard: func(ctx context.Context, tx pgx.Tx, owner, family, access, contributor, key string) error {
+			if err := accountStore.RequireQualitySessionTx(ctx, tx, owner, family, access, contributor, accountService.Hasher, time.Now().Unix()); err != nil {
+				return err
+			}
+			return identityadapters.RequireQualitySigningKeyTx(ctx, tx, contributor, key)
+		},
+	}
+	forumDiscussionHandler.RegisterRoutes(router)
 
 	// Optional administrative surface (ADR-023). No configured key hash means
 	// no route is mounted and every /v1/admin/* path stays 404.

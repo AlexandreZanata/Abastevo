@@ -1,5 +1,27 @@
 # Current execution state
 
+- FOR-17 Forum discussion HTTP endpoints, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `732fadfa`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  advances Phase 3 (Safe discussion on published posts):
+  public comment/reply pages (`GET /v1/forum/posts/{post_id}/comments`,
+  `GET /v1/forum/comments/{comment_id}/replies`) and signed owner endpoints
+  (`POST /v1/forum/posts/{post_id}/comments`, `POST /v1/forum/comments/{comment_id}/edit`,
+  `POST /v1/forum/comments/{comment_id}/remove`, `POST /v1/forum/owner/read`)
+  wired in `DiscussionHandler` and mounted in `cmd/api/main.go`;
+  deterministic keyset pagination using `limit + 1` and `CountPublishedRepliesForParents` index query;
+  runtime feature gates supporting rollback mode (`ReadsEnabled: true, WritesEnabled: false`);
+  mandatory `Cache-Control: no-store` on all command, public read, and error responses;
+  16 KiB request payload size ceiling preventing unbounded memory allocation;
+  429 rate/budget limits with standard `Retry-After`;
+  unit test suite in `for17_endpoints_test.go` and real PostgreSQL integration test suite
+  in `for17_discussion_integration_test.go` verifying all 8 gates (signed create and public pending isolation,
+  idempotent replay and session refresh replay, conflicting payload on same operation ID,
+  keyset pagination under concurrent insert and hide, reply pagination and parent suppression,
+  owner CAS edit and remove terminal state, IDOR defense 404, database outage 503 resilience)
+  with `-race` and `-tags=integration`. Tested revision: source in this commit.
+  Next microtask: FOR-18 (Reports, review queue and action integration).
+
 - FOR-16 Forum privacy, notices and moderation readiness, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `001b4cc4`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)

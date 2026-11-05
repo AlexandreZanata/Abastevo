@@ -38,6 +38,40 @@ func (q *Queries) CountLiveCommentsByAuthor(ctx context.Context, authorAccountID
 	return count, err
 }
 
+const countPublishedRepliesForParents = `-- name: CountPublishedRepliesForParents :many
+SELECT parent_id, count(*)::int AS reply_count
+FROM forum_comments
+WHERE parent_id = ANY($1::uuid[])
+  AND publication_state = 'PUBLISHED'
+  AND visibility = 'VISIBLE'
+GROUP BY parent_id
+`
+
+type CountPublishedRepliesForParentsRow struct {
+	ParentID   pgtype.UUID `json:"parent_id"`
+	ReplyCount int32       `json:"reply_count"`
+}
+
+func (q *Queries) CountPublishedRepliesForParents(ctx context.Context, parentIds []pgtype.UUID) ([]CountPublishedRepliesForParentsRow, error) {
+	rows, err := q.db.Query(ctx, countPublishedRepliesForParents, parentIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountPublishedRepliesForParentsRow
+	for rows.Next() {
+		var i CountPublishedRepliesForParentsRow
+		if err := rows.Scan(&i.ParentID, &i.ReplyCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCommentByID = `-- name: GetCommentByID :one
 SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
 FROM forum_comments

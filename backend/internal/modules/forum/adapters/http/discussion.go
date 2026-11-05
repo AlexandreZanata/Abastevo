@@ -198,6 +198,7 @@ type DiscussionHandler struct {
 	Guard       func(ctx context.Context, tx pgx.Tx, accountID, familyID, accessToken, contributorID, keyID string) error
 	Runner      *identityadapters.Runner
 	Clock       func() time.Time
+	Config      *domain.Config
 }
 
 func (h *DiscussionHandler) now() time.Time {
@@ -205,6 +206,25 @@ func (h *DiscussionHandler) now() time.Time {
 		return h.Clock().UTC()
 	}
 	return time.Now().UTC()
+}
+
+func (h *DiscussionHandler) readsAllowed() bool {
+	if h.Config == nil {
+		return true
+	}
+	return h.Config.ReadsAllowed()
+}
+
+func (h *DiscussionHandler) writesAllowed() bool {
+	if h.Config == nil {
+		return true
+	}
+	return h.Config.WritesAllowed()
+}
+
+func (h *DiscussionHandler) writeBadRequest(w http.ResponseWriter, r *http.Request, msg string) {
+	w.Header().Set("Cache-Control", "no-store")
+	httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", msg, nil)
 }
 
 // RegisterRoutes registers discussion endpoints on a chi router.
@@ -223,7 +243,10 @@ func readJSONBody(r *http.Request, v any) error {
 		return domain.ErrCommentBodyEmpty
 	}
 	bodyBytes, err := httpapi.ReadBody(r, 16<<10)
-	if err != nil || httpapi.DecodeJSON(bodyBytes, v) != nil {
+	if err != nil {
+		return err
+	}
+	if err := httpapi.DecodeJSON(bodyBytes, v); err != nil {
 		return domain.ErrCommentBodyEmpty
 	}
 	r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
@@ -345,6 +368,14 @@ func (h *DiscussionHandler) writeError(w http.ResponseWriter, r *http.Request, e
 		status = http.StatusConflict
 		code = "forum.conflict"
 		msg = "conflicting operation or revision mismatch"
+	case errors.Is(err, domain.ErrForumDisabled):
+		status = http.StatusServiceUnavailable
+		code = "forum.service-unavailable"
+		msg = "forum discussion is disabled"
+	case errors.Is(err, httpapi.ErrBodyTooLarge):
+		status = http.StatusBadRequest
+		code = "forum.bad-request"
+		msg = "request body exceeds 16KiB limit"
 	case errors.Is(err, domain.ErrPostNotCommentable),
 		errors.Is(err, domain.ErrPostCommentsDisabled):
 		status = http.StatusBadRequest
@@ -358,15 +389,20 @@ func (h *DiscussionHandler) writeError(w http.ResponseWriter, r *http.Request, e
 
 // CreateComment handles signed owner submission of comments and replies.
 func (h *DiscussionHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
+	if !h.writesAllowed() {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+
 	postID := chi.URLParam(r, "post_id")
 	if !isUUID(postID) {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid post id", nil)
+		h.writeBadRequest(w, r, "invalid post id")
 		return
 	}
 
 	var req CreateCommentRequest
 	if err := readJSONBody(r, &req); err != nil {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "malformed request payload", nil)
+		h.writeError(w, r, err)
 		return
 	}
 
@@ -378,25 +414,25 @@ func (h *DiscussionHandler) CreateComment(w http.ResponseWriter, r *http.Request
 	}
 
 	if !isUUID(req.OperationID) {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid operation id", nil)
+		h.writeBadRequest(w, r, "invalid operation id")
 		return
 	}
 
 	if req.ParentID != nil && *req.ParentID != "" && !isUUID(*req.ParentID) {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid parent id", nil)
+		h.writeBadRequest(w, r, "invalid parent id")
 		return
 	}
 
 	cleanedBody, err := domain.ValidateCommentBody(req.BodyText)
 	if err != nil {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", err.Error(), nil)
+		h.writeBadRequest(w, r, err.Error())
 		return
 	}
 
 	// Canonical logical intent bytes strictly excluding session credentials and headers
 	intentBytes, err := CanonicalCreateIntent(req.OperationID, postID, req.ParentID, cleanedBody)
 	if err != nil {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "serialization error", nil)
+		h.writeBadRequest(w, r, "serialization error")
 		return
 	}
 
@@ -466,15 +502,20 @@ func (h *DiscussionHandler) CreateComment(w http.ResponseWriter, r *http.Request
 
 // EditComment handles signed owner CAS editing of an existing comment.
 func (h *DiscussionHandler) EditComment(w http.ResponseWriter, r *http.Request) {
+	if !h.writesAllowed() {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+
 	commentID := chi.URLParam(r, "comment_id")
 	if !isUUID(commentID) {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid comment id", nil)
+		h.writeBadRequest(w, r, "invalid comment id")
 		return
 	}
 
 	var req EditCommentRequest
 	if err := readJSONBody(r, &req); err != nil {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "malformed request payload", nil)
+		h.writeError(w, r, err)
 		return
 	}
 
@@ -486,24 +527,24 @@ func (h *DiscussionHandler) EditComment(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if !isUUID(req.OperationID) {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid operation id", nil)
+		h.writeBadRequest(w, r, "invalid operation id")
 		return
 	}
 
 	if req.ExpectedRevision < 1 {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "expected_revision must be >= 1", nil)
+		h.writeBadRequest(w, r, "expected_revision must be >= 1")
 		return
 	}
 
 	cleanedBody, err := domain.ValidateCommentBody(req.BodyText)
 	if err != nil {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", err.Error(), nil)
+		h.writeBadRequest(w, r, err.Error())
 		return
 	}
 
 	intentBytes, err := CanonicalEditIntent(req.OperationID, commentID, req.ExpectedRevision, cleanedBody)
 	if err != nil {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "serialization error", nil)
+		h.writeBadRequest(w, r, "serialization error")
 		return
 	}
 
@@ -572,15 +613,20 @@ func (h *DiscussionHandler) EditComment(w http.ResponseWriter, r *http.Request) 
 
 // RemoveComment handles signed owner tombstoning of an existing comment.
 func (h *DiscussionHandler) RemoveComment(w http.ResponseWriter, r *http.Request) {
+	if !h.writesAllowed() {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+
 	commentID := chi.URLParam(r, "comment_id")
 	if !isUUID(commentID) {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid comment id", nil)
+		h.writeBadRequest(w, r, "invalid comment id")
 		return
 	}
 
 	var req RemoveCommentRequest
 	if err := readJSONBody(r, &req); err != nil {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "malformed request payload", nil)
+		h.writeError(w, r, err)
 		return
 	}
 
@@ -592,18 +638,18 @@ func (h *DiscussionHandler) RemoveComment(w http.ResponseWriter, r *http.Request
 	}
 
 	if !isUUID(req.OperationID) {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid operation id", nil)
+		h.writeBadRequest(w, r, "invalid operation id")
 		return
 	}
 
 	if req.ExpectedRevision < 1 {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "expected_revision must be >= 1", nil)
+		h.writeBadRequest(w, r, "expected_revision must be >= 1")
 		return
 	}
 
 	intentBytes, err := CanonicalRemoveIntent(req.OperationID, commentID, req.ExpectedRevision)
 	if err != nil {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "serialization error", nil)
+		h.writeBadRequest(w, r, "serialization error")
 		return
 	}
 
@@ -671,9 +717,14 @@ func (h *DiscussionHandler) RemoveComment(w http.ResponseWriter, r *http.Request
 
 // OwnerRead handles private owner projection reads of authored comments.
 func (h *DiscussionHandler) OwnerRead(w http.ResponseWriter, r *http.Request) {
+	if !h.readsAllowed() {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+
 	var req OwnerReadRequest
 	if err := readJSONBody(r, &req); err != nil {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "malformed request payload", nil)
+		h.writeError(w, r, err)
 		return
 	}
 
@@ -685,7 +736,7 @@ func (h *DiscussionHandler) OwnerRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.CommentID == nil || *req.CommentID == "" || !isUUID(*req.CommentID) {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "comment_id required", nil)
+		h.writeBadRequest(w, r, "comment_id required")
 		return
 	}
 
@@ -698,6 +749,7 @@ func (h *DiscussionHandler) OwnerRead(w http.ResponseWriter, r *http.Request) {
 	// B-BR-FOR-04 IDOR check: author must match authenticated session account.
 	// Foreign owner returns 404 (indistinguishable from missing resource).
 	if comment.AuthorAccountID != principal.AccountID {
+		w.Header().Set("Cache-Control", "no-store")
 		httpapi.WriteError(w, r, http.StatusNotFound, "forum.not-found", "comment not found", nil)
 		return
 	}
@@ -711,9 +763,14 @@ func (h *DiscussionHandler) OwnerRead(w http.ResponseWriter, r *http.Request) {
 
 // ListComments handles anonymous paginated reading of published visible top-level comments.
 func (h *DiscussionHandler) ListComments(w http.ResponseWriter, r *http.Request) {
+	if !h.readsAllowed() {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+
 	postID := chi.URLParam(r, "post_id")
 	if !isUUID(postID) {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid post id", nil)
+		h.writeBadRequest(w, r, "invalid post id")
 		return
 	}
 
@@ -722,7 +779,7 @@ func (h *DiscussionHandler) ListComments(w http.ResponseWriter, r *http.Request)
 		if n, err := strconv.Atoi(rawLimit); err == nil && n >= 1 && n <= 50 {
 			limit = n
 		} else {
-			httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "limit must be 1..50", nil)
+			h.writeBadRequest(w, r, "limit must be 1..50")
 			return
 		}
 	}
@@ -732,14 +789,14 @@ func (h *DiscussionHandler) ListComments(w http.ResponseWriter, r *http.Request)
 		if n, err := strconv.ParseInt(rawCursor, 10, 64); err == nil && n > 0 {
 			cursorSeq = &n
 		} else {
-			httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid cursor", nil)
+			h.writeBadRequest(w, r, "invalid cursor")
 			return
 		}
 	}
 
 	query := application.ListPostCommentsQuery{
 		PostID:         postID,
-		Limit:          limit,
+		Limit:          limit + 1,
 		CursorSequence: cursorSeq,
 	}
 
@@ -753,7 +810,6 @@ func (h *DiscussionHandler) ListComments(w http.ResponseWriter, r *http.Request)
 	var nextCursor *string
 	for i, c := range comments {
 		if i == limit {
-			// next cursor available
 			break
 		}
 		items = append(items, CommentItemDTO{
@@ -766,7 +822,7 @@ func (h *DiscussionHandler) ListComments(w http.ResponseWriter, r *http.Request)
 			PublicAlias: c.PublicAlias,
 			BodyText:    c.BodyText,
 			CreatedAt:   c.CreatedAt.UTC().Format(time.RFC3339),
-			ReplyCount:  0,
+			ReplyCount:  c.ReplyCount,
 		})
 	}
 	if len(items) > 0 && len(comments) > limit {
@@ -779,14 +835,20 @@ func (h *DiscussionHandler) ListComments(w http.ResponseWriter, r *http.Request)
 		NextCursor: nextCursor,
 	}
 	bodyBytes, _ := json.Marshal(resp)
+	w.Header().Set("Cache-Control", "no-store")
 	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", bodyBytes)
 }
 
 // ListReplies handles anonymous paginated reading of published visible replies.
 func (h *DiscussionHandler) ListReplies(w http.ResponseWriter, r *http.Request) {
+	if !h.readsAllowed() {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+
 	parentID := chi.URLParam(r, "comment_id")
 	if !isUUID(parentID) {
-		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid comment id", nil)
+		h.writeBadRequest(w, r, "invalid comment id")
 		return
 	}
 
@@ -795,7 +857,7 @@ func (h *DiscussionHandler) ListReplies(w http.ResponseWriter, r *http.Request) 
 		if n, err := strconv.Atoi(rawLimit); err == nil && n >= 1 && n <= 50 {
 			limit = n
 		} else {
-			httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "limit must be 1..50", nil)
+			h.writeBadRequest(w, r, "limit must be 1..50")
 			return
 		}
 	}
@@ -805,14 +867,14 @@ func (h *DiscussionHandler) ListReplies(w http.ResponseWriter, r *http.Request) 
 		if n, err := strconv.ParseInt(rawCursor, 10, 64); err == nil && n > 0 {
 			cursorSeq = &n
 		} else {
-			httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-request", "invalid cursor", nil)
+			h.writeBadRequest(w, r, "invalid cursor")
 			return
 		}
 	}
 
 	query := application.ListCommentRepliesQuery{
 		ParentID:       parentID,
-		Limit:          limit,
+		Limit:          limit + 1,
 		CursorSequence: cursorSeq,
 	}
 
@@ -851,5 +913,6 @@ func (h *DiscussionHandler) ListReplies(w http.ResponseWriter, r *http.Request) 
 		NextCursor: nextCursor,
 	}
 	bodyBytes, _ := json.Marshal(resp)
+	w.Header().Set("Cache-Control", "no-store")
 	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", bodyBytes)
 }

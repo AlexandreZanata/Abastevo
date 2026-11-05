@@ -440,9 +440,28 @@ func (s *Store) ListCommentsByPost(ctx context.Context, query application.ListPo
 		return nil, fmt.Errorf("forum: list comments by post: %w", err)
 	}
 
+	parentUUIDs := make([]pgtype.UUID, 0, len(rows))
+	for _, r := range rows {
+		parentUUIDs = append(parentUUIDs, r.ID)
+	}
+
+	replyCountsMap := make(map[string]int, len(rows))
+	if len(parentUUIDs) > 0 {
+		counts, err := s.queries.CountPublishedRepliesForParents(ctx, parentUUIDs)
+		if err == nil {
+			for _, c := range counts {
+				if c.ParentID.Valid {
+					replyCountsMap[uuidString(c.ParentID)] = int(c.ReplyCount)
+				}
+			}
+		}
+	}
+
 	out := make([]domain.Comment, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, *mapCommentRowToDomain(r))
+		c := mapCommentRowToDomain(r)
+		c.ReplyCount = replyCountsMap[c.ID]
+		out = append(out, *c)
 	}
 	return out, nil
 }
