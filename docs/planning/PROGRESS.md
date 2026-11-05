@@ -1,5 +1,20 @@
 # Current execution state
 
+- FOR-10 Forum source access and publication decisions, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `b0a46c6c`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)
+  opens Phase 2 (Authorized news candidates): revalidated 8 candidate sources
+  against Brazilian Copyright Law (Lei 9.610/98) and commercial syndication terms;
+  recorded normative operational status `NEWS_SOURCE_BLOCKED` for automated
+  third-party ingestion, preserving `EDITORIAL_ONLY` manual linking fallback;
+  froze source register in `backend/testdata/forum-sources/source_register.json`;
+  froze parse contract vectors (`rss2_sample_valid.xml`, `atom_sample_valid.xml`,
+  `malformed_entity_expansion.xml`, `rss2_missing_dates.xml`); added validation
+  suite in `source_register_test.go` verifying bounds, HTTPS-only origins,
+  rights invariants (`publication_enabled` strictly false unless `APPROVED`),
+  and XXE refusal. Tested revision: source in this commit. Next microtask:
+  FOR-11 (Safe feed parser and fetch adapter).
+
 - FOR-09 Forum editorial MVP acceptance and rollback checkpoint, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `29e60e14`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)

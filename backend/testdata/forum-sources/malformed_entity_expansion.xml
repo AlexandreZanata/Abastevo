@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rss [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+  <!ENTITY lol "lol">
+  <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+]>
+<rss version="2.0">
+  <channel>
+    <title>Hostile XML Feed</title>
+    <link>https://evil.example.com</link>
+    <description>&lol2;</description>
+    <item>
+      <title>Exploit Attempt &xxe;</title>
+      <link>https://evil.example.com/exploit</link>
+      <description>&xxe;</description>
+    </item>
+  </channel>
+</rss>

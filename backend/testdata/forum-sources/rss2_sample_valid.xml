@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Representative RSS 2.0 test fixture for FOR-10 / FOR-11 parse contract.
+  Provenance: Synthetic representative items based on normative Agência Brasil RSS structure.
+  Notice: No full articles or third-party photographs included. Text is short editorial synopsis.
+-->
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Agência Brasil - Economia e Combustíveis</title>
+    <link>https://agenciabrasil.ebc.com.br</link>
+    <description>Notícias sobre economia, energia e mobilidade no Brasil</description>
+    <language>pt-br</language>
+    <lastBuildDate>Thu, 05 Nov 2026 12:00:00 -0300</lastBuildDate>
+    <atom:link href="https://agenciabrasil.ebc.com.br/rss/economia/feed.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Preço médio do etanol hidratado registra recuo em dezessete estados</title>
+      <link>https://agenciabrasil.ebc.com.br/economia/noticia/2026-11/preco-medio-do-etanol-recua</link>
+      <description>Levantamento semanal aponta estabilidade na paridade de preços com a gasolina na maioria dos postos pesquisados.</description>
+      <pubDate>Thu, 05 Nov 2026 10:30:00 -0300</pubDate>
+      <guid isPermaLink="true">https://agenciabrasil.ebc.com.br/economia/noticia/2026-11/preco-medio-do-etanol-recua</guid>
+      <category>Economia</category>
+    </item>
+    <item>
+      <title>Produção de biocombustíveis avança com incentivos da nova regulamentação</title>
+      <link>https://agenciabrasil.ebc.com.br/economia/noticia/2026-11/producao-de-biocombustiveis-avanca</link>
+      <description>Setor sucroalcooleiro amplia investimentos em capacidade produtiva e logística para o próximo ciclo de safra.</description>
+      <pubDate>Wed, 04 Nov 2026 16:45:00 -0300</pubDate>
+      <guid isPermaLink="false">ebc-noticia-biocombustiveis-20261104</guid>
+      <category>Energia</category>
+    </item>
+  </channel>
+</rss>
