@@ -804,6 +804,15 @@ func run() error {
 	contributorhttp.PublicHandler{
 		Service: contributorService, CursorSecret: cfg.CursorSecret, AllowedOrigins: cfg.PublicWebOrigins,
 	}.RegisterRoutes(router)
+
+	forumStore := forumadapters.NewStore(pool.Underlying())
+	forumCfg := forumdomain.DefaultConfig()
+	forumCfg.ReadsEnabled = cfg.ForumEnabled
+	forumCfg.AdminEnabled = cfg.ForumEnabled
+	forumService := forumapp.NewService(forumCfg, forumStore, forumStore, forumapp.SystemClock{})
+	forumHandler := forumhttp.NewHandler(forumService, cfg.CursorSecret)
+	forumHandler.RegisterRoutes(router)
+
 	// Optional administrative surface (ADR-023). No configured key hash means
 	// no route is mounted and every /v1/admin/* path stays 404.
 	if adminSurface, ok := newAdminHandler(cfg, pool.Underlying(), trustedProxies); ok {
@@ -815,9 +824,6 @@ func run() error {
 		staffService := &staffapp.Service{Store: staffStore, Runner: adminSurface.Service.Store, Clock: time.Now, NewID: newUUID}
 		staffAdmin := staffhttp.AdminHandler{Service: staffService, Admin: adminSurface}
 
-		forumStore := forumadapters.NewStore(pool.Underlying())
-		forumCfg := forumdomain.DefaultConfig()
-		forumCfg.AdminEnabled = cfg.ForumEnabled
 		forumAdminService := &forumapp.AdminService{
 			Store:  forumStore,
 			Runner: adminSurface.Service.Store,

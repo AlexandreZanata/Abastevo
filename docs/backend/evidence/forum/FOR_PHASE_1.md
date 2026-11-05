@@ -49,8 +49,8 @@ Phase 1 delivers the editorial foundation and MVP read experience:
 | **FOR-02** | Pure editorial domain and ports | LOCAL_DONE | Current commit | Pure Go stdlib domain (`Post`, `Source`, `Category`, `PublicationState`, `Visibility`, state machine transitions, UTF-8/rune bounds validation, public projections `ToSummary`/`ToDetail`) and application layer (`Service`, `CategoryReader`, `PostReader`, `Clock`, default-off gates). Full unit suite + stdlib-only guard + `-race` PASSED. |
 | **FOR-03** | Foundation SQL and migration recovery | LOCAL_DONE | Current commit | Migration 000157 (forum_sources, forum_feed_state, forum_posts, forum_changes), sqlc-generated pgx queries, Store adapter (PostReader/CategoryReader), opaque keyset cursor, monotonic feed serialization under lock, optimistic revision checks, 11 constraint negative checks, migration idempotency, and EXPLAIN partial index plan verified under `-race`. |
 | **FOR-04** | Existing admin editorial publication | LOCAL_DONE | Current commit | Audited editorial controls in backend API and web panel: AdminHandler routes, AdminService, pgx Store mutations with optimistic concurrency checks and monotonic feed sequence, strict audit privacy guard (body/excerpt never in audit records), web panel editorial interface (list/filter/create/edit/publish/hide with mandatory reason), 53 Node tests (100%), Go unit tests + real Postgres integration tests under `-race`. |
-| **FOR-05** | Public read API and composition | NEXT | - | GET /v1/forum/categories, /v1/forum/posts, /v1/forum/posts/{id}, HMAC cursor. |
-| **FOR-06** | Android domain/application contracts | PLANNED | - | Kotlin models, use cases, error contracts, pure JVM unit tests. |
+| **FOR-05** | Public read API and composition | LOCAL_DONE | Current commit | Public read endpoints mounted on API router (`GET /v1/forum/categories`, `GET /v1/forum/posts`, `GET /v1/forum/posts/{post_id}`), wired in `cmd/api/main.go` with `SystemClock` and runtime feature gating. Keyset pagination with sealed HMAC cursors (15m TTL, filter hash binding, base64 payload), UUID input validation, 404 privacy enforcement for draft and hidden posts, and `Cache-Control: no-store`. Unit tests with HMAC tamper/expiry/scope vectors + real PostgreSQL integration test passed under `-race`. |
+| **FOR-06** | Android domain/application contracts | NEXT | - | Kotlin models, use cases, error contracts, pure JVM unit tests. |
 | **FOR-07** | HTTP, Room cache and Hilt | PLANNED | - | Transport client, Room v37 entities/DAO, 24h/2 MiB offline cache, DI wiring. |
 | **FOR-08** | Community card, Forum feed/detail routes | PLANNED | - | CommunityScreen card, ForumScreen, ForumDetailScreen, navigation graph, strings. |
 | **FOR-09** | MVP checkpoint and safe degraded operation | PLANNED | - | End-to-end integration proof, offline degradation, default-off verification. |
@@ -61,9 +61,9 @@ Phase 1 delivers the editorial foundation and MVP read experience:
 - Secret surface review: PASSED (`scripts/scan-secrets.sh` clean, no credentials or PII introduced).
 - OpenAPI lint (`vacuum lint`): PASSED (0 errors).
 - Go unit test suite with `-race`: PASSED (`./internal/modules/forum/...` adapters, http, domain & application + `./internal/platform/config/...` + `./cmd/api/...`).
-- PostgreSQL integration test suite with `-race`: PASSED (`TestForumMigration_AppliedAndIdempotent`, `TestForumConstraints_NegativeChecks`, `TestForumPublication_MonotonicSequenceAndConcurrency`, `TestForumFeed_KeysetPaginationAndSnapshot`, `TestForumUpdateAndVisibility_RollbackAndFeedInvalidation`, `TestForumExplainPlan_UsesPartialIndex`, `TestStore_AdminEditorialMutationsAndAuditing`).
+- PostgreSQL integration test suite with `-race`: PASSED (`TestForumMigration_AppliedAndIdempotent`, `TestForumConstraints_NegativeChecks`, `TestForumPublication_MonotonicSequenceAndConcurrency`, `TestForumFeed_KeysetPaginationAndSnapshot`, `TestForumUpdateAndVisibility_RollbackAndFeedInvalidation`, `TestForumExplainPlan_UsesPartialIndex`, `TestStore_AdminEditorialMutationsAndAuditing`, `TestHandler_Integration_PublicReadLifecycle`).
 - Frontend test suite: PASSED (`npm test` in `admin-web/`: 53 tests passing, 0 failures, `npm run build && npm run check` valid dist, 0 unsafe DOM violations).
-- Static analysis: `go vet` and `sqlc` PASSED (0 errors).
+- Static analysis: `go vet` PASSED (0 errors).
 - Code formatting: `gofmt` verified.
 - Repository worktree isolation: PASSED (persistent worktree on maintained dev; occupied checkouts untouched).
-- Next action: FOR-05 (public read API and composition).
+- Next action: FOR-06 (Android domain/application contracts).

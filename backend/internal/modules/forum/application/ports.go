@@ -12,6 +12,14 @@ type Clock interface {
 	Now() time.Time
 }
 
+// SystemClock implements Clock using time.Now().UTC().
+type SystemClock struct{}
+
+// Now returns current UTC time.
+func (SystemClock) Now() time.Time {
+	return time.Now().UTC()
+}
+
 // IDGenerator abstracts UUID generation.
 type IDGenerator interface {
 	NewID() string

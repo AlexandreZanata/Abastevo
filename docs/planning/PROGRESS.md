@@ -1,5 +1,21 @@
 # Current execution state
 
+- FOR-05 Forum public read API and composition, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `c430d0ba`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements public read endpoints: `GET /v1/forum/categories`,
+  `GET /v1/forum/posts` (limit 1..50 default 20, sealed HMAC cursor with 15m
+  TTL & filter hash binding, category/kind filters), `GET /v1/forum/posts/{post_id}`
+  (UUID validation, 404 for draft/hidden/missing). Handlers wired into API router
+  in `cmd/api/main.go` with `SystemClock` and runtime feature gating (`cfg.ForumEnabled`).
+  `Cache-Control: no-store` header applied. Comprehensive unit test suite
+  with HMAC tamper/expiry/scope/limit/UUID test vectors and real PostgreSQL
+  lifecycle integration test passed under `-race`. Tests passed with zero
+  failures under `-race`: Go unit & integration tests (100%), Node test runner
+  (53 passed, 100%), vacuum lint (0 errors). Occupied primary checkout and
+  existing worktrees preserved. Tested revision: source in this commit.
+  Next microtask: FOR-06 (Android domain/application contracts).
+
 - FOR-04 Forum admin editorial publication and controls, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `e0f9e8e5`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
