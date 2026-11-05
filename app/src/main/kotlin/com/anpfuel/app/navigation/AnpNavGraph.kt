@@ -703,9 +703,7 @@ private fun MapDestination(
                 }
             },
             onAddChargingSite = { navController.navigate(Routes.SUGGEST_CHARGING) },
-            onOpenSearch = { navController.navigate(Routes.STATIONS) },
             onOpenDownloads = { navController.navigate("map/downloads") },
-            onOpenSaved = { navController.navigate("map/saved") },
             onReportStation = { stationId, fuel ->
                 try {
                     if (fuel == "CHARGING") {
