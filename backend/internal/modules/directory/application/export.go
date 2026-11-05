@@ -15,6 +15,7 @@ const (
 type ExportStation struct {
 	ID                string
 	DisplayName       string
+	LegalName         string
 	CNPJ              string
 	Address           map[string]string
 	MunicipalityCode  string

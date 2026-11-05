@@ -13,6 +13,7 @@ export const INDEX_SCHEMA = 'abastevo-search-index-v1';
 export const PREFIX_SCHEMA = 'abastevo-search-prefix-v1';
 export const PRICES_SCHEMA = 'abastevo-search-prices-v1';
 export const FISCAL_SCHEMA = 'abastevo-search-fiscal-v1';
+export const PARTS_SCHEMA = 'abastevo-search-parts-v1';
 export const MAX_QUERY = 80;
 export const MAX_RESULTS = 50;
 export const MAX_TABLE_ROWS = 100;
@@ -31,6 +32,7 @@ const VALID_UFS = new Set(Object.keys(UF_NAMES));
 export interface SearchStation {
   i: string;
   n: string;
+  ln?: string;
   s: string;
   a?: string;
   c?: string;
@@ -67,10 +69,10 @@ export interface SearchIndex {
 
 export interface PrefixShard { schema: string; release: string; key: string; count: number; stations: SearchStation[] }
 
-export interface PriceRow { i: string; n: string; c?: string; m?: string; mn?: string; u?: string; v: number; d?: string }
+export interface PriceRow { i: string; n: string; ln?: string; c?: string; m?: string; mn?: string; u?: string; v: number; d?: string }
 export interface PriceShard { schema: string; release: string; fuel: string; label: string; unit: string; count: number; rows: PriceRow[] }
 
-export interface FiscalRow { r: string; c: string; st: string; a?: string; d?: string; i?: string; n?: string; m?: string; mn?: string; u?: string }
+export interface FiscalRow { r: string; c: string; st: string; a?: string; d?: string; i?: string; n?: string; ln?: string; m?: string; mn?: string; u?: string }
 export interface FiscalShard { schema: string; release: string; count: number; records: FiscalRow[] }
 
 export type SearchScope =
@@ -233,13 +235,13 @@ export function placeSuggestions(query: string, municipalities: SearchMunicipali
 }
 
 export function filterPrices(rows: PriceRow[], query: string, scope: SearchScope | null, order: 'asc' | 'desc'): PriceRow[] {
-  const matches = rows.filter((row) => inScope(row, scope) && matchesStation(row.n, undefined, row.c, query));
+  const matches = rows.filter((row) => inScope(row, scope) && matchesStation(`${row.n} ${row.ln ?? ""}`, undefined, row.c, query));
   matches.sort((a, b) => (order === 'asc' ? a.v - b.v : b.v - a.v) || a.n.localeCompare(b.n, 'pt-BR') || a.i.localeCompare(b.i));
   return matches;
 }
 
 export function filterFiscal(records: FiscalRow[], query: string, scope: SearchScope | null): FiscalRow[] {
-  return records.filter((row) => inScope(row, scope) && matchesStation(row.n ?? '', undefined, row.c, query));
+  return records.filter((row) => inScope(row, scope) && matchesStation(`${row.n ?? ''} ${row.ln ?? ''}`, undefined, row.c, query));
 }
 
 function checkRelease(value: unknown, schema: string, release: string): Record<string, unknown> {
@@ -255,10 +257,48 @@ export function validateShard(value: unknown, release: string): SearchShard {
   return shard as unknown as SearchShard;
 }
 
-async function fetchJSON(url: string, fetcher: typeof fetch, signal?: AbortSignal): Promise<unknown> {
-  const response = await fetcher(url, { credentials: 'omit', cache: 'force-cache', signal });
+async function fetchJSON(url: string, fetcher: typeof fetch, release: string, signal?: AbortSignal): Promise<unknown> {
+  const options: RequestInit = { credentials: 'omit', cache: 'force-cache', signal };
+  const response = await fetcher(url, options);
   if (!response.ok) throw new Error('shard-missing');
-  return response.json();
+  const value = await response.json();
+  if (!value || value.schema !== PARTS_SCHEMA) return value;
+  const fields: Record<string, string> = {
+    [SEARCH_SCHEMA]: 'stations', [PREFIX_SCHEMA]: 'stations', [INDEX_SCHEMA]: 'municipalities',
+    [PRICES_SCHEMA]: 'rows', [FISCAL_SCHEMA]: 'records',
+  };
+  const { header, parts, array, count } = value;
+  if (value.release !== release || !header || header.release !== release || fields[header.schema] !== array ||
+      !array || Object.hasOwn(header, array) || !Number.isInteger(count) || count < 1 || count > 100000 ||
+      (Object.hasOwn(header, 'count') && header.count !== count) || !Array.isArray(parts) || !parts.length || parts.length > 4096 ||
+      Object.keys(value).some(key => !['schema', 'release', 'header', 'parts', 'array', 'count'].includes(key))) {
+    throw new Error('shard-parts-invalid');
+  }
+  const rows: unknown[] = [];
+  const seen = new Set<string>();
+  let totalBytes = 0;
+  for (const part of parts) {
+    if (!part || !/^parts\/[a-f0-9]{16}-[0-9]{6}\.json$/.test(part.file) || seen.has(part.file) ||
+        !/^[a-f0-9]{64}$/.test(part.sha256) || !Number.isInteger(part.rows) || part.rows < 1 ||
+        part.rows > count || Object.keys(part).some(key => !['file', 'sha256', 'rows'].includes(key))) {
+      throw new Error('shard-parts-invalid');
+    }
+    seen.add(part.file);
+    const response = await fetcher(url.slice(0, url.lastIndexOf('/') + 1) + part.file, options);
+    if (!response.ok) throw new Error('shard-part-missing');
+    const text = await response.text();
+    const bytes = new TextEncoder().encode(text);
+    totalBytes += bytes.byteLength;
+    if (bytes.byteLength > 384 * 1024 || totalBytes > 64 * 1024 * 1024) throw new Error('shard-parts-budget');
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+    const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    if (hash !== part.sha256) throw new Error('shard-parts-hash');
+    const chunk: unknown = JSON.parse(text);
+    if (!Array.isArray(chunk) || chunk.length !== part.rows || rows.length + chunk.length > count) throw new Error('shard-parts-count');
+    rows.push(...chunk);
+  }
+  if (rows.length !== count) throw new Error('shard-parts-count');
+  return { ...header, [array]: rows };
 }
 
 function joinBase(base: string): string {
@@ -274,7 +314,7 @@ export async function loadShard(
 ): Promise<SearchShard> {
   if (uf !== 'sem-uf' && !VALID_UFS.has(uf)) throw new Error('shard-uf');
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(release)) throw new Error('shard-release');
-  return validateShard(await fetchJSON(`${joinBase(base)}${release}/${uf}.json`, fetcher, signal), release);
+  return validateShard(await fetchJSON(`${joinBase(base)}${release}/${uf}.json`, fetcher, release, signal), release);
 }
 
 /** Loads and caches the release's search files; every path is validated before fetching. */
@@ -289,7 +329,7 @@ export class SearchStore {
     const key = `${joinBase(this.base)}${this.release}/${path}`;
     let pending = this.cache.get(key) as Promise<T> | undefined;
     if (!pending) {
-      pending = fetchJSON(key, this.fetcher).then(check);
+      pending = fetchJSON(key, this.fetcher, this.release).then(check);
       pending.catch(() => this.cache.delete(key));
       this.cache.set(key, pending);
     }
@@ -523,12 +563,21 @@ function setupFinder(root: Element, doc: Document, store: SearchStore, options: 
   return api;
 }
 
+function appendLegalName(doc: Document, parent: HTMLElement, primary: string, legal?: string): void {
+  if (!legal?.trim() || normalizeSearchText(legal) === normalizeSearchText(primary)) return;
+  const line = doc.createElement('small');
+  line.className = 'station-legal-name muted';
+  line.textContent = legal;
+  parent.append(line);
+}
+
 function stationItem(doc: Document, station: SearchStation): HTMLElement {
   const item = doc.createElement('li');
   const link = doc.createElement('a');
   link.href = `/postos/${encodeURIComponent(station.i)}/`;
   link.textContent = station.n;
   item.append(link);
+  appendLegalName(doc, item, station.n, station.ln);
   const meta = doc.createElement('span');
   meta.className = 'muted';
   const fuelCount = station.p ? Object.keys(station.p).length : station.f ?? 0;
@@ -694,6 +743,7 @@ function setupPrices(section: HTMLElement, doc: Document, store: SearchStore): v
         link.href = `/postos/${encodeURIComponent(row.i)}/`;
         link.textContent = row.n;
         name.append(link);
+        appendLegalName(doc, name, row.n, row.ln);
         tr.append(name, cell(doc, place(row) || '—'), cell(doc, formatMilliBRL(row.v), 'num'), cell(doc, formatDateBR(row.d) || '—'));
         return tr;
       }));
@@ -713,54 +763,118 @@ function setupPrices(section: HTMLElement, doc: Document, store: SearchStore): v
   void render();
 }
 
-function setupFiscal(section: HTMLElement, doc: Document, store: SearchStore): void {
+function setupFiscal(section: HTMLElement, doc: Document, store: SearchStore, runtime: SearchRuntime): void {
   const status = section.querySelector<HTMLElement>('[data-fiscal-status]');
   const results = section.querySelector<HTMLElement>('[data-fiscal-results]');
+  const state = section.querySelector<HTMLSelectElement>('[data-fiscal-state]');
+  const city = section.querySelector<HTMLSelectElement>('[data-fiscal-city]');
+  const clear = section.querySelector<HTMLButtonElement>('[data-fiscal-clear]');
+  const more = section.querySelector<HTMLButtonElement>('[data-fiscal-more]');
+  const directory = doc.querySelector<HTMLElement>('[data-fiscal-directory]');
   if (!status || !results) return;
   let ticket = 0;
-  const finder = setupFinder(section, doc, store, { stations: false, onChange: () => void render() });
+  let visible = MAX_TABLE_ROWS;
+  let selection = '';
+  let index: SearchIndex | null = null;
+  let interacted = false;
+  const finder = setupFinder(section, doc, store, { stations: false, onChange: () => { interacted = true; void render(); } });
   if (!finder) return;
 
+  const option = (value: string, label: string): HTMLOptionElement => {
+    const node = doc.createElement('option'); node.value = value; node.textContent = label; return node;
+  };
+  const syncPlaces = (): void => {
+    if (!state || !city || !index) return;
+    const scope = finder.scope();
+    state.value = scope?.uf ?? '';
+    const cities = index.municipalities.filter((row) => row.u === state.value)
+      .sort((a,b) => a.n.localeCompare(b.n,'pt-BR'));
+    city.replaceChildren(option('', state.value ? 'Todas as cidades' : 'Selecione um estado primeiro'),
+      ...cities.map((row) => option(row.m, row.n)));
+    city.disabled = !state.value;
+    city.value = scope?.kind === 'city' ? scope.code : '';
+  };
   const render = async (): Promise<void> => {
     const id = ++ticket;
     const scope = finder.scope();
     const query = finder.query();
-    if (!scope && normalizeSearchText(query).length < 2) {
-      results.replaceChildren();
-      status.textContent = 'Digite o nome do posto, parte do CNPJ, uma cidade ou um estado.';
-      return;
-    }
+    const key = JSON.stringify([scope,query]);
+    if (selection !== key) { visible = MAX_TABLE_ROWS; selection = key; }
+    syncPlaces();
+    results.replaceChildren();
+    if (directory) directory.hidden = true;
+    if (more) more.hidden = true;
     status.textContent = 'Carregando registros...';
     try {
       const shard = await store.fiscal();
       if (id !== ticket) return;
       const rows = filterFiscal(shard.records, query, scope);
-      results.replaceChildren(...rows.slice(0, MAX_TABLE_ROWS).map((row) => {
+      results.replaceChildren(...rows.slice(0, visible).map((row) => {
         const item = doc.createElement('li');
         const link = doc.createElement('a');
         link.href = `/fiscalizacao/registro/${encodeURIComponent(row.r)}/`;
-        link.textContent = `${formatCNPJ(row.c)} — ${row.st}`;
+        link.textContent = row.n || formatCNPJ(row.c);
         item.append(link);
+        appendLegalName(doc,item,row.n ?? '',row.ln);
         const meta = doc.createElement('span');
         meta.className = 'muted';
-        const parts = [row.a, row.d, row.n ? `${row.n}${place(row) ? ` (${place(row)})` : ''}` : 'sem posto vinculado'];
+        const parts = [row.st, row.a, formatDateBR(row.d) || row.d, place(row),
+          row.n ? formatCNPJ(row.c) : 'sem posto vinculado'];
         meta.textContent = ` · ${parts.filter(Boolean).join(' · ')}`;
         item.append(meta);
         return item;
       }));
       if (rows.length === 0) {
         const empty = doc.createElement('li');
-        empty.textContent = 'Nenhum registro encontrado.';
+        empty.textContent = 'Nenhum registro encontrado neste recorte. Ausência de registro não é certidão negativa.';
         results.append(empty);
       }
-      const note = scope ? ' Cidade e estado só existem para registros vinculados a um posto.' : '';
-      status.textContent = `${rows.length} ${plural(rows.length, 'registro encontrado', 'registros encontrados')}${rows.length > MAX_TABLE_ROWS ? ` (mostrando ${MAX_TABLE_ROWS})` : ''}.${note}`;
+      if (more) more.hidden = rows.length <= visible;
+      const where = scope ? ` em ${scope.label}` : ' no Brasil';
+      const note = scope ? ' A localização considera apenas vínculos seguros com postos.' : '';
+      status.textContent = `${rows.length} ${plural(rows.length, 'registro encontrado', 'registros encontrados')}${where}${rows.length > visible ? ` (mostrando ${visible})` : ''}.${note}`;
     } catch {
       if (id !== ticket) return;
       results.replaceChildren();
-      status.textContent = 'Busca de registros indisponível nesta publicação.';
+      if (directory) directory.hidden = false;
+      status.textContent = 'Busca de registros indisponível nesta publicação. A lista paginada abaixo continua disponível.';
     }
   };
+  state?.addEventListener('change', () => {
+    interacted = true;
+    finder.setScope(VALID_UFS.has(state.value) ? {kind:'uf',uf:state.value,label:`${UF_NAMES[state.value]} (${state.value})`} : null);
+    void render();
+  });
+  city?.addEventListener('change', () => {
+    interacted = true;
+    const match = index?.municipalities.find((row) => row.m === city.value && row.u === state?.value);
+    if (match) finder.setScope({kind:'city',code:match.m,uf:match.u,label:`${match.n}/${match.u}`});
+    else finder.setScope(state && VALID_UFS.has(state.value) ? {kind:'uf',uf:state.value,label:`${UF_NAMES[state.value]} (${state.value})`} : null);
+    void render();
+  });
+  clear?.addEventListener('click', () => { interacted = true; finder.setScope(null); finder.setQuery(''); void render(); });
+  more?.addEventListener('click', () => { visible += MAX_TABLE_ROWS; void render(); });
+  if (state) state.disabled = true;
+  if (city) city.disabled = true;
+  void store.index().then((loaded) => {
+    index = loaded;
+    if (state) {
+      state.replaceChildren(option('','Todos os estados'), ...Object.entries(UF_NAMES)
+        .sort((a,b) => a[1].localeCompare(b[1],'pt-BR')).map(([uf,name]) => option(uf,`${name} (${uf})`)));
+      state.disabled = false;
+    }
+    const params = new URLSearchParams(runtime.search ?? (typeof location === 'undefined' ? '' : location.search));
+    if (!interacted) {
+    const match = index.municipalities.find((row) => row.m === params.get('m'));
+    if (match) finder.setScope({kind:'city',code:match.m,uf:match.u,label:`${match.n}/${match.u}`});
+    else {
+      const uf = params.get('uf')?.toUpperCase() ?? '';
+      if (VALID_UFS.has(uf)) finder.setScope({kind:'uf',uf,label:`${UF_NAMES[uf]} (${uf})`});
+    }
+    finder.setQuery(params.get('q') ?? '');
+    }
+    void render();
+  }, () => { void render(); });
 }
 
 /** Wires every search widget present on the page. */
@@ -772,7 +886,7 @@ export function setupPortalSearch(runtime: SearchRuntime = {}): void {
   const widgets: Array<[string, (root: HTMLElement, store: SearchStore) => void]> = [
     ['[data-portal-finder]', (root, store) => setupConsultar(root, doc, store, runtime)],
     ['[data-portal-prices]', (root, store) => setupPrices(root, doc, store)],
-    ['[data-portal-fiscal]', (root, store) => setupFiscal(root, doc, store)],
+    ['[data-portal-fiscal]', (root, store) => setupFiscal(root, doc, store, runtime)],
   ];
   for (const [selector, setup] of widgets) {
     const root = doc.querySelector<HTMLElement>(selector);

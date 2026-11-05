@@ -215,7 +215,7 @@ form[role="search"] [data-search-status], [data-finder-status], [data-prices-sta
 .suggestion { max-width: none; margin: 0; padding: 0.75rem 1rem; cursor: pointer; color: var(--ink); }
 .suggestion:hover, .suggestion.active { background: var(--surface); }
 .scope-chip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin: 0.75rem 0 0; padding: 0.5rem 0.75rem; border-radius: 999px; background: var(--surface); font-weight: 600; }
-.scope-chip[hidden], .suggestions[hidden] { display: none; }
+.scope-chip[hidden], .suggestions[hidden], [data-fiscal-more][hidden] { display: none; }
 .chip-clear, .link-button { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .explorer { margin: 2rem 0; }
 .explorer .form-row { grid-template-columns: 1fr 1fr 2fr; }
@@ -279,3 +279,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   .footer { background: #fff; color: #000; }
   a { color: #000; text-decoration: underline; }
 }
+
+/* Canonical station identity and static fiscal discovery. */
+.station-legal-name { display: block; margin-top: .3rem; font-family: var(--font-body); font-size: .875rem; font-weight: 400; overflow-wrap: anywhere; }
+.fiscal-filters { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; align-items: end; gap: 1rem; margin: 1.5rem 0; }
+.fiscal-filters label { display: block; margin-bottom: .5rem; font-weight: 600; }
+.fiscal-filters button { min-height: 56px; }
+@media (max-width: 640px) { .fiscal-filters { grid-template-columns: minmax(0,1fr); } }
+
+.fiscal-filters .button-secondary:hover { background: var(--surface-2); }

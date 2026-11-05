@@ -328,8 +328,59 @@
   Next: publish the isolated documentation delta through dev → main;
   no implementation, merge, deploy, source activation or wiki publication.
 
+- ANDREL/Licensing, 2026-11-05, LOCAL_DONE / INTEGRATION_PENDING on isolated
+  `codex/phase-35-android-release-attribution` from main `972df4f4`.
+  [Behavior and acceptance](../release-evidence/ANDROID_AUTOMATED_RELEASE_ATTRIBUTION.md)
+  cover automatic signed Android APKs/versioning and Abastevo visible attribution.
+  The maintainer confirmed first-release key creation for GitHub Actions.
+  The key is preserved privately and encrypted in a main-only release environment;
+  20 release-rule tests, 79 landing tests, 50 admin tests, builds/static checks and
+  a signed 75.34-MiB APK smoke check passed. The owner clarified that official
+  distributions must have no creator-credit strip; the draft UI was removed.
+  Downstream visible-credit instructions and the owner exemption are documented.
+  The owner-exempt signed APK passed certificate/package/native/notices/80-MiB
+  checks and emulator startup; the phone was updated without clearing data.
+  Current-main checks are revalidated before signing and publication. Remote
+  PR/CI, protected integration and first GitHub release readback remain pending.
+  iOS remains deferred; internal staging artifacts do not certify production.
+
+- NAT monthly projection reuse, signed landing input and telemetry, 2026-11-05, LOCAL_DONE /
+  INTEGRATED through PR #194 as `972df4f4`. [Runtime finding and regression](../backend/evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md#signed-landing-search-input-continuity)
+  records the stable signed-build input, concurrent read-only probes and
+  exact-RFB/full-CNPJ projection reuse across ANP editions. The DB-free monthly
+  oneshot prepares names before completion; daily workers refuse a missing seed.
+  Complete bound inputs now verify immutable streams and accounting without
+  repeating row staging: real national replay passed in 580.339 ms with DB
+  membership writes forbidden; failure and concurrent PostGIS tests pass.
+  Race/failure/concurrency checks and 11 guard/accounting tests pass. A real
+  45,807-CNPJ metadata-change replay completed in 12.66s at 512Mi/0.5 CPU,
+  offline with export disabled and byte-identical names. Real VPS samples passed.
+  78 landing tests, typecheck/build/check, reproducibility and scoped static
+  checks pass. Tested source is in this commit. PR #193 is integrated as
+  `5bf9d08a`; its signed deployment is confirmed. National publication is pending
+  resource-safe execution; interrupted attempts preserved the prior edition.
+  Isolated main delivery was explicitly authorized while dev carries the forum.
+  Exact-head four-signal CI and local quick passed; wiki mirrors main as
+  `ecfafa9`. Physical Android confirmed primary trade/secondary legal name.
+  Complete national publication and monthly timer activation remain pending
+  the guarded VPS resource window; the admitted frozen edition is retained.
+
+- NAT national continuity and static fiscal discovery, 2026-11-05,
+  LOCAL_DONE / INTEGRATION_PENDING. [Current evidence](../backend/evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md)
+  records static state/city filters, canonical trade/secondary legal names,
+  automatic full-CNPJ enrichment and a verified monthly VPS-local source.
+  The real 45,807-row ANP edition passed bounded container preparation and
+  complete disposable PostGIS publication/verification/replay: 45,695 admitted,
+  112 quarantined, 31,634 usable trade names. Race/failure/SQL checks, 78 landing
+  tests, builds and scoped static checks pass. Tested source is in this commit.
+  Maintained dev is occupied by the forum effort; isolated
+  `codex/national-refresh-portal` preserves its work. The verified snapshot is
+  prepared privately on VPS; schedule/database/portal activation is pending
+  protected delivery coordination. No unrelated forum publication or release
+  certification is authorized by this task.
+
 - SNA/OpenCNPJ station identity and MAP-20 expanded controls, 2026-11-05,
-  LOCAL_DONE / INTEGRATION_PENDING on maintained `dev`, synchronized from
+  LOCAL_DONE / INTEGRATED through PR #191 as `3fc77acc`, from
   `b8e93a41` (merged PR #190). [Source, privacy and replay evidence](../backend/evidence/sna/OPENCNPJ_STATION_NAMES.md)
   records the full-CNPJ minimized export, pinned daily inputs, public feed
   metadata, canonical Android names and grouped map controls. All 45,816
@@ -337,8 +388,8 @@
   preparation with 31,636 usable trade names. Immediate PostGIS failure/race/
   privacy tests, migration recovery/query-plan checks, 71 JVM tests, 23 emulator
   tests, builds, lint and scoped static checks pass. Tested revision: source in
-  this commit. Next: protected dev → main PR, signed staging deployment and
-  actual named-edition publication/readback. No release certification implied.
+  this commit. The signed staging receipt reports `3fc77acc` on 2026-11-05. Actual
+  named-edition publication/readback remains pending. No release certification implied.
 
 - MAP-20 compact map actions, 2026-11-05, LOCAL_DONE / INTEGRATED
   on maintained `dev`, synchronized with main at `efe915c4` (merged PR #189).

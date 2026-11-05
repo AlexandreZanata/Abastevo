@@ -15,17 +15,20 @@ import (
 	"time"
 )
 
-const Pipeline = "station-prep-v0.3.1-policy-v2-sync-v1"
+const Pipeline = "station-prep-v0.3.1-policy-v2-sync-v2"
 
 type Runner struct {
-	Root       string
-	NameInputs string
-	Client     *http.Client
-	Now        func() time.Time
-	Prepare    func(context.Context, string, Snapshot) error
-	Apply      func(context.Context, string) error
-	Verify     func(context.Context, string) error
-	Observe    func(string)
+	Root             string
+	NameInputs       string
+	GenerateNames    func(context.Context, string) (string, error)
+	Analyze          func(previous, current string) error
+	ValidatePrepared func(string) error
+	Client           *http.Client
+	Now              func() time.Time
+	Prepare          func(context.Context, string, Snapshot) error
+	Apply            func(context.Context, string) error
+	Verify           func(context.Context, string) error
+	Observe          func(string)
 }
 
 func (r *Runner) Run(ctx context.Context) error {
@@ -79,9 +82,39 @@ func (r *Runner) Run(ctx context.Context) error {
 		return e
 	}
 	fingerprintInput := Pipeline + "\n" + source + "\n" + reference
+	reportHash := ""
+	if r.Analyze != nil {
+		previous := ""
+		if s.Success != nil {
+			previous, e = snapshotDir(r.Root, *s.Success)
+			if e != nil {
+				return e
+			}
+		}
+		if e = r.Analyze(previous, temp); e != nil {
+			return e
+		}
+		reportHash, e = fileHash(filepath.Join(temp, "edition-report.json"), 128<<10)
+		if e != nil {
+			return e
+		}
+	}
 	namesHash := ""
-	if r.NameInputs != "" {
-		namesHash, e = freezeNameInputs(r.NameInputs, temp)
+	nameInputs := r.NameInputs
+	if r.GenerateNames != nil {
+		if nameInputs != "" {
+			return fmt.Errorf("multiple name sources configured")
+		}
+		nameInputs, e = r.GenerateNames(ctx, temp)
+		if e != nil {
+			return e
+		}
+		if nameInputs == "" {
+			return fmt.Errorf("automatic names unavailable")
+		}
+	}
+	if nameInputs != "" {
+		namesHash, e = freezeNameInputs(nameInputs, temp)
 		if e != nil {
 			return e
 		}
@@ -118,7 +151,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	identity[8] = (identity[8] & 63) | 0x80
 	h := hex.EncodeToString(identity[:16])
 	id := h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
-	snap := Snapshot{Key: key, Fingerprint: fingerprint, SourceHash: source, AliasHash: reference, RunID: id, FetchedAt: stamp, NameInputsHash: namesHash}
+	snap := Snapshot{Key: key, Fingerprint: fingerprint, SourceHash: source, AliasHash: reference, RunID: id, FetchedAt: stamp, NameInputsHash: namesHash, EditionReportHash: reportHash}
 	dir := filepath.Join(r.Root, key)
 	if _, err := os.Lstat(dir); !os.IsNotExist(err) {
 		return fmt.Errorf("snapshot identity collision")
@@ -151,6 +184,12 @@ func snapshotDir(root string, s Snapshot) (string, error) {
 	return dir, nil
 }
 func (r *Runner) validateFiles(dir string, s Snapshot) error {
+	if s.EditionReportHash != "" {
+		hash, err := fileHash(filepath.Join(dir, "edition-report.json"), 128<<10)
+		if err != nil || hash != s.EditionReportHash {
+			return fmt.Errorf("edition report checksum mismatch")
+		}
+	}
 	if s.NameInputsHash != "" {
 		if err := verifyNameInputs(dir, s.NameInputsHash); err != nil {
 			return err
@@ -199,6 +238,11 @@ func (r *Runner) complete(ctx context.Context, s *state) error {
 			}
 		} else if e != nil {
 			return e
+		}
+		if r.ValidatePrepared != nil {
+			if e = r.ValidatePrepared(prepared); e != nil {
+				return e
+			}
 		}
 		h, e := fileHash(filepath.Join(prepared, "manifest.json"), 1<<20)
 		if e != nil {

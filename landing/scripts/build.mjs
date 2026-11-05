@@ -168,6 +168,9 @@ export function build(options = {}) {
     fs.writeFileSync(path.join(outDir, 'assets', fingerprintedJsName), jsContent);
     if (searchContent && fingerprintedSearchName) {
       fs.writeFileSync(path.join(outDir, 'assets', fingerprintedSearchName), searchContent);
+      // Stable filesystem input for the portal worker. Its generated browser
+      // asset is fingerprinted independently; both follow the signed release.
+      fs.writeFileSync(path.join(outDir, 'portal-search.js'), searchContent);
     }
     if (contributorsContent && fingerprintedContributorsName) {
       fs.writeFileSync(path.join(outDir, 'assets', fingerprintedContributorsName), contributorsContent);

@@ -23,7 +23,7 @@ const templates = `
         <a href="{{.Landing}}/guias/">Guias</a>{{else}}<a href="/metodologia/">Metodologia</a>{{end}}
       </nav>
       <div class="topbar-actions">
-        <a class="topbar-link" href="https://github.com/AlexandreZanata/abastevo" target="_blank" rel="noopener" aria-label="Ver no GitHub — Projeto open source"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg><span class="hide-sm">GitHub</span></a>
+        <a class="topbar-link" href="https://github.com/AlexandreZanata/abastevo" target="_blank" rel="noopener" aria-label="Ver no GitHub — Código com atribuição visível"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg><span class="hide-sm">GitHub</span></a>
         {{if .OfficialOnly}}<a class="pill-light hide-sm" href="/fiscalizacao/">Fiscalização</a>{{else}}<a class="pill-light hide-sm" href="/consultar/">Consultar dados</a>{{end}}
         <details class="nav-toggle">
           <summary class="nav-button" aria-label="Abrir menu de navegação"><span aria-hidden="true"></span></summary>
@@ -74,11 +74,11 @@ const templates = `
         {{if .OfficialOnly}}
         <p><strong>Fonte:</strong> ANP — multas aplicadas. Cálculo e exibição: Abastevo.</p>
         <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Recorte oficial de fiscalização, event-level.</p>
-        <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; multa não prova adulteração, culpa ou definitividade.</p>
+        <p>Não afiliado à ANP. Código sob licença de atribuição visível Abastevo. Dados datados; multa não prova adulteração, culpa ou definitividade.</p>
         {{else}}
         <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo.</p>
         <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Pesquisa: {{if .Period}}{{.Period}}{{else}}sem pesquisa publicada{{end}}</p>
-        <p>Não afiliado à ANP. Código aberto sob licença MIT. Dados datados; não é preço ao vivo.</p>
+        <p>Não afiliado à ANP. Código sob licença de atribuição visível Abastevo. Dados datados; não é preço ao vivo.</p>
         {{end}}
       </div>
     </div>
@@ -115,7 +115,7 @@ const templates = `
     <tbody>
       {{range .Rows}}<tr>
         <td>{{.Position}}</td>
-        <td><a href="/postos/{{.StationID}}/">{{.Name}}</a><br><span class="muted">{{.CNPJ}}</span></td>
+        <td><a href="/postos/{{.StationID}}/">{{.Name}}</a>{{if .LegalName}}<small class="station-legal-name muted">{{.LegalName}}</small>{{end}}<br><span class="muted">{{.CNPJ}}</span></td>
         <td>{{.Place}}</td><td>{{.Status}}</td>
         <td class="num">{{brl .Amount}}</td><td>{{.Collected}}</td>
         <td>{{if gt .TieCount 1}}<span class="tag">{{.TieCount}} no mesmo preço</span>{{else}}—{{end}}</td>
@@ -191,7 +191,7 @@ const templates = `
   {{if .Insufficient}}
   <div class="notice"><strong>Amostra insuficiente para um resumo municipal.</strong><p>Há {{.Population}} {{plural .Population "posto" "postos"}} com observação; o mínimo definido é 5. Não exibimos ranking ou média municipal abaixo desse mínimo.</p></div>
   <h2>Postos com observação (sem ranking)</h2>
-  <ul class="station-list">{{range .Rows}}<li><a href="/postos/{{.StationID}}/">{{.Name}}</a> — {{brl .Amount}} · {{.Collected}} · {{.Status}}</li>{{end}}</ul>
+  <ul class="station-list">{{range .Rows}}<li><a href="/postos/{{.StationID}}/">{{.Name}}</a>{{if .LegalName}}<small class="station-legal-name muted">{{.LegalName}}</small>{{end}} — {{brl .Amount}} · {{.Collected}} · {{.Status}}</li>{{end}}</ul>
   {{else}}
   <h2>Resumo por combustível</h2>
   {{template "summary" .Summaries}}
@@ -204,6 +204,7 @@ const templates = `
 {{define "station"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
   <h1>{{.Station.Name}}</h1>
+  {{if .Station.LegalName}}<p class="station-legal-name muted">{{.Station.LegalName}}</p>{{end}}
   <p class="lead">{{.Station.Place}} · {{.Station.CNPJ}} · <span class="status">{{.Station.Status}}</span></p>
   <div class="grid summary-grid">
     <section class="card">
@@ -268,7 +269,7 @@ const templates = `
   </ul>
   <h2>Notas</h2>
   <ul>{{range .Notes}}<li>{{.}}</li>{{end}}</ul>
-  <div class="source"><p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença MIT.</p></div>
+  <div class="source"><p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p></div>
   <div class="links"><a href="/curiosidades/">Perguntas aprovadas</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
@@ -340,7 +341,7 @@ const templates = `
   </section>
   </div>
   <div class="source">
-    <p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença MIT.</p>
+    <p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p>
     <p class="muted source-url">Snapshot: {{.InputHash}} · versão dos cálculos: abastevo-metrics-v1 · publicação: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}}</p>
   </div>
 </main>
@@ -358,14 +359,22 @@ const templates = `
     <section class="card"><h2>Ambíguos</h2><p class="price">{{.Ambiguous}}</p><p class="muted">mais de um posto possível; nenhum posto exibido</p></section>
   </div>
   <div class="notice"><strong>Como ler um registro oficial</strong><p>O status é o texto da fonte. Uma multa ou ação não prova adulteração, interdição atual ou culpa definitiva. Ausência de registro não é certidão negativa. A data de vencimento não é a data da ocorrência nem prova de propriedade. O vínculo é a decisão de empresa atual na data indicada, não um histórico de propriedade.</p></div>
-  {{if eq .Page 1}}<div class="source"><p><strong>Fonte:</strong> ANP — multas aplicadas. Edição {{.Manifest.Edition}} · período {{.Manifest.SourcePeriod}} · clock {{.Manifest.SourceClockValue}} ({{.Manifest.SourceClockPrecision}}).</p><p class="muted source-url">Revisão {{.Manifest.RevisionID}} · lease {{.Manifest.LeaseID}} · checksum {{.Manifest.SourceChecksum}} · política {{.Manifest.AssociationPolicy}}/{{.Manifest.AssociationScope}} · decisão {{.Manifest.AssociationDecisionDay}}.</p></div>{{end}}
+  {{if eq .Page 1}}<div class="source"><p><strong>Fonte:</strong> ANP — multas aplicadas. Edição {{.Manifest.Edition}} · período {{.Manifest.SourcePeriod}} · clock {{.Manifest.SourceClockValue}} ({{.Manifest.SourceClockPrecision}}).</p><details><summary>Detalhes da publicação</summary><p class="muted source-url">Revisão {{.Manifest.RevisionID}} · lease {{.Manifest.LeaseID}} · checksum {{.Manifest.SourceChecksum}} · política {{.Manifest.AssociationPolicy}}/{{.Manifest.AssociationScope}} · decisão {{.Manifest.AssociationDecisionDay}}.</p></details></div>{{end}}
   {{if and .SearchRelease (eq .Page 1)}}<section class="explorer" data-portal-fiscal data-shard-base="/dados/busca/" data-release="{{.SearchRelease}}" aria-labelledby="buscar-registros">
-    <h2 id="buscar-registros">Buscar registros</h2>
+    <h2 id="buscar-registros">Multas na sua cidade</h2>
+    <p class="muted">Selecione seu estado e sua cidade para consultar os registros desta edição. Você também pode buscar pelo nome fantasia, razão social ou CNPJ.</p>
+    <div class="fiscal-filters">
+      <div><label for="fiscal-state">Estado</label><select id="fiscal-state" data-fiscal-state disabled><option value="">Carregando estados…</option></select></div>
+      <div><label for="fiscal-city">Cidade</label><select id="fiscal-city" data-fiscal-city disabled><option value="">Selecione um estado primeiro</option></select></div>
+      <button class="button button-secondary" type="button" data-fiscal-clear>Limpar filtros</button>
+    </div>
     <div class="finder"><label for="fiscal-q">Posto, CNPJ, cidade ou estado</label><input id="fiscal-q" data-finder-input type="search" maxlength="80" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="fiscal-suggestions" placeholder="Ex.: 04.218.406/0001-04, Cuiabá ou Bahia"><ul id="fiscal-suggestions" class="suggestions" role="listbox" aria-label="Sugestões" data-finder-suggestions hidden></ul></div>
     <div class="scope-chip" data-finder-scope hidden></div>
     <p class="muted" data-fiscal-status role="status" aria-live="polite">A busca interativa requer JavaScript; a lista paginada abaixo funciona sem ela.</p>
     <ul class="station-list" data-fiscal-results aria-label="Registros encontrados"></ul>
+    <button class="button" type="button" data-fiscal-more hidden>Mostrar mais registros</button>
   </section>{{end}}
+  <section data-fiscal-directory>
   <h2>Registros{{if gt .Pages 1}} — página {{.Page}} de {{.Pages}}{{end}}</h2>
   {{if .Records}}<div class="table-wrap"><table>
     <caption>Multas aplicadas; uma linha por evento; vínculo de posto apenas quando decidido com segurança</caption>
@@ -375,11 +384,12 @@ const templates = `
       <td class="num">{{if .Amount}}{{.Amount}}{{else}}—{{end}}</td>
       <td>{{if .DueOn}}{{.DueOn}}{{else}}—{{end}}</td>
       <td>{{if .DecidedOn}}{{.DecidedOn}}{{else}}{{if .AsOf}}{{.AsOf}}{{else}}—{{end}}{{end}}</td>
-      <td>{{if .StationHref}}<a href="{{.StationHref}}">{{.StationName}}</a>{{else}}{{.AssociationLabel}}{{end}}</td>
+      <td>{{if .StationHref}}<a href="{{.StationHref}}">{{.StationName}}</a>{{if .StationLegalName}}<small class="station-legal-name muted">{{.StationLegalName}}</small>{{end}}{{else}}{{.AssociationLabel}}{{end}}</td>
       <td><a href="/fiscalizacao/registro/{{.RecordID}}/">Abrir</a></td>
     </tr>{{end}}</tbody>
   </table></div>{{else}}<div class="notice"><strong>Sem registros oficiais nesta edição.</strong></div>{{end}}
   <div class="links">{{if .PrevHref}}<a href="{{.PrevHref}}">Página anterior</a>{{end}}{{if .NextHref}}<a href="{{.NextHref}}">Próxima página</a>{{end}}<a href="/metodologia/">Metodologia e fontes</a>{{if .OfficialOnly}}{{else}}<a href="/consultar/">Consultar preços</a>{{end}}</div>
+  </section>
   {{else}}
   <h1>Fiscalização — ainda não disponível</h1>
   <p class="lead">Este recorte depende da aceitação do fluxo oficial de fiscalização e da associação segura ao posto. Até lá, nenhum registro é exibido.</p>
@@ -402,7 +412,7 @@ const templates = `
   <h1>{{.Record.Status}}</h1>
   <p class="lead">CNPJ {{.Record.CNPJ}} · {{.Record.AssociationLabel}}</p>
   <div class="grid summary-grid">
-    <section class="card"><h2>Vínculo</h2>{{if .Record.StationHref}}<p><a href="{{.Record.StationHref}}">{{.Record.StationName}}</a></p>{{else}}<p>{{.Record.AssociationLabel}}.</p>{{end}}<p class="muted">{{.Record.AssociationReason}}</p><p class="muted">Vínculo de empresa atual na data da decisão; não é histórico de propriedade.</p></section>
+    <section class="card"><h2>Vínculo</h2>{{if .Record.StationHref}}<p><a href="{{.Record.StationHref}}">{{.Record.StationName}}</a>{{if .Record.StationLegalName}}<small class="station-legal-name muted">{{.Record.StationLegalName}}</small>{{end}}</p>{{else}}<p>{{.Record.AssociationLabel}}.</p>{{end}}<p class="muted">{{.Record.AssociationReason}}</p><p class="muted">Vínculo de empresa atual na data da decisão; não é histórico de propriedade.</p></section>
     <section class="card"><h2>Fonte e datas</h2><p>Edição {{.Manifest.Edition}} · período {{.Manifest.SourcePeriod}}</p><p>Extração: {{if .Record.ExtractionMonth}}{{.Record.ExtractionMonth}}{{else}}não informada{{end}}</p><p>Publicação Abastevo: {{.PublishedAt}}</p><p class="muted">Fonte: ANP — multas aplicadas.</p></section>
   </div>
   <h2>Dados do registro</h2>

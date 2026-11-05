@@ -58,7 +58,7 @@ var (
 		".jsonl": true, ".csv": true, ".txt": true, ".xml": true,
 	}
 	searchStationKeys = map[string]bool{
-		"i": true, "n": true, "s": true, "a": true, "c": true, "m": true,
+		"i": true, "n": true, "ln": true, "s": true, "a": true, "c": true, "m": true,
 		"mn": true, "u": true, "st": true, "sl": true, "p": true, "f": true,
 	}
 	searchPrefixKey       = regexp.MustCompile(`^(n-[a-z0-9]{3}|c-[0-9a-z]{3})$`)
@@ -543,15 +543,18 @@ func checkSearchArtifacts(dir string, files map[string]FileDigest) error {
 			continue
 		}
 		parts := strings.Split(path, "/")
+		if searchPartPath.MatchString(path) {
+			continue
+		}
 		if len(parts) == 5 || (len(parts) == 4 && (parts[3] == "indice.json" || parts[3] == "fiscalizacao.json")) {
 			continue // v2 index families, checked by checkSearchIndexes
 		}
 		if len(parts) != 4 || parts[3] == "all.json" || parts[3] == "nacional.json" {
 			return fmt.Errorf("portalcheck: invalid search shard path")
 		}
-		body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
+		body, err := readSearchDocument(dir, path, files, nil)
 		if err != nil {
-			return fmt.Errorf("portalcheck: unreadable search shard")
+			return fmt.Errorf("portalcheck: unreadable search shard: %w", err)
 		}
 		var decoded struct {
 			Schema   string            `json:"schema"`
@@ -1117,6 +1120,9 @@ func isHexString(value string) bool {
 // optional fiscalizacao.json. Every row is decoded strictly against its
 // public key allowlist; identities must match their paths.
 func checkSearchIndexes(dir string, files map[string]FileDigest, release string) error {
+	if err := checkSearchParts(dir, files, release); err != nil {
+		return err
+	}
 	prefix := "dados/busca/" + release + "/"
 	var index searchIndex
 	if err := decodeStrictFile(dir, prefix+"indice.json", &index); err != nil {
@@ -1138,7 +1144,7 @@ func checkSearchIndexes(dir string, files map[string]FileDigest, release string)
 	}
 	seenCities, seenFuels, fiscal := 0, 0, false
 	for path := range files {
-		if !strings.HasPrefix(path, prefix) || path == prefix+"indice.json" {
+		if !strings.HasPrefix(path, prefix) || path == prefix+"indice.json" || searchPartPath.MatchString(path) {
 			continue
 		}
 		rel := strings.TrimPrefix(path, prefix)
@@ -1234,7 +1240,7 @@ func checkStationRows(rows []searchStation) error {
 // decodeStrictFile decodes one JSON document into target, refusing unknown
 // keys (the public allowlist is the struct) and trailing data.
 func decodeStrictFile(dir, path string, target any) error {
-	body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
+	body, err := readSearchDocument(dir, path, nil, nil)
 	if err != nil {
 		return err
 	}

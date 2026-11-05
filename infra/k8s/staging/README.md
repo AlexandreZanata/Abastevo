@@ -38,12 +38,16 @@ API_CLUSTER_IP DB_CLUSTER_IP WEB_CLUSTER_IP
 API_NODE_PORT WEB_NODE_PORT
 API_DEPLOYMENT_REVISION WEB_DEPLOYMENT_REVISION
 API_POD_RESTARTED_AT WEB_POD_RESTARTED_AT
-REGISTRY_SYNC_RELEASES_PATH REGISTRY_SYNC_STATE_PATH
+REGISTRY_SYNC_RELEASES_PATH REGISTRY_SYNC_STATE_PATH REGISTRY_RFB_SOURCE_PATH
 MAP_DIST_ROOT
 ```
 
 `render.py` replaces only these `${NAME}` placeholders; pod shell variables
 such as `$POSTGRES_USER` remain untouched.
+
+`REGISTRY_RFB_SOURCE_PATH` is the owned, verified offline OpenCNPJ source
+directory. Provision it before activating the registry CronJob; its `/rfb`
+mount is read-only. See [monthly source operations](../../deploy/registry/README.md).
 
 ## Zero-diff proof
 

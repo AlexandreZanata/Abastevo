@@ -245,6 +245,61 @@ const FINDER = {
 
 const wait = (ms = 30) => new Promise((resolve) => setTimeout(resolve, ms));
 
+test('fiscal state and city selectors narrow the entire edition and clear incompatible cities', async () => {
+  const { setupPortalSearch } = await searchModule();
+  const { doc, el } = fakePage('[data-portal-fiscal]', {
+    ...FINDER, '[data-fiscal-state]':'select', '[data-fiscal-city]':'select',
+    '[data-fiscal-status]':'p', '[data-fiscal-results]':'ul', '[data-fiscal-clear]':'button',
+  });
+  const records = [
+    {r:'1'.repeat(24),c:'04218406000104',st:'Pago',n:'Posto Alfa',ln:'Comercial Exemplo LTDA',m:'5107925',mn:'Sorriso',u:'MT'},
+    {r:'2'.repeat(24),c:'11222333000181',st:'Pago',n:'Posto Beta',m:'3550308',mn:'São Paulo',u:'SP'},
+    {r:'3'.repeat(24),c:'11444777000161',st:'Pago'},
+  ];
+  setupPortalSearch({document:doc,search:'',fetch:jsonFetch({
+    '/dados/busca/rel/indice.json':INDEX,
+    '/dados/busca/rel/fiscalizacao.json':{schema:'abastevo-search-fiscal-v1',release:'rel',count:3,records},
+  },[])});
+  await wait();
+  el['[data-fiscal-state]'].value='MT';el['[data-fiscal-state]'].dispatch('change');await wait();
+  el['[data-fiscal-city]'].value='5107925';el['[data-fiscal-city]'].dispatch('change');await wait();
+  assert.equal(el['[data-fiscal-results]'].children.length,1);
+  assert.match(el['[data-fiscal-status]'].textContent,/1 registro.*Sorriso/);
+  el['[data-finder-input]'].value='comercial';el['[data-finder-input]'].dispatch('keydown',{key:'Enter'});await wait();
+  assert.match(el['[data-fiscal-status]'].textContent,/1 registro/);
+  el['[data-fiscal-state]'].value='SP';el['[data-fiscal-state]'].dispatch('change');await wait();
+  assert.equal(el['[data-fiscal-city]'].value,'');
+  assert.match(el['[data-fiscal-status]'].textContent,/0 registros/);
+  el['[data-fiscal-clear]'].dispatch('click');await wait();
+  assert.equal(el['[data-fiscal-state]'].value,'');
+  assert.equal(el['[data-finder-input]'].value,'');
+  assert.equal(el['[data-fiscal-results]'].children.length,3);
+});
+
+test('late fiscal response keeps the latest state and static URLs', async () => {
+  const {setupPortalSearch}=await searchModule();
+  const {doc,el}=fakePage('[data-portal-fiscal]',{...FINDER,'[data-fiscal-state]':'select','[data-fiscal-city]':'select','[data-fiscal-status]':'p','[data-fiscal-results]':'ul'});
+  let release;
+  const pending=new Promise(resolve=>{release=resolve;});
+  const urls=[];
+  setupPortalSearch({document:doc,search:'',fetch:async url=>{
+    urls.push(String(url));
+    if(String(url).endsWith('indice.json'))return {ok:true,json:async()=>INDEX};
+    return {ok:true,json:async()=>pending};
+  }});
+  await wait();
+  el['[data-fiscal-state]'].value='MT';el['[data-fiscal-state]'].dispatch('change');
+  el['[data-fiscal-state]'].value='SP';el['[data-fiscal-state]'].dispatch('change');
+  release({schema:'abastevo-search-fiscal-v1',release:'rel',count:2,records:[
+    {r:'1'.repeat(24),c:'04218406000104',st:'Pago',n:'Posto MT',u:'MT'},
+    {r:'2'.repeat(24),c:'11222333000181',st:'Pago',n:'Posto SP',u:'SP'},
+  ]});
+  await wait();
+  assert.match(el['[data-fiscal-status]'].textContent,/1 registro.*São Paulo/);
+  assert.equal(el['[data-fiscal-results]'].children[0].children[0].textContent,'Posto SP');
+  assert.ok(urls.every(url=>/^\/dados\/busca\/rel\/(indice|fiscalizacao)\.json$/.test(url)));
+});
+
 function jsonFetch(map, urls) {
   return async (url) => {
     urls.push(String(url));
@@ -334,6 +389,9 @@ test('search asset is fingerprintable and contains no unsafe HTML injection', as
   try {
     assert.match(result.fingerprintedSearch, /^search\.[a-f0-9]{8}\.js$/);
     const asset = fs.readFileSync(path.join(result.outDir, 'assets', result.fingerprintedSearch), 'utf8');
+    const stable = fs.readFileSync(path.join(result.outDir, 'portal-search.js'), 'utf8');
+    assert.equal(stable, asset, 'portal input must follow the signed landing release');
+    assert.match(fs.readFileSync(path.join(result.outDir, '_headers'), 'utf8'), /\/portal-search\.js\n  Cache-Control: no-cache/);
     assert.match(asset, /textContent/);
     assert.doesNotMatch(asset, /innerHTML/);
     assert.doesNotMatch(asset, /\/v1\//);
@@ -348,4 +406,44 @@ test('compiled search never requests a national locator', async () => {
   assert.match(raw, /dados\/busca/);
   assert.doesNotMatch(raw, /all\.json|nacional/i);
   assert.doesNotMatch(raw, /anp\.gov\.br\/api|api\.abastevo|\/v1\//);
+});
+
+test('multipart search reconstructs every family and rejects incomplete, foreign or corrupt files', async () => {
+  const { createHash, webcrypto } = await import('node:crypto');
+  if (!globalThis.crypto) globalThis.crypto = webcrypto;
+  const { SearchStore, loadShard } = await searchModule();
+  const cases = [
+    ['SP.json', shard([station()]), 'stations', store => store.uf('SP')],
+    ['m/3550308.json', shard([station()], { municipio:'3550308' }), 'stations', store => store.city('3550308')],
+    ['p/n-alf.json', {schema:'abastevo-search-prefix-v1',release:'rel',key:'n-alf',count:1,stations:[station()]}, 'stations', store=>store.prefix('n-alf')],
+    ['precos/GASOLINE_REGULAR.json', {schema:'abastevo-search-prices-v1',release:'rel',fuel:'GASOLINE_REGULAR',count:1,rows:[{i:'one',n:'Alfa',v:6199}]}, 'rows', store=>store.prices('GASOLINE_REGULAR')],
+    ['fiscalizacao.json', {schema:'abastevo-search-fiscal-v1',release:'rel',count:1,records:[{r:'fine',c:'04218406000104',st:'official'}]}, 'records', store=>store.fiscal()],
+    ['indice.json', {schema:'abastevo-search-index-v1',release:'rel',municipalities:[{m:'3550308',n:'São Paulo',s:'sao paulo',u:'SP',k:1}],fuels:[],stopwords:[],prefix_length:3,fiscal:true}, 'municipalities', store=>store.index()],
+  ];
+  for (const [file, original, array, load] of cases) {
+    const header = {...original}; delete header[array];
+    const body = JSON.stringify(original[array])+'\n';
+    const descriptor={file:'parts/0123456789abcdef-000000.json',sha256:createHash('sha256').update(body).digest('hex'),rows:1};
+    const envelope={schema:'abastevo-search-parts-v1',release:'rel',array,count:1,header,parts:[descriptor]};
+    const seen=[];
+    const fetcher=async(url,opts)=>{ seen.push(url);assert.equal(opts.credentials,'omit');return url.endsWith(file)?{ok:true,json:async()=>envelope}:{ok:true,text:async()=>body}; };
+    assert.deepEqual(await load(new SearchStore('/dados/busca/','rel',fetcher)),original);
+    assert.equal(seen[1], '/dados/busca/rel/'+file.slice(0,file.lastIndexOf('/')+1)+descriptor.file);
+    for (const failure of ['missing','hash','count','duplicate','traversal','release','metadata','oversize']) {
+      const changed=structuredClone(envelope);
+      if(failure==='count') changed.parts[0].rows=2;
+      if(failure==='duplicate') changed.parts.push({...descriptor});
+      if(failure==='traversal') changed.parts[0].file='../SP.json';
+      if(failure==='release') changed.release='foreign';
+      if(failure==='metadata') changed.header.count=99;
+      const failed=async url=>url.endsWith(file)?{ok:true,json:async()=>changed}:{ok:failure!=='missing',text:async()=>failure==='hash'?'[]':failure==='oversize'?' '.repeat(384*1024+1):body};
+      await assert.rejects(load(new SearchStore('/dados/busca/','rel',failed)),/shard-parts|shard-part-missing/);
+    }
+    let broken=true;
+    const retry=async url=>url.endsWith(file)?{ok:true,json:async()=>envelope}:{ok:!broken,text:async()=>body};
+    const store=new SearchStore('/dados/busca/','rel',retry);
+    await assert.rejects(load(store),/shard-part-missing/);broken=false;
+    assert.deepEqual(await load(store),original,'failed downloads must not poison the cache');
+    if(file==='SP.json') assert.deepEqual(await loadShard('SP','rel','/dados/busca/',fetcher),original);
+  }
 });

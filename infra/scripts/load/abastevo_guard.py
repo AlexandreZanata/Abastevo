@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 
 NAMESPACE = "abastevo-temp"
 LIMITS_MIB = {"api": 1024, "worker": 512, "private-storage": 1024, "postgres": 1024}
@@ -20,28 +21,6 @@ def quantity_mib(value):
 def collect():
     def kube(*args):
         return subprocess.check_output(["kubectl", "-n", NAMESPACE, *args], text=True, timeout=8)
-    all_pods = json.loads(kube("get", "pods", "-o", "json"))["items"]
-    pods = [p for p in all_pods if p["metadata"]["name"].startswith(("abastevo-temp-api-", "abastevo-temp-db-"))]
-    if len(pods) != 2:
-        raise ValueError("expected one Abastevo API and one DB pod")
-    statuses = {}
-    for pod in pods:
-        name = pod["metadata"]["name"]
-        for status in pod["status"].get("containerStatuses", []):
-            statuses[name + "/" + status["name"]] = {
-                "ready": status["ready"], "restarts": status["restartCount"],
-                "oom": status.get("lastState", {}).get("terminated", {}).get("reason") == "OOMKilled",
-            }
-    for line in kube("top", "pods", "--containers", "--no-headers").splitlines():
-        name, container, cpu, memory = line.split()[:4]
-        key = name + "/" + container
-        if key in statuses:
-            if container not in LIMITS_MIB:
-                raise ValueError("unrecognized Abastevo resource budget")
-            statuses[key].update(memory_mib=quantity_mib(memory),
-                                 memory_limit_mib=LIMITS_MIB[container], cpu=cpu)
-    if len(statuses) != 4 or any("memory_mib" not in c for c in statuses.values()):
-        raise ValueError("missing Abastevo container telemetry")
     sql = """SET statement_timeout='2s'; SELECT json_build_object(
       'wal_bytes',(SELECT wal_bytes::text FROM pg_stat_wal),
       'wal_stats_reset',(SELECT stats_reset::text FROM pg_stat_wal),
@@ -57,8 +36,37 @@ def collect():
       'active',(SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND state='active'),
       'stations',(SELECT count(*) FROM directory_stations),
       'assertions',(SELECT count(*) FROM registry_assertions));"""
-    db = json.loads(kube("exec", "abastevo-temp-db-0", "--", "sh", "-c",
-        'exec psql -qAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1"', "guard", sql))
+    # These read-only probes have independent eight-second budgets. Run them
+    # together so the existing twelve-second SSH fence covers the whole sample.
+    with ThreadPoolExecutor(max_workers=3) as probes:
+        pod_probe = probes.submit(kube, "get", "pods", "-o", "json")
+        metrics_probe = probes.submit(kube, "top", "pods", "--containers", "--no-headers")
+        db_probe = probes.submit(kube, "exec", "abastevo-temp-db-0", "--", "sh", "-c",
+            'exec psql -qAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1"', "guard", sql)
+        all_pods = json.loads(pod_probe.result())["items"]
+        metrics = metrics_probe.result()
+        db = json.loads(db_probe.result())
+    pods = [p for p in all_pods if p["metadata"]["name"].startswith(("abastevo-temp-api-", "abastevo-temp-db-"))]
+    if len(pods) != 2:
+        raise ValueError("expected one Abastevo API and one DB pod")
+    statuses = {}
+    for pod in pods:
+        name = pod["metadata"]["name"]
+        for status in pod["status"].get("containerStatuses", []):
+            statuses[name + "/" + status["name"]] = {
+                "ready": status["ready"], "restarts": status["restartCount"],
+                "oom": status.get("lastState", {}).get("terminated", {}).get("reason") == "OOMKilled",
+            }
+    for line in metrics.splitlines():
+        name, container, cpu, memory = line.split()[:4]
+        key = name + "/" + container
+        if key in statuses:
+            if container not in LIMITS_MIB:
+                raise ValueError("unrecognized Abastevo resource budget")
+            statuses[key].update(memory_mib=quantity_mib(memory),
+                                 memory_limit_mib=LIMITS_MIB[container], cpu=cpu)
+    if len(statuses) != 4 or any("memory_mib" not in c for c in statuses.values()):
+        raise ValueError("missing Abastevo container telemetry")
     memory = dict(line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines())
     return {"containers": statuses, "db": db, "available_mib": int(memory["MemAvailable"].split()[0]) / 1024,
             "load1": os.getloadavg()[0], "host_cpus": os.cpu_count(),

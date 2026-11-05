@@ -135,6 +135,7 @@ type summaryRow struct {
 type rankingRow struct {
 	Position  int
 	Name      string
+	LegalName string
 	StationID string
 	CNPJ      string
 	Place     string
@@ -211,6 +212,7 @@ type municipalityPage struct {
 type stationView struct {
 	ID               string
 	Name             string
+	LegalName        string
 	CNPJ             string
 	Address          string
 	Status           string
@@ -268,16 +270,17 @@ type observation struct {
 }
 
 type generator struct {
-	opts      Options
-	outDir    string
-	tmpl      *template.Template
-	files     map[string]FileDigest
-	pages     int
-	bytes     int64
-	indexable bool
-	siteURL   string
-	cssURL    string
-	scriptURL string
+	opts             Options
+	outDir           string
+	tmpl             *template.Template
+	files            map[string]FileDigest
+	pages            int
+	bytes            int64
+	indexable        bool
+	siteURL          string
+	cssURL           string
+	scriptURL        string
+	searchPartsReady bool
 	// searchRelease/searchFuels/searchFiscal describe the v2 search index
 	// of a full build; empty in official-only builds.
 	searchRelease string
@@ -752,6 +755,25 @@ func (g *generator) writePage(rel, templateName string, data any) error {
 }
 
 func (g *generator) writeAsset(rel string, data []byte) error {
+	if strings.HasPrefix(rel, "dados/busca/") && strings.HasSuffix(rel, ".json") {
+		files, err := partitionSearchFile(rel, data)
+		if err != nil {
+			return err
+		}
+		if len(files) > 1 && g.opts.SearchScriptPath != "" && !g.searchPartsReady {
+			return fmt.Errorf("portalgen: multipart search requires matching search script")
+		}
+		for _, file := range files {
+			if err := g.writeAssetRaw(file.Path, file.Data); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return g.writeAssetRaw(rel, data)
+}
+
+func (g *generator) writeAssetRaw(rel string, data []byte) error {
 	if g.bytes+int64(len(data)) > g.opts.MaxBytes {
 		return &BudgetError{Msg: "portalgen: byte budget exceeded"}
 	}
@@ -778,6 +800,7 @@ func (g *generator) copySearchScript(path string) error {
 	if len(data) == 0 {
 		return fmt.Errorf("portalgen: empty search script")
 	}
+	g.searchPartsReady = bytes.Contains(data, []byte(SearchPartsSchema))
 	sum := sha256.Sum256(data)
 	name := "portal." + hex.EncodeToString(sum[:4]) + ".js"
 	if err := g.writeAsset("assets/"+name, data); err != nil {
@@ -1174,7 +1197,7 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 			place = ufName(station.State)
 		}
 		view := stationView{
-			ID: station.StationID, Name: station.DisplayName, CNPJ: cnpjBR(station.CNPJ),
+			ID: station.StationID, Name: station.DisplayName, LegalName: stationLegalName(station), CNPJ: cnpjBR(station.CNPJ),
 			Address: addressLine(station.Address), Status: statusLabel(station.OperationStatus),
 			Location: locationLabel(station.LocationQuality), Place: place,
 		}
@@ -1277,7 +1300,7 @@ func rankingViews(rankings []analytics.Ranking, level, code string, stations map
 				return nil, fmt.Errorf("portalgen: ranking references unknown station")
 			}
 			rows = append(rows, rankingRow{
-				Position: entry.Position, Name: station.DisplayName, StationID: entry.StationID,
+				Position: entry.Position, Name: station.DisplayName, LegalName: stationLegalName(station), StationID: entry.StationID,
 				CNPJ: cnpjBR(station.CNPJ), Place: stationPlace(station),
 				Status: statusLabel(entry.OperationStatus), Amount: entry.AmountMilliBRL,
 				Collected: dateBR(entry.CollectedOn), TieCount: entry.TieCount,
@@ -1336,7 +1359,7 @@ func observationRows(items []observation, limit int, ranked bool) []rankingRow {
 			position = i + 1
 		}
 		rows = append(rows, rankingRow{
-			Position: position, Name: item.station.DisplayName, StationID: item.station.StationID,
+			Position: position, Name: item.station.DisplayName, LegalName: stationLegalName(item.station), StationID: item.station.StationID,
 			CNPJ: cnpjBR(item.station.CNPJ), Place: stationPlace(item.station),
 			Status: statusLabel(item.station.OperationStatus), Amount: item.price.AmountMilliBRL,
 			Collected: dateBR(item.price.CollectedOn), TieCount: counts[item.price.AmountMilliBRL],

@@ -1,0 +1,39 @@
+[Unit]
+Description=Abastevo verified monthly OpenCNPJ snapshot refresh
+Wants=network-online.target
+After=network-online.target
+ConditionPathIsDirectory=/opt/abastevo-temp/opencnpj
+
+[Service]
+Type=oneshot
+User=1000
+Group=1000
+UMask=0077
+ExecStart=/opt/abastevo-temp/registry-sync/releases/__REVISION__/station-sync --rfb-update --root /opt/abastevo-temp/opencnpj --opencnpj-root /opt/abastevo-temp/opencnpj --opencnpj /opt/abastevo-temp/registry-sync/releases/__REVISION__/opencnpj --timeout 110m
+TimeoutStartSec=115min
+TimeoutStopSec=30
+KillMode=control-group
+CPUQuota=100%
+MemoryMax=8G
+MemorySwapMax=0
+TasksMax=64
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+ReadWritePaths=/opt/abastevo-temp/opencnpj
+Environment=LANG=C.UTF-8 TZ=UTC GOMAXPROCS=1 GOMEMLIMIT=64MiB
+UnsetEnvironment=ANPFUEL_DATABASE_URL RFB_BASE_URL RFB_SHARE_TOKEN
+
+[Install]
+WantedBy=multi-user.target
