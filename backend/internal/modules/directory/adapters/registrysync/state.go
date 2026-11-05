@@ -15,14 +15,15 @@ import (
 
 // Snapshot contains only provenance, never a source row or a credential.
 type Snapshot struct {
-	Key            string `json:"key"`
-	Fingerprint    string `json:"fingerprint"`
-	SourceHash     string `json:"source_hash"`
-	AliasHash      string `json:"alias_hash"`
-	RunID          string `json:"run_id"`
-	FetchedAt      string `json:"fetched_at"`
-	ManifestHash   string `json:"manifest_hash,omitempty"`
-	NameInputsHash string `json:"name_inputs_hash,omitempty"`
+	Key               string `json:"key"`
+	Fingerprint       string `json:"fingerprint"`
+	SourceHash        string `json:"source_hash"`
+	AliasHash         string `json:"alias_hash"`
+	RunID             string `json:"run_id"`
+	FetchedAt         string `json:"fetched_at"`
+	ManifestHash      string `json:"manifest_hash,omitempty"`
+	NameInputsHash    string `json:"name_inputs_hash,omitempty"`
+	EditionReportHash string `json:"edition_report_hash,omitempty"`
 }
 type state struct {
 	Version   int       `json:"version"`
@@ -66,6 +67,9 @@ func readState(root string) (state, error) {
 	}
 	for _, v := range []*Snapshot{s.Pending, s.Success, s.Previous, s.Retired} {
 		if v != nil {
+			if v.EditionReportHash != "" && !validHash(v.EditionReportHash) {
+				return s, fmt.Errorf("invalid edition report identity")
+			}
 			if _, err := time.Parse(time.RFC3339Nano, v.FetchedAt); err != nil || len(v.RunID) != 36 {
 				return s, fmt.Errorf("invalid frozen timestamp/UUID")
 			}

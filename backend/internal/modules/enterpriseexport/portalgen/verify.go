@@ -58,7 +58,7 @@ var (
 		".jsonl": true, ".csv": true, ".txt": true, ".xml": true,
 	}
 	searchStationKeys = map[string]bool{
-		"i": true, "n": true, "s": true, "a": true, "c": true, "m": true,
+		"i": true, "n": true, "ln": true, "s": true, "a": true, "c": true, "m": true,
 		"mn": true, "u": true, "st": true, "sl": true, "p": true, "f": true,
 	}
 	searchPrefixKey       = regexp.MustCompile(`^(n-[a-z0-9]{3}|c-[0-9a-z]{3})$`)

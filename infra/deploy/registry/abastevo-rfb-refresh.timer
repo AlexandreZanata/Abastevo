@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for a new complete monthly RFB edition for Abastevo
+
+[Timer]
+OnCalendar=*-*-* 01:17:00 America/Cuiaba
+RandomizedDelaySec=120
+Persistent=true
+Unit=abastevo-rfb-refresh.service
+
+[Install]
+WantedBy=timers.target

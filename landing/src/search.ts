@@ -31,6 +31,7 @@ const VALID_UFS = new Set(Object.keys(UF_NAMES));
 export interface SearchStation {
   i: string;
   n: string;
+  ln?: string;
   s: string;
   a?: string;
   c?: string;
@@ -67,10 +68,10 @@ export interface SearchIndex {
 
 export interface PrefixShard { schema: string; release: string; key: string; count: number; stations: SearchStation[] }
 
-export interface PriceRow { i: string; n: string; c?: string; m?: string; mn?: string; u?: string; v: number; d?: string }
+export interface PriceRow { i: string; n: string; ln?: string; c?: string; m?: string; mn?: string; u?: string; v: number; d?: string }
 export interface PriceShard { schema: string; release: string; fuel: string; label: string; unit: string; count: number; rows: PriceRow[] }
 
-export interface FiscalRow { r: string; c: string; st: string; a?: string; d?: string; i?: string; n?: string; m?: string; mn?: string; u?: string }
+export interface FiscalRow { r: string; c: string; st: string; a?: string; d?: string; i?: string; n?: string; ln?: string; m?: string; mn?: string; u?: string }
 export interface FiscalShard { schema: string; release: string; count: number; records: FiscalRow[] }
 
 export type SearchScope =
@@ -233,13 +234,13 @@ export function placeSuggestions(query: string, municipalities: SearchMunicipali
 }
 
 export function filterPrices(rows: PriceRow[], query: string, scope: SearchScope | null, order: 'asc' | 'desc'): PriceRow[] {
-  const matches = rows.filter((row) => inScope(row, scope) && matchesStation(row.n, undefined, row.c, query));
+  const matches = rows.filter((row) => inScope(row, scope) && matchesStation(`${row.n} ${row.ln ?? ""}`, undefined, row.c, query));
   matches.sort((a, b) => (order === 'asc' ? a.v - b.v : b.v - a.v) || a.n.localeCompare(b.n, 'pt-BR') || a.i.localeCompare(b.i));
   return matches;
 }
 
 export function filterFiscal(records: FiscalRow[], query: string, scope: SearchScope | null): FiscalRow[] {
-  return records.filter((row) => inScope(row, scope) && matchesStation(row.n ?? '', undefined, row.c, query));
+  return records.filter((row) => inScope(row, scope) && matchesStation(`${row.n ?? ''} ${row.ln ?? ''}`, undefined, row.c, query));
 }
 
 function checkRelease(value: unknown, schema: string, release: string): Record<string, unknown> {
@@ -523,12 +524,21 @@ function setupFinder(root: Element, doc: Document, store: SearchStore, options: 
   return api;
 }
 
+function appendLegalName(doc: Document, parent: HTMLElement, primary: string, legal?: string): void {
+  if (!legal?.trim() || normalizeSearchText(legal) === normalizeSearchText(primary)) return;
+  const line = doc.createElement('small');
+  line.className = 'station-legal-name muted';
+  line.textContent = legal;
+  parent.append(line);
+}
+
 function stationItem(doc: Document, station: SearchStation): HTMLElement {
   const item = doc.createElement('li');
   const link = doc.createElement('a');
   link.href = `/postos/${encodeURIComponent(station.i)}/`;
   link.textContent = station.n;
   item.append(link);
+  appendLegalName(doc, item, station.n, station.ln);
   const meta = doc.createElement('span');
   meta.className = 'muted';
   const fuelCount = station.p ? Object.keys(station.p).length : station.f ?? 0;
@@ -694,6 +704,7 @@ function setupPrices(section: HTMLElement, doc: Document, store: SearchStore): v
         link.href = `/postos/${encodeURIComponent(row.i)}/`;
         link.textContent = row.n;
         name.append(link);
+        appendLegalName(doc, name, row.n, row.ln);
         tr.append(name, cell(doc, place(row) || '—'), cell(doc, formatMilliBRL(row.v), 'num'), cell(doc, formatDateBR(row.d) || '—'));
         return tr;
       }));
@@ -713,54 +724,118 @@ function setupPrices(section: HTMLElement, doc: Document, store: SearchStore): v
   void render();
 }
 
-function setupFiscal(section: HTMLElement, doc: Document, store: SearchStore): void {
+function setupFiscal(section: HTMLElement, doc: Document, store: SearchStore, runtime: SearchRuntime): void {
   const status = section.querySelector<HTMLElement>('[data-fiscal-status]');
   const results = section.querySelector<HTMLElement>('[data-fiscal-results]');
+  const state = section.querySelector<HTMLSelectElement>('[data-fiscal-state]');
+  const city = section.querySelector<HTMLSelectElement>('[data-fiscal-city]');
+  const clear = section.querySelector<HTMLButtonElement>('[data-fiscal-clear]');
+  const more = section.querySelector<HTMLButtonElement>('[data-fiscal-more]');
+  const directory = doc.querySelector<HTMLElement>('[data-fiscal-directory]');
   if (!status || !results) return;
   let ticket = 0;
-  const finder = setupFinder(section, doc, store, { stations: false, onChange: () => void render() });
+  let visible = MAX_TABLE_ROWS;
+  let selection = '';
+  let index: SearchIndex | null = null;
+  let interacted = false;
+  const finder = setupFinder(section, doc, store, { stations: false, onChange: () => { interacted = true; void render(); } });
   if (!finder) return;
 
+  const option = (value: string, label: string): HTMLOptionElement => {
+    const node = doc.createElement('option'); node.value = value; node.textContent = label; return node;
+  };
+  const syncPlaces = (): void => {
+    if (!state || !city || !index) return;
+    const scope = finder.scope();
+    state.value = scope?.uf ?? '';
+    const cities = index.municipalities.filter((row) => row.u === state.value)
+      .sort((a,b) => a.n.localeCompare(b.n,'pt-BR'));
+    city.replaceChildren(option('', state.value ? 'Todas as cidades' : 'Selecione um estado primeiro'),
+      ...cities.map((row) => option(row.m, row.n)));
+    city.disabled = !state.value;
+    city.value = scope?.kind === 'city' ? scope.code : '';
+  };
   const render = async (): Promise<void> => {
     const id = ++ticket;
     const scope = finder.scope();
     const query = finder.query();
-    if (!scope && normalizeSearchText(query).length < 2) {
-      results.replaceChildren();
-      status.textContent = 'Digite o nome do posto, parte do CNPJ, uma cidade ou um estado.';
-      return;
-    }
+    const key = JSON.stringify([scope,query]);
+    if (selection !== key) { visible = MAX_TABLE_ROWS; selection = key; }
+    syncPlaces();
+    results.replaceChildren();
+    if (directory) directory.hidden = true;
+    if (more) more.hidden = true;
     status.textContent = 'Carregando registros...';
     try {
       const shard = await store.fiscal();
       if (id !== ticket) return;
       const rows = filterFiscal(shard.records, query, scope);
-      results.replaceChildren(...rows.slice(0, MAX_TABLE_ROWS).map((row) => {
+      results.replaceChildren(...rows.slice(0, visible).map((row) => {
         const item = doc.createElement('li');
         const link = doc.createElement('a');
         link.href = `/fiscalizacao/registro/${encodeURIComponent(row.r)}/`;
-        link.textContent = `${formatCNPJ(row.c)} — ${row.st}`;
+        link.textContent = row.n || formatCNPJ(row.c);
         item.append(link);
+        appendLegalName(doc,item,row.n ?? '',row.ln);
         const meta = doc.createElement('span');
         meta.className = 'muted';
-        const parts = [row.a, row.d, row.n ? `${row.n}${place(row) ? ` (${place(row)})` : ''}` : 'sem posto vinculado'];
+        const parts = [row.st, row.a, formatDateBR(row.d) || row.d, place(row),
+          row.n ? formatCNPJ(row.c) : 'sem posto vinculado'];
         meta.textContent = ` · ${parts.filter(Boolean).join(' · ')}`;
         item.append(meta);
         return item;
       }));
       if (rows.length === 0) {
         const empty = doc.createElement('li');
-        empty.textContent = 'Nenhum registro encontrado.';
+        empty.textContent = 'Nenhum registro encontrado neste recorte. Ausência de registro não é certidão negativa.';
         results.append(empty);
       }
-      const note = scope ? ' Cidade e estado só existem para registros vinculados a um posto.' : '';
-      status.textContent = `${rows.length} ${plural(rows.length, 'registro encontrado', 'registros encontrados')}${rows.length > MAX_TABLE_ROWS ? ` (mostrando ${MAX_TABLE_ROWS})` : ''}.${note}`;
+      if (more) more.hidden = rows.length <= visible;
+      const where = scope ? ` em ${scope.label}` : ' no Brasil';
+      const note = scope ? ' A localização considera apenas vínculos seguros com postos.' : '';
+      status.textContent = `${rows.length} ${plural(rows.length, 'registro encontrado', 'registros encontrados')}${where}${rows.length > visible ? ` (mostrando ${visible})` : ''}.${note}`;
     } catch {
       if (id !== ticket) return;
       results.replaceChildren();
-      status.textContent = 'Busca de registros indisponível nesta publicação.';
+      if (directory) directory.hidden = false;
+      status.textContent = 'Busca de registros indisponível nesta publicação. A lista paginada abaixo continua disponível.';
     }
   };
+  state?.addEventListener('change', () => {
+    interacted = true;
+    finder.setScope(VALID_UFS.has(state.value) ? {kind:'uf',uf:state.value,label:`${UF_NAMES[state.value]} (${state.value})`} : null);
+    void render();
+  });
+  city?.addEventListener('change', () => {
+    interacted = true;
+    const match = index?.municipalities.find((row) => row.m === city.value && row.u === state?.value);
+    if (match) finder.setScope({kind:'city',code:match.m,uf:match.u,label:`${match.n}/${match.u}`});
+    else finder.setScope(state && VALID_UFS.has(state.value) ? {kind:'uf',uf:state.value,label:`${UF_NAMES[state.value]} (${state.value})`} : null);
+    void render();
+  });
+  clear?.addEventListener('click', () => { interacted = true; finder.setScope(null); finder.setQuery(''); void render(); });
+  more?.addEventListener('click', () => { visible += MAX_TABLE_ROWS; void render(); });
+  if (state) state.disabled = true;
+  if (city) city.disabled = true;
+  void store.index().then((loaded) => {
+    index = loaded;
+    if (state) {
+      state.replaceChildren(option('','Todos os estados'), ...Object.entries(UF_NAMES)
+        .sort((a,b) => a[1].localeCompare(b[1],'pt-BR')).map(([uf,name]) => option(uf,`${name} (${uf})`)));
+      state.disabled = false;
+    }
+    const params = new URLSearchParams(runtime.search ?? (typeof location === 'undefined' ? '' : location.search));
+    if (!interacted) {
+    const match = index.municipalities.find((row) => row.m === params.get('m'));
+    if (match) finder.setScope({kind:'city',code:match.m,uf:match.u,label:`${match.n}/${match.u}`});
+    else {
+      const uf = params.get('uf')?.toUpperCase() ?? '';
+      if (VALID_UFS.has(uf)) finder.setScope({kind:'uf',uf,label:`${UF_NAMES[uf]} (${uf})`});
+    }
+    finder.setQuery(params.get('q') ?? '');
+    }
+    void render();
+  }, () => { void render(); });
 }
 
 /** Wires every search widget present on the page. */
@@ -772,7 +847,7 @@ export function setupPortalSearch(runtime: SearchRuntime = {}): void {
   const widgets: Array<[string, (root: HTMLElement, store: SearchStore) => void]> = [
     ['[data-portal-finder]', (root, store) => setupConsultar(root, doc, store, runtime)],
     ['[data-portal-prices]', (root, store) => setupPrices(root, doc, store)],
-    ['[data-portal-fiscal]', (root, store) => setupFiscal(root, doc, store)],
+    ['[data-portal-fiscal]', (root, store) => setupFiscal(root, doc, store, runtime)],
   ];
   for (const [selector, setup] of widgets) {
     const root = doc.querySelector<HTMLElement>(selector);

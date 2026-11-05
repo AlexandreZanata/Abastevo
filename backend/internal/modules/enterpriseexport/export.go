@@ -122,6 +122,7 @@ type Station struct {
 	StationID          string               `json:"station_id"`
 	CNPJ               string               `json:"cnpj,omitempty"`
 	DisplayName        string               `json:"display_name"`
+	LegalName          string               `json:"legal_name,omitempty"`
 	Address            map[string]string    `json:"address,omitempty"`
 	MunicipalityCode   string               `json:"municipality_code,omitempty"`
 	State              string               `json:"state,omitempty"`
@@ -250,6 +251,7 @@ func (b Builder) Build(ctx context.Context, opts Options) (Manifest, error) {
 				StationID:          station.ID,
 				CNPJ:               station.CNPJ,
 				DisplayName:        kernel.PublicStationName(station.DisplayName, station.CNPJ),
+				LegalName:          strings.TrimSpace(kernel.PublicStationLegalName(station.LegalName)),
 				Address:            publicAddress(station.Address),
 				MunicipalityCode:   station.MunicipalityCode,
 				State:              station.State,

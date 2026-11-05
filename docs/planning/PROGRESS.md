@@ -1,7 +1,21 @@
 # Current execution state
 
+- NAT national continuity and static fiscal discovery, 2026-11-05,
+  LOCAL_DONE / INTEGRATION_PENDING. [Current evidence](../backend/evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md)
+  records static state/city filters, canonical trade/secondary legal names,
+  automatic full-CNPJ enrichment and a verified monthly VPS-local source.
+  The real 45,807-row ANP edition passed bounded container preparation and
+  complete disposable PostGIS publication/verification/replay: 45,695 admitted,
+  112 quarantined, 31,634 usable trade names. Race/failure/SQL checks, 78 landing
+  tests, builds and scoped static checks pass. Tested source is in this commit.
+  Maintained dev is occupied by the forum effort; isolated
+  `codex/national-refresh-portal` preserves its work. The verified snapshot is
+  prepared privately on VPS; schedule/database/portal activation is pending
+  protected delivery coordination. No unrelated forum publication or release
+  certification is authorized by this task.
+
 - SNA/OpenCNPJ station identity and MAP-20 expanded controls, 2026-11-05,
-  LOCAL_DONE / INTEGRATION_PENDING on maintained `dev`, synchronized from
+  LOCAL_DONE / INTEGRATED through PR #191 as `3fc77acc`, from
   `b8e93a41` (merged PR #190). [Source, privacy and replay evidence](../backend/evidence/sna/OPENCNPJ_STATION_NAMES.md)
   records the full-CNPJ minimized export, pinned daily inputs, public feed
   metadata, canonical Android names and grouped map controls. All 45,816
@@ -9,8 +23,8 @@
   preparation with 31,636 usable trade names. Immediate PostGIS failure/race/
   privacy tests, migration recovery/query-plan checks, 71 JVM tests, 23 emulator
   tests, builds, lint and scoped static checks pass. Tested revision: source in
-  this commit. Next: protected dev → main PR, signed staging deployment and
-  actual named-edition publication/readback. No release certification implied.
+  this commit. The signed staging receipt reports `3fc77acc` on 2026-11-05. Actual
+  named-edition publication/readback remains pending. No release certification implied.
 
 - MAP-20 compact map actions, 2026-11-05, LOCAL_DONE / INTEGRATED
   on maintained `dev`, synchronized with main at `efe915c4` (merged PR #189).

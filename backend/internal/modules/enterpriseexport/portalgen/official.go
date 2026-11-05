@@ -143,6 +143,7 @@ type officialRecordView struct {
 	AssociationLabel  string
 	AssociationReason string
 	StationName       string
+	StationLegalName  string
 	StationHref       string
 	SourceURL         string
 	SourceChecksum    string
@@ -396,6 +397,7 @@ func officialView(record officialRecord, stations map[string]enterpriseexport.St
 	if record.AssociationState == "linked" {
 		if station, ok := stations[record.StationID]; ok && linkStations {
 			view.StationName = station.DisplayName
+			view.StationLegalName = stationLegalName(station)
 			view.StationHref = "/postos/" + record.StationID + "/"
 		}
 	}

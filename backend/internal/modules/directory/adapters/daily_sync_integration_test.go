@@ -44,6 +44,11 @@ func TestDailySyncActualRustLoaderRecoveryChangedReadAndOverlap(t *testing.T) {
 		}
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}}
+	r.Analyze = func(previous, current string) error {
+		_, err := syncer.AnalyzeRegistryEdition(previous, current)
+		return err
+	}
+	r.ValidatePrepared = syncer.ValidateRegistryAdmission
 	r.Prepare = func(ctx context.Context, dir string, s syncer.Snapshot) error {
 		prepares++
 		cmd := exec.CommandContext(ctx, preparer, filepath.Join(dir, "registry.csv"), filepath.Join(dir, "aliases.json"), filepath.Join(dir, "prepared"), syncer.ANPURL, "synthetic-only", s.RunID, s.FetchedAt)

@@ -14,6 +14,17 @@ def obj(name):
     return json.loads((ROOT / name).read_text())
 
 class StagingManifests(unittest.TestCase):
+    def test_registry_render_requires_offline_source_root(self):
+        path=ROOT/"registry-sync-cronjob.yaml"
+        keys=set(re.findall(r"\$\{([A-Z0-9_]+)\}",path.read_text()))
+        with tempfile.TemporaryDirectory() as directory:
+            env=Path(directory)/"render.env"
+            env.write_text("".join(k+"=/owned/fixture\n" for k in keys if k!="REGISTRY_RFB_SOURCE_PATH"))
+            result=subprocess.run(["python3",str(ROOT/"render.py"),str(path)],env={**os.environ,"STAGING_RENDER_ENV":str(env)},text=True,capture_output=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn("REGISTRY_RFB_SOURCE_PATH",result.stderr)
+            self.assertEqual(result.stdout,"")
+
     def test_storage_is_independent_single_writer(self):
         api = obj("api-deployment.yaml")["spec"]["template"]["spec"]
         self.assertEqual({c["name"] for c in api["containers"]}, {"api", "worker"})
