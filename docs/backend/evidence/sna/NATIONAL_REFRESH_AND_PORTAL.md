@@ -261,3 +261,51 @@ The last guarded VPS attempt committed the input staging phase and began
 publishing source facts before load pressure stopped it. It is not a complete
 edition: 250 trade names were observed at that point. The frozen pending batch
 remains intact; recovery must continue it rather than fetch or erase it.
+
+## National static search capacity continuation
+
+B-BR-NAT-09: Keep the 512-KiB compressed search-file ceiling. Deterministically
+partition large regional, city, prefix, price or fiscal arrays into bounded
+immutable files with a release-bound manifest, hashes and exact row counts.
+Small v1 files remain compatible. Browser loads stay on static release paths;
+missing/tampered parts fail as a whole, never as an empty/partial result. Reject
+traversal, mixed releases, unknown fields and unreferenced parts. An incompatible
+search script refuses generation while the previous portal remains published.
+
+Actual staging refresh refused the SP file on 2026-11-05. The prior portal was
+retained; neither a generated candidate nor successful CI proved publication.
+This continuation addresses the measured national-data failure without raising
+budgets or adding a website search API.
+
+NAT-09 local verification, 2026-11-05: the frozen real staging export
+`cfb0823eb8a169fa44ebf7a782ae8f3c6acea64a933dc86c6b9b62be10a3b1ac`
+contains 49,038 stations and 3,375 official records. Generation and independent
+`portalcheck` passed with the unchanged 512-KiB gzip shard ceiling: 52,863 pages,
+62,554 files, 550,277,991 bytes; largest search gzip 126,682 bytes. Local candidate
+hash: `3e2bf9b6344d3e70cc037c1f979acbc6e5c0dfb7b02d0d9bdef246f3b322f499`.
+This snapshot retains the actual partial name publication; it is not evidence
+that the complete national named edition is live. Browser verification of this
+real frozen candidate passed SP search and MT → Cuiabá fiscal filtering (two
+linked records), with static files only. Portal race tests, vet and staticcheck
+passed; multipart checksum/count/release/path/missing/orphan/old-script rejection
+and all browser search-family/retry tests passed.
+
+The signed main `972df4f4` stable script alias was verified on the VPS and applied
+to the worker's `ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS`; the operator render fragment
+now persists `/opt/abastevo-web/current/portal-search.js`. No active owned national
+Job was present at the change. Full named-edition publication and monthly timer
+activation remain separate pending runtime obligations.
+
+The next real guarded resume (r11, 2026-11-05 19:09Z) began after two safe
+low-load samples. Complete input verification resumed and load/publication ran
+95.322 seconds before its existing host-reserve check refused elevated load.
+The pending edition remains retained; this is not complete national publication.
+API/worker/private-storage readback after stable-input rollout was 3/3 ready.
+
+Final construction-batch candidate after the owner's self-credit exemption:
+52,863 pages, 62,554 files, 527,016,102 bytes;
+`bc7f84efc475d1799c10a640ed506b315bb9629e1fdc86c2af27e2578347c5d3`.
+Independent verification retains the same 126,682-byte maximum search gzip and
+unchanged 512-KiB ceiling. The official portal has no injected author strip.
+The earlier larger candidate above documents the discarded UI draft, not the
+final interface. Final portal race tests, vet and pinned staticcheck pass.

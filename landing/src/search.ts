@@ -13,6 +13,7 @@ export const INDEX_SCHEMA = 'abastevo-search-index-v1';
 export const PREFIX_SCHEMA = 'abastevo-search-prefix-v1';
 export const PRICES_SCHEMA = 'abastevo-search-prices-v1';
 export const FISCAL_SCHEMA = 'abastevo-search-fiscal-v1';
+export const PARTS_SCHEMA = 'abastevo-search-parts-v1';
 export const MAX_QUERY = 80;
 export const MAX_RESULTS = 50;
 export const MAX_TABLE_ROWS = 100;
@@ -256,10 +257,48 @@ export function validateShard(value: unknown, release: string): SearchShard {
   return shard as unknown as SearchShard;
 }
 
-async function fetchJSON(url: string, fetcher: typeof fetch, signal?: AbortSignal): Promise<unknown> {
-  const response = await fetcher(url, { credentials: 'omit', cache: 'force-cache', signal });
+async function fetchJSON(url: string, fetcher: typeof fetch, release: string, signal?: AbortSignal): Promise<unknown> {
+  const options: RequestInit = { credentials: 'omit', cache: 'force-cache', signal };
+  const response = await fetcher(url, options);
   if (!response.ok) throw new Error('shard-missing');
-  return response.json();
+  const value = await response.json();
+  if (!value || value.schema !== PARTS_SCHEMA) return value;
+  const fields: Record<string, string> = {
+    [SEARCH_SCHEMA]: 'stations', [PREFIX_SCHEMA]: 'stations', [INDEX_SCHEMA]: 'municipalities',
+    [PRICES_SCHEMA]: 'rows', [FISCAL_SCHEMA]: 'records',
+  };
+  const { header, parts, array, count } = value;
+  if (value.release !== release || !header || header.release !== release || fields[header.schema] !== array ||
+      !array || Object.hasOwn(header, array) || !Number.isInteger(count) || count < 1 || count > 100000 ||
+      (Object.hasOwn(header, 'count') && header.count !== count) || !Array.isArray(parts) || !parts.length || parts.length > 4096 ||
+      Object.keys(value).some(key => !['schema', 'release', 'header', 'parts', 'array', 'count'].includes(key))) {
+    throw new Error('shard-parts-invalid');
+  }
+  const rows: unknown[] = [];
+  const seen = new Set<string>();
+  let totalBytes = 0;
+  for (const part of parts) {
+    if (!part || !/^parts\/[a-f0-9]{16}-[0-9]{6}\.json$/.test(part.file) || seen.has(part.file) ||
+        !/^[a-f0-9]{64}$/.test(part.sha256) || !Number.isInteger(part.rows) || part.rows < 1 ||
+        part.rows > count || Object.keys(part).some(key => !['file', 'sha256', 'rows'].includes(key))) {
+      throw new Error('shard-parts-invalid');
+    }
+    seen.add(part.file);
+    const response = await fetcher(url.slice(0, url.lastIndexOf('/') + 1) + part.file, options);
+    if (!response.ok) throw new Error('shard-part-missing');
+    const text = await response.text();
+    const bytes = new TextEncoder().encode(text);
+    totalBytes += bytes.byteLength;
+    if (bytes.byteLength > 384 * 1024 || totalBytes > 64 * 1024 * 1024) throw new Error('shard-parts-budget');
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+    const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    if (hash !== part.sha256) throw new Error('shard-parts-hash');
+    const chunk: unknown = JSON.parse(text);
+    if (!Array.isArray(chunk) || chunk.length !== part.rows || rows.length + chunk.length > count) throw new Error('shard-parts-count');
+    rows.push(...chunk);
+  }
+  if (rows.length !== count) throw new Error('shard-parts-count');
+  return { ...header, [array]: rows };
 }
 
 function joinBase(base: string): string {
@@ -275,7 +314,7 @@ export async function loadShard(
 ): Promise<SearchShard> {
   if (uf !== 'sem-uf' && !VALID_UFS.has(uf)) throw new Error('shard-uf');
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(release)) throw new Error('shard-release');
-  return validateShard(await fetchJSON(`${joinBase(base)}${release}/${uf}.json`, fetcher, signal), release);
+  return validateShard(await fetchJSON(`${joinBase(base)}${release}/${uf}.json`, fetcher, release, signal), release);
 }
 
 /** Loads and caches the release's search files; every path is validated before fetching. */
@@ -290,7 +329,7 @@ export class SearchStore {
     const key = `${joinBase(this.base)}${this.release}/${path}`;
     let pending = this.cache.get(key) as Promise<T> | undefined;
     if (!pending) {
-      pending = fetchJSON(key, this.fetcher).then(check);
+      pending = fetchJSON(key, this.fetcher, this.release).then(check);
       pending.catch(() => this.cache.delete(key));
       this.cache.set(key, pending);
     }
