@@ -1,5 +1,27 @@
 # Current execution state
 
+- FOR-14 Forum comment/reply domain and persistence, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `2d469779`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  opens Phase 3 (Safe discussion on published posts):
+  append-only migration 000159 (`forum_comments`, scoped `next_comment_sequence` on
+  `forum_posts`, expanded `forum_changes` target_type to include `COMMENT`);
+  pure domain models and validation in `models.go` (1..280 Unicode scalar values,
+  trimmed, UTF-8, no NUL);
+  application `CommentService` and `CommentStore` interfaces;
+  transactional store in `comments_store.go` with strict lock ordering
+  (quota check -> post lock -> parent lock -> live budget -> insert -> change audit);
+  CAS edit with revision validation and state return to `PENDING_REVIEW`;
+  tombstone removal wiping body text and setting `REMOVED` + `HIDDEN`;
+  idempotency replay via `(author_account_id, create_operation_id)` with body hash comparison;
+  parent suppression in replies (hidden/removed parent suppresses reply sub-tree);
+  rate quota (20/hour, 100/day) and live budget (100 live comments per account);
+  privacy invariant verified: pending comments never leak to public queries before approval;
+  unit and real PostgreSQL integration test suites (`comments_test.go`,
+  `comment_service_test.go`, `comments_integration_test.go`) passed with `-race` and
+  `-tags=integration`. Tested revision: source in this commit. Next microtask:
+  FOR-15 (Signed owner and command admission).
+
 - FOR-13 Forum editorial review and news checkpoint, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `cc394a82`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)

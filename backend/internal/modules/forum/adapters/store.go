@@ -21,10 +21,21 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
 )
 
+// QuotaChecker checks rate quotas within an open transaction.
+type QuotaChecker interface {
+	CheckTx(ctx context.Context, tx pgx.Tx, subject, operation string) (time.Duration, error)
+}
+
 // Store provides PostgreSQL persistence for Forum Abastevo.
 type Store struct {
 	pool    *pgxpool.Pool
 	queries *forumsql.Queries
+	limiter QuotaChecker
+}
+
+// SetQuotaChecker configures an optional transactional quota checker for rate limiting.
+func (s *Store) SetQuotaChecker(limiter QuotaChecker) {
+	s.limiter = limiter
 }
 
 // NewStore initializes a new Store backed by pgxpool.

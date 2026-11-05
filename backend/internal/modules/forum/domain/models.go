@@ -507,3 +507,51 @@ func (p *Post) AuditView() PostAuditView {
 		LocalUpdatedAt:      p.LocalUpdatedAt,
 	}
 }
+
+// Comment represents a discussion comment or single-level reply on a post.
+type Comment struct {
+	ID                string           `json:"id"`
+	PostID            string           `json:"post_id"`
+	AuthorAccountID   string           `json:"author_account_id,omitempty"`
+	PublicAlias       string           `json:"public_alias"`
+	ParentID          *string          `json:"parent_id,omitempty"`
+	Depth             int16            `json:"depth"`
+	Sequence          int64            `json:"sequence"`
+	BodyText          string           `json:"body_text"`
+	Revision          int              `json:"revision"`
+	PublicationState  PublicationState `json:"publication_state"`
+	Visibility        Visibility       `json:"visibility"`
+	CreatedAt         time.Time        `json:"created_at"`
+	UpdatedAt         time.Time        `json:"updated_at"`
+	PublishedAt       *time.Time       `json:"published_at,omitempty"`
+	CreateOperationID string           `json:"create_operation_id"`
+	BodySHA256        string           `json:"body_sha256"`
+}
+
+// IsPubliclyVisible reports whether the comment is visible to anonymous readers.
+func (c *Comment) IsPubliclyVisible() bool {
+	return c.PublicationState == StatePublished && c.Visibility == VisibilityVisible
+}
+
+// ValidateCommentBody verifies plain UTF-8 text, rejects NUL bytes,
+// and enforces 1..280 Unicode code points (scalar values) after trimming.
+func ValidateCommentBody(body string) (string, error) {
+	if !utf8.ValidString(body) {
+		return "", ErrInvalidUTF8
+	}
+	if strings.IndexByte(body, 0) >= 0 {
+		return "", ErrInvalidUTF8
+	}
+	trimmed := strings.TrimSpace(body)
+	if trimmed == "" {
+		return "", ErrCommentBodyEmpty
+	}
+	count := utf8.RuneCountInString(trimmed)
+	if count < 1 {
+		return "", ErrCommentBodyEmpty
+	}
+	if count > 280 {
+		return "", ErrCommentBodyTooLong
+	}
+	return trimmed, nil
+}

@@ -93,6 +93,25 @@ type ForumChange struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
+type ForumComment struct {
+	ID                pgtype.UUID        `json:"id"`
+	PostID            pgtype.UUID        `json:"post_id"`
+	AuthorAccountID   pgtype.UUID        `json:"author_account_id"`
+	PublicAlias       string             `json:"public_alias"`
+	ParentID          pgtype.UUID        `json:"parent_id"`
+	Depth             int16              `json:"depth"`
+	Sequence          int64              `json:"sequence"`
+	BodyText          string             `json:"body_text"`
+	Revision          int32              `json:"revision"`
+	PublicationState  string             `json:"publication_state"`
+	Visibility        string             `json:"visibility"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	PublishedAt       pgtype.Timestamptz `json:"published_at"`
+	CreateOperationID pgtype.UUID        `json:"create_operation_id"`
+	BodySha256        string             `json:"body_sha256"`
+}
+
 type ForumFeedState struct {
 	ID        int32              `json:"id"`
 	Revision  int64              `json:"revision"`
@@ -132,6 +151,7 @@ type ForumPost struct {
 	RightsSnapshot         pgtype.Text        `json:"rights_snapshot"`
 	BulletinKey            pgtype.Text        `json:"bulletin_key"`
 	SupersedesPostID       pgtype.UUID        `json:"supersedes_post_id"`
+	NextCommentSequence    int64              `json:"next_comment_sequence"`
 }
 
 type ForumSource struct {

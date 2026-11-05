@@ -125,3 +125,67 @@ type IngestionStore interface {
 	HasPostByUrlHash(ctx context.Context, sourceID, urlHash string) (bool, error)
 	InsertNewsCandidatePost(ctx context.Context, post *domain.Post) error
 }
+
+// Quota policy constants for forum discussion comments per B-BR-FOR-11.
+const (
+	OperationForumCommentHourly = "forum:comment:hour"
+	OperationForumCommentDaily  = "forum:comment:day"
+	MaxLiveCommentsPerAccount   = 100
+)
+
+// CreateCommentCommand represents validated parameters to create a comment or reply.
+type CreateCommentCommand struct {
+	PostID          string
+	AuthorAccountID string
+	PublicAlias     string
+	ParentID        *string
+	BodyText        string
+	OperationID     string
+}
+
+// EditCommentCommand represents validated parameters to CAS-edit an existing comment.
+type EditCommentCommand struct {
+	CommentID        string
+	AuthorAccountID  string
+	ExpectedRevision int
+	BodyText         string
+}
+
+// RemoveCommentCommand represents parameters to tombstone an existing comment.
+type RemoveCommentCommand struct {
+	CommentID        string
+	AuthorAccountID  string
+	ExpectedRevision int
+}
+
+// ListPostCommentsQuery represents pagination parameters for top-level post comments.
+type ListPostCommentsQuery struct {
+	PostID         string
+	Limit          int
+	CursorSequence *int64
+}
+
+// ListCommentRepliesQuery represents pagination parameters for single-level replies.
+type ListCommentRepliesQuery struct {
+	ParentID       string
+	Limit          int
+	CursorSequence *int64
+}
+
+// CommentResult wraps a comment with idempotent replay metadata.
+type CommentResult struct {
+	Comment  *domain.Comment
+	Replayed bool
+}
+
+// CommentStore defines persistence operations for reviewed discussion threads.
+type CommentStore interface {
+	CreateComment(ctx context.Context, cmd CreateCommentCommand) (CommentResult, error)
+	EditComment(ctx context.Context, cmd EditCommentCommand) (*domain.Comment, error)
+	RemoveComment(ctx context.Context, cmd RemoveCommentCommand) (*domain.Comment, error)
+	GetCommentByID(ctx context.Context, id string) (*domain.Comment, error)
+	ListCommentsByPost(ctx context.Context, query ListPostCommentsQuery) ([]domain.Comment, error)
+	ListRepliesByParent(ctx context.Context, query ListCommentRepliesQuery) ([]domain.Comment, error)
+	PublishComment(ctx context.Context, commentID string) (*domain.Comment, error)
+	RejectComment(ctx context.Context, commentID string) (*domain.Comment, error)
+}

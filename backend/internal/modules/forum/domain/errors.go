@@ -32,6 +32,19 @@ var (
 	ErrFeedItemOversized       = errors.New("forum: feed item metadata exceeds size limit")
 	ErrEgressForbidden         = errors.New("forum: target host or address violates egress policy")
 	ErrRedirectDisallowed      = errors.New("forum: redirect target rejected")
+	ErrCommentBodyEmpty         = errors.New("forum: comment body cannot be empty")
+	ErrCommentBodyTooLong       = errors.New("forum: comment body exceeds 280 unicode characters")
+	ErrInvalidCommentDepth      = errors.New("forum: comment depth exceeds maximum allowed (max depth 1)")
+	ErrCrossPostParent          = errors.New("forum: parent comment belongs to a different post")
+	ErrParentCommentNotFound    = errors.New("forum: parent comment not found")
+	ErrParentCommentNotVisible  = errors.New("forum: parent comment is not publicly visible")
+	ErrPostCommentsDisabled     = errors.New("forum: comments are disabled for this post")
+	ErrPostNotCommentable       = errors.New("forum: post is not in published/visible state for comments")
+	ErrConflictingOperation     = errors.New("forum: conflicting operation with same id but different content")
+	ErrCommentLiveQuotaExceeded = errors.New("forum: account live comment budget exceeded")
+	ErrCommentNotFound          = errors.New("forum: comment not found")
+	ErrCommentAuthorMismatch    = errors.New("forum: comment author mismatch")
+	ErrCommentAlreadyRemoved    = errors.New("forum: comment is already removed")
 )
 
 const (
@@ -100,6 +113,32 @@ func VerdictCode(err error) string {
 		return "egress-forbidden"
 	case errors.Is(err, ErrRedirectDisallowed):
 		return "redirect-disallowed"
+	case errors.Is(err, ErrCommentBodyEmpty):
+		return "comment-body-empty"
+	case errors.Is(err, ErrCommentBodyTooLong):
+		return "comment-body-too-long"
+	case errors.Is(err, ErrInvalidCommentDepth):
+		return "invalid-comment-depth"
+	case errors.Is(err, ErrCrossPostParent):
+		return "cross-post-parent"
+	case errors.Is(err, ErrParentCommentNotFound):
+		return "parent-comment-not-found"
+	case errors.Is(err, ErrParentCommentNotVisible):
+		return "parent-comment-not-visible"
+	case errors.Is(err, ErrPostCommentsDisabled):
+		return "post-comments-disabled"
+	case errors.Is(err, ErrPostNotCommentable):
+		return "post-not-commentable"
+	case errors.Is(err, ErrConflictingOperation):
+		return "conflicting-operation"
+	case errors.Is(err, ErrCommentLiveQuotaExceeded):
+		return "comment-live-quota-exceeded"
+	case errors.Is(err, ErrCommentNotFound):
+		return "comment-not-found"
+	case errors.Is(err, ErrCommentAuthorMismatch):
+		return "comment-author-mismatch"
+	case errors.Is(err, ErrCommentAlreadyRemoved):
+		return "comment-already-removed"
 	default:
 		return "unknown-error"
 	}
