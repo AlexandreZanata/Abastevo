@@ -112,8 +112,13 @@ Compose entry is low-risk presentation. Proposed evidence:
   runtime gate; a clear owned task range and exact source head. Commit
   `docs(forum): reconcile main baseline and implementation scope`.
 
-### FOR-01 — Freeze behavior, privacy and contracts
+### FOR-01 — Freeze behavior, privacy and contracts (LOCAL_DONE)
 
+- Status: LOCAL_DONE. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md).
+  Normative OpenAPI v1 routes (`/v1/forum/categories`, `/v1/forum/posts`,
+  `/v1/forum/posts/{post_id}`), schemas, 9 contract vectors in `testdata/api/`,
+  structural and negative boundary tests in `apicontract` (title 1–120, excerpt
+  max 400, body max 4000, forbidden author leaks) pass. Vacuum lint clean (0 errors).
 - Freeze proposed text/admission limits, premoderation, source rights modes,
   retained metadata, owner read and external-link policy. Add normative OpenAPI
   schemas/negative vectors only for the foundation routes being implemented;

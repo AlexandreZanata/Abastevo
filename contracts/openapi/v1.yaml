@@ -44,6 +44,8 @@ tags:
     description: Private optional Premium subscription infrastructure; real payments OFF.
   - name: admin
     description: Owner administrative session surface; unmounted unless a key hash is configured.
+  - name: forum
+    description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
   /health/live:
     get:
@@ -7275,6 +7277,97 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/forum/categories:
+    get:
+      summary: List forum taxonomy categories.
+      description: Anonymous public endpoint returning active discussion and editorial categories.
+      operationId: getForumCategories
+      tags: [forum]
+      security: []
+      responses:
+        '200':
+          description: Categories list returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumCategoriesResponse'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/posts:
+    get:
+      summary: Read paginated forum post feed.
+      description: Anonymous public endpoint returning editorial articles, news items, and community topics.
+      operationId: getForumPosts
+      tags: [forum]
+      security: []
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ForumCategory'
+          description: Optional filter by forum category.
+        - name: kind
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ForumPostKind'
+          description: Optional filter by post kind.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          description: Number of items to return (1–50, default 20).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: Opaque pagination cursor from previous response.
+      responses:
+        '200':
+          description: Feed page returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumFeedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/posts/{post_id}:
+    get:
+      summary: Read single forum post detail.
+      description: Anonymous public endpoint returning full post content and metadata. Returns 404 for non-published or non-visible posts.
+      operationId: getForumPostById
+      tags: [forum]
+      security: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the post.
+      responses:
+        '200':
+          description: Post detail returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumPostDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   parameters:
     QualityCompanyStationSelector:
@@ -12463,6 +12556,312 @@ components:
           items: {$ref: '#/components/schemas/PriceRankingArea'}
         next_cursor: {type: [string, 'null'], maxLength: 4096}
         generated_at: {type: string, format: date-time}
+    ForumCategory:
+      type: string
+      description: Primary editorial/topic category code.
+      enum:
+        - FUELS
+        - ELECTRIC
+        - TRAFFIC_RULES
+        - VEHICLES_TECH
+        - ROADS_MOBILITY
+        - DRIVER_ECONOMY
+        - ABASTEVO_DATA
+      example: FUELS
+    ForumPostKind:
+      type: string
+      description: Domain kind of a forum publication or candidate.
+      enum:
+        - EDITORIAL
+        - NEWS
+        - TOPIC
+        - BULLETIN
+      example: EDITORIAL
+    ForumSourceAttribution:
+      type: object
+      description: Public attribution and source provenance for licensed or editorial content.
+      additionalProperties: false
+      required: [name, url, attribution]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Display name of the source or publisher.
+          example: Abastevo Editorial
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: Canonical HTTPS URL of the original source or article.
+          example: https://abastevo.com.br/editorial/formacao-precos
+        license_url:
+          oneOf:
+            - type: 'null'
+            - type: string
+              format: uri
+              maxLength: 2048
+          description: Optional HTTPS license or terms reference.
+          example: null
+        attribution:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Mandatory legal and editorial attribution text.
+          example: Redacao Abastevo
+    ForumPostRegion:
+      type: object
+      description: Optional coarse subject-matter geographic scope (not author location).
+      additionalProperties: false
+      required: [uf]
+      properties:
+        uf:
+          type: string
+          minLength: 2
+          maxLength: 2
+          pattern: '^[A-Z]{2}$'
+          description: Two-letter Brazilian state code.
+          example: SP
+        municipality_ibge:
+          type: [integer, 'null']
+          minimum: 1000000
+          maximum: 9999999
+          description: Seven-digit IBGE municipality code when regionalized.
+          example: 3550308
+    ForumPostSummary:
+      type: object
+      description: Public summary card for editorial and discussion feed listings.
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - category
+        - title
+        - first_published_at
+        - updated_at
+        - revision
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the post.
+          example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        kind:
+          $ref: '#/components/schemas/ForumPostKind'
+        category:
+          $ref: '#/components/schemas/ForumCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Headline or topic title (1–120 Unicode scalar values).
+          example: Entenda a formacao de precos dos combustiveis no Brasil
+        excerpt:
+          type: [string, 'null']
+          maxLength: 400
+          description: Plain-text introductory excerpt or summary (max 400 Unicode scalars).
+          example: Guia explicativo sobre composicao tributaria, realizacao e margens de distribuicao.
+        source:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumSourceAttribution'
+        public_alias:
+          type: [string, 'null']
+          maxLength: 64
+          description: Pseudonym of active topic author; null for editorial/news.
+          example: null
+        source_published_at:
+          type: [string, 'null']
+          format: date-time
+          description: Original publisher publication timestamp if external.
+          example: null
+        first_published_at:
+          type: string
+          format: date-time
+          description: Monotonic first publication timestamp on Abastevo.
+          example: '2026-11-05T12:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: Latest content revision timestamp.
+          example: '2026-11-05T12:00:00Z'
+        revision:
+          type: integer
+          minimum: 1
+          description: Monotonic edit revision counter.
+          example: 1
+        region:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumPostRegion'
+        fuel_product:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/FuelProduct'
+        station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional subject station identifier.
+          example: null
+    ForumPostDetail:
+      type: object
+      description: Full public representation of an editorial article, news item or discussion post.
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - category
+        - title
+        - first_published_at
+        - updated_at
+        - revision
+        - comments_enabled
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the post.
+          example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        kind:
+          $ref: '#/components/schemas/ForumPostKind'
+        category:
+          $ref: '#/components/schemas/ForumCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Headline or topic title (1–120 Unicode scalar values).
+          example: Entenda a formacao de precos dos combustiveis no Brasil
+        excerpt:
+          type: [string, 'null']
+          maxLength: 400
+          description: Plain-text introductory excerpt (max 400 Unicode scalars).
+          example: Guia explicativo sobre composicao tributaria, realizacao e margens de distribuicao.
+        body_text:
+          type: [string, 'null']
+          maxLength: 4000
+          description: Full plain-text body (1–4000 Unicode scalars); null for link-only external news.
+          example: O preco ao consumidor final resulta da soma do custo da refinaria, adicoes obrigatorias de biocombustiveis, ICMS, tributos federais e parcelas de distribuicao e revenda.
+        source:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumSourceAttribution'
+        public_alias:
+          type: [string, 'null']
+          maxLength: 64
+          description: Pseudonym of active topic author; null for editorial/news.
+          example: null
+        source_published_at:
+          type: [string, 'null']
+          format: date-time
+          description: Original publisher publication timestamp if external.
+          example: null
+        first_published_at:
+          type: string
+          format: date-time
+          description: Monotonic first publication timestamp on Abastevo.
+          example: '2026-11-05T12:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: Latest content revision timestamp.
+          example: '2026-11-05T12:00:00Z'
+        revision:
+          type: integer
+          minimum: 1
+          description: Monotonic edit revision counter.
+          example: 1
+        comments_enabled:
+          type: boolean
+          description: Flag indicating if discussion comments are accepted.
+          example: true
+        correction:
+          type: [string, 'null']
+          maxLength: 1000
+          description: Public editorial correction notice if modified post-publication.
+          example: null
+        region:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumPostRegion'
+        fuel_product:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/FuelProduct'
+        station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional subject station identifier.
+          example: null
+    ForumCategoryItem:
+      type: object
+      description: Taxonomy category item for forum browsing.
+      additionalProperties: false
+      required: [code, name, description]
+      properties:
+        code:
+          $ref: '#/components/schemas/ForumCategory'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Localized display name.
+          example: Combustiveis
+        description:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Description of the subject scope.
+          example: Precos, tributacao, composicao e qualidade de combustiveis.
+    ForumCategoriesResponse:
+      type: object
+      description: Response containing active forum categories and taxonomy version.
+      additionalProperties: false
+      required: [items, taxonomy_version]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForumCategoryItem'
+        taxonomy_version:
+          type: integer
+          minimum: 1
+          description: Version of the active taxonomy tree.
+          example: 1
+    ForumFeedResponse:
+      type: object
+      description: Paginated public feed of forum post summaries.
+      additionalProperties: false
+      required: [items, next_cursor, snapshot, fetched_at]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForumPostSummary'
+        next_cursor:
+          type: [string, 'null']
+          maxLength: 512
+          description: Opaque pagination cursor for loading next page; null at end.
+          example: null
+        snapshot:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Monotonic feed revision identifier for cache invalidation.
+          example: rev-1
+        fetched_at:
+          type: string
+          format: date-time
+          description: Server timestamp when feed snapshot was generated.
+          example: '2026-11-05T12:00:00Z'
+    ForumPostDetailResponse:
+      type: object
+      description: Response envelope for single forum post detail.
+      additionalProperties: false
+      required: [post]
+      properties:
+        post:
+          $ref: '#/components/schemas/ForumPostDetail'
   responses:
     BadRequest:
       description: Malformed input, cursor or bounds.

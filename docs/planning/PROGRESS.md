@@ -1,5 +1,19 @@
 # Current execution state
 
+- FOR-01 Forum wire contract and boundary vectors, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `1156340f`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  freezes normative OpenAPI v1 wire contract for editorial reading:
+  `GET /v1/forum/categories`, `GET /v1/forum/posts` (limit 1–50, default 20,
+  HMAC cursor, category/kind filters) and `GET /v1/forum/posts/{post_id}` (404
+  for unpublished/hidden). Nine contract vectors in `contracts/testdata/api/`,
+  `kin-openapi` structural tests, and negative/boundary validation in
+  `backend/internal/platform/apicontract/forum_editorial_test.go` (title 1–120,
+  excerpt max 400, body max 4000, forbidden author leaks). Vacuum lint clean
+  (0 errors). Occupied primary checkout and existing worktrees preserved.
+  Tested revision: source in this commit. Next microtask: FOR-02 (pure editorial
+  domain and read ports).
+
 - FOR-00 Forum Phase 1 opening and baseline reconciliation, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from verified
   GitHub main `3fc77acc` (PR #191) and PR #192 planning baseline `6857ec63`.

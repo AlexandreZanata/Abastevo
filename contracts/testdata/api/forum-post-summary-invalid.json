@@ -1,0 +1,1 @@
+{"id": "forum-post-summary-invalid", "version": 1, "schema": "ForumPostSummary", "valid": false, "provenance": "rejected missing required title and invalid kind; synthetic", "value": {"id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d", "kind": "INVALID_KIND", "category": "FUELS", "first_published_at": "2026-11-05T12:00:00Z", "updated_at": "2026-11-05T12:00:00Z", "revision": 1}}

@@ -45,8 +45,8 @@ Phase 1 delivers the editorial foundation and MVP read experience:
 | Task | Scope | Status | Tested revision | Evidence / Notes |
 |---|---|---|---|---|
 | **FOR-00** | Reconcile main baseline and freeze scope | LOCAL_DONE | Current commit | Baseline `3fc77acc` + `6857ec63`; migration 000157 and Room v37 allocated; Phase 1 evidence opened; worktrees isolated. |
-| **FOR-01** | Freeze behavior, privacy and contracts | NEXT | - | OpenAPI v1 schemas, negative vectors, apicontract tests for editorial foundation. |
-| **FOR-02** | Pure editorial domain and ports | PLANNED | - | Post, category, rights state machine, clock/ID injection, zero DB dependencies. |
+| **FOR-01** | Freeze behavior, privacy and contracts | LOCAL_DONE | Current commit | Normative OpenAPI v1 routes (`/v1/forum/categories`, `/v1/forum/posts`, `/v1/forum/posts/{post_id}`), schemas, 9 testdata vectors, structural & boundary tests (title 1–120, excerpt max 400, body max 4000, forbidden leaks). Vacuum lint clean (0 errors). |
+| **FOR-02** | Pure editorial domain and ports | NEXT | - | Post, category, rights state machine, clock/ID injection, zero DB dependencies. |
 | **FOR-03** | Foundation SQL and migration recovery | PLANNED | - | Migration 000157, sqlc queries, pgx adapter, concurrency/rollback tests. |
 | **FOR-04** | Existing admin editorial publication | PLANNED | - | Draft, edit, publish, hide actions, audit trail, CSRF/RBAC integration. |
 | **FOR-05** | Public read API and composition | PLANNED | - | GET /v1/forum/categories, /v1/forum/posts, /v1/forum/posts/{id}, HMAC cursor. |
@@ -59,5 +59,7 @@ Phase 1 delivers the editorial foundation and MVP read experience:
 
 - `git diff --check`: PASSED (no trailing whitespace or merge conflict markers).
 - Secret surface review: PASSED (no credentials, tokens, or PII introduced).
+- OpenAPI lint (`vacuum lint`): PASSED (0 errors).
+- Go apicontract test suite: PASSED (100% green, structural + golden vectors + negative boundary cases).
 - Repository worktree isolation: PASSED (occupied dev and detached checkouts untouched).
-- Next action: FOR-01 (freeze v1 behavior, editorial wire contract and test vectors).
+- Next action: FOR-02 (pure editorial domain and ports).
