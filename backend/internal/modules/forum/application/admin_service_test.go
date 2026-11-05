@@ -98,6 +98,47 @@ func (m *mockAdminStore) PublishEditorialTx(ctx context.Context, tx pgx.Tx, id s
 	return nil
 }
 
+func (m *mockAdminStore) ListAllSourcesWithMetrics(ctx context.Context) ([]forumapp.SourceWithMetrics, error) {
+	result := make([]forumapp.SourceWithMetrics, 0, len(m.sources))
+	for _, s := range m.sources {
+		result = append(result, forumapp.SourceWithMetrics{
+			ID:                 s.ID,
+			Code:               s.Code,
+			Name:               s.Name,
+			Kind:               s.Kind,
+			OriginURL:          s.OriginURL,
+			FetchURL:           s.FetchURL,
+			FetchFormat:        s.FetchFormat,
+			CollectionEnabled:  s.CollectionEnabled,
+			PublicationEnabled: s.PublicationEnabled,
+			RightsStatus:       s.RightsStatus,
+			TitleAllowed:       s.TitleAllowed,
+			ExcerptAllowed:     s.ExcerptAllowed,
+			ImageAllowed:       s.ImageAllowed,
+			TermsURL:           s.TermsURL,
+			TermsSHA256:        s.TermsSHA256,
+			CheckedAt:          s.CheckedAt,
+			ReviewExpiresAt:    s.ReviewExpiresAt,
+			Attribution:        s.Attribution,
+		})
+	}
+	return result, nil
+}
+
+func (m *mockAdminStore) RejectPostTx(ctx context.Context, tx pgx.Tx, id string, expectedRevision int, now time.Time) error {
+	current, ok := m.posts[id]
+	if !ok {
+		return domain.ErrPostNotFound
+	}
+	if current.Revision != expectedRevision {
+		return domain.ErrRevisionMismatch
+	}
+	current.PublicationState = domain.StateRejected
+	current.LocalUpdatedAt = now
+	current.Revision = current.Revision + 1
+	return nil
+}
+
 func (m *mockAdminStore) SetPostVisibilityTx(ctx context.Context, tx pgx.Tx, id string, visibility domain.Visibility, updatedAt time.Time) error {
 	current, ok := m.posts[id]
 	if !ok {
@@ -350,6 +391,7 @@ func TestAdminService_PublishPost_RightsAndTransitions(t *testing.T) {
 
 	// 2. Approve source rights and publish successfully
 	store.sources[sourceID].RightsStatus = domain.RightsApproved
+	store.sources[sourceID].PublicationEnabled = true
 
 	published, err := svc.PublishPost(context.Background(), mutation, postID)
 	if err != nil {
@@ -441,5 +483,180 @@ func TestAdminService_DisabledSwitch(t *testing.T) {
 	_, err := svc.CreateDraft(context.Background(), mutation, forumapp.CreateDraftInput{})
 	if !errors.Is(err, domain.ErrForumDisabled) {
 		t.Fatalf("expected ErrForumDisabled when switch is off, got %v", err)
+	}
+}
+
+func TestAdminService_ListSources(t *testing.T) {
+	store := newMockAdminStore()
+	store.sources["s1"] = &domain.Source{
+		ID:                 "s1",
+		Code:               "EBC",
+		Name:               "Agência Brasil",
+		Kind:               domain.SourceKindPublisher,
+		OriginURL:          "https://agenciabrasil.ebc.com.br",
+		CollectionEnabled:  false,
+		PublicationEnabled: false,
+		RightsStatus:       domain.RightsDenied,
+		Attribution:        "Agência Brasil / EBC",
+	}
+
+	cfg := domain.DefaultConfig()
+	cfg.AdminEnabled = true
+	svc := &forumapp.AdminService{
+		Store:  store,
+		Runner: &mockRunner{},
+		Config: cfg,
+	}
+
+	sources, err := svc.ListSources(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(sources) != 1 {
+		t.Fatalf("expected 1 source, got %d", len(sources))
+	}
+	if sources[0].Code != "EBC" || sources[0].RightsStatus != domain.RightsDenied {
+		t.Fatalf("unexpected source: %+v", sources[0])
+	}
+}
+
+func TestAdminService_RejectPost(t *testing.T) {
+	store := newMockAdminStore()
+	runner := &mockRunner{}
+	fixedTime := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+
+	cfg := domain.DefaultConfig()
+	cfg.AdminEnabled = true
+	svc := &forumapp.AdminService{
+		Store:  store,
+		Runner: runner,
+		Config: cfg,
+		Clock:  func() time.Time { return fixedTime },
+	}
+
+	postID := "11111111-1111-1111-1111-111111111111"
+	store.posts[postID] = &domain.Post{
+		ID:               postID,
+		Kind:             domain.KindNews,
+		Category:         domain.CategoryFuels,
+		Title:            "Notícia Candidata",
+		Excerpt:          "Resumo da notícia",
+		PublicationState: domain.StateDraft,
+		Visibility:       domain.VisibilityVisible,
+		Revision:         1,
+		SourceID:         "00000000-0000-0000-0000-000000000001",
+		LocalCreatedAt:   fixedTime,
+		LocalUpdatedAt:   fixedTime,
+	}
+
+	mutation := adminapp.Mutation{
+		SessionID: "session-1",
+		Reason:    "rejeitando notícia candidata inadequada",
+		Key:       "33333333-3333-4333-8333-333333333333",
+	}
+
+	// 1. Revision mismatch fails
+	_, err := svc.RejectPost(context.Background(), mutation, postID, 99)
+	if !errors.Is(err, domain.ErrRevisionMismatch) {
+		t.Fatalf("expected ErrRevisionMismatch, got %v", err)
+	}
+
+	// 2. Reject succeeds with expected revision
+	rejected, err := svc.RejectPost(context.Background(), mutation, postID, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rejected.PublicationState != domain.StateRejected {
+		t.Fatalf("expected REJECTED state, got %s", rejected.PublicationState)
+	}
+	if rejected.Revision != 2 {
+		t.Fatalf("expected revision 2, got %d", rejected.Revision)
+	}
+
+	// 3. Verify audit and change record
+	if len(runner.lastEvents) != 1 || runner.lastEvents[0].Action != "admin.forum.post.reject" {
+		t.Fatalf("expected audit event admin.forum.post.reject, got %+v", runner.lastEvents)
+	}
+	if len(store.changes) != 1 || store.changes[0].Action != "REJECT" {
+		t.Fatalf("expected change record REJECT, got %+v", store.changes)
+	}
+
+	// 4. Double reject fails transition
+	_, err = svc.RejectPost(context.Background(), mutation, postID, 2)
+	if !errors.Is(err, domain.ErrInvalidTransition) {
+		t.Fatalf("expected ErrInvalidTransition on already rejected post, got %v", err)
+	}
+}
+
+func TestAdminService_PublishPost_RightsEnforcement(t *testing.T) {
+	store := newMockAdminStore()
+	runner := &mockRunner{}
+	fixedTime := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+
+	cfg := domain.DefaultConfig()
+	cfg.AdminEnabled = true
+	svc := &forumapp.AdminService{
+		Store:  store,
+		Runner: runner,
+		Config: cfg,
+		Clock:  func() time.Time { return fixedTime },
+	}
+
+	// Source 1: Rights Approved but PublicationEnabled = false
+	disabledSrcID := "00000000-0000-0000-0000-000000000001"
+	store.sources[disabledSrcID] = &domain.Source{
+		ID:                 disabledSrcID,
+		RightsStatus:       domain.RightsApproved,
+		PublicationEnabled: false,
+	}
+
+	post1ID := "11111111-1111-1111-1111-111111111111"
+	store.posts[post1ID] = &domain.Post{
+		ID:               post1ID,
+		Kind:             domain.KindNews,
+		Category:         domain.CategoryFuels,
+		Title:            "Notícia de Fonte Desabilitada",
+		PublicationState: domain.StateDraft,
+		Visibility:       domain.VisibilityVisible,
+		Revision:         1,
+		SourceID:         disabledSrcID,
+		LocalCreatedAt:   fixedTime,
+		LocalUpdatedAt:   fixedTime,
+	}
+
+	mutation := adminapp.Mutation{SessionID: "s", Key: "k", Reason: "tentando publicar notícia"}
+
+	_, err := svc.PublishPost(context.Background(), mutation, post1ID)
+	if !errors.Is(err, domain.ErrMissingRights) {
+		t.Fatalf("expected ErrMissingRights when PublicationEnabled is false, got %v", err)
+	}
+
+	// Source 2: Rights Approved and PublicationEnabled, but review expired
+	expiredTime := fixedTime.Add(-24 * time.Hour)
+	expiredSrcID := "00000000-0000-0000-0000-000000000002"
+	store.sources[expiredSrcID] = &domain.Source{
+		ID:                 expiredSrcID,
+		RightsStatus:       domain.RightsApproved,
+		PublicationEnabled: true,
+		ReviewExpiresAt:    &expiredTime,
+	}
+
+	post2ID := "22222222-2222-2222-2222-222222222222"
+	store.posts[post2ID] = &domain.Post{
+		ID:               post2ID,
+		Kind:             domain.KindNews,
+		Category:         domain.CategoryFuels,
+		Title:            "Notícia de Fonte Expirada",
+		PublicationState: domain.StateDraft,
+		Visibility:       domain.VisibilityVisible,
+		Revision:         1,
+		SourceID:         expiredSrcID,
+		LocalCreatedAt:   fixedTime,
+		LocalUpdatedAt:   fixedTime,
+	}
+
+	_, err = svc.PublishPost(context.Background(), mutation, post2ID)
+	if !errors.Is(err, domain.ErrMissingRights) {
+		t.Fatalf("expected ErrMissingRights when ReviewExpiresAt has passed, got %v", err)
 	}
 }

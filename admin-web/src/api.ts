@@ -370,6 +370,27 @@ export class AdminApi {
     );
   }
 
+  async rejectForumPost(id: string, expectedRevision: number, reason: string): Promise<ForumPostDetail> {
+    return this.request<ForumPostDetail>(
+      'POST',
+      `/v1/admin/forum/posts/${encodeURIComponent(id)}/reject`,
+      {
+        body: {
+          expected_revision: expectedRevision,
+          reason,
+        },
+      },
+    );
+  }
+
+  async listForumSources(): Promise<ForumSource[]> {
+    const body = await this.request<{ items: ForumSource[] }>(
+      'GET',
+      '/v1/admin/forum/sources',
+    );
+    return body.items;
+  }
+
   async setForumPostVisibility(id: string, hidden: boolean, expectedRevision: number, reason: string): Promise<ForumPostDetail> {
     const action = hidden ? 'hide' : 'unhide';
     return this.request<ForumPostDetail>(
@@ -561,6 +582,30 @@ export interface ForumPostSummary {
 export interface ForumPostDetail extends ForumPostSummary {
   body_text: string;
   source_name: string;
+}
+
+export interface ForumSource {
+  id: string;
+  code: string;
+  name: string;
+  kind: string;
+  origin_url: string;
+  fetch_url?: string;
+  fetch_format?: string;
+  collection_enabled: boolean;
+  publication_enabled: boolean;
+  rights_status: string;
+  title_allowed: boolean;
+  excerpt_allowed: boolean;
+  image_allowed: boolean;
+  terms_url: string;
+  terms_sha256?: string;
+  attribution: string;
+  checkpoint_etag?: string;
+  checkpoint_last_modified?: string;
+  checkpoint_last_status?: string;
+  checkpoint_failures: number;
+  checkpoint_last_success_at?: string;
 }
 
 export interface ForumPostPage {

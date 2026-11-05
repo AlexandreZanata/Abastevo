@@ -1,7 +1,7 @@
 # Forum Phase 2 — Authorized news candidates
 
-Status: IN_PROGRESS
-Validation: PASS (source register, rights review and parse contract frozen)
+Status: LOCAL_DONE
+Validation: PASS (full test suite, rights enforcement, news review, deduplication, reject workflow, rollback)
 Delivery: INTEGRATION_PENDING
 
 ## Authorized scope and baseline reconciliation
@@ -17,8 +17,8 @@ Phase 2 addresses candidate news ingestion, parser safety, and rights governance
 ### Reconciled repository baseline
 
 - Current GitHub `main`: `3fc77acc6d3dc85819cbc9d00cadaec056448d0a` (PR #191 merged).
-- Current GitHub `dev`: `b0a46c6c` (PR #192, Phase 1 completed).
-- Isolated delivery worktree: `.worktrees/abastevo-forum-plan` on HEAD `b0a46c6c`.
+- Current GitHub `dev`: `cc394a82` (PR #192, Phase 1 + Phase 2 in progress).
+- Isolated delivery worktree: `.worktrees/abastevo-forum-plan` on HEAD `cc394a82`.
 - Preserved worktrees: primary checkout (`/home/iiii/PESSOAL-PROJETOS-ALEXANDRE/brazil-fuel-prices`) with detached HEAD `e22824db` and uncommitted edits; other existing worktrees remain untouched per ADR-020.
 
 ## Source register and rights determinations (FOR-10)
@@ -49,20 +49,20 @@ Representative synthetic test fixtures created in `backend/testdata/forum-source
 
 | Task | Scope | Status | Tested revision | Evidence / Notes |
 |---|---|---|---|---|
-| **FOR-10** | Approve one real source or record block | LOCAL_DONE | Current commit | Source register frozen in `source_register.json`; rights evaluated for 8 candidates; operational status `NEWS_SOURCE_BLOCKED` recorded with editorial fallback; parse contract vectors frozen for RSS/Atom; validation suite in `source_register_test.go` PASSED. |
-| **FOR-11** | Safe feed parser and fetch adapter | LOCAL_DONE | Current commit | Bounded RSS 2.0 and Atom 1.0 parser with strict XXE refusal, max depth 32, max body 2 MiB, max 100 items, title/excerpt HTML sanitization; safe fetcher with origin allowlist, HTTPS-only, IPPolicy refusing private/loopback/cloud-metadata addresses, DNS rebinding TOCTOU prevention (pinned IP dialer), bounded body reader, redirect limiter, conditional GET (304). Complete unit and security suite PASSED. |
-| **FOR-12** | Scheduled collection and deduplication | LOCAL_DONE | Current commit | Append-only migration 000158 (forum_source_runs, forum_source_checkpoints); ForumSourceFetchHandler and SourceFetchRunner; deterministic category classifier; conditional GET (304); transactional deduplication by GUID and canonical URL hash; blocked/revoked rights refusal without egress; coexistence test with privacy safety job. Full unit and PostgreSQL integration test suite PASSED. |
-| **FOR-13** | Editorial review and news checkpoint | NEXT | - | Admin candidate queue, rights view, verification that blocked sources remain off. |
+| **FOR-10** | Approve one real source or record block | LOCAL_DONE | `80b0fd71` | Source register frozen in `source_register.json`; rights evaluated for 8 candidates; operational status `NEWS_SOURCE_BLOCKED` recorded with editorial fallback; parse contract vectors frozen for RSS/Atom; validation suite in `source_register_test.go` PASSED. |
+| **FOR-11** | Safe feed parser and fetch adapter | LOCAL_DONE | `253b15ec` | Bounded RSS 2.0 and Atom 1.0 parser with strict XXE refusal, max depth 32, max body 2 MiB, max 100 items, title/excerpt HTML sanitization; safe fetcher with origin allowlist, HTTPS-only, IPPolicy refusing private/loopback/cloud-metadata addresses, DNS rebinding TOCTOU prevention (pinned IP dialer), bounded body reader, redirect limiter, conditional GET (304). Complete unit and security suite PASSED. |
+| **FOR-12** | Scheduled collection and deduplication | LOCAL_DONE | `cc394a82` | Append-only migration 000158 (forum_source_runs, forum_source_checkpoints); ForumSourceFetchHandler and SourceFetchRunner; deterministic category classifier; conditional GET (304); transactional deduplication by GUID and canonical URL hash; blocked/revoked rights refusal without egress; coexistence test with privacy safety job. Full unit and PostgreSQL integration test suite PASSED. |
+| **FOR-13** | Editorial review and news checkpoint | LOCAL_DONE | Current commit | Admin candidate review queue, rights view with checkpoint metrics, and candidate rejection workflow; `AdminService.ListSources` and `AdminService.RejectPost` with audit event `admin.forum.post.reject` and change tracking; HTTP endpoints `GET /v1/admin/forum/sources` and `POST /v1/admin/forum/posts/{id}/reject`; strict rights validation in `PublishPost` (checks `RightsApproved`, `PublicationEnabled`, and `ReviewExpiresAt`); deduplication confirmed so rejected candidates never reappear on subsequent ingestion runs; `admin-web` extended with rejection action, rejected status filter, and source metrics list; acceptance suite `TestFOR13_NewsCheckpoint_FullIntegration` PASSED against real PostgreSQL. Phase 2 completed. |
 
 ## Verification and quality gates
 
 - `git diff --check`: PASSED.
 - Secret surface review: PASSED (`scripts/scan-secrets.sh` clean).
 - OpenAPI lint (`vacuum lint`): PASSED (0 errors).
-- Go unit and integration test suite with `-race` and `-tags=integration`: PASSED (`./internal/modules/forum/...` including `TestForumJobs_*`, `TestForumSourceFetch_*`, and `TestClassifyCategory_*`).
+- Go unit and integration test suite with `-race` and `-tags=integration`: PASSED (`./internal/modules/forum/...` including `TestFOR13_NewsCheckpoint_FullIntegration`, `TestForumAdmin_*`, `TestForumJobs_*`, `TestForumSourceFetch_*`, and `TestClassifyCategory_*`).
 - Android JVM test suite: PASSED (`:domain:test`, `:application:test`, `:data:testDebugUnitTest`, `:app:testDebugUnitTest`).
-- Frontend test suite: PASSED (`npm test` in `admin-web/`: 53 tests passing).
+- Frontend test suite: PASSED (`npm test` in `admin-web/`: 53 tests passing; `npm run build && npm run check` valid dist).
 - Static analysis: `go vet` and `sqlc vet` PASSED (0 errors).
 - Code formatting: `gofmt` verified.
 - Repository worktree isolation: PASSED (persistent worktree on maintained dev; occupied checkouts untouched).
-- Next action: FOR-13 (Editorial review and news checkpoint).
+- Next action: Phase 3 — Safe discussion on published posts (FOR-14 Comment/reply domain and persistence).

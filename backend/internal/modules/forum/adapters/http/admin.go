@@ -33,13 +33,27 @@ func NewAdminHandler(service *application.AdminService, admin *adminhttp.Handler
 
 // RegisterRoutes registers editorial routes onto an administrative chi router.
 func (h AdminHandler) RegisterRoutes(r chi.Router) {
+	r.Get("/v1/admin/forum/sources", h.listSources)
 	r.Get("/v1/admin/forum/posts", h.listPosts)
 	r.Get("/v1/admin/forum/posts/{id}", h.getPost)
 	r.Post("/v1/admin/forum/posts", h.createDraft)
 	r.Post("/v1/admin/forum/posts/{id}/edit", h.editPost)
 	r.Post("/v1/admin/forum/posts/{id}/publish", h.publishPost)
+	r.Post("/v1/admin/forum/posts/{id}/reject", h.rejectPost)
 	r.Post("/v1/admin/forum/posts/{id}/hide", h.hidePost)
 	r.Post("/v1/admin/forum/posts/{id}/unhide", h.unhidePost)
+}
+
+func (h AdminHandler) listSources(w http.ResponseWriter, r *http.Request) {
+	sources, err := h.Service.ListSources(r.Context())
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items": sources,
+	})
 }
 
 func (h AdminHandler) listPosts(w http.ResponseWriter, r *http.Request) {
@@ -232,7 +246,8 @@ func (h AdminHandler) editPost(w http.ResponseWriter, r *http.Request) {
 }
 
 type reasonDTO struct {
-	Reason string `json:"reason"`
+	ExpectedRevision int    `json:"expected_revision,omitempty"`
+	Reason           string `json:"reason"`
 }
 
 func (h AdminHandler) publishPost(w http.ResponseWriter, r *http.Request) {
@@ -257,6 +272,46 @@ func (h AdminHandler) publishPost(w http.ResponseWriter, r *http.Request) {
 	m.Reason = reason
 
 	post, err := h.Service.PublishPost(r.Context(), m, id)
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+
+	body, err := json.Marshal(post)
+	if err != nil {
+		writeError(w, r, http.StatusServiceUnavailable, "forum.unavailable")
+		return
+	}
+	h.Admin.FinishMutation(w, r, adminapp.MutationResult{Status: http.StatusOK, Body: body}, nil, false)
+}
+
+type rejectPostDTO struct {
+	ExpectedRevision int    `json:"expected_revision"`
+	Reason           string `json:"reason"`
+}
+
+func (h AdminHandler) rejectPost(w http.ResponseWriter, r *http.Request) {
+	session, ok := adminhttp.SessionFromContext(r.Context())
+	if !ok {
+		writeError(w, r, http.StatusUnauthorized, "admin.denied")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	var dto rejectPostDTO
+	m, ok := h.Admin.PrepareMutation(w, r, session, "admin.forum.post.reject", "forum_post", id, &dto)
+	if !ok {
+		return
+	}
+
+	reason := strings.TrimSpace(dto.Reason)
+	if !admindomain.ValidReason(reason) {
+		writeError(w, r, http.StatusBadRequest, "admin.invalid")
+		return
+	}
+	m.Reason = reason
+
+	post, err := h.Service.RejectPost(r.Context(), m, id, dto.ExpectedRevision)
 	if err != nil {
 		writeServiceError(w, r, err)
 		return

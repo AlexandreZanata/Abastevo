@@ -797,6 +797,101 @@ func (q *Queries) InsertSourceRun(ctx context.Context, arg InsertSourceRunParams
 	return err
 }
 
+const listAllSources = `-- name: ListAllSources :many
+SELECT s.id, s.code, s.name, s.kind, s.origin_url, s.fetch_url, s.fetch_format,
+       s.collection_enabled, s.publication_enabled, s.rights_status,
+       s.title_allowed, s.excerpt_allowed, s.image_allowed,
+       s.terms_url, s.terms_sha256, s.checked_at, s.review_expires_at,
+       s.policy_version, s.attribution, s.admin_audit_ref,
+       s.created_at, s.updated_at,
+       c.etag AS checkpoint_etag,
+       c.last_modified AS checkpoint_last_modified,
+       c.last_status AS checkpoint_last_status,
+       c.consecutive_failures AS checkpoint_failures,
+       c.last_success_at AS checkpoint_last_success_at
+FROM forum_sources s
+LEFT JOIN forum_source_checkpoints c ON c.source_id = s.id
+ORDER BY s.name ASC
+`
+
+type ListAllSourcesRow struct {
+	ID                      pgtype.UUID        `json:"id"`
+	Code                    string             `json:"code"`
+	Name                    string             `json:"name"`
+	Kind                    string             `json:"kind"`
+	OriginUrl               string             `json:"origin_url"`
+	FetchUrl                pgtype.Text        `json:"fetch_url"`
+	FetchFormat             pgtype.Text        `json:"fetch_format"`
+	CollectionEnabled       bool               `json:"collection_enabled"`
+	PublicationEnabled      bool               `json:"publication_enabled"`
+	RightsStatus            string             `json:"rights_status"`
+	TitleAllowed            bool               `json:"title_allowed"`
+	ExcerptAllowed          bool               `json:"excerpt_allowed"`
+	ImageAllowed            bool               `json:"image_allowed"`
+	TermsUrl                string             `json:"terms_url"`
+	TermsSha256             string             `json:"terms_sha256"`
+	CheckedAt               pgtype.Timestamptz `json:"checked_at"`
+	ReviewExpiresAt         pgtype.Timestamptz `json:"review_expires_at"`
+	PolicyVersion           int32              `json:"policy_version"`
+	Attribution             string             `json:"attribution"`
+	AdminAuditRef           string             `json:"admin_audit_ref"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
+	CheckpointEtag          pgtype.Text        `json:"checkpoint_etag"`
+	CheckpointLastModified  pgtype.Text        `json:"checkpoint_last_modified"`
+	CheckpointLastStatus    pgtype.Text        `json:"checkpoint_last_status"`
+	CheckpointFailures      pgtype.Int4        `json:"checkpoint_failures"`
+	CheckpointLastSuccessAt pgtype.Timestamptz `json:"checkpoint_last_success_at"`
+}
+
+func (q *Queries) ListAllSources(ctx context.Context) ([]ListAllSourcesRow, error) {
+	rows, err := q.db.Query(ctx, listAllSources)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllSourcesRow
+	for rows.Next() {
+		var i ListAllSourcesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Name,
+			&i.Kind,
+			&i.OriginUrl,
+			&i.FetchUrl,
+			&i.FetchFormat,
+			&i.CollectionEnabled,
+			&i.PublicationEnabled,
+			&i.RightsStatus,
+			&i.TitleAllowed,
+			&i.ExcerptAllowed,
+			&i.ImageAllowed,
+			&i.TermsUrl,
+			&i.TermsSha256,
+			&i.CheckedAt,
+			&i.ReviewExpiresAt,
+			&i.PolicyVersion,
+			&i.Attribution,
+			&i.AdminAuditRef,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CheckpointEtag,
+			&i.CheckpointLastModified,
+			&i.CheckpointLastStatus,
+			&i.CheckpointFailures,
+			&i.CheckpointLastSuccessAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEnabledSources = `-- name: ListEnabledSources :many
 SELECT id, code, name, kind, origin_url, fetch_url, fetch_format, collection_enabled, publication_enabled, rights_status, title_allowed, excerpt_allowed, image_allowed, terms_url, terms_sha256, checked_at, review_expires_at, policy_version, attribution, admin_audit_ref, created_at, updated_at FROM forum_sources
 WHERE collection_enabled = true
@@ -1028,6 +1123,28 @@ func (q *Queries) RecordForumChange(ctx context.Context, arg RecordForumChangePa
 		arg.CreatedAt,
 	)
 	return err
+}
+
+const rejectPost = `-- name: RejectPost :execrows
+UPDATE forum_posts
+SET publication_state = 'REJECTED',
+    local_updated_at = $1,
+    revision = revision + 1
+WHERE id = $2 AND revision = $3 AND publication_state <> 'REJECTED'
+`
+
+type RejectPostParams struct {
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	ID               pgtype.UUID        `json:"id"`
+	ExpectedRevision int32              `json:"expected_revision"`
+}
+
+func (q *Queries) RejectPost(ctx context.Context, arg RejectPostParams) (int64, error) {
+	result, err := q.db.Exec(ctx, rejectPost, arg.UpdatedAt, arg.ID, arg.ExpectedRevision)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setPostVisibility = `-- name: SetPostVisibility :execrows

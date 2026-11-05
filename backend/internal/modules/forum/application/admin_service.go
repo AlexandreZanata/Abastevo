@@ -22,16 +22,45 @@ type AdminListFilter struct {
 	Limit            int
 }
 
+// SourceWithMetrics embeds a Source along with its most recent checkpoint metrics.
+type SourceWithMetrics struct {
+	ID                      string              `json:"id"`
+	Code                    string              `json:"code"`
+	Name                    string              `json:"name"`
+	Kind                    domain.SourceKind   `json:"kind"`
+	OriginURL               string              `json:"origin_url"`
+	FetchURL                string              `json:"fetch_url,omitempty"`
+	FetchFormat             string              `json:"fetch_format,omitempty"`
+	CollectionEnabled       bool                `json:"collection_enabled"`
+	PublicationEnabled      bool                `json:"publication_enabled"`
+	RightsStatus            domain.RightsStatus `json:"rights_status"`
+	TitleAllowed            bool                `json:"title_allowed"`
+	ExcerptAllowed          bool                `json:"excerpt_allowed"`
+	ImageAllowed            bool                `json:"image_allowed"`
+	TermsURL                string              `json:"terms_url"`
+	TermsSHA256             string              `json:"terms_sha256"`
+	CheckedAt               *time.Time          `json:"checked_at,omitempty"`
+	ReviewExpiresAt         *time.Time          `json:"review_expires_at,omitempty"`
+	Attribution             string              `json:"attribution"`
+	CheckpointETag          *string             `json:"checkpoint_etag,omitempty"`
+	CheckpointLastModified  *string             `json:"checkpoint_last_modified,omitempty"`
+	CheckpointLastStatus    *string             `json:"checkpoint_last_status,omitempty"`
+	CheckpointFailures      int                 `json:"checkpoint_failures"`
+	CheckpointLastSuccessAt *time.Time          `json:"checkpoint_last_success_at,omitempty"`
+}
+
 // AdminStore defines the storage methods required by AdminService.
 type AdminStore interface {
 	AdminListPosts(ctx context.Context, filter AdminListFilter) ([]domain.Post, *string, error)
 	GetPostByID(ctx context.Context, id string) (*domain.Post, error)
 	GetSourceByID(ctx context.Context, id string) (*domain.Source, error)
+	ListAllSourcesWithMetrics(ctx context.Context) ([]SourceWithMetrics, error)
 	CreateDraftTx(ctx context.Context, tx pgx.Tx, post *domain.Post) error
 	GetPostTx(ctx context.Context, tx pgx.Tx, id string) (*domain.Post, error)
 	GetPostForUpdateTx(ctx context.Context, tx pgx.Tx, id string) (*domain.Post, error)
 	UpdateEditorialTx(ctx context.Context, tx pgx.Tx, post *domain.Post, expectedRevision int) error
 	PublishEditorialTx(ctx context.Context, tx pgx.Tx, id string, publishedAt time.Time, seq int64) error
+	RejectPostTx(ctx context.Context, tx pgx.Tx, id string, expectedRevision int, now time.Time) error
 	SetPostVisibilityTx(ctx context.Context, tx pgx.Tx, id string, visibility domain.Visibility, updatedAt time.Time) error
 	BumpFeedRevisionTx(ctx context.Context, tx pgx.Tx, now time.Time) (int64, error)
 	RecordForumChangeTx(ctx context.Context, tx pgx.Tx, rec domain.ChangeRecord) error
@@ -380,7 +409,7 @@ func (s *AdminService) PublishPost(ctx context.Context, m adminapp.Mutation, id 
 			if err != nil {
 				return adminapp.MutationResult{}, nil, domain.ErrMissingSource
 			}
-			if src.RightsStatus != domain.RightsApproved {
+			if src.RightsStatus != domain.RightsApproved || !src.PublicationEnabled || (src.ReviewExpiresAt != nil && src.ReviewExpiresAt.Before(now)) {
 				return adminapp.MutationResult{}, nil, domain.ErrMissingRights
 			}
 		}
@@ -567,6 +596,104 @@ func (s *AdminService) ListPosts(ctx context.Context, in AdminListInput) ([]doma
 	}
 
 	return s.Store.AdminListPosts(ctx, filter)
+}
+
+// ListSources returns all candidate and approved sources with their latest checkpoint metrics.
+func (s *AdminService) ListSources(ctx context.Context) ([]SourceWithMetrics, error) {
+	if s == nil || s.Store == nil {
+		return nil, domain.ErrForumDisabled
+	}
+	if !s.Config.AdminAllowed() {
+		return nil, domain.ErrForumDisabled
+	}
+	return s.Store.ListAllSourcesWithMetrics(ctx)
+}
+
+// RejectPost transitions a candidate or draft publication to REJECTED state.
+func (s *AdminService) RejectPost(ctx context.Context, m adminapp.Mutation, id string, expectedRevision int) (*domain.Post, error) {
+	if s == nil || s.Store == nil || s.Runner == nil {
+		return nil, domain.ErrForumDisabled
+	}
+	if !s.Config.AdminAllowed() {
+		return nil, domain.ErrForumDisabled
+	}
+
+	now := s.now()
+
+	res, err := s.Runner.Mutate(ctx, m, func(ctx context.Context, tx pgx.Tx) (adminapp.MutationResult, []adminapp.AuditEvent, error) {
+		current, err := s.Store.GetPostForUpdateTx(ctx, tx, id)
+		if err != nil {
+			return adminapp.MutationResult{}, nil, err
+		}
+
+		if expectedRevision > 0 && current.Revision != expectedRevision {
+			return adminapp.MutationResult{}, nil, domain.ErrRevisionMismatch
+		}
+
+		if !domain.CanTransition(current.PublicationState, domain.StateRejected) {
+			return adminapp.MutationResult{}, nil, domain.ErrInvalidTransition
+		}
+
+		if err := s.Store.RejectPostTx(ctx, tx, id, current.Revision, now); err != nil {
+			return adminapp.MutationResult{}, nil, err
+		}
+
+		beforeAudit := current.AuditView()
+
+		current.PublicationState = domain.StateRejected
+		current.Revision = current.Revision + 1
+		current.LocalUpdatedAt = now
+
+		priorStateStr := string(beforeAudit.PublicationState)
+		changeRec := domain.ChangeRecord{
+			TargetType:     "POST",
+			TargetID:       current.ID,
+			Revision:       current.Revision,
+			Action:         "REJECT",
+			ActorKind:      "ADMIN",
+			ActorAccountID: nil,
+			AdminAuditRef:  &m.Key,
+			PolicyVersion:  1,
+			ReasonCode:     "editorial_reject",
+			PriorState:     &priorStateStr,
+			NewState:       string(domain.StateRejected),
+			CreatedAt:      now,
+		}
+
+		if err := s.Store.RecordForumChangeTx(ctx, tx, changeRec); err != nil {
+			return adminapp.MutationResult{}, nil, err
+		}
+
+		beforeJSON, _ := json.Marshal(beforeAudit)
+		afterJSON, _ := json.Marshal(current.AuditView())
+
+		events := []adminapp.AuditEvent{
+			{
+				Action:     "admin.forum.post.reject",
+				TargetType: "forum_post",
+				TargetID:   current.ID,
+				Reason:     m.Reason,
+				Before:     beforeJSON,
+				After:      afterJSON,
+			},
+		}
+
+		body, err := json.Marshal(current)
+		if err != nil {
+			return adminapp.MutationResult{}, nil, err
+		}
+
+		return adminapp.MutationResult{Status: 200, Body: body}, events, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var rejected domain.Post
+	if err := json.Unmarshal(res.Body, &rejected); err != nil {
+		return nil, err
+	}
+	return &rejected, nil
 }
 
 // Helper to check valid UUID

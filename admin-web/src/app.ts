@@ -177,6 +177,7 @@ function route(): void {
       showAuthed('view-forum');
       forumCursor = '';
       void loadForumPosts(false);
+      void loadForumSources();
     } else if (path === AUDIT_PATH) {
       showAuthed('view-audit');
       auditCursor = '';
@@ -1066,6 +1067,23 @@ function renderSelectedForumPost(detail: ForumPostDetail): void {
   }
   publishReason.value = '';
 
+  const rejectBtn = el<HTMLButtonElement>('forum-reject-btn');
+  const rejectReason = el<HTMLInputElement>('forum-reject-reason');
+  if (detail.publication_state === 'REJECTED') {
+    rejectBtn.disabled = true;
+    rejectBtn.textContent = 'Já rejeitado';
+    rejectReason.disabled = true;
+  } else if (detail.publication_state === 'PUBLISHED') {
+    rejectBtn.disabled = true;
+    rejectBtn.textContent = 'Rejeitar';
+    rejectReason.disabled = true;
+  } else {
+    rejectBtn.disabled = false;
+    rejectBtn.textContent = 'Rejeitar';
+    rejectReason.disabled = false;
+  }
+  rejectReason.value = '';
+
   const visBtn = el<HTMLButtonElement>('forum-visibility-btn');
   const visReason = el<HTMLInputElement>('forum-visibility-reason');
   visReason.value = '';
@@ -1229,6 +1247,38 @@ function wireForum(): void {
     })();
   });
 
+  el<HTMLFormElement>('forum-reject-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (selectedForumPost === null) return;
+    if (selectedForumPost.publication_state === 'REJECTED' || selectedForumPost.publication_state === 'PUBLISHED') return;
+    setAlert('forum-detail-error', '');
+    const reason = el<HTMLInputElement>('forum-reject-reason').value;
+    const rErr = reasonError(reason);
+    if (rErr !== null) {
+      setAlert('forum-detail-error', rErr);
+      return;
+    }
+    if (!window.confirm(`Rejeitar "${selectedForumPost.title}"?`)) {
+      return;
+    }
+    void (async () => {
+      try {
+        const updated = await api.rejectForumPost(
+          selectedForumPost.id,
+          selectedForumPost.revision,
+          reason.trim(),
+        );
+        selectedForumPost = updated;
+        renderSelectedForumPost(updated);
+        await loadForumPosts(false);
+      } catch (error) {
+        if (!isUnauthorized(error)) {
+          setAlert('forum-detail-error', errorMessage(error));
+        }
+      }
+    })();
+  });
+
   el<HTMLFormElement>('forum-visibility-form').addEventListener('submit', (event) => {
     event.preventDefault();
     if (selectedForumPost === null) return;
@@ -1262,4 +1312,39 @@ function wireForum(): void {
       }
     })();
   });
+}
+
+async function loadForumSources(): Promise<void> {
+  setAlert('forum-sources-error', '');
+  try {
+    const sources = await api.listForumSources();
+    const list = el<HTMLUListElement>('forum-sources-list');
+    clearChildren(list);
+    for (const src of sources) {
+      const row = document.createElement('li');
+      row.className = 'admin-list-item';
+
+      const main = document.createElement('div');
+      main.className = 'item-main';
+
+      const title = document.createElement('strong');
+      title.textContent = `${src.name} (${src.code})`;
+
+      const meta = document.createElement('span');
+      meta.className = 'item-meta';
+      const statusBadge = src.rights_status === 'APPROVED' ? 'Direitos: Aprovados' : 'Direitos: Negados / Pendentes';
+      const pubBadge = src.publication_enabled ? 'Publicação: Ativa' : 'Publicação: Bloqueada';
+      const checkMetrics = src.checkpoint_last_status ? `Status: ${src.checkpoint_last_status} (${src.checkpoint_failures} falhas)` : 'Sem coletas';
+      meta.textContent = `${statusBadge} • ${pubBadge} • ${checkMetrics}`;
+
+      main.appendChild(title);
+      main.appendChild(meta);
+      row.appendChild(main);
+      list.appendChild(row);
+    }
+  } catch (error) {
+    if (!isUnauthorized(error)) {
+      setAlert('forum-sources-error', errorMessage(error));
+    }
+  }
 }

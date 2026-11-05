@@ -30,16 +30,17 @@ type for09UnifiedStore struct {
 func newFOR09UnifiedStore() *for09UnifiedStore {
 	adminStore := newMockAdminStore()
 	officialSource := &domain.Source{
-		ID:             "00000000-0000-0000-0000-000000000001",
-		Code:           "abastevo",
-		Name:           "Abastevo",
-		Kind:           domain.SourceKindAbastevo,
-		OriginURL:      "https://abastevo.com.br",
-		RightsStatus:   domain.RightsApproved,
-		TitleAllowed:   true,
-		ExcerptAllowed: true,
-		ImageAllowed:   false,
-		Attribution:    "Redação Abastevo",
+		ID:                 "00000000-0000-0000-0000-000000000001",
+		Code:               "abastevo",
+		Name:               "Abastevo",
+		Kind:               domain.SourceKindAbastevo,
+		OriginURL:          "https://abastevo.com.br",
+		PublicationEnabled: true,
+		RightsStatus:       domain.RightsApproved,
+		TitleAllowed:       true,
+		ExcerptAllowed:     true,
+		ImageAllowed:       false,
+		Attribution:        "Redação Abastevo",
 	}
 	adminStore.sources[officialSource.ID] = officialSource
 

@@ -273,3 +273,26 @@ SELECT EXISTS (
     SELECT 1 FROM forum_posts
     WHERE source_id = @source_id AND canonical_url_hash = @canonical_url_hash
 ) AS exists;
+
+-- name: ListAllSources :many
+SELECT s.id, s.code, s.name, s.kind, s.origin_url, s.fetch_url, s.fetch_format,
+       s.collection_enabled, s.publication_enabled, s.rights_status,
+       s.title_allowed, s.excerpt_allowed, s.image_allowed,
+       s.terms_url, s.terms_sha256, s.checked_at, s.review_expires_at,
+       s.policy_version, s.attribution, s.admin_audit_ref,
+       s.created_at, s.updated_at,
+       c.etag AS checkpoint_etag,
+       c.last_modified AS checkpoint_last_modified,
+       c.last_status AS checkpoint_last_status,
+       c.consecutive_failures AS checkpoint_failures,
+       c.last_success_at AS checkpoint_last_success_at
+FROM forum_sources s
+LEFT JOIN forum_source_checkpoints c ON c.source_id = s.id
+ORDER BY s.name ASC;
+
+-- name: RejectPost :execrows
+UPDATE forum_posts
+SET publication_state = 'REJECTED',
+    local_updated_at = @updated_at,
+    revision = revision + 1
+WHERE id = @id AND revision = @expected_revision AND publication_state <> 'REJECTED';

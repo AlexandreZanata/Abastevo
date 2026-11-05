@@ -879,6 +879,26 @@ func (s *Store) SetPostVisibilityTx(ctx context.Context, tx pgx.Tx, id string, v
 	return nil
 }
 
+// RejectPostTx transitions a post to REJECTED inside an ongoing transaction.
+func (s *Store) RejectPostTx(ctx context.Context, tx pgx.Tx, id string, expectedRevision int, now time.Time) error {
+	postUUID, err := mustUUID(id)
+	if err != nil {
+		return domain.ErrPostNotFound
+	}
+	rows, err := s.queries.WithTx(tx).RejectPost(ctx, forumsql.RejectPostParams{
+		ID:               postUUID,
+		ExpectedRevision: int32(expectedRevision),
+		UpdatedAt:        pgtype.Timestamptz{Time: now.UTC(), Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("forum: reject post tx: %w", err)
+	}
+	if rows == 0 {
+		return domain.ErrRevisionMismatch
+	}
+	return nil
+}
+
 // BumpFeedRevisionTx increments the feed state revision inside an active transaction.
 func (s *Store) BumpFeedRevisionTx(ctx context.Context, tx pgx.Tx, now time.Time) (int64, error) {
 	row, err := s.queries.WithTx(tx).BumpFeedRevision(ctx, pgtype.Timestamptz{Time: now, Valid: true})
@@ -954,6 +974,78 @@ func (s *Store) GetSourceByID(ctx context.Context, id string) (*domain.Source, e
 		return nil, fmt.Errorf("forum: get source by id: %w", err)
 	}
 	return mapSourceRowToDomain(row), nil
+}
+
+// ListAllSourcesWithMetrics returns all registered publication sources with their latest run/checkpoint metrics.
+func (s *Store) ListAllSourcesWithMetrics(ctx context.Context) ([]application.SourceWithMetrics, error) {
+	rows, err := s.queries.ListAllSources(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("forum: list all sources: %w", err)
+	}
+
+	result := make([]application.SourceWithMetrics, len(rows))
+	for i, r := range rows {
+		var checkedAt *time.Time
+		if r.CheckedAt.Valid {
+			t := r.CheckedAt.Time.UTC()
+			checkedAt = &t
+		}
+		var reviewExpiresAt *time.Time
+		if r.ReviewExpiresAt.Valid {
+			t := r.ReviewExpiresAt.Time.UTC()
+			reviewExpiresAt = &t
+		}
+		var fetchURL string
+		if r.FetchUrl.Valid {
+			fetchURL = r.FetchUrl.String
+		}
+		var fetchFormat string
+		if r.FetchFormat.Valid {
+			fetchFormat = r.FetchFormat.String
+		}
+
+		result[i] = application.SourceWithMetrics{
+			ID:                 uuidString(r.ID),
+			Code:               r.Code,
+			Name:               r.Name,
+			Kind:               domain.SourceKind(r.Kind),
+			OriginURL:          r.OriginUrl,
+			FetchURL:           fetchURL,
+			FetchFormat:        fetchFormat,
+			CollectionEnabled:  r.CollectionEnabled,
+			PublicationEnabled: r.PublicationEnabled,
+			RightsStatus:       domain.RightsStatus(r.RightsStatus),
+			TitleAllowed:       r.TitleAllowed,
+			ExcerptAllowed:     r.ExcerptAllowed,
+			ImageAllowed:       r.ImageAllowed,
+			TermsURL:           r.TermsUrl,
+			TermsSHA256:        r.TermsSha256,
+			CheckedAt:          checkedAt,
+			ReviewExpiresAt:    reviewExpiresAt,
+			Attribution:        r.Attribution,
+		}
+
+		if r.CheckpointEtag.Valid {
+			etag := r.CheckpointEtag.String
+			result[i].CheckpointETag = &etag
+		}
+		if r.CheckpointLastModified.Valid {
+			lm := r.CheckpointLastModified.String
+			result[i].CheckpointLastModified = &lm
+		}
+		if r.CheckpointLastStatus.Valid {
+			st := r.CheckpointLastStatus.String
+			result[i].CheckpointLastStatus = &st
+		}
+		if r.CheckpointFailures.Valid {
+			result[i].CheckpointFailures = int(r.CheckpointFailures.Int32)
+		}
+		if r.CheckpointLastSuccessAt.Valid {
+			t := r.CheckpointLastSuccessAt.Time.UTC()
+			result[i].CheckpointLastSuccessAt = &t
+		}
+	}
+	return result, nil
 }
 
 // AdminListPosts returns a paginated list of posts for administration.

@@ -80,7 +80,47 @@ test('forum api client: list, detail, create, edit, publish, visibility', async 
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    if (input.startsWith('/v1/admin/forum/sources')) {
+      return new Response(JSON.stringify({
+        items: [
+          {
+            id: '00000000-0000-0000-0000-000000000001',
+            code: 'abastevo',
+            name: 'Abastevo',
+            kind: 'ABASTEVO',
+            origin_url: 'https://abastevo.com.br',
+            collection_enabled: true,
+            publication_enabled: true,
+            rights_status: 'APPROVED',
+            title_allowed: true,
+            excerpt_allowed: true,
+            image_allowed: false,
+            terms_url: 'https://abastevo.com.br/terms',
+            attribution: 'Redação Abastevo',
+            checkpoint_failures: 0,
+          },
+        ],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     if (input.startsWith('/v1/admin/forum/posts')) {
+      if (input.endsWith('/reject')) {
+        return new Response(JSON.stringify({
+          id: '00000000-0000-0000-0000-000000000002',
+          kind: 'EDITORIAL',
+          category: 'FUELS',
+          title: 'Título de teste',
+          excerpt: 'Resumo de teste',
+          body_text: 'Corpo de teste completo',
+          publication_state: 'REJECTED',
+          visibility: 'VISIBLE',
+          revision: 2,
+          source_id: '00000000-0000-0000-0000-000000000001',
+          source_name: 'Abastevo Editorial',
+          created_at: '2026-11-05T12:00:00Z',
+          updated_at: '2026-11-05T12:30:00Z',
+          published_at: null,
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
       if (init.method === 'GET' && !input.includes('00000000-0000-0000-0000-000000000002')) {
         return new Response(JSON.stringify({
           items: [
@@ -192,6 +232,24 @@ test('forum api client: list, detail, create, edit, publish, visibility', async 
   await client.setForumPostVisibility('00000000-0000-0000-0000-000000000002', false, 4, 'Reexibindo post moderado');
   const unhideCall = recordedCalls[recordedCalls.length - 1];
   assert.equal(unhideCall.url, '/v1/admin/forum/posts/00000000-0000-0000-0000-000000000002/unhide');
+
+  // 7. Reject candidate post
+  const rejected = await client.rejectForumPost('00000000-0000-0000-0000-000000000002', 2, 'Rejeitando post por direitos');
+  assert.equal(rejected.publication_state, 'REJECTED');
+  const rejectCall = recordedCalls[recordedCalls.length - 1];
+  assert.equal(rejectCall.method, 'POST');
+  assert.equal(rejectCall.url, '/v1/admin/forum/posts/00000000-0000-0000-0000-000000000002/reject');
+  const rejectPayload = JSON.parse(rejectCall.body);
+  assert.equal(rejectPayload.expected_revision, 2);
+
+  // 8. List sources
+  const sources = await client.listForumSources();
+  assert.equal(sources.length, 1);
+  assert.equal(sources[0].code, 'abastevo');
+  assert.equal(sources[0].rights_status, 'APPROVED');
+  const srcCall = recordedCalls[recordedCalls.length - 1];
+  assert.equal(srcCall.method, 'GET');
+  assert.equal(srcCall.url, '/v1/admin/forum/sources');
 });
 
 test('forum error mapping', async () => {

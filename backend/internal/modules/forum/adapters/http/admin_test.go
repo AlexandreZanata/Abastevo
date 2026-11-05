@@ -104,6 +104,47 @@ func (m *mockAdminStore) PublishEditorialTx(ctx context.Context, tx pgx.Tx, id s
 	return nil
 }
 
+func (m *mockAdminStore) ListAllSourcesWithMetrics(ctx context.Context) ([]application.SourceWithMetrics, error) {
+	result := make([]application.SourceWithMetrics, 0, len(m.sources))
+	for _, s := range m.sources {
+		result = append(result, application.SourceWithMetrics{
+			ID:                 s.ID,
+			Code:               s.Code,
+			Name:               s.Name,
+			Kind:               s.Kind,
+			OriginURL:          s.OriginURL,
+			FetchURL:           s.FetchURL,
+			FetchFormat:        s.FetchFormat,
+			CollectionEnabled:  s.CollectionEnabled,
+			PublicationEnabled: s.PublicationEnabled,
+			RightsStatus:       s.RightsStatus,
+			TitleAllowed:       s.TitleAllowed,
+			ExcerptAllowed:     s.ExcerptAllowed,
+			ImageAllowed:       s.ImageAllowed,
+			TermsURL:           s.TermsURL,
+			TermsSHA256:        s.TermsSHA256,
+			CheckedAt:          s.CheckedAt,
+			ReviewExpiresAt:    s.ReviewExpiresAt,
+			Attribution:        s.Attribution,
+		})
+	}
+	return result, nil
+}
+
+func (m *mockAdminStore) RejectPostTx(ctx context.Context, tx pgx.Tx, id string, expectedRevision int, now time.Time) error {
+	current, ok := m.posts[id]
+	if !ok {
+		return domain.ErrPostNotFound
+	}
+	if current.Revision != expectedRevision {
+		return domain.ErrRevisionMismatch
+	}
+	current.PublicationState = domain.StateRejected
+	current.LocalUpdatedAt = now
+	current.Revision = current.Revision + 1
+	return nil
+}
+
 func (m *mockAdminStore) SetPostVisibilityTx(ctx context.Context, tx pgx.Tx, id string, visibility domain.Visibility, updatedAt time.Time) error {
 	current, ok := m.posts[id]
 	if !ok {
@@ -305,10 +346,12 @@ func TestForumAdmin_Routes(t *testing.T) {
 	}
 
 	expected := map[string][]string{
+		"/v1/admin/forum/sources":            {"GET"},
 		"/v1/admin/forum/posts":              {"GET", "POST"},
 		"/v1/admin/forum/posts/{id}":         {"GET"},
 		"/v1/admin/forum/posts/{id}/edit":    {"POST"},
 		"/v1/admin/forum/posts/{id}/publish": {"POST"},
+		"/v1/admin/forum/posts/{id}/reject":  {"POST"},
 		"/v1/admin/forum/posts/{id}/hide":    {"POST"},
 		"/v1/admin/forum/posts/{id}/unhide":  {"POST"},
 	}
@@ -359,11 +402,12 @@ func TestForumAdmin_CreateDraft_Edit_Publish_Hide_Lifecycle(t *testing.T) {
 
 	sourceID := "11111111-1111-4111-8111-111111111111"
 	h.store.sources[sourceID] = &domain.Source{
-		ID:           sourceID,
-		Code:         "abastevo-editorial",
-		Name:         "Redação Abastevo",
-		Kind:         domain.SourceKindAbastevo,
-		RightsStatus: domain.RightsApproved,
+		ID:                 sourceID,
+		Code:               "abastevo-editorial",
+		Name:               "Redação Abastevo",
+		Kind:               domain.SourceKindAbastevo,
+		RightsStatus:       domain.RightsApproved,
+		PublicationEnabled: true,
 	}
 
 	// 1. Create Draft
@@ -510,6 +554,89 @@ func TestForumAdmin_CreateDraft_Edit_Publish_Hide_Lifecycle(t *testing.T) {
 	}
 	if err := json.Unmarshal(wList.Body.Bytes(), &listResp); err != nil || len(listResp.Items) != 1 {
 		t.Fatalf("unexpected list response: items=%d err=%v", len(listResp.Items), err)
+	}
+}
+
+func TestForumAdmin_SourcesAndRejectFlow(t *testing.T) {
+	h := setupTestHarness(true)
+
+	// Seed source
+	srcID := "00000000-0000-0000-0000-000000000001"
+	h.store.sources[srcID] = &domain.Source{
+		ID:                 srcID,
+		Code:               "EBC",
+		Name:               "Agência Brasil",
+		Kind:               domain.SourceKindPublisher,
+		OriginURL:          "https://agenciabrasil.ebc.com.br",
+		CollectionEnabled:  false,
+		PublicationEnabled: false,
+		RightsStatus:       domain.RightsDenied,
+		Attribution:        "Agência Brasil / EBC",
+	}
+
+	// 1. List Sources -> 200 OK
+	srcReq := h.newAuthedRequest(http.MethodGet, "/v1/admin/forum/sources", nil)
+	wSrc := httptest.NewRecorder()
+	h.router.ServeHTTP(wSrc, srcReq)
+	if wSrc.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on list sources, got %d: %s", wSrc.Code, wSrc.Body.String())
+	}
+	var srcResp struct {
+		Items []application.SourceWithMetrics `json:"items"`
+	}
+	if err := json.Unmarshal(wSrc.Body.Bytes(), &srcResp); err != nil || len(srcResp.Items) != 1 {
+		t.Fatalf("unexpected sources response: items=%d err=%v", len(srcResp.Items), err)
+	}
+	if srcResp.Items[0].Code != "EBC" {
+		t.Fatalf("expected code EBC, got %s", srcResp.Items[0].Code)
+	}
+
+	// Seed draft candidate post
+	postID := "11111111-1111-1111-1111-111111111111"
+	h.store.posts[postID] = &domain.Post{
+		ID:               postID,
+		Kind:             domain.KindNews,
+		Category:         domain.CategoryFuels,
+		Title:            "Notícia Candidata para Rejeição",
+		Excerpt:          "Resumo para rejeição",
+		PublicationState: domain.StateDraft,
+		Visibility:       domain.VisibilityVisible,
+		Revision:         1,
+		SourceID:         srcID,
+		LocalCreatedAt:   time.Now().UTC(),
+		LocalUpdatedAt:   time.Now().UTC(),
+	}
+
+	// 2. Reject Post with revision mismatch -> 409
+	badRejectReq := h.newAuthedRequest(http.MethodPost, "/v1/admin/forum/posts/"+postID+"/reject", map[string]any{
+		"expected_revision": 99,
+		"reason":            "rejeitando por motivo de teste válido",
+	})
+	wBadReject := httptest.NewRecorder()
+	h.router.ServeHTTP(wBadReject, badRejectReq)
+	if wBadReject.Code != http.StatusConflict {
+		t.Fatalf("expected 409 Conflict on revision mismatch, got %d: %s", wBadReject.Code, wBadReject.Body.String())
+	}
+
+	// 3. Reject Post with valid expected_revision -> 200 OK
+	goodRejectReq := h.newAuthedRequest(http.MethodPost, "/v1/admin/forum/posts/"+postID+"/reject", map[string]any{
+		"expected_revision": 1,
+		"reason":            "rejeitando por direitos de distribuição negados",
+	})
+	wGoodReject := httptest.NewRecorder()
+	h.router.ServeHTTP(wGoodReject, goodRejectReq)
+	if wGoodReject.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK on reject, got %d: %s", wGoodReject.Code, wGoodReject.Body.String())
+	}
+	var rejectResp domain.Post
+	if err := json.Unmarshal(wGoodReject.Body.Bytes(), &rejectResp); err != nil {
+		t.Fatalf("failed to unmarshal reject response: %v", err)
+	}
+	if rejectResp.PublicationState != domain.StateRejected {
+		t.Fatalf("expected REJECTED state, got %s", rejectResp.PublicationState)
+	}
+	if rejectResp.Revision != 2 {
+		t.Fatalf("expected revision 2, got %d", rejectResp.Revision)
 	}
 }
 

@@ -1,5 +1,24 @@
 # Current execution state
 
+- FOR-13 Forum editorial review and news checkpoint, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `cc394a82`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)
+  completes Phase 2 (Authorized news candidates):
+  admin candidate review queue, rights view with checkpoint metrics, and
+  candidate rejection workflow;
+  `AdminService.ListSources` returning sources with checkpoint metrics and
+  `AdminService.RejectPost` with audit event `admin.forum.post.reject` and change tracking;
+  HTTP endpoints `GET /v1/admin/forum/sources` and `POST /v1/admin/forum/posts/{id}/reject`;
+  strict rights enforcement in `PublishPost` (requiring `RightsApproved`,
+  `PublicationEnabled`, and unexpired review window);
+  rejection deduplication invariant confirmed (rejected candidates remain stored
+  in `forum_posts` preventing reappearance on future ingestion cycles);
+  `admin-web` extended with rejection form/action, rejected status filter,
+  and source metrics table;
+  acceptance test suite in `for13_news_checkpoint_test.go` and `admin_test.go`
+  passed with `-race` and `-tags=integration`. Tested revision: source in this
+  commit. Next phase: Phase 3 — Safe discussion on published posts (FOR-14 Comment/reply domain and persistence).
+
 - FOR-12 Forum scheduled collection and deduplication, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `253b15ec`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)

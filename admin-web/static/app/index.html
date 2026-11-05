@@ -245,6 +245,7 @@
               <option value="all">Todos</option>
               <option value="draft">Rascunhos</option>
               <option value="published">Publicados</option>
+              <option value="rejected">Rejeitados</option>
               <option value="hidden">Ocultados</option>
             </select>
           </label>
@@ -320,6 +321,10 @@
             <input type="text" name="reason" id="forum-publish-reason" placeholder="Motivo para publicar (10+ caracteres)" aria-label="Motivo para publicar" required>
             <button class="btn-dark" type="submit" id="forum-publish-btn">Publicar</button>
           </form>
+          <form class="inline-form" id="forum-reject-form" method="post" action="#">
+            <input type="text" name="reason" id="forum-reject-reason" placeholder="Motivo para rejeitar (10+ caracteres)" aria-label="Motivo para rejeitar" required>
+            <button class="admin-secondary" type="submit" id="forum-reject-btn">Rejeitar</button>
+          </form>
           <form class="inline-form" id="forum-visibility-form" method="post" action="#">
             <input type="text" name="reason" id="forum-visibility-reason" placeholder="Motivo da moderação (10+ caracteres)" aria-label="Motivo da moderação" required>
             <button class="admin-secondary" type="submit" id="forum-visibility-btn">Ocultar</button>
@@ -358,6 +363,11 @@
           <p id="forum-edit-error" class="error" role="alert"></p>
           <button class="btn-dark" type="submit">Salvar edição</button>
         </form>
+      </section>
+      <section class="admin-card" id="forum-sources-card" aria-labelledby="forum-sources-title">
+        <h2 id="forum-sources-title">Fontes e Direitos</h2>
+        <p id="forum-sources-error" class="error" role="alert"></p>
+        <ul class="admin-list" id="forum-sources-list" aria-live="polite"></ul>
       </section>
     </div>
     <div class="shell admin-view" id="view-stations" hidden>
