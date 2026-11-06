@@ -381,6 +381,8 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		writeError(w, r, http.StatusConflict, "forum.revision-conflict")
 	case errors.Is(err, domain.ErrMissingRights):
 		writeError(w, r, http.StatusBadRequest, "forum.missing-rights")
+	case errors.Is(err, domain.ErrBulletinImmutable):
+		writeError(w, r, http.StatusConflict, "forum.bulletin-immutable")
 	case errors.Is(err, domain.ErrForumDisabled):
 		writeError(w, r, http.StatusNotFound, "forum.disabled")
 	case errors.Is(err, domain.ErrInvalidCategory),
@@ -395,6 +397,10 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		errors.Is(err, domain.ErrMissingSourceDate),
 		errors.Is(err, domain.ErrMissingAuthor),
 		errors.Is(err, domain.ErrTopicCannotHaveSource),
+		errors.Is(err, domain.ErrMissingBulletinProvenance),
+		errors.Is(err, domain.ErrInvalidBulletinInput),
+		errors.Is(err, domain.ErrBulletinContentTooLong),
+		errors.Is(err, domain.ErrBulletinArithmetic),
 		errors.Is(err, domain.ErrInvalidCursor):
 		writeError(w, r, http.StatusBadRequest, "forum.invalid")
 	default:

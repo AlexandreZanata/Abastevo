@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -76,7 +77,7 @@ func (s *Store) GetPostByID(ctx context.Context, id string) (*domain.Post, error
 		return nil, fmt.Errorf("forum: get post by id: %w", err)
 	}
 
-	return mapPostRowToDomain(row), nil
+	return mapPostRowToDomain(row)
 }
 
 // ListPublicPosts returns a keyset-paginated slice of public post summaries.
@@ -268,6 +269,29 @@ func (s *Store) insertEditorialPost(ctx context.Context, q *forumsql.Queries, p 
 		rightsSnapshot = pgtype.Text{String: *p.RightsSnapshot, Valid: true}
 	}
 
+	var bulletinKey pgtype.Text
+	if p.BulletinKey != nil && *p.BulletinKey != "" {
+		bulletinKey = pgtype.Text{String: *p.BulletinKey, Valid: true}
+	}
+	var bulletinGroupKey pgtype.Text
+	if p.BulletinGroupKey != nil && *p.BulletinGroupKey != "" {
+		bulletinGroupKey = pgtype.Text{String: *p.BulletinGroupKey, Valid: true}
+	}
+	var bulletinProvenance []byte
+	if p.BulletinProvenance != nil {
+		bulletinProvenance, err = json.Marshal(p.BulletinProvenance)
+		if err != nil {
+			return fmt.Errorf("forum: marshal bulletin provenance: %w", err)
+		}
+	}
+	var supersedesUUID pgtype.UUID
+	if p.SupersedesPostID != nil && *p.SupersedesPostID != "" {
+		supersedesUUID, err = mustUUID(*p.SupersedesPostID)
+		if err != nil {
+			return fmt.Errorf("forum: invalid supersedes post id: %w", err)
+		}
+	}
+
 	revision := p.Revision
 	if revision < 1 {
 		revision = 1
@@ -314,8 +338,10 @@ func (s *Store) insertEditorialPost(ctx context.Context, q *forumsql.Queries, p 
 		AuthorOperationID:      pgtype.UUID{},
 		BodySha256:             "",
 		RightsSnapshot:         rightsSnapshot,
-		BulletinKey:            pgtype.Text{},
-		SupersedesPostID:       pgtype.UUID{},
+		BulletinKey:            bulletinKey,
+		BulletinGroupKey:       bulletinGroupKey,
+		BulletinProvenance:     bulletinProvenance,
+		SupersedesPostID:       supersedesUUID,
 	})
 }
 
@@ -606,7 +632,7 @@ func uuidString(id pgtype.UUID) string {
 		hexed[16:20] + "-" + hexed[20:32]
 }
 
-func mapPostRowToDomain(r forumsql.GetPostByIDRow) *domain.Post {
+func mapPostRowToDomain(r forumsql.GetPostByIDRow) (*domain.Post, error) {
 	var publicAlias *string
 	if r.PublicAlias.Valid {
 		cp := r.PublicAlias.String
@@ -635,6 +661,30 @@ func mapPostRowToDomain(r forumsql.GetPostByIDRow) *domain.Post {
 	if r.RightsSnapshot.Valid {
 		cp := r.RightsSnapshot.String
 		rightsSnapshot = &cp
+	}
+
+	var bulletinKey *string
+	if r.BulletinKey.Valid {
+		cp := r.BulletinKey.String
+		bulletinKey = &cp
+	}
+	var bulletinGroupKey *string
+	if r.BulletinGroupKey.Valid {
+		cp := r.BulletinGroupKey.String
+		bulletinGroupKey = &cp
+	}
+	var bulletinProvenance *domain.BulletinProvenance
+	if len(r.BulletinProvenance) > 0 {
+		var provenance domain.BulletinProvenance
+		if err := json.Unmarshal(r.BulletinProvenance, &provenance); err != nil {
+			return nil, fmt.Errorf("forum: decode bulletin provenance: %w", err)
+		}
+		bulletinProvenance = &provenance
+	}
+	var supersedesPostID *string
+	if r.SupersedesPostID.Valid {
+		cp := uuidString(r.SupersedesPostID)
+		supersedesPostID = &cp
 	}
 
 	var region *domain.Region
@@ -704,7 +754,11 @@ func mapPostRowToDomain(r forumsql.GetPostByIDRow) *domain.Post {
 		FuelProduct:         fuelProduct,
 		StationID:           stationID,
 		RightsSnapshot:      rightsSnapshot,
-	}
+		BulletinKey:         bulletinKey,
+		BulletinGroupKey:    bulletinGroupKey,
+		BulletinProvenance:  bulletinProvenance,
+		SupersedesPostID:    supersedesPostID,
+	}, nil
 }
 
 func mapSummaryRowToDomain(r forumsql.ListPublicPostsRow) domain.PostSummary {
@@ -796,7 +850,7 @@ func (s *Store) GetPostTx(ctx context.Context, tx pgx.Tx, id string) (*domain.Po
 		}
 		return nil, fmt.Errorf("forum: get post by id: %w", err)
 	}
-	return mapPostRowToDomain(row), nil
+	return mapPostRowToDomain(row)
 }
 
 // GetPostForUpdateTx retrieves and locks a post by ID inside an active transaction.
@@ -812,7 +866,7 @@ func (s *Store) GetPostForUpdateTx(ctx context.Context, tx pgx.Tx, id string) (*
 		}
 		return nil, fmt.Errorf("forum: get post by id for update: %w", err)
 	}
-	return mapPostForUpdateRowToDomain(row), nil
+	return mapPostForUpdateRowToDomain(row)
 }
 
 // UpdateEditorialTx modifies post contents under optimistic revision locking inside an active transaction.
@@ -1320,7 +1374,7 @@ func mapAdminListRowToDomain(r forumsql.AdminListPostsRow) domain.Post {
 	}
 }
 
-func mapPostForUpdateRowToDomain(r forumsql.GetPostByIDForUpdateRow) *domain.Post {
+func mapPostForUpdateRowToDomain(r forumsql.GetPostByIDForUpdateRow) (*domain.Post, error) {
 	var publicAlias *string
 	if r.PublicAlias.Valid {
 		cp := r.PublicAlias.String
@@ -1345,6 +1399,29 @@ func mapPostForUpdateRowToDomain(r forumsql.GetPostByIDForUpdateRow) *domain.Pos
 	if r.RightsSnapshot.Valid {
 		cp := r.RightsSnapshot.String
 		rightsSnapshot = &cp
+	}
+	var bulletinKey *string
+	if r.BulletinKey.Valid {
+		cp := r.BulletinKey.String
+		bulletinKey = &cp
+	}
+	var bulletinGroupKey *string
+	if r.BulletinGroupKey.Valid {
+		cp := r.BulletinGroupKey.String
+		bulletinGroupKey = &cp
+	}
+	var bulletinProvenance *domain.BulletinProvenance
+	if len(r.BulletinProvenance) > 0 {
+		var provenance domain.BulletinProvenance
+		if err := json.Unmarshal(r.BulletinProvenance, &provenance); err != nil {
+			return nil, fmt.Errorf("forum: decode bulletin provenance: %w", err)
+		}
+		bulletinProvenance = &provenance
+	}
+	var supersedesPostID *string
+	if r.SupersedesPostID.Valid {
+		cp := uuidString(r.SupersedesPostID)
+		supersedesPostID = &cp
 	}
 	var region *domain.Region
 	if r.RegionUf.Valid {
@@ -1400,7 +1477,11 @@ func mapPostForUpdateRowToDomain(r forumsql.GetPostByIDForUpdateRow) *domain.Pos
 		FuelProduct:         fuelProduct,
 		StationID:           stationID,
 		RightsSnapshot:      rightsSnapshot,
-	}
+		BulletinKey:         bulletinKey,
+		BulletinGroupKey:    bulletinGroupKey,
+		BulletinProvenance:  bulletinProvenance,
+		SupersedesPostID:    supersedesPostID,
+	}, nil
 }
 
 // ListEnabledSources returns all sources with collection_enabled = true.

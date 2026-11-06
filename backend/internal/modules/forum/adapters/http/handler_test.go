@@ -830,3 +830,48 @@ func TestHandler_Detail(t *testing.T) {
 		}
 	})
 }
+
+func TestMapDetailToDTOIncludesBulletinProvenance(t *testing.T) {
+	supersedes := "00000000-0000-4000-8000-000000000009"
+	detail := &domain.PostDetail{
+		ID:               "00000000-0000-4000-8000-000000000001",
+		Kind:             domain.KindBulletin,
+		Category:         domain.CategoryAbastevoData,
+		Title:            "Gasolina comum em SP",
+		FirstPublishedAt: time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC),
+		UpdatedAt:        time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC),
+		Revision:         1,
+		CommentsEnabled:  true,
+		Bulletin: &domain.BulletinProvenance{
+			MethodologyVersion: "forum-official-mean-v1",
+			TemplateVersion:    "forum-bulletin-v1",
+			Fuel:               "GASOLINE_REGULAR",
+			Unit:               "L",
+			Current: domain.BulletinRevisionProvenance{
+				RevisionID: "11111111-1111-4111-8111-111111111111", SurveyStart: "2026-10-26",
+				SurveyEnd: "2026-11-01", PublishedAt: "2026-11-02T12:00:00Z",
+				SourceURL: "https://www.gov.br/anp/a.xlsx", SourceChecksum: "sha256:a",
+				ParserVersion: "v1", SumMilliBrl: 601800, ObservationCount: 100,
+				SampledStations: 100, SourceObservations: 105, SourceStations: 120,
+				MeanNumerator: 6018, MeanDenominator: 1, Mean: "6018",
+			},
+			Previous: domain.BulletinRevisionProvenance{
+				RevisionID: "22222222-2222-4222-8222-222222222222", SurveyStart: "2026-10-19",
+				SurveyEnd: "2026-10-25", PublishedAt: "2026-10-27T12:00:00Z",
+				SourceURL: "https://www.gov.br/anp/b.xlsx", SourceChecksum: "sha256:b",
+				ParserVersion: "v1", SumMilliBrl: 590000, ObservationCount: 100,
+				SampledStations: 100, SourceObservations: 100, SourceStations: 118,
+				MeanNumerator: 5900, MeanDenominator: 1, Mean: "5900",
+			},
+		},
+		SupersedesPostID: &supersedes,
+	}
+	dto := mapDetailToDTO(detail)
+	if dto.Bulletin == nil || dto.Bulletin.Current.SumMilliBrl != 601800 ||
+		dto.Bulletin.Previous.Mean != "5900" || dto.Bulletin.Fuel != "GASOLINE_REGULAR" {
+		t.Fatalf("bulletin mapping %+v", dto.Bulletin)
+	}
+	if dto.SupersedesPostID == nil || *dto.SupersedesPostID != supersedes {
+		t.Fatalf("supersedes mapping %+v", dto.SupersedesPostID)
+	}
+}

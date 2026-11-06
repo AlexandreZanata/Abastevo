@@ -23,7 +23,7 @@ SELECT
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
     p.fuel_product, p.station_id,
-    p.rights_snapshot, p.bulletin_key, p.supersedes_post_id,
+    p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
     s.name AS source_name,
     s.origin_url AS source_origin_url,
     s.attribution AS source_attribution
@@ -51,7 +51,7 @@ SELECT
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
     p.fuel_product, p.station_id,
-    p.rights_snapshot, p.bulletin_key, p.supersedes_post_id,
+    p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
     s.name AS source_name,
     s.origin_url AS source_origin_url,
     s.attribution AS source_attribution
@@ -71,7 +71,7 @@ SELECT
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
     p.fuel_product, p.station_id,
-    p.rights_snapshot, p.bulletin_key, p.supersedes_post_id
+    p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id
 FROM forum_posts p
 WHERE p.id = @id
 FOR UPDATE;
@@ -152,7 +152,7 @@ INSERT INTO forum_posts (
     comments_enabled, correction,
     region_uf, region_municipality_ibge,
     fuel_product, station_id,
-    author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id
+    author_operation_id, body_sha256, rights_snapshot, bulletin_key, bulletin_group_key, bulletin_provenance, supersedes_post_id
 ) VALUES (
     @id, @kind, @category, @title, @excerpt, @body_text,
     @source_id, @canonical_url, @canonical_url_hash, @external_id,
@@ -164,7 +164,7 @@ INSERT INTO forum_posts (
     @comments_enabled, @correction,
     @region_uf, @region_municipality_ibge,
     @fuel_product, @station_id,
-    @author_operation_id, @body_sha256, @rights_snapshot, @bulletin_key, @supersedes_post_id
+    @author_operation_id, @body_sha256, @rights_snapshot, @bulletin_key, @bulletin_group_key, @bulletin_provenance, @supersedes_post_id
 );
 
 -- name: PublishEditorialPost :execrows
@@ -304,3 +304,11 @@ SET publication_state = 'REJECTED',
     local_updated_at = @updated_at,
     revision = revision + 1
 WHERE id = @id AND revision = @expected_revision AND publication_state <> 'REJECTED';
+
+-- name: FindLatestBulletinGroup :one
+SELECT id, publication_state
+FROM forum_posts
+WHERE kind = 'BULLETIN'
+  AND bulletin_group_key = @group_key
+ORDER BY local_created_at DESC, id DESC
+LIMIT 1;

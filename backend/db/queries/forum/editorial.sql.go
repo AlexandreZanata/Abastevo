@@ -145,6 +145,27 @@ func (q *Queries) BumpFeedRevision(ctx context.Context, now pgtype.Timestamptz) 
 	return revision, err
 }
 
+const findLatestBulletinGroup = `-- name: FindLatestBulletinGroup :one
+SELECT id, publication_state
+FROM forum_posts
+WHERE kind = 'BULLETIN'
+  AND bulletin_group_key = $1
+ORDER BY local_created_at DESC, id DESC
+LIMIT 1
+`
+
+type FindLatestBulletinGroupRow struct {
+	ID               pgtype.UUID `json:"id"`
+	PublicationState string      `json:"publication_state"`
+}
+
+func (q *Queries) FindLatestBulletinGroup(ctx context.Context, groupKey pgtype.Text) (FindLatestBulletinGroupRow, error) {
+	row := q.db.QueryRow(ctx, findLatestBulletinGroup, groupKey)
+	var i FindLatestBulletinGroupRow
+	err := row.Scan(&i.ID, &i.PublicationState)
+	return i, err
+}
+
 const getFeedRevision = `-- name: GetFeedRevision :one
 
 SELECT revision, updated_at
@@ -177,7 +198,7 @@ SELECT
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
     p.fuel_product, p.station_id,
-    p.rights_snapshot, p.bulletin_key, p.supersedes_post_id,
+    p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
     s.name AS source_name,
     s.origin_url AS source_origin_url,
     s.attribution AS source_attribution
@@ -216,6 +237,8 @@ type GetPostByIDRow struct {
 	StationID              pgtype.UUID        `json:"station_id"`
 	RightsSnapshot         pgtype.Text        `json:"rights_snapshot"`
 	BulletinKey            pgtype.Text        `json:"bulletin_key"`
+	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
+	BulletinProvenance     []byte             `json:"bulletin_provenance"`
 	SupersedesPostID       pgtype.UUID        `json:"supersedes_post_id"`
 	SourceName             pgtype.Text        `json:"source_name"`
 	SourceOriginUrl        pgtype.Text        `json:"source_origin_url"`
@@ -255,6 +278,8 @@ func (q *Queries) GetPostByID(ctx context.Context, id pgtype.UUID) (GetPostByIDR
 		&i.StationID,
 		&i.RightsSnapshot,
 		&i.BulletinKey,
+		&i.BulletinGroupKey,
+		&i.BulletinProvenance,
 		&i.SupersedesPostID,
 		&i.SourceName,
 		&i.SourceOriginUrl,
@@ -275,7 +300,7 @@ SELECT
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
     p.fuel_product, p.station_id,
-    p.rights_snapshot, p.bulletin_key, p.supersedes_post_id
+    p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id
 FROM forum_posts p
 WHERE p.id = $1
 FOR UPDATE
@@ -311,6 +336,8 @@ type GetPostByIDForUpdateRow struct {
 	StationID              pgtype.UUID        `json:"station_id"`
 	RightsSnapshot         pgtype.Text        `json:"rights_snapshot"`
 	BulletinKey            pgtype.Text        `json:"bulletin_key"`
+	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
+	BulletinProvenance     []byte             `json:"bulletin_provenance"`
 	SupersedesPostID       pgtype.UUID        `json:"supersedes_post_id"`
 }
 
@@ -347,6 +374,8 @@ func (q *Queries) GetPostByIDForUpdate(ctx context.Context, id pgtype.UUID) (Get
 		&i.StationID,
 		&i.RightsSnapshot,
 		&i.BulletinKey,
+		&i.BulletinGroupKey,
+		&i.BulletinProvenance,
 		&i.SupersedesPostID,
 	)
 	return i, err
@@ -364,7 +393,7 @@ SELECT
     p.comments_enabled, p.correction,
     p.region_uf, p.region_municipality_ibge,
     p.fuel_product, p.station_id,
-    p.rights_snapshot, p.bulletin_key, p.supersedes_post_id,
+    p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
     s.name AS source_name,
     s.origin_url AS source_origin_url,
     s.attribution AS source_attribution
@@ -411,6 +440,8 @@ type GetPublicPostByIDRow struct {
 	StationID              pgtype.UUID        `json:"station_id"`
 	RightsSnapshot         pgtype.Text        `json:"rights_snapshot"`
 	BulletinKey            pgtype.Text        `json:"bulletin_key"`
+	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
+	BulletinProvenance     []byte             `json:"bulletin_provenance"`
 	SupersedesPostID       pgtype.UUID        `json:"supersedes_post_id"`
 	SourceName             pgtype.Text        `json:"source_name"`
 	SourceOriginUrl        pgtype.Text        `json:"source_origin_url"`
@@ -450,6 +481,8 @@ func (q *Queries) GetPublicPostByID(ctx context.Context, id pgtype.UUID) (GetPub
 		&i.StationID,
 		&i.RightsSnapshot,
 		&i.BulletinKey,
+		&i.BulletinGroupKey,
+		&i.BulletinProvenance,
 		&i.SupersedesPostID,
 		&i.SourceName,
 		&i.SourceOriginUrl,
@@ -598,7 +631,7 @@ INSERT INTO forum_posts (
     comments_enabled, correction,
     region_uf, region_municipality_ibge,
     fuel_product, station_id,
-    author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id
+    author_operation_id, body_sha256, rights_snapshot, bulletin_key, bulletin_group_key, bulletin_provenance, supersedes_post_id
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9, $10,
@@ -610,7 +643,7 @@ INSERT INTO forum_posts (
     $22, $23,
     $24, $25,
     $26, $27,
-    $28, $29, $30, $31, $32
+    $28, $29, $30, $31, $32, $33, $34
 )
 `
 
@@ -646,6 +679,8 @@ type InsertEditorialPostParams struct {
 	BodySha256             string             `json:"body_sha256"`
 	RightsSnapshot         pgtype.Text        `json:"rights_snapshot"`
 	BulletinKey            pgtype.Text        `json:"bulletin_key"`
+	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
+	BulletinProvenance     []byte             `json:"bulletin_provenance"`
 	SupersedesPostID       pgtype.UUID        `json:"supersedes_post_id"`
 }
 
@@ -682,6 +717,8 @@ func (q *Queries) InsertEditorialPost(ctx context.Context, arg InsertEditorialPo
 		arg.BodySha256,
 		arg.RightsSnapshot,
 		arg.BulletinKey,
+		arg.BulletinGroupKey,
+		arg.BulletinProvenance,
 		arg.SupersedesPostID,
 	)
 	return err

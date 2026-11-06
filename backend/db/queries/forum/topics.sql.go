@@ -26,7 +26,7 @@ func (q *Queries) CountLiveTopicsByAuthor(ctx context.Context, authorAccountID p
 }
 
 const getTopicByID = `-- name: GetTopicByID :one
-SELECT id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence FROM forum_posts
+SELECT id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence, bulletin_group_key, bulletin_provenance FROM forum_posts
 WHERE id = $1 AND kind = 'TOPIC'
 `
 
@@ -67,12 +67,14 @@ func (q *Queries) GetTopicByID(ctx context.Context, id pgtype.UUID) (ForumPost, 
 		&i.BulletinKey,
 		&i.SupersedesPostID,
 		&i.NextCommentSequence,
+		&i.BulletinGroupKey,
+		&i.BulletinProvenance,
 	)
 	return i, err
 }
 
 const getTopicByIDForUpdate = `-- name: GetTopicByIDForUpdate :one
-SELECT id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence FROM forum_posts
+SELECT id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence, bulletin_group_key, bulletin_provenance FROM forum_posts
 WHERE id = $1 AND kind = 'TOPIC'
 FOR UPDATE
 `
@@ -114,13 +116,15 @@ func (q *Queries) GetTopicByIDForUpdate(ctx context.Context, id pgtype.UUID) (Fo
 		&i.BulletinKey,
 		&i.SupersedesPostID,
 		&i.NextCommentSequence,
+		&i.BulletinGroupKey,
+		&i.BulletinProvenance,
 	)
 	return i, err
 }
 
 const getTopicByOperationID = `-- name: GetTopicByOperationID :one
 
-SELECT id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence FROM forum_posts
+SELECT id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence, bulletin_group_key, bulletin_provenance FROM forum_posts
 WHERE author_account_id = $1
   AND author_operation_id = $2
   AND kind = 'TOPIC'
@@ -169,6 +173,8 @@ func (q *Queries) GetTopicByOperationID(ctx context.Context, arg GetTopicByOpera
 		&i.BulletinKey,
 		&i.SupersedesPostID,
 		&i.NextCommentSequence,
+		&i.BulletinGroupKey,
+		&i.BulletinProvenance,
 	)
 	return i, err
 }
@@ -208,7 +214,7 @@ INSERT INTO forum_posts (
     $13, $14,
     $15, $16
 )
-RETURNING id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence
+RETURNING id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence, bulletin_group_key, bulletin_provenance
 `
 
 type InsertTopicParams struct {
@@ -284,12 +290,14 @@ func (q *Queries) InsertTopic(ctx context.Context, arg InsertTopicParams) (Forum
 		&i.BulletinKey,
 		&i.SupersedesPostID,
 		&i.NextCommentSequence,
+		&i.BulletinGroupKey,
+		&i.BulletinProvenance,
 	)
 	return i, err
 }
 
 const listTopicsByAuthor = `-- name: ListTopicsByAuthor :many
-SELECT id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence
+SELECT id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence, bulletin_group_key, bulletin_provenance
 FROM forum_posts
 WHERE author_account_id = $1
   AND kind = 'TOPIC'
@@ -339,6 +347,8 @@ func (q *Queries) ListTopicsByAuthor(ctx context.Context, authorAccountID pgtype
 			&i.BulletinKey,
 			&i.SupersedesPostID,
 			&i.NextCommentSequence,
+			&i.BulletinGroupKey,
+			&i.BulletinProvenance,
 		); err != nil {
 			return nil, err
 		}
@@ -399,7 +409,7 @@ WHERE id = $2
   AND author_account_id = $3
   AND revision = $4
   AND publication_state <> 'REMOVED'
-RETURNING id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence
+RETURNING id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence, bulletin_group_key, bulletin_provenance
 `
 
 type RemoveTopicTombstoneParams struct {
@@ -451,6 +461,8 @@ func (q *Queries) RemoveTopicTombstone(ctx context.Context, arg RemoveTopicTombs
 		&i.BulletinKey,
 		&i.SupersedesPostID,
 		&i.NextCommentSequence,
+		&i.BulletinGroupKey,
+		&i.BulletinProvenance,
 	)
 	return i, err
 }
@@ -467,7 +479,7 @@ SET title = '[Tópico removido]',
     revision = revision + 1,
     local_updated_at = now()
 WHERE id = $1
-RETURNING id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence
+RETURNING id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence, bulletin_group_key, bulletin_provenance
 `
 
 func (q *Queries) ScrubTopicForErasure(ctx context.Context, id pgtype.UUID) (ForumPost, error) {
@@ -507,6 +519,8 @@ func (q *Queries) ScrubTopicForErasure(ctx context.Context, id pgtype.UUID) (For
 		&i.BulletinKey,
 		&i.SupersedesPostID,
 		&i.NextCommentSequence,
+		&i.BulletinGroupKey,
+		&i.BulletinProvenance,
 	)
 	return i, err
 }
@@ -529,7 +543,7 @@ WHERE id = $11
   AND author_account_id = $12
   AND revision = $13
   AND publication_state <> 'REMOVED'
-RETURNING id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence
+RETURNING id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence, bulletin_group_key, bulletin_provenance
 `
 
 type UpdateTopicCASParams struct {
@@ -599,6 +613,8 @@ func (q *Queries) UpdateTopicCAS(ctx context.Context, arg UpdateTopicCASParams) 
 		&i.BulletinKey,
 		&i.SupersedesPostID,
 		&i.NextCommentSequence,
+		&i.BulletinGroupKey,
+		&i.BulletinProvenance,
 	)
 	return i, err
 }

@@ -284,6 +284,9 @@ func (s *AdminService) EditPost(ctx context.Context, m adminapp.Mutation, in Edi
 		if err != nil {
 			return adminapp.MutationResult{}, nil, err
 		}
+		if current.Kind == domain.KindBulletin {
+			return adminapp.MutationResult{}, nil, domain.ErrBulletinImmutable
+		}
 		if current.Revision != in.ExpectedRevision {
 			return adminapp.MutationResult{}, nil, domain.ErrRevisionMismatch
 		}
@@ -403,8 +406,8 @@ func (s *AdminService) PublishPost(ctx context.Context, m adminapp.Mutation, id 
 			return adminapp.MutationResult{}, nil, domain.ErrInvalidTransition
 		}
 
-		// Verify source rights for editorial and news
-		if current.Kind == domain.KindEditorial || current.Kind == domain.KindNews {
+		// Verify source rights for every source-backed publication kind.
+		if current.Kind == domain.KindEditorial || current.Kind == domain.KindNews || current.Kind == domain.KindBulletin {
 			src, err := s.Store.GetSourceByID(ctx, current.SourceID)
 			if err != nil {
 				return adminapp.MutationResult{}, nil, domain.ErrMissingSource
@@ -421,6 +424,21 @@ func (s *AdminService) PublishPost(ctx context.Context, m adminapp.Mutation, id 
 
 		if err := s.Store.PublishEditorialTx(ctx, tx, id, now, seq); err != nil {
 			return adminapp.MutationResult{}, nil, err
+		}
+
+		if current.Kind == domain.KindBulletin && current.SupersedesPostID != nil && *current.SupersedesPostID != "" {
+			previous, err := s.Store.GetPostForUpdateTx(ctx, tx, *current.SupersedesPostID)
+			if err != nil {
+				return adminapp.MutationResult{}, nil, err
+			}
+			if previous.Kind != domain.KindBulletin ||
+				current.BulletinGroupKey == nil || previous.BulletinGroupKey == nil ||
+				*current.BulletinGroupKey != *previous.BulletinGroupKey {
+				return adminapp.MutationResult{}, nil, domain.ErrInvalidTransition
+			}
+			if err := s.Store.SetPostVisibilityTx(ctx, tx, previous.ID, domain.VisibilityHidden, now); err != nil {
+				return adminapp.MutationResult{}, nil, err
+			}
 		}
 
 		beforeAudit := current.AuditView()
@@ -463,6 +481,14 @@ func (s *AdminService) PublishPost(ctx context.Context, m adminapp.Mutation, id 
 				Before:     beforeJSON,
 				After:      afterJSON,
 			},
+		}
+		if current.Kind == domain.KindBulletin && current.SupersedesPostID != nil && *current.SupersedesPostID != "" {
+			events = append(events, adminapp.AuditEvent{
+				Action:     "admin.forum.post.supersede",
+				TargetType: "forum_post",
+				TargetID:   *current.SupersedesPostID,
+				Reason:     m.Reason,
+			})
 		}
 
 		body, err := json.Marshal(current)

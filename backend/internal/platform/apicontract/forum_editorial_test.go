@@ -63,6 +63,8 @@ func TestForumEditorialContractStructure(t *testing.T) {
 	// Check required schemas
 	requiredSchemas := []string{
 		"ForumFuelProduct",
+		"ForumBulletinProvenance",
+		"ForumBulletinRevision",
 		"ForumSourceAttribution",
 		"ForumPostRegion",
 		"ForumPostSummary",

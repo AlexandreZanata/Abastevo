@@ -1320,6 +1320,14 @@
     <string name="forum_card_cta">Перейти на форум</string>
     <string name="forum_screen_title">Форум Abastevo</string>
     <string name="forum_detail_title">Публикация</string>
+    <string name="forum_bulletin_provenance_title">Источник и методология</string>
+    <string name="forum_bulletin_methodology">Методология: %1$s · шаблон %2$s</string>
+    <string name="forum_bulletin_fuel_unit">Топливо: %1$s · единица: %2$s</string>
+    <string name="forum_bulletin_current_period">Текущий период: %1$s–%2$s</string>
+    <string name="forum_bulletin_previous_period">Предыдущий период: %1$s–%2$s</string>
+    <string name="forum_bulletin_current_sample">Текущая выборка: %1$d АЗС; покрытие %2$d/%3$d</string>
+    <string name="forum_bulletin_previous_sample">Предыдущая выборка: %1$d АЗС; покрытие %2$d/%3$d</string>
+    <string name="forum_bulletin_correction_notice">Исправление предыдущего бюллетеня</string>
     <string name="forum_category_all">Все</string>
     <string name="forum_filters">Фильтры</string>
     <string name="forum_filter_clear">Очистить</string>

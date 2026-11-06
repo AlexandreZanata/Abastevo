@@ -1,9 +1,9 @@
 # Forum Abastevo — deterministic official bulletins
 
-Status: **FROZEN METHODOLOGY / SOURCE PORT / TEMPLATE LOCAL_DONE**
-(FOR-25/FOR-26, 2026-11-06). Scope: input selection, exact aggregates,
-deterministic template and correction identity. Worker/admin/Android review and
-publication ride FOR-27. No bulletin is published by this document.
+Status: **LOCAL_DONE / INTEGRATION_PENDING** (FOR-25–FOR-27, 2026-11-06).
+Scope: input selection, exact aggregates, deterministic template, correction
+identity and reviewed draft integration. Automatic publication remains off;
+no production bulletin is claimed by this document.
 
 ## Version and authority
 
@@ -118,3 +118,32 @@ reproducible provenance for FOR-26 templates and FOR-27 review.
 - No national aggregation or unobserved-region extrapolation.
 - No publication, source activation or Android surface is implied by the
   aggregate port.
+
+## Reviewed generation and correction flow (FOR-27)
+
+- Trigger: a successful accepted Official import enqueues one idempotent
+  `forum-bulletin-generate` job; a daily bounded reconciliation schedule runs
+  the same generator to recover missed enqueues. Raw downloads never trigger it.
+- The generator reads every frozen Official fuel/unit pair, applies the FOR-25
+  eligibility rules and creates only `PENDING_REVIEW` posts. It never calls
+  publish, never marks a source item live and never auto-publicates.
+- One unique `bulletin_key` per revision pair makes concurrent/restarted runs
+  converge. `bulletin_group_key` groups the same two survey windows plus UF,
+  fuel and unit; a later revision pair links the newest prior group post through
+  `supersedes_post_id`.
+- Admin review reuses the existing Forum publish/reject path. Publishing a
+  correction verifies the previous post is the same bulletin group and hides it
+  (`visibility = HIDDEN`) in the same transaction while bumping the feed
+  revision. Deterministic bulletin text is immutable in the admin editor; a
+  source correction must generate a new draft. Rejecting the correction leaves
+  the prior bulletin visible.
+- Public detail exposes the structured provenance/methodology object and the
+  supersedes UUID; Android renders the methodology, periods, samples, coverage
+  and correction notice on the existing detail screen.
+- Forum `fuel_product` stays null for bulletins because the Official ranking
+  fuel vocabulary is not the topic form vocabulary. The exact fuel and unit are
+  in the structured provenance and body; no wrong cross-vocabulary mapping is
+  stored. The feed category remains `ABASTEVO_DATA`.
+- Rollback: disable the after-publish enqueue and daily schedule, then remove
+  the handler; preserve generated drafts, published bulletins and correction
+  links. Official/Directory/Charging trust is untouched.

@@ -1320,6 +1320,14 @@
     <string name="forum_card_cta">フォーラムを見る</string>
     <string name="forum_screen_title">Abastevoフォーラム</string>
     <string name="forum_detail_title">投稿</string>
+    <string name="forum_bulletin_provenance_title">出典と方法論</string>
+    <string name="forum_bulletin_methodology">方法論: %1$s・テンプレート %2$s</string>
+    <string name="forum_bulletin_fuel_unit">燃料: %1$s・単位: %2$s</string>
+    <string name="forum_bulletin_current_period">現在の期間: %1$s〜%2$s</string>
+    <string name="forum_bulletin_previous_period">前回の期間: %1$s〜%2$s</string>
+    <string name="forum_bulletin_current_sample">現在のサンプル: %1$d 店舗、カバレッジ %2$d/%3$d</string>
+    <string name="forum_bulletin_previous_sample">前回のサンプル: %1$d 店舗、カバレッジ %2$d/%3$d</string>
+    <string name="forum_bulletin_correction_notice">以前の速報の訂正</string>
     <string name="forum_category_all">すべて</string>
     <string name="forum_filters">フィルター</string>
     <string name="forum_filter_clear">クリア</string>

@@ -409,6 +409,78 @@ func TestAdminService_PublishPost_RightsAndTransitions(t *testing.T) {
 	}
 }
 
+func TestAdminService_PublishBulletinHidesSuperseded(t *testing.T) {
+	store := newMockAdminStore()
+	runner := &mockRunner{}
+	fixedTime := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+	sourceID := "11111111-1111-4111-8111-111111111111"
+	store.sources[sourceID] = &domain.Source{
+		ID: sourceID, Code: "abastevo-editorial", RightsStatus: domain.RightsApproved, PublicationEnabled: true,
+	}
+	oldID := "22222222-2222-4222-8222-222222222222"
+	newID := "33333333-3333-4333-8333-333333333333"
+	oldKey := "forum-bulletin-v1:old"
+	oldGroup := "forum-bulletin-v1:group"
+	oldProv := &domain.BulletinProvenance{MethodologyVersion: "forum-official-mean-v1", TemplateVersion: "forum-bulletin-v1"}
+	store.posts[oldID] = &domain.Post{
+		ID: oldID, Kind: domain.KindBulletin, Category: domain.CategoryAbastevoData,
+		Title: "Boletim antigo", SourceID: sourceID,
+		PublicationState: domain.StatePublished, Visibility: domain.VisibilityVisible, Revision: 2,
+		BulletinKey: &oldKey, BulletinGroupKey: &oldGroup, BulletinProvenance: oldProv,
+	}
+	newKey := "forum-bulletin-v1:new"
+	store.posts[newID] = &domain.Post{
+		ID: newID, Kind: domain.KindBulletin, Category: domain.CategoryAbastevoData,
+		Title: "Boletim corrigido", SourceID: sourceID,
+		PublicationState: domain.StatePendingReview, Visibility: domain.VisibilityVisible, Revision: 1,
+		BulletinKey: &newKey, BulletinGroupKey: &oldGroup, BulletinProvenance: oldProv,
+		SupersedesPostID: &oldID,
+	}
+	cfg := domain.DefaultConfig()
+	cfg.AdminEnabled = true
+	svc := &forumapp.AdminService{Store: store, Runner: runner, Config: cfg, Clock: func() time.Time { return fixedTime }}
+	mutation := adminapp.Mutation{SessionID: "sess-1", Action: "admin.forum.post.publish", Reason: "publicando correção", Key: "44444444-4444-4444-8444-444444444444"}
+
+	published, err := svc.PublishPost(context.Background(), mutation, newID)
+	if err != nil {
+		t.Fatalf("publish bulletin: %v", err)
+	}
+	if published.PublicationState != domain.StatePublished {
+		t.Fatalf("new bulletin state %s", published.PublicationState)
+	}
+	if store.posts[oldID].Visibility != domain.VisibilityHidden {
+		t.Fatalf("superseded bulletin visibility %s", store.posts[oldID].Visibility)
+	}
+	if store.feedRevision != 1 {
+		t.Fatalf("feed revision %d", store.feedRevision)
+	}
+	if len(runner.lastEvents) != 2 || runner.lastEvents[1].Action != "admin.forum.post.supersede" ||
+		runner.lastEvents[1].TargetID != oldID {
+		t.Fatalf("supersede audit %+v", runner.lastEvents)
+	}
+}
+
+func TestAdminService_EditBulletinRefused(t *testing.T) {
+	store := newMockAdminStore()
+	runner := &mockRunner{}
+	postID := "22222222-2222-4222-8222-222222222222"
+	key := "forum-bulletin-v1:key"
+	group := "forum-bulletin-v1:group"
+	prov := &domain.BulletinProvenance{MethodologyVersion: "forum-official-mean-v1", TemplateVersion: "forum-bulletin-v1"}
+	store.posts[postID] = &domain.Post{
+		ID: postID, Kind: domain.KindBulletin, Category: domain.CategoryAbastevoData,
+		Title: "Boletim", PublicationState: domain.StatePendingReview, Visibility: domain.VisibilityVisible,
+		Revision: 1, BulletinKey: &key, BulletinGroupKey: &group, BulletinProvenance: prov,
+	}
+	cfg := domain.DefaultConfig()
+	cfg.AdminEnabled = true
+	svc := &forumapp.AdminService{Store: store, Runner: runner, Config: cfg, Clock: func() time.Time { return time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC) }}
+	_, err := svc.EditPost(context.Background(), adminapp.Mutation{SessionID: "s", Action: "admin.forum.post.edit", Reason: "tentativa", Key: "k"}, forumapp.EditPostInput{ID: postID, Title: "tentativa", Category: "FUELS", ExpectedRevision: 1})
+	if !errors.Is(err, domain.ErrBulletinImmutable) {
+		t.Fatalf("expected ErrBulletinImmutable, got %v", err)
+	}
+}
+
 func TestAdminService_SetVisibility(t *testing.T) {
 	store := newMockAdminStore()
 	runner := &mockRunner{}

@@ -18,9 +18,11 @@ const (
 )
 
 var (
-	ErrInvalidBulletinInput   = errors.New("forum: invalid bulletin input")
-	ErrBulletinContentTooLong = errors.New("forum: bulletin content exceeds field limits")
-	ErrBulletinArithmetic     = errors.New("forum: bulletin arithmetic exceeds supported range")
+	ErrInvalidBulletinInput      = errors.New("forum: invalid bulletin input")
+	ErrBulletinContentTooLong    = errors.New("forum: bulletin content exceeds field limits")
+	ErrBulletinArithmetic        = errors.New("forum: bulletin arithmetic exceeds supported range")
+	ErrMissingBulletinProvenance = errors.New("forum: bulletin requires provenance and identity")
+	ErrBulletinImmutable         = errors.New("forum: deterministic bulletin content is immutable")
 )
 
 var bulletinFuelUnits = map[string]string{
@@ -99,6 +101,7 @@ type BulletinInput struct {
 // BulletinIdentity is the deterministic no-op/correction identity.
 type BulletinIdentity struct {
 	Key                 string
+	GroupKey            string
 	TemplateVersion     string
 	CurrentRevisionID   string
 	PreviousRevisionID  string
@@ -200,6 +203,9 @@ func BuildBulletinDraft(in BulletinInput) (*BulletinDraft, error) {
 	)
 
 	key := fmt.Sprintf("%s:%s:%s:%s:%s:%s", BulletinTemplateVersion, in.CurrentRevisionID, in.PreviousRevisionID, in.UF, in.Fuel, in.Unit)
+	groupKey := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%s", BulletinTemplateVersion,
+		in.CurrentSurveyStart, in.CurrentSurveyEnd, in.PreviousSurveyStart, in.PreviousSurveyEnd,
+		in.UF, in.Fuel, in.Unit)
 	if utf8.RuneCountInString(title) > MaxTopicTitleRunes ||
 		utf8.RuneCountInString(excerpt) > 400 ||
 		utf8.RuneCountInString(body) > MaxTopicBodyRunes {
@@ -213,6 +219,7 @@ func BuildBulletinDraft(in BulletinInput) (*BulletinDraft, error) {
 		BodyText: body,
 		Identity: BulletinIdentity{
 			Key:                 key,
+			GroupKey:            groupKey,
 			TemplateVersion:     BulletinTemplateVersion,
 			CurrentRevisionID:   in.CurrentRevisionID,
 			PreviousRevisionID:  in.PreviousRevisionID,
@@ -407,4 +414,34 @@ func validateBulletinProvenance(sourceURL, checksum, parserVersion string) error
 		}
 	}
 	return nil
+}
+
+// BulletinRevisionProvenance is the persisted exact provenance for one side of
+// a generated comparison.
+type BulletinRevisionProvenance struct {
+	RevisionID         string `json:"revision_id"`
+	SurveyStart        string `json:"survey_start"`
+	SurveyEnd          string `json:"survey_end"`
+	PublishedAt        string `json:"published_at"`
+	SourceURL          string `json:"source_url"`
+	SourceChecksum     string `json:"source_checksum"`
+	ParserVersion      string `json:"parser_version"`
+	SumMilliBrl        int64  `json:"sum_milli_brl"`
+	ObservationCount   int64  `json:"observation_count"`
+	SampledStations    int64  `json:"sampled_stations"`
+	SourceObservations int64  `json:"source_observations"`
+	SourceStations     int64  `json:"source_stations"`
+	MeanNumerator      int64  `json:"mean_numerator"`
+	MeanDenominator    int64  `json:"mean_denominator"`
+	Mean               string `json:"mean"`
+}
+
+// BulletinProvenance is the structured public provenance/methodology view.
+type BulletinProvenance struct {
+	MethodologyVersion string                     `json:"methodology_version"`
+	TemplateVersion    string                     `json:"template_version"`
+	Fuel               string                     `json:"fuel"`
+	Unit               string                     `json:"unit"`
+	Current            BulletinRevisionProvenance `json:"current"`
+	Previous           BulletinRevisionProvenance `json:"previous"`
 }

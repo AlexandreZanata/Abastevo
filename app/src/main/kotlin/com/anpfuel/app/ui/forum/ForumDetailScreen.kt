@@ -423,6 +423,85 @@ internal fun ForumDetailContent(
                                 )
                             }
 
+                            val bulletin = post.bulletin
+                            if (bulletin != null) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = AnpContainerDefaults.containerShape(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                                    ),
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.forum_bulletin_provenance_title),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                        if (post.supersedesPostId != null) {
+                                            Text(
+                                                text = stringResource(R.string.forum_bulletin_correction_notice),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                        Text(
+                                            text = stringResource(
+                                                R.string.forum_bulletin_methodology,
+                                                bulletin.methodologyVersion,
+                                                bulletin.templateVersion,
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                        Text(
+                                            text = stringResource(
+                                                R.string.forum_bulletin_fuel_unit,
+                                                bulletin.fuel,
+                                                bulletin.unit,
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                        Text(
+                                            text = stringResource(
+                                                R.string.forum_bulletin_current_period,
+                                                bulletin.current.surveyStart,
+                                                bulletin.current.surveyEnd,
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                        Text(
+                                            text = stringResource(
+                                                R.string.forum_bulletin_previous_period,
+                                                bulletin.previous.surveyStart,
+                                                bulletin.previous.surveyEnd,
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                        Text(
+                                            text = stringResource(
+                                                R.string.forum_bulletin_current_sample,
+                                                bulletin.current.observationCount,
+                                                bulletin.current.sampledStations,
+                                                bulletin.current.sourceStations,
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                        Text(
+                                            text = stringResource(
+                                                R.string.forum_bulletin_previous_sample,
+                                                bulletin.previous.observationCount,
+                                                bulletin.previous.sampledStations,
+                                                bulletin.previous.sourceStations,
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                }
+                            }
+
                             val sourceUrl = source?.url
                             if (!sourceUrl.isNullOrBlank()) {
                                 val host = try {

@@ -1,4 +1,33 @@
 # Current execution state
+- FOR-27 Reviewed deterministic bulletin checkpoint, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `a0dc7821`. [Phase 5 evidence](../backend/evidence/forum/FOR_PHASE_5.md)
+  adds migration `000162` (`bulletin_group_key`, JSONB provenance, shape check,
+  group index) and the reviewed pipeline: an Official accepted-publish trigger
+  plus daily bounded reconciliation enqueue `forum-bulletin-generate`; the
+  generator reads every frozen fuel/unit pair, creates only `PENDING_REVIEW`
+  drafts from the seeded Abastevo source, converges on unique `bulletin_key`,
+  sets structured provenance and links newer same-window revision pairs via
+  `supersedes_post_id`; missing source/corrupt aggregate fail visibly and no
+  eligible pair creates no post. Admin publishing verifies BULLETIN source
+  rights, refuses deterministic text edits, hides the previous same-group
+  bulletin in the same transaction, audits the supersede and bumps the feed
+  revision; rejection leaves the prior visible and automatic publication stays
+  off. Public detail exposes structured methodology/provenance plus
+  `supersedes_post_id`; Android maps it and renders the provenance card with
+  periods, samples, coverage and correction notice. Bulletin `fuel_product`
+  stays NULL because the Official ranking vocabulary is not the topic form
+  vocabulary; exact fuel/unit live in provenance/body.
+  Verified: forum unit suite; full real-PostGIS forum suite (adapters 36.6s,
+  HTTP 6.9s, jobs 3.3s); targeted generator concurrency/restart/correction/
+  no-input/missing-source 4.2s; bulletin HTTP correction visibility/snapshot
+  1.8s; apicontract 46.4s; worker build/test; go vet, sqlc vet/diff; Android
+  union 2,851 tests, 0 failures, 4 skips, assembleDebug/androidTest, lintDebug
+  0 errors and static gates. Staticcheck only pre-existing admin_service.go
+  findings. No production bulletin, source approval, operator coverage,
+  deployment, staging, device acceptance or merge claimed. Next microtask:
+  FOR-28 capacity/failures/final device union.
+
 - FOR-26 Deterministic forum bulletin template, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `d5ccb537`. [Phase 5 evidence](../backend/evidence/forum/FOR_PHASE_5.md)

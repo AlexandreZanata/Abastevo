@@ -1320,6 +1320,14 @@
     <string name="forum_card_cta">Explorer le forum</string>
     <string name="forum_screen_title">Forum Abastevo</string>
     <string name="forum_detail_title">Publication</string>
+    <string name="forum_bulletin_provenance_title">Provenance et méthodologie</string>
+    <string name="forum_bulletin_methodology">Méthodologie : %1$s · modèle %2$s</string>
+    <string name="forum_bulletin_fuel_unit">Carburant : %1$s · unité : %2$s</string>
+    <string name="forum_bulletin_current_period">Période actuelle : %1$s à %2$s</string>
+    <string name="forum_bulletin_previous_period">Période précédente : %1$s à %2$s</string>
+    <string name="forum_bulletin_current_sample">Échantillon actuel : %1$d stations ; couverture %2$d/%3$d</string>
+    <string name="forum_bulletin_previous_sample">Échantillon précédent : %1$d stations ; couverture %2$d/%3$d</string>
+    <string name="forum_bulletin_correction_notice">Correction d’un bulletin précédent</string>
     <string name="forum_category_all">Tous</string>
     <string name="forum_filters">Filtres</string>
     <string name="forum_filter_clear">Effacer</string>

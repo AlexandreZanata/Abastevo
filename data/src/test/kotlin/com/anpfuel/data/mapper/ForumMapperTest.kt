@@ -132,6 +132,73 @@ class ForumMapperTest {
     }
 
     @Test
+    fun `maps bulletin provenance and correction link`() {
+        val raw = """
+            {
+                "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                "kind": "BULLETIN",
+                "category": "ABASTEVO_DATA",
+                "title": "Gasolina comum em SP: R$ 6,018/L",
+                "excerpt": "Média amostral de 100 postos.",
+                "body_text": "Corpo determinístico.",
+                "first_published_at": "2026-11-05T12:00:00Z",
+                "updated_at": "2026-11-05T12:00:00Z",
+                "revision": 1,
+                "comments_enabled": true,
+                "supersedes_post_id": "00000000-0000-4000-8000-000000000009",
+                "bulletin": {
+                    "methodology_version": "forum-official-mean-v1",
+                    "template_version": "forum-bulletin-v1",
+                    "fuel": "GASOLINE_REGULAR",
+                    "unit": "L",
+                    "current": {
+                        "revision_id": "11111111-1111-4111-8111-111111111111",
+                        "survey_start": "2026-10-26",
+                        "survey_end": "2026-11-01",
+                        "published_at": "2026-11-02T12:00:00Z",
+                        "source_url": "https://www.gov.br/anp/a.xlsx",
+                        "source_checksum": "sha256:a",
+                        "parser_version": "v1",
+                        "sum_milli_brl": 601800,
+                        "observation_count": 100,
+                        "sampled_stations": 100,
+                        "source_observations": 105,
+                        "source_stations": 120,
+                        "mean_numerator": 6018,
+                        "mean_denominator": 1,
+                        "mean": "6018"
+                    },
+                    "previous": {
+                        "revision_id": "22222222-2222-4222-8222-222222222222",
+                        "survey_start": "2026-10-19",
+                        "survey_end": "2026-10-25",
+                        "published_at": "2026-10-27T12:00:00Z",
+                        "source_url": "https://www.gov.br/anp/b.xlsx",
+                        "source_checksum": "sha256:b",
+                        "parser_version": "v1",
+                        "sum_milli_brl": 590000,
+                        "observation_count": 100,
+                        "sampled_stations": 100,
+                        "source_observations": 100,
+                        "source_stations": 118,
+                        "mean_numerator": 5900,
+                        "mean_denominator": 1,
+                        "mean": "5900"
+                    }
+                }
+            }
+        """.trimIndent()
+        val detail = ForumMapper.detail(JSONObject(raw))
+        assertEquals(ForumPostKind.BULLETIN, detail.kind)
+        assertEquals("forum-official-mean-v1", detail.bulletin?.methodologyVersion)
+        assertEquals("GASOLINE_REGULAR", detail.bulletin?.fuel)
+        assertEquals(601800L, detail.bulletin?.current?.sumMilliBrl)
+        assertEquals(120L, detail.bulletin?.current?.sourceStations)
+        assertEquals(5900L, detail.bulletin?.previous?.meanNumerator)
+        assertEquals("00000000-0000-4000-8000-000000000009", detail.supersedesPostId)
+    }
+
+    @Test
     fun `ForumCacheCodec roundtrip serialization`() {
         // Categories roundtrip
         val catResult = ForumCategoriesResult(

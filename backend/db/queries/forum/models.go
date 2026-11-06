@@ -152,6 +152,8 @@ type ForumPost struct {
 	BulletinKey            pgtype.Text        `json:"bulletin_key"`
 	SupersedesPostID       pgtype.UUID        `json:"supersedes_post_id"`
 	NextCommentSequence    int64              `json:"next_comment_sequence"`
+	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
+	BulletinProvenance     []byte             `json:"bulletin_provenance"`
 }
 
 type ForumReport struct {

@@ -220,6 +220,10 @@ type Post struct {
 	FuelProduct         *string
 	StationID           *string
 	RightsSnapshot      *string
+	BulletinKey         *string
+	BulletinGroupKey    *string
+	BulletinProvenance  *BulletinProvenance
+	SupersedesPostID    *string
 }
 
 // CanTransition validates whether a publication state transition is allowed.
@@ -295,6 +299,16 @@ func (p *Post) Validate() error {
 		if p.Source != nil && p.Source.RightsStatus != RightsApproved {
 			return ErrMissingRights
 		}
+	case KindBulletin:
+		if strings.TrimSpace(p.SourceID) == "" && p.Source == nil {
+			return ErrMissingSource
+		}
+		if p.PublicationState != StateRemoved &&
+			(p.BulletinKey == nil || *p.BulletinKey == "" ||
+				p.BulletinGroupKey == nil || *p.BulletinGroupKey == "" ||
+				p.BulletinProvenance == nil) {
+			return ErrMissingBulletinProvenance
+		}
 	case KindTopic:
 		if strings.TrimSpace(p.SourceID) != "" {
 			return ErrTopicCannotHaveSource
@@ -349,6 +363,8 @@ type PostDetail struct {
 	Region            *Region
 	FuelProduct       *string
 	StationID         *string
+	Bulletin          *BulletinProvenance
+	SupersedesPostID  *string
 }
 
 // FeedPage represents a paginated set of public summaries.
@@ -453,6 +469,8 @@ func (p *Post) ToDetail() (*PostDetail, error) {
 		Region:            p.Region,
 		FuelProduct:       p.FuelProduct,
 		StationID:         p.StationID,
+		Bulletin:          p.BulletinProvenance,
+		SupersedesPostID:  p.SupersedesPostID,
 	}, nil
 }
 

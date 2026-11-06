@@ -1,0 +1,47 @@
+{
+  "id": "forum-bulletin-provenance-valid",
+  "version": 1,
+  "schema": "ForumBulletinProvenance",
+  "valid": true,
+  "provenance": "synthetic FOR-27 provenance; no live prices",
+  "value": {
+    "methodology_version": "forum-official-mean-v1",
+    "template_version": "forum-bulletin-v1",
+    "fuel": "GASOLINE_REGULAR",
+    "unit": "L",
+    "current": {
+      "revision_id": "11111111-1111-4111-8111-111111111111",
+      "survey_start": "2026-10-26",
+      "survey_end": "2026-11-01",
+      "published_at": "2026-11-02T12:00:00Z",
+      "source_url": "https://www.gov.br/anp/synthetic.xlsx",
+      "source_checksum": "sha256:synthetic-current",
+      "parser_version": "synthetic-v1",
+      "sum_milli_brl": 601800,
+      "observation_count": 100,
+      "sampled_stations": 100,
+      "source_observations": 105,
+      "source_stations": 120,
+      "mean_numerator": 6018,
+      "mean_denominator": 1,
+      "mean": "6018"
+    },
+    "previous": {
+      "revision_id": "22222222-2222-4222-8222-222222222222",
+      "survey_start": "2026-10-19",
+      "survey_end": "2026-10-25",
+      "published_at": "2026-10-27T12:00:00Z",
+      "source_url": "https://www.gov.br/anp/synthetic-previous.xlsx",
+      "source_checksum": "sha256:synthetic-previous",
+      "parser_version": "synthetic-v1",
+      "sum_milli_brl": 590000,
+      "observation_count": 100,
+      "sampled_stations": 100,
+      "source_observations": 100,
+      "source_stations": 118,
+      "mean_numerator": 5900,
+      "mean_denominator": 1,
+      "mean": "5900"
+    }
+  }
+}

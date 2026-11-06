@@ -13309,6 +13309,66 @@ components:
           format: uuid
           description: Optional subject station identifier.
           example: null
+        bulletin:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumBulletinProvenance'
+          description: Structured provenance/methodology for deterministic data bulletins.
+        supersedes_post_id:
+          type: [string, 'null']
+          format: uuid
+          description: Previous bulletin this reviewed correction supersedes.
+          example: null
+    ForumBulletinRevision:
+      type: object
+      description: Exact accepted Official revision aggregate for one side of a bulletin.
+      additionalProperties: false
+      required:
+        - revision_id
+        - survey_start
+        - survey_end
+        - published_at
+        - source_url
+        - source_checksum
+        - parser_version
+        - sum_milli_brl
+        - observation_count
+        - sampled_stations
+        - source_observations
+        - source_stations
+        - mean_numerator
+        - mean_denominator
+        - mean
+      properties:
+        revision_id: {type: string, format: uuid}
+        survey_start: {type: string, format: date}
+        survey_end: {type: string, format: date}
+        published_at: {type: string, format: date-time}
+        source_url: {type: string, format: uri}
+        source_checksum: {type: string, minLength: 1}
+        parser_version: {type: string, minLength: 1}
+        sum_milli_brl: {type: integer, minimum: 1}
+        observation_count: {type: integer, minimum: 1}
+        sampled_stations: {type: integer, minimum: 1}
+        source_observations: {type: integer, minimum: 1}
+        source_stations: {type: integer, minimum: 1}
+        mean_numerator: {type: integer, minimum: 1}
+        mean_denominator: {type: integer, minimum: 1}
+        mean: {type: string, minLength: 1}
+    ForumBulletinProvenance:
+      type: object
+      description: Frozen deterministic bulletin methodology and exact input manifest.
+      additionalProperties: false
+      required: [methodology_version, template_version, fuel, unit, current, previous]
+      properties:
+        methodology_version: {type: string, enum: [forum-official-mean-v1]}
+        template_version: {type: string, enum: [forum-bulletin-v1]}
+        fuel:
+          type: string
+          enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, GASOLINE_PREMIUM_GRADE, DIESEL_S500, DIESEL_S10, CNG, LPG_P13]
+        unit: {type: string, enum: [L, M3, KG_13]}
+        current: {$ref: '#/components/schemas/ForumBulletinRevision'}
+        previous: {$ref: '#/components/schemas/ForumBulletinRevision'}
     ForumCategoryItem:
       type: object
       description: Taxonomy category item for forum browsing.

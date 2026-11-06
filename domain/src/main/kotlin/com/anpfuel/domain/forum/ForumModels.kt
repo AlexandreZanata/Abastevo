@@ -63,6 +63,41 @@ data class ForumPostDetail(
     val region: ForumRegion? = null,
     val fuelProduct: String? = null,
     val stationId: String? = null,
+    val bulletin: ForumBulletinProvenance? = null,
+    val supersedesPostId: String? = null,
+)
+
+/**
+ * Exact accepted Official revision aggregate exposed by a deterministic bulletin.
+ */
+data class ForumBulletinRevision(
+    val revisionId: String,
+    val surveyStart: String,
+    val surveyEnd: String,
+    val publishedAt: String,
+    val sourceUrl: String,
+    val sourceChecksum: String,
+    val parserVersion: String,
+    val sumMilliBrl: Long,
+    val observationCount: Long,
+    val sampledStations: Long,
+    val sourceObservations: Long,
+    val sourceStations: Long,
+    val meanNumerator: Long,
+    val meanDenominator: Long,
+    val mean: String,
+)
+
+/**
+ * Public provenance and frozen methodology for a deterministic data bulletin.
+ */
+data class ForumBulletinProvenance(
+    val methodologyVersion: String,
+    val templateVersion: String,
+    val fuel: String,
+    val unit: String,
+    val current: ForumBulletinRevision,
+    val previous: ForumBulletinRevision,
 )
 
 /**

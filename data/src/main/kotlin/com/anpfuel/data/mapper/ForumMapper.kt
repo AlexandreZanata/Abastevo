@@ -1,5 +1,7 @@
 package com.anpfuel.data.mapper
 
+import com.anpfuel.domain.forum.ForumBulletinProvenance
+import com.anpfuel.domain.forum.ForumBulletinRevision
 import com.anpfuel.domain.forum.ForumCategoriesResult
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumCategoryItem
@@ -79,6 +81,16 @@ object ForumMapper {
         } else {
             null
         }
+        val supersedesPostId = if (json.has("supersedes_post_id") && !json.isNull("supersedes_post_id")) {
+            json.getString("supersedes_post_id")
+        } else {
+            null
+        }
+        val bulletin = if (json.has("bulletin") && !json.isNull("bulletin")) {
+            bulletinProvenance(json.getJSONObject("bulletin"))
+        } else {
+            null
+        }
         return ForumPostDetail(
             id = summary.id,
             kind = summary.kind,
@@ -99,6 +111,39 @@ object ForumMapper {
             region = summary.region,
             fuelProduct = summary.fuelProduct,
             stationId = summary.stationId,
+            bulletin = bulletin,
+            supersedesPostId = supersedesPostId,
+        )
+    }
+
+    private fun bulletinProvenance(obj: JSONObject): ForumBulletinProvenance {
+        return ForumBulletinProvenance(
+            methodologyVersion = obj.optString("methodology_version", ""),
+            templateVersion = obj.optString("template_version", ""),
+            fuel = obj.optString("fuel", ""),
+            unit = obj.optString("unit", ""),
+            current = bulletinRevision(obj.getJSONObject("current")),
+            previous = bulletinRevision(obj.getJSONObject("previous")),
+        )
+    }
+
+    private fun bulletinRevision(obj: JSONObject): ForumBulletinRevision {
+        return ForumBulletinRevision(
+            revisionId = obj.optString("revision_id", ""),
+            surveyStart = obj.optString("survey_start", ""),
+            surveyEnd = obj.optString("survey_end", ""),
+            publishedAt = obj.optString("published_at", ""),
+            sourceUrl = obj.optString("source_url", ""),
+            sourceChecksum = obj.optString("source_checksum", ""),
+            parserVersion = obj.optString("parser_version", ""),
+            sumMilliBrl = obj.optLong("sum_milli_brl", 0L),
+            observationCount = obj.optLong("observation_count", 0L),
+            sampledStations = obj.optLong("sampled_stations", 0L),
+            sourceObservations = obj.optLong("source_observations", 0L),
+            sourceStations = obj.optLong("source_stations", 0L),
+            meanNumerator = obj.optLong("mean_numerator", 0L),
+            meanDenominator = obj.optLong("mean_denominator", 0L),
+            mean = obj.optString("mean", ""),
         )
     }
 

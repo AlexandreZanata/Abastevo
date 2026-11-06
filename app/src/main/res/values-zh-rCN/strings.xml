@@ -1320,6 +1320,14 @@
     <string name="forum_card_cta">探索论坛</string>
     <string name="forum_screen_title">Abastevo论坛</string>
     <string name="forum_detail_title">文章详情</string>
+    <string name="forum_bulletin_provenance_title">来源与方法</string>
+    <string name="forum_bulletin_methodology">方法：%1$s · 模板 %2$s</string>
+    <string name="forum_bulletin_fuel_unit">燃料：%1$s · 单位：%2$s</string>
+    <string name="forum_bulletin_current_period">当前周期：%1$s 至 %2$s</string>
+    <string name="forum_bulletin_previous_period">上一周期：%1$s 至 %2$s</string>
+    <string name="forum_bulletin_current_sample">当前样本：%1$d 个站点；覆盖率 %2$d/%3$d</string>
+    <string name="forum_bulletin_previous_sample">上期样本：%1$d 个站点；覆盖率 %2$d/%3$d</string>
+    <string name="forum_bulletin_correction_notice">对上一期简报的更正</string>
     <string name="forum_category_all">全部</string>
     <string name="forum_filters">筛选</string>
     <string name="forum_filter_clear">清除</string>

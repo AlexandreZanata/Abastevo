@@ -11,6 +11,7 @@ enum class ForumPostKind(val wireValue: String) {
     NEWS("NEWS"),
     COMMUNITY("COMMUNITY"),
     TOPIC("TOPIC"),
+    BULLETIN("BULLETIN"),
     UNKNOWN("UNKNOWN");
 
     companion object {

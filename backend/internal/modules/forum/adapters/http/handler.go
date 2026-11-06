@@ -315,25 +315,56 @@ type PostSummaryDTO struct {
 	StationID         *string               `json:"station_id"`
 }
 
+// BulletinRevisionDTO mirrors OpenAPI ForumBulletinRevision.
+type BulletinRevisionDTO struct {
+	RevisionID         string `json:"revision_id"`
+	SurveyStart        string `json:"survey_start"`
+	SurveyEnd          string `json:"survey_end"`
+	PublishedAt        string `json:"published_at"`
+	SourceURL          string `json:"source_url"`
+	SourceChecksum     string `json:"source_checksum"`
+	ParserVersion      string `json:"parser_version"`
+	SumMilliBrl        int64  `json:"sum_milli_brl"`
+	ObservationCount   int64  `json:"observation_count"`
+	SampledStations    int64  `json:"sampled_stations"`
+	SourceObservations int64  `json:"source_observations"`
+	SourceStations     int64  `json:"source_stations"`
+	MeanNumerator      int64  `json:"mean_numerator"`
+	MeanDenominator    int64  `json:"mean_denominator"`
+	Mean               string `json:"mean"`
+}
+
+// BulletinProvenanceDTO mirrors OpenAPI ForumBulletinProvenance.
+type BulletinProvenanceDTO struct {
+	MethodologyVersion string              `json:"methodology_version"`
+	TemplateVersion    string              `json:"template_version"`
+	Fuel               string              `json:"fuel"`
+	Unit               string              `json:"unit"`
+	Current            BulletinRevisionDTO `json:"current"`
+	Previous           BulletinRevisionDTO `json:"previous"`
+}
+
 // PostDetailDTO mirrors OpenAPI ForumPostDetail.
 type PostDetailDTO struct {
-	ID                string                `json:"id"`
-	Kind              string                `json:"kind"`
-	Category          string                `json:"category"`
-	Title             string                `json:"title"`
-	Excerpt           *string               `json:"excerpt"`
-	BodyText          *string               `json:"body_text"`
-	Source            *SourceAttributionDTO `json:"source"`
-	PublicAlias       *string               `json:"public_alias"`
-	SourcePublishedAt *string               `json:"source_published_at"`
-	FirstPublishedAt  string                `json:"first_published_at"`
-	UpdatedAt         string                `json:"updated_at"`
-	Revision          int                   `json:"revision"`
-	CommentsEnabled   bool                  `json:"comments_enabled"`
-	Correction        *string               `json:"correction"`
-	Region            *RegionDTO            `json:"region"`
-	FuelProduct       *string               `json:"fuel_product"`
-	StationID         *string               `json:"station_id"`
+	ID                string                 `json:"id"`
+	Kind              string                 `json:"kind"`
+	Category          string                 `json:"category"`
+	Title             string                 `json:"title"`
+	Excerpt           *string                `json:"excerpt"`
+	BodyText          *string                `json:"body_text"`
+	Source            *SourceAttributionDTO  `json:"source"`
+	PublicAlias       *string                `json:"public_alias"`
+	SourcePublishedAt *string                `json:"source_published_at"`
+	FirstPublishedAt  string                 `json:"first_published_at"`
+	UpdatedAt         string                 `json:"updated_at"`
+	Revision          int                    `json:"revision"`
+	CommentsEnabled   bool                   `json:"comments_enabled"`
+	Correction        *string                `json:"correction"`
+	Region            *RegionDTO             `json:"region"`
+	FuelProduct       *string                `json:"fuel_product"`
+	StationID         *string                `json:"station_id"`
+	Bulletin          *BulletinProvenanceDTO `json:"bulletin"`
+	SupersedesPostID  *string                `json:"supersedes_post_id"`
 }
 
 // CategoryItemDTO mirrors OpenAPI ForumCategoryItem.
@@ -442,5 +473,41 @@ func mapDetailToDTO(d *domain.PostDetail) PostDetailDTO {
 		Region:            mapRegionToDTO(d.Region),
 		FuelProduct:       d.FuelProduct,
 		StationID:         d.StationID,
+		Bulletin:          mapBulletinToDTO(d.Bulletin),
+		SupersedesPostID:  d.SupersedesPostID,
+	}
+}
+
+func mapBulletinToDTO(b *domain.BulletinProvenance) *BulletinProvenanceDTO {
+	if b == nil {
+		return nil
+	}
+	return &BulletinProvenanceDTO{
+		MethodologyVersion: b.MethodologyVersion,
+		TemplateVersion:    b.TemplateVersion,
+		Fuel:               b.Fuel,
+		Unit:               b.Unit,
+		Current:            mapBulletinRevisionToDTO(b.Current),
+		Previous:           mapBulletinRevisionToDTO(b.Previous),
+	}
+}
+
+func mapBulletinRevisionToDTO(r domain.BulletinRevisionProvenance) BulletinRevisionDTO {
+	return BulletinRevisionDTO{
+		RevisionID:         r.RevisionID,
+		SurveyStart:        r.SurveyStart,
+		SurveyEnd:          r.SurveyEnd,
+		PublishedAt:        r.PublishedAt,
+		SourceURL:          r.SourceURL,
+		SourceChecksum:     r.SourceChecksum,
+		ParserVersion:      r.ParserVersion,
+		SumMilliBrl:        r.SumMilliBrl,
+		ObservationCount:   r.ObservationCount,
+		SampledStations:    r.SampledStations,
+		SourceObservations: r.SourceObservations,
+		SourceStations:     r.SourceStations,
+		MeanNumerator:      r.MeanNumerator,
+		MeanDenominator:    r.MeanDenominator,
+		Mean:               r.Mean,
 	}
 }

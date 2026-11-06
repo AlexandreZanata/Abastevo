@@ -383,6 +383,7 @@ internal fun forumKindLabel(kind: ForumPostKind): Int = when (kind) {
     ForumPostKind.NEWS -> R.string.forum_kind_news
     ForumPostKind.COMMUNITY -> R.string.forum_card_title
     ForumPostKind.TOPIC -> R.string.forum_kind_topic
+    ForumPostKind.BULLETIN -> R.string.forum_kind_bulletin
     ForumPostKind.UNKNOWN -> R.string.forum_kind_editorial
 }
 
