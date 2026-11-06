@@ -1,4 +1,25 @@
 # Current execution state
+- FOR-26 Deterministic forum bulletin template, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `d5ccb537`. [Phase 5 evidence](../backend/evidence/forum/FOR_PHASE_5.md)
+  freezes `forum-bulletin-v1` over the FOR-25 exact aggregate:
+  original plain pt-BR text, no LLM/network/HTML/Markdown; 0.001 BRL/unit and
+  0.1% display rounding half away from zero with comma decimals and explicit
+  signs; both periods, sample/coverage counts, revision IDs, checksums, URLs,
+  parser versions and non-claims in every draft. Identity key is template +
+  current revision + previous revision + UF + fuel + unit; identical input is
+  byte-identical and a same-key no-op; a newer accepted revision pair for the
+  same survey windows is a correction, while a new window is a new bulletin.
+  Invalid UF/fuel/unit, periods, provenance, sub-30 samples, inconsistent
+  coverage, arithmetic range and oversized content are refused. Verified:
+  forum domain race suite 1.017s including exact text, determinism, signed and
+  half-away ties, correction direction, checksum rendering, HTTPS/control
+  refusals; full forum unit race suite, build, vet, sqlc vet and domain
+  staticcheck;
+  gofmt/diff-check/secret scan PASS. No persistence link, worker job, HTTP
+  route, Android surface, publication, source approval or merge was added.
+  Next microtask: FOR-27 worker/admin/Android bulletin checkpoint.
+
 - FOR-25 Official bulletin methodology and aggregate port, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `610a9079`. [Phase 5 evidence](../backend/evidence/forum/FOR_PHASE_5.md)

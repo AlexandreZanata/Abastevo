@@ -1,8 +1,9 @@
 # Forum Abastevo — deterministic official bulletins
 
-Status: **FROZEN METHODOLOGY / SOURCE PORT LOCAL_DONE** (FOR-25, 2026-11-06).
-Scope: input selection and exact aggregates only. Templates, display rounding
-and publication ride FOR-26/FOR-27. No bulletin is published by this document.
+Status: **FROZEN METHODOLOGY / SOURCE PORT / TEMPLATE LOCAL_DONE**
+(FOR-25/FOR-26, 2026-11-06). Scope: input selection, exact aggregates,
+deterministic template and correction identity. Worker/admin/Android review and
+publication ride FOR-27. No bulletin is published by this document.
 
 ## Version and authority
 
@@ -77,6 +78,31 @@ For each revision and UF:
 
 Sums are read from PostgreSQL `numeric` text and must fit a positive `int64`
 milli-BRL value. Overflow is a typed refusal, never a wrapped value.
+
+## Template and display rounding (FOR-26)
+
+- Template version: `forum-bulletin-v1`; original plain pt-BR text, no LLM,
+  network, HTML or Markdown.
+- Mean and absolute difference display **0.001 BRL per unit**, rounded from the
+  exact unrounded rational **half away from zero**. Percent display is **0.1%**,
+  also half away from zero.
+- Decimal separator is comma; there is no thousands separator. Positive deltas
+  carry `+`, negative carry `-`, and zero is unsigned (`0,000`, `0,0%`). Dates
+  remain ISO `YYYY-MM-DD`; units display as `L`, `m³` or `kg`.
+- The title/excerpt/body always state the sample counts, both periods, coverage
+  counts, the two revision IDs/checksums/URLs, methodology version and template
+  version, and the explicit non-claims (not ANP's published mean, not same-
+  station change, not national fleet behavior).
+- Bulletin key = template version + current revision UUID + previous revision
+  UUID + UF + fuel + unit. The same key is a no-op and never rewrites content.
+- A correction is a newer accepted revision pair for the **same two survey
+  windows**; it produces a different key. FOR-27 persists the `supersedes_post_id`
+  link after review. Checksums are provenance, not an alternative revision
+  identity: Official always opens a new revision UUID for changed bytes.
+- Provenance URLs must be HTTPS without userinfo; URLs, checksums and parser
+  versions reject control characters before rendering.
+- The template only reads the frozen aggregate; it never changes stored Official
+  prices or claims a different source.
 
 ## Input manifest
 
