@@ -1,4 +1,23 @@
 # Current execution state
+- FOR-25 Official bulletin methodology and aggregate port, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `610a9079`. [Phase 5 evidence](../backend/evidence/forum/FOR_PHASE_5.md)
+  freezes `forum-official-mean-v1` in
+  [FORUM_ABASTEVO_BULLETINS.md](../backend/FORUM_ABASTEVO_BULLETINS.md):
+  two current complete non-overlapping published survey revisions, one latest
+  observation per station/fuel/unit, >=30 sampled stations in both UF samples,
+  positive sums, exact reduced rational mean and typed skip reasons. Official
+  owns the bounded SQL/read port: `db/queries/official/bulletin.sql`,
+  `BulletinReader`, revision-pair manifest, exact `numeric` sum parsing with
+  overflow refusal, coverage counts (raw source observations, sampled stations,
+  any-product source-station denominator) and no community/charging input.
+  Verified: targeted real-PostGIS bulletin suite 6/6 PASS (4.403s: correction,
+  duplicate dedup, absent region, no pair, overflow, mixed unit); full official
+  unit and integration suites, `sqlc vet`/`sqlc diff`, `go vet`, gofmt,
+  diff-check and secret scan PASS. No bulletin, HTTP route, worker job,
+  Android surface, source approval or merge was added. Next microtask: FOR-26
+  deterministic templates/rounding/correction identity.
+
 - FOR-24 Forum subject filters and open-forum checkpoint, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING / SEARCH_DEFERRED on isolated dev worktree
   from parent `7430dec1`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)

@@ -402,7 +402,9 @@ reading, privacy and moderation. Do not migrate feedback comments into Forum.
 
 Depends on FOR-09, accepted source dataset aggregate contract, exact arithmetic
 and review; independent of optional push/personalization. B-BR-FOR-02/15/16,
-BUC-FOR-08. Evidence: `docs/backend/evidence/forum/FOR_PHASE_5.md`.
+BUC-FOR-08. Frozen methodology:
+[FORUM_ABASTEVO_BULLETINS.md](../backend/FORUM_ABASTEVO_BULLETINS.md).
+Evidence: `docs/backend/evidence/forum/FOR_PHASE_5.md`.
 
 ### FOR-25 — Freeze methodology and aggregate port
 

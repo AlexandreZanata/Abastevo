@@ -69,6 +69,8 @@ projection. External collection never runs inside a public request.
   expose revision-aware data and exact prices, not a weekly state bulletin API.
   Build a bounded aggregate read owned by Official if the required aggregate is
   absent; Forum must not infer statistical representativeness from a price row.
+  The frozen FOR-25 aggregate/methodology is
+  [FORUM_ABASTEVO_BULLETINS.md](FORUM_ABASTEVO_BULLETINS.md).
 - `alerts/application/ports.go` and `subscription/application/ports.go` exist on
   this main. Alerts are optional later integration; subscription is not a gate
   for free Forum. Neither proves an operational Forum notification provider.
