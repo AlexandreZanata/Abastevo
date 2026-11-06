@@ -837,6 +837,7 @@ func run() error {
 	forumDiscussionHandler := &forumhttp.DiscussionHandler{
 		Comments: forumStore,
 		Reports:  forumStore,
+		Topics:   forumStore,
 		Runner:   identityRunner,
 		Clock:    time.Now,
 		Config:   &forumCfg,

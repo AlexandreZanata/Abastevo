@@ -52,11 +52,47 @@ type RemoveCommentRequest struct {
 	ExpectedRevision int    `json:"expected_revision"`
 }
 
-// OwnerReadRequest is the wire request body to read private authored comments.
+// OwnerReadRequest is the wire request body to read private authored comments and topics.
 type OwnerReadRequest struct {
 	SessionEnvelope
 	CommentID *string `json:"comment_id,omitempty"`
 	PostID    *string `json:"post_id,omitempty"`
+	TopicID   *string `json:"topic_id,omitempty"`
+}
+
+// CreateTopicRequest is the wire request body to submit an authored discussion topic.
+type CreateTopicRequest struct {
+	SessionEnvelope
+	OperationID            string  `json:"operation_id"`
+	Category               string  `json:"category"`
+	Title                  string  `json:"title"`
+	BodyText               string  `json:"body_text"`
+	PublicAlias            *string `json:"public_alias,omitempty"`
+	RegionUF               *string `json:"region_uf,omitempty"`
+	RegionMunicipalityIBGE *int    `json:"region_municipality_ibge,omitempty"`
+	FuelProduct            *string `json:"fuel_product,omitempty"`
+	StationID              *string `json:"station_id,omitempty"`
+}
+
+// EditTopicRequest is the wire request body to CAS-edit an authored topic.
+type EditTopicRequest struct {
+	SessionEnvelope
+	OperationID            string  `json:"operation_id"`
+	ExpectedRevision       int     `json:"expected_revision"`
+	Category               string  `json:"category"`
+	Title                  string  `json:"title"`
+	BodyText               string  `json:"body_text"`
+	RegionUF               *string `json:"region_uf,omitempty"`
+	RegionMunicipalityIBGE *int    `json:"region_municipality_ibge,omitempty"`
+	FuelProduct            *string `json:"fuel_product,omitempty"`
+	StationID              *string `json:"station_id,omitempty"`
+}
+
+// RemoveTopicRequest is the wire request body to tombstone an authored topic.
+type RemoveTopicRequest struct {
+	SessionEnvelope
+	OperationID      string `json:"operation_id"`
+	ExpectedRevision int    `json:"expected_revision"`
 }
 
 // ReportRequest is the wire request body to report a post or comment for moderation.
@@ -104,6 +140,32 @@ type CommentReceiptDTO struct {
 // OwnerCommentResponseDTO wraps a single private owner comment receipt.
 type OwnerCommentResponseDTO struct {
 	Comment CommentReceiptDTO `json:"comment"`
+}
+
+// TopicReceiptDTO represents the private owner receipt returned upon
+// topic create, edit, removal, or owner read.
+type TopicReceiptDTO struct {
+	ID               string     `json:"id"`
+	Kind             string     `json:"kind"`
+	Category         string     `json:"category"`
+	Title            string     `json:"title"`
+	BodyText         string     `json:"body_text"`
+	Revision         int        `json:"revision"`
+	PublicationState string     `json:"publication_state"`
+	Visibility       string     `json:"visibility"`
+	Region           *RegionDTO `json:"region,omitempty"`
+	FuelProduct      *string    `json:"fuel_product,omitempty"`
+	StationID        *string    `json:"station_id,omitempty"`
+	PublicAlias      *string    `json:"public_alias,omitempty"`
+	CreatedAt        string     `json:"created_at"`
+	UpdatedAt        string     `json:"updated_at"`
+	PublishedAt      *string    `json:"published_at,omitempty"`
+	Replayed         bool       `json:"replayed"`
+}
+
+// OwnerTopicResponseDTO wraps a single private owner topic receipt.
+type OwnerTopicResponseDTO struct {
+	Topic TopicReceiptDTO `json:"topic"`
 }
 
 // CommentItemDTO represents a public approved comment item.
@@ -208,6 +270,83 @@ func CanonicalOwnerReadIntent(accountID string, commentID, postID *string) ([]by
 	})
 }
 
+type canonicalCreateTopicPayload struct {
+	Action                 string  `json:"action"`
+	OperationID            string  `json:"operation_id"`
+	Category               string  `json:"category"`
+	Title                  string  `json:"title"`
+	BodyText               string  `json:"body_text"`
+	PublicAlias            *string `json:"public_alias,omitempty"`
+	RegionUF               *string `json:"region_uf,omitempty"`
+	RegionMunicipalityIBGE *int    `json:"region_municipality_ibge,omitempty"`
+	FuelProduct            *string `json:"fuel_product,omitempty"`
+	StationID              *string `json:"station_id,omitempty"`
+}
+
+type canonicalEditTopicPayload struct {
+	Action                 string  `json:"action"`
+	OperationID            string  `json:"operation_id"`
+	TopicID                string  `json:"topic_id"`
+	ExpectedRevision       int     `json:"expected_revision"`
+	Category               string  `json:"category"`
+	Title                  string  `json:"title"`
+	BodyText               string  `json:"body_text"`
+	RegionUF               *string `json:"region_uf,omitempty"`
+	RegionMunicipalityIBGE *int    `json:"region_municipality_ibge,omitempty"`
+	FuelProduct            *string `json:"fuel_product,omitempty"`
+	StationID              *string `json:"station_id,omitempty"`
+}
+
+type canonicalRemoveTopicPayload struct {
+	Action           string `json:"action"`
+	OperationID      string `json:"operation_id"`
+	TopicID          string `json:"topic_id"`
+	ExpectedRevision int    `json:"expected_revision"`
+}
+
+// CanonicalCreateTopicIntent serializes the stable logical intent of a create topic command.
+func CanonicalCreateTopicIntent(operationID, category, title, bodyText string, publicAlias, regionUF *string, ibge *int, fuelProduct, stationID *string) ([]byte, error) {
+	return json.Marshal(canonicalCreateTopicPayload{
+		Action:                 "create_topic",
+		OperationID:            strings.TrimSpace(operationID),
+		Category:               strings.TrimSpace(category),
+		Title:                  title,
+		BodyText:               bodyText,
+		PublicAlias:            publicAlias,
+		RegionUF:               regionUF,
+		RegionMunicipalityIBGE: ibge,
+		FuelProduct:            fuelProduct,
+		StationID:              stationID,
+	})
+}
+
+// CanonicalEditTopicIntent serializes the stable logical intent of an edit topic command.
+func CanonicalEditTopicIntent(operationID, topicID string, expectedRevision int, category, title, bodyText string, regionUF *string, ibge *int, fuelProduct, stationID *string) ([]byte, error) {
+	return json.Marshal(canonicalEditTopicPayload{
+		Action:                 "edit_topic",
+		OperationID:            strings.TrimSpace(operationID),
+		TopicID:                strings.TrimSpace(topicID),
+		ExpectedRevision:       expectedRevision,
+		Category:               strings.TrimSpace(category),
+		Title:                  title,
+		BodyText:               bodyText,
+		RegionUF:               regionUF,
+		RegionMunicipalityIBGE: ibge,
+		FuelProduct:            fuelProduct,
+		StationID:              stationID,
+	})
+}
+
+// CanonicalRemoveTopicIntent serializes the stable logical intent of a remove topic command.
+func CanonicalRemoveTopicIntent(operationID, topicID string, expectedRevision int) ([]byte, error) {
+	return json.Marshal(canonicalRemoveTopicPayload{
+		Action:           "remove_topic",
+		OperationID:      strings.TrimSpace(operationID),
+		TopicID:          strings.TrimSpace(topicID),
+		ExpectedRevision: expectedRevision,
+	})
+}
+
 // HashLogicalIntent computes SHA-256 hex digest of canonical logical intent bytes.
 func HashLogicalIntent(b []byte) string {
 	sum := sha256.Sum256(b)
@@ -218,6 +357,7 @@ func HashLogicalIntent(b []byte) string {
 type DiscussionHandler struct {
 	Comments    application.CommentStore
 	Reports     application.ReportStore
+	Topics      application.TopicStore
 	Sessions    func(ctx context.Context, familyID, accessToken string) (accountID string, err error)
 	SignedOwner func(r *http.Request, accountID string) (contributorID string, keyID string, err error)
 	Guard       func(ctx context.Context, tx pgx.Tx, accountID, familyID, accessToken, contributorID, keyID string) error
@@ -262,6 +402,9 @@ func (h *DiscussionHandler) RegisterRoutes(r chi.Router) {
 	r.Get("/v1/forum/comments/{comment_id}/replies", h.ListReplies)
 	r.Post("/v1/forum/comments/{comment_id}/report", h.ReportComment)
 	r.Post("/v1/forum/owner/read", h.OwnerRead)
+	r.Post("/v1/forum/topics", h.CreateTopic)
+	r.Post("/v1/forum/topics/{topic_id}/edit", h.EditTopic)
+	r.Post("/v1/forum/topics/{topic_id}/remove", h.RemoveTopic)
 }
 
 func readJSONBody(r *http.Request, v any) error {
@@ -354,6 +497,32 @@ func mapCommentToReceiptDTO(c *domain.Comment, replayed bool) CommentReceiptDTO 
 	}
 }
 
+func mapPostToTopicReceiptDTO(p *domain.Post, replayed bool) TopicReceiptDTO {
+	var pubAt *string
+	if p.FirstPublishedAt != nil {
+		s := p.FirstPublishedAt.UTC().Format(time.RFC3339)
+		pubAt = &s
+	}
+	return TopicReceiptDTO{
+		ID:               p.ID,
+		Kind:             string(p.Kind),
+		Category:         string(p.Category),
+		Title:            p.Title,
+		BodyText:         p.BodyText,
+		Revision:         p.Revision,
+		PublicationState: string(p.PublicationState),
+		Visibility:       string(p.Visibility),
+		Region:           mapRegionToDTO(p.Region),
+		FuelProduct:      p.FuelProduct,
+		StationID:        p.StationID,
+		PublicAlias:      p.PublicAlias,
+		CreatedAt:        p.LocalCreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:        p.LocalUpdatedAt.UTC().Format(time.RFC3339),
+		PublishedAt:      pubAt,
+		Replayed:         replayed,
+	}
+}
+
 func (h *DiscussionHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
 	status := http.StatusServiceUnavailable
 	code := "forum.service-unavailable"
@@ -368,11 +537,22 @@ func (h *DiscussionHandler) writeError(w http.ResponseWriter, r *http.Request, e
 		if quotaErr.RetryAfter > 0 {
 			w.Header().Set("Retry-After", strconv.Itoa(int(quotaErr.RetryAfter.Seconds())))
 		}
-	case errors.Is(err, domain.ErrCommentLiveQuotaExceeded):
+	case errors.Is(err, domain.ErrCommentLiveQuotaExceeded),
+		errors.Is(err, domain.ErrTopicLiveQuotaExceeded):
 		status = http.StatusTooManyRequests
 		code = "forum.budget-exceeded"
-		msg = "live comment budget exceeded across forum"
+		msg = "live budget exceeded across forum"
 		w.Header().Set("Retry-After", "3600")
+	case errors.Is(err, domain.ErrTopicHourlyQuotaExceeded):
+		status = http.StatusTooManyRequests
+		code = "forum.rate-limited"
+		msg = "topic hourly quota exceeded (maximum 3 topics per hour)"
+		w.Header().Set("Retry-After", "3600")
+	case errors.Is(err, domain.ErrTopicDailyQuotaExceeded):
+		status = http.StatusTooManyRequests
+		code = "forum.rate-limited"
+		msg = "topic daily quota exceeded (maximum 10 topics per day)"
+		w.Header().Set("Retry-After", "86400")
 	case errors.Is(err, domain.ErrReportQuotaExceeded):
 		status = http.StatusTooManyRequests
 		code = "forum.rate-limited"
@@ -389,7 +569,17 @@ func (h *DiscussionHandler) writeError(w http.ResponseWriter, r *http.Request, e
 	case errors.Is(err, domain.ErrCommentBodyEmpty),
 		errors.Is(err, domain.ErrCommentBodyTooLong),
 		errors.Is(err, domain.ErrInvalidCommentDepth),
-		errors.Is(err, domain.ErrCrossPostParent):
+		errors.Is(err, domain.ErrCrossPostParent),
+		errors.Is(err, domain.ErrTopicTitleEmpty),
+		errors.Is(err, domain.ErrTopicTitleTooLong),
+		errors.Is(err, domain.ErrTopicBodyEmpty),
+		errors.Is(err, domain.ErrTopicBodyTooLong),
+		errors.Is(err, domain.ErrTopicAlreadyRemoved),
+		errors.Is(err, domain.ErrInvalidCategory),
+		errors.Is(err, domain.ErrInvalidRegion),
+		errors.Is(err, domain.ErrInvalidFuelProduct),
+		errors.Is(err, domain.ErrInvalidStationID),
+		errors.Is(err, domain.ErrTopicKindSpoof):
 		status = http.StatusBadRequest
 		code = "forum.bad-request"
 		msg = err.Error()
@@ -398,7 +588,9 @@ func (h *DiscussionHandler) writeError(w http.ResponseWriter, r *http.Request, e
 		errors.Is(err, domain.ErrParentCommentNotFound),
 		errors.Is(err, domain.ErrParentCommentNotVisible),
 		errors.Is(err, domain.ErrReportTargetMissing),
-		errors.Is(err, domain.ErrCommentAuthorMismatch):
+		errors.Is(err, domain.ErrCommentAuthorMismatch),
+		errors.Is(err, domain.ErrTopicNotFound),
+		errors.Is(err, domain.ErrTopicAuthorMismatch):
 		// Per B-BR-FOR-04: IDOR protection. Author mismatch or missing resource returns 404.
 		status = http.StatusNotFound
 		code = "forum.not-found"
@@ -757,7 +949,7 @@ func (h *DiscussionHandler) RemoveComment(w http.ResponseWriter, r *http.Request
 	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", respBytes)
 }
 
-// OwnerRead handles private owner projection reads of authored comments.
+// OwnerRead handles private owner projection reads of authored comments or topics.
 func (h *DiscussionHandler) OwnerRead(w http.ResponseWriter, r *http.Request) {
 	if !h.readsAllowed() {
 		h.writeError(w, r, domain.ErrForumDisabled)
@@ -777,12 +969,63 @@ func (h *DiscussionHandler) OwnerRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.CommentID == nil || *req.CommentID == "" || !isUUID(*req.CommentID) {
-		h.writeBadRequest(w, r, "comment_id required")
+	hasComment := req.CommentID != nil && strings.TrimSpace(*req.CommentID) != ""
+	hasTopic := req.TopicID != nil && strings.TrimSpace(*req.TopicID) != ""
+
+	if !hasComment && !hasTopic {
+		h.writeBadRequest(w, r, "comment_id or topic_id required")
+		return
+	}
+	if hasComment && hasTopic {
+		h.writeBadRequest(w, r, "specify either comment_id or topic_id, not both")
 		return
 	}
 
-	comment, err := h.Comments.GetCommentByID(r.Context(), *req.CommentID)
+	if hasTopic {
+		if h.Topics == nil {
+			h.writeError(w, r, domain.ErrForumDisabled)
+			return
+		}
+		topicID := strings.TrimSpace(*req.TopicID)
+		if !isUUID(topicID) {
+			h.writeBadRequest(w, r, "invalid topic id")
+			return
+		}
+
+		topic, err := h.Topics.GetTopicByID(r.Context(), topicID)
+		if err != nil {
+			h.writeError(w, r, err)
+			return
+		}
+
+		// B-BR-FOR-04 IDOR check: author must match authenticated session account.
+		// Foreign owner returns 404 (indistinguishable from missing resource).
+		if topic.AuthorAccountID != principal.AccountID {
+			w.Header().Set("Cache-Control", "no-store")
+			httpapi.WriteError(w, r, http.StatusNotFound, "forum.not-found", "topic not found", nil)
+			return
+		}
+
+		receipt := mapPostToTopicReceiptDTO(topic, false)
+		resp := OwnerTopicResponseDTO{Topic: receipt}
+		bodyBytes, _ := json.Marshal(resp)
+		w.Header().Set("Cache-Control", "no-store")
+		httpapi.WriteJSON(w, r, http.StatusOK, "no-store", bodyBytes)
+		return
+	}
+
+	if h.Comments == nil {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+
+	commentID := strings.TrimSpace(*req.CommentID)
+	if !isUUID(commentID) {
+		h.writeBadRequest(w, r, "invalid comment id")
+		return
+	}
+
+	comment, err := h.Comments.GetCommentByID(r.Context(), commentID)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
@@ -1097,4 +1340,440 @@ func (h *DiscussionHandler) ReportComment(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// CreateTopic handles signed owner submission of discussion topics.
+func (h *DiscussionHandler) CreateTopic(w http.ResponseWriter, r *http.Request) {
+	if !h.writesAllowed() {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+	if h.Topics == nil {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+
+	var req CreateTopicRequest
+	if err := readJSONBody(r, &req); err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	principal, status, code, msg := h.authenticatePrincipal(r, req.SessionEnvelope)
+	if status != 0 {
+		w.Header().Set("Cache-Control", "no-store")
+		httpapi.WriteError(w, r, status, code, msg, nil)
+		return
+	}
+
+	if !isUUID(req.OperationID) {
+		h.writeBadRequest(w, r, "invalid operation id")
+		return
+	}
+
+	cat, err := domain.ParseCategory(req.Category)
+	if err != nil {
+		h.writeBadRequest(w, r, err.Error())
+		return
+	}
+
+	cleanedTitle, err := domain.ValidateTopicTitle(req.Title)
+	if err != nil {
+		h.writeBadRequest(w, r, err.Error())
+		return
+	}
+
+	cleanedBody, err := domain.ValidateTopicBody(req.BodyText)
+	if err != nil {
+		h.writeBadRequest(w, r, err.Error())
+		return
+	}
+
+	var ufStr string
+	if req.RegionUF != nil {
+		ufStr = *req.RegionUF
+	}
+	if err := domain.ValidateTopic(cat, cleanedTitle, cleanedBody, ufStr, req.RegionMunicipalityIBGE, req.FuelProduct, req.StationID); err != nil {
+		h.writeBadRequest(w, r, err.Error())
+		return
+	}
+
+	var publicAlias *string
+	if req.PublicAlias != nil {
+		trimmedAlias := strings.TrimSpace(*req.PublicAlias)
+		if trimmedAlias != "" {
+			if len([]rune(trimmedAlias)) > 64 {
+				h.writeBadRequest(w, r, "public alias too long")
+				return
+			}
+			publicAlias = &trimmedAlias
+		}
+	}
+
+	var region *domain.Region
+	if ufStr != "" {
+		region = &domain.Region{
+			UF:               ufStr,
+			MunicipalityIBGE: req.RegionMunicipalityIBGE,
+		}
+	}
+
+	intentBytes, err := CanonicalCreateTopicIntent(
+		req.OperationID,
+		string(cat),
+		cleanedTitle,
+		cleanedBody,
+		publicAlias,
+		req.RegionUF,
+		req.RegionMunicipalityIBGE,
+		req.FuelProduct,
+		req.StationID,
+	)
+	if err != nil {
+		h.writeBadRequest(w, r, "serialization error")
+		return
+	}
+
+	guard := h.makeTxGuard(principal)
+
+	runFn := func(ctx context.Context) (TopicReceiptDTO, int, error) {
+		cmd := application.CreateTopicCommand{
+			AuthorAccountID: principal.AccountID,
+			Category:        cat,
+			Title:           cleanedTitle,
+			BodyText:        cleanedBody,
+			PublicAlias:     publicAlias,
+			Region:          region,
+			FuelProduct:     req.FuelProduct,
+			StationID:       req.StationID,
+			OperationID:     req.OperationID,
+			Guard:           guard,
+		}
+		res, err := h.Topics.CreateTopic(ctx, cmd)
+		if err != nil {
+			return TopicReceiptDTO{}, 0, err
+		}
+		statusCode := http.StatusCreated
+		if res.Replayed {
+			statusCode = http.StatusOK
+		}
+		return mapPostToTopicReceiptDTO(res.Topic, res.Replayed), statusCode, nil
+	}
+
+	if h.Runner != nil {
+		key := identitydomain.IdempotencyKey{
+			ContributorID: principal.ContributorID,
+			Method:        r.Method,
+			Route:         r.URL.Path,
+			Key:           req.OperationID,
+		}
+		outcome, err := h.Runner.Do(r.Context(), key, intentBytes, func(ctx context.Context, _ pgx.Tx) (int, []byte, error) {
+			receipt, statusCode, err := runFn(ctx)
+			if err != nil {
+				return 0, nil, err
+			}
+			bodyBytes, err := json.Marshal(receipt)
+			if err != nil {
+				return 0, nil, err
+			}
+			return statusCode, bodyBytes, nil
+		})
+		if err != nil {
+			h.writeError(w, r, err)
+			return
+		}
+
+		w.Header().Set("Cache-Control", "no-store")
+		var receipt TopicReceiptDTO
+		if err := json.Unmarshal(outcome.Response, &receipt); err == nil {
+			receipt.Replayed = receipt.Replayed || outcome.Replayed
+			bodyBytes, _ := json.Marshal(receipt)
+			status := outcome.StatusCode
+			if outcome.Replayed && status == http.StatusCreated {
+				status = http.StatusOK
+			}
+			httpapi.WriteJSON(w, r, status, "no-store", bodyBytes)
+			return
+		}
+		httpapi.WriteJSON(w, r, outcome.StatusCode, "no-store", outcome.Response)
+		return
+	}
+
+	receipt, statusCode, err := runFn(r.Context())
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	respBytes, _ := json.Marshal(receipt)
+	w.Header().Set("Cache-Control", "no-store")
+	httpapi.WriteJSON(w, r, statusCode, "no-store", respBytes)
+}
+
+// EditTopic handles signed owner CAS editing of an existing authored topic.
+func (h *DiscussionHandler) EditTopic(w http.ResponseWriter, r *http.Request) {
+	if !h.writesAllowed() {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+	if h.Topics == nil {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+
+	topicID := chi.URLParam(r, "topic_id")
+	if !isUUID(topicID) {
+		h.writeBadRequest(w, r, "invalid topic id")
+		return
+	}
+
+	var req EditTopicRequest
+	if err := readJSONBody(r, &req); err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	principal, status, code, msg := h.authenticatePrincipal(r, req.SessionEnvelope)
+	if status != 0 {
+		w.Header().Set("Cache-Control", "no-store")
+		httpapi.WriteError(w, r, status, code, msg, nil)
+		return
+	}
+
+	if !isUUID(req.OperationID) {
+		h.writeBadRequest(w, r, "invalid operation id")
+		return
+	}
+
+	if req.ExpectedRevision < 1 {
+		h.writeBadRequest(w, r, "expected_revision must be >= 1")
+		return
+	}
+
+	cat, err := domain.ParseCategory(req.Category)
+	if err != nil {
+		h.writeBadRequest(w, r, err.Error())
+		return
+	}
+
+	cleanedTitle, err := domain.ValidateTopicTitle(req.Title)
+	if err != nil {
+		h.writeBadRequest(w, r, err.Error())
+		return
+	}
+
+	cleanedBody, err := domain.ValidateTopicBody(req.BodyText)
+	if err != nil {
+		h.writeBadRequest(w, r, err.Error())
+		return
+	}
+
+	var ufStr string
+	if req.RegionUF != nil {
+		ufStr = *req.RegionUF
+	}
+	if err := domain.ValidateTopic(cat, cleanedTitle, cleanedBody, ufStr, req.RegionMunicipalityIBGE, req.FuelProduct, req.StationID); err != nil {
+		h.writeBadRequest(w, r, err.Error())
+		return
+	}
+
+	var region *domain.Region
+	if ufStr != "" {
+		region = &domain.Region{
+			UF:               ufStr,
+			MunicipalityIBGE: req.RegionMunicipalityIBGE,
+		}
+	}
+
+	intentBytes, err := CanonicalEditTopicIntent(
+		req.OperationID,
+		topicID,
+		req.ExpectedRevision,
+		string(cat),
+		cleanedTitle,
+		cleanedBody,
+		req.RegionUF,
+		req.RegionMunicipalityIBGE,
+		req.FuelProduct,
+		req.StationID,
+	)
+	if err != nil {
+		h.writeBadRequest(w, r, "serialization error")
+		return
+	}
+
+	guard := h.makeTxGuard(principal)
+
+	runFn := func(ctx context.Context) (TopicReceiptDTO, error) {
+		cmd := application.EditTopicCommand{
+			TopicID:          topicID,
+			AuthorAccountID:  principal.AccountID,
+			ExpectedRevision: req.ExpectedRevision,
+			Category:         cat,
+			Title:            cleanedTitle,
+			BodyText:         cleanedBody,
+			Region:           region,
+			FuelProduct:      req.FuelProduct,
+			StationID:        req.StationID,
+			Guard:            guard,
+		}
+		updated, err := h.Topics.EditTopic(ctx, cmd)
+		if err != nil {
+			return TopicReceiptDTO{}, err
+		}
+		return mapPostToTopicReceiptDTO(updated, false), nil
+	}
+
+	if h.Runner != nil {
+		key := identitydomain.IdempotencyKey{
+			ContributorID: principal.ContributorID,
+			Method:        r.Method,
+			Route:         r.URL.Path,
+			Key:           req.OperationID,
+		}
+		outcome, err := h.Runner.Do(r.Context(), key, intentBytes, func(ctx context.Context, _ pgx.Tx) (int, []byte, error) {
+			receipt, err := runFn(ctx)
+			if err != nil {
+				return 0, nil, err
+			}
+			bodyBytes, err := json.Marshal(receipt)
+			if err != nil {
+				return 0, nil, err
+			}
+			return http.StatusOK, bodyBytes, nil
+		})
+		if err != nil {
+			h.writeError(w, r, err)
+			return
+		}
+
+		w.Header().Set("Cache-Control", "no-store")
+		var receipt TopicReceiptDTO
+		if err := json.Unmarshal(outcome.Response, &receipt); err == nil {
+			receipt.Replayed = receipt.Replayed || outcome.Replayed
+			bodyBytes, _ := json.Marshal(receipt)
+			httpapi.WriteJSON(w, r, http.StatusOK, "no-store", bodyBytes)
+			return
+		}
+		httpapi.WriteJSON(w, r, outcome.StatusCode, "no-store", outcome.Response)
+		return
+	}
+
+	receipt, err := runFn(r.Context())
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	respBytes, _ := json.Marshal(receipt)
+	w.Header().Set("Cache-Control", "no-store")
+	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", respBytes)
+}
+
+// RemoveTopic handles signed owner tombstoning of an authored topic.
+func (h *DiscussionHandler) RemoveTopic(w http.ResponseWriter, r *http.Request) {
+	if !h.writesAllowed() {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+	if h.Topics == nil {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+
+	topicID := chi.URLParam(r, "topic_id")
+	if !isUUID(topicID) {
+		h.writeBadRequest(w, r, "invalid topic id")
+		return
+	}
+
+	var req RemoveTopicRequest
+	if err := readJSONBody(r, &req); err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	principal, status, code, msg := h.authenticatePrincipal(r, req.SessionEnvelope)
+	if status != 0 {
+		w.Header().Set("Cache-Control", "no-store")
+		httpapi.WriteError(w, r, status, code, msg, nil)
+		return
+	}
+
+	if !isUUID(req.OperationID) {
+		h.writeBadRequest(w, r, "invalid operation id")
+		return
+	}
+
+	if req.ExpectedRevision < 1 {
+		h.writeBadRequest(w, r, "expected_revision must be >= 1")
+		return
+	}
+
+	intentBytes, err := CanonicalRemoveTopicIntent(req.OperationID, topicID, req.ExpectedRevision)
+	if err != nil {
+		h.writeBadRequest(w, r, "serialization error")
+		return
+	}
+
+	guard := h.makeTxGuard(principal)
+
+	runFn := func(ctx context.Context) (TopicReceiptDTO, error) {
+		cmd := application.RemoveTopicCommand{
+			TopicID:          topicID,
+			AuthorAccountID:  principal.AccountID,
+			ExpectedRevision: req.ExpectedRevision,
+			Guard:            guard,
+		}
+		removed, err := h.Topics.RemoveTopic(ctx, cmd)
+		if err != nil {
+			return TopicReceiptDTO{}, err
+		}
+		return mapPostToTopicReceiptDTO(removed, false), nil
+	}
+
+	if h.Runner != nil {
+		key := identitydomain.IdempotencyKey{
+			ContributorID: principal.ContributorID,
+			Method:        r.Method,
+			Route:         r.URL.Path,
+			Key:           req.OperationID,
+		}
+		outcome, err := h.Runner.Do(r.Context(), key, intentBytes, func(ctx context.Context, _ pgx.Tx) (int, []byte, error) {
+			receipt, err := runFn(ctx)
+			if err != nil {
+				return 0, nil, err
+			}
+			bodyBytes, err := json.Marshal(receipt)
+			if err != nil {
+				return 0, nil, err
+			}
+			return http.StatusOK, bodyBytes, nil
+		})
+		if err != nil {
+			h.writeError(w, r, err)
+			return
+		}
+
+		w.Header().Set("Cache-Control", "no-store")
+		var receipt TopicReceiptDTO
+		if err := json.Unmarshal(outcome.Response, &receipt); err == nil {
+			receipt.Replayed = receipt.Replayed || outcome.Replayed
+			bodyBytes, _ := json.Marshal(receipt)
+			httpapi.WriteJSON(w, r, http.StatusOK, "no-store", bodyBytes)
+			return
+		}
+		httpapi.WriteJSON(w, r, outcome.StatusCode, "no-store", outcome.Response)
+		return
+	}
+
+	receipt, err := runFn(r.Context())
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	respBytes, _ := json.Marshal(receipt)
+	w.Header().Set("Cache-Control", "no-store")
+	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", respBytes)
 }

@@ -7698,13 +7698,151 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ForumOwnerCommentResponse'
+                oneOf:
+                  - $ref: '#/components/schemas/ForumOwnerCommentResponse'
+                  - $ref: '#/components/schemas/ForumOwnerTopicResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/topics:
+    post:
+      summary: Create a user-authored forum topic.
+      description: Signed owner endpoint to submit a topic under review. Starts as PENDING_REVIEW and is not publicly visible before moderation approval.
+      operationId: createForumTopic
+      tags: [forum]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumCreateTopicRequest'
+      responses:
+        '200':
+          description: Topic already created (idempotent replay).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumTopicReceipt'
+        '201':
+          description: Topic created successfully (in review).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumTopicReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/topics/{topic_id}/edit:
+    post:
+      summary: CAS-edit an authored forum topic.
+      description: Signed owner endpoint to edit an authored topic. Requires expected revision; edited topic returns to PENDING_REVIEW state.
+      operationId: editForumTopic
+      tags: [forum]
+      security: []
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the topic to edit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumEditTopicRequest'
+      responses:
+        '200':
+          description: Topic edited successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumTopicReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/topics/{topic_id}/remove:
+    post:
+      summary: Remove an authored forum topic.
+      description: Signed owner endpoint to tombstone an authored topic. Clears body/alias and sets state to REMOVED / HIDDEN.
+      operationId: removeForumTopic
+      tags: [forum]
+      security: []
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the topic to remove.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumRemoveTopicRequest'
+      responses:
+        '200':
+          description: Topic removed successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumTopicReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
 components:
@@ -13303,6 +13441,10 @@ components:
           type: [string, 'null']
           format: uuid
           description: Optional post UUID context.
+        topic_id:
+          type: [string, 'null']
+          format: uuid
+          description: Unique identifier of the authored topic to read.
     ForumCommentReceipt:
       type: object
       description: Private owner receipt for comment creation, edit, removal, or owner read.
@@ -13508,6 +13650,205 @@ components:
       properties:
         receipt:
           $ref: '#/components/schemas/ForumReportReceipt'
+    ForumCreateTopicRequest:
+      type: object
+      description: Signed owner request payload to create a user discussion topic.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, category, title, body_text]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Client-generated UUID for idempotent retry.
+        category:
+          $ref: '#/components/schemas/ForumCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Topic title in plain UTF-8 text (1..120 Unicode runes).
+        body_text:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: Topic body in plain UTF-8 text (1..4000 Unicode runes).
+        public_alias:
+          type: [string, 'null']
+          maxLength: 64
+          description: Optional custom contributor display name.
+        region_uf:
+          type: [string, 'null']
+          pattern: '^[A-Z]{2}$'
+          description: Optional Brazilian state UF abbreviation.
+        region_municipality_ibge:
+          type: [integer, 'null']
+          minimum: 1000000
+          maximum: 9999999
+          description: Optional 7-digit IBGE municipality code matching region_uf.
+        fuel_product:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/FuelProduct'
+        station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional subject station UUID from Directory.
+    ForumEditTopicRequest:
+      type: object
+      description: Signed owner request payload to CAS-edit an authored topic.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, expected_revision, category, title, body_text]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Client-generated UUID for idempotent retry.
+        expected_revision:
+          type: integer
+          minimum: 1
+          description: Expected current revision for CAS optimistic concurrency check.
+        category:
+          $ref: '#/components/schemas/ForumCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Updated topic title in plain UTF-8 text.
+        body_text:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: Updated topic body in plain UTF-8 text.
+        region_uf:
+          type: [string, 'null']
+          pattern: '^[A-Z]{2}$'
+          description: Optional Brazilian state UF abbreviation.
+        region_municipality_ibge:
+          type: [integer, 'null']
+          minimum: 1000000
+          maximum: 9999999
+          description: Optional 7-digit IBGE municipality code matching region_uf.
+        fuel_product:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/FuelProduct'
+        station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional subject station UUID from Directory.
+    ForumRemoveTopicRequest:
+      type: object
+      description: Signed owner request payload to tombstone an authored topic.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, expected_revision]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Client-generated UUID for idempotent retry.
+        expected_revision:
+          type: integer
+          minimum: 1
+          description: Expected current revision for CAS tombstone removal.
+    ForumTopicReceipt:
+      type: object
+      description: Private owner receipt for topic creation, edit, removal, or owner read.
+      additionalProperties: false
+      required: [id, kind, category, title, body_text, revision, publication_state, visibility, created_at, updated_at, replayed]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Topic post unique identifier.
+        kind:
+          type: string
+          enum: [TOPIC]
+          description: Post kind (always TOPIC).
+        category:
+          $ref: '#/components/schemas/ForumCategory'
+        title:
+          type: string
+          description: Topic title.
+        body_text:
+          type: string
+          description: Topic body text. Blank if removed.
+        revision:
+          type: integer
+          minimum: 1
+          description: Monotonic edit revision counter.
+        publication_state:
+          type: string
+          enum: [PENDING_REVIEW, PUBLISHED, REJECTED, REMOVED]
+          description: Current moderation and publication state.
+        visibility:
+          type: string
+          enum: [VISIBLE, HIDDEN]
+          description: Display visibility status.
+        region:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumPostRegion'
+        fuel_product:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/FuelProduct'
+        station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional subject station identifier.
+        public_alias:
+          type: [string, 'null']
+          description: Optional public alias chosen by author.
+        created_at:
+          type: string
+          format: date-time
+          description: Topic creation timestamp in UTC RFC3339.
+        updated_at:
+          type: string
+          format: date-time
+          description: Topic last update timestamp in UTC RFC3339.
+        published_at:
+          type: [string, 'null']
+          format: date-time
+          description: Publication approval timestamp in UTC RFC3339 if published.
+        replayed:
+          type: boolean
+          description: True if this response is an idempotent replay of an existing operation.
+    ForumOwnerTopicResponse:
+      type: object
+      description: Private owner response containing authored topic projection.
+      additionalProperties: false
+      required: [topic]
+      properties:
+        topic:
+          $ref: '#/components/schemas/ForumTopicReceipt'
   responses:
     BadRequest:
       description: Malformed input, cursor or bounds.

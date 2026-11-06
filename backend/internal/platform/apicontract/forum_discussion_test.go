@@ -152,3 +152,143 @@ func TestForumDiscussionNegativeBounds(t *testing.T) {
 		}
 	})
 }
+
+func TestForumTopicContractStructure(t *testing.T) {
+	doc := loadSpec(t)
+
+	// 1. Verify required topic schemas exist
+	requiredSchemas := []string{
+		"ForumCreateTopicRequest",
+		"ForumEditTopicRequest",
+		"ForumRemoveTopicRequest",
+		"ForumTopicReceipt",
+		"ForumOwnerTopicResponse",
+	}
+	for _, name := range requiredSchemas {
+		if _, ok := doc.Components.Schemas[name]; !ok {
+			t.Errorf("missing required topic schema %q", name)
+		}
+	}
+
+	// 2. Verify POST /v1/forum/topics
+	createTopicPath := doc.Paths.Find("/v1/forum/topics")
+	if createTopicPath == nil {
+		t.Fatal("missing /v1/forum/topics path")
+	}
+	if createTopicPath.Post == nil {
+		t.Fatal("missing POST on /v1/forum/topics")
+	}
+	if !slices.Contains(createTopicPath.Post.Tags, "forum") {
+		t.Errorf("POST /v1/forum/topics missing 'forum' tag, got %v", createTopicPath.Post.Tags)
+	}
+	if createTopicPath.Post.Responses.Value("201") == nil {
+		t.Error("POST /v1/forum/topics missing 201 response")
+	}
+	if createTopicPath.Post.Responses.Value("200") == nil {
+		t.Error("POST /v1/forum/topics missing 200 response")
+	}
+	if createTopicPath.Post.Responses.Value("401") == nil {
+		t.Error("POST /v1/forum/topics missing 401 response")
+	}
+	if createTopicPath.Post.Responses.Value("409") == nil {
+		t.Error("POST /v1/forum/topics missing 409 response")
+	}
+	if createTopicPath.Post.Responses.Value("429") == nil {
+		t.Error("POST /v1/forum/topics missing 429 response")
+	}
+
+	// 3. Verify POST /v1/forum/topics/{topic_id}/edit
+	editTopicPath := doc.Paths.Find("/v1/forum/topics/{topic_id}/edit")
+	if editTopicPath == nil {
+		t.Fatal("missing /v1/forum/topics/{topic_id}/edit path")
+	}
+	if editTopicPath.Post == nil {
+		t.Fatal("missing POST on /v1/forum/topics/{topic_id}/edit")
+	}
+	if editTopicPath.Post.Responses.Value("200") == nil {
+		t.Error("POST /v1/forum/topics/{topic_id}/edit missing 200 response")
+	}
+	if editTopicPath.Post.Responses.Value("404") == nil {
+		t.Error("POST /v1/forum/topics/{topic_id}/edit missing 404 response")
+	}
+	if editTopicPath.Post.Responses.Value("409") == nil {
+		t.Error("POST /v1/forum/topics/{topic_id}/edit missing 409 response")
+	}
+
+	// 4. Verify POST /v1/forum/topics/{topic_id}/remove
+	removeTopicPath := doc.Paths.Find("/v1/forum/topics/{topic_id}/remove")
+	if removeTopicPath == nil {
+		t.Fatal("missing /v1/forum/topics/{topic_id}/remove path")
+	}
+	if removeTopicPath.Post == nil {
+		t.Fatal("missing POST on /v1/forum/topics/{topic_id}/remove")
+	}
+	if removeTopicPath.Post.Responses.Value("200") == nil {
+		t.Error("POST /v1/forum/topics/{topic_id}/remove missing 200 response")
+	}
+	if removeTopicPath.Post.Responses.Value("404") == nil {
+		t.Error("POST /v1/forum/topics/{topic_id}/remove missing 404 response")
+	}
+
+	// 5. Schema validation tests
+	t.Run("empty_title_rejected", func(t *testing.T) {
+		schema := doc.Components.Schemas["ForumCreateTopicRequest"].Value
+		val := map[string]any{
+			"family_id":    "11111111-1111-4111-8111-111111111111",
+			"access_token": "token",
+			"operation_id": "22222222-2222-4222-8222-222222222222",
+			"category":     "FUELS",
+			"title":        "",
+			"body_text":    "Corpo valido",
+		}
+		if err := schema.VisitJSON(val); err == nil {
+			t.Error("expected error for empty topic title, got nil")
+		}
+	})
+
+	t.Run("oversized_title_rejected", func(t *testing.T) {
+		schema := doc.Components.Schemas["ForumCreateTopicRequest"].Value
+		val := map[string]any{
+			"family_id":    "11111111-1111-4111-8111-111111111111",
+			"access_token": "token",
+			"operation_id": "22222222-2222-4222-8222-222222222222",
+			"category":     "FUELS",
+			"title":        strings.Repeat("A", 121),
+			"body_text":    "Corpo valido",
+		}
+		if err := schema.VisitJSON(val); err == nil {
+			t.Error("expected error for topic title > 120, got nil")
+		}
+	})
+
+	t.Run("oversized_body_rejected", func(t *testing.T) {
+		schema := doc.Components.Schemas["ForumCreateTopicRequest"].Value
+		val := map[string]any{
+			"family_id":    "11111111-1111-4111-8111-111111111111",
+			"access_token": "token",
+			"operation_id": "22222222-2222-4222-8222-222222222222",
+			"category":     "FUELS",
+			"title":        "Titulo valido",
+			"body_text":    strings.Repeat("A", 4001),
+		}
+		if err := schema.VisitJSON(val); err == nil {
+			t.Error("expected error for topic body > 4000, got nil")
+		}
+	})
+
+	t.Run("invalid_revision_rejected", func(t *testing.T) {
+		schema := doc.Components.Schemas["ForumEditTopicRequest"].Value
+		val := map[string]any{
+			"family_id":         "11111111-1111-4111-8111-111111111111",
+			"access_token":      "token",
+			"operation_id":      "22222222-2222-4222-8222-222222222222",
+			"expected_revision": 0,
+			"category":          "FUELS",
+			"title":             "Titulo valido",
+			"body_text":         "Corpo valido",
+		}
+		if err := schema.VisitJSON(val); err == nil {
+			t.Error("expected error for revision < 1, got nil")
+		}
+	})
+}

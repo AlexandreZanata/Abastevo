@@ -1,4 +1,23 @@
 # Current execution state
+- FOR-21 Topic API and OpenAPI fixtures, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `f9dd7c46`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
+  advances Phase 4 (User topics and bounded discovery):
+  signed topic commands exposed (`POST /v1/forum/topics`, `POST /v1/forum/topics/{topic_id}/edit`,
+  `POST /v1/forum/topics/{topic_id}/remove`); extended private owner read (`POST /v1/forum/owner/read`)
+  supporting `topic_id`; OpenAPI specification updated in `contracts/openapi/v1.yaml`
+  with schemas `ForumCreateTopicRequest`, `ForumEditTopicRequest`, `ForumRemoveTopicRequest`,
+  `ForumTopicReceipt`, `ForumOwnerTopicResponse`, and `ForumOwnerReadRequest` topic_id;
+  7 golden contract vectors in `contracts/testdata/api/`;
+  wire handlers and DTOs in `DiscussionHandler` and `cmd/api/main.go`;
+  premoderation isolation verified (unapproved topic 404 in public feed and detail, never optimistic publication);
+  IDOR defense verified (foreign owner read/edit/remove returns 404);
+  unit test suite in `for21_topics_test.go` and real PostgreSQL integration suite
+  in `for21_topics_integration_test.go` (6 gates: signed create with premoderation default,
+  replay vs conflict defense, owner read and IDOR defense, CAS edit and foreign defense,
+  tombstone removal terminal state, quota enforcement 429) PASSED with `-race` and `-tags=integration`.
+  Tested revision: source in this commit. Next microtask: FOR-22 (Topic privacy and report integration).
+
 - FOR-20 Topic writes and ownership SQL, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `b753a077`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
