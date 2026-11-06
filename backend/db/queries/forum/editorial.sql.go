@@ -1153,6 +1153,10 @@ SET visibility = $1,
     local_updated_at = $2,
     revision = revision + 1
 WHERE id = $3
+  AND (
+      ($1 = 'VISIBLE' AND publication_state <> 'REMOVED')
+      OR $1 <> 'VISIBLE'
+  )
 `
 
 type SetPostVisibilityParams struct {

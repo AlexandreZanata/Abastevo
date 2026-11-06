@@ -173,6 +173,23 @@ func (q *Queries) GetTopicByOperationID(ctx context.Context, arg GetTopicByOpera
 	return i, err
 }
 
+const hasPendingAuthorTopicErasure = `-- name: HasPendingAuthorTopicErasure :one
+SELECT EXISTS (
+    SELECT 1
+    FROM forum_posts
+    WHERE author_account_id = $1
+      AND kind = 'TOPIC'
+      AND (publication_state <> 'REMOVED' OR body_text <> '' OR public_alias IS NOT NULL)
+)
+`
+
+func (q *Queries) HasPendingAuthorTopicErasure(ctx context.Context, authorAccountID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasPendingAuthorTopicErasure, authorAccountID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const insertTopic = `-- name: InsertTopic :one
 INSERT INTO forum_posts (
     id, kind, category, title, excerpt, body_text,
@@ -271,6 +288,103 @@ func (q *Queries) InsertTopic(ctx context.Context, arg InsertTopicParams) (Forum
 	return i, err
 }
 
+const listTopicsByAuthor = `-- name: ListTopicsByAuthor :many
+SELECT id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence
+FROM forum_posts
+WHERE author_account_id = $1
+  AND kind = 'TOPIC'
+ORDER BY id ASC
+`
+
+func (q *Queries) ListTopicsByAuthor(ctx context.Context, authorAccountID pgtype.UUID) ([]ForumPost, error) {
+	rows, err := q.db.Query(ctx, listTopicsByAuthor, authorAccountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ForumPost
+	for rows.Next() {
+		var i ForumPost
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Category,
+			&i.Title,
+			&i.Excerpt,
+			&i.BodyText,
+			&i.SourceID,
+			&i.CanonicalUrl,
+			&i.CanonicalUrlHash,
+			&i.ExternalID,
+			&i.AuthorAccountID,
+			&i.PublicAlias,
+			&i.SourcePublishedAt,
+			&i.SourceUpdatedAt,
+			&i.LocalCreatedAt,
+			&i.LocalUpdatedAt,
+			&i.FirstPublishedAt,
+			&i.FirstPublicationSeq,
+			&i.PublicationState,
+			&i.Visibility,
+			&i.Revision,
+			&i.CommentsEnabled,
+			&i.Correction,
+			&i.RegionUf,
+			&i.RegionMunicipalityIbge,
+			&i.FuelProduct,
+			&i.StationID,
+			&i.AuthorOperationID,
+			&i.BodySha256,
+			&i.RightsSnapshot,
+			&i.BulletinKey,
+			&i.SupersedesPostID,
+			&i.NextCommentSequence,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pendingEraseTopicsByAuthor = `-- name: PendingEraseTopicsByAuthor :many
+SELECT id
+FROM forum_posts
+WHERE author_account_id = $1
+  AND kind = 'TOPIC'
+  AND (publication_state <> 'REMOVED' OR body_text <> '' OR public_alias IS NOT NULL)
+ORDER BY id ASC
+LIMIT $2
+`
+
+type PendingEraseTopicsByAuthorParams struct {
+	AuthorAccountID pgtype.UUID `json:"author_account_id"`
+	Limit           int32       `json:"limit"`
+}
+
+func (q *Queries) PendingEraseTopicsByAuthor(ctx context.Context, arg PendingEraseTopicsByAuthorParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, pendingEraseTopicsByAuthor, arg.AuthorAccountID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeTopicTombstone = `-- name: RemoveTopicTombstone :one
 UPDATE forum_posts
 SET title = '[Tópico removido pelo autor]',
@@ -302,6 +416,62 @@ func (q *Queries) RemoveTopicTombstone(ctx context.Context, arg RemoveTopicTombs
 		arg.AuthorAccountID,
 		arg.ExpectedRevision,
 	)
+	var i ForumPost
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.Category,
+		&i.Title,
+		&i.Excerpt,
+		&i.BodyText,
+		&i.SourceID,
+		&i.CanonicalUrl,
+		&i.CanonicalUrlHash,
+		&i.ExternalID,
+		&i.AuthorAccountID,
+		&i.PublicAlias,
+		&i.SourcePublishedAt,
+		&i.SourceUpdatedAt,
+		&i.LocalCreatedAt,
+		&i.LocalUpdatedAt,
+		&i.FirstPublishedAt,
+		&i.FirstPublicationSeq,
+		&i.PublicationState,
+		&i.Visibility,
+		&i.Revision,
+		&i.CommentsEnabled,
+		&i.Correction,
+		&i.RegionUf,
+		&i.RegionMunicipalityIbge,
+		&i.FuelProduct,
+		&i.StationID,
+		&i.AuthorOperationID,
+		&i.BodySha256,
+		&i.RightsSnapshot,
+		&i.BulletinKey,
+		&i.SupersedesPostID,
+		&i.NextCommentSequence,
+	)
+	return i, err
+}
+
+const scrubTopicForErasure = `-- name: ScrubTopicForErasure :one
+UPDATE forum_posts
+SET title = '[Tópico removido]',
+    excerpt = '',
+    body_text = '',
+    body_sha256 = '',
+    public_alias = NULL,
+    publication_state = 'REMOVED',
+    visibility = 'HIDDEN',
+    revision = revision + 1,
+    local_updated_at = now()
+WHERE id = $1
+RETURNING id, kind, category, title, excerpt, body_text, source_id, canonical_url, canonical_url_hash, external_id, author_account_id, public_alias, source_published_at, source_updated_at, local_created_at, local_updated_at, first_published_at, first_publication_seq, publication_state, visibility, revision, comments_enabled, correction, region_uf, region_municipality_ibge, fuel_product, station_id, author_operation_id, body_sha256, rights_snapshot, bulletin_key, supersedes_post_id, next_comment_sequence
+`
+
+func (q *Queries) ScrubTopicForErasure(ctx context.Context, id pgtype.UUID) (ForumPost, error) {
+	row := q.db.QueryRow(ctx, scrubTopicForErasure, id)
 	var i ForumPost
 	err := row.Scan(
 		&i.ID,

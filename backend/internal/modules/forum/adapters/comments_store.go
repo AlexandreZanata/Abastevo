@@ -418,6 +418,19 @@ func (s *Store) ListCommentsByPost(ctx context.Context, query application.ListPo
 		return nil, domain.ErrPostNotFound
 	}
 
+	// Verify post/topic exists and is published+visible (suppresses comments if parent post/topic is hidden/removed/erased)
+	post, err := s.queries.GetPostByID(ctx, postUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrPostNotFound
+		}
+		return nil, fmt.Errorf("forum: check post: %w", err)
+	}
+	if post.PublicationState != string(domain.StatePublished) || post.Visibility != string(domain.VisibilityVisible) {
+		// Return empty slice when parent post/topic is hidden or removed, per B-BR-FOR-09 / FOR-22
+		return []domain.Comment{}, nil
+	}
+
 	limit := int32(query.Limit)
 	if limit <= 0 {
 		limit = 20
@@ -654,8 +667,8 @@ func (s *Store) ListCommentsByAccount(ctx context.Context, accountID string) ([]
 	return out, nil
 }
 
-// EraseAccountBatch scrubs and tombstones at most limit comments for the specified account ID.
-// Returns done = true when no more unscrubbed comments remain for the account.
+// EraseAccountBatch scrubs and tombstones at most limit topics and comments for the specified account ID.
+// Returns done = true when no more unscrubbed topics or comments remain for the account.
 func (s *Store) EraseAccountBatch(ctx context.Context, accountID string, limit int) (bool, int, error) {
 	if limit <= 0 {
 		limit = 50
@@ -673,27 +686,29 @@ func (s *Store) EraseAccountBatch(ctx context.Context, accountID string, limit i
 
 	qtx := s.queries.WithTx(tx)
 
-	pendingIDs, err := qtx.PendingEraseCommentsByAuthor(ctx, forumsql.PendingEraseCommentsByAuthorParams{
+	now := time.Now().UTC()
+	erasedCount := 0
+
+	// 1. Scrub pending topics authored by account
+	pendingTopicIDs, err := qtx.PendingEraseTopicsByAuthor(ctx, forumsql.PendingEraseTopicsByAuthorParams{
 		AuthorAccountID: accUUID,
 		Limit:           int32(limit),
 	})
 	if err != nil {
-		return false, 0, fmt.Errorf("forum: pending erase comments: %w", err)
+		return false, 0, fmt.Errorf("forum: pending erase topics: %w", err)
 	}
 
-	now := time.Now().UTC()
-	erasedCount := 0
-	for _, cid := range pendingIDs {
-		scrubbed, err := qtx.ScrubCommentForErasure(ctx, cid)
+	for _, tid := range pendingTopicIDs {
+		scrubbed, err := qtx.ScrubTopicForErasure(ctx, tid)
 		if err != nil {
-			return false, 0, fmt.Errorf("forum: scrub comment: %w", err)
+			return false, 0, fmt.Errorf("forum: scrub topic: %w", err)
 		}
 
 		changeID := newUUIDBytes()
 		if err := qtx.RecordForumChange(ctx, forumsql.RecordForumChangeParams{
 			ID:             changeID,
-			TargetType:     "COMMENT",
-			TargetID:       cid,
+			TargetType:     "POST",
+			TargetID:       tid,
 			Revision:       scrubbed.Revision,
 			Action:         "REMOVE",
 			ActorKind:      "SYSTEM",
@@ -705,20 +720,64 @@ func (s *Store) EraseAccountBatch(ctx context.Context, accountID string, limit i
 			NewState:       string(domain.StateRemoved),
 			CreatedAt:      pgtype.Timestamptz{Time: now, Valid: true},
 		}); err != nil {
-			return false, 0, fmt.Errorf("forum: record erasure change: %w", err)
+			return false, 0, fmt.Errorf("forum: record topic erasure change: %w", err)
 		}
 		erasedCount++
 	}
 
-	hasPending, err := qtx.HasPendingAuthorCommentErasure(ctx, accUUID)
+	// 2. Scrub pending comments with remaining batch budget
+	remainingLimit := limit - len(pendingTopicIDs)
+	if remainingLimit > 0 {
+		pendingCommentIDs, err := qtx.PendingEraseCommentsByAuthor(ctx, forumsql.PendingEraseCommentsByAuthorParams{
+			AuthorAccountID: accUUID,
+			Limit:           int32(remainingLimit),
+		})
+		if err != nil {
+			return false, 0, fmt.Errorf("forum: pending erase comments: %w", err)
+		}
+
+		for _, cid := range pendingCommentIDs {
+			scrubbed, err := qtx.ScrubCommentForErasure(ctx, cid)
+			if err != nil {
+				return false, 0, fmt.Errorf("forum: scrub comment: %w", err)
+			}
+
+			changeID := newUUIDBytes()
+			if err := qtx.RecordForumChange(ctx, forumsql.RecordForumChangeParams{
+				ID:             changeID,
+				TargetType:     "COMMENT",
+				TargetID:       cid,
+				Revision:       scrubbed.Revision,
+				Action:         "REMOVE",
+				ActorKind:      "SYSTEM",
+				ActorAccountID: accUUID,
+				AdminAuditRef:  "account-erasure",
+				PolicyVersion:  1,
+				ReasonCode:     "erasure-scrub",
+				PriorState:     scrubbed.PublicationState,
+				NewState:       string(domain.StateRemoved),
+				CreatedAt:      pgtype.Timestamptz{Time: now, Valid: true},
+			}); err != nil {
+				return false, 0, fmt.Errorf("forum: record comment erasure change: %w", err)
+			}
+			erasedCount++
+		}
+	}
+
+	hasPendingTopics, err := qtx.HasPendingAuthorTopicErasure(ctx, accUUID)
 	if err != nil {
-		return false, 0, fmt.Errorf("forum: has pending erasure: %w", err)
+		return false, 0, fmt.Errorf("forum: has pending topic erasure: %w", err)
+	}
+
+	hasPendingComments, err := qtx.HasPendingAuthorCommentErasure(ctx, accUUID)
+	if err != nil {
+		return false, 0, fmt.Errorf("forum: has pending comment erasure: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return false, 0, fmt.Errorf("forum: commit erasure tx: %w", err)
 	}
 
-	done := !hasPending
+	done := !hasPendingTopics && !hasPendingComments
 	return done, erasedCount, nil
 }

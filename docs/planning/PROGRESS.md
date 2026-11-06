@@ -1,4 +1,27 @@
 # Current execution state
+- FOR-22 Topic privacy and report integration, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `e4f4cda7`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
+  advances Phase 4 (User topics and bounded discovery):
+  extended FOR-16 account export (`ExportAccount`/`ExportAccountBytes`),
+  LGPD erasure (`EraseAccountBatch`), and FOR-18 moderation actions to authored topics;
+  `ForumAccountFootprint` extended with deterministic `Topics []ForumTopicExport` and `TotalTopics`;
+  `EraseAccountBatch` scrubs authored topics (`ScrubTopicForErasure` clearing title to '[Tópico removido]',
+  body/excerpt to empty, public alias to NULL, setting `publication_state = 'REMOVED'`
+  and `visibility = 'HIDDEN'`) recording `SYSTEM` `erasure-scrub` in `forum_changes`;
+  child comment visibility suppression verified (`ListCommentsByPost` returns 0 comments for removed/erased topics);
+  no inherited permissions verified (child comments retain their distinct authors,
+  author B's comment is not wiped when topic author A is erased, author B can still export
+  and owner-read their comment, permission boundaries prevent foreign edits/removals);
+  operator restore refusal after removal verified (`SetPostVisibility` with `visibility = 'VISIBLE'`
+  on removed topics updates 0 rows, returning `ErrPostNotFound`);
+  metadata-only audit verified (no post title, excerpt, body, alias, or PII in `forum_changes`);
+  worker restart and batched continuation verified across multiple iterations;
+  idempotent deletion replay verified;
+  unit tests in `for22_export_test.go` and real PostgreSQL integration suite
+  in `for22_privacy_integration_test.go` (6 gates) PASSED with `-race` and `-tags=integration`.
+  Tested revision: source in this commit. Next microtask: FOR-23 (Android topic forms).
+
 - FOR-21 Topic API and OpenAPI fixtures, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `f9dd7c46`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
@@ -16,7 +39,7 @@
   in `for21_topics_integration_test.go` (6 gates: signed create with premoderation default,
   replay vs conflict defense, owner read and IDOR defense, CAS edit and foreign defense,
   tombstone removal terminal state, quota enforcement 429) PASSED with `-race` and `-tags=integration`.
-  Tested revision: source in this commit. Next microtask: FOR-22 (Topic privacy and report integration).
+  Tested revision: e4f4cda7. Next microtask: FOR-22 (Topic privacy and report integration).
 
 - FOR-20 Topic writes and ownership SQL, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent

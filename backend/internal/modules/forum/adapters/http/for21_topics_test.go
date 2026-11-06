@@ -50,6 +50,10 @@ func (m *mockTopicStore) GetTopicByID(ctx context.Context, id string) (*domain.P
 	return nil, domain.ErrTopicNotFound
 }
 
+func (m *mockTopicStore) ListTopicsByAccount(ctx context.Context, accountID string) ([]domain.Post, error) {
+	return nil, nil
+}
+
 // TestFOR21_RollbackAndFeatureGates verifies runtime feature gate switching and rollback behavior for topic routes.
 func TestFOR21_RollbackAndFeatureGates(t *testing.T) {
 	store := &mockTopicStore{}

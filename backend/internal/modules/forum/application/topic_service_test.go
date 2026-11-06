@@ -12,7 +12,8 @@ type mockTopicStore struct {
 	createFunc func(ctx context.Context, cmd CreateTopicCommand) (TopicResult, error)
 	editFunc   func(ctx context.Context, cmd EditTopicCommand) (*domain.Post, error)
 	removeFunc func(ctx context.Context, cmd RemoveTopicCommand) (*domain.Post, error)
-	getFunc    func(ctx context.Context, id string) (*domain.Post, error)
+	getFunc                  func(ctx context.Context, id string) (*domain.Post, error)
+	listTopicsByAccountFunc func(ctx context.Context, accountID string) ([]domain.Post, error)
 }
 
 func (m *mockTopicStore) CreateTopic(ctx context.Context, cmd CreateTopicCommand) (TopicResult, error) {
@@ -39,6 +40,13 @@ func (m *mockTopicStore) RemoveTopic(ctx context.Context, cmd RemoveTopicCommand
 func (m *mockTopicStore) GetTopicByID(ctx context.Context, id string) (*domain.Post, error) {
 	if m.getFunc != nil {
 		return m.getFunc(ctx, id)
+	}
+	return nil, nil
+}
+
+func (m *mockTopicStore) ListTopicsByAccount(ctx context.Context, accountID string) ([]domain.Post, error) {
+	if m.listTopicsByAccountFunc != nil {
+		return m.listTopicsByAccountFunc(ctx, accountID)
 	}
 	return nil, nil
 }

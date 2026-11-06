@@ -478,3 +478,24 @@ func (s *Store) GetTopicByID(ctx context.Context, id string) (*domain.Post, erro
 	}
 	return mapTopicRowToDomain(row), nil
 }
+
+// ListTopicsByAccount retrieves all topics authored by the specified account ID,
+// including unapproved (PENDING_REVIEW), published, and removed topics, sorted by ID.
+func (s *Store) ListTopicsByAccount(ctx context.Context, accountID string) ([]domain.Post, error) {
+	accUUID, err := mustUUID(accountID)
+	if err != nil {
+		return nil, domain.ErrTargetInvalid
+	}
+
+	rows, err := s.queries.ListTopicsByAuthor(ctx, accUUID)
+	if err != nil {
+		return nil, fmt.Errorf("forum: list topics by author: %w", err)
+	}
+
+	out := make([]domain.Post, 0, len(rows))
+	for _, row := range rows {
+		p := mapTopicRowToDomain(row)
+		out = append(out, *p)
+	}
+	return out, nil
+}

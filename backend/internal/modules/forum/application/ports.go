@@ -182,6 +182,7 @@ type TopicStore interface {
 	EditTopic(ctx context.Context, cmd EditTopicCommand) (*domain.Post, error)
 	RemoveTopic(ctx context.Context, cmd RemoveTopicCommand) (*domain.Post, error)
 	GetTopicByID(ctx context.Context, id string) (*domain.Post, error)
+	ListTopicsByAccount(ctx context.Context, accountID string) ([]domain.Post, error)
 }
 
 // Quota policy constants for forum discussion comments per B-BR-FOR-11.

@@ -76,3 +76,42 @@ RETURNING *;
 -- name: GetTopicByID :one
 SELECT * FROM forum_posts
 WHERE id = @id AND kind = 'TOPIC';
+
+-- name: ListTopicsByAuthor :many
+SELECT *
+FROM forum_posts
+WHERE author_account_id = $1
+  AND kind = 'TOPIC'
+ORDER BY id ASC;
+
+-- name: PendingEraseTopicsByAuthor :many
+SELECT id
+FROM forum_posts
+WHERE author_account_id = $1
+  AND kind = 'TOPIC'
+  AND (publication_state <> 'REMOVED' OR body_text <> '' OR public_alias IS NOT NULL)
+ORDER BY id ASC
+LIMIT $2;
+
+-- name: ScrubTopicForErasure :one
+UPDATE forum_posts
+SET title = '[Tópico removido]',
+    excerpt = '',
+    body_text = '',
+    body_sha256 = '',
+    public_alias = NULL,
+    publication_state = 'REMOVED',
+    visibility = 'HIDDEN',
+    revision = revision + 1,
+    local_updated_at = now()
+WHERE id = $1
+RETURNING *;
+
+-- name: HasPendingAuthorTopicErasure :one
+SELECT EXISTS (
+    SELECT 1
+    FROM forum_posts
+    WHERE author_account_id = $1
+      AND kind = 'TOPIC'
+      AND (publication_state <> 'REMOVED' OR body_text <> '' OR public_alias IS NOT NULL)
+);

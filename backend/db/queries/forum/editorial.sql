@@ -193,7 +193,11 @@ UPDATE forum_posts
 SET visibility = @visibility,
     local_updated_at = @updated_at,
     revision = revision + 1
-WHERE id = @id;
+WHERE id = @id
+  AND (
+      (@visibility = 'VISIBLE' AND publication_state <> 'REMOVED')
+      OR @visibility <> 'VISIBLE'
+  );
 
 -- name: GetSourceByID :one
 SELECT * FROM forum_sources WHERE id = @id;
