@@ -1,4 +1,24 @@
 # Current execution state
+- FOR-28 Capacity/failure/device checkpoint, 2026-11-06:
+  IN_PROGRESS / LOAD_PILOT / DEVICE_PENDING on isolated dev worktree from parent
+  `0eebefa6`. [Phase 6 evidence](../backend/evidence/forum/FOR_PHASE_6.md)
+  adds a bounded `load && integration` Forum harness (disposable PostGIS,
+  10k/100k posts, published/pending mix, 20k comments, real HTTP/router,
+  open-loop 4:1 feed/detail mix, in-flight cap, latency/errors/drops/bytes,
+  pool/RSS/aggregate SQL metrics). Two pilots at 13.9 RPS steady and 139 RPS
+  burst, max 20 in flight, passed: 100k posts p95 11.77ms steady/11.88ms burst,
+  max feed 10.0KiB/detail 0.665KiB; 10k posts p95 7.51ms/7.02ms, max feed
+  9.95KiB/detail 0.664KiB; zero errors/drops, ≈1.8 SQL queries/request, RSS
+  ~22MiB, Postgres 18.6, Go 1.27.3. Executed failures: DB outage feed/detail
+  503 (new test), disabled switches, source blocked/304/dedup and lifecycle,
+  erasure 6/6, privacy/moderation recovery 6/6, Official unit/PostGIS and full
+  Android JVM union green; A2 lint 0 errors. OWED: full 5m/10m/60s durations,
+  100/1k/100k-DAU matrix, 100k-DAU burst, A3 native/device/TalkBack/IME,
+  comparative price/map p95, per-endpoint SQL tracing/lock percentile, and
+  actual staging/operator/legal/merge acceptance. No production or staging
+  write. Next action: complete the OWED full load/device matrix, then FOR-29
+  protected PR preparation.
+
 - FOR-27 Reviewed deterministic bulletin checkpoint, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `a0dc7821`. [Phase 5 evidence](../backend/evidence/forum/FOR_PHASE_5.md)

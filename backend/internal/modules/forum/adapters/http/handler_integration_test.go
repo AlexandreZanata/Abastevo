@@ -358,3 +358,24 @@ func TestHandler_Integration_PublicReadLifecycle(t *testing.T) {
 		t.Fatalf("expected null next_cursor on last page, got %v", *feedResp2.NextCursor)
 	}
 }
+
+func TestHandler_Integration_DatabaseOutageReturns503(t *testing.T) {
+	_, pool, router := freshForumTestEnv(t)
+	pool.Close()
+
+	for _, path := range []string{
+		"/v1/forum/posts",
+		"/v1/forum/posts/00000000-0000-4000-8000-000000000001",
+	} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Fatalf("%s: expected 503 during DB outage, got %d (%s)", path, rec.Code, rec.Body.String())
+		}
+		code, _ := parseErrorEnvelope(t, rec.Body.Bytes())
+		if code != "forum.unavailable" {
+			t.Errorf("%s: expected forum.unavailable, got %s", path, code)
+		}
+	}
+}
