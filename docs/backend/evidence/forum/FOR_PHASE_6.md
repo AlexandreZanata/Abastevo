@@ -1,9 +1,9 @@
 # Forum final scoped construction closure — FOR-28 checkpoint
 
-Status: **IN_PROGRESS / LOAD_PILOT / DEVICE_PENDING**.
-Validation: PASS for the executed bounded pilots and failure/recovery suites;
-full declared load durations, remaining DAU scenarios and the native/device
-union are explicitly OWED.
+Status: **IN_PROGRESS / LOAD_MATRIX_PASS / DEVICE_PENDING**.
+Validation: PASS for the full declared 5m/10m/60s load matrix and executed
+failure/recovery suites; the native/device union and remaining measurement gaps
+are explicitly OWED.
 
 Baseline: maintained `dev` `0eebefa6` (FOR-27). GitHub `main` `99f21830`.
 Owned change: bounded Forum load harness and this evidence. No production,
@@ -22,16 +22,16 @@ queries, and process RSS are recorded.
 Command shape:
 
 ```sh
-ANPFUEL_TEST_DATABASE_URL=... \
-FORUM_LOAD_POSTS=100000 FORUM_LOAD_RPS=13.9 FORUM_LOAD_BURST_RPS=139 \
-FORUM_LOAD_MAX_INFLIGHT=20 FORUM_LOAD_WARMUP=20s FORUM_LOAD_STEADY=60s \
-FORUM_LOAD_BURST=15s \
-go test -count=1 -tags='integration load' ./internal/modules/forum/adapters/http \
+ANPFUEL_TEST_DATABASE_URL=... FORUM_LOAD_FULL=1 FORUM_LOAD_POSTS=100000 \
+FORUM_LOAD_RPS=13.9 FORUM_LOAD_BURST_RPS=139 FORUM_LOAD_MAX_INFLIGHT=20 \
+go test -count=1 -timeout 25m -tags='integration load' \
+  ./internal/modules/forum/adapters/http \
   -run '^TestForumLoad_BoundedScenario$' -v
 ```
 
 `FORUM_LOAD_FULL=1` selects the declared 5-minute warm-up, 10-minute steady and
-60-second burst. The two runs below are **pilots**, not the full duration matrix.
+60-second burst. The matrix below was executed with that full mode; the earlier
+short pilots are superseded and not used as acceptance evidence.
 
 ## Environment and data
 
@@ -40,48 +40,45 @@ go test -count=1 -tags='integration load' ./internal/modules/forum/adapters/http
   `abastevo-forum-for24-pg`.
 - Go toolchain `go1.27.3`; PostgreSQL `18.6 (Debian 18.6-1.pgdg13+2)`, PostGIS
   image `postgis/postgis:18-3.6`; pool max 10 connections.
-- Fixture A: 100,000 posts (90% published / 10% pending) + 20,000 comments.
-- Fixture B: 10,000 posts (90% published / 10% pending) + 20,000 comments
-  (10,000 published posts selected for comments).
+- Matrix fixture: 100,000 posts (90% published / 10% pending) + 20,000 comments.
+- Earlier pilot fixture B: 10,000 posts + 20,000 comments (not used as the full
+  matrix, retained only as harness smoke evidence).
 - The DB and comments are dropped with the disposable database; no fixture is
   committed or written to staging/production.
 - Post-load Docker sample: CPU 0.02%, memory 264.5 MiB / 31.05 GiB, network
   83 MB / 50.7 MB, block 1.72 GB / 1.53 GB. This is a single idle sample, not a
   resource-budget certification.
 
-## Measured pilots
+## Full declared load matrix
 
-Both runs: 13.9 RPS steady (10,000-DAU model hypothesis), 139 RPS burst,
-maximum 20 in flight, zero HTTP errors and zero drops.
+All scenarios used the 100,000-post / 20,000-comment fixture, full 5-minute
+warm-up, 10-minute steady and 60-second burst, sequential runs. Targets are the
+validation table's DAU hypotheses (not traffic predictions). Every row had zero
+HTTP errors and zero drops. Feed/detail byte gates and p95 <=300 ms passed in
+every phase.
 
-### Fixture A — 100,000 posts
+| DAU | Target steady/burst RPS | Max in flight | Delivered steady | Delivered burst | p95 steady/burst | p99 steady/burst | Requests steady/burst | RSS KiB | SQL queries |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 0.0139 / 0.139 | 2 | 9 in 600s (0.015) | 9 in 60s (0.15) | 24.30 / 8.04 ms | 24.30 / 8.04 ms | 9 / 9 | 14,228 | 44 |
+| 1,000 | 0.139 / 1.39 | 2 | 84 in 600s (0.14) | 84 in 60s (1.4) | 15.23 / 12.89 ms | 31.40 / 21.64 ms | 84 / 84 | 15,712 | 381 |
+| 10,000 | 1.39 / 13.9 | 5 | 834 in 600s (1.39) | 834 in 60s (13.9) | 10.64 / 10.77 ms | 11.78 / 12.02 ms | 834 / 834 | 21,696 | 3,756 |
+| 100,000 | 13.9 / 139 | 20 (declared cap 100) | 8,340 in 600s (13.9) | 8,336 in 60s (138.9) | 14.66 / 12.62 ms | 36.80 / 21.00 ms | 8,340 / 8,336 | 21,880 | 37,524 |
 
-| Phase | Requests | p50 | p95 | p99 | Max feed | Max detail |
-|---|---:|---:|---:|---:|---:|---:|
-| Warm-up 20s | 278 | 1.212 ms | 11.858 ms | 13.208 ms | 10.0 KiB | 0.665 KiB |
-| Steady 60s | 834 | 1.192 ms | 11.769 ms | 12.725 ms | 10.0 KiB | 0.665 KiB |
-| Burst 15s @139 RPS | 2,085 | 1.067 ms | 11.883 ms | 12.785 ms | 10.0 KiB | 0.665 KiB |
+Max feed body was 10.0 KiB and max detail 0.665 KiB across the matrix; both are
+below the 64/32 KiB gates. Aggregate SQL/request remained ≈1.8, matching the 4:1
+feed/detail mix (feed 2 queries, detail 1). Pool empty-acquire counts were 1–3,
+canceled 0, and new connections 1–3; total acquire duration stayed in the
+3.2–61.4 ms range for the run (≈0.9–2 µs/acquire). The 100-DAU row has only nine
+steady samples, so its p95 is descriptive, not statistically strong.
 
-Aggregate SQL queries: 5,757 over 3,197 requests (≈1.8/request, consistent with
-feed 2 + detail 1 at the 4:1 mix). Pool acquires: 5,761; total acquire duration
-11.61 ms; empty acquires 2; canceled 0; new connections 2. Process RSS
-16,788 KiB → 21,948 KiB.
+### Exploratory headroom beyond the matrix
 
-### Fixture B — 10,000 posts
-
-| Phase | Requests | p50 | p95 | p99 | Max feed | Max detail |
-|---|---:|---:|---:|---:|---:|---:|
-| Warm-up 15s | 209 | 6.689 ms | 7.968 ms | 9.451 ms | 9.95 KiB | 0.658 KiB |
-| Steady 45s | 626 | 6.431 ms | 7.512 ms | 8.195 ms | 9.95 KiB | 0.659 KiB |
-| Burst 15s @139 RPS | 2,085 | 6.083 ms | 7.024 ms | 7.641 ms | 9.95 KiB | 0.664 KiB |
-
-Aggregate SQL queries: 5,258 over 2,920 requests (≈1.8/request). Pool acquires:
-5,262; total acquire duration 10.48 ms; empty acquires 2; canceled 0; new
-connections 2. Process RSS 16,512 KiB → 22,436 KiB.
-
-Executed acceptance gates: zero errors/drops, steady p95 <=300 ms, feed
-<=64 KiB, detail <=32 KiB. All passed for the delivered pilot load. The harness
-stopped cleanly and the disposable DB cleanup ran.
+A separate 139 RPS steady / 1,390 RPS burst run (10× the declared 100,000-DAU
+burst, max 100 in flight) delivered 83,400 steady requests in 600s (139.0 RPS)
+and 73,680 burst requests in 60s (1,228 RPS, 88.3% of the 1,390 target), with
+zero errors/drops, p95 11.11/13.27 ms, p99 13.10/15.81 ms, RSS 29,508 KiB and
+357,782 SQL queries. This is exploratory headroom, not an accepted 1,000,000-DAU
+scenario; the burst target was not fully delivered by the single-client ticker.
 
 ## Failures and recovery executed
 
@@ -110,9 +107,9 @@ stopped cleanly and the disposable DB cleanup ran.
   `ForumScreenDeviceTest` do not yet exist; `BottomTabNavigationDeviceTest`
   exists but cannot run. A3 native/theme/font/TalkBack/back-stack/IME/manual
   traversal is **DEVICE_PENDING / OWED**, not accepted.
-- Full declared 5-minute warm-up, 10-minute steady and 60-second burst were not
-  run; only the pilots above. The 100/1,000/100,000-DAU matrix and 100,000-DAU
-  burst are OWED.
+- The full declared 5m/10m/60s matrix is now executed. The 1,390 RPS exploratory
+  burst was not fully delivered (1,228 RPS); no 1,000,000-DAU acceptance is
+  claimed.
 - No DB lock-wait percentile or CPU/steal time series was collected; only pool
   stats and an idle Docker sample. Per-endpoint SQL round trips were not
   separately traced; aggregate average is recorded. These are unresolved
@@ -122,6 +119,6 @@ stopped cleanly and the disposable DB cleanup ran.
 
 ## Next action
 
-Run the full load matrix and A3 device union when a device/window is available;
-then FOR-29 may prepare the authorized protected dev→main PR with these OWED
-items retained.
+Run the A3 device union when a device is available and close the remaining
+measurement gaps; then FOR-29 may prepare the authorized protected dev→main PR
+with these OWED items retained.

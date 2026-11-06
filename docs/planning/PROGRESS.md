@@ -1,23 +1,26 @@
 # Current execution state
 - FOR-28 Capacity/failure/device checkpoint, 2026-11-06:
-  IN_PROGRESS / LOAD_PILOT / DEVICE_PENDING on isolated dev worktree from parent
-  `0eebefa6`. [Phase 6 evidence](../backend/evidence/forum/FOR_PHASE_6.md)
-  adds a bounded `load && integration` Forum harness (disposable PostGIS,
-  10k/100k posts, published/pending mix, 20k comments, real HTTP/router,
-  open-loop 4:1 feed/detail mix, in-flight cap, latency/errors/drops/bytes,
-  pool/RSS/aggregate SQL metrics). Two pilots at 13.9 RPS steady and 139 RPS
-  burst, max 20 in flight, passed: 100k posts p95 11.77ms steady/11.88ms burst,
-  max feed 10.0KiB/detail 0.665KiB; 10k posts p95 7.51ms/7.02ms, max feed
-  9.95KiB/detail 0.664KiB; zero errors/drops, ≈1.8 SQL queries/request, RSS
-  ~22MiB, Postgres 18.6, Go 1.27.3. Executed failures: DB outage feed/detail
-  503 (new test), disabled switches, source blocked/304/dedup and lifecycle,
-  erasure 6/6, privacy/moderation recovery 6/6, Official unit/PostGIS and full
-  Android JVM union green; A2 lint 0 errors. OWED: full 5m/10m/60s durations,
-  100/1k/100k-DAU matrix, 100k-DAU burst, A3 native/device/TalkBack/IME,
-  comparative price/map p95, per-endpoint SQL tracing/lock percentile, and
-  actual staging/operator/legal/merge acceptance. No production or staging
-  write. Next action: complete the OWED full load/device matrix, then FOR-29
-  protected PR preparation.
+  IN_PROGRESS / LOAD_MATRIX_PASS / DEVICE_PENDING on isolated dev worktree from
+  parent `0eebefa6`. [Phase 6 evidence](../backend/evidence/forum/FOR_PHASE_6.md)
+  adds a bounded `load && integration` Forum harness (disposable PostGIS, 100k
+  posts/20k comments, real HTTP/router, open-loop 4:1 feed/detail mix, in-flight
+  cap, latency/errors/drops/bytes, pool/RSS/aggregate SQL metrics). Executed the
+  full 5m/10m/60s matrix on 100k posts at the declared DAU hypotheses:
+  100 DAU (0.0139/0.139 RPS) p95 24.3/8.0ms over 9/9 requests; 1k DAU
+  (0.139/1.39) p95 15.2/12.9ms, 84/84; 10k DAU (1.39/13.9) p95
+  10.6/10.8ms, 834/834; 100k DAU (13.9/139, cap 20 used) p95
+  14.7/12.6ms, 8,340/8,336. All zero errors/drops, max feed 10.0KiB/detail
+  0.665KiB, ≈1.8 SQL queries/request, RSS ≤21.9MiB. Exploratory 139/1,390 RPS
+  run delivered 139 RPS steady and 1,228 RPS burst (88.3% of target; no
+  1M-DAU claim), zero errors/drops, p95 11.1/13.3ms, RSS 29.5MiB. Executed
+  failures: DB outage feed/detail 503 (new test), disabled switches, source
+  blocked/304/dedup/lifecycle, erasure 6/6, privacy/moderation recovery 6/6,
+  Official unit/PostGIS and full Android JVM union green; A2 lint 0 errors.
+  OWED: A3 native/device/TalkBack/IME (no device; Forum device classes absent),
+  comparative price/map p95, per-endpoint SQL tracing/lock/CPU-steal series,
+  1,390 RPS burst delivery, and actual staging/operator/legal/merge acceptance.
+  No production/staging write. Next action: run A3 when a device is available,
+  close measurement gaps, then FOR-29 protected PR preparation.
 
 - FOR-27 Reviewed deterministic bulletin checkpoint, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
