@@ -161,6 +161,13 @@ class ForumEditorialMvpAcceptanceTest {
         val detailVm = ForumDetailViewModel(
             getForumPostDetail = getForumPostDetail,
             validateForumSafeLink = validateForumSafeLink,
+            getForumComments = mockk(relaxed = true),
+            getForumReplies = mockk(relaxed = true),
+            submitForumComment = mockk(relaxed = true),
+            editForumComment = mockk(relaxed = true),
+            removeForumComment = mockk(relaxed = true),
+            reportForumTarget = mockk(relaxed = true),
+            sessionStore = null,
             savedStateHandle = savedStateHandle,
         )
 

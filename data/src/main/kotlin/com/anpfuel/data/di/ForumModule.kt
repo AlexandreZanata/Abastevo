@@ -1,8 +1,16 @@
 package com.anpfuel.data.di
 
+import com.anpfuel.application.portable.AuthFlow
+import com.anpfuel.application.portable.AuthSessionStore
+import com.anpfuel.application.usecase.forum.EditForumCommentUseCase
 import com.anpfuel.application.usecase.forum.GetForumCategoriesUseCase
+import com.anpfuel.application.usecase.forum.GetForumCommentsUseCase
 import com.anpfuel.application.usecase.forum.GetForumFeedUseCase
 import com.anpfuel.application.usecase.forum.GetForumPostDetailUseCase
+import com.anpfuel.application.usecase.forum.GetForumRepliesUseCase
+import com.anpfuel.application.usecase.forum.RemoveForumCommentUseCase
+import com.anpfuel.application.usecase.forum.ReportForumTargetUseCase
+import com.anpfuel.application.usecase.forum.SubmitForumCommentUseCase
 import com.anpfuel.application.usecase.forum.ValidateForumSafeLinkUseCase
 import com.anpfuel.data.local.dao.ForumCacheDao
 import com.anpfuel.data.remote.ApiEnvironment
@@ -26,10 +34,14 @@ object ForumModule {
     fun provideForumHttpClient(
         okHttpClient: OkHttpClient,
         @Named("apiOrigin") environment: ApiEnvironment,
+        sessions: AuthSessionStore,
+        auth: AuthFlow,
     ): ForumHttpClient {
         return ForumHttpClient(
             http = okHttpClient,
             baseUrl = environment.origin,
+            sessions = sessions,
+            auth = auth,
         )
     }
 
@@ -65,5 +77,35 @@ object ForumModule {
     @Provides
     fun provideValidateForumSafeLinkUseCase(): ValidateForumSafeLinkUseCase {
         return ValidateForumSafeLinkUseCase()
+    }
+
+    @Provides
+    fun provideGetForumCommentsUseCase(gateway: ForumGateway): GetForumCommentsUseCase {
+        return GetForumCommentsUseCase(gateway)
+    }
+
+    @Provides
+    fun provideGetForumRepliesUseCase(gateway: ForumGateway): GetForumRepliesUseCase {
+        return GetForumRepliesUseCase(gateway)
+    }
+
+    @Provides
+    fun provideSubmitForumCommentUseCase(gateway: ForumGateway): SubmitForumCommentUseCase {
+        return SubmitForumCommentUseCase(gateway)
+    }
+
+    @Provides
+    fun provideEditForumCommentUseCase(gateway: ForumGateway): EditForumCommentUseCase {
+        return EditForumCommentUseCase(gateway)
+    }
+
+    @Provides
+    fun provideRemoveForumCommentUseCase(gateway: ForumGateway): RemoveForumCommentUseCase {
+        return RemoveForumCommentUseCase(gateway)
+    }
+
+    @Provides
+    fun provideReportForumTargetUseCase(gateway: ForumGateway): ReportForumTargetUseCase {
+        return ReportForumTargetUseCase(gateway)
     }
 }

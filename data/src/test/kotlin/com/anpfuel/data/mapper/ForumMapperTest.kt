@@ -204,4 +204,113 @@ class ForumMapperTest {
         assertEquals(detail.source, detailDecoded.source)
         assertEquals(detail.region, detailDecoded.region)
     }
+
+    @Test
+    fun `maps comments page json response`() {
+        val raw = """
+            {
+                "items": [
+                    {
+                        "id": "11111111-1111-4111-8111-111111111111",
+                        "post_id": "22222222-2222-4222-8222-222222222222",
+                        "parent_id": null,
+                        "depth": 0,
+                        "sequence": 1,
+                        "public_alias": "Motorista SP",
+                        "body_text": "Ótima explicação sobre tributos.",
+                        "created_at": "2026-11-05T14:00:00Z",
+                        "updated_at": "2026-11-05T14:00:00Z",
+                        "reply_count": 2
+                    }
+                ],
+                "next_cursor": "cursor-comments-abc"
+            }
+        """.trimIndent()
+        val result = ForumMapper.comments(JSONObject(raw))
+        assertEquals(1, result.items.size)
+        assertEquals("cursor-comments-abc", result.nextCursor)
+
+        val item = result.items[0]
+        assertEquals("11111111-1111-4111-8111-111111111111", item.id)
+        assertEquals("22222222-2222-4222-8222-222222222222", item.postId)
+        assertNull(item.parentId)
+        assertEquals("Motorista SP", item.publicAlias)
+        assertEquals("Ótima explicação sobre tributos.", item.bodyText)
+        assertEquals(1L, item.sequence)
+        assertEquals(2, item.replyCount)
+    }
+
+    @Test
+    fun `maps replies page json response`() {
+        val raw = """
+            {
+                "items": [
+                    {
+                        "id": "33333333-3333-4333-8333-333333333333",
+                        "post_id": "22222222-2222-4222-8222-222222222222",
+                        "parent_id": "11111111-1111-4111-8111-111111111111",
+                        "depth": 1,
+                        "sequence": 2,
+                        "public_alias": "Motorista RJ",
+                        "body_text": "Concordo plenamente.",
+                        "created_at": "2026-11-05T14:10:00Z",
+                        "updated_at": "2026-11-05T14:10:00Z",
+                        "reply_count": 0
+                    }
+                ],
+                "next_cursor": null
+            }
+        """.trimIndent()
+        val result = ForumMapper.replies(JSONObject(raw))
+        assertEquals(1, result.items.size)
+        assertNull(result.nextCursor)
+        assertEquals("33333333-3333-4333-8333-333333333333", result.items[0].id)
+        assertEquals("11111111-1111-4111-8111-111111111111", result.items[0].parentId)
+    }
+
+    @Test
+    fun `maps comment receipt json response`() {
+        val raw = """
+            {
+                "id": "11111111-1111-4111-8111-111111111111",
+                "post_id": "22222222-2222-4222-8222-222222222222",
+                "parent_id": null,
+                "depth": 0,
+                "sequence": 1,
+                "revision": 1,
+                "publication_state": "PENDING_REVIEW",
+                "visibility": "VISIBLE",
+                "body_text": "Comentário enviado para moderação antes da publicação.",
+                "created_at": "2026-11-05T14:00:00Z",
+                "updated_at": "2026-11-05T14:00:00Z"
+            }
+        """.trimIndent()
+        val receipt = ForumMapper.commentReceipt(JSONObject(raw))
+        assertEquals("11111111-1111-4111-8111-111111111111", receipt.id)
+        assertEquals(1L, receipt.revision)
+        assertEquals("PENDING_REVIEW", receipt.publicationState)
+        assertEquals("VISIBLE", receipt.visibility)
+        assertEquals("Comentário enviado para moderação antes da publicação.", receipt.bodyText)
+    }
+
+    @Test
+    fun `maps report receipt json response`() {
+        val raw = """
+            {
+                "report_id": "44444444-4444-4444-8444-444444444444",
+                "case_id": "case-555",
+                "target_type": "FORUM_COMMENT",
+                "target_id": "11111111-1111-4111-8111-111111111111",
+                "reason": "SPAM",
+                "status": "OPEN",
+                "created_at": "2026-11-05T14:20:00Z"
+            }
+        """.trimIndent()
+        val receipt = ForumMapper.reportReceipt(JSONObject(raw))
+        assertEquals("44444444-4444-4444-8444-444444444444", receipt.reportId)
+        assertEquals("case-555", receipt.caseId)
+        assertEquals("FORUM_COMMENT", receipt.targetType)
+        assertEquals("SPAM", receipt.reason)
+        assertEquals("OPEN", receipt.status)
+    }
 }

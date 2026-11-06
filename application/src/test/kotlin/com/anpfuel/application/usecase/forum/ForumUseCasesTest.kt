@@ -3,12 +3,17 @@ package com.anpfuel.application.usecase.forum
 import com.anpfuel.domain.forum.ForumCategoriesResult
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumCategoryItem
+import com.anpfuel.domain.forum.ForumCommentReceipt
+import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
 import com.anpfuel.domain.forum.ForumPostSummary
 import com.anpfuel.domain.forum.ForumRegion
+import com.anpfuel.domain.forum.ForumRepliesPage
+import com.anpfuel.domain.forum.ForumReportReason
+import com.anpfuel.domain.forum.ForumReportReceipt
 import com.anpfuel.domain.forum.ForumSafeLinks
 import com.anpfuel.domain.forum.ForumSourceAttribution
 import com.anpfuel.domain.repository.ForumGateway
@@ -312,6 +317,180 @@ class ForumUseCasesTest {
         val detailUseCase = GetForumPostDetailUseCase(failingGateway)
         assertThrows(ForumException.NotFound::class.java) {
             kotlinx.coroutines.runBlocking { detailUseCase(validPostId) }
+        }
+    }
+
+    // --- 8. Discussion and Moderation Use Cases ---
+    @Test
+    fun `GetForumCommentsUseCase validates postId and clamps limit`() = runTest {
+        var requestedLimit = 0
+        var requestedPostId = ""
+        val gateway = object : ForumGateway {
+            override suspend fun getComments(postId: String, limit: Int, cursor: String?): ForumCommentsPage {
+                requestedPostId = postId
+                requestedLimit = limit
+                return ForumCommentsPage(items = emptyList(), nextCursor = null)
+            }
+        }
+
+        val useCase = GetForumCommentsUseCase(gateway)
+        useCase(validPostId, limit = 100)
+        assertEquals(validPostId, requestedPostId)
+        assertEquals(50, requestedLimit)
+
+        useCase(validPostId, limit = -5)
+        assertEquals(1, requestedLimit)
+
+        val ex = assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase("invalid-uuid") }
+        }
+        assertEquals("forum.bad-id", ex.code)
+    }
+
+    @Test
+    fun `GetForumRepliesUseCase validates commentId and clamps limit`() = runTest {
+        var requestedLimit = 0
+        val gateway = object : ForumGateway {
+            override suspend fun getReplies(commentId: String, limit: Int, cursor: String?): ForumRepliesPage {
+                requestedLimit = limit
+                return ForumRepliesPage(items = emptyList(), nextCursor = null)
+            }
+        }
+
+        val useCase = GetForumRepliesUseCase(gateway)
+        useCase(validPostId, limit = 999)
+        assertEquals(50, requestedLimit)
+
+        val ex = assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase("not-a-uuid") }
+        }
+        assertEquals("forum.bad-id", ex.code)
+    }
+
+    @Test
+    fun `SubmitForumCommentUseCase validates bounds and dispatches`() = runTest {
+        var capturedBody = ""
+        val gateway = object : ForumGateway {
+            override suspend fun createComment(postId: String, parentId: String?, bodyText: String, operationId: String): ForumCommentReceipt {
+                capturedBody = bodyText
+                return ForumCommentReceipt(
+                    id = "88888888-8888-4888-8888-000000000001",
+                    postId = postId,
+                    parentId = parentId,
+                    publicationState = "PENDING_REVIEW",
+                    visibility = "VISIBLE",
+                    bodyText = bodyText,
+                    createdAt = "2026-11-05T12:00:00Z",
+                    updatedAt = "2026-11-05T12:00:00Z",
+                )
+            }
+        }
+
+        val useCase = SubmitForumCommentUseCase(gateway)
+        val receipt = useCase(validPostId, "Comentario de teste valido")
+        assertEquals("Comentario de teste valido", capturedBody)
+        assertEquals("PENDING_REVIEW", receipt.publicationState)
+
+        assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase("bad-id", "valido") }
+        }
+        assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase(validPostId, "   ") }
+        }
+        assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase(validPostId, "a".repeat(281)) }
+        }
+        assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase(validPostId, "valido", parentId = "bad-parent") }
+        }
+    }
+
+    @Test
+    fun `EditForumCommentUseCase validates bounds and revision`() = runTest {
+        val gateway = object : ForumGateway {
+            override suspend fun editComment(commentId: String, expectedRevision: Long, bodyText: String, operationId: String): ForumCommentReceipt {
+                return ForumCommentReceipt(
+                    id = commentId,
+                    postId = validPostId,
+                    revision = expectedRevision + 1,
+                    publicationState = "PENDING_REVIEW",
+                    visibility = "VISIBLE",
+                    bodyText = bodyText,
+                    createdAt = "2026-11-05T12:00:00Z",
+                    updatedAt = "2026-11-05T12:00:00Z",
+                )
+            }
+        }
+
+        val useCase = EditForumCommentUseCase(gateway)
+        val receipt = useCase(validPostId, 1L, "Texto editado")
+        assertEquals(2L, receipt.revision)
+
+        assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase("bad-id", 1L, "texto") }
+        }
+        assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase(validPostId, 1L, "") }
+        }
+    }
+
+    @Test
+    fun `RemoveForumCommentUseCase validates UUID and dispatches`() = runTest {
+        val gateway = object : ForumGateway {
+            override suspend fun removeComment(commentId: String, expectedRevision: Long, operationId: String): ForumCommentReceipt {
+                return ForumCommentReceipt(
+                    id = commentId,
+                    postId = validPostId,
+                    revision = expectedRevision + 1,
+                    publicationState = "REMOVED",
+                    visibility = "HIDDEN",
+                    bodyText = "",
+                    createdAt = "2026-11-05T12:00:00Z",
+                    updatedAt = "2026-11-05T12:00:00Z",
+                )
+            }
+        }
+
+        val useCase = RemoveForumCommentUseCase(gateway)
+        val receipt = useCase(validPostId, 1L)
+        assertEquals("REMOVED", receipt.publicationState)
+
+        assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase("not-a-uuid", 1L) }
+        }
+    }
+
+    @Test
+    fun `ReportForumTargetUseCase validates target type and length`() = runTest {
+        val gateway = object : ForumGateway {
+            override suspend fun report(targetType: String, targetId: String, reason: String, detail: String?): ForumReportReceipt {
+                return ForumReportReceipt(
+                    reportId = "77777777-7777-4777-8777-000000000001",
+                    caseId = "66666666-6666-4666-8666-000000000001",
+                    targetType = targetType,
+                    targetId = targetId,
+                    reason = reason,
+                    status = "OPEN",
+                    createdAt = "2026-11-05T12:00:00Z",
+                )
+            }
+        }
+
+        val useCase = ReportForumTargetUseCase(gateway)
+        val receiptPost = useCase("FORUM_POST", validPostId, ForumReportReason.SPAM, "Spam comercial")
+        assertEquals("FORUM_POST", receiptPost.targetType)
+
+        val receiptComment = useCase("FORUM_COMMENT", validPostId, ForumReportReason.OFFENSIVE, null)
+        assertEquals("FORUM_COMMENT", receiptComment.targetType)
+
+        assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase("UNKNOWN_TYPE", validPostId, ForumReportReason.SPAM) }
+        }
+        assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase("FORUM_POST", "not-a-uuid", ForumReportReason.SPAM) }
+        }
+        assertThrows(ForumException.Invalid::class.java) {
+            kotlinx.coroutines.runBlocking { useCase("FORUM_POST", validPostId, ForumReportReason.SPAM, "x".repeat(501)) }
         }
     }
 }

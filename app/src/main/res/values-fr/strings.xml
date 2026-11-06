@@ -1341,4 +1341,42 @@
     <string name="forum_external_link_dialog_cancel">Annuler</string>
     <string name="forum_external_link_invalid">Lien non valide ou non sécurisé. Seuls les liens HTTPS sécurisés sont autorisés.</string>
     <string name="forum_updated_label">Mis à jour</string>
+
+    <!-- Forum Discussion & Moderation (FOR-19) -->
+    <string name="forum_social_disabled_notice">Les commentaires et les discussions sont actuellement désactivés.</string>
+    <string name="forum_comments_disabled">Commentaires désactivés pour cette publication.</string>
+    <string name="forum_comments_title">Commentaires</string>
+    <string name="forum_comments_empty">Aucun commentaire pour le moment. Soyez le premier à participer !</string>
+    <string name="forum_reply_button">Répondre</string>
+    <string name="forum_replying_to">Réponse à %1$s</string>
+    <string name="forum_cancel_reply">Annuler la réponse</string>
+    <string name="forum_replies_count">Réponses (%1$d)</string>
+    <string name="forum_hide_replies">Masquer les réponses</string>
+    <string name="forum_comment_composer_hint">Écrire un commentaire (jusqu\'à 280 caractères)...</string>
+    <string name="forum_comment_char_counter">%1$d/280</string>
+    <string name="forum_comment_publish">Publier</string>
+    <string name="forum_comment_submitting">Envoi...</string>
+    <string name="forum_comment_pending_receipt">Commentaire envoyé pour modération avant publication.</string>
+    <string name="forum_sign_in_to_participate">Connectez-vous pour participer</string>
+    <string name="forum_edit_comment">Modifier</string>
+    <string name="forum_edit_dialog_title">Modifier le commentaire</string>
+    <string name="forum_edit_save">Enregistrer</string>
+    <string name="forum_delete_comment">Supprimer</string>
+    <string name="forum_delete_dialog_title">Supprimer le commentaire ?</string>
+    <string name="forum_delete_dialog_message">Êtes-vous sûr de vouloir supprimer ce commentaire ? Cette action est irréversible.</string>
+    <string name="forum_delete_confirm">Supprimer</string>
+    <string name="forum_report_button">Signaler</string>
+    <string name="forum_report_dialog_title">Signaler un contenu</string>
+    <string name="forum_report_dialog_reason_prompt">Sélectionnez le motif du signalement :</string>
+    <string name="forum_report_reason_spam">Spam ou publicité</string>
+    <string name="forum_report_reason_offensive">Contenu offensant ou inapproprié</string>
+    <string name="forum_report_reason_misinformation">Informations trompeuses</string>
+    <string name="forum_report_reason_commercial">Activité commerciale non autorisée</string>
+    <string name="forum_report_reason_legal_notice">Violation de la loi ou droits d\'auteur</string>
+    <string name="forum_report_reason_other">Autre motif</string>
+    <string name="forum_report_detail_hint">Détails supplémentaires (facultatif, jusqu\'à 500 caractères)...</string>
+    <string name="forum_report_submit">Envoyer le signalement</string>
+    <string name="forum_report_success">Signalement reçu pour examen par l\'équipe de modération.</string>
+    <string name="forum_conflict_error">Le contenu a été modifié dans une autre session. Veuillez recharger.</string>
+    <string name="forum_rate_limited_error">Limite dépassée. Veuillez patienter %1$d secondes.</string>
 </resources>

@@ -1341,4 +1341,42 @@
     <string name="forum_external_link_dialog_cancel">取消</string>
     <string name="forum_external_link_invalid">无效或不安全的链接。仅允许安全的HTTPS链接。</string>
     <string name="forum_updated_label">已更新</string>
+
+    <!-- Forum Discussion & Moderation (FOR-19) -->
+    <string name="forum_social_disabled_notice">评论和社交讨论功能当前已关闭。</string>
+    <string name="forum_comments_disabled">此文章已禁用评论。</string>
+    <string name="forum_comments_title">评论</string>
+    <string name="forum_comments_empty">暂无评论，快来抢沙发吧！</string>
+    <string name="forum_reply_button">回复</string>
+    <string name="forum_replying_to">回复 %1$s</string>
+    <string name="forum_cancel_reply">取消回复</string>
+    <string name="forum_replies_count">回复 (%1$d)</string>
+    <string name="forum_hide_replies">收起回复</string>
+    <string name="forum_comment_composer_hint">撰写评论（最多280字）...</string>
+    <string name="forum_comment_char_counter">%1$d/280</string>
+    <string name="forum_comment_publish">发布</string>
+    <string name="forum_comment_submitting">发送中...</string>
+    <string name="forum_comment_pending_receipt">评论已提交审核，审核通过后即可展示。</string>
+    <string name="forum_sign_in_to_participate">登录以参与讨论</string>
+    <string name="forum_edit_comment">编辑</string>
+    <string name="forum_edit_dialog_title">编辑评论</string>
+    <string name="forum_edit_save">保存修改</string>
+    <string name="forum_delete_comment">删除</string>
+    <string name="forum_delete_dialog_title">删除评论？</string>
+    <string name="forum_delete_dialog_message">确定要删除这条评论吗？此操作无法撤销。</string>
+    <string name="forum_delete_confirm">删除</string>
+    <string name="forum_report_button">举报</string>
+    <string name="forum_report_dialog_title">举报内容</string>
+    <string name="forum_report_dialog_reason_prompt">选择举报原因：</string>
+    <string name="forum_report_reason_spam">垃圾广告</string>
+    <string name="forum_report_reason_offensive">攻击性或不当内容</string>
+    <string name="forum_report_reason_misinformation">不实误导信息</string>
+    <string name="forum_report_reason_commercial">未授权商业推广</string>
+    <string name="forum_report_reason_legal_notice">法律纠纷或侵犯版权</string>
+    <string name="forum_report_reason_other">其他原因</string>
+    <string name="forum_report_detail_hint">补充说明（可选，最多500字）...</string>
+    <string name="forum_report_submit">提交举报</string>
+    <string name="forum_report_success">举报已受理，审核团队将尽快处理。</string>
+    <string name="forum_conflict_error">内容已在其他会话中被修改，请重新加载。</string>
+    <string name="forum_rate_limited_error">操作过于频繁，请等待 %1$d 秒。</string>
 </resources>

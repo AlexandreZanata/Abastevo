@@ -229,6 +229,27 @@ class ForumDomainTest {
 
         val offline = ForumException.Offline("forum.offline")
         assertEquals("forum.offline", offline.code)
+
+        val auth = ForumException.AuthRequired("forum.auth-required")
+        assertEquals("forum.auth-required", auth.code)
+
+        val conflict = ForumException.Conflict("forum.conflict")
+        assertEquals("forum.conflict", conflict.code)
+
+        val rate = ForumException.RateLimited("forum.rate-limited", 3600L)
+        assertEquals("forum.rate-limited", rate.code)
+        assertEquals(3600L, rate.retryAfterSeconds)
+    }
+
+    @Test
+    fun `ForumReportReason parses standard wire codes and defaults to OTHER`() {
+        assertEquals(ForumReportReason.SPAM, ForumReportReason.fromWire("SPAM"))
+        assertEquals(ForumReportReason.OFFENSIVE, ForumReportReason.fromWire("OFFENSIVE"))
+        assertEquals(ForumReportReason.MISINFORMATION, ForumReportReason.fromWire("MISINFORMATION"))
+        assertEquals(ForumReportReason.COMMERCIAL, ForumReportReason.fromWire("COMMERCIAL"))
+        assertEquals(ForumReportReason.LEGAL_NOTICE, ForumReportReason.fromWire("LEGAL_NOTICE"))
+        assertEquals(ForumReportReason.OTHER, ForumReportReason.fromWire("OTHER"))
+        assertEquals(ForumReportReason.OTHER, ForumReportReason.fromWire("UNKNOWN_CODE"))
     }
 
     @Test

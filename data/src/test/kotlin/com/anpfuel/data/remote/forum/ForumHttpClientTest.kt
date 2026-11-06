@@ -1,8 +1,10 @@
 package com.anpfuel.data.remote.forum
 
+import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.portable.PortableAuth
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit
+import org.json.JSONObject
 
 class ForumHttpClientTest {
 
@@ -66,8 +69,23 @@ class ForumHttpClientTest {
         }
     """.trimIndent()
 
-    private fun client(server: MockWebServer) =
-        ForumHttpClient(OkHttpClient(), server.url("/").toString())
+    private val testSession = PortableAuth.Session(
+        familyId = "11111111-1111-4111-8111-111111111111",
+        accountId = "22222222-2222-4222-8222-222222222222",
+        accessToken = "test-access-token",
+        refreshToken = "test-refresh-token",
+        accessExpiresAt = Long.MAX_VALUE,
+        absoluteExpiresAt = Long.MAX_VALUE,
+    )
+
+    private class TestSessionStore(var current: PortableAuth.Session? = null) : AuthSessionStore {
+        override fun save(session: PortableAuth.Session) { current = session }
+        override fun load(): PortableAuth.Session? = current
+        override fun clear() { current = null }
+    }
+
+    private fun client(server: MockWebServer, sessions: AuthSessionStore? = null) =
+        ForumHttpClient(OkHttpClient(), server.url("/").toString(), sessions = sessions)
 
     @Test
     fun `getCategories sends GET request and parses categories`() = runTest {
@@ -194,5 +212,275 @@ class ForumHttpClientTest {
             runBlocking { deadClient.getCategories() }
         }
         assertEquals("forum.offline", ex.code)
+    }
+
+    @Test
+    fun `getComments sends GET by post ID and parses comments`() = runTest {
+        MockWebServer().use { server ->
+            val commentsJson = """
+                {
+                    "items": [
+                        {
+                            "id": "11111111-1111-4111-8111-111111111111",
+                            "post_id": "22222222-2222-4222-8222-222222222222",
+                            "parent_comment_id": null,
+                            "author_public_alias": "Motorista SP",
+                            "body_text": "Ótimo post.",
+                            "created_at": "2026-11-05T14:00:00Z",
+                            "updated_at": "2026-11-05T14:00:00Z",
+                            "revision": 1,
+                            "replies_count": 0,
+                            "is_author": false
+                        }
+                    ],
+                    "next_cursor": "cursor-abc"
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setResponseCode(200).setBody(commentsJson))
+            val result = client(server).getComments(
+                postId = "22222222-2222-4222-8222-222222222222",
+                limit = 10,
+                cursor = "cursor-start",
+            )
+            assertEquals(1, result.items.size)
+            assertEquals("11111111-1111-4111-8111-111111111111", result.items[0].id)
+            assertEquals("cursor-abc", result.nextCursor)
+
+            val request = server.takeRequest(1, TimeUnit.SECONDS)!!
+            assertEquals("GET", request.method)
+            assertTrue(request.path!!.contains("/v1/forum/posts/22222222-2222-4222-8222-222222222222/comments"))
+            assertTrue(request.path!!.contains("limit=10"))
+            assertTrue(request.path!!.contains("cursor=cursor-start"))
+        }
+    }
+
+    @Test
+    fun `getReplies sends GET by comment ID and parses replies`() = runTest {
+        MockWebServer().use { server ->
+            val repliesJson = """
+                {
+                    "items": [
+                        {
+                            "id": "33333333-3333-4333-8333-333333333333",
+                            "post_id": "22222222-2222-4222-8222-222222222222",
+                            "parent_comment_id": "11111111-1111-4111-8111-111111111111",
+                            "author_public_alias": "Motorista RJ",
+                            "body_text": "Resposta útil.",
+                            "created_at": "2026-11-05T14:05:00Z",
+                            "updated_at": "2026-11-05T14:05:00Z",
+                            "revision": 1,
+                            "replies_count": 0,
+                            "is_author": true
+                        }
+                    ],
+                    "next_cursor": null
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setResponseCode(200).setBody(repliesJson))
+            val result = client(server).getReplies(
+                commentId = "11111111-1111-4111-8111-111111111111",
+                limit = 5,
+            )
+            assertEquals(1, result.items.size)
+            assertEquals("33333333-3333-4333-8333-333333333333", result.items[0].id)
+
+            val request = server.takeRequest(1, TimeUnit.SECONDS)!!
+            assertEquals("GET", request.method)
+            assertTrue(request.path!!.contains("/v1/forum/comments/11111111-1111-4111-8111-111111111111/replies"))
+            assertTrue(request.path!!.contains("limit=5"))
+        }
+    }
+
+    @Test
+    fun `createComment sends POST with session credentials and body`() = runTest {
+        MockWebServer().use { server ->
+            val receiptJson = """
+                {
+                    "id": "55555555-5555-4555-8555-555555555555",
+                    "post_id": "22222222-2222-4222-8222-222222222222",
+                    "parent_id": null,
+                    "depth": 0,
+                    "sequence": 1,
+                    "revision": 1,
+                    "publication_state": "PENDING_REVIEW",
+                    "visibility": "VISIBLE",
+                    "body_text": "Comentário de teste.",
+                    "created_at": "2026-11-05T14:15:00Z",
+                    "updated_at": "2026-11-05T14:15:00Z"
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setResponseCode(200).setBody(receiptJson))
+            val sessions = TestSessionStore(testSession)
+            val receipt = client(server, sessions).createComment(
+                postId = "22222222-2222-4222-8222-222222222222",
+                parentId = null,
+                bodyText = "Comentário de teste.",
+                operationId = "op-create-1",
+            )
+            assertEquals("55555555-5555-4555-8555-555555555555", receipt.id)
+            assertEquals(1L, receipt.revision)
+            assertEquals("PENDING_REVIEW", receipt.publicationState)
+
+            val request = server.takeRequest(1, TimeUnit.SECONDS)!!
+            assertEquals("POST", request.method)
+            assertEquals("/v1/forum/posts/22222222-2222-4222-8222-222222222222/comments", request.path)
+            val json = JSONObject(request.body.readUtf8())
+            assertEquals("test-access-token", json.getString("access_token"))
+            assertEquals("Comentário de teste.", json.getString("body_text"))
+            assertEquals("op-create-1", json.getString("operation_id"))
+        }
+    }
+
+    @Test
+    fun `editComment sends POST with revision and body`() = runTest {
+        MockWebServer().use { server ->
+            val receiptJson = """
+                {
+                    "id": "55555555-5555-4555-8555-555555555555",
+                    "post_id": "22222222-2222-4222-8222-222222222222",
+                    "parent_id": null,
+                    "depth": 0,
+                    "sequence": 1,
+                    "revision": 2,
+                    "publication_state": "PENDING_REVIEW",
+                    "visibility": "VISIBLE",
+                    "body_text": "Texto atualizado.",
+                    "created_at": "2026-11-05T14:20:00Z",
+                    "updated_at": "2026-11-05T14:20:00Z"
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setResponseCode(200).setBody(receiptJson))
+            val sessions = TestSessionStore(testSession)
+            val receipt = client(server, sessions).editComment(
+                commentId = "55555555-5555-4555-8555-555555555555",
+                expectedRevision = 1L,
+                bodyText = "Texto atualizado.",
+                operationId = "op-edit-1",
+            )
+            assertEquals(2L, receipt.revision)
+
+            val request = server.takeRequest(1, TimeUnit.SECONDS)!!
+            assertEquals("POST", request.method)
+            assertEquals("/v1/forum/comments/55555555-5555-4555-8555-555555555555/edit", request.path)
+            val json = JSONObject(request.body.readUtf8())
+            assertEquals(1L, json.getLong("expected_revision"))
+            assertEquals("Texto atualizado.", json.getString("body_text"))
+        }
+    }
+
+    @Test
+    fun `removeComment sends POST with revision`() = runTest {
+        MockWebServer().use { server ->
+            val receiptJson = """
+                {
+                    "id": "55555555-5555-4555-8555-555555555555",
+                    "post_id": "22222222-2222-4222-8222-222222222222",
+                    "parent_id": null,
+                    "depth": 0,
+                    "sequence": 1,
+                    "revision": 3,
+                    "publication_state": "REMOVED",
+                    "visibility": "HIDDEN",
+                    "body_text": "",
+                    "created_at": "2026-11-05T14:25:00Z",
+                    "updated_at": "2026-11-05T14:25:00Z"
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setResponseCode(200).setBody(receiptJson))
+            val sessions = TestSessionStore(testSession)
+            val receipt = client(server, sessions).removeComment(
+                commentId = "55555555-5555-4555-8555-555555555555",
+                expectedRevision = 2L,
+                operationId = "op-remove-1",
+            )
+            assertEquals("REMOVED", receipt.publicationState)
+
+            val request = server.takeRequest(1, TimeUnit.SECONDS)!!
+            assertEquals("POST", request.method)
+            assertEquals("/v1/forum/comments/55555555-5555-4555-8555-555555555555/remove", request.path)
+            val json = JSONObject(request.body.readUtf8())
+            assertEquals(2L, json.getLong("expected_revision"))
+        }
+    }
+
+    @Test
+    fun `report sends POST with reason and detail`() = runTest {
+        MockWebServer().use { server ->
+            val receiptJson = """
+                {
+                    "report_id": "66666666-6666-4666-8666-666666666666",
+                    "case_id": "case-999",
+                    "target_type": "FORUM_COMMENT",
+                    "target_id": "55555555-5555-4555-8555-555555555555",
+                    "reason": "SPAM",
+                    "status": "OPEN",
+                    "created_at": "2026-11-05T14:30:00Z"
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setResponseCode(200).setBody(receiptJson))
+            val sessions = TestSessionStore(testSession)
+            val receipt = client(server, sessions).report(
+                targetType = "FORUM_COMMENT",
+                targetId = "55555555-5555-4555-8555-555555555555",
+                reason = "SPAM",
+                detail = "Spam promocional.",
+            )
+            assertEquals("66666666-6666-4666-8666-666666666666", receipt.reportId)
+
+            val request = server.takeRequest(1, TimeUnit.SECONDS)!!
+            assertEquals("POST", request.method)
+            assertEquals("/v1/forum/comments/55555555-5555-4555-8555-555555555555/report", request.path)
+            val json = JSONObject(request.body.readUtf8())
+            assertEquals("SPAM", json.getString("reason"))
+            assertEquals("Spam promocional.", json.getString("detail"))
+        }
+    }
+
+    @Test
+    fun `handles 401 auth required`() = runTest {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error": {"code": "forum.unauthorized"}}"""))
+            val sessions = TestSessionStore(testSession)
+            val ex = assertThrows(ForumException.AuthRequired::class.java) {
+                runBlocking {
+                    client(server, sessions).createComment("22222222-2222-4222-8222-222222222222", null, "teste", "op-err")
+                }
+            }
+            assertEquals("forum.auth-required", ex.code)
+        }
+    }
+
+    @Test
+    fun `handles 409 conflict`() = runTest {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setResponseCode(409).setBody("""{"error": {"code": "forum.conflict"}}"""))
+            val sessions = TestSessionStore(testSession)
+            val ex = assertThrows(ForumException.Conflict::class.java) {
+                runBlocking {
+                    client(server, sessions).editComment("55555555-5555-4555-8555-555555555555", 1L, "novo texto", "op-conf")
+                }
+            }
+            assertEquals("forum.conflict", ex.code)
+        }
+    }
+
+    @Test
+    fun `handles 429 rate limit with Retry-After header`() = runTest {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse()
+                    .setResponseCode(429)
+                    .setHeader("Retry-After", "30")
+                    .setBody("""{"error": {"code": "forum.rate-limited", "message": "rate limit exceeded"}}""")
+            )
+            val sessions = TestSessionStore(testSession)
+            val ex = assertThrows(ForumException.RateLimited::class.java) {
+                runBlocking {
+                    client(server, sessions).createComment("22222222-2222-4222-8222-222222222222", null, "teste", "op-rate")
+                }
+            }
+            assertEquals("forum.rate-limited", ex.code)
+            assertEquals(30L, ex.retryAfterSeconds)
+        }
     }
 }

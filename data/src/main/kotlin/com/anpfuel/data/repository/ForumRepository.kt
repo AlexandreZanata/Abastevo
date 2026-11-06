@@ -6,10 +6,14 @@ import com.anpfuel.data.local.forum.ForumCacheCodec
 import com.anpfuel.data.local.forum.ForumCacheRule
 import com.anpfuel.domain.forum.ForumCategoriesResult
 import com.anpfuel.domain.forum.ForumCategory
+import com.anpfuel.domain.forum.ForumCommentReceipt
+import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumRepliesPage
+import com.anpfuel.domain.forum.ForumReportReceipt
 import com.anpfuel.domain.repository.ForumGateway
 import kotlinx.coroutines.CancellationException
 
@@ -91,6 +95,53 @@ class ForumRepository(
         } catch (e: ForumException.Offline) {
             loadCachedDetail(detailKey) ?: throw e
         }
+    }
+
+    override suspend fun getComments(postId: String, limit: Int, cursor: String?): ForumCommentsPage {
+        return client.getComments(postId, limit, cursor)
+    }
+
+    override suspend fun getReplies(commentId: String, limit: Int, cursor: String?): ForumRepliesPage {
+        return client.getReplies(commentId, limit, cursor)
+    }
+
+    override suspend fun createComment(
+        postId: String,
+        parentId: String?,
+        bodyText: String,
+        operationId: String,
+    ): ForumCommentReceipt {
+        return client.createComment(postId, parentId, bodyText, operationId)
+    }
+
+    override suspend fun editComment(
+        commentId: String,
+        expectedRevision: Long,
+        bodyText: String,
+        operationId: String,
+    ): ForumCommentReceipt {
+        return client.editComment(commentId, expectedRevision, bodyText, operationId)
+    }
+
+    override suspend fun removeComment(
+        commentId: String,
+        expectedRevision: Long,
+        operationId: String,
+    ): ForumCommentReceipt {
+        return client.removeComment(commentId, expectedRevision, operationId)
+    }
+
+    override suspend fun getOwnerComment(commentId: String): ForumCommentReceipt {
+        return client.getOwnerComment(commentId)
+    }
+
+    override suspend fun report(
+        targetType: String,
+        targetId: String,
+        reason: String,
+        detail: String?,
+    ): ForumReportReceipt {
+        return client.report(targetType, targetId, reason, detail)
     }
 
     private suspend fun store(key: String, kind: String, payload: String) {

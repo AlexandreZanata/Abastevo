@@ -1341,4 +1341,42 @@
     <string name="forum_external_link_dialog_cancel">Отмена</string>
     <string name="forum_external_link_invalid">Недействительная или небезопасная ссылка. Разрешены только безопасные ссылки HTTPS.</string>
     <string name="forum_updated_label">Обновлено</string>
+
+    <!-- Forum Discussion & Moderation (FOR-19) -->
+    <string name="forum_social_disabled_notice">Комментарии и обсуждения в настоящее время отключены.</string>
+    <string name="forum_comments_disabled">Комментарии к этой публикации отключены.</string>
+    <string name="forum_comments_title">Комментарии</string>
+    <string name="forum_comments_empty">Комментариев пока нет. Будьте первым!</string>
+    <string name="forum_reply_button">Ответить</string>
+    <string name="forum_replying_to">Ответ для %1$s</string>
+    <string name="forum_cancel_reply">Отменить ответ</string>
+    <string name="forum_replies_count">Ответы (%1$d)</string>
+    <string name="forum_hide_replies">Скрыть ответы</string>
+    <string name="forum_comment_composer_hint">Напишите комментарий (до 280 символов)...</string>
+    <string name="forum_comment_char_counter">%1$d/280</string>
+    <string name="forum_comment_publish">Опубликовать</string>
+    <string name="forum_comment_submitting">Отправка...</string>
+    <string name="forum_comment_pending_receipt">Комментарий отправлен на модерацию перед публикацией.</string>
+    <string name="forum_sign_in_to_participate">Войдите, чтобы участвовать</string>
+    <string name="forum_edit_comment">Изменить</string>
+    <string name="forum_edit_dialog_title">Редактировать комментарий</string>
+    <string name="forum_edit_save">Сохранить изменения</string>
+    <string name="forum_delete_comment">Удалить</string>
+    <string name="forum_delete_dialog_title">Удалить комментарий?</string>
+    <string name="forum_delete_dialog_message">Вы уверены, что хотите удалить этот комментарий? Это действие нельзя отменить.</string>
+    <string name="forum_delete_confirm">Удалить</string>
+    <string name="forum_report_button">Пожаловаться</string>
+    <string name="forum_report_dialog_title">Пожаловаться на контент</string>
+    <string name="forum_report_dialog_reason_prompt">Выберите причину жалобы:</string>
+    <string name="forum_report_reason_spam">Спам или реклама</string>
+    <string name="forum_report_reason_offensive">Оскорбительный контент</string>
+    <string name="forum_report_reason_misinformation">Недостоверная информация</string>
+    <string name="forum_report_reason_commercial">Несанкционированная реклама</string>
+    <string name="forum_report_reason_legal_notice">Нарушение закона или авторских прав</string>
+    <string name="forum_report_reason_other">Другая причина</string>
+    <string name="forum_report_detail_hint">Дополнительные сведения (необязательно, до 500 символов)...</string>
+    <string name="forum_report_submit">Отправить жалобу</string>
+    <string name="forum_report_success">Жалоба принята на рассмотрение модераторами.</string>
+    <string name="forum_conflict_error">Контент был изменен в другой сессии. Пожалуйста, обновите страницу.</string>
+    <string name="forum_rate_limited_error">Лимит превышен. Пожалуйста, подождите %1$d сек.</string>
 </resources>

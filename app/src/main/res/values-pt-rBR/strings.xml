@@ -1354,4 +1354,42 @@
     <string name="forum_external_link_dialog_cancel">Cancelar</string>
     <string name="forum_external_link_invalid">Link inválido ou não seguro. Apenas links HTTPS seguros são permitidos.</string>
     <string name="forum_updated_label">Atualizado</string>
+
+    <!-- Forum Discussion & Moderation (FOR-19) -->
+    <string name="forum_social_disabled_notice">Comentários e discussões sociais estão desativados no momento.</string>
+    <string name="forum_comments_disabled">Comentários desativados para esta publicação.</string>
+    <string name="forum_comments_title">Comentários</string>
+    <string name="forum_comments_empty">Nenhum comentário ainda. Seja o primeiro a participar!</string>
+    <string name="forum_reply_button">Responder</string>
+    <string name="forum_replying_to">Respondendo a %1$s</string>
+    <string name="forum_cancel_reply">Cancelar resposta</string>
+    <string name="forum_replies_count">Respostas (%1$d)</string>
+    <string name="forum_hide_replies">Ocultar respostas</string>
+    <string name="forum_comment_composer_hint">Escreva um comentário (até 280 caracteres)...</string>
+    <string name="forum_comment_char_counter">%1$d/280</string>
+    <string name="forum_comment_publish">Publicar</string>
+    <string name="forum_comment_submitting">Enviando...</string>
+    <string name="forum_comment_pending_receipt">Comentário enviado para moderação antes da publicação.</string>
+    <string name="forum_sign_in_to_participate">Entre para participar</string>
+    <string name="forum_edit_comment">Editar</string>
+    <string name="forum_edit_dialog_title">Editar comentário</string>
+    <string name="forum_edit_save">Salvar alterações</string>
+    <string name="forum_delete_comment">Excluir</string>
+    <string name="forum_delete_dialog_title">Excluir comentário?</string>
+    <string name="forum_delete_dialog_message">Tem certeza de que deseja excluir este comentário? Esta ação não pode ser desfeita.</string>
+    <string name="forum_delete_confirm">Excluir</string>
+    <string name="forum_report_button">Denunciar</string>
+    <string name="forum_report_dialog_title">Denunciar conteúdo</string>
+    <string name="forum_report_dialog_reason_prompt">Selecione o motivo da denúncia:</string>
+    <string name="forum_report_reason_spam">Spam ou publicidade</string>
+    <string name="forum_report_reason_offensive">Conteúdo ofensivo ou impróprio</string>
+    <string name="forum_report_reason_misinformation">Informação enganosa</string>
+    <string name="forum_report_reason_commercial">Atividade comercial não autorizada</string>
+    <string name="forum_report_reason_legal_notice">Violação legal ou direitos autorais</string>
+    <string name="forum_report_reason_other">Outro motivo</string>
+    <string name="forum_report_detail_hint">Detalhes adicionais (opcional, até 500 caracteres)...</string>
+    <string name="forum_report_submit">Enviar denúncia</string>
+    <string name="forum_report_success">Denúncia recebida para análise pela equipe de moderação.</string>
+    <string name="forum_conflict_error">O conteúdo foi modificado em outra sessão. Recarregue a página.</string>
+    <string name="forum_rate_limited_error">Limite excedido. Aguarde %1$d segundos.</string>
 </resources>

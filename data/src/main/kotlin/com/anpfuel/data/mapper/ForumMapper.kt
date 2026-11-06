@@ -3,12 +3,17 @@ package com.anpfuel.data.mapper
 import com.anpfuel.domain.forum.ForumCategoriesResult
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumCategoryItem
+import com.anpfuel.domain.forum.ForumComment
+import com.anpfuel.domain.forum.ForumCommentReceipt
+import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
 import com.anpfuel.domain.forum.ForumPostSummary
 import com.anpfuel.domain.forum.ForumRegion
+import com.anpfuel.domain.forum.ForumRepliesPage
+import com.anpfuel.domain.forum.ForumReportReceipt
 import com.anpfuel.domain.forum.ForumSourceAttribution
 import org.json.JSONArray
 import org.json.JSONObject
@@ -145,6 +150,107 @@ object ForumMapper {
             region = region,
             fuelProduct = fuelProduct,
             stationId = stationId,
+        )
+    }
+
+    fun comments(json: JSONObject): ForumCommentsPage {
+        val itemsArray = json.optJSONArray("items") ?: JSONArray()
+        val items = mutableListOf<ForumComment>()
+        for (i in 0 until itemsArray.length()) {
+            val obj = itemsArray.optJSONObject(i) ?: continue
+            items.add(commentItem(obj))
+        }
+        val nextCursor = if (json.has("next_cursor") && !json.isNull("next_cursor")) {
+            json.getString("next_cursor")
+        } else {
+            null
+        }
+        return ForumCommentsPage(
+            items = items,
+            nextCursor = nextCursor,
+        )
+    }
+
+    fun replies(json: JSONObject): ForumRepliesPage {
+        val itemsArray = json.optJSONArray("items") ?: JSONArray()
+        val items = mutableListOf<ForumComment>()
+        for (i in 0 until itemsArray.length()) {
+            val obj = itemsArray.optJSONObject(i) ?: continue
+            items.add(commentItem(obj))
+        }
+        val nextCursor = if (json.has("next_cursor") && !json.isNull("next_cursor")) {
+            json.getString("next_cursor")
+        } else {
+            null
+        }
+        return ForumRepliesPage(
+            items = items,
+            nextCursor = nextCursor,
+        )
+    }
+
+    fun commentItem(obj: JSONObject): ForumComment {
+        val id = obj.optString("id", "")
+        if (id.isEmpty()) throw ForumException.Invalid("forum.bad-id")
+        val postId = obj.optString("post_id", "")
+        val parentId = if (obj.has("parent_id") && !obj.isNull("parent_id")) obj.getString("parent_id") else null
+        val publicAlias = if (obj.has("public_alias") && !obj.isNull("public_alias")) obj.getString("public_alias") else null
+        val publishedAt = if (obj.has("published_at") && !obj.isNull("published_at")) obj.getString("published_at") else null
+
+        return ForumComment(
+            id = id,
+            postId = postId,
+            parentId = parentId,
+            depth = obj.optInt("depth", 0),
+            sequence = obj.optLong("sequence", 0L),
+            publicAlias = publicAlias,
+            bodyText = obj.optString("body_text", ""),
+            createdAt = obj.optString("created_at", ""),
+            updatedAt = obj.optString("updated_at", ""),
+            publishedAt = publishedAt,
+            replyCount = obj.optInt("reply_count", 0),
+        )
+    }
+
+    fun commentReceipt(json: JSONObject): ForumCommentReceipt {
+        val obj = json.optJSONObject("comment") ?: json
+        val id = obj.optString("id", "")
+        if (id.isEmpty()) throw ForumException.Invalid("forum.bad-id")
+        val postId = obj.optString("post_id", "")
+        val parentId = if (obj.has("parent_id") && !obj.isNull("parent_id")) obj.getString("parent_id") else null
+        val publishedAt = if (obj.has("published_at") && !obj.isNull("published_at")) obj.getString("published_at") else null
+
+        return ForumCommentReceipt(
+            id = id,
+            postId = postId,
+            parentId = parentId,
+            depth = obj.optInt("depth", 0),
+            sequence = obj.optLong("sequence", 0L),
+            revision = obj.optLong("revision", 1L),
+            publicationState = obj.optString("publication_state", "PENDING_REVIEW"),
+            visibility = obj.optString("visibility", "VISIBLE"),
+            bodyText = obj.optString("body_text", ""),
+            createdAt = obj.optString("created_at", ""),
+            updatedAt = obj.optString("updated_at", ""),
+            publishedAt = publishedAt,
+            replayed = obj.optBoolean("replayed", false),
+        )
+    }
+
+    fun reportReceipt(json: JSONObject): ForumReportReceipt {
+        val obj = json.optJSONObject("receipt") ?: json
+        val reportId = obj.optString("report_id", "")
+        if (reportId.isEmpty()) throw ForumException.Invalid("forum.bad-report-id")
+
+        return ForumReportReceipt(
+            reportId = reportId,
+            caseId = obj.optString("case_id", ""),
+            targetType = obj.optString("target_type", ""),
+            targetId = obj.optString("target_id", ""),
+            reason = obj.optString("reason", ""),
+            status = obj.optString("status", ""),
+            createdAt = obj.optString("created_at", ""),
+            replayed = obj.optBoolean("replayed", false),
         )
     }
 }

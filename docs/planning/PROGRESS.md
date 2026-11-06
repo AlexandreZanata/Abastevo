@@ -1,4 +1,28 @@
 # Current execution state
+- FOR-19 Android discussion and social checkpoint, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `8f1fef32`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  completes Phase 3 (Safe discussion on published posts):
+  safe online discussion UI, single-level replies, comment authoring,
+  visitor sign-in route (`Routes.AUTH`) preserving in-memory draft,
+  owner CAS edit and tombstone remove, report dialog with reason selection
+  and receipt confirmation, premoderation pending-review feedback,
+  account-change consistency clearing private drafts,
+  double-tap protection, 429 rate limit with `Retry-After`, 409 conflict
+  preservation of draft, 404 target missing/suppressed handling,
+  offline resilience preserving loaded comments, 36 localized strings
+  across all 8 locales (`values`, `values-pt-rBR`, `values-es`, `values-de`,
+  `values-fr`, `values-ja`, `values-ru`, `values-zh-rCN`), accessibility
+  (>=48dp touch targets, semantic content descriptions, keyboard actions),
+  and configurable killswitch notice (`forum_social_disabled_notice`).
+  Invariant enforced: no private room caching of user comments/drafts/reports.
+  Verified with comprehensive unit and acceptance tests:
+  `ForumDetailViewModelTest` (20 tests), `ForumStringsTest` (36 keys x 8 locales),
+  `ForumEditorialMvpAcceptanceTest`, `ForumUseCasesTest`, `ForumDomainTest`,
+  `ForumMapperTest`, `ForumHttpClientTest`, and full Gradle suite
+  `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest` PASSED.
+  Tested revision: source in this commit. Phase 3 completed. Next microtask: FOR-20 (Phase 4 — Topic writes and ownership SQL).
+
 - FOR-18 Forum reports, review queue and action integration, 2026-11-05:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `c00d96a3`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)

@@ -1341,4 +1341,42 @@
     <string name="forum_external_link_dialog_cancel">Abbrechen</string>
     <string name="forum_external_link_invalid">Ungültiger oder unsicherer Link. Es sind nur sichere HTTPS-Links zulässig.</string>
     <string name="forum_updated_label">Aktualisiert</string>
+
+    <!-- Forum Discussion & Moderation (FOR-19) -->
+    <string name="forum_social_disabled_notice">Kommentare und Diskussionen sind derzeit deaktiviert.</string>
+    <string name="forum_comments_disabled">Kommentare für diese Veröffentlichung deaktiviert.</string>
+    <string name="forum_comments_title">Kommentare</string>
+    <string name="forum_comments_empty">Noch keine Kommentare. Sei der Erste, der teilnimmt!</string>
+    <string name="forum_reply_button">Antworten</string>
+    <string name="forum_replying_to">Antwort an %1$s</string>
+    <string name="forum_cancel_reply">Antwort abbrechen</string>
+    <string name="forum_replies_count">Antworten (%1$d)</string>
+    <string name="forum_hide_replies">Antworten ausblenden</string>
+    <string name="forum_comment_composer_hint">Schreibe einen Kommentar (bis zu 280 Zeichen)...</string>
+    <string name="forum_comment_char_counter">%1$d/280</string>
+    <string name="forum_comment_publish">Veröffentlichen</string>
+    <string name="forum_comment_submitting">Wird gesendet...</string>
+    <string name="forum_comment_pending_receipt">Kommentar vor der Veröffentlichung zur Moderation gesendet.</string>
+    <string name="forum_sign_in_to_participate">Anmelden, um teilzunehmen</string>
+    <string name="forum_edit_comment">Bearbeiten</string>
+    <string name="forum_edit_dialog_title">Kommentar bearbeiten</string>
+    <string name="forum_edit_save">Änderungen speichern</string>
+    <string name="forum_delete_comment">Löschen</string>
+    <string name="forum_delete_dialog_title">Kommentar löschen?</string>
+    <string name="forum_delete_dialog_message">Möchtest du diesen Kommentar wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="forum_delete_confirm">Löschen</string>
+    <string name="forum_report_button">Melden</string>
+    <string name="forum_report_dialog_title">Inhalt melden</string>
+    <string name="forum_report_dialog_reason_prompt">Wähle den Grund für die Meldung:</string>
+    <string name="forum_report_reason_spam">Spam oder Werbung</string>
+    <string name="forum_report_reason_offensive">Beleidigender oder ungeeigneter Inhalt</string>
+    <string name="forum_report_reason_misinformation">Irreführende Informationen</string>
+    <string name="forum_report_reason_commercial">Unbefugte kommerzielle Aktivität</string>
+    <string name="forum_report_reason_legal_notice">Rechtsverletzung oder Urheberrecht</string>
+    <string name="forum_report_reason_other">Anderer Grund</string>
+    <string name="forum_report_detail_hint">Zusätzliche Details (optional, bis zu 500 Zeichen)...</string>
+    <string name="forum_report_submit">Meldung senden</string>
+    <string name="forum_report_success">Meldung zur Überprüfung durch das Moderationsteam erhalten.</string>
+    <string name="forum_conflict_error">Inhalt wurde in einer anderen Sitzung geändert. Bitte neu laden.</string>
+    <string name="forum_rate_limited_error">Limit überschritten. Bitte warte %1$d Sekunden.</string>
 </resources>

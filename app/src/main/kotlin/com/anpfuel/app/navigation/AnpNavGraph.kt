@@ -231,6 +231,7 @@ fun AnpNavGraph(
         ) {
             com.anpfuel.app.ui.forum.ForumDetailScreen(
                 onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
             )
         }
         composable(

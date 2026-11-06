@@ -1341,4 +1341,42 @@
     <string name="forum_external_link_dialog_cancel">キャンセル</string>
     <string name="forum_external_link_invalid">無効または安全でないリンクです。安全なHTTPSリンクのみが許可されています。</string>
     <string name="forum_updated_label">更新済み</string>
+
+    <!-- Forum Discussion & Moderation (FOR-19) -->
+    <string name="forum_social_disabled_notice">現在、コメントとディスカッションは無効になっています。</string>
+    <string name="forum_comments_disabled">この投稿へのコメントは無効になっています。</string>
+    <string name="forum_comments_title">コメント</string>
+    <string name="forum_comments_empty">コメントはまだありません。最初に参加しましょう！</string>
+    <string name="forum_reply_button">返信</string>
+    <string name="forum_replying_to">%1$s への返信</string>
+    <string name="forum_cancel_reply">返信をキャンセル</string>
+    <string name="forum_replies_count">返信 (%1$d)</string>
+    <string name="forum_hide_replies">返信を非表示</string>
+    <string name="forum_comment_composer_hint">コメントを入力（最大280文字）...</string>
+    <string name="forum_comment_char_counter">%1$d/280</string>
+    <string name="forum_comment_publish">投稿</string>
+    <string name="forum_comment_submitting">送信中...</string>
+    <string name="forum_comment_pending_receipt">公開前にモデレーションのためにコメントが送信されました。</string>
+    <string name="forum_sign_in_to_participate">ログインして参加する</string>
+    <string name="forum_edit_comment">編集</string>
+    <string name="forum_edit_dialog_title">コメントを編集</string>
+    <string name="forum_edit_save">変更を保存</string>
+    <string name="forum_delete_comment">削除</string>
+    <string name="forum_delete_dialog_title">コメントを削除しますか？</string>
+    <string name="forum_delete_dialog_message">このコメントを削除してもよろしいですか？この操作は元に戻せません。</string>
+    <string name="forum_delete_confirm">削除</string>
+    <string name="forum_report_button">報告</string>
+    <string name="forum_report_dialog_title">コンテンツを報告</string>
+    <string name="forum_report_dialog_reason_prompt">報告の理由を選択してください：</string>
+    <string name="forum_report_reason_spam">スパムまたは広告</string>
+    <string name="forum_report_reason_offensive">攻撃的または不適切なコンテンツ</string>
+    <string name="forum_report_reason_misinformation">誤解を招く情報</string>
+    <string name="forum_report_reason_commercial">不正な商用活動</string>
+    <string name="forum_report_reason_legal_notice">法的権利または著作権の侵害</string>
+    <string name="forum_report_reason_other">その他の理由</string>
+    <string name="forum_report_detail_hint">追加の詳細（任意、最大500文字）...</string>
+    <string name="forum_report_submit">報告を送信</string>
+    <string name="forum_report_success">モデレーションチームによる審査のため報告を受理しました。</string>
+    <string name="forum_conflict_error">別のセッションでコンテンツが変更されました。再読み込みしてください。</string>
+    <string name="forum_rate_limited_error">制限を超えました。%1$d 秒お待ちください。</string>
 </resources>
