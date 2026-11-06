@@ -1310,6 +1310,9 @@
     <string name="station_correction_review">Tu sugerencia se revisará antes de cambiar el mapa.</string>
     <string name="station_correction_sent">Sugerencia enviada para revisión.</string>
     <string name="station_correction_failed">No se pudo enviar la sugerencia. Inténtalo de nuevo.</string>
+    <string name="privacy_full_policy">Leer la política de privacidad completa</string>
+    <string name="privacy_external_deletion">Eliminar cuenta y datos en el sitio web</string>
+    <string name="privacy_document_open_failed">No se pudo abrir el navegador. Abre esta dirección en tu navegador: %1$s</string>
 
     <!-- Forum Abastevo (FOR-08) -->
     <string name="forum_card_title">Foro Abastevo</string>

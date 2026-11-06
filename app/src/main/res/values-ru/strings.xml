@@ -1310,6 +1310,9 @@
     <string name="station_correction_review">Предложение проверят перед изменением карты.</string>
     <string name="station_correction_sent">Предложение отправлено на проверку.</string>
     <string name="station_correction_failed">Не удалось отправить предложение. Попробуйте ещё раз.</string>
+    <string name="privacy_full_policy">Читать полную политику конфиденциальности</string>
+    <string name="privacy_external_deletion">Удалить аккаунт и данные на сайте</string>
+    <string name="privacy_document_open_failed">Не удалось открыть браузер. Откройте этот адрес в браузере: %1$s</string>
 
     <!-- Forum Abastevo (FOR-08) -->
     <string name="forum_card_title">Форум Abastevo</string>

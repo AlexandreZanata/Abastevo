@@ -1330,6 +1330,9 @@
     <string name="station_correction_review">Your suggestion will be reviewed before it changes the map.</string>
     <string name="station_correction_sent">Suggestion sent for review.</string>
     <string name="station_correction_failed">Could not send your suggestion. Try again.</string>
+    <string name="privacy_full_policy">Read the full privacy policy</string>
+    <string name="privacy_external_deletion">Account and data deletion on the website</string>
+    <string name="privacy_document_open_failed">Unable to open a browser. Open this address in your browser: %1$s</string>
 
     <!-- Forum Abastevo (FOR-08) -->
     <string name="forum_card_title">Abastevo Forum</string>

@@ -1310,6 +1310,9 @@
     <string name="station_correction_review">地図を変更する前に提案内容を確認します。</string>
     <string name="station_correction_sent">確認のため提案を送信しました。</string>
     <string name="station_correction_failed">提案を送信できませんでした。もう一度お試しください。</string>
+    <string name="privacy_full_policy">プライバシーポリシー全文を読む</string>
+    <string name="privacy_external_deletion">ウェブサイトでアカウントとデータを削除</string>
+    <string name="privacy_document_open_failed">ブラウザを開けませんでした。ブラウザで次のアドレスを開いてください：%1$s</string>
 
     <!-- Forum Abastevo (FOR-08) -->
     <string name="forum_card_title">Abastevoフォーラム</string>

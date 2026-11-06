@@ -1310,6 +1310,9 @@
     <string name="station_correction_review">Votre suggestion sera examinée avant toute modification de la carte.</string>
     <string name="station_correction_sent">Suggestion envoyée pour examen.</string>
     <string name="station_correction_failed">Impossible d’envoyer la suggestion. Réessayez.</string>
+    <string name="privacy_full_policy">Lire la politique de confidentialité complète</string>
+    <string name="privacy_external_deletion">Supprimer le compte et les données sur le site</string>
+    <string name="privacy_document_open_failed">Impossible d’ouvrir le navigateur. Ouvrez cette adresse dans votre navigateur : %1$s</string>
 
     <!-- Forum Abastevo (FOR-08) -->
     <string name="forum_card_title">Forum Abastevo</string>

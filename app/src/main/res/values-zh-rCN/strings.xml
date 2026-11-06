@@ -1310,6 +1310,9 @@
     <string name="station_correction_review">建议经审核后才会反映在地图上。</string>
     <string name="station_correction_sent">建议已提交审核。</string>
     <string name="station_correction_failed">无法发送建议，请重试。</string>
+    <string name="privacy_full_policy">阅读完整隐私政策</string>
+    <string name="privacy_external_deletion">在网站上删除账号和数据</string>
+    <string name="privacy_document_open_failed">无法打开浏览器。请在浏览器中打开此地址：%1$s</string>
 
     <!-- Forum Abastevo (FOR-08) -->
     <string name="forum_card_title">Abastevo论坛</string>
