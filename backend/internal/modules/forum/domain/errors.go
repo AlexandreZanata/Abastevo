@@ -50,6 +50,19 @@ var (
 	ErrReportQuotaExceeded      = errors.New("forum: report quota exceeded")
 	ErrSelfReportForbidden      = errors.New("forum: cannot report own content")
 	ErrReportTargetMissing      = errors.New("forum: reported target not found")
+	ErrTopicTitleEmpty          = errors.New("forum: topic title cannot be empty")
+	ErrTopicTitleTooLong        = errors.New("forum: topic title exceeds 120 unicode characters")
+	ErrTopicBodyEmpty           = errors.New("forum: topic body cannot be empty")
+	ErrTopicBodyTooLong         = errors.New("forum: topic body exceeds 4000 unicode characters")
+	ErrTopicHourlyQuotaExceeded = errors.New("forum: topic hourly quota exceeded")
+	ErrTopicDailyQuotaExceeded  = errors.New("forum: topic daily quota exceeded")
+	ErrTopicLiveQuotaExceeded   = errors.New("forum: account live topic budget exceeded")
+	ErrTopicNotFound            = errors.New("forum: topic not found")
+	ErrTopicAuthorMismatch      = errors.New("forum: topic author mismatch")
+	ErrTopicAlreadyRemoved      = errors.New("forum: topic is already removed")
+	ErrTopicKindSpoof           = errors.New("forum: invalid topic kind or external source on topic")
+	ErrInvalidFuelProduct       = errors.New("forum: invalid fuel product")
+	ErrInvalidStationID         = errors.New("forum: invalid station id")
 )
 
 const (
@@ -152,6 +165,32 @@ func VerdictCode(err error) string {
 		return "self-report-forbidden"
 	case errors.Is(err, ErrReportTargetMissing):
 		return "report-target-missing"
+	case errors.Is(err, ErrTopicTitleEmpty):
+		return "topic-title-empty"
+	case errors.Is(err, ErrTopicTitleTooLong):
+		return "topic-title-too-long"
+	case errors.Is(err, ErrTopicBodyEmpty):
+		return "topic-body-empty"
+	case errors.Is(err, ErrTopicBodyTooLong):
+		return "topic-body-too-long"
+	case errors.Is(err, ErrTopicHourlyQuotaExceeded):
+		return "topic-hourly-quota-exceeded"
+	case errors.Is(err, ErrTopicDailyQuotaExceeded):
+		return "topic-daily-quota-exceeded"
+	case errors.Is(err, ErrTopicLiveQuotaExceeded):
+		return "topic-live-quota-exceeded"
+	case errors.Is(err, ErrTopicNotFound):
+		return "topic-not-found"
+	case errors.Is(err, ErrTopicAuthorMismatch):
+		return "topic-author-mismatch"
+	case errors.Is(err, ErrTopicAlreadyRemoved):
+		return "topic-already-removed"
+	case errors.Is(err, ErrTopicKindSpoof):
+		return "topic-kind-spoof"
+	case errors.Is(err, ErrInvalidFuelProduct):
+		return "invalid-fuel-product"
+	case errors.Is(err, ErrInvalidStationID):
+		return "invalid-station-id"
 	default:
 		return "unknown-error"
 	}

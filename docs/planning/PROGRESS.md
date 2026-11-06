@@ -1,4 +1,27 @@
 # Current execution state
+- FOR-20 Topic writes and ownership SQL, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `b753a077`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
+  opens Phase 4 (User topics and bounded discovery):
+  pure domain validation in `domain/topics.go` and `domain/topics_test.go`
+  (1..120 runes title, 1..4000 runes body, plain UTF-8, no NUL bytes, 7 categories,
+  27 Brazilian UFs, 7-digit IBGE prefix matching UF, 7 allowed fuel products,
+  station UUID validation);
+  application `TopicService` and `TopicStore` interfaces in `ports.go` and `topic_service.go`;
+  SQL queries in `db/queries/forum/topics.sql` and `topics.sql.go` generated via `sqlc`;
+  adapter store in `topics_store.go` implementing `CreateTopic` (with transactional rate limiting,
+  live count budget `<= 20`, idempotency replay and insert race 23505 handling),
+  `EditTopic` (CAS revision check, state return to `PENDING_REVIEW`),
+  `RemoveTopic` (tombstone clearing body/alias, `REMOVED` + `HIDDEN`),
+  and `GetTopicByID`; audit change logging in `forum_changes`;
+  full test suites in `topics_test.go`, `topic_service_test.go`, and real PostgreSQL
+  integration suite in `topics_integration_test.go` (10 tests: `TestTopic_CreateAndIdempotency`,
+  `TestTopic_SimultaneousCreateRace`, `TestTopic_LiveQuotaEnforcement`, `TestTopic_RateQuota`,
+  `TestTopic_CASEditLifecycle`, `TestTopic_TombstoneRemoval`, `TestTopic_ForeignOwnerDefense_IDOR`,
+  `TestTopic_GuardAccountStatus`, `TestTopic_KindSpoofAndConstraintDefenses`,
+  `TestTopic_AuditedForumChanges`) PASSED with `-race` and `-tags=integration`.
+  Tested revision: source in this commit. Next microtask: FOR-21 (Topic API and OpenAPI fixtures).
+
 - FOR-19 Android discussion and social checkpoint, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `8f1fef32`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)

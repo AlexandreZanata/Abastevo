@@ -127,6 +127,63 @@ type IngestionStore interface {
 	InsertNewsCandidatePost(ctx context.Context, post *domain.Post) error
 }
 
+// Quota policy constants for forum user topics per B-BR-FOR-11.
+const (
+	OperationForumTopicHourly = "forum:topic:hour"
+	OperationForumTopicDaily  = "forum:topic:day"
+	MaxLiveTopicsPerAccount   = 20
+)
+
+// CreateTopicCommand represents validated parameters to create an authored topic.
+type CreateTopicCommand struct {
+	AuthorAccountID string
+	Category        domain.Category
+	Title           string
+	BodyText        string
+	PublicAlias     *string
+	Region          *domain.Region
+	FuelProduct     *string
+	StationID       *string
+	OperationID     string
+	Guard           func(context.Context, pgx.Tx) error
+}
+
+// EditTopicCommand represents validated parameters to CAS-edit an existing topic.
+type EditTopicCommand struct {
+	TopicID          string
+	AuthorAccountID  string
+	ExpectedRevision int
+	Category         domain.Category
+	Title            string
+	BodyText         string
+	Region           *domain.Region
+	FuelProduct      *string
+	StationID        *string
+	Guard            func(context.Context, pgx.Tx) error
+}
+
+// RemoveTopicCommand represents parameters to tombstone an existing topic.
+type RemoveTopicCommand struct {
+	TopicID          string
+	AuthorAccountID  string
+	ExpectedRevision int
+	Guard            func(context.Context, pgx.Tx) error
+}
+
+// TopicResult wraps a post with idempotent replay metadata.
+type TopicResult struct {
+	Topic    *domain.Post
+	Replayed bool
+}
+
+// TopicStore defines persistence operations for user topics.
+type TopicStore interface {
+	CreateTopic(ctx context.Context, cmd CreateTopicCommand) (TopicResult, error)
+	EditTopic(ctx context.Context, cmd EditTopicCommand) (*domain.Post, error)
+	RemoveTopic(ctx context.Context, cmd RemoveTopicCommand) (*domain.Post, error)
+	GetTopicByID(ctx context.Context, id string) (*domain.Post, error)
+}
+
 // Quota policy constants for forum discussion comments per B-BR-FOR-11.
 const (
 	OperationForumCommentHourly = "forum:comment:hour"
