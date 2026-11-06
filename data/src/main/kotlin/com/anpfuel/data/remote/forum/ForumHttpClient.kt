@@ -12,8 +12,10 @@ import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.forum.ForumRepliesPage
 import com.anpfuel.domain.forum.ForumReportReceipt
+import com.anpfuel.domain.forum.ForumTopicReceipt
 import com.anpfuel.domain.portable.PortableAuth
 import com.anpfuel.domain.repository.ForumGateway
 import java.io.IOException
@@ -341,6 +343,170 @@ class ForumHttpClient(
         }
     }
 
+    override suspend fun createTopic(
+        title: String,
+        bodyText: String,
+        category: ForumCategory,
+        operationId: String,
+        region: ForumRegion?,
+        fuelProduct: String?,
+        stationId: String?,
+        publicAlias: String?,
+    ): ForumTopicReceipt {
+        val session = liveSession()
+        val payload = JSONObject().apply {
+            put("family_id", session.familyId)
+            put("access_token", session.accessToken)
+            put("operation_id", operationId)
+            put("category", category.wireCode)
+            put("title", title)
+            put("body_text", bodyText)
+            if (region != null && (!region.uf.isNullOrBlank() || region.municipalityIbge != null)) {
+                put("region", JSONObject().apply {
+                    if (!region.uf.isNullOrBlank()) put("uf", region.uf)
+                    if (region.municipalityIbge != null) put("municipality_ibge", region.municipalityIbge)
+                })
+            }
+            if (!fuelProduct.isNullOrBlank()) {
+                put("fuel_product", fuelProduct)
+            }
+            if (!stationId.isNullOrBlank()) {
+                put("station_id", stationId)
+            }
+            if (!publicAlias.isNullOrBlank()) {
+                put("public_alias", publicAlias)
+            }
+        }
+        val url = origin.newBuilder()
+            .addPathSegments("v1/forum/topics")
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .build()
+        val raw = execute(request)
+        return try {
+            ForumMapper.topicReceipt(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
+    override suspend fun editTopic(
+        topicId: String,
+        expectedRevision: Long,
+        title: String,
+        bodyText: String,
+        category: ForumCategory,
+        operationId: String,
+        region: ForumRegion?,
+        fuelProduct: String?,
+        stationId: String?,
+        publicAlias: String?,
+    ): ForumTopicReceipt {
+        val session = liveSession()
+        val payload = JSONObject().apply {
+            put("family_id", session.familyId)
+            put("access_token", session.accessToken)
+            put("operation_id", operationId)
+            put("expected_revision", expectedRevision)
+            put("category", category.wireCode)
+            put("title", title)
+            put("body_text", bodyText)
+            if (region != null && (!region.uf.isNullOrBlank() || region.municipalityIbge != null)) {
+                put("region", JSONObject().apply {
+                    if (!region.uf.isNullOrBlank()) put("uf", region.uf)
+                    if (region.municipalityIbge != null) put("municipality_ibge", region.municipalityIbge)
+                })
+            }
+            if (!fuelProduct.isNullOrBlank()) {
+                put("fuel_product", fuelProduct)
+            }
+            if (!stationId.isNullOrBlank()) {
+                put("station_id", stationId)
+            }
+            if (!publicAlias.isNullOrBlank()) {
+                put("public_alias", publicAlias)
+            }
+        }
+        val url = origin.newBuilder()
+            .addPathSegments("v1/forum/topics/$topicId/edit")
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .build()
+        val raw = execute(request)
+        return try {
+            ForumMapper.topicReceipt(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
+    override suspend fun removeTopic(
+        topicId: String,
+        operationId: String,
+    ): ForumTopicReceipt {
+        val session = liveSession()
+        val payload = JSONObject().apply {
+            put("family_id", session.familyId)
+            put("access_token", session.accessToken)
+            put("operation_id", operationId)
+        }
+        val url = origin.newBuilder()
+            .addPathSegments("v1/forum/topics/$topicId/remove")
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .build()
+        val raw = execute(request)
+        return try {
+            ForumMapper.topicReceipt(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
+    override suspend fun getOwnerTopic(topicId: String): ForumTopicReceipt {
+        val session = liveSession()
+        val payload = JSONObject().apply {
+            put("family_id", session.familyId)
+            put("access_token", session.accessToken)
+            put("topic_id", topicId)
+        }
+        val url = origin.newBuilder()
+            .addPathSegments("v1/forum/owner/read")
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .build()
+        val raw = execute(request)
+        return try {
+            ForumMapper.topicReceipt(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
     private suspend fun execute(request: Request): String {
         return try {
             withContext(Dispatchers.IO) {
@@ -366,7 +532,7 @@ class ForumHttpClient(
                                     val body = source.readUtf8()
 
                                     when (response.code) {
-                                        200 -> continuation.resume(body)
+                                        200, 201 -> continuation.resume(body)
                                         401 -> throw ForumException.AuthRequired("forum.auth-required")
                                         404 -> {
                                             val errCode = parseErrorCode(body)

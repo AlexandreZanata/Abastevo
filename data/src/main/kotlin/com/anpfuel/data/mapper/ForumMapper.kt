@@ -15,6 +15,7 @@ import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.forum.ForumRepliesPage
 import com.anpfuel.domain.forum.ForumReportReceipt
 import com.anpfuel.domain.forum.ForumSourceAttribution
+import com.anpfuel.domain.forum.ForumTopicReceipt
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -251,6 +252,57 @@ object ForumMapper {
             status = obj.optString("status", ""),
             createdAt = obj.optString("created_at", ""),
             replayed = obj.optBoolean("replayed", false),
+        )
+    }
+
+    fun topicReceipt(json: JSONObject): ForumTopicReceipt {
+        val obj = json.optJSONObject("topic") ?: json
+        val id = obj.optString("id", "")
+        if (id.isEmpty()) throw ForumException.Invalid("forum.bad-id")
+        val rawCategory = obj.optString("category", "")
+        val category = ForumCategory.fromWire(rawCategory)
+        val title = obj.optString("title", "")
+        val bodyText = obj.optString("body_text", "")
+        val revision = obj.optLong("revision", 1L)
+        val publicationState = obj.optString("publication_state", "PENDING_REVIEW")
+        val visibility = obj.optString("visibility", "VISIBLE")
+
+        val region = if (obj.has("region") && !obj.isNull("region")) {
+            val regObj = obj.getJSONObject("region")
+            ForumRegion(
+                uf = if (regObj.has("uf") && !regObj.isNull("uf")) regObj.getString("uf") else null,
+                municipalityIbge = if (regObj.has("municipality_ibge") && !regObj.isNull("municipality_ibge")) regObj.getInt("municipality_ibge") else null,
+            )
+        } else {
+            null
+        }
+
+        val fuelProduct = if (obj.has("fuel_product") && !obj.isNull("fuel_product")) obj.getString("fuel_product") else null
+        val stationId = if (obj.has("station_id") && !obj.isNull("station_id")) obj.getString("station_id") else null
+        val publicAlias = if (obj.has("public_alias") && !obj.isNull("public_alias")) obj.getString("public_alias") else null
+        val createdAt = obj.optString("created_at", "")
+        val updatedAt = obj.optString("updated_at", "")
+        val publishedAt = if (obj.has("published_at") && !obj.isNull("published_at")) obj.getString("published_at") else null
+        val replayed = obj.optBoolean("replayed", false)
+
+        return ForumTopicReceipt(
+            id = id,
+            kind = obj.optString("kind", "TOPIC"),
+            category = category,
+            rawCategory = rawCategory,
+            title = title,
+            bodyText = bodyText,
+            revision = revision,
+            publicationState = publicationState,
+            visibility = visibility,
+            region = region,
+            fuelProduct = fuelProduct,
+            stationId = stationId,
+            publicAlias = publicAlias,
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+            publishedAt = publishedAt,
+            replayed = replayed,
         )
     }
 }

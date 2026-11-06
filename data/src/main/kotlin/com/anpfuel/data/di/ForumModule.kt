@@ -3,14 +3,18 @@ package com.anpfuel.data.di
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.usecase.forum.EditForumCommentUseCase
+import com.anpfuel.application.usecase.forum.EditForumTopicUseCase
 import com.anpfuel.application.usecase.forum.GetForumCategoriesUseCase
 import com.anpfuel.application.usecase.forum.GetForumCommentsUseCase
 import com.anpfuel.application.usecase.forum.GetForumFeedUseCase
 import com.anpfuel.application.usecase.forum.GetForumPostDetailUseCase
 import com.anpfuel.application.usecase.forum.GetForumRepliesUseCase
+import com.anpfuel.application.usecase.forum.GetOwnerTopicUseCase
 import com.anpfuel.application.usecase.forum.RemoveForumCommentUseCase
+import com.anpfuel.application.usecase.forum.RemoveForumTopicUseCase
 import com.anpfuel.application.usecase.forum.ReportForumTargetUseCase
 import com.anpfuel.application.usecase.forum.SubmitForumCommentUseCase
+import com.anpfuel.application.usecase.forum.SubmitForumTopicUseCase
 import com.anpfuel.application.usecase.forum.ValidateForumSafeLinkUseCase
 import com.anpfuel.data.local.dao.ForumCacheDao
 import com.anpfuel.data.remote.ApiEnvironment
@@ -107,5 +111,25 @@ object ForumModule {
     @Provides
     fun provideReportForumTargetUseCase(gateway: ForumGateway): ReportForumTargetUseCase {
         return ReportForumTargetUseCase(gateway)
+    }
+
+    @Provides
+    fun provideSubmitForumTopicUseCase(gateway: ForumGateway): SubmitForumTopicUseCase {
+        return SubmitForumTopicUseCase(gateway)
+    }
+
+    @Provides
+    fun provideEditForumTopicUseCase(gateway: ForumGateway): EditForumTopicUseCase {
+        return EditForumTopicUseCase(gateway)
+    }
+
+    @Provides
+    fun provideRemoveForumTopicUseCase(gateway: ForumGateway): RemoveForumTopicUseCase {
+        return RemoveForumTopicUseCase(gateway)
+    }
+
+    @Provides
+    fun provideGetOwnerTopicUseCase(gateway: ForumGateway): GetOwnerTopicUseCase {
+        return GetOwnerTopicUseCase(gateway)
     }
 }

@@ -159,3 +159,26 @@ data class ForumReportReceipt(
     val createdAt: String,
     val replayed: Boolean = false,
 )
+
+/**
+ * Immutable receipt of a topic creation, edit, removal, or owner read (FOR-20, FOR-21, FOR-23).
+ */
+data class ForumTopicReceipt(
+    val id: String,
+    val kind: String = "TOPIC",
+    val category: ForumCategory,
+    val rawCategory: String,
+    val title: String,
+    val bodyText: String,
+    val revision: Long = 1,
+    val publicationState: String,
+    val visibility: String,
+    val region: ForumRegion? = null,
+    val fuelProduct: String? = null,
+    val stationId: String? = null,
+    val publicAlias: String? = null,
+    val createdAt: String,
+    val updatedAt: String,
+    val publishedAt: String? = null,
+    val replayed: Boolean = false,
+)

@@ -313,4 +313,57 @@ class ForumMapperTest {
         assertEquals("SPAM", receipt.reason)
         assertEquals("OPEN", receipt.status)
     }
+
+    @Test
+    fun `maps topic receipt json response direct and enveloped`() {
+        val rawDirect = """
+            {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "kind": "TOPIC",
+                "category": "FUELS",
+                "title": "Gasolina em SP",
+                "body_text": "Discussão de preços",
+                "revision": 2,
+                "publication_state": "PENDING_REVIEW",
+                "visibility": "VISIBLE",
+                "region": {
+                    "uf": "SP",
+                    "municipality_ibge": 3550308
+                },
+                "fuel_product": "GASOLINE_REGULAR",
+                "station_id": "550e8400-e29b-41d4-a716-446655440000",
+                "public_alias": "Alex",
+                "created_at": "2026-11-06T10:00:00Z",
+                "updated_at": "2026-11-06T10:30:00Z",
+                "published_at": null,
+                "replayed": true
+            }
+        """.trimIndent()
+        val direct = ForumMapper.topicReceipt(JSONObject(rawDirect))
+        assertEquals("3fa85f64-5717-4562-b3fc-2c963f66afa6", direct.id)
+        assertEquals("TOPIC", direct.kind)
+        assertEquals(ForumCategory.FUELS, direct.category)
+        assertEquals("Gasolina em SP", direct.title)
+        assertEquals("Discussão de preços", direct.bodyText)
+        assertEquals(2L, direct.revision)
+        assertEquals("PENDING_REVIEW", direct.publicationState)
+        assertEquals("VISIBLE", direct.visibility)
+        assertEquals("SP", direct.region?.uf)
+        assertEquals(3550308, direct.region?.municipalityIbge)
+        assertEquals("GASOLINE_REGULAR", direct.fuelProduct)
+        assertEquals("550e8400-e29b-41d4-a716-446655440000", direct.stationId)
+        assertEquals("Alex", direct.publicAlias)
+        assertTrue(direct.replayed)
+
+        // Enveloped in "topic"
+        val rawEnveloped = """
+            {
+                "topic": $rawDirect
+            }
+        """.trimIndent()
+        val enveloped = ForumMapper.topicReceipt(JSONObject(rawEnveloped))
+        assertEquals(direct.id, enveloped.id)
+        assertEquals(direct.title, enveloped.title)
+        assertTrue(enveloped.replayed)
+    }
 }

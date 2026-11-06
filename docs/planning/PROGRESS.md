@@ -1,4 +1,27 @@
 # Current execution state
+- FOR-23 Android topic forms, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `fb26983a`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
+  advances Phase 4 (User topics and bounded discovery):
+  complete Android topic authoring pipeline implemented across layers;
+  `ForumTopicReceipt` and repository gateway contracts in `:domain`;
+  use cases `SubmitForumTopicUseCase`, `EditForumTopicUseCase`, `RemoveForumTopicUseCase`,
+  `GetOwnerTopicUseCase` in `:application` with strict boundary validation
+  (1..120 runes title, 1..4000 runes body, 7 categories, 27 UFs, 7-digit IBGE code,
+  7 fuel products, station UUID, operation UUID);
+  HTTP client, mapper, and DI bindings in `:data`;
+  accessible Compose screens `ForumTopicFormScreen`, `ForumTopicFormViewModel`
+  with in-memory draft preservation, discard dialog confirmation on dirty back,
+  auth gating on unauthenticated submission, account change intent safety wiping
+  draft on identity switch, CAS edit with `expectedRevision`, owner tombstone removal confirmation;
+  wired navigation routes `forum/topics/new` and `forum/topics/{topicId}/edit`
+  in `Routes.kt` and `AnpNavGraph.kt`; FAB navigation in `ForumScreen.kt` and owner
+  edit action in `ForumDetailScreen.kt`; full string resources in 8 locales;
+  unit test suites in `ForumTopicUseCasesTest.kt`, `ForumHttpClientTest.kt`,
+  `ForumMapperTest.kt`, `ForumNavigationTest.kt`, `ForumStringsTest.kt`,
+  and `ForumTopicFormViewModelTest.kt` (13 tests) all PASSED.
+  Tested revision: source in this commit. Next microtask: FOR-24 (Topic search and filtering).
+
 - FOR-22 Topic privacy and report integration, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `e4f4cda7`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
@@ -20,7 +43,7 @@
   idempotent deletion replay verified;
   unit tests in `for22_export_test.go` and real PostgreSQL integration suite
   in `for22_privacy_integration_test.go` (6 gates) PASSED with `-race` and `-tags=integration`.
-  Tested revision: source in this commit. Next microtask: FOR-23 (Android topic forms).
+  Tested revision: fb26983a. Next microtask: FOR-23 (Android topic forms).
 
 - FOR-21 Topic API and OpenAPI fixtures, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent

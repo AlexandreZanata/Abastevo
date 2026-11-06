@@ -4,6 +4,7 @@ import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.portable.PortableAuth
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -481,6 +482,158 @@ class ForumHttpClientTest {
             }
             assertEquals("forum.rate-limited", ex.code)
             assertEquals(30L, ex.retryAfterSeconds)
+        }
+    }
+
+    @Test
+    fun `createTopic sends signed payload and receives topic receipt`() = runTest {
+        MockWebServer().use { server ->
+            val topicResponseJson = """
+                {
+                    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "kind": "TOPIC",
+                    "category": "FUELS",
+                    "title": "Gasolina em SP",
+                    "body_text": "Postos na zona sul",
+                    "revision": 1,
+                    "publication_state": "PENDING_REVIEW",
+                    "visibility": "VISIBLE",
+                    "region": {
+                        "uf": "SP",
+                        "municipality_ibge": 3550308
+                    },
+                    "fuel_product": "GASOLINE_REGULAR",
+                    "created_at": "2026-11-06T10:00:00Z",
+                    "updated_at": "2026-11-06T10:00:00Z",
+                    "replayed": false
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setResponseCode(201).setBody(topicResponseJson))
+            val sessions = TestSessionStore(testSession)
+            val receipt = client(server, sessions).createTopic(
+                title = "Gasolina em SP",
+                bodyText = "Postos na zona sul",
+                category = ForumCategory.FUELS,
+                operationId = "33333333-3333-4333-8333-333333333333",
+                region = ForumRegion("SP", 3550308),
+                fuelProduct = "GASOLINE_REGULAR",
+                stationId = null,
+                publicAlias = "Alex",
+            )
+            val recorded = server.takeRequest(1, TimeUnit.SECONDS)
+            assertEquals("/v1/forum/topics", recorded?.path)
+            assertEquals("POST", recorded?.method)
+            val recordedJson = JSONObject(recorded?.body?.readUtf8().orEmpty())
+            assertEquals(testSession.familyId, recordedJson.getString("family_id"))
+            assertEquals(testSession.accessToken, recordedJson.getString("access_token"))
+            assertEquals("FUELS", recordedJson.getString("category"))
+            assertEquals("Gasolina em SP", recordedJson.getString("title"))
+            assertEquals("SP", recordedJson.getJSONObject("region").getString("uf"))
+            assertEquals("3fa85f64-5717-4562-b3fc-2c963f66afa6", receipt.id)
+            assertEquals("PENDING_REVIEW", receipt.publicationState)
+        }
+    }
+
+    @Test
+    fun `editTopic sends signed payload with revision and receives updated receipt`() = runTest {
+        MockWebServer().use { server ->
+            val topicResponseJson = """
+                {
+                    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "kind": "TOPIC",
+                    "category": "MARKET",
+                    "title": "Gasolina em SP - Atualizado",
+                    "body_text": "Postos na zona sul e centro",
+                    "revision": 2,
+                    "publication_state": "PENDING_REVIEW",
+                    "visibility": "VISIBLE",
+                    "created_at": "2026-11-06T10:00:00Z",
+                    "updated_at": "2026-11-06T10:30:00Z",
+                    "replayed": false
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setResponseCode(200).setBody(topicResponseJson))
+            val sessions = TestSessionStore(testSession)
+            val receipt = client(server, sessions).editTopic(
+                topicId = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                expectedRevision = 1L,
+                title = "Gasolina em SP - Atualizado",
+                bodyText = "Postos na zona sul e centro",
+                category = ForumCategory.MARKET,
+                operationId = "44444444-4444-4444-8444-444444444444",
+            )
+            val recorded = server.takeRequest(1, TimeUnit.SECONDS)
+            assertEquals("/v1/forum/topics/3fa85f64-5717-4562-b3fc-2c963f66afa6/edit", recorded?.path)
+            assertEquals("POST", recorded?.method)
+            val recordedJson = JSONObject(recorded?.body?.readUtf8().orEmpty())
+            assertEquals(1L, recordedJson.getLong("expected_revision"))
+            assertEquals("MARKET", recordedJson.getString("category"))
+            assertEquals(2L, receipt.revision)
+        }
+    }
+
+    @Test
+    fun `removeTopic sends signed payload and receives removed receipt`() = runTest {
+        MockWebServer().use { server ->
+            val topicResponseJson = """
+                {
+                    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "kind": "TOPIC",
+                    "category": "FUELS",
+                    "title": "[Tópico removido]",
+                    "body_text": "",
+                    "revision": 3,
+                    "publication_state": "REMOVED",
+                    "visibility": "HIDDEN",
+                    "created_at": "2026-11-06T10:00:00Z",
+                    "updated_at": "2026-11-06T11:00:00Z",
+                    "replayed": false
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setResponseCode(200).setBody(topicResponseJson))
+            val sessions = TestSessionStore(testSession)
+            val receipt = client(server, sessions).removeTopic(
+                topicId = "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                operationId = "55555555-5555-4555-8555-555555555555",
+            )
+            val recorded = server.takeRequest(1, TimeUnit.SECONDS)
+            assertEquals("/v1/forum/topics/3fa85f64-5717-4562-b3fc-2c963f66afa6/remove", recorded?.path)
+            assertEquals("POST", recorded?.method)
+            assertEquals("REMOVED", receipt.publicationState)
+            assertEquals("HIDDEN", receipt.visibility)
+        }
+    }
+
+    @Test
+    fun `getOwnerTopic sends signed topic_id and returns owner projection`() = runTest {
+        MockWebServer().use { server ->
+            val ownerTopicResponseJson = """
+                {
+                    "topic": {
+                        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                        "kind": "TOPIC",
+                        "category": "FUELS",
+                        "title": "Gasolina em SP",
+                        "body_text": "Postos na zona sul",
+                        "revision": 1,
+                        "publication_state": "PENDING_REVIEW",
+                        "visibility": "VISIBLE",
+                        "created_at": "2026-11-06T10:00:00Z",
+                        "updated_at": "2026-11-06T10:00:00Z",
+                        "replayed": false
+                    }
+                }
+            """.trimIndent()
+            server.enqueue(MockResponse().setResponseCode(200).setBody(ownerTopicResponseJson))
+            val sessions = TestSessionStore(testSession)
+            val receipt = client(server, sessions).getOwnerTopic("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+            val recorded = server.takeRequest(1, TimeUnit.SECONDS)
+            assertEquals("/v1/forum/owner/read", recorded?.path)
+            assertEquals("POST", recorded?.method)
+            val recordedJson = JSONObject(recorded?.body?.readUtf8().orEmpty())
+            assertEquals("3fa85f64-5717-4562-b3fc-2c963f66afa6", recordedJson.getString("topic_id"))
+            assertEquals("3fa85f64-5717-4562-b3fc-2c963f66afa6", receipt.id)
+            assertEquals("PENDING_REVIEW", receipt.publicationState)
         }
     }
 }

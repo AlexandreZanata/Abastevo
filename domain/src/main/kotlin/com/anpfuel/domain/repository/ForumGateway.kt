@@ -8,8 +8,10 @@ import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.forum.ForumRepliesPage
 import com.anpfuel.domain.forum.ForumReportReceipt
+import com.anpfuel.domain.forum.ForumTopicReceipt
 
 /**
  * Contract for Forum Abastevo remote and cache access.
@@ -64,4 +66,35 @@ interface ForumGateway {
         reason: String,
         detail: String? = null,
     ): ForumReportReceipt = throw UnsupportedOperationException()
+
+    suspend fun createTopic(
+        title: String,
+        bodyText: String,
+        category: ForumCategory,
+        operationId: String,
+        region: ForumRegion? = null,
+        fuelProduct: String? = null,
+        stationId: String? = null,
+        publicAlias: String? = null,
+    ): ForumTopicReceipt = throw UnsupportedOperationException()
+
+    suspend fun editTopic(
+        topicId: String,
+        expectedRevision: Long,
+        title: String,
+        bodyText: String,
+        category: ForumCategory,
+        operationId: String,
+        region: ForumRegion? = null,
+        fuelProduct: String? = null,
+        stationId: String? = null,
+        publicAlias: String? = null,
+    ): ForumTopicReceipt = throw UnsupportedOperationException()
+
+    suspend fun removeTopic(
+        topicId: String,
+        operationId: String,
+    ): ForumTopicReceipt = throw UnsupportedOperationException()
+
+    suspend fun getOwnerTopic(topicId: String): ForumTopicReceipt = throw UnsupportedOperationException()
 }

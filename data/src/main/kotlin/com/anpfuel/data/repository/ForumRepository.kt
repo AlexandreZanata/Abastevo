@@ -12,8 +12,10 @@ import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.forum.ForumRepliesPage
 import com.anpfuel.domain.forum.ForumReportReceipt
+import com.anpfuel.domain.forum.ForumTopicReceipt
 import com.anpfuel.domain.repository.ForumGateway
 import kotlinx.coroutines.CancellationException
 
@@ -142,6 +144,45 @@ class ForumRepository(
         detail: String?,
     ): ForumReportReceipt {
         return client.report(targetType, targetId, reason, detail)
+    }
+
+    override suspend fun createTopic(
+        title: String,
+        bodyText: String,
+        category: ForumCategory,
+        operationId: String,
+        region: ForumRegion?,
+        fuelProduct: String?,
+        stationId: String?,
+        publicAlias: String?,
+    ): ForumTopicReceipt {
+        return client.createTopic(title, bodyText, category, operationId, region, fuelProduct, stationId, publicAlias)
+    }
+
+    override suspend fun editTopic(
+        topicId: String,
+        expectedRevision: Long,
+        title: String,
+        bodyText: String,
+        category: ForumCategory,
+        operationId: String,
+        region: ForumRegion?,
+        fuelProduct: String?,
+        stationId: String?,
+        publicAlias: String?,
+    ): ForumTopicReceipt {
+        return client.editTopic(topicId, expectedRevision, title, bodyText, category, operationId, region, fuelProduct, stationId, publicAlias)
+    }
+
+    override suspend fun removeTopic(
+        topicId: String,
+        operationId: String,
+    ): ForumTopicReceipt {
+        return client.removeTopic(topicId, operationId)
+    }
+
+    override suspend fun getOwnerTopic(topicId: String): ForumTopicReceipt {
+        return client.getOwnerTopic(topicId)
     }
 
     private suspend fun store(key: String, kind: String, payload: String) {

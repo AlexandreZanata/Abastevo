@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -63,6 +64,7 @@ fun ForumDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onSignIn: () -> Unit = {},
+    onEditTopic: (String) -> Unit = {},
     viewModel: ForumDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -77,6 +79,7 @@ fun ForumDetailScreen(
         onBack = onBack,
         onRefresh = viewModel::refresh,
         onSignIn = onSignIn,
+        onEditTopic = onEditTopic,
         onExternalLinkClick = viewModel::onExternalLinkClick,
         onDismissLinkDialog = viewModel::dismissLinkDialog,
         onToggleReplies = viewModel::toggleReplies,
@@ -129,6 +132,7 @@ internal fun ForumDetailContent(
     onDismissSubmissionReceipt: () -> Unit,
     onDismissActionError: () -> Unit,
     modifier: Modifier = Modifier,
+    onEditTopic: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     var selectedReportReason by remember { mutableStateOf(ForumReportReason.SPAM) }
@@ -141,6 +145,16 @@ internal fun ForumDetailContent(
                 title = { Text(stringResource(R.string.forum_detail_title)) },
                 onNavigateUp = onBack,
                 actions = {
+                    if (state.post?.kind == com.anpfuel.domain.forum.ForumPostKind.TOPIC && state.isAuthenticated) {
+                        IconButton(
+                            onClick = { onEditTopic(state.postId) },
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = stringResource(R.string.forum_edit_topic),
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = onRefresh,
                         enabled = !state.loading && !state.refreshing,

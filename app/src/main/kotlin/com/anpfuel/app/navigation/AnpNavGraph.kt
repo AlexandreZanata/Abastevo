@@ -221,6 +221,7 @@ fun AnpNavGraph(
             com.anpfuel.app.ui.forum.ForumScreen(
                 onBack = { navController.popBackStack() },
                 onOpenPost = { postId -> navController.navigate(Routes.forumPost(postId)) },
+                onNewTopic = { navController.navigate(Routes.FORUM_NEW_TOPIC) },
             )
         }
         composable(
@@ -232,6 +233,27 @@ fun AnpNavGraph(
             com.anpfuel.app.ui.forum.ForumDetailScreen(
                 onBack = { navController.popBackStack() },
                 onSignIn = { navController.navigate(Routes.AUTH) },
+                onEditTopic = { topicId -> navController.navigate(Routes.forumEditTopic(topicId)) },
+            )
+        }
+        composable(Routes.FORUM_NEW_TOPIC) {
+            com.anpfuel.app.ui.forum.ForumTopicFormScreen(
+                onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
+                onTopicCreated = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.FORUM_EDIT_TOPIC,
+            arguments = listOf(
+                navArgument("topicId") { type = NavType.StringType },
+            ),
+        ) {
+            com.anpfuel.app.ui.forum.ForumTopicFormScreen(
+                onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
+                onTopicEdited = { navController.popBackStack() },
+                onTopicRemoved = { navController.popBackStack() },
             )
         }
         composable(

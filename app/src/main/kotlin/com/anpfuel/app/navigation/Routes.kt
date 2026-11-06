@@ -144,4 +144,11 @@ object Routes {
         require(java.util.UUID.fromString(postId).toString() == postId) { "invalid post id" }
         return "forum/posts/$postId"
     }
+
+    const val FORUM_NEW_TOPIC = "forum/topics/new"
+    const val FORUM_EDIT_TOPIC = "forum/topics/{topicId}/edit"
+    fun forumEditTopic(topicId: String): String {
+        require(java.util.UUID.fromString(topicId).toString() == topicId) { "invalid topic id" }
+        return "forum/topics/$topicId/edit"
+    }
 }

@@ -20,6 +20,17 @@ class ForumNavigationTest {
         assertThrows(IllegalArgumentException::class.java) {
             Routes.forumPost("")
         }
+
+        assertEquals("forum/topics/new", Routes.FORUM_NEW_TOPIC)
+        assertEquals("forum/topics/{topicId}/edit", Routes.FORUM_EDIT_TOPIC)
+        assertEquals("forum/topics/$uuid/edit", Routes.forumEditTopic(uuid))
+
+        assertThrows(IllegalArgumentException::class.java) {
+            Routes.forumEditTopic("invalid-uuid")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            Routes.forumEditTopic("")
+        }
     }
 
     @Test
@@ -30,5 +41,7 @@ class ForumNavigationTest {
         assertEquals(NavigationTab.COMMUNITY, NavigationTab.fromRoute(Routes.forumPost(uuid)))
         assertEquals(NavigationTab.COMMUNITY, NavigationTab.fromRoute("forum/posts/$uuid"))
         assertEquals(NavigationTab.COMMUNITY, NavigationTab.fromRoute("forum/posts/new"))
+        assertEquals(NavigationTab.COMMUNITY, NavigationTab.fromRoute(Routes.FORUM_NEW_TOPIC))
+        assertEquals(NavigationTab.COMMUNITY, NavigationTab.fromRoute(Routes.forumEditTopic(uuid)))
     }
 }
