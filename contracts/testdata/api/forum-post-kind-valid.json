@@ -1,0 +1,1 @@
+{"id": "forum-post-kind-valid", "version": 1, "schema": "ForumPostKind", "valid": true, "provenance": "matches ForumPostKind enum; synthetic", "value": "EDITORIAL"}

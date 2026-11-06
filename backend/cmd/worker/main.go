@@ -42,6 +42,9 @@ import (
 	evidenceapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/application"
 	evidencedomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/domain"
 	feedbackadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters"
+	forumadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters"
+	forumjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters/jobs"
+	forumapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
@@ -50,6 +53,7 @@ import (
 	officialjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/jobs"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/source"
+	officialapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
 	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
 	privacyjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
@@ -77,6 +81,10 @@ type inventoryFunc func(ctx context.Context, contributorID, contributorRef strin
 func (f inventoryFunc) Snapshot(ctx context.Context, contributorID, contributorRef string) (privacyapp.RawInventory, error) {
 	return f(ctx, contributorID, contributorRef)
 }
+
+type idFunc func() string
+
+func (f idFunc) NewID() string { return f() }
 
 // trainingTermsWorker serves the current training-terms pair the
 // consent grants must present (CS10C; same provisional digest as the
@@ -366,6 +374,7 @@ func run() error {
 	}
 	feedbackStore := feedbackadapters.NewPGStore(pool.Underlying())
 	qualityReportStore := &qualityadapters.ReportStore{Pool: raw, Now: time.Now}
+	forumStore := forumadapters.NewStore(pool.Underlying())
 	accountRecovery := accountapp.ErasureRecovery{
 		Store: accountadapters.NewPGStore(pool.Underlying()), NewNonce: jobs.NewUUIDv4, Now: time.Now,
 		EraseFeedback: func(ctx context.Context, id string) error {
@@ -381,7 +390,18 @@ func run() error {
 			if err == nil && !done {
 				return accountapp.ErrErasurePending
 			}
-			return err
+			if err != nil {
+				return err
+			}
+
+			forumDone, _, forumErr := forumStore.EraseAccountBatch(ctx, id, 100)
+			if forumErr != nil {
+				return forumErr
+			}
+			if !forumDone {
+				return accountapp.ErrErasurePending
+			}
+			return nil
 		},
 		EraseContributor: func(ctx context.Context, accountID, contributorID string) error {
 			_, err := privacyapp.Erase(ctx, privacyErasePorts, contributorID, privacyapp.EraseDTO{ClientSubmissionID: "account-erasure:" + accountID + ":" + contributorID, Reason: "account-deletion"})
@@ -505,6 +525,17 @@ func run() error {
 	// are preserved, never dropped, while unconfigured.
 	premiumStore := subscriptionadapters.NewStore(raw)
 	premiumService := &subscriptionapp.Service{Store: premiumStore, Clock: time.Now, Environment: "production", PackageName: "com.anpfuel"}
+	bulletinGenerator := forumapp.BulletinGenerator{
+		Official: forumapp.BulletinReaderFunc(func(ctx context.Context, q officialapp.BulletinQuery) (officialapp.BulletinSet, error) {
+			return officialapp.ReadWeeklyBulletins(ctx, officialReader, q)
+		}),
+		Store: forumStore,
+		Clock: forumapp.SystemClock{},
+		IDs: idFunc(func() string {
+			id, _ := jobs.NewUUIDv4()
+			return id
+		}),
+	}
 	officialImport := officialjobs.Import{
 		Fetch:  &fetcher,
 		Parser: anp.Parser{Limits: anp.DefaultLimits()},
@@ -517,14 +548,24 @@ func run() error {
 			return st.ID, nil
 		},
 	}
-	if cfg.EnterpriseExportEnabled {
-		officialImport.AfterPublish = func(ctx context.Context, revisionID string) error {
+	officialImport.AfterPublish = func(ctx context.Context, revisionID string) error {
+		if cfg.ForumEnabled {
+			payload, err := json.Marshal(forumjobs.BulletinGeneratePayload{Version: 1, RevisionID: revisionID})
+			if err != nil {
+				return err
+			}
+			if _, err := jobs.Enqueue(ctx, raw, forumjobs.ForumBulletinGenerateKind, payload, "forum-bulletin:"+revisionID, 3, time.Time{}); err != nil {
+				return err
+			}
+		}
+		if cfg.EnterpriseExportEnabled {
 			_, err := enqueueEnterpriseExport(ctx, enterprisejobs.BuildPayload{
 				Version: 1, Trigger: "after-publication", RevisionID: revisionID,
 				ObservedAt: time.Now().UTC().Format(time.RFC3339),
 			}, "enterprise-export:official:"+revisionID)
 			return err
 		}
+		return nil
 	}
 	handlers := map[string]jobs.Handler{
 		"subscription-refresh":     subscriptionjobs.Handler{Name: "subscription-refresh", RunWithID: premiumService.Refresh},
@@ -535,7 +576,8 @@ func run() error {
 			ListingBase: "https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/",
 			Enqueue:     enqueueImport,
 		},
-		"anp-import": officialImport,
+		"anp-import":                        officialImport,
+		forumjobs.ForumBulletinGenerateKind: forumjobs.BulletinGenerate{Generator: bulletinGenerator},
 		"geocode-station": directoryjobs.Geocode{
 			Pool:    raw,
 			Service: nil,
@@ -1018,6 +1060,13 @@ func run() error {
 		},
 
 		{Name: "quality-enforcement-discovery-daily", Kind: qualityjobs.EnforcementDiscoveryKind, Version: 1, Interval: 24 * time.Hour, Enabled: cfg.QualityEnforcementDiscoveryEnabled, Reason: "disabled by configuration", Build: func(period string) map[string]any { return map[string]any{"period": period} }},
+		{
+			Name: "forum-bulletin-reconcile-daily", Kind: forumjobs.ForumBulletinGenerateKind, Version: 1,
+			Interval: 24 * time.Hour, Enabled: cfg.ForumEnabled, Reason: "disabled by configuration",
+			Build: func(period string) map[string]any {
+				return map[string]any{"version": 1, "revision_id": "schedule:" + period}
+			},
+		},
 		evidenceSweepSchedule(),
 		{Name: "account-erasure-every-minute", Kind: "account-erasure-reconcile", Version: 1, Interval: time.Minute, Enabled: true, Build: func(string) map[string]any { return map[string]any{"version": 1} }},
 		{

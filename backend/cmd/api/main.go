@@ -70,6 +70,10 @@ import (
 	feedbackhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/adapters/http"
 	feedbackapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/application"
 	feedbackdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/domain"
+	forumadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters"
+	forumhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters/http"
+	forumapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
+	forumdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	identityauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identityhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/http"
@@ -800,6 +804,58 @@ func run() error {
 	contributorhttp.PublicHandler{
 		Service: contributorService, CursorSecret: cfg.CursorSecret, AllowedOrigins: cfg.PublicWebOrigins,
 	}.RegisterRoutes(router)
+
+	forumStore := forumadapters.NewStore(pool.Underlying())
+	forumStore.CaseOpener = func(ctx context.Context, tx pgx.Tx, targetType, targetID, reason, detail string) (string, bool, error) {
+		caseID, err := newUUID()
+		if err != nil {
+			return "", false, err
+		}
+		caseObj, _, err := moderationdomain.NewCase(moderationdomain.CaseParams{
+			ID:            caseID,
+			TargetType:    targetType,
+			TargetID:      targetID,
+			Priority:      moderationdomain.PriorityP2,
+			Reason:        reason,
+			Detail:        detail,
+			OpenedAt:      time.Now(),
+			PolicyVersion: moderationdomain.PolicyV1,
+		})
+		if err != nil {
+			return "", false, err
+		}
+		return moderationStore.OpenCaseTx(ctx, tx, caseObj)
+	}
+	forumCfg := forumdomain.DefaultConfig()
+	forumCfg.ReadsEnabled = cfg.ForumEnabled
+	forumCfg.WritesEnabled = cfg.ForumEnabled
+	forumCfg.AdminEnabled = cfg.ForumEnabled
+	forumService := forumapp.NewService(forumCfg, forumStore, forumStore, forumapp.SystemClock{})
+	forumHandler := forumhttp.NewHandler(forumService, cfg.CursorSecret)
+	forumHandler.RegisterRoutes(router)
+
+	forumDiscussionHandler := &forumhttp.DiscussionHandler{
+		Comments: forumStore,
+		Reports:  forumStore,
+		Topics:   forumStore,
+		Runner:   identityRunner,
+		Clock:    time.Now,
+		Config:   &forumCfg,
+		Sessions: func(ctx context.Context, family, access string) (string, error) {
+			return accountService.ValidateAccess(ctx, family, access)
+		},
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			return premiumHTTP.SignedOwner(r, owner)
+		},
+		Guard: func(ctx context.Context, tx pgx.Tx, owner, family, access, contributor, key string) error {
+			if err := accountStore.RequireQualitySessionTx(ctx, tx, owner, family, access, contributor, accountService.Hasher, time.Now().Unix()); err != nil {
+				return err
+			}
+			return identityadapters.RequireQualitySigningKeyTx(ctx, tx, contributor, key)
+		},
+	}
+	forumDiscussionHandler.RegisterRoutes(router)
+
 	// Optional administrative surface (ADR-023). No configured key hash means
 	// no route is mounted and every /v1/admin/* path stays 404.
 	if adminSurface, ok := newAdminHandler(cfg, pool.Underlying(), trustedProxies); ok {
@@ -810,10 +866,23 @@ func run() error {
 		contributorAdmin := contributorhttp.AdminHandler{Service: contributorService, Admin: adminSurface}
 		staffService := &staffapp.Service{Store: staffStore, Runner: adminSurface.Service.Store, Clock: time.Now, NewID: newUUID}
 		staffAdmin := staffhttp.AdminHandler{Service: staffService, Admin: adminSurface}
+
+		forumAdminService := &forumapp.AdminService{
+			Store:  forumStore,
+			Runner: adminSurface.Service.Store,
+			Config: forumCfg,
+			Clock:  time.Now,
+			NewID:  newUUID,
+		}
+		forumAdmin := forumhttp.NewAdminHandler(forumAdminService, adminSurface)
+
 		router.Group(func(g chi.Router) {
 			g.Use(adminSurface.AdminMiddleware()...)
 			contributorAdmin.RegisterRoutes(g)
 			staffAdmin.RegisterRoutes(g)
+			if cfg.ForumEnabled {
+				forumAdmin.RegisterRoutes(g)
+			}
 		})
 	}
 	// Free document-free quality participation; payment capabilities never enter.

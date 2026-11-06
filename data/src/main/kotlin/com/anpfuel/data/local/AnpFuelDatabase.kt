@@ -74,8 +74,9 @@ import com.anpfuel.data.local.entity.VehicleEntity
         com.anpfuel.data.local.entity.DriverReconciliationEntity::class,
         com.anpfuel.data.local.entity.DriverGoalEntity::class,
         com.anpfuel.data.local.entity.DriverMaintenanceEntity::class,
+        com.anpfuel.data.local.entity.ForumCacheEntity::class,
     ],
-    version = 36,
+    version = 37,
     exportSchema = true,
 )
 abstract class AnpFuelDatabase : RoomDatabase() {
@@ -123,4 +124,6 @@ abstract class AnpFuelDatabase : RoomDatabase() {
     abstract fun mapPackageDao(): com.anpfuel.data.local.dao.MapPackageDao
 
     abstract fun savedDao(): com.anpfuel.data.local.saved.SavedDao
+
+    abstract fun forumCacheDao(): com.anpfuel.data.local.dao.ForumCacheDao
 }

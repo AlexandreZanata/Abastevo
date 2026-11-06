@@ -1,0 +1,1 @@
+{"id": "forum-feed-response-valid", "version": 1, "schema": "ForumFeedResponse", "valid": true, "provenance": "matches public forum feed envelope; synthetic", "value": {"items": [], "next_cursor": null, "snapshot": "rev-1", "fetched_at": "2026-11-05T12:00:00Z"}}

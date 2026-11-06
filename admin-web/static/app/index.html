@@ -21,6 +21,7 @@
       <nav class="topnav admin-nav" aria-label="Seções do painel" id="main-nav" hidden>
         <a href="/admin/accounts/" data-route="/admin/accounts/">Contas</a>
         <a href="/admin/contributors/" data-route="/admin/contributors/">Contribuidores</a>
+        <a href="/admin/forum/" data-route="/admin/forum/">Fórum</a>
         <a href="/admin/stations/" data-route="/admin/stations/">Postos</a>
         <a href="/admin/audit/" data-route="/admin/audit/">Auditoria</a>
       </nav>
@@ -227,6 +228,146 @@
             <button class="admin-secondary" type="submit" name="visibility-action" value="unhide">Exibir</button>
           </div>
         </form>
+      </section>
+    </div>
+    <div class="shell admin-view admin-grid" id="view-forum" hidden>
+      <div class="admin-view-heading">
+        <p class="kicker"><span class="dot" aria-hidden="true"></span>Painel de administração</p>
+        <h1 class="lp-title">Fórum</h1>
+        <p class="lp-lead">Gerencie publicações editoriais e modere a visibilidade dos tópicos.</p>
+      </div>
+      <section class="admin-card" aria-labelledby="forum-posts-title">
+        <h2 id="forum-posts-title">Publicações</h2>
+        <form class="admin-form admin-filter" id="forum-filter-form" method="get" action="#">
+          <label class="admin-control" for="forum-filter-status">
+            Estado
+            <select id="forum-filter-status" name="status">
+              <option value="all">Todos</option>
+              <option value="draft">Rascunhos</option>
+              <option value="published">Publicados</option>
+              <option value="rejected">Rejeitados</option>
+              <option value="hidden">Ocultados</option>
+            </select>
+          </label>
+          <label class="admin-control" for="forum-filter-category">
+            Categoria
+            <select id="forum-filter-category" name="category">
+              <option value="">Todas</option>
+              <option value="FUELS">Combustíveis</option>
+              <option value="ELECTRIC">Eletrificação</option>
+              <option value="TRAFFIC_RULES">Regras de trânsito</option>
+              <option value="VEHICLES_TECH">Veículos e tecnologia</option>
+              <option value="ROADS_MOBILITY">Estradas e mobilidade</option>
+              <option value="DRIVER_ECONOMY">Economia do motorista</option>
+              <option value="ABASTEVO_DATA">Dados Abastevo</option>
+            </select>
+          </label>
+          <button class="btn-dark" type="submit">Filtrar</button>
+        </form>
+        <p id="forum-list-error" class="error" role="alert"></p>
+        <ul class="admin-list" id="forum-posts" aria-live="polite"></ul>
+        <button class="admin-secondary" id="forum-more" type="button" hidden>Carregar mais</button>
+      </section>
+      <section class="admin-card" aria-labelledby="forum-create-title">
+        <h2 id="forum-create-title">Novo rascunho editorial</h2>
+        <form class="admin-form" id="forum-create-form" method="post" action="#">
+          <label class="admin-control" for="forum-create-category">
+            Categoria
+            <select id="forum-create-category" name="category" required>
+              <option value="FUELS">Combustíveis</option>
+              <option value="ELECTRIC">Eletrificação</option>
+              <option value="TRAFFIC_RULES">Regras de trânsito</option>
+              <option value="VEHICLES_TECH">Veículos e tecnologia</option>
+              <option value="ROADS_MOBILITY">Estradas e mobilidade</option>
+              <option value="DRIVER_ECONOMY">Economia do motorista</option>
+              <option value="ABASTEVO_DATA">Dados Abastevo</option>
+            </select>
+          </label>
+          <label class="admin-control" for="forum-create-title-input">
+            Título (1 a 120 caracteres)
+            <input id="forum-create-title-input" name="title" type="text" maxlength="120" required>
+          </label>
+          <label class="admin-control" for="forum-create-excerpt-input">
+            Resumo (opcional, até 400 caracteres)
+            <textarea id="forum-create-excerpt-input" name="excerpt" maxlength="400" rows="3"></textarea>
+          </label>
+          <label class="admin-control" for="forum-create-body-input">
+            Corpo do texto (até 4000 caracteres)
+            <textarea id="forum-create-body-input" name="body" maxlength="4000" rows="8" required></textarea>
+          </label>
+          <label class="admin-control" for="forum-create-reason">
+            Motivo da criação (10 a 500 caracteres)
+            <textarea id="forum-create-reason" name="reason" rows="2" required></textarea>
+          </label>
+          <p id="forum-create-error" class="error" role="alert"></p>
+          <button class="btn-dark" type="submit">Criar rascunho</button>
+        </form>
+      </section>
+      <section class="admin-card" id="forum-detail-card" aria-labelledby="forum-detail-title" hidden>
+        <h2 id="forum-detail-title">Detalhe da publicação</h2>
+        <p id="forum-detail-error" class="error" role="alert"></p>
+        <dl class="admin-facts">
+          <div><dt>ID</dt><dd id="forum-detail-id">—</dd></div>
+          <div><dt>Estado</dt><dd id="forum-detail-state">—</dd></div>
+          <div><dt>Visibilidade</dt><dd id="forum-detail-visibility">—</dd></div>
+          <div><dt>Revisão</dt><dd id="forum-detail-revision">—</dd></div>
+          <div><dt>Fonte</dt><dd id="forum-detail-source">—</dd></div>
+          <div><dt>Criada em</dt><dd id="forum-detail-created">—</dd></div>
+          <div><dt>Atualizada em</dt><dd id="forum-detail-updated">—</dd></div>
+          <div><dt>Publicada em</dt><dd id="forum-detail-published">—</dd></div>
+        </dl>
+        <div class="admin-actions" id="forum-detail-actions">
+          <form class="inline-form" id="forum-publish-form" method="post" action="#">
+            <input type="text" name="reason" id="forum-publish-reason" placeholder="Motivo para publicar (10+ caracteres)" aria-label="Motivo para publicar" required>
+            <button class="btn-dark" type="submit" id="forum-publish-btn">Publicar</button>
+          </form>
+          <form class="inline-form" id="forum-reject-form" method="post" action="#">
+            <input type="text" name="reason" id="forum-reject-reason" placeholder="Motivo para rejeitar (10+ caracteres)" aria-label="Motivo para rejeitar" required>
+            <button class="admin-secondary" type="submit" id="forum-reject-btn">Rejeitar</button>
+          </form>
+          <form class="inline-form" id="forum-visibility-form" method="post" action="#">
+            <input type="text" name="reason" id="forum-visibility-reason" placeholder="Motivo da moderação (10+ caracteres)" aria-label="Motivo da moderação" required>
+            <button class="admin-secondary" type="submit" id="forum-visibility-btn">Ocultar</button>
+          </form>
+        </div>
+        <h3>Editar conteúdo</h3>
+        <form class="admin-form" id="forum-edit-form" method="post" action="#">
+          <label class="admin-control" for="forum-edit-category">
+            Categoria
+            <select id="forum-edit-category" name="category" required>
+              <option value="FUELS">Combustíveis</option>
+              <option value="ELECTRIC">Eletrificação</option>
+              <option value="TRAFFIC_RULES">Regras de trânsito</option>
+              <option value="VEHICLES_TECH">Veículos e tecnologia</option>
+              <option value="ROADS_MOBILITY">Estradas e mobilidade</option>
+              <option value="DRIVER_ECONOMY">Economia do motorista</option>
+              <option value="ABASTEVO_DATA">Dados Abastevo</option>
+            </select>
+          </label>
+          <label class="admin-control" for="forum-edit-title-input">
+            Título (1 a 120 caracteres)
+            <input id="forum-edit-title-input" name="title" type="text" maxlength="120" required>
+          </label>
+          <label class="admin-control" for="forum-edit-excerpt-input">
+            Resumo (opcional, até 400 caracteres)
+            <textarea id="forum-edit-excerpt-input" name="excerpt" maxlength="400" rows="3"></textarea>
+          </label>
+          <label class="admin-control" for="forum-edit-body-input">
+            Corpo do texto (até 4000 caracteres)
+            <textarea id="forum-edit-body-input" name="body" maxlength="4000" rows="8" required></textarea>
+          </label>
+          <label class="admin-control" for="forum-edit-reason">
+            Motivo da edição (10 a 500 caracteres)
+            <textarea id="forum-edit-reason" name="reason" rows="2" required></textarea>
+          </label>
+          <p id="forum-edit-error" class="error" role="alert"></p>
+          <button class="btn-dark" type="submit">Salvar edição</button>
+        </form>
+      </section>
+      <section class="admin-card" id="forum-sources-card" aria-labelledby="forum-sources-title">
+        <h2 id="forum-sources-title">Fontes e Direitos</h2>
+        <p id="forum-sources-error" class="error" role="alert"></p>
+        <ul class="admin-list" id="forum-sources-list" aria-live="polite"></ul>
       </section>
     </div>
     <div class="shell admin-view" id="view-stations" hidden>

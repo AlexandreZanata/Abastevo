@@ -16,6 +16,13 @@ Tests have three levels: immediate targeted task/risk checks; specialized phase 
 
 ## Phase order
 
+**Forum planning overlay (2026-11-05):**
+[FOR-00–FOR-29](#forum-abastevo) defines editorial reading, authorized news,
+reviewed discussion, user topics and deterministic data bulletins. This request
+authorizes documentation and its PR only. Future Forum implementation requires
+an explicit request and reconciled current GitHub main; existing app-first,
+privacy, release and protected-delivery gates remain in force.
+
 **Stripe/Asaas payment overlay (2026-10-24):** [PAY-00–PAY-23](#stripe-and-asaas-payments)
 plans Stripe cards and conventional/automatic Asaas Pix with independent switches,
 existing subscription/access reuse and parallel MAP/ESP isolation. Premium and
@@ -3983,3 +3990,37 @@ earning/shift/cost/report journey, restart/stale/erasure checks. DRV-13 is LOCAL
 [evidence](docs/backend/evidence/driver-suite/DRV-13.md) records Room schema 29,
 28→29 migration, transactional owner/origin state, restart and A/B/guest
 isolation on an owned API35 emulator. DRV-14–35 remain PLANNED.
+
+## Forum Abastevo
+
+Status: **PLANNED / NOT IMPLEMENTED**, documentation requested 2026-11-05.
+[Execution plan](docs/planning/FORUM_ABASTEVO_PLAN.md) owns the complete task
+specifications, dependencies, file ownership, B-BR/BUC, meaningful checks,
+acceptance and rollback. [Product](docs/product/FORUM_ABASTEVO_CONTRACT.md),
+[architecture/API/schema](docs/backend/FORUM_ABASTEVO_ARCHITECTURE.md),
+[sources/rights](docs/backend/FORUM_ABASTEVO_SOURCES.md),
+[Android](docs/mobile/FORUM_ABASTEVO_ANDROID.md),
+[validation](docs/planning/FORUM_ABASTEVO_VALIDATION.md) and
+[short implementation prompt](docs/planning/FORUM_ABASTEVO_IMPLEMENTATION_PROMPT.md)
+form one planning package. [Planning evidence](docs/planning/FORUM_ABASTEVO_PLANNING_EVIDENCE.md)
+is distinct from future feature acceptance.
+
+- [ ] **FOR-00–FOR-09 — Editorial foundation/MVP:** current-main reconciliation,
+  contracts, pure domain, real SQL recovery, existing admin, public API,
+  Android ports/cache, Community card/feed/detail and scoped acceptance.
+- [ ] **FOR-10–FOR-13 — Authorized news:** actual source rights/access,
+  safe fetch/parser, existing worker/dedupe and editorial review.
+- [ ] **FOR-14–FOR-19 — Discussion:** bounded comment/reply SQL, signed owner,
+  account export/erasure/restore, API, reports/moderation and Android interaction.
+- [ ] **FOR-20–FOR-24 — User topics/discovery:** owned topic writes/API,
+  privacy/moderation, Android forms and measured regional/FTS discovery.
+- [ ] **FOR-25–FOR-27 — Deterministic bulletins:** exact Official aggregates,
+  methodology/provenance/templates, correction identity and reviewed integration.
+- [ ] **FOR-28–FOR-29 — Final scoped acceptance/handoff:** measured disposable
+  load/failure tests, deferred native/device union and protected batch PR.
+
+Reactions/follows/relevance ranking/personalization/opt-in push/images/deep links
+are deferred extensions, not hidden MVP requirements. No new service, paid API,
+LLM, station-comment migration, bottom tab or source activation is authorized by
+this plan. Existing app-first/safety/release gates remain; implementation needs
+an explicit selected task range and a fresh fetch of GitHub main.

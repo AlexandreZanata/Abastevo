@@ -114,6 +114,15 @@ class CommunityFeedScreenTest {
         node(R.string.community_helpful_remove).assertIsDisplayed()
     }
 
+    @Test fun forumCardIsDisplayedAndNavigatesToFeed() {
+        var route: String? = null
+        render(CommunityFeedUiState(city = city, loading = false), navigate = { route = it })
+        compose.onNodeWithText(context.getString(R.string.forum_card_title)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.forum_card_description)).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(R.string.forum_card_cta)).performClick()
+        assertEquals(Routes.FORUM_FEED, route)
+    }
+
     private fun renderHelpfulness(state: CommunityHelpfulnessUiState, onReport: () -> Unit = {}) {
         compose.setContent {
             AnpFuelTheme(darkTheme = true) {

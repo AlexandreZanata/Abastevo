@@ -74,8 +74,13 @@ object DatabaseModule {
                 AnpFuelDatabaseMigrations.MIGRATION_33_34,
                 AnpFuelDatabaseMigrations.MIGRATION_34_35,
                 AnpFuelDatabaseMigrations.MIGRATION_35_36,
+                AnpFuelDatabaseMigrations.MIGRATION_36_37,
             )
             .build()
+
+    @Provides
+    fun provideForumCacheDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.ForumCacheDao =
+        database.forumCacheDao()
 
     @Provides
     fun provideDriverLocalDao(database: AnpFuelDatabase): com.anpfuel.data.local.dao.DriverLocalDao = database.driverLocalDao()

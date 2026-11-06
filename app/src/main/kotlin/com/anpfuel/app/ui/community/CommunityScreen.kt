@@ -102,6 +102,9 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                     TextButton(onClick = { onNavigate(Routes.LOCATION) }) { Text(stringResource(R.string.feed_change_city)) }
                 }
             }
+            if (state.forumEnabled) item {
+                ForumCommunityCard(onExplore = { onNavigate(Routes.FORUM_FEED) })
+            }
             item {
                 val containerColor = MaterialTheme.colorScheme.primaryContainer
                 Card(shape = AnpContainerDefaults.containerShape(), colors = CardDefaults.cardColors(containerColor = containerColor),
@@ -303,6 +306,67 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
                 }
             }
             com.anpfuel.app.community.CommunityContributionActions(item,onSignIn)
+        }
+    }
+}
+
+@Composable
+fun ForumCommunityCard(
+    onExplore: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    Card(
+        shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_home_community),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(30.dp),
+                        )
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.forum_card_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = stringResource(R.string.forum_card_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Button(
+                onClick = onExplore,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Default.Explore, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.forum_card_cta))
+            }
         }
     }
 }

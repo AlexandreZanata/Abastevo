@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Representative Atom 1.0 test fixture for FOR-10 / FOR-11 parse contract.
+  Provenance: Synthetic representative items based on standard Atom specification.
+  Notice: No full articles or third-party photographs included.
+-->
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Canal Oficial de Notícias de Infraestrutura e Rodovias</title>
+  <link href="https://transportes.gov.br" />
+  <link href="https://transportes.gov.br/feed.atom" rel="self" />
+  <updated>2026-11-05T12:00:00Z</updated>
+  <id>urn:uuid:60a76c80-d399-11d9-b93C-0003939e0af6</id>
+  <author>
+    <name>Ministério dos Transportes</name>
+  </author>
+  <entry>
+    <title>Obras de duplicação em trecho crítico da BR-163 são concluídas</title>
+    <link href="https://transportes.gov.br/noticias/obras-duplicacao-br163" rel="alternate" />
+    <id>urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6a</id>
+    <updated>2026-11-05T09:15:00Z</updated>
+    <summary>Entrega de novo segmento rodoviário melhora fluidez no escoamento de grãos e segurança para condutores.</summary>
+  </entry>
+</feed>

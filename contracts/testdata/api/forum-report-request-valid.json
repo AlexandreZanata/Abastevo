@@ -1,0 +1,11 @@
+{
+  "id": "forum-report-request-valid",
+  "schema": "ForumReportRequest",
+  "valid": true,
+  "value": {
+    "family_id": "c7a72d73-7cb7-4a1e-8e8a-e421e4281352",
+    "access_token": "tok-access-valid-abcdef1234567890",
+    "reason": "SPAM",
+    "detail": "Promotional link without automotive relevance"
+  }
+}

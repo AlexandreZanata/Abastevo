@@ -1,4 +1,582 @@
 # Current execution state
+- FOR-28 Capacity/failure/device checkpoint, 2026-11-06:
+  IN_PROGRESS / LOAD_MATRIX_PASS / DEVICE_PENDING on isolated dev worktree from
+  parent `0eebefa6`. [Phase 6 evidence](../backend/evidence/forum/FOR_PHASE_6.md)
+  adds a bounded `load && integration` Forum harness (disposable PostGIS, 100k
+  posts/20k comments, real HTTP/router, open-loop 4:1 feed/detail mix, in-flight
+  cap, latency/errors/drops/bytes, pool/RSS/aggregate SQL metrics). Executed the
+  full 5m/10m/60s matrix on 100k posts at the declared DAU hypotheses:
+  100 DAU (0.0139/0.139 RPS) p95 24.3/8.0ms over 9/9 requests; 1k DAU
+  (0.139/1.39) p95 15.2/12.9ms, 84/84; 10k DAU (1.39/13.9) p95
+  10.6/10.8ms, 834/834; 100k DAU (13.9/139, cap 20 used) p95
+  14.7/12.6ms, 8,340/8,336. All zero errors/drops, max feed 10.0KiB/detail
+  0.665KiB, ≈1.8 SQL queries/request, RSS ≤21.9MiB. Exploratory 139/1,390 RPS
+  run delivered 139 RPS steady and 1,228 RPS burst (88.3% of target; no
+  1M-DAU claim), zero errors/drops, p95 11.1/13.3ms, RSS 29.5MiB. Executed
+  failures: DB outage feed/detail 503 (new test), disabled switches, source
+  blocked/304/dedup/lifecycle, erasure 6/6, privacy/moderation recovery 6/6,
+  Official unit/PostGIS and full Android JVM union green; A2 lint 0 errors.
+  OWED: A3 native/device/TalkBack/IME (no device; Forum device classes absent),
+  comparative price/map p95, per-endpoint SQL tracing/lock/CPU-steal series,
+  1,390 RPS burst delivery, and actual staging/operator/legal/merge acceptance.
+  No production/staging write. Next action: run A3 when a device is available,
+  close measurement gaps, then FOR-29 protected PR preparation.
+
+- FOR-27 Reviewed deterministic bulletin checkpoint, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `a0dc7821`. [Phase 5 evidence](../backend/evidence/forum/FOR_PHASE_5.md)
+  adds migration `000162` (`bulletin_group_key`, JSONB provenance, shape check,
+  group index) and the reviewed pipeline: an Official accepted-publish trigger
+  plus daily bounded reconciliation enqueue `forum-bulletin-generate`; the
+  generator reads every frozen fuel/unit pair, creates only `PENDING_REVIEW`
+  drafts from the seeded Abastevo source, converges on unique `bulletin_key`,
+  sets structured provenance and links newer same-window revision pairs via
+  `supersedes_post_id`; missing source/corrupt aggregate fail visibly and no
+  eligible pair creates no post. Admin publishing verifies BULLETIN source
+  rights, refuses deterministic text edits, hides the previous same-group
+  bulletin in the same transaction, audits the supersede and bumps the feed
+  revision; rejection leaves the prior visible and automatic publication stays
+  off. Public detail exposes structured methodology/provenance plus
+  `supersedes_post_id`; Android maps it and renders the provenance card with
+  periods, samples, coverage and correction notice. Bulletin `fuel_product`
+  stays NULL because the Official ranking vocabulary is not the topic form
+  vocabulary; exact fuel/unit live in provenance/body.
+  Verified: forum unit suite; full real-PostGIS forum suite (adapters 36.6s,
+  HTTP 6.9s, jobs 3.3s); targeted generator concurrency/restart/correction/
+  no-input/missing-source 4.2s; bulletin HTTP correction visibility/snapshot
+  1.8s; apicontract 46.4s; worker build/test; go vet, sqlc vet/diff; Android
+  union 2,851 tests, 0 failures, 4 skips, assembleDebug/androidTest, lintDebug
+  0 errors and static gates. Staticcheck only pre-existing admin_service.go
+  findings. No production bulletin, source approval, operator coverage,
+  deployment, staging, device acceptance or merge claimed. Next microtask:
+  FOR-28 capacity/failures/final device union.
+
+- FOR-26 Deterministic forum bulletin template, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `d5ccb537`. [Phase 5 evidence](../backend/evidence/forum/FOR_PHASE_5.md)
+  freezes `forum-bulletin-v1` over the FOR-25 exact aggregate:
+  original plain pt-BR text, no LLM/network/HTML/Markdown; 0.001 BRL/unit and
+  0.1% display rounding half away from zero with comma decimals and explicit
+  signs; both periods, sample/coverage counts, revision IDs, checksums, URLs,
+  parser versions and non-claims in every draft. Identity key is template +
+  current revision + previous revision + UF + fuel + unit; identical input is
+  byte-identical and a same-key no-op; a newer accepted revision pair for the
+  same survey windows is a correction, while a new window is a new bulletin.
+  Invalid UF/fuel/unit, periods, provenance, sub-30 samples, inconsistent
+  coverage, arithmetic range and oversized content are refused. Verified:
+  forum domain race suite 1.017s including exact text, determinism, signed and
+  half-away ties, correction direction, checksum rendering, HTTPS/control
+  refusals; full forum unit race suite, build, vet, sqlc vet and domain
+  staticcheck;
+  gofmt/diff-check/secret scan PASS. No persistence link, worker job, HTTP
+  route, Android surface, publication, source approval or merge was added.
+  Next microtask: FOR-27 worker/admin/Android bulletin checkpoint.
+
+- FOR-25 Official bulletin methodology and aggregate port, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `610a9079`. [Phase 5 evidence](../backend/evidence/forum/FOR_PHASE_5.md)
+  freezes `forum-official-mean-v1` in
+  [FORUM_ABASTEVO_BULLETINS.md](../backend/FORUM_ABASTEVO_BULLETINS.md):
+  two current complete non-overlapping published survey revisions, one latest
+  observation per station/fuel/unit, >=30 sampled stations in both UF samples,
+  positive sums, exact reduced rational mean and typed skip reasons. Official
+  owns the bounded SQL/read port: `db/queries/official/bulletin.sql`,
+  `BulletinReader`, revision-pair manifest, exact `numeric` sum parsing with
+  overflow refusal, coverage counts (raw source observations, sampled stations,
+  any-product source-station denominator) and no community/charging input.
+  Verified: targeted real-PostGIS bulletin suite 6/6 PASS (4.403s: correction,
+  duplicate dedup, absent region, no pair, overflow, mixed unit); full official
+  unit and integration suites, `sqlc vet`/`sqlc diff`, `go vet`, gofmt,
+  diff-check and secret scan PASS. No bulletin, HTTP route, worker job,
+  Android surface, source approval or merge was added. Next microtask: FOR-26
+  deterministic templates/rounding/correction identity.
+
+- FOR-24 Forum subject filters and open-forum checkpoint, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING / SEARCH_DEFERRED on isolated dev worktree
+  from parent `7430dec1`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
+  completes bounded discovery UX for UF (27 states), seven-digit IBGE with
+  UF-prefix consistency, forum fuel vocabulary and Directory station UUID;
+  append-only migration `000161` adds partial feed indices, SQL/sqlc filters,
+  strict HTTP unknown/duplicate/invalid filter refusal and cursor HMAC bound to
+  every normalized filter; OpenAPI adds the four query params and
+  `ForumFuelProduct` schema with valid/invalid golden vectors. Android adds
+  `ForumFeedFilters`, use-case validation/normalization, HTTP query params,
+  filter-scoped offline cache keys, ViewModel update/clear and an accessible
+  filter dialog localized in 8 locales. Portuguese FTS/UI is explicitly
+  deferred after measured 10k/100k ordered plans preferred
+  `forum_posts_feed_idx` + filter (cost 1194.22) over GIN bitmap + sort
+  (1919.38); no search box, column or index was committed.
+  Verified: forum Go unit and real-PostGIS suites (adapters 74.5s, HTTP 17.2s,
+  jobs 8.6s), migrate integration 8.9s, apicontract 21.0s, `go vet`/`sqlc vet`;
+  Android full JVM 2,850 tests, 0 failures, 4 pre-existing skips (120 Forum),
+  assembleDebug/androidTest, lintDebug 0 errors and static mobile guards.
+  Native A3/device, real staging/operator/source/legal acceptance and merge
+  remain OWED. Next microtask: FOR-25 Phase 5 bulletin methodology; FOR-24
+  search UI stays deferred.
+
+- FOR-23 Android topic forms, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `fb26983a`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
+  advances Phase 4 (User topics and bounded discovery):
+  complete Android topic authoring pipeline implemented across layers;
+  `ForumTopicReceipt` and repository gateway contracts in `:domain`;
+  use cases `SubmitForumTopicUseCase`, `EditForumTopicUseCase`, `RemoveForumTopicUseCase`,
+  `GetOwnerTopicUseCase` in `:application` with strict boundary validation
+  (1..120 runes title, 1..4000 runes body, 7 categories, 27 UFs, 7-digit IBGE code,
+  7 fuel products, station UUID, operation UUID);
+  HTTP client, mapper, and DI bindings in `:data`;
+  accessible Compose screens `ForumTopicFormScreen`, `ForumTopicFormViewModel`
+  with in-memory draft preservation, discard dialog confirmation on dirty back,
+  auth gating on unauthenticated submission, account change intent safety wiping
+  draft on identity switch, CAS edit with `expectedRevision`, owner tombstone removal confirmation;
+  wired navigation routes `forum/topics/new` and `forum/topics/{topicId}/edit`
+  in `Routes.kt` and `AnpNavGraph.kt`; FAB navigation in `ForumScreen.kt` and owner
+  edit action in `ForumDetailScreen.kt`; full string resources in 8 locales;
+  unit test suites in `ForumTopicUseCasesTest.kt`, `ForumHttpClientTest.kt`,
+  `ForumMapperTest.kt`, `ForumNavigationTest.kt`, `ForumStringsTest.kt`,
+  and `ForumTopicFormViewModelTest.kt` (13 tests) all PASSED.
+  Tested revision: source in this commit. Next microtask: FOR-24 (Topic search and filtering).
+
+- FOR-22 Topic privacy and report integration, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `e4f4cda7`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
+  advances Phase 4 (User topics and bounded discovery):
+  extended FOR-16 account export (`ExportAccount`/`ExportAccountBytes`),
+  LGPD erasure (`EraseAccountBatch`), and FOR-18 moderation actions to authored topics;
+  `ForumAccountFootprint` extended with deterministic `Topics []ForumTopicExport` and `TotalTopics`;
+  `EraseAccountBatch` scrubs authored topics (`ScrubTopicForErasure` clearing title to '[Tópico removido]',
+  body/excerpt to empty, public alias to NULL, setting `publication_state = 'REMOVED'`
+  and `visibility = 'HIDDEN'`) recording `SYSTEM` `erasure-scrub` in `forum_changes`;
+  child comment visibility suppression verified (`ListCommentsByPost` returns 0 comments for removed/erased topics);
+  no inherited permissions verified (child comments retain their distinct authors,
+  author B's comment is not wiped when topic author A is erased, author B can still export
+  and owner-read their comment, permission boundaries prevent foreign edits/removals);
+  operator restore refusal after removal verified (`SetPostVisibility` with `visibility = 'VISIBLE'`
+  on removed topics updates 0 rows, returning `ErrPostNotFound`);
+  metadata-only audit verified (no post title, excerpt, body, alias, or PII in `forum_changes`);
+  worker restart and batched continuation verified across multiple iterations;
+  idempotent deletion replay verified;
+  unit tests in `for22_export_test.go` and real PostgreSQL integration suite
+  in `for22_privacy_integration_test.go` (6 gates) PASSED with `-race` and `-tags=integration`.
+  Tested revision: fb26983a. Next microtask: FOR-23 (Android topic forms).
+
+- FOR-21 Topic API and OpenAPI fixtures, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `f9dd7c46`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
+  advances Phase 4 (User topics and bounded discovery):
+  signed topic commands exposed (`POST /v1/forum/topics`, `POST /v1/forum/topics/{topic_id}/edit`,
+  `POST /v1/forum/topics/{topic_id}/remove`); extended private owner read (`POST /v1/forum/owner/read`)
+  supporting `topic_id`; OpenAPI specification updated in `contracts/openapi/v1.yaml`
+  with schemas `ForumCreateTopicRequest`, `ForumEditTopicRequest`, `ForumRemoveTopicRequest`,
+  `ForumTopicReceipt`, `ForumOwnerTopicResponse`, and `ForumOwnerReadRequest` topic_id;
+  7 golden contract vectors in `contracts/testdata/api/`;
+  wire handlers and DTOs in `DiscussionHandler` and `cmd/api/main.go`;
+  premoderation isolation verified (unapproved topic 404 in public feed and detail, never optimistic publication);
+  IDOR defense verified (foreign owner read/edit/remove returns 404);
+  unit test suite in `for21_topics_test.go` and real PostgreSQL integration suite
+  in `for21_topics_integration_test.go` (6 gates: signed create with premoderation default,
+  replay vs conflict defense, owner read and IDOR defense, CAS edit and foreign defense,
+  tombstone removal terminal state, quota enforcement 429) PASSED with `-race` and `-tags=integration`.
+  Tested revision: e4f4cda7. Next microtask: FOR-22 (Topic privacy and report integration).
+
+- FOR-20 Topic writes and ownership SQL, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `b753a077`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
+  opens Phase 4 (User topics and bounded discovery):
+  pure domain validation in `domain/topics.go` and `domain/topics_test.go`
+  (1..120 runes title, 1..4000 runes body, plain UTF-8, no NUL bytes, 7 categories,
+  27 Brazilian UFs, 7-digit IBGE prefix matching UF, 7 allowed fuel products,
+  station UUID validation);
+  application `TopicService` and `TopicStore` interfaces in `ports.go` and `topic_service.go`;
+  SQL queries in `db/queries/forum/topics.sql` and `topics.sql.go` generated via `sqlc`;
+  adapter store in `topics_store.go` implementing `CreateTopic` (with transactional rate limiting,
+  live count budget `<= 20`, idempotency replay and insert race 23505 handling),
+  `EditTopic` (CAS revision check, state return to `PENDING_REVIEW`),
+  `RemoveTopic` (tombstone clearing body/alias, `REMOVED` + `HIDDEN`),
+  and `GetTopicByID`; audit change logging in `forum_changes`;
+  full test suites in `topics_test.go`, `topic_service_test.go`, and real PostgreSQL
+  integration suite in `topics_integration_test.go` (10 tests: `TestTopic_CreateAndIdempotency`,
+  `TestTopic_SimultaneousCreateRace`, `TestTopic_LiveQuotaEnforcement`, `TestTopic_RateQuota`,
+  `TestTopic_CASEditLifecycle`, `TestTopic_TombstoneRemoval`, `TestTopic_ForeignOwnerDefense_IDOR`,
+  `TestTopic_GuardAccountStatus`, `TestTopic_KindSpoofAndConstraintDefenses`,
+  `TestTopic_AuditedForumChanges`) PASSED with `-race` and `-tags=integration`.
+  Tested revision: source in this commit. Next microtask: FOR-21 (Topic API and OpenAPI fixtures).
+
+- FOR-19 Android discussion and social checkpoint, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `8f1fef32`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  completes Phase 3 (Safe discussion on published posts):
+  safe online discussion UI, single-level replies, comment authoring,
+  visitor sign-in route (`Routes.AUTH`) preserving in-memory draft,
+  owner CAS edit and tombstone remove, report dialog with reason selection
+  and receipt confirmation, premoderation pending-review feedback,
+  account-change consistency clearing private drafts,
+  double-tap protection, 429 rate limit with `Retry-After`, 409 conflict
+  preservation of draft, 404 target missing/suppressed handling,
+  offline resilience preserving loaded comments, 36 localized strings
+  across all 8 locales (`values`, `values-pt-rBR`, `values-es`, `values-de`,
+  `values-fr`, `values-ja`, `values-ru`, `values-zh-rCN`), accessibility
+  (>=48dp touch targets, semantic content descriptions, keyboard actions),
+  and configurable killswitch notice (`forum_social_disabled_notice`).
+  Invariant enforced: no private room caching of user comments/drafts/reports.
+  Verified with comprehensive unit and acceptance tests:
+  `ForumDetailViewModelTest` (20 tests), `ForumStringsTest` (36 keys x 8 locales),
+  `ForumEditorialMvpAcceptanceTest`, `ForumUseCasesTest`, `ForumDomainTest`,
+  `ForumMapperTest`, `ForumHttpClientTest`, and full Gradle suite
+  `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest` PASSED.
+  Tested revision: source in this commit. Phase 3 completed. Next microtask: FOR-20 (Phase 4 — Topic writes and ownership SQL).
+
+- FOR-18 Forum reports, review queue and action integration, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `c00d96a3`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  advances Phase 3 (Safe discussion on published posts):
+  append-only migration 000160 adding `FORUM_POST` and `FORUM_COMMENT` to moderation target checks
+  and creating `forum_reports` table with `UNIQUE(account_id, target_type, target_id)`;
+  domain integration adding report reasons (`SPAM`, `OFFENSIVE`, `MISINFORMATION`, `COMMERCIAL`, `LEGAL_NOTICE`, `OTHER`),
+  `ReportReceipt`, and verdict codes in `forum/domain`;
+  moderation integration updating `TargetForumPost` / `TargetForumComment` in `moderation/domain` and dispatching
+  `InvalidateForumTarget` to `ActPorts` for operator `INVALIDATE` actions;
+  transactional reports store in `reports_store.go` enforcing 10 reports/day quota per account (`ErrReportQuotaExceeded` -> 429 with `Retry-After: 86400`),
+  self-report prevention (`ErrSelfReportForbidden` -> 400), target existence/publication guard (`ErrReportTargetMissing` -> 404),
+  and convergent case association with `moderation_cases`;
+  operator invalidation setting visibility to `HIDDEN` and appending an audited `forum_changes` record;
+  author removal precedence invariant (removed comments remain `REMOVED` + `HIDDEN` and cannot be resurrected to `VISIBLE`);
+  parent suppression in replies query (hidden parent returns 0 replies and rejects new child comments with 404);
+  endpoints `POST /v1/forum/posts/{post_id}/report` and `POST /v1/forum/comments/{comment_id}/report` in `DiscussionHandler` and OpenAPI spec;
+  golden vectors in `contracts/testdata/api/`;
+  unit tests in `for18_reports_test.go` and real PostgreSQL integration suite in `for18_reports_integration_test.go`
+  verifying all 10 gates (duplicate report race and convergence, report does not hide, target missing 404, self-report forbidden 400,
+  bounded quota 10/day, operator invalidate hides target and audit, audit failure rollback, admin denial,
+  hide vs remove and stale restore, safe reporter and author receipts) with `-race` and `-tags=integration`.
+  Tested revision: source in this commit. Next microtask: FOR-19 (Android discussion and social checkpoint).
+
+- FOR-17 Forum discussion HTTP endpoints, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `732fadfa`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  advances Phase 3 (Safe discussion on published posts):
+  public comment/reply pages (`GET /v1/forum/posts/{post_id}/comments`,
+  `GET /v1/forum/comments/{comment_id}/replies`) and signed owner endpoints
+  (`POST /v1/forum/posts/{post_id}/comments`, `POST /v1/forum/comments/{comment_id}/edit`,
+  `POST /v1/forum/comments/{comment_id}/remove`, `POST /v1/forum/owner/read`)
+  wired in `DiscussionHandler` and mounted in `cmd/api/main.go`;
+  deterministic keyset pagination using `limit + 1` and `CountPublishedRepliesForParents` index query;
+  runtime feature gates supporting rollback mode (`ReadsEnabled: true, WritesEnabled: false`);
+  mandatory `Cache-Control: no-store` on all command, public read, and error responses;
+  16 KiB request payload size ceiling preventing unbounded memory allocation;
+  429 rate/budget limits with standard `Retry-After`;
+  unit test suite in `for17_endpoints_test.go` and real PostgreSQL integration test suite
+  in `for17_discussion_integration_test.go` verifying all 8 gates (signed create and public pending isolation,
+  idempotent replay and session refresh replay, conflicting payload on same operation ID,
+  keyset pagination under concurrent insert and hide, reply pagination and parent suppression,
+  owner CAS edit and remove terminal state, IDOR defense 404, database outage 503 resilience)
+  with `-race` and `-tags=integration`. Tested revision: source in this commit.
+  Next microtask: FOR-18 (Reports, review queue and action integration).
+
+- FOR-16 Forum privacy, notices and moderation readiness, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `001b4cc4`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  advances Phase 3 (Safe discussion on published posts):
+  Forum export and batched account erasure integrated with existing recovery;
+  `application.ExportAccount` and `ExportAccountBytes` in `export.go` providing owner
+  data portability (`forum-export-v1`) with deterministic sorting and defense-in-depth isolation;
+  `ListCommentsByAccount` and `EraseAccountBatch` in `comments_store.go` scrubbing body text,
+  resetting SHA-256, tombstoning to `REMOVED` + `HIDDEN`, and logging `forum_changes`;
+  `cmd/worker/main.go` wired to `accountapp.ErasureRecovery` enforcing that erasure never
+  completes until all modules succeed (`ErrErasurePending` on remaining rows);
+  `docs/backend/FORUM_POLICIES.md` defines reviewed terms, character/rate bounds,
+  legal-notice contact (`juridico@abastevo.com.br`, `privacidade@abastevo.com.br`),
+  premoderation disclosure, author/reporter appeal workflow, and Marco Civil (art. 19) / LGPD operator coverage;
+  unit test suite in `for16_export_test.go` and PostgreSQL integration test suite in `for16_erasure_integration_test.go`
+  verifying all 6 gates with `-race` and `-tags=integration`. Tested revision: source in this commit.
+  Next microtask: FOR-17 (Discussion HTTP endpoints).
+
+- FOR-15 Forum signed owner and command admission, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `8a27d3a0`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  advances Phase 3 (Safe discussion on published posts):
+  wired session family credentials, signed owner contributor/key binding, and
+  transaction-time guard (`Guard`) to comment create, edit, remove, and private
+  owner read operations;
+  stable logical intent hashing (`CanonicalCreateIntent`, `CanonicalEditIntent`,
+  `CanonicalRemoveIntent`, `CanonicalOwnerReadIntent`, `HashLogicalIntent`)
+  strictly excluding rotating session credentials (`family_id`, `access_token`)
+  and request nonces;
+  private owner projection (`CommentReceiptDTO`, `OwnerCommentResponseDTO`)
+  returned only to authentic authors;
+  foreign-owner attempts return indistinguishable 404 (IDOR prevention per B-BR-FOR-04);
+  mandatory `Cache-Control: no-store` on all command responses and owner reads;
+  OpenAPI specification extended with 5 discussion paths and 9 schemas (`vacuum lint` 0 errors);
+  9 golden contract vectors added in `contracts/testdata/api/`;
+  contract tests in `forum_discussion_test.go` and admission unit test suite in `for15_admission_test.go`;
+  real PostgreSQL integration test suite in `for15_admission_integration_test.go`
+  verifying all 11 gates (create success, session refresh replay, changed body 409 conflict,
+  cross-key replay, commit-time suspension fail-closed, commit-time revoked session fail-closed,
+  edit/remove/read IDOR 404, private receipt vs public feed isolation, 7-day attempt expiry)
+  with `-race` and `-tags=integration`. Tested revision: source in this commit.
+  Next microtask: FOR-16 (Privacy, notices and moderation readiness).
+
+- FOR-14 Forum comment/reply domain and persistence, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `2d469779`. [Phase 3 evidence](../backend/evidence/forum/FOR_PHASE_3.md)
+  opens Phase 3 (Safe discussion on published posts):
+  append-only migration 000159 (`forum_comments`, scoped `next_comment_sequence` on
+  `forum_posts`, expanded `forum_changes` target_type to include `COMMENT`);
+  pure domain models and validation in `models.go` (1..280 Unicode scalar values,
+  trimmed, UTF-8, no NUL);
+  application `CommentService` and `CommentStore` interfaces;
+  transactional store in `comments_store.go` with strict lock ordering
+  (quota check -> post lock -> parent lock -> live budget -> insert -> change audit);
+  CAS edit with revision validation and state return to `PENDING_REVIEW`;
+  tombstone removal wiping body text and setting `REMOVED` + `HIDDEN`;
+  idempotency replay via `(author_account_id, create_operation_id)` with body hash comparison;
+  parent suppression in replies (hidden/removed parent suppresses reply sub-tree);
+  rate quota (20/hour, 100/day) and live budget (100 live comments per account);
+  privacy invariant verified: pending comments never leak to public queries before approval;
+  unit and real PostgreSQL integration test suites (`comments_test.go`,
+  `comment_service_test.go`, `comments_integration_test.go`) passed with `-race` and
+  `-tags=integration`. Tested revision: source in this commit. Next microtask:
+  FOR-15 (Signed owner and command admission).
+
+- FOR-13 Forum editorial review and news checkpoint, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `cc394a82`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)
+  completes Phase 2 (Authorized news candidates):
+  admin candidate review queue, rights view with checkpoint metrics, and
+  candidate rejection workflow;
+  `AdminService.ListSources` returning sources with checkpoint metrics and
+  `AdminService.RejectPost` with audit event `admin.forum.post.reject` and change tracking;
+  HTTP endpoints `GET /v1/admin/forum/sources` and `POST /v1/admin/forum/posts/{id}/reject`;
+  strict rights enforcement in `PublishPost` (requiring `RightsApproved`,
+  `PublicationEnabled`, and unexpired review window);
+  rejection deduplication invariant confirmed (rejected candidates remain stored
+  in `forum_posts` preventing reappearance on future ingestion cycles);
+  `admin-web` extended with rejection form/action, rejected status filter,
+  and source metrics table;
+  acceptance test suite in `for13_news_checkpoint_test.go` and `admin_test.go`
+  passed with `-race` and `-tags=integration`. Tested revision: source in this
+  commit. Next phase: Phase 3 — Safe discussion on published posts (FOR-14 Comment/reply domain and persistence).
+
+- FOR-12 Forum scheduled collection and deduplication, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `253b15ec`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)
+  implements scheduled worker collection, conditional GET checkpoints, and
+  transactional deduplication:
+  append-only migration 000158 (`forum_source_runs`, `forum_source_checkpoints`);
+  `ForumSourceFetchHandler` and `SourceFetchRunner` implementing `forum-source-fetch`
+  worker and hourly schedule; deterministic category classifier `ClassifyCategory`
+  mapping Portuguese automotive news stems to 7 domain categories;
+  conditional GET (304 Not Modified) updating checkpoints without re-ingestion;
+  transactional GUID and canonical URL hash deduplication in `forum_posts`;
+  strict DRAFT publication state invariant (`first_publication_seq = 0`,
+  `first_published_at = nil`, never direct publication); rights revocation and
+  `NEWS_SOURCE_BLOCKED` enforcement preventing network egress and recording BLOCKED run;
+  verified non-interference and coexistence with platform queue privacy safety jobs.
+  Unit and PostgreSQL integration tests (`fetch_test.go`, `fetch_integration_test.go`,
+  `classifier_test.go`, `store_integration_test.go`) passed with `-race` and
+  `-tags=integration`. Tested revision: source in this commit. Next microtask:
+  FOR-13 (Editorial review and news checkpoint).
+
+- FOR-11 Forum safe feed parser and fetch adapter, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `80b0fd71`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)
+  implements bounded XML parsing and safe egress adapters:
+  `DefaultFeedParser` supporting RSS 2.0 and Atom 1.0, strict DOCTYPE/ENTITY
+  rejection (XXE prevention), recursion depth limit (32), payload bound (2 MiB),
+  max 100 entries, HTML stripping, RFC-822/RFC-3339 timezone parsing, 5-minute future
+  clock skew protection; `SafeFeedFetcher` implementing `SourceFetcher` with
+  origin allowlist (`AllowedTarget`), HTTPS-only, port validation, user credentials refusal,
+  `PublicUnicastOnly` IP policy rejecting loopback, private, link-local, and cloud metadata
+  addresses (`169.254.169.254`), pinned IP dialer preventing DNS rebinding TOCTOU,
+  redirect limit (2 max), bounded 2 MiB body reader, conditional GET (If-None-Match/If-Modified-Since
+  handling 304 Not Modified). Test suite in `fetcher_test.go` and `parser_test.go`
+  passed with `-race`. Tested revision: source in this commit. Next microtask:
+  FOR-12 (Scheduled collection and deduplication).
+
+- FOR-10 Forum source access and publication decisions, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `b0a46c6c`. [Phase 2 evidence](../backend/evidence/forum/FOR_PHASE_2.md)
+  opens Phase 2 (Authorized news candidates): revalidated 8 candidate sources
+  against Brazilian Copyright Law (Lei 9.610/98) and commercial syndication terms;
+  recorded normative operational status `NEWS_SOURCE_BLOCKED` for automated
+  third-party ingestion, preserving `EDITORIAL_ONLY` manual linking fallback;
+  froze source register in `backend/testdata/forum-sources/source_register.json`;
+  froze parse contract vectors (`rss2_sample_valid.xml`, `atom_sample_valid.xml`,
+  `malformed_entity_expansion.xml`, `rss2_missing_dates.xml`); added validation
+  suite in `source_register_test.go` verifying bounds, HTTPS-only origins,
+  rights invariants (`publication_enabled` strictly false unless `APPROVED`),
+  and XXE refusal. Tested revision: source in this commit. Next microtask:
+  FOR-11 (Safe feed parser and fetch adapter).
+
+- FOR-09 Forum editorial MVP acceptance and rollback checkpoint, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `29e60e14`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  proves end-to-end editorial foundation and safe degraded operation:
+  `TestFOR09_EditorialChainAndSafeRollback` in Go verifies the complete admin
+  draft creation, publication, privacy hiding/retraction, and unhide cycle;
+  verifies public feed and detail 404 privacy invariants; verifies safe source
+  link preservation; verifies default-off switches returning 404 `forum.disabled`
+  without data loss or corruption. `ForumEditorialMvpAcceptanceTest` in Android
+  verifies admin-to-Android wire mapping, offline degradation serving cached feed
+  with `isOffline = true`, strict source link refusal (rejecting non-HTTPS, user-info
+  credentials, custom ports, and oversized URLs), live 404 cache purge, and
+  clean fallback when forum reads are disabled without affecting core station/pricing
+  features. Phase 1 (FOR-00 through FOR-09) is complete and validated across all
+  modules (`:domain`, `:application`, `:data`, `:app`, backend, admin-web).
+  Tested revision: source in this commit. Next action: Phase 1 complete; Phase 2
+  (FOR-10) pending explicit user directive.
+
+- FOR-08 Forum Community card, feed/detail routes, screens, and viewmodels, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `9e5ee899`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements Compose UI and navigation: `Routes.FORUM_FEED` (`"forum/feed"`),
+  `Routes.FORUM_POST` (`"forum/posts/{postId}"`), `forumPost(postId: String)`
+  helper with UUID validation, `AbastevoBottomBar` route mapping preserving
+  `COMMUNITY` tab, `AnpNavGraph` composable routes, `ForumCommunityCard`
+  in `CommunityScreen` (`B-BR-FOR-01`, placed directly after city header and before
+  contributions), `ForumScreen` (top bar, category chips, offline banner, skeleton
+  loading, error retry, empty feed, cards with pagination), `ForumDetailScreen`
+  (typography, metadata, author/source attribution, "Ler na fonte" CTA with safe link
+  confirmation dialog), `ForumFeedViewModel` and `ForumDetailViewModel` with safe link
+  validation via `ValidateForumSafeLinkUseCase`, and 26 forum string resources across
+  all 8 locales (`values`, `values-pt-rBR`, `values-es`, `values-de`, `values-fr`,
+  `values-ja`, `values-ru`, `values-zh-rCN`). Full JVM test suites passed:
+  `ForumNavigationTest`, `ForumStringsTest`, `ForumFeedViewModelTest` (7 tests),
+  `ForumDetailViewModelTest` (7 tests), and updated `CommunityFeedScreenTest`.
+  Tested revision: source in this commit. Next microtask: FOR-09 (MVP checkpoint
+  and safe degraded operation).
+
+- FOR-07 Forum HTTP, Room cache and Hilt, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `bc29184d`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements bounded Android transport and offline caching: `ForumHttpClient`
+  (OkHttp, suspendCancellableCoroutine, 15s timeout, 512 KiB byte limit, single
+  configured origin, typed error mapping), Room v37 schema migration 36→37
+  (`forum_cache` table with composite primary key `(origin, key)` for cross-origin
+  isolation, TTL 24h, 2 MiB byte budget, 5 feed scopes max, live 404 cache
+  invalidation), `ForumCacheCodec` (deterministic JSON encode/decode),
+  `ForumRepository` implementing `ForumGateway` (cache-first / offline fallback
+  stripping cursor, automatic quota pruning), and Hilt DI wiring (`ForumModule`,
+  `DatabaseModule`). Tested revision: source in this commit. JVM test suite
+  passed with zero failures (migration test, mapper test, transport test with
+  mock engine, repository test with Room DAO/in-memory cache). Next microtask:
+  FOR-08 (Community card, Forum feed/detail routes).
+
+- FOR-06 Forum Android domain and application contracts, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `3fa1342f`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements pure Kotlin Android domain models (`ForumCategory`, `ForumPostKind`,
+  `ForumSourceAttribution`, `ForumRegion`, `ForumPostSummary`, `ForumPostDetail`,
+  `ForumFeedPage`), typed exception hierarchy (`ForumException.Invalid`, `NotFound`,
+  `Disabled`, `SecurityViolation`, `Unavailable`, `Offline`), `ForumSafeLinks`
+  security rules (HTTPS-only, user-info/port/length guards), `ForumGateway`
+  repository port, and application use cases (`GetForumCategoriesUseCase`,
+  `GetForumFeedUseCase`, `GetForumPostDetailUseCase`, `ValidateForumSafeLinkUseCase`).
+  Full A1 JVM test suite passed with zero failures: 12 tests in `:domain` +
+  7 tests in `:application` covering wire mapping, null provenance, limit/cursor
+  bounds, UUID validation, auth-free public reading, and HTTPS link refusal.
+  Occupied primary checkout and existing worktrees preserved. Tested revision: source
+  in this commit. Next microtask: FOR-07 (HTTP, Room cache and Hilt).
+
+- FOR-05 Forum public read API and composition, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `c430d0ba`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements public read endpoints: `GET /v1/forum/categories`,
+  `GET /v1/forum/posts` (limit 1..50 default 20, sealed HMAC cursor with 15m
+  TTL & filter hash binding, category/kind filters), `GET /v1/forum/posts/{post_id}`
+  (UUID validation, 404 for draft/hidden/missing). Handlers wired into API router
+  in `cmd/api/main.go` with `SystemClock` and runtime feature gating (`cfg.ForumEnabled`).
+  `Cache-Control: no-store` header applied. Comprehensive unit test suite
+  with HMAC tamper/expiry/scope/limit/UUID test vectors and real PostgreSQL
+  lifecycle integration test passed under `-race`. Tests passed with zero
+  failures under `-race`: Go unit & integration tests (100%), Node test runner
+  (53 passed, 100%), vacuum lint (0 errors). Occupied primary checkout and
+  existing worktrees preserved. Tested revision: source in this commit.
+  Next microtask: FOR-06 (Android domain/application contracts).
+
+- FOR-04 Forum admin editorial publication and controls, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `e0f9e8e5`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements audited editorial controls in backend and web panel:
+  admin handlers (`GET /v1/admin/forum/posts`, `GET /v1/admin/forum/posts/{id}`,
+  `POST /v1/admin/forum/posts`, `POST /v1/admin/forum/posts/{id}/edit`,
+  `POST /v1/admin/forum/posts/{id}/publish`, `POST /v1/admin/forum/posts/{id}/hide`,
+  `POST /v1/admin/forum/posts/{id}/unhide`), `AdminService`, pgx Store mutations
+  with optimistic revision conflict rollback, monotonic feed snapshot sequence,
+  and strict privacy invariant (body text and excerpts omitted from audit records
+  and transaction log payloads). Web panel (`admin-web`) integrates forum
+  editorial management: post list with status/category filter and keyset paging,
+  create draft form, edit form, publication and visibility moderation with mandatory
+  reason, DOM-safe rendering (zero innerHTML/eval/storage), routing `/admin/forum/`,
+  and dist validation. Tests passed with zero failures under `-race`:
+  Go unit tests (100%), PostgreSQL integration test with real PostGIS (`StoreAdmin`),
+  Node test runner (53 passed, 100%), vacuum lint (0 errors), build and dist check clean.
+  Occupied primary checkout and existing worktrees preserved. Tested revision: source
+  in this commit. Next microtask: FOR-05 (public read API and composition).
+
+- FOR-03 Forum foundation SQL and migration recovery, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `3a91262d`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements foundation migration 000157 (`forum_sources`, `forum_feed_state`,
+  `forum_posts`, `forum_changes`), sqlc queries and pgx `Store` adapter implementing
+  `PostReader` and `CategoryReader`. Tested under `-race` with real PostgreSQL / PostGIS:
+  empty/upgrade/idempotent migration apply, 11 schema negative checks (scalar bounds,
+  kind/source/author/date constraints, unique external/hash constraints), concurrent
+  publication serialization on monotonic sequence, keyset pagination with opaque base64
+  cursor (`seq:uuid`), category/kind filters, optimistic revision check rollback,
+  visibility hide invalidation and EXPLAIN partial index plan. Occupied primary
+  checkout and existing worktrees preserved. Tested revision: source in this commit.
+  Next microtask: FOR-04 (existing admin editorial publication).
+
+- FOR-02 Forum pure domain and application ports, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `c196b742`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  implements pure stdlib domain aggregate (`Post`, `Source`, `Category`,
+  `PublicationState`, `Visibility`, state machine transitions, UTF-8 rune bounds
+  and public projections `ToSummary`/`ToDetail`) and application read ports/service
+  with default-off feature gates. Tests passed with zero failures under `-race`
+  (`domain`: 26 assertions; `application`: 7 scenarios; `stdlib-only` guard verified).
+  Occupied primary checkout and existing worktrees preserved. Tested revision:
+  source in this commit. Next microtask: FOR-03 (foundation SQL and migration recovery).
+
+- FOR-01 Forum wire contract and boundary vectors, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
+  `1156340f`. [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md)
+  freezes normative OpenAPI v1 wire contract for editorial reading:
+  `GET /v1/forum/categories`, `GET /v1/forum/posts` (limit 1–50, default 20,
+  HMAC cursor, category/kind filters) and `GET /v1/forum/posts/{post_id}` (404
+  for unpublished/hidden). Nine contract vectors in `contracts/testdata/api/`,
+  `kin-openapi` structural tests, and negative/boundary validation in
+  `backend/internal/platform/apicontract/forum_editorial_test.go` (title 1–120,
+  excerpt max 400, body max 4000, forbidden author leaks). Vacuum lint clean
+  (0 errors). Occupied primary checkout and existing worktrees preserved.
+  Tested revision: source in this commit. Next microtask: FOR-02 (pure editorial
+  domain and read ports).
+
+- FOR-00 Forum Phase 1 opening and baseline reconciliation, 2026-11-05:
+  LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from verified
+  GitHub main `3fc77acc` (PR #191) and PR #192 planning baseline `6857ec63`.
+  [Phase 1 evidence](../backend/evidence/forum/FOR_PHASE_1.md) opens the
+  editorial foundation (FOR-00–FOR-09) covering B-BR-FOR-01–07/12/14/16 and
+  BUC-FOR-01/02. Reconciled database migrations (next: 000157), Room database
+  version (v36, next: 37), OpenAPI v1 baseline, and four-tab Android integration
+  point on CommunityScreen. Occupied primary checkout and existing worktrees
+  preserved. D-group verification: diff clean, no secrets/PII, docs/contract
+  consistency verified. Tested revision: source in this commit. Next microtask:
+  FOR-01 (freeze v1 behavior, editorial wire contract and test vectors).
+
+- FORUM-PLAN, 2026-11-05: planning LOCAL_DONE / INTEGRATION_PENDING
+  in an isolated delivery worktree
+  from verified GitHub main `3fc77acc` (PR #191), advanced normally from initial
+  `b8e93a41`. [Plan](FORUM_ABASTEVO_PLAN.md),
+  [validation/evidence](FORUM_ABASTEVO_PLANNING_EVIDENCE.md) and
+  [implementation prompt](FORUM_ABASTEVO_IMPLEMENTATION_PROMPT.md) define
+  FOR-00–FOR-29; every feature task remains PLANNED / NOT IMPLEMENTED.
+  Documentation-only PR authorized; original dirty checkout and occupied local
+  dev preserved. Local docs/reference/secret and current-base contract checks
+  passed; aggregate interruption and existing lint warnings are recorded.
+  PR_PENDING / CI_PENDING, no new issue. Required check: Quick verification.
+  Next: publish the isolated documentation delta through dev → main;
+  no implementation, merge, deploy, source activation or wiki publication.
 
 - STOREPRIV, 2026-11-05, LOCAL_DONE / INTEGRATION_PENDING on isolated
   `codex/store-privacy-policy`, source commit `52fd6fd4` reconciled with main
