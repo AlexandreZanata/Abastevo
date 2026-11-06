@@ -9,6 +9,7 @@ import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumCommentReceipt
 import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
@@ -99,6 +100,7 @@ class ForumHttpClient(
         kind: ForumPostKind?,
         limit: Int,
         cursor: String?,
+        filters: ForumFeedFilters,
     ): ForumFeedPage {
         val url = origin.newBuilder()
             .addPathSegments("v1/forum/posts")
@@ -113,6 +115,10 @@ class ForumHttpClient(
                 if (!cursor.isNullOrBlank()) {
                     addQueryParameter("cursor", cursor)
                 }
+                filters.uf?.takeIf { it.isNotBlank() }?.let { addQueryParameter("uf", it) }
+                filters.municipalityIbge?.let { addQueryParameter("municipality_ibge", it.toString()) }
+                filters.fuelProduct?.takeIf { it.isNotBlank() }?.let { addQueryParameter("fuel_product", it) }
+                filters.stationId?.takeIf { it.isNotBlank() }?.let { addQueryParameter("station_id", it) }
             }
             .build()
         val raw = execute(Request.Builder().url(url).header("Accept", "application/json").build())

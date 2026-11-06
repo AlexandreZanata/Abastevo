@@ -1,7 +1,7 @@
 # Forum Phase 4 — User topics and bounded discovery
 
-Status: LOCAL_DONE
-Validation: PASS (pure domain, ownership SQL, scoped CAS edit and tombstone remove, rate limiting, live topic budget, author operation uniqueness, B-BR-FOR-05–11 invariants)
+Status: LOCAL_DONE (FOR-24 search UI SEARCH_DEFERRED)
+Validation: PASS (pure domain, ownership SQL, scoped CAS edit and tombstone remove, rate limiting, live topic budget, author operation uniqueness, bounded subject filters and 10k/100k plans, B-BR-FOR-05–11 invariants)
 Delivery: LOCAL_DONE / INTEGRATION_PENDING
 
 ## Authorized scope and baseline reconciliation
@@ -20,8 +20,8 @@ Phase 4 enables user-authored topics with review by default, owner CAS controls,
 ### Reconciled repository baseline
 
 - Current GitHub `main`: `99f21830` (PR #196 merged).
-- Current GitHub `dev`: `b753a077` (PR #192, Phase 1, Phase 2, Phase 3 completed).
-- Isolated delivery worktree: `.worktrees/abastevo-forum-plan` on HEAD `b753a077`.
+- Current GitHub `dev` at FOR-24 opening: `7430dec1` (FOR-23 / PR #192 lineage; Phase 1–4 source).
+- Isolated delivery worktree: `/tmp/abastevo-forum-for24` on detached HEAD `7430dec1`.
 - Preserved checkouts: primary checkout (`/home/iiii/PESSOAL-PROJETOS-ALEXANDRE/brazil-fuel-prices`) with detached HEAD `e22824db` and uncommitted edits; other existing worktrees remain untouched per ADR-020.
 
 ## Microtask execution record
@@ -32,11 +32,19 @@ Phase 4 enables user-authored topics with review by default, owner CAS controls,
 | **FOR-21** | Topic API and OpenAPI fixtures | LOCAL_DONE | e4f4cda7 | Signed topic HTTP commands exposed: `POST /v1/forum/topics`, `POST /v1/forum/topics/{topic_id}/edit`, `POST /v1/forum/topics/{topic_id}/remove`; extended `POST /v1/forum/owner/read` supporting `topic_id`; OpenAPI specification v1.yaml updated with schemas `ForumCreateTopicRequest`, `ForumEditTopicRequest`, `ForumRemoveTopicRequest`, `ForumTopicReceipt`, `ForumOwnerTopicResponse`, and `ForumOwnerReadRequest` topic_id; 7 golden vectors in `contracts/testdata/api/`; wire handler and DTOs in `DiscussionHandler` and `cmd/api/main.go`; premoderation isolation verified (unapproved topic 404 in public feed and detail); IDOR defense verified (foreign owner read/edit/remove returns 404); unit test suite in `for21_topics_test.go` and real PostgreSQL integration suite in `for21_topics_integration_test.go` (6 gates: signed create with premoderation default, replay vs conflict defense, owner read and IDOR defense, CAS edit and foreign defense, tombstone removal terminal state, quota enforcement 429) PASSED with `-race` and `-tags=integration`. |
 | **FOR-22** | Topic privacy and report integration | LOCAL_DONE | fb26983a | Extended FOR-16 account export (`ExportAccount`/`ExportAccountBytes`), LGPD erasure (`EraseAccountBatch`), and FOR-18 moderation actions to authored topics: `ForumAccountFootprint` extended with deterministic `Topics []ForumTopicExport` and `TotalTopics`; `EraseAccountBatch` scrubs authored topics (`ScrubTopicForErasure` clearing title to '[Tópico removido]', body/excerpt to empty, public alias to NULL, setting `publication_state = 'REMOVED'` and `visibility = 'HIDDEN'`) recording `SYSTEM` `erasure-scrub` in `forum_changes`; child comment visibility suppression verified (`ListCommentsByPost` returns 0 comments for removed/erased topics); no inherited permissions verified (child comments retain their distinct authors, author B's comment is not wiped when topic author A is erased, author B can still export and owner-read their comment, permission boundaries prevent foreign edits/removals); operator restore refusal after removal verified (`SetPostVisibility` with `visibility = 'VISIBLE'` on removed topics updates 0 rows, returning `ErrPostNotFound`); metadata-only audit verified (no post title, excerpt, body, alias, or PII in `forum_changes`); worker restart and batched continuation verified across multiple iterations; idempotent deletion replay verified; unit tests in `for22_export_test.go` and real PostgreSQL integration suite in `for22_privacy_integration_test.go` (6 gates) PASSED with `-race` and `-tags=integration`. |
 | **FOR-23** | Android topic forms | LOCAL_DONE | Current commit | Complete Android authoring pipeline: `ForumTopicReceipt` and repository gateway contracts in `:domain`; use cases `SubmitForumTopicUseCase`, `EditForumTopicUseCase`, `RemoveForumTopicUseCase`, `GetOwnerTopicUseCase` in `:application` with bounds validation (1..120 runes title, 1..4000 runes body, 7 categories, 27 UFs, 7-digit IBGE code, 7 fuel products, station UUID, operation UUID); HTTP client, mapper, and DI bindings in `:data`; accessible Compose screens `ForumTopicFormScreen`, `ForumTopicFormViewModel` with in-memory draft preservation, discard dialog confirmation on dirty back, auth gating on unauthenticated submission, account change intent safety wiping draft on identity switch, CAS edit with `expectedRevision`, owner tombstone removal confirmation; wired navigation routes `forum/topics/new` and `forum/topics/{topicId}/edit` in `Routes.kt` and `AnpNavGraph.kt`; FAB navigation in `ForumScreen.kt` and owner edit action in `ForumDetailScreen.kt`; full string resources in 8 locales; unit test suites in `ForumTopicUseCasesTest.kt`, `ForumHttpClientTest.kt`, `ForumMapperTest.kt`, `ForumNavigationTest.kt`, `ForumStringsTest.kt`, and `ForumTopicFormViewModelTest.kt` (13 tests) all PASSED. |
+| **FOR-24** | Regional filters, simple FTS and open-forum checkpoint | LOCAL_DONE / SEARCH_DEFERRED | Current commit | Implemented bounded subject filters across layers: backend domain parsers for UF (27 states), seven-digit IBGE with UF-prefix consistency, forum fuel vocabulary and station UUID; append-only migration `000161_forum_discovery.sql` with partial feed indices for UF, municipality, fuel and station; SQL/sqlc `ListPublicPosts` filters; strict HTTP validation of unknown/duplicate/invalid filters and cursor HMAC bound to every normalized filter; OpenAPI query params and `ForumFuelProduct` schema with golden valid/invalid vectors. Android adds `ForumFeedFilters`, use-case normalization/validation, HTTP query parameters, filter-scoped offline cache keys, ViewModel update/clear and an accessible filter dialog (UF, IBGE, fuel, optional station UUID) localized in 8 locales; 120 Forum Kotlin tests pass. Portuguese FTS deferred: measured 10k/100k ordered plans prefer `forum_posts_feed_idx` + filter over GIN bitmap + sort, so no search column, index or fake search box was committed. |
+
+## FOR-24 FTS decision — SEARCH_DEFERRED
+
+Measured on a disposable PostGIS database before committing schema. At 100,000 synthetic published posts, the actual ordered query shape (`search_vector @@ plainto_tsquery('portuguese', ...)` then `ORDER BY first_publication_seq DESC, id DESC LIMIT 20`) selected `forum_posts_feed_idx` with a filter at cost 1194.22. Disabling index scans exposed the GIN alternative (`forum_posts_search_idx` bitmap + sort) at cost 1919.38. The 10,000-post shape also selected the ordered feed index. The bounded subject filters keep their own partial indices and are exercised at both volumes. Because the indexed FTS path is not justified yet, no search vector/index or search box was added; FOR-24 records `SEARCH_DEFERRED` instead of claiming a search UI.
 
 ## Verification and quality gates
 
-- `git diff --check`: PASSED (0 errors).
-- Secret surface review: PASSED (`scripts/scan-secrets.sh` clean).
-- Android test suites: `:domain:test`, `:application:test` (528 tests), `:data:testDebugUnitTest`, `:app:testDebugUnitTest` (all green).
-- Repository worktree isolation: PASSED (persistent worktree on maintained dev; occupied checkouts untouched).
-- Next action: FOR-24 (Topic search and filtering).
+- Backend unit: `go test -race -count=1 ./internal/modules/forum/...` PASSED (6 packages).
+- Backend real PostGIS: `go test -race -count=1 -tags=integration ./internal/modules/forum/...` PASSED (adapters 74.5s, HTTP 17.2s, jobs 8.6s, others green); discovery filters, pagination, 10k/100k EXPLAIN and migration idempotency included.
+- Migration: `go test -race -count=1 -tags=integration ./internal/platform/migrate/...` PASSED (8.9s).
+- Contract/static: `go test -race -count=1 ./internal/platform/apicontract/...` PASSED (21.0s); `go vet` and `sqlc vet` passed; changed Go files are gofmt-clean (pre-existing unformatted Forum files were not touched); `vacuum lint` passed with pre-existing warnings.
+- Android: `./gradlew :domain:test :application:test :data:testDebugUnitTest :app:testDebugUnitTest` BUILD SUCCESSFUL, 2,850 tests, 0 failures, 4 pre-existing skips; 120 Forum tests. `:app:assembleDebug`, `:app:assembleDebugAndroidTest`, `:app:lintDebug` and `bash scripts/check-mobile.sh --static-only` PASSED; lint 0 errors (363 warnings, 2 information).
+- Repository worktree isolation: PASSED (isolated worktree; occupied checkout and untracked foreign work untouched).
+- Device/native A3 remains OWED; no staging/VPS/operator/source/legal acceptance or merge is claimed.
+- Next action: FOR-25 (Phase 5 deterministic bulletin methodology), with FOR-24 search UI explicitly deferred.

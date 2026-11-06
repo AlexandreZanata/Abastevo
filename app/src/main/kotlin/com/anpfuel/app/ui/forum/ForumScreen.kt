@@ -1,6 +1,7 @@
 package com.anpfuel.app.ui.forum
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,17 +25,25 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -44,7 +54,9 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
+import com.anpfuel.application.usecase.forum.SubmitForumTopicUseCase
 import com.anpfuel.domain.forum.ForumCategory
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumPostKind
 import com.anpfuel.domain.forum.ForumPostSummary
 import java.time.Instant
@@ -66,6 +78,8 @@ fun ForumScreen(
         onBack = onBack,
         onOpenPost = onOpenPost,
         onSelectCategory = viewModel::selectCategory,
+        onApplyFilters = viewModel::updateFilters,
+        onClearFilters = viewModel::clearFilters,
         onRefresh = viewModel::refresh,
         onLoadMore = viewModel::loadMore,
         onNewTopic = onNewTopic,
@@ -80,11 +94,26 @@ internal fun ForumFeedContent(
     onBack: () -> Unit,
     onOpenPost: (String) -> Unit,
     onSelectCategory: (ForumCategory?) -> Unit,
+    onApplyFilters: (ForumFeedFilters) -> Unit,
+    onClearFilters: () -> Unit,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
     onNewTopic: () -> Unit = {},
 ) {
+    var showFilterDialog by remember { mutableStateOf(false) }
+    if (showFilterDialog) {
+        ForumFilterDialog(
+            current = state.filters,
+            availableUfs = state.availableUfs,
+            availableFuels = state.availableFuels,
+            onDismiss = { showFilterDialog = false },
+            onApply = {
+                showFilterDialog = false
+                onApplyFilters(it)
+            },
+        )
+    }
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -146,6 +175,25 @@ internal fun ForumFeedContent(
                 }
             }
 
+            item {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    FilterChip(
+                        selected = state.hasActiveFilters,
+                        onClick = { showFilterDialog = true },
+                        label = { Text(stringResource(R.string.forum_filters)) },
+                    )
+                    if (state.hasActiveFilters) {
+                        TextButton(onClick = onClearFilters) {
+                            Text(stringResource(R.string.forum_filter_clear))
+                        }
+                    }
+                }
+            }
+
             if (state.isOffline) {
                 item {
                     val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -197,7 +245,13 @@ internal fun ForumFeedContent(
                     item {
                         ForumMessageCard(
                             title = stringResource(R.string.forum_feed_empty_title),
-                            description = stringResource(R.string.forum_feed_empty_hint),
+                            description = stringResource(
+                                if (state.hasActiveFilters) {
+                                    R.string.forum_feed_empty_filtered_hint
+                                } else {
+                                    R.string.forum_feed_empty_hint
+                                },
+                            ),
                         )
                     }
                 }
@@ -341,4 +395,163 @@ internal fun formatForumDate(isoString: String): String {
     } catch (_: Exception) {
         isoString
     }
+}
+
+@Composable
+private fun ForumFilterDialog(
+    current: ForumFeedFilters,
+    availableUfs: List<String>,
+    availableFuels: List<String>,
+    onDismiss: () -> Unit,
+    onApply: (ForumFeedFilters) -> Unit,
+) {
+    var uf by remember(current) { mutableStateOf(current.uf) }
+    var ibge by remember(current) { mutableStateOf(current.municipalityIbge?.toString().orEmpty()) }
+    var fuel by remember(current) { mutableStateOf(current.fuelProduct) }
+    var station by remember(current) { mutableStateOf(current.stationId.orEmpty()) }
+    var validationError by remember(current) { mutableStateOf<Int?>(null) }
+    var ufMenuExpanded by remember { mutableStateOf(false) }
+    var fuelMenuExpanded by remember { mutableStateOf(false) }
+
+    fun applyFilters() {
+        val trimmedIbge = ibge.trim()
+        val parsedIbge = if (trimmedIbge.isEmpty()) null else trimmedIbge.toIntOrNull()
+        if (trimmedIbge.isNotEmpty() && (parsedIbge == null || trimmedIbge.length != 7 || parsedIbge !in 1000000..9999999)) {
+            validationError = R.string.forum_filter_invalid_ibge
+            return
+        }
+        val expectedPrefix = uf?.let { SubmitForumTopicUseCase.VALID_UFS[it] }
+        if (parsedIbge != null && expectedPrefix != null && parsedIbge / 100000 != expectedPrefix) {
+            validationError = R.string.forum_filter_invalid_ibge
+            return
+        }
+        val trimmedStation = station.trim().takeIf { it.isNotEmpty() }
+        if (trimmedStation != null && !SubmitForumTopicUseCase.UUID_REGEX.matches(trimmedStation)) {
+            validationError = R.string.forum_filter_invalid_station
+            return
+        }
+        validationError = null
+        onApply(
+            ForumFeedFilters(
+                uf = uf,
+                municipalityIbge = parsedIbge,
+                fuelProduct = fuel,
+                stationId = trimmedStation?.lowercase(),
+            ),
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.forum_filters_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box {
+                    OutlinedButton(
+                        onClick = { ufMenuExpanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(uf ?: stringResource(R.string.forum_filter_all_ufs))
+                    }
+                    DropdownMenu(
+                        expanded = ufMenuExpanded,
+                        onDismissRequest = { ufMenuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.forum_filter_all_ufs)) },
+                            onClick = {
+                                uf = null
+                                ufMenuExpanded = false
+                            },
+                        )
+                        availableUfs.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    uf = option
+                                    ufMenuExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = ibge,
+                    onValueChange = { value ->
+                        ibge = value.filter { it.isDigit() }.take(7)
+                        validationError = null
+                    },
+                    label = { Text(stringResource(R.string.forum_filter_ibge)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Box {
+                    OutlinedButton(
+                        onClick = { fuelMenuExpanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(fuel ?: stringResource(R.string.forum_filter_all_fuels))
+                    }
+                    DropdownMenu(
+                        expanded = fuelMenuExpanded,
+                        onDismissRequest = { fuelMenuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.forum_filter_all_fuels)) },
+                            onClick = {
+                                fuel = null
+                                fuelMenuExpanded = false
+                            },
+                        )
+                        availableFuels.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    fuel = option
+                                    fuelMenuExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = station,
+                    onValueChange = { value ->
+                        station = value.take(36)
+                        validationError = null
+                    },
+                    label = { Text(stringResource(R.string.forum_filter_station)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                validationError?.let { errorRes ->
+                    Text(
+                        text = stringResource(errorRes),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { applyFilters() }) {
+                Text(stringResource(R.string.forum_filter_apply))
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { onApply(ForumFeedFilters()) }) {
+                    Text(stringResource(R.string.forum_filter_clear))
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.forum_filter_cancel))
+                }
+            }
+        },
+    )
 }

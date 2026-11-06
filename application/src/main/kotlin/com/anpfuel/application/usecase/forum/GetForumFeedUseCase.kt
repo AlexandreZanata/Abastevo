@@ -2,6 +2,7 @@ package com.anpfuel.application.usecase.forum
 
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumException
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostKind
 import com.anpfuel.domain.repository.ForumGateway
@@ -21,6 +22,7 @@ class GetForumFeedUseCase(
         kind: ForumPostKind? = null,
         limit: Int = DEFAULT_LIMIT,
         cursor: String? = null,
+        filters: ForumFeedFilters = ForumFeedFilters(),
     ): ForumFeedPage {
         if (limit !in MIN_LIMIT..MAX_LIMIT) {
             throw ForumException.Invalid("forum.bad-limit")
@@ -35,6 +37,41 @@ class GetForumFeedUseCase(
             kind = kind,
             limit = limit,
             cursor = trimmedCursor,
+            filters = validateFilters(filters),
+        )
+    }
+
+    private fun validateFilters(filters: ForumFeedFilters): ForumFeedFilters {
+        val uf = filters.uf?.trim()?.uppercase()?.takeIf { it.isNotEmpty() }
+        if (uf != null && !SubmitForumTopicUseCase.VALID_UFS.containsKey(uf)) {
+            throw ForumException.Invalid("forum.bad-region-uf")
+        }
+
+        val ibge = filters.municipalityIbge
+        if (ibge != null) {
+            if (ibge !in 1000000..9999999) {
+                throw ForumException.Invalid("forum.bad-region-ibge")
+            }
+            if (uf != null && ibge / 100000 != SubmitForumTopicUseCase.VALID_UFS.getValue(uf)) {
+                throw ForumException.Invalid("forum.bad-region-prefix")
+            }
+        }
+
+        val fuel = filters.fuelProduct?.trim()?.takeIf { it.isNotEmpty() }
+        if (fuel != null && !SubmitForumTopicUseCase.VALID_FUELS.contains(fuel)) {
+            throw ForumException.Invalid("forum.bad-fuel-product")
+        }
+
+        val stationId = filters.stationId?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+        if (stationId != null && !SubmitForumTopicUseCase.UUID_REGEX.matches(stationId)) {
+            throw ForumException.Invalid("forum.bad-station-id")
+        }
+
+        return ForumFeedFilters(
+            uf = uf,
+            municipalityIbge = ibge,
+            fuelProduct = fuel,
+            stationId = stationId,
         )
     }
 

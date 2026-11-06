@@ -1,6 +1,7 @@
 package com.anpfuel.data.local.forum
 
 import com.anpfuel.domain.forum.ForumCategory
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumPostKind
 
 object ForumCacheRule {
@@ -16,8 +17,19 @@ object ForumCacheRule {
 
     fun categoriesKey(): String = "categories"
 
-    fun feedKey(category: ForumCategory?, kind: ForumPostKind?): String =
-        "feed:${category?.name ?: "ALL"}:${kind?.name ?: "ALL"}"
+    fun feedKey(
+        category: ForumCategory?,
+        kind: ForumPostKind?,
+        filters: ForumFeedFilters = ForumFeedFilters(),
+    ): String = listOf(
+        "feed",
+        category?.name ?: "ALL",
+        kind?.name ?: "ALL",
+        filters.uf ?: "ALL",
+        filters.municipalityIbge?.toString() ?: "ALL",
+        filters.fuelProduct ?: "ALL",
+        filters.stationId ?: "ALL",
+    ).joinToString(":")
 
     fun detailKey(postId: String): String = "post:$postId"
 

@@ -102,6 +102,10 @@ WHERE p.publication_state = 'PUBLISHED'
   )
   AND (sqlc.narg('category')::text IS NULL OR p.category = sqlc.narg('category')::text)
   AND (sqlc.narg('kind')::text IS NULL OR p.kind = sqlc.narg('kind')::text)
+  AND (sqlc.narg('uf')::text IS NULL OR p.region_uf = sqlc.narg('uf')::text)
+  AND (sqlc.narg('municipality_ibge')::int IS NULL OR p.region_municipality_ibge = sqlc.narg('municipality_ibge')::int)
+  AND (sqlc.narg('fuel_product')::text IS NULL OR p.fuel_product = sqlc.narg('fuel_product')::text)
+  AND (sqlc.narg('station_id')::uuid IS NULL OR p.station_id = sqlc.narg('station_id')::uuid)
   AND (
     sqlc.narg('cursor_seq')::bigint IS NULL OR
     (p.first_publication_seq, p.id) < (sqlc.narg('cursor_seq')::bigint, sqlc.narg('cursor_id')::uuid)

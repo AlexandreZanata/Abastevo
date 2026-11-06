@@ -966,20 +966,28 @@ WHERE p.publication_state = 'PUBLISHED'
   )
   AND ($1::text IS NULL OR p.category = $1::text)
   AND ($2::text IS NULL OR p.kind = $2::text)
+  AND ($3::text IS NULL OR p.region_uf = $3::text)
+  AND ($4::int IS NULL OR p.region_municipality_ibge = $4::int)
+  AND ($5::text IS NULL OR p.fuel_product = $5::text)
+  AND ($6::uuid IS NULL OR p.station_id = $6::uuid)
   AND (
-    $3::bigint IS NULL OR
-    (p.first_publication_seq, p.id) < ($3::bigint, $4::uuid)
+    $7::bigint IS NULL OR
+    (p.first_publication_seq, p.id) < ($7::bigint, $8::uuid)
   )
 ORDER BY p.first_publication_seq DESC, p.id DESC
-LIMIT $5
+LIMIT $9
 `
 
 type ListPublicPostsParams struct {
-	Category  pgtype.Text `json:"category"`
-	Kind      pgtype.Text `json:"kind"`
-	CursorSeq pgtype.Int8 `json:"cursor_seq"`
-	CursorID  pgtype.UUID `json:"cursor_id"`
-	PageLimit int32       `json:"page_limit"`
+	Category         pgtype.Text `json:"category"`
+	Kind             pgtype.Text `json:"kind"`
+	Uf               pgtype.Text `json:"uf"`
+	MunicipalityIbge pgtype.Int4 `json:"municipality_ibge"`
+	FuelProduct      pgtype.Text `json:"fuel_product"`
+	StationID        pgtype.UUID `json:"station_id"`
+	CursorSeq        pgtype.Int8 `json:"cursor_seq"`
+	CursorID         pgtype.UUID `json:"cursor_id"`
+	PageLimit        int32       `json:"page_limit"`
 }
 
 type ListPublicPostsRow struct {
@@ -1010,6 +1018,10 @@ func (q *Queries) ListPublicPosts(ctx context.Context, arg ListPublicPostsParams
 	rows, err := q.db.Query(ctx, listPublicPosts,
 		arg.Category,
 		arg.Kind,
+		arg.Uf,
+		arg.MunicipalityIbge,
+		arg.FuelProduct,
+		arg.StationID,
 		arg.CursorSeq,
 		arg.CursorID,
 		arg.PageLimit,

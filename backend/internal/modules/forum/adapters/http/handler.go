@@ -61,6 +61,24 @@ func (h Handler) Categories(w http.ResponseWriter, r *http.Request) {
 func (h Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
+	allowedFilters := map[string]bool{
+		"category": true, "kind": true, "limit": true, "cursor": true,
+		"uf": true, "municipality_ibge": true, "fuel_product": true,
+		"station_id": true,
+	}
+	for key, values := range q {
+		if !allowedFilters[key] {
+			httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-filter", "unknown query filter",
+				[]httpapi.Detail{{Field: key, Code: "unknown"}})
+			return
+		}
+		if len(values) > 1 {
+			httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-filter", "duplicate query filter",
+				[]httpapi.Detail{{Field: key, Code: "duplicate"}})
+			return
+		}
+	}
+
 	limit := 20
 	if rawLimit := strings.TrimSpace(q.Get("limit")); rawLimit != "" {
 		n, err := strconv.Atoi(rawLimit)
@@ -98,7 +116,65 @@ func (h Handler) Feed(w http.ResponseWriter, r *http.Request) {
 		kindStr = string(kind)
 	}
 
-	fh := httpapi.FilterHash("forum_feed", catStr, kindStr, strconv.Itoa(limit))
+	var ufFilter *string
+	var ufStr string
+	if rawUF := strings.TrimSpace(q.Get("uf")); rawUF != "" {
+		uf, err := domain.ParseFeedUF(rawUF)
+		if err != nil {
+			httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-filter", "invalid uf filter",
+				[]httpapi.Detail{{Field: "uf", Code: "invalid"}})
+			return
+		}
+		ufFilter = &uf
+		ufStr = uf
+	}
+
+	var municipalityFilter *int
+	var municipalityStr string
+	if rawIBGE := strings.TrimSpace(q.Get("municipality_ibge")); rawIBGE != "" {
+		ibge, err := domain.ParseFeedMunicipalityIBGE(rawIBGE)
+		if err != nil {
+			httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-filter", "invalid municipality_ibge filter",
+				[]httpapi.Detail{{Field: "municipality_ibge", Code: "invalid"}})
+			return
+		}
+		municipalityFilter = &ibge
+		municipalityStr = rawIBGE
+	}
+
+	if err := domain.ValidateFeedRegion(ufStr, municipalityFilter); err != nil {
+		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-filter", "municipality_ibge does not match uf",
+			[]httpapi.Detail{{Field: "municipality_ibge", Code: "invalid"}})
+		return
+	}
+
+	var fuelFilter *string
+	var fuelStr string
+	if rawFuel := strings.TrimSpace(q.Get("fuel_product")); rawFuel != "" {
+		fuel, err := domain.ParseFeedFuelProduct(rawFuel)
+		if err != nil {
+			httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-filter", "invalid fuel_product filter",
+				[]httpapi.Detail{{Field: "fuel_product", Code: "invalid"}})
+			return
+		}
+		fuelFilter = &fuel
+		fuelStr = fuel
+	}
+
+	var stationFilter *string
+	var stationStr string
+	if rawStation := strings.TrimSpace(q.Get("station_id")); rawStation != "" {
+		station, err := domain.ParseFeedStationID(rawStation)
+		if err != nil {
+			httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-filter", "invalid station_id filter",
+				[]httpapi.Detail{{Field: "station_id", Code: "invalid"}})
+			return
+		}
+		stationFilter = &station
+		stationStr = station
+	}
+
+	fh := httpapi.FilterHash("forum_feed", catStr, kindStr, ufStr, municipalityStr, fuelStr, stationStr, strconv.Itoa(limit))
 
 	var internalCursor *string
 	if rawCursor := strings.TrimSpace(q.Get("cursor")); rawCursor != "" {
@@ -117,10 +193,14 @@ func (h Handler) Feed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page, err := h.Service.GetFeed(r.Context(), application.ListPublicPostsQuery{
-		Category: catFilter,
-		Kind:     kindFilter,
-		Limit:    limit,
-		Cursor:   internalCursor,
+		Category:         catFilter,
+		Kind:             kindFilter,
+		UF:               ufFilter,
+		MunicipalityIBGE: municipalityFilter,
+		FuelProduct:      fuelFilter,
+		StationID:        stationFilter,
+		Limit:            limit,
+		Cursor:           internalCursor,
 	})
 	if err != nil {
 		h.handleError(w, r, err)
@@ -176,7 +256,9 @@ func (h Handler) handleError(w http.ResponseWriter, r *http.Request, err error) 
 		httpapi.WriteError(w, r, http.StatusNotFound, "forum.not-found", "post not found", nil)
 	case errors.Is(err, domain.ErrInvalidCursor):
 		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-cursor", "cursor invalid, expired or changed", nil)
-	case errors.Is(err, domain.ErrInvalidCategory), errors.Is(err, domain.ErrInvalidPostKind):
+	case errors.Is(err, domain.ErrInvalidCategory), errors.Is(err, domain.ErrInvalidPostKind),
+		errors.Is(err, domain.ErrInvalidRegion), errors.Is(err, domain.ErrInvalidFuelProduct),
+		errors.Is(err, domain.ErrInvalidStationID):
 		httpapi.WriteError(w, r, http.StatusBadRequest, "forum.bad-filter", "invalid filter", nil)
 	default:
 		httpapi.WriteError(w, r, http.StatusServiceUnavailable, "forum.unavailable", "service unavailable", nil)

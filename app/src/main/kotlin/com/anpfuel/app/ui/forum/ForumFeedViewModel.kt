@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.usecase.forum.GetForumCategoriesUseCase
 import com.anpfuel.application.usecase.forum.GetForumFeedUseCase
+import com.anpfuel.application.usecase.forum.SubmitForumTopicUseCase
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumCategoryItem
 import com.anpfuel.domain.forum.ForumException
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumPostSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -20,6 +22,9 @@ import kotlinx.coroutines.launch
 data class ForumFeedUiState(
     val categories: List<ForumCategoryItem> = emptyList(),
     val selectedCategory: ForumCategory? = null,
+    val filters: ForumFeedFilters = ForumFeedFilters(),
+    val availableUfs: List<String> = emptyList(),
+    val availableFuels: List<String> = emptyList(),
     val items: List<ForumPostSummary> = emptyList(),
     val loading: Boolean = true,
     val refreshing: Boolean = false,
@@ -27,7 +32,10 @@ data class ForumFeedUiState(
     val nextCursor: String? = null,
     val error: ForumUiError? = null,
     val isOffline: Boolean = false,
-)
+) {
+    val hasActiveFilters: Boolean
+        get() = filters.isActive
+}
 
 enum class ForumUiError {
     DISABLED,
@@ -41,7 +49,12 @@ class ForumFeedViewModel @Inject constructor(
     private val getForumFeed: GetForumFeedUseCase,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ForumFeedUiState())
+    private val _state = MutableStateFlow(
+        ForumFeedUiState(
+            availableUfs = SubmitForumTopicUseCase.VALID_UFS.keys.sorted(),
+            availableFuels = SubmitForumTopicUseCase.VALID_FUELS.sorted(),
+        ),
+    )
     val state: StateFlow<ForumFeedUiState> = _state.asStateFlow()
 
     private var feedJob: Job? = null
@@ -67,7 +80,7 @@ class ForumFeedViewModel @Inject constructor(
             }
 
             try {
-                val page = getForumFeed(category = _state.value.selectedCategory, kind = null, limit = 20, cursor = null)
+                val page = getForumFeed(category = _state.value.selectedCategory, kind = null, limit = 20, cursor = null, filters = _state.value.filters)
                 _state.update {
                     it.copy(
                         categories = if (categoryItems.isNotEmpty()) categoryItems else it.categories,
@@ -120,7 +133,7 @@ class ForumFeedViewModel @Inject constructor(
         }
         feedJob = viewModelScope.launch {
             try {
-                val page = getForumFeed(category = category, kind = null, limit = 20, cursor = null)
+                val page = getForumFeed(category = category, kind = null, limit = 20, cursor = null, filters = _state.value.filters)
                 _state.update {
                     it.copy(
                         items = page.items,
@@ -151,6 +164,63 @@ class ForumFeedViewModel @Inject constructor(
         }
     }
 
+    fun updateFilters(filters: ForumFeedFilters) {
+        if (_state.value.filters == filters && !_state.value.loading) return
+        feedJob?.cancel()
+        moreJob?.cancel()
+        _state.update {
+            it.copy(
+                filters = filters,
+                items = emptyList(),
+                nextCursor = null,
+                loading = true,
+                error = null,
+                isOffline = false,
+            )
+        }
+        feedJob = viewModelScope.launch {
+            try {
+                val page = getForumFeed(
+                    category = _state.value.selectedCategory,
+                    kind = null,
+                    limit = 20,
+                    cursor = null,
+                    filters = filters,
+                )
+                _state.update {
+                    it.copy(
+                        items = page.items,
+                        nextCursor = page.nextCursor,
+                        loading = false,
+                        error = null,
+                        isOffline = false,
+                    )
+                }
+            } catch (e: ForumException.Disabled) {
+                _state.update { it.copy(loading = false, error = ForumUiError.DISABLED) }
+            } catch (e: ForumException.Offline) {
+                _state.update {
+                    it.copy(
+                        loading = false,
+                        isOffline = true,
+                        error = if (it.items.isEmpty()) ForumUiError.OFFLINE else null,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        loading = false,
+                        error = if (it.items.isEmpty()) ForumUiError.GENERIC else null,
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearFilters() {
+        updateFilters(ForumFeedFilters())
+    }
+
     fun refresh() {
         feedJob?.cancel()
         moreJob?.cancel()
@@ -162,7 +232,7 @@ class ForumFeedViewModel @Inject constructor(
                 _state.value.categories
             }
             try {
-                val page = getForumFeed(category = _state.value.selectedCategory, kind = null, limit = 20, cursor = null)
+                val page = getForumFeed(category = _state.value.selectedCategory, kind = null, limit = 20, cursor = null, filters = _state.value.filters)
                 _state.update {
                     it.copy(
                         categories = if (categoryItems.isNotEmpty()) categoryItems else it.categories,
@@ -209,6 +279,7 @@ class ForumFeedViewModel @Inject constructor(
                     kind = null,
                     limit = 20,
                     cursor = cursor,
+                    filters = _state.value.filters,
                 )
                 val merged = (_state.value.items + page.items).distinctBy { it.id }
                 _state.update {

@@ -451,6 +451,7 @@ sql:
       - db/migrations/000158_forum_source_runs.sql
       - db/migrations/000159_forum_comments.sql
       - db/migrations/000160_forum_moderation_targets.sql
+      - db/migrations/000161_forum_discovery.sql
     gen:
       go:
         package: forum

@@ -182,3 +182,19 @@ data class ForumTopicReceipt(
     val publishedAt: String? = null,
     val replayed: Boolean = false,
 )
+
+/**
+ * Subject-matter filters for public forum discovery (FOR-24).
+ *
+ * These fields describe the post subject, never the reader's location, and
+ * never trigger GPS collection.
+ */
+data class ForumFeedFilters(
+    val uf: String? = null,
+    val municipalityIbge: Int? = null,
+    val fuelProduct: String? = null,
+    val stationId: String? = null,
+) {
+    val isActive: Boolean
+        get() = uf != null || municipalityIbge != null || fuelProduct != null || stationId != null
+}

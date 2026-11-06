@@ -107,6 +107,30 @@ func (s *Store) ListPublicPosts(ctx context.Context, query application.ListPubli
 		kindParam = pgtype.Text{String: string(*query.Kind), Valid: true}
 	}
 
+	var ufParam pgtype.Text
+	if query.UF != nil {
+		ufParam = pgtype.Text{String: *query.UF, Valid: true}
+	}
+
+	var municipalityParam pgtype.Int4
+	if query.MunicipalityIBGE != nil {
+		municipalityParam = pgtype.Int4{Int32: int32(*query.MunicipalityIBGE), Valid: true}
+	}
+
+	var fuelParam pgtype.Text
+	if query.FuelProduct != nil {
+		fuelParam = pgtype.Text{String: *query.FuelProduct, Valid: true}
+	}
+
+	var stationParam pgtype.UUID
+	if query.StationID != nil {
+		uid, err := mustUUID(*query.StationID)
+		if err != nil {
+			return domain.FeedPage{}, domain.ErrInvalidStationID
+		}
+		stationParam = uid
+	}
+
 	limit := query.Limit
 	if limit <= 0 {
 		limit = 20
@@ -115,11 +139,15 @@ func (s *Store) ListPublicPosts(ctx context.Context, query application.ListPubli
 	}
 
 	rows, err := s.queries.ListPublicPosts(ctx, forumsql.ListPublicPostsParams{
-		Category:  categoryParam,
-		Kind:      kindParam,
-		CursorSeq: cursorSeq,
-		CursorID:  cursorID,
-		PageLimit: int32(limit),
+		Category:         categoryParam,
+		Kind:             kindParam,
+		Uf:               ufParam,
+		MunicipalityIbge: municipalityParam,
+		FuelProduct:      fuelParam,
+		StationID:        stationParam,
+		CursorSeq:        cursorSeq,
+		CursorID:         cursorID,
+		PageLimit:        int32(limit),
 	})
 	if err != nil {
 		return domain.FeedPage{}, fmt.Errorf("forum: list public posts: %w", err)
@@ -1555,38 +1583,38 @@ func (s *Store) InsertNewsCandidatePost(ctx context.Context, post *domain.Post) 
 	}
 
 	params := forumsql.InsertEditorialPostParams{
-		ID:                  postUUID,
-		Kind:                string(domain.KindNews),
-		Category:            string(post.Category),
-		Title:               post.Title,
-		Excerpt:             post.Excerpt,
-		BodyText:            post.BodyText,
-		SourceID:            srcUUID,
-		CanonicalUrl:        post.CanonicalURL,
-		CanonicalUrlHash:    canonicalUrlHash,
-		ExternalID:          post.ExternalID,
-		AuthorAccountID:     pgtype.UUID{},
-		PublicAlias:         pgtype.Text{},
-		SourcePublishedAt:   pgtype.Timestamptz{Time: post.SourcePublishedAt.UTC(), Valid: true},
-		SourceUpdatedAt:     pgtype.Timestamptz{},
-		LocalCreatedAt:      pgtype.Timestamptz{Time: post.LocalCreatedAt.UTC(), Valid: true},
-		LocalUpdatedAt:      pgtype.Timestamptz{Time: post.LocalUpdatedAt.UTC(), Valid: true},
-		FirstPublishedAt:    pgtype.Timestamptz{},
-		FirstPublicationSeq: 0,
-		PublicationState:    string(domain.StateDraft),
-		Visibility:          string(domain.VisibilityVisible),
-		Revision:            1,
-		CommentsEnabled:     post.CommentsEnabled,
-		Correction:          pgtype.Text{},
-		RegionUf:            pgtype.Text{},
+		ID:                     postUUID,
+		Kind:                   string(domain.KindNews),
+		Category:               string(post.Category),
+		Title:                  post.Title,
+		Excerpt:                post.Excerpt,
+		BodyText:               post.BodyText,
+		SourceID:               srcUUID,
+		CanonicalUrl:           post.CanonicalURL,
+		CanonicalUrlHash:       canonicalUrlHash,
+		ExternalID:             post.ExternalID,
+		AuthorAccountID:        pgtype.UUID{},
+		PublicAlias:            pgtype.Text{},
+		SourcePublishedAt:      pgtype.Timestamptz{Time: post.SourcePublishedAt.UTC(), Valid: true},
+		SourceUpdatedAt:        pgtype.Timestamptz{},
+		LocalCreatedAt:         pgtype.Timestamptz{Time: post.LocalCreatedAt.UTC(), Valid: true},
+		LocalUpdatedAt:         pgtype.Timestamptz{Time: post.LocalUpdatedAt.UTC(), Valid: true},
+		FirstPublishedAt:       pgtype.Timestamptz{},
+		FirstPublicationSeq:    0,
+		PublicationState:       string(domain.StateDraft),
+		Visibility:             string(domain.VisibilityVisible),
+		Revision:               1,
+		CommentsEnabled:        post.CommentsEnabled,
+		Correction:             pgtype.Text{},
+		RegionUf:               pgtype.Text{},
 		RegionMunicipalityIbge: pgtype.Int4{},
-		FuelProduct:         pgtype.Text{},
-		StationID:           pgtype.UUID{},
-		AuthorOperationID:   pgtype.UUID{},
-		BodySha256:          sha256Hex(post.BodyText),
-		RightsSnapshot:      pgtype.Text{},
-		BulletinKey:         pgtype.Text{},
-		SupersedesPostID:    pgtype.UUID{},
+		FuelProduct:            pgtype.Text{},
+		StationID:              pgtype.UUID{},
+		AuthorOperationID:      pgtype.UUID{},
+		BodySha256:             sha256Hex(post.BodyText),
+		RightsSnapshot:         pgtype.Text{},
+		BulletinKey:            pgtype.Text{},
+		SupersedesPostID:       pgtype.UUID{},
 	}
 	if err := s.queries.InsertEditorialPost(ctx, params); err != nil {
 		return fmt.Errorf("forum: insert candidate post: %w", err)

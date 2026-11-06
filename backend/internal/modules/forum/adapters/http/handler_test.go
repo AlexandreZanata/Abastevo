@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -30,11 +31,12 @@ func (m *mockCategoryReader) ListCategories(ctx context.Context) ([]domain.Categ
 }
 
 type mockPostReader struct {
-	posts    map[string]*domain.Post
-	feedPage domain.FeedPage
-	snapshot string
-	getErr   error
-	feedErr  error
+	posts     map[string]*domain.Post
+	feedPage  domain.FeedPage
+	snapshot  string
+	getErr    error
+	feedErr   error
+	lastQuery application.ListPublicPostsQuery
 }
 
 func (m *mockPostReader) GetPostByID(ctx context.Context, id string) (*domain.Post, error) {
@@ -49,6 +51,7 @@ func (m *mockPostReader) GetPostByID(ctx context.Context, id string) (*domain.Po
 }
 
 func (m *mockPostReader) ListPublicPosts(ctx context.Context, query application.ListPublicPostsQuery) (domain.FeedPage, error) {
+	m.lastQuery = query
 	if m.feedErr != nil {
 		return domain.FeedPage{}, m.feedErr
 	}
@@ -396,7 +399,7 @@ func TestHandler_Feed(t *testing.T) {
 		}
 
 		// 7. Expired cursor: minted with timestamp older than CursorTTL (15m)
-		fh := httpapi.FilterHash("forum_feed", "FUELS", "", "10")
+		fh := httpapi.FilterHash("forum_feed", "FUELS", "", "", "", "", "", "", "10")
 		expiredToken := httpapi.Seal(secret, fh, internalCursor, now.Add(-16*time.Minute))
 		reqExpired := httptest.NewRequest(http.MethodGet, "/v1/forum/posts?category=FUELS&limit=10&cursor="+expiredToken, nil)
 		recExpired := httptest.NewRecorder()
@@ -445,6 +448,158 @@ func TestHandler_Feed(t *testing.T) {
 		code, _ := parseErrorEnvelope(t, rec.Body.Bytes())
 		if code != "forum.unavailable" {
 			t.Errorf("expected forum.unavailable, got %s", code)
+		}
+	})
+}
+
+func TestHandler_FeedDiscoveryFilters(t *testing.T) {
+	secret := []byte("01234567890123456789012345678901")
+	now := time.Date(2026, 11, 6, 12, 0, 0, 0, time.UTC)
+	catReader := &mockCategoryReader{items: domain.DefaultCategories(), version: 1}
+
+	newRouter := func(t *testing.T) (*chi.Mux, *mockPostReader) {
+		t.Helper()
+		cfg := domain.DefaultConfig()
+		cfg.ReadsEnabled = true
+		postReader := &mockPostReader{
+			feedPage: domain.FeedPage{Snapshot: "rev-1", FetchedAt: now},
+		}
+		svc := application.NewService(cfg, catReader, postReader, mockClock{now: now})
+		h := NewHandler(svc, secret)
+		return setupTestRouter(h), postReader
+	}
+
+	t.Run("normalizes_and_forwards_all_subject_filters", func(t *testing.T) {
+		r, reader := newRouter(t)
+		values := url.Values{
+			"uf":                {"sp"},
+			"municipality_ibge": {"3550308"},
+			"fuel_product":      {"ETHANOL"},
+			"station_id":        {"D6C74C23-63DB-4C24-A2E5-408CB23BAD26"},
+			"limit":             {"10"},
+		}
+		req := httptest.NewRequest(http.MethodGet, "/v1/forum/posts?"+values.Encode(), nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d (%s)", rec.Code, rec.Body.String())
+		}
+		if reader.lastQuery.UF == nil || *reader.lastQuery.UF != "SP" {
+			t.Errorf("expected normalized UF SP, got %v", reader.lastQuery.UF)
+		}
+		if reader.lastQuery.MunicipalityIBGE == nil || *reader.lastQuery.MunicipalityIBGE != 3550308 {
+			t.Errorf("expected municipality 3550308, got %v", reader.lastQuery.MunicipalityIBGE)
+		}
+		if reader.lastQuery.FuelProduct == nil || *reader.lastQuery.FuelProduct != "ETHANOL" {
+			t.Errorf("expected fuel ETHANOL, got %v", reader.lastQuery.FuelProduct)
+		}
+		if reader.lastQuery.StationID == nil || *reader.lastQuery.StationID != "d6c74c23-63db-4c24-a2e5-408cb23bad26" {
+			t.Errorf("expected normalized station id, got %v", reader.lastQuery.StationID)
+		}
+	})
+
+	t.Run("blank_and_absent_filters_are_equivalent", func(t *testing.T) {
+		r, reader := newRouter(t)
+		req := httptest.NewRequest(http.MethodGet, "/v1/forum/posts?uf=&municipality_ibge=&fuel_product=&station_id=", nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d", rec.Code)
+		}
+		if reader.lastQuery.UF != nil || reader.lastQuery.MunicipalityIBGE != nil ||
+			reader.lastQuery.FuelProduct != nil || reader.lastQuery.StationID != nil {
+			t.Errorf("expected all blank filters to be absent, got %+v", reader.lastQuery)
+		}
+	})
+
+	t.Run("rejects_unknown_and_duplicate_filters", func(t *testing.T) {
+		r, _ := newRouter(t)
+		for _, path := range []string{
+			"/v1/forum/posts?foo=bar",
+			"/v1/forum/posts?uf=SP&uf=RJ",
+			"/v1/forum/posts?limit=10&limit=20",
+		} {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, req)
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("%s: expected 400, got %d", path, rec.Code)
+			}
+			code, _ := parseErrorEnvelope(t, rec.Body.Bytes())
+			if code != "forum.bad-filter" {
+				t.Errorf("%s: expected forum.bad-filter, got %s", path, code)
+			}
+		}
+	})
+
+	t.Run("rejects_invalid_filter_values", func(t *testing.T) {
+		r, _ := newRouter(t)
+		for _, path := range []string{
+			"/v1/forum/posts?uf=XX",
+			"/v1/forum/posts?municipality_ibge=355030",
+			"/v1/forum/posts?municipality_ibge=3304557&uf=SP",
+			"/v1/forum/posts?fuel_product=DIESEL",
+			"/v1/forum/posts?station_id=not-a-uuid",
+		} {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, req)
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("%s: expected 400, got %d", path, rec.Code)
+			}
+			code, _ := parseErrorEnvelope(t, rec.Body.Bytes())
+			if code != "forum.bad-filter" {
+				t.Errorf("%s: expected forum.bad-filter, got %s", path, code)
+			}
+		}
+	})
+
+	t.Run("cursor_is_bound_to_search_filters", func(t *testing.T) {
+		r, reader := newRouter(t)
+		internalCursor := "10:00000000-0000-0000-0000-000000000002"
+		reader.feedPage = domain.FeedPage{
+			NextCursor: &internalCursor,
+			Snapshot:   "rev-1",
+			FetchedAt:  now,
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/forum/posts?uf=SP&limit=10", nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d", rec.Code)
+		}
+		var resp FeedResponseDTO
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal response: %v", err)
+		}
+		if resp.NextCursor == nil {
+			t.Fatal("expected cursor")
+		}
+
+		sameReq := httptest.NewRequest(http.MethodGet, "/v1/forum/posts?uf=SP&limit=10&cursor="+*resp.NextCursor, nil)
+		sameRec := httptest.NewRecorder()
+		r.ServeHTTP(sameRec, sameReq)
+		if sameRec.Code != http.StatusOK {
+			t.Fatalf("expected same-filter cursor to pass, got %d", sameRec.Code)
+		}
+
+		for _, path := range []string{
+			"/v1/forum/posts?uf=RJ&limit=10&cursor=" + *resp.NextCursor,
+			"/v1/forum/posts?uf=SP&fuel_product=ETHANOL&limit=10&cursor=" + *resp.NextCursor,
+		} {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			r.ServeHTTP(rec, req)
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("%s: expected 400 on filter swap, got %d", path, rec.Code)
+			}
+			code, _ := parseErrorEnvelope(t, rec.Body.Bytes())
+			if code != "forum.bad-cursor" {
+				t.Errorf("%s: expected forum.bad-cursor, got %s", path, code)
+			}
 		}
 	})
 }

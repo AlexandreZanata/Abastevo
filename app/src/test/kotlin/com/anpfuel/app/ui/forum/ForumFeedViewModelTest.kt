@@ -6,6 +6,7 @@ import com.anpfuel.domain.forum.ForumCategoriesResult
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumCategoryItem
 import com.anpfuel.domain.forum.ForumException
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostKind
 import com.anpfuel.domain.forum.ForumPostSummary
@@ -72,7 +73,7 @@ class ForumFeedViewModelTest {
             items = listOf(sampleCategoryItem),
             taxonomyVersion = 1,
         )
-        coEvery { getForumFeed(any(), any(), any(), any()) } returns ForumFeedPage(
+        coEvery { getForumFeed(any(), any(), any(), any(), any()) } returns ForumFeedPage(
             items = listOf(samplePost1),
             nextCursor = "cursor-1",
             snapshot = "snap-1",
@@ -105,7 +106,7 @@ class ForumFeedViewModelTest {
         val vm = ForumFeedViewModel(getForumCategories, getForumFeed)
         advanceUntilIdle()
 
-        coEvery { getForumFeed(ForumCategory.FUELS, null, 20, null) } returns ForumFeedPage(
+        coEvery { getForumFeed(ForumCategory.FUELS, null, 20, null, ForumFeedFilters()) } returns ForumFeedPage(
             items = listOf(samplePost2),
             nextCursor = null,
             snapshot = "snap-2",
@@ -127,7 +128,7 @@ class ForumFeedViewModelTest {
         val vm = ForumFeedViewModel(getForumCategories, getForumFeed)
         advanceUntilIdle()
 
-        coEvery { getForumFeed(null, null, 20, null) } returns ForumFeedPage(
+        coEvery { getForumFeed(null, null, 20, null, ForumFeedFilters()) } returns ForumFeedPage(
             items = listOf(samplePost2),
             nextCursor = "cursor-2",
             snapshot = "snap-3",
@@ -149,7 +150,7 @@ class ForumFeedViewModelTest {
         val vm = ForumFeedViewModel(getForumCategories, getForumFeed)
         advanceUntilIdle()
 
-        coEvery { getForumFeed(null, null, 20, "cursor-1") } returns ForumFeedPage(
+        coEvery { getForumFeed(null, null, 20, "cursor-1", ForumFeedFilters()) } returns ForumFeedPage(
             items = listOf(samplePost2),
             nextCursor = "cursor-final",
             snapshot = "snap-4",
@@ -172,7 +173,7 @@ class ForumFeedViewModelTest {
         val vm = ForumFeedViewModel(getForumCategories, getForumFeed)
         advanceUntilIdle()
 
-        coEvery { getForumFeed(null, null, 20, null) } throws ForumException.Offline("no network")
+        coEvery { getForumFeed(null, null, 20, null, ForumFeedFilters()) } throws ForumException.Offline("no network")
 
         vm.refresh()
         advanceUntilIdle()
@@ -196,7 +197,7 @@ class ForumFeedViewModelTest {
 
     @Test
     fun `empty result shows empty state without error`() = runTest(dispatcher) {
-        coEvery { getForumFeed(any(), any(), any(), any()) } returns ForumFeedPage(
+        coEvery { getForumFeed(any(), any(), any(), any(), any()) } returns ForumFeedPage(
             items = emptyList(),
             nextCursor = null,
             snapshot = "snap-empty",

@@ -3,6 +3,7 @@ package com.anpfuel.data.remote.forum
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumException
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumPostKind
 import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.portable.PortableAuth
@@ -112,6 +113,12 @@ class ForumHttpClientTest {
                 kind = ForumPostKind.EDITORIAL,
                 limit = 10,
                 cursor = "test-cursor",
+                filters = ForumFeedFilters(
+                    uf = "SP",
+                    municipalityIbge = 3550308,
+                    fuelProduct = "ETHANOL",
+                    stationId = "d6c74c23-63db-4c24-a2e5-408cb23bad26",
+                ),
             )
             assertEquals(1, result.items.size)
             assertEquals("cursor-token-123", result.nextCursor)
@@ -123,6 +130,10 @@ class ForumHttpClientTest {
             assertTrue(request.path!!.contains("category=FUELS"))
             assertTrue(request.path!!.contains("kind=EDITORIAL"))
             assertTrue(request.path!!.contains("cursor=test-cursor"))
+            assertTrue(request.path!!.contains("uf=SP"))
+            assertTrue(request.path!!.contains("municipality_ibge=3550308"))
+            assertTrue(request.path!!.contains("fuel_product=ETHANOL"))
+            assertTrue(request.path!!.contains("station_id=d6c74c23-63db-4c24-a2e5-408cb23bad26"))
         }
     }
 

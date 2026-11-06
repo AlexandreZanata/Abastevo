@@ -5,6 +5,7 @@ import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumComment
 import com.anpfuel.domain.forum.ForumCommentReceipt
 import com.anpfuel.domain.forum.ForumCommentsPage
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
@@ -23,6 +24,7 @@ interface ForumGateway {
         kind: ForumPostKind? = null,
         limit: Int = 20,
         cursor: String? = null,
+        filters: ForumFeedFilters = ForumFeedFilters(),
     ): ForumFeedPage = throw UnsupportedOperationException()
     suspend fun getPostDetail(postId: String): ForumPostDetail = throw UnsupportedOperationException()
 

@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/getkin/kin-openapi/openapi3"
 )
 
 func TestForumEditorialContractStructure(t *testing.T) {
@@ -60,6 +62,7 @@ func TestForumEditorialContractStructure(t *testing.T) {
 
 	// Check required schemas
 	requiredSchemas := []string{
+		"ForumFuelProduct",
 		"ForumSourceAttribution",
 		"ForumPostRegion",
 		"ForumPostSummary",
@@ -99,7 +102,7 @@ func TestForumEditorialContractStructure(t *testing.T) {
 			paramNames = append(paramNames, p.Value.Name)
 		}
 	}
-	for _, reqParam := range []string{"category", "kind", "limit", "cursor"} {
+	for _, reqParam := range []string{"category", "kind", "uf", "municipality_ibge", "fuel_product", "station_id", "limit", "cursor"} {
 		if !slices.Contains(paramNames, reqParam) {
 			t.Errorf("GET /v1/forum/posts missing query param %q", reqParam)
 		}
@@ -211,4 +214,54 @@ func TestForumEditorialSchemaNegativeAndBoundaryCases(t *testing.T) {
 			t.Error("expected error for additional property author_account_id, got nil")
 		}
 	})
+}
+
+func TestForumDiscoveryFilterParameters(t *testing.T) {
+	doc := loadSpec(t)
+	postsPath := doc.Paths.Find("/v1/forum/posts")
+	if postsPath == nil || postsPath.Get == nil {
+		t.Fatal("missing GET /v1/forum/posts endpoint")
+	}
+
+	params := map[string]*openapi3.Parameter{}
+	for _, p := range postsPath.Get.Parameters {
+		if p.Value != nil {
+			params[p.Value.Name] = p.Value
+		}
+	}
+
+	uf, ok := params["uf"]
+	if !ok || uf.Schema == nil || uf.Schema.Value == nil {
+		t.Fatal("missing uf filter schema")
+	}
+	if len(uf.Schema.Value.Enum) != 27 {
+		t.Errorf("uf filter must enumerate 27 states, got %d", len(uf.Schema.Value.Enum))
+	}
+	if uf.Schema.Value.Pattern != "" {
+		t.Errorf("uf filter must not use a free-text pattern")
+	}
+
+	ibge, ok := params["municipality_ibge"]
+	if !ok || ibge.Schema == nil || ibge.Schema.Value == nil {
+		t.Fatal("missing municipality_ibge filter schema")
+	}
+	if ibge.Schema.Value.Pattern != "^[0-9]{7}$" {
+		t.Errorf("municipality_ibge pattern = %q", ibge.Schema.Value.Pattern)
+	}
+
+	fuel, ok := params["fuel_product"]
+	if !ok || fuel.Schema == nil || fuel.Schema.Value == nil {
+		t.Fatal("missing fuel_product filter schema")
+	}
+	if fuel.Schema.Ref != "#/components/schemas/ForumFuelProduct" {
+		t.Errorf("fuel_product ref = %q", fuel.Schema.Ref)
+	}
+
+	station, ok := params["station_id"]
+	if !ok || station.Schema == nil || station.Schema.Value == nil {
+		t.Fatal("missing station_id filter schema")
+	}
+	if station.Schema.Value.Format != "uuid" {
+		t.Errorf("station_id format = %q", station.Schema.Value.Format)
+	}
 }

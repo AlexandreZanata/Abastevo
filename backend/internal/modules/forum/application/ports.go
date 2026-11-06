@@ -28,10 +28,14 @@ type IDGenerator interface {
 
 // ListPublicPostsQuery represents input parameters for feed queries.
 type ListPublicPostsQuery struct {
-	Category *domain.Category
-	Kind     *domain.PostKind
-	Limit    int
-	Cursor   *string
+	Category         *domain.Category
+	Kind             *domain.PostKind
+	UF               *string
+	MunicipalityIBGE *int
+	FuelProduct      *string
+	StationID        *string
+	Limit            int
+	Cursor           *string
 }
 
 // CategoriesResult represents categories with current taxonomy version.

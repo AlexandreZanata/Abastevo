@@ -6,6 +6,7 @@ import com.anpfuel.domain.forum.ForumCategoryItem
 import com.anpfuel.domain.forum.ForumCommentReceipt
 import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
@@ -105,6 +106,7 @@ class ForumUseCasesTest {
             kind: ForumPostKind?,
             limit: Int,
             cursor: String?,
+            filters: ForumFeedFilters,
         ): ForumFeedPage = feedPage
         override suspend fun getPostDetail(postId: String): ForumPostDetail = postDetail
     }
@@ -152,6 +154,7 @@ class ForumUseCasesTest {
                 kind: ForumPostKind?,
                 limit: Int,
                 cursor: String?,
+                filters: ForumFeedFilters,
             ): ForumFeedPage {
                 recordedLimit = limit
                 recordedCursor = cursor
@@ -197,6 +200,52 @@ class ForumUseCasesTest {
             kotlinx.coroutines.runBlocking { useCase(cursor = "a".repeat(513)) }
         }
         assertEquals("forum.bad-cursor", ex4.code)
+    }
+
+    @Test
+    fun `GetForumFeedUseCase normalizes and validates subject filters`() = runTest {
+        var recordedFilters: ForumFeedFilters? = null
+        val gateway = object : ForumGateway {
+            override suspend fun getFeed(
+                category: ForumCategory?,
+                kind: ForumPostKind?,
+                limit: Int,
+                cursor: String?,
+                filters: ForumFeedFilters,
+            ): ForumFeedPage {
+                recordedFilters = filters
+                return ForumFeedPage(emptyList(), null, "rev-1", "2026-11-05T12:00:00Z")
+            }
+        }
+        val useCase = GetForumFeedUseCase(gateway)
+        val station = "D6C74C23-63DB-4C24-A2E5-408CB23BAD26"
+
+        useCase(
+            filters = ForumFeedFilters(
+                uf = " sp ",
+                municipalityIbge = 3550308,
+                fuelProduct = "ETHANOL",
+                stationId = station,
+            ),
+        )
+        assertEquals(
+            ForumFeedFilters("SP", 3550308, "ETHANOL", station.lowercase()),
+            recordedFilters,
+        )
+
+        val invalidFilters = listOf(
+            ForumFeedFilters(uf = "XX") to "forum.bad-region-uf",
+            ForumFeedFilters(municipalityIbge = 355030) to "forum.bad-region-ibge",
+            ForumFeedFilters(uf = "SP", municipalityIbge = 3304557) to "forum.bad-region-prefix",
+            ForumFeedFilters(fuelProduct = "DIESEL") to "forum.bad-fuel-product",
+            ForumFeedFilters(stationId = "not-a-uuid") to "forum.bad-station-id",
+        )
+        for ((filters, expected) in invalidFilters) {
+            val ex = assertThrows(ForumException.Invalid::class.java) {
+                kotlinx.coroutines.runBlocking { useCase(filters = filters) }
+            }
+            assertEquals(expected, ex.code)
+        }
     }
 
     // --- 4. Detail UseCase & UUID Validation ---
@@ -299,6 +348,7 @@ class ForumUseCasesTest {
                 kind: ForumPostKind?,
                 limit: Int,
                 cursor: String?,
+                filters: ForumFeedFilters,
             ): ForumFeedPage = throw ForumException.Unavailable("forum.unavailable")
             override suspend fun getPostDetail(postId: String): ForumPostDetail =
                 throw ForumException.NotFound("forum.not-found")

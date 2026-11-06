@@ -8,6 +8,7 @@ import com.anpfuel.domain.forum.ForumCategoriesResult
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumCategoryItem
 import com.anpfuel.domain.forum.ForumException
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
@@ -161,6 +162,7 @@ class ForumRepositoryTest {
             kind: ForumPostKind?,
             limit: Int,
             cursor: String?,
+            filters: ForumFeedFilters,
         ): ForumFeedPage {
             recordedLimit = limit
             recordedCursor = cursor
@@ -210,6 +212,27 @@ class ForumRepositoryTest {
         // Next cursor is intentionally stripped offline to prevent invalid paging attempts
         assertNull(offlineFeed.nextCursor)
         assertEquals("rev-1", offlineFeed.snapshot)
+    }
+
+    @Test
+    fun `feed cache scope includes subject filters`() = runTest {
+        val dao = FakeForumCacheDao()
+        val gateway = FakeForumGateway(feedPage = sampleFeed)
+        val repository = ForumRepository(gateway, dao, origin, clock = { testTime })
+
+        repository.getFeed(limit = 20, filters = ForumFeedFilters(uf = "SP"))
+        repository.getFeed(limit = 20, filters = ForumFeedFilters(uf = "RJ"))
+        repository.getFeed(limit = 20, filters = ForumFeedFilters(uf = "SP", fuelProduct = "ETHANOL"))
+
+        assertEquals(
+            3,
+            dao.rows.values.count { it.kind == ForumCacheRule.KIND_FEED },
+        )
+
+        gateway.errorToThrow = ForumException.Offline("forum.offline")
+        val offline = repository.getFeed(limit = 20, filters = ForumFeedFilters(uf = "SP"))
+        assertEquals("rev-1", offline.snapshot)
+        assertNull(offline.nextCursor)
     }
 
     @Test

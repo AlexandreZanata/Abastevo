@@ -9,6 +9,7 @@ import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumCommentReceipt
 import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
+import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
@@ -59,15 +60,16 @@ class ForumRepository(
         kind: ForumPostKind?,
         limit: Int,
         cursor: String?,
+        filters: ForumFeedFilters,
     ): ForumFeedPage {
-        val scopeKey = ForumCacheRule.feedKey(category, kind)
+        val scopeKey = ForumCacheRule.feedKey(category, kind, filters)
         if (!cursor.isNullOrBlank()) {
             // Deeper cursor pages are fetched directly from network and not cached
-            return client.getFeed(category, kind, limit, cursor)
+            return client.getFeed(category, kind, limit, cursor, filters)
         }
 
         return try {
-            val page = client.getFeed(category, kind, limit, null)
+            val page = client.getFeed(category, kind, limit, null, filters)
             store(scopeKey, ForumCacheRule.KIND_FEED, ForumCacheCodec.encodeFeed(page))
             dao.trimFeedScopes(origin, ForumCacheRule.MAX_FEED_SCOPES)
             page

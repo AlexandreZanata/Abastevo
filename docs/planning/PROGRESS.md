@@ -1,4 +1,27 @@
 # Current execution state
+- FOR-24 Forum subject filters and open-forum checkpoint, 2026-11-06:
+  LOCAL_DONE / INTEGRATION_PENDING / SEARCH_DEFERRED on isolated dev worktree
+  from parent `7430dec1`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)
+  completes bounded discovery UX for UF (27 states), seven-digit IBGE with
+  UF-prefix consistency, forum fuel vocabulary and Directory station UUID;
+  append-only migration `000161` adds partial feed indices, SQL/sqlc filters,
+  strict HTTP unknown/duplicate/invalid filter refusal and cursor HMAC bound to
+  every normalized filter; OpenAPI adds the four query params and
+  `ForumFuelProduct` schema with valid/invalid golden vectors. Android adds
+  `ForumFeedFilters`, use-case validation/normalization, HTTP query params,
+  filter-scoped offline cache keys, ViewModel update/clear and an accessible
+  filter dialog localized in 8 locales. Portuguese FTS/UI is explicitly
+  deferred after measured 10k/100k ordered plans preferred
+  `forum_posts_feed_idx` + filter (cost 1194.22) over GIN bitmap + sort
+  (1919.38); no search box, column or index was committed.
+  Verified: forum Go unit and real-PostGIS suites (adapters 74.5s, HTTP 17.2s,
+  jobs 8.6s), migrate integration 8.9s, apicontract 21.0s, `go vet`/`sqlc vet`;
+  Android full JVM 2,850 tests, 0 failures, 4 pre-existing skips (120 Forum),
+  assembleDebug/androidTest, lintDebug 0 errors and static mobile guards.
+  Native A3/device, real staging/operator/source/legal acceptance and merge
+  remain OWED. Next microtask: FOR-25 Phase 5 bulletin methodology; FOR-24
+  search UI stays deferred.
+
 - FOR-23 Android topic forms, 2026-11-06:
   LOCAL_DONE / INTEGRATION_PENDING on isolated dev worktree from parent
   `fb26983a`. [Phase 4 evidence](../backend/evidence/forum/FOR_PHASE_4.md)

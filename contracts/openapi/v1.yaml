@@ -7313,6 +7313,33 @@ paths:
           schema:
             $ref: '#/components/schemas/ForumPostKind'
           description: Optional filter by post kind.
+        - name: uf
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO]
+          description: Optional subject-matter state filter, not the reader's location.
+        - name: municipality_ibge
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^[0-9]{7}$'
+          description: Optional seven-digit IBGE municipality subject filter; must match uf when both are present.
+        - name: fuel_product
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ForumFuelProduct'
+          description: Optional forum fuel subject filter.
+        - name: station_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional Directory station subject filter.
         - name: limit
           in: query
           required: false
@@ -13054,6 +13081,18 @@ components:
         - TOPIC
         - BULLETIN
       example: EDITORIAL
+    ForumFuelProduct:
+      type: string
+      description: Forum-owned fuel subject vocabulary used by topic and discovery filters.
+      enum:
+        - GASOLINE_REGULAR
+        - GASOLINE_PREMIUM
+        - ETHANOL
+        - DIESEL_S10
+        - DIESEL_S500
+        - GLP
+        - GNV
+      example: ETHANOL
     ForumSourceAttribution:
       type: object
       description: Public attribution and source provenance for licensed or editorial content.
