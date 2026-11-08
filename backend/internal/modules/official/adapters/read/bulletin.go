@@ -21,22 +21,22 @@ func (r *Reader) LatestTwoCurrentPublishedRevisions(ctx context.Context) (applic
 		return application.BulletinRevision{}, application.BulletinRevision{}, err
 	}
 	return application.BulletinRevision{
-			RevisionID:     uuidString(row.CurrentID),
-			SurveyStart:    dateString(row.CurrentSurveyStart),
-			SurveyEnd:      dateString(row.CurrentSurveyEnd),
-			PublishedAt:    rankingPublishedAt(row.CurrentPublishedAt),
-			SourceURL:      row.CurrentSourceUrl,
-			SourceChecksum: row.CurrentSourceChecksum,
-			ParserVersion:  row.CurrentParserVersion,
-		}, application.BulletinRevision{
-			RevisionID:     uuidString(row.PreviousID),
-			SurveyStart:    dateString(row.PreviousSurveyStart),
-			SurveyEnd:      dateString(row.PreviousSurveyEnd),
-			PublishedAt:    rankingPublishedAt(row.PreviousPublishedAt),
-			SourceURL:      row.PreviousSourceUrl,
-			SourceChecksum: row.PreviousSourceChecksum,
-			ParserVersion:  row.PreviousParserVersion,
-		}, nil
+		RevisionID:     uuidString(row.CurrentID),
+		SurveyStart:    dateString(row.CurrentSurveyStart),
+		SurveyEnd:      dateString(row.CurrentSurveyEnd),
+		PublishedAt:    rankingPublishedAt(row.CurrentPublishedAt),
+		SourceURL:      row.CurrentSourceUrl,
+		SourceChecksum: row.CurrentSourceChecksum,
+		ParserVersion:  row.CurrentParserVersion,
+	}, application.BulletinRevision{
+		RevisionID:     uuidString(row.PreviousID),
+		SurveyStart:    dateString(row.PreviousSurveyStart),
+		SurveyEnd:      dateString(row.PreviousSurveyEnd),
+		PublishedAt:    rankingPublishedAt(row.PreviousPublishedAt),
+		SourceURL:      row.PreviousSourceUrl,
+		SourceChecksum: row.PreviousSourceChecksum,
+		ParserVersion:  row.PreviousParserVersion,
+	}, nil
 }
 
 // ReadBulletinSamples returns the exact UF aggregates for one revision.
