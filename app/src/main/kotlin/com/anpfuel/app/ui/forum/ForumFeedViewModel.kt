@@ -12,6 +12,7 @@ import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumPostSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -75,6 +76,8 @@ class ForumFeedViewModel @Inject constructor(
                 return@launch
             } catch (e: ForumException.Offline) {
                 emptyList()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 emptyList()
             }
@@ -104,6 +107,8 @@ class ForumFeedViewModel @Inject constructor(
                         error = if (it.items.isEmpty()) ForumUiError.OFFLINE else null,
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -153,6 +158,8 @@ class ForumFeedViewModel @Inject constructor(
                         error = if (it.items.isEmpty()) ForumUiError.OFFLINE else null,
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -206,6 +213,8 @@ class ForumFeedViewModel @Inject constructor(
                         error = if (it.items.isEmpty()) ForumUiError.OFFLINE else null,
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -255,6 +264,8 @@ class ForumFeedViewModel @Inject constructor(
                         error = if (it.items.isEmpty()) ForumUiError.OFFLINE else null,
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -289,6 +300,8 @@ class ForumFeedViewModel @Inject constructor(
                         loadingMore = false,
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(loadingMore = false) }
             }

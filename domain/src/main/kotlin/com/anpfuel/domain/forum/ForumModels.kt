@@ -126,6 +126,7 @@ data class ForumComment(
     val publishedAt: String? = null,
     val replyCount: Int = 0,
     val replies: List<ForumComment> = emptyList(),
+    val revision: Long = 1L,
 )
 
 /**

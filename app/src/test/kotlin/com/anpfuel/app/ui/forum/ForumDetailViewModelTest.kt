@@ -78,6 +78,7 @@ class ForumDetailViewModelTest {
         bodyText = "Comentário de teste 1",
         sequence = 1L,
         replyCount = 2,
+        revision = 4L,
         createdAt = "2026-11-01T10:05:00Z",
         updatedAt = "2026-11-01T10:05:00Z",
     )
@@ -370,6 +371,28 @@ class ForumDetailViewModelTest {
     }
 
     @Test
+    fun `submitComment retry after offline reuses the same operation id`() = runTest(dispatcher) {
+        val vm = createViewModel(session = sampleSession)
+        advanceUntilIdle()
+
+        val operationIds = mutableListOf<String>()
+        coEvery { submitForumComment(any(), any(), any(), capture(operationIds)) } throws ForumException.Offline("timeout")
+
+        vm.updateComposerText("Comentário reenviado")
+        vm.submitComment()
+        advanceUntilIdle()
+        vm.submitComment()
+        advanceUntilIdle()
+        vm.updateComposerText("Comentário alterado")
+        vm.submitComment()
+        advanceUntilIdle()
+
+        assertEquals(3, operationIds.size)
+        assertEquals(operationIds[0], operationIds[1])
+        assertTrue(operationIds[2] != operationIds[0])
+    }
+
+    @Test
     fun `submitComment handles 409 conflict preserving draft`() = runTest(dispatcher) {
         val vm = createViewModel(session = sampleSession)
         advanceUntilIdle()
@@ -415,7 +438,7 @@ class ForumDetailViewModelTest {
             updatedAt = "2026-11-01T11:30:00Z",
             replayed = false,
         )
-        coEvery { editForumComment(sampleComment1.id, sampleComment1.sequence, "Texto editado salvo", any()) } returns receipt
+        coEvery { editForumComment(sampleComment1.id, sampleComment1.revision, "Texto editado salvo", any()) } returns receipt
 
         vm.startEdit(sampleComment1)
         vm.updateEditDraftText("Texto editado salvo")
@@ -469,7 +492,7 @@ class ForumDetailViewModelTest {
             updatedAt = "2026-11-01T12:00:00Z",
             replayed = false,
         )
-        coEvery { removeForumComment(sampleComment1.id, sampleComment1.sequence, any()) } returns receipt
+        coEvery { removeForumComment(sampleComment1.id, sampleComment1.revision, any()) } returns receipt
 
         vm.confirmRemove(sampleComment1)
         vm.executeRemove()
@@ -477,7 +500,7 @@ class ForumDetailViewModelTest {
 
         assertNull(vm.state.value.commentPendingRemoval)
         assertFalse(vm.state.value.isRemovingComment)
-        coVerify(exactly = 1) { removeForumComment(sampleComment1.id, sampleComment1.sequence, any()) }
+        coVerify(exactly = 1) { removeForumComment(sampleComment1.id, sampleComment1.revision, any()) }
     }
 
     @Test

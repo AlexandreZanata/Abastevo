@@ -255,6 +255,7 @@ object ForumMapper {
             updatedAt = obj.optString("updated_at", ""),
             publishedAt = publishedAt,
             replyCount = obj.optInt("reply_count", 0),
+            revision = obj.optLong("revision", 1L),
         )
     }
 

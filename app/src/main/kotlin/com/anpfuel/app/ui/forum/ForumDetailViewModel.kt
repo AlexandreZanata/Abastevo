@@ -20,7 +20,9 @@ import com.anpfuel.domain.forum.ForumReportReason
 import com.anpfuel.domain.forum.ForumReportReceipt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.net.URI
+import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -105,6 +107,17 @@ class ForumDetailViewModel @Inject constructor(
     private var commentsJob: Job? = null
     private var lastKnownAccountId: String? = sessionStore?.load()?.accountId
 
+    // A retry of the same unchanged write reuses its operation id so a
+    // request that timed out after the server committed replays instead of
+    // creating a duplicate; any change to the payload starts a new operation.
+    private var pendingWrite: Pair<String, String>? = null
+
+    private fun operationIdFor(payloadKey: String): String {
+        val pending = pendingWrite
+        if (pending != null && pending.first == payloadKey) return pending.second
+        return UUID.randomUUID().toString().also { pendingWrite = payloadKey to it }
+    }
+
     init {
         if (postIdArg.isNotBlank()) {
             load(postIdArg)
@@ -181,6 +194,8 @@ class ForumDetailViewModel @Inject constructor(
                         error = if (it.post == null) ForumDetailError.OFFLINE else null,
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -227,6 +242,8 @@ class ForumDetailViewModel @Inject constructor(
                         error = if (it.post == null) ForumDetailError.OFFLINE else null,
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -253,6 +270,8 @@ class ForumDetailViewModel @Inject constructor(
                 }
             } catch (e: ForumException.Offline) {
                 _state.update { it.copy(commentsLoading = false, isOffline = true) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(commentsLoading = false) }
             }
@@ -289,6 +308,8 @@ class ForumDetailViewModel @Inject constructor(
                         isOffline = true,
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(repliesLoading = it.repliesLoading - commentId) }
             }
@@ -317,14 +338,19 @@ class ForumDetailViewModel @Inject constructor(
             return
         }
 
+        val bodyText = cur.composerText.trim()
+        val parentId = cur.replyingTo?.id
+        val operationId = operationIdFor("create|${cur.postId}|$parentId|$bodyText")
         _state.update { it.copy(isSubmittingComment = true, actionError = null) }
         viewModelScope.launch {
             try {
                 val receipt = submitForumComment(
                     postId = cur.postId,
-                    bodyText = cur.composerText.trim(),
-                    parentId = cur.replyingTo?.id,
+                    bodyText = bodyText,
+                    parentId = parentId,
+                    operationId = operationId,
                 )
+                pendingWrite = null
                 _state.update {
                     it.copy(
                         isSubmittingComment = false,
@@ -343,6 +369,8 @@ class ForumDetailViewModel @Inject constructor(
                 _state.update { it.copy(isSubmittingComment = false, actionError = ForumActionError.TargetMissing) }
             } catch (e: ForumException.Offline) {
                 _state.update { it.copy(isSubmittingComment = false, isOffline = true, actionError = ForumActionError.Offline) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isSubmittingComment = false, actionError = ForumActionError.Generic(e.message)) }
             }
@@ -372,14 +400,18 @@ class ForumDetailViewModel @Inject constructor(
             return
         }
 
+        val bodyText = cur.editDraftText.trim()
+        val operationId = operationIdFor("edit|${comment.id}|${comment.revision}|$bodyText")
         _state.update { it.copy(isSavingEdit = true, actionError = null) }
         viewModelScope.launch {
             try {
                 val receipt = editForumComment(
                     commentId = comment.id,
-                    expectedRevision = comment.sequence,
-                    bodyText = cur.editDraftText.trim(),
+                    expectedRevision = comment.revision,
+                    bodyText = bodyText,
+                    operationId = operationId,
                 )
+                pendingWrite = null
                 _state.update {
                     it.copy(
                         isSavingEdit = false,
@@ -401,6 +433,8 @@ class ForumDetailViewModel @Inject constructor(
                 loadComments(cur.postId)
             } catch (e: ForumException.Offline) {
                 _state.update { it.copy(isSavingEdit = false, isOffline = true, actionError = ForumActionError.Offline) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isSavingEdit = false, actionError = ForumActionError.Generic(e.message)) }
             }
@@ -430,7 +464,7 @@ class ForumDetailViewModel @Inject constructor(
             try {
                 removeForumComment(
                     commentId = comment.id,
-                    expectedRevision = comment.sequence,
+                    expectedRevision = comment.revision,
                 )
                 _state.update { it.copy(isRemovingComment = false, commentPendingRemoval = null) }
                 loadComments(cur.postId)
@@ -439,6 +473,8 @@ class ForumDetailViewModel @Inject constructor(
             } catch (e: ForumException.NotFound) {
                 _state.update { it.copy(isRemovingComment = false, commentPendingRemoval = null, actionError = ForumActionError.TargetMissing) }
                 loadComments(cur.postId)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isRemovingComment = false, actionError = ForumActionError.Generic(e.message)) }
             }
@@ -485,6 +521,8 @@ class ForumDetailViewModel @Inject constructor(
                 _state.update { it.copy(isSubmittingReport = false, reportingTarget = null, actionError = ForumActionError.TargetMissing) }
             } catch (e: ForumException.Offline) {
                 _state.update { it.copy(isSubmittingReport = false, isOffline = true, actionError = ForumActionError.Offline) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isSubmittingReport = false, actionError = ForumActionError.Generic(e.message)) }
             }

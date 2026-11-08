@@ -15,6 +15,7 @@ import com.anpfuel.domain.forum.ForumTopicReceipt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -152,6 +153,8 @@ class ForumTopicFormViewModel @Inject constructor(
                 _state.update { it.copy(isLoading = false, notFoundError = true) }
             } catch (e: ForumException.Offline) {
                 _state.update { it.copy(isLoading = false, actionError = ForumActionError.Offline) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, actionError = ForumActionError.Generic(e.message)) }
             }
@@ -346,6 +349,8 @@ class ForumTopicFormViewModel @Inject constructor(
                 _state.update { it.copy(isSubmitting = false, requireAuthPrompt = true) }
             } catch (e: ForumException.Invalid) {
                 _state.update { it.copy(isSubmitting = false, actionError = ForumActionError.Generic(e.code)) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isSubmitting = false, actionError = ForumActionError.Generic(e.message)) }
             }
@@ -381,6 +386,8 @@ class ForumTopicFormViewModel @Inject constructor(
                 _state.update { it.copy(isRemoving = false, showDeleteDialog = false, actionError = ForumActionError.Offline) }
             } catch (e: ForumException.NotFound) {
                 _state.update { it.copy(isRemoving = false, showDeleteDialog = false, actionError = ForumActionError.TargetMissing) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isRemoving = false, showDeleteDialog = false, actionError = ForumActionError.Generic(e.message)) }
             }

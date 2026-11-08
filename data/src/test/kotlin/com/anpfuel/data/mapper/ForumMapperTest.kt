@@ -283,6 +283,7 @@ class ForumMapperTest {
                         "parent_id": null,
                         "depth": 0,
                         "sequence": 1,
+                        "revision": 3,
                         "public_alias": "Motorista SP",
                         "body_text": "Ótima explicação sobre tributos.",
                         "created_at": "2026-11-05T14:00:00Z",
@@ -304,6 +305,7 @@ class ForumMapperTest {
         assertEquals("Motorista SP", item.publicAlias)
         assertEquals("Ótima explicação sobre tributos.", item.bodyText)
         assertEquals(1L, item.sequence)
+        assertEquals(3L, item.revision)
         assertEquals(2, item.replyCount)
     }
 
