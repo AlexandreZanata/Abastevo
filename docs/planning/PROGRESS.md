@@ -1,4 +1,17 @@
 # Current execution state
+- Android Energia Teal theme, 2026-11-08: LOCAL_DONE on dev from main
+  `e0519257`, user-selected from five light-mode candidates. Light theme uses
+  pure white surfaces, teal actions and a teal-tinted bottom bar; dark theme
+  uses teal-tinted dark surfaces with light-teal highlights. The app no longer
+  applies Android 12+ dynamic colors (`dynamicColor` is opt-in, default off),
+  the bottom bar reads dedicated `AbastevoNavColors`, and the dark system
+  navigation bar is transparent. Shapes, typography, fuel tints and Premium
+  colors are unchanged. Verified: theme and navigation unit tests (new
+  `BrandPaletteContrastTest` light+dark WCAG AA; `ColorContrastTest` now checks
+  the real schemes), `:app:assembleDebug`, emulator screenshots of Explorar,
+  Postos, Comunidade and Perfil in both modes; the Mapa tab was not visually
+  verified (emulator did not render map tiles).
+
 - Forum Android review fixes, 2026-11-08: LOCAL_DONE on dev. Report reasons
   now use the contract codes (four of six always failed); edit/remove
   controls show only on owned comments and topics, confirmed by signed
