@@ -1389,10 +1389,10 @@
     <string name="forum_report_dialog_title">举报内容</string>
     <string name="forum_report_dialog_reason_prompt">选择举报原因：</string>
     <string name="forum_report_reason_spam">垃圾广告</string>
-    <string name="forum_report_reason_offensive">攻击性或不当内容</string>
-    <string name="forum_report_reason_misinformation">不实误导信息</string>
-    <string name="forum_report_reason_commercial">未授权商业推广</string>
-    <string name="forum_report_reason_legal_notice">法律纠纷或侵犯版权</string>
+    <string name="forum_report_reason_harassment">骚扰或攻击性内容</string>
+    <string name="forum_report_reason_defamation">诽谤或不实指控</string>
+    <string name="forum_report_reason_off_topic">偏离主题</string>
+    <string name="forum_report_reason_illegal">违法内容或侵权</string>
     <string name="forum_report_reason_other">其他原因</string>
     <string name="forum_report_detail_hint">补充说明（可选，最多500字）...</string>
     <string name="forum_report_submit">提交举报</string>

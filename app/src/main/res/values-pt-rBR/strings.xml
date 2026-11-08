@@ -1402,10 +1402,10 @@
     <string name="forum_report_dialog_title">Denunciar conteúdo</string>
     <string name="forum_report_dialog_reason_prompt">Selecione o motivo da denúncia:</string>
     <string name="forum_report_reason_spam">Spam ou publicidade</string>
-    <string name="forum_report_reason_offensive">Conteúdo ofensivo ou impróprio</string>
-    <string name="forum_report_reason_misinformation">Informação enganosa</string>
-    <string name="forum_report_reason_commercial">Atividade comercial não autorizada</string>
-    <string name="forum_report_reason_legal_notice">Violação legal ou direitos autorais</string>
+    <string name="forum_report_reason_harassment">Assédio ou conteúdo ofensivo</string>
+    <string name="forum_report_reason_defamation">Difamação ou acusação falsa</string>
+    <string name="forum_report_reason_off_topic">Conteúdo fora do tema</string>
+    <string name="forum_report_reason_illegal">Conteúdo ilegal ou violação de direitos</string>
     <string name="forum_report_reason_other">Outro motivo</string>
     <string name="forum_report_detail_hint">Detalhes adicionais (opcional, até 500 caracteres)...</string>
     <string name="forum_report_submit">Enviar denúncia</string>

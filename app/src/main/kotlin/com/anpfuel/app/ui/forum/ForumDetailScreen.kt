@@ -1041,10 +1041,10 @@ private fun ReplyItemView(
 private fun reportReasonText(reason: ForumReportReason): String {
     return when (reason) {
         ForumReportReason.SPAM -> stringResource(R.string.forum_report_reason_spam)
-        ForumReportReason.OFFENSIVE -> stringResource(R.string.forum_report_reason_offensive)
-        ForumReportReason.MISINFORMATION -> stringResource(R.string.forum_report_reason_misinformation)
-        ForumReportReason.COMMERCIAL -> stringResource(R.string.forum_report_reason_commercial)
-        ForumReportReason.LEGAL_NOTICE -> stringResource(R.string.forum_report_reason_legal_notice)
+        ForumReportReason.HARASSMENT -> stringResource(R.string.forum_report_reason_harassment)
+        ForumReportReason.DEFAMATION -> stringResource(R.string.forum_report_reason_defamation)
+        ForumReportReason.OFF_TOPIC -> stringResource(R.string.forum_report_reason_off_topic)
+        ForumReportReason.ILLEGAL -> stringResource(R.string.forum_report_reason_illegal)
         ForumReportReason.OTHER -> stringResource(R.string.forum_report_reason_other)
     }
 }

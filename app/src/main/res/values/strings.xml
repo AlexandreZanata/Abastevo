@@ -1409,10 +1409,10 @@
     <string name="forum_report_dialog_title">Report content</string>
     <string name="forum_report_dialog_reason_prompt">Select the reason for reporting:</string>
     <string name="forum_report_reason_spam">Spam or advertising</string>
-    <string name="forum_report_reason_offensive">Offensive or harmful content</string>
-    <string name="forum_report_reason_misinformation">Misleading information</string>
-    <string name="forum_report_reason_commercial">Unauthorized commercial activity</string>
-    <string name="forum_report_reason_legal_notice">Legal violation or copyright infringement</string>
+    <string name="forum_report_reason_harassment">Harassment or offensive content</string>
+    <string name="forum_report_reason_defamation">Defamation or false accusation</string>
+    <string name="forum_report_reason_off_topic">Off-topic content</string>
+    <string name="forum_report_reason_illegal">Illegal content or rights violation</string>
     <string name="forum_report_reason_other">Other reason</string>
     <string name="forum_report_detail_hint">Additional details (optional, up to 500 characters)...</string>
     <string name="forum_report_submit">Submit report</string>

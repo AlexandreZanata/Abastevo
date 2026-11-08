@@ -1389,10 +1389,10 @@
     <string name="forum_report_dialog_title">Пожаловаться на контент</string>
     <string name="forum_report_dialog_reason_prompt">Выберите причину жалобы:</string>
     <string name="forum_report_reason_spam">Спам или реклама</string>
-    <string name="forum_report_reason_offensive">Оскорбительный контент</string>
-    <string name="forum_report_reason_misinformation">Недостоверная информация</string>
-    <string name="forum_report_reason_commercial">Несанкционированная реклама</string>
-    <string name="forum_report_reason_legal_notice">Нарушение закона или авторских прав</string>
+    <string name="forum_report_reason_harassment">Травля или оскорбительный контент</string>
+    <string name="forum_report_reason_defamation">Клевета или ложное обвинение</string>
+    <string name="forum_report_reason_off_topic">Не по теме</string>
+    <string name="forum_report_reason_illegal">Незаконный контент или нарушение прав</string>
     <string name="forum_report_reason_other">Другая причина</string>
     <string name="forum_report_detail_hint">Дополнительные сведения (необязательно, до 500 символов)...</string>
     <string name="forum_report_submit">Отправить жалобу</string>

@@ -169,10 +169,10 @@ data class ForumCommentReceipt(
  */
 enum class ForumReportReason(val wireCode: String) {
     SPAM("SPAM"),
-    OFFENSIVE("OFFENSIVE"),
-    MISINFORMATION("MISINFORMATION"),
-    COMMERCIAL("COMMERCIAL"),
-    LEGAL_NOTICE("LEGAL_NOTICE"),
+    HARASSMENT("HARASSMENT"),
+    DEFAMATION("DEFAMATION"),
+    OFF_TOPIC("OFF_TOPIC"),
+    ILLEGAL("ILLEGAL"),
     OTHER("OTHER");
 
     companion object {
