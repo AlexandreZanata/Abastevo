@@ -298,7 +298,7 @@ export class AdminApi {
   ): Promise<ForumPostPage> {
     const params = new URLSearchParams();
     if (status !== '' && status !== 'all') {
-      params.set('status', status);
+      params.set('publication_state', status.toUpperCase());
     }
     if (category !== '') {
       params.set('category', category);
@@ -310,9 +310,41 @@ export class AdminApi {
       params.set('limit', String(limit));
     }
     const query = params.toString();
-    return this.request<ForumPostPage>(
+    const page = await this.request<{ items: ForumPostSummary[]; next_cursor: string | null }>(
       'GET',
       `/v1/admin/forum/posts${query === '' ? '' : `?${query}`}`,
+    );
+    return { items: page.items, next_cursor: page.next_cursor ?? '' };
+  }
+
+  async listPendingForumComments(cursor: string = '', limit: number = 20): Promise<ForumCommentPage> {
+    const params = new URLSearchParams();
+    if (cursor !== '') {
+      params.set('cursor', cursor);
+    }
+    params.set('limit', String(limit));
+    const page = await this.request<{ items: ForumCommentReview[]; next_cursor: string | null }>(
+      'GET',
+      `/v1/admin/forum/comments?${params.toString()}`,
+    );
+    return { items: page.items, next_cursor: page.next_cursor ?? '' };
+  }
+
+  async reviewForumComment(
+    id: string,
+    approve: boolean,
+    expectedRevision: number,
+    reason: string,
+  ): Promise<ForumCommentReview> {
+    return this.request<ForumCommentReview>(
+      'POST',
+      `/v1/admin/forum/comments/${encodeURIComponent(id)}/${approve ? 'publish' : 'reject'}`,
+      {
+        body: {
+          expected_revision: expectedRevision,
+          reason,
+        },
+      },
     );
   }
 
@@ -610,6 +642,25 @@ export interface ForumSource {
 
 export interface ForumPostPage {
   items: ForumPostSummary[];
+  next_cursor: string;
+}
+
+export interface ForumCommentReview {
+  id: string;
+  post_id: string;
+  parent_id?: string;
+  public_alias: string;
+  body_text: string;
+  revision: number;
+  publication_state: string;
+  visibility: string;
+  created_at: string;
+  updated_at: string;
+  published_at?: string;
+}
+
+export interface ForumCommentPage {
+  items: ForumCommentReview[];
   next_cursor: string;
 }
 

@@ -244,9 +244,10 @@
             <select id="forum-filter-status" name="status">
               <option value="all">Todos</option>
               <option value="draft">Rascunhos</option>
+              <option value="pending_review">Aguardando revisão</option>
               <option value="published">Publicados</option>
               <option value="rejected">Rejeitados</option>
-              <option value="hidden">Ocultados</option>
+              <option value="removed">Removidos</option>
             </select>
           </label>
           <label class="admin-control" for="forum-filter-category">
@@ -363,6 +364,12 @@
           <p id="forum-edit-error" class="error" role="alert"></p>
           <button class="btn-dark" type="submit">Salvar edição</button>
         </form>
+      </section>
+      <section class="admin-card" id="forum-comments-card" aria-labelledby="forum-comments-title">
+        <h2 id="forum-comments-title">Comentários aguardando revisão</h2>
+        <p id="forum-comments-error" class="error" role="alert"></p>
+        <ul class="admin-list" id="forum-comments" aria-live="polite"></ul>
+        <button class="admin-secondary" id="forum-comments-more" type="button" hidden>Carregar mais</button>
       </section>
       <section class="admin-card" id="forum-sources-card" aria-labelledby="forum-sources-title">
         <h2 id="forum-sources-title">Fontes e Direitos</h2>

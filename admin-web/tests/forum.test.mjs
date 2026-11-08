@@ -174,7 +174,7 @@ test('forum api client: list, detail, create, edit, publish, visibility', async 
   assert.equal(list.items.length, 1);
   const lastCall = recordedCalls[recordedCalls.length - 1];
   assert.equal(lastCall.method, 'GET');
-  assert.ok(lastCall.url.includes('status=draft'));
+  assert.ok(lastCall.url.includes('publication_state=DRAFT'));
   assert.ok(lastCall.url.includes('category=FUELS'));
   assert.ok(lastCall.url.includes('cursor=c1'));
   assert.ok(lastCall.url.includes('limit=10'));
@@ -250,6 +250,78 @@ test('forum api client: list, detail, create, edit, publish, visibility', async 
   const srcCall = recordedCalls[recordedCalls.length - 1];
   assert.equal(srcCall.method, 'GET');
   assert.equal(srcCall.url, '/v1/admin/forum/sources');
+});
+
+test('forum api client: comment review queue and decisions', async () => {
+  const { api } = await loadModules();
+
+  const comment = {
+    id: '00000000-0000-0000-0000-0000000000c1',
+    post_id: '00000000-0000-0000-0000-000000000002',
+    public_alias: 'Motorista',
+    body_text: 'Comentário aguardando revisão',
+    revision: 3,
+    publication_state: 'PENDING_REVIEW',
+    visibility: 'VISIBLE',
+    created_at: '2026-11-08T12:00:00Z',
+    updated_at: '2026-11-08T12:00:00Z',
+  };
+  const recordedCalls = [];
+  const fakeFetch = async (input, init) => {
+    recordedCalls.push({ url: input, method: init.method, body: init.body });
+    if (input === '/v1/admin/session') {
+      return new Response(JSON.stringify({ csrf_token: 'test-csrf-token', expires_at: '2026-11-06T00:00:00Z' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (input.startsWith('/v1/admin/forum/comments?')) {
+      return new Response(JSON.stringify({ items: [comment], next_cursor: null }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (input.startsWith('/v1/admin/forum/posts')) {
+      return new Response(JSON.stringify({ items: [], next_cursor: null }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const published = input.endsWith('/publish');
+    return new Response(JSON.stringify({
+      ...comment,
+      revision: 4,
+      publication_state: published ? 'PUBLISHED' : 'REJECTED',
+      visibility: published ? 'VISIBLE' : 'HIDDEN',
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  const client = new api.AdminApi(fakeFetch);
+  await client.login('test-key');
+
+  // A null cursor from the backend means "no more pages", never "null".
+  const posts = await client.listForumPosts('pending_review');
+  assert.equal(posts.next_cursor, '');
+  assert.ok(recordedCalls[recordedCalls.length - 1].url.includes('publication_state=PENDING_REVIEW'));
+
+  const page = await client.listPendingForumComments('cur-1', 5);
+  assert.equal(page.items.length, 1);
+  assert.equal(page.next_cursor, '');
+  const listCall = recordedCalls[recordedCalls.length - 1];
+  assert.equal(listCall.method, 'GET');
+  assert.ok(listCall.url.includes('cursor=cur-1'));
+  assert.ok(listCall.url.includes('limit=5'));
+
+  const approved = await client.reviewForumComment(comment.id, true, 3, 'Comentário dentro das regras');
+  assert.equal(approved.publication_state, 'PUBLISHED');
+  const approveCall = recordedCalls[recordedCalls.length - 1];
+  assert.equal(approveCall.method, 'POST');
+  assert.equal(approveCall.url, `/v1/admin/forum/comments/${comment.id}/publish`);
+  assert.deepEqual(JSON.parse(approveCall.body), { expected_revision: 3, reason: 'Comentário dentro das regras' });
+
+  const rejected = await client.reviewForumComment(comment.id, false, 3, 'Comentário fora das regras');
+  assert.equal(rejected.publication_state, 'REJECTED');
+  assert.equal(recordedCalls[recordedCalls.length - 1].url, `/v1/admin/forum/comments/${comment.id}/reject`);
 });
 
 test('forum error mapping', async () => {

@@ -15,6 +15,7 @@ import {
   type AccountSummary,
   type AuditEvent,
   type ClaimView,
+  type ForumCommentReview,
   type ForumPostDetail,
   type ForumPostSummary,
   type GrantView,
@@ -46,6 +47,7 @@ const AUDIT_PATH = '/admin/audit/';
 const STATIONS_PATH = '/admin/stations/';
 let selectedForumPost: ForumPostDetail | null = null;
 let forumCursor = '';
+let forumCommentsCursor = '';
 let forumFilterStatus = 'all';
 let forumFilterCategory = '';
 const ADDRESS_SOURCE_LABELS = new Map([
@@ -176,7 +178,9 @@ function route(): void {
     } else if (path === FORUM_PATH) {
       showAuthed('view-forum');
       forumCursor = '';
+      forumCommentsCursor = '';
       void loadForumPosts(false);
+      void loadForumComments(false);
       void loadForumSources();
     } else if (path === AUDIT_PATH) {
       showAuthed('view-audit');
@@ -528,6 +532,7 @@ interface PagedList {
 const claimsPaging: PagedList = { seq: 0, busy: false };
 const auditPaging: PagedList = { seq: 0, busy: false };
 const forumPaging: PagedList = { seq: 0, busy: false };
+const forumCommentsPaging: PagedList = { seq: 0, busy: false };
 
 function beginPage(paging: PagedList, append: boolean, moreId: string): number | null {
   if (append && paging.busy) {
@@ -1021,6 +1026,94 @@ async function loadForumPosts(append: boolean): Promise<void> {
   }
 }
 
+// Comment review queue rows: the text renders only through textContent and
+// each decision carries the reviewed revision, so an edit made after the
+// operator read it is refused with a conflict instead of being approved.
+function renderForumCommentRow(comment: ForumCommentReview): HTMLLIElement {
+  const row = document.createElement('li');
+  row.className = 'admin-list-item forum-post-item';
+  row.appendChild(text('strong', comment.public_alias === '' ? 'Autor sem apelido' : comment.public_alias));
+  row.appendChild(text('span', ` · rev ${comment.revision} · ${formatDateTime(comment.created_at)}`));
+  const body = document.createElement('p');
+  body.className = 'forum-post-excerpt';
+  body.textContent = comment.body_text;
+  row.appendChild(body);
+  row.appendChild(text('span', `Post ${comment.post_id}${comment.parent_id ? ` · resposta a ${comment.parent_id}` : ''}`));
+
+  for (const approve of [true, false]) {
+    const form = document.createElement('form');
+    form.className = 'inline-form';
+    const reasonInput = document.createElement('input');
+    reasonInput.type = 'text';
+    reasonInput.name = approve ? 'approve-reason' : 'reject-reason';
+    reasonInput.placeholder = 'Motivo da decisão (10+ caracteres)';
+    reasonInput.setAttribute('aria-label', 'Motivo da decisão');
+    form.appendChild(reasonInput);
+    const button = document.createElement('button');
+    button.type = 'submit';
+    button.className = approve ? 'btn-dark' : 'admin-secondary';
+    button.textContent = approve ? 'Aprovar' : 'Rejeitar';
+    form.appendChild(button);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const reason = reasonInput.value;
+      const invalid = reasonError(reason);
+      if (invalid !== null) {
+        setAlert('forum-comments-error', invalid);
+        return;
+      }
+      if (!window.confirm(`${approve ? 'Aprovar' : 'Rejeitar'} este comentário?`)) {
+        return;
+      }
+      void (async () => {
+        try {
+          await api.reviewForumComment(comment.id, approve, comment.revision, reason.trim());
+          setAlert('forum-comments-error', '');
+          await loadForumComments(false);
+        } catch (error) {
+          if (!isUnauthorized(error)) {
+            setAlert('forum-comments-error', errorMessage(error));
+          }
+        }
+      })();
+    });
+    row.appendChild(form);
+  }
+  return row;
+}
+
+async function loadForumComments(append: boolean): Promise<void> {
+  const seq = beginPage(forumCommentsPaging, append, 'forum-comments-more');
+  if (seq === null) {
+    return;
+  }
+  setAlert('forum-comments-error', '');
+  try {
+    const page = await api.listPendingForumComments(append ? forumCommentsCursor : '', 20);
+    if (!isCurrentPage(forumCommentsPaging, seq)) {
+      return;
+    }
+    const list = el<HTMLUListElement>('forum-comments');
+    if (!append) {
+      clearChildren(list);
+    }
+    for (const comment of page.items) {
+      list.appendChild(renderForumCommentRow(comment));
+    }
+    if (!append && page.items.length === 0) {
+      list.appendChild(text('li', 'Nenhum comentário aguardando revisão.'));
+    }
+    forumCommentsCursor = page.next_cursor;
+    el<HTMLButtonElement>('forum-comments-more').hidden = page.next_cursor === '';
+  } catch (error) {
+    if (isCurrentPage(forumCommentsPaging, seq) && !isUnauthorized(error)) {
+      setAlert('forum-comments-error', errorMessage(error));
+    }
+  } finally {
+    endPage(forumCommentsPaging, seq, 'forum-comments-more');
+  }
+}
+
 async function selectForumPost(postId: string): Promise<void> {
   setAlert('forum-list-error', '');
   setAlert('forum-detail-error', '');
@@ -1102,6 +1195,10 @@ function wireForum(): void {
     forumFilterCategory = el<HTMLSelectElement>('forum-filter-category').value;
     forumCursor = '';
     void loadForumPosts(false);
+  });
+
+  el<HTMLButtonElement>('forum-comments-more').addEventListener('click', () => {
+    void loadForumComments(true);
   });
 
   el<HTMLButtonElement>('forum-more').addEventListener('click', () => {
