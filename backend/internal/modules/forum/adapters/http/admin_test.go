@@ -477,9 +477,31 @@ func TestForumAdmin_CreateDraft_Edit_Publish_Hide_Lifecycle(t *testing.T) {
 		t.Fatalf("expected 200 OK, got %d (body: %s)", wEdit.Code, wEdit.Body.String())
 	}
 
+	// 4a. Publish without the reviewed revision -> 400; stale revision -> 409
+	pubMissingReq := h.newAuthedRequest(http.MethodPost, "/v1/admin/forum/posts/"+postID+"/publish", map[string]any{
+		"reason": "artigo aprovado e revisado para publicação pública",
+	})
+	pubMissingReq.Header.Set("Idempotency-Key", "77777777-7777-4777-8777-777777777701")
+	wPubMissing := httptest.NewRecorder()
+	h.router.ServeHTTP(wPubMissing, pubMissingReq)
+	if wPubMissing.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 without expected_revision, got %d (body: %s)", wPubMissing.Code, wPubMissing.Body.String())
+	}
+	pubStaleReq := h.newAuthedRequest(http.MethodPost, "/v1/admin/forum/posts/"+postID+"/publish", map[string]any{
+		"expected_revision": 1,
+		"reason":            "artigo aprovado e revisado para publicação pública",
+	})
+	pubStaleReq.Header.Set("Idempotency-Key", "77777777-7777-4777-8777-777777777702")
+	wPubStale := httptest.NewRecorder()
+	h.router.ServeHTTP(wPubStale, pubStaleReq)
+	if wPubStale.Code != http.StatusConflict {
+		t.Fatalf("expected 409 for stale expected_revision, got %d (body: %s)", wPubStale.Code, wPubStale.Body.String())
+	}
+
 	// 4. Publish Post -> 200
 	pubReq := h.newAuthedRequest(http.MethodPost, "/v1/admin/forum/posts/"+postID+"/publish", map[string]any{
-		"reason": "artigo aprovado e revisado para publicação pública",
+		"expected_revision": 2,
+		"reason":            "artigo aprovado e revisado para publicação pública",
 	})
 	pubReq.Header.Set("Idempotency-Key", "77777777-7777-4777-8777-777777777777")
 	wPub := httptest.NewRecorder()

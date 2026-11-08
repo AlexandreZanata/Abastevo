@@ -384,7 +384,7 @@ func TestAdminService_PublishPost_RightsAndTransitions(t *testing.T) {
 	}
 
 	// 1. Must fail because source rights are not approved
-	_, err := svc.PublishPost(context.Background(), mutation, postID)
+	_, err := svc.PublishPost(context.Background(), mutation, postID, store.posts[postID].Revision)
 	if !errors.Is(err, domain.ErrMissingRights) {
 		t.Fatalf("expected ErrMissingRights for unapproved source, got %v", err)
 	}
@@ -393,7 +393,15 @@ func TestAdminService_PublishPost_RightsAndTransitions(t *testing.T) {
 	store.sources[sourceID].RightsStatus = domain.RightsApproved
 	store.sources[sourceID].PublicationEnabled = true
 
-	published, err := svc.PublishPost(context.Background(), mutation, postID)
+	// A stale reviewed revision must never publish the newer content.
+	if _, err := svc.PublishPost(context.Background(), mutation, postID, store.posts[postID].Revision+1); !errors.Is(err, domain.ErrRevisionMismatch) {
+		t.Fatalf("expected ErrRevisionMismatch for stale revision, got %v", err)
+	}
+	if store.posts[postID].PublicationState == domain.StatePublished {
+		t.Fatal("stale publish must not change state")
+	}
+
+	published, err := svc.PublishPost(context.Background(), mutation, postID, store.posts[postID].Revision)
 	if err != nil {
 		t.Fatalf("unexpected publish error: %v", err)
 	}
@@ -441,7 +449,7 @@ func TestAdminService_PublishBulletinHidesSuperseded(t *testing.T) {
 	svc := &forumapp.AdminService{Store: store, Runner: runner, Config: cfg, Clock: func() time.Time { return fixedTime }}
 	mutation := adminapp.Mutation{SessionID: "sess-1", Action: "admin.forum.post.publish", Reason: "publicando correção", Key: "44444444-4444-4444-8444-444444444444"}
 
-	published, err := svc.PublishPost(context.Background(), mutation, newID)
+	published, err := svc.PublishPost(context.Background(), mutation, newID, store.posts[newID].Revision)
 	if err != nil {
 		t.Fatalf("publish bulletin: %v", err)
 	}
@@ -698,7 +706,7 @@ func TestAdminService_PublishPost_RightsEnforcement(t *testing.T) {
 
 	mutation := adminapp.Mutation{SessionID: "s", Key: "k", Reason: "tentando publicar notícia"}
 
-	_, err := svc.PublishPost(context.Background(), mutation, post1ID)
+	_, err := svc.PublishPost(context.Background(), mutation, post1ID, store.posts[post1ID].Revision)
 	if !errors.Is(err, domain.ErrMissingRights) {
 		t.Fatalf("expected ErrMissingRights when PublicationEnabled is false, got %v", err)
 	}
@@ -727,7 +735,7 @@ func TestAdminService_PublishPost_RightsEnforcement(t *testing.T) {
 		LocalUpdatedAt:   fixedTime,
 	}
 
-	_, err = svc.PublishPost(context.Background(), mutation, post2ID)
+	_, err = svc.PublishPost(context.Background(), mutation, post2ID, store.posts[post2ID].Revision)
 	if !errors.Is(err, domain.ErrMissingRights) {
 		t.Fatalf("expected ErrMissingRights when ReviewExpiresAt has passed, got %v", err)
 	}

@@ -385,8 +385,10 @@ func (s *AdminService) EditPost(ctx context.Context, m adminapp.Mutation, in Edi
 	return &updated, nil
 }
 
-// PublishPost transitions an editorial post to PUBLISHED state with monotonic sequence.
-func (s *AdminService) PublishPost(ctx context.Context, m adminapp.Mutation, id string) (*domain.Post, error) {
+// PublishPost transitions an editorial post to PUBLISHED state with monotonic
+// sequence. expectedRevision must equal the reviewed revision, so content an
+// author edited after review is never published unseen.
+func (s *AdminService) PublishPost(ctx context.Context, m adminapp.Mutation, id string, expectedRevision int) (*domain.Post, error) {
 	if s == nil || s.Store == nil || s.Runner == nil {
 		return nil, domain.ErrForumDisabled
 	}
@@ -400,6 +402,10 @@ func (s *AdminService) PublishPost(ctx context.Context, m adminapp.Mutation, id 
 		current, err := s.Store.GetPostForUpdateTx(ctx, tx, id)
 		if err != nil {
 			return adminapp.MutationResult{}, nil, err
+		}
+
+		if current.Revision != expectedRevision {
+			return adminapp.MutationResult{}, nil, domain.ErrRevisionMismatch
 		}
 
 		if !domain.CanTransition(current.PublicationState, domain.StatePublished) {

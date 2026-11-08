@@ -270,8 +270,12 @@ func (h AdminHandler) publishPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m.Reason = reason
+	if dto.ExpectedRevision < 1 {
+		writeError(w, r, http.StatusBadRequest, "forum.invalid")
+		return
+	}
 
-	post, err := h.Service.PublishPost(r.Context(), m, id)
+	post, err := h.Service.PublishPost(r.Context(), m, id, dto.ExpectedRevision)
 	if err != nil {
 		writeServiceError(w, r, err)
 		return
