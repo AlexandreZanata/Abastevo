@@ -8,6 +8,8 @@ import com.anpfuel.application.usecase.forum.EditForumCommentUseCase
 import com.anpfuel.application.usecase.forum.GetForumCommentsUseCase
 import com.anpfuel.application.usecase.forum.GetForumPostDetailUseCase
 import com.anpfuel.application.usecase.forum.GetForumRepliesUseCase
+import com.anpfuel.application.usecase.forum.GetOwnForumCommentIdsUseCase
+import com.anpfuel.application.usecase.forum.GetOwnerTopicUseCase
 import com.anpfuel.application.usecase.forum.RemoveForumCommentUseCase
 import com.anpfuel.application.usecase.forum.ReportForumTargetUseCase
 import com.anpfuel.application.usecase.forum.SubmitForumCommentUseCase
@@ -16,6 +18,7 @@ import com.anpfuel.domain.forum.ForumComment
 import com.anpfuel.domain.forum.ForumCommentReceipt
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumPostDetail
+import com.anpfuel.domain.forum.ForumPostKind
 import com.anpfuel.domain.forum.ForumReportReason
 import com.anpfuel.domain.forum.ForumReportReceipt
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -63,6 +66,10 @@ data class ForumDetailUiState(
     val actionError: ForumActionError? = null,
     val isAuthenticated: Boolean = false,
     val requireAuthPrompt: Boolean = false,
+    // Ownership confirmed by signed owner reads: edit/remove controls show
+    // only on the viewer's own topic and comments.
+    val isTopicOwner: Boolean = false,
+    val ownCommentIds: Set<String> = emptySet(),
 )
 
 sealed interface ForumActionError {
@@ -90,6 +97,8 @@ class ForumDetailViewModel @Inject constructor(
     private val editForumComment: EditForumCommentUseCase,
     private val removeForumComment: RemoveForumCommentUseCase,
     private val reportForumTarget: ReportForumTargetUseCase,
+    private val getOwnerTopic: GetOwnerTopicUseCase,
+    private val getOwnForumCommentIds: GetOwnForumCommentIdsUseCase,
     private val sessionStore: AuthSessionStore? = null,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -105,6 +114,8 @@ class ForumDetailViewModel @Inject constructor(
 
     private var loadJob: Job? = null
     private var commentsJob: Job? = null
+    private var ownershipJob: Job? = null
+    private var writeJob: Job? = null
     private var lastKnownAccountId: String? = sessionStore?.load()?.accountId
 
     // A retry of the same unchanged write reuses its operation id so a
@@ -132,6 +143,41 @@ class ForumDetailViewModel @Inject constructor(
                 loadComments(id)
             }
         }
+        _state.value.post?.let { refreshOwnership(it) }
+    }
+
+    /**
+     * Confirms through signed owner reads whether the viewer owns the topic
+     * and which comments are theirs. Failures leave controls hidden.
+     */
+    private fun refreshOwnership(post: ForumPostDetail) {
+        ownershipJob?.cancel()
+        if (sessionStore?.load() == null) {
+            _state.update { it.copy(isTopicOwner = false, ownCommentIds = emptySet()) }
+            return
+        }
+        ownershipJob = viewModelScope.launch {
+            val ownsTopic = post.kind == ForumPostKind.TOPIC && try {
+                getOwnerTopic(post.id)
+                true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                false
+            }
+            val ownComments = if (_state.value.isSocialEnabled) {
+                try {
+                    getOwnForumCommentIds(post.id)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _state.value.ownCommentIds
+                }
+            } else {
+                emptySet()
+            }
+            _state.update { it.copy(isTopicOwner = ownsTopic, ownCommentIds = ownComments) }
+        }
     }
 
     fun checkSessionConsistency() {
@@ -143,9 +189,14 @@ class ForumDetailViewModel @Inject constructor(
         if (currentAccountId != lastKnownAccountId) {
             // Account changed or logged out: cancel in-flight work and clear private state
             commentsJob?.cancel()
+            writeJob?.cancel()
+            ownershipJob?.cancel()
+            pendingWrite = null
             _state.update {
                 it.copy(
                     isAuthenticated = isAuthed,
+                    isTopicOwner = false,
+                    ownCommentIds = emptySet(),
                     editingComment = null,
                     editDraftText = "",
                     commentPendingRemoval = null,
@@ -157,6 +208,9 @@ class ForumDetailViewModel @Inject constructor(
                 )
             }
             lastKnownAccountId = currentAccountId
+            if (isAuthed) {
+                _state.value.post?.let { refreshOwnership(it) }
+            }
         } else if (wasAuthed != isAuthed) {
             _state.update { it.copy(isAuthenticated = isAuthed) }
         }
@@ -181,6 +235,7 @@ class ForumDetailViewModel @Inject constructor(
                 if (_state.value.isSocialEnabled) {
                     loadComments(postId)
                 }
+                refreshOwnership(detail)
             } catch (e: ForumException.NotFound) {
                 _state.update { it.copy(loading = false, refreshing = false, error = ForumDetailError.NOT_FOUND, post = null) }
             } catch (e: ForumException.Disabled) {
@@ -229,6 +284,7 @@ class ForumDetailViewModel @Inject constructor(
                 if (_state.value.isSocialEnabled) {
                     loadComments(id)
                 }
+                refreshOwnership(detail)
             } catch (e: ForumException.NotFound) {
                 _state.update { it.copy(loading = false, refreshing = false, error = ForumDetailError.NOT_FOUND, post = null) }
             } catch (e: ForumException.Disabled) {
@@ -342,7 +398,7 @@ class ForumDetailViewModel @Inject constructor(
         val parentId = cur.replyingTo?.id
         val operationId = operationIdFor("create|${cur.postId}|$parentId|$bodyText")
         _state.update { it.copy(isSubmittingComment = true, actionError = null) }
-        viewModelScope.launch {
+        writeJob = viewModelScope.launch {
             try {
                 val receipt = submitForumComment(
                     postId = cur.postId,
@@ -357,6 +413,7 @@ class ForumDetailViewModel @Inject constructor(
                         composerText = "",
                         replyingTo = null,
                         submissionReceipt = receipt,
+                        ownCommentIds = it.ownCommentIds + receipt.id,
                     )
                 }
             } catch (e: ForumException.AuthRequired) {
@@ -403,7 +460,7 @@ class ForumDetailViewModel @Inject constructor(
         val bodyText = cur.editDraftText.trim()
         val operationId = operationIdFor("edit|${comment.id}|${comment.revision}|$bodyText")
         _state.update { it.copy(isSavingEdit = true, actionError = null) }
-        viewModelScope.launch {
+        writeJob = viewModelScope.launch {
             try {
                 val receipt = editForumComment(
                     commentId = comment.id,
@@ -460,7 +517,7 @@ class ForumDetailViewModel @Inject constructor(
         }
 
         _state.update { it.copy(isRemovingComment = true, actionError = null) }
-        viewModelScope.launch {
+        writeJob = viewModelScope.launch {
             try {
                 removeForumComment(
                     commentId = comment.id,
@@ -473,6 +530,13 @@ class ForumDetailViewModel @Inject constructor(
             } catch (e: ForumException.NotFound) {
                 _state.update { it.copy(isRemovingComment = false, commentPendingRemoval = null, actionError = ForumActionError.TargetMissing) }
                 loadComments(cur.postId)
+            } catch (e: ForumException.Conflict) {
+                _state.update { it.copy(isRemovingComment = false, actionError = ForumActionError.Conflict) }
+                loadComments(cur.postId)
+            } catch (e: ForumException.RateLimited) {
+                _state.update { it.copy(isRemovingComment = false, actionError = ForumActionError.RateLimited(e.retryAfterSeconds)) }
+            } catch (e: ForumException.Offline) {
+                _state.update { it.copy(isRemovingComment = false, isOffline = true, actionError = ForumActionError.Offline) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -500,7 +564,7 @@ class ForumDetailViewModel @Inject constructor(
         if (cur.isSubmittingReport) return
 
         _state.update { it.copy(isSubmittingReport = true, actionError = null) }
-        viewModelScope.launch {
+        writeJob = viewModelScope.launch {
             try {
                 val receipt = reportForumTarget(
                     targetType = target.first,
@@ -515,6 +579,8 @@ class ForumDetailViewModel @Inject constructor(
                         reportReceipt = receipt,
                     )
                 }
+            } catch (e: ForumException.AuthRequired) {
+                _state.update { it.copy(isSubmittingReport = false, requireAuthPrompt = true, isAuthenticated = false) }
             } catch (e: ForumException.RateLimited) {
                 _state.update { it.copy(isSubmittingReport = false, actionError = ForumActionError.RateLimited(e.retryAfterSeconds)) }
             } catch (e: ForumException.NotFound) {

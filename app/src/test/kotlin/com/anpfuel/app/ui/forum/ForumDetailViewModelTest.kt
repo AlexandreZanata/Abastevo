@@ -6,6 +6,8 @@ import com.anpfuel.application.usecase.forum.EditForumCommentUseCase
 import com.anpfuel.application.usecase.forum.GetForumCommentsUseCase
 import com.anpfuel.application.usecase.forum.GetForumPostDetailUseCase
 import com.anpfuel.application.usecase.forum.GetForumRepliesUseCase
+import com.anpfuel.application.usecase.forum.GetOwnForumCommentIdsUseCase
+import com.anpfuel.application.usecase.forum.GetOwnerTopicUseCase
 import com.anpfuel.application.usecase.forum.RemoveForumCommentUseCase
 import com.anpfuel.application.usecase.forum.ReportForumTargetUseCase
 import com.anpfuel.application.usecase.forum.SubmitForumCommentUseCase
@@ -21,6 +23,7 @@ import com.anpfuel.domain.forum.ForumRepliesPage
 import com.anpfuel.domain.forum.ForumReportReason
 import com.anpfuel.domain.forum.ForumReportReceipt
 import com.anpfuel.domain.forum.ForumSourceAttribution
+import com.anpfuel.domain.forum.ForumTopicReceipt
 import com.anpfuel.domain.portable.PortableAuth
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -53,6 +56,8 @@ class ForumDetailViewModelTest {
     private val editForumComment = mockk<EditForumCommentUseCase>()
     private val removeForumComment = mockk<RemoveForumCommentUseCase>()
     private val reportForumTarget = mockk<ReportForumTargetUseCase>()
+    private val getOwnerTopic = mockk<GetOwnerTopicUseCase>()
+    private val getOwnForumCommentIds = mockk<GetOwnForumCommentIdsUseCase>()
     private val sessionStore = mockk<AuthSessionStore>()
 
     private val postId = "11111111-1111-1111-1111-111111111111"
@@ -119,6 +124,8 @@ class ForumDetailViewModelTest {
             editForumComment = editForumComment,
             removeForumComment = removeForumComment,
             reportForumTarget = reportForumTarget,
+            getOwnerTopic = getOwnerTopic,
+            getOwnForumCommentIds = getOwnForumCommentIds,
             sessionStore = sessionStore,
             savedStateHandle = savedState,
         )
@@ -132,6 +139,8 @@ class ForumDetailViewModelTest {
         coEvery { getForumComments(postId) } returns ForumCommentsPage(items = listOf(sampleComment1), nextCursor = null)
         coEvery { getForumReplies(sampleComment1.id) } returns ForumRepliesPage(items = listOf(sampleReply1), nextCursor = null)
         every { sessionStore.load() } returns null
+        coEvery { getOwnerTopic(any()) } throws ForumException.NotFound("forum.not-found")
+        coEvery { getOwnForumCommentIds(any()) } returns emptySet()
     }
 
     @AfterEach
@@ -556,5 +565,83 @@ class ForumDetailViewModelTest {
         assertNull(vm.state.value.editingComment)
         assertEquals("", vm.state.value.editDraftText)
         assertNull(vm.state.value.reportingTarget)
+    }
+
+    @Test
+    fun `edit and remove controls follow confirmed ownership only`() = runTest(dispatcher) {
+        val topicDetail = sampleDetail.copy(kind = ForumPostKind.TOPIC, rawKind = "TOPIC")
+        coEvery { getForumPostDetail(postId) } returns topicDetail
+        coEvery { getOwnerTopic(postId) } returns mockk<ForumTopicReceipt>()
+        coEvery { getOwnForumCommentIds(postId) } returns setOf(sampleComment1.id)
+
+        val vm = createViewModel(session = sampleSession)
+        advanceUntilIdle()
+        assertTrue(vm.state.value.isTopicOwner)
+        assertTrue(vm.state.value.ownCommentIds.isEmpty())
+
+        vm.setSocialEnabled(true)
+        advanceUntilIdle()
+        assertEquals(setOf(sampleComment1.id), vm.state.value.ownCommentIds)
+
+        // Switching account drops every ownership claim of the previous one.
+        coEvery { getOwnerTopic(postId) } throws ForumException.NotFound("forum.not-found")
+        coEvery { getOwnForumCommentIds(postId) } returns emptySet()
+        every { sessionStore.load() } returns sampleSession.copy(accountId = "other-user-999")
+        vm.checkSessionConsistency()
+        assertFalse(vm.state.value.isTopicOwner)
+        assertTrue(vm.state.value.ownCommentIds.isEmpty())
+        advanceUntilIdle()
+        assertFalse(vm.state.value.isTopicOwner)
+    }
+
+    @Test
+    fun `visitors and non owners never get owner controls`() = runTest(dispatcher) {
+        coEvery { getForumPostDetail(postId) } returns sampleDetail.copy(kind = ForumPostKind.TOPIC, rawKind = "TOPIC")
+
+        val visitor = createViewModel(session = null)
+        advanceUntilIdle()
+        assertFalse(visitor.state.value.isTopicOwner)
+        coVerify(exactly = 0) { getOwnerTopic(any()) }
+
+        val nonOwner = createViewModel(session = sampleSession)
+        advanceUntilIdle()
+        assertFalse(nonOwner.state.value.isTopicOwner)
+    }
+
+    @Test
+    fun `remove maps conflict rate limit and offline instead of generic`() = runTest(dispatcher) {
+        val vm = createViewModel(session = sampleSession)
+        advanceUntilIdle()
+
+        coEvery { removeForumComment(any(), any(), any()) } throws ForumException.Conflict("conflict")
+        vm.confirmRemove(sampleComment1)
+        vm.executeRemove()
+        advanceUntilIdle()
+        assertEquals(ForumActionError.Conflict, vm.state.value.actionError)
+
+        coEvery { removeForumComment(any(), any(), any()) } throws ForumException.RateLimited("rate", retryAfterSeconds = 30L)
+        vm.executeRemove()
+        advanceUntilIdle()
+        assertEquals(ForumActionError.RateLimited(30L), vm.state.value.actionError)
+
+        coEvery { removeForumComment(any(), any(), any()) } throws ForumException.Offline("offline")
+        vm.executeRemove()
+        advanceUntilIdle()
+        assertEquals(ForumActionError.Offline, vm.state.value.actionError)
+        assertFalse(vm.state.value.isRemovingComment)
+    }
+
+    @Test
+    fun `expired session while reporting prompts sign in`() = runTest(dispatcher) {
+        val vm = createViewModel(session = sampleSession)
+        advanceUntilIdle()
+
+        coEvery { reportForumTarget(any(), any(), any(), any()) } throws ForumException.AuthRequired("forum.auth-required")
+        vm.openReport("FORUM_COMMENT", sampleComment1.id)
+        vm.submitReport(ForumReportReason.SPAM)
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.requireAuthPrompt)
+        assertFalse(vm.state.value.isSubmittingReport)
     }
 }

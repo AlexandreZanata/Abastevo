@@ -139,6 +139,10 @@ class ForumRepository(
         return client.getOwnerComment(commentId)
     }
 
+    override suspend fun getOwnCommentIds(postId: String): Set<String> {
+        return client.getOwnCommentIds(postId)
+    }
+
     override suspend fun report(
         targetType: String,
         targetId: String,

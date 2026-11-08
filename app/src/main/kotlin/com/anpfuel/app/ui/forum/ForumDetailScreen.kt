@@ -145,7 +145,7 @@ internal fun ForumDetailContent(
                 title = { Text(stringResource(R.string.forum_detail_title)) },
                 onNavigateUp = onBack,
                 actions = {
-                    if (state.post?.kind == com.anpfuel.domain.forum.ForumPostKind.TOPIC && state.isAuthenticated) {
+                    if (state.post?.kind == com.anpfuel.domain.forum.ForumPostKind.TOPIC && state.isTopicOwner) {
                         IconButton(
                             onClick = { onEditTopic(state.postId) },
                         ) {
@@ -707,6 +707,8 @@ internal fun ForumDetailContent(
                                     onToggleReplies = { onToggleReplies(comment.id) },
                                     onReply = { onStartReply(comment) },
                                     onReport = { onOpenReport("FORUM_COMMENT", comment.id) },
+                                    onReportReply = { replyId -> onOpenReport("FORUM_COMMENT", replyId) },
+                                    isOwn = state.ownCommentIds.contains(comment.id),
                                     onEdit = { onStartEdit(comment) },
                                     onDelete = { onConfirmRemove(comment) },
                                 )
@@ -887,6 +889,8 @@ private fun CommentItemView(
     onToggleReplies: () -> Unit,
     onReply: () -> Unit,
     onReport: () -> Unit,
+    onReportReply: (String) -> Unit,
+    isOwn: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -947,14 +951,16 @@ private fun CommentItemView(
                     Text(stringResource(R.string.forum_report_button))
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                TextButton(onClick = onEdit) {
-                    Text(stringResource(R.string.forum_edit_comment))
-                }
-                TextButton(onClick = onDelete) {
-                    Text(
-                        text = stringResource(R.string.forum_delete_comment),
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                if (isOwn) {
+                    TextButton(onClick = onEdit) {
+                        Text(stringResource(R.string.forum_edit_comment))
+                    }
+                    TextButton(onClick = onDelete) {
+                        Text(
+                            text = stringResource(R.string.forum_delete_comment),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
 
@@ -971,7 +977,7 @@ private fun CommentItemView(
                         replies.forEach { reply ->
                             ReplyItemView(
                                 reply = reply,
-                                onReport = onReport,
+                                onReport = { onReportReply(reply.id) },
                             )
                         }
                     }

@@ -4,6 +4,7 @@ import com.anpfuel.data.local.forum.ForumCacheCodec
 import com.anpfuel.domain.forum.ForumCategoriesResult
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumCategoryItem
+import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
@@ -14,6 +15,7 @@ import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -196,6 +198,32 @@ class ForumMapperTest {
         assertEquals(120L, detail.bulletin?.current?.sourceStations)
         assertEquals(5900L, detail.bulletin?.previous?.meanNumerator)
         assertEquals("00000000-0000-4000-8000-000000000009", detail.supersedesPostId)
+
+        // The offline cache keeps the full provenance and correction link.
+        val cached = ForumCacheCodec.decodeDetail(
+            ForumCacheCodec.encodeDetail(detail),
+        )
+        assertEquals(detail.bulletin, cached.bulletin)
+        assertEquals(detail.supersedesPostId, cached.supersedesPostId)
+        assertEquals(detail, cached)
+    }
+
+    @Test
+    fun `maps own comment ids from owner post read`() {
+        val raw = """
+            {"comments": [
+                {"id": "11111111-1111-4111-8111-111111111111", "post_id": "22222222-2222-4222-8222-222222222222"},
+                {"id": "33333333-3333-4333-8333-333333333333", "post_id": "22222222-2222-4222-8222-222222222222"}
+            ]}
+        """.trimIndent()
+        assertEquals(
+            setOf("11111111-1111-4111-8111-111111111111", "33333333-3333-4333-8333-333333333333"),
+            ForumMapper.ownCommentIds(JSONObject(raw)),
+        )
+        assertEquals(emptySet<String>(), ForumMapper.ownCommentIds(JSONObject("""{"comments": []}""")))
+        assertThrows(ForumException.Invalid::class.java) {
+            ForumMapper.ownCommentIds(JSONObject("{}"))
+        }
     }
 
     @Test

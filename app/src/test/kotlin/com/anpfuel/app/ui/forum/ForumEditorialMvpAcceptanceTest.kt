@@ -167,6 +167,8 @@ class ForumEditorialMvpAcceptanceTest {
             editForumComment = mockk(relaxed = true),
             removeForumComment = mockk(relaxed = true),
             reportForumTarget = mockk(relaxed = true),
+            getOwnerTopic = mockk(relaxed = true),
+            getOwnForumCommentIds = mockk(relaxed = true),
             sessionStore = null,
             savedStateHandle = savedStateHandle,
         )
