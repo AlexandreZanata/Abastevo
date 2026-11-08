@@ -534,76 +534,43 @@ func (s *Store) ListRepliesByParent(ctx context.Context, query application.ListC
 
 // PublishComment approves a pending_review comment and marks it published.
 func (s *Store) PublishComment(ctx context.Context, commentID string) (*domain.Comment, error) {
-	commentUUID, err := mustUUID(commentID)
-	if err != nil {
-		return nil, domain.ErrCommentNotFound
-	}
-
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("forum: begin tx: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	qtx := s.queries.WithTx(tx)
-
-	existing, err := qtx.GetCommentByIDForUpdate(ctx, commentUUID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrCommentNotFound
-		}
-		return nil, fmt.Errorf("forum: lock comment: %w", err)
-	}
-
-	if existing.PublicationState != string(domain.StatePendingReview) {
-		return nil, fmt.Errorf("forum: comment not in pending_review state: %s", existing.PublicationState)
-	}
-
-	published, err := qtx.PublishComment(ctx, commentUUID)
-	if err != nil {
-		return nil, fmt.Errorf("forum: publish comment: %w", err)
-	}
-
-	now := time.Now().UTC()
-	changeID := newUUIDBytes()
-	if err := qtx.RecordForumChange(ctx, forumsql.RecordForumChangeParams{
-		ID:             changeID,
-		TargetType:     "COMMENT",
-		TargetID:       commentUUID,
-		Revision:       published.Revision,
-		Action:         "PUBLISH",
-		ActorKind:      "ADMIN",
-		ActorAccountID: pgtype.UUID{},
-		AdminAuditRef:  "editorial-approval",
-		PolicyVersion:  1,
-		ReasonCode:     "editorial-publish",
-		PriorState:     existing.PublicationState,
-		NewState:       string(domain.StatePublished),
-		CreatedAt:      pgtype.Timestamptz{Time: now, Valid: true},
-	}); err != nil {
-		return nil, fmt.Errorf("forum: record change: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("forum: commit tx: %w", err)
-	}
-
-	return mapCommentRowToDomain(published), nil
+	return s.reviewComment(ctx, commentID, true)
 }
 
-// RejectComment rejects a pending_review comment and marks it removed.
+// RejectComment rejects a pending_review comment and hides it.
 func (s *Store) RejectComment(ctx context.Context, commentID string) (*domain.Comment, error) {
-	commentUUID, err := mustUUID(commentID)
-	if err != nil {
-		return nil, domain.ErrCommentNotFound
-	}
+	return s.reviewComment(ctx, commentID, false)
+}
 
+func (s *Store) reviewComment(ctx context.Context, commentID string, approve bool) (*domain.Comment, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("forum: begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
+	auditRef := "editorial-rejection"
+	if approve {
+		auditRef = "editorial-approval"
+	}
+	reviewed, err := s.ReviewCommentTx(ctx, tx, commentID, 0, approve, auditRef)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("forum: commit tx: %w", err)
+	}
+	return reviewed, nil
+}
+
+// ReviewCommentTx approves or rejects a PENDING_REVIEW comment inside the
+// caller's transaction. A positive expectedRevision must match the locked
+// row, so an owner edit after review is never approved unseen.
+func (s *Store) ReviewCommentTx(ctx context.Context, tx pgx.Tx, commentID string, expectedRevision int, approve bool, auditRef string) (*domain.Comment, error) {
+	commentUUID, err := mustUUID(commentID)
+	if err != nil {
+		return nil, domain.ErrCommentNotFound
+	}
 	qtx := s.queries.WithTx(tx)
 
 	existing, err := qtx.GetCommentByIDForUpdate(ctx, commentUUID)
@@ -613,41 +580,66 @@ func (s *Store) RejectComment(ctx context.Context, commentID string) (*domain.Co
 		}
 		return nil, fmt.Errorf("forum: lock comment: %w", err)
 	}
-
+	if expectedRevision > 0 && int(existing.Revision) != expectedRevision {
+		return nil, domain.ErrRevisionMismatch
+	}
 	if existing.PublicationState != string(domain.StatePendingReview) {
-		return nil, fmt.Errorf("forum: comment not in pending_review state: %s", existing.PublicationState)
+		return nil, fmt.Errorf("forum: comment not in pending_review state: %s: %w", existing.PublicationState, domain.ErrInvalidTransition)
 	}
 
-	rejected, err := qtx.RejectComment(ctx, commentUUID)
+	var reviewed forumsql.ForumComment
+	action, reasonCode, newState := "REJECT", "editorial-reject", domain.StateRejected
+	if approve {
+		action, reasonCode, newState = "PUBLISH", "editorial-publish", domain.StatePublished
+		reviewed, err = qtx.PublishComment(ctx, commentUUID)
+	} else {
+		reviewed, err = qtx.RejectComment(ctx, commentUUID)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("forum: reject comment: %w", err)
+		return nil, fmt.Errorf("forum: review comment: %w", err)
 	}
 
-	now := time.Now().UTC()
-	changeID := newUUIDBytes()
 	if err := qtx.RecordForumChange(ctx, forumsql.RecordForumChangeParams{
-		ID:             changeID,
+		ID:             newUUIDBytes(),
 		TargetType:     "COMMENT",
 		TargetID:       commentUUID,
-		Revision:       rejected.Revision,
-		Action:         "REJECT",
+		Revision:       reviewed.Revision,
+		Action:         action,
 		ActorKind:      "ADMIN",
 		ActorAccountID: pgtype.UUID{},
-		AdminAuditRef:  "editorial-rejection",
+		AdminAuditRef:  auditRef,
 		PolicyVersion:  1,
-		ReasonCode:     "editorial-reject",
+		ReasonCode:     reasonCode,
 		PriorState:     existing.PublicationState,
-		NewState:       string(domain.StateRemoved),
-		CreatedAt:      pgtype.Timestamptz{Time: now, Valid: true},
+		NewState:       string(newState),
+		CreatedAt:      pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
 	}); err != nil {
 		return nil, fmt.Errorf("forum: record change: %w", err)
 	}
+	return mapCommentRowToDomain(reviewed), nil
+}
 
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("forum: commit tx: %w", err)
+// ListCommentsPendingReview returns the oldest unreviewed comments after an
+// optional (created_at, id) keyset cursor.
+func (s *Store) ListCommentsPendingReview(ctx context.Context, cursorCreatedAt *time.Time, cursorID *string, limit int) ([]domain.Comment, error) {
+	params := forumsql.ListCommentsPendingReviewParams{PageLimit: int32(limit)}
+	if cursorCreatedAt != nil && cursorID != nil {
+		uid, err := mustUUID(*cursorID)
+		if err != nil {
+			return nil, domain.ErrInvalidCursor
+		}
+		params.CursorCreatedAt = pgtype.Timestamptz{Time: *cursorCreatedAt, Valid: true}
+		params.CursorID = uid
 	}
-
-	return mapCommentRowToDomain(rejected), nil
+	rows, err := s.queries.ListCommentsPendingReview(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("forum: list comments pending review: %w", err)
+	}
+	out := make([]domain.Comment, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, *mapCommentRowToDomain(r))
+	}
+	return out, nil
 }
 
 // ListCommentsByAccount returns all comments authored by the specified account ID,

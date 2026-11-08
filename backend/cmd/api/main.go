@@ -882,11 +882,12 @@ func run() error {
 		staffAdmin := staffhttp.AdminHandler{Service: staffService, Admin: adminSurface}
 
 		forumAdminService := &forumapp.AdminService{
-			Store:  forumStore,
-			Runner: adminSurface.Service.Store,
-			Config: forumCfg,
-			Clock:  time.Now,
-			NewID:  newUUID,
+			Store:    forumStore,
+			Comments: forumStore,
+			Runner:   adminSurface.Service.Store,
+			Config:   forumCfg,
+			Clock:    time.Now,
+			NewID:    newUUID,
 		}
 		forumAdmin := forumhttp.NewAdminHandler(forumAdminService, adminSurface)
 

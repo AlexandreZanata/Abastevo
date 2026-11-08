@@ -71,13 +71,107 @@ type MutationRunner interface {
 	Mutate(context.Context, adminapp.Mutation, func(context.Context, pgx.Tx) (adminapp.MutationResult, []adminapp.AuditEvent, error)) (adminapp.MutationResult, error)
 }
 
+// CommentReviewStore is the persistence port for the comment review queue.
+type CommentReviewStore interface {
+	ListCommentsPendingReview(ctx context.Context, cursorCreatedAt *time.Time, cursorID *string, limit int) ([]domain.Comment, error)
+	ReviewCommentTx(ctx context.Context, tx pgx.Tx, commentID string, expectedRevision int, approve bool, auditRef string) (*domain.Comment, error)
+}
+
+// AdminCommentView is the operator projection of a comment under review. It
+// omits the author account ID; the public alias is enough to moderate.
+type AdminCommentView struct {
+	ID               string                  `json:"id"`
+	PostID           string                  `json:"post_id"`
+	ParentID         *string                 `json:"parent_id,omitempty"`
+	PublicAlias      string                  `json:"public_alias"`
+	BodyText         string                  `json:"body_text"`
+	Revision         int                     `json:"revision"`
+	PublicationState domain.PublicationState `json:"publication_state"`
+	Visibility       domain.Visibility       `json:"visibility"`
+	CreatedAt        time.Time               `json:"created_at"`
+	UpdatedAt        time.Time               `json:"updated_at"`
+	PublishedAt      *time.Time              `json:"published_at,omitempty"`
+}
+
+func adminCommentView(c domain.Comment) AdminCommentView {
+	return AdminCommentView{
+		ID: c.ID, PostID: c.PostID, ParentID: c.ParentID, PublicAlias: c.PublicAlias,
+		BodyText: c.BodyText, Revision: c.Revision, PublicationState: c.PublicationState,
+		Visibility: c.Visibility, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt, PublishedAt: c.PublishedAt,
+	}
+}
+
 // AdminService coordinates administrative editorial operations on forum publications.
 type AdminService struct {
-	Store  AdminStore
-	Runner MutationRunner
-	Config domain.Config
-	Clock  func() time.Time
-	NewID  func() (string, error)
+	Store    AdminStore
+	Comments CommentReviewStore
+	Runner   MutationRunner
+	Config   domain.Config
+	Clock    func() time.Time
+	NewID    func() (string, error)
+}
+
+// ListPendingComments returns the oldest PENDING_REVIEW comments after an
+// optional keyset cursor, bounded to 1..50 items.
+func (s *AdminService) ListPendingComments(ctx context.Context, cursorCreatedAt *time.Time, cursorID *string, limit int) ([]AdminCommentView, error) {
+	if s == nil || s.Comments == nil || !s.Config.AdminAllowed() {
+		return nil, domain.ErrForumDisabled
+	}
+	if limit < 1 || limit > 50 {
+		limit = 20
+	}
+	comments, err := s.Comments.ListCommentsPendingReview(ctx, cursorCreatedAt, cursorID, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]AdminCommentView, 0, len(comments))
+	for _, c := range comments {
+		out = append(out, adminCommentView(c))
+	}
+	return out, nil
+}
+
+// ReviewComment approves or rejects a PENDING_REVIEW comment as an audited
+// admin mutation. expectedRevision must equal the reviewed revision.
+func (s *AdminService) ReviewComment(ctx context.Context, m adminapp.Mutation, id string, expectedRevision int, approve bool) (*AdminCommentView, error) {
+	if s == nil || s.Comments == nil || s.Runner == nil || !s.Config.AdminAllowed() {
+		return nil, domain.ErrForumDisabled
+	}
+	if expectedRevision < 1 {
+		return nil, domain.ErrRevisionMismatch
+	}
+	action := "admin.forum.comment.reject"
+	if approve {
+		action = "admin.forum.comment.publish"
+	}
+
+	res, err := s.Runner.Mutate(ctx, m, func(ctx context.Context, tx pgx.Tx) (adminapp.MutationResult, []adminapp.AuditEvent, error) {
+		reviewed, err := s.Comments.ReviewCommentTx(ctx, tx, id, expectedRevision, approve, m.Key)
+		if err != nil {
+			return adminapp.MutationResult{}, nil, err
+		}
+		view := adminCommentView(*reviewed)
+		// Audit records the state transition only, never the comment text.
+		before, _ := json.Marshal(map[string]any{"publication_state": domain.StatePendingReview, "revision": expectedRevision})
+		after, _ := json.Marshal(map[string]any{"publication_state": view.PublicationState, "revision": view.Revision})
+		body, err := json.Marshal(view)
+		if err != nil {
+			return adminapp.MutationResult{}, nil, err
+		}
+		return adminapp.MutationResult{Status: 200, Body: body}, []adminapp.AuditEvent{{
+			Action: action, TargetType: "forum_comment", TargetID: view.ID,
+			Reason: m.Reason, Before: before, After: after,
+		}}, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var view AdminCommentView
+	if err := json.Unmarshal(res.Body, &view); err != nil {
+		return nil, err
+	}
+	return &view, nil
 }
 
 func (s *AdminService) now() time.Time {
