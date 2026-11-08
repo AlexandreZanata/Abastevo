@@ -1,0 +1,10 @@
+{
+  "id": "forum-report-request-invalid",
+  "schema": "ForumReportRequest",
+  "valid": false,
+  "value": {
+    "family_id": "not-a-uuid",
+    "access_token": "",
+    "reason": "INVALID_REASON_CODE"
+  }
+}

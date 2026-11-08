@@ -28,6 +28,7 @@ type ActPorts struct {
 	Store                 ActStore
 	InvalidateObservation func(ctx context.Context, tx pgx.Tx, observationID, caseID string, at time.Time) error
 	BlockContributor      func(ctx context.Context, tx pgx.Tx, contributorRef, caseID, reason string, at time.Time) error
+	InvalidateForumTarget func(ctx context.Context, tx pgx.Tx, targetType, targetID, caseID, reason string, at time.Time) error
 	EnqueueJob            func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error
 }
 
@@ -106,6 +107,10 @@ func Act(ctx context.Context, p ActPorts, caller Caller, dto ActDTO) (ActResult,
 	if qualityReport && p.ApplyQualityReport == nil {
 		return ActResult{}, domain.ErrActionForbidden
 	}
+	forumTarget := c.TargetType == domain.TargetForumPost || c.TargetType == domain.TargetForumComment
+	if probe.Action == domain.ActionInvalidate && forumTarget && p.InvalidateForumTarget == nil {
+		return ActResult{}, domain.ErrActionForbidden
+	}
 	kind, payload := actionJob(c, probe)
 	storedID, err := p.Store.RecordAction(ctx, probe, toStatus, kind, payload, "moderation:"+c.ID+":"+probe.ID,
 		func(ctx context.Context, tx pgx.Tx, kind string, payload []byte, dedupe string) error {
@@ -121,6 +126,11 @@ func Act(ctx context.Context, p ActPorts, caller Caller, dto ActDTO) (ActResult,
 			}
 			if blocks {
 				if err := p.BlockContributor(ctx, tx, c.TargetID, c.ID, probe.Reason, now); err != nil {
+					return err
+				}
+			}
+			if probe.Action == domain.ActionInvalidate && forumTarget {
+				if err := p.InvalidateForumTarget(ctx, tx, c.TargetType, c.TargetID, c.ID, probe.Reason, now); err != nil {
 					return err
 				}
 			}
@@ -145,6 +155,16 @@ func actionJob(c domain.Case, a domain.Action) (string, []byte) {
 	case c.TargetType == domain.TargetQualityReport:
 		raw, _ := json.Marshal(map[string]any{"version": 1, "target_id": c.TargetID, "action_id": a.ID})
 		return "quality-report-reviewed", raw
+	case c.TargetType == domain.TargetForumPost || c.TargetType == domain.TargetForumComment:
+		raw, _ := json.Marshal(map[string]any{
+			"version":     1,
+			"case_id":     c.ID,
+			"target_type": c.TargetType,
+			"target_id":   c.TargetID,
+			"action_id":   a.ID,
+			"action":      a.Action,
+		})
+		return "forum-moderation-applied", raw
 	case a.Action == domain.ActionInvalidate && (c.TargetType == domain.TargetObservation || c.TargetType == domain.TargetContribution):
 		raw, _ := json.Marshal(map[string]any{"version": 1, "observation_id": c.TargetID})
 		return "community-consensus", raw

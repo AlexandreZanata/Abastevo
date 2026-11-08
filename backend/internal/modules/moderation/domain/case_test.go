@@ -72,7 +72,7 @@ func TestNewCaseValid(t *testing.T) {
 }
 
 func TestNewCaseTargets(t *testing.T) {
-	for _, target := range []string{TargetObservation, TargetDispute, TargetEvidence, TargetComment} {
+	for _, target := range []string{TargetObservation, TargetDispute, TargetEvidence, TargetComment, TargetForumPost, TargetForumComment} {
 		p := validParams()
 		p.TargetType = target
 		if _, _, err := NewCase(p); err != nil {

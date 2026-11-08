@@ -17,16 +17,16 @@ test('build: dist has pages, fingerprinted assets, noindex and fonts', () => {
     for (const name of ['app', 'api', 'validators']) {
       assert.match(result.fingerprinted[`${name}.js`], new RegExp(`^${name}\\.[a-f0-9]{8}\\.js$`));
     }
-    for (const rel of ['login/index.html', 'accounts/index.html', 'contributors/index.html', 'audit/index.html', 'stations/index.html', '404.html', '_headers', 'robots.txt']) {
+    for (const rel of ['login/index.html', 'accounts/index.html', 'contributors/index.html', 'forum/index.html', 'audit/index.html', 'stations/index.html', '404.html', '_headers', 'robots.txt']) {
       assert.ok(fs.existsSync(path.join(outDir, rel)), `missing ${rel}`);
     }
-    for (const rel of ['login/index.html', 'accounts/index.html', 'contributors/index.html', 'audit/index.html', 'stations/index.html', '404.html']) {
+    for (const rel of ['login/index.html', 'accounts/index.html', 'contributors/index.html', 'forum/index.html', 'audit/index.html', 'stations/index.html', '404.html']) {
       const html = fs.readFileSync(path.join(outDir, rel), 'utf8');
       assert.match(html, /<meta name="robots" content="noindex, nofollow">/, `${rel} noindex`);
       assert.match(html, new RegExp(`/assets/${result.cssName.replace('.', '\\.')}`), `${rel} css ref`);
       assert.match(html, new RegExp(`/assets/${result.adminCssName.replace('.', '\\.')}`), `${rel} admin css ref`);
     }
-    for (const rel of ['login/index.html', 'accounts/index.html', 'contributors/index.html', 'audit/index.html', 'stations/index.html']) {
+    for (const rel of ['login/index.html', 'accounts/index.html', 'contributors/index.html', 'forum/index.html', 'audit/index.html', 'stations/index.html']) {
       const html = fs.readFileSync(path.join(outDir, rel), 'utf8');
       const appJs = result.fingerprinted['app.js'];
       assert.ok(html.includes(`/assets/${appJs}`), `${rel} app js ref`);
@@ -34,6 +34,7 @@ test('build: dist has pages, fingerprinted assets, noindex and fonts', () => {
     }
     for (const [rel, id] of [
       ['contributors/index.html', 'view-contributors'],
+      ['forum/index.html', 'view-forum'],
       ['audit/index.html', 'view-audit'],
       ['stations/index.html', 'view-stations'],
       ['accounts/index.html', 'role-form'],

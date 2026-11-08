@@ -44,6 +44,8 @@ tags:
     description: Private optional Premium subscription infrastructure; real payments OFF.
   - name: admin
     description: Owner administrative session surface; unmounted unless a key hash is configured.
+  - name: forum
+    description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
   /health/live:
     get:
@@ -7275,6 +7277,601 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/forum/categories:
+    get:
+      summary: List forum taxonomy categories.
+      description: Anonymous public endpoint returning active discussion and editorial categories.
+      operationId: getForumCategories
+      tags: [forum]
+      security: []
+      responses:
+        '200':
+          description: Categories list returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumCategoriesResponse'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/posts:
+    get:
+      summary: Read paginated forum post feed.
+      description: Anonymous public endpoint returning editorial articles, news items, and community topics.
+      operationId: getForumPosts
+      tags: [forum]
+      security: []
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ForumCategory'
+          description: Optional filter by forum category.
+        - name: kind
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ForumPostKind'
+          description: Optional filter by post kind.
+        - name: uf
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO]
+          description: Optional subject-matter state filter, not the reader's location.
+        - name: municipality_ibge
+          in: query
+          required: false
+          schema:
+            type: string
+            pattern: '^[0-9]{7}$'
+          description: Optional seven-digit IBGE municipality subject filter; must match uf when both are present.
+        - name: fuel_product
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ForumFuelProduct'
+          description: Optional forum fuel subject filter.
+        - name: station_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Optional Directory station subject filter.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          description: Number of items to return (1–50, default 20).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: Opaque pagination cursor from previous response.
+      responses:
+        '200':
+          description: Feed page returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumFeedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/posts/{post_id}:
+    get:
+      summary: Read single forum post detail.
+      description: Anonymous public endpoint returning full post content and metadata. Returns 404 for non-published or non-visible posts.
+      operationId: getForumPostById
+      tags: [forum]
+      security: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the post.
+      responses:
+        '200':
+          description: Post detail returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumPostDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/posts/{post_id}/comments:
+    post:
+      summary: Submit a comment or reply on a published forum post.
+      description: Signed owner command creating a pending-review comment or reply. Replays return the existing receipt.
+      operationId: createForumComment
+      tags: [forum]
+      security: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the post to comment on.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumCreateCommentRequest'
+      responses:
+        '200':
+          description: Comment receipt returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumCommentReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+    get:
+      summary: Read paginated visible top-level comments on a published post.
+      description: Anonymous public read endpoint returning approved visible top-level comments.
+      operationId: getForumPostComments
+      tags: [forum]
+      security: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the post.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          description: Number of comments to return (1–50, default 20).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: Monotonic sequence cursor from previous response.
+      responses:
+        '200':
+          description: Comments page returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumCommentsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/posts/{post_id}/report:
+    post:
+      summary: Report a published forum post for moderation review.
+      description: Files a moderation case (FORUM_POST target) and records a report receipt. Reports never hide content automatically, carry no reporter identity into the case, and converge on already-open targets. Volume is quota bounded (10/day).
+      operationId: reportForumPost
+      tags: [forum]
+      security: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the post to report.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumReportRequest'
+      responses:
+        '200':
+          description: Report receipt returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/comments/{comment_id}/edit:
+    post:
+      summary: Edit an existing comment.
+      description: Signed owner command updating comment body text under optimistic CAS revision check.
+      operationId: editForumComment
+      tags: [forum]
+      security: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the comment to edit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumEditCommentRequest'
+      responses:
+        '200':
+          description: Updated comment receipt returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumCommentReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/comments/{comment_id}/remove:
+    post:
+      summary: Remove an existing comment.
+      description: Signed owner command setting comment to tombstone REMOVED state and wiping body text.
+      operationId: removeForumComment
+      tags: [forum]
+      security: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the comment to remove.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumRemoveCommentRequest'
+      responses:
+        '200':
+          description: Removed comment receipt returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumCommentReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/comments/{comment_id}/replies:
+    get:
+      summary: Read paginated visible replies to a parent comment.
+      description: Anonymous public read endpoint returning approved visible replies for a parent comment.
+      operationId: getForumCommentReplies
+      tags: [forum]
+      security: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the parent comment.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          description: Number of replies to return (1–50, default 20).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: Monotonic sequence cursor from previous response.
+      responses:
+        '200':
+          description: Replies page returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumRepliesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/comments/{comment_id}/report:
+    post:
+      summary: Report a forum comment for moderation review.
+      description: Files a moderation case (FORUM_COMMENT target) and records a report receipt. Reports never hide content automatically, carry no reporter identity into the case, and converge on already-open targets. Volume is quota bounded (10/day).
+      operationId: reportForumComment
+      tags: [forum]
+      security: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the comment to report.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumReportRequest'
+      responses:
+        '200':
+          description: Report receipt returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/owner/read:
+    post:
+      summary: Private owner read of authored comment.
+      description: Signed owner endpoint returning authored comment and moderation state. Returns 404 for foreign comments.
+      operationId: readForumOwnerComment
+      tags: [forum]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumOwnerReadRequest'
+      responses:
+        '200':
+          description: Author comment returned successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ForumOwnerCommentResponse'
+                  - $ref: '#/components/schemas/ForumOwnerTopicResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/topics:
+    post:
+      summary: Create a user-authored forum topic.
+      description: Signed owner endpoint to submit a topic under review. Starts as PENDING_REVIEW and is not publicly visible before moderation approval.
+      operationId: createForumTopic
+      tags: [forum]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumCreateTopicRequest'
+      responses:
+        '200':
+          description: Topic already created (idempotent replay).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumTopicReceipt'
+        '201':
+          description: Topic created successfully (in review).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumTopicReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/topics/{topic_id}/edit:
+    post:
+      summary: CAS-edit an authored forum topic.
+      description: Signed owner endpoint to edit an authored topic. Requires expected revision; edited topic returns to PENDING_REVIEW state.
+      operationId: editForumTopic
+      tags: [forum]
+      security: []
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the topic to edit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumEditTopicRequest'
+      responses:
+        '200':
+          description: Topic edited successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumTopicReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/topics/{topic_id}/remove:
+    post:
+      summary: Remove an authored forum topic.
+      description: Signed owner endpoint to tombstone an authored topic. Clears body/alias and sets state to REMOVED / HIDDEN.
+      operationId: removeForumTopic
+      tags: [forum]
+      security: []
+      parameters:
+        - name: topic_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the topic to remove.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumRemoveTopicRequest'
+      responses:
+        '200':
+          description: Topic removed successfully.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumTopicReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
 components:
   parameters:
     QualityCompanyStationSelector:
@@ -12463,6 +13060,894 @@ components:
           items: {$ref: '#/components/schemas/PriceRankingArea'}
         next_cursor: {type: [string, 'null'], maxLength: 4096}
         generated_at: {type: string, format: date-time}
+    ForumCategory:
+      type: string
+      description: Primary editorial/topic category code.
+      enum:
+        - FUELS
+        - ELECTRIC
+        - TRAFFIC_RULES
+        - VEHICLES_TECH
+        - ROADS_MOBILITY
+        - DRIVER_ECONOMY
+        - ABASTEVO_DATA
+      example: FUELS
+    ForumPostKind:
+      type: string
+      description: Domain kind of a forum publication or candidate.
+      enum:
+        - EDITORIAL
+        - NEWS
+        - TOPIC
+        - BULLETIN
+      example: EDITORIAL
+    ForumFuelProduct:
+      type: string
+      description: Forum-owned fuel subject vocabulary used by topic and discovery filters.
+      enum:
+        - GASOLINE_REGULAR
+        - GASOLINE_PREMIUM
+        - ETHANOL
+        - DIESEL_S10
+        - DIESEL_S500
+        - GLP
+        - GNV
+      example: ETHANOL
+    ForumSourceAttribution:
+      type: object
+      description: Public attribution and source provenance for licensed or editorial content.
+      additionalProperties: false
+      required: [name, url, attribution]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Display name of the source or publisher.
+          example: Abastevo Editorial
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: Canonical HTTPS URL of the original source or article.
+          example: https://abastevo.com.br/editorial/formacao-precos
+        license_url:
+          oneOf:
+            - type: 'null'
+            - type: string
+              format: uri
+              maxLength: 2048
+          description: Optional HTTPS license or terms reference.
+          example: null
+        attribution:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Mandatory legal and editorial attribution text.
+          example: Redacao Abastevo
+    ForumPostRegion:
+      type: object
+      description: Optional coarse subject-matter geographic scope (not author location).
+      additionalProperties: false
+      required: [uf]
+      properties:
+        uf:
+          type: string
+          minLength: 2
+          maxLength: 2
+          pattern: '^[A-Z]{2}$'
+          description: Two-letter Brazilian state code.
+          example: SP
+        municipality_ibge:
+          type: [integer, 'null']
+          minimum: 1000000
+          maximum: 9999999
+          description: Seven-digit IBGE municipality code when regionalized.
+          example: 3550308
+    ForumPostSummary:
+      type: object
+      description: Public summary card for editorial and discussion feed listings.
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - category
+        - title
+        - first_published_at
+        - updated_at
+        - revision
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the post.
+          example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        kind:
+          $ref: '#/components/schemas/ForumPostKind'
+        category:
+          $ref: '#/components/schemas/ForumCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Headline or topic title (1–120 Unicode scalar values).
+          example: Entenda a formacao de precos dos combustiveis no Brasil
+        excerpt:
+          type: [string, 'null']
+          maxLength: 400
+          description: Plain-text introductory excerpt or summary (max 400 Unicode scalars).
+          example: Guia explicativo sobre composicao tributaria, realizacao e margens de distribuicao.
+        source:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumSourceAttribution'
+        public_alias:
+          type: [string, 'null']
+          maxLength: 64
+          description: Pseudonym of active topic author; null for editorial/news.
+          example: null
+        source_published_at:
+          type: [string, 'null']
+          format: date-time
+          description: Original publisher publication timestamp if external.
+          example: null
+        first_published_at:
+          type: string
+          format: date-time
+          description: Monotonic first publication timestamp on Abastevo.
+          example: '2026-11-05T12:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: Latest content revision timestamp.
+          example: '2026-11-05T12:00:00Z'
+        revision:
+          type: integer
+          minimum: 1
+          description: Monotonic edit revision counter.
+          example: 1
+        region:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumPostRegion'
+        fuel_product:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/FuelProduct'
+        station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional subject station identifier.
+          example: null
+    ForumPostDetail:
+      type: object
+      description: Full public representation of an editorial article, news item or discussion post.
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - category
+        - title
+        - first_published_at
+        - updated_at
+        - revision
+        - comments_enabled
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the post.
+          example: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        kind:
+          $ref: '#/components/schemas/ForumPostKind'
+        category:
+          $ref: '#/components/schemas/ForumCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Headline or topic title (1–120 Unicode scalar values).
+          example: Entenda a formacao de precos dos combustiveis no Brasil
+        excerpt:
+          type: [string, 'null']
+          maxLength: 400
+          description: Plain-text introductory excerpt (max 400 Unicode scalars).
+          example: Guia explicativo sobre composicao tributaria, realizacao e margens de distribuicao.
+        body_text:
+          type: [string, 'null']
+          maxLength: 4000
+          description: Full plain-text body (1–4000 Unicode scalars); null for link-only external news.
+          example: O preco ao consumidor final resulta da soma do custo da refinaria, adicoes obrigatorias de biocombustiveis, ICMS, tributos federais e parcelas de distribuicao e revenda.
+        source:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumSourceAttribution'
+        public_alias:
+          type: [string, 'null']
+          maxLength: 64
+          description: Pseudonym of active topic author; null for editorial/news.
+          example: null
+        source_published_at:
+          type: [string, 'null']
+          format: date-time
+          description: Original publisher publication timestamp if external.
+          example: null
+        first_published_at:
+          type: string
+          format: date-time
+          description: Monotonic first publication timestamp on Abastevo.
+          example: '2026-11-05T12:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: Latest content revision timestamp.
+          example: '2026-11-05T12:00:00Z'
+        revision:
+          type: integer
+          minimum: 1
+          description: Monotonic edit revision counter.
+          example: 1
+        comments_enabled:
+          type: boolean
+          description: Flag indicating if discussion comments are accepted.
+          example: true
+        correction:
+          type: [string, 'null']
+          maxLength: 1000
+          description: Public editorial correction notice if modified post-publication.
+          example: null
+        region:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumPostRegion'
+        fuel_product:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/FuelProduct'
+        station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional subject station identifier.
+          example: null
+        bulletin:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumBulletinProvenance'
+          description: Structured provenance/methodology for deterministic data bulletins.
+        supersedes_post_id:
+          type: [string, 'null']
+          format: uuid
+          description: Previous bulletin this reviewed correction supersedes.
+          example: null
+    ForumBulletinRevision:
+      type: object
+      description: Exact accepted Official revision aggregate for one side of a bulletin.
+      additionalProperties: false
+      required:
+        - revision_id
+        - survey_start
+        - survey_end
+        - published_at
+        - source_url
+        - source_checksum
+        - parser_version
+        - sum_milli_brl
+        - observation_count
+        - sampled_stations
+        - source_observations
+        - source_stations
+        - mean_numerator
+        - mean_denominator
+        - mean
+      properties:
+        revision_id: {type: string, format: uuid}
+        survey_start: {type: string, format: date}
+        survey_end: {type: string, format: date}
+        published_at: {type: string, format: date-time}
+        source_url: {type: string, format: uri}
+        source_checksum: {type: string, minLength: 1}
+        parser_version: {type: string, minLength: 1}
+        sum_milli_brl: {type: integer, minimum: 1}
+        observation_count: {type: integer, minimum: 1}
+        sampled_stations: {type: integer, minimum: 1}
+        source_observations: {type: integer, minimum: 1}
+        source_stations: {type: integer, minimum: 1}
+        mean_numerator: {type: integer, minimum: 1}
+        mean_denominator: {type: integer, minimum: 1}
+        mean: {type: string, minLength: 1}
+    ForumBulletinProvenance:
+      type: object
+      description: Frozen deterministic bulletin methodology and exact input manifest.
+      additionalProperties: false
+      required: [methodology_version, template_version, fuel, unit, current, previous]
+      properties:
+        methodology_version: {type: string, enum: [forum-official-mean-v1]}
+        template_version: {type: string, enum: [forum-bulletin-v1]}
+        fuel:
+          type: string
+          enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, GASOLINE_PREMIUM_GRADE, DIESEL_S500, DIESEL_S10, CNG, LPG_P13]
+        unit: {type: string, enum: [L, M3, KG_13]}
+        current: {$ref: '#/components/schemas/ForumBulletinRevision'}
+        previous: {$ref: '#/components/schemas/ForumBulletinRevision'}
+    ForumCategoryItem:
+      type: object
+      description: Taxonomy category item for forum browsing.
+      additionalProperties: false
+      required: [code, name, description]
+      properties:
+        code:
+          $ref: '#/components/schemas/ForumCategory'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Localized display name.
+          example: Combustiveis
+        description:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Description of the subject scope.
+          example: Precos, tributacao, composicao e qualidade de combustiveis.
+    ForumCategoriesResponse:
+      type: object
+      description: Response containing active forum categories and taxonomy version.
+      additionalProperties: false
+      required: [items, taxonomy_version]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForumCategoryItem'
+        taxonomy_version:
+          type: integer
+          minimum: 1
+          description: Version of the active taxonomy tree.
+          example: 1
+    ForumFeedResponse:
+      type: object
+      description: Paginated public feed of forum post summaries.
+      additionalProperties: false
+      required: [items, next_cursor, snapshot, fetched_at]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForumPostSummary'
+        next_cursor:
+          type: [string, 'null']
+          maxLength: 512
+          description: Opaque pagination cursor for loading next page; null at end.
+          example: null
+        snapshot:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Monotonic feed revision identifier for cache invalidation.
+          example: rev-1
+        fetched_at:
+          type: string
+          format: date-time
+          description: Server timestamp when feed snapshot was generated.
+          example: '2026-11-05T12:00:00Z'
+    ForumPostDetailResponse:
+      type: object
+      description: Response envelope for single forum post detail.
+      additionalProperties: false
+      required: [post]
+      properties:
+        post:
+          $ref: '#/components/schemas/ForumPostDetail'
+    ForumCreateCommentRequest:
+      type: object
+      description: Signed owner request payload to create a comment or reply.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, body_text]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Unique client operation ID for idempotent submission.
+        parent_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional parent comment UUID for a reply.
+        body_text:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Plain UTF-8 comment body (1..280 Unicode scalar values).
+    ForumEditCommentRequest:
+      type: object
+      description: Signed owner request payload to edit a comment under CAS revision check.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, expected_revision, body_text]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Unique client operation ID for idempotent CAS edit.
+        expected_revision:
+          type: integer
+          minimum: 1
+          description: Expected revision number of the comment.
+        body_text:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Updated plain UTF-8 comment body (1..280 Unicode scalar values).
+    ForumRemoveCommentRequest:
+      type: object
+      description: Signed owner request payload to tombstone a comment.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, expected_revision]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Unique client operation ID for idempotent removal.
+        expected_revision:
+          type: integer
+          minimum: 1
+          description: Expected revision number of the comment.
+    ForumOwnerReadRequest:
+      type: object
+      description: Signed owner request payload to read private authored comments.
+      additionalProperties: false
+      required: [family_id, access_token]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        comment_id:
+          type: [string, 'null']
+          format: uuid
+          description: Unique identifier of the authored comment to read.
+        post_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional post UUID context.
+        topic_id:
+          type: [string, 'null']
+          format: uuid
+          description: Unique identifier of the authored topic to read.
+    ForumCommentReceipt:
+      type: object
+      description: Private owner receipt for comment creation, edit, removal, or owner read.
+      additionalProperties: false
+      required: [id, post_id, depth, sequence, revision, publication_state, visibility, body_text, created_at, updated_at, replayed]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Comment unique identifier.
+        post_id:
+          type: string
+          format: uuid
+          description: Post unique identifier.
+        parent_id:
+          type: [string, 'null']
+          format: uuid
+          description: Parent comment unique identifier if this is a reply.
+        depth:
+          type: integer
+          minimum: 0
+          maximum: 1
+          description: Comment hierarchy depth (0 for top-level, 1 for reply).
+        sequence:
+          type: integer
+          minimum: 1
+          description: Scoped monotonic sequence number within the post.
+        revision:
+          type: integer
+          minimum: 1
+          description: Incremental revision number for CAS updates.
+        publication_state:
+          type: string
+          enum: [PENDING_REVIEW, PUBLISHED, REJECTED, REMOVED]
+          description: Current moderation and publication state.
+        visibility:
+          type: string
+          enum: [VISIBLE, HIDDEN]
+          description: Display visibility status.
+        body_text:
+          type: string
+          description: Plain comment body text. Blank if removed.
+        created_at:
+          type: string
+          format: date-time
+          description: Comment creation timestamp in UTC RFC3339.
+        updated_at:
+          type: string
+          format: date-time
+          description: Comment last update timestamp in UTC RFC3339.
+        published_at:
+          type: [string, 'null']
+          format: date-time
+          description: Publication approval timestamp in UTC RFC3339 if published.
+        replayed:
+          type: boolean
+          description: True if this response is an idempotent replay of an existing operation.
+    ForumOwnerCommentResponse:
+      type: object
+      description: Private owner response containing authored comment projection.
+      additionalProperties: false
+      required: [comment]
+      properties:
+        comment:
+          $ref: '#/components/schemas/ForumCommentReceipt'
+    ForumCommentItem:
+      type: object
+      description: Publicly visible comment item on a published post.
+      additionalProperties: false
+      required: [id, post_id, depth, sequence, revision, public_alias, body_text, created_at, reply_count]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Comment unique identifier.
+        post_id:
+          type: string
+          format: uuid
+          description: Post unique identifier.
+        parent_id:
+          type: [string, 'null']
+          format: uuid
+          description: Parent comment unique identifier if this is a reply.
+        depth:
+          type: integer
+          minimum: 0
+          maximum: 1
+          description: Comment hierarchy depth (0 for top-level, 1 for reply).
+        sequence:
+          type: integer
+          minimum: 1
+          description: Scoped monotonic sequence number within the post.
+        revision:
+          type: integer
+          minimum: 1
+          description: Current revision number.
+        public_alias:
+          type: string
+          description: Pseudonymous public display alias of the author.
+        body_text:
+          type: string
+          description: Approved public comment text.
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp in UTC RFC3339.
+        reply_count:
+          type: integer
+          minimum: 0
+          description: Number of approved visible replies to this comment.
+    ForumCommentsResponse:
+      type: object
+      description: Public paginated comments response for a post.
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForumCommentItem'
+        next_cursor:
+          type: [string, 'null']
+          description: Opaque pagination cursor for fetching the next page.
+    ForumRepliesResponse:
+      type: object
+      description: Public paginated replies response for a parent comment.
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ForumCommentItem'
+        next_cursor:
+          type: [string, 'null']
+          description: Opaque pagination cursor for fetching the next page.
+    ForumReportRequest:
+      type: object
+      description: Signed owner request payload to report a post or comment.
+      additionalProperties: false
+      required: [family_id, access_token, reason]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Standard report category or reason.
+          enum: [SPAM, HARASSMENT, DEFAMATION, OFF_TOPIC, ILLEGAL, OTHER]
+        detail:
+          type: string
+          maxLength: 500
+          description: Optional report detail.
+    ForumReportReceipt:
+      type: object
+      description: Unique receipt returned for a filed report.
+      additionalProperties: false
+      required: [report_id, case_id, target_type, target_id, reason, status, created_at, replayed]
+      properties:
+        report_id:
+          type: string
+          format: uuid
+          description: Unique report receipt identifier.
+        case_id:
+          type: string
+          format: uuid
+          description: Associated moderation case identifier.
+        target_type:
+          type: string
+          enum: [FORUM_POST, FORUM_COMMENT]
+          description: Target type of the reported item.
+        target_id:
+          type: string
+          format: uuid
+          description: Unique identifier of the reported item.
+        reason:
+          type: string
+          description: Stated report reason.
+        status:
+          type: string
+          enum: [RECEIVED, RESOLVED, DISMISSED]
+          description: Current lifecycle status of the report.
+        created_at:
+          type: string
+          format: date-time
+          description: RFC3339 timestamp of receipt creation.
+        replayed:
+          type: boolean
+          description: Indicates whether this response is an idempotent replay of an existing report.
+    ForumReportResponse:
+      type: object
+      description: Wrapper envelope for forum report receipt.
+      additionalProperties: false
+      required: [receipt]
+      properties:
+        receipt:
+          $ref: '#/components/schemas/ForumReportReceipt'
+    ForumCreateTopicRequest:
+      type: object
+      description: Signed owner request payload to create a user discussion topic.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, category, title, body_text]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Client-generated UUID for idempotent retry.
+        category:
+          $ref: '#/components/schemas/ForumCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Topic title in plain UTF-8 text (1..120 Unicode runes).
+        body_text:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: Topic body in plain UTF-8 text (1..4000 Unicode runes).
+        public_alias:
+          type: [string, 'null']
+          maxLength: 64
+          description: Optional custom contributor display name.
+        region_uf:
+          type: [string, 'null']
+          pattern: '^[A-Z]{2}$'
+          description: Optional Brazilian state UF abbreviation.
+        region_municipality_ibge:
+          type: [integer, 'null']
+          minimum: 1000000
+          maximum: 9999999
+          description: Optional 7-digit IBGE municipality code matching region_uf.
+        fuel_product:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/FuelProduct'
+        station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional subject station UUID from Directory.
+    ForumEditTopicRequest:
+      type: object
+      description: Signed owner request payload to CAS-edit an authored topic.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, expected_revision, category, title, body_text]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Client-generated UUID for idempotent retry.
+        expected_revision:
+          type: integer
+          minimum: 1
+          description: Expected current revision for CAS optimistic concurrency check.
+        category:
+          $ref: '#/components/schemas/ForumCategory'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Updated topic title in plain UTF-8 text.
+        body_text:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: Updated topic body in plain UTF-8 text.
+        region_uf:
+          type: [string, 'null']
+          pattern: '^[A-Z]{2}$'
+          description: Optional Brazilian state UF abbreviation.
+        region_municipality_ibge:
+          type: [integer, 'null']
+          minimum: 1000000
+          maximum: 9999999
+          description: Optional 7-digit IBGE municipality code matching region_uf.
+        fuel_product:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/FuelProduct'
+        station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional subject station UUID from Directory.
+    ForumRemoveTopicRequest:
+      type: object
+      description: Signed owner request payload to tombstone an authored topic.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, expected_revision]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Client-generated UUID for idempotent retry.
+        expected_revision:
+          type: integer
+          minimum: 1
+          description: Expected current revision for CAS tombstone removal.
+    ForumTopicReceipt:
+      type: object
+      description: Private owner receipt for topic creation, edit, removal, or owner read.
+      additionalProperties: false
+      required: [id, kind, category, title, body_text, revision, publication_state, visibility, created_at, updated_at, replayed]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Topic post unique identifier.
+        kind:
+          type: string
+          enum: [TOPIC]
+          description: Post kind (always TOPIC).
+        category:
+          $ref: '#/components/schemas/ForumCategory'
+        title:
+          type: string
+          description: Topic title.
+        body_text:
+          type: string
+          description: Topic body text. Blank if removed.
+        revision:
+          type: integer
+          minimum: 1
+          description: Monotonic edit revision counter.
+        publication_state:
+          type: string
+          enum: [PENDING_REVIEW, PUBLISHED, REJECTED, REMOVED]
+          description: Current moderation and publication state.
+        visibility:
+          type: string
+          enum: [VISIBLE, HIDDEN]
+          description: Display visibility status.
+        region:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ForumPostRegion'
+        fuel_product:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/FuelProduct'
+        station_id:
+          type: [string, 'null']
+          format: uuid
+          description: Optional subject station identifier.
+        public_alias:
+          type: [string, 'null']
+          description: Optional public alias chosen by author.
+        created_at:
+          type: string
+          format: date-time
+          description: Topic creation timestamp in UTC RFC3339.
+        updated_at:
+          type: string
+          format: date-time
+          description: Topic last update timestamp in UTC RFC3339.
+        published_at:
+          type: [string, 'null']
+          format: date-time
+          description: Publication approval timestamp in UTC RFC3339 if published.
+        replayed:
+          type: boolean
+          description: True if this response is an idempotent replay of an existing operation.
+    ForumOwnerTopicResponse:
+      type: object
+      description: Private owner response containing authored topic projection.
+      additionalProperties: false
+      required: [topic]
+      properties:
+        topic:
+          $ref: '#/components/schemas/ForumTopicReceipt'
   responses:
     BadRequest:
       description: Malformed input, cursor or bounds.

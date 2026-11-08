@@ -1,0 +1,1 @@
+{"id": "forum-categories-response-valid", "version": 1, "schema": "ForumCategoriesResponse", "valid": true, "provenance": "matches public forum categories envelope; synthetic", "value": {"items": [{"code": "FUELS", "name": "Combustiveis", "description": "Precos, tributacao, composicao e qualidade de combustiveis."}], "taxonomy_version": 1}}

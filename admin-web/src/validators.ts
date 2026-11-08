@@ -146,3 +146,57 @@ export function githubLoginError(raw: string): string | null {
   }
   return null;
 }
+
+export const FORUM_TITLE_MAX = 120;
+export const FORUM_EXCERPT_MAX = 400;
+export const FORUM_BODY_MAX = 4000;
+
+export const FORUM_CATEGORIES = [
+  'FUELS',
+  'ELECTRIC',
+  'TRAFFIC_RULES',
+  'VEHICLES_TECH',
+  'ROADS_MOBILITY',
+  'DRIVER_ECONOMY',
+  'ABASTEVO_DATA',
+] as const;
+export type ForumCategory = (typeof FORUM_CATEGORIES)[number];
+
+export const FORUM_KINDS = ['EDITORIAL', 'NEWS', 'TOPIC', 'BULLETIN'] as const;
+export type ForumKind = (typeof FORUM_KINDS)[number];
+
+export function isForumCategory(raw: string): raw is ForumCategory {
+  return (FORUM_CATEGORIES as readonly string[]).includes(raw);
+}
+
+export function isForumKind(raw: string): raw is ForumKind {
+  return (FORUM_KINDS as readonly string[]).includes(raw);
+}
+
+export function forumTitleError(raw: string): string | null {
+  const trimmed = raw.trim();
+  const count = Array.from(trimmed).length;
+  if (count === 0) {
+    return 'Título é obrigatório.';
+  }
+  if (count > FORUM_TITLE_MAX) {
+    return `Título deve ter no máximo ${FORUM_TITLE_MAX} caracteres.`;
+  }
+  return null;
+}
+
+export function forumExcerptError(raw: string): string | null {
+  const count = Array.from(raw.trim()).length;
+  if (count > FORUM_EXCERPT_MAX) {
+    return `Resumo deve ter no máximo ${FORUM_EXCERPT_MAX} caracteres.`;
+  }
+  return null;
+}
+
+export function forumBodyError(raw: string): string | null {
+  const count = Array.from(raw.trim()).length;
+  if (count > FORUM_BODY_MAX) {
+    return `Corpo do texto deve ter no máximo ${FORUM_BODY_MAX} caracteres.`;
+  }
+  return null;
+}

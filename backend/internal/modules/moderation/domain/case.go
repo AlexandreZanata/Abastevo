@@ -34,6 +34,8 @@ const (
 	// the frozen reason set below, never free text.
 	TargetContribution  = "CONTRIBUTION"
 	TargetQualityReport = "QUALITY_REPORT"
+	TargetForumPost     = "FORUM_POST"
+	TargetForumComment  = "FORUM_COMMENT"
 )
 
 // Case statuses. T01 opens OPEN only; IN_REVIEW/RESOLVED/REJECTED arrive
@@ -141,7 +143,7 @@ func NewCase(p CaseParams) (Case, ModerationCaseOpened, error) {
 		return Case{}, ModerationCaseOpened{}, ErrInvalidCase
 	}
 	switch p.TargetType {
-	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment, TargetStationClaim, TargetContribution, TargetQualityReport:
+	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment, TargetStationClaim, TargetContribution, TargetQualityReport, TargetForumPost, TargetForumComment:
 	default:
 		return Case{}, ModerationCaseOpened{}, ErrUnknownTarget
 	}

@@ -40,6 +40,7 @@ data class CommunityFeedUiState(
     val stale: Boolean = false,
     val newUpdates: Boolean = false,
     val earlierItemsTrimmed: Boolean = false,
+    val forumEnabled: Boolean = true,
 )
 
 /** Foreground-only refresh. Filters and city changes cancel obsolete HTTP work. */

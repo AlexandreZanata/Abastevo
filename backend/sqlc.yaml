@@ -175,6 +175,7 @@ sql:
       - db/migrations/000016_moderation.sql
       - db/migrations/000017_moderation_actions.sql
       - db/migrations/000026_moderation_comment_target.sql
+      - db/migrations/000160_forum_moderation_targets.sql
     gen:
       go:
         package: moderation
@@ -436,5 +437,25 @@ sql:
       go:
         package: driver
         out: db/queries/driver
+        sql_package: pgx/v5
+        emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/forum
+    schema:
+      - db/migrations/000001_enable_postgis.sql
+      - db/migrations/000002_directory.sql
+      - db/migrations/000016_moderation.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000157_forum_editorial_foundation.sql
+      - db/migrations/000158_forum_source_runs.sql
+      - db/migrations/000159_forum_comments.sql
+      - db/migrations/000160_forum_moderation_targets.sql
+      - db/migrations/000161_forum_discovery.sql
+      - db/migrations/000162_forum_bulletin_provenance.sql
+    gen:
+      go:
+        package: forum
+        out: db/queries/forum
         sql_package: pgx/v5
         emit_json_tags: true

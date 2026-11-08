@@ -881,4 +881,22 @@ object AnpFuelDatabaseMigrations {
             db.execSQL("ALTER TABLE charging_snapshot_place ADD COLUMN address_line TEXT")
         }
     }
+
+    val MIGRATION_36_37: Migration = object : Migration(36, 37) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `forum_cache` (
+                    `origin` TEXT NOT NULL,
+                    `key` TEXT NOT NULL,
+                    `kind` TEXT NOT NULL,
+                    `payload_json` TEXT NOT NULL,
+                    `fetched_at_millis` INTEGER NOT NULL,
+                    `payload_bytes` INTEGER NOT NULL,
+                    PRIMARY KEY(`origin`, `key`)
+                )
+                """.trimIndent(),
+            )
+        }
+    }
 }

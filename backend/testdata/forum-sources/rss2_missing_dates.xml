@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Feed With Missing Dates</title>
+    <link>https://example.com</link>
+    <description>Test feed lacking pubDate tags</description>
+    <item>
+      <title>Notícia Sem Data Publicada</title>
+      <link>https://example.com/noticia-sem-data</link>
+      <description>Resumo de notícia sem campo pubDate.</description>
+      <guid>guid-no-date-1</guid>
+    </item>
+  </channel>
+</rss>

@@ -343,3 +343,15 @@ func TestDriverFeatureSwitch(t *testing.T) {
 		t.Fatal("invalid driver switch accepted")
 	}
 }
+
+func TestForumFeatureSwitch(t *testing.T) {
+	for _, raw := range []string{"true", "false"} {
+		cfg, err := load(envFunc(map[string]string{keyForumEnabled: raw}))
+		if err != nil || cfg.ForumEnabled != (raw == "true") {
+			t.Fatal(raw, cfg.ForumEnabled, err)
+		}
+	}
+	if _, err := load(envFunc(map[string]string{keyForumEnabled: "invalid"})); err == nil {
+		t.Fatal("invalid forum switch accepted")
+	}
+}

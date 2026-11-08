@@ -152,6 +152,7 @@ export function build(options = {}) {
       { srcRel: 'app/index.html', destRel: 'login/index.html' },
       { srcRel: 'app/index.html', destRel: 'accounts/index.html' },
       { srcRel: 'app/index.html', destRel: 'contributors/index.html' },
+      { srcRel: 'app/index.html', destRel: 'forum/index.html' },
       { srcRel: 'app/index.html', destRel: 'audit/index.html' },
       { srcRel: 'app/index.html', destRel: 'stations/index.html' },
       { srcRel: '404.html', destRel: '404.html' },

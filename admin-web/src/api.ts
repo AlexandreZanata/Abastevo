@@ -290,6 +290,121 @@ export class AdminApi {
     return this.request<StationFacts>('GET', `/v1/stations/${encodeURIComponent(id)}`);
   }
 
+  async listForumPosts(
+    status: string = 'all',
+    category: string = '',
+    cursor: string = '',
+    limit: number = 20,
+  ): Promise<ForumPostPage> {
+    const params = new URLSearchParams();
+    if (status !== '' && status !== 'all') {
+      params.set('status', status);
+    }
+    if (category !== '') {
+      params.set('category', category);
+    }
+    if (cursor !== '') {
+      params.set('cursor', cursor);
+    }
+    if (limit > 0) {
+      params.set('limit', String(limit));
+    }
+    const query = params.toString();
+    return this.request<ForumPostPage>(
+      'GET',
+      `/v1/admin/forum/posts${query === '' ? '' : `?${query}`}`,
+    );
+  }
+
+  async getForumPost(id: string): Promise<ForumPostDetail> {
+    return this.request<ForumPostDetail>(
+      'GET',
+      `/v1/admin/forum/posts/${encodeURIComponent(id)}`,
+    );
+  }
+
+  async createForumPost(input: CreateForumPostInput): Promise<ForumPostDetail> {
+    return this.request<ForumPostDetail>(
+      'POST',
+      '/v1/admin/forum/posts',
+      {
+        body: {
+          category: input.category,
+          title: input.title,
+          excerpt: input.excerpt,
+          body_text: input.bodyText,
+          source_id: input.sourceId ?? '00000000-0000-0000-0000-000000000001',
+          reason: input.reason,
+        },
+      },
+    );
+  }
+
+  async editForumPost(id: string, input: EditForumPostInput): Promise<ForumPostDetail> {
+    return this.request<ForumPostDetail>(
+      'POST',
+      `/v1/admin/forum/posts/${encodeURIComponent(id)}/edit`,
+      {
+        body: {
+          category: input.category,
+          title: input.title,
+          excerpt: input.excerpt,
+          body_text: input.bodyText,
+          expected_revision: input.expectedRevision,
+          reason: input.reason,
+        },
+      },
+    );
+  }
+
+  async publishForumPost(id: string, expectedRevision: number, reason: string): Promise<ForumPostDetail> {
+    return this.request<ForumPostDetail>(
+      'POST',
+      `/v1/admin/forum/posts/${encodeURIComponent(id)}/publish`,
+      {
+        body: {
+          expected_revision: expectedRevision,
+          reason,
+        },
+      },
+    );
+  }
+
+  async rejectForumPost(id: string, expectedRevision: number, reason: string): Promise<ForumPostDetail> {
+    return this.request<ForumPostDetail>(
+      'POST',
+      `/v1/admin/forum/posts/${encodeURIComponent(id)}/reject`,
+      {
+        body: {
+          expected_revision: expectedRevision,
+          reason,
+        },
+      },
+    );
+  }
+
+  async listForumSources(): Promise<ForumSource[]> {
+    const body = await this.request<{ items: ForumSource[] }>(
+      'GET',
+      '/v1/admin/forum/sources',
+    );
+    return body.items;
+  }
+
+  async setForumPostVisibility(id: string, hidden: boolean, expectedRevision: number, reason: string): Promise<ForumPostDetail> {
+    const action = hidden ? 'hide' : 'unhide';
+    return this.request<ForumPostDetail>(
+      'POST',
+      `/v1/admin/forum/posts/${encodeURIComponent(id)}/${action}`,
+      {
+        body: {
+          expected_revision: expectedRevision,
+          reason,
+        },
+      },
+    );
+  }
+
   private async request<T>(
     method: string,
     path: string,
@@ -449,6 +564,73 @@ export interface ContributorProfile {
   updated_at?: string;
 }
 
+export interface ForumPostSummary {
+  id: string;
+  kind: string;
+  category: string;
+  title: string;
+  excerpt: string;
+  publication_state: string;
+  visibility: string;
+  revision: number;
+  created_at: string;
+  updated_at: string;
+  published_at: string | null;
+  source_id: string;
+}
+
+export interface ForumPostDetail extends ForumPostSummary {
+  body_text: string;
+  source_name: string;
+}
+
+export interface ForumSource {
+  id: string;
+  code: string;
+  name: string;
+  kind: string;
+  origin_url: string;
+  fetch_url?: string;
+  fetch_format?: string;
+  collection_enabled: boolean;
+  publication_enabled: boolean;
+  rights_status: string;
+  title_allowed: boolean;
+  excerpt_allowed: boolean;
+  image_allowed: boolean;
+  terms_url: string;
+  terms_sha256?: string;
+  attribution: string;
+  checkpoint_etag?: string;
+  checkpoint_last_modified?: string;
+  checkpoint_last_status?: string;
+  checkpoint_failures: number;
+  checkpoint_last_success_at?: string;
+}
+
+export interface ForumPostPage {
+  items: ForumPostSummary[];
+  next_cursor: string;
+}
+
+export interface CreateForumPostInput {
+  category: string;
+  title: string;
+  excerpt: string;
+  bodyText: string;
+  sourceId?: string;
+  reason: string;
+}
+
+export interface EditForumPostInput {
+  category: string;
+  title: string;
+  excerpt: string;
+  bodyText: string;
+  expectedRevision: number;
+  reason: string;
+}
+
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
@@ -513,6 +695,12 @@ const EXTRA_ERROR_MESSAGES: Record<string, string> = {
   'staff.already-revoked': 'Assignment já revogado.',
   'staff.not-found': 'Assignment não encontrado.',
   'staff.unavailable': 'Serviço indisponível. Tente mais tarde.',
+  'forum.not-found': 'Publicação do fórum não encontrada.',
+  'forum.revision-conflict': 'A publicação foi alterada por outro usuário. Recarregue os dados antes de salvar.',
+  'forum.missing-rights': 'A fonte selecionada não possui direitos de publicação aprovados.',
+  'forum.invalid': 'Dados da publicação inválidos. Revise os campos.',
+  'forum.disabled': 'O módulo de fórum está desativado nesta instância.',
+  'forum.unavailable': 'Serviço de fórum indisponível. Tente mais tarde.',
 };
 
 export function extraErrorMessage(code: string): string | null {

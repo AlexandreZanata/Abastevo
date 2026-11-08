@@ -1,0 +1,1 @@
+{"id": "forum-fuel-product-invalid", "version": 1, "schema": "ForumFuelProduct", "valid": false, "provenance": "rejected value outside forum fuel subject enum; synthetic", "value": "DIESEL"}

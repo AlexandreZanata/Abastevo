@@ -1,0 +1,1 @@
+{"id": "forum-create-topic-invalid", "version": 1, "schema": "ForumCreateTopicRequest", "valid": false, "provenance": "rejected missing operation_id and invalid category; synthetic", "value": {"family_id": "11111111-1111-4111-8111-111111111111", "access_token": "fixture-access-token", "category": "INVALID_CATEGORY", "title": "Titulo valido", "body_text": "Corpo valido"}}
