@@ -98,6 +98,21 @@ func (s *Store) OpenCaseTx(ctx context.Context, tx pgx.Tx, c domain.Case) (strin
 	return openCase(ctx, dbmoderation.New(tx), c)
 }
 
+// ScrubCaseDetailTx joins another module's erasure transaction and clears a
+// case detail only while it still equals the reporter-authored text that
+// module copied in, so text from other reporters or operators is untouched.
+func (s *Store) ScrubCaseDetailTx(ctx context.Context, tx pgx.Tx, caseID, detail string) error {
+	if tx == nil {
+		return errors.New("moderation: erasure transaction required")
+	}
+	uid, err := mustUUID(caseID)
+	if err != nil {
+		return err
+	}
+	_, err = dbmoderation.New(tx).ScrubCaseDetail(ctx, dbmoderation.ScrubCaseDetailParams{ID: uid, Detail: detail})
+	return err
+}
+
 func openCase(ctx context.Context, queries *dbmoderation.Queries, c domain.Case) (string, bool, error) {
 	uid, err := mustUUID(c.ID)
 	if err != nil {

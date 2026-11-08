@@ -20,6 +20,8 @@ import (
 	forumadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
+	moderationadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/adapters"
+	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
@@ -413,4 +415,91 @@ func TestForumErasure_PostgresIntegration_Gates(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestForumErasure_ScrubsReportDetailAndCaseCopy(t *testing.T) {
+	env := setupFOR16Env(t)
+	ctx := context.Background()
+
+	modStore := moderationadapters.NewStore(env.pool)
+	caseSeq := 0
+	env.store.CaseOpener = func(ctx context.Context, tx pgx.Tx, targetType, targetID, reason, detail string) (string, bool, error) {
+		caseSeq++
+		c, _, err := moderationdomain.NewCase(moderationdomain.CaseParams{
+			ID: fmt.Sprintf("cccccccc-0000-4ccc-8ccc-%012d", caseSeq), TargetType: targetType, TargetID: targetID,
+			Priority: moderationdomain.PriorityP2, Reason: reason, Detail: detail,
+			OpenedAt: time.Now(), PolicyVersion: moderationdomain.PolicyV1,
+		})
+		if err != nil {
+			return "", false, err
+		}
+		return modStore.OpenCaseTx(ctx, tx, c)
+	}
+	env.store.CaseDetailScrubber = modStore.ScrubCaseDetailTx
+
+	reporterR := "33333333-cccc-4333-8333-000000000003"
+	reporterC := "44444444-dddd-4444-8444-000000000004"
+	if _, err := env.pool.Exec(ctx, "INSERT INTO accounts(id,alias,status) VALUES($1,'aliasR','active'),($2,'aliasC','active')", reporterR, reporterC); err != nil {
+		t.Fatalf("seed accounts: %v", err)
+	}
+	post := "99999999-0003-4999-8999-000000000003"
+	seedPost(t, env.pool, post)
+
+	const detailR = "Texto privado do denunciante R"
+	const detailC = "Texto do denunciante C"
+	for _, rep := range []struct{ account, detail string }{{reporterR, detailR}, {reporterC, detailC}} {
+		if _, err := env.store.Report(ctx, application.ReportCommand{
+			ReporterAccountID: rep.account, TargetType: "FORUM_POST", TargetID: post,
+			Reason: "SPAM", Detail: rep.detail,
+		}); err != nil {
+			t.Fatalf("report by %s: %v", rep.account, err)
+		}
+	}
+
+	var caseDetail string
+	if err := env.pool.QueryRow(ctx, "SELECT detail FROM moderation_cases WHERE target_type='FORUM_POST' AND target_id=$1", post).Scan(&caseDetail); err != nil {
+		t.Fatalf("load case: %v", err)
+	}
+	if caseDetail != detailR {
+		t.Fatalf("case should carry the first reporter's text, got %q", caseDetail)
+	}
+
+	done, _, err := env.store.EraseAccountBatch(ctx, reporterR, 100)
+	if err != nil || !done {
+		t.Fatalf("erase reporter R: done=%v err=%v", done, err)
+	}
+
+	details := map[string]string{}
+	rows, err := env.pool.Query(ctx, "SELECT account_id::text, detail FROM forum_reports WHERE target_id=$1", post)
+	if err != nil {
+		t.Fatalf("load reports: %v", err)
+	}
+	for rows.Next() {
+		var account, detail string
+		if err := rows.Scan(&account, &detail); err != nil {
+			t.Fatalf("scan report: %v", err)
+		}
+		details[account] = detail
+	}
+	rows.Close()
+	if details[reporterR] != "" {
+		t.Fatalf("erased reporter text survived: %q", details[reporterR])
+	}
+	if details[reporterC] != detailC {
+		t.Fatalf("other reporter text must stay, got %q", details[reporterC])
+	}
+	if err := env.pool.QueryRow(ctx, "SELECT detail FROM moderation_cases WHERE target_type='FORUM_POST' AND target_id=$1", post).Scan(&caseDetail); err != nil {
+		t.Fatalf("reload case: %v", err)
+	}
+	if caseDetail != "" {
+		t.Fatalf("case copy of erased text survived: %q", caseDetail)
+	}
+
+	// Erasing the other reporter leaves no text and stays idempotent.
+	if done, _, err := env.store.EraseAccountBatch(ctx, reporterC, 100); err != nil || !done {
+		t.Fatalf("erase reporter C: done=%v err=%v", done, err)
+	}
+	if done, n, err := env.store.EraseAccountBatch(ctx, reporterR, 100); err != nil || !done || n != 0 {
+		t.Fatalf("repeat erasure must be a no-op: done=%v n=%d err=%v", done, n, err)
+	}
 }

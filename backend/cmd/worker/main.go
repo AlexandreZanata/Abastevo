@@ -375,6 +375,7 @@ func run() error {
 	feedbackStore := feedbackadapters.NewPGStore(pool.Underlying())
 	qualityReportStore := &qualityadapters.ReportStore{Pool: raw, Now: time.Now}
 	forumStore := forumadapters.NewStore(pool.Underlying())
+	forumStore.CaseDetailScrubber = modStore.ScrubCaseDetailTx
 	accountRecovery := accountapp.ErasureRecovery{
 		Store: accountadapters.NewPGStore(pool.Underlying()), NewNonce: jobs.NewUUIDv4, Now: time.Now,
 		EraseFeedback: func(ctx context.Context, id string) error {

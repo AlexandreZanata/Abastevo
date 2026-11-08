@@ -96,3 +96,10 @@ WHERE gone.id IN (
     ORDER BY old.opened_at ASC
     LIMIT @batch
 );
+
+-- name: ScrubCaseDetail :execrows
+-- Account erasure removes reporter-authored free text a case copied from
+-- the reporter's own report; reason, target and history stay intact.
+UPDATE moderation_cases
+SET detail = ''
+WHERE id = @id AND detail = @detail AND detail <> '';

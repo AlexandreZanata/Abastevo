@@ -58,6 +58,19 @@ func (q *Queries) GetForumReportByAccountAndTarget(ctx context.Context, arg GetF
 	return i, err
 }
 
+const hasPendingAccountReportErasure = `-- name: HasPendingAccountReportErasure :one
+SELECT EXISTS (
+    SELECT 1 FROM forum_reports WHERE account_id = $1 AND detail <> ''
+)
+`
+
+func (q *Queries) HasPendingAccountReportErasure(ctx context.Context, accountID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasPendingAccountReportErasure, accountID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const insertForumReport = `-- name: InsertForumReport :one
 
 INSERT INTO forum_reports (
@@ -116,6 +129,56 @@ func (q *Queries) InsertForumReport(ctx context.Context, arg InsertForumReportPa
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const pendingEraseReportsByAccount = `-- name: PendingEraseReportsByAccount :many
+SELECT id, moderation_case_id, detail
+FROM forum_reports
+WHERE account_id = $1 AND detail <> ''
+ORDER BY id
+LIMIT $2
+`
+
+type PendingEraseReportsByAccountParams struct {
+	AccountID pgtype.UUID `json:"account_id"`
+	Limit     int32       `json:"limit"`
+}
+
+type PendingEraseReportsByAccountRow struct {
+	ID               pgtype.UUID `json:"id"`
+	ModerationCaseID pgtype.UUID `json:"moderation_case_id"`
+	Detail           string      `json:"detail"`
+}
+
+func (q *Queries) PendingEraseReportsByAccount(ctx context.Context, arg PendingEraseReportsByAccountParams) ([]PendingEraseReportsByAccountRow, error) {
+	rows, err := q.db.Query(ctx, pendingEraseReportsByAccount, arg.AccountID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingEraseReportsByAccountRow
+	for rows.Next() {
+		var i PendingEraseReportsByAccountRow
+		if err := rows.Scan(&i.ID, &i.ModerationCaseID, &i.Detail); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const scrubForumReportDetail = `-- name: ScrubForumReportDetail :exec
+UPDATE forum_reports
+SET detail = ''
+WHERE id = $1
+`
+
+func (q *Queries) ScrubForumReportDetail(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, scrubForumReportDetail, id)
+	return err
 }
 
 const updateForumReportCase = `-- name: UpdateForumReportCase :exec
