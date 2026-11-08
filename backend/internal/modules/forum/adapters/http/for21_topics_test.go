@@ -535,3 +535,66 @@ func TestFOR21_IdempotentReplayAndCacheControl(t *testing.T) {
 		}
 	})
 }
+
+// TestOwnerRead_PostCommentsListsOnlyOwnLiveComments verifies the post_id
+// owner read returns the caller's own published or pending comments on that
+// post and nothing foreign, removed, rejected or from other posts.
+func TestOwnerRead_PostCommentsListsOnlyOwnLiveComments(t *testing.T) {
+	accID, famID, token, _, _ := defaultTestPrincipal()
+	const (
+		postID    = "99999999-9999-4999-8999-0000000000a1"
+		otherPost = "99999999-9999-4999-8999-0000000000a2"
+	)
+	store := newMockCommentStore()
+	add := func(id, post, author string, state domain.PublicationState) {
+		store.comments[id] = &domain.Comment{
+			ID: id, PostID: post, AuthorAccountID: author, Sequence: 1, Revision: 2,
+			BodyText: "texto", PublicationState: state, Visibility: domain.VisibilityVisible,
+			CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+		}
+	}
+	add("33333333-3333-4333-8333-0000000000b1", postID, accID, domain.StatePublished)
+	add("33333333-3333-4333-8333-0000000000b2", postID, accID, domain.StatePendingReview)
+	add("33333333-3333-4333-8333-0000000000b3", postID, accID, domain.StateRemoved)
+	add("33333333-3333-4333-8333-0000000000b4", postID, accID, domain.StateRejected)
+	add("33333333-3333-4333-8333-0000000000b5", otherPost, accID, domain.StatePublished)
+	add("33333333-3333-4333-8333-0000000000b6", postID, "00000000-0000-4000-8000-000000000099", domain.StatePublished)
+
+	h := &DiscussionHandler{Comments: store}
+	wireMockAuth(h)
+	router := setupDiscussionTestRouter(h)
+
+	post := func(body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("POST", "/v1/forum/owner/read", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+
+	w := post(fmt.Sprintf(`{"family_id":"%s","access_token":"%s","post_id":"%s"}`, famID, token, postID))
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp OwnerPostCommentsResponseDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	got := map[string]bool{}
+	for _, c := range resp.Comments {
+		got[c.ID] = true
+	}
+	if len(got) != 2 || !got["33333333-3333-4333-8333-0000000000b1"] || !got["33333333-3333-4333-8333-0000000000b2"] {
+		t.Fatalf("expected only own live comments on the post, got %v", got)
+	}
+	if w.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("owner read must be no-store, got %q", w.Header().Get("Cache-Control"))
+	}
+
+	if w := post(fmt.Sprintf(`{"family_id":"%s","access_token":"%s","post_id":"not-a-uuid"}`, famID, token)); w.Code != http.StatusBadRequest {
+		t.Fatalf("invalid post id: expected 400, got %d", w.Code)
+	}
+	if w := post(fmt.Sprintf(`{"family_id":"%s","access_token":"bad","post_id":"%s"}`, famID, postID)); w.Code == http.StatusOK {
+		t.Fatal("unauthenticated owner read must not succeed")
+	}
+}
