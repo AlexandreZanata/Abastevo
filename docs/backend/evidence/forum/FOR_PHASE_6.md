@@ -148,3 +148,30 @@ with these OWED items retained.
   handler; comments have no approval route (the Android social UI stays behind
   its kill switch); comment/topic controls show without ownership hints; the
   offline cache drops bulletin provenance.
+
+## Retained review items closed (2026-11-08)
+
+- `00642c0f`: admin publish requires `expected_revision >= 1` and refuses a
+  mismatch with 409 (`TestAdminService_*` stale-revision case, admin HTTP
+  400/409 cases, FOR-09/FOR-13 integration).
+- `7f06e626` + `66d6e6cd`: account erasure scrubs the reporter's
+  `forum_reports.detail`. Moderation case history is immutable
+  (`TestNoDestructiveSQLPaths`), so forum report cases now carry a fixed
+  PII-free detail like quality reports instead of copying reporter text
+  (`TestForumErasure_ScrubsReportDetail`).
+- `408a6d5f`: `forum-moderation-applied` has a worker consumer that settles the
+  case's RECEIVED reports (INVALIDATE/RESOLVE -> RESOLVED, DISMISS ->
+  DISMISSED, REVIEW no-op); replays update nothing
+  (`TestModerationApplied_*`, `TestForumReports_SettleByCaseIsIdempotent`).
+- `091196be` + `7b8ba4af`: `GET /v1/admin/forum/comments` (oldest first, keyset
+  cursor, `forum_comments_review_queue_idx` from migration 000163) and
+  `POST /v1/admin/forum/comments/{id}/publish|reject` with the reviewed
+  revision as audited mutations; the operator view omits the author account
+  id and the audit omits the text. Rejection stores REJECTED+HIDDEN; the
+  previous REMOVED-with-body query violated the comment body check on every
+  call. The admin web lists and decides the queue, and its post filter now
+  sends `publication_state` (it sent `status=draft`, which the API ignored).
+  `TestCommentReview_AdminQueuePublishAndReject` covers pagination, 400/409/404,
+  publish-to-public, reject-to-hidden and change records.
+- Still OWED: Android social UI activation (kill switch), ownership hints and
+  offline bulletin provenance on Android, A3 device acceptance.

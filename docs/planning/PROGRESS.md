@@ -1,4 +1,19 @@
 # Current execution state
+- PR #192 retained review items, 2026-11-08: LOCAL_DONE on dev from merged
+  main `087ff754`. Admin publish requires the reviewed `expected_revision`
+  (400 missing, 409 stale); account erasure scrubs `forum_reports.detail`,
+  and forum report moderation cases now carry a fixed PII-free detail
+  because case history is immutable; the worker consumes
+  `forum-moderation-applied` to settle the case's RECEIVED reports
+  (RESOLVED/DISMISSED, idempotent); admins list the oldest-first PENDING_REVIEW
+  comment queue (migration 000163 partial index) and publish/reject with the
+  reviewed revision as audited mutations, and rejection now stores
+  REJECTED+HIDDEN (the old query always violated the body check). Admin web
+  gains the comment queue and its post filter now sends `publication_state`.
+  Verified: forum/moderation/account/migrate/apicontract/cmd-api real-PostGIS
+  race suites, admin-web 54/54. Android social UI stays kill-switched.
+  [Phase 6 evidence](../backend/evidence/forum/FOR_PHASE_6.md)
+
 - PR #192 validation review, 2026-11-08: dev `a8c5d840` failed remote
   `Quick verification`/`fast` on gofmt (13 forum files) and, behind it,
   staticcheck U1000/S1016. Fixed in `d3ba2112`; review fixes `222662dd`
