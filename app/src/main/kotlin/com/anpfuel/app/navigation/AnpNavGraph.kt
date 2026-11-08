@@ -220,7 +220,7 @@ fun AnpNavGraph(
         composable(Routes.FORUM_FEED) {
             com.anpfuel.app.ui.forum.ForumScreen(
                 onBack = { navController.popBackStack() },
-                onOpenPost = { postId -> navController.navigate(Routes.forumPost(postId)) },
+                onOpenPost = { postId -> Routes.forumPostOrNull(postId)?.let(navController::navigate) },
                 onNewTopic = { navController.navigate(Routes.FORUM_NEW_TOPIC) },
             )
         }
@@ -233,7 +233,7 @@ fun AnpNavGraph(
             com.anpfuel.app.ui.forum.ForumDetailScreen(
                 onBack = { navController.popBackStack() },
                 onSignIn = { navController.navigate(Routes.AUTH) },
-                onEditTopic = { topicId -> navController.navigate(Routes.forumEditTopic(topicId)) },
+                onEditTopic = { topicId -> Routes.forumEditTopicOrNull(topicId)?.let(navController::navigate) },
             )
         }
         composable(Routes.FORUM_NEW_TOPIC) {

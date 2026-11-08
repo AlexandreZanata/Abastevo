@@ -34,6 +34,16 @@ class ForumNavigationTest {
     }
 
     @Test
+    fun `forum routes accept uppercase ids and never crash on malformed ones`() {
+        val upper = "3F2504E0-4F89-41D3-9A0C-0305E82C3301"
+        assertEquals("forum/posts/${upper.lowercase()}", Routes.forumPost(upper))
+        assertEquals("forum/topics/${upper.lowercase()}/edit", Routes.forumEditTopic(upper))
+        assertEquals("forum/posts/${upper.lowercase()}", Routes.forumPostOrNull(upper))
+        assertEquals(null, Routes.forumPostOrNull("1-1-1-1-1"))
+        assertEquals(null, Routes.forumEditTopicOrNull("not-a-uuid"))
+    }
+
+    @Test
     fun `forum routes map to community tab`() {
         val uuid = UUID.randomUUID().toString()
         assertEquals(NavigationTab.COMMUNITY, NavigationTab.fromRoute(Routes.FORUM_FEED))
