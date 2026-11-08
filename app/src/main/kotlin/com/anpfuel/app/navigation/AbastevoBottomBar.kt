@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.theme.LocalAbastevoNavColors
 
 /**
  * Top-level navigation tabs.
@@ -87,10 +88,11 @@ fun AbastevoBottomBar(
     onNavigateToTab: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = LocalAbastevoNavColors.current
     Surface(
         modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        color = colors.container,
+        contentColor = colors.selectedLabel,
     ) {
         Row(
             modifier = Modifier
@@ -127,7 +129,7 @@ fun AbastevoBottomBar(
                             .clip(CircleShape)
                             .background(
                                 if (isSelected) {
-                                    MaterialTheme.colorScheme.secondaryContainer
+                                    colors.indicator
                                 } else {
                                     Color.Transparent
                                 },
@@ -136,21 +138,13 @@ fun AbastevoBottomBar(
                         Icon(
                             imageVector = tab.icon,
                             contentDescription = null,
-                            tint = if (isSelected) {
-                                MaterialTheme.colorScheme.onSecondaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            tint = if (isSelected) colors.selectedIcon else colors.unselected,
                         )
                     }
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.onSurface
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        color = if (isSelected) colors.selectedLabel else colors.unselected,
                     )
                 }
             }

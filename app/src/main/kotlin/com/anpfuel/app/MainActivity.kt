@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity() {
 
             AnpFuelTheme(
                 darkTheme = darkTheme,
-                dynamicColor = true,
+                dynamicColor = false,
             ) {
                 // Capture the bottom system inset before the nav shell and
                 // screen scaffolds consume it; bottom-anchored surfaces

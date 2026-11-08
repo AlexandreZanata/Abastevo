@@ -24,7 +24,7 @@ Preserve current root modules, `com.anpfuel`, MIT notices and bottom navigation.
 - [ActionCardButton](../../app/src/main/kotlin/com/anpfuel/app/ui/components/ActionCardButton.kt),
   [Theme](../../app/src/main/kotlin/com/anpfuel/app/ui/theme/Theme.kt) and
   [container guidelines](UI_CONTAINER_GUIDELINES.md) supply current controls,
-  active app theme, dynamic colors and shared `AnpContainerDefaults` border/shape.
+  active app theme (Energia brand palette or opt-in dynamic colors) and shared `AnpContainerDefaults` border/shape.
 - [AnpFuelDatabase](../../data/src/main/kotlin/com/anpfuel/data/local/AnpFuelDatabase.kt)
   is version 36 at inspection; allocate next Room version on current main,
   update explicit migrations/schema export without destructive fallback.

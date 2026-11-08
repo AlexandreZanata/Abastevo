@@ -9,8 +9,9 @@ import androidx.core.view.WindowCompat
 
 /**
  * Keeps status/navigation bar icon contrast aligned with the active theme.
- * Dark mode: light icons on transparent status bar and black navigation bar.
+ * Dark mode: light icons on transparent system bars.
  * Light mode: dark icons on transparent system bars.
+ * Transparent bars let the branded bottom bar extend under the gesture area.
  */
 @Composable
 fun AnpSystemBarsEffect(darkTheme: Boolean) {
@@ -28,6 +29,6 @@ fun AnpSystemBarsEffect(darkTheme: Boolean) {
         @Suppress("DEPRECATION")
         window.statusBarColor = Color.TRANSPARENT
         @Suppress("DEPRECATION")
-        window.navigationBarColor = if (darkTheme) Color.BLACK else Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
     }
 }

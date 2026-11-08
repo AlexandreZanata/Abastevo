@@ -181,7 +181,7 @@ dependencies {
 ### UI — Jetpack Compose + Material 3
 
 - Declarative UI aligned with `.cursor/rules/android-system-design.mdc`
-- `MaterialTheme` with dynamic color (Material You)
+- `MaterialTheme` with fixed "Energia" brand palettes: white light surfaces, teal-tinted dark surfaces, teal actions and a teal bottom bar (dynamic color is opt-in, off in the app)
 - Light + dark theme from day one
 - UiState / UiEvent pattern in ViewModels — no business logic in Composables
 

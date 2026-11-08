@@ -20,7 +20,9 @@ The helper starts from `MaterialTheme.colorScheme.outlineVariant` and, only
 when that fails the minimum contrast against the fill, moves toward
 `MaterialTheme.colorScheme.outline`. Because both tokens come from the active
 `MaterialTheme.colorScheme`, the rule follows the app theme preference and
-Android 12+ dynamic colors. It never reads `isSystemInDarkTheme()`.
+the active scheme: the fixed "Energia" brand palettes (`EnergiaLightTokens`,
+`EnergiaDarkTokens`), or Android 12+ dynamic colors when a caller explicitly
+enables them. It never reads `isSystemInDarkTheme()`.
 
 The chosen border meets at least `2.0:1` against the effective fill. This is a
 decorative grouping boundary, not a control boundary; WCAG 2.2 non-text
