@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	adminhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/adapters/http"
 	adminapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/admin/application"
@@ -42,6 +43,9 @@ func (h AdminHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/admin/forum/posts/{id}/reject", h.rejectPost)
 	r.Post("/v1/admin/forum/posts/{id}/hide", h.hidePost)
 	r.Post("/v1/admin/forum/posts/{id}/unhide", h.unhidePost)
+	r.Get("/v1/admin/forum/comments", h.listPendingComments)
+	r.Post("/v1/admin/forum/comments/{id}/publish", h.publishComment)
+	r.Post("/v1/admin/forum/comments/{id}/reject", h.rejectComment)
 }
 
 func (h AdminHandler) listSources(w http.ResponseWriter, r *http.Request) {
@@ -270,8 +274,12 @@ func (h AdminHandler) publishPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m.Reason = reason
+	if dto.ExpectedRevision < 1 {
+		writeError(w, r, http.StatusBadRequest, "forum.invalid")
+		return
+	}
 
-	post, err := h.Service.PublishPost(r.Context(), m, id)
+	post, err := h.Service.PublishPost(r.Context(), m, id, dto.ExpectedRevision)
 	if err != nil {
 		writeServiceError(w, r, err)
 		return
@@ -318,6 +326,93 @@ func (h AdminHandler) rejectPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, err := json.Marshal(post)
+	if err != nil {
+		writeError(w, r, http.StatusServiceUnavailable, "forum.unavailable")
+		return
+	}
+	h.Admin.FinishMutation(w, r, adminapp.MutationResult{Status: http.StatusOK, Body: body}, nil, false)
+}
+
+// listPendingComments serves the oldest-first PENDING_REVIEW comment queue.
+func (h AdminHandler) listPendingComments(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	limit := 20
+	if l := q.Get("limit"); l != "" {
+		parsed, err := strconv.Atoi(l)
+		if err != nil || parsed < 1 || parsed > 50 {
+			writeError(w, r, http.StatusBadRequest, "forum.invalid")
+			return
+		}
+		limit = parsed
+	}
+	var cursorCreatedAt *time.Time
+	var cursorID *string
+	if token := q.Get("cursor"); token != "" {
+		createdAt, id, err := forumadapters.DecodeAdminCursor(token)
+		if err != nil {
+			writeError(w, r, http.StatusBadRequest, "forum.invalid")
+			return
+		}
+		cursorCreatedAt, cursorID = &createdAt, &id
+	}
+
+	items, err := h.Service.ListPendingComments(r.Context(), cursorCreatedAt, cursorID, limit)
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	var nextCursor *string
+	if len(items) == limit {
+		last := items[len(items)-1]
+		c := forumadapters.EncodeAdminCursor(last.CreatedAt, last.ID)
+		nextCursor = &c
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items":       items,
+		"next_cursor": nextCursor,
+	})
+}
+
+func (h AdminHandler) publishComment(w http.ResponseWriter, r *http.Request) {
+	h.reviewComment(w, r, true)
+}
+
+func (h AdminHandler) rejectComment(w http.ResponseWriter, r *http.Request) {
+	h.reviewComment(w, r, false)
+}
+
+func (h AdminHandler) reviewComment(w http.ResponseWriter, r *http.Request, approve bool) {
+	session, ok := adminhttp.SessionFromContext(r.Context())
+	if !ok {
+		writeError(w, r, http.StatusUnauthorized, "admin.denied")
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	action := "admin.forum.comment.reject"
+	if approve {
+		action = "admin.forum.comment.publish"
+	}
+	var dto reasonDTO
+	m, ok := h.Admin.PrepareMutation(w, r, session, action, "forum_comment", id, &dto)
+	if !ok {
+		return
+	}
+
+	reason := strings.TrimSpace(dto.Reason)
+	if !admindomain.ValidReason(reason) || dto.ExpectedRevision < 1 {
+		writeError(w, r, http.StatusBadRequest, "forum.invalid")
+		return
+	}
+	m.Reason = reason
+
+	comment, err := h.Service.ReviewComment(r.Context(), m, id, dto.ExpectedRevision, approve)
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+
+	body, err := json.Marshal(comment)
 	if err != nil {
 		writeError(w, r, http.StatusServiceUnavailable, "forum.unavailable")
 		return
@@ -375,7 +470,7 @@ func (h AdminHandler) setVisibility(w http.ResponseWriter, r *http.Request, visi
 
 func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
-	case errors.Is(err, domain.ErrPostNotFound):
+	case errors.Is(err, domain.ErrPostNotFound), errors.Is(err, domain.ErrCommentNotFound):
 		writeError(w, r, http.StatusNotFound, "forum.not-found")
 	case errors.Is(err, domain.ErrRevisionMismatch):
 		writeError(w, r, http.StatusConflict, "forum.revision-conflict")

@@ -121,8 +121,10 @@ WHERE id = $1
 RETURNING *;
 
 -- name: RejectComment :one
+-- REJECTED keeps the author's text for owner reads and erasure; only the
+-- REMOVED tombstone requires an empty body.
 UPDATE forum_comments
-SET publication_state = 'REMOVED',
+SET publication_state = 'REJECTED',
     visibility = 'HIDDEN',
     updated_at = now(),
     revision = revision + 1
@@ -181,3 +183,16 @@ WHERE id = $1
       OR $2 <> 'VISIBLE'
   )
 RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at;
+
+-- name: ListCommentsPendingReview :many
+-- Operator review queue: oldest unreviewed comments first with a stable
+-- UUID tie-break, served by forum_comments_review_queue_idx.
+SELECT *
+FROM forum_comments
+WHERE publication_state = 'PENDING_REVIEW'
+  AND (
+    sqlc.narg('cursor_created_at')::timestamptz IS NULL OR
+    (created_at, id) > (sqlc.narg('cursor_created_at')::timestamptz, sqlc.narg('cursor_id')::uuid)
+  )
+ORDER BY created_at ASC, id ASC
+LIMIT @page_limit;

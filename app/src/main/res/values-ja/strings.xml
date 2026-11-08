@@ -1389,10 +1389,10 @@
     <string name="forum_report_dialog_title">コンテンツを報告</string>
     <string name="forum_report_dialog_reason_prompt">報告の理由を選択してください：</string>
     <string name="forum_report_reason_spam">スパムまたは広告</string>
-    <string name="forum_report_reason_offensive">攻撃的または不適切なコンテンツ</string>
-    <string name="forum_report_reason_misinformation">誤解を招く情報</string>
-    <string name="forum_report_reason_commercial">不正な商用活動</string>
-    <string name="forum_report_reason_legal_notice">法的権利または著作権の侵害</string>
+    <string name="forum_report_reason_harassment">嫌がらせまたは攻撃的なコンテンツ</string>
+    <string name="forum_report_reason_defamation">名誉毀損または虚偽の告発</string>
+    <string name="forum_report_reason_off_topic">話題と無関係な内容</string>
+    <string name="forum_report_reason_illegal">違法なコンテンツまたは権利侵害</string>
     <string name="forum_report_reason_other">その他の理由</string>
     <string name="forum_report_detail_hint">追加の詳細（任意、最大500文字）...</string>
     <string name="forum_report_submit">報告を送信</string>

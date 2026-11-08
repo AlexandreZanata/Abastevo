@@ -1,6 +1,8 @@
 package com.anpfuel.data.local.forum
 
 import com.anpfuel.data.mapper.ForumMapper
+import com.anpfuel.domain.forum.ForumBulletinProvenance
+import com.anpfuel.domain.forum.ForumBulletinRevision
 import com.anpfuel.domain.forum.ForumCategoriesResult
 import com.anpfuel.domain.forum.ForumFeedPage
 import com.anpfuel.domain.forum.ForumPostDetail
@@ -86,7 +88,42 @@ object ForumCacheCodec {
         } else {
             obj.put("source_published_at", JSONObject.NULL)
         }
+        // Bulletins keep their methodology and provenance offline; the shape
+        // mirrors the wire format ForumMapper.detail reads back.
+        obj.put("supersedes_post_id", detail.supersedesPostId ?: JSONObject.NULL)
+        obj.put("bulletin", detail.bulletin?.let(::encodeBulletin) ?: JSONObject.NULL)
         return obj.toString()
+    }
+
+    private fun encodeBulletin(bulletin: ForumBulletinProvenance): JSONObject {
+        return JSONObject().apply {
+            put("methodology_version", bulletin.methodologyVersion)
+            put("template_version", bulletin.templateVersion)
+            put("fuel", bulletin.fuel)
+            put("unit", bulletin.unit)
+            put("current", encodeBulletinRevision(bulletin.current))
+            put("previous", encodeBulletinRevision(bulletin.previous))
+        }
+    }
+
+    private fun encodeBulletinRevision(revision: ForumBulletinRevision): JSONObject {
+        return JSONObject().apply {
+            put("revision_id", revision.revisionId)
+            put("survey_start", revision.surveyStart)
+            put("survey_end", revision.surveyEnd)
+            put("published_at", revision.publishedAt)
+            put("source_url", revision.sourceUrl)
+            put("source_checksum", revision.sourceChecksum)
+            put("parser_version", revision.parserVersion)
+            put("sum_milli_brl", revision.sumMilliBrl)
+            put("observation_count", revision.observationCount)
+            put("sampled_stations", revision.sampledStations)
+            put("source_observations", revision.sourceObservations)
+            put("source_stations", revision.sourceStations)
+            put("mean_numerator", revision.meanNumerator)
+            put("mean_denominator", revision.meanDenominator)
+            put("mean", revision.mean)
+        }
     }
 
     fun decodeDetail(json: String): ForumPostDetail {

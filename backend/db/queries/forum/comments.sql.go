@@ -367,6 +367,63 @@ func (q *Queries) ListCommentsByPost(ctx context.Context, arg ListCommentsByPost
 	return items, nil
 }
 
+const listCommentsPendingReview = `-- name: ListCommentsPendingReview :many
+SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+FROM forum_comments
+WHERE publication_state = 'PENDING_REVIEW'
+  AND (
+    $1::timestamptz IS NULL OR
+    (created_at, id) > ($1::timestamptz, $2::uuid)
+  )
+ORDER BY created_at ASC, id ASC
+LIMIT $3
+`
+
+type ListCommentsPendingReviewParams struct {
+	CursorCreatedAt pgtype.Timestamptz `json:"cursor_created_at"`
+	CursorID        pgtype.UUID        `json:"cursor_id"`
+	PageLimit       int32              `json:"page_limit"`
+}
+
+// Operator review queue: oldest unreviewed comments first with a stable
+// UUID tie-break, served by forum_comments_review_queue_idx.
+func (q *Queries) ListCommentsPendingReview(ctx context.Context, arg ListCommentsPendingReviewParams) ([]ForumComment, error) {
+	rows, err := q.db.Query(ctx, listCommentsPendingReview, arg.CursorCreatedAt, arg.CursorID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ForumComment
+	for rows.Next() {
+		var i ForumComment
+		if err := rows.Scan(
+			&i.ID,
+			&i.PostID,
+			&i.AuthorAccountID,
+			&i.PublicAlias,
+			&i.ParentID,
+			&i.Depth,
+			&i.Sequence,
+			&i.BodyText,
+			&i.Revision,
+			&i.PublicationState,
+			&i.Visibility,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PublishedAt,
+			&i.CreateOperationID,
+			&i.BodySha256,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRepliesByParent = `-- name: ListRepliesByParent :many
 SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
 FROM forum_comments
@@ -548,7 +605,7 @@ func (q *Queries) PublishComment(ctx context.Context, id pgtype.UUID) (ForumComm
 
 const rejectComment = `-- name: RejectComment :one
 UPDATE forum_comments
-SET publication_state = 'REMOVED',
+SET publication_state = 'REJECTED',
     visibility = 'HIDDEN',
     updated_at = now(),
     revision = revision + 1
@@ -557,6 +614,8 @@ WHERE id = $1
 RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
 `
 
+// REJECTED keeps the author's text for owner reads and erasure; only the
+// REMOVED tombstone requires an empty body.
 func (q *Queries) RejectComment(ctx context.Context, id pgtype.UUID) (ForumComment, error) {
 	row := q.db.QueryRow(ctx, rejectComment, id)
 	var i ForumComment

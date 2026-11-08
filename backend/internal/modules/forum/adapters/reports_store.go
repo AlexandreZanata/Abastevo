@@ -14,6 +14,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// forumReportCaseDetail is the fixed, PII-free detail a forum report case
+// carries. Moderation case history is immutable, so reporter free text stays
+// only in forum_reports, where account erasure can scrub it.
+const forumReportCaseDetail = "forum report; reporter detail kept in forum_reports"
+
 // Report files a moderation report for a forum post or comment.
 // Implements B-BR-FOR-08, B-BR-FOR-10, B-BR-FOR-11.
 func (s *Store) Report(ctx context.Context, cmd application.ReportCommand) (*domain.ReportReceipt, error) {
@@ -115,7 +120,7 @@ func (s *Store) Report(ctx context.Context, cmd application.ReportCommand) (*dom
 		if s.CaseOpener == nil {
 			return nil, fmt.Errorf("forum: case opener unconfigured")
 		}
-		caseID, _, err := s.CaseOpener(ctx, tx, cmd.TargetType, cmd.TargetID, cleanReason, cleanDetail)
+		caseID, _, err := s.CaseOpener(ctx, tx, cmd.TargetType, cmd.TargetID, cleanReason, forumReportCaseDetail)
 		if err != nil {
 			return nil, fmt.Errorf("forum: open case: %w", err)
 		}
@@ -183,6 +188,22 @@ func (s *Store) Report(ctx context.Context, cmd application.ReportCommand) (*dom
 		CreatedAt:        existing.CreatedAt.Time,
 		Replayed:         true,
 	}, nil
+}
+
+// SettleReportsByCase records a moderation outcome on the RECEIVED reports
+// linked to a case. Replays update nothing.
+func (s *Store) SettleReportsByCase(ctx context.Context, caseID, status string) (int64, error) {
+	if status != "RESOLVED" && status != "DISMISSED" {
+		return 0, domain.ErrReportInvalid
+	}
+	caseUUID, err := mustUUID(caseID)
+	if err != nil {
+		return 0, domain.ErrTargetInvalid
+	}
+	return s.queries.SettleForumReportsByCase(ctx, forum.SettleForumReportsByCaseParams{
+		Status:           status,
+		ModerationCaseID: caseUUID,
+	})
 }
 
 // InvalidateForumTargetTx executes operator invalidation on a reported forum post or comment.

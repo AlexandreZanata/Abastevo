@@ -7728,6 +7728,7 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/ForumOwnerCommentResponse'
                   - $ref: '#/components/schemas/ForumOwnerTopicResponse'
+                  - $ref: '#/components/schemas/ForumOwnerPostCommentsResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -13539,7 +13540,7 @@ components:
         post_id:
           type: [string, 'null']
           format: uuid
-          description: Optional post UUID context.
+          description: Post UUID. Alone, returns the caller's own live comments on that post.
         topic_id:
           type: [string, 'null']
           format: uuid
@@ -13609,6 +13610,18 @@ components:
       properties:
         comment:
           $ref: '#/components/schemas/ForumCommentReceipt'
+    ForumOwnerPostCommentsResponse:
+      type: object
+      description: Private owner response listing the caller's own live (published or pending) comments on one post.
+      additionalProperties: false
+      required: [comments]
+      properties:
+        comments:
+          type: array
+          maxItems: 100
+          description: Owned live comment receipts on the requested post, bounded by the live-comment cap.
+          items:
+            $ref: '#/components/schemas/ForumCommentReceipt'
     ForumCommentItem:
       type: object
       description: Publicly visible comment item on a published post.

@@ -244,10 +244,15 @@ class ForumDomainTest {
     @Test
     fun `ForumReportReason parses standard wire codes and defaults to OTHER`() {
         assertEquals(ForumReportReason.SPAM, ForumReportReason.fromWire("SPAM"))
-        assertEquals(ForumReportReason.OFFENSIVE, ForumReportReason.fromWire("OFFENSIVE"))
-        assertEquals(ForumReportReason.MISINFORMATION, ForumReportReason.fromWire("MISINFORMATION"))
-        assertEquals(ForumReportReason.COMMERCIAL, ForumReportReason.fromWire("COMMERCIAL"))
-        assertEquals(ForumReportReason.LEGAL_NOTICE, ForumReportReason.fromWire("LEGAL_NOTICE"))
+        assertEquals(ForumReportReason.HARASSMENT, ForumReportReason.fromWire("HARASSMENT"))
+        assertEquals(ForumReportReason.DEFAMATION, ForumReportReason.fromWire("DEFAMATION"))
+        assertEquals(ForumReportReason.OFF_TOPIC, ForumReportReason.fromWire("OFF_TOPIC"))
+        assertEquals(ForumReportReason.ILLEGAL, ForumReportReason.fromWire("ILLEGAL"))
+        // Every wire code is one the backend contract accepts.
+        assertEquals(
+            setOf("SPAM", "HARASSMENT", "DEFAMATION", "OFF_TOPIC", "ILLEGAL", "OTHER"),
+            ForumReportReason.entries.map { it.wireCode }.toSet(),
+        )
         assertEquals(ForumReportReason.OTHER, ForumReportReason.fromWire("OTHER"))
         assertEquals(ForumReportReason.OTHER, ForumReportReason.fromWire("UNKNOWN_CODE"))
     }

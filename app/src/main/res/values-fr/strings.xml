@@ -1389,10 +1389,10 @@
     <string name="forum_report_dialog_title">Signaler un contenu</string>
     <string name="forum_report_dialog_reason_prompt">Sélectionnez le motif du signalement :</string>
     <string name="forum_report_reason_spam">Spam ou publicité</string>
-    <string name="forum_report_reason_offensive">Contenu offensant ou inapproprié</string>
-    <string name="forum_report_reason_misinformation">Informations trompeuses</string>
-    <string name="forum_report_reason_commercial">Activité commerciale non autorisée</string>
-    <string name="forum_report_reason_legal_notice">Violation de la loi ou droits d\'auteur</string>
+    <string name="forum_report_reason_harassment">Harcèlement ou contenu offensant</string>
+    <string name="forum_report_reason_defamation">Diffamation ou fausse accusation</string>
+    <string name="forum_report_reason_off_topic">Contenu hors sujet</string>
+    <string name="forum_report_reason_illegal">Contenu illégal ou violation de droits</string>
     <string name="forum_report_reason_other">Autre motif</string>
     <string name="forum_report_detail_hint">Détails supplémentaires (facultatif, jusqu\'à 500 caractères)...</string>
     <string name="forum_report_submit">Envoyer le signalement</string>

@@ -141,14 +141,25 @@ object Routes {
     const val FORUM_FEED = "forum/feed"
     const val FORUM_POST = "forum/posts/{postId}"
     fun forumPost(postId: String): String {
-        require(java.util.UUID.fromString(postId).toString() == postId) { "invalid post id" }
-        return "forum/posts/$postId"
+        val id = requireNotNull(canonicalForumId(postId)) { "invalid post id" }
+        return "forum/posts/$id"
     }
+
+    /** Route for a server-supplied post id, or null when it is malformed. */
+    fun forumPostOrNull(postId: String): String? = canonicalForumId(postId)?.let { "forum/posts/$it" }
 
     const val FORUM_NEW_TOPIC = "forum/topics/new"
     const val FORUM_EDIT_TOPIC = "forum/topics/{topicId}/edit"
     fun forumEditTopic(topicId: String): String {
-        require(java.util.UUID.fromString(topicId).toString() == topicId) { "invalid topic id" }
-        return "forum/topics/$topicId/edit"
+        val id = requireNotNull(canonicalForumId(topicId)) { "invalid topic id" }
+        return "forum/topics/$id/edit"
     }
+
+    /** Route for a server-supplied topic id, or null when it is malformed. */
+    fun forumEditTopicOrNull(topicId: String): String? = canonicalForumId(topicId)?.let { "forum/topics/$it/edit" }
+
+    private val FORUM_ID = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+    // UUIDs compare case-insensitively; routes always carry the lowercase form.
+    private fun canonicalForumId(raw: String): String? = raw.trim().takeIf(FORUM_ID::matches)?.lowercase()
 }

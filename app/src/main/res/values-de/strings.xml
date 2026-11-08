@@ -1389,10 +1389,10 @@
     <string name="forum_report_dialog_title">Inhalt melden</string>
     <string name="forum_report_dialog_reason_prompt">Wähle den Grund für die Meldung:</string>
     <string name="forum_report_reason_spam">Spam oder Werbung</string>
-    <string name="forum_report_reason_offensive">Beleidigender oder ungeeigneter Inhalt</string>
-    <string name="forum_report_reason_misinformation">Irreführende Informationen</string>
-    <string name="forum_report_reason_commercial">Unbefugte kommerzielle Aktivität</string>
-    <string name="forum_report_reason_legal_notice">Rechtsverletzung oder Urheberrecht</string>
+    <string name="forum_report_reason_harassment">Belästigung oder beleidigender Inhalt</string>
+    <string name="forum_report_reason_defamation">Verleumdung oder falsche Anschuldigung</string>
+    <string name="forum_report_reason_off_topic">Themenfremder Inhalt</string>
+    <string name="forum_report_reason_illegal">Illegaler Inhalt oder Rechtsverletzung</string>
     <string name="forum_report_reason_other">Anderer Grund</string>
     <string name="forum_report_detail_hint">Zusätzliche Details (optional, bis zu 500 Zeichen)...</string>
     <string name="forum_report_submit">Meldung senden</string>

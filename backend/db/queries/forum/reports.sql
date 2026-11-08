@@ -32,3 +32,27 @@ WHERE account_id = $1 AND created_at >= $2;
 UPDATE forum_reports
 SET moderation_case_id = $2
 WHERE id = $1;
+
+-- name: PendingEraseReportsByAccount :many
+SELECT id, moderation_case_id, detail
+FROM forum_reports
+WHERE account_id = $1 AND detail <> ''
+ORDER BY id
+LIMIT $2;
+
+-- name: ScrubForumReportDetail :exec
+UPDATE forum_reports
+SET detail = ''
+WHERE id = $1;
+
+-- name: HasPendingAccountReportErasure :one
+SELECT EXISTS (
+    SELECT 1 FROM forum_reports WHERE account_id = $1 AND detail <> ''
+);
+
+-- name: SettleForumReportsByCase :execrows
+-- A moderation outcome settles the reports that opened or joined its case.
+-- Only RECEIVED rows move, so job replays converge.
+UPDATE forum_reports
+SET status = @status
+WHERE moderation_case_id = @moderation_case_id AND status = 'RECEIVED';

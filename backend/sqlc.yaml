@@ -453,6 +453,7 @@ sql:
       - db/migrations/000160_forum_moderation_targets.sql
       - db/migrations/000161_forum_discovery.sql
       - db/migrations/000162_forum_bulletin_provenance.sql
+      - db/migrations/000163_forum_comment_review_queue.sql
     gen:
       go:
         package: forum

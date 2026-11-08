@@ -487,6 +487,32 @@ class ForumHttpClient(
         }
     }
 
+    override suspend fun getOwnCommentIds(postId: String): Set<String> {
+        val session = liveSession()
+        val payload = JSONObject().apply {
+            put("family_id", session.familyId)
+            put("access_token", session.accessToken)
+            put("post_id", postId)
+        }
+        val url = origin.newBuilder()
+            .addPathSegments("v1/forum/owner/read")
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .build()
+        val raw = execute(request)
+        return try {
+            ForumMapper.ownCommentIds(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
     override suspend fun getOwnerTopic(topicId: String): ForumTopicReceipt {
         val session = liveSession()
         val payload = JSONObject().apply {

@@ -259,6 +259,14 @@ object ForumMapper {
         )
     }
 
+    fun ownCommentIds(json: JSONObject): Set<String> {
+        val items = json.optJSONArray("comments") ?: throw ForumException.Invalid("forum.bad-response")
+        if (items.length() > 100) throw ForumException.Invalid("forum.bad-response")
+        return (0 until items.length()).mapNotNull { i ->
+            items.optJSONObject(i)?.optString("id", "")?.takeIf { it.isNotEmpty() }
+        }.toSet()
+    }
+
     fun commentReceipt(json: JSONObject): ForumCommentReceipt {
         val obj = json.optJSONObject("comment") ?: json
         val id = obj.optString("id", "")

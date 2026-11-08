@@ -9,6 +9,7 @@ import com.anpfuel.application.usecase.forum.GetForumCommentsUseCase
 import com.anpfuel.application.usecase.forum.GetForumFeedUseCase
 import com.anpfuel.application.usecase.forum.GetForumPostDetailUseCase
 import com.anpfuel.application.usecase.forum.GetForumRepliesUseCase
+import com.anpfuel.application.usecase.forum.GetOwnForumCommentIdsUseCase
 import com.anpfuel.application.usecase.forum.GetOwnerTopicUseCase
 import com.anpfuel.application.usecase.forum.RemoveForumCommentUseCase
 import com.anpfuel.application.usecase.forum.RemoveForumTopicUseCase
@@ -131,5 +132,10 @@ object ForumModule {
     @Provides
     fun provideGetOwnerTopicUseCase(gateway: ForumGateway): GetOwnerTopicUseCase {
         return GetOwnerTopicUseCase(gateway)
+    }
+
+    @Provides
+    fun provideGetOwnForumCommentIdsUseCase(gateway: ForumGateway): GetOwnForumCommentIdsUseCase {
+        return GetOwnForumCommentIdsUseCase(gateway)
     }
 }

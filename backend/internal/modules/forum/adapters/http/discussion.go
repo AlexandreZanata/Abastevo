@@ -142,6 +142,12 @@ type OwnerCommentResponseDTO struct {
 	Comment CommentReceiptDTO `json:"comment"`
 }
 
+// OwnerPostCommentsResponseDTO lists the caller's own live comments on one
+// post, so clients show edit and remove controls only on owned comments.
+type OwnerPostCommentsResponseDTO struct {
+	Comments []CommentReceiptDTO `json:"comments"`
+}
+
 // TopicReceiptDTO represents the private owner receipt returned upon
 // topic create, edit, removal, or owner read.
 type TopicReceiptDTO struct {
@@ -964,13 +970,19 @@ func (h *DiscussionHandler) OwnerRead(w http.ResponseWriter, r *http.Request) {
 
 	hasComment := req.CommentID != nil && strings.TrimSpace(*req.CommentID) != ""
 	hasTopic := req.TopicID != nil && strings.TrimSpace(*req.TopicID) != ""
+	hasPost := req.PostID != nil && strings.TrimSpace(*req.PostID) != ""
 
-	if !hasComment && !hasTopic {
-		h.writeBadRequest(w, r, "comment_id or topic_id required")
+	if !hasComment && !hasTopic && !hasPost {
+		h.writeBadRequest(w, r, "comment_id, topic_id or post_id required")
 		return
 	}
 	if hasComment && hasTopic {
 		h.writeBadRequest(w, r, "specify either comment_id or topic_id, not both")
+		return
+	}
+
+	if hasPost && !hasComment && !hasTopic {
+		h.ownerPostComments(w, r, principal.AccountID, strings.TrimSpace(*req.PostID))
 		return
 	}
 
@@ -1034,6 +1046,36 @@ func (h *DiscussionHandler) OwnerRead(w http.ResponseWriter, r *http.Request) {
 
 	receipt := mapCommentToReceiptDTO(comment, false)
 	resp := OwnerCommentResponseDTO{Comment: receipt}
+	bodyBytes, _ := json.Marshal(resp)
+	w.Header().Set("Cache-Control", "no-store")
+	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", bodyBytes)
+}
+
+// ownerPostComments returns the caller's own live (published or pending)
+// comments on a post; the 100 live-comment cap bounds it, so no paging.
+func (h *DiscussionHandler) ownerPostComments(w http.ResponseWriter, r *http.Request, accountID, postID string) {
+	if h.Comments == nil {
+		h.writeError(w, r, domain.ErrForumDisabled)
+		return
+	}
+	if !isUUID(postID) {
+		h.writeBadRequest(w, r, "invalid post id")
+		return
+	}
+	comments, err := h.Comments.ListCommentsByAccount(r.Context(), accountID)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	resp := OwnerPostCommentsResponseDTO{Comments: []CommentReceiptDTO{}}
+	for i := range comments {
+		c := &comments[i]
+		live := c.PublicationState == domain.StatePublished || c.PublicationState == domain.StatePendingReview
+		if c.PostID != postID || !live {
+			continue
+		}
+		resp.Comments = append(resp.Comments, mapCommentToReceiptDTO(c, false))
+	}
 	bodyBytes, _ := json.Marshal(resp)
 	w.Header().Set("Cache-Control", "no-store")
 	httpapi.WriteJSON(w, r, http.StatusOK, "no-store", bodyBytes)

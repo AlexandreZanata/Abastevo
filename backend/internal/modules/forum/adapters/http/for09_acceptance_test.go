@@ -223,7 +223,8 @@ func TestFOR09_EditorialChainAndSafeRollback(t *testing.T) {
 
 	// Step 3: Admin publishes post
 	pubReq := map[string]any{
-		"reason": "Artigo editorial revisado e aprovado pela equipe técnica",
+		"expected_revision": created.Revision,
+		"reason":            "Artigo editorial revisado e aprovado pela equipe técnica",
 	}
 	req = newAdminReq(http.MethodPost, "/v1/admin/forum/posts/"+postID+"/publish", pubReq, "22222222-2222-4222-8222-222222222222")
 	rec = httptest.NewRecorder()

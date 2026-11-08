@@ -62,6 +62,9 @@ interface ForumGateway {
 
     suspend fun getOwnerComment(commentId: String): ForumCommentReceipt = throw UnsupportedOperationException()
 
+    /** IDs of the signed-in account's own live comments on [postId]. */
+    suspend fun getOwnCommentIds(postId: String): Set<String> = throw UnsupportedOperationException()
+
     suspend fun report(
         targetType: String,
         targetId: String,

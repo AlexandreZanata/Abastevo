@@ -530,7 +530,7 @@ class ForumUseCasesTest {
         val receiptPost = useCase("FORUM_POST", validPostId, ForumReportReason.SPAM, "Spam comercial")
         assertEquals("FORUM_POST", receiptPost.targetType)
 
-        val receiptComment = useCase("FORUM_COMMENT", validPostId, ForumReportReason.OFFENSIVE, null)
+        val receiptComment = useCase("FORUM_COMMENT", validPostId, ForumReportReason.HARASSMENT, null)
         assertEquals("FORUM_COMMENT", receiptComment.targetType)
 
         assertThrows(ForumException.Invalid::class.java) {
