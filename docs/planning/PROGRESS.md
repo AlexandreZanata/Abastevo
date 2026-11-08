@@ -1,4 +1,14 @@
 # Current execution state
+- Forum Android review fixes, 2026-11-08: LOCAL_DONE on dev. Report reasons
+  now use the contract codes (four of six always failed); edit/remove
+  controls show only on owned comments and topics, confirmed by signed
+  owner reads (`owner/read` with `post_id` lists the caller's live comments);
+  reporting a reply targets the reply, not its parent; comment removal maps
+  conflict/rate-limit/offline and reports map expired sessions to sign-in;
+  an account switch cancels in-flight writes; routes accept any-case UUIDs
+  without crashing; the offline cache keeps bulletin provenance.
+  [Phase 6 evidence](../backend/evidence/forum/FOR_PHASE_6.md)
+
 - PR #192 retained review items, 2026-11-08: LOCAL_DONE on dev from merged
   main `087ff754`. Admin publish requires the reviewed `expected_revision`
   (400 missing, 409 stale); account erasure scrubs `forum_reports.detail`,

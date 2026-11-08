@@ -173,5 +173,23 @@ with these OWED items retained.
   sends `publication_state` (it sent `status=draft`, which the API ignored).
   `TestCommentReview_AdminQueuePublishAndReject` covers pagination, 400/409/404,
   publish-to-public, reject-to-hidden and change records.
-- Still OWED: Android social UI activation (kill switch), ownership hints and
-  offline bulletin provenance on Android, A3 device acceptance.
+- Still OWED: Android social UI activation (kill switch), A3 device acceptance.
+
+## Android review fixes (2026-11-08)
+
+- `f9c292ff`: `owner/read` with only `post_id` returns the caller's own
+  published or pending comment receipts on that post
+  (`ForumOwnerPostCommentsResponse`, `TestOwnerRead_PostCommentsListsOnlyOwnLiveComments`).
+- `78a4394b`: report reasons use the contract codes SPAM, HARASSMENT,
+  DEFAMATION, OFF_TOPIC, ILLEGAL and OTHER in all eight locales; the old
+  OFFENSIVE/MISINFORMATION/COMMERCIAL/LEGAL_NOTICE codes were always refused.
+- `e3bf601c`: forum routes accept case-insensitive UUIDs (lowercased) and list
+  taps use null-returning builders instead of throwing.
+- `5ce48b06`: the offline cache writes bulletin provenance and
+  `supersedes_post_id` (mapper/codec round trip test).
+- Ownership and error handling commit: edit/remove controls require ownership
+  confirmed by signed owner reads; reply reports target the reply; removal
+  maps Conflict/RateLimited/Offline; report AuthRequired prompts sign-in; an
+  account switch cancels the in-flight write and clears ownership
+  (`ForumDetailViewModelTest` ownership, visitor, removal-mapping and
+  expired-session cases).
