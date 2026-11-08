@@ -16,7 +16,6 @@ import (
 	forumsql "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/forum"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
-	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 )
 
 func topicQuotaSubjectHourly(accountID string) string {
@@ -143,15 +142,11 @@ func (s *Store) CreateTopic(ctx context.Context, cmd application.CreateTopicComm
 	qtx := s.queries.WithTx(tx)
 
 	// 1. Quota check (if limiter configured)
-	if s.limiter != nil {
-		subjectHour := topicQuotaSubjectHourly(cmd.AuthorAccountID)
-		if _, err := s.limiter.CheckTx(ctx, tx, subjectHour, identitydomain.OperationWrite); err != nil {
-			return application.TopicResult{}, err
-		}
-		subjectDay := topicQuotaSubjectDaily(cmd.AuthorAccountID)
-		if _, err := s.limiter.CheckTx(ctx, tx, subjectDay, identitydomain.OperationWrite); err != nil {
-			return application.TopicResult{}, err
-		}
+	if err := checkQuota(ctx, tx, s.quotas.TopicHourly, topicQuotaSubjectHourly(cmd.AuthorAccountID)); err != nil {
+		return application.TopicResult{}, err
+	}
+	if err := checkQuota(ctx, tx, s.quotas.TopicDaily, topicQuotaSubjectDaily(cmd.AuthorAccountID)); err != nil {
+		return application.TopicResult{}, err
 	}
 
 	// 2. Check live topic count for author across forum (max 20 live)

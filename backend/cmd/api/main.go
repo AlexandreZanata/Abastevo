@@ -806,6 +806,20 @@ func run() error {
 	}.RegisterRoutes(router)
 
 	forumStore := forumadapters.NewStore(pool.Underlying())
+	forumWriteQuota := func(limit int32, window time.Duration) *identityadapters.Limiter {
+		return identityadapters.NewLimiter(pool.Underlying(), identitydomain.QuotaPolicy{
+			Version: 1,
+			Ops:     map[string]identitydomain.OperationQuota{identitydomain.OperationWrite: {Limit: limit, Window: window}},
+		})
+	}
+	// B-BR-FOR-11 author budgets: comments 20/hour and 100/day, topics
+	// 3/hour and 10/day, admitted in the same transaction as the write.
+	forumStore.SetQuotas(forumadapters.Quotas{
+		CommentHourly: forumWriteQuota(20, time.Hour),
+		CommentDaily:  forumWriteQuota(100, 24*time.Hour),
+		TopicHourly:   forumWriteQuota(3, time.Hour),
+		TopicDaily:    forumWriteQuota(10, 24*time.Hour),
+	})
 	forumStore.CaseOpener = func(ctx context.Context, tx pgx.Tx, targetType, targetID, reason, detail string) (string, bool, error) {
 		caseID, err := newUUID()
 		if err != nil {
@@ -830,7 +844,7 @@ func run() error {
 	forumCfg.ReadsEnabled = cfg.ForumEnabled
 	forumCfg.WritesEnabled = cfg.ForumEnabled
 	forumCfg.AdminEnabled = cfg.ForumEnabled
-	forumService := forumapp.NewService(forumCfg, forumStore, forumStore, forumapp.SystemClock{})
+	forumService := forumapp.NewService(forumCfg, forumStore, forumadapters.PublicPosts{Store: forumStore}, forumapp.SystemClock{})
 	forumHandler := forumhttp.NewHandler(forumService, cfg.CursorSecret)
 	forumHandler.RegisterRoutes(router)
 

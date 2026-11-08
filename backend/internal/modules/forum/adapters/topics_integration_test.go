@@ -322,6 +322,44 @@ func TestTopic_RateQuota(t *testing.T) {
 	}
 }
 
+func TestTopic_DailyQuotaIndependentOfHourly(t *testing.T) {
+	store, pool, _ := freshForumStore(t)
+	ctx := context.Background()
+
+	quota := func(limit int32, window time.Duration) *identityadapters.Limiter {
+		return identityadapters.NewLimiter(pool, identitydomain.QuotaPolicy{
+			Version: 1,
+			Ops:     map[string]identitydomain.OperationQuota{identitydomain.OperationWrite: {Limit: limit, Window: window}},
+		})
+	}
+	// A generous hourly window must not mask a tighter daily window.
+	store.SetQuotas(Quotas{
+		TopicHourly: quota(50, time.Hour),
+		TopicDaily:  quota(2, 24*time.Hour),
+	})
+
+	authorID := createTestAccount(t, pool, "11111111-1111-4111-8111-000000000001", "daily-limited-author")
+	create := func(i int) error {
+		_, err := store.CreateTopic(ctx, application.CreateTopicCommand{
+			AuthorAccountID: authorID,
+			Category:        domain.CategoryDriverEconomy,
+			Title:           fmt.Sprintf("Dica diária #%d sobre economia urbana", i),
+			BodyText:        fmt.Sprintf("Descrição da dica diária %d para reduzir o consumo em trajetos urbanos.", i),
+			OperationID:     fmt.Sprintf("33333333-3333-4333-8333-%012d", i),
+		})
+		return err
+	}
+	for i := 1; i <= 2; i++ {
+		if err := create(i); err != nil {
+			t.Fatalf("topic %d failed: %v", i, err)
+		}
+	}
+	var quotaErr *identityadapters.QuotaError
+	if err := create(3); !errors.As(err, &quotaErr) {
+		t.Fatalf("expected daily *identityadapters.QuotaError on 3rd topic, got: %v", err)
+	}
+}
+
 func TestTopic_CASEditLifecycle(t *testing.T) {
 	store, pool, _ := freshForumStore(t)
 	ctx := context.Background()

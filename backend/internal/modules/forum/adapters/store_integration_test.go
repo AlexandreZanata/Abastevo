@@ -572,6 +572,63 @@ func TestForumUpdateAndVisibility_RollbackAndFeedInvalidation(t *testing.T) {
 	}
 }
 
+func TestForumPublicDetail_HonorsSourceRights(t *testing.T) {
+	store, pool, _ := freshForumStore(t)
+	ctx := context.Background()
+
+	const seedSourceID = "00000000-0000-0000-0000-000000000001"
+	postID := randomUUID()
+	post := &domain.Post{
+		ID:               postID,
+		Kind:             domain.KindEditorial,
+		Category:         domain.CategoryFuels,
+		Title:            "Rights Title",
+		Excerpt:          "Rights Excerpt",
+		BodyText:         "Rights Body",
+		SourceID:         seedSourceID,
+		PublicationState: domain.StateDraft,
+		Visibility:       domain.VisibilityVisible,
+		Revision:         1,
+	}
+	if err := store.CreateEditorialPost(ctx, post); err != nil {
+		t.Fatalf("create post: %v", err)
+	}
+	if _, err := store.PublishEditorialPost(ctx, postID, time.Now().UTC()); err != nil {
+		t.Fatalf("publish post: %v", err)
+	}
+
+	public := PublicPosts{Store: store}
+	if _, err := public.GetPostByID(ctx, postID); err != nil {
+		t.Fatalf("approved source must serve public detail: %v", err)
+	}
+
+	// Revoking source rights hides the detail exactly like the feed, while
+	// the administrative lookup still sees the row.
+	if _, err := pool.Exec(ctx, `UPDATE forum_sources SET rights_status = 'DENIED', publication_enabled = false WHERE id = $1`, seedSourceID); err != nil {
+		t.Fatalf("revoke source: %v", err)
+	}
+	if _, err := public.GetPostByID(ctx, postID); !errors.Is(err, domain.ErrPostNotFound) {
+		t.Fatalf("expected ErrPostNotFound after rights revocation, got %v", err)
+	}
+	if _, err := store.GetPostByID(ctx, postID); err != nil {
+		t.Fatalf("admin lookup must still load the post: %v", err)
+	}
+	feed, err := store.ListPublicPosts(ctx, application.ListPublicPostsQuery{Limit: 10})
+	if err != nil {
+		t.Fatalf("list public posts: %v", err)
+	}
+	if len(feed.Items) != 0 {
+		t.Fatalf("expected empty public feed after revocation, got %d", len(feed.Items))
+	}
+	comments, err := store.ListCommentsByPost(ctx, application.ListPostCommentsQuery{PostID: postID, Limit: 10})
+	if err != nil || len(comments) != 0 {
+		t.Fatalf("expected no public comments after revocation, got %d (%v)", len(comments), err)
+	}
+	if _, err := public.GetPostByID(ctx, "not-a-uuid"); !errors.Is(err, domain.ErrPostNotFound) {
+		t.Fatalf("expected ErrPostNotFound for malformed id, got %v", err)
+	}
+}
+
 func TestForumExplainPlan_UsesPartialIndex(t *testing.T) {
 	_, pool, _ := freshForumStore(t)
 	ctx := context.Background()

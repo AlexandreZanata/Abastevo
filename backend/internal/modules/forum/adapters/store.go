@@ -20,6 +20,7 @@ import (
 	forumsql "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/forum"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
+	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 )
 
 // QuotaChecker checks rate quotas within an open transaction.
@@ -27,17 +28,40 @@ type QuotaChecker interface {
 	CheckTx(ctx context.Context, tx pgx.Tx, subject, operation string) (time.Duration, error)
 }
 
+// Quotas holds one transactional checker per B-BR-FOR-11 window. The
+// identity rate table admits a single "write" operation, so each window is a
+// separate limiter whose policy carries that window's cap.
+type Quotas struct {
+	CommentHourly QuotaChecker
+	CommentDaily  QuotaChecker
+	TopicHourly   QuotaChecker
+	TopicDaily    QuotaChecker
+}
+
 // Store provides PostgreSQL persistence for Forum Abastevo.
 type Store struct {
 	pool       *pgxpool.Pool
 	queries    *forumsql.Queries
-	limiter    QuotaChecker
+	quotas     Quotas
 	CaseOpener application.ModerationCaseOpener
 }
 
-// SetQuotaChecker configures an optional transactional quota checker for rate limiting.
+// SetQuotaChecker applies one transactional quota checker to every window.
 func (s *Store) SetQuotaChecker(limiter QuotaChecker) {
-	s.limiter = limiter
+	s.quotas = Quotas{CommentHourly: limiter, CommentDaily: limiter, TopicHourly: limiter, TopicDaily: limiter}
+}
+
+// SetQuotas configures the per-window transactional quota checkers.
+func (s *Store) SetQuotas(q Quotas) {
+	s.quotas = q
+}
+
+func checkQuota(ctx context.Context, tx pgx.Tx, limiter QuotaChecker, subject string) error {
+	if limiter == nil {
+		return nil
+	}
+	_, err := limiter.CheckTx(ctx, tx, subject, identitydomain.OperationWrite)
+	return err
 }
 
 // NewStore initializes a new Store backed by pgxpool.
@@ -78,6 +102,42 @@ func (s *Store) GetPostByID(ctx context.Context, id string) (*domain.Post, error
 	}
 
 	return mapPostRowToDomain(row)
+}
+
+// PublicPosts adapts the store for anonymous reads: detail lookups apply the
+// same source-rights and author-status predicates as the public feed, so a
+// revoked source or an inactive author hides the post everywhere.
+type PublicPosts struct {
+	*Store
+}
+
+// GetPostByID fetches a publicly visible post by ID.
+func (p PublicPosts) GetPostByID(ctx context.Context, id string) (*domain.Post, error) {
+	postUUID, err := mustUUID(id)
+	if err != nil {
+		return nil, domain.ErrPostNotFound
+	}
+
+	row, err := p.queries.GetPublicPostByID(ctx, postUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrPostNotFound
+		}
+		return nil, fmt.Errorf("forum: get public post by id: %w", err)
+	}
+
+	return mapPostRowToDomain(forumsql.GetPostByIDRow(row))
+}
+
+// isPublicPost reports whether a post passes the public visibility predicates.
+func (s *Store) isPublicPost(ctx context.Context, postID pgtype.UUID) (bool, error) {
+	if _, err := s.queries.GetPublicPostByID(ctx, postID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("forum: check public post: %w", err)
+	}
+	return true, nil
 }
 
 // ListPublicPosts returns a keyset-paginated slice of public post summaries.

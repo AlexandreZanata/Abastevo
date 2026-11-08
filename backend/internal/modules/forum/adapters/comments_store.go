@@ -14,7 +14,6 @@ import (
 	forumsql "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/forum"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
-	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 )
 
 func commentQuotaSubjectHourly(accountID string) string {
@@ -108,15 +107,11 @@ func (s *Store) CreateComment(ctx context.Context, cmd application.CreateComment
 	qtx := s.queries.WithTx(tx)
 
 	// 1. Quota check (if limiter configured)
-	if s.limiter != nil {
-		subjectHour := commentQuotaSubjectHourly(cmd.AuthorAccountID)
-		if _, err := s.limiter.CheckTx(ctx, tx, subjectHour, identitydomain.OperationWrite); err != nil {
-			return application.CommentResult{}, err
-		}
-		subjectDay := commentQuotaSubjectDaily(cmd.AuthorAccountID)
-		if _, err := s.limiter.CheckTx(ctx, tx, subjectDay, identitydomain.OperationWrite); err != nil {
-			return application.CommentResult{}, err
-		}
+	if err := checkQuota(ctx, tx, s.quotas.CommentHourly, commentQuotaSubjectHourly(cmd.AuthorAccountID)); err != nil {
+		return application.CommentResult{}, err
+	}
+	if err := checkQuota(ctx, tx, s.quotas.CommentDaily, commentQuotaSubjectDaily(cmd.AuthorAccountID)); err != nil {
+		return application.CommentResult{}, err
 	}
 
 	// 2. Lock post and verify state/comments_enabled
@@ -430,6 +425,10 @@ func (s *Store) ListCommentsByPost(ctx context.Context, query application.ListPo
 		// Return empty slice when parent post/topic is hidden or removed, per B-BR-FOR-09 / FOR-22
 		return []domain.Comment{}, nil
 	}
+	// Revoked source rights or an inactive topic author suppress comments too.
+	if public, err := s.isPublicPost(ctx, postUUID); err != nil || !public {
+		return []domain.Comment{}, err
+	}
 
 	limit := int32(query.Limit)
 	if limit <= 0 {
@@ -497,6 +496,11 @@ func (s *Store) ListRepliesByParent(ctx context.Context, query application.ListC
 	if parent.PublicationState != string(domain.StatePublished) || parent.Visibility != string(domain.VisibilityVisible) {
 		// Return empty slice when parent is hidden or removed, per B-BR-FOR-09
 		return []domain.Comment{}, nil
+	}
+	// Replies follow their post: a hidden, removed or non-public post
+	// suppresses them even while the parent comment stays visible.
+	if public, err := s.isPublicPost(ctx, parent.PostID); err != nil || !public {
+		return []domain.Comment{}, err
 	}
 
 	limit := int32(query.Limit)
