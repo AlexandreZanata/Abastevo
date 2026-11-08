@@ -768,7 +768,8 @@ func (s *Store) EraseAccountBatch(ctx context.Context, accountID string, limit i
 		}
 	}
 
-	// 3. Scrub free-text report detail and the copy a moderation case holds.
+	// 3. Scrub the reporter's free-text report detail. Moderation cases
+	// never receive that text (see forumReportCaseDetail).
 	remainingLimit = limit - erasedCount
 	if remainingLimit > 0 {
 		reports, err := qtx.PendingEraseReportsByAccount(ctx, forumsql.PendingEraseReportsByAccountParams{
@@ -779,14 +780,6 @@ func (s *Store) EraseAccountBatch(ctx context.Context, accountID string, limit i
 			return false, 0, fmt.Errorf("forum: pending erase reports: %w", err)
 		}
 		for _, rep := range reports {
-			if rep.ModerationCaseID.Valid {
-				if s.CaseDetailScrubber == nil {
-					return false, 0, errors.New("forum: report erasure needs a case detail scrubber")
-				}
-				if err := s.CaseDetailScrubber(ctx, tx, uuidString(rep.ModerationCaseID), rep.Detail); err != nil {
-					return false, 0, fmt.Errorf("forum: scrub case detail: %w", err)
-				}
-			}
 			if err := qtx.ScrubForumReportDetail(ctx, rep.ID); err != nil {
 				return false, 0, fmt.Errorf("forum: scrub report detail: %w", err)
 			}

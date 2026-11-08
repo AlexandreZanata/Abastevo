@@ -331,27 +331,6 @@ func (q *Queries) PurgeClosedCases(ctx context.Context, arg PurgeClosedCasesPara
 	return result.RowsAffected(), nil
 }
 
-const scrubCaseDetail = `-- name: ScrubCaseDetail :execrows
-UPDATE moderation_cases
-SET detail = ''
-WHERE id = $1 AND detail = $2 AND detail <> ''
-`
-
-type ScrubCaseDetailParams struct {
-	ID     pgtype.UUID `json:"id"`
-	Detail string      `json:"detail"`
-}
-
-// Account erasure removes reporter-authored free text a case copied from
-// the reporter's own report; reason, target and history stay intact.
-func (q *Queries) ScrubCaseDetail(ctx context.Context, arg ScrubCaseDetailParams) (int64, error) {
-	result, err := q.db.Exec(ctx, scrubCaseDetail, arg.ID, arg.Detail)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const transitionCase = `-- name: TransitionCase :one
 UPDATE moderation_cases SET status = $1
 WHERE id = $2 AND status IN ('OPEN', 'IN_REVIEW')

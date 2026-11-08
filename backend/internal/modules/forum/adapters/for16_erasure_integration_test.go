@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -417,7 +418,7 @@ func TestForumErasure_PostgresIntegration_Gates(t *testing.T) {
 	})
 }
 
-func TestForumErasure_ScrubsReportDetailAndCaseCopy(t *testing.T) {
+func TestForumErasure_ScrubsReportDetail(t *testing.T) {
 	env := setupFOR16Env(t)
 	ctx := context.Background()
 
@@ -435,7 +436,6 @@ func TestForumErasure_ScrubsReportDetailAndCaseCopy(t *testing.T) {
 		}
 		return modStore.OpenCaseTx(ctx, tx, c)
 	}
-	env.store.CaseDetailScrubber = modStore.ScrubCaseDetailTx
 
 	reporterR := "33333333-cccc-4333-8333-000000000003"
 	reporterC := "44444444-dddd-4444-8444-000000000004"
@@ -456,12 +456,13 @@ func TestForumErasure_ScrubsReportDetailAndCaseCopy(t *testing.T) {
 		}
 	}
 
+	// The immutable moderation case never receives reporter free text.
 	var caseDetail string
 	if err := env.pool.QueryRow(ctx, "SELECT detail FROM moderation_cases WHERE target_type='FORUM_POST' AND target_id=$1", post).Scan(&caseDetail); err != nil {
 		t.Fatalf("load case: %v", err)
 	}
-	if caseDetail != detailR {
-		t.Fatalf("case should carry the first reporter's text, got %q", caseDetail)
+	if strings.Contains(caseDetail, detailR) || strings.Contains(caseDetail, detailC) {
+		t.Fatalf("moderation case copied reporter text: %q", caseDetail)
 	}
 
 	done, _, err := env.store.EraseAccountBatch(ctx, reporterR, 100)
@@ -487,12 +488,6 @@ func TestForumErasure_ScrubsReportDetailAndCaseCopy(t *testing.T) {
 	}
 	if details[reporterC] != detailC {
 		t.Fatalf("other reporter text must stay, got %q", details[reporterC])
-	}
-	if err := env.pool.QueryRow(ctx, "SELECT detail FROM moderation_cases WHERE target_type='FORUM_POST' AND target_id=$1", post).Scan(&caseDetail); err != nil {
-		t.Fatalf("reload case: %v", err)
-	}
-	if caseDetail != "" {
-		t.Fatalf("case copy of erased text survived: %q", caseDetail)
 	}
 
 	// Erasing the other reporter leaves no text and stays idempotent.

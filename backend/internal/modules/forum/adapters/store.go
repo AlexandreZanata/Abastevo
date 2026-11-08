@@ -44,9 +44,6 @@ type Store struct {
 	queries    *forumsql.Queries
 	quotas     Quotas
 	CaseOpener application.ModerationCaseOpener
-	// CaseDetailScrubber clears report text a moderation case copied from
-	// an erased account's report, inside the erasure transaction.
-	CaseDetailScrubber func(ctx context.Context, tx pgx.Tx, caseID, detail string) error
 }
 
 // SetQuotaChecker applies one transactional quota checker to every window.
