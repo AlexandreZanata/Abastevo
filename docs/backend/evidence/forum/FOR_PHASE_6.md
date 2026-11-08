@@ -122,3 +122,29 @@ scenario; the burst target was not fully delivered by the single-client ticker.
 Run the A3 device union when a device is available and close the remaining
 measurement gaps; then FOR-29 may prepare the authorized protected dev→main PR
 with these OWED items retained.
+
+## PR #192 validation review (2026-11-08)
+
+- Remote gate failure on `a8c5d840`: gofmt listed 13 forum files; once
+  formatted, staticcheck reported an unused `DiscussionHandler.now`, an unused
+  `mustJSON` and an S1016 struct conversion. Fixed in `d3ba2112`.
+- `222662dd`: production never configured the forum quota checker
+  (`SetQuotaChecker` was test-only) and one shared limiter could not express
+  both B-BR-FOR-11 windows. The store now takes per-window checkers; the API
+  wires comments 20/hour and 100/day, topics 3/hour and 10/day.
+  `TestTopic_DailyQuotaIndependentOfHourly` proves a tight daily window is not
+  masked by a generous hourly one. Public post detail used the unrestricted
+  lookup; it now uses `GetPublicPostByID` through `PublicPosts`, and comment
+  and reply listings require a publicly visible post
+  (`TestForumPublicDetail_HonorsSourceRights`).
+- `a3103270`: Android comment edit/remove sent `sequence` as
+  `expected_revision` (409 on every comment but the first, and after any
+  edit). The mapper now reads `revision`; retries of an unchanged comment reuse
+  their operation id; `CancellationException` is rethrown in forum ViewModels;
+  topic removal pops from a `LaunchedEffect`.
+- Retained OWED review items: admin publish takes no expected revision (a
+  pending topic edited after review can be published unseen); report `detail`
+  text survives account erasure; `forum-moderation-applied` jobs have no worker
+  handler; comments have no approval route (the Android social UI stays behind
+  its kill switch); comment/topic controls show without ownership hints; the
+  offline cache drops bulletin provenance.

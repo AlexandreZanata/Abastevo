@@ -1,4 +1,21 @@
 # Current execution state
+- PR #192 validation review, 2026-11-08: dev `a8c5d840` failed remote
+  `Quick verification`/`fast` on gofmt (13 forum files) and, behind it,
+  staticcheck U1000/S1016. Fixed in `d3ba2112`; review fixes `222662dd`
+  (author quotas 20/h·100/d comments and 3/h·10/d topics wired into the API
+  with per-window limiters; public detail, comments and replies apply feed
+  source-rights/author-status predicates) and `a3103270` (Android comment
+  edit/remove send the server revision instead of the thread sequence; stable
+  retry operation ids; cancellation not reported as error; topic removal
+  navigates from an effect). Verified locally: `make quick-verify` on
+  `d3ba2112`, fast gate, govulncheck, admin-web 53/53, forum/official/
+  apicontract/migrate/cmd-api real-PostGIS race suites, Android
+  domain/data/forum JVM tests. OWED review items: admin publish without an
+  expected revision, report `detail` survives account erasure, no worker
+  handler for `forum-moderation-applied`, no comment approval route (social UI
+  remains kill-switched off), per-comment ownership hints and offline bulletin
+  provenance on Android. [Phase 6 evidence](../backend/evidence/forum/FOR_PHASE_6.md)
+
 - FOR-28 Capacity/failure/device checkpoint, 2026-11-06:
   IN_PROGRESS / LOAD_MATRIX_PASS / DEVICE_PENDING on isolated dev worktree from
   parent `0eebefa6`. [Phase 6 evidence](../backend/evidence/forum/FOR_PHASE_6.md)
