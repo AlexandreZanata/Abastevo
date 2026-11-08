@@ -503,3 +503,55 @@ func TestForumErasure_ScrubsReportDetailAndCaseCopy(t *testing.T) {
 		t.Fatalf("repeat erasure must be a no-op: done=%v n=%d err=%v", done, n, err)
 	}
 }
+
+func TestForumReports_SettleByCaseIsIdempotent(t *testing.T) {
+	env := setupFOR16Env(t)
+	ctx := context.Background()
+
+	modStore := moderationadapters.NewStore(env.pool)
+	env.store.CaseOpener = func(ctx context.Context, tx pgx.Tx, targetType, targetID, reason, detail string) (string, bool, error) {
+		c, _, err := moderationdomain.NewCase(moderationdomain.CaseParams{
+			ID: "cccccccc-0000-4ccc-8ccc-000000000009", TargetType: targetType, TargetID: targetID,
+			Priority: moderationdomain.PriorityP2, Reason: reason, Detail: detail,
+			OpenedAt: time.Now(), PolicyVersion: moderationdomain.PolicyV1,
+		})
+		if err != nil {
+			return "", false, err
+		}
+		return modStore.OpenCaseTx(ctx, tx, c)
+	}
+
+	r1 := "55555555-eeee-4555-8555-000000000005"
+	r2 := "66666666-ffff-4666-8666-000000000006"
+	if _, err := env.pool.Exec(ctx, "INSERT INTO accounts(id,alias,status) VALUES($1,'alias5','active'),($2,'alias6','active')", r1, r2); err != nil {
+		t.Fatalf("seed accounts: %v", err)
+	}
+	post := "99999999-0004-4999-8999-000000000004"
+	seedPost(t, env.pool, post)
+	for _, account := range []string{r1, r2} {
+		if _, err := env.store.Report(ctx, application.ReportCommand{
+			ReporterAccountID: account, TargetType: "FORUM_POST", TargetID: post, Reason: "SPAM",
+		}); err != nil {
+			t.Fatalf("report by %s: %v", account, err)
+		}
+	}
+
+	var caseID string
+	if err := env.pool.QueryRow(ctx, "SELECT id::text FROM moderation_cases WHERE target_type='FORUM_POST' AND target_id=$1", post).Scan(&caseID); err != nil {
+		t.Fatalf("load case: %v", err)
+	}
+	if _, err := env.store.SettleReportsByCase(ctx, caseID, "PENDING"); err == nil {
+		t.Fatal("expected refusal for a non-final status")
+	}
+	n, err := env.store.SettleReportsByCase(ctx, caseID, "RESOLVED")
+	if err != nil || n != 2 {
+		t.Fatalf("settle: n=%d err=%v, want 2 rows", n, err)
+	}
+	if n, err := env.store.SettleReportsByCase(ctx, caseID, "DISMISSED"); err != nil || n != 0 {
+		t.Fatalf("replay must not move settled reports: n=%d err=%v", n, err)
+	}
+	var resolved int
+	if err := env.pool.QueryRow(ctx, "SELECT count(*) FROM forum_reports WHERE target_id=$1 AND status='RESOLVED'", post).Scan(&resolved); err != nil || resolved != 2 {
+		t.Fatalf("expected 2 RESOLVED reports, got %d (%v)", resolved, err)
+	}
+}

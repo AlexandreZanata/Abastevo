@@ -181,6 +181,27 @@ func (q *Queries) ScrubForumReportDetail(ctx context.Context, id pgtype.UUID) er
 	return err
 }
 
+const settleForumReportsByCase = `-- name: SettleForumReportsByCase :execrows
+UPDATE forum_reports
+SET status = $1
+WHERE moderation_case_id = $2 AND status = 'RECEIVED'
+`
+
+type SettleForumReportsByCaseParams struct {
+	Status           string      `json:"status"`
+	ModerationCaseID pgtype.UUID `json:"moderation_case_id"`
+}
+
+// A moderation outcome settles the reports that opened or joined its case.
+// Only RECEIVED rows move, so job replays converge.
+func (q *Queries) SettleForumReportsByCase(ctx context.Context, arg SettleForumReportsByCaseParams) (int64, error) {
+	result, err := q.db.Exec(ctx, settleForumReportsByCase, arg.Status, arg.ModerationCaseID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateForumReportCase = `-- name: UpdateForumReportCase :exec
 UPDATE forum_reports
 SET moderation_case_id = $2

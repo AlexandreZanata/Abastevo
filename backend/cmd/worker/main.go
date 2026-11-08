@@ -577,8 +577,9 @@ func run() error {
 			ListingBase: "https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/",
 			Enqueue:     enqueueImport,
 		},
-		"anp-import":                        officialImport,
-		forumjobs.ForumBulletinGenerateKind: forumjobs.BulletinGenerate{Generator: bulletinGenerator},
+		"anp-import":                         officialImport,
+		forumjobs.ForumBulletinGenerateKind:  forumjobs.BulletinGenerate{Generator: bulletinGenerator},
+		forumjobs.ForumModerationAppliedKind: forumjobs.ModerationApplied{Reports: forumStore},
 		"geocode-station": directoryjobs.Geocode{
 			Pool:    raw,
 			Service: nil,

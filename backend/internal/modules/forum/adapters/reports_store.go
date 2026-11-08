@@ -185,6 +185,22 @@ func (s *Store) Report(ctx context.Context, cmd application.ReportCommand) (*dom
 	}, nil
 }
 
+// SettleReportsByCase records a moderation outcome on the RECEIVED reports
+// linked to a case. Replays update nothing.
+func (s *Store) SettleReportsByCase(ctx context.Context, caseID, status string) (int64, error) {
+	if status != "RESOLVED" && status != "DISMISSED" {
+		return 0, domain.ErrReportInvalid
+	}
+	caseUUID, err := mustUUID(caseID)
+	if err != nil {
+		return 0, domain.ErrTargetInvalid
+	}
+	return s.queries.SettleForumReportsByCase(ctx, forum.SettleForumReportsByCaseParams{
+		Status:           status,
+		ModerationCaseID: caseUUID,
+	})
+}
+
 // InvalidateForumTargetTx executes operator invalidation on a reported forum post or comment.
 // Implements BUC-006, B-BR-012, B-BR-FOR-08.
 func (s *Store) InvalidateForumTargetTx(ctx context.Context, tx pgx.Tx, targetType, targetID, caseID, reason string, at time.Time) error {
