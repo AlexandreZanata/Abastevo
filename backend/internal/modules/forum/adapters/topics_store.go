@@ -428,10 +428,10 @@ func (s *Store) RemoveTopic(ctx context.Context, cmd application.RemoveTopicComm
 
 	now := time.Now().UTC()
 	updated, err := qtx.RemoveTopicTombstone(ctx, forumsql.RemoveTopicTombstoneParams{
-		ID:              topicUUID,
-		AuthorAccountID: authorUUID,
+		ID:               topicUUID,
+		AuthorAccountID:  authorUUID,
 		ExpectedRevision: int32(cmd.ExpectedRevision),
-		LocalUpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+		LocalUpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("forum: remove topic: %w", err)

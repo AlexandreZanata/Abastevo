@@ -13,23 +13,23 @@ import (
 )
 
 type sourceRegisterEntry struct {
-	ID                  string            `json:"id"`
-	Code                string            `json:"code"`
-	Name                string            `json:"name"`
-	Kind                domain.SourceKind `json:"kind"`
-	OriginURL           string            `json:"origin_url"`
-	FetchURL            *string           `json:"fetch_url"`
-	FetchFormat         *string           `json:"fetch_format"`
-	CollectionEnabled   bool              `json:"collection_enabled"`
-	PublicationEnabled  bool              `json:"publication_enabled"`
-	RightsStatus        string            `json:"rights_status"`
-	OperationalStatus   string            `json:"operational_status"`
-	TitleAllowed        bool              `json:"title_allowed"`
-	ExcerptAllowed      bool              `json:"excerpt_allowed"`
-	ImageAllowed        bool              `json:"image_allowed"`
-	TermsURL            string            `json:"terms_url"`
-	Attribution         string            `json:"attribution"`
-	Notes               string            `json:"notes"`
+	ID                 string            `json:"id"`
+	Code               string            `json:"code"`
+	Name               string            `json:"name"`
+	Kind               domain.SourceKind `json:"kind"`
+	OriginURL          string            `json:"origin_url"`
+	FetchURL           *string           `json:"fetch_url"`
+	FetchFormat        *string           `json:"fetch_format"`
+	CollectionEnabled  bool              `json:"collection_enabled"`
+	PublicationEnabled bool              `json:"publication_enabled"`
+	RightsStatus       string            `json:"rights_status"`
+	OperationalStatus  string            `json:"operational_status"`
+	TitleAllowed       bool              `json:"title_allowed"`
+	ExcerptAllowed     bool              `json:"excerpt_allowed"`
+	ImageAllowed       bool              `json:"image_allowed"`
+	TermsURL           string            `json:"terms_url"`
+	Attribution        string            `json:"attribution"`
+	Notes              string            `json:"notes"`
 }
 
 type sourceRegisterDoc struct {

@@ -20,11 +20,11 @@ import (
 )
 
 const (
-	DefaultConnectTimeout = 5 * time.Second
+	DefaultConnectTimeout  = 5 * time.Second
 	DefaultTLSFetchTimeout = 10 * time.Second
-	DefaultTotalTimeout   = 30 * time.Second
-	DefaultMaxRedirects   = 2
-	UserAgent             = "AbastevoBot/1.0 (+https://abastevo.com.br)"
+	DefaultTotalTimeout    = 30 * time.Second
+	DefaultMaxRedirects    = 2
+	UserAgent              = "AbastevoBot/1.0 (+https://abastevo.com.br)"
 )
 
 // deniedPrefixes blocks loopback, private, carrier-grade NAT, link-local, multicast,

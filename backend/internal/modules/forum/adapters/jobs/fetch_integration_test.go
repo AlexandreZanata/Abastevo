@@ -447,6 +447,8 @@ type dummyHandler struct {
 	handle  func(ctx context.Context, job platformjobs.Job) error
 }
 
-func (d dummyHandler) Kind() string                                { return d.kind }
-func (d dummyHandler) Version() int                                { return d.version }
-func (d dummyHandler) Handle(ctx context.Context, job platformjobs.Job) error { return d.handle(ctx, job) }
+func (d dummyHandler) Kind() string { return d.kind }
+func (d dummyHandler) Version() int { return d.version }
+func (d dummyHandler) Handle(ctx context.Context, job platformjobs.Job) error {
+	return d.handle(ctx, job)
+}

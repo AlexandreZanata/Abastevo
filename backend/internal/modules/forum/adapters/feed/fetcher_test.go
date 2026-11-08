@@ -79,9 +79,9 @@ func TestSafeFeedFetcher_IPPolicy_RefusesPrivateAndMetadata(t *testing.T) {
 		{"::1", false},
 		{"fe80::1", false},
 		{"::ffff:127.0.0.1", false}, // IPv4-mapped
-		{"8.8.8.8", true},          // Public DNS
-		{"1.1.1.1", true},          // Public DNS
-		{"200.160.2.3", true},      // Public BR IP
+		{"8.8.8.8", true},           // Public DNS
+		{"1.1.1.1", true},           // Public DNS
+		{"200.160.2.3", true},       // Public BR IP
 	}
 
 	for _, tc := range tests {

@@ -85,9 +85,6 @@ func (m *mockCommentStore) EraseAccountBatch(ctx context.Context, accountID stri
 	return true, 0, nil
 }
 
-
-
-
 func TestCommentService_CreateComment_Validation(t *testing.T) {
 	store := &mockCommentStore{
 		createFn: func(ctx context.Context, cmd CreateCommentCommand) (CommentResult, error) {

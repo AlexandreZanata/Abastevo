@@ -158,8 +158,8 @@ func TestValidateTopicBody(t *testing.T) {
 }
 
 func TestValidateTopicRegion(t *testing.T) {
-	ibgeSP := 3550308 // São Paulo (35)
-	ibgeRJ := 3304557 // Rio de Janeiro (33)
+	ibgeSP := 3550308       // São Paulo (35)
+	ibgeRJ := 3304557       // Rio de Janeiro (33)
 	ibgeBadLength := 355030 // 6 digits
 
 	tests := []struct {

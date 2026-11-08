@@ -612,16 +612,7 @@ func (s *AdminService) ListPosts(ctx context.Context, in AdminListInput) ([]doma
 		return nil, nil, domain.ErrForumDisabled
 	}
 
-	filter := AdminListFilter{
-		PublicationState: in.PublicationState,
-		Category:         in.Category,
-		Kind:             in.Kind,
-		CursorCreatedAt:  in.CursorCreatedAt,
-		CursorID:         in.CursorID,
-		Limit:            in.Limit,
-	}
-
-	return s.Store.AdminListPosts(ctx, filter)
+	return s.Store.AdminListPosts(ctx, AdminListFilter(in))
 }
 
 // ListSources returns all candidate and approved sources with their latest checkpoint metrics.
@@ -739,9 +730,4 @@ func ValidUUID(s string) bool {
 		}
 	}
 	return true
-}
-
-func mustJSON(v any) []byte {
-	b, _ := json.Marshal(v)
-	return b
 }

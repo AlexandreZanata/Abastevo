@@ -19,13 +19,13 @@ import (
 )
 
 type mockCommentStore struct {
-	comments map[string]*domain.Comment
-	byOpID   map[string]*domain.Comment
-	createFn func(ctx context.Context, cmd application.CreateCommentCommand) (application.CommentResult, error)
-	editFn   func(ctx context.Context, cmd application.EditCommentCommand) (*domain.Comment, error)
-	removeFn func(ctx context.Context, cmd application.RemoveCommentCommand) (*domain.Comment, error)
-	getFn    func(ctx context.Context, id string) (*domain.Comment, error)
-	listFn   func(ctx context.Context, q application.ListPostCommentsQuery) ([]domain.Comment, error)
+	comments  map[string]*domain.Comment
+	byOpID    map[string]*domain.Comment
+	createFn  func(ctx context.Context, cmd application.CreateCommentCommand) (application.CommentResult, error)
+	editFn    func(ctx context.Context, cmd application.EditCommentCommand) (*domain.Comment, error)
+	removeFn  func(ctx context.Context, cmd application.RemoveCommentCommand) (*domain.Comment, error)
+	getFn     func(ctx context.Context, id string) (*domain.Comment, error)
+	listFn    func(ctx context.Context, q application.ListPostCommentsQuery) ([]domain.Comment, error)
 	repliesFn func(ctx context.Context, q application.ListCommentRepliesQuery) ([]domain.Comment, error)
 }
 
@@ -191,7 +191,6 @@ func (m *mockCommentStore) EraseAccountBatch(ctx context.Context, accountID stri
 	return true, count, nil
 }
 
-
 func TestCanonicalIntentHashingStabilityAndConflict(t *testing.T) {
 	opID := "22222222-2222-4222-8222-000000000001"
 	postID := "44444444-4444-4444-8444-000000000001"
@@ -255,15 +254,15 @@ func TestDiscussionAdmission_HTTP_NegativeGates(t *testing.T) {
 	commentIDA := "55555555-aaaa-4555-8555-000000000001"
 
 	for _, tc := range []struct {
-		name        string
-		endpoint    string
-		method      string
-		body        string
-		sessionErr  error
-		proofErr    error
-		storeSetup  func(*mockCommentStore)
-		wantStatus  int
-		wantCode    string
+		name       string
+		endpoint   string
+		method     string
+		body       string
+		sessionErr error
+		proofErr   error
+		storeSetup func(*mockCommentStore)
+		wantStatus int
+		wantCode   string
 	}{
 		{
 			name:       "missing proof / signature verifier rejected",
@@ -359,11 +358,11 @@ func TestDiscussionAdmission_HTTP_NegativeGates(t *testing.T) {
 			body:     fmt.Sprintf(`{"family_id":"%s","access_token":"token","comment_id":"%s"}`, familyA, commentIDA),
 			storeSetup: func(s *mockCommentStore) {
 				s.comments[commentIDA] = &domain.Comment{
-					ID:              commentIDA,
-					AuthorAccountID: authorB,
-					Revision:        1,
+					ID:               commentIDA,
+					AuthorAccountID:  authorB,
+					Revision:         1,
 					PublicationState: domain.StatePendingReview,
-					BodyText:        "Comentario pendente do autor B",
+					BodyText:         "Comentario pendente do autor B",
 				}
 			},
 			wantStatus: http.StatusNotFound,

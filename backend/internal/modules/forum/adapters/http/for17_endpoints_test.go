@@ -24,10 +24,10 @@ func setupDiscussionTestRouter(handler *DiscussionHandler) chi.Router {
 
 func defaultTestPrincipal() (string, string, string, string, string) {
 	return "11111111-1111-4111-8111-000000000001", // accountID
-		"22222222-2222-4222-8222-000000000001",  // familyID
-		"access-token-123",                       // accessToken
-		"33333333-3333-4333-8333-000000000001",  // contributorID
-		"44444444-4444-4444-8444-000000000001"   // keyID
+		"22222222-2222-4222-8222-000000000001", // familyID
+		"access-token-123", // accessToken
+		"33333333-3333-4333-8333-000000000001", // contributorID
+		"44444444-4444-4444-8444-000000000001" // keyID
 }
 
 func wireMockAuth(h *DiscussionHandler) {

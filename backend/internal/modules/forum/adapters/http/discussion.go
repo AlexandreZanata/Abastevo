@@ -366,13 +366,6 @@ type DiscussionHandler struct {
 	Config      *domain.Config
 }
 
-func (h *DiscussionHandler) now() time.Time {
-	if h.Clock != nil {
-		return h.Clock().UTC()
-	}
-	return time.Now().UTC()
-}
-
 func (h *DiscussionHandler) readsAllowed() bool {
 	if h.Config == nil {
 		return true

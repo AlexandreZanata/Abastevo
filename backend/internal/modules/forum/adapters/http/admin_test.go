@@ -191,17 +191,17 @@ func (r *mockRunner) Mutate(ctx context.Context, m adminapp.Mutation, fn func(co
 }
 
 type testHarness struct {
-	router     chi.Router
-	admin      *adminhttp.Handler
-	store      *mockAdminStore
-	runner     *mockRunner
-	service    *application.AdminService
-	handler    *AdminHandler
-	session    adminapp.Session
-	rawCSRF    string
-	origin     string
-	idCounter  int
-	fixedTime  time.Time
+	router    chi.Router
+	admin     *adminhttp.Handler
+	store     *mockAdminStore
+	runner    *mockRunner
+	service   *application.AdminService
+	handler   *AdminHandler
+	session   adminapp.Session
+	rawCSRF   string
+	origin    string
+	idCounter int
+	fixedTime time.Time
 }
 
 type fakeAdminAuthStore struct {

@@ -13,10 +13,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
-	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
+	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
+	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 )
 
 const (
