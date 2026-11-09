@@ -21,6 +21,12 @@ interface AnonymousDeviceKeyPort {
      */
     fun signDigest(digestSha512: ByteArray): ByteArray?
 
+    /**
+     * Signs a 32-byte SHA-256 digest (account binding statement, P13-T04C).
+     * Returns the raw 64-byte signature, or null when unsupported or failed.
+     */
+    fun signSha256Digest(digestSha256: ByteArray): ByteArray? = null
+
     /** True when a device key exists (no key material leaves this port). */
     fun hasKey(): Boolean
 

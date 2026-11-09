@@ -8,6 +8,26 @@
   debug build checked on the owner's phone in light and dark. Next:
   protected PR to main.
 
+- Android forum writes and account key binding, 2026-11-09: LOCAL_DONE on
+  branch `forum-category-crash` (from dev `b5edfee8`); integrated into `dev`
+  on 2026-11-11 with the forum social work. Opening
+  the forum crashed on a duplicate `UNKNOWN` LazyRow key because the app
+  category enum predated the contract taxonomy; the enum now follows
+  `ForumCategory` in the contract and the feed keeps one chip per known code.
+  Forum session commands now carry device-key request proofs over the exact
+  body. Signed account writes also need the P13-T04C account binding, which
+  the app never performed (staging had zero bindings): `PhotoProofTransport`
+  now binds the account device key after registration, signing SHA-256 of
+  the backend `anpfuel-bind.v1` statement, once per account, key and process,
+  refusing on owner change and never sending an unbound write. Verified:
+  domain 908, application 525 and targeted data suites (JVM P-256
+  SHA256withECDSA verification of the bind proof), forum app tests,
+  `:app:assembleDebug`; on the phone against staging the ceremony returned
+  bind 200 and `POST /v1/forum/topics` 201 (topic PENDING_REVIEW). Staging
+  forum was enabled live (`ANPFUEL_FORUM_ENABLED=true`, baseline commit
+  `6f6cbc5e` on local `forum-enable-staging`). Open: topic form shows raw
+  category codes; the landscape side navigation bar overlaps the forum FAB.
+
 - Landing 404, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING on `dev`
   from `cbfdec16` (P25 static landing, B-BR-L04 and BUC-L02).
   Shares the home header, footer, typography and action styles, with

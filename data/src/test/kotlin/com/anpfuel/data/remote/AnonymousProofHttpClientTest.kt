@@ -105,4 +105,35 @@ class AnonymousProofHttpClientTest {
             server.shutdown()
         }
     }
+
+    @Test
+    fun `bind posts session contributor and proof to the binding ceremony`() {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("{\"binding\":{}}"))
+            client(server).bind("family-1", "access-1", "contrib-1", "$fingerprint.10.c2ln")
+            val recorded = server.takeRequest()
+            assertTrue(recorded.path == "/v1/accounts/bindings/bind")
+            val body = org.json.JSONObject(recorded.body.readUtf8())
+            assertTrue(body.getString("family_id") == "family-1")
+            assertTrue(body.getString("access_token") == "access-1")
+            assertTrue(body.getString("contributor_id") == "contrib-1")
+            assertTrue(body.getString("proof") == "$fingerprint.10.c2ln")
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun `bind refusal throws`() {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(403).setBody("{}"))
+            assertThrows(IOException::class.java) {
+                client(server).bind("family-1", "access-1", "contrib-1", "$fingerprint.10.c2ln")
+            }
+        } finally {
+            server.shutdown()
+        }
+    }
 }
