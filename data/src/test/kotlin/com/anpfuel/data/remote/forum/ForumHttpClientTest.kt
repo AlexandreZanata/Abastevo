@@ -552,7 +552,7 @@ class ForumHttpClientTest {
                 {
                     "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
                     "kind": "TOPIC",
-                    "category": "MARKET",
+                    "category": "ELECTRIC",
                     "title": "Gasolina em SP - Atualizado",
                     "body_text": "Postos na zona sul e centro",
                     "revision": 2,
@@ -570,7 +570,7 @@ class ForumHttpClientTest {
                 expectedRevision = 1L,
                 title = "Gasolina em SP - Atualizado",
                 bodyText = "Postos na zona sul e centro",
-                category = ForumCategory.MARKET,
+                category = ForumCategory.ELECTRIC,
                 operationId = "44444444-4444-4444-8444-444444444444",
             )
             val recorded = server.takeRequest(1, TimeUnit.SECONDS)
@@ -578,7 +578,7 @@ class ForumHttpClientTest {
             assertEquals("POST", recorded?.method)
             val recordedJson = JSONObject(recorded?.body?.readUtf8().orEmpty())
             assertEquals(1L, recordedJson.getLong("expected_revision"))
-            assertEquals("MARKET", recordedJson.getString("category"))
+            assertEquals("ELECTRIC", recordedJson.getString("category"))
             assertEquals(2L, receipt.revision)
         }
     }

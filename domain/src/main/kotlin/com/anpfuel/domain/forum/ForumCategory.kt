@@ -8,9 +8,9 @@ package com.anpfuel.domain.forum
  */
 enum class ForumCategory(val wireCode: String) {
     FUELS("FUELS"),
-    MARKET("MARKET"),
-    REGULATION("REGULATION"),
-    CONSUMPTION("CONSUMPTION"),
+    ELECTRIC("ELECTRIC"),
+    TRAFFIC_RULES("TRAFFIC_RULES"),
+    VEHICLES_TECH("VEHICLES_TECH"),
     ROADS_MOBILITY("ROADS_MOBILITY"),
     DRIVER_ECONOMY("DRIVER_ECONOMY"),
     ABASTEVO_DATA("ABASTEVO_DATA"),

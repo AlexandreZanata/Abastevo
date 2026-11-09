@@ -165,7 +165,7 @@ internal fun ForumFeedContent(
                             label = { Text(stringResource(R.string.forum_category_all)) },
                         )
                     }
-                    items(state.categories, key = { it.code.wireCode }) { categoryItem ->
+                    items(state.categories, key = { it.rawCode }) { categoryItem ->
                         FilterChip(
                             selected = state.selectedCategory == categoryItem.code,
                             onClick = { onSelectCategory(categoryItem.code) },

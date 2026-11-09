@@ -48,15 +48,7 @@ import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumTopicReceipt
 
-private val TopicAvailableCategories = listOf(
-    ForumCategory.FUELS,
-    ForumCategory.MARKET,
-    ForumCategory.REGULATION,
-    ForumCategory.CONSUMPTION,
-    ForumCategory.ROADS_MOBILITY,
-    ForumCategory.DRIVER_ECONOMY,
-    ForumCategory.ABASTEVO_DATA,
-)
+private val TopicAvailableCategories = ForumCategory.entries - ForumCategory.UNKNOWN
 
 private val TopicAvailableFuels = listOf(
     "GASOLINE_REGULAR",
