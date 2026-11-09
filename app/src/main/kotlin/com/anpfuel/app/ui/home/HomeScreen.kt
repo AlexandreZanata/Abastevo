@@ -1,6 +1,6 @@
 package com.anpfuel.app.ui.home
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -21,11 +21,13 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +35,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -41,7 +46,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import com.anpfuel.app.ui.components.AnpScaffold
-import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.header.AbastevoHeader
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -59,7 +65,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -84,7 +89,6 @@ import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.SyncStatusBanner
 import com.anpfuel.app.ui.accessibility.liveRegionSemantics
 import com.anpfuel.app.ui.components.TankFillCostCard
-import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
@@ -99,7 +103,6 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     darkTheme: Boolean,
-    onToggleTheme: () -> Unit,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -132,7 +135,6 @@ fun HomeScreen(
     HomeContent(
         uiState = uiState,
         darkTheme = darkTheme,
-        onToggleTheme = onToggleTheme,
         onNavigate = onNavigate,
         onRefresh = { viewModel.refresh(locale) },
         onRetry = { viewModel.load(locale, showLoadingIndicator = true) },
@@ -151,7 +153,6 @@ fun HomeScreen(
 internal fun HomeContent(
     uiState: HomeUiState,
     darkTheme: Boolean,
-    onToggleTheme: () -> Unit,
     onNavigate: (String) -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
@@ -193,30 +194,18 @@ internal fun HomeContent(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            AnpTopAppBar(
-                title = {
-                    Image(
-                        painter = painterResource(R.drawable.ic_abastevo_logo),
-                        contentDescription = stringResource(R.string.app_name),
-                        modifier = Modifier.size(32.dp),
-                    )
+            val municipality = uiState.municipality
+            val state = uiState.state
+            AbastevoHeader(
+                onNotificationsClick = { onNavigate(Routes.SETTINGS) },
+                onProfileClick = { onNavigate(Routes.PROFILE) },
+                locationLabel = if (municipality != null && state != null) {
+                    stringResource(R.string.home_location_format, municipality, state.abbreviation)
+                } else {
+                    null
                 },
-                actions = {
-                    if (includeSurveyWeekChip && uiState.priceSource == HomePriceSource.ANP) {
-                        SurveyWeekChipAction(
-                            onWeekChanged = onWeekChanged,
-                            hasTrailingAction = true,
-                        )
-                    }
-                    IconButton(onClick = onToggleTheme) {
-                        Icon(
-                            imageVector = if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = stringResource(
-                                if (darkTheme) R.string.action_switch_light_theme else R.string.action_switch_dark_theme,
-                            ),
-                        )
-                    }
-                },
+                onLocationClick = { onNavigate(Routes.LOCATION) },
+                onWeekChanged = if (includeSurveyWeekChip && uiState.priceSource == HomePriceSource.ANP) onWeekChanged else null,
             )
         },
     ) { innerPadding ->
@@ -278,9 +267,6 @@ internal fun HomeContent(
                 }
             }
 
-            if (uiState.hasLocation) {
-                LocationHeader(uiState = uiState, onNavigate = onNavigate)
-            }
             if (uiState.tankFillCostEstimates.isNotEmpty()) {
                 VehicleCarousel(
                     estimates = uiState.tankFillCostEstimates,
@@ -296,10 +282,16 @@ internal fun HomeContent(
                 HomeBenefits(onDismiss = onDismissBenefits)
             }
 
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.fillMaxWidth().testTag("home_price_source")) {
-                HomePriceSource.entries.forEach { source ->
-                    androidx.compose.material3.FilterChip(selected=uiState.priceSource==source,onClick={onPriceSourceChanged(source)},
-                        label={Text(stringResource(if(source==HomePriceSource.ANP) R.string.home_source_anp else R.string.home_source_community))})
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().testTag("home_price_source")) {
+                HomePriceSource.entries.forEachIndexed { index, source ->
+                    SegmentedButton(
+                        selected = uiState.priceSource == source,
+                        onClick = { onPriceSourceChanged(source) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = HomePriceSource.entries.size),
+                        label = {
+                            Text(stringResource(if (source == HomePriceSource.ANP) R.string.home_source_anp else R.string.home_source_community))
+                        },
+                    )
                 }
             }
             when {
@@ -383,12 +375,31 @@ internal fun HomeContent(
                             priceSort = uiState.priceSort,
                         )
                     }
+                    Button(
+                        onClick = { onNavigate(Routes.MAP) },
+                        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp),
+                        colors = if (darkTheme) {
+                            ButtonDefaults.buttonColors(containerColor = MapButtonDarkBlue, contentColor = Color.White)
+                        } else {
+                            ButtonDefaults.buttonColors()
+                        },
+                    ) {
+                        Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text(
+                            text = stringResource(R.string.home_open_map),
+                            modifier = Modifier.weight(1f).padding(start = 8.dp),
+                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
+                    }
                     RowActions(onNavigate = onNavigate)
                 }
             }
         }
     }
 }
+
+/** Strong blue of the map shortcut in dark mode, white text on top (5.6:1). */
+private val MapButtonDarkBlue = Color(0xFF1D5FE0)
 
 /**
  * Quick price filter entry: current order stays visible, options open in
@@ -559,24 +570,6 @@ private fun VehicleCarousel(
 }
 
 @Composable
-private fun LocationHeader(uiState: HomeUiState, onNavigate: (String) -> Unit) {
-    val municipality = uiState.municipality ?: return
-    val state = uiState.state ?: return
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = stringResource(R.string.home_location_format, municipality, state.abbreviation),
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        TextButton(onClick = { onNavigate(Routes.LOCATION) }) {
-            Text(stringResource(R.string.home_change_city))
-        }
-    }
-}
-
-@Composable
 private fun PriceMetadata(uiState: HomeUiState) {
     uiState.surveyWeek?.let { week ->
         val locale = LocalConfiguration.current.locales[0]
@@ -660,7 +653,6 @@ private fun HomeWithPricesPreview() {
                 ),
             ),
             darkTheme = false,
-            onToggleTheme = {},
             onNavigate = {},
             onRefresh = {},
             onRetry = {},

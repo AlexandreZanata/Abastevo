@@ -205,7 +205,6 @@ fun AnpNavGraph(
         composable(Routes.HOME) {
             HomeScreen(
                 darkTheme = darkTheme,
-                onToggleTheme = onToggleTheme,
                 onNavigate = navController::navigate,
                 onRouteToStation = onRouteToStation,
             )
@@ -213,7 +212,6 @@ fun AnpNavGraph(
         composable(Routes.COMMUNITY) {
             CommunityScreen(
                 darkTheme = darkTheme,
-                onToggleTheme = onToggleTheme,
                 onNavigate = navController::navigate,
             )
         }

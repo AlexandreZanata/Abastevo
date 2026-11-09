@@ -1444,4 +1444,6 @@
     <string name="forum_topic_validation_body_empty">O conteúdo não pode estar vazio.</string>
     <string name="forum_topic_validation_body_too_long">O conteúdo excede 4.000 caracteres.</string>
     <string name="forum_topic_validation_category">Selecione uma categoria.</string>
+    <string name="header_tagline">Preços de combustíveis</string>
+    <string name="home_open_map">Ver no mapa</string>
 </resources>

@@ -36,7 +36,6 @@ import com.anpfuel.app.R
 import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
-import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.BouncyToggleIcon
 import com.anpfuel.app.ui.components.CommunityConfirmationBadge
 import com.anpfuel.app.ui.components.FuelProductIcon
@@ -44,6 +43,7 @@ import com.anpfuel.app.ui.components.FuelProductSelectorButton
 import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.header.AbastevoHeader
 import com.anpfuel.app.ui.theme.FuelProductTint
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.community.CommunityFeedItem
@@ -56,7 +56,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun CommunityScreen(darkTheme: Boolean, onToggleTheme: () -> Unit, onNavigate: (String) -> Unit,
+fun CommunityScreen(darkTheme: Boolean, onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier, viewModel: CommunityFeedViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -66,42 +66,29 @@ fun CommunityScreen(darkTheme: Boolean, onToggleTheme: () -> Unit, onNavigate: (
         viewModel.setForeground(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
         onDispose { lifecycle.removeObserver(observer); viewModel.setForeground(false) }
     }
-    CommunityFeedContent(state, darkTheme, onToggleTheme, onNavigate, viewModel::selectFuel,
+    CommunityFeedContent(state, darkTheme, onNavigate, viewModel::selectFuel,
         viewModel::selectSort, viewModel::refresh, viewModel::loadMore, modifier)
 }
 
 /** Home's native surfaces/icons with bounded, source-labelled price activity. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolean, onToggleTheme: () -> Unit,
+internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolean,
     onNavigate: (String) -> Unit, onFuel: (FuelProduct) -> Unit, onSort: (FeedSort) -> Unit,
     onRefresh: () -> Unit, onMore: () -> Unit, modifier: Modifier = Modifier) {
     var showRules by remember { mutableStateOf(false) }
     AnpScaffold(modifier = modifier.fillMaxSize(), topBar = {
-        AnpTopAppBar(title = {
-            Text(stringResource(R.string.community_screen_title))
-        }, actions = {
-            IconButton(onClick = onRefresh, enabled = state.city != null && !state.loading) {
-                Icon(Icons.Default.Refresh, stringResource(R.string.feed_refresh))
-            }
-            IconButton(onClick = onToggleTheme) {
-                Icon(if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                    stringResource(if (darkTheme) R.string.action_switch_light_theme else R.string.action_switch_dark_theme))
-            }
-        })
+        AbastevoHeader(
+            onNotificationsClick = { onNavigate(Routes.SETTINGS) },
+            onProfileClick = { onNavigate(Routes.PROFILE) },
+            locationLabel = state.city?.let { "${it.name}, ${it.state.abbreviation}" }
+                ?: stringResource(R.string.feed_choose_city),
+            onLocationClick = { onNavigate(Routes.LOCATION) },
+            onWeekChanged = {},
+        )
     }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp, 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.feed_your_city), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(state.city?.let { "${it.name}, ${it.state.abbreviation}" } ?: stringResource(R.string.feed_choose_city),
-                            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-                    }
-                    TextButton(onClick = { onNavigate(Routes.LOCATION) }) { Text(stringResource(R.string.feed_change_city)) }
-                }
-            }
             if (state.forumEnabled) item {
                 ForumCommunityCard(onExplore = { onNavigate(Routes.FORUM_FEED) })
             }
@@ -127,9 +114,14 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 }
             }
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.feed_prices_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-                    Text(stringResource(R.string.feed_standard_prices), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(stringResource(R.string.feed_prices_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+                        Text(stringResource(R.string.feed_standard_prices), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = onRefresh, enabled = state.city != null && !state.loading) {
+                        Icon(Icons.Default.Refresh, stringResource(R.string.feed_refresh))
+                    }
                 }
             }
             item {

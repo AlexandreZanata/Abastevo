@@ -1451,4 +1451,6 @@
     <string name="forum_topic_validation_body_empty">Content cannot be empty.</string>
     <string name="forum_topic_validation_body_too_long">Content exceeds 4,000 characters.</string>
     <string name="forum_topic_validation_category">Please select a category.</string>
+    <string name="header_tagline">Fuel prices</string>
+    <string name="home_open_map">View on map</string>
 </resources>

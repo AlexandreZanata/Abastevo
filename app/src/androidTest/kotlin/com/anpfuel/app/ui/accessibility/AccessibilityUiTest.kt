@@ -71,7 +71,6 @@ class AccessibilityUiTest {
                             hasCachedData = false,
                         ),
                         darkTheme = false,
-                        onToggleTheme = {},
                         onNavigate = {},
                         onRefresh = {},
                         onRetry = {},

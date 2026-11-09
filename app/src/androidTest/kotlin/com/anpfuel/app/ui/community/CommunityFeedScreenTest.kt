@@ -39,7 +39,7 @@ class CommunityFeedScreenTest {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, font)) {
                 AnpFuelTheme(darkTheme = dark) {
-                    CommunityFeedContent(state, dark, {}, navigate, fuel, sort, {}, {})
+                    CommunityFeedContent(state, dark, navigate, fuel, sort, {}, {})
                 }
             }
         }
@@ -86,7 +86,7 @@ class CommunityFeedScreenTest {
         compose.onNodeWithText(context.getString(FuelProductI18n.toStringRes(FuelProduct.GASOLINE_REGULAR))).performScrollTo().performClick()
         compose.onNodeWithText(context.getString(FuelProductI18n.toStringRes(FuelProduct.ETHANOL))).performScrollTo().performClick()
         assertEquals(FuelProduct.ETHANOL, fuel)
-        compose.onNodeWithText(context.getString(R.string.feed_change_city)).performScrollTo().performClick()
+        compose.onNodeWithText("Sorriso, MT").performClick()
         assertEquals(Routes.LOCATION, route)
     }
     @Test fun authorGetsOnlyTheOwnershipLabel() {
