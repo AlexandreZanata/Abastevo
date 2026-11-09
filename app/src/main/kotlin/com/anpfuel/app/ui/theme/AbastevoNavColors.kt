@@ -17,7 +17,7 @@ data class AbastevoNavColors(
 
 object AbastevoNavDefaults {
 
-    /** Light brand bar: teal-tinted container with a solid teal selection pill. */
+    /** Light brand bar: the header's navy with a blue selection pill. */
     internal val Light = AbastevoNavColors(
         container = EnergiaLightTokens.NavContainer,
         indicator = EnergiaLightTokens.NavIndicator,
@@ -26,7 +26,7 @@ object AbastevoNavDefaults {
         unselected = EnergiaLightTokens.NavUnselected,
     )
 
-    /** Dark brand bar: deep teal container with a light teal selection pill. */
+    /** Dark brand bar: the same navy container and blue selection pill as light. */
     internal val Dark = AbastevoNavColors(
         container = EnergiaDarkTokens.NavContainer,
         indicator = EnergiaDarkTokens.NavIndicator,

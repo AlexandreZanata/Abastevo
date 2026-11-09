@@ -9,8 +9,7 @@ import org.junit.jupiter.api.Test
 class BrandPaletteContrastTest {
 
     @Test
-    fun `light screens and surfaces are pure white`() {
-        assertEquals(Color.White, LightColorScheme.background)
+    fun `light cards and surfaces are pure white`() {
         assertEquals(Color.White, LightColorScheme.surface)
         assertEquals(Color.White, LightColorScheme.surfaceContainerLowest)
     }
@@ -26,11 +25,16 @@ class BrandPaletteContrastTest {
     }
 
     @Test
-    fun `dark highlights stay on the teal brand hue`() {
-        assertEquals(DarkColorScheme.primary, AbastevoNavDefaults.Dark.indicator)
-        assertEquals(DarkColorScheme.onPrimary, AbastevoNavDefaults.Dark.selectedIcon)
-        assertTrue(DarkColorScheme.primary.green > DarkColorScheme.primary.red)
-        assertTrue(DarkColorScheme.secondaryContainer.blue > DarkColorScheme.secondaryContainer.red)
+    fun `dark highlights stay on the blue brand hue`() {
+        assertEquals(AbastevoNavDefaults.Light.container, AbastevoNavDefaults.Dark.container)
+        assertEquals(AbastevoNavDefaults.Light.indicator, AbastevoNavDefaults.Dark.indicator)
+        assertEquals(AbastevoNavDefaults.Light.selectedIcon, AbastevoNavDefaults.Dark.selectedIcon)
+        assertTrue(DarkColorScheme.primary.blue > DarkColorScheme.primary.red)
+        assertTrue(DarkColorScheme.primary.blue > DarkColorScheme.primary.green)
+        assertTrue(DarkColorScheme.primaryContainer.blue > DarkColorScheme.primaryContainer.green)
+        // Surfaces stay near-neutral so blue reads as an accent, not a wash.
+        assertTrue(DarkColorScheme.surfaceContainer.blue - DarkColorScheme.surfaceContainer.red < 0.05f)
+        assertTrue(DarkColorScheme.secondary.green > DarkColorScheme.secondary.blue)
     }
 
     private fun assertPalette(scheme: ColorScheme, nav: AbastevoNavColors) {
