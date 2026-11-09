@@ -1,16 +1,23 @@
 # Current execution state
-- Android Energia Teal theme, 2026-11-08: LOCAL_DONE on dev from main
-  `e0519257`, user-selected from five light-mode candidates. Light theme uses
-  pure white surfaces, teal actions and a teal-tinted bottom bar; dark theme
-  uses teal-tinted dark surfaces with light-teal highlights. The app no longer
-  applies Android 12+ dynamic colors (`dynamicColor` is opt-in, default off),
-  the bottom bar reads dedicated `AbastevoNavColors`, and the dark system
-  navigation bar is transparent. Shapes, typography, fuel tints and Premium
-  colors are unchanged. Verified: theme and navigation unit tests (new
-  `BrandPaletteContrastTest` light+dark WCAG AA; `ColorContrastTest` now checks
-  the real schemes), `:app:assembleDebug`, emulator screenshots of Explorar,
-  Postos, Comunidade and Perfil in both modes; the Mapa tab was not visually
-  verified (emulator did not render map tiles).
+- Android Energia brand theme and shared header, 2026-11-09: LOCAL_DONE on
+  dev from main `e0519257`. Light theme: pale blue-white screens, white cards,
+  blue actions and a green community accent. Dark theme: neutral graphite
+  surfaces with high-contrast text and blue only as accent. The header and
+  the bottom bar share the brand navy in both themes. The new `AbastevoHeader`
+  (logo, name, short tagline, notifications and profile buttons, and one field
+  with city and survey week) is used on Explorar, Comunidade and Perfil; the
+  bell opens Settings (no inbox exists, so no unread dot), the light/dark
+  toggle moved to Perfil, Explorar uses a segmented ANP/Comunidade switch and
+  a map shortcut (strong blue with white text in dark mode). The app no longer
+  applies Android 12+ dynamic colors (`dynamicColor` is opt-in, default off).
+  Shapes, typography, fuel tints and Premium colors are unchanged. Verified:
+  theme, navigation, home and community unit tests (112, including
+  `BrandPaletteContrastTest` light+dark WCAG AA), `:app:assembleDebug`,
+  instrumented test sources compile, phone screenshots of Explorar,
+  Comunidade and Perfil. Not verified: instrumented tests were not run, the
+  Mapa tab keeps its own top controls (no shared header) and was not
+  visually checked, Comunidade's week picker changes the ANP week but does not
+  filter community prices.
 
 - Forum Android review fixes, 2026-11-08: LOCAL_DONE on dev. Report reasons
   now use the contract codes (four of six always failed); edit/remove
