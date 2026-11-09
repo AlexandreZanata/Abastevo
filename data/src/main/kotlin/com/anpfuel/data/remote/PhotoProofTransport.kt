@@ -113,6 +113,24 @@ class PhotoProofTransport internal constructor(
         }
     }
 
+    /** Proof headers for a POST of exactly [body] that the caller sends itself, without retries. */
+    suspend fun postProofHeaders(path: String, body: ByteArray): Map<String, String> = withContext(Dispatchers.IO) {
+        require(path.startsWith("/v1/") && !path.contains('?') && !path.contains('#'))
+        synchronized(this@PhotoProofTransport) {
+            ensureRegistered()
+            val fingerprint=keys.fingerprint() ?: throw IOException("photo.identity-unavailable")
+            val challenge=identity.requestChallenge(fingerprint,"SIGN")
+            val now=System.currentTimeMillis()/1000
+            val digest="\"sha-512=:${Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-512").digest(body))}:\""
+            val lines=PortableAnonymousProof.buildBaseLines("POST",authority(),path,"","application/json",digest,now,now+120,fingerprint,challenge.nonce)
+            mapOf(
+                "Signature" to sign(lines), "Signature-Created" to now.toString(),
+                "Signature-Expires" to (now+120).toString(), "Signature-Keyid" to fingerprint,
+                "Signature-Nonce" to challenge.nonce,
+            )
+        }
+    }
+
     private fun ensureRegistered() {
         if(!keys.ensureKey()) throw IOException("photo.identity-unavailable")
         val fingerprint=keys.fingerprint() ?: throw IOException("photo.identity-unavailable")

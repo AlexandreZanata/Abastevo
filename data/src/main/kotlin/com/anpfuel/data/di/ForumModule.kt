@@ -19,6 +19,7 @@ import com.anpfuel.application.usecase.forum.SubmitForumTopicUseCase
 import com.anpfuel.application.usecase.forum.ValidateForumSafeLinkUseCase
 import com.anpfuel.data.local.dao.ForumCacheDao
 import com.anpfuel.data.remote.ApiEnvironment
+import com.anpfuel.data.remote.PhotoProofTransport
 import com.anpfuel.data.remote.forum.ForumHttpClient
 import com.anpfuel.data.repository.ForumRepository
 import com.anpfuel.domain.repository.ForumGateway
@@ -41,12 +42,14 @@ object ForumModule {
         @Named("apiOrigin") environment: ApiEnvironment,
         sessions: AuthSessionStore,
         auth: AuthFlow,
+        proof: PhotoProofTransport,
     ): ForumHttpClient {
         return ForumHttpClient(
             http = okHttpClient,
             baseUrl = environment.origin,
             sessions = sessions,
             auth = auth,
+            proofHeaders = proof::postProofHeaders,
         )
     }
 
