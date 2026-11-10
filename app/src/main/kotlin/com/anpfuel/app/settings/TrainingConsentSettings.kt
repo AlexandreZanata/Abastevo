@@ -62,6 +62,8 @@ internal fun TrainingConsentContent(
         mutableStateOf(TrainingConsentReview(ownerKey,document?.version.orEmpty(),document?.digest.orEmpty()))
     }
     var reader by remember(ownerKey,document?.digest,state.loaded) { mutableStateOf(false) }
+    // The modal box starts unticked every time the complete document is opened.
+    var modalChecked by remember(reader) { mutableStateOf(false) }
     val busy=consent is TrainingConsentUiState.Updating || consent is TrainingConsentUiState.Loading
     val containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
     Card(
@@ -89,14 +91,20 @@ internal fun TrainingConsentContent(
                     content?.granted==true -> R.string.privacy_preference_received
                     else -> R.string.privacy_preference_off
                 }))
+                if(content?.granted==true) {
+                    val version=content.termsVersion
+                    val decided=content.decidedAt?.let(::consentDecisionText)
+                    if(version!=null && decided!=null) Text(stringResource(R.string.privacy_recorded_details,version,decided),style=MaterialTheme.typography.bodySmall)
+                }
                 if(content?.needsRegrant==true) Text(stringResource(R.string.training_consent_regrant))
                 if(document!=null && content?.granted!=true) {
                     Row(
-                        Modifier.fillMaxWidth().toggleable(value=review.checked,enabled=review.read && !busy,role=Role.Checkbox,onValueChange={review=review.check(it)}),
+                        // A tap is never a no-op: before the complete document was displayed it opens the modal.
+                        Modifier.fillMaxWidth().toggleable(value=review.checked,enabled=!busy,role=Role.Checkbox,onValueChange={ if(review.read) review=review.check(it) else reader=true }),
                         verticalAlignment=Alignment.Top,
                         horizontalArrangement=Arrangement.spacedBy(12.dp),
                     ) {
-                        Checkbox(checked=review.checked,onCheckedChange=null,enabled=review.read && !busy,modifier=Modifier.padding(top=2.dp))
+                        Checkbox(checked=review.checked,onCheckedChange=null,enabled=!busy,modifier=Modifier.padding(top=2.dp))
                         Text(stringResource(R.string.privacy_consent_check),style=MaterialTheme.typography.bodyMedium,modifier=Modifier.weight(1f))
                     }
                     Button(onClick={ if(review.canConfirm) { onDecision(true,review.version,review.digest);review=review.copy(checked=false) } },enabled=review.canConfirm && !busy,shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth()) {
@@ -146,7 +154,42 @@ internal fun TrainingConsentContent(
                         SelectionContainer {Text(document.text)}
                         Text(stringResource(R.string.privacy_digest,document.digest),style=MaterialTheme.typography.bodySmall)
                     }
-                    Button(
+                    // B-BR-CS06: the complete document and the unticked box share this modal.
+                    val canGrant = caller != null && (consent as? TrainingConsentUiState.Content)?.granted != true
+                    if (canGrant) {
+                        Text(
+                            stringResource(R.string.privacy_modal_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                        )
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .toggleable(value = modalChecked, enabled = !busy, role = Role.Checkbox, onValueChange = { modalChecked = it })
+                                .padding(horizontal = 20.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Checkbox(checked = modalChecked, onCheckedChange = null, enabled = !busy, modifier = Modifier.padding(top = 2.dp))
+                            Text(stringResource(R.string.privacy_consent_check), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                        }
+                        Button(
+                            onClick = {
+                                val accepted = review.finishReading().check(modalChecked)
+                                if (accepted.canConfirm) onDecision(true, accepted.version, accepted.digest)
+                                review = accepted.copy(checked = false)
+                                reader = false
+                            },
+                            enabled = modalChecked && !busy,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
+                        ) {
+                            Text(stringResource(R.string.privacy_accept_record))
+                        }
+                    }
+                    TextButton(
                         onClick = { review = review.finishReading(); reader = false },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -196,3 +239,9 @@ fun TrainingConsentRightsCard(modifier: Modifier = Modifier) {
         }
     }
 }
+
+/** Server decision instant (RFC 3339) in the device locale and zone; null when it cannot be read. */
+internal fun consentDecisionText(decidedAt:String,zone:java.time.ZoneId=java.time.ZoneId.systemDefault()):String? = runCatching {
+    java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.MEDIUM,java.time.format.FormatStyle.SHORT)
+        .format(java.time.OffsetDateTime.parse(decidedAt).atZoneSameInstant(zone))
+}.getOrNull()

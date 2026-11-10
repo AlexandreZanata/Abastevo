@@ -413,6 +413,12 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindTermsAcceptanceStore(
+        impl: com.anpfuel.data.local.preferences.TermsAcceptancePrefsStore,
+    ): com.anpfuel.application.port.TermsAcceptanceStore
+
+    @Binds
+    @Singleton
     abstract fun bindContributionOutboxFlagProvider(
         impl: ContributionOutboxFlagStore,
     ): ContributionOutboxFlagProvider

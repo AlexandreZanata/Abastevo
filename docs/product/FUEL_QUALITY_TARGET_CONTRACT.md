@@ -109,6 +109,13 @@ experience. User votes/claims do not validate chemical quality or legal guilt.
 - **BUC-FQ-05:** Submit/edit/withdraw own structured experience and request linkage
   review. Test signed owner proof, idempotency/replay, invalid targets/text/dates,
   foreign-owner denial, parallel writes, moderation and source immutability.
+  Android refinement (2026-11-10): the Profile entry "Meus relatos privados" is
+  the owner's history. A report always targets one station and one fuel, so the
+  history never creates a station-less report: when the signed owner list is
+  empty it explains where reports are created and offers one action that opens
+  the station list; an existing report can still be selected there to edit,
+  appeal or withdraw. Guests see only the free sign-in action. Report text,
+  dates and status stay in memory and behind the secure window.
 - **BUC-FQ-06:** Attach/check/minimize/expire private supporting documents. Test
   fabricated/reused/foreign evidence, unavailable verifier, false protocol claim,
   expiry races, every-copy deletion, erasure and restoration.

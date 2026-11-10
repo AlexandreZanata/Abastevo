@@ -36,6 +36,7 @@ class PhotoEvaluationActivity : ComponentActivity() {
     private var rows by mutableStateOf<Map<FuelProduct, String>>(emptyMap())
     private var removed by mutableStateOf<Set<FuelProduct>>(emptySet())
     private var orphans by mutableStateOf<List<String>>(emptyList())
+    private var boardFrame by mutableStateOf<com.anpfuel.application.port.ImagePriceOcr.BoardFrame?>(null)
     private val edited = mutableSetOf<FuelProduct>()
     var processing by mutableStateOf(false)
         private set
@@ -140,6 +141,8 @@ class PhotoEvaluationActivity : ComponentActivity() {
                                     queuedLocally = true
                                     message = "${reviewedCount} preços revisados no teste. Nenhum preço ou foto foi enviado."
                                 },
+                                // Here the shown photo is always the analysed one (a crop replaces it).
+                                boardFrame = boardFrame,
                             )
                         }
                     }
@@ -192,8 +195,10 @@ class PhotoEvaluationActivity : ComponentActivity() {
         processing = true
         lifecycleScope.launch {
             try {
-                val result = ocr.recognize(bytes)
+                val recognition = ocr.recognizeFramed(bytes)
                 if (ticket != generation) return@launch
+                val result = recognition.result
+                boardFrame = recognition.frame
                 conditional = conditional || result.conditional
                 rows = rows.filterKeys { it in edited } + result.rows.filter { it.product !in edited && it.product !in removed }
                     .associate { it.product to "${it.amountMilli / 1000},${(it.amountMilli % 1000).toString().padStart(3, '0')}" }

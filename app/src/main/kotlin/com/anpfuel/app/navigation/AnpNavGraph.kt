@@ -413,7 +413,12 @@ fun AnpNavGraph(
             navArgument("revisionId"){type=NavType.StringType;defaultValue=""},
             navArgument("sampleRef"){type=NavType.StringType;defaultValue=""},
         )) {
-            com.anpfuel.app.ui.quality.QualityReportsScreen(onBack={navController.popBackStack()},onSignIn={navController.navigate(Routes.AUTH)})
+            com.anpfuel.app.ui.quality.QualityReportsScreen(
+                onBack={navController.popBackStack()},
+                onSignIn={navController.navigate(Routes.AUTH)},
+                // BUC-FQ-05: a report belongs to a station; the empty history leads to the station list.
+                onChooseStation={navController.navigate(Routes.STATIONS)},
+            )
         }
         composable(Routes.OCCURRENCE_EXPLORER) {
             com.anpfuel.app.ui.occurrence.OccurrenceExplorerScreen(

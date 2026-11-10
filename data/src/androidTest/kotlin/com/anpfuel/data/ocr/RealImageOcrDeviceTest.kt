@@ -37,18 +37,24 @@ class RealImageOcrDeviceTest {
             try {
                 val bytes = file.readBytes()
                 record.put("input_sha256", MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) })
-                val tokens = withTimeout(15000) { engine.recognizeTokens(bytes) }
                 val recognitionStart = android.os.SystemClock.elapsedRealtime()
-                val views = withTimeout(15000) { engine.recognizeViews(bytes) }
+                val production = withTimeout(15000) { engine.analyze(bytes) }
                 record.put("recognition_ms",android.os.SystemClock.elapsedRealtime()-recognitionStart)
+                val views = production.views
                 val result = FuelBoardOcr.reconcile(views)
                 record.put("views",JSONArray(views.map { view -> JSONObject()
                     .put("rows",JSONArray(view.rows.map { JSONObject().put("fuel",it.product.name).put("milli_brl",it.amountMilli) }))
                     .put("orphans",JSONArray(view.orphans)).put("conflicts",JSONArray(view.conflictingProducts.map { it.name })) }))
                 record.put("status", "recognized").put("conditional",result.conditional).put("unresolved",result.unresolved)
                     .put("orphans",JSONArray(result.orphans)).put("rows",JSONArray(result.rows.map { JSONObject().put("fuel",it.product.name).put("milli_brl",it.amountMilli) }))
-                // Diagnostics remain in the private, ignored evaluation artifact only.
-                record.put("tokens",JSONArray(tokens.map { JSONObject().put("text",it.text).put("box",JSONArray(listOf(it.left,it.top,it.right,it.bottom))) }))
+                // Diagnostics remain in the private, ignored evaluation artifact only: the board
+                // frame and every reading's tokens.
+                record.put("width",production.width).put("height",production.height)
+                production.frame?.let { frame -> record.put("frame",JSONObject().put("box",JSONArray(listOf(frame.left,frame.top,frame.right,frame.bottom)))
+                    .put("price_height",frame.priceHeight).put("angle",frame.angleDegrees).put("labeled",frame.labeled)) }
+                record.put("view_tokens",JSONArray(production.tokens.map { tokens -> JSONArray(tokens.map {
+                    JSONObject().put("text",it.text).put("box",JSONArray(listOf(it.left,it.top,it.right,it.bottom))).put("angle",it.angle.toDouble()) }) }))
+                record.put("tokens",JSONArray(production.tokens.first().map { JSONObject().put("text",it.text).put("box",JSONArray(listOf(it.left,it.top,it.right,it.bottom))) }))
             } catch (error: Exception) {
                 record.put("status","failed").put("error",error.javaClass.simpleName)
             }

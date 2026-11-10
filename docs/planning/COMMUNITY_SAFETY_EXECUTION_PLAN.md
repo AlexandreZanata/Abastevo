@@ -240,6 +240,9 @@ Maintain module ownership for any read projection; do not add cross-module write
 Implement P37-PC05 rather than a parallel consent system. Server records purpose,
 terms version/digest, account, decision timestamp, revision and per-image scope;
 no checkbox/client boolean substitutes for proof. First use defaults OFF.
+Android confirmation step (2026-11-10): the complete terms and the unticked box
+share one modal; see the B-BR-CS06 refinement in
+[ANDROID_TERMS_ACCEPTANCE](../security/ANDROID_TERMS_ACCEPTANCE.md).
 Setting ON applies only to future clearly disclosed image selections, with a
 visible per-submission opt-out; it cannot retroactively authorize old photos.
 

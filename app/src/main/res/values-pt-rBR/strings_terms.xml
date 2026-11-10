@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terms_gate_title">Antes de começar</string>
+    <string name="terms_gate_intro">Para usar o Abastevo, leia e aceite os Termos de Uso e a Política de Privacidade.</string>
+    <string name="terms_gate_changed">Os documentos foram atualizados desde o seu último aceite. Leia e aceite novamente para continuar.</string>
+    <string name="terms_gate_point_purpose">O Abastevo é uma plataforma comunitária para consultar e compartilhar preços de combustíveis. Não vende combustível e não é afiliado à ANP.</string>
+    <string name="terms_gate_point_community">Preços, fotos, avaliações e comentários que você enviar devem ser reais e seguem as regras da comunidade e a moderação.</string>
+    <string name="terms_gate_point_privacy">A Política de Privacidade explica quais dados são tratados, para quê e como exercer seus direitos.</string>
+    <string name="terms_gate_read_terms">Ler os Termos de Uso</string>
+    <string name="terms_gate_read_privacy">Ler a Política de Privacidade</string>
+    <string name="terms_gate_versions">Termos de Uso: versão %1$s · Política de Privacidade: versão %2$s</string>
+    <string name="terms_gate_check">Li e aceito os Termos de Uso e declaro que li a Política de Privacidade.</string>
+    <string name="terms_gate_optional_note">Este aceite não autoriza o uso opcional de fotos para treinamento. Essa escolha é separada e fica em Privacidade.</string>
+    <string name="terms_gate_accept">Aceitar e continuar</string>
+    <string name="terms_gate_decline">Não aceito · sair do app</string>
+    <string name="terms_gate_failed">Não foi possível registrar o aceite neste aparelho. Tente novamente.</string>
+    <string name="terms_gate_open_failed">Não foi possível abrir o navegador. Acesse este endereço no seu navegador: %1$s</string>
+    <string name="terms_record_heading">Termos de Uso e Política de Privacidade</string>
+    <string name="terms_record_accepted">Aceitos neste aparelho em %1$s.</string>
+    <string name="terms_revoke">Revogar aceite</string>
+    <string name="terms_revoke_title">Revogar o aceite?</string>
+    <string name="terms_revoke_body">O app volta para a tela de termos e só pode ser usado depois de um novo aceite. Sua conta e seus dados no servidor não são apagados; para isso use a exclusão de conta.</string>
+    <string name="terms_revoke_confirm">Revogar</string>
+    <string name="terms_revoke_failed">Não foi possível remover o registro. Tente novamente.</string>
+    <string name="privacy_accept_record">Aceitar e registrar preferência</string>
+    <string name="privacy_recorded_details">Termos %1$s · decisão registrada pelo servidor em %2$s</string>
+    <string name="privacy_modal_hint">Marque a caixa abaixo e toque em aceitar para registrar. Fechar sem aceitar não registra nada.</string>
+</resources>

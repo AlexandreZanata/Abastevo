@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terms_gate_title">はじめる前に</string>
+    <string name="terms_gate_intro">Abastevo を使うには、利用規約とプライバシーポリシーを読んで同意してください。</string>
+    <string name="terms_gate_changed">前回の同意以降に文書が更新されました。続けるにはもう一度読んで同意してください。</string>
+    <string name="terms_gate_point_purpose">Abastevo は燃料価格を調べて共有するコミュニティプラットフォームです。燃料の販売は行わず、ANP とは無関係です。</string>
+    <string name="terms_gate_point_community">送信する価格・写真・評価・コメントは実際のものでなければならず、コミュニティのルールとモデレーションに従います。</string>
+    <string name="terms_gate_point_privacy">プライバシーポリシーは、どのデータを何のために扱うか、権利の行使方法を説明しています。</string>
+    <string name="terms_gate_read_terms">利用規約を読む</string>
+    <string name="terms_gate_read_privacy">プライバシーポリシーを読む</string>
+    <string name="terms_gate_versions">利用規約: バージョン %1$s · プライバシーポリシー: バージョン %2$s</string>
+    <string name="terms_gate_check">利用規約を読んで同意し、プライバシーポリシーを読んだことを確認します。</string>
+    <string name="terms_gate_optional_note">この同意は、学習のための写真の任意利用を許可するものではありません。その選択は別で、「プライバシー」にあります。</string>
+    <string name="terms_gate_accept">同意して続ける</string>
+    <string name="terms_gate_decline">同意しない · アプリを終了</string>
+    <string name="terms_gate_failed">この端末に同意を記録できませんでした。もう一度お試しください。</string>
+    <string name="terms_gate_open_failed">ブラウザを開けませんでした。次のアドレスをブラウザで開いてください: %1$s</string>
+    <string name="terms_record_heading">利用規約とプライバシーポリシー</string>
+    <string name="terms_record_accepted">%1$s にこの端末で同意済み。</string>
+    <string name="terms_revoke">同意を取り消す</string>
+    <string name="terms_revoke_title">同意を取り消しますか?</string>
+    <string name="terms_revoke_body">アプリは規約画面に戻り、再度同意するまで使用できません。アカウントとサーバー上のデータは削除されません。削除にはアカウント削除を使用してください。</string>
+    <string name="terms_revoke_confirm">取り消す</string>
+    <string name="terms_revoke_failed">記録を削除できませんでした。もう一度お試しください。</string>
+    <string name="privacy_accept_record">同意して設定を記録</string>
+    <string name="privacy_recorded_details">規約 %1$s · サーバーが %2$s に記録</string>
+    <string name="privacy_modal_hint">下のチェックを入れて同意をタップすると記録されます。同意せずに閉じると何も記録されません。</string>
+</resources>

@@ -65,11 +65,74 @@ class FuelBoardOcrTest {
 
     @Test fun `explicit conflicting product in any pixel view cannot be hidden by missed rows`() {
         val single = FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.ETHANOL,3990L)), false, false)
-        val conflict = FuelBoardOcr.Result(emptyList(),false,true,listOf(3990L,4110L),setOf(FuelProduct.ETHANOL))
+        val conflict = FuelBoardOcr.Result(emptyList(),false,true,listOf(3990L,4110L),setOf(FuelProduct.ETHANOL),mapOf(FuelProduct.ETHANOL to setOf(3990L,4110L)))
         val result = FuelBoardOcr.reconcile(listOf(single,single,conflict))
         assertTrue(result.rows.isEmpty())
         assertEquals(listOf(3990L,4110L),result.orphans)
         assertEquals(setOf(FuelProduct.ETHANOL),result.conflictingProducts)
+        // The association itself reports two clearly named prices as competing, not as a mere doubt.
+        val board = FuelBoardOcr.associate(listOf(box("ETANOL",0,0),box("3,99",200,0),box("ETANOL",0,50),box("4,11",200,50)))
+        assertEquals(setOf(FuelProduct.ETHANOL),board.competingProducts)
+        assertTrue(FuelBoardOcr.reconcile(listOf(single,single,board)).rows.isEmpty())
+    }
+
+    @Test fun `two agreeing views outweigh one uncertain name but a lone doubted reading stays manual`() {
+        val seen = FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S500,7190L)), false, false)
+        val doubt = FuelBoardOcr.Result(emptyList(),false,true,listOf(7190L),setOf(FuelProduct.DIESEL_S500))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S500,7190L)),FuelBoardOcr.reconcile(listOf(seen,doubt,seen)).rows)
+        val lone = FuelBoardOcr.reconcile(listOf(seen,doubt,doubt))
+        assertTrue(lone.rows.isEmpty())
+        assertTrue(lone.unresolved)
+        assertEquals(listOf(7190L),lone.orphans)
+        val pair = FuelBoardOcr.reconcile(listOf(seen,doubt))
+        assertTrue(pair.rows.isEmpty())
+    }
+
+    @Test fun `competing prices in one view yield only when every rival is another fuel in two views`() {
+        fun view(vararg rows: Pair<FuelProduct, Long>) = FuelBoardOcr.Result(rows.map { FuelBoardOcr.Row(it.first, it.second) }, false, false)
+        val clean = view(FuelProduct.GASOLINE_REGULAR to 6590L, FuelProduct.GASOLINE_PREMIUM to 6790L)
+        // This view attached the additivated row's price to regular gasoline as well.
+        val slipped = FuelBoardOcr.Result(emptyList(), false, true, listOf(6590L, 6790L),
+            setOf(FuelProduct.GASOLINE_REGULAR), mapOf(FuelProduct.GASOLINE_REGULAR to setOf(6590L, 6790L)))
+        val settled = FuelBoardOcr.reconcile(listOf(clean, clean, slipped))
+        assertEquals(mapOf(FuelProduct.GASOLINE_REGULAR to 6590L, FuelProduct.GASOLINE_PREMIUM to 6790L), settled.rows.associate { it.product to it.amountMilli })
+        // One explaining view is not enough, and an unexplained rival is a real second price.
+        val regularOnly = view(FuelProduct.GASOLINE_REGULAR to 6590L)
+        assertTrue(FuelBoardOcr.reconcile(listOf(clean, regularOnly, slipped)).rows.none { it.product == FuelProduct.GASOLINE_REGULAR })
+        val withheld = FuelBoardOcr.reconcile(listOf(regularOnly, regularOnly, regularOnly, slipped))
+        assertTrue(withheld.rows.isEmpty())
+        assertEquals(setOf(FuelProduct.GASOLINE_REGULAR), withheld.conflictingProducts)
+        assertEquals(mapOf(FuelProduct.GASOLINE_REGULAR to setOf(6590L, 6790L)), withheld.competingAmounts)
+    }
+
+    @Test fun `another view is wanted until the readings show exactly the reconciled rows`() {
+        fun view(vararg rows: Pair<FuelProduct, Long>) = FuelBoardOcr.Result(rows.map { FuelBoardOcr.Row(it.first, it.second) }, false, false)
+        val both = view(FuelProduct.ETHANOL to 4320L, FuelProduct.GASOLINE_REGULAR to 6590L)
+        assertTrue(FuelBoardOcr.needsAnotherView(listOf(view())))
+        assertFalse(FuelBoardOcr.needsAnotherView(listOf(both, both)))
+        // Unassigned numbers alone (watermarks, totals) do not ask for more readings.
+        assertFalse(FuelBoardOcr.needsAnotherView(listOf(both, both.copy(orphans = listOf(9990L), unresolved = true))))
+        assertTrue(FuelBoardOcr.needsAnotherView(listOf(both, view(FuelProduct.ETHANOL to 4320L))))
+        assertTrue(FuelBoardOcr.needsAnotherView(listOf(both, view(FuelProduct.ETHANOL to 4820L, FuelProduct.GASOLINE_REGULAR to 6590L))))
+        assertFalse(FuelBoardOcr.needsAnotherView(List(FuelBoardOcr.MAX_VIEWS) { view() }))
+        assertThrows(IllegalArgumentException::class.java) { FuelBoardOcr.reconcile(List(FuelBoardOcr.MAX_VIEWS + 1) { both }) }
+    }
+
+    @Test fun `implausible unit prices are never suggested and a glued row icon keeps its digits`() {
+        val merged = FuelBoardOcr.Result(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S10,17570L)), false, false)
+        val result = FuelBoardOcr.reconcile(listOf(merged,merged))
+        assertTrue(result.rows.isEmpty())
+        assertEquals(listOf(17570L),result.orphans)
+        assertTrue(result.unresolved)
+        val icon = FuelBoardOcr.associate(listOf(box("Etanol",120,10,60),FuelBoardOcr.Token("E4,64",0,0,300,60),
+            box("Gasolina",120,110,80),FuelBoardOcr.Token("G7.07",0,100,300,160)))
+        assertEquals(mapOf(FuelProduct.ETHANOL to 4640L,FuelProduct.GASOLINE_REGULAR to 7070L),icon.rows.associate{it.product to it.amountMilli})
+    }
+
+    @Test fun `a sold-out zero display keeps its name from taking the next row`() {
+        val result = FuelBoardOcr.associate(listOf(box("DIESEL S500",0,0,150),box("0,00",200,0),box("7,65",200,45)))
+        assertTrue(result.rows.isEmpty())
+        assertEquals(listOf(7650L),result.orphans)
     }
 
     @Test fun `disagreeing pixel views stay manual and retain conditions`() {
@@ -87,7 +150,7 @@ class FuelBoardOcrTest {
         assertEquals(result, FuelBoardOcr.reconcile(listOf(result)))
         assertEquals(result, FuelBoardOcr.reconcile(listOf(result, result)))
         assertThrows(IllegalArgumentException::class.java) { FuelBoardOcr.reconcile(emptyList()) }
-        assertThrows(IllegalArgumentException::class.java) { FuelBoardOcr.reconcile(List(4) { result }) }
+        assertThrows(IllegalArgumentException::class.java) { FuelBoardOcr.reconcile(List(FuelBoardOcr.MAX_VIEWS + 1) { result }) }
     }
 
     @Test fun `brand sublabel inherits ethanol instead of creating gasoline ambiguity`() {
@@ -110,12 +173,25 @@ class FuelBoardOcrTest {
     }
 
     @Test fun `unknown explicit diesel specifications never default to S500`() {
-        for (spec in listOf("S50", "S5", "S100", "S1O", "S-50", "SIO")) {
+        for (spec in listOf("S50", "S5", "S100", "S-50", "S1", "S5O", "SO1")) {
             val result = FuelBoardOcr.associate(listOf(box("DIESEL $spec", 0, 0, 150), box("7,40", 200, 0)))
             assertTrue(result.rows.isEmpty(), spec)
             assertEquals(listOf(7400L), result.orphans, spec)
             assertTrue(result.unresolved, spec)
         }
+    }
+
+    @Test fun `letter and digit look-alikes inside a diesel specification are read as that specification`() {
+        for ((spec, fuel) in listOf("S1O" to FuelProduct.DIESEL_S10, "SIO" to FuelProduct.DIESEL_S10, "S-1O" to FuelProduct.DIESEL_S10,
+            "S5OO" to FuelProduct.DIESEL_S500, "S50O" to FuelProduct.DIESEL_S500)) {
+            val result = FuelBoardOcr.associate(listOf(box("DIESEL $spec", 0, 0, 150), box("7,40", 200, 0)))
+            assertEquals(listOf(FuelBoardOcr.Row(fuel, 7400L)), result.rows, spec)
+        }
+        val glued = FuelBoardOcr.associate(listOf(box("DIESELSIO", 0, 0, 150), box("7,40", 200, 0)))
+        assertEquals(listOf(FuelBoardOcr.Row(FuelProduct.DIESEL_S10, 7400L)), glued.rows)
+        // The same letters outside a diesel name are not a specification.
+        val other = FuelBoardOcr.associate(listOf(box("PATIO SIO", 0, 0, 150), box("7,40", 200, 0)))
+        assertTrue(other.rows.isEmpty())
     }
 
     @Test fun `competing normalized prices remain manual without choosing the cheapest`() {

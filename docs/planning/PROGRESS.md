@@ -1,4 +1,115 @@
 # Current execution state
+- Price OCR live framing before the photo, 2026-11-10: LOCAL_DONE /
+  INTEGRATION_PENDING on branch `android-live-board-zoom` (from
+  `android-prod-readiness` `33f3231b`;
+  [p37-ocr-live-framing](../mobile/p37-ocr-live-framing.md), B-BR-PC02
+  refinement). The photo is now taken with an in-app CameraX camera (new
+  reviewed dependency `androidx.camera` 1.4.2, Apache-2.0, libyuv
+  BSD-3-Clause) instead of the system camera, which stays as the fallback.
+  Preview frames are read on device with the existing `FuelBoardFraming`;
+  the pure `LiveBoardZoom` rule zooms until the board fills about 80% of the
+  frame (device range, 5x ceiling, centre limit, 15% hysteresis, two
+  sightings to move, six misses to return to wide), an accent frame and a
+  "board found" hint show it, a pinch turns the automatic zoom off, and only
+  the shutter takes the photo. The capture receipt, the 24-hour private file,
+  the review and the post-photo OCR are unchanged. Verified: unit `:domain`
+  935, `:application` 532, `:data` 731 (4 skipped), `:app` 740; no new lint
+  error (pre-existing `home_open_map` MissingTranslation remains); device
+  `am instrument` on the POCO `OK (10 tests)` including the new
+  `LiveBoardLocatorDeviceTest` on generated YUV frames (upright and rotated);
+  real flow on the POCO: camera opens full screen, close and back cancel and
+  delete the pending file, the shutter gives a 2448 x 3264 photo without GPS
+  that reaches the review and OCR; nothing sent. Not verified: the zoom and
+  frame on a real price board (the phone faced the ceiling), the pinch
+  override, the system-camera fallback, process-death recovery with the
+  camera open; one device only.
+
+- Price OCR automatic framing, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING
+  on branch `android-prod-readiness`
+  ([p37-ocr-auto-framing](../mobile/p37-ocr-auto-framing.md), B-BR-PC02
+  refinement). After the photo the app now finds the price board, reads it
+  again straightened and enlarged (from the camera's full-resolution pixels
+  when the file is larger than the 2048 px working copy), adds a
+  contrast-stretched and a compact reading when the first two do not agree,
+  and reconciles them; the review photo glides onto the board. Association
+  fixes: glued row icon, sold-out 0,00 rows, O/0 and I/1 inside a diesel
+  specification, a R$ 15 suggestion bound. Measured on the POCO, exact fuel
+  and price, before → after: 369 → 426 of 567 rows over all private sets
+  (65.1% → 75.1%), wrong rows 14 → 11; regression 20: 60 → 61 (wrong 0 → 1);
+  rotated +8°/−12°: 49 → 62 / 40 → 59; dark 56 → 61; glare 51 → 61; shrunk
+  "far" copies 42 → 42; new 28-photo set 71 → 80 of 111; time per photo
+  p50 840 → 825 ms, p95 1119 → 1193 ms. Verified: unit suites `:domain` 926,
+  `:application` 532, `:data` 731 (4 skipped), `:app` 739; device
+  `OcrFormatMatrixDeviceTest`, `OcrFramingDeviceTest` and the synthetic
+  `RealImageOcrDeviceTest` case, 8 tests OK; debug review screen on three
+  private photos (four rows each, review centred on the board); real flow on
+  the phone up to the review of a board-less photo, nothing sent. Not
+  verified: no real price board was photographed with the phone camera, so
+  the full-resolution path is proven only on generated pixels (18 px text:
+  0 → 4 of 4 rows); app instrumented tests were not run; one device only.
+  Not done: framing before the photo (needs an in-app camera, a new
+  dependency; owner chose post-photo only for now). Distant boards in the new
+  set are still read about half the time. Private labels and raw results stay
+  in the Git-ignored corpus folder; nothing from them is committed.
+
+- Android first-use terms gate and real consent confirmation, 2026-11-10:
+  LOCAL_DONE / INTEGRATION_PENDING on branch `android-prod-readiness`
+  ([ANDROID_TERMS_ACCEPTANCE](../security/ANDROID_TERMS_ACCEPTANCE.md),
+  B-BR-TA01..TA06, BUC-TA01..TA03, B-BR-CS06 refinement). Finding on the
+  phone before the change: the training-consent box was disabled until the
+  terms dialog was opened and closed with "finished reading", so it could not
+  be ticked and no grant had ever left the device; no screen recorded
+  acceptance of the Terms of Use or the Privacy Policy. Now: (1) the app
+  composes nothing before the current Terms of Use (`2026-10`) and Privacy
+  Policy (`1.0`) are accepted with a tick; the record holds the two versions
+  and the instant, on the device only; a version change, a corrupt or a
+  future-dated record returns to the gate; Privacy shows the record and
+  revokes it behind a confirmation. (2) The training-consent modal carries
+  the complete terms, the unticked box and "accept and record"; the card box
+  opens the modal instead of being a dead control; the card shows the
+  server's terms version and decision time. Backend unchanged. Verified:
+  unit suites `:domain` 911, `:application` 532, `:data` 731 (4 skipped),
+  `:app` 733, `:app:assembleDebug`, instrumented sources compile; on the POCO
+  against staging with the owner's free account: gate on first open, accept
+  disabled without a tick, decline leaves the app with no record, tick and
+  accept stores `terms_version`/`privacy_version`/`accepted_at` and opens the
+  app, restart skips the gate, Privacy shows the record, cancelled revocation
+  keeps it, confirmed revocation returns to the gate; consent: card box opens
+  the modal, tick and accept inside the modal produced a server GRANTED state
+  shown with version and decision time, then "disable and delete" produced the
+  server revocation (local journal at revision floor 2, nothing pending). Not
+  verified: instrumented tests were not run (`TermsGateDeviceTest`, the new
+  modal case in `TrainingConsentDeviceTest`, and the nine MainActivity
+  journeys that now seed the record through `AcceptedTermsRule`); the granted
+  state was not re-read after an app restart; non-Portuguese strings were not
+  reviewed by a speaker. Limits: the first-use record is device-local with no
+  server proof; the gate is a UI gate and does not hold back background work
+  scheduled at process start; the public Privacy Policy does not yet mention
+  this local record; document links still point at the staging host.
+
+- Private quality reports from Perfil, 2026-11-10: LOCAL_DONE /
+  INTEGRATION_PENDING on branch `android-prod-readiness` from dev `a97ba3b3`
+  (BUC-FQ-05 Android refinement in
+  [FUEL_QUALITY_TARGET_CONTRACT](../product/FUEL_QUALITY_TARGET_CONTRACT.md)).
+  Finding on the phone before the change: the signed owner list answered
+  (no auth error) and was empty; the Perfil entry is history-only, so the
+  owner saw a bare "no reports" text on an unstyled screen with no path to
+  create one. The screen now uses the design-system containers, a status
+  pill, locale dates and fuel/symptom labels; an empty history explains that a
+  report belongs to a station and opens the station list; list refresh is an
+  icon action. ViewModel, gateway, signing and the secure window are
+  unchanged. Verified: `QualityReportsViewModelTest` (14, including history
+  withdraw at the listed revision, unlisted report refused, guest history
+  reads nothing, refused owner read clears stale reports), `:app:assembleDebug`,
+  and on the POCO against staging with the owner's free account: Perfil →
+  empty history → station list → station → quality → report form → submit →
+  listed as awaiting review → back in the Perfil history → select → withdraw
+  → listed as withdrawn without text. Not verified: instrumented
+  `QualityReportsUiDeviceTest` (compiles only), edit and appeal on the phone,
+  pagination beyond one page, non-Portuguese strings were not reviewed by a
+  speaker. The withdrawn test report remains in the owner's history as a
+  tombstone.
+
 - Android monochrome design system, 2026-11-10: LOCAL_DONE /
   INTEGRATION_PENDING on dev (PR #198 to main), from dev `e29b01e7`; the
   owner approved the look on the phone. It supersedes the navy and blue

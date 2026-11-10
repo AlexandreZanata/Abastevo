@@ -892,6 +892,13 @@
     <string name="capture_crop">Recadrer</string>
     <string name="capture_photo_content">Photo des prix à vérifier</string>
     <string name="capture_review_hint">Recadrez sur les prix, puis renseignez uniquement les carburants de la photo ; les vides ne sont pas envoyés.</string>
+    <string name="capture_board_found">Panneau de prix repéré : la photo a été centrée dessus. Ajustez le cadrage si nécessaire.</string>
+    <string name="capture_live_point">Pointez l\'appareil vers le panneau des prix</string>
+    <string name="capture_live_found">Panneau trouvé : prenez la photo</string>
+    <string name="capture_live_shutter">Prendre la photo</string>
+    <string name="capture_live_close">Fermer l\'appareil photo</string>
+    <string name="capture_live_failed">Impossible de prendre la photo. Réessayez.</string>
+    <string name="capture_live_zoom_manual">%1$s · manuel</string>
     <string name="capture_fuel_invalid">Vérifiez cette valeur (ex. 5,89)</string>
     <string name="capture_remove_fuel">Retirer ce carburant du signalement</string>
     <string name="capture_show_all">Afficher tous les carburants</string>
@@ -1036,7 +1043,7 @@
     <string name="privacy_revoke_delete">Désactiver et supprimer les images</string>
     <string name="privacy_deletion_receipt_note">La réception déclenche la suppression ; elle ne confirme pas la suppression physique de toutes les copies.</string>
     <string name="privacy_digest">SHA-256 du document : %1$s</string>
-    <string name="privacy_finish_reading">Lecture terminée · revenir au choix</string>
+    <string name="privacy_finish_reading">Fermer sans accepter</string>
     <string name="privacy_rights_heading">Vos droits à la confidentialité</string>
     <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
     <string name="stations_list_summary">Résumé de la liste</string>

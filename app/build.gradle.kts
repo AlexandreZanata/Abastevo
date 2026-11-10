@@ -177,6 +177,11 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.foundation)
+    // In-app camera for live board framing; the system camera stays the fallback.
+    implementation(libs.camera.core)
+    implementation(libs.camera.camera2)
+    implementation(libs.camera.lifecycle)
+    implementation(libs.camera.view)
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)

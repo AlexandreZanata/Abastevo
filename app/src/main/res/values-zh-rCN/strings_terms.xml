@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terms_gate_title">开始之前</string>
+    <string name="terms_gate_intro">要使用 Abastevo,请阅读并接受《使用条款》和《隐私政策》。</string>
+    <string name="terms_gate_changed">自您上次接受以来,文件已更新。请重新阅读并接受后继续。</string>
+    <string name="terms_gate_point_purpose">Abastevo 是一个用于查询和分享燃油价格的社区平台。它不销售燃油,也与 ANP 无关联。</string>
+    <string name="terms_gate_point_community">您提交的价格、照片、评价和评论必须真实,并遵守社区规则和审核。</string>
+    <string name="terms_gate_point_privacy">《隐私政策》说明处理哪些数据、用途以及如何行使您的权利。</string>
+    <string name="terms_gate_read_terms">阅读《使用条款》</string>
+    <string name="terms_gate_read_privacy">阅读《隐私政策》</string>
+    <string name="terms_gate_versions">使用条款:版本 %1$s · 隐私政策:版本 %2$s</string>
+    <string name="terms_gate_check">我已阅读并接受《使用条款》,并声明已阅读《隐私政策》。</string>
+    <string name="terms_gate_optional_note">此接受并不授权将照片用于训练的可选用途。该选择是独立的,位于“隐私”中。</string>
+    <string name="terms_gate_accept">接受并继续</string>
+    <string name="terms_gate_decline">不接受 · 退出应用</string>
+    <string name="terms_gate_failed">无法在此设备上记录接受。请重试。</string>
+    <string name="terms_gate_open_failed">无法打开浏览器。请在浏览器中访问此地址:%1$s</string>
+    <string name="terms_record_heading">使用条款和隐私政策</string>
+    <string name="terms_record_accepted">已于 %1$s 在此设备上接受。</string>
+    <string name="terms_revoke">撤销接受</string>
+    <string name="terms_revoke_title">撤销接受?</string>
+    <string name="terms_revoke_body">应用将返回条款页面,只有重新接受后才能使用。您的账户和服务器上的数据不会被删除;如需删除,请使用账户删除。</string>
+    <string name="terms_revoke_confirm">撤销</string>
+    <string name="terms_revoke_failed">无法删除记录。请重试。</string>
+    <string name="privacy_accept_record">接受并记录偏好</string>
+    <string name="privacy_recorded_details">条款 %1$s · 服务器于 %2$s 记录了决定</string>
+    <string name="privacy_modal_hint">勾选下方复选框并点按接受即可记录。不接受而关闭不会记录任何内容。</string>
+</resources>

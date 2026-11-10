@@ -20,7 +20,10 @@
     <string name="quality_reports_new">Nuevo relato</string>
     <string name="quality_reports_own">Mis relatos privados</string>
     <string name="quality_reports_refresh">Actualizar mis relatos</string>
-    <string name="quality_reports_empty">No hay relatos en esta página.</string>
+    <string name="quality_reports_empty">Aún no has enviado relatos</string>
+    <string name="quality_reports_empty_how">Un relato siempre es sobre una estación y un combustible. Abre la página de la estación, toca \"Consultar análisis de calidad\" y luego \"Relatar experiencia o consultar mis relatos\".</string>
+    <string name="quality_reports_empty_here">Usa el formulario de arriba para enviar el primer relato de esta estación.</string>
+    <string name="quality_reports_choose_station">Elegir una estación</string>
     <string name="quality_reports_more">Página siguiente de relatos</string>
     <string name="quality_reports_confirm_title">Confirmar acción</string>
     <string name="quality_reports_confirm_withdraw">¿Retirar este relato? Se eliminará el texto.</string>

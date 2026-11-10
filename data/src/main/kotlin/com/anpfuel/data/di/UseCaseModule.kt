@@ -943,6 +943,16 @@ object UseCaseModule {
 
     @Provides
     @Singleton
+    fun provideTermsAcceptanceUseCase(
+        store: com.anpfuel.application.port.TermsAcceptanceStore,
+    ): com.anpfuel.application.usecase.legal.TermsAcceptanceUseCase =
+        com.anpfuel.application.usecase.legal.TermsAcceptanceUseCase(
+            store = store,
+            documents = com.anpfuel.domain.legal.PublishedLegalDocuments.CURRENT,
+        )
+
+    @Provides
+    @Singleton
     fun provideTrainingConsentUseCase(
         local: TrainingConsentLocalStore,
         gateway: TrainingConsentGateway,

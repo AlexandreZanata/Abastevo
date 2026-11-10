@@ -20,7 +20,10 @@
     <string name="quality_reports_new">Nouveau témoignage</string>
     <string name="quality_reports_own">Mes témoignages privés</string>
     <string name="quality_reports_refresh">Actualiser mes témoignages</string>
-    <string name="quality_reports_empty">Aucun témoignage sur cette page.</string>
+    <string name="quality_reports_empty">Vous n\'avez encore envoyé aucun témoignage</string>
+    <string name="quality_reports_empty_how">Un témoignage concerne toujours une station et un carburant. Ouvrez la page de la station, touchez \"Consulter les analyses de qualité\" puis \"Témoigner ou consulter mes témoignages\".</string>
+    <string name="quality_reports_empty_here">Utilisez le formulaire ci-dessus pour envoyer le premier témoignage sur cette station.</string>
+    <string name="quality_reports_choose_station">Choisir une station</string>
     <string name="quality_reports_more">Page suivante</string>
     <string name="quality_reports_confirm_title">Confirmer l’action</string>
     <string name="quality_reports_confirm_withdraw">Retirer ce témoignage ? Le texte sera supprimé.</string>

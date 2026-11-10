@@ -25,7 +25,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
  */
 @RunWith(AndroidJUnit4::class)
 class MapRouteInstrumentedTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val acceptedTerms = com.anpfuel.app.AcceptedTermsRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
     private fun string(id: Int): String = compose.activity.getString(id)
 

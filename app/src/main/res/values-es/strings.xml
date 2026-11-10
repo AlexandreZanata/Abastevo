@@ -892,6 +892,13 @@
     <string name="capture_crop">Recortar al encuadre</string>
     <string name="capture_photo_content">Foto de precios para revisar</string>
     <string name="capture_review_hint">Recorta para centrar los precios y completa solo los combustibles de la foto; los vacíos no se envían.</string>
+    <string name="capture_board_found">Tablero de precios localizado: la foto se centró en él. Ajusta el encuadre si hace falta.</string>
+    <string name="capture_live_point">Apunta la cámara al cartel de precios</string>
+    <string name="capture_live_found">Cartel encontrado: toma la foto</string>
+    <string name="capture_live_shutter">Tomar foto</string>
+    <string name="capture_live_close">Cerrar cámara</string>
+    <string name="capture_live_failed">No se pudo tomar la foto. Inténtalo de nuevo.</string>
+    <string name="capture_live_zoom_manual">%1$s · manual</string>
     <string name="capture_fuel_invalid">Revisa este valor (p. ej., 5,89)</string>
     <string name="capture_remove_fuel">Quitar combustible del informe</string>
     <string name="capture_show_all">Mostrar todos los combustibles</string>
@@ -1036,7 +1043,7 @@
     <string name="privacy_revoke_delete">Desactivar y eliminar imágenes</string>
     <string name="privacy_deletion_receipt_note">Recibir la solicitud inicia la eliminación; no confirma la eliminación física de todas las copias.</string>
     <string name="privacy_digest">SHA-256 del documento: %1$s</string>
-    <string name="privacy_finish_reading">He terminado de leer · volver a la elección</string>
+    <string name="privacy_finish_reading">Cerrar sin aceptar</string>
     <string name="privacy_rights_heading">Sus derechos de privacidad</string>
     <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
     <string name="stations_list_summary">Resumen de la lista</string>

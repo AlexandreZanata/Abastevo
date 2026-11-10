@@ -525,6 +525,30 @@ class CaptureOcrViewModelTest {
         assertFalse(saved.keys().any { it.contains("latitude") || it.contains("longitude") })
     }
 
+    @Test fun `a photo arriving after the receipt camera window closed is refused whatever camera took it`() = runTest(dispatcher) {
+        val gate = mockk<PhotoCaptureGate>()
+        var cameraExpiresAt = 0L
+        io.mockk.coEvery { gate.authorizeCommunity(any(), any()) } coAnswers {
+            val now = System.currentTimeMillis()
+            cameraExpiresAt = now + 800
+            PhotoCapturePermission("589a13ba-1f78-41dc-a4ab-d63a511c73da", stationId, now - 1000, cameraExpiresAt,
+                now + 86399000, "synthetic-owner", "https://example.invalid")
+        }
+        every { gate.isCurrent(any()) } returns true
+        val vm = viewModel(true, true, gate = gate)
+        vm.bindTarget(stationId, "ETHANOL")
+        var began = false
+        vm.authorizeCamera { began = vm.beginCamera() }
+        advanceUntilIdle()
+        assertTrue(began)
+        // The in-app camera stays open past the window: the shot must not be admitted.
+        Thread.sleep((cameraExpiresAt - System.currentTimeMillis() + 50).coerceAtLeast(0))
+        assertFalse(vm.acceptCameraPhoto(byteArrayOf(1, 2, 3), "image/jpeg", "content://com.anpfuel.app.fileprovider/capture/price_1.jpg"))
+        assertEquals("photo.permission-expired", vm.gateFailure.value)
+        assertNull(vm.reviewUri.value)
+        assertFalse(vm.beginCamera())
+    }
+
     @Test fun `pixel OCR edits removals crop conditions and draft survive recovery`() = runTest(dispatcher) {
         val saved = SavedStateHandle()
         var calls = 0
@@ -552,6 +576,37 @@ class CaptureOcrViewModelTest {
         assertEquals(vm.fuelAmounts.value, recovered.fuelAmounts.value)
         assertEquals(vm.removedFuels.value, recovered.removedFuels.value)
         assertEquals(vm.originalCapturedAtMillis, recovered.originalCapturedAtMillis)
+    }
+
+    @Test fun `board frame follows the uncropped capture and a crop or a failed reading never moves it`() = runTest(dispatcher) {
+        val first = ImagePriceOcr.BoardFrame(0.2f, 0.3f, 0.6f, 0.7f)
+        val second = ImagePriceOcr.BoardFrame(0.1f, 0.1f, 0.5f, 0.5f)
+        var calls = 0
+        val pixels = object : ImagePriceOcr {
+            override suspend fun recognize(bytes: ByteArray) = FuelBoardOcr.Result(emptyList(), false, false)
+            override suspend fun recognizeFramed(bytes: ByteArray): ImagePriceOcr.Recognition {
+                calls++
+                if (calls == 4) error("ocr.unavailable")
+                return ImagePriceOcr.Recognition(recognize(bytes), when (calls) { 1 -> first; 2 -> ImagePriceOcr.BoardFrame(0f, 0f, 1f, 1f); else -> second })
+            }
+        }
+        val saved = SavedStateHandle()
+        val vm = viewModel(true, true, pixels = pixels, saved = saved)
+        assertNull(vm.boardFrame.value)
+        vm.preparePhoto(byteArrayOf(1), "image/jpeg")
+        vm.processing.first { !it }
+        assertEquals(first, vm.boardFrame.value)
+        vm.replacePhoto(byteArrayOf(2), "image/jpeg")
+        vm.processing.first { !it }
+        assertEquals(first, vm.boardFrame.value, "a crop is framed relative to itself, not to the shown photo")
+        vm.reanalyzeOriginal(byteArrayOf(1), "image/jpeg")
+        vm.processing.first { !it }
+        assertEquals(second, vm.boardFrame.value)
+        vm.reanalyzeOriginal(byteArrayOf(1), "image/jpeg")
+        vm.processing.first { !it }
+        assertEquals(second, vm.boardFrame.value)
+        assertEquals("ocr.unavailable", vm.photoRefused.value)
+        assertFalse(saved.keys().any { it.contains("frame", ignoreCase = true) }, "geometry is never persisted")
     }
 
     @Test fun `cancelled late OCR cannot restore rows or enqueue`() = runTest(dispatcher) {

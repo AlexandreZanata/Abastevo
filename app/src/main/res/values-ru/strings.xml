@@ -892,6 +892,13 @@
     <string name="capture_crop">Обрезать по рамке</string>
     <string name="capture_photo_content">Фото цен для проверки</string>
     <string name="capture_review_hint">Обрежьте до области цен и укажите только топливо с фото — пустые поля не отправляются.</string>
+    <string name="capture_board_found">Табло цен найдено: фото выровнено по нему. При необходимости поправьте кадр.</string>
+    <string name="capture_live_point">Наведите камеру на табло с ценами</string>
+    <string name="capture_live_found">Табло найдено: сделайте фото</string>
+    <string name="capture_live_shutter">Сделать фото</string>
+    <string name="capture_live_close">Закрыть камеру</string>
+    <string name="capture_live_failed">Не удалось сделать фото. Попробуйте ещё раз.</string>
+    <string name="capture_live_zoom_manual">%1$s · вручную</string>
     <string name="capture_fuel_invalid">Проверьте значение (например, 5,89)</string>
     <string name="capture_remove_fuel">Удалить топливо из сообщения</string>
     <string name="capture_show_all">Показать все виды топлива</string>
@@ -1036,7 +1043,7 @@
     <string name="privacy_revoke_delete">Отключить и удалить изображения</string>
     <string name="privacy_deletion_receipt_note">Получение запускает удаление; оно не подтверждает физическое удаление всех копий.</string>
     <string name="privacy_digest">SHA-256 документа: %1$s</string>
-    <string name="privacy_finish_reading">Чтение завершено · вернуться к выбору</string>
+    <string name="privacy_finish_reading">Закрыть без принятия</string>
     <string name="privacy_rights_heading">Ваши права на конфиденциальность</string>
     <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
     <string name="stations_list_summary">Сводка списка</string>

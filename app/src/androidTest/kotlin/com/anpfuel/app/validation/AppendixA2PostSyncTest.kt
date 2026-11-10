@@ -36,7 +36,8 @@ import org.junit.runner.RunWith
 @LargeTest
 class AppendixA2PostSyncTest {
 
-  @get:Rule
+  @get:Rule(order = 0) val acceptedTerms = com.anpfuel.app.AcceptedTermsRule()
+  @get:Rule(order = 1)
   val composeRule = createAndroidComposeRule<MainActivity>()
 
   private lateinit var context: Context

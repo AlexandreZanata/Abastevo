@@ -120,4 +120,57 @@ class QualityReportsViewModelTest {
         coVerify(exactly=0){gateway.execute(any(),any())}
     }
 
+    @Test fun `account history withdraws a listed report at its revision and keeps its station`()=runTest(dispatcher) {
+        coEvery {gateway.list("synthetic-owner",null)} returns QualityReportPage(listOf(report()),null)
+        val commands=mutableListOf<QualityReportCommand>()
+        coEvery {gateway.execute("synthetic-owner",capture(commands))} coAnswers {QualityReportReceipt(revision,2,"WITHDRAWN")}
+        val history=QualityReportsViewModel(SavedStateHandle(mapOf("stationId" to "own")),gateway)
+        history.resume();advanceUntilIdle()
+        history.select(report());history.request("WITHDRAW")
+        assertEquals("WITHDRAW",history.state.value.confirmation?.action)
+        coVerify(exactly=0){gateway.execute(any(),any())}
+        history.confirm();advanceUntilIdle()
+        assertEquals(1,commands.size)
+        assertEquals(revision,commands.single().reportId);assertEquals(1,commands.single().expectedRevision)
+        assertNotNull(history.state.value.receipt);assertNull(history.state.value.selected)
+    }
+
+    @Test fun `account history refuses a report that the signed owner list did not return`()=runTest(dispatcher) {
+        val history=QualityReportsViewModel(SavedStateHandle(mapOf("stationId" to "own")),gateway)
+        history.resume();advanceUntilIdle()
+        history.select(report());history.request("WITHDRAW");history.confirm();advanceUntilIdle()
+        assertNull(history.state.value.selected);assertNull(history.state.value.confirmation)
+        coVerify(exactly=0){gateway.execute(any(),any())}
+    }
+
+    @Test fun `guest account history shows sign in and reads nothing`()=runTest(dispatcher) {
+        current=null
+        val history=QualityReportsViewModel(SavedStateHandle(mapOf("stationId" to "own")),gateway)
+        history.resume();advanceUntilIdle()
+        assertTrue(history.state.value.visible);assertNull(history.state.value.owner)
+        assertEquals(QualityReportFailure.AUTH_REQUIRED,history.state.value.error)
+        assertTrue(history.state.value.reports.isEmpty())
+        coVerify(exactly=0){gateway.list(any(),any())}
+    }
+
+    @Test fun `refused owner read clears the history instead of showing stale reports`()=runTest(dispatcher) {
+        coEvery {gateway.list("synthetic-owner",null)} returns QualityReportPage(listOf(report()),null) andThenThrows QualityReportException(QualityReportFailure.AUTH_REQUIRED)
+        val history=QualityReportsViewModel(SavedStateHandle(mapOf("stationId" to "own")),gateway)
+        history.resume();advanceUntilIdle()
+        assertEquals(1,history.state.value.reports.size)
+        history.resume();advanceUntilIdle()
+        assertTrue(history.state.value.reports.isEmpty());assertNull(history.state.value.owner)
+        assertEquals(QualityReportFailure.AUTH_REQUIRED,history.state.value.error)
+    }
+
+    @Test fun `report day is shown in the device locale and an invalid day is shown as received`() {
+        val previous=java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.forLanguageTag("pt-BR"))
+            assertEquals("10 de nov. de 2026",displayDate("2026-11-10"))
+            assertEquals("not-a-day",displayDate("not-a-day"))
+            assertEquals("",displayDate(""))
+        } finally {java.util.Locale.setDefault(previous)}
+    }
+
 }

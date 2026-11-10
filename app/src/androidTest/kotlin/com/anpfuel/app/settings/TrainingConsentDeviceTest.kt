@@ -63,6 +63,30 @@ class TrainingConsentDeviceTest {
         compose.onNodeWithText(text(R.string.privacy_confirm_preference)).assertIsNotEnabled()
     }
 
+    @Test fun tickAndAcceptInsideTheTermsModalGrantsOnceAndClosingGrantsNothing() {
+        val host=mutableStateOf(ConsentHostState(true,caller,document))
+        var grants=0
+        compose.setContent {AnpFuelTheme(dynamicColor=false) {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                TrainingConsentContent(host.value,TrainingConsentUiState.Content(false,null,null,null,0,false,false),
+                    {enabled,version,digest -> if(enabled) {grants++;assertEquals(document.version,version);assertEquals(document.digest,digest)} },{}, {})
+            }
+        }}
+        // The card box is never a dead control: before the document was displayed it opens the modal.
+        compose.onNodeWithText(text(R.string.privacy_consent_check)).performScrollTo().performClick()
+        compose.onNodeWithText(document.text).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.privacy_accept_record)).assertIsNotEnabled()
+        compose.onNodeWithText(text(R.string.privacy_finish_reading)).performClick()
+        assertEquals(0,grants)
+        compose.onNodeWithText(text(R.string.privacy_read_terms)).performScrollTo().performClick()
+        compose.onNodeWithText(text(R.string.privacy_accept_record)).assertIsNotEnabled()
+        compose.onAllNodesWithText(text(R.string.privacy_consent_check)).onLast().performClick()
+        assertEquals(0,grants)
+        compose.onNodeWithText(text(R.string.privacy_accept_record)).assertIsEnabled().performClick()
+        compose.runOnIdle {assertEquals(1,grants)}
+        compose.onNodeWithText(document.text).assertDoesNotExist()
+    }
+
     @Test fun offlineRevocationAndRightsNeedNeitherTermsNorAcceptance() {
         var revoked=false
         compose.setContent {AnpFuelTheme(dynamicColor=false) {
