@@ -78,6 +78,18 @@
       "sha256": "7026b3dbc42c725815ec8cb44262490e3dc46788ee5d4bc6718fb1383ebfda5f",
       "accent": "#E0A100",
       "nativeDimensions": "1448x1086"
+    },
+    {
+      "name": "not-found",
+      "generator": "built-in image_gen",
+      "generatedDate": "2026-11-10",
+      "nativeDimensions": "1536x1024",
+      "sha256": "c021f6b192119d6ad8ec0761ecb6e8961d549ca49f68fa1024bc1698cba1746c",
+      "references": [
+        "hero-background",
+        "car"
+      ],
+      "prompt": "Use case: illustration-story. Create a new wide 3:2 editorial illustration for the Abastevo landing page's 404 recovery tile. Reference image 1 (hero.png): match the crisp flat illustrated landscape, simplified Brazilian city skyline, greens, warm yellow sunlight and rounded shapes. Reference image 2 (car.png): match the compact teal hatchback and clean shaded vector-like finish. Scene: a teal hatchback at a gently curving road junction in a lush green landscape, with a small simple blank detour arrow sign pointing toward the route to a distant city. View from a slightly elevated three-quarter angle, with the car and junction both unmistakable at thumbnail size. Keep the composition airy, full bleed, with a pale blue sky, muted teal, mint and forest green vegetation, dark charcoal asphalt and a small yellow accent. Contemporary friendly flat 2D digital illustration with restrained shading, clean edges and no grain. Keep all important elements inside the central 80 percent so a mild landscape crop is safe. Decorative tile only: no UI, words, numerals, lettering, logos or watermark."
     }
   ],
   "outputs": [
@@ -234,6 +246,20 @@
       "bytes": 30160,
       "width": 640,
       "role": "open-data"
+    },
+    {
+      "file": "not-found-480w.d0671397.webp",
+      "sha256": "d0671397c3e07defce6e3d7bb94f66947bf59df140206adbe4096dd6f00860b3",
+      "bytes": 17108,
+      "width": 480,
+      "role": "not-found"
+    },
+    {
+      "file": "not-found-1120w.769ffe36.webp",
+      "sha256": "769ffe36795440a9404cccd1d5545347ae9098208df6721afac014e826a0d8cb",
+      "bytes": 48458,
+      "width": 1120,
+      "role": "not-found"
     }
   ],
   "export4k": {

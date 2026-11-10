@@ -30,15 +30,30 @@ test('headers: _headers contains essential security and caching policies', () =>
   }
 });
 
-test('404: noindex plain-HTML fallback with recovery links and no scripts', () => {
+test('404: noindex plain-HTML fallback with the home header, footer and recovery links', () => {
   const tmpOut = path.join(root, '.test-dist-404-' + Date.now());
   try {
     build({ projectRoot: root, outDir: tmpOut });
     const notFound = fs.readFileSync(path.join(tmpOut, '404.html'), 'utf8');
+    const home = fs.readFileSync(path.join(tmpOut, 'index.html'), 'utf8');
     assert.match(notFound, /<meta name="robots" content="noindex, nofollow">/);
     assert.doesNotMatch(notFound, /<script/);
-    assert.ok(notFound.includes('href="/"'), '404 recovers to home');
-    assert.ok(notFound.includes('href="/como-usar/"'), '404 recovers to tutorial hub');
+    assert.doesNotMatch(notFound, /\sstyle=/);
+    assert.match(notFound, /<body class="landing-home">/);
+    for (const part of [/<header\b[\s\S]*?<\/header>/, /<footer\b[\s\S]*?<\/footer>/]) {
+      assert.equal(notFound.match(part)?.[0], home.match(part)[0].replaceAll('href="#', 'href="/#'));
+    }
+    const main = notFound.match(/<main\b[\s\S]*?<\/main>/)[0];
+    assert.match(main, /<h1[^>]*>Página não encontrada<\/h1>/);
+    assert.ok(main.includes('href="/"'), '404 recovers to home');
+    assert.ok(main.includes('href="/como-usar/"'), '404 recovers to tutorial hub');
+    const artManifest = JSON.parse(fs.readFileSync(path.join(tmpOut, 'assets/art/provenance.json'), 'utf8'));
+    const artwork = artManifest.outputs.filter((asset) => asset.role === 'not-found');
+    assert.deepEqual(artwork.map((asset) => asset.width), [480, 1120]);
+    for (const { file } of artwork) {
+      assert.ok(main.includes(`/assets/art/${file}`), `404 references ${file}`);
+      assert.ok(fs.existsSync(path.join(tmpOut, 'assets/art', file)), `build ships ${file}`);
+    }
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }

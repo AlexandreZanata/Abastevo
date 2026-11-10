@@ -295,7 +295,7 @@ export function build(options = {}) {
       { srcRel: '404.html', destRel: '404.html' },
     ];
 
-    // The home owns the navigation and footer for learning and legal routes.
+    // The home owns the navigation and footer for learning, legal and error pages.
     // Qualify home-section links for nested URLs.
     const homeHtml = fs.readFileSync(path.join(staticDir, 'index.html'), 'utf8');
     const sharedChrome = (tag) => {
@@ -305,7 +305,7 @@ export function build(options = {}) {
     };
     const sharedHeader = sharedChrome('header');
     const sharedFooter = sharedChrome('footer');
-    const legalRoutes = new Set(['privacidade/index.html', 'excluir-conta/index.html', 'termos/index.html']);
+    const siteRoutes = new Set(['privacidade/index.html', 'excluir-conta/index.html', 'termos/index.html', '404.html']);
     const isPreview = process.env.PREVIEW === '1';
 
     for (const { srcRel, destRel } of htmlFiles) {
@@ -314,8 +314,8 @@ export function build(options = {}) {
         throw new Error(`Required HTML file missing: ${srcRel}`);
       }
       let html = fs.readFileSync(srcPath, 'utf8');
-      if (legalRoutes.has(srcRel) || srcRel.startsWith('guias/') || srcRel.startsWith('como-usar/')) {
-        const prefix = legalRoutes.has(srcRel) ? 'SITE' : 'LEARNING';
+      if (siteRoutes.has(srcRel) || srcRel.startsWith('guias/') || srcRel.startsWith('como-usar/')) {
+        const prefix = siteRoutes.has(srcRel) ? 'SITE' : 'LEARNING';
         for (const [part, markup] of [['HEADER', sharedHeader], ['FOOTER', sharedFooter]]) {
           const marker = `<!-- ${prefix}_${part} -->`;
           if (!html.includes(marker)) throw new Error(`${srcRel}: missing ${marker}`);

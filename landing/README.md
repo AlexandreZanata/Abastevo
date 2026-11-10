@@ -106,6 +106,12 @@ The generated `dist/` directory contains plain static files ready to deploy to a
   - Real 404 response for unmatched paths.
 - **GitHub Pages:** Can serve the files, but custom response headers are not configurable. In-document metadata provides defense-in-depth if GitHub Pages is chosen.
 
+The 404 follows B-BR-L04 (essential content is static) and BUC-L02 (the
+repository link works without JavaScript). The build uses the home page as
+the source of its header and footer, with section links pointing back to the
+home page. An unknown URL returns HTTP 404 with `noindex` and offers direct
+links to the home page and the tutorial hub.
+
 ## Rollback Procedure
 
 All static deployments are immutable artifacts:
