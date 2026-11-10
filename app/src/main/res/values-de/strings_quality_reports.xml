@@ -20,7 +20,10 @@
     <string name="quality_reports_new">Neue Meldung</string>
     <string name="quality_reports_own">Meine privaten Meldungen</string>
     <string name="quality_reports_refresh">Eigene Meldungen aktualisieren</string>
-    <string name="quality_reports_empty">Keine Meldungen auf dieser Seite.</string>
+    <string name="quality_reports_empty">Sie haben noch keine Meldungen gesendet</string>
+    <string name="quality_reports_empty_how">Eine Meldung bezieht sich immer auf eine Tankstelle und einen Kraftstoff. Öffnen Sie die Seite der Tankstelle, tippen Sie auf \"Qualitätsanalysen ansehen\" und dann auf \"Erfahrung melden oder eigene Meldungen ansehen\".</string>
+    <string name="quality_reports_empty_here">Nutzen Sie das Formular oben, um die erste Meldung zu dieser Tankstelle zu senden.</string>
+    <string name="quality_reports_choose_station">Tankstelle auswählen</string>
     <string name="quality_reports_more">Nächste Meldungsseite</string>
     <string name="quality_reports_confirm_title">Aktion bestätigen</string>
     <string name="quality_reports_confirm_withdraw">Diese Meldung zurückziehen? Der Text wird entfernt.</string>

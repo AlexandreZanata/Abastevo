@@ -20,7 +20,10 @@
     <string name="quality_reports_new">Новое сообщение</string>
     <string name="quality_reports_own">Мои личные сообщения</string>
     <string name="quality_reports_refresh">Обновить мои сообщения</string>
-    <string name="quality_reports_empty">На этой странице нет сообщений.</string>
+    <string name="quality_reports_empty">Вы ещё не отправляли сообщений</string>
+    <string name="quality_reports_empty_how">Сообщение всегда относится к одной АЗС и одному виду топлива. Откройте страницу АЗС, нажмите \"Посмотреть анализы качества\", затем \"Сообщить об опыте или посмотреть свои сообщения\".</string>
+    <string name="quality_reports_empty_here">Используйте форму выше, чтобы отправить первое сообщение об этой АЗС.</string>
+    <string name="quality_reports_choose_station">Выбрать АЗС</string>
     <string name="quality_reports_more">Следующая страница сообщений</string>
     <string name="quality_reports_confirm_title">Подтвердить действие</string>
     <string name="quality_reports_confirm_withdraw">Отозвать это сообщение? Текст будет удалён.</string>

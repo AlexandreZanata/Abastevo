@@ -20,7 +20,10 @@
     <string name="quality_reports_new">新反馈</string>
     <string name="quality_reports_own">我的私人反馈</string>
     <string name="quality_reports_refresh">刷新我的反馈</string>
-    <string name="quality_reports_empty">此页没有反馈。</string>
+    <string name="quality_reports_empty">您还没有提交过反馈</string>
+    <string name="quality_reports_empty_how">每条反馈都针对一个加油站和一种燃料。打开加油站页面,点击“查看质量检测”,然后点击“反馈体验或查看我的反馈”。</string>
+    <string name="quality_reports_empty_here">使用上方表单提交该加油站的第一条反馈。</string>
+    <string name="quality_reports_choose_station">选择加油站</string>
     <string name="quality_reports_more">下一页反馈</string>
     <string name="quality_reports_confirm_title">确认操作</string>
     <string name="quality_reports_confirm_withdraw">撤回此反馈？正文将被删除。</string>

@@ -20,7 +20,10 @@
     <string name="quality_reports_new">Novo relato</string>
     <string name="quality_reports_own">Meus relatos privados</string>
     <string name="quality_reports_refresh">Atualizar meus relatos</string>
-    <string name="quality_reports_empty">Não há relatos nesta página.</string>
+    <string name="quality_reports_empty">Você ainda não enviou relatos</string>
+    <string name="quality_reports_empty_how">Um relato é sempre sobre um posto e um combustível. Abra a página do posto, toque em \"Consultar análises de qualidade\" e depois em \"Relatar experiência ou consultar meus relatos\".</string>
+    <string name="quality_reports_empty_here">Use o formulário acima para enviar o primeiro relato deste posto.</string>
+    <string name="quality_reports_choose_station">Escolher um posto</string>
     <string name="quality_reports_more">Próxima página de relatos</string>
     <string name="quality_reports_confirm_title">Confirmar ação</string>
     <string name="quality_reports_confirm_withdraw">Retirar este relato? O texto será removido.</string>

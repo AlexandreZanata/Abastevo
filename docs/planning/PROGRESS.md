@@ -1,4 +1,27 @@
 # Current execution state
+- Private quality reports from Perfil, 2026-11-10: LOCAL_DONE /
+  INTEGRATION_PENDING on branch `android-prod-readiness` from dev `a97ba3b3`
+  (BUC-FQ-05 Android refinement in
+  [FUEL_QUALITY_TARGET_CONTRACT](../product/FUEL_QUALITY_TARGET_CONTRACT.md)).
+  Finding on the phone before the change: the signed owner list answered
+  (no auth error) and was empty; the Perfil entry is history-only, so the
+  owner saw a bare "no reports" text on an unstyled screen with no path to
+  create one. The screen now uses the design-system containers, a status
+  pill, locale dates and fuel/symptom labels; an empty history explains that a
+  report belongs to a station and opens the station list; list refresh is an
+  icon action. ViewModel, gateway, signing and the secure window are
+  unchanged. Verified: `QualityReportsViewModelTest` (14, including history
+  withdraw at the listed revision, unlisted report refused, guest history
+  reads nothing, refused owner read clears stale reports), `:app:assembleDebug`,
+  and on the POCO against staging with the owner's free account: Perfil →
+  empty history → station list → station → quality → report form → submit →
+  listed as awaiting review → back in the Perfil history → select → withdraw
+  → listed as withdrawn without text. Not verified: instrumented
+  `QualityReportsUiDeviceTest` (compiles only), edit and appeal on the phone,
+  pagination beyond one page, non-Portuguese strings were not reviewed by a
+  speaker. The withdrawn test report remains in the owner's history as a
+  tombstone.
+
 - Android monochrome design system, 2026-11-10: LOCAL_DONE /
   INTEGRATION_PENDING on dev (PR #198 to main), from dev `e29b01e7`; the
   owner approved the look on the phone. It supersedes the navy and blue
