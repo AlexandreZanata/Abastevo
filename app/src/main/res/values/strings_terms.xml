@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terms_gate_title">Before you start</string>
+    <string name="terms_gate_intro">To use Abastevo, read and accept the Terms of Use and the Privacy Policy.</string>
+    <string name="terms_gate_changed">The documents changed since your last acceptance. Read and accept them again to continue.</string>
+    <string name="terms_gate_point_purpose">Abastevo is a community platform to look up and share fuel prices. It does not sell fuel and is not affiliated with ANP.</string>
+    <string name="terms_gate_point_community">Prices, photos, ratings and comments you send must be real and follow the community rules and moderation.</string>
+    <string name="terms_gate_point_privacy">The Privacy Policy explains which data is processed, why, and how to exercise your rights.</string>
+    <string name="terms_gate_read_terms">Read the Terms of Use</string>
+    <string name="terms_gate_read_privacy">Read the Privacy Policy</string>
+    <string name="terms_gate_versions">Terms of Use: version %1$s · Privacy Policy: version %2$s</string>
+    <string name="terms_gate_check">I have read and accept the Terms of Use and declare that I have read the Privacy Policy.</string>
+    <string name="terms_gate_optional_note">This acceptance does not authorize the optional use of photos for training. That choice is separate and lives in Privacy.</string>
+    <string name="terms_gate_accept">Accept and continue</string>
+    <string name="terms_gate_decline">I do not accept · leave the app</string>
+    <string name="terms_gate_failed">The acceptance could not be recorded on this device. Try again.</string>
+    <string name="terms_gate_open_failed">The browser could not be opened. Open this address in your browser: %1$s</string>
+    <string name="terms_record_heading">Terms of Use and Privacy Policy</string>
+    <string name="terms_record_accepted">Accepted on this device on %1$s.</string>
+    <string name="terms_revoke">Revoke acceptance</string>
+    <string name="terms_revoke_title">Revoke the acceptance?</string>
+    <string name="terms_revoke_body">The app returns to the terms screen and can only be used after a new acceptance. Your account and server data are not deleted; use account deletion for that.</string>
+    <string name="terms_revoke_confirm">Revoke</string>
+    <string name="terms_revoke_failed">The record could not be removed. Try again.</string>
+    <string name="privacy_accept_record">Accept and record preference</string>
+    <string name="privacy_recorded_details">Terms %1$s · decision recorded by the server on %2$s</string>
+    <string name="privacy_modal_hint">Tick the box below and tap accept to record. Closing without accepting records nothing.</string>
+</resources>

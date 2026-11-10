@@ -40,7 +40,9 @@ class TrainingConsentHttpClient(private val proof: PhotoProofTransport) : Traini
         val digest = string(body,"terms_digest")
         if (revision < 0 || (state != null && state !in setOf("GRANTED", "REVOKED")) ||
             (granted && (state != "GRANTED" || revision < 1 || version == null || digest == null))) invalid()
-        TrainingConsentStatus(granted, state, version, digest, revision, boolean(body,"needs_regrant"))
+        val decidedAt = string(body,"decided_at")
+        if (decidedAt != null && runCatching { java.time.OffsetDateTime.parse(decidedAt) }.isFailure) invalid()
+        TrainingConsentStatus(granted, state, version, digest, revision, boolean(body,"needs_regrant"), decidedAt)
     }
 
     private fun receipt(body: JSONObject, expected: String, revision: Long): TrainingConsentReceipt {

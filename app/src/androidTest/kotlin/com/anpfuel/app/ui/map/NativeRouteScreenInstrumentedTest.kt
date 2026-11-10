@@ -13,7 +13,8 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class NativeRouteScreenInstrumentedTest {
-    @get:Rule val compose=createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val acceptedTerms = com.anpfuel.app.AcceptedTermsRule()
+    @get:Rule(order = 1) val compose=createAndroidComposeRule<MainActivity>()
     private fun text(id:Int)=compose.activity.getString(id)
     @Test fun actualMapTabPlansOfflineWithoutLocationAndDisplaysNativePreview() {
         com.anpfuel.maps.engine.SharedPreferencesMapCameraStore(compose.activity).save(com.anpfuel.maps.engine.MapCamera(-25.43,-49.27,13))

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terms_gate_title">Прежде чем начать</string>
+    <string name="terms_gate_intro">Чтобы пользоваться Abastevo, прочитайте и примите Условия использования и Политику конфиденциальности.</string>
+    <string name="terms_gate_changed">Документы обновились с момента вашего последнего согласия. Прочитайте и примите их снова, чтобы продолжить.</string>
+    <string name="terms_gate_point_purpose">Abastevo — общественная платформа для просмотра и публикации цен на топливо. Она не продаёт топливо и не связана с ANP.</string>
+    <string name="terms_gate_point_community">Цены, фото, оценки и комментарии, которые вы отправляете, должны быть настоящими и подчиняются правилам сообщества и модерации.</string>
+    <string name="terms_gate_point_privacy">Политика конфиденциальности объясняет, какие данные обрабатываются, зачем и как воспользоваться своими правами.</string>
+    <string name="terms_gate_read_terms">Читать Условия использования</string>
+    <string name="terms_gate_read_privacy">Читать Политику конфиденциальности</string>
+    <string name="terms_gate_versions">Условия использования: версия %1$s · Политика конфиденциальности: версия %2$s</string>
+    <string name="terms_gate_check">Я прочитал(а) и принимаю Условия использования и подтверждаю, что прочитал(а) Политику конфиденциальности.</string>
+    <string name="terms_gate_optional_note">Это согласие не разрешает необязательное использование фото для обучения. Этот выбор делается отдельно в разделе «Конфиденциальность».</string>
+    <string name="terms_gate_accept">Принять и продолжить</string>
+    <string name="terms_gate_decline">Не принимаю · выйти из приложения</string>
+    <string name="terms_gate_failed">Не удалось сохранить согласие на этом устройстве. Повторите попытку.</string>
+    <string name="terms_gate_open_failed">Не удалось открыть браузер. Откройте этот адрес в браузере: %1$s</string>
+    <string name="terms_record_heading">Условия использования и Политика конфиденциальности</string>
+    <string name="terms_record_accepted">Приняты на этом устройстве %1$s.</string>
+    <string name="terms_revoke">Отозвать согласие</string>
+    <string name="terms_revoke_title">Отозвать согласие?</string>
+    <string name="terms_revoke_body">Приложение вернётся к экрану условий, и им можно будет пользоваться только после нового согласия. Аккаунт и данные на сервере не удаляются; для этого используйте удаление аккаунта.</string>
+    <string name="terms_revoke_confirm">Отозвать</string>
+    <string name="terms_revoke_failed">Не удалось удалить запись. Повторите попытку.</string>
+    <string name="privacy_accept_record">Принять и сохранить выбор</string>
+    <string name="privacy_recorded_details">Условия %1$s · решение записано сервером %2$s</string>
+    <string name="privacy_modal_hint">Отметьте поле ниже и нажмите «Принять», чтобы сохранить. Закрытие без принятия ничего не сохраняет.</string>
+</resources>

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.settings.TrainingConsentRightsCard
 import com.anpfuel.app.settings.TrainingConsentSettings
+import com.anpfuel.app.ui.terms.TermsAcceptanceCard
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
@@ -88,6 +89,8 @@ fun PrivacyScreen(
             }
 
             PrivacyDocumentLinksCard(onOpen = uriHandler::openUri)
+
+            TermsAcceptanceCard(onOpen = uriHandler::openUri)
 
             TrainingConsentRightsCard()
 

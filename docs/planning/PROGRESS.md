@@ -1,4 +1,39 @@
 # Current execution state
+- Android first-use terms gate and real consent confirmation, 2026-11-10:
+  LOCAL_DONE / INTEGRATION_PENDING on branch `android-prod-readiness`
+  ([ANDROID_TERMS_ACCEPTANCE](../security/ANDROID_TERMS_ACCEPTANCE.md),
+  B-BR-TA01..TA06, BUC-TA01..TA03, B-BR-CS06 refinement). Finding on the
+  phone before the change: the training-consent box was disabled until the
+  terms dialog was opened and closed with "finished reading", so it could not
+  be ticked and no grant had ever left the device; no screen recorded
+  acceptance of the Terms of Use or the Privacy Policy. Now: (1) the app
+  composes nothing before the current Terms of Use (`2026-10`) and Privacy
+  Policy (`1.0`) are accepted with a tick; the record holds the two versions
+  and the instant, on the device only; a version change, a corrupt or a
+  future-dated record returns to the gate; Privacy shows the record and
+  revokes it behind a confirmation. (2) The training-consent modal carries
+  the complete terms, the unticked box and "accept and record"; the card box
+  opens the modal instead of being a dead control; the card shows the
+  server's terms version and decision time. Backend unchanged. Verified:
+  unit suites `:domain` 911, `:application` 532, `:data` 731 (4 skipped),
+  `:app` 733, `:app:assembleDebug`, instrumented sources compile; on the POCO
+  against staging with the owner's free account: gate on first open, accept
+  disabled without a tick, decline leaves the app with no record, tick and
+  accept stores `terms_version`/`privacy_version`/`accepted_at` and opens the
+  app, restart skips the gate, Privacy shows the record, cancelled revocation
+  keeps it, confirmed revocation returns to the gate; consent: card box opens
+  the modal, tick and accept inside the modal produced a server GRANTED state
+  shown with version and decision time, then "disable and delete" produced the
+  server revocation (local journal at revision floor 2, nothing pending). Not
+  verified: instrumented tests were not run (`TermsGateDeviceTest`, the new
+  modal case in `TrainingConsentDeviceTest`, and the nine MainActivity
+  journeys that now seed the record through `AcceptedTermsRule`); the granted
+  state was not re-read after an app restart; non-Portuguese strings were not
+  reviewed by a speaker. Limits: the first-use record is device-local with no
+  server proof; the gate is a UI gate and does not hold back background work
+  scheduled at process start; the public Privacy Policy does not yet mention
+  this local record; document links still point at the staging host.
+
 - Private quality reports from Perfil, 2026-11-10: LOCAL_DONE /
   INTEGRATION_PENDING on branch `android-prod-readiness` from dev `a97ba3b3`
   (BUC-FQ-05 Android refinement in

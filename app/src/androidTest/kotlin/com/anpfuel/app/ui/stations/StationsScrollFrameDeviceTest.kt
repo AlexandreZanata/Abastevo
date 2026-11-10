@@ -25,6 +25,7 @@ import org.junit.runner.RunWith
 /** Actual touch/Choreographer timing, separated from Compose's virtual test clock. */
 @RunWith(AndroidJUnit4::class)
 class StationsScrollFrameDeviceTest {
+    @get:org.junit.Rule val acceptedTerms = com.anpfuel.app.AcceptedTermsRule()
     @Test fun actualTouchScrollRecordsDebugFramesWithoutChangingUserData() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val rows = (0 until 5_000).map { ServerStation.create(

@@ -1055,7 +1055,7 @@
     <string name="privacy_revoke_delete">Disable and delete images</string>
     <string name="privacy_deletion_receipt_note">A received request starts deletion; it does not confirm physical deletion of all copies.</string>
     <string name="privacy_digest">Document SHA-256: %1$s</string>
-    <string name="privacy_finish_reading">I have finished reading · return to the choice</string>
+    <string name="privacy_finish_reading">Close without accepting</string>
     <string name="privacy_rights_heading">Your privacy rights</string>
     <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
     <string name="stations_list_summary">List summary</string>

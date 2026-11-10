@@ -37,6 +37,8 @@ data class TrainingConsentStatus(
     val termsDigest: String?,
     val revision: Long,
     val needsRegrant: Boolean,
+    /** Server decision instant (RFC 3339) of the current state, when the server reports it. */
+    val decidedAt: String? = null,
 )
 
 class TrainingConsentException(
