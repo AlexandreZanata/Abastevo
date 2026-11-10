@@ -893,6 +893,12 @@
     <string name="capture_photo_content">Photo des prix à vérifier</string>
     <string name="capture_review_hint">Recadrez sur les prix, puis renseignez uniquement les carburants de la photo ; les vides ne sont pas envoyés.</string>
     <string name="capture_board_found">Panneau de prix repéré : la photo a été centrée dessus. Ajustez le cadrage si nécessaire.</string>
+    <string name="capture_live_point">Pointez l\'appareil vers le panneau des prix</string>
+    <string name="capture_live_found">Panneau trouvé : prenez la photo</string>
+    <string name="capture_live_shutter">Prendre la photo</string>
+    <string name="capture_live_close">Fermer l\'appareil photo</string>
+    <string name="capture_live_failed">Impossible de prendre la photo. Réessayez.</string>
+    <string name="capture_live_zoom_manual">%1$s · manuel</string>
     <string name="capture_fuel_invalid">Vérifiez cette valeur (ex. 5,89)</string>
     <string name="capture_remove_fuel">Retirer ce carburant du signalement</string>
     <string name="capture_show_all">Afficher tous les carburants</string>

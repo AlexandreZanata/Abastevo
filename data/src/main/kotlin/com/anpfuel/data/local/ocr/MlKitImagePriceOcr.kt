@@ -18,6 +18,7 @@ import com.google.android.gms.common.moduleinstall.ModuleInstallRequest
 import com.google.android.gms.common.moduleinstall.ModuleInstallStatusUpdate
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -285,14 +286,7 @@ class MlKitImagePriceOcr @Inject constructor(@ApplicationContext private val con
                         if (!task.isSuccessful) {
                             continuation.resumeWithException(IllegalStateException("ocr.unavailable"))
                         } else {
-                            val lines = task.result.textBlocks.flatMap { it.lines }.take(256)
-                            continuation.resume(lines.flatMap { line ->
-                                val entries = listOf(Triple(line.text, line.boundingBox, line.angle)) +
-                                    line.elements.map { Triple(it.text, it.boundingBox, it.angle) }
-                                entries.mapNotNull { (text, rect, angle) ->
-                                    rect?.let { FuelBoardOcr.Token(text.take(256), it.left, it.top, it.right, it.bottom, angle) }
-                                }
-                            }.distinct().take(512))
+                            continuation.resume(boardTokens(task.result))
                         }
                     }
                 } catch (_: Exception) {
@@ -346,3 +340,13 @@ class MlKitImagePriceOcr @Inject constructor(@ApplicationContext private val con
         const val MAX_VIEW_SIDE = 2048
     }
 }
+
+/** Lines and their words as spatial tokens, bounded like every other reading. */
+internal fun boardTokens(text: Text): List<FuelBoardOcr.Token> =
+    text.textBlocks.flatMap { it.lines }.take(256).flatMap { line ->
+        val entries = listOf(Triple(line.text, line.boundingBox, line.angle)) +
+            line.elements.map { Triple(it.text, it.boundingBox, it.angle) }
+        entries.mapNotNull { (text, rect, angle) ->
+            rect?.let { FuelBoardOcr.Token(text.take(256), it.left, it.top, it.right, it.bottom, angle) }
+        }
+    }.distinct().take(512)

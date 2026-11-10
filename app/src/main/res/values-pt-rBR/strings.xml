@@ -782,6 +782,12 @@
     <string name="capture_photo_content">Foto do preço para revisão</string>
     <string name="capture_review_hint">Recorte para focar nos preços e preencha só os combustíveis da foto — em branco não é enviado.</string>
     <string name="capture_board_found">Placa de preços localizada: a foto foi centralizada nela. Ajuste o enquadramento se precisar.</string>
+    <string name="capture_live_point">Aponte a câmera para a placa de preços</string>
+    <string name="capture_live_found">Placa encontrada: tire a foto</string>
+    <string name="capture_live_shutter">Tirar foto</string>
+    <string name="capture_live_close">Fechar câmera</string>
+    <string name="capture_live_failed">Não foi possível tirar a foto. Tente de novo.</string>
+    <string name="capture_live_zoom_manual">%1$s · manual</string>
     <string name="capture_fuel_invalid">Confira este valor (ex.: 5,89)</string>
     <string name="capture_remove_fuel">Remover combustível do reporte</string>
     <string name="capture_show_all">Mostrar todos os combustíveis</string>

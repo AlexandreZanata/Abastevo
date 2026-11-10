@@ -525,6 +525,30 @@ class CaptureOcrViewModelTest {
         assertFalse(saved.keys().any { it.contains("latitude") || it.contains("longitude") })
     }
 
+    @Test fun `a photo arriving after the receipt camera window closed is refused whatever camera took it`() = runTest(dispatcher) {
+        val gate = mockk<PhotoCaptureGate>()
+        var cameraExpiresAt = 0L
+        io.mockk.coEvery { gate.authorizeCommunity(any(), any()) } coAnswers {
+            val now = System.currentTimeMillis()
+            cameraExpiresAt = now + 800
+            PhotoCapturePermission("589a13ba-1f78-41dc-a4ab-d63a511c73da", stationId, now - 1000, cameraExpiresAt,
+                now + 86399000, "synthetic-owner", "https://example.invalid")
+        }
+        every { gate.isCurrent(any()) } returns true
+        val vm = viewModel(true, true, gate = gate)
+        vm.bindTarget(stationId, "ETHANOL")
+        var began = false
+        vm.authorizeCamera { began = vm.beginCamera() }
+        advanceUntilIdle()
+        assertTrue(began)
+        // The in-app camera stays open past the window: the shot must not be admitted.
+        Thread.sleep((cameraExpiresAt - System.currentTimeMillis() + 50).coerceAtLeast(0))
+        assertFalse(vm.acceptCameraPhoto(byteArrayOf(1, 2, 3), "image/jpeg", "content://com.anpfuel.app.fileprovider/capture/price_1.jpg"))
+        assertEquals("photo.permission-expired", vm.gateFailure.value)
+        assertNull(vm.reviewUri.value)
+        assertFalse(vm.beginCamera())
+    }
+
     @Test fun `pixel OCR edits removals crop conditions and draft survive recovery`() = runTest(dispatcher) {
         val saved = SavedStateHandle()
         var calls = 0

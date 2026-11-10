@@ -53,6 +53,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -136,7 +137,8 @@ fun CaptureScreen(
     val defaultConfirmed by viewModel.defaultPriceConfirmed.collectAsStateWithLifecycle()
     val boardFrame by viewModel.boardFrame.collectAsStateWithLifecycle()
     val reviewPhotoUri = reviewUri?.let(Uri::parse)
-    val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+    // Same receipt check, private file and review for the in-app and the system camera.
+    val finishCamera: (Boolean) -> Unit = { success ->
         val uri = viewModel.pendingUri()?.let(Uri::parse)
         viewModel.rememberPendingUri(null)
         if (success && uri != null) {
@@ -160,15 +162,20 @@ fun CaptureScreen(
             viewModel.cameraCancelled()
         }
     }
+    val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture(), finishCamera)
+    var liveCamera by rememberSaveable { mutableStateOf(false) }
+    val systemCamera: (Uri) -> Unit = { uri ->
+        try { takePicture.launch(uri) }
+        catch (_: Exception) {
+            scope.launch { withContext(Dispatchers.IO) { files.delete(uri) } }
+            viewModel.cameraCancelled()
+        }
+    }
     val launchCamera: () -> Unit = {
         if (viewModel.beginCamera()) scope.launch {
             val uri = withContext(Dispatchers.IO) { files.create(viewModel.pendingCaptureStartedAtMillis) }
             viewModel.rememberPendingUri(uri.toString())
-            try { takePicture.launch(uri) }
-            catch (_: Exception) {
-                withContext(Dispatchers.IO) { files.delete(uri) }
-                viewModel.cameraCancelled()
-            }
+            liveCamera = true
         }
     }
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -189,99 +196,113 @@ fun CaptureScreen(
         }
         if (reviewPhotoUri == null && viewModel.pendingUri() == null) viewModel.loadStationSearch()
     }
-    AnpScaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            AnpTopAppBar(
-                title = { Text(stringResource(R.string.capture_screen_title)) },
-                onNavigateUp = onNavigateBack,
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding)
-                .verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            target?.let {
-                Text(
-                    text = stringResource(
-                        R.string.capture_target_label,
-                        it.stationId.take(8),
-                        it.fuelProductWire,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    Box(Modifier.fillMaxSize()) {
+        AnpScaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                AnpTopAppBar(
+                    title = { Text(stringResource(R.string.capture_screen_title)) },
+                    onNavigateUp = onNavigateBack,
                 )
-            }
-            if (targetInvalid) {
-                Text(
-                    text = stringResource(R.string.capture_target_invalid),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                return@Column
-            }
-            if (gateFailure != null) Text(stringResource(if(gateFailure=="photo.policy-unavailable") R.string.capture_policy_unavailable else R.string.capture_authorization_required), color = MaterialTheme.colorScheme.error)
-            when (state) {
-                CaptureOcrUiState.Disabled -> {
+            },
+        ) { padding ->
+            Column(
+                modifier = Modifier.fillMaxSize().padding(padding)
+                    .verticalScroll(rememberScrollState()).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                target?.let {
                     Text(
-                        stringResource(R.string.capture_disabled),
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = stringResource(
+                            R.string.capture_target_label,
+                            it.stationId.take(8),
+                            it.fuelProductWire,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                CaptureOcrUiState.PermissionDenied -> {
+                if (targetInvalid) {
                     Text(
-                        stringResource(R.string.capture_permission_required),
+                        text = stringResource(R.string.capture_target_invalid),
                         style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error,
                     )
-                    NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                    return@Column
                 }
-                CaptureOcrUiState.Cancelled -> {
-                    Text(
-                        stringResource(R.string.capture_cancelled),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    NominalStationPicker(viewModel, requestCamera, onChooseCity)
-                }
-                else -> {
-                    val photoUri = reviewPhotoUri
-                    if (photoUri == null) {
-                        NominalStationPicker(viewModel, requestCamera, onChooseCity)
-
-                    } else {
-                        PhotoReviewContent(
-                            photoUri = photoUri,
-                            fuelAmounts = fuelAmounts,
-                            removedFuels = removedFuels,
-                            fuelErrors = fuelErrors,
-                            unassigned = unassignedAmounts,
-                            photoAttached = photoId != null,
-                            photoRefused = photoRefused,
-                            submit = submit,
-                            onAmount = viewModel::setFuelAmount,
-                            onRemoveFuel = viewModel::removeFuel,
-                            onAddFuel = viewModel::addFuel,
-                            onAssignUnassigned = viewModel::assignUnassigned,
-                            onDismissUnassigned = viewModel::dismissUnassigned,
-                            processing = processing,
-                            conditional = conditional,
-                            defaultPriceConfirmed = defaultConfirmed,
-                            onConfirmDefault = viewModel::confirmDefaultPrice,
-                            onReanalyze = {
-                                scope.launch {
-                                    val bytes = withContext(Dispatchers.IO) { files.read(photoUri, viewModel.originalCapturedAtMillis) }
-                                    if (bytes != null) viewModel.reanalyzeOriginal(bytes, "image/jpeg")
-                                }
-                            },
-                            onCrop = { bytes -> viewModel.replacePhoto(bytes, "image/jpeg") },
-                            onRetake = requestCamera,
-                            onNavigateBack = onReturnCommunity,
-                            onSubmit = viewModel::submitContributions,
-                            boardFrame = boardFrame,
+                if (gateFailure != null) Text(stringResource(if(gateFailure=="photo.policy-unavailable") R.string.capture_policy_unavailable else R.string.capture_authorization_required), color = MaterialTheme.colorScheme.error)
+                when (state) {
+                    CaptureOcrUiState.Disabled -> {
+                        Text(
+                            stringResource(R.string.capture_disabled),
+                            style = MaterialTheme.typography.bodyLarge,
                         )
                     }
+                    CaptureOcrUiState.PermissionDenied -> {
+                        Text(
+                            stringResource(R.string.capture_permission_required),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                    }
+                    CaptureOcrUiState.Cancelled -> {
+                        Text(
+                            stringResource(R.string.capture_cancelled),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                    }
+                    else -> {
+                        val photoUri = reviewPhotoUri
+                        if (photoUri == null) {
+                            NominalStationPicker(viewModel, requestCamera, onChooseCity)
+
+                        } else {
+                            PhotoReviewContent(
+                                photoUri = photoUri,
+                                fuelAmounts = fuelAmounts,
+                                removedFuels = removedFuels,
+                                fuelErrors = fuelErrors,
+                                unassigned = unassignedAmounts,
+                                photoAttached = photoId != null,
+                                photoRefused = photoRefused,
+                                submit = submit,
+                                onAmount = viewModel::setFuelAmount,
+                                onRemoveFuel = viewModel::removeFuel,
+                                onAddFuel = viewModel::addFuel,
+                                onAssignUnassigned = viewModel::assignUnassigned,
+                                onDismissUnassigned = viewModel::dismissUnassigned,
+                                processing = processing,
+                                conditional = conditional,
+                                defaultPriceConfirmed = defaultConfirmed,
+                                onConfirmDefault = viewModel::confirmDefaultPrice,
+                                onReanalyze = {
+                                    scope.launch {
+                                        val bytes = withContext(Dispatchers.IO) { files.read(photoUri, viewModel.originalCapturedAtMillis) }
+                                        if (bytes != null) viewModel.reanalyzeOriginal(bytes, "image/jpeg")
+                                    }
+                                },
+                                onCrop = { bytes -> viewModel.replacePhoto(bytes, "image/jpeg") },
+                                onRetake = requestCamera,
+                                onNavigateBack = onReturnCommunity,
+                                onSubmit = viewModel::submitContributions,
+                                boardFrame = boardFrame,
+                            )
+                        }
+                    }
                 }
+            }
+        }
+        if (liveCamera) {
+            val pending = viewModel.pendingUri()?.let(Uri::parse)
+            if (pending == null) {
+                LaunchedEffect(Unit) { liveCamera = false }
+            } else {
+                LiveBoardCamera(
+                    photo = pending,
+                    onDone = { written -> liveCamera = false; finishCamera(written) },
+                    onUnavailable = { liveCamera = false; systemCamera(pending) },
+                )
             }
         }
     }

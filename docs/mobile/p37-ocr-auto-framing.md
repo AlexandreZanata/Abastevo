@@ -158,9 +158,9 @@ python3 scripts/score-ocr.py docs/mobile/ocr-scenarios.json PRIVATE_RESULTS.json
 
 ## Not done
 
-- No framing or zoom before the photo: the capture still uses the system
-  camera. Live framing needs an in-app camera (CameraX, a new dependency);
-  the owner chose to leave it for a later step.
+- No framing or zoom before the photo in this record. The live step was
+  added later in [p37-ocr-live-framing](p37-ocr-live-framing.md) (in-app
+  CameraX camera); the rules here are unchanged by it.
 - Seven-segment and worn digits, and boards whose fuel names are only icons,
   still end as unassigned values for manual choice.
 - No dependency, backend, upload or training change. The OCR micromodel

@@ -1,4 +1,29 @@
 # Current execution state
+- Price OCR live framing before the photo, 2026-11-10: LOCAL_DONE /
+  INTEGRATION_PENDING on branch `android-live-board-zoom` (from
+  `android-prod-readiness` `33f3231b`;
+  [p37-ocr-live-framing](../mobile/p37-ocr-live-framing.md), B-BR-PC02
+  refinement). The photo is now taken with an in-app CameraX camera (new
+  reviewed dependency `androidx.camera` 1.4.2, Apache-2.0, libyuv
+  BSD-3-Clause) instead of the system camera, which stays as the fallback.
+  Preview frames are read on device with the existing `FuelBoardFraming`;
+  the pure `LiveBoardZoom` rule zooms until the board fills about 80% of the
+  frame (device range, 5x ceiling, centre limit, 15% hysteresis, two
+  sightings to move, six misses to return to wide), an accent frame and a
+  "board found" hint show it, a pinch turns the automatic zoom off, and only
+  the shutter takes the photo. The capture receipt, the 24-hour private file,
+  the review and the post-photo OCR are unchanged. Verified: unit `:domain`
+  935, `:application` 532, `:data` 731 (4 skipped), `:app` 740; no new lint
+  error (pre-existing `home_open_map` MissingTranslation remains); device
+  `am instrument` on the POCO `OK (10 tests)` including the new
+  `LiveBoardLocatorDeviceTest` on generated YUV frames (upright and rotated);
+  real flow on the POCO: camera opens full screen, close and back cancel and
+  delete the pending file, the shutter gives a 2448 x 3264 photo without GPS
+  that reaches the review and OCR; nothing sent. Not verified: the zoom and
+  frame on a real price board (the phone faced the ceiling), the pinch
+  override, the system-camera fallback, process-death recovery with the
+  camera open; one device only.
+
 - Price OCR automatic framing, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING
   on branch `android-prod-readiness`
   ([p37-ocr-auto-framing](../mobile/p37-ocr-auto-framing.md), B-BR-PC02

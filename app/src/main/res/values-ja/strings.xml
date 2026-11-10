@@ -893,6 +893,12 @@
     <string name="capture_photo_content">確認用の価格写真</string>
     <string name="capture_review_hint">価格部分を切り取り、写真にある燃料だけ入力してください — 空白は送信されません。</string>
     <string name="capture_board_found">価格ボードを検出し、写真をその位置に合わせました。必要に応じて調整してください。</string>
+    <string name="capture_live_point">カメラを価格看板に向けてください</string>
+    <string name="capture_live_found">価格看板が見つかりました。撮影してください</string>
+    <string name="capture_live_shutter">撮影</string>
+    <string name="capture_live_close">カメラを閉じる</string>
+    <string name="capture_live_failed">撮影できませんでした。もう一度お試しください。</string>
+    <string name="capture_live_zoom_manual">%1$s · 手動</string>
     <string name="capture_fuel_invalid">値を確認してください（例：5,89）</string>
     <string name="capture_remove_fuel">報告から燃料を削除</string>
     <string name="capture_show_all">すべての燃料を表示</string>
