@@ -1163,6 +1163,9 @@ a.store-pill {
 .landing-home .lp-title { margin-bottom: 1.25rem; font-size: clamp(2.5rem, 1.4rem + 4.6vw, 4.25rem); font-weight: 800; line-height: 1.04; letter-spacing: -0.045em; color: var(--ink); }
 .landing-home .lp-title span { color: inherit; }
 .landing-home .lp-lead { max-width: 32rem; margin-bottom: 2rem; font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem); color: var(--muted); }
+.landing-home .not-found { flex: 1; display: grid; align-content: center; }
+.landing-home .not-found .lp-hero { align-items: center; }
+.landing-home .not-found-art { display: block; width: 100%; height: auto; border-radius: 24px; }
 .landing-home .lp-search { max-width: 30rem; }
 .landing-home .field-stack { position: relative; display: grid; gap: 0.75rem; margin-bottom: 1rem; }
 .landing-home .field { position: relative; display: flex; align-items: center; min-height: 56px; border-radius: 10px; background: var(--surface); cursor: text; }

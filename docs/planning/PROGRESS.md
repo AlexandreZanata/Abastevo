@@ -1,4 +1,13 @@
 # Current execution state
+- Landing 404, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING on `dev`
+  from `cbfdec16` (P25 static landing, B-BR-L04 and BUC-L02).
+  Shares the home header, footer, typography and action styles, with
+  responsive WebP artwork and static recovery links. Typecheck, staging-origin
+  build, artifact check, 82 landing tests, desktop/mobile preview, and local
+  Caddy checks passed (missing nested path 404 with noindex and strict CSP,
+  home/tutorial/assets 200). Next: protected PR to main, then confirm the
+  signed staging release serves this revision on the test origin.
+
 - Price OCR live framing before the photo, 2026-11-10: LOCAL_DONE /
   INTEGRATION_PENDING on branch `android-live-board-zoom` (from
   `android-prod-readiness` `33f3231b`;
