@@ -41,8 +41,8 @@ fun AnpTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     applyStatusBarInsets: Boolean = true,
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = MaterialTheme.colorScheme.background,
+        scrolledContainerColor = MaterialTheme.colorScheme.background,
     ),
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {

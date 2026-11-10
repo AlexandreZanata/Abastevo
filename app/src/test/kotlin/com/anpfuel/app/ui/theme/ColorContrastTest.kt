@@ -1,7 +1,5 @@
 package com.anpfuel.app.ui.theme
 
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import com.anpfuel.app.ui.home.HomeHeroColors
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -9,27 +7,9 @@ import org.junit.jupiter.api.Test
 
 class ColorContrastTest {
 
-    private val lightScheme = lightColorScheme(
-        primary = AnpBlue,
-        onPrimary = ColorTokens.White,
-        primaryContainer = ColorTokens.BlueContainerLight,
-        onPrimaryContainer = AnpBlueDark,
-        secondary = AnpGreen,
-        onSecondary = ColorTokens.White,
-        secondaryContainer = ColorTokens.GreenContainerLight,
-        onSecondaryContainer = AnpGreenDark,
-    )
+    private val lightScheme = LightColorScheme
 
-    private val darkScheme = darkColorScheme(
-        primary = ColorTokens.BlueLight,
-        onPrimary = AnpBlueDark,
-        primaryContainer = AnpBlueDark,
-        onPrimaryContainer = ColorTokens.BlueContainerLight,
-        secondary = ColorTokens.GreenLight,
-        onSecondary = AnpGreenDark,
-        secondaryContainer = AnpGreenDark,
-        onSecondaryContainer = ColorTokens.GreenContainerLight,
-    )
+    private val darkScheme = DarkColorScheme
 
     @Test
     fun lightThemeTextPairsMeetWcagAa() {

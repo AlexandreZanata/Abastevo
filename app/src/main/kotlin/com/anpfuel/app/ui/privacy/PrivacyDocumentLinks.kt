@@ -10,7 +10,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +23,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 /** Public static documents: opening a link never submits consent or erasure. */

@@ -65,6 +65,8 @@
     <string name="community_empty_title">Nenhuma atualização recente</string>
     <string name="community_empty_hint">Colabore com preços para ajudar motoristas na sua região. Fotos anexadas são evidências temporárias de verificação. Consulte a privacidade nas Configurações.</string>
     <string name="community_action_contribute">Colaborar com preço</string>
+    <string name="community_card_contribute_label">Contribuir</string>
+    <string name="community_card_forum_label">Discussões</string>
     <string name="community_rules_title">Regras de verificação comunitária</string>
     <string name="community_rules_body">Preços são validados por consenso da comunidade. Dados datados da ANP nunca são misturados ou confundidos com preços ao vivo.</string>
     <string name="community_moderation_title">Denúncias e moderação</string>
@@ -779,6 +781,13 @@
     <string name="capture_crop">Recortar na moldura</string>
     <string name="capture_photo_content">Foto do preço para revisão</string>
     <string name="capture_review_hint">Recorte para focar nos preços e preencha só os combustíveis da foto — em branco não é enviado.</string>
+    <string name="capture_board_found">Placa de preços localizada: a foto foi centralizada nela. Ajuste o enquadramento se precisar.</string>
+    <string name="capture_live_point">Aponte a câmera para a placa de preços</string>
+    <string name="capture_live_found">Placa encontrada: tire a foto</string>
+    <string name="capture_live_shutter">Tirar foto</string>
+    <string name="capture_live_close">Fechar câmera</string>
+    <string name="capture_live_failed">Não foi possível tirar a foto. Tente de novo.</string>
+    <string name="capture_live_zoom_manual">%1$s · manual</string>
     <string name="capture_fuel_invalid">Confira este valor (ex.: 5,89)</string>
     <string name="capture_remove_fuel">Remover combustível do reporte</string>
     <string name="capture_show_all">Mostrar todos os combustíveis</string>
@@ -1047,7 +1056,7 @@
     <string name="privacy_revoke_delete">Desativar e excluir imagens</string>
     <string name="privacy_deletion_receipt_note">O recebimento da solicitação inicia a exclusão; não confirma a exclusão física de todas as cópias.</string>
     <string name="privacy_digest">SHA-256 do documento: %1$s</string>
-    <string name="privacy_finish_reading">Concluí a leitura · voltar à escolha</string>
+    <string name="privacy_finish_reading">Fechar sem aceitar</string>
     <string name="privacy_rights_heading">Seus direitos de privacidade</string>
     <string name="privacy_rights_body">Você pode solicitar acesso, correção, revogação ou exclusão sem aceitar treinamento. Escreva para ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, aos cuidados de Privacidade — Abastevo. Nunca inclua senhas ou chaves privadas.</string>
     <string name="stations_list_summary">Resumo da lista</string>
@@ -1444,4 +1453,5 @@
     <string name="forum_topic_validation_body_empty">O conteúdo não pode estar vazio.</string>
     <string name="forum_topic_validation_body_too_long">O conteúdo excede 4.000 caracteres.</string>
     <string name="forum_topic_validation_category">Selecione uma categoria.</string>
+    <string name="home_open_map">Ver no mapa</string>
 </resources>

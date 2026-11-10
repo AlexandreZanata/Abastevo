@@ -12,12 +12,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,15 +32,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.theme.AbastevoSpacing
+import com.anpfuel.app.ui.theme.LocalAbastevoNavColors
 
 /**
  * Top-level navigation tabs.
@@ -50,11 +57,12 @@ enum class NavigationTab(
     val route: String,
     val titleRes: Int,
     val icon: ImageVector,
+    val unselectedIcon: ImageVector,
 ) {
-    EXPLORE(Routes.HOME, R.string.nav_explore, Icons.Default.Explore),
-    COMMUNITY(Routes.COMMUNITY, R.string.nav_community, Icons.Default.Groups),
-    MAP(Routes.MAP, R.string.nav_map, Icons.Default.Map),
-    PROFILE(Routes.PROFILE, R.string.nav_profile, Icons.Default.AccountCircle),
+    EXPLORE(Routes.HOME, R.string.nav_explore, Icons.Filled.Explore, Icons.Outlined.Explore),
+    COMMUNITY(Routes.COMMUNITY, R.string.nav_community, Icons.Filled.Groups, Icons.Outlined.Groups),
+    MAP(Routes.MAP, R.string.nav_map, Icons.Filled.Map, Icons.Outlined.Map),
+    PROFILE(Routes.PROFILE, R.string.nav_profile, Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle),
     ;
 
     companion object {
@@ -71,15 +79,17 @@ enum class NavigationTab(
     }
 }
 
-/** Equal breathing room above the icons and below the labels, inside the safe area. */
-private val BarVerticalPadding = 8.dp
+private val MarkerWidth = 40.dp
+private val MarkerHeight = 4.dp
+private val MarkerShape = RoundedCornerShape(bottomStart = MarkerHeight, bottomEnd = MarkerHeight)
 
 /**
  * Fixed bottom navigation bar, shown on every screen.
  *
- * Compact layout: equal space above the icons and below the labels,
- * with the system safe area applied underneath. Item cells keep
- * full-width touch targets; labels always stay visible.
+ * Flat on the screen color with a hairline above it. The selected tab is told
+ * apart three ways: an accent marker on the top edge, a filled icon and a
+ * bold ink label; the others use outlined icons in a muted tone. Item cells
+ * keep full-width touch targets; labels always stay visible.
  */
 @Composable
 fun AbastevoBottomBar(
@@ -87,71 +97,64 @@ fun AbastevoBottomBar(
     onNavigateToTab: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = LocalAbastevoNavColors.current
     Surface(
         modifier = modifier,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        color = colors.container,
+        contentColor = colors.selectedLabel,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .selectableGroup(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            NavigationTab.entries.forEach { tab ->
-                val isSelected = NavigationTab.fromRoute(currentRoute) == tab
-                val label = stringResource(tab.titleRes)
-                val interactionSource = remember { MutableInteractionSource() }
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .weight(1f)
-                        .selectable(
-                            selected = isSelected,
-                            onClick = { onNavigateToTab(tab.route) },
-                            role = Role.Tab,
-                            interactionSource = interactionSource,
-                            indication = ripple(),
-                        )
-                        .semantics {
-                            contentDescription = label
-                        }
-                        .padding(vertical = BarVerticalPadding),
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
+        Column {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .selectableGroup(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                NavigationTab.entries.forEach { tab ->
+                    val isSelected = NavigationTab.fromRoute(currentRoute) == tab
+                    val label = stringResource(tab.titleRes)
+                    val interactionSource = remember { MutableInteractionSource() }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(AbastevoSpacing.xs),
                         modifier = Modifier
-                            .size(width = 64.dp, height = 32.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isSelected) {
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                } else {
-                                    Color.Transparent
-                                },
-                            ),
+                            .weight(1f)
+                            .selectable(
+                                selected = isSelected,
+                                onClick = { onNavigateToTab(tab.route) },
+                                role = Role.Tab,
+                                interactionSource = interactionSource,
+                                indication = ripple(),
+                            )
+                            .semantics {
+                                contentDescription = label
+                            }
+                            .padding(bottom = AbastevoSpacing.sm),
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = MarkerWidth, height = MarkerHeight)
+                                .background(
+                                    color = if (isSelected) colors.indicator else Color.Transparent,
+                                    shape = MarkerShape,
+                                ),
+                        )
                         Icon(
-                            imageVector = tab.icon,
+                            imageVector = if (isSelected) tab.icon else tab.unselectedIcon,
                             contentDescription = null,
-                            tint = if (isSelected) {
-                                MaterialTheme.colorScheme.onSecondaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            tint = if (isSelected) colors.selectedIcon else colors.unselected,
+                            modifier = Modifier.padding(top = AbastevoSpacing.xs),
+                        )
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) colors.selectedLabel else colors.unselected,
                         )
                     }
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.onSurface
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
                 }
             }
         }

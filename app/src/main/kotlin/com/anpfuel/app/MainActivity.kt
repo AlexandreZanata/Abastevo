@@ -24,6 +24,7 @@ import com.anpfuel.app.capture.PrivateCaptureFiles
 import com.anpfuel.app.locale.AppLocaleApplier
 import com.anpfuel.app.locale.AppLocaleHolder
 import com.anpfuel.app.navigation.AnpAppNavHost
+import com.anpfuel.app.ui.terms.TermsGate
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.domain.repository.OutboxBudgets
@@ -86,7 +87,7 @@ class MainActivity : ComponentActivity() {
 
             AnpFuelTheme(
                 darkTheme = darkTheme,
-                dynamicColor = true,
+                dynamicColor = false,
             ) {
                 // Capture the bottom system inset before the nav shell and
                 // screen scaffolds consume it; bottom-anchored surfaces
@@ -97,13 +98,17 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(
                     LocalBottomSafePadding provides bottomSafePadding,
                 ) {
-                    AnpAppNavHost(
-                        navController = navController,
-                        darkTheme = darkTheme,
-                        onToggleTheme = {
-                            darkThemeOverride = !(darkThemeOverride ?: systemDarkTheme)
-                        },
-                    )
+                    // B-BR-TA01: nothing of the app is composed before the
+                    // current terms were accepted on this device.
+                    TermsGate(onDecline = { finish() }) {
+                        AnpAppNavHost(
+                            navController = navController,
+                            darkTheme = darkTheme,
+                            onToggleTheme = {
+                                darkThemeOverride = !(darkThemeOverride ?: systemDarkTheme)
+                            },
+                        )
+                    }
                 }
             }
         }

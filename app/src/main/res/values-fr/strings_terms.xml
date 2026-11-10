@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terms_gate_title">Avant de commencer</string>
+    <string name="terms_gate_intro">Pour utiliser Abastevo, lisez et acceptez les Conditions d\'utilisation et la Politique de confidentialité.</string>
+    <string name="terms_gate_changed">Les documents ont été mis à jour depuis votre dernière acceptation. Lisez-les et acceptez-les à nouveau pour continuer.</string>
+    <string name="terms_gate_point_purpose">Abastevo est une plateforme communautaire pour consulter et partager les prix des carburants. Elle ne vend pas de carburant et n\'est pas affiliée à l\'ANP.</string>
+    <string name="terms_gate_point_community">Les prix, photos, avis et commentaires que vous envoyez doivent être réels et suivent les règles de la communauté et la modération.</string>
+    <string name="terms_gate_point_privacy">La Politique de confidentialité explique quelles données sont traitées, pourquoi et comment exercer vos droits.</string>
+    <string name="terms_gate_read_terms">Lire les Conditions d\'utilisation</string>
+    <string name="terms_gate_read_privacy">Lire la Politique de confidentialité</string>
+    <string name="terms_gate_versions">Conditions d\'utilisation : version %1$s · Politique de confidentialité : version %2$s</string>
+    <string name="terms_gate_check">J\'ai lu et j\'accepte les Conditions d\'utilisation et je déclare avoir lu la Politique de confidentialité.</string>
+    <string name="terms_gate_optional_note">Cette acceptation n\'autorise pas l\'usage facultatif des photos pour l\'entraînement. Ce choix est distinct et se trouve dans Confidentialité.</string>
+    <string name="terms_gate_accept">Accepter et continuer</string>
+    <string name="terms_gate_decline">Je refuse · quitter l\'application</string>
+    <string name="terms_gate_failed">Impossible d\'enregistrer l\'acceptation sur cet appareil. Réessayez.</string>
+    <string name="terms_gate_open_failed">Impossible d\'ouvrir le navigateur. Ouvrez cette adresse dans votre navigateur : %1$s</string>
+    <string name="terms_record_heading">Conditions d\'utilisation et Politique de confidentialité</string>
+    <string name="terms_record_accepted">Acceptées sur cet appareil le %1$s.</string>
+    <string name="terms_revoke">Révoquer l\'acceptation</string>
+    <string name="terms_revoke_title">Révoquer l\'acceptation ?</string>
+    <string name="terms_revoke_body">L\'application revient à l\'écran des conditions et ne peut être utilisée qu\'après une nouvelle acceptation. Votre compte et vos données sur le serveur ne sont pas supprimés ; utilisez pour cela la suppression du compte.</string>
+    <string name="terms_revoke_confirm">Révoquer</string>
+    <string name="terms_revoke_failed">Impossible de supprimer l\'enregistrement. Réessayez.</string>
+    <string name="privacy_accept_record">Accepter et enregistrer la préférence</string>
+    <string name="privacy_recorded_details">Conditions %1$s · décision enregistrée par le serveur le %2$s</string>
+    <string name="privacy_modal_hint">Cochez la case ci-dessous et touchez accepter pour enregistrer. Fermer sans accepter n\'enregistre rien.</string>
+</resources>

@@ -14,11 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +28,9 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.OutlinedButton
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.application.usecase.mapsaved.ExchangeFormat
 import com.anpfuel.domain.map.saved.SavedBounds
 import com.anpfuel.domain.map.saved.SavedTripKind

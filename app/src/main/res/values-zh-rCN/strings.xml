@@ -592,6 +592,8 @@
     <string name="community_empty_title">暂无近期更新</string>
     <string name="community_empty_hint">分享燃料价格，帮助本地驾驶者。附加照片仅临时用于核验。请在设置中查看隐私信息。</string>
     <string name="community_action_contribute">分享价格</string>
+    <string name="community_card_contribute_label">贡献</string>
+    <string name="community_card_forum_label">讨论</string>
     <string name="community_rules_title">社区验证规则</string>
     <string name="community_rules_body">价格由贡献者共识验证。带日期的ANP数据不会与社区实时报告混合。</string>
     <string name="community_moderation_title">举报与审核</string>
@@ -890,6 +892,13 @@
     <string name="capture_crop">裁剪至画框</string>
     <string name="capture_photo_content">待确认的价格照片</string>
     <string name="capture_review_hint">裁剪价格区域，仅填写照片中的燃料 — 空白项不会发送。</string>
+    <string name="capture_board_found">已找到价格牌,照片已对准它。如有需要请调整取景。</string>
+    <string name="capture_live_point">将相机对准价格牌</string>
+    <string name="capture_live_found">已找到价格牌：请拍照</string>
+    <string name="capture_live_shutter">拍照</string>
+    <string name="capture_live_close">关闭相机</string>
+    <string name="capture_live_failed">无法拍照，请重试。</string>
+    <string name="capture_live_zoom_manual">%1$s · 手动</string>
     <string name="capture_fuel_invalid">请检查此数值（例如5,89）</string>
     <string name="capture_remove_fuel">从报告中移除此燃料</string>
     <string name="capture_show_all">显示所有燃料</string>
@@ -1034,7 +1043,7 @@
     <string name="privacy_revoke_delete">停用并删除图片</string>
     <string name="privacy_deletion_receipt_note">收到请求将启动删除；这不表示所有副本已被物理删除。</string>
     <string name="privacy_digest">文件 SHA-256：%1$s</string>
-    <string name="privacy_finish_reading">已完成阅读 · 返回选择</string>
+    <string name="privacy_finish_reading">不接受并关闭</string>
     <string name="privacy_rights_heading">您的隐私权利</string>
     <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
     <string name="stations_list_summary">列表摘要</string>

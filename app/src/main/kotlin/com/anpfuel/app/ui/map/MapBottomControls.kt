@@ -14,7 +14,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -76,7 +75,7 @@ internal fun MapBottomControls(
         Surface(
             modifier = Modifier.padding(start = 12.dp).testTag("map-attribution"),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.9f),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
         ) {
             Text(
                 stringResource(R.string.map_attribution),
@@ -88,8 +87,8 @@ internal fun MapBottomControls(
         Surface(
             modifier = Modifier.fillMaxWidth().testTag("map-action-panel")
                 .onSizeChanged { size -> onSheetHeightChanged(with(density) { size.height.toDp() }) },
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 12.dp,
         ) {
             Column(
@@ -148,17 +147,16 @@ private fun MapPanelButton(action: MapPanelAction, modifier: Modifier = Modifier
     Surface(
         onClick = action.onClick,
         modifier = modifier.heightIn(min = 56.dp).testTag(action.tag),
-        shape = RoundedCornerShape(16.dp),
+        shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(action.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(action.icon, contentDescription = null, modifier = Modifier.size(20.dp))
             Text(stringResource(action.label), style = MaterialTheme.typography.titleSmall)
         }
     }

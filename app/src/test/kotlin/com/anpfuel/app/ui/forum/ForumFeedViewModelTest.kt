@@ -102,6 +102,28 @@ class ForumFeedViewModelTest {
     }
 
     @Test
+    fun `categories drop unknown and duplicate codes so chip keys stay unique`() = runTest(dispatcher) {
+        fun item(raw: String) = ForumCategoryItem(
+            code = ForumCategory.fromWire(raw),
+            rawCode = raw,
+            name = raw,
+            description = "",
+        )
+        coEvery { getForumCategories() } returns ForumCategoriesResult(
+            items = listOf(item("FUELS"), item("FUTURE_A"), item("FUTURE_B"), item("FUELS"), item("ELECTRIC")),
+            taxonomyVersion = 2,
+        )
+
+        val vm = ForumFeedViewModel(getForumCategories, getForumFeed)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(ForumCategory.FUELS, ForumCategory.ELECTRIC),
+            vm.state.value.categories.map { it.code },
+        )
+    }
+
+    @Test
     fun `selectCategory resets pagination and fetches filtered page`() = runTest(dispatcher) {
         val vm = ForumFeedViewModel(getForumCategories, getForumFeed)
         advanceUntilIdle()

@@ -18,7 +18,8 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class AppendixA2FreshInstallTest {
 
-  @get:Rule
+  @get:Rule(order = 0) val acceptedTerms = com.anpfuel.app.AcceptedTermsRule()
+  @get:Rule(order = 1)
   val composeRule = createAndroidComposeRule<MainActivity>()
 
   private lateinit var nextLabel: String

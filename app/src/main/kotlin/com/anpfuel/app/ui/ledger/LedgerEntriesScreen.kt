@@ -39,16 +39,13 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,6 +69,9 @@ import com.anpfuel.app.ui.components.ActionCardStyle
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.EmptyState
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.FilterChip
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.application.usecase.ledger.LedgerEntryRow
 import com.anpfuel.application.usecase.ledger.LedgerEntryState
@@ -662,7 +662,7 @@ private fun LedgerEntryFormDialog(
         // Data entry needs room: near full width with a 16 dp gutter.
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(28.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         title = {
             Text(
                 text = stringResource(

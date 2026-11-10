@@ -43,6 +43,8 @@ sealed interface TrainingConsentUiState {
         val revision: Long,
         val pendingRevocation: Boolean,
         val needsRegrant: Boolean,
+        /** Server decision instant (RFC 3339); shown with the terms version when granted. */
+        val decidedAt: String? = null,
     ) : TrainingConsentUiState
     data object Updating : TrainingConsentUiState
     data object Offline : TrainingConsentUiState
@@ -118,7 +120,7 @@ class TrainingConsentViewModel @Inject constructor(
                     contentOf(outcome.status.granted, outcome.status.state,
                         outcome.status.termsVersion, outcome.status.termsDigest,
                         outcome.status.revision, outcome.pendingRevocation,
-                        outcome.status.needsRegrant)
+                        outcome.status.needsRegrant, outcome.status.decidedAt)
                 is TrainingConsentOutcome.Granted ->
                     contentOf(true, outcome.receipt.state, outcome.receipt.termsVersion,
                         null, outcome.receipt.revision, false, false)
@@ -183,7 +185,7 @@ class TrainingConsentViewModel @Inject constructor(
                 contentOf(outcome.status.granted, outcome.status.state,
                     outcome.status.termsVersion, outcome.status.termsDigest,
                     outcome.status.revision, outcome.pendingRevocation,
-                    outcome.status.needsRegrant)
+                    outcome.status.needsRegrant, outcome.status.decidedAt)
             is TrainingConsentOutcome.Offline ->
                 TrainingConsentUiState.Offline
             is TrainingConsentOutcome.RevocationPending ->
@@ -213,6 +215,7 @@ class TrainingConsentViewModel @Inject constructor(
         revision: Long,
         pendingRevocation: Boolean,
         needsRegrant: Boolean,
+        decidedAt: String? = null,
     ) = TrainingConsentUiState.Content(
         granted = granted,
         state = state,
@@ -221,6 +224,7 @@ class TrainingConsentViewModel @Inject constructor(
         revision = revision,
         pendingRevocation = pendingRevocation,
         needsRegrant = needsRegrant,
+        decidedAt = decidedAt,
     )
 
     companion object {

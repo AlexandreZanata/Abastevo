@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terms_gate_title">Bevor es losgeht</string>
+    <string name="terms_gate_intro">Um Abastevo zu nutzen, lesen und akzeptieren Sie die Nutzungsbedingungen und die Datenschutzerklärung.</string>
+    <string name="terms_gate_changed">Die Dokumente wurden seit Ihrer letzten Zustimmung aktualisiert. Bitte lesen und akzeptieren Sie sie erneut.</string>
+    <string name="terms_gate_point_purpose">Abastevo ist eine Community-Plattform zum Nachschlagen und Teilen von Kraftstoffpreisen. Sie verkauft keinen Kraftstoff und ist nicht mit der ANP verbunden.</string>
+    <string name="terms_gate_point_community">Preise, Fotos, Bewertungen und Kommentare, die Sie senden, müssen echt sein und folgen den Community-Regeln und der Moderation.</string>
+    <string name="terms_gate_point_privacy">Die Datenschutzerklärung erläutert, welche Daten wofür verarbeitet werden und wie Sie Ihre Rechte ausüben.</string>
+    <string name="terms_gate_read_terms">Nutzungsbedingungen lesen</string>
+    <string name="terms_gate_read_privacy">Datenschutzerklärung lesen</string>
+    <string name="terms_gate_versions">Nutzungsbedingungen: Version %1$s · Datenschutzerklärung: Version %2$s</string>
+    <string name="terms_gate_check">Ich habe die Nutzungsbedingungen gelesen und akzeptiere sie und erkläre, die Datenschutzerklärung gelesen zu haben.</string>
+    <string name="terms_gate_optional_note">Diese Zustimmung erlaubt nicht die optionale Nutzung von Fotos für das Training. Diese Wahl ist getrennt und steht unter Datenschutz.</string>
+    <string name="terms_gate_accept">Akzeptieren und fortfahren</string>
+    <string name="terms_gate_decline">Ich lehne ab · App verlassen</string>
+    <string name="terms_gate_failed">Die Zustimmung konnte auf diesem Gerät nicht gespeichert werden. Bitte erneut versuchen.</string>
+    <string name="terms_gate_open_failed">Der Browser konnte nicht geöffnet werden. Öffnen Sie diese Adresse im Browser: %1$s</string>
+    <string name="terms_record_heading">Nutzungsbedingungen und Datenschutzerklärung</string>
+    <string name="terms_record_accepted">Auf diesem Gerät akzeptiert am %1$s.</string>
+    <string name="terms_revoke">Zustimmung widerrufen</string>
+    <string name="terms_revoke_title">Zustimmung widerrufen?</string>
+    <string name="terms_revoke_body">Die App kehrt zum Bedingungen-Bildschirm zurück und kann erst nach erneuter Zustimmung genutzt werden. Ihr Konto und Ihre Serverdaten werden nicht gelöscht; nutzen Sie dafür die Kontolöschung.</string>
+    <string name="terms_revoke_confirm">Widerrufen</string>
+    <string name="terms_revoke_failed">Der Eintrag konnte nicht entfernt werden. Bitte erneut versuchen.</string>
+    <string name="privacy_accept_record">Akzeptieren und Präferenz speichern</string>
+    <string name="privacy_recorded_details">Bedingungen %1$s · Entscheidung vom Server gespeichert am %2$s</string>
+    <string name="privacy_modal_hint">Kästchen unten markieren und auf Akzeptieren tippen, um zu speichern. Schließen ohne Akzeptieren speichert nichts.</string>
+</resources>

@@ -9,13 +9,11 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -29,6 +27,8 @@ import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.FuelProductLabel
 import com.anpfuel.app.ui.components.PriceSourceKind
 import com.anpfuel.app.ui.components.SourceTimeBadge
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.OutlinedButton
 import com.anpfuel.app.ui.model.StationDetailUiModel
 import com.anpfuel.app.ui.model.StationPriceUiModel
 import com.anpfuel.app.ui.theme.AnpContainerDefaults

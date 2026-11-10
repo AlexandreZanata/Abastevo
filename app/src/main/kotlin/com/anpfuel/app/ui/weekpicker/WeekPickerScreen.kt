@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -25,7 +24,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
@@ -53,6 +51,8 @@ import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.model.SurveyWeekCatalogEntry
 import com.anpfuel.domain.valueobject.SurveyWeek
@@ -318,7 +318,7 @@ fun WeekDownloadingDialog(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             tonalElevation = 6.dp,
         ) {
             Column(

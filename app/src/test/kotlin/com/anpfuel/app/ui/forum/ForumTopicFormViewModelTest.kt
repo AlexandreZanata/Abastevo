@@ -171,7 +171,7 @@ class ForumTopicFormViewModelTest {
 
         vm.updateTitle("Título do Rascunho")
         vm.updateBodyText("Conteúdo importante digitado pelo usuário anônimo.")
-        vm.updateCategory(ForumCategory.MARKET)
+        vm.updateCategory(ForumCategory.ELECTRIC)
         assertTrue(vm.state.value.isDirty)
 
         vm.submit()
@@ -182,7 +182,7 @@ class ForumTopicFormViewModelTest {
         // Draft stays intact in memory
         assertEquals("Título do Rascunho", vm.state.value.title)
         assertEquals("Conteúdo importante digitado pelo usuário anônimo.", vm.state.value.bodyText)
-        assertEquals(ForumCategory.MARKET, vm.state.value.selectedCategory)
+        assertEquals(ForumCategory.ELECTRIC, vm.state.value.selectedCategory)
 
         vm.dismissAuthPrompt()
         assertFalse(vm.state.value.requireAuthPrompt)
@@ -295,7 +295,7 @@ class ForumTopicFormViewModelTest {
         val vm = createViewModel()
         vm.updateTitle("Tópico com Conflito")
         vm.updateBodyText("Texto do tópico")
-        vm.updateCategory(ForumCategory.MARKET)
+        vm.updateCategory(ForumCategory.ELECTRIC)
 
         vm.submit()
         advanceUntilIdle()
@@ -323,7 +323,7 @@ class ForumTopicFormViewModelTest {
         val vm = createViewModel()
         vm.updateTitle("Tópico Rápido Demais")
         vm.updateBodyText("Texto do tópico")
-        vm.updateCategory(ForumCategory.REGULATION)
+        vm.updateCategory(ForumCategory.TRAFFIC_RULES)
 
         vm.submit()
         advanceUntilIdle()

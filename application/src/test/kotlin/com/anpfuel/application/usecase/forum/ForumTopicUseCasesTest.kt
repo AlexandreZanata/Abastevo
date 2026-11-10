@@ -207,7 +207,7 @@ class ForumTopicUseCasesTest {
             expectedRevision = 2L,
             title = "Título atualizado",
             bodyText = "Conteúdo atualizado",
-            category = ForumCategory.MARKET,
+            category = ForumCategory.ELECTRIC,
         )
         assertEquals(2L, capturedRevision)
         assertEquals(3L, receipt.revision)
@@ -220,7 +220,7 @@ class ForumTopicUseCasesTest {
                     expectedRevision = 1L,
                     title = "Título",
                     bodyText = "Conteúdo",
-                    category = ForumCategory.MARKET,
+                    category = ForumCategory.ELECTRIC,
                 )
             }
         }
@@ -233,7 +233,7 @@ class ForumTopicUseCasesTest {
                     expectedRevision = 0L,
                     title = "Título",
                     bodyText = "Conteúdo",
-                    category = ForumCategory.MARKET,
+                    category = ForumCategory.ELECTRIC,
                 )
             }
         }

@@ -50,7 +50,7 @@ impossible.
   Premium, reference and tools sections no longer mount with crossfade/expand
   animations. The login step crossfade was not changed.
 - Fixed light/dark Premium palette in `ui/theme/PremiumColors.kt`, selected by the
-  app theme via `LocalAnpDarkTheme`; dynamic colors still drive general surfaces.
+  app theme via `LocalAnpDarkTheme`; the active color scheme still drives general surfaces.
 - Local crown vector, shared `ProfileActionRow`, 25 new strings in eight locales.
 - Follow-up container-shape pass: `AnpContainerDefaults.containerShape()` (the
   active Material medium shape) now covers the Premium entry, the private-reports

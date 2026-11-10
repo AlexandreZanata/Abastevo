@@ -65,6 +65,8 @@
     <string name="community_empty_title">No recent community updates</string>
     <string name="community_empty_hint">Contribute fuel prices to help drivers in your city. Attached photos are temporary verification evidence. See privacy information in Settings.</string>
     <string name="community_action_contribute">Contribute price</string>
+    <string name="community_card_contribute_label">Contribute</string>
+    <string name="community_card_forum_label">Discussions</string>
     <string name="community_rules_title">Community verification rules</string>
     <string name="community_rules_body">Prices are validated by contributor consensus. Dated ANP data is never mixed or confused with live community reports.</string>
     <string name="community_moderation_title">Reporting and moderation</string>
@@ -815,6 +817,13 @@
     <string name="capture_crop">Crop to frame</string>
     <string name="capture_photo_content">Price photo for review</string>
     <string name="capture_review_hint">Crop to focus on the prices, then fill only the fuels on the photo — blanks are not sent.</string>
+    <string name="capture_board_found">Price board found: the photo was centred on it. Adjust the framing if needed.</string>
+    <string name="capture_live_point">Point the camera at the price board</string>
+    <string name="capture_live_found">Price board found: take the photo</string>
+    <string name="capture_live_shutter">Take photo</string>
+    <string name="capture_live_close">Close camera</string>
+    <string name="capture_live_failed">Could not take the photo. Try again.</string>
+    <string name="capture_live_zoom_manual">%1$s · manual</string>
     <string name="capture_fuel_invalid">Check this value (e.g. 5,89)</string>
     <string name="capture_remove_fuel">Remove fuel from report</string>
     <string name="capture_show_all">Show all fuels</string>
@@ -1053,7 +1062,7 @@
     <string name="privacy_revoke_delete">Disable and delete images</string>
     <string name="privacy_deletion_receipt_note">A received request starts deletion; it does not confirm physical deletion of all copies.</string>
     <string name="privacy_digest">Document SHA-256: %1$s</string>
-    <string name="privacy_finish_reading">I have finished reading · return to the choice</string>
+    <string name="privacy_finish_reading">Close without accepting</string>
     <string name="privacy_rights_heading">Your privacy rights</string>
     <string name="privacy_rights_body">You may request access, correction, revocation or deletion without accepting training. Write to ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93, Rua Florenca, 922, Mont Serrat, Sorriso/MT, CEP 78891-109, Brazil, addressed to Privacy — Abastevo. Never include passwords or private keys.</string>
     <string name="stations_list_summary">List summary</string>
@@ -1451,4 +1460,5 @@
     <string name="forum_topic_validation_body_empty">Content cannot be empty.</string>
     <string name="forum_topic_validation_body_too_long">Content exceeds 4,000 characters.</string>
     <string name="forum_topic_validation_category">Please select a category.</string>
+    <string name="home_open_map">View on map</string>
 </resources>

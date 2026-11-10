@@ -20,16 +20,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,6 +45,10 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.FuelProductIcon
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
+import com.anpfuel.app.ui.designsystem.AssistChip
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.OutlinedButton
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.usecase.contribution.OwnedContributionStatus
 import com.anpfuel.domain.contribution.ContributionState

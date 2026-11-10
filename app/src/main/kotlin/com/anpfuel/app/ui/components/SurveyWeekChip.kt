@@ -2,7 +2,6 @@ package com.anpfuel.app.ui.components
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,6 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.SurveyWeekFormatter
+import com.anpfuel.app.ui.designsystem.AssistChip
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.valueobject.SurveyWeek
 

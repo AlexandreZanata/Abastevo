@@ -88,6 +88,18 @@ class TrainingConsentHttpClientTest {
         assertEquals("digest-v1", status.termsDigest)
         assertEquals(1L, status.revision)
         assertFalse(status.needsRegrant)
+        assertEquals("2026-10-11T00:00:00Z", status.decidedAt)
+    }
+
+    @Test
+    fun `status without a decision instant stays readable and a malformed one refuses closed`() = runTest {
+        enqueue(200, """{"granted":false}""")
+        assertNull(client().consentStatus(scope).decidedAt)
+        for (decided in listOf("\"yesterday\"", "5", "\"2026-13-40T00:00:00Z\"")) {
+            enqueue(200, """{"granted":true,"state":"GRANTED","terms_version":"training-terms-v1","terms_digest":"digest-v1","revision":1,"decided_at":$decided}""")
+            try { client().consentStatus(scope); fail<Unit>("malformed instant accepted") }
+            catch (e: TrainingConsentException) { assertEquals(TrainingConsentRejectKind.TRANSPORT, e.kind) }
+        }
     }
 
     @Test

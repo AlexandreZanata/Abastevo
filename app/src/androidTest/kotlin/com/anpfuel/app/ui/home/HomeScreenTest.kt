@@ -64,7 +64,6 @@ class HomeScreenTest {
                         ),
                     ),
                     darkTheme = false,
-                    onToggleTheme = {},
                     onNavigate = {},
                     onRefresh = {},
                     onRetry = {},
@@ -104,7 +103,6 @@ class HomeScreenTest {
                         ),
                     ),
                     darkTheme = false,
-                    onToggleTheme = {},
                     onNavigate = { route -> navigatedRoute = route },
                     onRefresh = {},
                     onRetry = {},
@@ -134,7 +132,6 @@ class HomeScreenTest {
                         hasCachedData = false,
                     ),
                     darkTheme = false,
-                    onToggleTheme = {},
                     onNavigate = {},
                     onRefresh = {},
                     onRetry = {},
@@ -164,7 +161,6 @@ class HomeScreenTest {
                         tankFillCostEstimates = emptyList(),
                     ),
                     darkTheme = false,
-                    onToggleTheme = {},
                     onNavigate = {},
                     onRefresh = {},
                     onRetry = {},
@@ -206,7 +202,6 @@ class HomeScreenTest {
                         ),
                     ),
                     darkTheme = false,
-                    onToggleTheme = {},
                     onNavigate = {},
                     onRefresh = {},
                     onRetry = {},
@@ -303,7 +298,6 @@ class HomeScreenTest {
                             )),
                         ),
                         darkTheme = darkTheme,
-                        onToggleTheme = {},
                         onNavigate = onNavigate,
                         onRefresh = {},
                         onRetry = {},
@@ -326,7 +320,7 @@ class HomeScreenTest {
                         hasCachedData = false, showBenefits = false, communityFailed = true, communityStale = true,
                         communityPrices = listOf(AveragePriceUiModel(FuelProduct.ETHANOL, "R$ 4,500", "R$ 4,000", "R$ 5,000", 65)),
                     ),
-                    false, {}, {}, {}, { retries++ }, {}, includeSurveyWeekChip = false,
+                    false, {}, {}, { retries++ }, {}, includeSurveyWeekChip = false,
                 )
             }
         }
@@ -344,7 +338,7 @@ class HomeScreenTest {
                 municipality="Synthetic city",state=BrazilianState.MATO_GROSSO,hasCachedData=false,showBenefits=false,
                 communityPrices=listOf(AveragePriceUiModel(FuelProduct.ETHANOL,"R$ 4,500","R$ 4,000","R$ 5,000",65,
                     com.anpfuel.domain.community.CommunityConfirmationCounts(19, 0, 7))),priceSort=sort),
-                false,{}, {}, {}, {}, {},includeSurveyWeekChip=false,onPriceSortChanged={sort=it}) }
+                false,{}, {}, {}, {},includeSurveyWeekChip=false,onPriceSortChanged={sort=it}) }
         }
         composeTestRule.onNodeWithText("R$ 4,500").assertExists()
         composeTestRule.onNodeWithContentDescription(context.getString(R.string.community_confirmation_count, "19")).assertExists()

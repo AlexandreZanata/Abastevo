@@ -70,7 +70,7 @@ class ForumFeedViewModel @Inject constructor(
         feedJob = viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
             val categoryItems: List<ForumCategoryItem> = try {
-                getForumCategories().items
+                getForumCategories().items.selectable()
             } catch (e: ForumException.Disabled) {
                 _state.update { it.copy(loading = false, error = ForumUiError.DISABLED) }
                 return@launch
@@ -236,7 +236,7 @@ class ForumFeedViewModel @Inject constructor(
         _state.update { it.copy(refreshing = true, error = null) }
         feedJob = viewModelScope.launch {
             val categoryItems: List<ForumCategoryItem> = try {
-                getForumCategories().items
+                getForumCategories().items.selectable()
             } catch (_: Exception) {
                 _state.value.categories
             }
@@ -308,3 +308,10 @@ class ForumFeedViewModel @Inject constructor(
         }
     }
 }
+
+/**
+ * Keeps only categories the app can filter by, once each: codes outside the
+ * known taxonomy all map to UNKNOWN and would collide as list keys.
+ */
+internal fun List<ForumCategoryItem>.selectable(): List<ForumCategoryItem> =
+    filter { it.code != ForumCategory.UNKNOWN }.distinctBy { it.code }

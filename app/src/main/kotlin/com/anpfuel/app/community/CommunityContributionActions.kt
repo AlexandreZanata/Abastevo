@@ -3,7 +3,6 @@ package com.anpfuel.app.community
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -11,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.domain.community.CommunityFeedItem
 
 /** Exact helpfulness tallies and explicit signed price/report actions, scoped to a public revision. */

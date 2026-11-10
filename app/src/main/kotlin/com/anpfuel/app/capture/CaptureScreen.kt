@@ -38,24 +38,22 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,11 +72,17 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import com.anpfuel.app.R
+import com.anpfuel.application.port.ImagePriceOcr
 import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.FuelProductIcon
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.OutlinedButton
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.data.local.media.BoundedPhotoBitmap
 import kotlinx.coroutines.Dispatchers
@@ -131,8 +135,10 @@ fun CaptureScreen(
     val processing by viewModel.processing.collectAsStateWithLifecycle()
     val conditional by viewModel.conditional.collectAsStateWithLifecycle()
     val defaultConfirmed by viewModel.defaultPriceConfirmed.collectAsStateWithLifecycle()
+    val boardFrame by viewModel.boardFrame.collectAsStateWithLifecycle()
     val reviewPhotoUri = reviewUri?.let(Uri::parse)
-    val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+    // Same receipt check, private file and review for the in-app and the system camera.
+    val finishCamera: (Boolean) -> Unit = { success ->
         val uri = viewModel.pendingUri()?.let(Uri::parse)
         viewModel.rememberPendingUri(null)
         if (success && uri != null) {
@@ -156,15 +162,20 @@ fun CaptureScreen(
             viewModel.cameraCancelled()
         }
     }
+    val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture(), finishCamera)
+    var liveCamera by rememberSaveable { mutableStateOf(false) }
+    val systemCamera: (Uri) -> Unit = { uri ->
+        try { takePicture.launch(uri) }
+        catch (_: Exception) {
+            scope.launch { withContext(Dispatchers.IO) { files.delete(uri) } }
+            viewModel.cameraCancelled()
+        }
+    }
     val launchCamera: () -> Unit = {
         if (viewModel.beginCamera()) scope.launch {
             val uri = withContext(Dispatchers.IO) { files.create(viewModel.pendingCaptureStartedAtMillis) }
             viewModel.rememberPendingUri(uri.toString())
-            try { takePicture.launch(uri) }
-            catch (_: Exception) {
-                withContext(Dispatchers.IO) { files.delete(uri) }
-                viewModel.cameraCancelled()
-            }
+            liveCamera = true
         }
     }
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -185,98 +196,113 @@ fun CaptureScreen(
         }
         if (reviewPhotoUri == null && viewModel.pendingUri() == null) viewModel.loadStationSearch()
     }
-    AnpScaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            AnpTopAppBar(
-                title = { Text(stringResource(R.string.capture_screen_title)) },
-                onNavigateUp = onNavigateBack,
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding)
-                .verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            target?.let {
-                Text(
-                    text = stringResource(
-                        R.string.capture_target_label,
-                        it.stationId.take(8),
-                        it.fuelProductWire,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    Box(Modifier.fillMaxSize()) {
+        AnpScaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                AnpTopAppBar(
+                    title = { Text(stringResource(R.string.capture_screen_title)) },
+                    onNavigateUp = onNavigateBack,
                 )
-            }
-            if (targetInvalid) {
-                Text(
-                    text = stringResource(R.string.capture_target_invalid),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                return@Column
-            }
-            if (gateFailure != null) Text(stringResource(if(gateFailure=="photo.policy-unavailable") R.string.capture_policy_unavailable else R.string.capture_authorization_required), color = MaterialTheme.colorScheme.error)
-            when (state) {
-                CaptureOcrUiState.Disabled -> {
+            },
+        ) { padding ->
+            Column(
+                modifier = Modifier.fillMaxSize().padding(padding)
+                    .verticalScroll(rememberScrollState()).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                target?.let {
                     Text(
-                        stringResource(R.string.capture_disabled),
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = stringResource(
+                            R.string.capture_target_label,
+                            it.stationId.take(8),
+                            it.fuelProductWire,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                CaptureOcrUiState.PermissionDenied -> {
+                if (targetInvalid) {
                     Text(
-                        stringResource(R.string.capture_permission_required),
+                        text = stringResource(R.string.capture_target_invalid),
                         style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error,
                     )
-                    NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                    return@Column
                 }
-                CaptureOcrUiState.Cancelled -> {
-                    Text(
-                        stringResource(R.string.capture_cancelled),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    NominalStationPicker(viewModel, requestCamera, onChooseCity)
-                }
-                else -> {
-                    val photoUri = reviewPhotoUri
-                    if (photoUri == null) {
-                        NominalStationPicker(viewModel, requestCamera, onChooseCity)
-
-                    } else {
-                        PhotoReviewContent(
-                            photoUri = photoUri,
-                            fuelAmounts = fuelAmounts,
-                            removedFuels = removedFuels,
-                            fuelErrors = fuelErrors,
-                            unassigned = unassignedAmounts,
-                            photoAttached = photoId != null,
-                            photoRefused = photoRefused,
-                            submit = submit,
-                            onAmount = viewModel::setFuelAmount,
-                            onRemoveFuel = viewModel::removeFuel,
-                            onAddFuel = viewModel::addFuel,
-                            onAssignUnassigned = viewModel::assignUnassigned,
-                            onDismissUnassigned = viewModel::dismissUnassigned,
-                            processing = processing,
-                            conditional = conditional,
-                            defaultPriceConfirmed = defaultConfirmed,
-                            onConfirmDefault = viewModel::confirmDefaultPrice,
-                            onReanalyze = {
-                                scope.launch {
-                                    val bytes = withContext(Dispatchers.IO) { files.read(photoUri, viewModel.originalCapturedAtMillis) }
-                                    if (bytes != null) viewModel.replacePhoto(bytes, "image/jpeg")
-                                }
-                            },
-                            onCrop = { bytes -> viewModel.replacePhoto(bytes, "image/jpeg") },
-                            onRetake = requestCamera,
-                            onNavigateBack = onReturnCommunity,
-                            onSubmit = viewModel::submitContributions,
+                if (gateFailure != null) Text(stringResource(if(gateFailure=="photo.policy-unavailable") R.string.capture_policy_unavailable else R.string.capture_authorization_required), color = MaterialTheme.colorScheme.error)
+                when (state) {
+                    CaptureOcrUiState.Disabled -> {
+                        Text(
+                            stringResource(R.string.capture_disabled),
+                            style = MaterialTheme.typography.bodyLarge,
                         )
                     }
+                    CaptureOcrUiState.PermissionDenied -> {
+                        Text(
+                            stringResource(R.string.capture_permission_required),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                    }
+                    CaptureOcrUiState.Cancelled -> {
+                        Text(
+                            stringResource(R.string.capture_cancelled),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        NominalStationPicker(viewModel, requestCamera, onChooseCity)
+                    }
+                    else -> {
+                        val photoUri = reviewPhotoUri
+                        if (photoUri == null) {
+                            NominalStationPicker(viewModel, requestCamera, onChooseCity)
+
+                        } else {
+                            PhotoReviewContent(
+                                photoUri = photoUri,
+                                fuelAmounts = fuelAmounts,
+                                removedFuels = removedFuels,
+                                fuelErrors = fuelErrors,
+                                unassigned = unassignedAmounts,
+                                photoAttached = photoId != null,
+                                photoRefused = photoRefused,
+                                submit = submit,
+                                onAmount = viewModel::setFuelAmount,
+                                onRemoveFuel = viewModel::removeFuel,
+                                onAddFuel = viewModel::addFuel,
+                                onAssignUnassigned = viewModel::assignUnassigned,
+                                onDismissUnassigned = viewModel::dismissUnassigned,
+                                processing = processing,
+                                conditional = conditional,
+                                defaultPriceConfirmed = defaultConfirmed,
+                                onConfirmDefault = viewModel::confirmDefaultPrice,
+                                onReanalyze = {
+                                    scope.launch {
+                                        val bytes = withContext(Dispatchers.IO) { files.read(photoUri, viewModel.originalCapturedAtMillis) }
+                                        if (bytes != null) viewModel.reanalyzeOriginal(bytes, "image/jpeg")
+                                    }
+                                },
+                                onCrop = { bytes -> viewModel.replacePhoto(bytes, "image/jpeg") },
+                                onRetake = requestCamera,
+                                onNavigateBack = onReturnCommunity,
+                                onSubmit = viewModel::submitContributions,
+                                boardFrame = boardFrame,
+                            )
+                        }
+                    }
                 }
+            }
+        }
+        if (liveCamera) {
+            val pending = viewModel.pendingUri()?.let(Uri::parse)
+            if (pending == null) {
+                LaunchedEffect(Unit) { liveCamera = false }
+            } else {
+                LiveBoardCamera(
+                    photo = pending,
+                    onDone = { written -> liveCamera = false; finishCamera(written) },
+                    onUnavailable = { liveCamera = false; systemCamera(pending) },
+                )
             }
         }
     }
@@ -312,6 +338,7 @@ internal fun PhotoReviewContent(
     onCrop: (ByteArray) -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
+    boardFrame: ImagePriceOcr.BoardFrame? = null,
 ) {
     val fuels = FuelProduct.entries.filter { it in fuelAmounts && it !in removedFuels }
     var addingFuel by remember { mutableStateOf(false) }
@@ -320,7 +347,14 @@ internal fun PhotoReviewContent(
     val editable = !processing && submit !is CaptureOcrViewModel.SubmitState.Queued && submit !is CaptureOcrViewModel.SubmitState.Submitting && submit !is CaptureOcrViewModel.SubmitState.Sent
     PhotoSubmissionFeedback(submit, onNavigateBack)
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        StaticCropPhoto(photoUri = photoUri, onCrop = onCrop, enabled = editable)
+        StaticCropPhoto(photoUri = photoUri, onCrop = onCrop, enabled = editable, boardFrame = boardFrame)
+        if (boardFrame != null && !processing) {
+            Text(
+                text = stringResource(R.string.capture_board_found),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         if (processing) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(stringResource(R.string.capture_recognizing))
@@ -490,6 +524,7 @@ internal fun StaticCropPhoto(
     onCrop: (ByteArray) -> Unit,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
+    boardFrame: ImagePriceOcr.BoardFrame? = null,
 ) {
     val context = LocalContext.current
     var bitmap by remember(photoUri) { mutableStateOf<Bitmap?>(null) }
@@ -501,6 +536,20 @@ internal fun StaticCropPhoto(
     var scale by remember(photoUri) { mutableStateOf(1f) }
     var offset by remember(photoUri) { mutableStateOf(Offset.Zero) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    // Recognition found the board: glide the photo so the board fills the crop frame. The
+    // contributor can still pinch, drag or double-tap; a new reading re-centres.
+    LaunchedEffect(boardFrame, bitmap, containerSize) {
+        val frame = boardFrame ?: return@LaunchedEffect
+        val bmp = bitmap ?: return@LaunchedEffect
+        val target = boardFraming(frame, bmp.width, bmp.height, containerSize.width.toFloat(), containerSize.height.toFloat())
+            ?: return@LaunchedEffect
+        val startScale = scale
+        val startOffset = offset
+        animate(0f, 1f, animationSpec = tween(450)) { progress, _ ->
+            scale = startScale + (target.first - startScale) * progress
+            offset = startOffset + (target.second - startOffset) * progress
+        }
+    }
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
             modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)
@@ -577,6 +626,32 @@ internal fun StaticCropPhoto(
             Text(stringResource(R.string.capture_crop))
         }
     }
+}
+
+/**
+ * Zoom and pan that put the found board inside the fixed crop frame (85% width, 4:3),
+ * within the same 1..5x and edge limits as the gestures. Null when nothing is laid out.
+ */
+internal fun boardFraming(
+    frame: ImagePriceOcr.BoardFrame,
+    bitmapW: Int,
+    bitmapH: Int,
+    containerW: Float,
+    containerH: Float,
+): Pair<Float, Offset>? {
+    if (bitmapW <= 0 || bitmapH <= 0 || containerW <= 0f || containerH <= 0f) return null
+    val fit = minOf(containerW / bitmapW, containerH / bitmapH)
+    val boardW = (frame.right - frame.left) * bitmapW * fit
+    val boardH = (frame.bottom - frame.top) * bitmapH * fit
+    if (boardW <= 0f || boardH <= 0f) return null
+    val cropW = containerW * 0.85f
+    val cropH = cropW * 3f / 4f
+    val scale = (minOf(cropW / boardW, cropH / boardH) * 0.96f).coerceIn(1f, 5f)
+    val centerX = ((frame.left + frame.right) / 2f - 0.5f) * bitmapW * fit
+    val centerY = ((frame.top + frame.bottom) / 2f - 0.5f) * bitmapH * fit
+    val maxX = (containerW * scale - containerW) / 2f
+    val maxY = (containerH * scale - containerH) / 2f
+    return scale to Offset((-centerX * scale).coerceIn(-maxX, maxX), (-centerY * scale).coerceIn(-maxY, maxY))
 }
 
 private fun decodeSampled(context: Context, uri: Uri, maxSide: Int): Bitmap? = try {

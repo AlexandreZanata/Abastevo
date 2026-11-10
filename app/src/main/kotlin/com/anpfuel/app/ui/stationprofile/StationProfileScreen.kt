@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +24,7 @@ import com.anpfuel.app.ui.components.AbastevoBrandBanner
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
+import com.anpfuel.app.ui.designsystem.OutlinedButton
 import com.anpfuel.domain.profile.ProfileBadge
 import com.anpfuel.domain.profile.ProfileBadgeInput
 import com.anpfuel.domain.profile.ProfileBadgeRule

@@ -13,12 +13,23 @@ class ForumDomainTest {
     @Test
     fun `ForumCategory parses standard wire codes`() {
         assertEquals(ForumCategory.FUELS, ForumCategory.fromWire("FUELS"))
-        assertEquals(ForumCategory.MARKET, ForumCategory.fromWire("MARKET"))
-        assertEquals(ForumCategory.REGULATION, ForumCategory.fromWire("REGULATION"))
-        assertEquals(ForumCategory.CONSUMPTION, ForumCategory.fromWire("CONSUMPTION"))
+        assertEquals(ForumCategory.ELECTRIC, ForumCategory.fromWire("ELECTRIC"))
+        assertEquals(ForumCategory.TRAFFIC_RULES, ForumCategory.fromWire("TRAFFIC_RULES"))
+        assertEquals(ForumCategory.VEHICLES_TECH, ForumCategory.fromWire("VEHICLES_TECH"))
         assertEquals(ForumCategory.ROADS_MOBILITY, ForumCategory.fromWire("ROADS_MOBILITY"))
         assertEquals(ForumCategory.DRIVER_ECONOMY, ForumCategory.fromWire("DRIVER_ECONOMY"))
         assertEquals(ForumCategory.ABASTEVO_DATA, ForumCategory.fromWire("ABASTEVO_DATA"))
+    }
+
+    @Test
+    fun `ForumCategory knows every contract taxonomy code`() {
+        val contract = listOf(
+            "FUELS", "ELECTRIC", "TRAFFIC_RULES", "VEHICLES_TECH",
+            "ROADS_MOBILITY", "DRIVER_ECONOMY", "ABASTEVO_DATA",
+        )
+        val parsed = contract.map { ForumCategory.fromWire(it) }
+        assertFalse(ForumCategory.UNKNOWN in parsed)
+        assertEquals(contract.size, parsed.toSet().size)
     }
 
     @Test

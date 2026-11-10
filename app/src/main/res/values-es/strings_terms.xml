@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terms_gate_title">Antes de empezar</string>
+    <string name="terms_gate_intro">Para usar Abastevo, lee y acepta los Términos de Uso y la Política de Privacidad.</string>
+    <string name="terms_gate_changed">Los documentos se actualizaron desde tu última aceptación. Léelos y acéptalos de nuevo para continuar.</string>
+    <string name="terms_gate_point_purpose">Abastevo es una plataforma comunitaria para consultar y compartir precios de combustibles. No vende combustible ni está afiliada a la ANP.</string>
+    <string name="terms_gate_point_community">Los precios, fotos, valoraciones y comentarios que envíes deben ser reales y siguen las reglas de la comunidad y la moderación.</string>
+    <string name="terms_gate_point_privacy">La Política de Privacidad explica qué datos se tratan, para qué y cómo ejercer tus derechos.</string>
+    <string name="terms_gate_read_terms">Leer los Términos de Uso</string>
+    <string name="terms_gate_read_privacy">Leer la Política de Privacidad</string>
+    <string name="terms_gate_versions">Términos de Uso: versión %1$s · Política de Privacidad: versión %2$s</string>
+    <string name="terms_gate_check">He leído y acepto los Términos de Uso y declaro que he leído la Política de Privacidad.</string>
+    <string name="terms_gate_optional_note">Esta aceptación no autoriza el uso opcional de fotos para entrenamiento. Esa elección es independiente y está en Privacidad.</string>
+    <string name="terms_gate_accept">Aceptar y continuar</string>
+    <string name="terms_gate_decline">No acepto · salir de la app</string>
+    <string name="terms_gate_failed">No se pudo registrar la aceptación en este dispositivo. Inténtalo de nuevo.</string>
+    <string name="terms_gate_open_failed">No se pudo abrir el navegador. Abre esta dirección en tu navegador: %1$s</string>
+    <string name="terms_record_heading">Términos de Uso y Política de Privacidad</string>
+    <string name="terms_record_accepted">Aceptados en este dispositivo el %1$s.</string>
+    <string name="terms_revoke">Revocar aceptación</string>
+    <string name="terms_revoke_title">¿Revocar la aceptación?</string>
+    <string name="terms_revoke_body">La app vuelve a la pantalla de términos y solo se puede usar tras una nueva aceptación. Tu cuenta y tus datos en el servidor no se borran; para eso usa la eliminación de cuenta.</string>
+    <string name="terms_revoke_confirm">Revocar</string>
+    <string name="terms_revoke_failed">No se pudo eliminar el registro. Inténtalo de nuevo.</string>
+    <string name="privacy_accept_record">Aceptar y registrar preferencia</string>
+    <string name="privacy_recorded_details">Términos %1$s · decisión registrada por el servidor el %2$s</string>
+    <string name="privacy_modal_hint">Marca la casilla de abajo y toca aceptar para registrar. Cerrar sin aceptar no registra nada.</string>
+</resources>

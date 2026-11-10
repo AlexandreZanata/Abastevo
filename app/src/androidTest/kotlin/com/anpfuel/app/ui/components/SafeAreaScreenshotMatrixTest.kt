@@ -43,7 +43,6 @@ class SafeAreaScreenshotMatrixTest {
                         hasCachedData = false,
                     ),
                     darkTheme = false,
-                    onToggleTheme = {},
                     onNavigate = {},
                     onRefresh = {},
                     onRetry = {},

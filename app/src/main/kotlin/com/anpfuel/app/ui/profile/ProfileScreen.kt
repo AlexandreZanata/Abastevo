@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -23,7 +24,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,9 +31,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -51,7 +49,10 @@ import com.anpfuel.app.ui.auth.AuthStep
 import com.anpfuel.app.ui.auth.AuthViewModel
 import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
-import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.OutlinedButton
+import com.anpfuel.app.ui.designsystem.TextButton
+import com.anpfuel.app.ui.header.AbastevoHeader
 import com.anpfuel.app.ui.contributors.ProfileContributorsEntry
 import com.anpfuel.app.ui.components.SkeletonButton
 import com.anpfuel.app.ui.components.SkeletonCard
@@ -97,18 +98,9 @@ fun ProfileScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            AnpTopAppBar(
-                title = { Text(text = stringResource(R.string.profile_screen_title)) },
-                actions = {
-                    IconButton(onClick = onToggleTheme) {
-                        Icon(
-                            imageVector = if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = stringResource(
-                                if (darkTheme) R.string.action_switch_light_theme else R.string.action_switch_dark_theme,
-                            ),
-                        )
-                    }
-                },
+            AbastevoHeader(
+                onNotificationsClick = { onNavigate(Routes.SETTINGS) },
+                onProfileClick = {},
             )
         },
     ) { innerPadding ->
@@ -120,6 +112,19 @@ fun ProfileScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            TextButton(onClick = onToggleTheme, modifier = Modifier.align(Alignment.End)) {
+                Icon(
+                    imageVector = if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = stringResource(
+                        if (darkTheme) R.string.action_switch_light_theme else R.string.action_switch_dark_theme,
+                    ),
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
             if (authState.step == AuthStep.CHECKING) {
                 ProfileSkeleton()
                 return@Column

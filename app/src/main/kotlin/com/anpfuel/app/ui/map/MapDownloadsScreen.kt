@@ -28,14 +28,11 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.SignalCellularAlt
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -53,6 +50,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.OutlinedButton
+import com.anpfuel.app.ui.designsystem.TextButton
 
 /**
  * Usable map-download screen: configured origin -> real envelope -> pinned-key

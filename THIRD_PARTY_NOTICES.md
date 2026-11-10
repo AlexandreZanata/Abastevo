@@ -19,6 +19,9 @@ sources, dependencies, fonts and other third-party material.
 - OpenCNPJ is a separate offline backend preparation tool, not part of the APK.
   Its selected MIT notice and pinned binary/source provenance are preserved by
   [the registry installation](infra/deploy/registry/README.md).
+- CameraX (`androidx.camera` 1.4.2) is Apache-2.0; its `camera-core` native
+  image library bundles libyuv under BSD-3-Clause. Review:
+  [live board framing](docs/mobile/p37-ocr-live-framing.md).
 - Kotlin, Android Jetpack, Room, OkHttp and other dependencies retain their own
   license files and notices. The Abastevo visible credit does not replace them.
 

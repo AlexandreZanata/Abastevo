@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,6 +48,7 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.ErrorState
 import com.anpfuel.app.ui.components.LoadingState
 import com.anpfuel.app.ui.components.ProfileActionRow
+import com.anpfuel.app.ui.designsystem.Button
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 @OptIn(ExperimentalMaterial3Api::class)

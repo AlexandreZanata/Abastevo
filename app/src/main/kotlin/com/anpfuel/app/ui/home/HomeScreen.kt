@@ -1,17 +1,17 @@
 package com.anpfuel.app.ui.home
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,11 +21,16 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.outlined.DirectionsCar
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.LocalGasStation
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,15 +38,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import com.anpfuel.app.ui.components.AnpScaffold
-import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.designsystem.AbastevoSelectionDefaults
+import com.anpfuel.app.ui.designsystem.AssistChip
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.TextButton
+import com.anpfuel.app.ui.header.AbastevoHeader
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -59,7 +71,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -84,9 +95,9 @@ import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.components.SyncStatusBanner
 import com.anpfuel.app.ui.accessibility.liveRegionSemantics
 import com.anpfuel.app.ui.components.TankFillCostCard
-import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
+import com.anpfuel.app.ui.theme.AbastevoSpacing
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.state.DataReadinessState
@@ -99,7 +110,6 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     darkTheme: Boolean,
-    onToggleTheme: () -> Unit,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -132,7 +142,6 @@ fun HomeScreen(
     HomeContent(
         uiState = uiState,
         darkTheme = darkTheme,
-        onToggleTheme = onToggleTheme,
         onNavigate = onNavigate,
         onRefresh = { viewModel.refresh(locale) },
         onRetry = { viewModel.load(locale, showLoadingIndicator = true) },
@@ -151,7 +160,6 @@ fun HomeScreen(
 internal fun HomeContent(
     uiState: HomeUiState,
     darkTheme: Boolean,
-    onToggleTheme: () -> Unit,
     onNavigate: (String) -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
@@ -193,30 +201,18 @@ internal fun HomeContent(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            AnpTopAppBar(
-                title = {
-                    Image(
-                        painter = painterResource(R.drawable.ic_abastevo_logo),
-                        contentDescription = stringResource(R.string.app_name),
-                        modifier = Modifier.size(32.dp),
-                    )
+            val municipality = uiState.municipality
+            val state = uiState.state
+            AbastevoHeader(
+                onNotificationsClick = { onNavigate(Routes.SETTINGS) },
+                onProfileClick = { onNavigate(Routes.PROFILE) },
+                locationLabel = if (municipality != null && state != null) {
+                    stringResource(R.string.home_location_format, municipality, state.abbreviation)
+                } else {
+                    null
                 },
-                actions = {
-                    if (includeSurveyWeekChip && uiState.priceSource == HomePriceSource.ANP) {
-                        SurveyWeekChipAction(
-                            onWeekChanged = onWeekChanged,
-                            hasTrailingAction = true,
-                        )
-                    }
-                    IconButton(onClick = onToggleTheme) {
-                        Icon(
-                            imageVector = if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = stringResource(
-                                if (darkTheme) R.string.action_switch_light_theme else R.string.action_switch_dark_theme,
-                            ),
-                        )
-                    }
-                },
+                onLocationClick = { onNavigate(Routes.LOCATION) },
+                onWeekChanged = if (includeSurveyWeekChip && uiState.priceSource == HomePriceSource.ANP) onWeekChanged else null,
             )
         },
     ) { innerPadding ->
@@ -225,8 +221,8 @@ internal fun HomeContent(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = AbastevoSpacing.screenGutter, vertical = AbastevoSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(AbastevoSpacing.md),
         ) {
             // A verified STALE week stays quiet: the user already synced and
             // ANP has nothing newer; the transient notice explained it once.
@@ -278,9 +274,6 @@ internal fun HomeContent(
                 }
             }
 
-            if (uiState.hasLocation) {
-                LocationHeader(uiState = uiState, onNavigate = onNavigate)
-            }
             if (uiState.tankFillCostEstimates.isNotEmpty()) {
                 VehicleCarousel(
                     estimates = uiState.tankFillCostEstimates,
@@ -296,10 +289,18 @@ internal fun HomeContent(
                 HomeBenefits(onDismiss = onDismissBenefits)
             }
 
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.fillMaxWidth().testTag("home_price_source")) {
-                HomePriceSource.entries.forEach { source ->
-                    androidx.compose.material3.FilterChip(selected=uiState.priceSource==source,onClick={onPriceSourceChanged(source)},
-                        label={Text(stringResource(if(source==HomePriceSource.ANP) R.string.home_source_anp else R.string.home_source_community))})
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().testTag("home_price_source")) {
+                HomePriceSource.entries.forEachIndexed { index, source ->
+                    SegmentedButton(
+                        selected = uiState.priceSource == source,
+                        onClick = { onPriceSourceChanged(source) },
+                        modifier = Modifier.heightIn(min = AbastevoSpacing.controlMinHeight),
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = HomePriceSource.entries.size),
+                        colors = AbastevoSelectionDefaults.segmentedButtonColors(),
+                        label = {
+                            Text(stringResource(if (source == HomePriceSource.ANP) R.string.home_source_anp else R.string.home_source_community))
+                        },
+                    )
                 }
             }
             when {
@@ -383,6 +384,17 @@ internal fun HomeContent(
                             priceSort = uiState.priceSort,
                         )
                     }
+                    Button(
+                        onClick = { onNavigate(Routes.MAP) },
+                        modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp),
+                    ) {
+                        Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text(
+                            text = stringResource(R.string.home_open_map),
+                            modifier = Modifier.weight(1f).padding(start = 8.dp),
+                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
+                    }
                     RowActions(onNavigate = onNavigate)
                 }
             }
@@ -449,7 +461,7 @@ private fun HomePriceSortDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             tonalElevation = 6.dp,
         ) {
             Column(
@@ -538,12 +550,16 @@ private fun VehicleCarousel(
     modifier: Modifier = Modifier,
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val cardWidth = screenWidth * 0.85f
+    // A single vehicle lines up with the cards below; several peek the next one.
+    val cardWidth = if (estimates.size == 1) {
+        screenWidth - AbastevoSpacing.screenGutter * 2
+    } else {
+        screenWidth * 0.85f
+    }
 
     LazyRow(
         modifier = modifier.fillMaxWidth().testTag("home_vehicle_carousel"),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(AbastevoSpacing.md),
     ) {
         items(estimates, key = { it.vehicleId.value }) { estimate ->
             TankFillCostCard(
@@ -554,24 +570,6 @@ private fun VehicleCarousel(
                 },
                 modifier = Modifier.width(cardWidth),
             )
-        }
-    }
-}
-
-@Composable
-private fun LocationHeader(uiState: HomeUiState, onNavigate: (String) -> Unit) {
-    val municipality = uiState.municipality ?: return
-    val state = uiState.state ?: return
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = stringResource(R.string.home_location_format, municipality, state.abbreviation),
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        TextButton(onClick = { onNavigate(Routes.LOCATION) }) {
-            Text(stringResource(R.string.home_change_city))
         }
     }
 }
@@ -613,27 +611,27 @@ private fun RowActions(onNavigate: (String) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        AssistChip(
-            onClick = { onNavigate(Routes.LOCATION) },
-            label = { Text(text = stringResource(R.string.nav_location)) },
-        )
-        AssistChip(
-            onClick = { onNavigate(Routes.HISTORY) },
-            label = { Text(text = stringResource(R.string.nav_history)) },
-        )
-        AssistChip(
-            onClick = { onNavigate(Routes.STATIONS) },
-            label = { Text(text = stringResource(R.string.nav_stations)) },
-        )
-        AssistChip(
-            onClick = { onNavigate(Routes.VEHICLES) },
-            label = { Text(text = stringResource(R.string.nav_vehicles)) },
-        )
-        AssistChip(
-            onClick = { onNavigate(Routes.SETTINGS) },
-            label = { Text(text = stringResource(R.string.nav_settings)) },
-        )
+        HomeShortcutChip(R.string.nav_location, Icons.Outlined.LocationOn) { onNavigate(Routes.LOCATION) }
+        HomeShortcutChip(R.string.nav_history, Icons.Outlined.History) { onNavigate(Routes.HISTORY) }
+        HomeShortcutChip(R.string.nav_stations, Icons.Outlined.LocalGasStation) { onNavigate(Routes.STATIONS) }
+        HomeShortcutChip(R.string.nav_vehicles, Icons.Outlined.DirectionsCar) { onNavigate(Routes.VEHICLES) }
+        HomeShortcutChip(R.string.nav_settings, Icons.Outlined.Settings) { onNavigate(Routes.SETTINGS) }
     }
+}
+
+@Composable
+private fun HomeShortcutChip(labelRes: Int, icon: ImageVector, onClick: () -> Unit) {
+    AssistChip(
+        onClick = onClick,
+        label = { Text(text = stringResource(labelRes)) },
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(AssistChipDefaults.IconSize),
+            )
+        },
+    )
 }
 
 @Preview(showBackground = true, name = "Home with prices")
@@ -660,7 +658,6 @@ private fun HomeWithPricesPreview() {
                 ),
             ),
             darkTheme = false,
-            onToggleTheme = {},
             onNavigate = {},
             onRefresh = {},
             onRetry = {},

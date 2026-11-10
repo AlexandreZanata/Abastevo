@@ -20,7 +20,10 @@
     <string name="quality_reports_new">新しい報告</string>
     <string name="quality_reports_own">自分の非公開報告</string>
     <string name="quality_reports_refresh">自分の報告を更新</string>
-    <string name="quality_reports_empty">このページに報告はありません。</string>
+    <string name="quality_reports_empty">まだ報告を送信していません</string>
+    <string name="quality_reports_empty_how">報告は必ず1つのスタンドと1つの燃料に関するものです。スタンドのページを開き、「品質検査を見る」、続いて「体験を報告・自分の報告を確認」をタップしてください。</string>
+    <string name="quality_reports_empty_here">上のフォームから、このスタンドの最初の報告を送信できます。</string>
+    <string name="quality_reports_choose_station">スタンドを選ぶ</string>
     <string name="quality_reports_more">報告の次のページ</string>
     <string name="quality_reports_confirm_title">操作の確認</string>
     <string name="quality_reports_confirm_withdraw">この報告を撤回しますか？本文は削除されます。</string>

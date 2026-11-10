@@ -54,7 +54,8 @@ import org.json.JSONObject
  */
 @RunWith(AndroidJUnit4::class)
 class EvTripUiInstrumentedTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val acceptedTerms = com.anpfuel.app.AcceptedTermsRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val profile = ChargingDiscoveryRepository.OCM_PROFILE
     private val vehicleId = "11111111-1111-4111-8111-111111111111"

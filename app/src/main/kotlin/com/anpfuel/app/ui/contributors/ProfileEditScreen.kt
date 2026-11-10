@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,6 +35,7 @@ import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.designsystem.Button
 import com.anpfuel.domain.contributor.ProfileEdit
 import com.anpfuel.domain.contributor.ProfileLinkInput
 import com.anpfuel.domain.contributor.ProfileVisibility

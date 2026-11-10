@@ -39,7 +39,8 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class MapOfflineJourneyInstrumentedTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val acceptedTerms = com.anpfuel.app.AcceptedTermsRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val engine get() = MapEngineHolder.engine
     private fun text(id: Int) = compose.activity.getString(id)

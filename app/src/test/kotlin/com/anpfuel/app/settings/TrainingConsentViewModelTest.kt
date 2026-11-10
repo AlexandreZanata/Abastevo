@@ -333,4 +333,28 @@ class TrainingConsentViewModelTest {
         coVerify(exactly = 2) { useCase.syncPending(any()) }
     }
 
+    @Test
+    fun `granted state carries the server terms version and decision instant`() = runTest(dispatcher) {
+        coEvery { useCase.syncPending(any()) } returns
+            TrainingConsentOutcome.Status(grantedStatus().copy(decidedAt = "2026-11-10T12:31:00Z"), false)
+        val vm = TrainingConsentViewModel(useCase).also { it.ioDispatcher = dispatcher }
+        vm.prepare(accountId = "acct-1")
+        advanceUntilIdle()
+        val content = vm.state.value as TrainingConsentUiState.Content
+        assertTrue(content.granted)
+        assertEquals("training-terms-v1", content.termsVersion)
+        assertEquals("2026-11-10T12:31:00Z", content.decidedAt)
+    }
+
+    @Test
+    fun `decision instant is shown in the device zone and an unreadable one is hidden`() {
+        val previous = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.forLanguageTag("pt-BR"))
+            val text = consentDecisionText("2026-11-10T12:31:00Z", java.time.ZoneId.of("America/Cuiaba"))
+            assertTrue(text!!.contains("10 de nov. de 2026") && text.contains("08:31"), text)
+            assertEquals(null, consentDecisionText("not an instant"))
+            assertEquals(null, consentDecisionText(""))
+        } finally { java.util.Locale.setDefault(previous) }
+    }
 }

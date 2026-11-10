@@ -27,6 +27,7 @@ import com.anpfuel.app.R
 import com.anpfuel.app.ui.accessibility.headingSemantics
 import com.anpfuel.app.ui.components.SurveyWeekChip
 import com.anpfuel.app.ui.components.rememberRawSystemBottomPadding
+import com.anpfuel.domain.valueobject.SurveyWeek
 
 @Composable
 fun SurveyWeekChipAction(
@@ -34,6 +35,21 @@ fun SurveyWeekChipAction(
     modifier: Modifier = Modifier,
     hasTrailingAction: Boolean = false,
     activeSurveyWeekViewModel: ActiveSurveyWeekViewModel = hiltViewModel(),
+    trigger: @Composable (
+        surveyWeek: SurveyWeek,
+        isLatest: Boolean,
+        isStale: Boolean,
+        onClick: () -> Unit,
+        modifier: Modifier,
+    ) -> Unit = { surveyWeek, isLatest, isStale, onClick, triggerModifier ->
+        SurveyWeekChip(
+            surveyWeek = surveyWeek,
+            isLatest = isLatest,
+            onClick = onClick,
+            modifier = triggerModifier,
+            isStale = isStale,
+        )
+    },
 ) {
     val uiState by activeSurveyWeekViewModel.uiState.collectAsStateWithLifecycle()
     var sheetVisible by rememberSaveable { mutableStateOf(false) }
@@ -49,13 +65,7 @@ fun SurveyWeekChipAction(
     }
 
     uiState.surveyWeek?.let { surveyWeek ->
-        SurveyWeekChip(
-            surveyWeek = surveyWeek,
-            isLatest = uiState.isLatest,
-            onClick = { sheetVisible = true },
-            modifier = chipModifier,
-            isStale = uiState.isStale,
-        )
+        trigger(surveyWeek, uiState.isLatest, uiState.isStale, { sheetVisible = true }, chipModifier)
     }
 
     WeekPickerBottomSheet(

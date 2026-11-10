@@ -20,7 +20,8 @@ import org.junit.runner.RunWith
 /** Opt-in local HTTP proof with admitted real MWM inputs, never synthetic map bytes. */
 @RunWith(AndroidJUnit4::class)
 class MapNativeDownloadInstrumentedTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val acceptedTerms = com.anpfuel.app.AcceptedTermsRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
     private fun label(id: Int) = compose.activity.getString(id)
     private fun waitText(text: String, timeout: Long = 60_000) {
         compose.waitUntil(timeout) {

@@ -297,9 +297,9 @@ class ForumRepositoryTest {
 
         val categories = listOf(
             ForumCategory.FUELS,
-            ForumCategory.MARKET,
-            ForumCategory.REGULATION,
-            ForumCategory.CONSUMPTION,
+            ForumCategory.ELECTRIC,
+            ForumCategory.TRAFFIC_RULES,
+            ForumCategory.VEHICLES_TECH,
             ForumCategory.ROADS_MOBILITY,
             ForumCategory.DRIVER_ECONOMY, // 6th scope
         )
