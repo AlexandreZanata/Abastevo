@@ -892,6 +892,7 @@
     <string name="capture_crop">Обрезать по рамке</string>
     <string name="capture_photo_content">Фото цен для проверки</string>
     <string name="capture_review_hint">Обрежьте до области цен и укажите только топливо с фото — пустые поля не отправляются.</string>
+    <string name="capture_board_found">Табло цен найдено: фото выровнено по нему. При необходимости поправьте кадр.</string>
     <string name="capture_fuel_invalid">Проверьте значение (например, 5,89)</string>
     <string name="capture_remove_fuel">Удалить топливо из сообщения</string>
     <string name="capture_show_all">Показать все виды топлива</string>

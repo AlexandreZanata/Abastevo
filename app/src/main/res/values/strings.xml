@@ -817,6 +817,7 @@
     <string name="capture_crop">Crop to frame</string>
     <string name="capture_photo_content">Price photo for review</string>
     <string name="capture_review_hint">Crop to focus on the prices, then fill only the fuels on the photo — blanks are not sent.</string>
+    <string name="capture_board_found">Price board found: the photo was centred on it. Adjust the framing if needed.</string>
     <string name="capture_fuel_invalid">Check this value (e.g. 5,89)</string>
     <string name="capture_remove_fuel">Remove fuel from report</string>
     <string name="capture_show_all">Show all fuels</string>

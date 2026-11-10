@@ -554,6 +554,37 @@ class CaptureOcrViewModelTest {
         assertEquals(vm.originalCapturedAtMillis, recovered.originalCapturedAtMillis)
     }
 
+    @Test fun `board frame follows the uncropped capture and a crop or a failed reading never moves it`() = runTest(dispatcher) {
+        val first = ImagePriceOcr.BoardFrame(0.2f, 0.3f, 0.6f, 0.7f)
+        val second = ImagePriceOcr.BoardFrame(0.1f, 0.1f, 0.5f, 0.5f)
+        var calls = 0
+        val pixels = object : ImagePriceOcr {
+            override suspend fun recognize(bytes: ByteArray) = FuelBoardOcr.Result(emptyList(), false, false)
+            override suspend fun recognizeFramed(bytes: ByteArray): ImagePriceOcr.Recognition {
+                calls++
+                if (calls == 4) error("ocr.unavailable")
+                return ImagePriceOcr.Recognition(recognize(bytes), when (calls) { 1 -> first; 2 -> ImagePriceOcr.BoardFrame(0f, 0f, 1f, 1f); else -> second })
+            }
+        }
+        val saved = SavedStateHandle()
+        val vm = viewModel(true, true, pixels = pixels, saved = saved)
+        assertNull(vm.boardFrame.value)
+        vm.preparePhoto(byteArrayOf(1), "image/jpeg")
+        vm.processing.first { !it }
+        assertEquals(first, vm.boardFrame.value)
+        vm.replacePhoto(byteArrayOf(2), "image/jpeg")
+        vm.processing.first { !it }
+        assertEquals(first, vm.boardFrame.value, "a crop is framed relative to itself, not to the shown photo")
+        vm.reanalyzeOriginal(byteArrayOf(1), "image/jpeg")
+        vm.processing.first { !it }
+        assertEquals(second, vm.boardFrame.value)
+        vm.reanalyzeOriginal(byteArrayOf(1), "image/jpeg")
+        vm.processing.first { !it }
+        assertEquals(second, vm.boardFrame.value)
+        assertEquals("ocr.unavailable", vm.photoRefused.value)
+        assertFalse(saved.keys().any { it.contains("frame", ignoreCase = true) }, "geometry is never persisted")
+    }
+
     @Test fun `cancelled late OCR cannot restore rows or enqueue`() = runTest(dispatcher) {
         val delayed = CompletableDeferred<FuelBoardOcr.Result>()
         val pixels = object : ImagePriceOcr { override suspend fun recognize(bytes: ByteArray) = delayed.await() }

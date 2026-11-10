@@ -6,15 +6,25 @@ import kotlin.math.max
 
 /** Human-review suggestions from spatial OCR. No trust, publication or minimum-price selection. */
 object FuelBoardOcr {
-    data class Token(val text: String, val left: Int, val top: Int, val right: Int, val bottom: Int) {
+    /** [angle] is the recognizer's text rotation in degrees (0 when unknown); the box stays axis-aligned. */
+    data class Token(val text: String, val left: Int, val top: Int, val right: Int, val bottom: Int, val angle: Float = 0f) {
         val height get() = max(1, bottom - top)
         val cx get() = (left + right) / 2.0
         val cy get() = (top + bottom) / 2.0
     }
     data class Row(val product: FuelProduct, val amountMilli: Long)
+    /**
+     * [conflictingProducts] are fuels this reading withholds. [competingAmounts] holds, for the
+     * subset that showed different prices under clearly read names, the amounts it saw.
+     */
     data class Result(val rows: List<Row>, val conditional: Boolean, val unresolved: Boolean,
-        val orphans: List<Long> = emptyList(), val conflictingProducts: Set<FuelProduct> = emptySet())
+        val orphans: List<Long> = emptyList(), val conflictingProducts: Set<FuelProduct> = emptySet(),
+        val competingAmounts: Map<FuelProduct, Set<Long>> = emptyMap()) {
+        val competingProducts: Set<FuelProduct> get() = competingAmounts.keys
+    }
     private val price = Regex("(?<![0-9/.-])[0-9]{1,4}[.,][0-9]{2,3}(?![0-9/])")
+    private val iconPrice = Regex("^[EGDS][0-9]{1,2}[.,][0-9]{2,3}$")
+    private val zeroDisplay = Regex("^(?:R\\$ ?)?0?0[.,] ?0{2,3}$")
     private val integerFragment = Regex("^[1-9][.,]?$")
     private val fractionFragment = Regex("^[0-9]{2,3}$")
     private val numericFragment = Regex("^[0-9]{1,3}[.,]?$")
@@ -24,21 +34,46 @@ object FuelBoardOcr {
      * D,DD. Only whole-token values near a fuel label survive: matching
      * still requires anchor proximity and the review screen confirms. */
     private const val MAX_ORPHANS = 5
+    /** Readings of one photo that may be reconciled together. */
+    const val MAX_VIEWS = 4
 
-    /** Correlated pixel views improve suggestions, never confer trust or publication. */
+    /**
+     * Correlated pixel views improve suggestions, never confer trust or publication.
+     *
+     * A fuel is suggested when two readings agree on its amount and no other
+     * amount has as many readings, or when a single reading saw it and no
+     * reading doubted that fuel. Two agreeing readings outweigh another
+     * reading's uncertain name. They outweigh a reading that showed competing
+     * prices for the fuel only when every rival price is accounted for: two
+     * readings give it to a different fuel, so that reading had merely attached
+     * a neighbouring row. A rival nobody else explains is a real second price
+     * and the fuel stays manual. Ties, lone doubted readings and implausible
+     * amounts stay manual. Amounts are never averaged, edited or chosen by size.
+     */
     fun reconcile(views: List<Result>): Result {
-        require(views.size in 1..3)
+        require(views.size in 1..MAX_VIEWS)
         val rows = mutableListOf<Row>()
         val manual = views.flatMap { it.orphans }.distinct().toMutableList()
-        val conflicts = views.flatMap { it.conflictingProducts }.toMutableSet()
+        val doubted = views.flatMap { it.conflictingProducts }.toSet()
+        val competing = views.flatMap { it.competingAmounts.entries }
+            .groupBy({ it.key }, { it.value }).mapValues { (_, sets) -> sets.flatten().toSet() }
+        val assigned = views.flatMap { it.rows }.groupingBy { it }.eachCount()
+        val conflicts = mutableSetOf<FuelProduct>()
         var unresolved = views.any { it.unresolved }
-        for (fuel in views.flatMap { it.rows }.map { it.product }.distinct()) {
+        for (fuel in (views.flatMap { it.rows }.map { it.product } + doubted).distinct()) {
             val votes = views.mapNotNull { view -> view.rows.singleOrNull { it.product == fuel }?.amountMilli }
                 .groupingBy { it }.eachCount()
-            val winner = votes.maxByOrNull { it.value } ?: continue
-            if (fuel !in conflicts && (votes.size == 1 || winner.value >= 2)) rows += Row(fuel, winner.key)
+            val winner = votes.maxByOrNull { it.value }?.takeIf { top -> votes.count { it.value == top.value } == 1 }
+            val rivals = competing[fuel].orEmpty() - setOfNotNull(winner?.key)
+            val explained = rivals.all { rival ->
+                assigned.any { (row, count) -> row.amountMilli == rival && row.product != fuel && count >= 2 }
+            }
+            val agreed = winner != null && winner.value >= 2 && explained
+            val lone = winner != null && votes.size == 1 && winner.value == 1 && fuel !in doubted
+            if (winner != null && (agreed || lone) && plausible(winner.key)) rows += Row(fuel, winner.key)
             else {
                 unresolved = true
+                conflicts += fuel
                 manual += votes.keys
             }
         }
@@ -53,7 +88,27 @@ object FuelBoardOcr {
             rows.removeAll(ambiguous.toSet())
         }
         return Result(rows, views.any { it.conditional }, unresolved,
-            manual.distinct().take(MAX_ORPHANS), conflicts)
+            manual.distinct().take(MAX_ORPHANS), conflicts, competing.filterKeys { it in conflicts })
+    }
+
+    /**
+     * Suggestion bound, not a price rule: board prices per litre or cubic metre sit well
+     * below it, so a larger reading is a merged or misread number ("17,57", "107,75") and
+     * is left for the contributor, who can still type any valid price.
+     */
+    private fun plausible(amountMilli: Long): Boolean = amountMilli in 1_000L until MAX_SUGGESTED_UNIT_PRICE_MILLI
+    private const val MAX_SUGGESTED_UNIT_PRICE_MILLI = 15_000L
+
+    /**
+     * True while another reading could still change the suggestions: nothing
+     * is suggested yet, a fuel is withheld, or a reading does not show exactly
+     * the reconciled rows. Readings that agree on every row need no further look.
+     */
+    fun needsAnotherView(views: List<Result>): Boolean {
+        if (views.size >= MAX_VIEWS) return false
+        val settled = reconcile(views)
+        val rows = settled.rows.toSet()
+        return rows.isEmpty() || settled.conflictingProducts.isNotEmpty() || views.any { it.rows.toSet() != rows }
     }
 
     fun associate(input: List<Token>): Result {
@@ -115,6 +170,15 @@ object FuelBoardOcr {
         val values = tokens.filterNot { token -> nonPrice(token) ||
             tokens.any { parent -> parent != token && nonPrice(parent) && encloses(parent,token) } }
             .filterNot { token -> tokens.any { child -> child!=token && encloses(token,child) && price.containsMatchIn(child.text) && child.text.length<token.text.length } }
+            .map { token ->
+                // A row icon read as part of the number ("E4,64"): keep the digits' own box.
+                // The name usually sits between the icon and the digits, so the digits' box is
+                // estimated from their own height instead of the merged width.
+                if (iconPrice.matches(token.text.trim())) token.text.trim().drop(1).let { digits ->
+                    token.copy(text = digits, left = max(token.left + (token.right - token.left) / (digits.length + 1),
+                        token.right - (token.height * 0.6 * digits.length).toInt()))
+                } else token
+            }
             .flatMap { token ->
                 val rawText = token.text.trim()
                 val text = (if (Regex("^[0-9]{1,2} +[0-9]{2,3}$").matches(rawText))
@@ -137,8 +201,7 @@ object FuelBoardOcr {
         val uncertainMatches = mutableMapOf<FuelProduct, MutableList<Long>>()
         val orphans = mutableListOf<Long>()
         var unresolved = anchors.any { (_, fuel) -> fuel == null }
-        for ((value, amount) in values) {
-            val ranked = anchors.mapNotNull { (label, fuel) ->
+        fun rank(value: Token, candidates: List<Pair<Token, FuelProduct?>>) = candidates.mapNotNull { (label, fuel) ->
                 val h = max(label.height, value.height).toDouble()
                 val inline = label == value
                 val sameRow = abs(label.cy - value.cy) / h <= 0.75 && value.left >= label.right - h
@@ -151,6 +214,12 @@ object FuelBoardOcr {
                 }
                 score?.let { Triple(fuel,it,label) }
             }.sortedBy { it.second }
+        // A fuel showing 0,00 has no price today: its name must not take the next row's number.
+        val soldOut = tokens.filter { zeroDisplay.matches(it.text.trim()) }
+            .mapNotNull { zero -> rank(zero, anchors).firstOrNull()?.third }.toSet()
+        val priced = anchors.filterNot { (label, _) -> label in soldOut }
+        for ((value, amount) in values) {
+            val ranked = rank(value, priced)
             val best = ranked.firstOrNull()
             if (best == null) {
                 // Priced value with no recognizable label nearby (the name
@@ -180,7 +249,9 @@ object FuelBoardOcr {
         }
         // A low-confidence priced label may veto another view, never create a row.
         val conflicts = uncertainMatches.keys.toMutableSet()
+        val competing = mutableMapOf<FuelProduct, Set<Long>>()
         val rows = matches.groupBy { it.product }.mapNotNull { (fuel, found) ->
+            found.map { it.amountMilli }.toSet().let { if (it.size > 1) competing[fuel] = it }
             val possible=uncertainMatches[fuel].orEmpty()
             val amounts=(found.map{it.amountMilli}+possible).distinct()
             if(amounts.size==1 && possible.isEmpty()) Row(fuel,amounts.single()) else {
@@ -190,7 +261,7 @@ object FuelBoardOcr {
                 null
             }
         }
-        return Result(rows,conditional,unresolved,orphans,conflicts)
+        return Result(rows,conditional,unresolved,orphans,conflicts,competing)
     }
 
 
@@ -270,6 +341,9 @@ object FuelBoardOcr {
         .replace('É','E').replace('Ê','E').replace('Í','I').replace('Ó','O').replace('Õ','O')
         .replace('Ô','O').replace('Ú','U').replace('Ç','C').replace('Ī','I').replace('İ','I')
 
+    /** Fuel names, grades and diesel specifications as printed on boards; used to frame the board. */
+    internal fun isFuelLabel(text: String): Boolean = labelLike(normalize(text))
+
     private fun labelLike(text: String): Boolean = product(text)!=null || uncertainProduct(text)!=null || text.contains("DIESEL") || premiumMarker(text) || Regex("\\bS[ -]?[0-9]+\\b").containsMatchIn(text)
 
     /** One step beyond assignment tolerance may withhold a conflict, never assign a fuel. */
@@ -285,7 +359,19 @@ object FuelBoardOcr {
     private fun premiumMarker(text: String): Boolean =
         Regex("\\b(PODIUM|PREMIUM|OCTAPRO|RACING)\\b").containsMatchIn(text)
 
-    private fun product(text: String): FuelProduct? = when {
+    /**
+     * "S1O", "SIO", "S5OO": the letter/digit look-alikes O/0 and I/1 inside a diesel
+     * specification are name recovery, like the single-word fuel-name recovery below.
+     * Any other specification (S50, S5, S100) stays unknown and manual.
+     */
+    private fun repairSpec(text: String): String =
+        if (!text.contains("DIESEL") && !standaloneSpec.matches(text)) text
+        else text.replace(Regex("S([ -]?)5[0O][0O](?![A-Z0-9])"), "S$1500").replace(Regex("S([ -]?)[1IL][0O](?![A-Z0-9])"), "S$110")
+    private val standaloneSpec = Regex("^S[ -]?(?:[1IL][0O]|5[0O][0O])$")
+
+    private fun product(raw: String): FuelProduct? = productOf(repairSpec(raw))
+
+    private fun productOf(text: String): FuelProduct? = when {
         text.contains("GASOLINA") && text.contains("DIESEL") -> null
         text.contains("DIESEL") || Regex("\\bS\\s*[- ]?\\s*(10|500)\\b").containsMatchIn(text) -> when {
             Regex("(?:\\b|DIESEL)S\\s*[- ]?\\s*500\\b").containsMatchIn(text) -> FuelProduct.DIESEL_S500

@@ -892,6 +892,7 @@
     <string name="capture_crop">枠に合わせて切り抜く</string>
     <string name="capture_photo_content">確認用の価格写真</string>
     <string name="capture_review_hint">価格部分を切り取り、写真にある燃料だけ入力してください — 空白は送信されません。</string>
+    <string name="capture_board_found">価格ボードを検出し、写真をその位置に合わせました。必要に応じて調整してください。</string>
     <string name="capture_fuel_invalid">値を確認してください（例：5,89）</string>
     <string name="capture_remove_fuel">報告から燃料を削除</string>
     <string name="capture_show_all">すべての燃料を表示</string>

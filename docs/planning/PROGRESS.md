@@ -1,4 +1,32 @@
 # Current execution state
+- Price OCR automatic framing, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING
+  on branch `android-prod-readiness`
+  ([p37-ocr-auto-framing](../mobile/p37-ocr-auto-framing.md), B-BR-PC02
+  refinement). After the photo the app now finds the price board, reads it
+  again straightened and enlarged (from the camera's full-resolution pixels
+  when the file is larger than the 2048 px working copy), adds a
+  contrast-stretched and a compact reading when the first two do not agree,
+  and reconciles them; the review photo glides onto the board. Association
+  fixes: glued row icon, sold-out 0,00 rows, O/0 and I/1 inside a diesel
+  specification, a R$ 15 suggestion bound. Measured on the POCO, exact fuel
+  and price, before → after: 369 → 426 of 567 rows over all private sets
+  (65.1% → 75.1%), wrong rows 14 → 11; regression 20: 60 → 61 (wrong 0 → 1);
+  rotated +8°/−12°: 49 → 62 / 40 → 59; dark 56 → 61; glare 51 → 61; shrunk
+  "far" copies 42 → 42; new 28-photo set 71 → 80 of 111; time per photo
+  p50 840 → 825 ms, p95 1119 → 1193 ms. Verified: unit suites `:domain` 926,
+  `:application` 532, `:data` 731 (4 skipped), `:app` 739; device
+  `OcrFormatMatrixDeviceTest`, `OcrFramingDeviceTest` and the synthetic
+  `RealImageOcrDeviceTest` case, 8 tests OK; debug review screen on three
+  private photos (four rows each, review centred on the board); real flow on
+  the phone up to the review of a board-less photo, nothing sent. Not
+  verified: no real price board was photographed with the phone camera, so
+  the full-resolution path is proven only on generated pixels (18 px text:
+  0 → 4 of 4 rows); app instrumented tests were not run; one device only.
+  Not done: framing before the photo (needs an in-app camera, a new
+  dependency; owner chose post-photo only for now). Distant boards in the new
+  set are still read about half the time. Private labels and raw results stay
+  in the Git-ignored corpus folder; nothing from them is committed.
+
 - Android first-use terms gate and real consent confirmation, 2026-11-10:
   LOCAL_DONE / INTEGRATION_PENDING on branch `android-prod-readiness`
   ([ANDROID_TERMS_ACCEPTANCE](../security/ANDROID_TERMS_ACCEPTANCE.md),

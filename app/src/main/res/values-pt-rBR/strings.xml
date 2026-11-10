@@ -781,6 +781,7 @@
     <string name="capture_crop">Recortar na moldura</string>
     <string name="capture_photo_content">Foto do preço para revisão</string>
     <string name="capture_review_hint">Recorte para focar nos preços e preencha só os combustíveis da foto — em branco não é enviado.</string>
+    <string name="capture_board_found">Placa de preços localizada: a foto foi centralizada nela. Ajuste o enquadramento se precisar.</string>
     <string name="capture_fuel_invalid">Confira este valor (ex.: 5,89)</string>
     <string name="capture_remove_fuel">Remover combustível do reporte</string>
     <string name="capture_show_all">Mostrar todos os combustíveis</string>

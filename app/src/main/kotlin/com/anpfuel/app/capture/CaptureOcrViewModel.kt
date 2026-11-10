@@ -244,6 +244,9 @@ class CaptureOcrViewModel @Inject constructor(
     private val edited = FuelProduct.entries.filter { savedState.get<Boolean>("edited.${it.name}") == true }.toMutableSet()
     private val _processing = MutableStateFlow(false)
     val processing = _processing.asStateFlow()
+    /** Where the price board was found in the uncropped capture; the review centres on it. Never persisted. */
+    private val _boardFrame = MutableStateFlow<com.anpfuel.application.port.ImagePriceOcr.BoardFrame?>(null)
+    val boardFrame = _boardFrame.asStateFlow()
     private val _gateBusy = MutableStateFlow(false)
     val gateBusy = _gateBusy.asStateFlow()
     private val _gateFailure = MutableStateFlow<String?>(null)
@@ -356,6 +359,7 @@ class CaptureOcrViewModel @Inject constructor(
             savedState.remove<Boolean>("removed.${product.name}")
         }
         savedState["conditional"] = false
+        _boardFrame.value = null
         rememberReviewUri(uri)
         preparePhoto(bytes, mime)
         return true
@@ -497,9 +501,13 @@ class CaptureOcrViewModel @Inject constructor(
         processPhoto(bytes, mime)
     }
 
-    fun replacePhoto(bytes: ByteArray, mime: String) = processPhoto(bytes, mime)
+    /** A contributor crop: recognition and the prepared photo follow it; the shown frame stays on the original. */
+    fun replacePhoto(bytes: ByteArray, mime: String) = processPhoto(bytes, mime, original = false)
 
-    private fun processPhoto(bytes: ByteArray, mime: String) {
+    /** Reads the uncropped capture again and re-centres the review on the board found in it. */
+    fun reanalyzeOriginal(bytes: ByteArray, mime: String) = processPhoto(bytes, mime, original = true)
+
+    private fun processPhoto(bytes: ByteArray, mime: String, original: Boolean = true) {
         if (submitting || _submit.value is SubmitState.Queued) return
         recognition?.cancel()
         val ticket = ++generation
@@ -532,8 +540,11 @@ class CaptureOcrViewModel @Inject constructor(
                         _photoRefused.value = prepared.code
                     }
                 }
-                val result = withTimeout(15_000) { imageOcr.recognize(bytes) }
+                val recognition = withTimeout(15_000) { imageOcr.recognizeFramed(bytes) }
                 if (ticket != generation) return@launch
+                val result = recognition.result
+                // The frame is relative to the analysed pixels, so only the uncropped capture may move the review.
+                if (original) _boardFrame.value = recognition.frame
                 _conditional.value = _conditional.value || result.conditional
                 savedState["conditional"] = _conditional.value
                 _defaultPriceConfirmed.value = false

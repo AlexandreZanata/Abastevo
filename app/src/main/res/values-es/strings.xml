@@ -892,6 +892,7 @@
     <string name="capture_crop">Recortar al encuadre</string>
     <string name="capture_photo_content">Foto de precios para revisar</string>
     <string name="capture_review_hint">Recorta para centrar los precios y completa solo los combustibles de la foto; los vacíos no se envían.</string>
+    <string name="capture_board_found">Tablero de precios localizado: la foto se centró en él. Ajusta el encuadre si hace falta.</string>
     <string name="capture_fuel_invalid">Revisa este valor (p. ej., 5,89)</string>
     <string name="capture_remove_fuel">Quitar combustible del informe</string>
     <string name="capture_show_all">Mostrar todos los combustibles</string>

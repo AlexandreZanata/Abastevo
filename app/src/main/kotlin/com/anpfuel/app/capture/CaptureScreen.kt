@@ -71,7 +71,10 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import com.anpfuel.app.R
+import com.anpfuel.application.port.ImagePriceOcr
 import com.anpfuel.app.mapper.FuelProductI18n
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
@@ -131,6 +134,7 @@ fun CaptureScreen(
     val processing by viewModel.processing.collectAsStateWithLifecycle()
     val conditional by viewModel.conditional.collectAsStateWithLifecycle()
     val defaultConfirmed by viewModel.defaultPriceConfirmed.collectAsStateWithLifecycle()
+    val boardFrame by viewModel.boardFrame.collectAsStateWithLifecycle()
     val reviewPhotoUri = reviewUri?.let(Uri::parse)
     val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         val uri = viewModel.pendingUri()?.let(Uri::parse)
@@ -267,13 +271,14 @@ fun CaptureScreen(
                             onReanalyze = {
                                 scope.launch {
                                     val bytes = withContext(Dispatchers.IO) { files.read(photoUri, viewModel.originalCapturedAtMillis) }
-                                    if (bytes != null) viewModel.replacePhoto(bytes, "image/jpeg")
+                                    if (bytes != null) viewModel.reanalyzeOriginal(bytes, "image/jpeg")
                                 }
                             },
                             onCrop = { bytes -> viewModel.replacePhoto(bytes, "image/jpeg") },
                             onRetake = requestCamera,
                             onNavigateBack = onReturnCommunity,
                             onSubmit = viewModel::submitContributions,
+                            boardFrame = boardFrame,
                         )
                     }
                 }
@@ -312,6 +317,7 @@ internal fun PhotoReviewContent(
     onCrop: (ByteArray) -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
+    boardFrame: ImagePriceOcr.BoardFrame? = null,
 ) {
     val fuels = FuelProduct.entries.filter { it in fuelAmounts && it !in removedFuels }
     var addingFuel by remember { mutableStateOf(false) }
@@ -320,7 +326,14 @@ internal fun PhotoReviewContent(
     val editable = !processing && submit !is CaptureOcrViewModel.SubmitState.Queued && submit !is CaptureOcrViewModel.SubmitState.Submitting && submit !is CaptureOcrViewModel.SubmitState.Sent
     PhotoSubmissionFeedback(submit, onNavigateBack)
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        StaticCropPhoto(photoUri = photoUri, onCrop = onCrop, enabled = editable)
+        StaticCropPhoto(photoUri = photoUri, onCrop = onCrop, enabled = editable, boardFrame = boardFrame)
+        if (boardFrame != null && !processing) {
+            Text(
+                text = stringResource(R.string.capture_board_found),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         if (processing) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(stringResource(R.string.capture_recognizing))
@@ -490,6 +503,7 @@ internal fun StaticCropPhoto(
     onCrop: (ByteArray) -> Unit,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
+    boardFrame: ImagePriceOcr.BoardFrame? = null,
 ) {
     val context = LocalContext.current
     var bitmap by remember(photoUri) { mutableStateOf<Bitmap?>(null) }
@@ -501,6 +515,20 @@ internal fun StaticCropPhoto(
     var scale by remember(photoUri) { mutableStateOf(1f) }
     var offset by remember(photoUri) { mutableStateOf(Offset.Zero) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    // Recognition found the board: glide the photo so the board fills the crop frame. The
+    // contributor can still pinch, drag or double-tap; a new reading re-centres.
+    LaunchedEffect(boardFrame, bitmap, containerSize) {
+        val frame = boardFrame ?: return@LaunchedEffect
+        val bmp = bitmap ?: return@LaunchedEffect
+        val target = boardFraming(frame, bmp.width, bmp.height, containerSize.width.toFloat(), containerSize.height.toFloat())
+            ?: return@LaunchedEffect
+        val startScale = scale
+        val startOffset = offset
+        animate(0f, 1f, animationSpec = tween(450)) { progress, _ ->
+            scale = startScale + (target.first - startScale) * progress
+            offset = startOffset + (target.second - startOffset) * progress
+        }
+    }
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
             modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)
@@ -577,6 +605,32 @@ internal fun StaticCropPhoto(
             Text(stringResource(R.string.capture_crop))
         }
     }
+}
+
+/**
+ * Zoom and pan that put the found board inside the fixed crop frame (85% width, 4:3),
+ * within the same 1..5x and edge limits as the gestures. Null when nothing is laid out.
+ */
+internal fun boardFraming(
+    frame: ImagePriceOcr.BoardFrame,
+    bitmapW: Int,
+    bitmapH: Int,
+    containerW: Float,
+    containerH: Float,
+): Pair<Float, Offset>? {
+    if (bitmapW <= 0 || bitmapH <= 0 || containerW <= 0f || containerH <= 0f) return null
+    val fit = minOf(containerW / bitmapW, containerH / bitmapH)
+    val boardW = (frame.right - frame.left) * bitmapW * fit
+    val boardH = (frame.bottom - frame.top) * bitmapH * fit
+    if (boardW <= 0f || boardH <= 0f) return null
+    val cropW = containerW * 0.85f
+    val cropH = cropW * 3f / 4f
+    val scale = (minOf(cropW / boardW, cropH / boardH) * 0.96f).coerceIn(1f, 5f)
+    val centerX = ((frame.left + frame.right) / 2f - 0.5f) * bitmapW * fit
+    val centerY = ((frame.top + frame.bottom) / 2f - 0.5f) * bitmapH * fit
+    val maxX = (containerW * scale - containerW) / 2f
+    val maxY = (containerH * scale - containerH) / 2f
+    return scale to Offset((-centerX * scale).coerceIn(-maxX, maxX), (-centerY * scale).coerceIn(-maxY, maxY))
 }
 
 private fun decodeSampled(context: Context, uri: Uri, maxSide: Int): Bitmap? = try {
