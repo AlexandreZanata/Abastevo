@@ -1,4 +1,38 @@
 # Current execution state
+- Android monochrome design system, 2026-11-10: LOCAL_DONE /
+  INTEGRATION_PENDING on dev (PR #198 to main), from dev `e29b01e7`; the
+  owner approved the look on the phone. It supersedes the navy and blue
+  theme recorded below. Tokens and rules are in
+  [DESIGN_SYSTEM](../mobile/DESIGN_SYSTEM.md). Foundation is monochrome (ink
+  on white, white on true black; `primary` is ink) with one green accent
+  mapped to `secondary`. Header, top app bar and bottom bar are flat on the
+  screen color: the header has a pill city/week field and no tagline, the
+  bottom bar marks the selected tab with an accent marker, filled icon and
+  bold label. Map controls float over the map (search pill, city and source
+  chips, details panel). Manrope and Source Sans 3 are bundled as static OFL
+  fonts derived from the landing files; shapes are 8/12/16/24dp with pill
+  chips. `ui/designsystem` `Button`, `OutlinedButton`, `TextButton`,
+  `FilterChip` and `AssistChip` replace the Material imports across the app.
+  Comunidade: `B-BR-FOR-01` changed by owner decision, the price
+  contribution card now comes first and the forum card second, both on one
+  labelled entry-card layout. Forum crash fixed: the category chip row threw
+  a duplicate LazyRow key (`UNKNOWN`) because the app enum lagged the server
+  taxonomy; the fix and its test follow-up were cherry-picked from the
+  unpublished local branch `forum-category-crash` (`50cddaf7`, `4cbe44c2`).
+  The two other commits on that branch (session-backed forum command
+  signing, account device key binding) are not included. Verified: unit
+  tests for `:domain` (904), `:application` (525), `:data` (725, 4 skipped)
+  and `:app` (717, including `BrandPaletteContrastTest` for both themes and
+  `TypographyTest`), `:app:assembleDebug`, instrumented test sources
+  compile, debug build installed on the phone: Explorar, Comunidade, Mapa
+  and Perfil in both themes, Postos, Configurações and the week sheet in
+  dark, and the forum opened with its category row scrolled end to end
+  without a crash. Not verified: instrumented tests were not run (the map
+  layout tests in `MapScreenInstrumentedTest` cover the controls that
+  changed); other screens were not visually checked; the home community hero
+  keeps its navy art. Open item: Source Sans 3 Reserved Font Name before a
+  store release (see DESIGN_SYSTEM "Bundled fonts").
+
 - Android Energia brand theme and shared header, 2026-11-09: LOCAL_DONE on
   dev from main `e0519257`. Light theme: pale blue-white screens, white cards,
   blue actions and a green community accent. Dark theme: neutral graphite
