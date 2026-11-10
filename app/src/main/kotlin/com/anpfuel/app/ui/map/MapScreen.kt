@@ -452,8 +452,8 @@ fun MapScreen(
                     Surface(
                         onClick = { showFilters = true },
                         shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         shadowElevation = 6.dp,
                         modifier = Modifier.padding(end = 16.dp, bottom = layersBottom).size(56.dp).testTag("map-layers"),
                     ) {
