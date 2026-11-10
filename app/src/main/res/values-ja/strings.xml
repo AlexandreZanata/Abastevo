@@ -592,6 +592,8 @@
     <string name="community_empty_title">最近の更新はありません</string>
     <string name="community_empty_hint">燃料価格を投稿して地域の運転者を支援しましょう。添付写真は確認のため一時的に使用します。プライバシー情報は設定で確認できます。</string>
     <string name="community_action_contribute">価格を投稿</string>
+    <string name="community_card_contribute_label">投稿</string>
+    <string name="community_card_forum_label">ディスカッション</string>
     <string name="community_rules_title">コミュニティの検証ルール</string>
     <string name="community_rules_body">価格は投稿者の合意で検証されます。日付付きのANPデータと最新の投稿は混同しません。</string>
     <string name="community_moderation_title">通報と管理</string>

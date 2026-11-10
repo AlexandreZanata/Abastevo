@@ -592,6 +592,8 @@
     <string name="community_empty_title">暂无近期更新</string>
     <string name="community_empty_hint">分享燃料价格，帮助本地驾驶者。附加照片仅临时用于核验。请在设置中查看隐私信息。</string>
     <string name="community_action_contribute">分享价格</string>
+    <string name="community_card_contribute_label">贡献</string>
+    <string name="community_card_forum_label">讨论</string>
     <string name="community_rules_title">社区验证规则</string>
     <string name="community_rules_body">价格由贡献者共识验证。带日期的ANP数据不会与社区实时报告混合。</string>
     <string name="community_moderation_title">举报与审核</string>

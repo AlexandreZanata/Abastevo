@@ -65,6 +65,8 @@
     <string name="community_empty_title">No recent community updates</string>
     <string name="community_empty_hint">Contribute fuel prices to help drivers in your city. Attached photos are temporary verification evidence. See privacy information in Settings.</string>
     <string name="community_action_contribute">Contribute price</string>
+    <string name="community_card_contribute_label">Contribute</string>
+    <string name="community_card_forum_label">Discussions</string>
     <string name="community_rules_title">Community verification rules</string>
     <string name="community_rules_body">Prices are validated by contributor consensus. Dated ANP data is never mixed or confused with live community reports.</string>
     <string name="community_moderation_title">Reporting and moderation</string>

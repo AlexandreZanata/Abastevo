@@ -592,6 +592,8 @@
     <string name="community_empty_title">Aucune mise à jour récente</string>
     <string name="community_empty_hint">Partagez les prix pour aider les conducteurs de votre ville. Les photos jointes servent temporairement à la vérification. Consultez la confidentialité dans les paramètres.</string>
     <string name="community_action_contribute">Partager un prix</string>
+    <string name="community_card_contribute_label">Contribuer</string>
+    <string name="community_card_forum_label">Discussions</string>
     <string name="community_rules_title">Règles de vérification communautaire</string>
     <string name="community_rules_body">Les prix sont validés par consensus. Les données ANP datées ne sont jamais mélangées aux signalements actuels.</string>
     <string name="community_moderation_title">Signalement et modération</string>

@@ -592,6 +592,8 @@
     <string name="community_empty_title">Нет недавних обновлений</string>
     <string name="community_empty_hint">Сообщайте цены, помогая водителям города. Прикреплённые фото временно используются для проверки. Условия конфиденциальности доступны в настройках.</string>
     <string name="community_action_contribute">Сообщить цену</string>
+    <string name="community_card_contribute_label">Участие</string>
+    <string name="community_card_forum_label">Обсуждения</string>
     <string name="community_rules_title">Правила проверки сообщества</string>
     <string name="community_rules_body">Цены проверяются консенсусом участников. Датированные данные ANP не смешиваются с текущими сообщениями.</string>
     <string name="community_moderation_title">Жалобы и модерация</string>

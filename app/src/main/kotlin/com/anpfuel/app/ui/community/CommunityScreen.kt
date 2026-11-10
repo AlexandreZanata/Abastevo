@@ -9,16 +9,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -43,9 +45,13 @@ import com.anpfuel.app.ui.components.FuelProductSelectorButton
 import com.anpfuel.app.ui.components.FuelProductSelectorDialog
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.OutlinedButton
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.header.AbastevoHeader
-import com.anpfuel.app.ui.theme.FuelProductTint
+import com.anpfuel.app.ui.theme.AbastevoSpacing
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
+import com.anpfuel.app.ui.theme.FuelProductTint
 import com.anpfuel.domain.community.CommunityFeedItem
 import com.anpfuel.domain.community.FeedSort
 import com.anpfuel.domain.valueobject.FuelProduct
@@ -89,29 +95,12 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
     }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp, 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // B-BR-FOR-01: contributing a price always comes first, the forum second.
+            item {
+                ContributePriceCard(onContribute = { onNavigate(Routes.CAPTURE) })
+            }
             if (state.forumEnabled) item {
                 ForumCommunityCard(onExplore = { onNavigate(Routes.FORUM_FEED) })
-            }
-            item {
-                val containerColor = MaterialTheme.colorScheme.primaryContainer
-                Card(shape = AnpContainerDefaults.containerShape(), colors = CardDefaults.cardColors(containerColor = containerColor),
-                    border = AnpContainerDefaults.borderStroke(containerColor)) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.size(48.dp)) {
-                                Box(contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.ic_home_community), null, tint = Color.Unspecified, modifier = Modifier.size(30.dp)) }
-                            }
-                            Column(Modifier.weight(1f)) {
-                                Text(stringResource(R.string.feed_contribute_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text(stringResource(R.string.feed_contribute_hint), style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                        Button(onClick = { onNavigate(Routes.CAPTURE) }, modifier = Modifier.fillMaxWidth()) {
-                            Icon(Icons.Default.Add, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.community_action_contribute))
-                        }
-                    }
-                }
             }
             item {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -204,7 +193,7 @@ private fun FeedSortSelectorButton(selected: FeedSort, onClick: () -> Unit, modi
 @Composable
 private fun FeedSortSelectorDialog(selected: FeedSort, onSelect: (FeedSort) -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxWidth().padding(horizontal = 24.dp), shape = RoundedCornerShape(28.dp), tonalElevation = 6.dp) {
+        Surface(Modifier.fillMaxWidth().padding(horizontal = 24.dp), shape = MaterialTheme.shapes.extraLarge, tonalElevation = 6.dp) {
             Column(Modifier.padding(horizontal = 8.dp, vertical = 16.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 FeedSort.entries.forEach { sort ->
@@ -302,63 +291,114 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
     }
 }
 
+/** Main action of Comunidade: share a price. Accent-tinted, with the screen's one filled button. */
+@Composable
+fun ContributePriceCard(
+    onContribute: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    CommunityEntryCard(
+        label = stringResource(R.string.community_card_contribute_label),
+        title = stringResource(R.string.feed_contribute_title),
+        description = stringResource(R.string.feed_contribute_hint),
+        icon = Icons.Outlined.Sell,
+        highlighted = true,
+        modifier = modifier,
+    ) {
+        Button(onClick = onContribute, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.community_action_contribute))
+        }
+    }
+}
+
+/** Secondary entry of Comunidade: the forum. Neutral, with an outlined button. */
 @Composable
 fun ForumCommunityCard(
     onExplore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    CommunityEntryCard(
+        label = stringResource(R.string.community_card_forum_label),
+        title = stringResource(R.string.forum_card_title),
+        description = stringResource(R.string.forum_card_description),
+        icon = Icons.Outlined.Forum,
+        highlighted = false,
+        modifier = modifier,
+    ) {
+        OutlinedButton(onClick = onExplore, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.forum_card_cta))
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+/**
+ * Entry card on Comunidade: a label saying what the card is, its icon, title,
+ * one line of explanation and one action. The [highlighted] card is tinted
+ * with the accent so the two entries are never mistaken for each other.
+ */
+@Composable
+private fun CommunityEntryCard(
+    label: String,
+    title: String,
+    description: String,
+    icon: ImageVector,
+    highlighted: Boolean,
+    modifier: Modifier = Modifier,
+    action: @Composable () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = if (highlighted) scheme.secondaryContainer else scheme.surfaceContainerLow
+    val contentColor = if (highlighted) scheme.onSecondaryContainer else scheme.onSurface
+    val supportingColor = if (highlighted) scheme.onSecondaryContainer else scheme.onSurfaceVariant
     Card(
         shape = AnpContainerDefaults.containerShape(),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
+        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
         border = AnpContainerDefaults.borderStroke(containerColor),
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(AbastevoSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(AbastevoSpacing.md),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(AbastevoSpacing.md),
             ) {
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.size(48.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = if (highlighted) scheme.secondary else scheme.surfaceContainerHigh,
+                    contentColor = if (highlighted) scheme.onSecondary else scheme.onSurface,
+                    modifier = Modifier.size(44.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_home_community),
-                            contentDescription = null,
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(30.dp),
-                        )
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
                     }
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.forum_card_title),
+                        text = label.uppercase(LocalConfiguration.current.locales[0]),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = supportingColor,
+                    )
+                    Text(
+                        text = title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
-                    Text(
-                        text = stringResource(R.string.forum_card_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
-            Button(
-                onClick = onExplore,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Default.Explore, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.forum_card_cta))
-            }
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = supportingColor,
+            )
+            action()
         }
     }
 }

@@ -65,6 +65,8 @@
     <string name="community_empty_title">Nenhuma atualização recente</string>
     <string name="community_empty_hint">Colabore com preços para ajudar motoristas na sua região. Fotos anexadas são evidências temporárias de verificação. Consulte a privacidade nas Configurações.</string>
     <string name="community_action_contribute">Colaborar com preço</string>
+    <string name="community_card_contribute_label">Contribuir</string>
+    <string name="community_card_forum_label">Discussões</string>
     <string name="community_rules_title">Regras de verificação comunitária</string>
     <string name="community_rules_body">Preços são validados por consenso da comunidade. Dados datados da ANP nunca são misturados ou confundidos com preços ao vivo.</string>
     <string name="community_moderation_title">Denúncias e moderação</string>

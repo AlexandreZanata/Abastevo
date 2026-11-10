@@ -592,6 +592,8 @@
     <string name="community_empty_title">Keine aktuellen Beiträge</string>
     <string name="community_empty_hint">Melden Sie Kraftstoffpreise für Fahrer Ihrer Stadt. Angehängte Fotos dienen vorübergehend der Prüfung. Datenschutzhinweise finden Sie in den Einstellungen.</string>
     <string name="community_action_contribute">Preis melden</string>
+    <string name="community_card_contribute_label">Beitragen</string>
+    <string name="community_card_forum_label">Diskussionen</string>
     <string name="community_rules_title">Prüfregeln der Gemeinschaft</string>
     <string name="community_rules_body">Preise werden durch Konsens geprüft. Datierte ANP-Daten werden nie mit aktuellen Gemeinschaftsmeldungen vermischt.</string>
     <string name="community_moderation_title">Meldungen und Moderation</string>

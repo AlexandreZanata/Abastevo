@@ -28,9 +28,12 @@ deferred extensions. Their absence is not a reason to delay editorial reading.
 
 ## Business rules
 
-- **B-BR-FOR-01 — Separation.** Add “Fórum Abastevo” immediately after the city
-  selector and before the price contribution card. Preserve existing bottom-bar
-  destinations, price filters, station routes and contribution behavior.
+- **B-BR-FOR-01 — Separation.** The price contribution card always comes
+  first on Comunidade, immediately after the city selector; “Fórum Abastevo”
+  follows it as a visually distinct secondary card (owner decision,
+  2026-11-10; it previously preceded the contribution card). Preserve existing
+  bottom-bar destinations, price filters, station routes and contribution
+  behavior.
 - **B-BR-FOR-02 — Provenance.** A post has exactly one kind: `EDITORIAL`, `NEWS`,
   `TOPIC` or `BULLETIN`. Source identity, source publication time, Forum first
   publication time and update time are distinct. An external news item without
