@@ -5,13 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,9 +25,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.outlined.DirectionsCar
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.LocalGasStation
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,10 +45,13 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import com.anpfuel.app.ui.components.AnpScaffold
+import com.anpfuel.app.ui.designsystem.AbastevoSelectionDefaults
+import com.anpfuel.app.ui.designsystem.AssistChip
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.header.AbastevoHeader
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,7 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -91,6 +97,7 @@ import com.anpfuel.app.ui.accessibility.liveRegionSemantics
 import com.anpfuel.app.ui.components.TankFillCostCard
 import com.anpfuel.app.ui.model.AveragePriceUiModel
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
+import com.anpfuel.app.ui.theme.AbastevoSpacing
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.state.DataReadinessState
@@ -214,8 +221,8 @@ internal fun HomeContent(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = AbastevoSpacing.screenGutter, vertical = AbastevoSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(AbastevoSpacing.md),
         ) {
             // A verified STALE week stays quiet: the user already synced and
             // ANP has nothing newer; the transient notice explained it once.
@@ -287,7 +294,9 @@ internal fun HomeContent(
                     SegmentedButton(
                         selected = uiState.priceSource == source,
                         onClick = { onPriceSourceChanged(source) },
+                        modifier = Modifier.heightIn(min = AbastevoSpacing.controlMinHeight),
                         shape = SegmentedButtonDefaults.itemShape(index = index, count = HomePriceSource.entries.size),
+                        colors = AbastevoSelectionDefaults.segmentedButtonColors(),
                         label = {
                             Text(stringResource(if (source == HomePriceSource.ANP) R.string.home_source_anp else R.string.home_source_community))
                         },
@@ -378,11 +387,6 @@ internal fun HomeContent(
                     Button(
                         onClick = { onNavigate(Routes.MAP) },
                         modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 56.dp),
-                        colors = if (darkTheme) {
-                            ButtonDefaults.buttonColors(containerColor = MapButtonDarkBlue, contentColor = Color.White)
-                        } else {
-                            ButtonDefaults.buttonColors()
-                        },
                     ) {
                         Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(20.dp))
                         Text(
@@ -397,9 +401,6 @@ internal fun HomeContent(
         }
     }
 }
-
-/** Strong blue of the map shortcut in dark mode, white text on top (5.6:1). */
-private val MapButtonDarkBlue = Color(0xFF1D5FE0)
 
 /**
  * Quick price filter entry: current order stays visible, options open in
@@ -460,7 +461,7 @@ private fun HomePriceSortDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp),
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             tonalElevation = 6.dp,
         ) {
             Column(
@@ -549,12 +550,16 @@ private fun VehicleCarousel(
     modifier: Modifier = Modifier,
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val cardWidth = screenWidth * 0.85f
+    // A single vehicle lines up with the cards below; several peek the next one.
+    val cardWidth = if (estimates.size == 1) {
+        screenWidth - AbastevoSpacing.screenGutter * 2
+    } else {
+        screenWidth * 0.85f
+    }
 
     LazyRow(
         modifier = modifier.fillMaxWidth().testTag("home_vehicle_carousel"),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(AbastevoSpacing.md),
     ) {
         items(estimates, key = { it.vehicleId.value }) { estimate ->
             TankFillCostCard(
@@ -606,27 +611,27 @@ private fun RowActions(onNavigate: (String) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        AssistChip(
-            onClick = { onNavigate(Routes.LOCATION) },
-            label = { Text(text = stringResource(R.string.nav_location)) },
-        )
-        AssistChip(
-            onClick = { onNavigate(Routes.HISTORY) },
-            label = { Text(text = stringResource(R.string.nav_history)) },
-        )
-        AssistChip(
-            onClick = { onNavigate(Routes.STATIONS) },
-            label = { Text(text = stringResource(R.string.nav_stations)) },
-        )
-        AssistChip(
-            onClick = { onNavigate(Routes.VEHICLES) },
-            label = { Text(text = stringResource(R.string.nav_vehicles)) },
-        )
-        AssistChip(
-            onClick = { onNavigate(Routes.SETTINGS) },
-            label = { Text(text = stringResource(R.string.nav_settings)) },
-        )
+        HomeShortcutChip(R.string.nav_location, Icons.Outlined.LocationOn) { onNavigate(Routes.LOCATION) }
+        HomeShortcutChip(R.string.nav_history, Icons.Outlined.History) { onNavigate(Routes.HISTORY) }
+        HomeShortcutChip(R.string.nav_stations, Icons.Outlined.LocalGasStation) { onNavigate(Routes.STATIONS) }
+        HomeShortcutChip(R.string.nav_vehicles, Icons.Outlined.DirectionsCar) { onNavigate(Routes.VEHICLES) }
+        HomeShortcutChip(R.string.nav_settings, Icons.Outlined.Settings) { onNavigate(Routes.SETTINGS) }
     }
+}
+
+@Composable
+private fun HomeShortcutChip(labelRes: Int, icon: ImageVector, onClick: () -> Unit) {
+    AssistChip(
+        onClick = onClick,
+        label = { Text(text = stringResource(labelRes)) },
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(AssistChipDefaults.IconSize),
+            )
+        },
+    )
 }
 
 @Preview(showBackground = true, name = "Home with prices")

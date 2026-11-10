@@ -181,7 +181,7 @@ dependencies {
 ### UI — Jetpack Compose + Material 3
 
 - Declarative UI aligned with `.cursor/rules/android-system-design.mdc`
-- `MaterialTheme` with fixed "Energia" brand palettes: pale blue-white light surfaces and graphite dark surfaces, blue actions, a green community accent and a navy header in both themes (dynamic color is opt-in, off in the app)
+- `MaterialTheme` with fixed "Energia" palettes: a monochrome foundation (ink on white, white on true black) with one accent color and an amber notice accent; header and bottom bar are flat on the screen color (dynamic color is opt-in, off in the app). Manrope and Source Sans 3 typography, 8/12/16/24dp shapes and shared buttons/chips: see [DESIGN_SYSTEM](mobile/DESIGN_SYSTEM.md)
 - Light + dark theme from day one
 - UiState / UiEvent pattern in ViewModels — no business logic in Composables
 

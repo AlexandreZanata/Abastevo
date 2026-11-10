@@ -10,9 +10,13 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 
 val LocalAnpDarkTheme = staticCompositionLocalOf { false }
+
+/** A bottom bar brighter than this needs dark system navigation buttons. */
+private const val LIGHT_BAR_MIN_LUMINANCE = 0.5f
 
 internal val LightColorScheme = lightColorScheme(
     background = EnergiaLightTokens.Background,
@@ -36,10 +40,10 @@ internal val LightColorScheme = lightColorScheme(
     onPrimary = EnergiaLightTokens.OnPrimary,
     primaryContainer = EnergiaLightTokens.PrimaryContainer,
     onPrimaryContainer = EnergiaLightTokens.OnPrimaryContainer,
-    secondary = EnergiaLightTokens.Secondary,
-    onSecondary = EnergiaLightTokens.OnSecondary,
-    secondaryContainer = EnergiaLightTokens.SecondaryContainer,
-    onSecondaryContainer = EnergiaLightTokens.OnSecondaryContainer,
+    secondary = AbastevoAccent.Light.accent,
+    onSecondary = AbastevoAccent.Light.onAccent,
+    secondaryContainer = AbastevoAccent.Light.container,
+    onSecondaryContainer = AbastevoAccent.Light.onContainer,
     tertiary = EnergiaLightTokens.Tertiary,
     onTertiary = EnergiaLightTokens.OnTertiary,
     tertiaryContainer = EnergiaLightTokens.TertiaryContainer,
@@ -72,10 +76,10 @@ internal val DarkColorScheme = darkColorScheme(
     onPrimary = EnergiaDarkTokens.OnPrimary,
     primaryContainer = EnergiaDarkTokens.PrimaryContainer,
     onPrimaryContainer = EnergiaDarkTokens.OnPrimaryContainer,
-    secondary = EnergiaDarkTokens.Secondary,
-    onSecondary = EnergiaDarkTokens.OnSecondary,
-    secondaryContainer = EnergiaDarkTokens.SecondaryContainer,
-    onSecondaryContainer = EnergiaDarkTokens.OnSecondaryContainer,
+    secondary = AbastevoAccent.Dark.accent,
+    onSecondary = AbastevoAccent.Dark.onAccent,
+    secondaryContainer = AbastevoAccent.Dark.container,
+    onSecondaryContainer = AbastevoAccent.Dark.onContainer,
     tertiary = EnergiaDarkTokens.Tertiary,
     onTertiary = EnergiaDarkTokens.OnTertiary,
     tertiaryContainer = EnergiaDarkTokens.TertiaryContainer,
@@ -106,16 +110,26 @@ fun AnpFuelTheme(
         darkTheme -> AbastevoNavDefaults.Dark
         else -> AbastevoNavDefaults.Light
     }
+    val actionColors = when {
+        useDynamicColor -> AbastevoActionDefaults.fromScheme(colorScheme)
+        darkTheme -> AbastevoActionDefaults.Dark
+        else -> AbastevoActionDefaults.Light
+    }
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = AbastevoShapes,
         content = {
             CompositionLocalProvider(
                 LocalAnpDarkTheme provides darkTheme,
                 LocalAbastevoNavColors provides navColors,
+                LocalAbastevoActionColors provides actionColors,
             ) {
-                AnpSystemBarsEffect(darkTheme = darkTheme)
+                AnpSystemBarsEffect(
+                    darkTheme = darkTheme,
+                    lightNavigationBar = navColors.container.luminance() > LIGHT_BAR_MIN_LUMINANCE,
+                )
                 content()
             }
         },

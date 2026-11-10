@@ -36,12 +36,12 @@ fun ActionCardButton(
     showChevron: Boolean = true,
 ) {
     val containerColor = when (style) {
-        ActionCardStyle.Primary -> MaterialTheme.colorScheme.secondaryContainer
+        ActionCardStyle.Primary -> MaterialTheme.colorScheme.primaryContainer
         ActionCardStyle.Outlined -> Color.Transparent
         ActionCardStyle.Destructive -> Color.Transparent
     }
     val contentColor = when (style) {
-        ActionCardStyle.Primary -> MaterialTheme.colorScheme.onSecondaryContainer
+        ActionCardStyle.Primary -> MaterialTheme.colorScheme.onPrimaryContainer
         ActionCardStyle.Outlined -> MaterialTheme.colorScheme.onSurface
         ActionCardStyle.Destructive -> MaterialTheme.colorScheme.error
     }

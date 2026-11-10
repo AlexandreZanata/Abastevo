@@ -2,7 +2,6 @@ package com.anpfuel.app.ui.header
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,22 +14,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -43,27 +42,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.SurveyWeekFormatter
-import com.anpfuel.app.ui.theme.BrandNavy
+import com.anpfuel.app.ui.theme.AbastevoSpacing
 import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
 import com.anpfuel.domain.valueobject.SurveyWeek
 
-/** Brand navy of the header. The same gradient is used in light and dark themes. */
-private object HeaderColors {
-    val NavyTop = Color(0xFF061433)
-    val NavyBottom = BrandNavy
-    val Content = Color.White
-    val ContentMuted = Color.White.copy(alpha = 0.72f)
-    val ButtonFill = Color.White.copy(alpha = 0.08f)
-    val Outline = Color.White.copy(alpha = 0.28f)
-}
-
-private val HeaderShape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
-private val ControlHeight = 52.dp
+private val FieldHeight = 52.dp
+private val WeekChipHeight = 40.dp
+private val LogoSize = 32.dp
 
 /**
- * Shared brand header: logo, name and tagline with notification and profile
- * buttons. When [locationLabel] is set, a single outlined field shows the city
- * on the left and the survey week picker on the right when [onWeekChanged] is set.
+ * Shared brand header, flat on the screen color: logo and name with
+ * notification and profile buttons. When [locationLabel] is set, one pill
+ * field shows the city on the left and, when [onWeekChanged] is set, the survey
+ * week as a chip on the right.
  */
 @Composable
 fun AbastevoHeader(
@@ -74,97 +65,96 @@ fun AbastevoHeader(
     onLocationClick: () -> Unit = {},
     onWeekChanged: (() -> Unit)? = null,
 ) {
+    val scheme = MaterialTheme.colorScheme
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(listOf(HeaderColors.NavyTop, HeaderColors.NavyBottom)),
-                HeaderShape,
-            )
-            .statusBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .background(scheme.background)
+            .statusBarsPadding(),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Column(
+            modifier = Modifier.padding(
+                start = AbastevoSpacing.screenGutter,
+                end = AbastevoSpacing.sm,
+                top = AbastevoSpacing.xs,
+                bottom = AbastevoSpacing.md,
+            ),
+            verticalArrangement = Arrangement.spacedBy(AbastevoSpacing.sm),
         ) {
-            Image(
-                painter = painterResource(R.drawable.ic_abastevo_logo),
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-            )
-            Column(modifier = Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AbastevoSpacing.sm),
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_abastevo_logo),
+                    contentDescription = null,
+                    modifier = Modifier.size(LogoSize),
+                )
                 Text(
                     text = stringResource(R.string.app_name).replaceFirstChar { it.titlecase() },
+                    modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = HeaderColors.Content,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = scheme.onBackground,
                     maxLines = 1,
                 )
-                Text(
-                    text = stringResource(R.string.header_tagline),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = HeaderColors.ContentMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                HeaderIconButton(
+                    icon = Icons.Outlined.Notifications,
+                    contentDescription = stringResource(R.string.settings_notifications_section),
+                    onClick = onNotificationsClick,
+                )
+                HeaderIconButton(
+                    icon = Icons.Outlined.Person,
+                    contentDescription = stringResource(R.string.nav_profile),
+                    onClick = onProfileClick,
                 )
             }
-            HeaderIconButton(
-                icon = Icons.Outlined.Notifications,
-                contentDescription = stringResource(R.string.settings_notifications_section),
-                onClick = onNotificationsClick,
-            )
-            HeaderIconButton(
-                icon = Icons.Filled.Person,
-                contentDescription = stringResource(R.string.nav_profile),
-                onClick = onProfileClick,
-            )
-        }
-        if (locationLabel != null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(ControlHeight)
-                    .clip(CircleShape)
-                    .background(HeaderColors.ButtonFill)
-                    .border(1.dp, HeaderColors.Outline, CircleShape),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            if (locationLabel != null) {
                 Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable(role = Role.Button, onClick = onLocationClick)
-                        .padding(start = 16.dp, end = 8.dp),
+                        .padding(end = AbastevoSpacing.sm)
+                        .fillMaxWidth()
+                        .height(FieldHeight)
+                        .clip(CircleShape)
+                        .background(scheme.surfaceContainerHigh),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.LocationOn,
-                        contentDescription = null,
-                        tint = HeaderColors.Content,
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Text(
-                        text = locationLabel,
-                        modifier = Modifier.weight(1f, fill = false),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = HeaderColors.Content,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = HeaderColors.Content,
-                        modifier = Modifier.size(22.dp),
-                    )
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable(role = Role.Button, onClick = onLocationClick)
+                            .padding(start = AbastevoSpacing.lg, end = AbastevoSpacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(AbastevoSpacing.sm),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.LocationOn,
+                            contentDescription = null,
+                            tint = scheme.secondary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            text = locationLabel,
+                            modifier = Modifier.weight(1f, fill = false),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = scheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = scheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    onWeekChanged?.let { HeaderWeekAction(onWeekChanged = it) }
                 }
-                onWeekChanged?.let { HeaderWeekAction(onWeekChanged = it) }
             }
         }
+        HorizontalDivider(color = scheme.outlineVariant)
     }
 }
 
@@ -198,47 +188,52 @@ private fun HeaderWeekLabel(
         },
         SurveyWeekFormatter.formatRange(surveyWeek, locale),
     )
-    Row(
+    // The whole right end of the field is the touch target; the chip is its visual.
+    Box(
         modifier = modifier
             .fillMaxHeight()
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description }
-            .padding(start = 8.dp, end = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(start = AbastevoSpacing.xs, end = 6.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = Icons.Outlined.CalendarMonth,
-            contentDescription = null,
-            tint = HeaderColors.Content,
-            modifier = Modifier.size(22.dp),
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleSmall,
-            color = HeaderColors.Content,
-            maxLines = 1,
-        )
+        Row(
+            modifier = Modifier
+                .height(WeekChipHeight)
+                .background(MaterialTheme.colorScheme.surface, CircleShape)
+                .padding(horizontal = AbastevoSpacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.CalendarMonth,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+        }
     }
 }
 
 @Composable
 private fun HeaderIconButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(46.dp)
-            .clip(CircleShape)
-            .background(HeaderColors.ButtonFill)
-            .border(1.dp, HeaderColors.Outline, CircleShape)
-            .clickable(role = Role.Button, onClick = onClick)
-            .semantics { this.contentDescription = contentDescription },
+    IconButton(
+        onClick = onClick,
+        colors = IconButtonDefaults.iconButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
-            tint = HeaderColors.Content,
-            modifier = Modifier.size(24.dp),
+            contentDescription = contentDescription,
+            modifier = Modifier.size(22.dp),
         )
     }
 }

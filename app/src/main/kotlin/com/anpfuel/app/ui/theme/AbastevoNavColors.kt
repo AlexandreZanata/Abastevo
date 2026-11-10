@@ -5,7 +5,10 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-/** Colors of the fixed bottom navigation bar, independent of card/sheet surfaces. */
+/**
+ * Colors of the fixed bottom navigation bar. The bar is flat on the screen
+ * color; the selected tab is ink with an accent marker above its icon.
+ */
 @Immutable
 data class AbastevoNavColors(
     val container: Color,
@@ -17,29 +20,27 @@ data class AbastevoNavColors(
 
 object AbastevoNavDefaults {
 
-    /** Light brand bar: the header's navy with a blue selection pill. */
     internal val Light = AbastevoNavColors(
         container = EnergiaLightTokens.NavContainer,
-        indicator = EnergiaLightTokens.NavIndicator,
-        selectedIcon = EnergiaLightTokens.NavSelectedIcon,
-        selectedLabel = EnergiaLightTokens.NavSelectedLabel,
+        indicator = AbastevoAccent.Light.accent,
+        selectedIcon = EnergiaLightTokens.NavSelected,
+        selectedLabel = EnergiaLightTokens.NavSelected,
         unselected = EnergiaLightTokens.NavUnselected,
     )
 
-    /** Dark brand bar: the same navy container and blue selection pill as light. */
     internal val Dark = AbastevoNavColors(
         container = EnergiaDarkTokens.NavContainer,
-        indicator = EnergiaDarkTokens.NavIndicator,
-        selectedIcon = EnergiaDarkTokens.NavSelectedIcon,
-        selectedLabel = EnergiaDarkTokens.NavSelectedLabel,
+        indicator = AbastevoAccent.Dark.accent,
+        selectedIcon = EnergiaDarkTokens.NavSelected,
+        selectedLabel = EnergiaDarkTokens.NavSelected,
         unselected = EnergiaDarkTokens.NavUnselected,
     )
 
     /** Scheme-driven bar used when dynamic colors are explicitly enabled. */
     fun fromScheme(scheme: ColorScheme) = AbastevoNavColors(
-        container = scheme.surfaceContainer,
-        indicator = scheme.secondaryContainer,
-        selectedIcon = scheme.onSecondaryContainer,
+        container = scheme.surface,
+        indicator = scheme.secondary,
+        selectedIcon = scheme.onSurface,
         selectedLabel = scheme.onSurface,
         unselected = scheme.onSurfaceVariant,
     )

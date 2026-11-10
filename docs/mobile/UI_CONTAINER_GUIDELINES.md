@@ -3,6 +3,8 @@
 Scope: Compose content containers in `app/src/main/kotlin/com/anpfuel/app`.
 This rule keeps cards and grouped surfaces recognizable in light, dark and
 dynamic-color themes without turning every layout into an outlined box.
+Colors, typography, shapes, spacing and buttons are described in
+[DESIGN_SYSTEM](DESIGN_SYSTEM.md).
 
 ## Default rule
 

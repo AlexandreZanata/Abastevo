@@ -15,37 +15,87 @@ class BrandPaletteContrastTest {
     }
 
     @Test
+    fun `dark screens are true black`() {
+        assertEquals(Color.Black, DarkColorScheme.background)
+        assertEquals(Color.Black, DarkColorScheme.surface)
+    }
+
+    @Test
+    fun `foundation is monochrome in both themes`() {
+        listOf(LightColorScheme, DarkColorScheme).forEach { scheme ->
+            listOf(
+                scheme.background,
+                scheme.onBackground,
+                scheme.surface,
+                scheme.onSurface,
+                scheme.surfaceVariant,
+                scheme.onSurfaceVariant,
+                scheme.outline,
+                scheme.outlineVariant,
+                scheme.surfaceContainerLow,
+                scheme.surfaceContainer,
+                scheme.surfaceContainerHigh,
+                scheme.surfaceContainerHighest,
+                scheme.primary,
+                scheme.onPrimary,
+                scheme.primaryContainer,
+                scheme.onPrimaryContainer,
+            ).forEach { assertNeutral(it) }
+        }
+    }
+
+    @Test
+    fun `filled actions invert with the theme`() {
+        assertEquals(LightColorScheme.onSurface, AbastevoActionDefaults.Light.container)
+        assertEquals(Color.White, AbastevoActionDefaults.Light.content)
+        assertEquals(Color.White, AbastevoActionDefaults.Dark.container)
+        assertEquals(LightColorScheme.onSurface, AbastevoActionDefaults.Dark.content)
+    }
+
+    @Test
+    fun `the accent is the only brand color and never the primary`() {
+        listOf(LightColorScheme to AbastevoAccent.Light, DarkColorScheme to AbastevoAccent.Dark).forEach { (scheme, tones) ->
+            assertEquals(tones.accent, scheme.secondary)
+            assertEquals(tones.container, scheme.secondaryContainer)
+            assertNeutral(scheme.primary)
+            // Green: the accent keeps the community meaning it had before.
+            assertTrue(tones.accent.green > tones.accent.red)
+            assertTrue(tones.accent.green > tones.accent.blue)
+        }
+        assertEquals(AbastevoAccent.Light.accent, AbastevoNavDefaults.Light.indicator)
+        assertEquals(AbastevoAccent.Dark.accent, AbastevoNavDefaults.Dark.indicator)
+    }
+
+    @Test
     fun `light palette meets contrast targets`() {
-        assertPalette(LightColorScheme, AbastevoNavDefaults.Light)
+        assertPalette(LightColorScheme, AbastevoNavDefaults.Light, AbastevoActionDefaults.Light)
     }
 
     @Test
     fun `dark palette meets contrast targets`() {
-        assertPalette(DarkColorScheme, AbastevoNavDefaults.Dark)
+        assertPalette(DarkColorScheme, AbastevoNavDefaults.Dark, AbastevoActionDefaults.Dark)
     }
 
-    @Test
-    fun `dark highlights stay on the blue brand hue`() {
-        assertEquals(AbastevoNavDefaults.Light.container, AbastevoNavDefaults.Dark.container)
-        assertEquals(AbastevoNavDefaults.Light.indicator, AbastevoNavDefaults.Dark.indicator)
-        assertEquals(AbastevoNavDefaults.Light.selectedIcon, AbastevoNavDefaults.Dark.selectedIcon)
-        assertTrue(DarkColorScheme.primary.blue > DarkColorScheme.primary.red)
-        assertTrue(DarkColorScheme.primary.blue > DarkColorScheme.primary.green)
-        assertTrue(DarkColorScheme.primaryContainer.blue > DarkColorScheme.primaryContainer.green)
-        // Surfaces stay near-neutral so blue reads as an accent, not a wash.
-        assertTrue(DarkColorScheme.surfaceContainer.blue - DarkColorScheme.surfaceContainer.red < 0.05f)
-        assertTrue(DarkColorScheme.secondary.green > DarkColorScheme.secondary.blue)
-    }
-
-    private fun assertPalette(scheme: ColorScheme, nav: AbastevoNavColors) {
-        // Actions and links on screens and cards.
-        assertText(scheme.onPrimary, scheme.primary, "button label")
-        assertText(scheme.primary, scheme.background, "link on screen")
-        assertText(scheme.primary, scheme.surfaceContainerLow, "link on card")
-        assertText(scheme.onSecondary, scheme.secondary, "secondary label")
+    private fun assertPalette(scheme: ColorScheme, nav: AbastevoNavColors, action: AbastevoActionColors) {
+        val screensAndCards = listOf(
+            scheme.background,
+            scheme.surfaceContainerLow,
+            scheme.surfaceContainer,
+            scheme.surfaceContainerHigh,
+        )
+        // Filled buttons on screens and on every card level.
+        assertText(action.content, action.container, "filled button label")
+        screensAndCards.forEach { assertNonText(action.container, it, "filled button fill") }
+        // Selected chips and segmented buttons, outlined button borders.
+        assertText(scheme.onPrimary, scheme.primary, "selected option label")
+        screensAndCards.forEach { assertNonText(scheme.primary, it, "outlined button border") }
+        // Text links and accent icons on screens and cards.
+        screensAndCards.forEach { assertText(scheme.secondary, it, "accent link") }
+        assertText(scheme.onSecondary, scheme.secondary, "accent label")
         // Tonal containers.
         assertText(scheme.onPrimaryContainer, scheme.primaryContainer, "primary container")
-        assertText(scheme.onSecondaryContainer, scheme.secondaryContainer, "selected chip")
+        assertText(scheme.onSecondaryContainer, scheme.secondaryContainer, "accent container")
+        assertText(scheme.onTertiary, scheme.tertiary, "tertiary label")
         assertText(scheme.onTertiaryContainer, scheme.tertiaryContainer, "tertiary container")
         assertText(scheme.onErrorContainer, scheme.errorContainer, "error container")
         // Body and secondary text on every surface level.
@@ -58,11 +108,17 @@ class BrandPaletteContrastTest {
             scheme.surfaceVariant,
         ).forEach { assertText(scheme.onSurfaceVariant, it, "secondary text") }
         assertNonText(scheme.outline, scheme.background, "outline")
-        // Bottom bar.
+        // Bottom bar: flat on the screen color, accent marker over the selected tab.
+        assertEquals(scheme.background, nav.container)
         assertText(nav.selectedLabel, nav.container, "selected label")
         assertText(nav.unselected, nav.container, "unselected label")
-        assertNonText(nav.selectedIcon, nav.indicator, "selected icon")
-        assertNonText(nav.indicator, nav.container, "selection pill")
+        assertNonText(nav.selectedIcon, nav.container, "selected icon")
+        assertNonText(nav.indicator, nav.container, "selection marker")
+    }
+
+    private fun assertNeutral(color: Color) {
+        assertEquals(color.red, color.green, "$color is not neutral")
+        assertEquals(color.green, color.blue, "$color is not neutral")
     }
 
     private fun assertText(foreground: Color, background: Color, label: String) {
