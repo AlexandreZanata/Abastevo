@@ -7873,8 +7873,32 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+x-abastevo-organization-api:
+  version: 1
+  namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
+  methods: [POST]
+  authentication: [account_session_and_owner_bound_device_proof, dedicated_company_session_and_csrf]
+  authority: current_server_resolved_membership_role_and_capability
+  operation_extension: x-abastevo-organization
+  max_body_bytes: 65536
+  cache_control: no-store
+  etag: false
+  pagination: {default_limit: 20, max_limit: 100, cursor_ttl_seconds: 900}
+  cursor_binding: [origin, organization, account, membership, route, canonical_filters]
+  status: conventions_only_feature_operations_follow_their_own_tasks
 components:
+  headers:
+    EnterpriseNoStore:
+      description: Private organization responses are never cacheable.
+      schema: {type: string, enum: [no-store]}
   parameters:
+    EnterpriseOrgID:
+      name: org_id
+      in: path
+      required: true
+      description: Selected organization reference. Current server authority is required independently of this identifier.
+      schema:
+        $ref: '#/components/schemas/EnterpriseUUID'
     QualityCompanyStationSelector:
       name: station_id
       in: query
@@ -7891,6 +7915,62 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseUUID:
+      description: Canonical non-nil identifier used for organization API references.
+      type: string
+      format: uuid
+      example: 7b0e2a54-0000-4000-8000-000000000001
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      not: {enum: ['00000000-0000-0000-0000-000000000000']}
+    EnterpriseReadRequest:
+      description: Common read fields. Module requests declare their full strict DTO with the same session and page fields. Omitted credentials select the dedicated company session channel.
+      type: object
+      additionalProperties: false
+      example: {family_id: 7b0e2a54-0000-4000-8000-000000000013, access_token: synthetic-access, limit: 20}
+      oneOf:
+        - required: [family_id, access_token]
+        - not:
+            anyOf:
+              - required: [family_id]
+              - required: [access_token]
+      properties:
+        family_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        access_token: {type: string, minLength: 1, maxLength: 512}
+        limit: {type: integer, minimum: 1, maximum: 100, default: 20}
+        cursor: {type: string, maxLength: 2048}
+    EnterpriseCommandRequest:
+      description: Common versioned command fields. Module DTOs add their own fields. Updates require a positive revision in their operation contract. The server computes the complete command digest for idempotency.
+      type: object
+      additionalProperties: false
+      example: {schema_version: 1, operation_id: 7b0e2a54-0000-4000-8000-000000000012, revision: 1}
+      required: [schema_version, operation_id]
+      oneOf:
+        - required: [family_id, access_token]
+        - not:
+            anyOf:
+              - required: [family_id]
+              - required: [access_token]
+      properties:
+        family_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        access_token: {type: string, minLength: 1, maxLength: 512}
+        schema_version: {type: integer, enum: [1]}
+        operation_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        revision: {type: integer, minimum: 1}
+    EnterpriseError:
+      description: Registered organization failure with safe text and bounded field codes.
+      example:
+        error: {code: NOT_FOUND, message: Organization request unavailable or refused, trace_id: req-org-synthetic, details: []}
+      allOf:
+        - $ref: '#/components/schemas/ApiError'
+        - type: object
+          properties:
+            error:
+              type: object
+              required: [code, message, trace_id, details]
+              properties:
+                code:
+                  type: string
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, RATE_LIMITED, UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false
@@ -13962,6 +14042,13 @@ components:
         topic:
           $ref: '#/components/schemas/ForumTopicReceipt'
   responses:
+    EnterprisePrivateError:
+      description: Safe registered organization error, with no existence hint for foreign resources.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/EnterpriseNoStore'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/EnterpriseError'}
     BadRequest:
       description: Malformed input, cursor or bounds.
       content:

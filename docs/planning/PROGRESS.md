@@ -36,7 +36,19 @@
   passed. Domain/application coverage 100%, adapter 95.8%. Previous API
   `da669216` returned ready against schema `000164` and stopped cleanly.
   Main `d8bdc642`, remote dev `231e63b7`, protected integration pending.
-  GitHub publication requested. Next bounded task EMP-PLAT-004.
+  Published checkpoint `090207ad`. Protected integration pending.
+
+- Enterprise EMP-PLAT-004, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  on `codex/enterprise-f0-f1` above `090207ad`.
+  [API evidence](../enterprise/evidence/f1-plat004-organization-api.md)
+  records strict typed HTTP entry, separate authentication ports, current
+  scope resolution, safe errors/no-store, bound cursors, shared OpenAPI
+  vectors and the actual-chi route/contract validator. PostGIS proof/session/
+  key/nonce and revocation checks, affected HTTP regressions, static checks
+  and build passed. Coverage 93.4%. The shared cursor deadline is now strict.
+  OpenAPI lint passed below its existing warning baseline. Functional module
+  routes and concrete membership/company-session providers retain their tasks.
+  GitHub publication requested. Next bounded task EMP-PLAT-005.
 
 - Landing 404, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING on `dev`
   from `cbfdec16` (P25 static landing, B-BR-L04 and BUC-L02).

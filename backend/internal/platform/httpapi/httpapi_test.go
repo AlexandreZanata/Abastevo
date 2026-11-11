@@ -27,6 +27,9 @@ func TestCursorRefusals(t *testing.T) {
 	if _, err := Open(testSecret, token, "fh1", now.Add(CursorTTL+time.Second)); err == nil {
 		t.Error("expired cursor accepted")
 	}
+	if _, err := Open(testSecret, token, "fh1", now.Add(CursorTTL)); err == nil {
+		t.Error("cursor accepted at its expiry deadline")
+	}
 	broken := token[:len(token)-4] + "AAAA"
 	if _, err := Open(testSecret, broken, "fh1", now); err == nil {
 		t.Error("tampered cursor accepted")

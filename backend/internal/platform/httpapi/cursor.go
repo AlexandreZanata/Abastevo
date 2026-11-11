@@ -59,7 +59,7 @@ func Open(secret []byte, token, filterHash string, now time.Time) (string, error
 	if p.FilterHash == "" || p.FilterHash != filterHash {
 		return "", ErrCursorFilter
 	}
-	if now.Unix() > p.ExpiresAt {
+	if now.Unix() >= p.ExpiresAt {
 		return "", ErrCursorExpiry
 	}
 	return p.LastKey, nil

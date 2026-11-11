@@ -152,7 +152,7 @@ The steps and their errors are the table in [07-permissions](07-permissions.md) 
 - **Reads:** keyset pagination with the existing HMAC-sealed cursors, default 20 and maximum 100 items; the cursor is bound to the organization, the member and the filters and expires in 15 minutes.
 - **Errors:** the existing envelope `{"error":{"code","message","trace_id","details":[{"field","code"}]}}`. Codes are listed in §6.
 - **Versioning:** `/v1` with additive changes only. Each operation type carries a schema version; an unknown version is refused with `MALFORMED`, never guessed. Unknown enum values from a newer server are shown as unknown by older clients ([08-state-model](08-state-model.md) §4).
-- **Contract:** every route is added to `contracts/openapi/v1.yaml` with golden vectors. A new test compares registered organization routes with the contract (no such test exists today).
+- **Contract:** every route is added to `contracts/openapi/v1.yaml` with golden vectors. EMP-PLAT-004 supplies the shared schemas, actual-chi-registration validator and drift regressions. Feature operations are added by their owning tasks.
 - **Rate limits:** the existing limiter with per-account, per-device and per-organization subjects. The quota table accepts only three operation names today, so organization limits use the `write` operation with their own subjects, as the forum does, unless a migration widens the check.
 
 Example (documentation only) — create an organization:
@@ -176,6 +176,52 @@ X-CSRF: …
 409 {"error":{"code":"CONFLICT","message":"The record changed since you opened it","trace_id":"…"}}
 403 {"error":{"code":"SELF_APPROVAL","message":"You cannot decide on your own record","trace_id":"…"}}
 ```
+
+### 4.1 Implemented HTTP boundary
+
+[orgapi](../../backend/internal/platform/orgapi/gateway.go) registers typed
+POST handlers under `/v1/orgs/{org_id}/`. Request DTOs embed `Session`,
+`Command` or `Page` by value and declare the module's full JSON fields.
+The entry rejects unknown/duplicate fields, noncanonical top-level names,
+reserved null scalars, wrong content types, query parameters and bodies
+over 64 KiB. Commands require `schema_version: 1`, a canonical non-nil
+`operation_id` and a positive `revision` when the route declares it.
+
+The gateway restores the exact validated body bytes before invoking the
+existing account session and owner-bound signed-device adapters. Company
+web uses a separate session port with an exact Origin check. That port
+owns its dedicated cookie and CSRF verification in EMP-PLAT-007. Partial
+credentials and signature headers cannot fall back to the web channel.
+
+The resolver port rechecks current membership, organization state,
+covering permission, required fresh authentication and capability. Its
+resolved organization and account must match the path and authenticated
+actor. Module callbacks receive this explicit principal. Concrete
+membership policy remains with the AUTH tasks.
+
+Callbacks return a JSON result or a registered error. The entry emits
+no-store responses without ETags. The production router also uses the
+safe private error envelope for unmatched organization paths, unsupported
+methods and private handler panics. `/v1/org-access/` remains the namespace
+for account-scoped operations added by their owning tasks.
+
+The cursor wrapper reuses `httpapi.Seal/Open` and binds origin,
+organization, account, membership, route and canonical validated filters
+through an unambiguous JSON-framed filter hash. Pages use 20/100 bounds.
+Expiry is enforced at the exact 15-minute deadline. Module controllers
+normalize page fields and compute canonical business-command digests
+without transport credentials. Device proof still covers the complete
+transmitted request.
+
+[ValidateOrganizationRoutes](../../backend/internal/platform/apicontract/organization.go)
+checks actual chi paths/methods, guarded entry descriptors, authority
+metadata, request bodies, path scope, success/error responses and private
+cache policy in both directions. Module composition tests call this gate
+with their registered router and the canonical OpenAPI document. Planted
+test operations prove missing/extra/unguarded route and policy drift
+rejection. The foundation publishes conventions and schemas.
+Its business operation set is empty.
+[Local API evidence](evidence/f1-plat004-organization-api.md)
 
 ## 5. Persistence and transactions
 

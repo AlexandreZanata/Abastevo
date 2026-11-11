@@ -64,7 +64,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local audit and migration evidence](../evidence/f1-plat003-organization-audit.md).
 
 ### EMP-PLAT-004 — Organization API conventions: path scope, session and device proof, error catalog, pagination, OpenAPI section, route-versus-contract test
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Define the API contract for organization-scoped routes.
 - **Rules and use cases:** EDR-006, BR-TEN-003, BR-TEN-006, BR-PRIV-003
 - **Depends on:** EMP-PLAT-001
@@ -78,6 +78,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-API, V-AUTHZ, V-ISO, V-PRIV · migration: none · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Business sessions and Android device proof are separate entry points into the same authorization boundary.
 - **Done when:** The contract, route and targeted negative tests agree.
+
+[Local HTTP, contract and proof evidence](../evidence/f1-plat004-organization-api.md).
 
 ### EMP-PLAT-005 — Per-organization capability flags for activation and rollback
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size S · state TODO

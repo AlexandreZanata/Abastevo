@@ -83,6 +83,26 @@ boundaries.
   `audit.event.read` authority or an approved live support session, resolved
   through the authorization port on every read.
 
+- **B-BR-EMP-11 — Organization HTTP boundary.** Organization POST routes
+  validate one bounded JSON object before authentication, preserve the exact
+  bytes for device proof, and resolve current membership and authority for
+  the path organization on every request. Android requires the live account
+  session and an owner-bound signed device proof. Company web uses its
+  dedicated session verifier with exact origin and CSRF checks. Partial
+  credentials or signed headers cannot fall back to web authentication.
+  Foreign or absent membership has the same NOT_FOUND envelope. Private
+  success and failure responses use no-store and omit ETags. Commands carry
+  schema_version 1, operation_id and a positive revision when required.
+  Registered routes declare permission, write/fresh/revision requirements
+  and successful response status in their OpenAPI operation.
+
+- **B-BR-EMP-12 — Organization page binding.** Pages default to 20 records
+  and cap at 100. HMAC cursors bind the canonical server origin, organization,
+  verified account and membership, route and canonical validated filters.
+  A cursor expires at its 15-minute deadline. Invalid, foreign, changed or
+  expired cursors return the same safe malformed-request error. The current
+  authority check precedes page access. Route and contract drift fails tests.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -121,6 +141,13 @@ boundaries.
   without repeating the callback. Failure leaves both absent. An authorized
   reader lists only its organization's events with bounded keyset pagination.
   A denied or revoked read stops before storage access.
+
+- **BUC-EMP-07 — Enter an organization API operation.** The shared route
+  entry validates the module DTO, authenticates one channel and verifies
+  current authority for the selected organization and declared permission.
+  It passes resolved scope and actor to the module callback. Invalid proof,
+  foreign scope or malformed input stops before that callback. A paginated
+  read opens a cursor only under the same resolved actor, route and filters.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 )
 
@@ -173,13 +174,22 @@ func NewRouter(logger *telemetry.Logger) Router {
 
 func unmatched(logger *telemetry.Logger, status int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		responseStatus := status
+		private := orgapi.IsOrganizationPath(r.URL.Path)
+		if private {
+			responseStatus = http.StatusNotFound
+		}
 		logger.Info(r.Context(), "http.request", "request served",
 			slog.String("method", r.Method),
 			slog.String("route", routeTemplate(r)),
-			slog.Int("status", status),
+			slog.Int("status", responseStatus),
 			slog.Int64("duration_ms", 0),
 		)
-		http.Error(w, http.StatusText(status), status)
+		if private {
+			orgapi.WriteError(w, r, orgapi.NotFound)
+			return
+		}
+		http.Error(w, http.StatusText(responseStatus), responseStatus)
 	}
 }
 
@@ -247,6 +257,10 @@ func recoverer(logger *telemetry.Logger) func(http.Handler) http.Handler {
 			defer func() {
 				if recovered := recover(); recovered != nil {
 					logger.Error(r.Context(), "http.panic", "handler panicked")
+					if orgapi.IsOrganizationPath(r.URL.Path) {
+						orgapi.WriteError(w, r, orgapi.Unavailable)
+						return
+					}
 					http.Error(w, http.StatusText(http.StatusInternalServerError),
 						http.StatusInternalServerError)
 				}
