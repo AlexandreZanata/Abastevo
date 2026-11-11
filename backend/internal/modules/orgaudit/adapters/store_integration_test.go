@@ -261,17 +261,26 @@ func TestAuditReadIsolationAndImmutability(t *testing.T) {
 		"; GRANT TRUNCATE ON org_event_intents,org_event_receipts TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
-	// CASCADE reaches the append-only trigger despite the event-intent FK;
-	// keep requiring 55000 rather than accepting an FK/permission failure.
+	// CASCADE reaches the append-only trigger despite the event-intent FK. The
+	// event tables' own append-only triggers are disabled for this check, so only
+	// the audit trail's trigger can produce its 55000 and message.
+	if _, err := f.Admin.Exec(t.Context(), `ALTER TABLE org_event_intents DISABLE TRIGGER org_event_intents_immutable;
+		ALTER TABLE org_event_receipts DISABLE TRIGGER org_event_receipts_immutable`); err != nil {
+		t.Fatal(err)
+	}
 	for _, query := range []string{`UPDATE org_audit_events SET reason_code='correction'`, `DELETE FROM org_audit_events`, `TRUNCATE org_audit_events CASCADE`} {
 		err := database.WithOrgTx(t.Context(), f.Runtime, a.Scope(t), func(tx pgx.Tx) error {
 			_, err := tx.Exec(t.Context(), query)
 			return err
 		})
 		var failure *pgconn.PgError
-		if !errors.As(err, &failure) || failure.Code != "55000" {
+		if !errors.As(err, &failure) || failure.Code != "55000" || failure.Message != "organization audit events are append-only" {
 			t.Fatalf("immutable trail query returned %v", err)
 		}
+	}
+	if _, err := f.Admin.Exec(t.Context(), `ALTER TABLE org_event_intents ENABLE TRIGGER org_event_intents_immutable;
+		ALTER TABLE org_event_receipts ENABLE TRIGGER org_event_receipts_immutable`); err != nil {
+		t.Fatal(err)
 	}
 	err = database.WithOrgTx(t.Context(), f.Runtime, a.Scope(t), func(tx pgx.Tx) error {
 		_, err := tx.Exec(t.Context(), `INSERT INTO org_audit_events

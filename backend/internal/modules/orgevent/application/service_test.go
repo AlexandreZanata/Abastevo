@@ -3,6 +3,9 @@ package application_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -10,6 +13,7 @@ import (
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/domain"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -116,5 +120,33 @@ func TestProducerFailsClosedWithoutPortsOrAuthority(t *testing.T) {
 				t.Fatal(err, want)
 			}
 		})
+	}
+}
+
+// A producer's registered refusal keeps its own status: a stale revision is a
+// 409, never a retryable 503, and still rolls the audit and intents back.
+func TestProducerKeepsRegisteredRefusalsAndHidesRawErrors(t *testing.T) {
+	for _, code := range []orgapi.Code{orgapi.Conflict, orgapi.ValidationFailed, orgapi.PeriodLocked, orgapi.Forbidden, orgapi.EntitlementRequired} {
+		s, _, w, scope, a, e := fixture(t)
+		work := application.Work(func(context.Context, kernel.OrgScope, pgx.Tx) error {
+			return fmt.Errorf("PRIVATE-DETAIL: %w", code)
+		})
+		_, err := s.Record(t.Context(), scope, a, e, []string{"projection.refresh"}, work)
+		if err != code || len(w.envelopes) != 0 {
+			t.Fatalf("%s: got %v, %d intents", code, err, len(w.envelopes))
+		}
+		rec := httptest.NewRecorder()
+		orgapi.WriteError(rec, httptest.NewRequest(http.MethodPost, "/v1/orgs/x", nil), err)
+		if rec.Code == http.StatusServiceUnavailable || strings.Contains(rec.Body.String(), "PRIVATE") {
+			t.Fatalf("%s: status %d body %s", code, rec.Code, rec.Body)
+		}
+	}
+	s, _, _, scope, a, e := fixture(t)
+	raw := application.Work(func(context.Context, kernel.OrgScope, pgx.Tx) error { return errors.New("PRIVATE-SQL-CONTENT") })
+	if _, err := s.Record(t.Context(), scope, a, e, []string{"projection.refresh"}, raw); err != domain.ErrUnavailable {
+		t.Fatal(err)
+	}
+	if application.SafeError(orgapi.Code("PRIVATE-UNREGISTERED")) != domain.ErrUnavailable {
+		t.Fatal("unregistered code escaped")
 	}
 }

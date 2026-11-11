@@ -5,6 +5,7 @@ package adapters_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -20,8 +21,10 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgtest"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -324,13 +327,14 @@ func TestAtomicAuditedPublicationAndScopedReplay(t *testing.T) {
 }
 
 func TestPublicationFailureRollsBackEveryRequiredEffect(t *testing.T) {
-	for _, kind := range []string{"business", "queue", "second consumer", "intent", "commit"} {
+	for _, kind := range []string{"business", "refusal", "queue", "second consumer", "intent", "commit"} {
 		t.Run(kind, func(t *testing.T) {
 			f := setup(t)
 			org := f.db.Organizations[0]
 			a, e := f.intent(t, org)
 			role := pgx.Identifier{f.db.RuntimeRole}.Sanitize()
 			work := application.Work(sourceChange)
+			want := error(domain.ErrUnavailable)
 			var cleanup string
 			switch kind {
 			case "business":
@@ -340,6 +344,15 @@ func TestPublicationFailureRollsBackEveryRequiredEffect(t *testing.T) {
 					}
 					return errors.New("PRIVATE-BUSINESS-CONTENT")
 				}
+			case "refusal":
+				// A stale-revision refusal after the source write keeps its 409 and rolls back.
+				work = func(ctx context.Context, s kernel.OrgScope, tx pgx.Tx) error {
+					if err := sourceChange(ctx, s, tx); err != nil {
+						return err
+					}
+					return fmt.Errorf("PRIVATE-REVISION: %w", orgapi.Conflict)
+				}
+				want = orgapi.Conflict
 			case "queue":
 				cleanup = "GRANT INSERT ON job_queue TO " + role
 				if _, err := f.db.Admin.Exec(t.Context(), "REVOKE INSERT ON job_queue FROM "+role); err != nil {
@@ -364,7 +377,7 @@ func TestPublicationFailureRollsBackEveryRequiredEffect(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if _, err := f.service.Record(t.Context(), org.Scope(t), a, e, []string{"projection.refresh", "review.prepare"}, work); !errors.Is(err, domain.ErrUnavailable) {
+			if _, err := f.service.Record(t.Context(), org.Scope(t), a, e, []string{"projection.refresh", "review.prepare"}, work); err != want {
 				t.Fatal("failure released success", err)
 			}
 			f.state(t, org, 0, 0, 0, 1, 0)
@@ -615,6 +628,14 @@ func TestForcedScopeAndAppendOnlyRecords(t *testing.T) {
 		t.Fatal(err)
 	}
 	var count int
+	role := pgx.Identifier{f.db.RuntimeRole}.Sanitize()
+	if _, err := f.db.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_event_intents,org_event_receipts TO "+role); err != nil {
+		t.Fatal(err)
+	}
+	// Each table's own trigger must refuse: the other is disabled while it is
+	// checked, and intents are truncated together with receipts so their FK
+	// cannot be the failure that satisfies the test.
+	others := map[string]string{"org_event_intents": "org_event_receipts", "org_event_receipts": "org_event_intents"}
 	for _, table := range []string{"org_event_intents", "org_event_receipts"} {
 		if err := f.pool.QueryRow(t.Context(), "SELECT count(*) FROM "+table).Scan(&count); err != nil || count != 0 {
 			t.Fatal("scope leaked", count, err)
@@ -624,14 +645,19 @@ func TestForcedScopeAndAppendOnlyRecords(t *testing.T) {
 		}); err != nil || count != 0 {
 			t.Fatal("foreign rows visible", count, err)
 		}
-		role := pgx.Identifier{f.db.RuntimeRole}.Sanitize()
-		if _, err := f.db.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON "+table+" TO "+role); err != nil {
+		other := others[table]
+		if _, err := f.db.Admin.Exec(t.Context(), "ALTER TABLE "+other+" DISABLE TRIGGER "+other+"_immutable"); err != nil {
 			t.Fatal(err)
 		}
-		for _, statement := range []string{"DELETE FROM " + table + " WHERE false", "UPDATE " + table + " SET consumer=consumer WHERE false", "TRUNCATE " + table} {
-			if err := database.WithOrgTx(t.Context(), f.pool, org.Scope(t), func(tx pgx.Tx) error { _, err := tx.Exec(t.Context(), statement); return err }); err == nil {
-				t.Fatal("immutable mutation accepted")
+		for _, statement := range []string{"DELETE FROM " + table + " WHERE false", "UPDATE " + table + " SET consumer=consumer WHERE false", "TRUNCATE org_event_intents, org_event_receipts"} {
+			err := database.WithOrgTx(t.Context(), f.pool, org.Scope(t), func(tx pgx.Tx) error { _, err := tx.Exec(t.Context(), statement); return err })
+			var failure *pgconn.PgError
+			if !errors.As(err, &failure) || failure.Code != "55000" || failure.Message != "organization event records are append-only" {
+				t.Fatalf("%s: immutable mutation returned %v", statement, err)
 			}
+		}
+		if _, err := f.db.Admin.Exec(t.Context(), "ALTER TABLE "+other+" ENABLE TRIGGER "+other+"_immutable"); err != nil {
+			t.Fatal(err)
 		}
 	}
 	ac, err := audit.NewCatalog([]audit.Definition{{Action: "example.record.changed", TargetType: "example.record"}})

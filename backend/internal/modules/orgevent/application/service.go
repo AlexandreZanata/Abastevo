@@ -10,6 +10,7 @@ import (
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
 	auditdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/domain"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -24,7 +25,14 @@ type Service struct {
 	Writer  Writer
 }
 
+// SafeError keeps orgevent's own outcomes and a producer's registered orgapi
+// refusal (CONFLICT, VALIDATION_FAILED, PERIOD_LOCKED, ...), stripped of any
+// wrapping text; everything else is an opaque outage. A producer translates its
+// module refusals, such as capability guards, into registered codes in its work.
 func SafeError(err error) error {
+	if code, ok := orgapi.Registered(err); ok {
+		return code
+	}
 	switch {
 	case errors.Is(err, domain.ErrInvalid):
 		return domain.ErrInvalid

@@ -44,14 +44,23 @@ var statuses = map[Code]int{
 	ValidationFailed: 422, RateLimited: 429, Unavailable: 503,
 }
 
-// WriteError emits registered codes and static text. Raw provider errors stay private.
-func WriteError(w http.ResponseWriter, r *http.Request, err error) {
-	code := Unavailable
+// Registered returns the bare registered code carried by err, without any
+// wrapping text, so a module can keep a refusal's status but not its detail.
+func Registered(err error) (Code, bool) {
 	var reported Code
 	if errors.As(err, &reported) {
 		if _, known := statuses[reported]; known {
-			code = reported
+			return reported, true
 		}
+	}
+	return "", false
+}
+
+// WriteError emits registered codes and static text. Raw provider errors stay private.
+func WriteError(w http.ResponseWriter, r *http.Request, err error) {
+	code := Unavailable
+	if reported, ok := Registered(err); ok {
+		code = reported
 	}
 	recordCode(r, code)
 	var limited *RateLimitError
