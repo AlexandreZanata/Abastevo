@@ -3,15 +3,26 @@ package storage
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"mime"
 	"net/http"
+	"strings"
 )
 
+// ServerPrefix scopes server-only transfers to organization originals, so
+// community quarantine and sanitized finals keep their own write paths.
+const ServerPrefix = "org/"
+
+var ErrServerNamespace = errors.New("storage: server transfers are limited to organization originals")
+
 // PresignServerPUT reuses the SigV4 core for a server-only transfer. Unlike
-// community client intake, the caller owns type/size inspection and namespace.
+// community client intake, the caller owns type/size inspection inside ServerPrefix.
 // The URL stays internal. MaxBytes is enforced by the caller, not by presigning.
 func PresignServerPUT(in PresignInput, cred Credentials) (PresignedPUT, error) {
+	if !strings.HasPrefix(in.Namespace, ServerPrefix) || len(in.Namespace) == len(ServerPrefix) {
+		return PresignedPUT{}, ErrServerNamespace
+	}
 	mediaType, params, err := mime.ParseMediaType(in.ContentType)
 	if err != nil || mediaType != in.ContentType || len(params) != 0 || len(mediaType) > 128 {
 		return PresignedPUT{}, ErrBadContentType

@@ -226,3 +226,25 @@ func TestPrivateTransferConcurrencyIsBounded(t *testing.T) {
 		}
 	}
 }
+
+func TestStoredIntegrityFailureStaysDistinctFromOutage(t *testing.T) {
+	service, s, scope, member := fixture(t)
+	access, err := service.Issue(t.Context(), scope, member, documentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.objects.failure = fmt.Errorf("SYNTHETIC-PROVIDER-DETAIL: %w", domain.ErrIntegrity)
+	if err := service.Upload(t.Context(), scope, member, documentID, strings.NewReader("synthetic")); !errors.Is(err, domain.ErrIntegrity) || strings.Contains(err.Error(), "SYNTHETIC") {
+		t.Fatal("substituted original reported as outage on upload", err)
+	}
+	if content, err := service.Open(t.Context(), scope, member, documentID, access.Token); !errors.Is(err, domain.ErrIntegrity) || len(content.Bytes) != 0 {
+		t.Fatal("substituted original reported as outage on read", err)
+	}
+	s.objects.failure = errors.New("SYNTHETIC-PROVIDER-OUTAGE")
+	if err := service.Upload(t.Context(), scope, member, documentID, strings.NewReader("synthetic")); !errors.Is(err, domain.ErrUnavailable) || strings.Contains(err.Error(), "SYNTHETIC") {
+		t.Fatal("storage outage became permanent refusal", err)
+	}
+	if content, err := service.Open(t.Context(), scope, member, documentID, access.Token); !errors.Is(err, domain.ErrUnavailable) || len(content.Bytes) != 0 {
+		t.Fatal("storage outage became permanent refusal", err)
+	}
+}

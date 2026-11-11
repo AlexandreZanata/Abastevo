@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -95,33 +96,50 @@ func (i *inspector) Inspect(_ context.Context, raw []byte) (string, error) {
 }
 
 type tokens struct {
+	mu           sync.Mutex
 	invalid      bool
 	deadline     time.Time
 	issueFailure error
+	issued       string
 }
 
-func (t *tokens) Issue(_ kernel.OrgScope, _ domain.Member, _ domain.Object, _ string, now time.Time) (application.Access, error) {
+func (t *tokens) Issue(_ kernel.OrgScope, _ domain.Member, _ domain.Object, id string, now time.Time) (application.Access, error) {
 	if t.issueFailure != nil {
 		return application.Access{}, t.issueFailure
 	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.deadline = now.Add(5 * time.Minute)
+	t.issued = id
 	return application.Access{Token: "synthetic-token", ExpiresAt: t.deadline}, nil
 }
 func (t *tokens) Verify(_ kernel.OrgScope, _ domain.Member, _ domain.Object, _ string, now time.Time) (string, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if t.invalid || !now.Before(t.deadline) {
 		return "", domain.ErrNotFound
+	}
+	if t.issued != "" {
+		return t.issued, nil
 	}
 	return accessID, nil
 }
 
+type event struct{ access, request string }
+
 type audit struct {
+	mu      sync.Mutex
 	calls   int
 	failure error
 	after   func()
+	events  []event
 }
 
-func (a *audit) Record(context.Context, kernel.OrgScope, domain.Member, domain.Object, string, string, domain.Intent) error {
+func (a *audit) Record(_ context.Context, _ kernel.OrgScope, _ domain.Member, _ domain.Object, access, request string, _ domain.Intent) error {
+	a.mu.Lock()
 	a.calls++
+	a.events = append(a.events, event{access: access, request: request})
+	a.mu.Unlock()
 	if a.after != nil {
 		a.after()
 	}
@@ -136,6 +154,17 @@ type state struct {
 	audit     *audit
 	now       time.Time
 	config    application.Config
+	idMu      sync.Mutex
+	ids       int
+}
+
+// newID returns distinct identifiers, as the production generator does, so a
+// reused grant or request ID cannot hide behind a constant.
+func (s *state) newID() (string, error) {
+	s.idMu.Lock()
+	defer s.idMu.Unlock()
+	s.ids++
+	return fmt.Sprintf("7b0e2a54-0000-4000-8000-%012d", 100+s.ids), nil
 }
 
 func fixture(t *testing.T) (*application.Service, *state, kernel.OrgScope, domain.Member) {
@@ -146,7 +175,7 @@ func fixture(t *testing.T) (*application.Service, *state, kernel.OrgScope, domai
 	sum := sha256.Sum256(raw)
 	s := &state{policy: &authority{object: domain.Object{OrgID: orgID, DocumentID: documentID, SHA256: hex.EncodeToString(sum[:]), MIME: "image/jpeg", Bytes: int64(len(raw)), Revision: 1, Synthetic: true, Ready: true}},
 		objects: &objects{data: raw}, inspector: &inspector{mime: "image/jpeg"}, tokens: &tokens{}, audit: &audit{}, now: time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC)}
-	s.config = application.Config{Enabled: true, Authority: s.policy, Objects: s.objects, Inspector: s.inspector, Tokens: s.tokens, Audit: s.audit, Now: func() time.Time { return s.now }, NewID: func() (string, error) { return accessID, nil }}
+	s.config = application.Config{Enabled: true, Authority: s.policy, Objects: s.objects, Inspector: s.inspector, Tokens: s.tokens, Audit: s.audit, Now: func() time.Time { return s.now }, NewID: s.newID}
 	service, err := application.NewService(s.config)
 	if err != nil {
 		t.Fatal(err)
@@ -200,6 +229,18 @@ func TestAccessIsAuditedAndRevocationRechecked(t *testing.T) {
 	}
 	if s.audit.calls != 3 {
 		t.Fatal("repeated content access was not audited")
+	}
+	grant := s.audit.events[0]
+	if grant.access != s.tokens.issued || grant.request != grant.access {
+		t.Fatal("grant audit not keyed by its access ID")
+	}
+	for _, read := range s.audit.events[1:] {
+		if read.access != grant.access || read.request == grant.access {
+			t.Fatal("read audit not linked to its grant with its own request ID")
+		}
+	}
+	if s.audit.events[1].request == s.audit.events[2].request {
+		t.Fatal("repeated reads reused one audit request ID")
 	}
 	s.policy.revoked = true
 	if content, err := service.Open(t.Context(), scope, member, documentID, access.Token); !errors.Is(err, domain.ErrNotFound) || len(content.Bytes) != 0 {

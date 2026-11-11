@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -64,6 +65,19 @@ func TestServerPrivatePUTRetainsCommunityPolicyAndConditions(t *testing.T) {
 			if err == nil || strings.Contains(err.Error(), "PRIVATE-REMOTE-BODY") {
 				t.Fatal("unsafe remote error")
 			}
+		}
+	}
+}
+
+func TestServerPrivatePUTNeverSignsCommunityNamespaces(t *testing.T) {
+	for _, namespace := range []string{QuarantinePrefix, "f/", "org/", "organization/", ""} {
+		in := testInput("https://storage.example.invalid")
+		in.Namespace = namespace
+		in.Key = namespace + "snapshot"
+		in.ContentType = "image/jpeg"
+		in.MaxBytes = 1 << 20
+		if _, err := PresignServerPUT(in, testCred()); !errors.Is(err, ErrServerNamespace) {
+			t.Fatalf("server PUT signed namespace %q: %v", namespace, err)
 		}
 	}
 }

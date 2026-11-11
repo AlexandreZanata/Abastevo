@@ -82,6 +82,16 @@ func NewService(config Config) (*Service, error) {
 	}
 	return &Service{config: config, transfers: make(chan struct{}, 4)}, nil
 }
+
+// storageError keeps a stored object that differs from its declaration (a
+// substituted or corrupted original) distinct from a transient outage: put
+// never replaces it, so retrying cannot succeed and the owner must repair it.
+func storageError(err error) error {
+	if errors.Is(err, domain.ErrIntegrity) {
+		return domain.ErrIntegrity
+	}
+	return domain.ErrUnavailable
+}
 func safeAuthorityError(err error) error {
 	if errors.Is(err, domain.ErrNotFound) {
 		return domain.ErrNotFound
@@ -161,7 +171,7 @@ func (service *Service) Upload(ctx context.Context, scope kernel.OrgScope, membe
 		return domain.ErrNotFound
 	}
 	if err := service.config.Objects.Put(ctx, scope, object, raw); err != nil {
-		return domain.ErrUnavailable
+		return storageError(err)
 	}
 	// A failed metadata/authority recheck never acknowledges a ready document.
 	current, err = service.resolve(ctx, scope, member, id, domain.Upload)
@@ -266,7 +276,7 @@ func (service *Service) Open(ctx context.Context, scope kernel.OrgScope, member 
 	}
 	raw, err := service.config.Objects.Get(ctx, scope, object)
 	if err != nil {
-		return Content{}, domain.ErrUnavailable
+		return Content{}, storageError(err)
 	}
 	if err := object.CheckSnapshot(raw); err != nil {
 		return Content{}, domain.ErrIntegrity

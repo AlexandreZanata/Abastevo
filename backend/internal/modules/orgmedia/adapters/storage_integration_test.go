@@ -254,6 +254,18 @@ func TestConcurrentPrivatePUTNeverOverwritesAndDetectsSubstitution(t *testing.T)
 	if content, err := store.Get(ctx, f.scopeA, f.objectA); !errors.Is(err, domain.ErrIntegrity) || content != nil {
 		t.Fatal("substituted read delivered bytes", err)
 	}
+	// Retrying cannot repair a substituted original, so the service must not
+	// report it as a transient outage.
+	if err := f.service.Upload(ctx, f.scopeA, f.memberA, f.objectA.DocumentID, bytes.NewReader(f.raw)); !errors.Is(err, domain.ErrIntegrity) {
+		t.Fatal("substituted original reported as outage on upload", err)
+	}
+	access, err := f.service.Issue(ctx, f.scopeA, f.memberA, f.objectA.DocumentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if content, err := f.service.Open(ctx, f.scopeA, f.memberA, f.objectA.DocumentID, access.Token); !errors.Is(err, domain.ErrIntegrity) || len(content.Bytes) != 0 {
+		t.Fatal("substituted original reported as outage on read", err)
+	}
 	signed, err = storage.PresignGET(input, f.config.Credentials)
 	if err != nil {
 		t.Fatal(err)
