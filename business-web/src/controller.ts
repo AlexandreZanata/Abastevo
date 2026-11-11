@@ -79,10 +79,11 @@ export class CompanyController {
       this.#show('signed-out', [], null, message);
     }
   }
+  // Navigation must not cancel the server logout, so it gets no page signal.
   async signOut(): Promise<void> {
-    const { epoch, signal } = this.#begin('signing-out');
+    const { epoch } = this.#begin('signing-out');
     let message = '';
-    try { await this.session.signOut(signal); }
+    try { await this.session.signOut(); }
     catch { message = 'A saída no servidor não pôde ser confirmada. Entre novamente para continuar.'; }
     if (epoch !== this.#epoch) return;
     this.session.forget();

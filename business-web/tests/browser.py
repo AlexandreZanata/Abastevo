@@ -133,8 +133,23 @@ def browser_checks(origin):
         created = context.request.post(origin + "/v1/accounts/keys", data={"username": "emp" + secrets.token_hex(6)})
         assert created.status == 201, "Synthetic account creation failed"
         account_key = created.json()["account_key"]
+        # Without the module, the form must not submit the key natively.
+        blocked = context.new_page()
+        blocked.route("**/assets/main.*.js", lambda route: route.abort())
+        blocked.goto(origin + "/empresas/")
+        blocked.locator("#account-key").fill(account_key)
+        blocked.locator("#account-key").press("Enter")
+        blocked.wait_for_timeout(300)
+        assert account_key not in blocked.url and "account-key" not in blocked.url, "Key reached the URL"
+        assert blocked.locator("#login-button").is_disabled(), "Native sign-in enabled without the module"
+        blocked.close()
         page.goto(origin + "/empresas/")
         expect(page.locator("#login-view")).to_be_visible()
+        page.locator("#account-key").fill("abv_invalid_" + secrets.token_hex(8))
+        page.locator("#account-key").press("Enter")
+        expect(page.locator("#login-error")).to_have_text("Chave inválida. Confira e tente novamente.")
+        assert page.evaluate("document.activeElement.id") == "account-key", "Refused sign-in lost focus"
+        assert page.locator("#live-status").inner_text() == "", "Refusal announced twice"
         page.locator("#account-key").fill(account_key)
         with page.expect_response(lambda r: r.url.endswith("/org-access/session/login")) as issued:
             page.locator("#account-key").press("Enter")
@@ -163,7 +178,7 @@ def browser_checks(origin):
         page.set_viewport_size({"width": 390, "height": 844})
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Mobile horizontal overflow"
         page.screenshot(path="/tmp/enterprise-plat008-login-mobile.png", full_page=True)
-        print("PASS: actual TLS/PostGIS account login, company cookie, logout/reuse, reload guard and responsive login")
+        print("PASS: no native key submission, refused-login focus, actual TLS/PostGIS account login, company cookie, logout/reuse, reload guard and responsive login")
 
         # Only this test server/browser receives a synthetic membership port.
         # The shipped main.ts always composes unavailableMemberships.
@@ -186,17 +201,24 @@ def browser_checks(origin):
         }""", {"app": app})
         expect(page.locator("#page-title")).to_have_text("Escolha sua empresa")
         select = page.get_by_label("Empresa atual", exact=True)
+        # Arrow keys on the closed select only choose; the button opens (WCAG 3.2.2).
         select.focus()
-        select.press("Space")
         select.press("ArrowDown")
-        select.press("Enter")
+        select.press("ArrowDown")
+        page.wait_for_timeout(200)
+        expect(page.locator("#page-title")).to_have_text("Escolha sua empresa")
+        assert page.evaluate("document.activeElement.id") == "organization-select", "Arrow key changed context"
+        select.press("ArrowUp")
+        page.keyboard.press("Tab")
+        assert page.evaluate("document.activeElement.id") == "organization-open"
+        page.keyboard.press("Enter")
         expect(page.locator("#selected-company")).to_have_text("Empresa A sintética")
         expect(page.locator("#selected-company")).to_be_visible()
         assert page.evaluate("document.activeElement.id") == "page-title"
         select.focus()
-        select.press("Space")
         select.press("ArrowDown")
-        select.press("Enter")
+        page.keyboard.press("Tab")
+        page.keyboard.press("Enter")
         expect(page.locator("#selected-company")).to_have_text("Empresa B sintética")
         assert "Empresa A sintética" not in page.locator("#workspace").inner_text()
         page.set_viewport_size({"width": 1440, "height": 1000})
@@ -206,6 +228,7 @@ def browser_checks(origin):
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Workspace horizontal overflow"
         page.evaluate("window.fixtureMode='foreign'")
         select.select_option("7b0e2a54-0000-4000-8000-000000000002")
+        page.locator("#organization-open").click()
         expect(page.locator("#page-title")).to_have_text("Acesso não disponível")
         expect(page.locator("#selected-company")).to_be_hidden()
         assert "Empresa B sintética" not in page.locator("#workspace").inner_text()

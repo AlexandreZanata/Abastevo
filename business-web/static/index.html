@@ -20,8 +20,11 @@
   <div class="shell-layout">
     <aside id="workspace-nav" class="workspace-nav" aria-label="Navegação da empresa" hidden>
       <p class="eyebrow">ESPAÇO DE TRABALHO</p>
-      <label for="organization-select">Empresa atual</label>
-      <select id="organization-select" aria-describedby="organization-help" disabled><option value="">Selecione uma empresa</option></select>
+      <form id="organization-form" class="organization-form">
+        <label for="organization-select">Empresa atual</label>
+        <select id="organization-select" aria-describedby="organization-help" disabled><option value="">Selecione uma empresa</option></select>
+        <button id="organization-open" class="button-quiet" type="submit" disabled>Abrir empresa</button>
+      </form>
       <p id="organization-help" class="field-help">Seus acessos aparecerão aqui.</p>
       <nav aria-label="Painel"><a id="overview-link" class="nav-item" href="/empresas/" aria-current="page"><span aria-hidden="true">⌂</span> Visão geral</a></nav>
       <p class="nav-note">Cada empresa tem seu próprio espaço. Você escolhe onde trabalhar.</p>
@@ -39,12 +42,12 @@
           <div class="small-mark" aria-hidden="true">↗</div>
           <h2 id="login-title">Entre na sua conta</h2>
           <p>Use sua chave de acesso para continuar.</p>
-          <form id="login-form" autocomplete="off">
+          <form id="login-form" method="post" autocomplete="off">
             <label for="account-key">Chave da conta Abastevo</label>
-            <input id="account-key" name="account-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="256" required aria-describedby="key-help login-error">
+            <input id="account-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="256" required aria-describedby="key-help login-error">
             <p id="key-help" class="field-help">É a chave que você guardou ao criar sua conta.</p>
             <p id="login-error" role="alert" class="form-error"></p>
-            <button id="login-button" class="button-primary" type="submit">Entrar no painel</button>
+            <button id="login-button" class="button-primary" type="submit" disabled>Entrar no painel</button>
           </form>
           <p class="login-note">Sua chave é pessoal. Não a compartilhe com sua empresa ou equipe.</p>
         </div>

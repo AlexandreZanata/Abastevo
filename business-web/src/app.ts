@@ -21,6 +21,7 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
   const key = el<HTMLInputElement>('account-key');
   const form = el<HTMLFormElement>('login-form');
   const select = el<HTMLSelectElement>('organization-select');
+  const picker = el<HTMLFormElement>('organization-form');
   let target = route(browser.location.pathname, browser.location.search);
   let lastPhase: Phase | null = null;
   let expiryTimer = 0;
@@ -41,7 +42,7 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
     el('page-title').textContent = COPY[state.phase]?.[0] ?? 'Abastevo Empresas';
     el('page-description').textContent = COPY[state.phase]?.[1] ?? '';
     el('workspace').setAttribute('aria-busy', String(busy));
-    el('live-status').textContent = guest ? state.message : (COPY[state.phase]?.[0] ?? '');
+    el('live-status').textContent = guest ? '' : (COPY[state.phase]?.[0] ?? '');
     el('selected-company').textContent = state.selected?.name ?? 'Seu ambiente empresarial';
     el('selected-company').hidden = state.selected === null;
     select.replaceChildren();
@@ -55,6 +56,7 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
     }
     select.value = state.selected?.id ?? '';
     select.disabled = busy || state.organizations.length === 0;
+    el<HTMLButtonElement>('organization-open').disabled = select.disabled;
     el('organization-help').textContent = state.organizations.length > 0 ? 'Seu acesso é confirmado a cada troca.' : 'Seus acessos aparecerão aqui.';
     el('retry-button').hidden = !['empty', 'denied', 'unavailable'].includes(state.phase);
     el('home-link').hidden = !['not-found', 'denied'].includes(state.phase);
@@ -69,6 +71,8 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
       }, Math.max(0, session.deadline - Date.now()));
     }
     if (!guest && !busy && lastPhase !== state.phase) el('page-title').focus({ preventScroll: true });
+    // A refused sign-in returns focus to the field it disabled while busy.
+    if (guest && lastPhase === 'loading' && state.message !== '') key.focus({ preventScroll: true });
     lastPhase = state.phase;
     if (session.authenticated && !busy && browser.location.pathname === LOGIN) {
       browser.history.replaceState({}, '', HOME); target = { kind: 'overview' };
@@ -85,8 +89,11 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
     const value = key.value; key.value = '';
     void controller.signIn(value, target);
   });
-  select.addEventListener('change', () => {
-    if (select.value !== '') navigate(organizationPath(select.value));
+  // Choosing an option changes nothing until the user opens it (WCAG 3.2.2):
+  // arrow keys on a closed select fire change on every step.
+  picker.addEventListener('submit', event => {
+    event.preventDefault();
+    if (select.value !== '' && !select.disabled) navigate(organizationPath(select.value));
   });
   el('logout-button').addEventListener('click', () => {
     key.value = ''; target = { kind: 'overview' };

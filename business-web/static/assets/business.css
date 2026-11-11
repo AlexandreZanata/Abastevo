@@ -39,6 +39,7 @@ form .button-primary { width: 100%; }
 .workspace-nav { width: 280px; flex: 0 0 280px; padding: 38px 24px; background: var(--page); }
 .workspace-nav .eyebrow { font-size: 10px; margin-bottom: 25px; }
 .workspace-nav select { font-size: 14px; }
+.organization-form .button-quiet { width: 100%; margin-top: 10px; }
 .nav-item { display: flex; gap: 13px; align-items: center; border-radius: var(--radius-sm); padding: 13px 16px; margin-top: 35px; background: var(--tint-blue); font-weight: 650; text-decoration: none; color: var(--link); }
 .nav-item span { font-size: 22px; }
 .nav-note { color: var(--text-muted); font-size: 13px; line-height: 1.65; margin-top: 36px; }

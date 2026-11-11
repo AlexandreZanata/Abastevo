@@ -20,6 +20,11 @@ test('build is deterministic, self-contained under /empresas, content-hashed and
   assert.throws(()=>checkDist(outDir),/Source leak/);
   build({outDir});fs.appendFileSync(path.join(outDir,'index.html'),'<script src="/admin/assets/secret.js"></script>');
   assert.throws(()=>checkDist(outDir),/Unmounted resource/);
+  build({outDir});const page=path.join(outDir,'index.html');
+  fs.writeFileSync(page,fs.readFileSync(page,'utf8').replace('id="account-key"','id="account-key" name="account-key"'));
+  assert.throws(()=>checkDist(outDir),/Natively submittable credential/);
+  build({outDir});fs.writeFileSync(page,fs.readFileSync(page,'utf8').replace('id="login-button" class="button-primary" type="submit" disabled>','id="login-button" class="button-primary" type="submit">'));
+  assert.throws(()=>checkDist(outDir),/Natively submittable credential/);
   assert.throws(()=>build({outDir:root}),/Unsafe output/);
  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });

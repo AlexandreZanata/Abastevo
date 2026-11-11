@@ -16,6 +16,20 @@ export interface SessionPort {
 type Fetch = (path: string, init: RequestInit) => Promise<Response>;
 const PREFIX = '/v1/org-access/session/';
 const IDLE = 30 * 60_000;
+const TIMEOUT = 10_000;
+
+// AbortSignal.any is missing before Safari 17.4, Chrome 116 and Firefox 124.
+function bounded(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(TIMEOUT);
+  if (!signal) return timeout;
+  if (typeof AbortSignal.any === 'function') return AbortSignal.any([signal, timeout]);
+  const combined = new AbortController();
+  for (const source of [signal, timeout]) {
+    if (source.aborted) combined.abort(source.reason);
+    else source.addEventListener('abort', () => combined.abort(source.reason), { once: true });
+  }
+  return combined.signal;
+}
 export class CompanyApi implements SessionPort {
   #csrf = '';
   #accountId = '';
@@ -26,15 +40,30 @@ export class CompanyApi implements SessionPort {
   get authenticated(): boolean { return this.#csrf !== '' && this.now() < this.deadline; }
   get deadline(): number { return Math.min(this.#expires, this.#seen + IDLE); }
   forget(): void { this.#epoch++; this.#csrf = ''; this.#accountId = ''; this.#expires = 0; this.#seen = 0; }
-  async #post(path: string, body: unknown, csrf: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
+  #request(path: string, body: unknown, csrf: string, signal?: AbortSignal, keepalive = false): Promise<Response> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
     if (csrf !== '') headers['X-CSRF'] = csrf;
+    return this.send(path, {
+      method: 'POST', headers, body: JSON.stringify(body), credentials: 'same-origin',
+      cache: 'no-store', redirect: 'error', referrerPolicy: 'no-referrer', keepalive, signal: bounded(signal),
+    });
+  }
+  // The company plane answers a credential-free read with 401/403 when it is
+  // on; 404 means it is off. Checking first keeps the account key, and the
+  // account session family its login creates, out of a sign-in that cannot work.
+  async #available(signal?: AbortSignal): Promise<void> {
     try {
-      const response = await this.send(path, {
-        method: 'POST', headers, body: JSON.stringify(body), credentials: 'same-origin',
-        cache: 'no-store', redirect: 'error', referrerPolicy: 'no-referrer',
-        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
-      });
+      const response = await this.#request(PREFIX + 'read', {}, '', signal);
+      await response.body?.cancel();
+      if (response.status === 401 || response.status === 403) return;
+    } catch {
+      if (signal?.aborted) throw new ApiError('cancelled');
+    }
+    throw new ApiError('unavailable');
+  }
+  async #post(path: string, body: unknown, csrf: string, signal?: AbortSignal, keepalive = false): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.#request(path, body, csrf, signal, keepalive);
       if (!response.ok) {
         if (response.status === 401) throw new ApiError('unauthenticated');
         if (response.status === 403) throw new ApiError('denied');
@@ -78,6 +107,8 @@ export class CompanyApi implements SessionPort {
     const epoch = this.#epoch;
     if (key.length === 0 || key.length > 256) throw new ApiError('unauthenticated');
     try {
+      await this.#available(signal);
+      this.#current(epoch);
       // Account proof is local to this exchange; no refresh token is kept.
       const proof = await this.#post('/v1/accounts/keys/login', { account_key: key }, '', signal);
       this.#current(epoch);
@@ -108,11 +139,12 @@ export class CompanyApi implements SessionPort {
       throw error;
     }
   }
+  // Logout is not tied to page work: keepalive lets it finish after pagehide.
   async signOut(signal?: AbortSignal): Promise<void> {
     const csrf = this.#csrf;
     this.forget();
     if (csrf === '') return;
-    const raw = await this.#post(PREFIX + 'logout', {}, csrf, signal);
+    const raw = await this.#post(PREFIX + 'logout', {}, csrf, signal, true);
     if (raw.logged_out !== true) throw new ApiError('unavailable');
   }
 }

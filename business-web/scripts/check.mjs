@@ -23,6 +23,9 @@ export function checkDist(dir=path.join(root,'dist')){
    if(file.endsWith('.html')){
     if(!text.includes('name="robots" content="noindex, nofollow"'))errors.push('Missing noindex '+file);
     if(/<script(?![^>]*src=)[^>]*>| on[a-z]+=/i.test(text))errors.push('Inline script '+file);
+    // Without the module, a native submit would put a named key in the URL.
+    const credential=/<input[^>]*id="account-key"[^>]*>/.exec(text)?.[0];
+    if(credential!==undefined&&(/\sname=/.test(credential)||!/<button id="login-button"[^>]*\sdisabled[\s>]/.test(text)))errors.push('Natively submittable credential '+file);
     for(const m of text.matchAll(/(?:src|href)="([^"]+)"/g))mounted(m[1],file);
    }
    if(file.endsWith('.css'))for(const m of text.matchAll(/url\(['"]?([^)'"]+)['"]?\)/g))mounted(m[1],file);

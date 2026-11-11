@@ -43,7 +43,12 @@ Unknown routes/assets are real Caddy 404s. The shell accepts no query
 credentials. Full loads and restored pages require login because the
 company CSRF value is held only in memory.
 
-The login form accepts the existing account key. It POSTs to
+The login form accepts the existing account key. The key field has no form
+name and the submit button stays disabled until the module mounts, so a
+native submission can never carry the key. Before sending the key, the
+client posts an empty credential-free read: 401/403 means the company plane
+is on, anything else stops sign-in, so a disabled plane never receives the key
+or causes a new account session family. It then POSTs to
 /v1/accounts/keys/login and exchanges the fresh account family/access proof
 at /v1/org-access/session/login. It keeps only the company account, CSRF
 and expiry metadata in private memory. Account refresh tokens are not used.
@@ -56,7 +61,10 @@ The guard verifies current company session state before membership work,
 rejects changed accounts and clears private UI on expiry/reload/logout.
 Visibility return rechecks authority; local expiry timers do not send
 heartbeats or refresh authentication. A failed server logout clears local
-state and reports that server confirmation failed.
+state and reports that server confirmation failed. The logout request uses
+keepalive and no page signal, so navigation or pagehide cannot cancel it.
+Choosing a company in the selector changes nothing until "Abrir empresa" is
+used, because arrow keys on a closed select fire change on every step.
 
 ## Membership integration
 

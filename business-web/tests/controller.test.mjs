@@ -37,3 +37,12 @@ test('logout, session denial and stale loads leave no private scope; logout fail
  const g=fixture();g.session.read=async()=>{throw new ApiError('unauthenticated');};await g.controller.navigate(org(a.id));assert.equal(g.controller.state.phase,'signed-out');assert.equal(g.session.authenticated,false);
  const h=fixture();h.source.authorize=async()=>{throw new ApiError('denied');};await h.controller.navigate(org(a.id));assert.equal(h.controller.state.phase,'denied');assert.equal(h.controller.state.selected,null);
 });
+test('navigation during logout cannot cancel the server logout or hide its failure from the request',async()=>{
+ const f=fixture();await f.controller.navigate(org(a.id));
+ const pending=deferred();let received='unset';
+ f.session.signOut=async signal=>{received=signal;f.session.forget();await pending.promise;};
+ const out=f.controller.signOut();await new Promise(setImmediate);
+ await f.controller.navigate({kind:'overview'});f.controller.reset();
+ assert.equal(received,undefined);pending.resolve();await out;
+ assert.equal(f.controller.state.phase,'signed-out');assert.equal(f.session.authenticated,false);
+});
