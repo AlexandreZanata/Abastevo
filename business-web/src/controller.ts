@@ -13,26 +13,36 @@ export const unavailableMemberships: MembershipSource = {
 };
 export type Phase = 'signed-out' | 'loading' | 'choose' | 'empty' | 'ready' | 'denied' | 'unavailable' | 'signing-out' | 'not-found';
 export interface State { phase: Phase; organizations: Organization[]; selected: Organization | null; message: string }
+const sameOrganization = (a: Organization | null, b: Organization | null): boolean =>
+  a === b || (a !== null && b !== null && a.id === b.id && a.name === b.name && a.membershipId === b.membershipId);
+const sameState = (a: State, b: State): boolean => a.phase === b.phase && a.message === b.message &&
+  sameOrganization(a.selected, b.selected) && a.organizations.length === b.organizations.length &&
+  a.organizations.every((o, i) => sameOrganization(o, b.organizations[i] ?? null));
 export class CompanyController {
   #epoch = 0;
   #pending = new AbortController();
+  #quiet = -1;
   state: State = { phase: 'signed-out', organizations: [], selected: null, message: '' };
-  constructor(private readonly session: SessionPort, private readonly source: MembershipSource, private readonly render: (state: State) => void) {}
+  constructor(private readonly session: SessionPort, private readonly source: MembershipSource, private readonly render: (state: State, unchanged: boolean) => void) {}
   #show(phase: Phase, organizations: Organization[] = [], selected: Organization | null = null, message = ''): void {
-    this.state = { phase, organizations, selected, message };
-    this.render(this.state);
+    const next = { phase, organizations, selected, message };
+    // A background recheck that lands where it started changes nothing visible.
+    const unchanged = this.#quiet === this.#epoch && sameState(this.state, next);
+    this.state = next;
+    this.render(next, unchanged);
   }
-  #begin(phase: Phase): { epoch: number; signal: AbortSignal } {
+  #begin(phase: Phase | null): { epoch: number; signal: AbortSignal } {
     this.#pending.abort();
     this.#pending = new AbortController();
     this.#epoch++;
-    this.#show(phase);
+    if (phase === null) this.#quiet = this.#epoch;
+    else this.#show(phase);
     return { epoch: this.#epoch, signal: this.#pending.signal };
   }
   reset(message = ''): void { this.#begin('signed-out'); this.session.forget(); this.#show('signed-out', [], null, message); }
   #failure(error: unknown, epoch: number): void {
     if (epoch !== this.#epoch || (error instanceof ApiError && error.kind === 'cancelled')) return;
-    if (!this.session.authenticated || (error instanceof ApiError && error.kind === 'unauthenticated')) {
+    if (!this.session.authenticated || (error instanceof ApiError && (error.kind === 'unauthenticated' || error.kind === 'fresh'))) {
       this.session.forget();
       this.#show('signed-out', [], null, 'Sua sessão expirou. Entre novamente.');
     } else if (error instanceof ApiError && error.kind === 'denied') this.#show('denied');
@@ -65,6 +75,14 @@ export class CompanyController {
     const { epoch, signal } = this.#begin('loading');
     await this.#load(route, epoch, signal);
   }
+  // Tab return rechecks the current scope without a loading state: the view
+  // stays until the server answers, and any refusal still clears it.
+  async revalidate(route: Route): Promise<void> {
+    if (route.kind === 'login' || !this.session.authenticated) { this.reset(); return; }
+    const { epoch, signal } = this.#begin(null);
+    if (route.kind === 'not-found') { this.#show('not-found'); return; }
+    await this.#load(route, epoch, signal);
+  }
   async signIn(key: string, route: Route): Promise<void> {
     const { epoch, signal } = this.#begin('loading');
     try {
@@ -75,6 +93,7 @@ export class CompanyController {
       if (epoch !== this.#epoch) return;
       this.session.forget();
       const message = error instanceof ApiError && error.kind === 'unauthenticated' ? 'Chave inválida. Confira e tente novamente.' :
+        error instanceof ApiError && error.kind === 'fresh' ? 'Sua confirmação de acesso expirou. Entre novamente.' :
         error instanceof ApiError && error.kind === 'limited' ? 'Muitas tentativas. Aguarde antes de tentar novamente.' : 'Não foi possível entrar. Tente novamente.';
       this.#show('signed-out', [], null, message);
     }

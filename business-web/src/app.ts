@@ -26,7 +26,18 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
   let lastPhase: Phase | null = null;
   let expiryTimer = 0;
   const controller = new CompanyController(session, source, render);
-  function render(state: State): void {
+  function render(state: State, unchanged = false): void {
+    browser.clearTimeout(expiryTimer);
+    if (session.authenticated) {
+      expiryTimer = browser.setTimeout(() => {
+        browser.history.replaceState({}, '', LOGIN);
+        target = { kind: 'overview' };
+        controller.reset('Sua sessão expirou. Entre novamente.');
+      }, Math.max(0, session.deadline - Date.now()));
+    }
+    // An unchanged tab-return recheck keeps focus, the pending choice and the
+    // live region as they are; only the refreshed expiry deadline applies.
+    if (unchanged) return;
     const busy = state.phase === 'loading' || state.phase === 'signing-out';
     const guest = !session.authenticated && state.phase !== 'not-found' && state.phase !== 'signing-out';
     el('login-view').hidden = !guest;
@@ -62,14 +73,6 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
     el('home-link').hidden = !['not-found', 'denied'].includes(state.phase);
     el('scope-note').hidden = state.phase !== 'ready';
     el('state-marker').textContent = state.phase === 'ready' ? 'Empresa selecionada' : busy ? 'Aguarde' : 'Seu acesso';
-    browser.clearTimeout(expiryTimer);
-    if (session.authenticated) {
-      expiryTimer = browser.setTimeout(() => {
-        browser.history.replaceState({}, '', LOGIN);
-        target = { kind: 'overview' };
-        controller.reset('Sua sessão expirou. Entre novamente.');
-      }, Math.max(0, session.deadline - Date.now()));
-    }
     if (!guest && !busy && lastPhase !== state.phase) el('page-title').focus({ preventScroll: true });
     // A refused sign-in returns focus to the field it disabled while busy.
     if (guest && lastPhase === 'loading' && state.message !== '') key.focus({ preventScroll: true });
@@ -111,7 +114,7 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
   browser.addEventListener('pagehide', () => { key.value = ''; controller.reset(); });
   browser.addEventListener('pageshow', event => { if (event.persisted) { key.value = ''; controller.reset(); } });
   doc.addEventListener('visibilitychange', () => {
-    if (doc.visibilityState === 'visible' && session.authenticated) void controller.navigate(target);
+    if (doc.visibilityState === 'visible' && session.authenticated) void controller.revalidate(target);
   });
   render(controller.state);
   void controller.navigate(target);

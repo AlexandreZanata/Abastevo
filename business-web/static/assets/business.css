@@ -68,7 +68,8 @@ form .button-primary { width: 100%; }
   .login-card { padding: 28px; }
   .shell-layout { flex-direction: column; }
   .workspace-nav { width: 100%; flex-basis: auto; padding: 24px; }
-  .workspace-nav nav, .nav-note { display: none; }
+  .nav-note { display: none; }
+  .nav-item { margin-top: 16px; }
   .company-header { min-height: 76px; padding: 17px 24px; }
   .brand-lockup { font-size: 21px; gap: 8px; }
   .brand-lockup img { width: 32px; height: 32px; }

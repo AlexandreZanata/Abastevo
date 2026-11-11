@@ -7,8 +7,8 @@ const org=id=>({kind:'organization',id});
 function fixture(source){
  const session={authenticated:true,deadline:Date.now()+3600_000,async read(){if(!this.authenticated)throw new ApiError('unauthenticated');return {accountId:uuid(1)};},async signIn(){this.authenticated=true;return {accountId:uuid(1)};},forget(){this.authenticated=false;},async signOut(){this.forget();}};
  const states=[];const authority=source??{async list(){return {accountId:uuid(1),organizations:[a,b]};},async authorize(accountId,id){return {accountId,organization:id===a.id?a:b};}};
- const controller=new CompanyController(session,authority,state=>states.push(structuredClone(state)));
- return {controller,session,states,source:authority};
+ const quiet=[];const controller=new CompanyController(session,authority,(state,unchanged)=>{states.push(structuredClone(state));quiet.push(unchanged===true);});
+ return {controller,session,states,quiet,source:authority};
 }
 test('deep links and picker require current account-bound memberships and authority; empty/unavailable differ',async()=>{
  const f=fixture();await f.controller.navigate(org(a.id));assert.equal(f.controller.state.selected.id,a.id);
@@ -45,4 +45,29 @@ test('navigation during logout cannot cancel the server logout or hide its failu
  await f.controller.navigate({kind:'overview'});f.controller.reset();
  assert.equal(received,undefined);pending.resolve();await out;
  assert.equal(f.controller.state.phase,'signed-out');assert.equal(f.session.authenticated,false);
+});
+test('a tab-return recheck keeps the current view, renders unchanged answers as unchanged and still clears refusals',async()=>{
+ const f=fixture();await f.controller.navigate(org(a.id));let seen=f.states.length;
+ await f.controller.revalidate(org(a.id));
+ assert.deepEqual(f.states.slice(seen).map(s=>s.phase),['ready']);assert.deepEqual(f.quiet.slice(seen),[true]);
+ const pending=deferred();f.source.authorize=async()=>pending.promise;seen=f.states.length;
+ const recheck=f.controller.revalidate(org(a.id));await new Promise(setImmediate);
+ assert.equal(f.states.length,seen);assert.equal(f.controller.state.selected.id,a.id);
+ pending.resolve({accountId:uuid(1),organization:{...a,name:'Empresa A renomeada'}});await recheck;
+ assert.equal(f.quiet.at(-1),false);assert.equal(f.controller.state.selected.name,'Empresa A renomeada');
+ f.source.authorize=async()=>{throw new ApiError('denied');};await f.controller.revalidate(org(a.id));
+ assert.equal(f.controller.state.phase,'denied');assert.equal(f.controller.state.selected,null);assert.equal(f.quiet.at(-1),false);
+ const late=deferred();f.source.authorize=async(accountId,id)=>id===a.id?late.promise:{accountId,organization:b};
+ const stale=f.controller.revalidate(org(a.id));await new Promise(setImmediate);
+ await f.controller.navigate(org(b.id));late.resolve({accountId:uuid(1),organization:a});await stale;
+ assert.equal(f.controller.state.selected.id,b.id);
+ const absent=fixture(unavailableMemberships);await absent.controller.navigate({kind:'overview'});seen=absent.states.length;
+ await absent.controller.revalidate({kind:'overview'});
+ assert.deepEqual(absent.states.slice(seen).map(s=>s.phase),['unavailable']);assert.deepEqual(absent.quiet.slice(seen),[true]);
+ absent.session.forget();await absent.controller.revalidate({kind:'overview'});assert.equal(absent.controller.state.phase,'signed-out');
+});
+test('a stale account proof at sign-in asks for a new sign-in instead of a key correction',async()=>{
+ const f=fixture();f.session.forget();f.session.signIn=async()=>{throw new ApiError('fresh');};
+ await f.controller.signIn('key',{kind:'overview'});
+ assert.equal(f.controller.state.phase,'signed-out');assert.equal(f.controller.state.message,'Sua confirmação de acesso expirou. Entre novamente.');
 });

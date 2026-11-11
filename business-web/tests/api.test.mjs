@@ -63,3 +63,11 @@ test('requests stay cancellable and bounded where AbortSignal.any is missing',as
   outer.abort();assert.equal(signal.aborted,true);await assert.rejects(login,e=>e.kind==='cancelled');
  }finally{AbortSignal.any=any;}
 });
+test('a fresh-authentication refusal stays distinct from an invalid key and from bounded unreadable errors',async()=>{
+ const f=fixture(path=>path.endsWith('/keys/login')?json(proof):json({error:{code:'FRESH_AUTH_REQUIRED',message:'Organization request unavailable or refused'}},401));
+ await assert.rejects(f.api.signIn('key'),e=>e instanceof ApiError&&e.kind==='fresh');assert.equal(f.api.authenticated,false);
+ for(const refusal of [()=>json({error:{code:'UNAUTHENTICATED'}},401),()=>new Response('not json',{status:401}),()=>json({error:{code:'FRESH_AUTH_REQUIRED',padding:'x'.repeat(65*1024)}},401)]){
+  const g=fixture(path=>path.endsWith('/keys/login')?json(proof):refusal());
+  await assert.rejects(g.api.signIn('key'),e=>e instanceof ApiError&&e.kind==='unauthenticated');assert.equal(g.api.authenticated,false);
+ }
+});

@@ -1,6 +1,6 @@
 import { isUuid, record } from './model.js';
 
-export type Failure = 'unauthenticated' | 'denied' | 'unavailable' | 'cancelled' | 'limited';
+export type Failure = 'unauthenticated' | 'fresh' | 'denied' | 'unavailable' | 'cancelled' | 'limited';
 export class ApiError extends Error {
   constructor(readonly kind: Failure) { super('Company request refused'); }
 }
@@ -61,34 +61,44 @@ export class CompanyApi implements SessionPort {
     }
     throw new ApiError('unavailable');
   }
+  // JSON bodies are bounded at 64 KiB; an oversized body is refused unread.
+  async #json(response: Response): Promise<Record<string, unknown>> {
+    if (!response.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) throw new ApiError('unavailable');
+    const reader = response.body?.getReader();
+    if (!reader) throw new ApiError('unavailable');
+    let size = 0;
+    const chunks: Uint8Array[] = [];
+    try {
+      for (;;) {
+        const part = await reader.read();
+        if (part.done) break;
+        size += part.value.length;
+        if (size > 64 * 1024) { await reader.cancel(); throw new ApiError('unavailable'); }
+        chunks.push(part.value);
+      }
+    } finally { reader.releaseLock(); }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+    return record(JSON.parse(new TextDecoder().decode(bytes)));
+  }
+  // A 401 is an invalid credential unless the registered company code says the
+  // account proof is no longer fresh; an unreadable refusal stays a 401.
+  async #refusal(response: Response): Promise<Failure> {
+    try { return record((await this.#json(response)).error).code === 'FRESH_AUTH_REQUIRED' ? 'fresh' : 'unauthenticated'; }
+    catch { return 'unauthenticated'; }
+  }
   async #post(path: string, body: unknown, csrf: string, signal?: AbortSignal, keepalive = false): Promise<Record<string, unknown>> {
     try {
       const response = await this.#request(path, body, csrf, signal, keepalive);
       if (!response.ok) {
-        if (response.status === 401) throw new ApiError('unauthenticated');
+        if (response.status === 401) throw new ApiError(await this.#refusal(response));
         if (response.status === 403) throw new ApiError('denied');
         if (response.status === 429) throw new ApiError('limited');
         throw new ApiError('unavailable');
       }
-      if (!response.headers.get('Cache-Control')?.split(',').map(v => v.trim().toLowerCase()).includes('no-store') ||
-          !response.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) throw new ApiError('unavailable');
-      const reader = response.body?.getReader();
-      if (!reader) throw new ApiError('unavailable');
-      let size = 0;
-      const chunks: Uint8Array[] = [];
-      try {
-        for (;;) {
-          const part = await reader.read();
-          if (part.done) break;
-          size += part.value.length;
-          if (size > 64 * 1024) { await reader.cancel(); throw new ApiError('unavailable'); }
-          chunks.push(part.value);
-        }
-      } finally { reader.releaseLock(); }
-      const bytes = new Uint8Array(size);
-      let offset = 0;
-      for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-      return record(JSON.parse(new TextDecoder().decode(bytes)));
+      if (!response.headers.get('Cache-Control')?.split(',').map(v => v.trim().toLowerCase()).includes('no-store')) throw new ApiError('unavailable');
+      return await this.#json(response);
     } catch (error) {
       if (signal?.aborted) throw new ApiError('cancelled');
       if (error instanceof ApiError) throw error;
@@ -135,7 +145,7 @@ export class CompanyApi implements SessionPort {
       this.#expires = Date.parse(view.expiresAt); this.#seen = this.now();
       return view;
     } catch (error) {
-      if (epoch === this.#epoch && error instanceof ApiError && ['unauthenticated', 'denied'].includes(error.kind)) this.forget();
+      if (epoch === this.#epoch && error instanceof ApiError && ['unauthenticated', 'fresh', 'denied'].includes(error.kind)) this.forget();
       throw error;
     }
   }

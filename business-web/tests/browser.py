@@ -196,7 +196,7 @@ def browser_checks(origin):
           const session={authenticated:true,deadline:Date.now()+3600000,async read(){return {accountId};},forget(){this.authenticated=false;},async signIn(){this.authenticated=true;return {accountId};},async signOut(){this.forget();}};
           window.fixtureMode='ready';
           const source={async list(){if(window.fixtureMode==='empty')return {accountId,organizations:[]};return {accountId,organizations};},
-            async authorize(account,id){if(window.fixtureMode==='foreign')return {accountId:'7b0e2a54-0000-4000-8000-000000000009',organization:organizations[0]};return {accountId:account,organization:organizations.find(o=>o.id===id)};}};
+            async authorize(account,id){window.authorizeCalls=(window.authorizeCalls||0)+1;if(window.fixtureMode==='foreign')return {accountId:'7b0e2a54-0000-4000-8000-000000000009',organization:organizations[0]};return {accountId:account,organization:organizations.find(o=>o.id===id)};}};
           window.fixtureController=mountCompany(document,window,session,source);
         }""", {"app": app})
         expect(page.locator("#page-title")).to_have_text("Escolha sua empresa")
@@ -221,11 +221,30 @@ def browser_checks(origin):
         page.keyboard.press("Enter")
         expect(page.locator("#selected-company")).to_have_text("Empresa B sintética")
         assert "Empresa A sintética" not in page.locator("#workspace").inner_text()
+        # Returning to the tab rechecks authority without moving focus or
+        # re-announcing an unchanged state.
+        select.focus()
+        page.evaluate("""() => {
+          window.liveMutations = 0;
+          new MutationObserver(() => window.liveMutations++).observe(document.getElementById('live-status'), {childList: true, characterData: true, subtree: true});
+          window.recheckBase = window.authorizeCalls;
+          document.dispatchEvent(new Event('visibilitychange'));
+        }""")
+        page.wait_for_function("window.authorizeCalls > window.recheckBase")
+        page.wait_for_timeout(200)
+        assert page.evaluate("document.activeElement.id") == "organization-select", "Tab return stole focus"
+        assert page.evaluate("window.liveMutations") == 0, "Tab return re-announced an unchanged state"
+        expect(page.locator("#selected-company")).to_have_text("Empresa B sintética")
         page.set_viewport_size({"width": 1440, "height": 1000})
         page.screenshot(path="/tmp/enterprise-plat008-workspace-desktop.png", full_page=True)
         page.set_viewport_size({"width": 390, "height": 844})
         page.screenshot(path="/tmp/enterprise-plat008-workspace-mobile.png", full_page=True)
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Workspace horizontal overflow"
+        overview = page.locator("#overview-link")
+        expect(overview).to_be_visible()
+        overview.click()
+        expect(page.locator("#page-title")).to_have_text("Escolha sua empresa")
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Mobile navigation overflow"
         page.evaluate("window.fixtureMode='foreign'")
         select.select_option("7b0e2a54-0000-4000-8000-000000000002")
         page.locator("#organization-open").click()
@@ -235,12 +254,17 @@ def browser_checks(origin):
         page.evaluate("window.fixtureMode='empty'; history.replaceState({},'', '/empresas/'); dispatchEvent(new PopStateEvent('popstate'))")
         expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
         assert page.locator("h1:visible").count() == 1
+        # A tab-return recheck that changes the state still announces and focuses it.
+        page.evaluate("window.fixtureMode='ready'; document.dispatchEvent(new Event('visibilitychange'))")
+        expect(page.locator("#page-title")).to_have_text("Escolha sua empresa")
+        expect(page.locator("#live-status")).to_have_text("Escolha sua empresa")
+        assert page.evaluate("document.activeElement.id") == "page-title", "Changed recheck lost focus"
         page.evaluate("dispatchEvent(new PageTransitionEvent('pageshow', {persisted:true}))")
         expect(page.locator("#login-view")).to_be_visible()
         expect(page.locator("#selected-company")).to_be_hidden()
         expect(page.locator("#account-key")).to_have_value("")
         assert not errors, "Browser JavaScript errors occurred"
-        print("PASS: keyboard selection, A/B isolation, authority denial, empty state, focus, responsive shell and restored-page guard")
+        print("PASS: keyboard selection, A/B isolation, quiet tab-return recheck, mobile overview link, authority denial, empty state, focus, responsive shell and restored-page guard")
         context.close()
         browser.close()
 
