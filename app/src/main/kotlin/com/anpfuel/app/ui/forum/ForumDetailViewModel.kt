@@ -237,11 +237,16 @@ class ForumDetailViewModel @Inject constructor(
                     isSavingEdit = false,
                     isRemovingComment = false,
                     isSubmittingReport = false,
+                    postReaction = ForumReaction.NONE,
+                    commentReactions = emptyMap(),
                 )
             }
             lastKnownAccountId = currentAccountId
             if (isAuthed) {
-                _state.value.post?.let { refreshOwnership(it) }
+                _state.value.post?.let {
+                    refreshOwnership(it)
+                    refreshOwnReactions(it.id)
+                }
             }
         } else if (wasAuthed != isAuthed) {
             _state.update { it.copy(isAuthenticated = isAuthed) }

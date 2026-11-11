@@ -96,8 +96,10 @@ fun ForumDetailScreen(
         onSignIn()
     }
 
-    // Live updates only while the conversation is on screen (B-BR-FOR-18).
+    // Live updates only while the conversation is on screen (B-BR-FOR-18);
+    // returning from sign-in also picks up the new session here.
     LifecycleStartEffect(viewModel) {
+        viewModel.checkSessionConsistency()
         viewModel.startLive()
         onStopOrDispose { viewModel.stopLive() }
     }

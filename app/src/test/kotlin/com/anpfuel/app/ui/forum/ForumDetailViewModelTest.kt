@@ -744,4 +744,21 @@ class ForumDetailViewModelTest {
         assertEquals(ForumReplySort.RECENT, vm.state.value.replySort)
         coVerify(exactly = 1) { getRankedComments(postId, ForumReplySort.RECENT, any(), any()) }
     }
+
+    @Test
+    fun `coming back signed in enables participation and loads own votes`() = runTest(dispatcher) {
+        coEvery { getOwnForumReactions(postId) } returns
+            ForumOwnReactions(post = ForumReaction.LIKE, comments = mapOf(sampleComment1.id to ForumReaction.DISLIKE))
+        val vm = createViewModel(session = null)
+        advanceUntilIdle()
+        assertFalse(vm.state.value.isAuthenticated)
+
+        every { sessionStore.load() } returns sampleSession
+        vm.checkSessionConsistency()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.isAuthenticated)
+        assertEquals(ForumReaction.LIKE, vm.state.value.postReaction)
+        assertEquals(ForumReaction.DISLIKE, vm.state.value.commentReactions[sampleComment1.id])
+    }
 }
