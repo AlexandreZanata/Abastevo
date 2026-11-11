@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Defense in depth for future relocation; the actual sealed vault is in noBackupFilesDir. -->
+    <!-- The sealed vault lives in noBackupFilesDir; the platform already skips it, and
+        this names its actual path. The other lines guard against future relocation. -->
+    <exclude domain="root" path="no_backup/enterprise-sealed-v1/" />
     <exclude domain="root" path="enterprise-sealed-v1/" />
     <exclude domain="file" path="enterprise-sealed-v1/" />
     <exclude domain="external" path="enterprise-sealed-v1/" />

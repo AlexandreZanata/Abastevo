@@ -44,17 +44,35 @@ class SecurityConfigurationTest {
         val manifest = readProjectFile("src/main/AndroidManifest.xml")
         assertTrue(manifest.contains("android:fullBackupContent=\"@xml/backup_rules\""))
         assertTrue(manifest.contains("android:dataExtractionRules=\"@xml/data_extraction_rules\""))
-        val legacy = readProjectFile("src/main/res/xml/backup_rules.xml")
-        assertTrue(legacy.contains("<exclude domain=\"sharedpref\" path=\".\" />"))
-        val modern = readProjectFile("src/main/res/xml/data_extraction_rules.xml")
-        val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
-            .parse(modern.byteInputStream())
-        for (type in listOf("cloud-backup", "device-transfer")) {
-            val node = doc.getElementsByTagName(type).item(0) as org.w3c.dom.Element
-            val excluded = node.getElementsByTagName("exclude").item(0) as org.w3c.dom.Element
-            assertTrue(excluded.getAttribute("domain") == "sharedpref" && excluded.getAttribute("path") == ".")
+        val legacy = parseProjectXml("src/main/res/xml/backup_rules.xml").documentElement
+        val modern = parseProjectXml("src/main/res/xml/data_extraction_rules.xml")
+        val channels = mapOf(
+            "full-backup-content" to legacy,
+            "cloud-backup" to modern.getElementsByTagName("cloud-backup").item(0) as org.w3c.dom.Element,
+            "device-transfer" to modern.getElementsByTagName("device-transfer").item(0) as org.w3c.dom.Element,
+        )
+        // Every channel must exclude credentials, private Room metadata and the
+        // sealed enterprise vault, wherever each rule sits in the section.
+        val required = setOf(
+            "sharedpref" to ".",
+            "database" to ".",
+            "root" to "no_backup/enterprise-sealed-v1/",
+        )
+        for ((channel, rules) in channels) {
+            val nodes = rules.getElementsByTagName("exclude")
+            val excluded = (0 until nodes.length).map {
+                val node = nodes.item(it) as org.w3c.dom.Element
+                node.getAttribute("domain") to node.getAttribute("path")
+            }.toSet()
+            for (rule in required) {
+                assertTrue(rule in excluded, "$channel must exclude ${rule.first} ${rule.second}")
+            }
         }
     }
+
+    private fun parseProjectXml(relativePath: String): org.w3c.dom.Document =
+        javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
+            .parse(readProjectFile(relativePath).byteInputStream())
 
     private fun readProjectFile(relativePath: String): String {
         val moduleRoot = Path.of(System.getProperty("user.dir"))
