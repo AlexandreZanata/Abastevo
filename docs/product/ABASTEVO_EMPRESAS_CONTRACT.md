@@ -218,6 +218,29 @@ boundaries.
   Output is canonical by line order, sums exactly to the source and does
   not mutate inputs. Personal driver allocation keeps its own ID tie rule.
 
+- **B-BR-EMP-23 — Commit required enterprise follow-up atomically.** A
+  source-registered event and its consumer jobs commit with the original
+  business change and organization audit. The event uses the original
+  operation identifier and target, a positive record revision and only
+  bounded registered codes/references. Payloads contain no free text,
+  coordinates, credentials or document bytes. The canonical command digest
+  also binds the event and sorted consumer set. Identical operation replay
+  schedules nothing new; altered event/consumer intent is operation reuse.
+  The existing job queue, five-attempt budget and one-minute retry remain
+  authoritative. Disabled producer configuration enqueues nothing.
+
+- **B-BR-EMP-24 — Fence and deduplicate organization job effects.** Delivery
+  is at least once. A registered consumer verifies the stored job/lease and
+  immutable intent under the original organization, then commits its
+  database-only effect and append-only receipt in one scoped transaction.
+  Receipt identity is organization/event/consumer. Acknowledgement loss or
+  duplicate execution can repeat delivery, never the committed effect.
+  Changed/foreign payload, unknown version/consumer, lost or expired lease,
+  callback failure or failed commit applies no effect/receipt. Lease validity
+  is rechecked after the effect. No external call runs while these locks
+  are held. Dead replay requires an explicit reason through the existing
+  queue API; operator authorization/audit entry points retain BACK ownership.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -309,6 +332,15 @@ boundaries.
   execute the same synthetic vectors for rounding, discount, one-cent
   tolerance, unknowns, invalid values, large intermediates and exact sums.
   This foundation submits no fueling, document, payment or finance workflow.
+
+- **BUC-EMP-13 — Retry an enterprise follow-up safely.** A verified module
+  command commits a scoped change, audit and required consumer jobs. A
+  worker validates the leased references, applies its scoped database
+  effect and records the receipt. If its acknowledgement is lost, another
+  claim sees the receipt and completes without repeating the effect.
+  Rollback, foreign scope, changed intent, stale lease or unavailable
+  storage returns no successful mutation; bounded retries eventually park
+  failed work for explicit operator recovery.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

@@ -147,6 +147,37 @@ See the [transaction and composition contract](../docs/enterprise/09-architectur
 Use an ordinary non-owner, non-BYPASSRLS runtime login; backup/restore retains
 the separately reviewed authority needed for forced-RLS tables.
 
+### Transactional organization events (EMP-PLAT-010)
+
+orgevent joins required follow-up to the existing organization audit runner
+and PostgreSQL job queue. Source modules register bounded event/target/consumer
+codes in an immutable catalog. After checking current write authority, call
+the default-off Service.Record with the original audit operation/target,
+positive record revision and required consumers. Every source write uses
+the supplied transaction; audit, immutable intent and consumer jobs commit
+together. Replay binds the original command digest and canonical fan-out.
+
+Construct NewHandler with a database-only effect for every catalog consumer
+and register it under org-event in the existing jobs.Dispatcher. It verifies
+the stored intent, exact claimed row, token, worker, payload and live lease
+inside WithOrgTx. Effect and scoped append-only receipt commit together;
+queue acknowledgement stays with Dispatcher. Lost acknowledgement and
+concurrent redelivery cannot repeat the committed database effect.
+The five-claim budget also rejects expired-lease crash loops before another
+effect; normal failures retain the existing one-minute retry and dead replay
+requires an explicit reason. Keep external calls outside these transactions.
+
+Apply additive migration 000168 first. Use an ordinary non-owner/non-BYPASSRLS
+login with explicit queue DML and intent/receipt SELECT/INSERT grants.
+No concrete business producer, effect, API route, worker registration or live
+activation is supplied here; each owning module composes these ports.
+Operator UI/audit, external delivery and retention retain their own tasks.
+Do not delete receipts while their effects can be replayed.
+Run `go test -race -tags=integration ./internal/modules/orgevent/...`
+with an explicit disposable ANPFUEL_TEST_DATABASE_URL. See
+[architecture](../docs/enterprise/09-architecture.md#71-implemented-transactional-event-foundation)
+and [evidence](../docs/enterprise/evidence/f1-plat010-transactional-events.md).
+
 ### Exact organization values (EMP-PLAT-009)
 
 orgvalue/domain provides canonical integer parsing, paid-preserving

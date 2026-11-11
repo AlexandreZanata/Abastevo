@@ -257,10 +257,13 @@ func TestAuditReadIsolationAndImmutability(t *testing.T) {
 		}
 	}
 	// Even an accidental broad DML grant cannot mutate or truncate the trail.
-	if _, err := f.Admin.Exec(t.Context(), "GRANT ALL ON org_audit_events TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+	if _, err := f.Admin.Exec(t.Context(), "GRANT ALL ON org_audit_events TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()+
+		"; GRANT TRUNCATE ON org_event_intents,org_event_receipts TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
-	for _, query := range []string{`UPDATE org_audit_events SET reason_code='correction'`, `DELETE FROM org_audit_events`, `TRUNCATE org_audit_events`} {
+	// CASCADE reaches the append-only trigger despite the event-intent FK;
+	// keep requiring 55000 rather than accepting an FK/permission failure.
+	for _, query := range []string{`UPDATE org_audit_events SET reason_code='correction'`, `DELETE FROM org_audit_events`, `TRUNCATE org_audit_events CASCADE`} {
 		err := database.WithOrgTx(t.Context(), f.Runtime, a.Scope(t), func(tx pgx.Tx) error {
 			_, err := tx.Exec(t.Context(), query)
 			return err

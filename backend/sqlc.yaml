@@ -8,6 +8,19 @@
 version: "2"
 sql:
   - engine: postgresql
+    queries: db/queries/orgevent
+    schema:
+      - db/migrations/000007_jobs.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000168_org_event_deliveries.sql
+    gen:
+      go:
+        package: orgevent
+        out: db/queries/orgevent
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/companysession
     schema:
       - db/migrations/000020_accounts.sql

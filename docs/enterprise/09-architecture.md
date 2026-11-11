@@ -22,6 +22,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
 | `orgvalue` (LOCAL_DONE, domain only) | PLAT | Exact reconciliation and ordered allocation | Existing pure metrics/kernel bounds; shared Go/Kotlin vectors; no private repository or authority |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
+| `orgevent` (LOCAL_DONE, foundation) | PLAT | Transactional follow-up intents and consumer receipts | `orgaudit` application runner; scoped transactions; existing PostgreSQL job queue and dispatcher; source-owned catalogs/effects |
 | `orgcapability` (LOCAL_DONE) | PLAT | Registered organization capability state and audited activation | `orgaudit` application port, `kernel`, scoped transaction helper; AUTH authority port |
 | `orgmedia` (LOCAL_DONE) | PLAT | Bounded private originals and member-bound access | Existing S3/HMAC/JPEG primitives; `orgaudit` application port; AUTH/DOC authority and metadata ports |
 | `orgsync` (proposed) | OFFL | Operation intake, acknowledgements, review items, reference feed | `orgaccess`; handlers registered by each module |
@@ -450,6 +451,52 @@ Sync-only codes are in [10-offline-sync](10-offline-sync.md) §10.2.
 - Jobs that touch one organization carry its identifier and load data only through scoped queries (BR-PRIV-003).
 - The queue retries after a fixed minute and moves a job to dead after its attempts; a dead organization job raises an operator alert and appears in the back office. Long or heavy jobs (exports, track processing, imports) get a dedicated serial dispatcher so they cannot starve short ones.
 - Event names follow `<module>.<entity>.<past-tense>` and are listed in section 9 of each module.
+
+### 7.1 Implemented transactional event foundation
+
+EMP-PLAT-010 implements [orgevent](../../backend/internal/modules/orgevent/application/service.go).
+Its default-off producer borrows the existing audit transaction. Source-owned
+catalogs define event names, target types and consumers; the caller resolves
+current authority and supplies only record references and a positive revision.
+The audit operation is the event identity. The digest binds the original
+command, organization, event metadata and sorted consumer set. An identical
+command replay skips both the source callback and fan-out; changed intent
+cannot reuse an operation or adopt a pre-existing queue dedupe row.
+
+Migration [000168](../../backend/db/migrations/000168_org_event_deliveries.sql)
+adds append-only forced-RLS org_event_intents and org_event_receipts.
+Intent references the original organization audit and exact job ID.
+The existing queue carries a flat version-1 reference-only envelope with
+org/event/target IDs, registered codes and revision, never private content,
+credentials, coordinates or free text. Intent and all consumer jobs commit
+with the audited source change. No job or activation is seeded.
+
+NewHandler requires every catalog consumer's database effect and returns the
+existing jobs.Handler interface. The owning module registers it in the current
+Dispatcher. Under the original WithOrgTx scope it locks the claimed queue row
+and verifies token, worker, live expiry, kind, payload, dedupe and five-claim
+budget against stored values. It verifies intent provenance against the audit,
+then commits its effect and receipt under (org_id,event_id,consumer).
+Expiry is checked again after the callback and after a lock wait. Failure,
+cancellation, expiry or failed commit rolls back effect and receipt.
+Acknowledgement remains outside this transaction; a committed receipt makes
+acknowledgement-loss redelivery a no-op. Queue row locking prevents a competing
+claim from superseding an effect still in flight. Error surfaces are static.
+
+Effects use only the supplied transaction and recheck the state/authority
+required by their owning use case. No network/provider operation runs while
+these locks are held. The existing Dispatcher retains fixed-minute failure
+retry, dead state and explicit reasoned replay. Claims after five lost leases
+are parked without another effect. Dead-job alerts, operator authorization/
+audit entry points, external-delivery adapters and receipt-retention decisions
+remain with their planned owners. No retention/purge policy is invented here;
+receipts must survive every supported replay window.
+
+Real PostGIS tests exercise actual publication, queue claims and Dispatcher.
+No business catalog, concrete effect or production worker registration is
+activated by this foundation. Ordinary runtime login/grants and backup-role
+review remain required before activation. See
+[local evidence](evidence/f1-plat010-transactional-events.md).
 
 ## 8. Keeping the panel current
 

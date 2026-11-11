@@ -1,4 +1,17 @@
 # Current execution state
+- Enterprise EMP-PLAT-010, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `3f7a25b8`; delivery targets existing PR202 (dev → main).
+  [Transactional-event evidence](../enterprise/evidence/f1-plat010-transactional-events.md)
+  records atomic source/audit/intent/jobs, source-owned registration,
+  live-lease fencing and scoped effect receipts in the existing queue.
+  PostGIS/race rollback, concurrent publication/delivery, ack loss, tampering,
+  expired-claim budget and dead replay passed. Additive migration 000168
+  passed failure/retry/upgrade and actual prior-API readiness. Affected
+  regressions/static/sqlc/build checks passed; domain/application/adapters
+  coverage 98.1%/92.6%/93.0%. No business producer/worker activation.
+  Claude's activation gates and prior aggregate Kotlin coverage failure
+  remain owed. F1/M1 open; EMP-PLAT-011 next.
+
 - Enterprise EMP-PLAT-009, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above Claude-reviewed `1034b410`; delivery targets existing PR202 (dev → main).
   [Exact-value evidence](../enterprise/evidence/f1-plat009-exact-values.md)

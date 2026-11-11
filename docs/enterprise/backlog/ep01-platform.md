@@ -172,7 +172,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local exact-value and shared Go/Kotlin evidence](../evidence/f1-plat009-exact-values.md).
 
 ### EMP-PLAT-010 — Transactional enterprise events on the existing job queue
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size S · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size S · state LOCAL_DONE
 - **Objective:** Publish organization work through the existing transaction and job queue.
 - **Rules and use cases:** BR-PRIV-003, BR-AUD-001, BR-OFFL-004
 - **Depends on:** EMP-PLAT-002
@@ -186,6 +186,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-SQL, V-ISO, V-IDEM, V-JOB, V-PRIV · migration: additive if required by the owning task · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Queue delivery is at least once. Avoid external calls while holding transaction locks.
 - **Done when:** PostGIS proves rollback and safe retry using the existing queue.
+
+[Local transactional publication, lease fencing and recovery evidence](../evidence/f1-plat010-transactional-events.md).
 
 ### EMP-PLAT-011 — Android enterprise foundation: packages, local store partitioned by account, origin and organization, DI
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO
