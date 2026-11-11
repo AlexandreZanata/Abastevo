@@ -137,7 +137,8 @@ class ForumHttpClient(
             .build()
         val raw = execute(Request.Builder().url(url).header("Accept", "application/json").build())
         return try {
-            ForumMapper.detail(JSONObject(raw))
+            // The API wraps the detail: {"post": {...}}.
+            ForumMapper.detail(JSONObject(raw).getJSONObject("post"))
         } catch (e: ForumException) {
             throw e
         } catch (e: Exception) {

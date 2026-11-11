@@ -56,18 +56,21 @@ class ForumHttpClientTest {
         }
     """.trimIndent()
 
+    // The API wraps the detail in "post" (backend PostDetailResponse).
     private val detailJson = """
         {
-            "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-            "kind": "EDITORIAL",
-            "category": "FUELS",
-            "title": "Entenda a formação de preços",
-            "excerpt": "Guia explicativo.",
-            "body_text": "Corpo completo detalhado.",
-            "first_published_at": "2026-11-05T12:00:00Z",
-            "updated_at": "2026-11-05T12:00:00Z",
-            "revision": 1,
-            "comments_enabled": true
+            "post": {
+                "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                "kind": "EDITORIAL",
+                "category": "FUELS",
+                "title": "Entenda a formação de preços",
+                "excerpt": "Guia explicativo.",
+                "body_text": "Corpo completo detalhado.",
+                "first_published_at": "2026-11-05T12:00:00Z",
+                "updated_at": "2026-11-05T12:00:00Z",
+                "revision": 1,
+                "comments_enabled": true
+            }
         }
     """.trimIndent()
 
