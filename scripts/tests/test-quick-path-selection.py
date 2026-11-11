@@ -28,7 +28,8 @@ class QuickPathSelection(unittest.TestCase):
         for path in ['backend/internal/sample.go', 'infra/docker/Dockerfile',
                      'tools/station-prep/src/lib.rs', 'app/src/main/Sample.kt',
                      'maps/engine/src/main/MapEngine.kt',
-                     'release/android/channel.json', 'release/android/signing-certificate.pem']:
+                     'release/android/channel.json', 'release/android/signing-certificate.pem',
+                     'business-web/src/main.ts']:
             with self.subTest(path=path):
                 result = classify(path)
                 self.assertEqual((0, '0'), (result.returncode, result.stdout.strip()))
@@ -41,6 +42,23 @@ class QuickPathSelection(unittest.TestCase):
         result = classify('unclassified-new-area/implementation.txt')
         self.assertNotEqual(0, result.returncode)
         self.assertIn('unclassified changed path', result.stderr + result.stdout)
+
+    def test_company_selection_executes_all_checks_and_tracks_landing_inputs(self):
+        block = SOURCE.split('    BUSINESS_WEB_CHANGED=0', 1)[1].split('    # Bounded Rust selection', 1)[0]
+        for changed, expected in [
+            ('business-web/src/model.ts', True),
+            ('landing/static/assets/styles.css', True),
+            ('backend/cmd/api/main.go', False),
+            ('docs/enterprise/README.md', False),
+        ]:
+            result = subprocess.run(
+                ['bash', '-c',
+                 'set -euo pipefail\nCHANGED_ALL=$1\nBUSINESS_WEB_CHANGED=0\n'
+                 'npm() { printf "%s\\n" "$*"; }\n' + block,
+                 'company-selection-fixture', changed], capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stderr)
+            for command in ['run typecheck', 'run build', 'run check', 'business-web test']:
+                self.assertEqual(expected, command in result.stdout)
 
 
 if __name__ == '__main__':

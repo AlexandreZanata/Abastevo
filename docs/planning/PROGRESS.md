@@ -1,4 +1,16 @@
 # Current execution state
+- Enterprise EMP-PLAT-008, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `56549a5e`; delivery targets existing PR202 (`dev → main`).
+  [Web-shell evidence](../enterprise/evidence/f1-plat008-business-web-shell.md)
+  records the separate /empresas/ build, real account/company login, in-memory
+  session guard and account-bound current-authority picker port. Missing AUTH
+  integration stays unavailable. Unit/race regressions, actual Chromium with
+  TLS/PostGIS, keyboard/mobile/restored-page checks and real Caddy cache/404
+  checks passed. The signed-bundle workflow and quick selection include the
+  shell; no API flag or deployment was activated. Existing TypeScript lock
+  reused; online audit unavailable due network restrictions, recorded in
+  evidence. F1/M1 remain open; EMP-PLAT-009 next.
+
 - Enterprise EMP-PLAT-007, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published `277fd470`; delivery targets existing PR202 (`dev → main`).
   [Company-session evidence](../enterprise/evidence/f1-plat007-company-web-session.md)

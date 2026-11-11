@@ -136,7 +136,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local company-session, isolation and migration evidence](../evidence/f1-plat007-company-web-session.md).
 
 ### EMP-PLAT-008 — Business web scaffold: build, routing, auth guard, organization switcher, design tokens, checks
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type WEB · size M · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type WEB · size M · state LOCAL_DONE
 - **Objective:** Provide a static company panel shell for approved organization workflows.
 - **Rules and use cases:** EDR-019, OQ-05, BR-TEN-003, BR-PRIV-003
 - **Depends on:** EMP-GOV-003, EMP-PLAT-007
@@ -150,6 +150,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-WEB, V-AUTHZ, V-ISO · migration: none · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** The API remains authoritative. A route scaffold is not deployment approval.
 - **Done when:** The shell passes build, route, accessibility and authorization checks.
+
+[Local build, browser, isolation and Caddy evidence](../evidence/f1-plat008-business-web-shell.md).
 
 ### EMP-PLAT-009 — Exact-value kernel for organization records: reuse centavo, milli-unit and milli-BRL types, add reconciliation and allocation vectors
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DOM · size S · state TODO

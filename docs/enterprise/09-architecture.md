@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value, database, audit, HTTP, capability, private-storage and company-session foundations in EMP-PLAT-001 through EMP-PLAT-007 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
+Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value, database, audit, HTTP, capability, private-storage and company-session and static-shell foundations in EMP-PLAT-001 through EMP-PLAT-008 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
 
 ## 1. Principles
 
@@ -194,6 +194,44 @@ batches even while the enterprise surface is off. Account/family deletion
 cascades to company credentials. The compatibility floor remains `000132`;
 rollback uses the previous binary with the additive table preserved.
 [Local evidence](evidence/f1-plat007-company-web-session.md).
+
+### 3.2 Implemented company web shell
+
+EMP-PLAT-008 adds the independent framework-free TypeScript business-web/
+build, mounted by the staging static tier at /empresas/. Its entry/login
+and canonical organization deep links share a guarded shell. Unknown
+routes/assets remain 404. The existing staging release workflow includes
+the build under empresas/ in the signed landing bundle; it does not enable
+the enterprise API switch. The Kubernetes ConfigMap mirrors Caddy exactly.
+
+The account-key form uses existing account login and immediately exchanges
+fresh proof through EMP-PLAT-007. Only company CSRF/account/expiry stay in
+memory. Reload and restored pages require login. Private transport is
+same-origin, no-store, bounded and refuses redirects. Expiry, logout,
+changed-account or session refusal clears private state. The browser's
+local timers send no authentication-refresh heartbeat.
+
+MembershipSource is an explicit current-authority port. The production
+composition reports unavailable until AUTH/IDN supplies the server-backed
+adapter; it does not guess endpoints or render synthetic organizations.
+A selected route/ID must occur in that account's current snapshot and then
+pass current authorization for the same organization/member before render.
+Every switch aborts prior work and clears state; a generation guard rejects
+late responses. The native labeled selector, keyboard operation, status
+announcements, empty/denied/loading states and desktop/mobile layouts are
+covered by actual Chromium acceptance with synthetic authority ports.
+
+The build reads existing landing tokens/fonts/brand assets, verifies font
+provenance and preserves OFL notices. Runtime dependencies are absent.
+TypeScript reuses the existing reviewed admin pin and lock graph. Content
+hashes include rewritten module imports. Dist checks reject leaked sources,
+unmounted resources, missing imports, hash drift, remote execution and
+budget violations. Quick verification also follows landing asset changes.
+Company HTML/error pages are no-store/noETag with no-referrer, noindex and
+strict CSP; conditional HTML requests cannot return stale 304 responses.
+Static asset caching stays independent from private API responses.
+[Integration contract](../../business-web/README.md) and
+[local evidence](evidence/f1-plat008-business-web-shell.md).
 
 ## 4. API conventions
 

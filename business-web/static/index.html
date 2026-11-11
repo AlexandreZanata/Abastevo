@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Abastevo Empresas · Seu espaço de trabalho</title>
+  <link rel="icon" href="/empresas/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/empresas/assets/tokens.css">
+  <link rel="stylesheet" href="/empresas/assets/business.css">
+  <script type="module" src="/empresas/assets/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+  <header class="company-header">
+    <div class="brand-lockup"><img src="/empresas/assets/abastevo-logo.svg" width="40" height="40" alt=""><span>abastevo<span class="brand-divider">/</span><strong>empresas</strong></span></div>
+    <button id="logout-button" class="button-quiet" type="button" hidden>Sair da conta</button>
+  </header>
+  <div class="shell-layout">
+    <aside id="workspace-nav" class="workspace-nav" aria-label="Navegação da empresa" hidden>
+      <p class="eyebrow">ESPAÇO DE TRABALHO</p>
+      <label for="organization-select">Empresa atual</label>
+      <select id="organization-select" aria-describedby="organization-help" disabled><option value="">Selecione uma empresa</option></select>
+      <p id="organization-help" class="field-help">Seus acessos aparecerão aqui.</p>
+      <nav aria-label="Painel"><a id="overview-link" class="nav-item" href="/empresas/" aria-current="page"><span aria-hidden="true">⌂</span> Visão geral</a></nav>
+      <p class="nav-note">Cada empresa tem seu próprio espaço. Você escolhe onde trabalhar.</p>
+    </aside>
+    <main id="main-content" tabindex="-1">
+      <section id="login-view" class="login-layout" aria-labelledby="login-title">
+        <div class="welcome-copy">
+          <p class="eyebrow">ABASTEVO EMPRESAS</p>
+          <h1>Um espaço para<br>seguir em frente.</h1>
+          <p class="welcome-description">Acesse o ambiente da sua empresa com a conta que você já usa no Abastevo.</p>
+          <div class="welcome-detail"><span class="detail-line" aria-hidden="true"></span><p>Sua conta.<br><strong>As empresas às quais você tem acesso.</strong></p></div>
+          <span class="welcome-number" aria-hidden="true">→</span>
+        </div>
+        <div class="login-card">
+          <div class="small-mark" aria-hidden="true">↗</div>
+          <h2 id="login-title">Entre na sua conta</h2>
+          <p>Use sua chave de acesso para continuar.</p>
+          <form id="login-form" autocomplete="off">
+            <label for="account-key">Chave da conta Abastevo</label>
+            <input id="account-key" name="account-key" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="256" required aria-describedby="key-help login-error">
+            <p id="key-help" class="field-help">É a chave que você guardou ao criar sua conta.</p>
+            <p id="login-error" role="alert" class="form-error"></p>
+            <button id="login-button" class="button-primary" type="submit">Entrar no painel</button>
+          </form>
+          <p class="login-note">Sua chave é pessoal. Não a compartilhe com sua empresa ou equipe.</p>
+        </div>
+      </section>
+      <section id="workspace" class="workspace" aria-labelledby="page-title" hidden>
+        <p class="eyebrow">VISÃO GERAL</p>
+        <p id="selected-company" class="company-name" hidden></p>
+        <div class="state-card">
+          <span id="state-marker" class="state-marker">Seu acesso</span>
+          <div class="state-icon" aria-hidden="true">↗</div>
+          <h1 id="page-title" tabindex="-1">Abastevo Empresas</h1>
+          <p id="page-description"></p>
+          <p id="scope-note" class="scope-note" hidden>Este espaço reúne apenas as informações da empresa selecionada.</p>
+          <div class="state-actions">
+            <button id="retry-button" class="button-primary" type="button" hidden>Atualizar acessos</button>
+            <a id="home-link" class="button-quiet" href="/empresas/" hidden>Voltar ao início</a>
+          </div>
+        </div>
+      </section>
+      <p id="live-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+      <noscript>Ative o JavaScript para entrar no painel com segurança.</noscript>
+    </main>
+  </div>
+  <footer class="company-footer"><span>Abastevo Empresas</span><span>Sua operação começa com acesso seguro.</span></footer>
+</body>
+</html>

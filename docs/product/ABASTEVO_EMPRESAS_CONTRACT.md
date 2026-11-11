@@ -172,6 +172,26 @@ boundaries.
   logout stay independent, while account-wide revocation invalidates company
   access. Private responses are no-store without ETags.
 
+- **B-BR-EMP-19 — Guard the company web shell.** The separate static
+  TypeScript panel lives under /empresas/ and uses the existing account-key
+  login to obtain fresh proof for the company cookie. Account proof and
+  company CSRF stay in memory; reload and restored pages require login.
+  Private POSTs use same-origin credentials, no-store, no redirects and
+  bounded requests. Missing, expired, changed-account or refused sessions
+  clear private UI state. Logout clears local state even if the server is
+  unreachable and reports an unconfirmed server logout honestly.
+
+- **B-BR-EMP-20 — Switch only through current organization authority.**
+  A path or browser selection never grants a membership. The shell lists
+  only the current account's server-resolved memberships and confirms
+  current authority before rendering a selected organization. Switching,
+  retrying or logging out immediately clears prior organization content
+  and cancels in-flight work; late responses cannot restore another scope.
+  Missing membership integration is unavailable, never an invented company
+  or an authoritative empty result. Loading, empty, denied, unavailable and
+  authenticated states are explicit and usable by keyboard and assistive
+  technology. Static shell availability does not activate business APIs.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -245,6 +265,15 @@ boundaries.
   fixed authentication time. Wrong/ambiguous origin, cookie, CSRF, expired
   timing, account suspension or family revocation fails closed. Company
   logout/expiry does not affect an admin or personal account session.
+
+- **BUC-EMP-11 — Enter and switch the company panel.** A person enters
+  /empresas/, signs in with their existing account key and receives the
+  independent company session. The shell verifies it before requesting
+  current memberships. Selecting an available company confirms current
+  membership again before displaying that scope. A foreign deep link,
+  expired session, revoked membership or late previous response displays
+  no private company content. A missing provider shows unavailability;
+  an authoritative empty list offers an honest empty state.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production
