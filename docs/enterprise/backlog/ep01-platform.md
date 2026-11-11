@@ -46,7 +46,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local isolation and migration evidence](../evidence/f1-plat002-database-isolation.md).
 
 ### EMP-PLAT-003 — Organization audit trail: append-only, per organization, following the admin audit pattern
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size M · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size M · state LOCAL_DONE
 - **Objective:** Record organization changes in an atomic, append-only audit trail.
 - **Rules and use cases:** BR-AUD-001, BR-AUD-002, BR-AUD-004, BR-AUD-005, BR-AUD-006
 - **Depends on:** EMP-PLAT-002
@@ -60,6 +60,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-PRIV · migration: additive with previous image · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Audit content holds scoped references and bounded reasons. The retention policy governs lifecycle.
 - **Done when:** PostGIS proves atomic, scoped and replay-safe audit behavior.
+
+[Local audit and migration evidence](../evidence/f1-plat003-organization-audit.md).
 
 ### EMP-PLAT-004 — Organization API conventions: path scope, session and device proof, error catalog, pagination, OpenAPI section, route-versus-contract test
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type API · size M · state TODO

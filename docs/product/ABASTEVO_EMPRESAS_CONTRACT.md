@@ -70,6 +70,19 @@ boundaries.
   and cannot assume a superuser, BYPASSRLS or role-administration role.
   Commit, rollback, failure and cancellation release the transaction scope.
 
+- **B-BR-EMP-10 — Atomic organization audit.** The organization audit runner
+  reserves one event per organization and operation before executing the
+  business callback in the same scoped transaction. Callback, audit or
+  commit failure rolls back the change and event. A replay with the same
+  server-computed request digest and metadata skips the callback. Reusing
+  the operation for different input is refused. Events contain validated
+  actor, optional delegation and target UUID references, server time, and
+  registered action and reason codes. Human explanations remain in the
+  referenced business record. Product flows cannot update, delete or
+  truncate the trail. Reads require current organization-wide
+  `audit.event.read` authority or an approved live support session, resolved
+  through the authorization port on every read.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -100,6 +113,14 @@ boundaries.
   A foreign reference is refused. Concurrent transactions keep their own
   scope. After commit or failure, the reused connection exposes zero private
   rows until another scoped transaction begins. A privileged login is refused.
+
+- **BUC-EMP-06 — Commit and inspect an audited change.** A module command
+  verifies current write authority and supplies actor attribution, a digest
+  of the complete canonical command, and registered audit metadata. The
+  runner commits one event with the business change. A retry returns replay
+  without repeating the callback. Failure leaves both absent. An authorized
+  reader lists only its organization's events with bounded keyset pagination.
+  A denied or revoked read stops before storage access.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

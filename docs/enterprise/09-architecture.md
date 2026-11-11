@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value contract in EMP-PLAT-001 and the database foundation in EMP-PLAT-002 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
+Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value, database and audit foundations in EMP-PLAT-001 through EMP-PLAT-003 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
 
 ## 1. Principles
 
@@ -19,7 +19,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `organization` (proposed) | ORG | Organization, legal entities, units, teams, cost centres, groups, settings | `account` (existing) |
 | `membership` (proposed) | IDN | Employees, memberships, invitations, activation codes, device enrolment | `account`, `identity`, `cloudsync` device references (existing) |
 | `orgaccess` (proposed) | AUTH | Role catalog, role assignments, the authorization service | `membership`, `organization`, `orgbilling` |
-| `orgaudit` (proposed) | AUD | Organization audit events | — |
+| `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
 | `orgsync` (proposed) | OFFL | Operation intake, acknowledgements, review items, reference feed | `orgaccess`; handlers registered by each module |
 | `fleet` (proposed) | FLEET, METER | Assets, tanks, meters, readings, assignments, reservations, suppliers | `organization`, `membership` |
 | `trip` (proposed) | TRIP | Missions, trips, stops, logbook | `fleet`, `review` |
@@ -215,6 +215,39 @@ login. It loads the shared two-organization fixture and cleans up only its
 own database and role. Adapter tests grant that login access only to their
 owned tables. The harness requires an explicit disposable test DSN.
 [Isolation and migration evidence](evidence/f1-plat002-database-isolation.md)
+
+### 5.2 Organization audit runner
+
+EMP-PLAT-003 implements [orgaudit](../../backend/internal/modules/orgaudit/adapters/store.go).
+Feature commands resolve current write authority and call the
+`application.Runner` port with explicit scope, verified actor account,
+optional delegation, target references and the digest of the complete
+canonical command. Source-owned action definitions register target type,
+allowed reason codes and whether a reason is required. Human explanations
+remain in the referenced business record.
+
+`RecordChange` reserves an event under `(org_id, operation_id)` before the
+business callback. The event and callback share `database.WithOrgTx`.
+The callback performs every write on the supplied transaction and leaves
+commit/rollback to the runner. A matching replay skips the callback.
+Changed digest or metadata returns `ErrReused`. Business, audit and deferred
+commit failures roll back both the change and event.
+
+[Migration 000164](../../backend/db/migrations/000164_org_audit_events.sql)
+adds organization-scoped keys, forced RLS, a keyset index and statement
+triggers blocking UPDATE, DELETE and TRUNCATE. The runtime role receives
+SELECT and INSERT only. Root and membership schemas are introduced by their
+own tasks. EMP-ORG-002 adds the root reference in a new migration.
+Actor references remain historical through offboarding.
+
+Reads enter through `application.Service.List`. An injected authorizer
+must check current `audit.event.read` authority covering the whole
+organization or approved live support access for the actor and organization.
+Missing authority fails closed before storage. Partial scopes need a future
+filtered read contract. Pages use a default of 20, maximum 100, and
+`(recorded_at, operation_id)` keysets. API cursor sealing and route composition
+belong to EMP-PLAT-004 and the owning API tasks.
+[Local audit evidence](evidence/f1-plat003-organization-audit.md)
 
 ## 6. Error codes
 

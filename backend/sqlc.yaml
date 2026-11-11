@@ -460,3 +460,14 @@ sql:
         out: db/queries/forum
         sql_package: pgx/v5
         emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/orgaudit
+    schema:
+      - db/migrations/000164_org_audit_events.sql
+    gen:
+      go:
+        package: orgaudit
+        out: db/queries/orgaudit
+        sql_package: pgx/v5
+        emit_json_tags: true

@@ -23,9 +23,20 @@
   records transaction-local scope, role guards, composite-key/forced-RLS
   template and shared synthetic PostGIS fixture. RED/GREEN, 18 isolation
   scenarios, migration failure/retry/compatibility, race tests, static
-  checks and affected build passed. GitHub publication requested.
+  checks and affected build passed. Published checkpoint `da669216`.
   ISSUE_PENDING after automatic approval rejected optional issue creation.
-  Next bounded task EMP-PLAT-003. Protected integration and F1/M1 remain open.
+  Protected integration and F1/M1 remain open.
+
+- Enterprise EMP-PLAT-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  on `codex/enterprise-f0-f1` above `da669216`.
+  [Audit evidence](../enterprise/evidence/f1-plat003-organization-audit.md)
+  records atomic audit/change commits, registered metadata, delegated actor
+  attribution, gated reads, append-only/RLS storage and replay-safe concurrency.
+  PostGIS/race, failure/retry/upgrade, sqlc, static and affected build checks
+  passed. Domain/application coverage 100%, adapter 95.8%. Previous API
+  `da669216` returned ready against schema `000164` and stopped cleanly.
+  Main `d8bdc642`, remote dev `231e63b7`, protected integration pending.
+  GitHub publication requested. Next bounded task EMP-PLAT-004.
 
 - Landing 404, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING on `dev`
   from `cbfdec16` (P25 static landing, B-BR-L04 and BUC-L02).

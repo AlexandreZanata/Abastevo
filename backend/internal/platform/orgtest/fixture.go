@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -62,6 +63,12 @@ type Fixture struct {
 // The supplied DSN must permit CREATE DATABASE/ROLE on disposable PostGIS.
 func New(t *testing.T) *Fixture {
 	t.Helper()
+	return NewWithMigrations(t, dbmigrations.Files)
+}
+
+// NewWithMigrations rehearses an upgrade from a caller-supplied previous chain.
+func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
+	t.Helper()
 	dsn := os.Getenv("ANPFUEL_TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Fatal("orgtest requires an explicit disposable ANPFUEL_TEST_DATABASE_URL")
@@ -105,7 +112,7 @@ func New(t *testing.T) *Fixture {
 	}
 	location.Path = "/" + databaseName
 	f.AdminDSN = location.String()
-	if _, err := migrate.Apply(ctx, f.AdminDSN, dbmigrations.Files); err != nil {
+	if _, err := migrate.Apply(ctx, f.AdminDSN, files); err != nil {
 		t.Fatalf("orgtest migrate fresh database: %v", err)
 	}
 	f.Admin, err = pgxpool.New(ctx, f.AdminDSN)
