@@ -1,5 +1,32 @@
 # Enterprise domain vectors
 
+## Identity lifecycle v1
+
+EMP-IDN-001 executes all 29 rows of identity-lifecycle-v1.psv in Go. The
+oracle comes from the employee, membership and device graphs in the identity
+specification before implementation: all 9 employee, 16 membership and 4
+device state pairs. The consumer checks header, count, unique consistent
+IDs, known entity/states and expected outcomes without skips.
+
+These synthetic identity/lifecycle cases assume positive server-resolved
+conditions. Complementary tests deny missing admission/confirmation/roles,
+inactive or mismatched employees, unsafe ownership/handover facts, mixed
+access models, absent proof, exceeded device limits, foreign scopes and
+stale/exhausted revisions. Rehire never reopens ENDED; automatic employee
+return never lifts managerial suspension; revoked device classes persist.
+Tests also cover immutable sharing and nested formatting/JSON/slog redaction.
+
+The pure core stores no person record, descriptive employee data, licence
+contents, credential material or permission. Reference construction does
+not prove an existing account/device, issue a session or enroll a real
+installation. Temporal periods, concurrent uniqueness, owner locking and
+atomic access effects remain persistence/application obligations. No native
+or cross-client acceptance is claimed.
+
+```sh
+(cd backend && go test -race ./internal/modules/membership/domain -count=1)
+```
+
 ## Exact-value vectors v1
 
 EMP-PLAT-009 executes all 112 rows of exact-values-v1.psv in Go and Kotlin.

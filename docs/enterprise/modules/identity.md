@@ -1,6 +1,16 @@
 # Identity, employees and access
 
-Status: **PLANNED**, 2026-11-10. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+Status: **EMP-IDN-001 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-11; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+
+EMP-IDN-001 confirms `membership/domain` as the private identity/lifecycle
+core, separate from existing contributor proof in `identity/domain`.
+[Local evidence](../evidence/f1-idn001-identity-domain.md) covers scoped
+employee and membership identities, existing-account references, optional
+driver association, credential descriptors and device enrolment/revocation.
+There is no platform-wide person record, employee register, licence data,
+storage, session issuance or runtime authorization provider in this task.
+The implementation inventory below describes existing runtime capabilities;
+the new unused pure core does not provision any of the proposed features.
 
 Evidence. Accounts and sessions exist: `backend/internal/modules/account/` issues opaque tokens sent as `family_id` + `access_token`, with a 900-second access token and a 30-day refresh ceiling (`backend/internal/modules/account/domain/policy.go`), a session revoke route and an account deletion route (`backend/internal/modules/account/adapters/http/http.go`): `IMPLEMENTED`. Login methods are `PARTIAL` ([01-diagnosis](../01-diagnosis.md) §3.1): username plus account key works (`backend/internal/modules/account/application/keyaccounts.go`); e-mail codes exist only with the in-memory mail adapter (`backend/internal/modules/account/adapters/mail/memory.go`), so no e-mail is delivered in production; Google and Apple can only be linked to an existing account (`backend/internal/modules/account/adapters/oidc/`). Device proof of possession exists for anonymous contributors (`backend/internal/modules/identity/adapters/auth/auth.go`), one account binds to a contributor key (`backend/db/migrations/000022_account_bindings.sql`), and the personal cloud registers at most three devices per account (`backend/internal/modules/cloudsync/adapters/device.go`): `IMPLEMENTED`, all keyed to a person, none to an organization. Existing private modules erase their rows when an account is deleted through a trigger on the account status (for example `backend/db/migrations/000143_staff_roles.sql`): `IMPLEMENTED`. The Android sign-in screens are in `app/src/main/kotlin/com/anpfuel/app/ui/auth/`: `IMPLEMENTED`. Employees, memberships, invitations, activation codes, managed accounts and organization device enrolment do not exist: `PROPOSED`, in the backend module `backend/internal/modules/membership/` (proposed).
 

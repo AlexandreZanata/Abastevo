@@ -416,6 +416,39 @@ boundaries.
   Scoped storage is not membership authority; real providers, grants and
   atomic root/unit/owner onboarding remain owning-task requirements.
 
+- **B-BR-EMP-40 — Keep private identity concepts independent.**
+  The membership domain references existing personal accounts; it creates
+  no platform-wide person record, credential, session or permission. Its
+  employee identity/lifecycle can exist without a membership or optional
+  driver-profile association. Employee descriptive fields belong to the
+  register task; licence contents/eligibility belong to the driver task.
+  A personal account may be linked independently in several organizations;
+  a managed reference is bound to exactly one organization and access model.
+
+- **B-BR-EMP-41 — Preserve scoped identity periods.**
+  Employee, membership and device values are immutable, scoped and revisioned.
+  Only documented state edges are allowed. Rehire reuses the employee
+  identity without reopening an ENDED membership or restoring assignments;
+  a merged-away employee cannot be rehired. Activation requires a bound
+  matching account, active employee, confirmed admission/confirmation and
+  positive role-assignment facts. Suspension/end require their recorded
+  reason and ownership/handover checks. Automatic employee-return
+  reactivation applies only to an employee-inactivity suspension.
+  These are server-resolved facts, not request permission booleans; current
+  actor authority, concurrent uniqueness and atomic effects remain owning
+  command/persistence obligations. A supplied-set invariant rejects duplicate
+  live employee/account links but makes no claim about undiscovered rows.
+
+- **B-BR-EMP-42 — Descriptors never become proof.**
+  Credential descriptors contain only account reference and source kind,
+  never secrets or a permission decision. Device enrolment associates an
+  existing device/key fingerprint with one active membership after proof
+  and limit checks; it remains separate from personal cloud devices.
+  Revocation records LOST_OR_COMPROMISED or ACCESS_ENDED and is terminal;
+  a later enrolment requires a new record. Formatting, slog and JSON redact
+  identity values. No pure transition issues tokens, revokes personal
+  sessions, erases a vault or changes another organization's history.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -573,6 +606,14 @@ boundaries.
   composed transaction leaves no root or related write. An upgrade retains
   prior private IDs/content and public data, keeping unknown legacy metadata
   unavailable. No root entry point grants access from a name or identifier.
+
+- **BUC-EMP-21 — Model people and access without provisioning it.**
+  Create an employee identity without login or driver data; associate a
+  pending membership with an existing account using exactly one access
+  model. Apply scoped lifecycle decisions from confirmed server facts.
+  Ending a period preserves the employee/account references, and rehire
+  requires a new period. Foreign scope, missing facts, stale revisions,
+  reopening ended/revoked values or inferring rights from a credential fail.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

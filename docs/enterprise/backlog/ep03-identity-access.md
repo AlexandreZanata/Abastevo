@@ -1,6 +1,6 @@
 # EP03 — Identity, employee accounts and authorization
 
-Status: **PLANNED**, 2026-11-10.
+Status: **IN_PROGRESS**, 2026-11-11.
 
 Task IDs, titles, phase, cut, type, effort, priority and dependencies
 follow the existing [generated index](INDEX.md). Task descriptions
@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 C1 uses invitations for existing accounts. Managed corporate activation and its controls remain outside C1 and follow the credential decision and owning API tasks.
 
 ### EMP-IDN-001 — Identity domain: person, employee, driver profile, membership, credential, device
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Separate identity, employee history, membership, credentials and devices.
 - **Rules and use cases:** BR-IDN-001, BR-IDN-002, BR-IDN-003, BR-IDN-004, BR-IDN-007, BR-IDN-019, BR-IDN-033
 - **Depends on:** EMP-PLAT-001
@@ -27,6 +27,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-DOM · migration: none · rollback: remove the unused domain registration before consumers
 - **Risks and assumptions:** Reuse the account identity boundary. Persistence proves concurrent uniqueness in its own task.
 - **Done when:** Lifecycle and scope vectors pass without storage or network dependencies.
+
+[Local identity/lifecycle evidence](../evidence/f1-idn001-identity-domain.md).
 
 ### EMP-IDN-002 — Employee records that exist without a login
 - **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state TODO

@@ -1,4 +1,19 @@
 # Current execution state
+- Enterprise EMP-IDN-001, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `e087b944`, on isolated `codex/enterprise-f0-f1`,
+  targeting existing PR202 (`dev` → `main`); occupied dev and unrelated
+  primary-checkout work preserved.
+  [Identity domain evidence](../enterprise/evidence/f1-idn001-identity-domain.md)
+  records scoped employee/membership identities, independent personal and
+  managed references, optional driver association, credential descriptors
+  and device enrolment/revocation. All 29 lifecycle vectors and nine
+  invariant suites pass under race detection; new domain coverage 99.6%.
+  Affected account/identity/kernel/organization regressions, static/build,
+  format, plan/links and secret checks pass. No SQL, route or provider added.
+  IDN-003 is now the next eligible membership-persistence task; AUTH-001
+  also remains needed before AUTH-002/ORG-003. F1/M1 open; prior runtime,
+  native, legal and coverage gates remain owed. PLAT-012 awaits GOV-014.
+
 - Enterprise EMP-ORG-002, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above Claude's published review head `7af7d2e5`, on isolated
   `codex/enterprise-f0-f1`, targeting existing PR202 (`dev` → `main`).

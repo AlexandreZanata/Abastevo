@@ -20,6 +20,7 @@ backend/internal/modules/orgtime/domain
 backend/internal/modules/organization/domain
 backend/internal/modules/organization/application
 backend/internal/modules/organization/adapters
+backend/internal/modules/membership/domain
 backend/internal/modules/orgevent/domain
 backend/internal/modules/orgevent/application
 backend/internal/modules/orgevent/adapters

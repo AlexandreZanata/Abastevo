@@ -17,7 +17,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | Module | Code | Owns | Uses (through ports) |
 |---|---|---|---|
 | `organization` (ORG-001/002 LOCAL_DONE) | ORG | Scoped aggregate/lifecycle and forced-RLS root persistence; onboarding, legal entities, units, teams, groups and settings commands remain planned | `kernel`, explicit application ports, sqlc/pgx; no runtime route or authority provider |
-| `membership` (proposed) | IDN | Employees, memberships, invitations, activation codes, device enrolment | `account`, `identity`, `cloudsync` device references (existing) |
+| `membership` (IDN-001 LOCAL_DONE, domain only) | IDN | Scoped employee/membership lifecycle, account and credential references, optional driver association, device enrolment values; storage, invitations and managed activation remain planned | `kernel` scope/UUID parser, existing `identity` fingerprint parser; references existing account/device IDs without provisioning them |
 | `orgaccess` (proposed) | AUTH | Role catalog, role assignments, the authorization service | `membership`, `organization`, `orgbilling` |
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
 | `orgvalue` (LOCAL_DONE, domain only) | PLAT | Exact reconciliation and ordered allocation | Existing pure metrics/kernel bounds; shared Go/Kotlin vectors; no private repository or authority |

@@ -316,6 +316,42 @@ sqlc generate
 
 [Local persistence and upgrade evidence](../docs/enterprise/evidence/f1-org002-organization-persistence.md).
 
+### Private identity domain (EMP-IDN-001)
+
+`membership/domain` separates employee identity/lifecycle from membership
+periods, existing personal/managed account references, credential source
+descriptors, optional driver-profile associations and private device
+enrolments. No platform-wide person record is introduced. Employee register
+fields remain IDN-002; licence content/eligibility remains IDN-014/F2.
+
+Values are scoped, immutable and revisioned. An employee exists without a
+login. Account binding leaves a period INVITED; activation requires an
+active matching employee, bound account and confirmed admission/roles.
+ENDED memberships and REVOKED enrolments cannot reopen; rehire retains the
+employee identity but requires a new period. Automatic employee-return
+reactivation cannot lift a managerial suspension. Managed references cannot
+cross organizations or mix with the existing-account access model.
+ValidateLiveMemberships refuses duplicate live employee/account links within
+a supplied scoped set; it cannot discover rows or replace database uniqueness.
+
+Credential descriptors carry no material or grant. Enrolment checks explicit
+server proof/count/limit facts (personal 1–5; managed 1); revocation preserves
+its class. The existing fingerprint parser is reused. All value/snapshot
+formatting, nested JSON and slog redact identifiers; storage must map fields
+explicitly. Rehydrate functions accept trusted storage, never client DTOs.
+
+Current AUTH/IDN providers, concurrent uniqueness, last-owner row locking,
+atomic effects, tokens, storage, routes and native device acceptance remain
+owning-task work. This package grants no authority and is not wired into
+API/worker production composition.
+
+```sh
+go test -race ./internal/modules/membership/domain ./internal/modules/identity/domain ./internal/modules/account/domain ./internal/modules/kernel ./internal/modules/organization/domain -count=1
+```
+
+See [29 lifecycle vectors](../contracts/testdata/enterprise/README.md#identity-lifecycle-v1)
+and [local acceptance](../docs/enterprise/evidence/f1-idn001-identity-domain.md).
+
 ### Organization operation time (EMP-PLAT-015)
 
 orgtime/domain preserves declared occurred_at and trusted server received_at
