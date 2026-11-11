@@ -368,6 +368,32 @@ boundaries.
   in the application graph until native proof and current server adapters
   are accepted. A disconnected device cannot receive immediate revocation.
 
+- **B-BR-EMP-36 — Model the organization lifecycle without granting access.**
+  A new pure aggregate starts in PENDING_SETUP with an explicit nonzero
+  organization scope and revision one. Display name, server-known IANA zone
+  and the descriptive DELIVERY/CARRIER/SERVICES/FARM/OTHER tag set never
+  create an owner, unit, permission, plan, price or relation to another
+  organization. Pending setup may be incomplete in the domain; the stricter
+  creation command must atomically persist the first unit/employee/owner.
+  Activation requires nonblank name, valid zone, positive active-unit and
+  active-owner counts and recorded terms. Missing items use bounded codes.
+  Kinds are canonicalized as a set, with no invented default kind.
+
+- **B-BR-EMP-37 — Keep lifecycle decisions scoped, immutable and terminal.**
+  Only the documented organization state edges are allowed. Every read or
+  change requires the original scope; every change checks the expected
+  revision, returns a new value and preserves the original on failure.
+  CLOSED has no outgoing transition, including to itself. Closing a pending
+  setup requires confirmed absence of operational records; suspension requires
+  a registered reason; reactivation requires cause resolution; archiving
+  requires a clear blocking-items report. Restore requires confirmed absence
+  or cancellation of a closure schedule and either a resolved suspension
+  or a current registered open cause. Archived closure requires confirmed
+  elapsed closure period. Unknown/absent evidence fails closed. These are
+  server-resolved facts, never client permissions. Owning commands still
+  enforce actors, fresh authentication, timers, audit and lifecycle effects;
+  this domain performs no actual closure or persistence.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -509,6 +535,14 @@ boundaries.
   key, modified envelope or failed cleanup reveals no content. Managed
   access requires local device unlock; the production binding remains
   closed until device and server integration evidence exists.
+
+- **BUC-EMP-19 — Decide an organization lifecycle change.** Given a scoped
+  pending aggregate, incomplete activation returns every missing checklist
+  item without changing its revision. Complete activation returns ACTIVE.
+  Current confirmed conditions allow suspension, archive and restore only
+  on the documented edges. A closed aggregate never revives. A foreign
+  scope, stale revision, invalid kind/zone or missing lifecycle evidence
+  returns no changed value; a display name or kind never replaces proof.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

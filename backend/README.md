@@ -256,6 +256,31 @@ with an explicit disposable ANPFUEL_TEST_DATABASE_URL. See
 [architecture](../docs/enterprise/09-architecture.md#71-implemented-transactional-event-foundation)
 and [evidence](../docs/enterprise/evidence/f1-plat010-transactional-events.md).
 
+### Organization aggregate (EMP-ORG-001)
+
+organization/domain supplies the scoped immutable root and its lifecycle.
+NewPending needs an explicit kernel.OrgScope and starts at revision one.
+Snapshot requires that same scope. ConfigurePending and Transition check
+the expected revision and return a new value without mutating the original.
+Kind tags are descriptive only; no CNPJ/unit/member/permission is derived.
+The activation checklist reports bounded missing-item codes. Restore and
+closure require explicit confirmed conditions; CLOSED has no outgoing edge.
+
+Rehydrate takes trusted storage state, never client input. Conditions are
+facts resolved by the server, not permission booleans supplied by a client.
+Owning commands must verify current actors/freshness, allocate a fresh ID
+and prevent reusing any persisted ID, persist root/unit/owner atomically,
+apply CAS/audit and perform the lifecycle effects. This task adds none of
+those adapters, routes, jobs or actual closure. Known server IANA names are
+accepted for the metadata; no cross-client timezone certification is implied.
+
+```sh
+go test -race ./internal/modules/organization/domain -count=1
+```
+
+See [102 domain vectors](../contracts/testdata/enterprise/README.md#organization-lifecycle-v1)
+and [local acceptance](../docs/enterprise/evidence/f1-org001-organization-domain.md).
+
 ### Organization operation time (EMP-PLAT-015)
 
 orgtime/domain preserves declared occurred_at and trusted server received_at

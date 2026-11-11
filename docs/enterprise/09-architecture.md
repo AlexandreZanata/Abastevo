@@ -16,7 +16,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 
 | Module | Code | Owns | Uses (through ports) |
 |---|---|---|---|
-| `organization` (proposed) | ORG | Organization, legal entities, units, teams, cost centres, groups, settings | `account` (existing) |
+| `organization` (LOCAL_DONE, domain only) | ORG | Pure scoped organization aggregate/lifecycle; persistence, legal entities, units, teams, groups and settings commands remain planned | `kernel`; standard server IANA data; no runtime route or authority provider |
 | `membership` (proposed) | IDN | Employees, memberships, invitations, activation codes, device enrolment | `account`, `identity`, `cloudsync` device references (existing) |
 | `orgaccess` (proposed) | AUTH | Role catalog, role assignments, the authorization service | `membership`, `organization`, `orgbilling` |
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
@@ -228,6 +228,24 @@ is IN_PROGRESS until actual Keystore/device lock, backup/transfer, reboot,
 restore and cleanup-failure scenarios run in the owner's deferred native
 batch, and current AUTH/IDN providers are composed. See the
 [implementation/evidence record](evidence/f1-priv003-protected-device-store.md).
+
+### 2.3 Implemented organization aggregate
+
+EMP-ORG-001 implements organization/domain as a pure immutable value model.
+NewPending starts at PENDING_SETUP/revision 1 under a validated kernel
+OrgScope. Snapshot, ConfigurePending and Transition require the same scope;
+mutations also check the expected positive revision without overflow.
+Profiles and missing-checklist slices are copied. Kind tags are a sorted
+descriptive set with no invented default or effect on permissions/plans.
+
+Pending setup may be incomplete in this domain; activation requires name,
+server-known IANA zone, positive active-unit/owner counts and recorded terms.
+All 25 state pairs follow the documented graph, with CLOSED terminal and
+positive confirmed lifecycle conditions. Rehydrate is trusted-storage-only,
+not a client DTO entry. Current authority, cross-record facts, fresh IDs,
+atomic owner/unit creation, CAS persistence, audit, timers and lifecycle
+effects belong to their owning commands. No route or actual closure is
+activated. [Local evidence](evidence/f1-org001-organization-domain.md).
 
 ## 3. Request context and authentication
 

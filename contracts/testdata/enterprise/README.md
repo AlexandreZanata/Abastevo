@@ -103,3 +103,31 @@ invalid contexts, nanosecond edges and offset/clock bounds. This certifies
 these vectors on the recorded Go/JVM providers, not every IANA database or
 native Android device. No sync route, receipt retention or live feature is
 activated; owners still provide trusted clock/context and review wiring.
+
+## Organization lifecycle v1
+
+EMP-ORG-001 executes all 102 rows of organization-lifecycle-v1.psv in Go
+organization/domain. This is a backend domain oracle, not client parity or
+runtime acceptance. Expected maps were recorded from BR-ORG-001/002/004/
+025/027/037 and the organization state graph before implementation.
+Consumers check the header/count/unique IDs, known operation and complete
+output map; no case is skipped. The four-column PSV format is unchanged.
+
+The 25 from/to pairs cover all five states. All 32 activation combinations
+cover name, server-known IANA zone, active unit, active owner and terms.
+Other rows pin registered reasons, malformed kinds/zones/states, descriptive
+tags/name, stale/exhausted revisions, archive blockers and unknown/pending/
+cancelled/elapsed closure conditions. Kind tags are sorted/deduplicated as
+a set, without manufacturing OTHER for absence. Name/zone text is retained;
+whitespace is examined only for name presence. Source aliases known to the
+server are allowed; Local/raw offsets/paths are not IANA identifiers.
+
+All transition conditions are server-resolved facts, never client authority.
+CLOSED cannot leave even through a self-edge. No clock, scheduler, owner/unit
+write, grant, audit, repository or physical closure occurs. Rehydrate is a
+trusted-storage constructor and cannot serve as a client command decoder.
+Fresh-ID uniqueness and cross-record truth remain owning-command/DB work.
+
+```sh
+(cd backend && go test -race ./internal/modules/organization/domain -count=1)
+```

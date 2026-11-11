@@ -1,4 +1,16 @@
 # Current execution state
+- Enterprise EMP-ORG-001, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published ef8bfff9 on isolated codex/enterprise-f0-f1; targets
+  existing PR202 (dev → main), preserving occupied local dev.
+  [Organization domain evidence](../enterprise/evidence/f1-org001-organization-domain.md)
+  records immutable scoped aggregate, complete activation checklist,
+  explicit lifecycle conditions, terminal CLOSED and revision guards.
+  All 102 vectors and six invariant tests pass under race detection;
+  new package 100% statement coverage. Scoped vet/staticcheck, API/worker/
+  ops build, format, plan/links and secret checks pass. No SQL/route added.
+  ORG-002 next. PRIV-003 native acceptance/current providers and aggregate
+  coverage remain pending; F1/M1 open. PLAT-012 still awaits GOV-014.
+
 - Enterprise EMP-PRIV-003, 2026-11-11: SOURCE_IMPLEMENTED / INTEGRATION_PENDING;
   task acceptance IN_PROGRESS pending the owner's deferred native batch.
   Above published 5d1f2b4a on isolated codex/enterprise-f0-f1, targets PR202

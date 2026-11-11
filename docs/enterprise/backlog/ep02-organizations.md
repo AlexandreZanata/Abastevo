@@ -9,7 +9,7 @@ integration of the current ADR-019 construction batch. See the
 [sequencing decision](../evidence/f0-m0-decisions.md#roadmap-sequencing).
 
 ### EMP-ORG-001 — Organization aggregate and lifecycle rules
-- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type DOM · size S · state TODO
+- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Define the organization aggregate and its lifecycle before adapters.
 - **Rules and use cases:** BR-ORG-001, BR-ORG-002, BR-ORG-004, BR-ORG-025, BR-ORG-027, BR-ORG-037
 - **Depends on:** EMP-PLAT-001
@@ -23,6 +23,8 @@ integration of the current ADR-019 construction batch. See the
 - **Validation:** V-DOM · migration: rehearse additive changes when persistence is affected · rollback: preserve the existing state, remove only the new entry point and follow the scoped recovery evidence.
 - **Risks and assumptions:** Acting authority and lifecycle side effects are checked by the owning application commands.
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
+
+[Local aggregate and lifecycle evidence](../evidence/f1-org001-organization-domain.md).
 
 ### EMP-ORG-002 — Organization persistence as the tenant root
 - **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type DB · size S · state TODO

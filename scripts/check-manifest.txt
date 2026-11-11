@@ -17,6 +17,7 @@ backend/internal/platform/anpfixture
 backend/internal/modules/kernel
 backend/internal/modules/orgvalue/domain
 backend/internal/modules/orgtime/domain
+backend/internal/modules/organization/domain
 backend/internal/modules/orgevent/domain
 backend/internal/modules/orgevent/application
 backend/internal/modules/orgevent/adapters

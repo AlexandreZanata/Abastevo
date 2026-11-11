@@ -30,7 +30,10 @@ implementation, with acceptance IN_PROGRESS:
 [protected device store](evidence/f1-priv003-protected-device-store.md).
 Native device/backup/unlock proof and current-server composition remain
 owed, so protected persistence stays unavailable in the application graph.
-EMP-PLAT-016 belongs to F3. Domain aggregate coverage,
+EMP-ORG-001 is also LOCAL_DONE / INTEGRATION_PENDING with the
+[pure organization aggregate](evidence/f1-org001-organization-domain.md).
+It is independent of the deferred native acceptance; EMP-ORG-002 is the
+next organization task. EMP-PLAT-016 belongs to F3. Domain aggregate coverage,
 native protected-store proof and the existing activation gates remain owed.
 [Kernel evidence](evidence/f1-plat001-tenancy-kernel.md) and
 [database evidence](evidence/f1-plat002-database-isolation.md), with
