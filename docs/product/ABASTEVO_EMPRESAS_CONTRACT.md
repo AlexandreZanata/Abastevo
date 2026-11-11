@@ -259,6 +259,25 @@ boundaries.
   persistence port remains unavailable until EMP-PRIV-003 composes and proves
   protected storage, logout/revocation and backup behavior.
 
+- **B-BR-EMP-27 — Bound enterprise telemetry at the existing HTTP boundary.**
+  Organization request totals and elapsed seconds use only registered route
+  templates, a fixed result vocabulary and allowlisted organization error
+  codes. Missing/foreign routes collapse to unmatched. Raw paths, methods
+  outside the HTTP vocabulary, identifiers, payloads and credentials never
+  become labels. Record one observation per request, including rejected,
+  disabled and panicked requests. Reuse the existing private metrics listener
+  and registry cardinality cap; no new collector or public endpoint.
+
+- **B-BR-EMP-28 — Keep private context out of logs.** Enterprise transport
+  assigns its own request correlation ID. Access records use only the source
+  route template, bounded method, actual status and elapsed time. Generic
+  logging under a private request context drops free text, arbitrary fields
+  and inherited request/job/bound-route metadata; it retains only fixed
+  event codes and server correlation. Credentials, cursor, actor and principal
+  DTOs redact default formatting and structured logging. Panic/provider
+  content never enters telemetry. Authorization/audit evidence remains a
+  separate append-only product record.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -367,6 +386,13 @@ boundaries.
   the original scope explicitly to load its work; another account, server
   or organization sees none of it. The foundation dispatches no operation
   and opens no real-data storage before protected-store integration.
+
+- **BUC-EMP-15 — Observe an enterprise request without private data.** An
+  operator scrapes the existing private metrics endpoint and sees bounded
+  route/result/code counts and request seconds for success and refusal.
+  Access/recovery logs correlate through a server-generated trace. Malformed,
+  revoked, foreign and panicked requests contribute no private content;
+  telemetry does not authorize a request or replace an audit event.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

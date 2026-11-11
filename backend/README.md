@@ -147,6 +147,38 @@ See the [transaction and composition contract](../docs/enterprise/09-architectur
 Use an ordinary non-owner, non-BYPASSRLS runtime login; backup/restore retains
 the separately reviewed authority needed for forced-RLS tables.
 
+### Private organization telemetry (EMP-PLAT-013)
+
+The API composes orgapi.Observe on the existing httpserver.NewRouter and
+metrics.Registry. It adds no route, collector or listener. Scrape the
+existing private ANPFUEL_METRICS_ADDR listener; public /metrics stays absent.
+No enterprise capability is enabled by observability.
+
+org_requests_total and org_request_seconds_total carry only route, result
+and code. Route is the matched source template or unmatched. Result is
+success/refused/unavailable. Codes are OK, the existing allowlisted
+organization error codes, or REFUSED for an untyped client-error response.
+No request body is parsed for telemetry. The existing 512-series cap and
+metrics_dropped_total remain authoritative. Cumulative seconds support
+mean duration; this task adds no latency histogram or percentile claim.
+
+The transport encloses private handlers/recovery in a private logging context
+and replaces inbound request IDs with server correlation. Generic Info/Warn/
+Error calls in that context drop free messages/attributes and inherited
+client/job/bound-route fields, retaining only fixed event codes and server
+trace. Use the supplied request context. Transport-owned access records
+retain bounded method, source route, actual status and elapsed time. Never
+pass raw URLs to Logger.Request. Session/command/actor/principal/cursor/config
+DTOs redact default formatting and slog, including embedded session DTOs.
+Module-specific values must maintain the same convention.
+
+Install orgapi.Observe once inside the router's recovery boundary, as cmd/api
+does. Panic observations are recorded safely and repanicked for existing
+private recovery. Writer wrappers preserve initial status, implicit writes,
+flush and ResponseController unwrapping. Audit authorization/storage stays
+separate. See [architecture](../docs/enterprise/09-architecture.md#111-implemented-private-telemetry)
+and [evidence](../docs/enterprise/evidence/f1-plat013-private-telemetry.md).
+
 ### Transactional organization events (EMP-PLAT-010)
 
 orgevent joins required follow-up to the existing organization audit runner

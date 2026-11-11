@@ -51,6 +51,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 			code = reported
 		}
 	}
+	recordCode(r, code)
 	w.Header().Del("ETag")
 	httpapi.WriteError(w, r, statuses[code], string(code), "Organization request unavailable or refused", nil)
 }

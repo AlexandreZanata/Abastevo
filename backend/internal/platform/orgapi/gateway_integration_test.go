@@ -30,6 +30,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgtest"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics"
 )
 
 type liveClock struct{ now int64 }
@@ -156,6 +157,12 @@ func TestGatewayRealSessionKeyBindingProofAndCurrentAuthority(t *testing.T) {
 		},
 	}
 	router := chi.NewRouter()
+	telemetryRegistry := metrics.NewRegistry()
+	observe, err := orgapi.Observe(telemetryRegistry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	router.Use(observe)
 	var calls atomic.Int32
 	if err := orgapi.Register(router, route, gateway, orgapi.Rule{Permission: "org.settings.manage", Write: true, RequireRevision: true},
 		func(_ context.Context, principal orgapi.Principal, _ commandDTO) (any, error) {
@@ -258,5 +265,16 @@ func TestGatewayRealSessionKeyBindingProofAndCurrentAuthority(t *testing.T) {
 	checkError(t, dispatch(suspended), orgapi.Unauthenticated, 401)
 	if calls.Load() != 2 {
 		t.Fatal("revoked key or session reached module")
+	}
+	exposition := telemetryRegistry.Expose()
+	for _, secret := range []string{orgA, orgB, accountID, familyID, "synthetic-access", "original", "modified"} {
+		if strings.Contains(exposition, secret) {
+			t.Fatal("real authority fixture leaked into telemetry")
+		}
+	}
+	for _, code := range []string{"OK", "UNAUTHENTICATED", "NOT_FOUND"} {
+		if !strings.Contains(exposition, `code="`+code+`"`) {
+			t.Fatal("real authority result not observed", code)
+		}
 	}
 }

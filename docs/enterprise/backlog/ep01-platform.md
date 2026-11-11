@@ -224,7 +224,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Done when:** The authorized adapter and in-app fallback pass scoped delivery tests.
 
 ### EMP-PLAT-013 — Enterprise telemetry: per-route metrics, redaction rules and organization-safe logs
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type INT · size S · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type INT · size S · state LOCAL_DONE
 - **Objective:** Add bounded telemetry without exposing organization data.
 - **Rules and use cases:** BR-PRIV-003, BR-PRIV-008, BR-AUD-004
 - **Depends on:** EMP-PLAT-004
@@ -238,6 +238,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-PRIV, V-ISO · migration: none · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Keep audit authorization and production metrics separate.
 - **Done when:** All affected sinks pass the seeded redaction checks.
+
+[Local telemetry, redaction and real-process evidence](../evidence/f1-plat013-private-telemetry.md).
 
 ### EMP-PLAT-014 — Organization rate limits per account, device and organization on the existing limiter
 - **Meta:** module PLAT · phase F1 · cut - · priority P1 · type API · size S · state TODO

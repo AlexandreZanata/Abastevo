@@ -1,4 +1,16 @@
 # Current execution state
+- Enterprise EMP-PLAT-013, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above localization fix da8ee090; delivery targets existing PR202 (dev → main).
+  [Private telemetry evidence](../enterprise/evidence/f1-plat013-private-telemetry.md)
+  records existing-registry route/result/code totals and seconds, server
+  correlation, private-context log restrictions and shared DTO redaction.
+  Race/seeded privacy, 100 concurrent requests, actual-status/flush, real
+  signed-session/PostGIS and actual API/private-metrics tests passed.
+  Affected vet/staticcheck/build/contract checks passed. Full app lint now
+  passes (0 errors/347 existing warnings); prior failures below are historical.
+  Domain coverage and server/Android activation obligations remain owed.
+  F1/M1 open. EMP-PLAT-014 next; EMP-PLAT-012 awaits EMP-GOV-014.
+
 - Home map localization, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING.
   [Evidence](../mobile/home-open-map-localization.md): six missing
   home_open_map translations added above ec92ab38; full app lint now passes

@@ -721,6 +721,42 @@ tasks. The gate performs no payload discard or deletion.
 
 Per-route counters and latency for the organization API; counts of operations by result and code; review-queue size and age; attachment failures; job failures by kind; tracking batch rate. Labels use bounded values only (route, result, code), never organization or person identifiers (BR-PRIV-008). Alerts reuse the existing evaluator (`ops monitoring eval`).
 
+### 11.1 Implemented private telemetry
+
+EMP-PLAT-013 adds organization request totals and elapsed-second counters
+through the existing registry/private listener. Labels are source route
+template (or unmatched), fixed success/refused/unavailable result and an
+allowlisted orgapi code (or OK/REFUSED). No body, header, raw URL, private
+identifier or provider error supplies a label. WriteError records its
+already-normalized code in request-local state; observations do not parse
+responses or alter authorization/audit decisions.
+
+The HTTP factory establishes private context before access/recovery/module
+execution. Transport assigns fresh private correlation instead of accepting
+client-supplied trace content. Generic private logging drops arbitrary
+messages/fields and inherited bound-route/client/job metadata. Only fixed
+event codes and server trace survive; transport access records separately
+use the matched template, bounded method, actual committed status and
+elapsed time. Default fmt/slog formatting of shared credentials, commands,
+actors, memberships, principals, pages and gateway configuration is redacted.
+Embedding the session/command propagates that safe default to module DTOs.
+Explicit new DTO/log sinks still require their owning privacy tests.
+
+The API wires one orgapi.Observe middleware inside existing recovery. A panic
+records one unavailable result, then the existing recoverer emits the private
+error; its value never enters telemetry. Wrappers preserve first status,
+implicit writes, flush and response-controller access. The common request
+method vocabulary also bounds the existing global HTTP metrics.
+
+The existing series cap/drop counter and private exposition remain in force.
+No public metric route, provider, dependency, schema or feature activation is
+added. Request seconds are cumulative, not a histogram. Feature-specific
+review/attachment/tracking measures and live alert thresholds above remain
+with their owning modules. The canonical edge already removes request and
+response-header objects from access/runtime logs; this task does not change
+or certify live proxy configuration. See
+[local evidence](evidence/f1-plat013-private-telemetry.md).
+
 ## 12. Integrations at a glance
 
 Each is optional, behind a port, with a manual fallback. Details and adoption criteria are in [modules/imports-notifications-integrations](modules/imports-notifications-integrations.md).

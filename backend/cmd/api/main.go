@@ -115,6 +115,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpserver"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics"
 	"github.com/go-chi/chi/v5"
@@ -206,6 +207,11 @@ func run() error {
 		return err
 	}
 	router.Use(metrics.Observe(metricsReg, httpRequests, httpSeconds))
+	organizationTelemetry, err := orgapi.Observe(metricsReg)
+	if err != nil {
+		return err
+	}
+	router.Use(organizationTelemetry)
 	// Lazy pool: the process boots (live, not ready) while PostgreSQL is
 	// down. Closed after the server drains, at shutdown.
 	pool, err := database.Open(context.Background(), cfg.DatabaseURL, database.DefaultOptions())

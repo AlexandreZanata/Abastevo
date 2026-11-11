@@ -12,7 +12,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
 	"sync/atomic"
@@ -166,7 +165,7 @@ func (s *Server) Run(ctx context.Context) error {
 // unmatched probes and method mismatches are logged instead of silent.
 func NewRouter(logger *telemetry.Logger) Router {
 	r := chi.NewRouter()
-	r.Use(accessLog(logger), recoverer(logger))
+	r.Use(privateAccessLog(logger), accessLog(logger), recoverer(logger))
 	r.NotFound(unmatched(logger, http.StatusNotFound))
 	r.MethodNotAllowed(unmatched(logger, http.StatusMethodNotAllowed))
 	return r
@@ -179,12 +178,9 @@ func unmatched(logger *telemetry.Logger, status int) http.HandlerFunc {
 		if private {
 			responseStatus = http.StatusNotFound
 		}
-		logger.Info(r.Context(), "http.request", "request served",
-			slog.String("method", r.Method),
-			slog.String("route", routeTemplate(r)),
-			slog.Int("status", responseStatus),
-			slog.Int64("duration_ms", 0),
-		)
+		if !private {
+			logger.Request(r.Context(), r.Method, routeTemplate(r), responseStatus, 0)
+		}
 		if private {
 			orgapi.WriteError(w, r, orgapi.NotFound)
 			return
@@ -206,30 +202,57 @@ func newRequestID() string {
 func requestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get(requestIDHeader)
-		if !safeRequestID(id) {
+		private := orgapi.IsOrganizationPath(r.URL.Path)
+		if private || !safeRequestID(id) {
 			id = newRequestID()
 		}
 		r.Header.Set(requestIDHeader, id)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set(requestIDHeader, id)
-		next.ServeHTTP(w, r.WithContext(telemetry.ContextWithRequest(r.Context(), id)))
+		ctx := telemetry.ContextWithRequest(r.Context(), id)
+		if private {
+			ctx = telemetry.ContextWithServerRequest(r.Context(), id)
+		}
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 type statusRecorder struct {
 	http.ResponseWriter
-	status int
+	status  int
+	written bool
 }
 
 func (w *statusRecorder) WriteHeader(status int) {
+	if status >= 100 && status < 200 && status != http.StatusSwitchingProtocols {
+		w.ResponseWriter.WriteHeader(status)
+		return
+	}
+	if w.written {
+		return
+	}
 	w.status = status
+	w.written = true
 	w.ResponseWriter.WriteHeader(status)
+}
+func (w *statusRecorder) Write(body []byte) (int, error) {
+	if !w.written {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(body)
 }
 
 // Unwrap exposes the underlying writer to http.ResponseController, so
 // streaming handlers can flush and set per-write deadlines through it.
 func (w *statusRecorder) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
+}
+
+func (w *statusRecorder) FlushError() error {
+	if !w.written {
+		w.WriteHeader(http.StatusOK)
+	}
+	return http.NewResponseController(w.ResponseWriter).Flush()
 }
 
 func routeTemplate(r *http.Request) string {
@@ -244,15 +267,14 @@ func routeTemplate(r *http.Request) string {
 func accessLog(logger *telemetry.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if orgapi.IsOrganizationPath(r.URL.Path) {
+				next.ServeHTTP(w, r)
+				return
+			}
 			rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 			start := time.Now()
 			next.ServeHTTP(rec, r)
-			logger.Info(r.Context(), "http.request", "request served",
-				slog.String("method", r.Method),
-				slog.String("route", routeTemplate(r)),
-				slog.Int("status", rec.status),
-				slog.Int64("duration_ms", time.Since(start).Milliseconds()),
-			)
+			logger.Request(r.Context(), r.Method, routeTemplate(r), rec.status, time.Since(start))
 		})
 	}
 }
