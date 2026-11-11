@@ -72,6 +72,7 @@ import (
 	feedbackdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/feedback/domain"
 	forumadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters"
 	forumhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters/http"
+	forumstream "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/adapters/stream"
 	forumapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	forumdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
 	identityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
@@ -814,11 +815,13 @@ func run() error {
 	}
 	// B-BR-FOR-11 author budgets: comments 20/hour and 100/day, topics
 	// 3/hour and 10/day, admitted in the same transaction as the write.
+	// B-BR-FOR-17 reactions: 300/hour, so taps stay free but floods stop.
 	forumStore.SetQuotas(forumadapters.Quotas{
-		CommentHourly: forumWriteQuota(20, time.Hour),
-		CommentDaily:  forumWriteQuota(100, 24*time.Hour),
-		TopicHourly:   forumWriteQuota(3, time.Hour),
-		TopicDaily:    forumWriteQuota(10, 24*time.Hour),
+		CommentHourly:  forumWriteQuota(20, time.Hour),
+		CommentDaily:   forumWriteQuota(100, 24*time.Hour),
+		TopicHourly:    forumWriteQuota(3, time.Hour),
+		TopicDaily:     forumWriteQuota(10, 24*time.Hour),
+		ReactionHourly: forumWriteQuota(300, time.Hour),
 	})
 	forumStore.CaseOpener = func(ctx context.Context, tx pgx.Tx, targetType, targetID, reason, detail string) (string, bool, error) {
 		caseID, err := newUUID()
@@ -849,12 +852,13 @@ func run() error {
 	forumHandler.RegisterRoutes(router)
 
 	forumDiscussionHandler := &forumhttp.DiscussionHandler{
-		Comments: forumStore,
-		Reports:  forumStore,
-		Topics:   forumStore,
-		Runner:   identityRunner,
-		Clock:    time.Now,
-		Config:   &forumCfg,
+		Comments:  forumStore,
+		Reports:   forumStore,
+		Topics:    forumStore,
+		Reactions: forumStore,
+		Runner:    identityRunner,
+		Clock:     time.Now,
+		Config:    &forumCfg,
 		Sessions: func(ctx context.Context, family, access string) (string, error) {
 			return accountService.ValidateAccess(ctx, family, access)
 		},
@@ -869,6 +873,41 @@ func run() error {
 		},
 	}
 	forumDiscussionHandler.RegisterRoutes(router)
+
+	// B-BR-FOR-18 live conversations: one LISTEN connection per process feeds
+	// the open SSE streams; no websocket, broker or polling (B-BR-FOR-16).
+	forumHub := forumstream.NewHub(5000, 1000, 32)
+	forumStreamsCtx, stopForumStreams := context.WithCancel(context.Background())
+	defer stopForumStreams()
+	if forumCfg.ReadsAllowed() {
+		listenerConfig := pool.Underlying().Config().ConnConfig
+		forumListener := &forumstream.Listener{
+			Connect: func(ctx context.Context) (*pgx.Conn, error) {
+				return pgx.ConnectConfig(ctx, listenerConfig.Copy())
+			},
+			Hub:     forumHub,
+			Resolve: forumhttp.NewStreamResolver(forumStore),
+			Report: func(event string, err error) {
+				detail := ""
+				if err != nil {
+					detail = err.Error()
+				}
+				logger.Warn(context.Background(), "forum.stream", "forum stream "+event, slog.String("error", detail))
+			},
+			MinBackoff: time.Second,
+			MaxBackoff: 30 * time.Second,
+		}
+		go forumListener.Run(forumStreamsCtx)
+	}
+	(&forumhttp.ConversationStream{
+		Hub:          forumHub,
+		Posts:        forumadapters.PublicPosts{Store: forumStore},
+		Config:       &forumCfg,
+		Done:         forumStreamsCtx.Done(),
+		Heartbeat:    20 * time.Second,
+		MaxLifetime:  5 * time.Minute,
+		WriteTimeout: 10 * time.Second,
+	}).RegisterRoutes(router)
 
 	// Optional administrative surface (ADR-023). No configured key hash means
 	// no route is mounted and every /v1/admin/* path stays 404.
@@ -1522,6 +1561,11 @@ func run() error {
 	logger.Info(context.Background(), "api.startup", "api serving")
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// Open conversation streams end first, so they never hold the drain.
+	go func() {
+		<-ctx.Done()
+		stopForumStreams()
+	}()
 	// Private metrics listener (P08-T05): loopback-only by default,
 	// disabled when ANPFUEL_METRICS_ADDR is empty. Never published by
 	// the staging/production topologies.

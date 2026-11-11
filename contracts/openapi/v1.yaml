@@ -7463,13 +7463,21 @@ paths:
             maximum: 50
             default: 20
           description: Number of comments to return (1–50, default 20).
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [oldest, recent, liked, relevant]
+            default: oldest
+          description: Reply order (B-BR-FOR-18). oldest is the default for older clients; recent is newest first; liked ranks by likes and relevant by likes minus dislikes, newest first on ties. Any explicit sort adds each reply's best answer preview as top_reply.
         - name: cursor
           in: query
           required: false
           schema:
             type: string
             maxLength: 512
-          description: Monotonic sequence cursor from previous response.
+          description: Opaque keyset cursor from the previous page of the same sort.
       responses:
         '200':
           description: Comments page returned successfully.
@@ -7699,6 +7707,161 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/posts/{post_id}/reaction:
+    post:
+      summary: Set the caller's reaction on a published post.
+      description: Signed owner command (B-BR-FOR-17). One reaction per account and target; repeating a value changes nothing and NONE clears it. Counts are maintained by the database and announced on the conversation stream. Hidden, pending or missing targets answer 404. Quota bounded (300/hour).
+      operationId: setForumPostReaction
+      tags: [forum]
+      security: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the post to react to.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumReactionRequest'
+      responses:
+        '200':
+          description: Reaction stored; counts returned.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumReactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/comments/{comment_id}/reaction:
+    post:
+      summary: Set the caller's reaction on a published comment or reply.
+      description: Signed owner command (B-BR-FOR-17). One reaction per account and target; repeating a value changes nothing and NONE clears it. Counts are maintained by the database and announced on the conversation stream. Hidden, pending or missing targets answer 404. Quota bounded (300/hour).
+      operationId: setForumCommentReaction
+      tags: [forum]
+      security: []
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the comment or reply to react to.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumReactionRequest'
+      responses:
+        '200':
+          description: Reaction stored; counts returned.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumReactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/owner/reactions:
+    post:
+      summary: Read the caller's reactions in one conversation.
+      description: Signed private owner read (B-BR-FOR-05, B-BR-FOR-17). Returns only the caller's reactions.
+      operationId: getForumOwnerReactions
+      tags: [forum]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForumOwnerReactionsRequest'
+      responses:
+        '200':
+          description: The caller's reactions.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForumOwnerReactionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/forum/posts/{post_id}/stream:
+    get:
+      summary: Follow a published conversation live as server-sent events.
+      description: "Anonymous text/event-stream (B-BR-FOR-18) over the existing API: no websocket, broker or polling. Events: ready, comment (a newly public reply, ForumCommentItem under comment), comment_reactions and post_reactions (new public counts), comment_gone (left public reads), post_gone, resync (reload the conversation), reconnect (the server ends the stream; reconnect after retry). Comment lines (': ping') keep proxies open. Only committed public projections are sent; the stream never replaces the paginated reads."
+      operationId: streamForumConversation
+      tags: [forum]
+      security: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique identifier of the published post.
+      responses:
+        '200':
+          description: Event stream opened.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-sent events as described above.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/Unavailable'
   /v1/forum/owner/read:
@@ -13320,6 +13483,16 @@ components:
           format: uuid
           description: Previous bulletin this reviewed correction supersedes.
           example: null
+        like_count:
+          type: integer
+          minimum: 0
+          description: Public number of likes of the post (B-BR-FOR-17).
+          example: 12
+        dislike_count:
+          type: integer
+          minimum: 0
+          description: Public number of dislikes of the post.
+          example: 1
     ForumBulletinRevision:
       type: object
       description: Exact accepted Official revision aggregate for one side of a bulletin.
@@ -13667,6 +13840,168 @@ components:
           type: integer
           minimum: 0
           description: Number of approved visible replies to this comment.
+        like_count:
+          type: integer
+          minimum: 0
+          description: Public number of likes (B-BR-FOR-17); who reacted is never exposed.
+        dislike_count:
+          type: integer
+          minimum: 0
+          description: Public number of dislikes.
+        top_reply:
+          $ref: '#/components/schemas/ForumCommentPreview'
+          description: Best answer preview (most liked, oldest on ties), sent with explicitly sorted pages.
+    ForumCommentPreview:
+      type: object
+      description: Best answer preview of a reply; same projection as ForumCommentItem without a nested preview.
+      additionalProperties: false
+      required: [id, post_id, depth, sequence, revision, public_alias, body_text, created_at, reply_count]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Comment unique identifier.
+        post_id:
+          type: string
+          format: uuid
+          description: Post unique identifier.
+        parent_id:
+          type: [string, 'null']
+          format: uuid
+          description: Parent comment unique identifier if this is a reply.
+        depth:
+          type: integer
+          minimum: 0
+          maximum: 1
+          description: Comment hierarchy depth (0 for top-level, 1 for reply).
+        sequence:
+          type: integer
+          minimum: 1
+          description: Scoped monotonic sequence number within the post.
+        revision:
+          type: integer
+          minimum: 1
+          description: Current revision number.
+        public_alias:
+          type: string
+          description: Pseudonymous public display alias of the author.
+        body_text:
+          type: string
+          description: Approved public comment text.
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp in UTC RFC3339.
+        reply_count:
+          type: integer
+          minimum: 0
+          description: Number of approved visible replies to this comment.
+        like_count:
+          type: integer
+          minimum: 0
+          description: Public number of likes (B-BR-FOR-17); who reacted is never exposed.
+        dislike_count:
+          type: integer
+          minimum: 0
+          description: Public number of dislikes.
+    ForumReactionRequest:
+      type: object
+      description: Signed owner command that sets the caller's reaction (B-BR-FOR-17). Repeating a value is a no-op; NONE clears it.
+      additionalProperties: false
+      required: [family_id, access_token, operation_id, reaction]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        operation_id:
+          type: string
+          format: uuid
+          description: Client-generated idempotency UUID for this intent.
+        reaction:
+          type: string
+          enum: [LIKE, DISLIKE, NONE]
+          description: New reaction of the caller.
+    ForumReactionResponse:
+      type: object
+      description: The caller's reaction and the target's public counts after the command.
+      additionalProperties: false
+      required: [target_type, target_id, reaction, like_count, dislike_count, replayed]
+      properties:
+        target_type:
+          type: string
+          enum: [POST, COMMENT]
+          description: Kind of the reacted target.
+        target_id:
+          type: string
+          format: uuid
+          description: Reacted post or comment.
+        reaction:
+          type: string
+          enum: [LIKE, DISLIKE, NONE]
+          description: The caller's reaction now stored.
+        like_count:
+          type: integer
+          minimum: 0
+          description: Public number of likes.
+        dislike_count:
+          type: integer
+          minimum: 0
+          description: Public number of dislikes.
+        replayed:
+          type: boolean
+          description: True when the operation UUID was already applied.
+    ForumOwnerReactionsRequest:
+      type: object
+      description: Signed private read of the caller's reactions in one conversation.
+      additionalProperties: false
+      required: [family_id, access_token, post_id]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        post_id:
+          type: string
+          format: uuid
+          description: Conversation whose reactions are read.
+    ForumOwnerReactionsResponse:
+      type: object
+      description: The caller's own reactions in one conversation; never other accounts'.
+      additionalProperties: false
+      required: [post_reaction, comments]
+      properties:
+        post_reaction:
+          type: string
+          enum: [LIKE, DISLIKE, NONE]
+          description: The caller's reaction to the post itself.
+        comments:
+          type: array
+          maxItems: 1000
+          description: The caller's reactions to comments and replies of the post.
+          items:
+            type: object
+            additionalProperties: false
+            required: [comment_id, reaction]
+            properties:
+              comment_id:
+                type: string
+                format: uuid
+                description: Reacted comment or reply.
+              reaction:
+                type: string
+                enum: [LIKE, DISLIKE]
+                description: The caller's reaction.
     ForumCommentsResponse:
       type: object
       description: Public paginated comments response for a post.

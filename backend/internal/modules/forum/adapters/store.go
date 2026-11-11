@@ -36,6 +36,8 @@ type Quotas struct {
 	CommentDaily  QuotaChecker
 	TopicHourly   QuotaChecker
 	TopicDaily    QuotaChecker
+	// ReactionHourly bounds reaction writes per account (B-BR-FOR-17).
+	ReactionHourly QuotaChecker
 }
 
 // Store provides PostgreSQL persistence for Forum Abastevo.
@@ -48,7 +50,7 @@ type Store struct {
 
 // SetQuotaChecker applies one transactional quota checker to every window.
 func (s *Store) SetQuotaChecker(limiter QuotaChecker) {
-	s.quotas = Quotas{CommentHourly: limiter, CommentDaily: limiter, TopicHourly: limiter, TopicDaily: limiter}
+	s.quotas = Quotas{CommentHourly: limiter, CommentDaily: limiter, TopicHourly: limiter, TopicDaily: limiter, ReactionHourly: limiter}
 }
 
 // SetQuotas configures the per-window transactional quota checkers.
@@ -818,6 +820,8 @@ func mapPostRowToDomain(r forumsql.GetPostByIDRow) (*domain.Post, error) {
 		BulletinGroupKey:    bulletinGroupKey,
 		BulletinProvenance:  bulletinProvenance,
 		SupersedesPostID:    supersedesPostID,
+		LikeCount:           r.LikeCount,
+		DislikeCount:        r.DislikeCount,
 	}, nil
 }
 
