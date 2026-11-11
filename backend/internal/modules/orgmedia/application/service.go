@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
@@ -68,9 +69,22 @@ type Config struct {
 	Now       func() time.Time
 	NewID     func() (string, error)
 }
+
+// Transfers reject at once instead of queueing. A process holds at most four,
+// an organization two and a member one, so one slow member or organization can
+// never occupy every transfer of the process.
+const (
+	transferSlots       = 4
+	organizationSlots   = 2
+	memberTransferSlots = 1
+)
+
 type Service struct {
-	config    Config
-	transfers chan struct{}
+	config  Config
+	mu      sync.Mutex
+	active  int
+	orgs    map[string]int
+	members map[string]int
 }
 
 func NewService(config Config) (*Service, error) {
@@ -80,7 +94,7 @@ func NewService(config Config) (*Service, error) {
 	if config.Now == nil {
 		config.Now = time.Now
 	}
-	return &Service{config: config, transfers: make(chan struct{}, 4)}, nil
+	return &Service{config: config, orgs: map[string]int{}, members: map[string]int{}}, nil
 }
 
 // storageError keeps a stored object that differs from its declaration (a
@@ -117,16 +131,34 @@ func (service *Service) resolve(ctx context.Context, scope kernel.OrgScope, memb
 	}
 	return object, nil
 }
-func (service *Service) enter() (func(), error) {
+func (service *Service) enter(scope kernel.OrgScope, member domain.Member) (func(), error) {
 	if !service.config.Enabled {
 		return nil, domain.ErrDisabled
 	}
-	select {
-	case service.transfers <- struct{}{}:
-		return func() { <-service.transfers }, nil
-	default:
+	if scope.Validate() != nil || member.Validate() != nil {
+		return nil, domain.ErrNotFound
+	}
+	org := scope.OrgID().String()
+	holder := org + "/" + member.MembershipID
+	service.mu.Lock()
+	defer service.mu.Unlock()
+	if service.active >= transferSlots || service.orgs[org] >= organizationSlots || service.members[holder] >= memberTransferSlots {
 		return nil, domain.ErrUnavailable
 	}
+	service.active++
+	service.orgs[org]++
+	service.members[holder]++
+	return func() {
+		service.mu.Lock()
+		defer service.mu.Unlock()
+		service.active--
+		if service.orgs[org]--; service.orgs[org] == 0 {
+			delete(service.orgs, org)
+		}
+		if service.members[holder]--; service.members[holder] == 0 {
+			delete(service.members, holder)
+		}
+	}, nil
 }
 func (service *Service) newID() (string, error) {
 	id, err := service.config.NewID()
@@ -139,7 +171,7 @@ func (service *Service) newID() (string, error) {
 // Upload bounds bytes. Its HTTP owner also sets the request read deadline, as in
 // the existing ingress gateway; context alone cannot interrupt an arbitrary Reader.
 func (service *Service) Upload(ctx context.Context, scope kernel.OrgScope, member domain.Member, id string, body io.Reader) error {
-	release, err := service.enter()
+	release, err := service.enter(scope, member)
 	if err != nil {
 		return err
 	}
@@ -256,7 +288,7 @@ func (service *Service) recheck(ctx context.Context, scope kernel.OrgScope, memb
 	return nil
 }
 func (service *Service) Open(ctx context.Context, scope kernel.OrgScope, member domain.Member, id, token string) (Content, error) {
-	release, err := service.enter()
+	release, err := service.enter(scope, member)
 	if err != nil {
 		return Content{}, err
 	}

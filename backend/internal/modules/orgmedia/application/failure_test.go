@@ -151,15 +151,6 @@ func TestInterruptedOrChangedIntakeNeverConfirmsStorage(t *testing.T) {
 	}
 }
 
-type fixedAuthority struct{ object domain.Object }
-
-func (a fixedAuthority) Resolve(context.Context, kernel.OrgScope, domain.Member, string, domain.Intent) (domain.Object, error) {
-	return a.object, nil
-}
-func (fixedAuthority) CheckAccess(context.Context, kernel.OrgScope, domain.Member, domain.Object, string) error {
-	return nil
-}
-
 type heldObjects struct {
 	entered chan struct{}
 	release chan struct{}
@@ -181,13 +172,24 @@ type discardAudit struct{}
 func (discardAudit) Record(context.Context, kernel.OrgScope, domain.Member, domain.Object, string, string, domain.Intent) error {
 	return nil
 }
-func TestPrivateTransferConcurrencyIsBounded(t *testing.T) {
-	service, s, scope, member := fixture(t)
-	access, err := service.Issue(t.Context(), scope, member, documentID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	held := heldObjects{entered: make(chan struct{}, 4), release: make(chan struct{})}
+
+// scopedAuthority resolves the same synthetic document inside the caller's organization.
+type scopedAuthority struct{ object domain.Object }
+
+func (a scopedAuthority) Resolve(_ context.Context, scope kernel.OrgScope, _ domain.Member, _ string, _ domain.Intent) (domain.Object, error) {
+	object := a.object
+	object.OrgID = scope.OrgID().String()
+	return object, nil
+}
+func (scopedAuthority) CheckAccess(context.Context, kernel.OrgScope, domain.Member, domain.Object, string) error {
+	return nil
+}
+
+// Four process slots, at most two per organization and one per member: a slow
+// member or organization can never hold every transfer of the process.
+func TestPrivateTransferConcurrencyIsBoundedPerMemberAndOrganization(t *testing.T) {
+	_, s, _, _ := fixture(t)
+	held := heldObjects{entered: make(chan struct{}, 8), release: make(chan struct{})}
 	defer func() {
 		select {
 		case <-held.release:
@@ -196,34 +198,66 @@ func TestPrivateTransferConcurrencyIsBounded(t *testing.T) {
 		}
 	}()
 	config := s.config
-	config.Authority = fixedAuthority{object: s.policy.object}
+	config.Authority = scopedAuthority{object: s.policy.object}
 	config.Objects = held
 	config.Audit = discardAudit{}
-	service, err = application.NewService(config)
+	service, err := application.NewService(config)
 	if err != nil {
 		t.Fatal(err)
 	}
+	party := func(org, member int) (kernel.OrgScope, domain.Member) {
+		id, err := kernel.ParseOrgID(fmt.Sprintf("7b0e2a54-0000-4000-8000-%012d", 900+org))
+		if err != nil {
+			t.Fatal(err)
+		}
+		scope, err := kernel.NewOrgScope(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return scope, domain.Member{AccountID: orgID, MembershipID: fmt.Sprintf("7b0e2a54-0000-4000-8000-%012d", 950+10*org+member)}
+	}
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	done := make(chan error, 4)
-	for range 4 {
-		go func() { _, err := service.Open(ctx, scope, member, documentID, access.Token); done <- err }()
+	// The synthetic token port binds nothing, so one grant serves every party here.
+	scope, m := party(1, 1)
+	access, err := service.Issue(ctx, scope, m, documentID)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for range 4 {
+	open := func(org, member int) error {
+		scope, m := party(org, member)
+		_, err := service.Open(ctx, scope, m, documentID, access.Token)
+		return err
+	}
+	done := make(chan error, 4)
+	enter := func(org, member int) {
+		go func() { done <- open(org, member) }()
 		select {
 		case <-held.entered:
 		case <-ctx.Done():
 			t.Fatal(ctx.Err())
 		}
 	}
-	if _, err := service.Open(ctx, scope, member, documentID, access.Token); !errors.Is(err, domain.ErrUnavailable) {
-		t.Fatal("unbounded concurrent transfer accepted", err)
+	refused := func(org, member int, why string) {
+		if err := open(org, member); !errors.Is(err, domain.ErrUnavailable) {
+			t.Fatal(why, err)
+		}
 	}
+	enter(1, 1)
+	refused(1, 1, "a member held a second transfer")
+	enter(1, 2)
+	refused(1, 3, "an organization held a third transfer")
+	enter(2, 1)
+	enter(2, 2)
+	refused(3, 1, "the process exceeded its transfer slots")
 	close(held.release)
 	for range 4 {
 		if err := <-done; err != nil {
 			t.Fatal("accepted transfer failed", err)
 		}
+	}
+	if err := open(1, 1); err != nil {
+		t.Fatal("released slots were not reusable", err)
 	}
 }
 
