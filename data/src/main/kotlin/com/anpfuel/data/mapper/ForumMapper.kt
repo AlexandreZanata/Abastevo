@@ -10,9 +10,14 @@ import com.anpfuel.domain.forum.ForumCommentReceipt
 import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedPage
+import com.anpfuel.domain.forum.ForumLiveEvent
+import com.anpfuel.domain.forum.ForumOwnReactions
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
 import com.anpfuel.domain.forum.ForumPostSummary
+import com.anpfuel.domain.forum.ForumReaction
+import com.anpfuel.domain.forum.ForumReactionCounts
+import com.anpfuel.domain.forum.ForumReactionResult
 import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.forum.ForumRepliesPage
 import com.anpfuel.domain.forum.ForumReportReceipt
@@ -113,6 +118,7 @@ object ForumMapper {
             stationId = summary.stationId,
             bulletin = bulletin,
             supersedesPostId = supersedesPostId,
+            reactions = reactionCounts(json),
         )
     }
 
@@ -256,7 +262,66 @@ object ForumMapper {
             publishedAt = publishedAt,
             replyCount = obj.optInt("reply_count", 0),
             revision = obj.optLong("revision", 1L),
+            reactions = reactionCounts(obj),
+            // One preview level only, as the server sends it (B-BR-FOR-18).
+            topReply = obj.optJSONObject("top_reply")?.let { commentItem(it).copy(topReply = null) },
         )
+    }
+
+    /** Public counts; absent fields (older servers) read as zero. */
+    fun reactionCounts(obj: JSONObject): ForumReactionCounts = ForumReactionCounts(
+        likes = obj.optLong("like_count", 0L).coerceAtLeast(0L),
+        dislikes = obj.optLong("dislike_count", 0L).coerceAtLeast(0L),
+    )
+
+    fun reactionResult(json: JSONObject): ForumReactionResult {
+        val targetId = json.optString("target_id", "")
+        if (targetId.isEmpty()) throw ForumException.Invalid("forum.bad-response")
+        return ForumReactionResult(
+            targetId = targetId,
+            reaction = ForumReaction.fromWire(json.optString("reaction")),
+            counts = reactionCounts(json),
+        )
+    }
+
+    fun ownReactions(json: JSONObject): ForumOwnReactions {
+        val items = json.optJSONArray("comments") ?: throw ForumException.Invalid("forum.bad-response")
+        if (items.length() > 1000) throw ForumException.Invalid("forum.bad-response")
+        val comments = (0 until items.length()).mapNotNull { i ->
+            val item = items.optJSONObject(i) ?: return@mapNotNull null
+            val id = item.optString("comment_id", "").takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            val reaction = ForumReaction.fromWire(item.optString("reaction"))
+            if (reaction == ForumReaction.NONE) null else id to reaction
+        }.toMap()
+        return ForumOwnReactions(post = ForumReaction.fromWire(json.optString("post_reaction")), comments = comments)
+    }
+
+    /**
+     * One server-sent event of a conversation stream. Unknown events read as
+     * null so a newer server never breaks an older client.
+     */
+    fun liveEvent(name: String, data: String): ForumLiveEvent? {
+        val json = try {
+            JSONObject(data.ifBlank { "{}" })
+        } catch (_: Exception) {
+            return if (name == "resync" || name == "reconnect") liveEvent(name, "{}") else null
+        }
+        val parentId = if (json.has("parent_id") && !json.isNull("parent_id")) json.getString("parent_id") else null
+        return when (name) {
+            "ready" -> ForumLiveEvent.Ready
+            "comment" -> json.optJSONObject("comment")?.let { ForumLiveEvent.CommentPublished(commentItem(it)) }
+            "comment_reactions" -> json.optString("comment_id", "").takeIf { it.isNotEmpty() }?.let {
+                ForumLiveEvent.CommentReactions(it, parentId, reactionCounts(json))
+            }
+            "comment_gone" -> json.optString("comment_id", "").takeIf { it.isNotEmpty() }?.let {
+                ForumLiveEvent.CommentGone(it, parentId)
+            }
+            "post_reactions" -> ForumLiveEvent.PostReactions(reactionCounts(json))
+            "post_gone" -> ForumLiveEvent.PostGone
+            "resync" -> ForumLiveEvent.Resync
+            "reconnect" -> ForumLiveEvent.Reconnect
+            else -> null
+        }
     }
 
     fun ownCommentIds(json: JSONObject): Set<String> {

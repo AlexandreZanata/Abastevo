@@ -1,15 +1,11 @@
 package com.anpfuel.app.ui.forum
 
-import com.anpfuel.app.ui.designsystem.OutlinedButton
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,15 +17,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,16 +49,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
@@ -60,10 +72,14 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.OutlinedButton
 import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.forum.ForumComment
+import com.anpfuel.domain.forum.ForumReaction
+import com.anpfuel.domain.forum.ForumReplySort
 import com.anpfuel.domain.forum.ForumReportReason
+import kotlinx.coroutines.launch
 
 @Composable
 fun ForumDetailScreen(
@@ -78,6 +94,12 @@ fun ForumDetailScreen(
     if (state.requireAuthPrompt) {
         viewModel.dismissAuthPrompt()
         onSignIn()
+    }
+
+    // Live updates only while the conversation is on screen (B-BR-FOR-18).
+    LifecycleStartEffect(viewModel) {
+        viewModel.startLive()
+        onStopOrDispose { viewModel.stopLive() }
     }
 
     ForumDetailContent(
@@ -106,6 +128,11 @@ fun ForumDetailScreen(
         onDismissReportReceipt = viewModel::dismissReportReceipt,
         onDismissSubmissionReceipt = viewModel::dismissSubmissionReceipt,
         onDismissActionError = viewModel::dismissActionError,
+        onReactToPost = viewModel::reactToPost,
+        onReactToComment = viewModel::reactToComment,
+        onSortChange = viewModel::setReplySort,
+        onLoadMoreComments = viewModel::loadMoreComments,
+        onShowNewReplies = viewModel::showNewReplies,
         modifier = modifier,
     )
 }
@@ -139,6 +166,11 @@ internal fun ForumDetailContent(
     onDismissActionError: () -> Unit,
     modifier: Modifier = Modifier,
     onEditTopic: (String) -> Unit = {},
+    onReactToPost: (ForumReaction) -> Unit = {},
+    onReactToComment: (ForumComment, ForumReaction) -> Unit = { _, _ -> },
+    onSortChange: (ForumReplySort) -> Unit = {},
+    onLoadMoreComments: () -> Unit = {},
+    onShowNewReplies: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var selectedReportReason by remember { mutableStateOf(ForumReportReason.SPAM) }
@@ -176,10 +208,16 @@ internal fun ForumDetailContent(
             )
         },
     ) { padding ->
-        LazyColumn(
+        val listState = rememberLazyListState()
+        val scope = rememberCoroutineScope()
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
+        ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp, 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -500,11 +538,27 @@ internal fun ForumDetailContent(
                                 horizontalArrangement = Arrangement.SpaceAround,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
+                                val on = stringResource(R.string.forum_reaction_on)
+                                val off = stringResource(R.string.forum_reaction_off)
                                 ForumIconAction(
                                     icon = Icons.Outlined.ChatBubbleOutline,
                                     contentDescription = stringResource(R.string.forum_action_comment),
-                                    onClick = { if (state.isAuthenticated) Unit else onSignIn() },
+                                    onClick = { if (!state.isAuthenticated) onSignIn() },
                                     count = state.comments.size,
+                                )
+                                ForumLikeToggle(
+                                    liked = state.postReaction == ForumReaction.LIKE,
+                                    count = post.reactions.likes,
+                                    label = stringResource(R.string.forum_like),
+                                    stateLabel = if (state.postReaction == ForumReaction.LIKE) on else off,
+                                    onToggle = { onReactToPost(ForumReaction.LIKE) },
+                                )
+                                ForumDislikeToggle(
+                                    disliked = state.postReaction == ForumReaction.DISLIKE,
+                                    count = post.reactions.dislikes,
+                                    label = stringResource(R.string.forum_dislike),
+                                    stateLabel = if (state.postReaction == ForumReaction.DISLIKE) on else off,
+                                    onToggle = { onReactToPost(ForumReaction.DISLIKE) },
                                 )
                                 ForumIconAction(
                                     icon = Icons.Outlined.Share,
@@ -518,10 +572,10 @@ internal fun ForumDetailContent(
 
                     // Discussion Section
                     item {
-                        Text(
-                            text = stringResource(R.string.forum_comments_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                        ForumRepliesHeader(
+                            sort = state.replySort,
+                            live = state.liveConnected,
+                            onSortChange = onSortChange,
                         )
                     }
 
@@ -684,6 +738,8 @@ internal fun ForumDetailContent(
                                     isExpanded = state.expandedReplies.contains(comment.id),
                                     replies = state.repliesMap[comment.id].orEmpty(),
                                     repliesLoading = state.repliesLoading.contains(comment.id),
+                                    reactions = state.commentReactions,
+                                    onReact = onReactToComment,
                                     onToggleReplies = { onToggleReplies(comment.id) },
                                     onReply = { onStartReply(comment) },
                                     onReport = { onOpenReport("FORUM_COMMENT", comment.id) },
@@ -694,10 +750,43 @@ internal fun ForumDetailContent(
                                 )
                                 ForumDivider(modifier = Modifier.padding(top = 8.dp))
                             }
+                            if (state.commentsCursor != null) {
+                                item(key = "load-more-replies") {
+                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        if (state.loadingMoreComments) {
+                                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                        } else {
+                                            TextButton(onClick = onLoadMoreComments) {
+                                                Text(stringResource(R.string.forum_show_more_replies))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+        // New replies wait behind this pill instead of moving the list (B-BR-FOR-18).
+        val pendingCount = state.pendingLiveComments.size
+        ForumNewRepliesPill(
+            visible = pendingCount > 0,
+            label = pluralStringResource(R.plurals.forum_new_replies, pendingCount, pendingCount),
+            onClick = {
+                val trailing = if (state.commentsCursor != null) 1 else 0
+                onShowNewReplies()
+                scope.launch {
+                    withFrameNanos { }
+                    val total = listState.layoutInfo.totalItemsCount
+                    val firstReply = total - state.comments.size - pendingCount - trailing
+                    listState.animateScrollToItem(firstReply.coerceAtLeast(0))
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 12.dp),
+        )
         }
     }
 
@@ -861,13 +950,83 @@ internal fun ForumDetailContent(
     }
 }
 
-/** One comment as a social reply: avatar, author line, text and icon actions. */
+/** "Comentários" with the live dot and the reply order menu, as on X. */
+@Composable
+private fun ForumRepliesHeader(
+    sort: ForumReplySort,
+    live: Boolean,
+    onSortChange: (ForumReplySort) -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val labels = mapOf(
+        ForumReplySort.RELEVANT to stringResource(R.string.forum_sort_relevant),
+        ForumReplySort.RECENT to stringResource(R.string.forum_sort_recent),
+        ForumReplySort.LIKED to stringResource(R.string.forum_sort_liked),
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.forum_comments_title),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+        )
+        if (live) {
+            Box(Modifier.size(8.dp).background(forumLikeColor(), CircleShape))
+            Text(
+                text = stringResource(R.string.forum_live),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        Box {
+            TextButton(
+                onClick = { menuOpen = true },
+                modifier = Modifier.semantics { contentDescription = labels.getValue(sort) },
+            ) {
+                Text(labels.getValue(sort), color = MaterialTheme.colorScheme.onSurface)
+                Icon(
+                    Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                ForumReplySort.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                labels.getValue(option),
+                                fontWeight = if (option == sort) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        },
+                        onClick = {
+                            menuOpen = false
+                            onSortChange(option)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One reply of the conversation, as on X: avatar with the thread line down
+ * to its best answer preview, author line, text and icon actions with like
+ * and dislike. The full thread opens on demand under the same line.
+ */
 @Composable
 private fun CommentItemView(
     comment: ForumComment,
     isExpanded: Boolean,
     replies: List<ForumComment>,
     repliesLoading: Boolean,
+    reactions: Map<String, ForumReaction>,
+    onReact: (ForumComment, ForumReaction) -> Unit,
     onToggleReplies: () -> Unit,
     onReply: () -> Unit,
     onReport: () -> Unit,
@@ -878,106 +1037,162 @@ private fun CommentItemView(
     modifier: Modifier = Modifier,
 ) {
     val author = forumCommentAuthor(comment.publicAlias)
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        ForumAvatar(author, size = 40.dp)
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+    val preview = comment.topReply?.takeIf { !isExpanded }
+    val threadBelow = preview != null || (isExpanded && (replies.isNotEmpty() || repliesLoading))
+    Column(modifier = modifier.fillMaxWidth()) {
+        ForumThreadRow(
+            avatar = { ForumAvatar(author, size = 40.dp) },
+            connectBelow = threadBelow,
         ) {
-            ForumAuthorLine(author = author, timeIso = comment.createdAt)
-            Text(
-                text = comment.bodyText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                ForumAuthorLine(author = author, timeIso = comment.createdAt)
+                Text(
+                    text = comment.bodyText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                ForumCommentActions(
+                    comment = comment,
+                    reaction = reactions[comment.id] ?: ForumReaction.NONE,
+                    onReact = onReact,
+                    onReply = onReply,
+                    onReport = onReport,
+                    isOwn = isOwn,
+                    onEdit = onEdit,
+                    onDelete = onDelete,
+                )
+            }
+        }
+        if (preview != null) {
+            ReplyItemView(
+                reply = preview,
+                reaction = reactions[preview.id] ?: ForumReaction.NONE,
+                onReact = onReact,
+                onReport = { onReportReply(preview.id) },
+                connectBelow = false,
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ForumIconAction(
-                    icon = Icons.Outlined.ChatBubbleOutline,
-                    contentDescription = stringResource(R.string.forum_reply_button),
-                    onClick = onReply,
-                    count = comment.replyCount,
-                )
-                ForumIconAction(
-                    icon = Icons.Outlined.Flag,
-                    contentDescription = stringResource(R.string.forum_report_button),
-                    onClick = onReport,
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                if (isOwn) {
-                    ForumIconAction(
-                        icon = Icons.Outlined.Edit,
-                        contentDescription = stringResource(R.string.forum_edit_comment),
-                        onClick = onEdit,
-                    )
-                    ForumIconAction(
-                        icon = Icons.Outlined.DeleteOutline,
-                        contentDescription = stringResource(R.string.forum_delete_comment),
-                        onClick = onDelete,
-                    )
-                }
+        }
+        val hiddenReplies = comment.replyCount - (if (preview != null) 1 else 0)
+        if (!isExpanded && hiddenReplies > 0) {
+            TextButton(onClick = onToggleReplies, modifier = Modifier.padding(start = 44.dp)) {
+                Text(stringResource(R.string.forum_replies_count, comment.replyCount))
             }
-            if (comment.replyCount > 0) {
-                TextButton(onClick = onToggleReplies) {
-                    Text(
-                        if (isExpanded) stringResource(R.string.forum_hide_replies)
-                        else stringResource(R.string.forum_replies_count, comment.replyCount),
-                    )
-                }
+        }
+        if (isExpanded) {
+            if (repliesLoading && replies.isEmpty()) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(start = 52.dp, top = 8.dp).size(20.dp),
+                    strokeWidth = 2.dp,
+                )
             }
-            if (isExpanded) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    if (repliesLoading && replies.isEmpty()) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                    } else {
-                        replies.forEach { reply ->
-                            ReplyItemView(
-                                reply = reply,
-                                onReport = { onReportReply(reply.id) },
-                            )
-                        }
-                    }
-                }
+            replies.forEachIndexed { index, reply ->
+                ReplyItemView(
+                    reply = reply,
+                    reaction = reactions[reply.id] ?: ForumReaction.NONE,
+                    onReact = onReact,
+                    onReport = { onReportReply(reply.id) },
+                    connectBelow = index < replies.lastIndex,
+                )
+            }
+            TextButton(onClick = onToggleReplies, modifier = Modifier.padding(start = 44.dp)) {
+                Text(stringResource(R.string.forum_hide_replies))
             }
         }
     }
 }
 
-/** Reply inside a thread: smaller avatar, same author line and actions. */
+/** Reply, like, dislike, report and the owner's edit/remove, in one row of icons. */
+@Composable
+private fun ForumCommentActions(
+    comment: ForumComment,
+    reaction: ForumReaction,
+    onReact: (ForumComment, ForumReaction) -> Unit,
+    onReply: (() -> Unit)?,
+    onReport: () -> Unit,
+    isOwn: Boolean = false,
+    onEdit: () -> Unit = {},
+    onDelete: () -> Unit = {},
+) {
+    val on = stringResource(R.string.forum_reaction_on)
+    val off = stringResource(R.string.forum_reaction_off)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onReply != null) {
+            ForumIconAction(
+                icon = Icons.Outlined.ChatBubbleOutline,
+                contentDescription = stringResource(R.string.forum_reply_button),
+                onClick = onReply,
+                count = comment.replyCount,
+            )
+        }
+        ForumLikeToggle(
+            liked = reaction == ForumReaction.LIKE,
+            count = comment.reactions.likes,
+            label = stringResource(R.string.forum_like),
+            stateLabel = if (reaction == ForumReaction.LIKE) on else off,
+            onToggle = { onReact(comment, ForumReaction.LIKE) },
+        )
+        ForumDislikeToggle(
+            disliked = reaction == ForumReaction.DISLIKE,
+            count = comment.reactions.dislikes,
+            label = stringResource(R.string.forum_dislike),
+            stateLabel = if (reaction == ForumReaction.DISLIKE) on else off,
+            onToggle = { onReact(comment, ForumReaction.DISLIKE) },
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        if (isOwn) {
+            ForumIconAction(
+                icon = Icons.Outlined.Edit,
+                contentDescription = stringResource(R.string.forum_edit_comment),
+                onClick = onEdit,
+            )
+            ForumIconAction(
+                icon = Icons.Outlined.DeleteOutline,
+                contentDescription = stringResource(R.string.forum_delete_comment),
+                onClick = onDelete,
+            )
+        }
+        ForumIconAction(
+            icon = Icons.Outlined.Flag,
+            contentDescription = stringResource(R.string.forum_report_button),
+            onClick = onReport,
+        )
+    }
+}
+
+/** Answer inside a thread: smaller avatar on the same line, same actions. */
 @Composable
 private fun ReplyItemView(
     reply: ForumComment,
+    reaction: ForumReaction,
+    onReact: (ForumComment, ForumReaction) -> Unit,
     onReport: () -> Unit,
+    connectBelow: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val author = forumCommentAuthor(reply.publicAlias)
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ForumThreadRow(
+        avatar = { ForumAvatar(author, size = 32.dp) },
+        connectBelow = connectBelow,
+        connectAbove = true,
+        avatarSize = 40.dp,
+        modifier = modifier.padding(top = 4.dp),
     ) {
-        ForumAvatar(author, size = 32.dp)
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             ForumAuthorLine(author = author, timeIso = reply.createdAt)
             Text(
                 text = reply.bodyText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            ForumIconAction(
-                icon = Icons.Outlined.Flag,
-                contentDescription = stringResource(R.string.forum_report_button),
-                onClick = onReport,
+            ForumCommentActions(
+                comment = reply,
+                reaction = reaction,
+                onReact = onReact,
+                onReply = null,
+                onReport = onReport,
             )
         }
     }

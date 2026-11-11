@@ -1450,4 +1450,17 @@
     <string name="forum_action_share">共有</string>
     <string name="forum_official_account">Abastevo公式アカウント</string>
     <string name="forum_action_comment">コメント</string>
+    <string name="forum_sort_relevant">関連性の高い順</string>
+    <string name="forum_sort_recent">新しい順</string>
+    <string name="forum_sort_liked">いいねの多い順</string>
+    <string name="forum_sort_label">返信の並び順</string>
+    <string name="forum_like">いいね</string>
+    <string name="forum_dislike">よくない</string>
+    <string name="forum_reaction_on">オン</string>
+    <string name="forum_reaction_off">オフ</string>
+    <string name="forum_show_more_replies">さらに返信を表示</string>
+    <string name="forum_live">ライブ</string>
+    <plurals name="forum_new_replies">
+        <item quantity="other">新しい返信 %d 件</item>
+    </plurals>
 </resources>

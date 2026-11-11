@@ -1,5 +1,6 @@
 package com.anpfuel.data.di
 
+import com.anpfuel.application.port.ForumLivePort
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.usecase.forum.EditForumCommentUseCase
@@ -10,10 +11,14 @@ import com.anpfuel.application.usecase.forum.GetForumFeedUseCase
 import com.anpfuel.application.usecase.forum.GetForumPostDetailUseCase
 import com.anpfuel.application.usecase.forum.GetForumRepliesUseCase
 import com.anpfuel.application.usecase.forum.GetOwnForumCommentIdsUseCase
+import com.anpfuel.application.usecase.forum.GetOwnForumReactionsUseCase
 import com.anpfuel.application.usecase.forum.GetOwnerTopicUseCase
+import com.anpfuel.application.usecase.forum.GetRankedForumCommentsUseCase
+import com.anpfuel.application.usecase.forum.ObserveForumConversationUseCase
 import com.anpfuel.application.usecase.forum.RemoveForumCommentUseCase
 import com.anpfuel.application.usecase.forum.RemoveForumTopicUseCase
 import com.anpfuel.application.usecase.forum.ReportForumTargetUseCase
+import com.anpfuel.application.usecase.forum.SetForumReactionUseCase
 import com.anpfuel.application.usecase.forum.SubmitForumCommentUseCase
 import com.anpfuel.application.usecase.forum.SubmitForumTopicUseCase
 import com.anpfuel.application.usecase.forum.ValidateForumSafeLinkUseCase
@@ -21,15 +26,16 @@ import com.anpfuel.data.local.dao.ForumCacheDao
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.PhotoProofTransport
 import com.anpfuel.data.remote.forum.ForumHttpClient
+import com.anpfuel.data.remote.forum.ForumLiveClient
 import com.anpfuel.data.repository.ForumRepository
 import com.anpfuel.domain.repository.ForumGateway
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import okhttp3.OkHttpClient
 import javax.inject.Named
 import javax.inject.Singleton
+import okhttp3.OkHttpClient
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -141,4 +147,23 @@ object ForumModule {
     fun provideGetOwnForumCommentIdsUseCase(gateway: ForumGateway): GetOwnForumCommentIdsUseCase {
         return GetOwnForumCommentIdsUseCase(gateway)
     }
+
+    @Provides
+    @Singleton
+    fun provideForumLivePort(
+        okHttpClient: OkHttpClient,
+        @Named("apiOrigin") environment: ApiEnvironment,
+    ): ForumLivePort = ForumLiveClient(http = okHttpClient, baseUrl = environment.origin)
+
+    @Provides
+    fun provideGetRankedForumCommentsUseCase(gateway: ForumGateway) = GetRankedForumCommentsUseCase(gateway)
+
+    @Provides
+    fun provideSetForumReactionUseCase(gateway: ForumGateway) = SetForumReactionUseCase(gateway)
+
+    @Provides
+    fun provideGetOwnForumReactionsUseCase(gateway: ForumGateway) = GetOwnForumReactionsUseCase(gateway)
+
+    @Provides
+    fun provideObserveForumConversationUseCase(live: ForumLivePort) = ObserveForumConversationUseCase(live)
 }

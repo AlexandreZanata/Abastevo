@@ -11,10 +11,15 @@ import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
+import com.anpfuel.domain.forum.ForumOwnReactions
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumReaction
+import com.anpfuel.domain.forum.ForumReactionResult
+import com.anpfuel.domain.forum.ForumReactionTarget
 import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.forum.ForumRepliesPage
+import com.anpfuel.domain.forum.ForumReplySort
 import com.anpfuel.domain.forum.ForumReportReceipt
 import com.anpfuel.domain.forum.ForumTopicReceipt
 import com.anpfuel.domain.portable.PortableAuth
@@ -444,6 +449,68 @@ class ForumHttpClient(
         val raw = sessionPost("v1/forum/owner/read", payload)
         return try {
             ForumMapper.topicReceipt(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
+    override suspend fun getRankedComments(
+        postId: String,
+        sort: ForumReplySort,
+        limit: Int,
+        cursor: String?,
+    ): ForumCommentsPage {
+        val url = origin.newBuilder()
+            .addPathSegments("v1/forum/posts/$postId/comments")
+            .addQueryParameter("sort", sort.wire)
+            .addQueryParameter("limit", limit.toString())
+            .apply { if (!cursor.isNullOrBlank()) addQueryParameter("cursor", cursor) }
+            .build()
+        val raw = execute(Request.Builder().url(url).header("Accept", "application/json").build())
+        return try {
+            ForumMapper.comments(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
+    override suspend fun setReaction(
+        target: ForumReactionTarget,
+        targetId: String,
+        reaction: ForumReaction,
+        operationId: String,
+    ): ForumReactionResult {
+        val session = liveSession()
+        val payload = JSONObject().apply {
+            put("family_id", session.familyId)
+            put("access_token", session.accessToken)
+            put("operation_id", operationId)
+            put("reaction", reaction.wire)
+        }
+        val raw = sessionPost("v1/forum/${target.pathSegment}/$targetId/reaction", payload)
+        return try {
+            ForumMapper.reactionResult(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
+    override suspend fun getOwnReactions(postId: String): ForumOwnReactions {
+        val session = liveSession()
+        val payload = JSONObject().apply {
+            put("family_id", session.familyId)
+            put("access_token", session.accessToken)
+            put("post_id", postId)
+        }
+        val raw = sessionPost("v1/forum/owner/reactions", payload)
+        return try {
+            ForumMapper.ownReactions(JSONObject(raw))
         } catch (e: ForumException) {
             throw e
         } catch (e: Exception) {

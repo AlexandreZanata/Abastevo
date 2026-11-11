@@ -1464,4 +1464,19 @@
     <string name="forum_action_share">Compartilhar</string>
     <string name="forum_official_account">Conta oficial do Abastevo</string>
     <string name="forum_action_comment">Comentar</string>
+    <string name="forum_sort_relevant">Mais relevantes</string>
+    <string name="forum_sort_recent">Mais recentes</string>
+    <string name="forum_sort_liked">Mais curtidas</string>
+    <string name="forum_sort_label">Ordem das respostas</string>
+    <string name="forum_like">Curtir</string>
+    <string name="forum_dislike">Não curtir</string>
+    <string name="forum_reaction_on">Marcado</string>
+    <string name="forum_reaction_off">Desmarcado</string>
+    <string name="forum_show_more_replies">Mostrar mais respostas</string>
+    <string name="forum_live">Ao vivo</string>
+    <plurals name="forum_new_replies">
+        <item quantity="one">%d nova resposta</item>
+        <item quantity="many">%d novas respostas</item>
+        <item quantity="other">%d novas respostas</item>
+    </plurals>
 </resources>

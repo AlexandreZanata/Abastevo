@@ -1450,4 +1450,17 @@
     <string name="forum_action_share">分享</string>
     <string name="forum_official_account">Abastevo 官方账号</string>
     <string name="forum_action_comment">评论</string>
+    <string name="forum_sort_relevant">最相关</string>
+    <string name="forum_sort_recent">最新</string>
+    <string name="forum_sort_liked">最多赞</string>
+    <string name="forum_sort_label">回复排序</string>
+    <string name="forum_like">赞</string>
+    <string name="forum_dislike">踩</string>
+    <string name="forum_reaction_on">已选</string>
+    <string name="forum_reaction_off">未选</string>
+    <string name="forum_show_more_replies">显示更多回复</string>
+    <string name="forum_live">直播</string>
+    <plurals name="forum_new_replies">
+        <item quantity="other">%d 条新回复</item>
+    </plurals>
 </resources>

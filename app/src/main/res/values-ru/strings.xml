@@ -1450,4 +1450,20 @@
     <string name="forum_action_share">Поделиться</string>
     <string name="forum_official_account">Официальный аккаунт Abastevo</string>
     <string name="forum_action_comment">Комментировать</string>
+    <string name="forum_sort_relevant">Самые релевантные</string>
+    <string name="forum_sort_recent">Самые новые</string>
+    <string name="forum_sort_liked">Самые популярные</string>
+    <string name="forum_sort_label">Порядок ответов</string>
+    <string name="forum_like">Нравится</string>
+    <string name="forum_dislike">Не нравится</string>
+    <string name="forum_reaction_on">Отмечено</string>
+    <string name="forum_reaction_off">Не отмечено</string>
+    <string name="forum_show_more_replies">Показать больше ответов</string>
+    <string name="forum_live">В эфире</string>
+    <plurals name="forum_new_replies">
+        <item quantity="one">%d новый ответ</item>
+        <item quantity="few">%d новых ответа</item>
+        <item quantity="many">%d новых ответов</item>
+        <item quantity="other">%d новых ответов</item>
+    </plurals>
 </resources>
