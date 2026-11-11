@@ -8,7 +8,6 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
@@ -17,10 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.theme.LocalAbastevoChromeColors
 
 /**
- * Top app bar that respects the status bar inset under edge-to-edge.
- * Set [applyStatusBarInsets] to false for full-bleed hero layouts (Phase 13.2).
+ * Top app bar on the solid brand chrome that respects the status bar inset
+ * under edge-to-edge. Set [applyStatusBarInsets] to false for full-bleed hero
+ * layouts (Phase 13.2).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,10 +41,15 @@ fun AnpTopAppBar(
     },
     actions: @Composable RowScope.() -> Unit = {},
     applyStatusBarInsets: Boolean = true,
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(
-        containerColor = MaterialTheme.colorScheme.background,
-        scrolledContainerColor = MaterialTheme.colorScheme.background,
-    ),
+    colors: TopAppBarColors = LocalAbastevoChromeColors.current.let { chrome ->
+        TopAppBarDefaults.topAppBarColors(
+            containerColor = chrome.container,
+            scrolledContainerColor = chrome.container,
+            navigationIconContentColor = chrome.content,
+            titleContentColor = chrome.content,
+            actionIconContentColor = chrome.content,
+        )
+    },
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     TopAppBar(

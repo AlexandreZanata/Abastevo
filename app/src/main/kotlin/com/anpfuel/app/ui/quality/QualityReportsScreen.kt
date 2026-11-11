@@ -406,7 +406,7 @@ private fun EmptyReports(historyOnly: Boolean, onChooseStation: () -> Unit) {
 @Composable
 private fun ReportRow(report: QualityReport, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val containerColor =
-        if (selected) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainerLow
+        if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         onClick = onClick,
         enabled = enabled,

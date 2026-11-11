@@ -110,6 +110,17 @@ type ForumComment struct {
 	PublishedAt       pgtype.Timestamptz `json:"published_at"`
 	CreateOperationID pgtype.UUID        `json:"create_operation_id"`
 	BodySha256        string             `json:"body_sha256"`
+	LikeCount         int64              `json:"like_count"`
+	DislikeCount      int64              `json:"dislike_count"`
+}
+
+type ForumCommentReaction struct {
+	CommentID pgtype.UUID        `json:"comment_id"`
+	AccountID pgtype.UUID        `json:"account_id"`
+	PostID    pgtype.UUID        `json:"post_id"`
+	Value     int16              `json:"value"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type ForumFeedState struct {
@@ -154,6 +165,16 @@ type ForumPost struct {
 	NextCommentSequence    int64              `json:"next_comment_sequence"`
 	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
 	BulletinProvenance     []byte             `json:"bulletin_provenance"`
+	LikeCount              int64              `json:"like_count"`
+	DislikeCount           int64              `json:"dislike_count"`
+}
+
+type ForumPostReaction struct {
+	PostID    pgtype.UUID        `json:"post_id"`
+	AccountID pgtype.UUID        `json:"account_id"`
+	Value     int16              `json:"value"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type ForumReport struct {

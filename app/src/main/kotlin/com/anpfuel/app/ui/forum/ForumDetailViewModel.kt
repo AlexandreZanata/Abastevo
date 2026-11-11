@@ -5,20 +5,28 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.usecase.forum.EditForumCommentUseCase
-import com.anpfuel.application.usecase.forum.GetForumCommentsUseCase
 import com.anpfuel.application.usecase.forum.GetForumPostDetailUseCase
 import com.anpfuel.application.usecase.forum.GetForumRepliesUseCase
 import com.anpfuel.application.usecase.forum.GetOwnForumCommentIdsUseCase
+import com.anpfuel.application.usecase.forum.GetOwnForumReactionsUseCase
 import com.anpfuel.application.usecase.forum.GetOwnerTopicUseCase
+import com.anpfuel.application.usecase.forum.GetRankedForumCommentsUseCase
+import com.anpfuel.application.usecase.forum.ObserveForumConversationUseCase
 import com.anpfuel.application.usecase.forum.RemoveForumCommentUseCase
 import com.anpfuel.application.usecase.forum.ReportForumTargetUseCase
+import com.anpfuel.application.usecase.forum.SetForumReactionUseCase
 import com.anpfuel.application.usecase.forum.SubmitForumCommentUseCase
 import com.anpfuel.application.usecase.forum.ValidateForumSafeLinkUseCase
 import com.anpfuel.domain.forum.ForumComment
 import com.anpfuel.domain.forum.ForumCommentReceipt
 import com.anpfuel.domain.forum.ForumException
+import com.anpfuel.domain.forum.ForumLiveEvent
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumReaction
+import com.anpfuel.domain.forum.ForumReactionCounts
+import com.anpfuel.domain.forum.ForumReactionTarget
+import com.anpfuel.domain.forum.ForumReplySort
 import com.anpfuel.domain.forum.ForumReportReason
 import com.anpfuel.domain.forum.ForumReportReceipt
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,11 +35,15 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class ForumDetailUiState(
     val postId: String = "",
@@ -70,6 +82,16 @@ data class ForumDetailUiState(
     // only on the viewer's own topic and comments.
     val isTopicOwner: Boolean = false,
     val ownCommentIds: Set<String> = emptySet(),
+
+    // X-style conversation (B-BR-FOR-17, B-BR-FOR-18)
+    val replySort: ForumReplySort = ForumReplySort.RELEVANT,
+    val commentsCursor: String? = null,
+    val loadingMoreComments: Boolean = false,
+    val postReaction: ForumReaction = ForumReaction.NONE,
+    val commentReactions: Map<String, ForumReaction> = emptyMap(),
+    /** Replies published while reading, offered behind "new replies". */
+    val pendingLiveComments: List<ForumComment> = emptyList(),
+    val liveConnected: Boolean = false,
 )
 
 sealed interface ForumActionError {
@@ -91,7 +113,6 @@ enum class ForumDetailError {
 class ForumDetailViewModel @Inject constructor(
     private val getForumPostDetail: GetForumPostDetailUseCase,
     private val validateForumSafeLink: ValidateForumSafeLinkUseCase,
-    private val getForumComments: GetForumCommentsUseCase,
     private val getForumReplies: GetForumRepliesUseCase,
     private val submitForumComment: SubmitForumCommentUseCase,
     private val editForumComment: EditForumCommentUseCase,
@@ -99,6 +120,10 @@ class ForumDetailViewModel @Inject constructor(
     private val reportForumTarget: ReportForumTargetUseCase,
     private val getOwnerTopic: GetOwnerTopicUseCase,
     private val getOwnForumCommentIds: GetOwnForumCommentIdsUseCase,
+    private val getRankedComments: GetRankedForumCommentsUseCase,
+    private val setForumReaction: SetForumReactionUseCase,
+    private val getOwnForumReactions: GetOwnForumReactionsUseCase,
+    private val observeConversation: ObserveForumConversationUseCase,
     private val sessionStore: AuthSessionStore? = null,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -116,6 +141,13 @@ class ForumDetailViewModel @Inject constructor(
     private var commentsJob: Job? = null
     private var ownershipJob: Job? = null
     private var writeJob: Job? = null
+    private var liveJob: Job? = null
+    private var reactionsJob: Job? = null
+
+    // Reaction writes go out in tap order; only the newest answer per target
+    // reconciles the optimistic state.
+    private val reactionMutex = Mutex()
+    private val reactionVersions = mutableMapOf<String, Int>()
     private var lastKnownAccountId: String? = sessionStore?.load()?.accountId
 
     // A retry of the same unchanged write reuses its operation id so a
@@ -205,11 +237,16 @@ class ForumDetailViewModel @Inject constructor(
                     isSavingEdit = false,
                     isRemovingComment = false,
                     isSubmittingReport = false,
+                    postReaction = ForumReaction.NONE,
+                    commentReactions = emptyMap(),
                 )
             }
             lastKnownAccountId = currentAccountId
             if (isAuthed) {
-                _state.value.post?.let { refreshOwnership(it) }
+                _state.value.post?.let {
+                    refreshOwnership(it)
+                    refreshOwnReactions(it.id)
+                }
             }
         } else if (wasAuthed != isAuthed) {
             _state.update { it.copy(isAuthenticated = isAuthed) }
@@ -232,7 +269,10 @@ class ForumDetailViewModel @Inject constructor(
                         isOffline = false,
                     )
                 }
-                if (_state.value.isSocialEnabled) {
+                // B-BR-FOR-18: the post first, then its replies.
+                if (!_state.value.isSocialEnabled) {
+                    setSocialEnabled(true)
+                } else {
                     loadComments(postId)
                 }
                 refreshOwnership(detail)
@@ -281,7 +321,10 @@ class ForumDetailViewModel @Inject constructor(
                         isOffline = false,
                     )
                 }
-                if (_state.value.isSocialEnabled) {
+                // B-BR-FOR-18: the post first, then its replies.
+                if (!_state.value.isSocialEnabled) {
+                    setSocialEnabled(true)
+                } else {
                     loadComments(id)
                 }
                 refreshOwnership(detail)
@@ -317,19 +360,242 @@ class ForumDetailViewModel @Inject constructor(
         _state.update { it.copy(commentsLoading = true) }
         commentsJob = viewModelScope.launch {
             try {
-                val page = getForumComments(postId)
+                val page = getRankedComments(postId, _state.value.replySort)
                 _state.update {
                     it.copy(
                         comments = page.items,
+                        commentsCursor = page.nextCursor,
                         commentsLoading = false,
+                        // Everything new is now in the list itself.
+                        pendingLiveComments = emptyList(),
                     )
                 }
+                refreshOwnReactions(postId)
             } catch (e: ForumException.Offline) {
                 _state.update { it.copy(commentsLoading = false, isOffline = true) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _state.update { it.copy(commentsLoading = false) }
+            }
+        }
+    }
+
+    /** Reorders the replies; each order has its own keyset pages. */
+    fun setReplySort(sort: ForumReplySort) {
+        if (sort == _state.value.replySort) return
+        _state.update { it.copy(replySort = sort, comments = emptyList(), commentsCursor = null) }
+        val id = _state.value.postId
+        if (id.isNotBlank()) loadComments(id)
+    }
+
+    fun loadMoreComments() {
+        val cur = _state.value
+        val cursor = cur.commentsCursor ?: return
+        if (cur.loadingMoreComments || cur.commentsLoading) return
+        _state.update { it.copy(loadingMoreComments = true) }
+        viewModelScope.launch {
+            try {
+                val page = getRankedComments(cur.postId, cur.replySort, cursor = cursor)
+                _state.update { state ->
+                    val known = state.comments.map { it.id }.toSet()
+                    state.copy(
+                        comments = state.comments + page.items.filterNot { it.id in known },
+                        commentsCursor = page.nextCursor,
+                        loadingMoreComments = false,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { it.copy(loadingMoreComments = false) }
+            }
+        }
+    }
+
+    /** Brings live replies into the list, at the top, when the reader asks. */
+    fun showNewReplies() {
+        _state.update { state ->
+            val fresh = state.pendingLiveComments.filterNot { p -> state.comments.any { it.id == p.id } }
+            state.copy(comments = fresh + state.comments, pendingLiveComments = emptyList())
+        }
+    }
+
+    private fun refreshOwnReactions(postId: String) {
+        reactionsJob?.cancel()
+        if (sessionStore?.load() == null) {
+            _state.update { it.copy(postReaction = ForumReaction.NONE, commentReactions = emptyMap()) }
+            return
+        }
+        reactionsJob = viewModelScope.launch {
+            try {
+                val own = getOwnForumReactions(postId)
+                _state.update { it.copy(postReaction = own.post, commentReactions = own.comments) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Counts stay public; only the highlight of the caller's own votes is missing.
+            }
+        }
+    }
+
+    fun reactToPost(tapped: ForumReaction) {
+        val post = _state.value.post ?: return
+        val from = _state.value.postReaction
+        val to = from.toggle(tapped)
+        sendReaction(ForumReactionTarget.POST, post.id, from, to)
+    }
+
+    fun reactToComment(comment: ForumComment, tapped: ForumReaction) {
+        val from = _state.value.commentReactions[comment.id] ?: ForumReaction.NONE
+        val to = from.toggle(tapped)
+        sendReaction(ForumReactionTarget.COMMENT, comment.id, from, to)
+    }
+
+    /**
+     * Optimistic reaction: the count and highlight change at once, the
+     * signed write follows in tap order, and a failure puts both back.
+     */
+    private fun sendReaction(target: ForumReactionTarget, targetId: String, from: ForumReaction, to: ForumReaction) {
+        checkSessionConsistency()
+        if (sessionStore?.load() == null) {
+            _state.update { it.copy(requireAuthPrompt = true, isAuthenticated = false) }
+            return
+        }
+        applyLocalReaction(target, targetId, to) { it.applying(from, to) }
+        val version = (reactionVersions[targetId] ?: 0) + 1
+        reactionVersions[targetId] = version
+        viewModelScope.launch {
+            try {
+                val result = reactionMutex.withLock {
+                    setForumReaction(target, targetId, to, UUID.randomUUID().toString())
+                }
+                if (reactionVersions[targetId] == version) {
+                    applyLocalReaction(target, targetId, result.reaction) { result.counts }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (reactionVersions[targetId] == version) {
+                    applyLocalReaction(target, targetId, from) { it.applying(to, from) }
+                }
+                val error = when (e) {
+                    is ForumException.AuthRequired -> {
+                        _state.update { it.copy(requireAuthPrompt = true, isAuthenticated = false) }
+                        null
+                    }
+                    is ForumException.RateLimited -> ForumActionError.RateLimited(e.retryAfterSeconds)
+                    is ForumException.NotFound -> ForumActionError.TargetMissing
+                    is ForumException.Offline -> ForumActionError.Offline
+                    else -> ForumActionError.Generic(e.message)
+                }
+                if (error != null) _state.update { it.copy(actionError = error) }
+            }
+        }
+    }
+
+    private fun applyLocalReaction(
+        target: ForumReactionTarget,
+        targetId: String,
+        reaction: ForumReaction,
+        counts: (ForumReactionCounts) -> ForumReactionCounts,
+    ) {
+        _state.update { state ->
+            when (target) {
+                ForumReactionTarget.POST -> state.copy(
+                    postReaction = reaction,
+                    post = state.post?.let { it.copy(reactions = counts(it.reactions)) },
+                )
+                ForumReactionTarget.COMMENT -> state.updatingComment(targetId) { it.copy(reactions = counts(it.reactions)) }
+                    .copy(commentReactions = state.commentReactions + (targetId to reaction))
+            }
+        }
+    }
+
+    /** Opens the live stream while the conversation is on screen. */
+    fun startLive() {
+        if (liveJob?.isActive == true) return
+        val postId = _state.value.postId
+        if (postId.isBlank()) return
+        liveJob = viewModelScope.launch {
+            var backoffMs = LIVE_MIN_BACKOFF_MS
+            while (isActive) {
+                try {
+                    observeConversation(postId).collect { event ->
+                        backoffMs = LIVE_MIN_BACKOFF_MS
+                        onLiveEvent(event)
+                    }
+                    // The server ended the stream on purpose; reconnect soon.
+                    delay(LIVE_MIN_BACKOFF_MS)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: ForumException.NotFound) {
+                    break
+                } catch (_: Exception) {
+                    _state.update { it.copy(liveConnected = false) }
+                    delay(backoffMs)
+                    backoffMs = (backoffMs * 2).coerceAtMost(LIVE_MAX_BACKOFF_MS)
+                }
+            }
+            _state.update { it.copy(liveConnected = false) }
+        }
+    }
+
+    fun stopLive() {
+        liveJob?.cancel()
+        liveJob = null
+        _state.update { it.copy(liveConnected = false) }
+    }
+
+    internal fun onLiveEvent(event: ForumLiveEvent) {
+        when (event) {
+            ForumLiveEvent.Ready -> _state.update { it.copy(liveConnected = true) }
+            is ForumLiveEvent.CommentPublished -> onLiveComment(event.comment)
+            is ForumLiveEvent.CommentReactions -> _state.update { state ->
+                state.updatingComment(event.commentId) { it.copy(reactions = event.counts) }
+            }
+            is ForumLiveEvent.CommentGone -> _state.update { state ->
+                state.removingComment(event.commentId, event.parentId)
+            }
+            is ForumLiveEvent.PostReactions -> _state.update { state ->
+                state.copy(post = state.post?.copy(reactions = event.counts))
+            }
+            ForumLiveEvent.PostGone -> {
+                _state.update { it.copy(post = null, error = ForumDetailError.NOT_FOUND, liveConnected = false) }
+                liveJob?.cancel()
+            }
+            ForumLiveEvent.Resync -> {
+                _state.update { it.copy(liveConnected = false) }
+                val id = _state.value.postId
+                if (id.isNotBlank()) loadComments(id)
+            }
+            ForumLiveEvent.Reconnect -> _state.update { it.copy(liveConnected = false) }
+        }
+    }
+
+    private fun onLiveComment(comment: ForumComment) {
+        _state.update { state ->
+            val parentId = comment.parentId
+            when {
+                parentId == null && state.comments.any { it.id == comment.id } ->
+                    state.updatingComment(comment.id) { comment.copy(replyCount = it.replyCount, topReply = it.topReply) }
+                parentId == null ->
+                    if (state.pendingLiveComments.any { it.id == comment.id }) state
+                    else state.copy(pendingLiveComments = listOf(comment) + state.pendingLiveComments)
+                else -> {
+                    val loaded = state.repliesMap[parentId]
+                    val withReply = if (loaded != null && loaded.none { it.id == comment.id }) {
+                        state.copy(repliesMap = state.repliesMap + (parentId to loaded + comment))
+                    } else {
+                        state
+                    }
+                    if (loaded?.any { it.id == comment.id } == true) withReply
+                    else withReply.copy(
+                        comments = withReply.comments.map {
+                            if (it.id == parentId) it.copy(replyCount = it.replyCount + 1, topReply = it.topReply ?: comment) else it
+                        },
+                    )
+                }
             }
         }
     }
@@ -644,4 +910,38 @@ class ForumDetailViewModel @Inject constructor(
             )
         }
     }
+}
+
+private const val LIVE_MIN_BACKOFF_MS = 1_000L
+private const val LIVE_MAX_BACKOFF_MS = 30_000L
+
+/** Applies [change] to the comment wherever it shows: list, previews, threads, pending. */
+internal fun ForumDetailUiState.updatingComment(
+    commentId: String,
+    change: (ForumComment) -> ForumComment,
+): ForumDetailUiState {
+    fun ForumComment.updated(): ForumComment {
+        val self = if (id == commentId) change(this) else this
+        val preview = self.topReply?.let { if (it.id == commentId) change(it) else it }
+        return if (preview === self.topReply) self else self.copy(topReply = preview)
+    }
+    return copy(
+        comments = comments.map { it.updated() },
+        pendingLiveComments = pendingLiveComments.map { it.updated() },
+        repliesMap = repliesMap.mapValues { (_, replies) -> replies.map { if (it.id == commentId) change(it) else it } },
+    )
+}
+
+/** Drops a comment that left public reads and keeps reply counts honest. */
+internal fun ForumDetailUiState.removingComment(commentId: String, parentId: String?): ForumDetailUiState {
+    val wasReplyListed = parentId != null && repliesMap[parentId]?.any { it.id == commentId } == true
+    return copy(
+        comments = comments.filterNot { it.id == commentId }.map { c ->
+            if (c.id != parentId) return@map c
+            val preview = c.topReply?.takeIf { it.id != commentId }
+            c.copy(replyCount = (c.replyCount - 1).coerceAtLeast(0), topReply = preview)
+        },
+        pendingLiveComments = pendingLiveComments.filterNot { it.id == commentId },
+        repliesMap = if (wasReplyListed) repliesMap + (parentId!! to repliesMap.getValue(parentId).filterNot { it.id == commentId }) else repliesMap,
+    )
 }

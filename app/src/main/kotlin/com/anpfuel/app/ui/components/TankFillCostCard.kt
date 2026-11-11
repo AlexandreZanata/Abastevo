@@ -25,8 +25,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.model.TankFillCostEstimateUiModel
-import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.AnpFuelTheme
+import com.anpfuel.app.ui.theme.LocalAbastevoChromeColors
 import com.anpfuel.domain.model.TankFillCostUnitPriceSource
 import com.anpfuel.domain.valueobject.DomainId
 import com.anpfuel.domain.valueobject.FuelProduct
@@ -50,17 +50,19 @@ fun TankFillCostCard(
         estimate.displayName,
         totalCost,
     )
-    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    // Brand hero of Explorar: solid chrome fill, so it needs no outline.
+    val chrome = LocalAbastevoChromeColors.current
 
     Card(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 112.dp),
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = containerColor,
+            containerColor = chrome.hero,
+            contentColor = chrome.content,
         ),
-        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Column(
             modifier = Modifier
@@ -88,17 +90,17 @@ fun TankFillCostCard(
                     Text(
                         text = stringResource(R.string.home_tank_fill_cost_title),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = chrome.contentMuted,
                     )
                     Text(
                         text = totalCost,
                         style = MaterialTheme.typography.displaySmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = chrome.content,
                     )
                     Text(
                         text = vehicleLine,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = chrome.content,
                     )
                 }
             }
@@ -107,7 +109,7 @@ fun TankFillCostCard(
                 Text(
                     text = stringResource(R.string.home_tank_fill_cost_station_name, stationName),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = chrome.contentMuted,
                 )
             }
 
@@ -116,8 +118,8 @@ fun TankFillCostCard(
                     onClick = onGoToStation,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = chrome.selected,
+                        contentColor = chrome.onSelected,
                     ),
                 ) {
                     Text(

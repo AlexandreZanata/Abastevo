@@ -2,6 +2,7 @@ package com.anpfuel.app.ui.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -9,19 +10,29 @@ import org.junit.jupiter.api.Test
 class BrandPaletteContrastTest {
 
     @Test
-    fun `light cards and surfaces are pure white`() {
-        assertEquals(Color.White, LightColorScheme.surface)
-        assertEquals(Color.White, LightColorScheme.surfaceContainerLowest)
+    fun `every light container is white on off-white screens`() {
+        listOf(
+            LightColorScheme.surface,
+            LightColorScheme.surfaceContainerLowest,
+            LightColorScheme.surfaceContainerLow,
+            LightColorScheme.surfaceContainer,
+            LightColorScheme.surfaceContainerHigh,
+            LightColorScheme.surfaceContainerHighest,
+            LightColorScheme.primaryContainer,
+        ).forEach { assertEquals(Color.White, it) }
+        assertTrue(LightColorScheme.background.luminance() < Color.White.luminance())
+        assertTrue(LightColorScheme.background.luminance() > LIGHT_SCREEN_MIN_LUMINANCE)
     }
 
     @Test
-    fun `dark screens are true black`() {
-        assertEquals(Color.Black, DarkColorScheme.background)
-        assertEquals(Color.Black, DarkColorScheme.surface)
+    fun `dark screens are near black with lighter cards`() {
+        assertEquals(DarkColorScheme.surfaceContainerLow, DarkColorScheme.surface)
+        assertTrue(DarkColorScheme.background.luminance() < DARK_SCREEN_MAX_LUMINANCE)
+        assertTrue(DarkColorScheme.surfaceContainerLow.luminance() > DarkColorScheme.background.luminance())
     }
 
     @Test
-    fun `foundation is monochrome in both themes`() {
+    fun `foundation is near-neutral in both themes`() {
         listOf(LightColorScheme, DarkColorScheme).forEach { scheme ->
             listOf(
                 scheme.background,
@@ -48,8 +59,24 @@ class BrandPaletteContrastTest {
     fun `filled actions invert with the theme`() {
         assertEquals(LightColorScheme.onSurface, AbastevoActionDefaults.Light.container)
         assertEquals(Color.White, AbastevoActionDefaults.Light.content)
-        assertEquals(Color.White, AbastevoActionDefaults.Dark.container)
+        assertEquals(DarkColorScheme.onSurface, AbastevoActionDefaults.Dark.container)
         assertEquals(LightColorScheme.onSurface, AbastevoActionDefaults.Dark.content)
+    }
+
+    @Test
+    fun `chrome is solid black in both themes`() {
+        assertEquals(Color.Black, AbastevoChromeDefaults.Light.container)
+        assertEquals(Color.Black, AbastevoChromeDefaults.Dark.container)
+        assertEquals(LightColorScheme.primary, AbastevoChromeDefaults.Light.container)
+        listOf(AbastevoChromeDefaults.Light, AbastevoChromeDefaults.Dark).forEach { chrome ->
+            assertNearNeutral(chrome.container)
+            assertNearNeutral(chrome.hero)
+            assertTrue(chrome.container.luminance() < CHROME_MAX_LUMINANCE)
+            assertEquals(chrome.container, AbastevoNavDefaults.fromChrome(chrome).container)
+            assertEquals(chrome.selected, AbastevoNavDefaults.fromChrome(chrome).indicator)
+        }
+        // The dark hero card lifts off the near-black screen and its cards.
+        assertTrue(AbastevoChromeDefaults.Dark.hero.luminance() > DarkColorScheme.surfaceContainerLow.luminance())
     }
 
     @Test
@@ -62,21 +89,23 @@ class BrandPaletteContrastTest {
             assertTrue(tones.accent.green > tones.accent.red)
             assertTrue(tones.accent.green > tones.accent.blue)
         }
-        assertEquals(AbastevoAccent.Light.accent, AbastevoNavDefaults.Light.indicator)
-        assertEquals(AbastevoAccent.Dark.accent, AbastevoNavDefaults.Dark.indicator)
+        // On the dark chrome the accent takes its bright tone in both themes.
+        assertEquals(AbastevoAccent.Dark.accent, AbastevoChromeDefaults.Light.accent)
+        assertEquals(AbastevoAccent.Dark.accent, AbastevoChromeDefaults.Dark.accent)
     }
 
     @Test
     fun `light palette meets contrast targets`() {
-        assertPalette(LightColorScheme, AbastevoNavDefaults.Light, AbastevoActionDefaults.Light)
+        assertPalette(LightColorScheme, AbastevoChromeDefaults.Light, AbastevoActionDefaults.Light)
     }
 
     @Test
     fun `dark palette meets contrast targets`() {
-        assertPalette(DarkColorScheme, AbastevoNavDefaults.Dark, AbastevoActionDefaults.Dark)
+        assertPalette(DarkColorScheme, AbastevoChromeDefaults.Dark, AbastevoActionDefaults.Dark)
     }
 
-    private fun assertPalette(scheme: ColorScheme, nav: AbastevoNavColors, action: AbastevoActionColors) {
+    private fun assertPalette(scheme: ColorScheme, chrome: AbastevoChromeColors, action: AbastevoActionColors) {
+        val nav = AbastevoNavDefaults.fromChrome(chrome)
         val screensAndCards = listOf(
             scheme.background,
             scheme.surfaceContainerLow,
@@ -108,17 +137,30 @@ class BrandPaletteContrastTest {
             scheme.surfaceVariant,
         ).forEach { assertText(scheme.onSurfaceVariant, it, "secondary text") }
         assertNonText(scheme.outline, scheme.background, "outline")
-        // Bottom bar: flat on the screen color, accent marker over the selected tab.
-        assertEquals(scheme.background, nav.container)
-        assertText(nav.selectedLabel, nav.container, "selected label")
+        // Header and top bars: titles, field text and icons on the chrome.
+        assertText(chrome.content, chrome.container, "chrome title")
+        assertText(chrome.contentMuted, chrome.container, "chrome secondary text")
+        assertText(chrome.content, chrome.control, "chrome field text")
+        assertNonText(chrome.accent, chrome.container, "chrome location pin")
+        assertNonText(chrome.accent, chrome.control, "chrome field pin")
+        assertText(chrome.onSelected, chrome.selected, "chrome chip label")
+        // Bottom bar: solid chrome, light pill behind the selected tab.
+        assertText(nav.selectedLabel, nav.indicator, "selected label")
+        assertNonText(nav.selectedIcon, nav.indicator, "selected icon")
         assertText(nav.unselected, nav.container, "unselected label")
-        assertNonText(nav.selectedIcon, nav.container, "selected icon")
-        assertNonText(nav.indicator, nav.container, "selection marker")
+        assertNonText(nav.indicator, nav.container, "selection pill")
+        // Hero card: chrome content and the light action on the hero fill.
+        assertText(chrome.content, chrome.hero, "hero title")
+        assertText(chrome.contentMuted, chrome.hero, "hero secondary text")
+        assertNonText(chrome.selected, chrome.hero, "hero action fill")
     }
 
-    private fun assertNeutral(color: Color) {
-        assertEquals(color.red, color.green, "$color is not neutral")
-        assertEquals(color.green, color.blue, "$color is not neutral")
+    /** Graphite and off-white may lean a few steps warm, never into a hue. */
+    private fun assertNeutral(color: Color) = assertNearNeutral(color)
+
+    private fun assertNearNeutral(color: Color) {
+        val channels = listOf(color.red, color.green, color.blue)
+        assertTrue(channels.max() - channels.min() <= MAX_CHANNEL_SPREAD, "$color is not near-neutral")
     }
 
     private fun assertText(foreground: Color, background: Color, label: String) {
@@ -133,5 +175,9 @@ class BrandPaletteContrastTest {
 
     private companion object {
         const val NON_TEXT_MIN_RATIO = 3.0
+        const val MAX_CHANNEL_SPREAD = 6f / 255f
+        const val LIGHT_SCREEN_MIN_LUMINANCE = 0.85f
+        const val DARK_SCREEN_MAX_LUMINANCE = 0.01f
+        const val CHROME_MAX_LUMINANCE = 0.02f
     }
 }

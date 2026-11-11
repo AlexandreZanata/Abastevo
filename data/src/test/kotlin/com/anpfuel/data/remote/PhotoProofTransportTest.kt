@@ -34,7 +34,8 @@ class PhotoProofTransportTest {
         val api=mockk<AuthAccountApi>()
         val keys=mockk<AndroidAnonymousDeviceKeys>()
         val identity=mockk<AnonymousProofHttpClient>()
-        val fingerprint="a".repeat(64)
+        val fingerprint="fp:"+"a".repeat(64)
+        val binds=mutableListOf<String>()
         val auth=AuthFlow(AuthPorts(object:AuthSessionStore {
             override fun save(session:PortableAuth.Session) { this@OwnerFixture.session=session }
             override fun load()=session
@@ -47,6 +48,8 @@ class PhotoProofTransportTest {
         init {
             every { keys.fingerprint() } answers { fingerprint }
             every { keys.ensureKey() } returns true
+            every { keys.signSha256Digest(any()) } returns ByteArray(64) { 1 }
+            every { identity.bind(any(),any(),any(),capture(binds)) } returns "{\"binding\":{}}"
         }
         fun transport()=PhotoProofTransport(keys,identity,auth,"https://synthetic.example.invalid",OkHttpClient())
     }
@@ -272,6 +275,60 @@ class PhotoProofTransportTest {
             }
             try {transport.get("/v1/privacy/training-consent",transport.ownerScope());fail<Unit>("409 accepted")}
             catch(e:PhotoOperationRefused) {assertNull(e.code);assertEquals(409,e.status)}
+        }
+    }
+
+    @Test fun `signed account write binds the device key once with a statement proof the server verifies`() = runTest {
+        val f=OwnerFixture()
+        val pair=java.security.KeyPairGenerator.getInstance("EC").apply {
+            initialize(java.security.spec.ECGenParameterSpec("secp256r1"))
+        }.generateKeyPair()
+        every {f.keys.publicJwk()} returns ("synthetic-x" to "synthetic-y")
+        every {f.keys.signDigest(any())} returns ByteArray(64){1}
+        every {f.keys.signSha256Digest(any())} answers {
+            val signer=java.security.Signature.getInstance("NONEwithECDSA")
+            signer.initSign(pair.private);signer.update(firstArg<ByteArray>())
+            com.anpfuel.data.local.auth.AnonymousProofCrypto.derToRaw(signer.sign())
+        }
+        every {f.identity.requestChallenge(any(),any())} answers {
+            AnonymousProofHttpClient.ChallengeResponse("challenge","123e4567-e89b-12d3-a456-426614174000."+"1".repeat(32),firstArg(),secondArg(),"{}")
+        }
+        every {f.identity.register(any(),any(),any(),any())} returns "{\"contributor_id\":\"synthetic-contributor\",\"key_id\":\"synthetic\"}"
+        MockWebServer().use {server ->
+            repeat(2) {server.enqueue(MockResponse().setBody("{\"received\":true}"))}
+            server.start()
+            val transport=PhotoProofTransport(f.keys,f.identity,f.auth,server.url("/").toString().trimEnd('/'),OkHttpClient())
+            transport.post("/v1/observations","first",JSONObject(),transport.ownerScope())
+            transport.post("/v1/observations","second",JSONObject(),transport.ownerScope())
+            verify(exactly=1) {f.identity.bind("synthetic-family","synthetic-access","synthetic-contributor",any())}
+            val parts=f.binds.single().split(".")
+            assertEquals(3,parts.size)
+            assertEquals(f.fingerprint,parts[0])
+            // Server key prover: ecdsa.Verify over SHA-256 of the binding statement.
+            val statement="anpfuel-bind.v1\nsynthetic-account\nsynthetic-contributor\n"+parts[1]
+            val der=com.anpfuel.data.local.auth.AnonymousProofCrypto.rawToDer(Base64.getUrlDecoder().decode(parts[2]))
+            val verifier=java.security.Signature.getInstance("SHA256withECDSA")
+            verifier.initVerify(pair.public);verifier.update(statement.toByteArray(Charsets.UTF_8))
+            assertTrue(verifier.verify(der))
+            assertEquals(2,server.requestCount)
+        }
+    }
+
+    @Test fun `refused binding never sends the signed write`() = runTest {
+        val f=OwnerFixture()
+        every {f.keys.publicJwk()} returns ("synthetic-x" to "synthetic-y")
+        every {f.keys.signDigest(any())} returns ByteArray(64){1}
+        every {f.identity.requestChallenge(any(),any())} answers {
+            AnonymousProofHttpClient.ChallengeResponse("challenge","123e4567-e89b-12d3-a456-426614174000."+"1".repeat(32),firstArg(),secondArg(),"{}")
+        }
+        every {f.identity.register(any(),any(),any(),any())} returns "{\"contributor_id\":\"synthetic\",\"key_id\":\"synthetic\"}"
+        every {f.identity.bind(any(),any(),any(),any())} throws java.io.IOException("anonymous proof call failed: HTTP 403")
+        MockWebServer().use {server ->
+            server.start()
+            val transport=PhotoProofTransport(f.keys,f.identity,f.auth,server.url("/").toString().trimEnd('/'),OkHttpClient())
+            try {transport.post("/v1/observations","intent",JSONObject(),transport.ownerScope());fail<Unit>("unbound write sent")}
+            catch(_:java.io.IOException) {}
+            assertEquals(0,server.requestCount)
         }
     }
 

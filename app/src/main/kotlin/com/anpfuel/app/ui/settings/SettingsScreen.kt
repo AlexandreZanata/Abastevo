@@ -7,66 +7,58 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import com.anpfuel.app.ui.components.ActionCardButton
-import com.anpfuel.app.ui.components.ActionCardStyle
-import com.anpfuel.app.ui.components.AnpScaffold
-import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.anpfuel.app.ui.designsystem.FilterChip
-import com.anpfuel.app.ui.designsystem.TextButton
-import kotlin.math.roundToInt
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.AppErrorMapper
+import com.anpfuel.app.ui.components.AnpScaffold
+import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.components.ErrorState
+import com.anpfuel.app.ui.components.SettingsDivider
+import com.anpfuel.app.ui.components.SettingsGroup
+import com.anpfuel.app.ui.components.SettingsRow
+import com.anpfuel.app.ui.components.SettingsSwitchRow
 import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
-import com.anpfuel.app.ui.theme.AnpContainerDefaults
+import com.anpfuel.app.ui.designsystem.Button
+import com.anpfuel.app.ui.designsystem.FilterChip
+import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.domain.model.StorageUsage
 import com.anpfuel.domain.model.UserPreferences
@@ -209,230 +201,218 @@ private fun SettingsContent(
                         .fillMaxSize()
                         .padding(innerPadding)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
-                    PrivacyRedirectCard(onClick = onNavigateToPrivacy)
-                    SettingsSection(title = stringResource(R.string.settings_language)) {
-                        LanguageFlagGrid(
-                            selectedLocaleTag = uiState.preferences.localeTag,
-                            onLocaleSelected = onLocaleSelected,
+                    // Sync first: it is the action people open this page for.
+                    SettingsGroup(title = stringResource(R.string.settings_sync_section)) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                onClick = onSyncNow,
+                                enabled = !uiState.isSyncing,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Text(
+                                    text = stringResource(
+                                        if (uiState.isSyncing) R.string.banner_syncing else R.string.onboarding_action_sync_now,
+                                    ),
+                                    modifier = Modifier.padding(start = 8.dp),
+                                    maxLines = 1,
+                                )
+                            }
+                            uiState.syncMessage?.let { messageKey ->
+                                if (messageKey == SettingsViewModel.SYNC_COMPLETED_MESSAGE) {
+                                    SettingsNote(stringResource(R.string.sync_completed))
+                                }
+                            }
+                        }
+                        SettingsDivider()
+                        SettingsRow(
+                            icon = Icons.Default.CalendarMonth,
+                            title = stringResource(R.string.settings_change_survey_week),
+                            onClick = onNavigateToWeekPicker,
                         )
                     }
 
-                    SettingsSection(title = stringResource(R.string.settings_preferences_section)) {
-                        SettingsToggleRow(
-                            label = stringResource(R.string.settings_sync_station_detail),
+                    SettingsGroup(title = stringResource(R.string.settings_preferences_section)) {
+                        SettingsSwitchRow(
+                            icon = Icons.Default.Storefront,
+                            title = stringResource(R.string.settings_sync_station_detail),
                             checked = uiState.preferences.syncStationDetail,
                             onCheckedChange = onSyncStationDetailChanged,
                         )
-                        HorizontalDivider()
-                        SettingsToggleRow(
-                            label = stringResource(R.string.settings_auto_download_latest_week),
+                        SettingsDivider()
+                        SettingsSwitchRow(
+                            icon = Icons.Default.Download,
+                            title = stringResource(R.string.settings_auto_download_latest_week),
                             checked = uiState.preferences.autoDownloadLatestWeek,
                             onCheckedChange = onAutoDownloadLatestWeekChanged,
                         )
-                        HorizontalDivider()
-                        SettingsToggleRow(
-                            label = stringResource(R.string.settings_sync_wifi_only),
+                        SettingsDivider()
+                        SettingsSwitchRow(
+                            icon = Icons.Default.Wifi,
+                            title = stringResource(R.string.settings_sync_wifi_only),
                             checked = uiState.preferences.autoSyncOnWifi,
                             onCheckedChange = onAutoSyncOnWifiChanged,
                         )
-                        HorizontalDivider()
-                        SettingsToggleRow(
-                            label = stringResource(R.string.settings_show_price_history),
+                        SettingsDivider()
+                        SettingsSwitchRow(
+                            icon = Icons.Default.ShowChart,
+                            title = stringResource(R.string.settings_show_price_history),
                             checked = uiState.preferences.showPriceHistory,
                             onCheckedChange = onShowPriceHistoryChanged,
                         )
                     }
 
-                    SettingsSection(title = stringResource(R.string.settings_public_catalog_section)) {
-                        Text(
-                            text = stringResource(R.string.settings_public_catalog_description),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        SettingsToggleRow(
-                            label = stringResource(R.string.settings_public_catalog_toggle),
-                            checked = uiState.preferences.syncPublicCityCatalog,
-                            onCheckedChange = onSyncPublicCityCatalogChanged,
-                        )
-                        val lastSynced = uiState.preferences.publicCityCatalogLastSyncedAtMillis
-                        if (uiState.preferences.syncPublicCityCatalog && lastSynced != null) {
-                            val formatted = remember(lastSynced) {
-                                java.text.DateFormat.getDateTimeInstance()
-                                    .format(java.util.Date(lastSynced))
-                            }
-                            Text(
-                                text = stringResource(
-                                    R.string.settings_public_catalog_last_sync,
-                                    formatted,
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else if (uiState.preferences.syncPublicCityCatalog) {
-                            Text(
-                                text = stringResource(R.string.settings_public_catalog_never_synced),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        } else {
-                            Text(
-                                text = stringResource(R.string.settings_public_catalog_off_note),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Text(
-                            text = stringResource(R.string.settings_public_catalog_size,
-                                android.text.format.Formatter.formatShortFileSize(androidx.compose.ui.platform.LocalContext.current,
-                                    uiState.storageUsage.publicCatalogEstimatedBytes)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        ActionCardButton(
-                            label = stringResource(R.string.settings_clear_public_catalog),
-                            icon = Icons.Default.Storage,
-                            onClick = onClearPublicCatalog,
-                            enabled = !uiState.isClearingPublicCatalog,
-                        )
-                        uiState.syncMessage?.let { messageKey ->
-                            if (messageKey == SettingsViewModel.PUBLIC_CATALOG_CLEARED_MESSAGE) {
-                                Text(
-                                    text = stringResource(R.string.public_catalog_cleared),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    }
-
                     if (uiState.showNotificationPermissionHint) {
-                        SettingsSection(title = stringResource(R.string.settings_notifications_section)) {
-                            Text(
-                                text = stringResource(R.string.notification_permission_denied_hint),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            ActionCardButton(
-                                label = stringResource(R.string.settings_open_notification_settings),
+                        SettingsGroup(title = stringResource(R.string.settings_notifications_section)) {
+                            SettingsRow(
                                 icon = Icons.Default.Notifications,
+                                title = stringResource(R.string.settings_open_notification_settings),
+                                subtitle = stringResource(R.string.notification_permission_denied_hint),
                                 onClick = onOpenNotificationSettings,
                             )
                         }
                     }
 
-                    SettingsSection(title = stringResource(R.string.settings_retention_weeks)) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            for (weeks in SettingsViewModel.retentionWeekOptions) {
-                                FilterChip(
-                                    selected = uiState.preferences.stationDetailRetentionWeeks == weeks,
-                                    onClick = { onRetentionWeeksSelected(weeks) },
-                                    label = {
-                                        Text(
-                                            text = stringResource(
-                                                R.string.settings_retention_weeks_option,
-                                                weeks,
-                                            ),
-                                        )
-                                    },
-                                )
-                            }
+                    SettingsGroup(title = stringResource(R.string.settings_language)) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            LanguageFlagGrid(
+                                selectedLocaleTag = uiState.preferences.localeTag,
+                                onLocaleSelected = onLocaleSelected,
+                            )
                         }
                     }
 
-                    SettingsSection(title = stringResource(R.string.settings_nearest_station_radius)) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            for (radiusKm in UserPreferences.NEAREST_STATION_RADIUS_KM_OPTIONS) {
-                                FilterChip(
-                                    selected = uiState.preferences.nearestStationRadiusKm == radiusKm,
-                                    onClick = { onNearestStationRadiusSelected(radiusKm) },
-                                    label = {
-                                        Text(
-                                            text = stringResource(
-                                                R.string.settings_nearest_station_radius_option,
-                                                radiusKm,
-                                            ),
-                                        )
-                                    },
-                                )
-                            }
-                        }
+                    SettingsGroup(title = stringResource(R.string.settings_section_search_data)) {
+                        SettingsChoice(
+                            title = stringResource(R.string.settings_nearest_station_radius),
+                            options = UserPreferences.NEAREST_STATION_RADIUS_KM_OPTIONS,
+                            selected = uiState.preferences.nearestStationRadiusKm,
+                            label = { stringResource(R.string.settings_nearest_station_radius_option, it) },
+                            onSelected = onNearestStationRadiusSelected,
+                        )
+                        SettingsDivider()
+                        SettingsChoice(
+                            title = stringResource(R.string.settings_retention_weeks),
+                            options = SettingsViewModel.retentionWeekOptions,
+                            selected = uiState.preferences.stationDetailRetentionWeeks,
+                            label = { stringResource(R.string.settings_retention_weeks_option, it) },
+                            onSelected = onRetentionWeeksSelected,
+                        )
                     }
 
-                    SettingsSection(title = stringResource(R.string.settings_storage_usage)) {
-                        Text(
-                            text = stringResource(
+                    SettingsGroup(title = stringResource(R.string.settings_public_catalog_section)) {
+                        SettingsSwitchRow(
+                            icon = Icons.Default.LocationCity,
+                            title = stringResource(R.string.settings_public_catalog_toggle),
+                            subtitle = stringResource(R.string.settings_public_catalog_description),
+                            checked = uiState.preferences.syncPublicCityCatalog,
+                            onCheckedChange = onSyncPublicCityCatalogChanged,
+                        )
+                        val lastSynced = uiState.preferences.publicCityCatalogLastSyncedAtMillis
+                        val statusText = if (uiState.preferences.syncPublicCityCatalog && lastSynced != null) {
+                            val formatted = remember(lastSynced) {
+                                java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastSynced))
+                            }
+                            stringResource(R.string.settings_public_catalog_last_sync, formatted)
+                        } else if (uiState.preferences.syncPublicCityCatalog) {
+                            stringResource(R.string.settings_public_catalog_never_synced)
+                        } else {
+                            stringResource(R.string.settings_public_catalog_off_note)
+                        }
+                        Column(
+                            modifier = Modifier.padding(start = 54.dp, end = 16.dp, bottom = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            SettingsNote(statusText)
+                            SettingsNote(
+                                stringResource(
+                                    R.string.settings_public_catalog_size,
+                                    android.text.format.Formatter.formatShortFileSize(
+                                        context,
+                                        uiState.storageUsage.publicCatalogEstimatedBytes,
+                                    ),
+                                ),
+                            )
+                            uiState.syncMessage?.let { messageKey ->
+                                if (messageKey == SettingsViewModel.PUBLIC_CATALOG_CLEARED_MESSAGE) {
+                                    SettingsNote(stringResource(R.string.public_catalog_cleared), emphasized = true)
+                                }
+                            }
+                        }
+                        SettingsDivider()
+                        SettingsRow(
+                            icon = Icons.Default.Storage,
+                            title = stringResource(R.string.settings_clear_public_catalog),
+                            onClick = onClearPublicCatalog,
+                            enabled = !uiState.isClearingPublicCatalog,
+                        )
+                    }
+
+                    SettingsGroup(title = stringResource(R.string.settings_storage_usage)) {
+                        SettingsStat(
+                            stringResource(
                                 R.string.settings_storage_summary_rows,
                                 numberFormat.format(uiState.storageUsage.summaryRowCount),
                             ),
-                            style = MaterialTheme.typography.bodyMedium,
                         )
-                        Text(
-                            text = stringResource(
+                        SettingsStat(
+                            stringResource(
                                 R.string.settings_storage_station_rows,
                                 numberFormat.format(uiState.storageUsage.stationRowCount),
                             ),
-                            style = MaterialTheme.typography.bodyMedium,
                         )
-                        Text(
-                            text = stringResource(
+                        SettingsStat(
+                            stringResource(
                                 R.string.settings_storage_week_count,
                                 numberFormat.format(uiState.storageUsage.importedWeekCount),
                             ),
-                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        SettingsDivider()
+                        SettingsRow(
+                            icon = Icons.Default.Storage,
+                            title = stringResource(R.string.settings_clear_station_cache),
+                            onClick = onClearStationCache,
+                            enabled = !uiState.isClearingCache,
+                        )
+                        SettingsDivider()
+                        SettingsRow(
+                            icon = Icons.Default.DeleteOutline,
+                            title = stringResource(R.string.settings_clear_all_cache),
+                            onClick = onRequestClearAllCache,
+                            enabled = !uiState.isClearingCache,
+                            destructive = true,
                         )
                     }
 
-                    SettingsSection(title = stringResource(R.string.settings_sync_section)) {
-                        ActionCardButton(
-                            label = stringResource(
-                                if (uiState.isSyncing) {
-                                    R.string.banner_syncing
-                                } else {
-                                    R.string.onboarding_action_sync_now
-                                },
-                            ),
-                            icon = Icons.Default.Sync,
-                            onClick = onSyncNow,
-                            style = ActionCardStyle.Primary,
-                            enabled = !uiState.isSyncing,
-                        )
-                        ActionCardButton(
-                            label = stringResource(R.string.settings_change_survey_week),
-                            icon = Icons.Default.CalendarMonth,
-                            onClick = onNavigateToWeekPicker,
-                        )
-                        uiState.syncMessage?.let { messageKey ->
-                            if (messageKey == SettingsViewModel.SYNC_COMPLETED_MESSAGE) {
-                                Text(
-                                    text = stringResource(R.string.sync_completed),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    }
-
-                    SettingsSection(title = stringResource(R.string.auth_account_row)) {
-                        ActionCardButton(
-                            label = stringResource(R.string.auth_account_row),
+                    SettingsGroup(title = stringResource(R.string.settings_section_account_privacy)) {
+                        SettingsRow(
                             icon = Icons.Default.PersonOutline,
+                            title = stringResource(R.string.auth_account_row),
                             onClick = onNavigateToAuth,
                         )
+                        SettingsDivider()
+                        SettingsRow(
+                            icon = Icons.Default.Lock,
+                            title = stringResource(R.string.settings_privacy_title),
+                            subtitle = stringResource(R.string.settings_privacy_subtitle),
+                            onClick = onNavigateToPrivacy,
+                        )
                     }
 
-                    SettingsSection(title = stringResource(R.string.settings_share_section)) {
-                        ActionCardButton(
-                            label = stringResource(R.string.settings_share_app),
+                    SettingsGroup(title = stringResource(R.string.settings_section_about)) {
+                        SettingsRow(
                             icon = Icons.Default.Share,
+                            title = stringResource(R.string.settings_share_app),
                             onClick = {
                                 val sendIntent = Intent().apply {
                                     action = Intent.ACTION_SEND
@@ -445,40 +425,14 @@ private fun SettingsContent(
                                     )
                                     type = "text/plain"
                                 }
-                                val shareIntent = Intent.createChooser(sendIntent, null)
-                                context.startActivity(shareIntent)
+                                context.startActivity(Intent.createChooser(sendIntent, null))
                             },
                         )
-                    }
-
-                    SettingsSection(title = stringResource(R.string.settings_clear_cache)) {
-                        ActionCardButton(
-                            label = stringResource(R.string.settings_clear_station_cache),
-                            icon = Icons.Default.Storage,
-                            onClick = onClearStationCache,
-                            enabled = !uiState.isClearingCache,
-                        )
-                        ActionCardButton(
-                            label = stringResource(R.string.settings_clear_all_cache),
-                            icon = Icons.Default.DeleteOutline,
-                            onClick = onRequestClearAllCache,
-                            style = ActionCardStyle.Destructive,
-                            enabled = !uiState.isClearingCache,
-                        )
-                    }
-
-                    SettingsSection(
-                        title = stringResource(R.string.settings_attribution_section),
-                        showBottomDivider = false,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.prices_anp_attribution),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        ActionCardButton(
-                            label = stringResource(R.string.settings_anp_attribution_link),
+                        SettingsDivider()
+                        SettingsRow(
                             icon = Icons.Default.OpenInNew,
+                            title = stringResource(R.string.settings_anp_attribution_link),
+                            subtitle = stringResource(R.string.prices_anp_attribution),
                             onClick = {
                                 val intent = Intent(
                                     Intent.ACTION_VIEW,
@@ -503,112 +457,55 @@ private fun SettingsContent(
 }
 
 @Composable
-private fun PrivacyRedirectCard(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor,
-        ),
-        border = AnpContainerDefaults.borderStroke(containerColor),
-        onClick = onClick,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Lock,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_privacy_title),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(
-                    text = stringResource(R.string.settings_privacy_subtitle),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-            )
-        }
-    }
+private fun SettingsNote(text: String, emphasized: Boolean = false) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = if (emphasized) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
+
+/** Read-only line inside a group, aligned with the row text. */
 @Composable
-private fun SettingsSection(
+private fun SettingsStat(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 2.dp),
+    )
+}
+
+/** Single-choice option set inside a group: a title and pill chips. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SettingsChoice(
     title: String,
-    modifier: Modifier = Modifier,
-    showBottomDivider: Boolean = true,
-    content: @Composable () -> Unit,
+    options: List<Int>,
+    selected: Int,
+    label: @Composable (Int) -> String,
+    onSelected: (Int) -> Unit,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        content()
-        if (showBottomDivider) {
-            HorizontalDivider()
-        }
-    }
-}
-
-@Composable
-private fun SettingsToggleRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var lineCount by remember { mutableIntStateOf(1) }
-    var switchShiftPx by remember { mutableFloatStateOf(0f) }
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        androidx.compose.foundation.layout.Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = if (lineCount > 1) 8.dp else 0.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 12.dp),
-                onTextLayout = {
-                    lineCount = it.lineCount
-                    switchShiftPx = it.getLineBottom(0) / 2f - it.size.height / 2f
-                },
-            )
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                modifier = Modifier.offset { IntOffset(0, switchShiftPx.roundToInt()) },
-            )
+            for (option in options) {
+                FilterChip(
+                    selected = selected == option,
+                    onClick = { onSelected(option) },
+                    label = { Text(text = label(option)) },
+                )
+            }
         }
     }
 }

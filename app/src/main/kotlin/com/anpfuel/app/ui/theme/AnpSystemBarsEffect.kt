@@ -8,15 +8,14 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * Keeps status/navigation bar icon contrast aligned with the active theme.
- * Dark mode: light icons on transparent system bars.
- * Light mode: dark status icons on transparent system bars.
- * Transparent bars let the branded bottom bar extend under the gesture area;
- * [lightNavigationBar] follows that bar's fill, so the system buttons always
- * contrast with it instead of relying on a system contrast scrim.
+ * Keeps status/navigation bar icon contrast aligned with the brand chrome.
+ * Both system bars are transparent: the header (or [AbastevoStatusBarBand])
+ * fills the status bar and the bottom bar extends under the gesture area.
+ * [lightStatusBar] and [lightNavigationBar] follow those fills, so system
+ * icons always contrast with them instead of relying on a contrast scrim.
  */
 @Composable
-fun AnpSystemBarsEffect(darkTheme: Boolean, lightNavigationBar: Boolean = !darkTheme) {
+fun AnpSystemBarsEffect(lightStatusBar: Boolean, lightNavigationBar: Boolean) {
     val view = LocalView.current
     if (view.isInEditMode) {
         return
@@ -25,7 +24,7 @@ fun AnpSystemBarsEffect(darkTheme: Boolean, lightNavigationBar: Boolean = !darkT
     SideEffect {
         val window = (view.context as Activity).window
         WindowCompat.getInsetsController(window, view).apply {
-            isAppearanceLightStatusBars = !darkTheme
+            isAppearanceLightStatusBars = lightStatusBar
             isAppearanceLightNavigationBars = lightNavigationBar
         }
         @Suppress("DEPRECATION")

@@ -220,6 +220,8 @@ type Post struct {
 	FuelProduct         *string
 	StationID           *string
 	RightsSnapshot      *string
+	LikeCount           int64
+	DislikeCount        int64
 	BulletinKey         *string
 	BulletinGroupKey    *string
 	BulletinProvenance  *BulletinProvenance
@@ -365,6 +367,7 @@ type PostDetail struct {
 	StationID         *string
 	Bulletin          *BulletinProvenance
 	SupersedesPostID  *string
+	Reactions         ReactionCounts
 }
 
 // FeedPage represents a paginated set of public summaries.
@@ -471,6 +474,7 @@ func (p *Post) ToDetail() (*PostDetail, error) {
 		StationID:         p.StationID,
 		Bulletin:          p.BulletinProvenance,
 		SupersedesPostID:  p.SupersedesPostID,
+		Reactions:         ReactionCounts{Likes: p.LikeCount, Dislikes: p.DislikeCount},
 	}, nil
 }
 
@@ -545,6 +549,10 @@ type Comment struct {
 	CreateOperationID string           `json:"create_operation_id"`
 	BodySHA256        string           `json:"body_sha256"`
 	ReplyCount        int              `json:"reply_count,omitempty"`
+	LikeCount         int64            `json:"like_count"`
+	DislikeCount      int64            `json:"dislike_count"`
+	// TopReply is the best answer preview loaded with a page of replies.
+	TopReply *Comment `json:"-"`
 }
 
 // IsPubliclyVisible reports whether the comment is visible to anonymous readers.

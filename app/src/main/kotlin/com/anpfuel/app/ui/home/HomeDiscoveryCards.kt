@@ -1,5 +1,6 @@
 package com.anpfuel.app.ui.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -95,10 +96,12 @@ internal fun HomeReferencePriceCard(
                     )
                 }
             }
+            // Source tag: black outline on the white card, no gray fill.
             Surface(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface),
             ) {
                 Text(
                     stringResource(if(community) R.string.home_source_community else R.string.home_reference_source),

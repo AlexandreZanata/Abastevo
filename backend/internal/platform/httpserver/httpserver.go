@@ -226,6 +226,12 @@ func (w *statusRecorder) WriteHeader(status int) {
 	w.ResponseWriter.WriteHeader(status)
 }
 
+// Unwrap exposes the underlying writer to http.ResponseController, so
+// streaming handlers can flush and set per-write deadlines through it.
+func (w *statusRecorder) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
 func routeTemplate(r *http.Request) string {
 	if routeCtx := chi.RouteContext(r.Context()); routeCtx != nil {
 		if pattern := routeCtx.RoutePattern(); pattern != "" {

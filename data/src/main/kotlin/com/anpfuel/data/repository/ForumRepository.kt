@@ -11,10 +11,15 @@ import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
+import com.anpfuel.domain.forum.ForumOwnReactions
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumReaction
+import com.anpfuel.domain.forum.ForumReactionResult
+import com.anpfuel.domain.forum.ForumReactionTarget
 import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.forum.ForumRepliesPage
+import com.anpfuel.domain.forum.ForumReplySort
 import com.anpfuel.domain.forum.ForumReportReceipt
 import com.anpfuel.domain.forum.ForumTopicReceipt
 import com.anpfuel.domain.repository.ForumGateway
@@ -142,6 +147,22 @@ class ForumRepository(
     override suspend fun getOwnCommentIds(postId: String): Set<String> {
         return client.getOwnCommentIds(postId)
     }
+
+    override suspend fun getRankedComments(
+        postId: String,
+        sort: ForumReplySort,
+        limit: Int,
+        cursor: String?,
+    ): ForumCommentsPage = client.getRankedComments(postId, sort, limit, cursor)
+
+    override suspend fun setReaction(
+        target: ForumReactionTarget,
+        targetId: String,
+        reaction: ForumReaction,
+        operationId: String,
+    ): ForumReactionResult = client.setReaction(target, targetId, reaction, operationId)
+
+    override suspend fun getOwnReactions(postId: String): ForumOwnReactions = client.getOwnReactions(postId)
 
     override suspend fun report(
         targetType: String,

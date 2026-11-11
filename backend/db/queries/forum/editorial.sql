@@ -24,6 +24,7 @@ SELECT
     p.region_uf, p.region_municipality_ibge,
     p.fuel_product, p.station_id,
     p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
+    p.like_count, p.dislike_count,
     s.name AS source_name,
     s.origin_url AS source_origin_url,
     s.attribution AS source_attribution
@@ -52,6 +53,7 @@ SELECT
     p.region_uf, p.region_municipality_ibge,
     p.fuel_product, p.station_id,
     p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
+    p.like_count, p.dislike_count,
     s.name AS source_name,
     s.origin_url AS source_origin_url,
     s.attribution AS source_attribution

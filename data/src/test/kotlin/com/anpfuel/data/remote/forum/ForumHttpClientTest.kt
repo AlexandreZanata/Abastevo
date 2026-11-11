@@ -56,18 +56,21 @@ class ForumHttpClientTest {
         }
     """.trimIndent()
 
+    // The API wraps the detail in "post" (backend PostDetailResponse).
     private val detailJson = """
         {
-            "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-            "kind": "EDITORIAL",
-            "category": "FUELS",
-            "title": "Entenda a formação de preços",
-            "excerpt": "Guia explicativo.",
-            "body_text": "Corpo completo detalhado.",
-            "first_published_at": "2026-11-05T12:00:00Z",
-            "updated_at": "2026-11-05T12:00:00Z",
-            "revision": 1,
-            "comments_enabled": true
+            "post": {
+                "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+                "kind": "EDITORIAL",
+                "category": "FUELS",
+                "title": "Entenda a formação de preços",
+                "excerpt": "Guia explicativo.",
+                "body_text": "Corpo completo detalhado.",
+                "first_published_at": "2026-11-05T12:00:00Z",
+                "updated_at": "2026-11-05T12:00:00Z",
+                "revision": 1,
+                "comments_enabled": true
+            }
         }
     """.trimIndent()
 
@@ -542,6 +545,74 @@ class ForumHttpClientTest {
             assertEquals("SP", recordedJson.getJSONObject("region").getString("uf"))
             assertEquals("3fa85f64-5717-4562-b3fc-2c963f66afa6", receipt.id)
             assertEquals("PENDING_REVIEW", receipt.publicationState)
+        }
+    }
+
+    @Test
+    fun `createTopic attaches request proof over the exact path and body bytes`() = runTest {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setResponseCode(201).setBody(
+                    """{"id":"3fa85f64-5717-4562-b3fc-2c963f66afa6","kind":"TOPIC","category":"FUELS",""" +
+                        """"title":"T","body_text":"B","revision":1,"publication_state":"PUBLISHED","visibility":"VISIBLE"}""",
+                ),
+            )
+            var signedPath: String? = null
+            var signedBody: ByteArray? = null
+            val client = ForumHttpClient(
+                OkHttpClient(),
+                server.url("/").toString(),
+                sessions = TestSessionStore(testSession),
+                proofHeaders = { path, body ->
+                    signedPath = path
+                    signedBody = body
+                    mapOf("Signature" to "sig", "Signature-Keyid" to "key", "Signature-Nonce" to "nonce")
+                },
+            )
+            client.createTopic(
+                title = "T",
+                bodyText = "B",
+                category = ForumCategory.FUELS,
+                operationId = "33333333-3333-4333-8333-333333333333",
+                region = null,
+                fuelProduct = null,
+                stationId = null,
+                publicAlias = null,
+            )
+            val recorded = server.takeRequest(1, TimeUnit.SECONDS)!!
+            assertEquals("/v1/forum/topics", signedPath)
+            assertEquals("sig", recorded.getHeader("Signature"))
+            assertEquals("key", recorded.getHeader("Signature-Keyid"))
+            assertEquals("nonce", recorded.getHeader("Signature-Nonce"))
+            assertEquals("application/json", recorded.getHeader("Content-Type"))
+            assertTrue(signedBody!!.contentEquals(recorded.body.readByteArray()))
+        }
+    }
+
+    @Test
+    fun `createTopic does not send when the request proof is unavailable`() = runTest {
+        MockWebServer().use { server ->
+            val client = ForumHttpClient(
+                OkHttpClient(),
+                server.url("/").toString(),
+                sessions = TestSessionStore(testSession),
+                proofHeaders = { _, _ -> throw java.io.IOException("photo.identity-unavailable") },
+            )
+            assertThrows(ForumException.Unavailable::class.java) {
+                runBlocking {
+                    client.createTopic(
+                        title = "T",
+                        bodyText = "B",
+                        category = ForumCategory.FUELS,
+                        operationId = "33333333-3333-4333-8333-333333333333",
+                        region = null,
+                        fuelProduct = null,
+                        stationId = null,
+                        publicAlias = null,
+                    )
+                }
+            }
+            assertEquals(0, server.requestCount)
         }
     }
 

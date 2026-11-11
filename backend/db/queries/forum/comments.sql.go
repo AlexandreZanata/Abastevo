@@ -73,7 +73,7 @@ func (q *Queries) CountPublishedRepliesForParents(ctx context.Context, parentIds
 }
 
 const getCommentByID = `-- name: GetCommentByID :one
-SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 FROM forum_comments
 WHERE id = $1
 `
@@ -98,12 +98,14 @@ func (q *Queries) GetCommentByID(ctx context.Context, id pgtype.UUID) (ForumComm
 		&i.PublishedAt,
 		&i.CreateOperationID,
 		&i.BodySha256,
+		&i.LikeCount,
+		&i.DislikeCount,
 	)
 	return i, err
 }
 
 const getCommentByIDForUpdate = `-- name: GetCommentByIDForUpdate :one
-SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 FROM forum_comments
 WHERE id = $1
 FOR UPDATE
@@ -129,12 +131,14 @@ func (q *Queries) GetCommentByIDForUpdate(ctx context.Context, id pgtype.UUID) (
 		&i.PublishedAt,
 		&i.CreateOperationID,
 		&i.BodySha256,
+		&i.LikeCount,
+		&i.DislikeCount,
 	)
 	return i, err
 }
 
 const getCommentByOperationID = `-- name: GetCommentByOperationID :one
-SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 FROM forum_comments
 WHERE author_account_id = $1 AND create_operation_id = $2
 `
@@ -164,6 +168,8 @@ func (q *Queries) GetCommentByOperationID(ctx context.Context, arg GetCommentByO
 		&i.PublishedAt,
 		&i.CreateOperationID,
 		&i.BodySha256,
+		&i.LikeCount,
+		&i.DislikeCount,
 	)
 	return i, err
 }
@@ -205,7 +211,7 @@ INSERT INTO forum_comments (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
 )
-RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 `
 
 type InsertCommentParams struct {
@@ -264,12 +270,14 @@ func (q *Queries) InsertComment(ctx context.Context, arg InsertCommentParams) (F
 		&i.PublishedAt,
 		&i.CreateOperationID,
 		&i.BodySha256,
+		&i.LikeCount,
+		&i.DislikeCount,
 	)
 	return i, err
 }
 
 const listCommentsByAuthor = `-- name: ListCommentsByAuthor :many
-SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 FROM forum_comments
 WHERE author_account_id = $1
 ORDER BY id ASC
@@ -301,6 +309,8 @@ func (q *Queries) ListCommentsByAuthor(ctx context.Context, authorAccountID pgty
 			&i.PublishedAt,
 			&i.CreateOperationID,
 			&i.BodySha256,
+			&i.LikeCount,
+			&i.DislikeCount,
 		); err != nil {
 			return nil, err
 		}
@@ -313,7 +323,7 @@ func (q *Queries) ListCommentsByAuthor(ctx context.Context, authorAccountID pgty
 }
 
 const listCommentsByPost = `-- name: ListCommentsByPost :many
-SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 FROM forum_comments
 WHERE post_id = $1
   AND parent_id IS NULL
@@ -356,6 +366,8 @@ func (q *Queries) ListCommentsByPost(ctx context.Context, arg ListCommentsByPost
 			&i.PublishedAt,
 			&i.CreateOperationID,
 			&i.BodySha256,
+			&i.LikeCount,
+			&i.DislikeCount,
 		); err != nil {
 			return nil, err
 		}
@@ -368,7 +380,7 @@ func (q *Queries) ListCommentsByPost(ctx context.Context, arg ListCommentsByPost
 }
 
 const listCommentsPendingReview = `-- name: ListCommentsPendingReview :many
-SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 FROM forum_comments
 WHERE publication_state = 'PENDING_REVIEW'
   AND (
@@ -413,6 +425,8 @@ func (q *Queries) ListCommentsPendingReview(ctx context.Context, arg ListComment
 			&i.PublishedAt,
 			&i.CreateOperationID,
 			&i.BodySha256,
+			&i.LikeCount,
+			&i.DislikeCount,
 		); err != nil {
 			return nil, err
 		}
@@ -425,7 +439,7 @@ func (q *Queries) ListCommentsPendingReview(ctx context.Context, arg ListComment
 }
 
 const listRepliesByParent = `-- name: ListRepliesByParent :many
-SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+SELECT id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 FROM forum_comments
 WHERE parent_id = $1
   AND publication_state = 'PUBLISHED'
@@ -467,6 +481,8 @@ func (q *Queries) ListRepliesByParent(ctx context.Context, arg ListRepliesByPare
 			&i.PublishedAt,
 			&i.CreateOperationID,
 			&i.BodySha256,
+			&i.LikeCount,
+			&i.DislikeCount,
 		); err != nil {
 			return nil, err
 		}
@@ -576,7 +592,7 @@ SET publication_state = 'PUBLISHED',
     revision = revision + 1
 WHERE id = $1
   AND publication_state = 'PENDING_REVIEW'
-RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 `
 
 func (q *Queries) PublishComment(ctx context.Context, id pgtype.UUID) (ForumComment, error) {
@@ -599,6 +615,8 @@ func (q *Queries) PublishComment(ctx context.Context, id pgtype.UUID) (ForumComm
 		&i.PublishedAt,
 		&i.CreateOperationID,
 		&i.BodySha256,
+		&i.LikeCount,
+		&i.DislikeCount,
 	)
 	return i, err
 }
@@ -611,7 +629,7 @@ SET publication_state = 'REJECTED',
     revision = revision + 1
 WHERE id = $1
   AND publication_state = 'PENDING_REVIEW'
-RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 `
 
 // REJECTED keeps the author's text for owner reads and erasure; only the
@@ -636,6 +654,8 @@ func (q *Queries) RejectComment(ctx context.Context, id pgtype.UUID) (ForumComme
 		&i.PublishedAt,
 		&i.CreateOperationID,
 		&i.BodySha256,
+		&i.LikeCount,
+		&i.DislikeCount,
 	)
 	return i, err
 }
@@ -649,7 +669,7 @@ SET body_text = '',
     revision = revision + 1,
     updated_at = now()
 WHERE id = $1
-RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 `
 
 func (q *Queries) ScrubCommentForErasure(ctx context.Context, id pgtype.UUID) (ForumComment, error) {
@@ -672,6 +692,8 @@ func (q *Queries) ScrubCommentForErasure(ctx context.Context, id pgtype.UUID) (F
 		&i.PublishedAt,
 		&i.CreateOperationID,
 		&i.BodySha256,
+		&i.LikeCount,
+		&i.DislikeCount,
 	)
 	return i, err
 }
@@ -745,7 +767,7 @@ WHERE id = $1
   AND author_account_id = $2
   AND revision = $3
   AND publication_state <> 'REMOVED'
-RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 `
 
 type TombstoneCommentParams struct {
@@ -774,6 +796,8 @@ func (q *Queries) TombstoneComment(ctx context.Context, arg TombstoneCommentPara
 		&i.PublishedAt,
 		&i.CreateOperationID,
 		&i.BodySha256,
+		&i.LikeCount,
+		&i.DislikeCount,
 	)
 	return i, err
 }
@@ -789,7 +813,7 @@ WHERE id = $1
   AND author_account_id = $2
   AND revision = $3
   AND publication_state <> 'REMOVED'
-RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256
+RETURNING id, post_id, author_account_id, public_alias, parent_id, depth, sequence, body_text, revision, publication_state, visibility, created_at, updated_at, published_at, create_operation_id, body_sha256, like_count, dislike_count
 `
 
 type UpdateCommentCASParams struct {
@@ -826,6 +850,8 @@ func (q *Queries) UpdateCommentCAS(ctx context.Context, arg UpdateCommentCASPara
 		&i.PublishedAt,
 		&i.CreateOperationID,
 		&i.BodySha256,
+		&i.LikeCount,
+		&i.DislikeCount,
 	)
 	return i, err
 }

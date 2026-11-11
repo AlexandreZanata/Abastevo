@@ -327,3 +327,44 @@ func TestNewRejectsBadOptions(t *testing.T) {
 		t.Error("expected error for nil handler, got nil")
 	}
 }
+
+// Streaming handlers (forum SSE, B-BR-FOR-18) reach the connection through
+// the middleware writers: they flush each event and move the write deadline
+// past the server-wide WriteTimeout per write.
+func TestStreamingHandlerFlushesAndOutlivesWriteTimeout(t *testing.T) {
+	var logs bytes.Buffer
+	opts := testOptions(&logs)
+	opts.WriteTimeout = 300 * time.Millisecond
+	srv := startTestServer(t, opts, func(r Router) {
+		r.Get("/stream", func(w http.ResponseWriter, req *http.Request) {
+			rc := http.NewResponseController(w)
+			for i, chunk := range []string{"one\n", "two\n"} {
+				if err := rc.SetWriteDeadline(time.Now().Add(2 * time.Second)); err != nil {
+					t.Errorf("SetWriteDeadline: %v", err)
+					return
+				}
+				if i > 0 {
+					time.Sleep(600 * time.Millisecond) // past the server WriteTimeout
+				}
+				io.WriteString(w, chunk)
+				if err := rc.Flush(); err != nil {
+					t.Errorf("Flush: %v", err)
+					return
+				}
+			}
+		})
+	})
+	resp, err := http.Get("http://" + srv.Addr().String() + "/stream")
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+	first := make([]byte, 4)
+	if _, err := io.ReadFull(resp.Body, first); err != nil || string(first) != "one\n" {
+		t.Fatalf("first chunk = %q, %v; want it flushed before the handler ends", first, err)
+	}
+	rest, err := io.ReadAll(resp.Body)
+	if err != nil || string(rest) != "two\n" {
+		t.Fatalf("second chunk = %q, %v; want the stream to outlive WriteTimeout", rest, err)
+	}
+}

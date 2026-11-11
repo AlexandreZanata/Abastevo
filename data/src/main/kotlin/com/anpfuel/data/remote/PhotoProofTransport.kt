@@ -3,6 +3,7 @@ package com.anpfuel.data.remote
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.data.local.auth.AndroidAnonymousDeviceKeys
 import com.anpfuel.data.local.auth.AnonymousProofCrypto
+import com.anpfuel.domain.portable.PortableAccountBinding
 import com.anpfuel.domain.portable.PortableAnonymousProof
 import com.anpfuel.domain.repository.ContributionRateLimited
 import java.io.IOException
@@ -38,6 +39,8 @@ class PhotoProofTransport internal constructor(
     private val client=httpClient.newBuilder()
         .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false).callTimeout(20,TimeUnit.SECONDS).build()
     private var registeredFingerprint: String?=null
+    private var registeredContributor: String?=null
+    private var boundScope: String?=null
 
     fun ownerScope(): String? = keys.fingerprint()?.let { fingerprint ->
         // Access expiry affects authority, never the retained command's owner identity.
@@ -113,10 +116,32 @@ class PhotoProofTransport internal constructor(
         }
     }
 
+    /** Proof headers for a POST of exactly [body] that the caller sends itself, without retries. */
+    suspend fun postProofHeaders(path: String, body: ByteArray): Map<String, String> = withContext(Dispatchers.IO) {
+        require(path.startsWith("/v1/") && !path.contains('?') && !path.contains('#'))
+        synchronized(this@PhotoProofTransport) {
+            ensureRegistered()
+            val fingerprint=keys.fingerprint() ?: throw IOException("photo.identity-unavailable")
+            val challenge=identity.requestChallenge(fingerprint,"SIGN")
+            val now=System.currentTimeMillis()/1000
+            val digest="\"sha-512=:${Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-512").digest(body))}:\""
+            val lines=PortableAnonymousProof.buildBaseLines("POST",authority(),path,"","application/json",digest,now,now+120,fingerprint,challenge.nonce)
+            mapOf(
+                "Signature" to sign(lines), "Signature-Created" to now.toString(),
+                "Signature-Expires" to (now+120).toString(), "Signature-Keyid" to fingerprint,
+                "Signature-Nonce" to challenge.nonce,
+            )
+        }
+    }
+
     private fun ensureRegistered() {
         if(!keys.ensureKey()) throw IOException("photo.identity-unavailable")
         val fingerprint=keys.fingerprint() ?: throw IOException("photo.identity-unavailable")
-        if(registeredFingerprint==fingerprint) return
+        val owner=ownerScope()
+        if(registeredFingerprint==fingerprint) {
+            ensureBound(fingerprint,registeredContributor ?: throw IOException("photo.identity-unavailable"),owner)
+            return
+        }
         val jwk=keys.publicJwk() ?: throw IOException("photo.identity-unavailable")
         val challenge=identity.requestChallenge(fingerprint,"REGISTER")
         val now=System.currentTimeMillis()/1000
@@ -124,6 +149,29 @@ class PhotoProofTransport internal constructor(
         val result=JSONObject(identity.register(jwk.first,jwk.second,challenge.challengeId,AnonymousProofHttpClient.Proof(lines,sign(lines))))
         if(result.optString("contributor_id").isBlank() || result.optString("key_id").isBlank()) throw IOException("photo.identity-unavailable")
         registeredFingerprint=fingerprint
+        registeredContributor=result.optString("contributor_id")
+        ensureBound(fingerprint,result.optString("contributor_id"),owner)
+    }
+
+    /**
+     * P13-T04C: account-owned writes resolve their owner through the
+     * contributor binding, so a signed-in device binds its account key
+     * before signing. Anonymous and refresh-pending states never bind, and
+     * an owner change since [owner] was read refuses instead of binding.
+     */
+    private fun ensureBound(fingerprint: String, contributorId: String, owner: String?) {
+        val session=(auth.rehydrate() as? AuthFlow.AuthState.Active)?.session ?: return
+        if(owner!="account:${session.accountId}:$fingerprint" || ownerScope()!=owner) throw IOException("photo.identity-changed")
+        val scope=session.accountId+"|"+fingerprint+"|"+contributorId
+        if(boundScope==scope) return
+        val expiry=System.currentTimeMillis()/1000+PortableAccountBinding.PROOF_LIFETIME_SECONDS
+        val statement=PortableAccountBinding.statement(session.accountId,contributorId,expiry)
+        val digest=MessageDigest.getInstance("SHA-256").digest(statement.toByteArray(Charsets.UTF_8))
+        val signature=keys.signSha256Digest(digest) ?: throw IOException("photo.signing-unavailable")
+        val proof=PortableAccountBinding.proof(fingerprint,expiry,AnonymousProofCrypto.b64urlEncode(signature))
+            ?: throw IOException("photo.identity-unavailable")
+        identity.bind(session.familyId,session.accessToken,contributorId,proof)
+        boundScope=scope
     }
 
     private fun sign(lines: List<String>): String {

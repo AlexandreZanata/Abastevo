@@ -161,7 +161,6 @@ class ForumEditorialMvpAcceptanceTest {
         val detailVm = ForumDetailViewModel(
             getForumPostDetail = getForumPostDetail,
             validateForumSafeLink = validateForumSafeLink,
-            getForumComments = mockk(relaxed = true),
             getForumReplies = mockk(relaxed = true),
             submitForumComment = mockk(relaxed = true),
             editForumComment = mockk(relaxed = true),
@@ -169,6 +168,10 @@ class ForumEditorialMvpAcceptanceTest {
             reportForumTarget = mockk(relaxed = true),
             getOwnerTopic = mockk(relaxed = true),
             getOwnForumCommentIds = mockk(relaxed = true),
+            getRankedComments = mockk(relaxed = true),
+            setForumReaction = mockk(relaxed = true),
+            getOwnForumReactions = mockk(relaxed = true),
+            observeConversation = mockk(relaxed = true),
             sessionStore = null,
             savedStateHandle = savedStateHandle,
         )

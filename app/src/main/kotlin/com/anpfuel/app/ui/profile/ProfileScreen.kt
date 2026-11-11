@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -51,7 +50,6 @@ import com.anpfuel.app.navigation.Routes
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.designsystem.Button
 import com.anpfuel.app.ui.designsystem.OutlinedButton
-import com.anpfuel.app.ui.designsystem.TextButton
 import com.anpfuel.app.ui.header.AbastevoHeader
 import com.anpfuel.app.ui.contributors.ProfileContributorsEntry
 import com.anpfuel.app.ui.components.SkeletonButton
@@ -59,6 +57,8 @@ import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.components.SkeletonLine
 import com.anpfuel.app.ui.premium.PremiumEntryCard
+import com.anpfuel.app.ui.components.SettingsGroup
+import com.anpfuel.app.ui.components.SettingsSwitchRow
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.app.ui.theme.PremiumColors
 
@@ -112,19 +112,6 @@ fun ProfileScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            TextButton(onClick = onToggleTheme, modifier = Modifier.align(Alignment.End)) {
-                Icon(
-                    imageVector = if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    text = stringResource(
-                        if (darkTheme) R.string.action_switch_light_theme else R.string.action_switch_dark_theme,
-                    ),
-                    modifier = Modifier.padding(start = 8.dp),
-                )
-            }
             if (authState.step == AuthStep.CHECKING) {
                 ProfileSkeleton()
                 return@Column
@@ -169,7 +156,7 @@ fun ProfileScreen(
                     }
                 }
             } else {
-                val containerColor = MaterialTheme.colorScheme.surfaceVariant
+                val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = AnpContainerDefaults.containerShape(),
@@ -236,6 +223,18 @@ fun ProfileScreen(
                 shape = AnpContainerDefaults.containerShape(),
             ) {
                 Text(stringResource(R.string.quality_reports_own))
+            }
+
+            SettingsGroup(title = stringResource(R.string.profile_appearance_section)) {
+                SettingsSwitchRow(
+                    icon = if (darkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
+                    title = stringResource(R.string.profile_dark_theme_title),
+                    subtitle = stringResource(
+                        if (darkTheme) R.string.profile_dark_theme_on else R.string.profile_dark_theme_off,
+                    ),
+                    checked = darkTheme,
+                    onCheckedChange = { onToggleTheme() },
+                )
             }
 
             // Preserved Expert Tools section (contributions now live here

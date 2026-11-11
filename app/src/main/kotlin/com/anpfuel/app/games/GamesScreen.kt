@@ -313,7 +313,7 @@ private fun GameOverlay(
     Box(Modifier.fillMaxSize().background(Color(0x990B1830)), contentAlignment = Alignment.Center) {
         Column(
             Modifier.padding(16.dp).widthIn(max = 480.dp).fillMaxWidth().clip(AnpContainerDefaults.containerShape())
-                .background(MaterialTheme.colorScheme.surface).verticalScroll(rememberScrollState()).padding(20.dp),
+                .background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {

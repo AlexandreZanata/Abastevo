@@ -54,6 +54,8 @@ func mapCommentRowToDomain(r forumsql.ForumComment) *domain.Comment {
 		PublishedAt:       pubAt,
 		CreateOperationID: uuidString(r.CreateOperationID),
 		BodySHA256:        r.BodySha256,
+		LikeCount:         r.LikeCount,
+		DislikeCount:      r.DislikeCount,
 	}
 }
 
@@ -438,16 +440,33 @@ func (s *Store) ListCommentsByPost(ctx context.Context, query application.ListPo
 		limit = 100
 	}
 
-	var cursorSeq pgtype.Int8
+	var cursorSeq, cursorScore pgtype.Int8
 	if query.CursorSequence != nil {
 		cursorSeq = pgtype.Int8{Int64: *query.CursorSequence, Valid: true}
 	}
+	if query.CursorScore != nil {
+		cursorScore = pgtype.Int8{Int64: *query.CursorScore, Valid: true}
+	}
 
-	rows, err := s.queries.ListCommentsByPost(ctx, forumsql.ListCommentsByPostParams{
-		PostID:         postUUID,
-		Limit:          limit,
-		CursorSequence: cursorSeq,
-	})
+	var rows []forumsql.ForumComment
+	switch query.Sort {
+	case domain.ReplySortRecent:
+		rows, err = s.queries.ListCommentsByPostRecent(ctx, forumsql.ListCommentsByPostRecentParams{
+			PostID: postUUID, Limit: limit, CursorSequence: cursorSeq,
+		})
+	case domain.ReplySortLiked:
+		rows, err = s.queries.ListCommentsByPostLiked(ctx, forumsql.ListCommentsByPostLikedParams{
+			PostID: postUUID, Limit: limit, CursorScore: cursorScore, CursorSequence: cursorSeq,
+		})
+	case domain.ReplySortRelevant:
+		rows, err = s.queries.ListCommentsByPostRelevant(ctx, forumsql.ListCommentsByPostRelevantParams{
+			PostID: postUUID, Limit: limit, CursorScore: cursorScore, CursorSequence: cursorSeq,
+		})
+	default:
+		rows, err = s.queries.ListCommentsByPost(ctx, forumsql.ListCommentsByPostParams{
+			PostID: postUUID, Limit: limit, CursorSequence: cursorSeq,
+		})
+	}
 	if err != nil {
 		return nil, fmt.Errorf("forum: list comments by post: %w", err)
 	}
@@ -469,10 +488,25 @@ func (s *Store) ListCommentsByPost(ctx context.Context, query application.ListPo
 		}
 	}
 
+	// B-BR-FOR-18: each reply's best answer comes with the page, so the
+	// conversation reads without one request per thread.
+	topReplies := make(map[string]*domain.Comment, len(rows))
+	if query.WithTopReplies && len(parentUUIDs) > 0 {
+		previews, err := s.queries.ListTopRepliesForParents(ctx, parentUUIDs)
+		if err != nil {
+			return nil, fmt.Errorf("forum: list top replies: %w", err)
+		}
+		for _, r := range previews {
+			preview := mapCommentRowToDomain(r)
+			topReplies[uuidString(r.ParentID)] = preview
+		}
+	}
+
 	out := make([]domain.Comment, 0, len(rows))
 	for _, r := range rows {
 		c := mapCommentRowToDomain(r)
 		c.ReplyCount = replyCountsMap[c.ID]
+		c.TopReply = topReplies[c.ID]
 		out = append(out, *c)
 	}
 	return out, nil

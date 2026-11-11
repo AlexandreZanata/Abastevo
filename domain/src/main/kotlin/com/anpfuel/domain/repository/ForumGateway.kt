@@ -7,10 +7,15 @@ import com.anpfuel.domain.forum.ForumCommentReceipt
 import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
+import com.anpfuel.domain.forum.ForumOwnReactions
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumReaction
+import com.anpfuel.domain.forum.ForumReactionResult
+import com.anpfuel.domain.forum.ForumReactionTarget
 import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.forum.ForumRepliesPage
+import com.anpfuel.domain.forum.ForumReplySort
 import com.anpfuel.domain.forum.ForumReportReceipt
 import com.anpfuel.domain.forum.ForumTopicReceipt
 
@@ -102,4 +107,23 @@ interface ForumGateway {
     ): ForumTopicReceipt = throw UnsupportedOperationException()
 
     suspend fun getOwnerTopic(topicId: String): ForumTopicReceipt = throw UnsupportedOperationException()
+
+    /** Ranked top-level replies with each one's best answer preview (B-BR-FOR-18). */
+    suspend fun getRankedComments(
+        postId: String,
+        sort: ForumReplySort,
+        limit: Int,
+        cursor: String?,
+    ): ForumCommentsPage = throw UnsupportedOperationException()
+
+    /** Sets the signed caller's reaction; NONE clears it (B-BR-FOR-17). */
+    suspend fun setReaction(
+        target: ForumReactionTarget,
+        targetId: String,
+        reaction: ForumReaction,
+        operationId: String,
+    ): ForumReactionResult = throw UnsupportedOperationException()
+
+    /** The signed caller's reactions in one conversation. */
+    suspend fun getOwnReactions(postId: String): ForumOwnReactions = throw UnsupportedOperationException()
 }

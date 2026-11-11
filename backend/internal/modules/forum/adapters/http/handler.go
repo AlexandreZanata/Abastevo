@@ -365,6 +365,8 @@ type PostDetailDTO struct {
 	StationID         *string                `json:"station_id"`
 	Bulletin          *BulletinProvenanceDTO `json:"bulletin"`
 	SupersedesPostID  *string                `json:"supersedes_post_id"`
+	LikeCount         int64                  `json:"like_count"`
+	DislikeCount      int64                  `json:"dislike_count"`
 }
 
 // CategoryItemDTO mirrors OpenAPI ForumCategoryItem.
@@ -475,6 +477,8 @@ func mapDetailToDTO(d *domain.PostDetail) PostDetailDTO {
 		StationID:         d.StationID,
 		Bulletin:          mapBulletinToDTO(d.Bulletin),
 		SupersedesPostID:  d.SupersedesPostID,
+		LikeCount:         d.Reactions.Likes,
+		DislikeCount:      d.Reactions.Dislikes,
 	}
 }
 

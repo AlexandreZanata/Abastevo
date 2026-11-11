@@ -11,10 +11,15 @@ import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedFilters
 import com.anpfuel.domain.forum.ForumFeedPage
+import com.anpfuel.domain.forum.ForumOwnReactions
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumReaction
+import com.anpfuel.domain.forum.ForumReactionResult
+import com.anpfuel.domain.forum.ForumReactionTarget
 import com.anpfuel.domain.forum.ForumRegion
 import com.anpfuel.domain.forum.ForumRepliesPage
+import com.anpfuel.domain.forum.ForumReplySort
 import com.anpfuel.domain.forum.ForumReportReceipt
 import com.anpfuel.domain.forum.ForumTopicReceipt
 import com.anpfuel.domain.portable.PortableAuth
@@ -38,7 +43,7 @@ import okhttp3.Response
 import org.json.JSONObject
 
 private const val BODY_BUDGET = 512L * 1024L + 1 // 512 KiB byte cap
-private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+private val SIGNED_JSON_MEDIA_TYPE = "application/json".toMediaType()
 
 /**
  * HTTP transport client for Forum Abastevo (FOR-07, FOR-17, FOR-18, FOR-19).
@@ -53,6 +58,7 @@ class ForumHttpClient(
     private val sessions: AuthSessionStore? = null,
     private val auth: AuthFlow? = null,
     private val nowEpochSeconds: () -> Long = { System.currentTimeMillis() / 1000L },
+    private val proofHeaders: (suspend (path: String, body: ByteArray) -> Map<String, String>)? = null,
 ) : ForumGateway {
 
     private val origin = baseUrl.trimEnd('/').toHttpUrl()
@@ -137,7 +143,8 @@ class ForumHttpClient(
             .build()
         val raw = execute(Request.Builder().url(url).header("Accept", "application/json").build())
         return try {
-            ForumMapper.detail(JSONObject(raw))
+            // The API wraps the detail: {"post": {...}}.
+            ForumMapper.detail(JSONObject(raw).getJSONObject("post"))
         } catch (e: ForumException) {
             throw e
         } catch (e: Exception) {
@@ -201,16 +208,7 @@ class ForumHttpClient(
             }
             put("body_text", bodyText)
         }
-        val url = origin.newBuilder()
-            .addPathSegments("v1/forum/posts/$postId/comments")
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .build()
-        val raw = execute(request)
+        val raw = sessionPost("v1/forum/posts/$postId/comments", payload)
         return try {
             ForumMapper.commentReceipt(JSONObject(raw))
         } catch (e: ForumException) {
@@ -234,16 +232,7 @@ class ForumHttpClient(
             put("expected_revision", expectedRevision)
             put("body_text", bodyText)
         }
-        val url = origin.newBuilder()
-            .addPathSegments("v1/forum/comments/$commentId/edit")
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .build()
-        val raw = execute(request)
+        val raw = sessionPost("v1/forum/comments/$commentId/edit", payload)
         return try {
             ForumMapper.commentReceipt(JSONObject(raw))
         } catch (e: ForumException) {
@@ -265,16 +254,7 @@ class ForumHttpClient(
             put("operation_id", operationId)
             put("expected_revision", expectedRevision)
         }
-        val url = origin.newBuilder()
-            .addPathSegments("v1/forum/comments/$commentId/remove")
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .build()
-        val raw = execute(request)
+        val raw = sessionPost("v1/forum/comments/$commentId/remove", payload)
         return try {
             ForumMapper.commentReceipt(JSONObject(raw))
         } catch (e: ForumException) {
@@ -291,16 +271,7 @@ class ForumHttpClient(
             put("access_token", session.accessToken)
             put("comment_id", commentId)
         }
-        val url = origin.newBuilder()
-            .addPathSegments("v1/forum/owner/read")
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .build()
-        val raw = execute(request)
+        val raw = sessionPost("v1/forum/owner/read", payload)
         return try {
             ForumMapper.commentReceipt(JSONObject(raw))
         } catch (e: ForumException) {
@@ -330,16 +301,7 @@ class ForumHttpClient(
         } else {
             "v1/forum/comments/$targetId/report"
         }
-        val url = origin.newBuilder()
-            .addPathSegments(path)
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .build()
-        val raw = execute(request)
+        val raw = sessionPost(path, payload)
         return try {
             ForumMapper.reportReceipt(JSONObject(raw))
         } catch (e: ForumException) {
@@ -383,16 +345,7 @@ class ForumHttpClient(
                 put("public_alias", publicAlias)
             }
         }
-        val url = origin.newBuilder()
-            .addPathSegments("v1/forum/topics")
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .build()
-        val raw = execute(request)
+        val raw = sessionPost("v1/forum/topics", payload)
         return try {
             ForumMapper.topicReceipt(JSONObject(raw))
         } catch (e: ForumException) {
@@ -439,16 +392,7 @@ class ForumHttpClient(
                 put("public_alias", publicAlias)
             }
         }
-        val url = origin.newBuilder()
-            .addPathSegments("v1/forum/topics/$topicId/edit")
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .build()
-        val raw = execute(request)
+        val raw = sessionPost("v1/forum/topics/$topicId/edit", payload)
         return try {
             ForumMapper.topicReceipt(JSONObject(raw))
         } catch (e: ForumException) {
@@ -468,16 +412,7 @@ class ForumHttpClient(
             put("access_token", session.accessToken)
             put("operation_id", operationId)
         }
-        val url = origin.newBuilder()
-            .addPathSegments("v1/forum/topics/$topicId/remove")
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .build()
-        val raw = execute(request)
+        val raw = sessionPost("v1/forum/topics/$topicId/remove", payload)
         return try {
             ForumMapper.topicReceipt(JSONObject(raw))
         } catch (e: ForumException) {
@@ -494,16 +429,7 @@ class ForumHttpClient(
             put("access_token", session.accessToken)
             put("post_id", postId)
         }
-        val url = origin.newBuilder()
-            .addPathSegments("v1/forum/owner/read")
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .build()
-        val raw = execute(request)
+        val raw = sessionPost("v1/forum/owner/read", payload)
         return try {
             ForumMapper.ownCommentIds(JSONObject(raw))
         } catch (e: ForumException) {
@@ -520,16 +446,7 @@ class ForumHttpClient(
             put("access_token", session.accessToken)
             put("topic_id", topicId)
         }
-        val url = origin.newBuilder()
-            .addPathSegments("v1/forum/owner/read")
-            .build()
-        val request = Request.Builder()
-            .url(url)
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .build()
-        val raw = execute(request)
+        val raw = sessionPost("v1/forum/owner/read", payload)
         return try {
             ForumMapper.topicReceipt(JSONObject(raw))
         } catch (e: ForumException) {
@@ -537,6 +454,93 @@ class ForumHttpClient(
         } catch (e: Exception) {
             throw ForumException.Invalid("forum.bad-response")
         }
+    }
+
+    override suspend fun getRankedComments(
+        postId: String,
+        sort: ForumReplySort,
+        limit: Int,
+        cursor: String?,
+    ): ForumCommentsPage {
+        val url = origin.newBuilder()
+            .addPathSegments("v1/forum/posts/$postId/comments")
+            .addQueryParameter("sort", sort.wire)
+            .addQueryParameter("limit", limit.toString())
+            .apply { if (!cursor.isNullOrBlank()) addQueryParameter("cursor", cursor) }
+            .build()
+        val raw = execute(Request.Builder().url(url).header("Accept", "application/json").build())
+        return try {
+            ForumMapper.comments(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
+    override suspend fun setReaction(
+        target: ForumReactionTarget,
+        targetId: String,
+        reaction: ForumReaction,
+        operationId: String,
+    ): ForumReactionResult {
+        val session = liveSession()
+        val payload = JSONObject().apply {
+            put("family_id", session.familyId)
+            put("access_token", session.accessToken)
+            put("operation_id", operationId)
+            put("reaction", reaction.wire)
+        }
+        val raw = sessionPost("v1/forum/${target.pathSegment}/$targetId/reaction", payload)
+        return try {
+            ForumMapper.reactionResult(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
+    override suspend fun getOwnReactions(postId: String): ForumOwnReactions {
+        val session = liveSession()
+        val payload = JSONObject().apply {
+            put("family_id", session.familyId)
+            put("access_token", session.accessToken)
+            put("post_id", postId)
+        }
+        val raw = sessionPost("v1/forum/owner/reactions", payload)
+        return try {
+            ForumMapper.ownReactions(JSONObject(raw))
+        } catch (e: ForumException) {
+            throw e
+        } catch (e: Exception) {
+            throw ForumException.Invalid("forum.bad-response")
+        }
+    }
+
+    /**
+     * Session-backed command: the server binds the account session to the
+     * device signing key, so the exact body bytes carry a request proof.
+     */
+    private suspend fun sessionPost(path: String, payload: JSONObject): String {
+        val url = origin.newBuilder().addPathSegments(path).build()
+        val body = payload.toString().toByteArray(Charsets.UTF_8)
+        val proof = proofHeaders?.let { sign ->
+            try {
+                sign(url.encodedPath, body)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                throw ForumException.Unavailable("forum.signing-unavailable")
+            }
+        }.orEmpty()
+        val builder = Request.Builder()
+            .url(url)
+            .post(body.toRequestBody(SIGNED_JSON_MEDIA_TYPE))
+            .header("Accept", "application/json")
+            .header("Cache-Control", "no-store")
+        proof.forEach { (name, value) -> builder.header(name, value) }
+        return execute(builder.build())
     }
 
     private suspend fun execute(request: Request): String {

@@ -122,6 +122,30 @@ deferred extensions. Their absence is not a reason to delay editorial reading.
   review of its visible records. Source outage never deletes unrelated posts or
   blocks prices/maps/health. No LLM, paid API, service, Redis, search cluster,
   websocket or constant polling is required.
+- **B-BR-FOR-17 — Reactions.** A signed active account (B-BR-FOR-05) may set
+  one reaction per published, visible post or comment: `LIKE`, `DISLIKE` or
+  `NONE` (clear). Setting is idempotent: repeating the same value changes
+  nothing, switching moves the vote, and counts can never go below zero or
+  count one account twice. Public reads expose only aggregate like/dislike
+  counts; who reacted is never public, and an account reads its own reactions
+  through a private owner read. Removed, hidden, pending or rejected targets
+  refuse reactions like missing resources. Account erasure deletes the
+  account's reactions and their effect on counts. Reactions never change
+  moderation outcome, ranking of official prices, trust or payment state.
+- **B-BR-FOR-18 — Live conversation and load order.** A conversation loads in
+  this order: post, first page of top-level replies, each reply's best answer
+  preview, then further replies and answers only on demand, all keyset
+  paginated. Reply order is selectable: `relevant` (default in the app: likes minus
+  dislikes, newest breaks ties), `recent` and `liked`; the
+  API keeps oldest-first as default for older clients. An open conversation
+  may follow a server-sent event stream on the existing API (no websocket,
+  Redis or new service; B-BR-FOR-16) that announces only already published,
+  visible changes: new replies, edits and removals that leave public reads,
+  and reaction counts. Events carry public projections only. A slow or
+  reconnecting client receives a resync signal and reloads instead of an
+  unbounded backlog. New replies are offered behind a "new replies" control
+  instead of moving the list under the reader. The stream follows the read
+  switch and never replaces the paginated reads.
 
 ## Use cases and observable acceptance
 
@@ -157,6 +181,13 @@ deferred extensions. Their absence is not a reason to delay editorial reading.
 9. **BUC-FOR-09 Exercise rights.** Existing export/deletion flow includes Forum.
    Partial cleanup/restart/restore cannot resurrect content or acknowledge
    completion before Forum cleanup has succeeded.
+10. **BUC-FOR-10 React.** Signed account likes or dislikes a post or reply,
+    sees the count change at once and can undo or switch. Visitor attempting
+    to react enters the free sign-in journey. Counts converge across devices.
+11. **BUC-FOR-11 Follow a conversation.** Reader opens a post and sees replies
+    ranked as relevant, can switch to recent or most liked, expands answers on
+    demand and, while the post stays open, sees counts update and a "new
+    replies" control when moderated replies are published.
 
 ## Launch decisions
 
