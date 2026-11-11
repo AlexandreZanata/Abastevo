@@ -56,7 +56,8 @@ var errPolicy = errors.New("orgquota: invalid source policy")
 
 func validBudget(q identity.OperationQuota) bool {
 	// Inherit the <=24h quota retention inventory and whole-second retry
-	// protocol. The existing limiter uses fixed windows and PG timestamps.
+	// protocol. The existing limiter derives fixed windows from the application
+	// clock; only its expired-window cleanup uses the database clock.
 	return q.Limit > 0 && q.Window >= time.Second && q.Window <= 24*time.Hour && q.Window%time.Second == 0
 }
 
@@ -157,14 +158,21 @@ func (g *Guard) Check(ctx context.Context, p orgapi.Principal, rule orgapi.Rule)
 	err := database.WithOrgTx(ctx, g.pool, p.Scope, func(tx pgx.Tx) error {
 		// Common aggregate first, then account and device: every request uses
 		// the same lock order, with no external service call under these locks.
+		// After a denial the remaining axes are still read, inside the same
+		// rolled-back transaction, so Retry-After covers every exhausted window.
+		var wait time.Duration
 		for i, limiter := range e.axes {
 			retry, err := limiter.CheckTx(ctx, tx, subjects[i], identity.OperationWrite)
 			if errors.Is(err, identity.ErrQuotaExceeded) && retry > 0 {
-				return &orgapi.RateLimitError{RetryAfter: retry}
+				wait = max(wait, retry)
+				continue
 			}
 			if err != nil {
 				return orgapi.Unavailable
 			}
+		}
+		if wait > 0 {
+			return &orgapi.RateLimitError{RetryAfter: wait}
 		}
 		return nil
 	})

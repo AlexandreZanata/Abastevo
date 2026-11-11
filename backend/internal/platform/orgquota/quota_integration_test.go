@@ -360,3 +360,29 @@ func TestHTTPAuthorityPrecedesQuotaAndAdmittedFailuresStillSpendRateBudget(t *te
 	}
 	total(t, f.Admin, 6)
 }
+
+// A denial reports when every exhausted axis allows another write, not only the
+// first one checked: a retry after the organization minute would still meet the
+// exhausted account hour.
+func TestRetryAfterWaitsForEveryExhaustedAxis(t *testing.T) {
+	f := orgtest.New(t)
+	if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	defs := definitions()
+	defs[0].Organization = identity.OperationQuota{Limit: 1, Window: time.Minute}
+	defs[0].Account = identity.OperationQuota{Limit: 1, Window: time.Hour}
+	defs[0].Device = identity.OperationQuota{Limit: 5, Window: time.Hour}
+	g, err := New(f.RuntimePool(t, 4), bytes.Repeat([]byte{7}, 32), defs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := principal(t, orgA)
+	check(t, g, p, false)
+	hourEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
+	var limit *orgapi.RateLimitError
+	if err := g.Check(t.Context(), p, writeRule); !errors.As(err, &limit) || limit.RetryAfter < time.Until(hourEnd)-2*time.Second || limit.RetryAfter > time.Hour {
+		t.Fatalf("retry %v before the account window ends in %v (%v)", limit, time.Until(hourEnd), err)
+	}
+	total(t, f.Admin, 3)
+}
