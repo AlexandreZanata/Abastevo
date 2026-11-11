@@ -52,7 +52,13 @@ Two cases named by the request have no row of their own and are covered directly
 
 One synthetic fixture with two fleet organizations is reused by every scenario, so that isolation is tested everywhere and numbers can be compared between tests. All names, numbers and values are invented. No real company, person, plate, CNPJ or private place appears. Vehicles are identified by fleet number; plates are left empty on purpose.
 
-The fixture is kept as data in a proposed `contracts/testdata/enterprise/fixture-two-orgs-v1.json`, loaded by the Go isolation harness (EMP-PLAT-002) and by the Kotlin tests, with deterministic UUIDs derived from the keys below.
+The [version 1 organization fixture](../../contracts/testdata/enterprise/fixture-two-orgs-v1.json)
+and the [Go PostGIS harness](../../backend/internal/platform/orgtest/fixture.go)
+exist through EMP-PLAT-002. This first fixture contains organizations A and B
+and deliberately colliding record identifiers and numbers. The people,
+assets, operational records, station organizations and Kotlin consumers
+below are added by their owning implementation tasks. Their deterministic
+identifiers follow the same fixture version contract.
 
 **Organizations**
 

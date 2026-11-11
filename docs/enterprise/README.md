@@ -8,10 +8,12 @@ ADR-019 source batch. [ADR-025](../adr/025-private-abastevo-empresas-organizatio
 governs private organization data. Real-data, station, provider and release
 gates remain recorded in [the decision register](16-decisions.md).
 
-F1 is **IN_PROGRESS**. EMP-PLAT-001 is LOCAL_DONE / INTEGRATION_PENDING
-with tested organization ID/scope values and the repository/module
-registration convention. EMP-PLAT-002 is next.
-[F1 local evidence](evidence/f1-plat001-tenancy-kernel.md)
+F1 is **IN_PROGRESS**. EMP-PLAT-001 and EMP-PLAT-002 are LOCAL_DONE /
+INTEGRATION_PENDING with organization ID/scope values, repository
+conventions, transaction-local database scope and the real-PostGIS
+isolation harness. EMP-PLAT-003 is next.
+[Kernel evidence](evidence/f1-plat001-tenancy-kernel.md) and
+[database evidence](evidence/f1-plat002-database-isolation.md)
 
 The package specifies four fronts — **Abastevo Motoristas** (kept as it is), **Abastevo Empresas (Frotas)**, **Abastevo Postos** and **Abastevo Data** — from business rules down to microtasks.
 

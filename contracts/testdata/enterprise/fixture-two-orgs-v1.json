@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "organizations": [
+    {
+      "key": "A",
+      "id": "7b0e2a54-0000-4000-8000-000000000001",
+      "name": "Transportes Exemplo",
+      "time_zone": "America/Cuiaba",
+      "state": "ACTIVE",
+      "parent_id": "7b0e2a54-0000-4000-8100-000000000001",
+      "record_id": "7b0e2a54-0000-4000-8200-000000000001",
+      "number": "FR-001"
+    },
+    {
+      "key": "B",
+      "id": "7b0e2a54-0000-4000-8000-000000000002",
+      "name": "Entregas Modelo",
+      "time_zone": "America/Sao_Paulo",
+      "state": "ACTIVE",
+      "parent_id": "7b0e2a54-0000-4000-8100-000000000002",
+      "record_id": "7b0e2a54-0000-4000-8200-000000000001",
+      "number": "FR-001"
+    }
+  ]
+}

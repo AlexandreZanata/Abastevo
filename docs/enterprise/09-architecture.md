@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value contract in EMP-PLAT-001 is implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
+Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value contract in EMP-PLAT-001 and the database foundation in EMP-PLAT-002 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
 
 ## 1. Principles
 
@@ -183,9 +183,38 @@ X-CSRF: …
 - **Migrations:** append-only and additive, compatible with the previous image; the minimum-supported floor is not raised by this suite's additions, so a rollback to the previous image stays possible (existing zero-downtime practice).
 - **Account deletion:** existing private modules erase their rows when an account is deleted. Organization modules must not. Their trigger ends the account's memberships and replaces the account link with a tombstone; organization records stay (BR-TEN-009, BR-PRIV-014).
 - **Transactions:** one use case, one short transaction: record rules, writes, the audit event and the required jobs commit together. No external call is made while holding a lock. Aggregate roots are locked with `SELECT … FOR UPDATE`; periods use exclusion constraints; "one active trip per asset" is a partial unique index whose violation is turned into a review item, not an error.
-- **Row-level security:** organization tables get a policy that compares `org_id` with a per-transaction setting. The application role cannot bypass it; migrations and maintenance jobs use roles that can. This is a second layer behind scoped queries (EDR-005).
+- **Row-level security:** organization tables get forced policies that compare `org_id` with a transaction-local setting. Routine API and worker logins own no RLS tables and cannot assume privileged roles. Migration authority is separate. This is a second layer behind scoped queries (EDR-005).
 - **Idempotency:** acknowledgements are unique per (organization, operation); panel commands share the same table.
 - **Read models:** lists and indicators that need joins across modules are projections owned by one module and rebuilt from facts; they are never the source of truth.
+
+### 5.1 Implemented organization database foundation
+
+Private adapters call [database.WithOrgTx](../../backend/internal/platform/database/org_scope.go)
+with an explicit `kernel.OrgScope` and perform all work through its
+`pgx.Tx` callback. The helper validates scope before pool access, refuses
+unsafe runtime roles, and parameterizes `set_config('anpfuel.org_id', $1, true)`.
+The pgx transaction helper commits successful work and rolls back failures.
+Cancellation releases or discards the connection before reuse.
+
+The role check rejects a changed effective role, a login that can assume
+superuser, BYPASSRLS or CREATEROLE privileges, and membership in an RLS
+table's owner role. Use a dedicated runtime login with schema USAGE and
+only the required table DML grants. The migrator owns the schema and tables.
+
+The [executable migration template](../../backend/db/templates/organization_private.sql)
+defines organization-first primary and unique keys, a composite foreign
+reference and its index, and ENABLE/FORCE RLS with both USING and WITH CHECK.
+Missing or empty scope matches no rows. Malformed settings fail UUID
+validation. Each owning task copies and renames the template in a new
+numbered migration and adds its FK to the organization root introduced by
+EMP-ORG-002. The template stays outside the applied migration chain.
+
+The integration-only [orgtest fixture](../../backend/internal/platform/orgtest/fixture.go)
+creates a fresh fully migrated PostGIS database and a separate ordinary
+login. It loads the shared two-organization fixture and cleans up only its
+own database and role. Adapter tests grant that login access only to their
+owned tables. The harness requires an explicit disposable test DSN.
+[Isolation and migration evidence](evidence/f1-plat002-database-isolation.md)
 
 ## 6. Error codes
 

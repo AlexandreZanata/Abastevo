@@ -49,7 +49,8 @@ the approved panel, Android partition and private receipt scope.
   recorded independently of fiscal status.
   [Receipt decision](../enterprise/evidence/f0-m0-decisions.md#private-receipts)
 
-EMP-PLAT-001 freezes the following kernel boundary before implementation.
+EMP-PLAT-001 and EMP-PLAT-002 define the shared organization and database
+boundaries.
 
 - **B-BR-EMP-08 — Explicit organization scope.** A private organization
   repository call takes an explicit, nonzero OrgScope. Its OrgID is
@@ -59,6 +60,15 @@ EMP-PLAT-001 freezes the following kernel boundary before implementation.
   current actor authority before constructing scope. Repository adapters
   reject a zero scope before querying and apply it to each private reference.
   [Organization boundary](../adr/025-private-abastevo-empresas-organization-boundary.md)
+
+- **B-BR-EMP-09 — Transaction-local private database scope.** Organization
+  adapters run work in one transaction with the validated scope installed
+  through a parameterized transaction-local setting. Private tables use
+  composite organization keys and foreign references, explicit scoped
+  queries, and forced row-level policies for reads and writes. Missing scope
+  exposes zero rows and forbids writes. Runtime logins own no RLS tables
+  and cannot assume a superuser, BYPASSRLS or role-administration role.
+  Commit, rollback, failure and cancellation release the transaction scope.
 
 ## Use cases
 
@@ -83,6 +93,13 @@ EMP-PLAT-001 freezes the following kernel boundary before implementation.
   permitted organization, and constructs a scope for the repository call.
   A missing scope is rejected. A later request selecting another
   organization creates a separate value and leaves the earlier value intact.
+
+- **BUC-EMP-05 — Access private rows in a scoped transaction.** Given an
+  authorized organization and an ordinary runtime login, the adapter opens
+  a scoped transaction and reads or writes only that organization's rows.
+  A foreign reference is refused. Concurrent transactions keep their own
+  scope. After commit or failure, the reused connection exposes zero private
+  rows until another scoped transaction begins. A privileged login is refused.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

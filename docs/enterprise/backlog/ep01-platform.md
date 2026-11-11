@@ -28,7 +28,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local implementation and test evidence](../evidence/f1-plat001-tenancy-kernel.md).
 
 ### EMP-PLAT-002 — Tenant schema conventions, row-level-security template and two-organization isolation harness
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size M · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size M · state LOCAL_DONE
 - **Objective:** Establish the private database isolation baseline and shared PostGIS harness.
 - **Rules and use cases:** EDR-005, BR-TEN-005, BR-TEN-006, BR-PRIV-001, BR-PRIV-002
 - **Depends on:** EMP-PLAT-001
@@ -42,6 +42,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-SQL, V-ISO, V-IDEM · migration: forward-only rehearsal with the previous image · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Routine requests and jobs use roles subject to row-level policies. Migration authority is separate.
 - **Done when:** The harness proves the database boundary under ordinary roles and additive migration recovery.
+
+[Local isolation and migration evidence](../evidence/f1-plat002-database-isolation.md).
 
 ### EMP-PLAT-003 — Organization audit trail: append-only, per organization, following the admin audit pattern
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size M · state TODO

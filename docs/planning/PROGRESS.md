@@ -7,8 +7,8 @@
   repeatability, links, whitespace and secret review passed. PR177 and
   ADR-019 source ancestry verified with successful checks and strict
   main protection. Existing device/legal/real-data gates remain owed.
-  F0 checkpoint `39a2d725`. Enterprise issue, PR and remote publication
-  pending.
+  F0 checkpoint `39a2d725`. Cumulative delivery uses
+  `codex/enterprise-f0-f1`, with protected dev-to-main integration pending.
 
 - Enterprise F1, 2026-11-11: IN_PROGRESS on `codex/enterprise-f0-f1`.
   EMP-PLAT-001 LOCAL_DONE / INTEGRATION_PENDING, above the F0 checkpoint.
@@ -16,8 +16,16 @@
   OrgID/OrgScope, explicit private repository scope and module checklist.
   RED/GREEN, kernel race tests (94.4% coverage, new functions 100%), vet,
   pinned staticcheck, API/worker/ops build and scoped reviews passed.
-  Next bounded task EMP-PLAT-002, schema conventions and real-PostGIS
-  two-organization isolation harness. F1/M1 acceptance remains open.
+  EMP-PLAT-001 checkpoint `4c4d6e3b`. F1/M1 acceptance remains open.
+
+- Enterprise EMP-PLAT-002, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  on `codex/enterprise-f0-f1`. [Database evidence](../enterprise/evidence/f1-plat002-database-isolation.md)
+  records transaction-local scope, role guards, composite-key/forced-RLS
+  template and shared synthetic PostGIS fixture. RED/GREEN, 18 isolation
+  scenarios, migration failure/retry/compatibility, race tests, static
+  checks and affected build passed. GitHub publication requested.
+  ISSUE_PENDING after automatic approval rejected optional issue creation.
+  Next bounded task EMP-PLAT-003. Protected integration and F1/M1 remain open.
 
 - Landing 404, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING on `dev`
   from `cbfdec16` (P25 static landing, B-BR-L04 and BUC-L02).
