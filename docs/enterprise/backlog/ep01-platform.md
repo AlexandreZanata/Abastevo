@@ -100,7 +100,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local capability, audit and rollback evidence](../evidence/f1-plat005-capability-flags.md).
 
 ### EMP-PLAT-006 — Private storage namespace for enterprise documents with short-lived access
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type INT · size M · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type INT · size M · state LOCAL_DONE
 - **Objective:** Provide scoped private object storage access for synthetic C1 documents.
 - **Rules and use cases:** BR-PRIV-004, BR-PRIV-008, BR-PRIV-020, BR-TEN-007, OQ-04
 - **Depends on:** EMP-GOV-002, EMP-PLAT-002
@@ -114,6 +114,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-ISO, V-AUTHZ, V-PRIV · migration: document schema follows its owning task · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Real intake and retention require a reviewed category-specific policy. Community photo rules continue.
 - **Done when:** Negative access, upload limits and private-object checks pass on isolated fixtures.
+
+[Local private original, access and failure evidence](../evidence/f1-plat006-private-document-storage.md).
 
 ### EMP-PLAT-007 — Account web session for the business web: cookie, CSRF, origin check and fresh authentication
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type API · size M · state TODO

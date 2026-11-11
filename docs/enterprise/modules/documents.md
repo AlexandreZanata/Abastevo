@@ -4,6 +4,12 @@ Status: **PLANNED / RECONSTRUCTED**, 2026-11-11.
 Recovered from the surviving enterprise requirements, shared rules and backlog.
 The accepted F0 decisions and existing release gates govern any implementation.
 
+EMP-PLAT-006 implements the [private storage/access foundation](../evidence/f1-plat006-private-document-storage.md).
+Document metadata/schema, upload-session persistence, feature routes and
+verification/lifecycle jobs retain EMP-DOC-002 and EMP-DOC-014 ownership.
+The current synthetic inspector accepts JPEG; other format inspectors are
+not activated by a MIME declaration or a READY flag.
+
 ## 1. Purpose
 
 Attach verifiable private evidence to an organization's operational records. Field members capture originals and reviewers inspect only the documents they may read.

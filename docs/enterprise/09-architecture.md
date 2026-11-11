@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value, database, audit, HTTP and capability foundations in EMP-PLAT-001 through EMP-PLAT-005 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
+Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value, database, audit, HTTP, capability and private-storage foundations in EMP-PLAT-001 through EMP-PLAT-006 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
 
 ## 1. Principles
 
@@ -21,6 +21,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `orgaccess` (proposed) | AUTH | Role catalog, role assignments, the authorization service | `membership`, `organization`, `orgbilling` |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
 | `orgcapability` (LOCAL_DONE) | PLAT | Registered organization capability state and audited activation | `orgaudit` application port, `kernel`, scoped transaction helper; AUTH authority port |
+| `orgmedia` (LOCAL_DONE) | PLAT | Bounded private originals and member-bound access | Existing S3/HMAC/JPEG primitives; `orgaudit` application port; AUTH/DOC authority and metadata ports |
 | `orgsync` (proposed) | OFFL | Operation intake, acknowledgements, review items, reference feed | `orgaccess`; handlers registered by each module |
 | `fleet` (proposed) | FLEET, METER | Assets, tanks, meters, readings, assignments, reservations, suppliers | `organization`, `membership` |
 | `trip` (proposed) | TRIP | Missions, trips, stops, logbook | `fleet`, `review` |
@@ -349,6 +350,63 @@ Storage layout (proposed prefixes in the existing private bucket):
 | Import files | `org/<org_id>/import/<batch_id>` | Server only |
 | Track fixes | PostgreSQL, one row per uploaded batch | Through `gps.track.read` |
 | Panel map tiles | Public, static, project-hosted tile archive | Anonymous; contains no organization data |
+
+### 9.1 Private document storage foundation
+
+EMP-PLAT-006 implements `orgmedia` with explicit organization/member scope.
+Its authority port resolves the current session, membership, exact upload or
+content permission and server-owned synthetic document declaration. The
+separate access check includes revocation of the individual grant. An ID,
+token, metadata-only permission or private link grants no content authority.
+AUTH and EMP-DOC-002 own the concrete provider and document schema.
+
+The service defaults off and requires configured authority, storage, content
+inspection, token and audit ports. Composition supplies the existing enterprise
+switch and server UUID generator. A transfer has four concurrent slots and a
+20-second context; the future HTTP owner also sets its request read deadline,
+as the current community ingress does. The service reads at most declared
+bytes plus one, checks exact length/digest, requires detected type to match
+the server declaration and refuses an inspector that changes the original.
+Inspection also runs before delivery. Outages remain transient failures,
+distinct from unsupported content.
+
+Default budgets are image 5 MiB, PDF 10 MiB and XML 1 MiB. The configured
+synthetic C1 adapter reuses strict JPEG structure/dimension validation and
+full decode, without sanitizing or re-encoding the original. PNG, PDF and XML
+are refused by that inspector. Their reviewed format/active-content inspectors
+and safety-job state remain in EMP-DOC-014; a declared MIME or READY flag
+alone never enables an unconfigured format.
+
+The S3 adapter derives `org/<org_id>/doc/<document_id>/<sha256>` from validated
+server metadata. It reuses the existing SigV4 core and redirect-refusing
+bounded transport. A server-only PUT helper leaves community client policies
+unchanged. `If-None-Match: *` prevents replacement, and every successful/reused
+PUT is followed by a bounded digest/length-checked GET. Provider substitution,
+partial transfer and unavailable storage never confirm a ready document.
+HTTPS is mandatory except an explicit loopback-only fixture option. No ACL or
+public URL is emitted; original lifecycle/deletion follows the document task.
+
+The API capability reuses `httpapi.Seal/Open` with a separate binding domain.
+It binds canonical HTTPS origin, organization, account/member and exact
+document revision, digest, type and length. A signed inner deadline rejects
+at five minutes even though the shared cursor envelope lasts longer.
+Malformed, foreign, changed, revoked and expired grants fail closed.
+Current authority, grant revocation and expiry are checked again after
+storage/audit and before bytes leave the service; cancellation also refuses.
+
+Issuance and each actual redemption commit a bounded audit event first.
+The server generates a fresh request UUID for every content access; an audit
+replay/collision or outage yields no token/content. Events contain references
+and a canonical digest, never a token, storage URL or document fragment.
+Sensitive results, token/storage handles and storage configuration redact
+default formatting and structured slog output.
+
+Owning POST controllers keep tokens in the authenticated request body, use the
+existing organization error envelope and call `WriteContent` only with the
+audited service result. It sets no-store, no ETag, nosniff, exact type/length
+and a fixed attachment filename. This foundation mounts no business route or
+new service and introduces no document migration or dependency.
+[Implementation and isolated PostGIS/S3 evidence](evidence/f1-plat006-private-document-storage.md).
 
 Capacity scenarios. **All figures are hypotheses** for sizing discussions; they are not measurements and not commitments. Unit prices are Cloudflare R2 public prices read on 2026-11-10 (USD 0.015 per GB-month standard storage, egress free).
 

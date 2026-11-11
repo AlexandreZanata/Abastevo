@@ -1,4 +1,16 @@
 # Current execution state
+- Enterprise EMP-PLAT-006, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `5b692fb5`; delivery targets existing PR202 (`dev → main`).
+  [Private-storage evidence](../enterprise/evidence/f1-plat006-private-document-storage.md)
+  records derived organization keys, bounded original inspection, conditional
+  private PUT/verified GET, five-minute member-bound access and fail-closed
+  per-access audit/revocation. PostGIS/S3 race, foreign/expired/revoked access,
+  eight concurrent PUTs, substitution, audit failure and 5 MiB boundary passed.
+  Scoped regressions, static/build and privacy formatting checks passed.
+  No schema/dependency or live-intake activation. AUTH/DOC providers, document
+  persistence, business routes and further format inspectors retain their
+  tasks. F1/M1 remain open; EMP-PLAT-007 next.
+
 - Enterprise EMP-PLAT-005, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING,
   built from reviewed `68c1d1fa` in the isolated enterprise worktree.
   [Capability evidence](../enterprise/evidence/f1-plat005-capability-flags.md)

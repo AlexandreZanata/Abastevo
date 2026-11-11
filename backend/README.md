@@ -147,6 +147,31 @@ See the [transaction and composition contract](../docs/enterprise/09-architectur
 Use an ordinary non-owner, non-BYPASSRLS runtime login; backup/restore retains
 the separately reviewed authority needed for forced-RLS tables.
 
+### Private original transfers (EMP-PLAT-006)
+
+`orgmedia` supplies bounded organization storage and audited member-bound
+access ports. It adds no route, document migration or live intake. Its
+default-off service requires current AUTH/DOC authority, a synthetic
+declaration, a content inspector and the existing organization audit runner.
+Use the existing `jobs.NewUUIDv4` generator for access/request IDs.
+
+Original keys are derived under `org/<org_id>/doc/<document_id>/<sha256>`.
+Conditional PUT plus a bounded verified GET refuses overwrite or substitution.
+Only the synthetic JPEG inspector is supplied; other format inspectors and
+durable ready/quarantine state stay with EMP-DOC-014/EMP-DOC-002.
+Member-bound API access expires within five minutes, rechecks revocation and
+authority, and never returns a storage URL. Controllers use authenticated POST
+body tokens, the shared private error envelope and the supplied content writer.
+HTTP intake must set the request read deadline as the existing upload gateway
+does; a Go context alone cannot interrupt an arbitrary Reader.
+See the [storage contract](../docs/enterprise/09-architecture.md#91-private-document-storage-foundation).
+
+Integration tests require disposable `ANPFUEL_TEST_DATABASE_URL` and all
+`ANPFUEL_TEST_STORAGE_{ENDPOINT,BUCKET,REGION,ACCESS_KEY_ID,SECRET_ACCESS_KEY}`
+values. Use `infra/compose.validation.yml` with a unique project and its
+`storage-init` fixture. The loopback S3 option is explicit; shared/provider
+and real-receipt activation retain their own gates.
+
 ### Photo-intake safety budget (RVA07)
 
 `ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS` defaults to **0 (closed)**. The API

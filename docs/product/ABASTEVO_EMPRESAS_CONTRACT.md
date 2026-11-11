@@ -124,6 +124,30 @@ boundaries.
   provisioning remains available while the product surface is globally off;
   it has a separate current-authority check and exposes no new HTTP route.
 
+- **B-BR-EMP-15 — Private original identity and bounded intake.** Synthetic
+  document transfers resolve current same-organization member authority and
+  the server-owned declaration before reading bytes. Original identity is
+  organization, document, revision, content digest, detected type and length.
+  The server derives `org/<org_id>/doc/<document_id>/<sha256>`, bounds the
+  snapshot and requires a configured content inspector. A declaration is
+  not inspection. Unconfigured formats are refused. A conditional private
+  write cannot replace an original; retries verify the stored snapshot.
+  Default bounds are image 5 MiB, PDF 10 MiB and XML 1 MiB. The JPEG inspector
+  is reused for synthetic C1; EMP-DOC-014 owns further format inspectors and
+  safety-job state. This foundation activates no real-receipt intake.
+
+- **B-BR-EMP-16 — Member-bound audited content access.** An API access token
+  lasts at most five minutes and binds server origin, organization, verified
+  account/member and exact document identity. It conveys no membership or
+  permission. Issuance and every redemption resolve current authority and
+  verified document state. Expiry, changed identity or revoked authority
+  stops delivery; expiry and authority are rechecked after storage/audit.
+  Auditing fails closed before any content response. Tokens and storage
+  URLs never enter paths, logs, errors or audit metadata. Clients receive
+  private API content with no-store, no ETag, nosniff and a fixed attachment
+  filename. Original bytes are preserved; failed transfers claim no ready
+  document state. Document persistence and lifecycle remain in EMP-DOC-002.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -178,6 +202,16 @@ boundaries.
   A failed state/audit transaction changes neither, and a retry is safe.
   Turning the global surface off hides routes; turning it on again restores
   access subject to current authority and the persisted organization flags.
+
+- **BUC-EMP-09 — Transfer and inspect a synthetic private original.** Given a
+  server-resolved synthetic declaration and current member permission, the
+  API bounds one snapshot, checks its hash and detected type, conditionally
+  stores it under the derived organization key and confirms the same bytes.
+  A permitted member requests short-lived access and redeems it through the
+  API under the same current identity. Access is audited before delivery.
+  Foreign member/organization, expired or changed access, unsafe/unsupported
+  bytes, unavailable storage or audit failure returns no content. Retries
+  cannot overwrite a stored original or turn a partial upload into ready.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production
