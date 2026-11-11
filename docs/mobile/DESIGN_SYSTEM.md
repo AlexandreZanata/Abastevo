@@ -73,7 +73,7 @@ Accent (`AbastevoAccent`, mapped to the Material `secondary` roles): green,
 `#DDF5E6` and `#12331F`.
 
 The accent marks text links (`TextButton`), the location pin and community
-elements, such as the highlighted "contribute a price" card. It is never the
+elements. It is never the
 fill of a primary button and never the color of a price.
 
 Other fixed meanings:
@@ -103,10 +103,24 @@ outlines and indicators.
   `contentMuted`.
 - **Hero card** (`TankFillCostCard` on Explorar): at most one per screen,
   filled with `hero`, white text and a light `selected` action; no outline.
-- **Entry cards** (Comunidade): a small uppercase label says what the card
-  is, then icon, title, one line of explanation and one action. The main entry
-  (contribute a price) is accent-tinted with the filled button and always
-  comes first; the secondary entry (forum) is neutral with an outlined button.
+- **Entry cards** (Comunidade): contributing a price always comes first and
+  is the screen's hero (`hero` fill, uppercase label, title, one line of
+  explanation, a light filled action). The forum follows as one white
+  tappable row card: black icon badge, title, one line and a chevron. No
+  accent tint.
+- **Week picker**: one card says what every week contains; each week is a
+  white card with a calendar badge (black once downloaded), the date, an
+  "Atual" tag for the latest week and a black "Baixar" action or an outlined
+  "Baixada" state. The loading skeleton mirrors these cards.
+- **Empty states** (`EmptyState`): a white outlined card with a black icon
+  badge, the message as title, an optional hint and an optional outlined
+  action that leads out of the empty state.
+- **Forum** (social feed): white screen under the black top bar, category
+  underline tabs, posts edge to edge with hairlines between them. Each post
+  has a round avatar (brand mark and verified badge for official Abastevo
+  posts, initials for people), author line with relative time, kind and
+  category, title, excerpt and icon actions (comment, share). The compose
+  button is a round black FAB. Comments and replies follow the same layout.
 - **Map**: controls float over the map with a shadow instead of sitting in a
   card: a search pill, then city and price-source chips; details and status
   open in a panel below them. Round map buttons use the screen color with ink

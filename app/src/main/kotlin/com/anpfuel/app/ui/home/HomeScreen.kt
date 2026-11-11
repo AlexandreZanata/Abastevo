@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.LocalGasStation
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Settings
@@ -310,7 +311,13 @@ internal fun HomeContent(
                         uiState.communityFailed && uiState.communityPrices.isEmpty() -> ErrorState(stringResource(R.string.home_community_unavailable),onRetry=onRetry)
                         !uiState.hasLocation && !uiState.communityLoading -> { EmptyState(stringResource(R.string.home_no_location_message),hint=stringResource(R.string.home_no_location_hint));RowActions(onNavigate) }
                         uiState.communityLoading && uiState.communityPrices.isEmpty() -> HomeLoadingSkeleton()
-                        uiState.communityPrices.isEmpty() -> EmptyState(stringResource(R.string.home_community_empty),hint=stringResource(R.string.home_community_empty_hint))
+                        uiState.communityPrices.isEmpty() -> EmptyState(
+                            stringResource(R.string.home_community_empty),
+                            hint = stringResource(R.string.home_community_empty_hint),
+                            icon = Icons.Outlined.Groups,
+                            actionLabel = stringResource(R.string.community_action_contribute),
+                            onAction = { onNavigate(Routes.CAPTURE) },
+                        )
                         else -> {
                             if(uiState.communityLoading) androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
                             uiState.communityUpdatedAt?.let { at -> Text(stringResource(R.string.home_community_updated,

@@ -119,7 +119,8 @@ class CommunityFeedScreenTest {
         render(CommunityFeedUiState(city = city, loading = false), navigate = { route = it })
         compose.onNodeWithText(context.getString(R.string.forum_card_title)).assertIsDisplayed()
         compose.onNodeWithText(context.getString(R.string.forum_card_description)).assertIsDisplayed()
-        compose.onNodeWithText(context.getString(R.string.forum_card_cta)).performClick()
+        // The whole forum card opens the feed; its action label is the card's click label.
+        compose.onNodeWithText(context.getString(R.string.forum_card_title)).performClick()
         assertEquals(Routes.FORUM_FEED, route)
     }
 

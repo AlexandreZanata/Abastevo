@@ -1445,4 +1445,9 @@
     <string name="settings_section_account_privacy">アカウントとプライバシー</string>
     <string name="settings_section_search_data">検索とデータ</string>
     <string name="settings_section_about">アプリについて</string>
+    <string name="week_picker_contents_title">各週に含まれるデータ</string>
+    <string name="forum_author_driver">ドライバー</string>
+    <string name="forum_action_share">共有</string>
+    <string name="forum_official_account">Abastevo公式アカウント</string>
+    <string name="forum_action_comment">コメント</string>
 </resources>

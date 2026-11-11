@@ -1445,4 +1445,9 @@
     <string name="settings_section_account_privacy">账户与隐私</string>
     <string name="settings_section_search_data">搜索与数据</string>
     <string name="settings_section_about">关于应用</string>
+    <string name="week_picker_contents_title">每周包含</string>
+    <string name="forum_author_driver">司机</string>
+    <string name="forum_action_share">分享</string>
+    <string name="forum_official_account">Abastevo 官方账号</string>
+    <string name="forum_action_comment">评论</string>
 </resources>

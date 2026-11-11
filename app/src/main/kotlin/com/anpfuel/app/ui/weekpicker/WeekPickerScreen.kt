@@ -1,5 +1,18 @@
 package com.anpfuel.app.ui.weekpicker
 
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
+import com.anpfuel.app.ui.components.skeletonShimmer
+import com.anpfuel.app.ui.components.SkeletonCard
+import com.anpfuel.app.ui.components.SkeletonButton
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.filled.Update
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,15 +24,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -176,7 +186,15 @@ fun WeekPickerContent(
                         enabled = !uiState.isSyncing,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(text = stringResource(R.string.week_picker_latest))
+                        Icon(
+                            imageVector = Icons.Default.Update,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.week_picker_latest),
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
                     }
                 }
 
@@ -190,17 +208,23 @@ fun WeekPickerContent(
 
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp),
                 ) {
+                    // Every week holds the same two datasets: say it once, not per row.
+                    item(key = "contents") {
+                        WeekContentsCard()
+                    }
                     sections.forEach { section ->
                         item(key = "year-${section.year}") {
                             Text(
                                 text = section.year.toString(),
                                 style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 8.dp, bottom = 4.dp)
+                                    .padding(start = 4.dp, top = 8.dp)
                                     .headingSemantics(),
                             )
                         }
@@ -217,7 +241,6 @@ fun WeekPickerContent(
                                 onClick = onSelectWeek?.let { callback -> { callback(entry) } },
                                 onDownload = onDownloadWeek?.let { callback -> { callback(entry) } },
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
                     }
                 }
@@ -244,46 +267,121 @@ fun WeekPickerContent(
     }
 }
 
+/** Mirrors the loaded list: action button, contents card, year and week cards. */
 @Composable
 private fun WeekPickerLoadingSkeleton() {
     SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
-        repeat(3) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SkeletonLine(width = 180.dp, height = 20.dp)
-                SkeletonLine(height = 16.dp)
-                SkeletonLine(height = 16.dp)
-                SkeletonLine(width = 140.dp, height = 14.dp)
+        SkeletonButton()
+        SkeletonCard(height = 88.dp)
+        SkeletonLine(width = 56.dp, height = 18.dp)
+        repeat(4) {
+            WeekCardFrame {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(Modifier.size(BadgeSize).then(skeletonShimmer(cornerRadius = BadgeSize / 2)))
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        SkeletonLine(width = 140.dp, height = 18.dp)
+                        SkeletonLine(width = 110.dp, height = 12.dp)
+                    }
+                    Box(Modifier.size(width = 84.dp, height = 32.dp).then(skeletonShimmer(cornerRadius = 16.dp)))
+                }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
 
+private val BadgeSize = 40.dp
+
+/** White outlined week card shared by rows and their skeleton. */
+@Composable
+private fun WeekCardFrame(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
+        color = containerColor,
+        border = AnpContainerDefaults.borderStroke(containerColor),
+    ) {
+        content()
+    }
+}
+
+/** What every survey week contains, shown once above the list. */
+@Composable
+private fun WeekContentsCard() {
+    WeekCardFrame {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.week_picker_contents_title),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            WeekContentsLine(Icons.Default.BarChart, stringResource(R.string.week_picker_weekly_summary_line))
+            WeekContentsLine(Icons.Default.LocalGasStation, stringResource(R.string.week_picker_station_detail_line))
+        }
+    }
+}
+
+@Composable
+private fun WeekContentsLine(icon: ImageVector, text: String) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 /**
- * Compact tag sharing one standard across Atual/Baixada/Baixar: tight lateral
- * padding, small icon close to the label.
+ * Pill tag sharing one standard across Atual/Baixada/Baixar: black filled for
+ * the action and the current week, black outline for a downloaded week.
  */
 @Composable
 private fun WeekTag(
     label: String,
     icon: ImageVector?,
-    containerColor: Color,
-    contentColor: Color,
-    border: BorderStroke?,
+    filled: Boolean,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
+    val scheme = MaterialTheme.colorScheme
     Surface(
         onClick = onClick ?: {},
         enabled = onClick != null,
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = containerColor,
-        contentColor = contentColor,
-        border = border,
+        shape = CircleShape,
+        color = if (filled) scheme.primary else Color.Transparent,
+        contentColor = if (filled) scheme.onPrimary else scheme.onSurface,
+        border = if (filled) null else BorderStroke(1.dp, scheme.onSurface),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.padding(
+                horizontal = if (compact) 8.dp else 12.dp,
+                vertical = if (compact) 2.dp else 6.dp,
+            ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -296,7 +394,7 @@ private fun WeekTag(
             }
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge,
+                style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 softWrap = false,
             )
@@ -327,9 +425,9 @@ fun WeekDownloadingDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Surface(
-                    shape = RoundedCornerShape(32.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) {
                     Icon(
                         imageVector = Icons.Default.Download,
@@ -409,104 +507,91 @@ fun WeekPickerRow(
     isDownloaded: Boolean = false,
     onDownload: (() -> Unit)? = null,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    val scheme = MaterialTheme.colorScheme
+    WeekCardFrame(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (onClick != null) {
-                        Modifier.clickable(onClick = onClick)
-                    } else {
-                        Modifier
-                    },
-                )
-                .padding(vertical = 12.dp, horizontal = 8.dp),
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    text = SurveyWeekFormatter.formatRangeCompact(entry.surveyWeek, locale),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                // Black badge marks weeks already on the device.
+                Surface(
+                    shape = CircleShape,
+                    color = if (isDownloaded) scheme.primary else Color.Transparent,
+                    contentColor = if (isDownloaded) scheme.onPrimary else scheme.onSurface,
+                    border = if (isDownloaded) null else BorderStroke(1.dp, scheme.outlineVariant),
+                    modifier = Modifier.size(BadgeSize),
                 ) {
-                    if (isLatest) {
-                        WeekTag(
-                            label = stringResource(R.string.active_week_label),
-                            icon = null,
-                            containerColor = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            border = BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.outline,
-                            ),
-                            onClick = onClick,
-                        )
-                    }
-                    if (isDownloaded) {
-                        WeekTag(
-                            label = stringResource(R.string.week_picker_downloaded_tag),
-                            icon = Icons.Default.TaskAlt,
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            border = null,
-                            onClick = onClick,
-                        )
-                    } else {
-                        WeekTag(
-                            label = stringResource(R.string.week_picker_download_tag),
-                            icon = Icons.Default.Download,
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            border = null,
-                            onClick = onDownload ?: onClick,
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                 }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = SurveyWeekFormatter.formatRangeCompact(entry.surveyWeek, locale),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = scheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (isLatest) {
+                            WeekTag(
+                                label = stringResource(R.string.active_week_label),
+                                icon = null,
+                                filled = true,
+                                onClick = null,
+                                compact = true,
+                            )
+                        }
+                    }
+                    entry.publishedAt?.let { publishedAt ->
+                        val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
+                        Text(
+                            text = stringResource(R.string.week_picker_updated_at, publishedAt.format(formatter)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = scheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (isDownloaded) {
+                    WeekTag(
+                        label = stringResource(R.string.week_picker_downloaded_tag),
+                        icon = Icons.Default.Check,
+                        filled = false,
+                        onClick = onClick,
+                    )
+                } else {
+                    WeekTag(
+                        label = stringResource(R.string.week_picker_download_tag),
+                        icon = Icons.Default.Download,
+                        filled = true,
+                        onClick = onDownload ?: onClick,
+                    )
+                }
             }
-
-            Text(
-                text = "• ${stringResource(R.string.week_picker_weekly_summary_line)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp, top = 8.dp),
-            )
-
-            Text(
-                text = "• ${stringResource(R.string.week_picker_station_detail_line)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-            )
-
-            entry.publishedAt?.let { publishedAt ->
-                val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
-                Text(
-                    text = stringResource(
-                        R.string.week_picker_updated_at,
-                        publishedAt.format(formatter),
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, top = 4.dp),
-                )
+            entry.operationalNote?.let { note ->
+                OperationalNoteBanner(note = note)
             }
-        }
-
-        entry.operationalNote?.let { note ->
-            OperationalNoteBanner(
-                note = note,
-                modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-            )
         }
     }
 }

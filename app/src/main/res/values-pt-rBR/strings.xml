@@ -1459,4 +1459,9 @@
     <string name="settings_section_account_privacy">Conta e privacidade</string>
     <string name="settings_section_search_data">Busca e dados</string>
     <string name="settings_section_about">Sobre o app</string>
+    <string name="week_picker_contents_title">Cada semana inclui</string>
+    <string name="forum_author_driver">Motorista</string>
+    <string name="forum_action_share">Compartilhar</string>
+    <string name="forum_official_account">Conta oficial do Abastevo</string>
+    <string name="forum_action_comment">Comentar</string>
 </resources>

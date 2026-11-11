@@ -1,5 +1,12 @@
 package com.anpfuel.app.ui.community
 
+import com.anpfuel.app.ui.components.EmptyState
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.CloudOff
+import com.anpfuel.app.ui.theme.LocalAbastevoChromeColors
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -136,10 +143,13 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                 OutlinedButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.feed_new_updates)) }
             }
             if (state.failed) item {
-                FeedMessage(stringResource(R.string.feed_unavailable),
-                    stringResource(if (state.items.isEmpty()) R.string.feed_unavailable_hint else R.string.feed_cached_hint)) {
-                    TextButton(onClick = onRefresh) { Text(stringResource(R.string.feed_retry)) }
-                }
+                EmptyState(
+                    message = stringResource(R.string.feed_unavailable),
+                    hint = stringResource(if (state.items.isEmpty()) R.string.feed_unavailable_hint else R.string.feed_cached_hint),
+                    icon = Icons.Outlined.CloudOff,
+                    actionLabel = stringResource(R.string.feed_retry),
+                    onAction = onRefresh,
+                )
             }
             when {
                 state.loading -> item {
@@ -147,11 +157,23 @@ internal fun CommunityFeedContent(state: CommunityFeedUiState, darkTheme: Boolea
                         repeat(3) { SkeletonCard(height = 190.dp) }
                     }
                 }
-                state.noCity -> item { FeedMessage(stringResource(R.string.feed_choose_city), stringResource(R.string.feed_no_city_hint)) {
-                    TextButton(onClick = { onNavigate(Routes.LOCATION) }) { Text(stringResource(R.string.feed_choose_city)) }
-                } }
+                state.noCity -> item {
+                    EmptyState(
+                        message = stringResource(R.string.feed_choose_city),
+                        hint = stringResource(R.string.feed_no_city_hint),
+                        icon = Icons.Outlined.LocationOn,
+                        actionLabel = stringResource(R.string.feed_choose_city),
+                        onAction = { onNavigate(Routes.LOCATION) },
+                    )
+                }
                 state.items.isEmpty() && !state.failed -> item {
-                    FeedMessage(stringResource(R.string.feed_empty_title), stringResource(R.string.feed_empty_hint)) {}
+                    EmptyState(
+                        message = stringResource(R.string.feed_empty_title),
+                        hint = stringResource(R.string.feed_empty_hint),
+                        icon = Icons.Outlined.Sell,
+                        actionLabel = stringResource(R.string.community_action_contribute),
+                        onAction = { onNavigate(Routes.CAPTURE) },
+                    )
                 }
             }
             items(state.items, key = { it.stationId }) { item ->
@@ -226,19 +248,6 @@ private fun feedSortIcon(sort: FeedSort) = when (sort) {
 }
 
 @Composable
-private fun FeedMessage(title: String, description: String, action: @Composable () -> Unit) {
-    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    Card(Modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape(), colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = AnpContainerDefaults.borderStroke(containerColor)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            action()
-        }
-    }
-}
-
-@Composable
 private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: () -> Unit, onSignIn: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     val timestamp = DateTimeFormatter.ofPattern("d MMM · HH:mm", locale).withZone(ZoneId.systemDefault()).format(item.updatedAt)
@@ -291,114 +300,137 @@ private fun FeedPriceCard(item: CommunityFeedItem, darkTheme: Boolean, onOpen: (
     }
 }
 
-/** Main action of Comunidade: share a price. Accent-tinted, with the screen's one filled button. */
+/**
+ * Main action of Comunidade: share a price. The screen's brand hero, on the
+ * chrome hero fill with white text and a light action, like the Explorar
+ * tank-cost card.
+ */
 @Composable
 fun ContributePriceCard(
     onContribute: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    CommunityEntryCard(
-        label = stringResource(R.string.community_card_contribute_label),
-        title = stringResource(R.string.feed_contribute_title),
-        description = stringResource(R.string.feed_contribute_hint),
-        icon = Icons.Outlined.Sell,
-        highlighted = true,
-        modifier = modifier,
-    ) {
-        Button(onClick = onContribute, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.community_action_contribute))
-        }
-    }
-}
-
-/** Secondary entry of Comunidade: the forum. Neutral, with an outlined button. */
-@Composable
-fun ForumCommunityCard(
-    onExplore: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    CommunityEntryCard(
-        label = stringResource(R.string.community_card_forum_label),
-        title = stringResource(R.string.forum_card_title),
-        description = stringResource(R.string.forum_card_description),
-        icon = Icons.Outlined.Forum,
-        highlighted = false,
-        modifier = modifier,
-    ) {
-        OutlinedButton(onClick = onExplore, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.forum_card_cta))
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
-        }
-    }
-}
-
-/**
- * Entry card on Comunidade: a label saying what the card is, its icon, title,
- * one line of explanation and one action. The [highlighted] card is tinted
- * with the accent so the two entries are never mistaken for each other.
- */
-@Composable
-private fun CommunityEntryCard(
-    label: String,
-    title: String,
-    description: String,
-    icon: ImageVector,
-    highlighted: Boolean,
-    modifier: Modifier = Modifier,
-    action: @Composable () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val containerColor = if (highlighted) scheme.secondaryContainer else scheme.surfaceContainerLow
-    val contentColor = if (highlighted) scheme.onSecondaryContainer else scheme.onSurface
-    val supportingColor = if (highlighted) scheme.onSecondaryContainer else scheme.onSurfaceVariant
+    val chrome = LocalAbastevoChromeColors.current
     Card(
-        shape = AnpContainerDefaults.containerShape(),
-        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
-        border = AnpContainerDefaults.borderStroke(containerColor),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = chrome.hero, contentColor = chrome.content),
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(AbastevoSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(AbastevoSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(AbastevoSpacing.lg),
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(AbastevoSpacing.md),
             ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(AbastevoSpacing.xs),
+                ) {
+                    Text(
+                        text = stringResource(R.string.community_card_contribute_label)
+                            .uppercase(LocalConfiguration.current.locales[0]),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = chrome.contentMuted,
+                    )
+                    Text(
+                        text = stringResource(R.string.feed_contribute_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    Text(
+                        text = stringResource(R.string.feed_contribute_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = chrome.contentMuted,
+                    )
+                }
                 Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = if (highlighted) scheme.secondary else scheme.surfaceContainerHigh,
-                    contentColor = if (highlighted) scheme.onSecondary else scheme.onSurface,
-                    modifier = Modifier.size(44.dp),
+                    shape = CircleShape,
+                    color = chrome.control,
+                    contentColor = chrome.content,
+                    modifier = Modifier.size(48.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Outlined.Sell, contentDescription = null, modifier = Modifier.size(24.dp))
                     }
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = label.uppercase(LocalConfiguration.current.locales[0]),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = supportingColor,
-                    )
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
+            }
+            Button(
+                onClick = onContribute,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = chrome.selected,
+                    contentColor = chrome.onSelected,
+                ),
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.community_action_contribute))
+            }
+        }
+    }
+}
+
+/**
+ * Secondary entry of Comunidade: the forum. One white tappable row card with
+ * a black icon badge, title, one line of explanation and a chevron.
+ */
+@Composable
+fun ForumCommunityCard(
+    onExplore: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val containerColor = scheme.surfaceContainerLow
+    val actionLabel = stringResource(R.string.forum_card_cta)
+    Card(
+        shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClickLabel = actionLabel, role = Role.Button, onClick = onExplore)
+                .padding(AbastevoSpacing.lg),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(AbastevoSpacing.md),
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = scheme.primary,
+                contentColor = scheme.onPrimary,
+                modifier = Modifier.size(44.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.Forum, contentDescription = null, modifier = Modifier.size(22.dp))
                 }
             }
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = supportingColor,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.forum_card_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = stringResource(R.string.forum_card_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = scheme.onSurface,
             )
-            action()
         }
     }
 }

@@ -1445,4 +1445,9 @@
     <string name="settings_section_account_privacy">Аккаунт и конфиденциальность</string>
     <string name="settings_section_search_data">Поиск и данные</string>
     <string name="settings_section_about">О приложении</string>
+    <string name="week_picker_contents_title">Каждая неделя включает</string>
+    <string name="forum_author_driver">Водитель</string>
+    <string name="forum_action_share">Поделиться</string>
+    <string name="forum_official_account">Официальный аккаунт Abastevo</string>
+    <string name="forum_action_comment">Комментировать</string>
 </resources>
