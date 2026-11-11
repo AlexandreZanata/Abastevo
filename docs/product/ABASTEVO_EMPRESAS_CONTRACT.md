@@ -475,6 +475,25 @@ boundaries.
   precede organization locks to serialize admission with deletion.
   Full erasure notice/rights/retention and role effects remain owning tasks.
 
+- **B-BR-EMP-45 — Freeze the system catalog without creating authority.**
+  org-roles-v1 and org-permissions-v1 contain only the canonical private
+  organization roles and exact registered keys. A permission with no approved
+  matrix cell stays registered but unassigned; no wildcard, management/read
+  inheritance, paid tier, station-representation alias or unknown key creates
+  a grant. Catalog definitions reject duplicates and unregistered references.
+  Returned views are deterministic copies and cannot mutate shared source.
+
+- **B-BR-EMP-46 — Preserve every matrix restriction.**
+  Catalog rules distinguish assigned scope from own-record/assigned-asset
+  coverage. Admin role assignment excludes OWNER; driver GPS access is own
+  trips only; auditor tracks are recorded-only. Fleet and station agreement
+  sides remain separate, and station rules need live station authority.
+  OWNER receives the matrix's explicit cells, including SELF restrictions,
+  without a record-rule or station-authority exemption. Every positive rule
+  still requires active membership, a valid scoped assignment, organization/
+  plan checks and record rules. Assigning OWNER requires a current OWNER.
+  These are static descriptors, not session, grant or permission decisions.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -654,6 +673,13 @@ boundaries.
   protection before provider cancellation. Pending deletion intents fence
   new membership admission and are excluded from surviving-owner policy;
   a replay with a changed billing-exit reason is a conflict, not admission.
+
+- **BUC-EMP-23 — Resolve fixed role descriptors safely.**
+  Read an immutable system role's exact permissions and restrictions from
+  the versioned source catalog. Unknown roles/keys fail; registered keys
+  without a matrix cell return denied coverage. Combining role views keeps
+  each rule's role, scope and restrictions; no catalog lookup authorizes an
+  account, grants a role or replaces current server policy.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

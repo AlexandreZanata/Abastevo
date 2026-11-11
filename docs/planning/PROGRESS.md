@@ -1,4 +1,20 @@
 # Current execution state
+- Enterprise EMP-AUTH-001, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `b05da1a2`, on isolated `codex/enterprise-f0-f1`,
+  targeting existing PR202 (`dev` → `main`); occupied dev preserved.
+  [Catalog evidence](../enterprise/evidence/f1-auth001-role-permission-catalog.md)
+  records org-roles-v1/org-permissions-v1: 13 roles, 84 literal keys,
+  1,092 tested descriptor cells, four footnotes and separate party sides.
+  All 23 keys without matrix grants remain denied; the literal stock.reconcile
+  exception is preserved. No inheritance, runtime role or authority inferred.
+  Race/immutability/negative suites pass; new domain coverage 100%.
+  Existing membership/staff/station/kernel regressions, build/static,
+  format, plan/links and secret checks pass. No SQL or route changes.
+  AUTH-002 is next, with actual assignments and locked owner policy;
+  membership SQL policy remains UNAVAILABLE. New grants for unassigned
+  keys need explicit matrix/version changes. F1/M1 and prior runtime,
+  native, legal, coverage and PLAT-012/GOV-014 gates remain open.
+
 - Enterprise EMP-IDN-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published `3e88a5e9`, on isolated `codex/enterprise-f0-f1`,
   targeting existing PR202 (`dev` → `main`); occupied dev preserved.

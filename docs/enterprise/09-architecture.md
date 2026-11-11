@@ -18,7 +18,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 |---|---|---|---|
 | `organization` (ORG-001/002 LOCAL_DONE) | ORG | Scoped aggregate/lifecycle and forced-RLS root persistence; onboarding, legal entities, units, teams, groups and settings commands remain planned | `kernel`, explicit application ports, sqlc/pgx; no runtime route or authority provider |
 | `membership` (IDN-001/003 LOCAL_DONE) | IDN | Scoped identity/lifecycle values, forced-RLS employee identity and membership periods, account-erasure fencing; employee register, invitations and managed activation remain planned | `kernel`, explicit application/sqlc/pgx ports, existing account deletion and billing-exit transactions; actual role policy remains AUTH-002 |
-| `orgaccess` (proposed) | AUTH | Role catalog, role assignments, the authorization service | `membership`, `organization`, `orgbilling` |
+| `orgaccess` (AUTH-001 LOCAL_DONE, catalog only) | AUTH | Code-frozen role/permission descriptors; role assignments and current authorization service remain planned | Standard library for catalog; future scoped membership/organization/billing ports for actual authority |
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
 | `orgvalue` (LOCAL_DONE, domain only) | PLAT | Exact reconciliation and ordered allocation | Existing pure metrics/kernel bounds; shared Go/Kotlin vectors; no private repository or authority |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
@@ -247,6 +247,29 @@ atomic owner/unit creation, audited commands, timers and lifecycle
 effects belong to their owning commands. ORG-002 supplies scoped CAS storage
 as described below. No route or actual closure is
 activated. [Local evidence](evidence/f1-org001-organization-domain.md).
+
+### 2.4 Implemented system role and permission descriptors
+
+EMP-AUTH-001 confirms orgaccess/domain as the platform-owned source catalog:
+org-roles-v1, org-permissions-v1, 13 roles and 84 exact keys. The current
+matrix grants cells for 61 keys; 23 registered keys stay denied for all
+roles until explicit matrix/version changes. stock.reconcile preserves the
+published two-segment exception without creating a new alias or grant.
+
+Lookup returns immutable coverage/requirement descriptors, never account
+authority. O stays inside an assignment scope; S narrows to own records and
+assigned assets. Every positive cell still requires live membership/scoped
+assignment, organization/plan and record rules. The four matrix footnotes,
+separate fleet/station agreement sides and live station authority remain
+explicit. OWNER has no wildcard, station or self-review exemption. Station
+representation aliases are metadata only, not organization role keys.
+
+Definitions are validated at construction, lists/rules are copied and sorted,
+and zero/unknown/duplicate inputs fail closed. No custom/runtime registration,
+SQL, route, assignment or current provider is added. The membership database
+policy remains UNAVAILABLE until AUTH-002. This static platform source holds
+no private organization selection; actual scoped authorization stays in
+the owning request pipeline. [Catalog evidence](evidence/f1-auth001-role-permission-catalog.md).
 
 ## 3. Request context and authentication
 

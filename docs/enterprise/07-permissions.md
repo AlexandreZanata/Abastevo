@@ -1,8 +1,8 @@
 # Permissions, roles, scopes and active context
 
-Status: **PLANNED**, 2026-11-10. Module code `AUTH`. This file is both the module specification for authorization ([00-conventions](00-conventions.md) §4) and the single registry of roles and permission keys for every other module. Tasks: `EMP-AUTH-001…011` in [backlog/ep03-identity-access](backlog/ep03-identity-access.md).
+Status: **EMP-AUTH-001 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-11; assignments, current authorization and remaining module features PLANNED. Module code `AUTH`. This file is both the module specification for authorization ([00-conventions](00-conventions.md) §4) and the single registry of roles and permission keys for every other module. Tasks: `EMP-AUTH-001…011` in [backlog/ep03-identity-access](backlog/ep03-identity-access.md).
 
-Evidence: the repository has no organization roles today. The only role models are station representation (`administrator`, `manager` with four scopes, `backend/internal/modules/stationprofile/domain/claim.go`) and the code-frozen staff roles of the admin suite (ADR-023, `backend/internal/modules/staff`). Everything below is `PROPOSED`.
+Evidence: EMP-AUTH-001 adds the code-frozen `orgaccess/domain` catalog and [matrix evidence](evidence/f1-auth001-role-permission-catalog.md), without assigning roles or authorizing requests. Station representation (`administrator`, `manager` with four scopes, `backend/internal/modules/stationprofile/domain/claim.go`) and the admin-suite staff catalog (ADR-023, `backend/internal/modules/staff`) remain separate. Runtime assignment, policy and route behavior below stays `PROPOSED` until its owning tasks are accepted.
 
 ## 1. Purpose
 
@@ -248,6 +248,29 @@ Station and data roles:
 | Read API usage (`data.usage.read`) | — | — | — | O | O |
 
 An organization `OWNER` or `ADMIN` does not represent a station by being owner or admin. Station permissions always come from a station role assignment under an active station authority (BR-AUTH-015).
+
+### 7.4 Initial source-catalog interpretation
+
+EMP-AUTH-001 freezes the 13 canonical roles and 84 registry keys above.
+The current matrix covers 61 keys; the other 23 remain registered but
+unassigned, with denied coverage even for OWNER. Proposed role rows in
+owning module documents do not silently extend this matrix. A later grant
+needs an explicit matrix revision and catalog version change.
+The literal stock.reconcile key is retained as the registry's sole
+two-segment compatibility exception; it stays unassigned. Other keys use
+the documented three-segment format; no new alias is inferred.
+
+O and S are static coverage descriptors, not a request decision. Every
+positive descriptor retains the four conditions of BR-AUTH-001. The four
+footnotes are explicit restrictions. For agree.agreement.manage, main-table
+roles act on the fleet side, and STATION_ADMIN acts on the station side
+with live station authority; the station table's "by assignment only" does
+not turn an organization OWNER/ADMIN into a station representative. Fleet
+and station views retain separate party scopes (station-commerce §7).
+
+Catalog lookup does not persist assignments, interpret a subscription as a
+role, evaluate current scope/time, waive self-review rules or enable the
+membership database policy. Actual authority remains AUTH-002/003 work.
 
 ## 8. Offline, concurrency, idempotency and corrections
 

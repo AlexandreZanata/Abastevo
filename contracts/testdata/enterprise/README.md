@@ -1,5 +1,36 @@
 # Enterprise domain vectors
 
+## Authorization catalog v1
+
+EMP-AUTH-001 checks all 84 rows × 13 roles = 1,092 cells of
+authorization-catalog-v1.psv. This oracle was pinned from 07-permissions
+§§7.1–7.3 before implementation, independently of the compiled source rows.
+The consumer checks exact header/row count, unique keys, known role/key
+lookups, coverage and complete sorted requirements; no cell is skipped.
+
+O means assigned-scope coverage; S means own records and assigned assets;
+dash means denied. A colon introduces additional comma-separated matrix
+restrictions. Every positive cell also retains ACTIVE_MEMBERSHIP,
+LIVE_SCOPED_ASSIGNMENT, ORGANIZATION_AND_PLAN and RECORD_RULES. Footnotes
+preserve admin's OWNER exclusion, driver own trips, auditor recorded tracks
+and fleet-side agreements. Station descriptors require live station
+authority; station/fleet agreement sides stay separate.
+
+The registry has 84 literal keys, including stock.reconcile as its only
+two-segment compatibility exception. The matrix covers 61; the other 23
+are registered and denied for every role. No manage/read inheritance,
+wildcard, subscription role or station permission is inferred. Proposed
+module mappings do not add grants without a new matrix/catalog version.
+
+These cases test static source descriptors. Actual scoped memberships,
+assignments, last-owner locking, fresh authentication, record rules and the
+complete router suite remain AUTH-002/003/009 work. No runtime permission,
+database/provider activation, native or cross-client acceptance is claimed.
+
+```sh
+(cd backend && go test -race ./internal/modules/orgaccess/domain -count=1)
+```
+
 ## Identity lifecycle v1
 
 EMP-IDN-001 executes all 29 rows of identity-lifecycle-v1.psv in Go. The

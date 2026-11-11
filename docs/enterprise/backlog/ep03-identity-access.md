@@ -321,7 +321,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Done when:** Erasure, race, rollback and restore checks pass with scoped fixtures.
 
 ### EMP-AUTH-001 — Role and permission registry: system roles and permission keys
-- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type DOM · size S · state TODO
+- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Define the fixed system roles and permission keys used by the authorization service.
 - **Rules and use cases:** BR-AUTH-001, BR-AUTH-003, BR-AUTH-007, EDR-008
 - **Depends on:** EMP-PLAT-001
@@ -335,6 +335,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-DOM · migration: none · rollback: revert the new registry before dependent behavior is exposed
 - **Risks and assumptions:** Custom roles are a separate phase and use the same keys.
 - **Done when:** The fixed registry agrees with the documented permission matrix.
+
+[Local fixed-catalog and matrix evidence](../evidence/f1-auth001-role-permission-catalog.md).
 
 ### EMP-AUTH-002 — Role assignments with organization and self scopes
 - **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type DB · size S · state TODO

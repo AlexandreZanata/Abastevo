@@ -23,6 +23,7 @@ backend/internal/modules/organization/adapters
 backend/internal/modules/membership/domain
 backend/internal/modules/membership/application
 backend/internal/modules/membership/adapters
+backend/internal/modules/orgaccess/domain
 backend/internal/modules/orgevent/domain
 backend/internal/modules/orgevent/application
 backend/internal/modules/orgevent/adapters

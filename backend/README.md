@@ -394,6 +394,34 @@ sqlc generate
 
 [Local persistence, ordinary-owner upgrade and failure evidence](../docs/enterprise/evidence/f1-idn003-membership-persistence.md).
 
+### Fixed role and permission catalog (EMP-AUTH-001)
+
+`orgaccess/domain.SystemCatalog` exposes only immutable source descriptors
+from org-roles-v1/org-permissions-v1: 13 canonical roles and 84 exact keys.
+Rules retain originating role, assigned-scope/own-record coverage and all
+matrix restrictions. Live membership/assignment, organization/plan and record
+rules remain mandatory server conditions, including for OWNER. Station
+rules require live authority; fleet/station agreement sides stay separate.
+Representation aliases are metadata, not accepted organization role names.
+
+Lists/rules are copied and sorted. Unknown roles/keys, duplicates and invalid
+compiled source fail closed; there is no dynamic/custom registration. The
+23 keys without matrix rows stay registered but denied, including
+stock.reconcile (the literal two-segment compatibility key). Manage does not
+imply read and paid tiers imply no role. A new grant needs an explicit
+canonical matrix and catalog version change.
+
+This package contains no private data, assignment persistence, current actor
+proof, request authorization or SQL policy activation. AUTH-002/003 still
+own those boundaries; the membership policy remains UNAVAILABLE.
+
+```sh
+go test -race ./internal/modules/orgaccess/domain ./internal/modules/membership/domain ./internal/modules/staff/domain ./internal/modules/stationprofile/domain ./internal/modules/kernel -count=1
+```
+
+See [1,092 descriptor cells](../contracts/testdata/enterprise/README.md#authorization-catalog-v1)
+and [catalog acceptance](../docs/enterprise/evidence/f1-auth001-role-permission-catalog.md).
+
 ### Organization operation time (EMP-PLAT-015)
 
 orgtime/domain preserves declared occurred_at and trusted server received_at
