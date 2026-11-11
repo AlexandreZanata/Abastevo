@@ -279,8 +279,6 @@
     <string name="action_next">下一步</string>
     <string name="action_back">返回</string>
     <string name="action_cancel">取消</string>
-    <string name="action_switch_dark_theme">切换到深色主题</string>
-    <string name="action_switch_light_theme">切换到浅色主题</string>
 
     <!-- UC-002 Onboarding -->
     <string name="onboarding_title_welcome">欢迎</string>
@@ -1440,4 +1438,11 @@
     <string name="forum_topic_validation_body_empty">内容不能为空。</string>
     <string name="forum_topic_validation_body_too_long">内容超过4,000个字符。</string>
     <string name="forum_topic_validation_category">请选择一个分类。</string>
+    <string name="profile_appearance_section">外观</string>
+    <string name="profile_dark_theme_title">深色主题</string>
+    <string name="profile_dark_theme_on">已开启</string>
+    <string name="profile_dark_theme_off">已关闭</string>
+    <string name="settings_section_account_privacy">账户与隐私</string>
+    <string name="settings_section_search_data">搜索与数据</string>
+    <string name="settings_section_about">关于应用</string>
 </resources>

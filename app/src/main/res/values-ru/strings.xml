@@ -279,8 +279,6 @@
     <string name="action_next">Далее</string>
     <string name="action_back">Назад</string>
     <string name="action_cancel">Отмена</string>
-    <string name="action_switch_dark_theme">Переключить на тёмную тему</string>
-    <string name="action_switch_light_theme">Переключить на светлую тему</string>
 
     <!-- UC-002 Onboarding -->
     <string name="onboarding_title_welcome">Добро пожаловать</string>
@@ -1440,4 +1438,11 @@
     <string name="forum_topic_validation_body_empty">Содержание не может быть пустым.</string>
     <string name="forum_topic_validation_body_too_long">Содержание превышает 4 000 символов.</string>
     <string name="forum_topic_validation_category">Пожалуйста, выберите категорию.</string>
+    <string name="profile_appearance_section">Оформление</string>
+    <string name="profile_dark_theme_title">Тёмная тема</string>
+    <string name="profile_dark_theme_on">Включена</string>
+    <string name="profile_dark_theme_off">Выключена</string>
+    <string name="settings_section_account_privacy">Аккаунт и конфиденциальность</string>
+    <string name="settings_section_search_data">Поиск и данные</string>
+    <string name="settings_section_about">О приложении</string>
 </resources>

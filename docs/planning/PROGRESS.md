@@ -1,4 +1,13 @@
 # Current execution state
+- Android black-chrome identity, 2026-11-11: LOCAL_DONE /
+  INTEGRATION_PENDING on `dev` from `d8bdc642` (owner design request;
+  spec `docs/mobile/DESIGN_SYSTEM.md`). Solid black header, top bars,
+  status band and bottom bar; white containers on off-white screens; light
+  theme by default; animated map action panel; grouped settings cards and
+  a Perfil theme switch. 741 app unit tests and `git diff --check` passed;
+  debug build checked on the owner's phone in light and dark. Next:
+  protected PR to main.
+
 - Landing 404, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING on `dev`
   from `cbfdec16` (P25 static landing, B-BR-L04 and BUC-L02).
   Shares the home header, footer, typography and action styles, with

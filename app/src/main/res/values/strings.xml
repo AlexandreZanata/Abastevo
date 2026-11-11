@@ -398,8 +398,6 @@
     <string name="action_next">Next</string>
     <string name="action_back">Back</string>
     <string name="action_cancel">Cancel</string>
-    <string name="action_switch_dark_theme">Switch to dark theme</string>
-    <string name="action_switch_light_theme">Switch to light theme</string>
 
     <!-- UC-002 Onboarding -->
     <string name="onboarding_title_welcome">Welcome</string>
@@ -1461,4 +1459,11 @@
     <string name="forum_topic_validation_body_too_long">Content exceeds 4,000 characters.</string>
     <string name="forum_topic_validation_category">Please select a category.</string>
     <string name="home_open_map">View on map</string>
+    <string name="profile_appearance_section">Appearance</string>
+    <string name="profile_dark_theme_title">Dark theme</string>
+    <string name="profile_dark_theme_on">On</string>
+    <string name="profile_dark_theme_off">Off</string>
+    <string name="settings_section_account_privacy">Account and privacy</string>
+    <string name="settings_section_search_data">Search and data</string>
+    <string name="settings_section_about">About the app</string>
 </resources>

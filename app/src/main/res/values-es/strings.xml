@@ -279,8 +279,6 @@
     <string name="action_next">Siguiente</string>
     <string name="action_back">Atrás</string>
     <string name="action_cancel">Cancelar</string>
-    <string name="action_switch_dark_theme">Cambiar al tema oscuro</string>
-    <string name="action_switch_light_theme">Cambiar al tema claro</string>
 
     <!-- UC-002 Onboarding -->
     <string name="onboarding_title_welcome">Bienvenido</string>
@@ -1440,4 +1438,11 @@
     <string name="forum_topic_validation_body_empty">El contenido no puede estar vacío.</string>
     <string name="forum_topic_validation_body_too_long">El contenido supera los 4.000 caracteres.</string>
     <string name="forum_topic_validation_category">Selecciona una categoría.</string>
+    <string name="profile_appearance_section">Apariencia</string>
+    <string name="profile_dark_theme_title">Tema oscuro</string>
+    <string name="profile_dark_theme_on">Activado</string>
+    <string name="profile_dark_theme_off">Desactivado</string>
+    <string name="settings_section_account_privacy">Cuenta y privacidad</string>
+    <string name="settings_section_search_data">Búsqueda y datos</string>
+    <string name="settings_section_about">Acerca de la app</string>
 </resources>
