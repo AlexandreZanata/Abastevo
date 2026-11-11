@@ -1463,4 +1463,5 @@
     <plurals name="forum_new_replies">
         <item quantity="other">%d 条新回复</item>
     </plurals>
+    <string name="home_open_map">在地图上查看</string>
 </resources>

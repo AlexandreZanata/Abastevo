@@ -1464,4 +1464,5 @@
         <item quantity="one">%d neue Antwort</item>
         <item quantity="other">%d neue Antworten</item>
     </plurals>
+    <string name="home_open_map">Auf der Karte anzeigen</string>
 </resources>

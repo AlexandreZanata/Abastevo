@@ -1,4 +1,11 @@
 # Current execution state
+- Home map localization, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING.
+  [Evidence](../mobile/home-open-map-localization.md): six missing
+  home_open_map translations added above ec92ab38; full app lint now passes
+  (0 errors, 347 existing warnings). No suppression or gate weakened.
+  The prior lint failure below is historical; domain coverage and enterprise
+  activation obligations remain open. Delivery targets existing PR202.
+
 - Enterprise EMP-PLAT-011, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published `5927654c`; delivery targets existing PR202 (dev → main).
   [Android foundation evidence](../enterprise/evidence/f1-plat011-android-foundation.md)
