@@ -176,6 +176,42 @@ class AuthViewModelTest {
         assertEquals("", state.email)
     }
 
+    // An offline revoke after a durable local clear is still a completed local logout.
+    @Test
+    fun offlineRevokeAfterDurableClearStillLogsOut() = runTest {
+        advanceUntilIdle()
+        every { authFlow.logout() } returns AuthApiResult.Err(PortableAuth.UNAVAILABLE)
+        viewModel.onLogout()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
+        assertNull(state.error)
+    }
+
+    // A failed durable clear is never shown as a completed logout.
+    @Test
+    fun failedDurableClearReportsSecureStorageAndKeepsRetainedSession() = runTest {
+        advanceUntilIdle()
+        every { authFlow.logout() } returns AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE)
+        every { authFlow.rehydrate() } returns AuthFlow.AuthState.Active(session())
+        viewModel.onLogout()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(AuthStep.AUTHENTICATED, state.step)
+        assertEquals(AuthUiError.SecureStorage, state.error)
+    }
+
+    @Test
+    fun failedDurableClearWithoutRetainedSessionStillReportsSecureStorage() = runTest {
+        advanceUntilIdle()
+        every { authFlow.logout() } returns AuthApiResult.Err(AuthFlow.SECURE_STORAGE_UNAVAILABLE)
+        viewModel.onLogout()
+        advanceUntilIdle()
+        val state = viewModel.uiState.value
+        assertEquals(AuthStep.USERNAME_ENTRY, state.step)
+        assertEquals(AuthUiError.SecureStorage, state.error)
+    }
+
     @Test
     fun deleteAccountReturnsToEmailEntryWithNotice() = runTest {
         advanceUntilIdle()
