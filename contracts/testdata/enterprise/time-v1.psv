@@ -86,9 +86,15 @@ clock-custom-limit|SKEW|device=2026-11-11T00:12:00Z;server=2026-11-11T00:00:00Z;
 clock-wide-limit|SKEW|device=2026-11-11T00:12:00Z;server=2026-11-11T00:00:00Z;limit=9223372036854775807|seconds=720;nanos=0;flag=;limit=9223372036854775807
 clock-negative-limit|SKEW|device=2026-11-11T00:00:00Z;server=2026-11-11T00:00:00Z;limit=-1|error=invalid-time
 clock-fractional-server|SKEW|device=2026-11-11T00:00:00.0000001Z;server=2026-11-11T00:00:00.0000005Z;limit=?|seconds=-1;nanos=999999600;flag=;limit=300
-clock-full-range-ahead|SKEW|device=9999-12-31T23:59:59.999999999Z;server=0001-01-01T00:00:00Z;limit=?|seconds=315537897599;nanos=999999999;flag=CLOCK_SKEW;limit=300
+clock-full-range-ahead|SKEW|device=9999-12-31T23:59:59.999999999Z;server=0001-01-01T00:00:00.000000001Z;limit=?|seconds=315537897599;nanos=999999998;flag=CLOCK_SKEW;limit=300
 clock-full-range-behind|SKEW|device=0001-01-01T00:00:00Z;server=9999-12-31T23:59:59.999999999Z;limit=9223372036854775807|seconds=-315537897600;nanos=1;flag=;limit=9223372036854775807
 bad-org-valid-unit|RECORD|occurred=2026-11-11T02:30:00Z;received=2026-11-12T08:00:00Z;entry=UTC;offset=0;org=bad;unit=UTC|error=invalid-time
 etc-zone|RECORD|occurred=2026-11-11T02:30:00Z;received=2026-11-12T08:00:00Z;entry=UTC;offset=0;org=Etc/GMT+3;unit=?|occurred=2026-11-11T02:30:00Z;received=2026-11-12T08:00:00Z;authority=2026-11-12T08:00:00Z;entry=UTC;offset=0;day=2026-11-10;zone=Etc/GMT+3;source=organization
 zone-alias|RECORD|occurred=2026-11-11T02:30:00Z;received=2026-11-12T08:00:00Z;entry=US/Eastern;offset=-18000;org=US/Eastern;unit=?|occurred=2026-11-11T02:30:00Z;received=2026-11-12T08:00:00Z;authority=2026-11-12T08:00:00Z;entry=US/Eastern;offset=-18000;day=2026-11-10;zone=US/Eastern;source=organization
 double-slash-zone|RECORD|occurred=2026-11-11T02:30:00Z;received=2026-11-12T08:00:00Z;entry=America//Cuiaba;offset=0;org=UTC;unit=?|error=invalid-time
+zero-receipt|RECORD|occurred=2026-11-11T02:30:00Z;received=0001-01-01T00:00:00Z;entry=Asia/Tokyo;offset=32400;org=America/Sao_Paulo;unit=?|error=invalid-time
+zero-server-receipt|SKEW|device=2026-11-11T00:00:00Z;server=0001-01-01T00:00:00Z;limit=?|error=invalid-time
+systemv-entry-zone|RECORD|occurred=2026-11-11T02:30:00Z;received=2026-11-12T08:00:00Z;entry=SystemV/EST5;offset=-18000;org=America/Sao_Paulo;unit=?|error=invalid-time
+systemv-org-zone|RECORD|occurred=2026-11-11T02:30:00Z;received=2026-11-12T08:00:00Z;entry=UTC;offset=0;org=SystemV/AST4;unit=?|error=invalid-time
+abbreviation-org-zone|RECORD|occurred=2026-11-11T02:30:00Z;received=2026-11-12T08:00:00Z;entry=UTC;offset=0;org=GMT;unit=?|error=invalid-time
+legacy-name-org-zone|RECORD|occurred=2026-11-11T02:30:00Z;received=2026-11-12T08:00:00Z;entry=UTC;offset=0;org=Japan;unit=?|error=invalid-time

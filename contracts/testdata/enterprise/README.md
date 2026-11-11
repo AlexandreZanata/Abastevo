@@ -31,6 +31,10 @@ missing price additionally yields a labelled exact rational milli-BRL
 price from paid/quantity, rather than a manufactured recorded price.
 Known expected/derived values remain calculable when an independent fact
 is absent. Difference/warning remains absent until gross and expected are known.
+An unknown discount therefore skips the arithmetic check (vector
+missing-discount). A fueling command whose receipt states no discount must
+pass an explicit zero; BR-FUEL-002's "Paid R$ 221.00 with no discount" warning
+depends on that mapping, which the EMP-FUEL command owns.
 
 Source-price text is preserved verbatim as metadata. The helper does not
 interpret, truncate or round original decimal text, and does not claim
@@ -58,7 +62,7 @@ document persistence or client feature and require no database or provider.
 
 ## Operation-time vectors v1
 
-EMP-PLAT-015 executes all 93 rows of time-v1.psv in Go orgtime/domain and
+EMP-PLAT-015 executes all 99 rows of time-v1.psv in Go orgtime/domain and
 Kotlin EnterpriseTimeTest, checking the same complete output maps, header,
 row count, unique IDs and known operations without language skips. The
 synthetic oracle was recorded before implementation from BR-TIME-001/002/
@@ -75,7 +79,9 @@ RECORD keeps the declared instant, trusted receipt, entry zone and declared
 integral-second device offset (±18h) separately. Entry/reporting zones do
 not reinterpret the instant or silently correct a mismatched device offset.
 UTC and valid slash-separated IANA names/aliases are accepted; Local,
-abbreviations, raw offsets, path/posix/right names and unknown zones fail.
+abbreviations, single-segment names, raw offsets, path/posix/right/SystemV
+names and unknown zones fail. Go applies this profile in kernel.LoadTimeZone,
+which organizations share, so a stored organization zone always reports.
 The optional unit overrides organization reporting; a supplied invalid unit
 does not fall back. Both context zones must be valid. Persist the resulting
 day, zone and unit/organization source with the operation. The trip vector
@@ -83,6 +89,9 @@ uses its start instant. Historical snapshots survive later context changes.
 
 PERIOD includes start and excludes end, rejecting empty/reversed ranges.
 Authority uses server receipt, even when the declared time is earlier.
+A server receipt equal to the minimum instant 0001-01-01T00:00:00Z is
+refused in RECORD and SKEW: it is Go's unset time value and must never
+pass as an authority time. Device samples may still be that instant.
 SKEW compares a sync device clock sample to its server receipt sample,
 not a historical operation. Signed difference is seconds + nonnegative
 nanos (−0.1s is −1s + 900000000ns). CLOCK_SKEW applies strictly above
@@ -99,14 +108,17 @@ Run from the repository root (existing JDK17/Android SDK environment):
 
 Vectors cover Brazil/local-midnight boundaries, New York gaps and repeated
 hours, the Apia skipped day, historical Brazilian DST, quarter-hour zones,
-invalid contexts, nanosecond edges and offset/clock bounds. This certifies
+invalid contexts, nanosecond edges and offset/clock bounds. They map
+instants to local days only; no operation converts a local time to an
+instant, so gaps and repeated hours need no policy yet. A future builder of
+local boundaries must define one with Go/JVM vectors first. This certifies
 these vectors on the recorded Go/JVM providers, not every IANA database or
 native Android device. No sync route, receipt retention or live feature is
 activated; owners still provide trusted clock/context and review wiring.
 
 ## Organization lifecycle v1
 
-EMP-ORG-001 executes all 102 rows of organization-lifecycle-v1.psv in Go
+EMP-ORG-001 executes all 111 rows of organization-lifecycle-v1.psv in Go
 organization/domain. This is a backend domain oracle, not client parity or
 runtime acceptance. Expected maps were recorded from BR-ORG-001/002/004/
 025/027/037 and the organization state graph before implementation.
@@ -114,13 +126,17 @@ Consumers check the header/count/unique IDs, known operation and complete
 output map; no case is skipped. The four-column PSV format is unchanged.
 
 The 25 from/to pairs cover all five states. All 32 activation combinations
-cover name, server-known IANA zone, active unit, active owner and terms.
+cover name, valid IANA zone, active unit, active owner and terms.
 Other rows pin registered reasons, malformed kinds/zones/states, descriptive
 tags/name, stale/exhausted revisions, archive blockers and unknown/pending/
 cancelled/elapsed closure conditions. Kind tags are sorted/deduplicated as
 a set, without manufacturing OTHER for absence. Name/zone text is retained;
-whitespace is examined only for name presence. Source aliases known to the
-server are allowed; Local/raw offsets/paths are not IANA identifiers.
+spaces and invisible format characters are examined only for name presence.
+The display name is free text bounded at 120 code points without control or
+bidirectional override characters (BR-PRIV-007, BR-ORG-005). Zones follow
+the shared operation-time profile: GMT, EST, Japan, Factory, localtime,
+posixrules and SystemV/ names fail even when the host resolves them, and
+Etc/ and slash-separated aliases are accepted.
 
 All transition conditions are server-resolved facts, never client authority.
 CLOSED cannot leave even through a self-edge. No clock, scheduler, owner/unit

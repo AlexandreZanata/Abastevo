@@ -2,14 +2,15 @@
 package domain
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"math"
-	"regexp"
 	"sort"
 	"strings"
-	"time"
-	_ "time/tzdata"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
@@ -24,7 +25,6 @@ var (
 	ErrTransition = errors.New("organization: transition not allowed")
 	ErrConditions = errors.New("organization: lifecycle conditions not confirmed")
 	ErrSetup      = errors.New("organization: setup incomplete")
-	zoneName      = regexp.MustCompile("^[A-Za-z0-9_+/-]{1,128}$")
 )
 
 type State string
@@ -98,21 +98,45 @@ type Profile struct {
 	Kinds    []Kind
 }
 
-func (Profile) String() string         { return "OrganizationProfile(redacted)" }
-func (p Profile) GoString() string     { return p.String() }
-func (p Profile) LogValue() slog.Value { return slog.StringValue(p.String()) }
+// Every fmt verb, slog value and JSON encoding (including nested in slices or
+// maps, where slog falls back to encoding/json) prints only the redaction.
+func (Profile) String() string                 { return "OrganizationProfile(redacted)" }
+func (p Profile) Format(f fmt.State, _ rune)   { redact(f, p.String()) }
+func (p Profile) LogValue() slog.Value         { return slog.StringValue(p.String()) }
+func (p Profile) MarshalJSON() ([]byte, error) { return json.Marshal(p.String()) }
 
-func validZone(id string) bool {
-	if !zoneName.MatchString(id) || id == "Local" || strings.Contains(id, "//") ||
-		strings.HasPrefix(id, "posix/") || strings.HasPrefix(id, "right/") {
+func redact(f fmt.State, text string) { _, _ = io.WriteString(f, text) }
+
+// MaxNameRunes bounds the free-text display name (BR-PRIV-007).
+const MaxNameRunes = 120
+
+// validName refuses control characters and bidirectional overrides: names are
+// shown to people outside the organization (BR-ORG-005) and must not reorder
+// or hide the text around them.
+func validName(name string) bool {
+	if !utf8.ValidString(name) || utf8.RuneCountInString(name) > MaxNameRunes {
 		return false
 	}
-	_, err := time.LoadLocation(id)
-	return err == nil
+	for _, r := range name {
+		if unicode.Is(unicode.Cc, r) || (r >= '\u202a' && r <= '\u202e') || (r >= '\u2066' && r <= '\u2069') {
+			return false
+		}
+	}
+	return true
+}
+
+// blankName treats a name of only spaces and invisible format characters as absent.
+func blankName(name string) bool {
+	return strings.TrimFunc(name, func(r rune) bool { return unicode.IsSpace(r) || unicode.Is(unicode.Cf, r) }) == ""
 }
 func canonical(profile Profile) (Profile, error) {
-	if !utf8.ValidString(profile.Name) || (profile.TimeZone != "" && !validZone(profile.TimeZone)) {
+	if !validName(profile.Name) {
 		return Profile{}, ErrInvalid
+	}
+	if profile.TimeZone != "" {
+		if _, ok := kernel.LoadTimeZone(profile.TimeZone); !ok {
+			return Profile{}, ErrInvalid
+		}
 	}
 	set := map[Kind]bool{}
 	for _, kind := range profile.Kinds {
@@ -142,15 +166,17 @@ type Snapshot struct {
 	SuspensionReason Reason
 }
 
-func (Snapshot) String() string         { return "OrganizationSnapshot(redacted)" }
-func (s Snapshot) GoString() string     { return s.String() }
-func (s Snapshot) LogValue() slog.Value { return slog.StringValue(s.String()) }
+func (Snapshot) String() string                 { return "OrganizationSnapshot(redacted)" }
+func (s Snapshot) Format(f fmt.State, _ rune)   { redact(f, s.String()) }
+func (s Snapshot) LogValue() slog.Value         { return slog.StringValue(s.String()) }
+func (s Snapshot) MarshalJSON() ([]byte, error) { return json.Marshal(s.String()) }
 
 type Organization struct{ value Snapshot }
 
-func (Organization) String() string         { return "Organization(redacted)" }
-func (o Organization) GoString() string     { return o.String() }
-func (o Organization) LogValue() slog.Value { return slog.StringValue(o.String()) }
+func (Organization) String() string                 { return "Organization(redacted)" }
+func (o Organization) Format(f fmt.State, _ rune)   { redact(f, o.String()) }
+func (o Organization) LogValue() slog.Value         { return slog.StringValue(o.String()) }
+func (o Organization) MarshalJSON() ([]byte, error) { return json.Marshal(o.String()) }
 
 // NewPending creates only the pure root. The owning command atomically creates unit/employee/owner.
 func NewPending(scope kernel.OrgScope, profile Profile) (Organization, error) {
@@ -172,7 +198,7 @@ func Rehydrate(scope kernel.OrgScope, snapshot Snapshot) (Organization, error) {
 		return Organization{}, ErrInvalid
 	}
 	if snapshot.State != PendingSetup && snapshot.State != Closed &&
-		(strings.TrimSpace(profile.Name) == "" || profile.TimeZone == "") {
+		(blankName(profile.Name) || profile.TimeZone == "") {
 		return Organization{}, ErrInvalid
 	}
 	snapshot.Profile = profile
@@ -267,7 +293,7 @@ func (o Organization) activation(facts Conditions) error {
 		return ErrInvalid
 	}
 	var missing []Missing
-	if strings.TrimSpace(o.value.Profile.Name) == "" {
+	if blankName(o.value.Profile.Name) {
 		missing = append(missing, MissingName)
 	}
 	if o.value.Profile.TimeZone == "" {

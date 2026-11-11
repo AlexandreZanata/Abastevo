@@ -2,6 +2,7 @@ package domain_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -220,6 +221,15 @@ func TestInvalidProfilesAndHydratedStatesCannotBypassActivation(t *testing.T) {
 		{Name: string([]byte{255}), TimeZone: "UTC"},
 		{Name: "Synthetic", TimeZone: "Mars/Olympus"},
 		{Name: "Synthetic", TimeZone: "UTC", Kinds: []org.Kind{"UNKNOWN"}},
+		{Name: "Synthetic", TimeZone: "GMT"},
+		{Name: "Synthetic", TimeZone: "localtime"},
+		{Name: "Synthetic", TimeZone: "SystemV/EST5"},
+		{Name: "Synthetic\x00Co", TimeZone: "UTC"},
+		{Name: "Synthetic\nCo", TimeZone: "UTC"},
+		{Name: "Synthetic \u202eoC", TimeZone: "UTC"},
+		{Name: "Synthetic \u2066Co\u2069", TimeZone: "UTC"},
+		{Name: strings.Repeat("é", org.MaxNameRunes+1), TimeZone: "UTC"},
+		{Name: strings.Repeat("A", 10<<20), TimeZone: "UTC"},
 	} {
 		if _, err := org.NewPending(s, profile); !errors.Is(err, org.ErrInvalid) {
 			t.Fatal(err)
@@ -238,6 +248,26 @@ func TestInvalidProfilesAndHydratedStatesCannotBypassActivation(t *testing.T) {
 		if _, err := org.Rehydrate(s, invalid); !errors.Is(err, org.ErrInvalid) {
 			t.Fatal(err)
 		}
+	}
+	// An invisible name is absent: it neither activates nor survives as an active profile.
+	for _, name := range []string{"\u200b", " \u200b\u2060 ", "\ufeff"} {
+		blank, err := org.NewPending(s, org.Profile{Name: name, TimeZone: "UTC"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var setup *org.SetupError
+		if _, err := blank.Transition(s, 1, org.Active, ready()); !errors.As(err, &setup) || setup.Missing()[0] != org.MissingName {
+			t.Fatal("invisible name activated", err)
+		}
+		active := original
+		active.State = org.Active
+		active.Profile = org.Profile{Name: name, TimeZone: "UTC"}
+		if _, err := org.Rehydrate(s, active); !errors.Is(err, org.ErrInvalid) {
+			t.Fatal(err)
+		}
+	}
+	if _, err := org.NewPending(s, org.Profile{Name: strings.Repeat("é", org.MaxNameRunes), TimeZone: "UTC"}); err != nil {
+		t.Fatal(err)
 	}
 	// Cancelled/incomplete setup may be closed; CLOSED remains readable and terminal.
 	invalid := original
@@ -273,8 +303,18 @@ func TestConcurrentValueDecisionsAreDeterministicAndPrivateFormattingIsRedacted(
 	}
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logs, nil))
-	logger.Info("domain", "organization", o, "snapshot", before, "profile", before.Profile)
-	formatted := fmt.Sprintf("%v %+v %#v %v %#v %v %#v", o, o, o, before, before, before.Profile, before.Profile)
+	logger.Info("domain", "organization", o, "snapshot", before, "profile", before.Profile,
+		"nested", []org.Snapshot{before}, "profiles", map[string]org.Profile{"p": before.Profile})
+	encoded, err := json.Marshal(map[string]any{"o": o, "s": []org.Snapshot{before}, "p": before.Profile})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var formatted string
+	for _, verb := range []string{"%v", "%+v", "%#v", "%s", "%q", "%x", "%X", "%d", "%t", "%T"} {
+		formatted += fmt.Sprintf(verb, o) + fmt.Sprintf(verb, before) + fmt.Sprintf(verb, before.Profile) +
+			fmt.Sprintf(verb, []org.Snapshot{before}) + fmt.Sprintf(verb, &before)
+	}
+	formatted += string(encoded)
 	for _, secret := range []string{ownID, before.Profile.Name, before.Profile.TimeZone} {
 		if strings.Contains(logs.String()+formatted, secret) {
 			t.Fatal("private value leaked")

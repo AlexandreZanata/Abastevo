@@ -133,7 +133,7 @@ func TestSharedEnterpriseTimeVectors(t *testing.T) {
 			}
 		})
 	}
-	if scanner.Err() != nil || len(seen) != 93 {
+	if scanner.Err() != nil || len(seen) != 99 {
 		t.Fatalf("rows=%d error=%v", len(seen), scanner.Err())
 	}
 }

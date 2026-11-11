@@ -105,7 +105,7 @@ class EnterpriseTimeTest {
         val lines = File("../contracts/testdata/enterprise/time-v1.psv").readLines()
         assertEquals("id|operation|args|expected", lines.first())
         val rows = lines.drop(1).map { it.split('|') }
-        assertEquals(93, rows.size)
+        assertEquals(99, rows.size)
         require(rows.all { it.size == 4 && it[0].isNotEmpty() })
         assertEquals(rows.size, rows.map { it[0] }.toSet().size)
         return rows.map { (id, operation, rawArgs, rawExpected) ->

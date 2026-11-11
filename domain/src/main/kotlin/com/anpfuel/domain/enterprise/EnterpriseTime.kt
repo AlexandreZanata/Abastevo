@@ -61,18 +61,21 @@ object EnterpriseTime {
 
     private fun validInstant(at: Instant): Boolean = at >= minimum && at <= maximum
 
+    // The minimum instant is Go's unset time.Time; a server receipt never takes it.
+    private fun validReceipt(at: Instant): Boolean = validInstant(at) && at != minimum
+
     private fun zone(id: String): ZoneId {
         if (!zonePattern.matches(id) ||
             (id != "UTC" && !id.contains('/')) ||
             id.contains("//") || id.startsWith("posix/") || id.startsWith("right/") ||
-            id !in zoneIds
+            id.startsWith("SystemV/") || id !in zoneIds
         ) throw EnterpriseTimeException()
         return ZoneId.of(id)
     }
 
     /** A trip caller supplies its start. A supplied invalid unit never falls back to organization. */
     fun capture(declared: TimeDeclaration, receivedAt: Instant, zones: ReportingZones): EnterpriseTimeRecord {
-        if (!validInstant(declared.occurredAt) || !validInstant(receivedAt) ||
+        if (!validInstant(declared.occurredAt) || !validReceipt(receivedAt) ||
             declared.deviceOffsetSeconds !in -64800L..64800L
         ) throw EnterpriseTimeException()
         zone(declared.entryZone)
@@ -101,7 +104,7 @@ object EnterpriseTime {
         limitSeconds: Long? = null,
     ): EnterpriseClockSkew {
         val limit = limitSeconds ?: DEFAULT_SKEW_LIMIT_SECONDS
-        if (!validInstant(deviceSample) || !validInstant(serverReceipt) || limit < 0) {
+        if (!validInstant(deviceSample) || !validReceipt(serverReceipt) || limit < 0) {
             throw EnterpriseTimeException()
         }
         val delta = Duration.between(serverReceipt, deviceSample)

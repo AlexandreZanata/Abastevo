@@ -150,7 +150,7 @@ func TestOrganizationLifecycleVectors(t *testing.T) {
 			}
 		})
 	}
-	if scanner.Err() != nil || len(seen) != 102 {
+	if scanner.Err() != nil || len(seen) != 111 {
 		t.Fatalf("rows=%d error=%v", len(seen), scanner.Err())
 	}
 }

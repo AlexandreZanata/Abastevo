@@ -4,9 +4,9 @@ package domain
 import (
 	"errors"
 	"regexp"
-	"strings"
 	"time"
-	_ "time/tzdata" // Standard-library fallback when the host has no IANA database.
+
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 )
 
 var ErrInvalid = errors.New("orgtime: invalid-time")
@@ -14,7 +14,6 @@ var ErrInvalid = errors.New("orgtime: invalid-time")
 const DefaultSkewLimitSeconds int64 = 300
 
 var instantPattern = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$`)
-var zonePattern = regexp.MustCompile(`^[A-Za-z0-9_+/-]{1,128}$`)
 
 // ParseInstant accepts the shared bounded RFC3339 profile and normalizes to UTC.
 func ParseInstant(raw string) (time.Time, error) {
@@ -44,13 +43,15 @@ func validInstant(at time.Time) bool {
 	year := at.UTC().Year()
 	return year >= 1 && year <= 9999
 }
+
+// validReceipt also refuses the zero instant: an unset server receipt must never
+// become a silently valid authority time that lies outside every period.
+func validReceipt(at time.Time) bool { return validInstant(at) && !at.IsZero() }
+
+// location applies the zone profile shared with organizations (kernel.LoadTimeZone).
 func location(id string) (*time.Location, error) {
-	if !zonePattern.MatchString(id) || (id != "UTC" && !strings.Contains(id, "/")) ||
-		strings.Contains(id, "//") || strings.HasPrefix(id, "posix/") || strings.HasPrefix(id, "right/") {
-		return nil, ErrInvalid
-	}
-	loc, err := time.LoadLocation(id)
-	if err != nil {
+	loc, ok := kernel.LoadTimeZone(id)
+	if !ok {
 		return nil, ErrInvalid
 	}
 	return loc, nil
@@ -87,7 +88,7 @@ func (r Record) AuthorityAt() time.Time { return r.ReceivedAt }
 
 // Capture uses occurred_at for reporting. A trip's caller supplies its start instant.
 func Capture(d Declaration, receivedAt time.Time, zones ReportingZones) (Record, error) {
-	if !validInstant(d.OccurredAt) || !validInstant(receivedAt) ||
+	if !validInstant(d.OccurredAt) || !validReceipt(receivedAt) ||
 		d.DeviceOffsetSeconds < -64800 || d.DeviceOffsetSeconds > 64800 {
 		return Record{}, ErrInvalid
 	}
@@ -143,7 +144,7 @@ func AssessClockSkew(deviceSample, serverReceipt time.Time, limitSeconds *int64)
 	if limitSeconds != nil {
 		limit = *limitSeconds
 	}
-	if !validInstant(deviceSample) || !validInstant(serverReceipt) || limit < 0 {
+	if !validInstant(deviceSample) || !validReceipt(serverReceipt) || limit < 0 {
 		return ClockSkew{}, ErrInvalid
 	}
 	// Do not use time.Sub: its Duration saturates for samples over ~292 years apart.
