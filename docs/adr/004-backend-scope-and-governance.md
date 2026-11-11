@@ -8,7 +8,7 @@ The imported app is offline and generic rules demand tenants/auth on every reque
 
 ## Decision
 
-P01–P09 backend/infra, G09 gates Android work. Public reads are anonymous/cacheable where inputs are nonsensitive; contributor proof on writes/owner reads; restricted admin. No tenant concept. Explicit application interfaces allowed; domain unit tests pure, real DB integration tests required. Business append-only rules permit legally required privacy deletion.
+P01–P09 backend/infra, G09 gates Android work. Public reads are anonymous/cacheable where inputs are nonsensitive; contributor proof on writes/owner reads; restricted admin. Public, community and personal contexts remain tenant-free. [ADR-025](025-private-abastevo-empresas-organization-boundary.md) adds an organization boundary exclusively for private Abastevo Empresas data. Explicit application interfaces allowed; domain unit tests pure, real DB integration tests required. Business append-only rules permit legally required privacy deletion.
 
 ## Alternatives
 

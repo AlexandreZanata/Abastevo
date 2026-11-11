@@ -1,4 +1,15 @@
 # Current execution state
+- Enterprise F0, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING in
+  isolated `codex/enterprise-f0-f1` from synchronized main/dev `d8bdc642`.
+  [Checkpoint](../enterprise/evidence/f0-local-checkpoint.md) records all
+  21 backlogs, 348 tasks, ten recovered designs and owner decisions.
+  Full checker, original metadata comparison, generator regression and
+  repeatability, links, whitespace and secret review passed. PR177 and
+  ADR-019 source ancestry verified with successful checks and strict
+  main protection. Existing device/legal/real-data gates remain owed.
+  Next: EMP-PLAT-001 tenancy kernel in local F1. Enterprise issue, PR
+  and remote publication pending.
+
 - Landing 404, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING on `dev`
   from `cbfdec16` (P25 static landing, B-BR-L04 and BUC-L02).
   Shares the home header, footer, typography and action styles, with

@@ -25,6 +25,9 @@ The B-BR/BUC definitions below are proposed requirements to freeze in PRM00, not
 
 Excluded: employees, shared fleet access, business tenants, payroll, earnings/profit accounting, tax/invoice services, bank integrations, automatic movement tracking, receipt OCR, permanent receipt photos, merchant tooling, API resale and a new public community ranking. Several vehicles owned by one person do not create a fleet product. The maintainer selected one free registration and additional Premium vehicles; [registration v2](VEHICLE_REGISTRATION_POLICY.md) preserves held data and the existing technical ceiling without changing runtime before MEX-07/08 acceptance.
 
+Organization-owned fleet records fall under the separate
+[Abastevo Empresas contract](ABASTEVO_EMPRESAS_CONTRACT.md).
+
 ## Free guarantees and lifecycle
 
 - **B-BR-PR01 — Free foundation:** existing anonymous reads, contribution rules, free signup/recovery, comments/votes, ANP history, offline reading, navigation, one new local vehicle, tank estimates and basic alerts remain available. Previously held vehicles/history retain free access under [registration v2](VEHICLE_REGISTRATION_POLICY.md); additional registrations require Premium within the technical ceiling. Public trust/consensus/moderation never read a paid entitlement. Other existing analysis/notification features keep their current matrix.

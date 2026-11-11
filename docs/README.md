@@ -1,5 +1,16 @@
 # abastevo documentation
 
+[Enterprise suite planning package](enterprise/README.md) specifies the
+requested company evolution — organizations and employee accounts, fleets,
+trips and logbook, GPS, fuelings, receipts, expenses, maintenance, station
+representation and commerce, subscriptions and a data product — from
+[business rules](enterprise/04-business-rules.md) to
+[microtasks](enterprise/backlog/INDEX.md), with its
+[decision register](enterprise/16-decisions.md) tracking open items.
+[ADR-025](adr/025-private-abastevo-empresas-organization-boundary.md) records
+the accepted private Empresas organization boundary. Runtime and activation
+follow the enterprise roadmap and its gates.
+
 [Forum Abastevo plan](planning/FORUM_ABASTEVO_PLAN.md),
 [product contract](product/FORUM_ABASTEVO_CONTRACT.md),
 [backend/schema/API](backend/FORUM_ABASTEVO_ARCHITECTURE.md),

@@ -1,0 +1,218 @@
+# Offline operation and synchronization
+
+Status: **PLANNED**, 2026-11-10. Module code `OFFL`. This file is the module specification for offline behaviour and the transversal offline matrix for the whole suite. Tasks: `EMP-OFFL-001…014` in [backlog/ep04-sync](backlog/ep04-sync.md).
+
+Evidence. The repository already has a private command protocol for one account's data: stable operation identifiers, expected revisions, durable acknowledgements, conflict responses and anti-resurrection fences ([PREMIUM_CLOUD_PROTOCOL](../backend/PREMIUM_CLOUD_PROTOCOL.md), `IMPLEMENTED` on the server; the Android side has separate queues per feature, `PARTIAL`). That protocol states "No tenant/fleet ownership". This module is `PROPOSED`: it reuses the protocol's identifiers, acknowledgement and replay rules, and changes what an organization needs changed. The differences are listed in §3.
+
+## 1. Purpose
+
+Field employees work where there is no signal. They must be able to record what happened, keep working, and trust that the record reaches the right company. Managers must be able to trust that what arrives was recorded by an authorized person, and must see and resolve what the server could not accept by itself. Nothing is ever dropped silently.
+
+## 2. Scope
+
+- **Basic (F1–F2, cut C1):** operation envelope and contract; server intake with idempotency and dependency order; Android persistent queue with fixed organization context; sync status on every record; attachment upload with retry; reference data pull; device clock handling; a review queue with basic resolution; behaviour on context switch and logout.
+- **Next (F4):** intake after a membership ends; cleanup of revoked devices; organization and plan state changes; a resilience test suite.
+- **Later:** background upload scheduling tuned by measured battery and data use; conflict resolution assistants in the panel.
+- **Out of scope:** real-time collaboration, merging of concurrent edits to the same field, peer-to-peer sync between devices.
+
+## 3. Entities and ownership
+
+| Entity | Owner | Content | Invariants |
+|---|---|---|---|
+| Operation | Organization (created by a member on a device) | Identifier, organization, membership, device, type and schema version, target entity and identifier, expected revision, declared time and zone, dependencies, attachment references, payload, payload digest | Immutable after creation. Organization never changes (BR-TEN-004). |
+| Acknowledgement | Organization | Operation identifier, result, code, resulting revision, receipt time, review item | One per (organization, operation identifier). Kept as long as the record it produced. |
+| Review item | Organization | Operation, reason code, context, state, resolution, resolver | Resolved exactly once. |
+| Attachment upload | Organization | Attachment identifier, declared size and hash, received size and hash, state | Bytes accepted only for a declared attachment of an accepted or pending operation. |
+| Reference snapshot | Organization (read copy on device) | Versioned copy of what the member may see: assets, assignments, missions, templates, categories, policies | Carries the server revision and the time it was confirmed. |
+| Device queue | Device, partitioned by (account, API origin, organization) | Pending operations and attachment bytes | Another account on the same device can neither read nor send it. |
+
+What is reused from the personal cloud protocol, and what differs:
+
+| Aspect | Personal protocol v1 | Organization operations |
+|---|---|---|
+| Owner | One account | One organization; the actor is a membership on a device |
+| Unit of work | A batch of record writes, atomic as a whole | Each operation is its own transaction; a batch is only transport. One conflicting record must not hold back the others recorded in the field. |
+| Shape | Generic typed record with expected revision | Domain commands (`trip.start`, `fueling.submit`, …) handled by the owning module |
+| Replay | Same identifier and body returns the first result; changed body conflicts | Same |
+| Conflict | Refuse with base, current and proposed | Field facts are kept for review instead of refused (BR-OFFL-006) |
+| Consent mask and deletion epoch | Per-dataset opt-in by the account holder | Not applicable; activation is per organization, and personal-data rights follow [11-privacy-security](11-privacy-security.md) |
+| Acknowledgement retention | 30 days | As long as the resulting record, because the acknowledgement is part of the audit trail |
+
+## 4. Business rules
+
+- **BR-OFFL-001 — Local identifiers are final.** Every record and operation gets a UUID on the device. The server never renumbers.
+- **BR-OFFL-002 — The queue is durable.** An operation is written to persistent storage before the interface reports success. It survives process death, restart and app update.
+- **BR-OFFL-003 — Organization context is sealed.** The organization, membership and device of an operation are fixed when it is created. No later action on the device rewrites them.
+- **BR-OFFL-004 — Exactly one acknowledgement.** The server stores one acknowledgement per (organization, operation identifier). An identical resend returns it. The same identifier with a different payload digest is refused with `OPERATION_ID_REUSED`.
+- **BR-OFFL-005 — Delivery is at least once; effects are once.** The network may deliver an operation several times. BR-OFFL-004 makes the effect happen once. No component is described as delivering exactly once.
+- **BR-OFFL-006 — Facts are kept; authority is decided.** A well-formed operation from a device that was legitimately enrolled is never discarded because of a business conflict. It is accepted, or accepted for review. Permanent refusal is reserved for: unauthenticated or unknown device, device revoked as lost or compromised, organization mismatch, malformed or unknown schema, identifier reuse, a declared time after the member's access ended, and a closed intake window (BR-OFFL-011).
+- **BR-OFFL-007 — Order follows dependencies.** An operation lists the operations it depends on. The server applies it only after those were accepted; otherwise it answers `RETRY` with `DEPENDENCY_PENDING`. A soft reference (for example a fueling pointing to a trip) to a refused or missing target is accepted for review with the link removed and the code `ORPHAN_REFERENCE`.
+- **BR-OFFL-008 — Two times, one authority.** The device declares `occurred_at`; the server sets `received_at`. Authorization uses server time and the server's own history of memberships, assignments, plans and locks (BR-TIME-003).
+- **BR-OFFL-009 — Device time is evidence, not proof.** When the right to perform an operation changed between the declared time and receipt, the operation is accepted for review even if the member was authorized at the declared time. It is never accepted automatically on the strength of the device clock.
+- **BR-OFFL-010 — Four visible states.** Every record shows whether it is saved on the device, sent, accepted by the company or needs review ([08-state-model](08-state-model.md) §2). A refused operation stays visible with its reason until the user dismisses it.
+- **BR-OFFL-011 — Intake after access ends.** When a membership ends or is suspended, operations declared before that moment and received within the intake window (default 15 days, organization-configurable 0 to 60) are accepted for review with `ACCESS_ENDED_BEFORE_RECEIPT`. Operations declared after that moment are refused with `MEMBERSHIP_ENDED`. After the window everything is refused with `INTAKE_WINDOW_CLOSED`. Intake-only access gives no reading right.
+- **BR-OFFL-012 — Revocation reasons differ.** A device revoked as lost or compromised is refused entirely from the moment of revocation. A device whose member was offboarded keeps intake-only access for the window of BR-OFFL-011.
+- **BR-OFFL-013 — No silent loss on the device.** The app never deletes an unsent operation by itself: not on retry exhaustion, not on low storage, not on context switch, not on logout. It asks the user and says what will happen.
+- **BR-OFFL-014 — No remote-wipe promise.** Revocation takes effect on the server at once. Local data of a disconnected device is erased only when the app next reaches the server or when its local access expires (BR-PRIV, [11-privacy-security](11-privacy-security.md)). The interface and the documentation say so.
+- **BR-OFFL-015 — Attachments follow their operation.** An operation can be accepted before its attachment bytes arrive. The record then shows the attachment as pending. Bytes are accepted only when size and SHA-256 match the declaration.
+- **BR-OFFL-016 — Reference data shows its age.** Cached lists (assets, missions, policies) show when they were last confirmed. Choices made on stale reference data are checked on the server like any other.
+- **BR-OFFL-017 — Online-only actions say so.** An action that needs the server (see §10) is disabled offline with the reason, never queued as if it had happened.
+- **BR-OFFL-018 — Limits.** A batch carries at most 50 operations and 64 KiB, 8 KiB per operation, following the existing protocol bounds. Limits are configuration, verified by tests, and may be revised with measurements.
+
+## 5. Use cases
+
+**UC-OFFL-01 — Record offline and deliver later.** Actor: member in enterprise mode. Preconditions: device enrolled; reference data cached. Flow: user records something → app validates locally → operation written to the queue → record shown as "Salvo no aparelho" → when a network is available the app sends operations in dependency order → server answers per operation → record shows "Aceito pela empresa". Alternatives: transient failure → stays saved, retried with backoff; server answers needs review → record shows "Precisa de revisão" with the reason; server refuses → "Não aceito" with the reason and the option to copy the data into a new record when that makes sense. Result: organization record created exactly once.
+
+**UC-OFFL-02 — Resend after a lost answer.** Flow: the app sent a batch and the connection dropped before the answer → the app resends the same operations → the server returns the stored acknowledgements. Result: no duplicate record (BR-OFFL-004).
+
+**UC-OFFL-03 — Upload an attachment.** Flow: operation declares an attachment (identifier, size, hash) → metadata operation is sent first → app requests an upload capability → sends bytes to the API ingress → server verifies size and hash and queues safety checks → document state becomes `STORED`. Alternatives: connection drops → the same upload is retried and is idempotent; hash mismatch → refused, app retries from the stored file; file missing on the device → record shows "comprovante não encontrado no aparelho" and asks for a new capture. Result: document linked to the operation.
+
+**UC-OFFL-04 — Resolve a review item.** Actor: member with the permission of the record type (for example `trip.trip.review` for trip conflicts). Flow: open the review queue → see the operation, the reason and the context (declared time, receipt time, last successful sync) → choose accept, accept with a change (for example another asset) or refuse with a reason → server applies and audits → the author's device shows the outcome at next sync. Result: item resolved once.
+
+**UC-OFFL-05 — Switch context with pending operations.** Flow: user switches from organization A to personal mode or to organization B → pending operations of A stay queued and keep being sent in the background while the session allows → the switcher shows a pending count per context. Result: no operation changes organization (BR-OFFL-003).
+
+**UC-OFFL-06 — Log out with pending operations.** Flow: user asks to log out → app shows the pending count and offers "send now" (if online) or "keep on this device" → kept operations stay encrypted and bound to the account → at the next login of the same account they are sent. Alternatives: a different account logs in → it cannot see or send them; the device is reset or the app uninstalled → they are lost, and the logout dialog said so. Result: nothing is sent under another identity.
+
+**UC-OFFL-07 — Deliver after offboarding.** Flow: a driver is offboarded while offline with three unsent fuelings → the driver's phone reconnects within the window → the app can still deliver, with intake-only access → the three fuelings are accepted for review → a manager decides each one. Alternative: reconnects after the window → refused with `INTAKE_WINDOW_CLOSED`; the app shows that the company must be contacted. Result: no automatic acceptance after access ended (BR-OFFL-009, 011).
+
+**UC-OFFL-08 — Refresh reference data.** Flow: on opening enterprise mode and periodically, the app asks for changes since its revision → applies them → updates "confirmed at". Alternative: an asset the user is about to pick was reassigned → picker updates; if the user already started a trip with it offline, UC-OFFL-01 delivers it and the server puts it in review with `ASSET_UNAVAILABLE`.
+
+## 6. States and transitions
+
+Operation sync states: [08-state-model](08-state-model.md) §2. Review item:
+
+| From | To | Actor | Validation | Effect | Reversal |
+|---|---|---|---|---|---|
+| — | `OPEN` | Server intake | A review reason applies | Record exists in a held form; excluded from costs and indicators | — |
+| `OPEN` | `RESOLVED_ACCEPTED` | Member with the record type's review permission | Not the author (BR-REV-003 applies to the resolver too) | Operation applied, possibly with the stated change; audit | Amend or void the resulting record (BR-AMD) |
+| `OPEN` | `RESOLVED_REFUSED` | Same | Reason required | Operation marked refused; device shows "Não aceito" | The author records again |
+| `OPEN` | `EXPIRED_UNRESOLVED` | Time (default 60 days) | — | Escalated to organization administrators; stays listed | Resolve late |
+
+Attachment upload: `DECLARED` → `UPLOADING` → `RECEIVED` → `STORED`, or `QUARANTINED` / `FAILED` (document storage states in [08-state-model](08-state-model.md)).
+
+## 7. Roles and permissions
+
+Sending operations needs the permission of the command itself (for example `fuel.fueling.record`). Resolving a review item needs the review permission of the record type (`trip.trip.review`, `fuel.fueling.review`, `exp.expense.review`, `meter.reading.correct`). Listing the review queue shows only items in the member's scope. Intake-only access after offboarding carries no permission other than delivering operations created before the end.
+
+## 8. Offline, concurrency, idempotency and corrections
+
+- **Concurrency on the server:** intake serialises per target entity (row lock on the entity or its parent). Two devices starting a trip on the same asset: the first received is accepted; the second is accepted for review with `ASSET_BUSY` ([modules/trips](modules/trips.md)).
+- **Edits:** a change to a record already accepted is a new operation with the expected revision. A stale revision is accepted for review with `STALE_REVISION` and both versions shown, never overwritten by arrival order.
+- **Corrections of refused operations:** the device offers "create again from this" which copies the payload into a new operation with a new identifier.
+- **Retry policy on the device:** exponential backoff with jitter, no attempt cap for transient errors, manual "send now". After repeated failures the record shows "needs attention".
+- **Storage pressure:** the app warns when the queue or attachments exceed a threshold and never deletes unsent data by itself (BR-OFFL-013).
+
+## 9. Events, notifications and integrations
+
+Produced: `offl.operation.accepted`, `offl.operation.needs_review`, `offl.operation.refused`, `offl.review.resolved`, `offl.attachment.stored`. Consumed: `idn.membership.ended`, `idn.device.revoked`, `org.organization.suspended`, `subs.subscription.state_changed`. Notifications: the author is told when an item needs review, is resolved or is refused; reviewers are told when their queue has new items (digest, not one notification per item).
+
+## 10. Data, formulas and examples
+
+### 10.1 Operation envelope (documentation example, not a frozen contract)
+
+```json
+{
+  "op_id": "0f6c1c3e-6d0a-4f0e-9a43-3f2d7b1e5a10",
+  "org_id": "7b0e2a54-0000-4000-8000-000000000001",
+  "membership_id": "2f4b7c10-0000-4000-8000-000000000002",
+  "device_id": "9a1d3e77-0000-4000-8000-000000000003",
+  "type": "fueling.submit",
+  "schema": 1,
+  "entity": {"type": "fueling", "id": "c5d2a0b1-0000-4000-8000-000000000004", "expected_revision": null},
+  "occurred_at": "2026-11-10T13:42:05Z",
+  "zone": "America/Cuiaba",
+  "utc_offset_minutes": -240,
+  "depends_on": ["3a9e0c22-0000-4000-8000-000000000005"],
+  "attachments": [{"id": "e1f0a9c8-0000-4000-8000-000000000006", "sha256": "…", "bytes": 412338, "mime": "image/jpeg"}],
+  "payload_digest": "sha256:…",
+  "payload": {"asset_id": "…", "product": "DIESEL_S10", "quantity_ml": 150000, "paid_cents": 97350, "unit_price_milli": 6490, "fill": "FULL", "odometer_m": 184532000}
+}
+```
+
+Acknowledgement: `{"op_id": "…", "result": "ACCEPTED_FOR_REVIEW", "code": "ASSET_UNAVAILABLE", "entity_revision": 1, "received_at": "2026-11-10T18:03:11Z", "review_item_id": "…"}`.
+
+### 10.2 Intake decision table
+
+| Condition at receipt | Result | Code |
+|---|---|---|
+| Valid, authorized now, no conflict | `ACCEPTED` | — |
+| Identical resend | stored acknowledgement | — |
+| Same identifier, different digest | `REJECTED` | `OPERATION_ID_REUSED` |
+| Unknown schema or malformed payload | `REJECTED` | `MALFORMED` |
+| Device unknown or revoked as lost | `REJECTED` | `DEVICE_REVOKED` |
+| Dependency not yet accepted | `RETRY` | `DEPENDENCY_PENDING` |
+| Soft reference to refused or missing target | `ACCEPTED_FOR_REVIEW` | `ORPHAN_REFERENCE` |
+| Membership ended or suspended; declared before; inside window | `ACCEPTED_FOR_REVIEW` | `ACCESS_ENDED_BEFORE_RECEIPT` |
+| Membership ended; declared after the end | `REJECTED` | `MEMBERSHIP_ENDED` |
+| Membership ended; window closed | `REJECTED` | `INTAKE_WINDOW_CLOSED` |
+| Permission removed between declared time and receipt | `ACCEPTED_FOR_REVIEW` | `PERMISSION_CHANGED` |
+| Never had the permission | `REJECTED` | `FORBIDDEN` |
+| Asset reserved, in maintenance, disposed or in another trip | `ACCEPTED_FOR_REVIEW` | `ASSET_UNAVAILABLE`, `ASSET_BUSY` |
+| Trip already closed by someone else | `ACCEPTED_FOR_REVIEW` | `TRIP_ALREADY_CLOSED` |
+| Reporting day in a locked period | `ACCEPTED_FOR_REVIEW` | `PERIOD_LOCKED` |
+| Stale expected revision | `ACCEPTED_FOR_REVIEW` | `STALE_REVISION` |
+| Device clock skew above the limit | as otherwise decided, flagged | `CLOCK_SKEW` |
+| Organization suspended; entity opened before suspension, or declared before it and inside the grace period (default 7 days) | `ACCEPTED_FOR_REVIEW` | `ORG_SUSPENDED_GRACE` |
+| Organization suspended; new entity declared after suspension | `REJECTED` | `ORG_SUSPENDED` |
+| Plan limit reached after a downgrade; declared before the change | `ACCEPTED_FOR_REVIEW` | `PLAN_CHANGED` |
+| Server or database unavailable | `RETRY` | `UNAVAILABLE` |
+
+### 10.3 Offline matrix
+
+"Offline" means the action works with no connection and is delivered later. "Online" means it needs the server at that moment.
+
+| Operation | Consult | Create | Change | Complete | Needs online validation for |
+|---|---|---|---|---|---|
+| Sign in, activate corporate access, accept invitation | — | Online | — | Online | Everything |
+| Switch context | Offline (cached, marked unconfirmed) | — | — | — | Fresh membership list |
+| My assets, assignments, missions | Offline (cached) | — | — | — | Latest assignments |
+| Accept or decline a mission | Offline | Offline | — | Offline | Mission still assigned to me |
+| Checklist | Offline | Offline | Offline until completed | Offline | Blocking policy is applied locally from cached policy and rechecked on the server |
+| Start trip | — | Offline | — | — | Asset availability; one active trip per asset |
+| Logbook events, stops, pause, resume | Offline | Offline | Offline (new operation) | Offline | Trip not closed by someone else |
+| Meter reading | Offline (own history cached) | Offline | Online (correction by authorized role) | — | Monotonicity against readings from other devices |
+| Tracking | Offline (own trip) | Offline (recorded locally) | — | Offline | Nothing; batches are uploaded later |
+| Navigation | Offline with downloaded map region | Offline | Offline | Offline | Nothing; live traffic is not offered |
+| Finish trip | — | — | — | Offline | Final reading plausibility |
+| Fueling | Offline (own) | Offline | Offline until approved | Offline (submit) | Capacity, duplicates, budget limits |
+| Fueling with an agreement voucher | Online | Online | — | Online | Authorization validity and single use |
+| Receipt capture and attachment | Offline | Offline | Offline (replace before sending) | Upload needs network | Hash, type and safety checks |
+| Expense | Offline (own) | Offline | Offline until approved | Offline (submit) | Category active, limits, duplicates |
+| Incident or damage report, maintenance request | Offline | Offline | Offline | Offline | — |
+| Dispense from an internal tank | Offline (cached tank list) | Offline | — | Offline | Stock balance; negative balance goes to review |
+| Budget hold or pre-authorization | Online | Online | Online | Online | Concurrent limit |
+| Review result of my records | Offline (last known) | — | — | — | Latest decisions |
+| Correct a returned record | Offline | — | Offline | Offline (resubmit) | Revision still current |
+| Approve, return, reject | Online | — | — | Online | Everything |
+| People, roles, assets, missions planning (panel) | Online | Online | Online | Online | Everything |
+| Exports, reports, indicators | Online | Online | — | Online | Everything |
+| Station portal, Data portal, plan and billing | Online | Online | Online | Online | Everything |
+
+## 11. Screens
+
+| ID | Surface | Objective | Actor | Data | Actions | Rules and permissions | Validations and states |
+|---|---|---|---|---|---|---|---|
+| SCR-OFFL-01 | APP | See everything not yet accepted by the company | Any member | Pending operations grouped by state, with type, time, organization and reason | Send now, open record, dismiss a refused item | BR-OFFL-010, 013 | Empty: "Tudo enviado". Offline: banner with last successful sync. Error: per-item reason in plain language. States announced to screen readers as text, not colour only. |
+| SCR-OFFL-02 | APP | Understand one record's sync history | Author | Timeline: saved, sent, accepted, review, outcome; attachment progress | Retry attachment, create again from a refused record | BR-OFFL-010, 015 | Attachment missing on device: asks for a new capture. |
+| SCR-OFFL-03 | PANEL | Resolve what the server kept for review | Reviewers by record type | Queue with reason, declared and receipt times, last successful sync, author, record preview | Accept, accept with change, refuse with reason | BR-OFFL-006, 009; scope filtering | Empty: "Nenhum registro aguardando decisão". Forbidden: standard pattern. Conflict when two reviewers act: second sees "já resolvido". |
+| SCR-OFFL-04 | APP | Decide what happens to pending data before logout or context removal | Any member | Count and size of pending operations | Send now, keep on device, cancel | BR-OFFL-013, 014 | Explains that uninstalling or resetting the device loses unsent data. |
+| SCR-OFFL-05 | APP | Warn about storage or long-unsent data | Any member | Queue size, oldest unsent item | Open pending list, free space guidance | BR-OFFL-013 | Shown as a persistent banner in enterprise mode, not a blocking dialog. |
+
+## 12. Acceptance, dependencies, risks, phase and microtasks
+
+Acceptance criteria:
+
+1. Killing the app process right after the interface reports "Salvo no aparelho" loses nothing; the record is sent after restart.
+2. Sending the same batch three times produces one record and three identical acknowledgements.
+3. Operations delivered out of order converge to the same final state as in-order delivery.
+4. Switching context or logging out and in with another account never changes the organization or author of a pending operation, and the other account cannot see it.
+5. Every row of §10.2 is covered by a test with the stated result and code.
+6. A fueling recorded offline before offboarding and delivered inside the window appears in the review queue and is not counted in costs until a manager accepts it.
+7. A refused operation remains visible on the device with its reason until dismissed.
+8. An attachment interrupted at any byte is completed by retry and the stored file matches the declared hash.
+
+Dependencies: [07-permissions](07-permissions.md) (authorization at receipt), [modules/identity](modules/identity.md) (devices, membership history), [09-architecture](09-architecture.md) (API conventions, storage), EMP-GOV-008 (device storage protection).
+
+Risks: review queue becoming a dumping ground (mitigated by precise reason codes, digests and an escalation after 60 days); device clocks far from real time (BR-TIME-006); storage growth on devices with many photos (thresholds and Wi-Fi-only uploads); divergence between this queue and the existing per-feature queues on Android (one shared queue component is built for enterprise mode; personal features keep theirs).
+
+Phase: F1 core, F2 reference data and review queue, F3 attachments, F4 hardening. Microtasks: EMP-OFFL-001 to EMP-OFFL-014.
