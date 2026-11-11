@@ -7,8 +7,17 @@
   repeatability, links, whitespace and secret review passed. PR177 and
   ADR-019 source ancestry verified with successful checks and strict
   main protection. Existing device/legal/real-data gates remain owed.
-  Next: EMP-PLAT-001 tenancy kernel in local F1. Enterprise issue, PR
-  and remote publication pending.
+  F0 checkpoint `39a2d725`. Enterprise issue, PR and remote publication
+  pending.
+
+- Enterprise F1, 2026-11-11: IN_PROGRESS on `codex/enterprise-f0-f1`.
+  EMP-PLAT-001 LOCAL_DONE / INTEGRATION_PENDING, above the F0 checkpoint.
+  [Evidence](../enterprise/evidence/f1-plat001-tenancy-kernel.md) records
+  OrgID/OrgScope, explicit private repository scope and module checklist.
+  RED/GREEN, kernel race tests (94.4% coverage, new functions 100%), vet,
+  pinned staticcheck, API/worker/ops build and scoped reviews passed.
+  Next bounded task EMP-PLAT-002, schema conventions and real-PostGIS
+  two-organization isolation harness. F1/M1 acceptance remains open.
 
 - Landing 404, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING on `dev`
   from `cbfdec16` (P25 static landing, B-BR-L04 and BUC-L02).

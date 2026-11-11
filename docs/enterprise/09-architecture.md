@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **PLANNED**, 2026-11-10. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. Contract examples are documentation; no implementation is part of this plan. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
+Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value contract in EMP-PLAT-001 is implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
 
 ## 1. Principles
 
@@ -51,6 +51,52 @@ Registering a new backend module touches these places, found in the current tree
 8. `scripts/check-manifest.txt` when the package joins the quick gate.
 9. The account-deletion trigger pattern (see §5).
 10. Caddy configuration when something is served to browsers.
+
+### 2.1 Private organization repository contract
+
+EMP-PLAT-001 implements `kernel.OrgID` and `kernel.OrgScope` in the
+[shared kernel](../../backend/internal/modules/kernel/org_scope.go).
+`OrgID` parses a non-nil, dashed UUID and stores its lowercase canonical
+form. `NewOrgScope` requires a valid ID. The application resolves current
+actor, membership, role and capability before constructing the scope.
+Each adapter calls `scope.Validate()` before private data access.
+[Product contract](../product/ABASTEVO_EMPRESAS_CONTRACT.md)
+
+Every private organization repository method accepts `kernel.OrgScope`
+explicitly beside `context.Context`. A module port follows this template,
+using its own `RecordID` and aggregate types.
+
+```go
+type Repository interface {
+    Load(ctx context.Context, scope kernel.OrgScope, id RecordID) (Record, error)
+    Save(ctx context.Context, scope kernel.OrgScope, record Record) error
+}
+```
+
+The application creates a separate scope value when the selected
+organization changes. Adapters bind every lookup, mutation, join and
+foreign reference to the supplied organization. The context carries
+cancellation and deadlines. The explicit argument carries organization
+selection. Current actor authority is checked at the application boundary.
+
+Before registering an organization-private module, complete this checklist
+in its owning task.
+
+- Define explicit scope on private read, write, list and cross-module ports,
+  and reject a zero scope before invoking storage.
+- Bind primary and foreign record references to the organization. Include
+  scoped predicates and composite constraints in the sqlc/migration task.
+- Use transaction-local database scope and an application role subject to
+  row-level policies. EMP-PLAT-002 proves pool reuse and foreign-scope
+  rejection with real PostGIS.
+- Carry organization identity through jobs, caches, private files, search
+  projections and exports. Resolve current authority at each entry point.
+- Register only the required composition, routes, jobs and configuration
+  from the list above. Preserve public catalog and personal port contracts.
+- Exercise absent scope, foreign organization and foreign reference cases
+  through the adapter and normal application entry points before acceptance.
+
+[EMP-PLAT-001 local evidence](evidence/f1-plat001-tenancy-kernel.md)
 
 Android (proposed packages, inside the existing modules and package root `com.anpfuel`):
 

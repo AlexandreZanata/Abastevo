@@ -10,4 +10,8 @@
 // (QuarantineCode) so later import stages reuse the same codes the P02-T01
 // fixtures record. Product vocabulary follows the OpenAPI wire contract:
 // GASOLINE_ADDITIVED on the wire, never legacy GASOLINE_PREMIUM (A05).
+//
+// Private Abastevo Empresas ports use OrgID and OrgScope (B-BR-EMP-08).
+// These immutable values carry the organization selected by the application,
+// which owns the current membership, role and capability checks.
 package kernel

@@ -1,6 +1,6 @@
 # EP01 — Platform foundations and privacy
 
-Status: **PLANNED**, 2026-11-10.
+Status: **F1 IN_PROGRESS**, 2026-11-11.
 
 Task metadata follows the existing [generated index](INDEX.md). The task
 definitions reconstruct the missing backlog from the approved contract,
@@ -10,7 +10,7 @@ Local F1 requires M0 closure and protected integration of the current
 ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-decisions.md#roadmap-sequencing).
 
 ### EMP-PLAT-001 — Tenancy kernel: OrgID, OrgScope, the scoped-repository convention and the module registration checklist
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Make resolved organization scope explicit in the Go domain and repository ports.
 - **Rules and use cases:** BR-TEN-001, BR-TEN-003, BR-TEN-007, BR-TEN-010
 - **Depends on:** EMP-GOV-001
@@ -24,6 +24,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-DOM · migration: none · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Scope resolution is separate from membership, role and capability decisions.
 - **Done when:** The types and checklist pass the domain and dependency checks.
+
+[Local implementation and test evidence](../evidence/f1-plat001-tenancy-kernel.md).
 
 ### EMP-PLAT-002 — Tenant schema conventions, row-level-security template and two-organization isolation harness
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size M · state TODO

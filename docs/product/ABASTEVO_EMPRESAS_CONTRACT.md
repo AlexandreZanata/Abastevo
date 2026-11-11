@@ -49,6 +49,17 @@ the approved panel, Android partition and private receipt scope.
   recorded independently of fiscal status.
   [Receipt decision](../enterprise/evidence/f0-m0-decisions.md#private-receipts)
 
+EMP-PLAT-001 freezes the following kernel boundary before implementation.
+
+- **B-BR-EMP-08 — Explicit organization scope.** A private organization
+  repository call takes an explicit, nonzero OrgScope. Its OrgID is
+  a validated non-nil UUID, stored in lowercase dashed form. Parsing accepts
+  either hexadecimal letter case and rejects malformed, padded and nil
+  identifiers. The application resolves the selected organization under
+  current actor authority before constructing scope. Repository adapters
+  reject a zero scope before querying and apply it to each private reference.
+  [Organization boundary](../adr/025-private-abastevo-empresas-organization-boundary.md)
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -66,6 +77,12 @@ the approved panel, Android partition and private receipt scope.
   for C1 validation. A reviewer with the required permission opens it
   through the audited capability. Foreign, expired or revoked access is
   refused. The review state records the reviewer's decision.
+
+- **BUC-EMP-04 — Pass resolved scope.** The application verifies the
+  request's current account, membership, roles and capability, selects the
+  permitted organization, and constructs a scope for the repository call.
+  A missing scope is rejected. A later request selecting another
+  organization creates a separate value and leaves the earlier value intact.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production
