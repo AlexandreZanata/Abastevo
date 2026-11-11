@@ -22,6 +22,8 @@ info:
     name: MIT
     url: https://opensource.org/license/mit
 tags:
+  - name: company-session
+    description: Separate account-owned company web sessions; disabled by default.
   - name: health
     description: Process liveness and dependency readiness probes.
   - name: directory
@@ -47,6 +49,166 @@ tags:
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
+  /v1/org-access/session/login:
+    post:
+      tags: [company-session]
+      operationId: companySessionLogin
+      summary: Issue the company account cookie from fresh account proof
+      description: >-
+        Requires the enterprise surface switch and an exact configured HTTPS Origin/Host.
+        Company credentials never authorize admin or an organization membership.
+        Fresh live account proof is exchanged; the raw account credential is not retained.
+        Every success and failure is private no-store without ETag. JSON is limited to 16 KiB.
+      security: []
+      x-abastevo-company-session:
+        action: login
+        account_proof: true
+        cookie: false
+        csrf: false
+        fresh: true
+        success: 200
+      parameters:
+        - $ref: '#/components/parameters/CompanySessionOrigin'
+      requestBody:
+        description: Fresh account family/access proof; the server selects the account and stores no plaintext proof.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanySessionLoginRequest'
+      responses:
+        '200':
+          description: A new dedicated cookie was issued with its company CSRF value.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/EnterpriseNoStore'}
+            Set-Cookie: {$ref: '#/components/headers/CompanySessionSetCookie'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanySessionLoginResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/org-access/session/read:
+    post:
+      tags: [company-session]
+      operationId: companySessionRead
+      summary: Read the current company account session
+      description: >-
+        Requires the enterprise surface switch and an exact configured HTTPS Origin/Host.
+        Company credentials never authorize admin or an organization membership.
+        Requires the dedicated company cookie and X-CSRF; account/family revocation is checked.
+        Every success and failure is private no-store without ETag. JSON is limited to 16 KiB.
+      security: [{CompanySessionCookie: []}]
+      x-abastevo-company-session:
+        action: read
+        account_proof: false
+        cookie: true
+        csrf: true
+        fresh: false
+        success: 200
+      parameters:
+        - $ref: '#/components/parameters/CompanySessionOrigin'
+        - $ref: '#/components/parameters/CompanySessionCSRF'
+      requestBody:
+        description: Empty JSON object; the company cookie and X-CSRF authenticate this metadata read.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanySessionEmptyRequest'
+      responses:
+        '200':
+          description: Current company account session metadata without organization authority.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/EnterpriseNoStore'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanySessionView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/org-access/session/logout:
+    post:
+      tags: [company-session]
+      operationId: companySessionLogout
+      summary: Revoke only the current company account session
+      description: >-
+        Requires the enterprise surface switch and an exact configured HTTPS Origin/Host.
+        Company credentials never authorize admin or an organization membership.
+        Revokes only the presented company cookie; personal and administrative sessions remain independent.
+        Every success and failure is private no-store without ETag. JSON is limited to 16 KiB.
+      security: [{CompanySessionCookie: []}]
+      x-abastevo-company-session:
+        action: logout
+        account_proof: false
+        cookie: true
+        csrf: true
+        fresh: false
+        success: 200
+      parameters:
+        - $ref: '#/components/parameters/CompanySessionOrigin'
+        - $ref: '#/components/parameters/CompanySessionCSRF'
+      requestBody:
+        description: Empty JSON object; the current company cookie alone will be revoked.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanySessionEmptyRequest'
+      responses:
+        '200':
+          description: The current company session was revoked and its cookie cleared.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/EnterpriseNoStore'}
+            Set-Cookie: {$ref: '#/components/headers/CompanySessionSetCookie'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanySessionLogoutResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /health/live:
     get:
       summary: Process liveness (no dependency checks).
@@ -8048,13 +8210,39 @@ x-abastevo-organization-api:
   etag: false
   pagination: {default_limit: 20, max_limit: 100, cursor_ttl_seconds: 900}
   cursor_binding: [origin, organization, account, membership, route, canonical_filters]
-  status: conventions_only_feature_operations_follow_their_own_tasks
+  status: company_session_operations_implemented_business_operations_follow_their_own_tasks
 components:
+  securitySchemes:
+    CompanySessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-empresas-session
+      description: Host-only Secure HttpOnly SameSite=Strict company credential; no admin or organization privilege.
   headers:
+    CompanySessionSetCookie:
+      description: Dedicated host-only company cookie, Secure, HttpOnly, SameSite=Strict, Path=/; logout expires this cookie only.
+      schema:
+        type: string
+        example: __Host-empresas-session=REDACTED; Path=/; Secure; HttpOnly; SameSite=Strict
     EnterpriseNoStore:
       description: Private organization responses are never cacheable.
       schema: {type: string, enum: [no-store]}
   parameters:
+    CompanySessionOrigin:
+      name: Origin
+      in: header
+      required: true
+      description: Exactly the configured company HTTPS origin; missing, foreign and ambiguous values are refused.
+      schema: {type: string, format: uri, example: 'https://api.example.invalid'}
+    CompanySessionCSRF:
+      name: X-CSRF
+      in: header
+      required: true
+      description: Company CSRF value returned at login; never an admin CSRF value.
+      schema:
+        type: string
+        pattern: '^abv_company_csrf_[0-9a-f]{64}$'
+        example: abv_company_csrf_0000000000000000000000000000000000000000000000000000000000000000
     EnterpriseOrgID:
       name: org_id
       in: path
@@ -8078,6 +8266,82 @@ components:
         type: string
         format: uuid
   schemas:
+    CompanySessionLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [family_id, access_token]
+      description: Current account proof from the existing account login; no client account ID or refresh credential.
+      properties:
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: Fresh account access proof, transmitted only in the authenticated HTTPS request body.
+          example: synthetic-account-access-proof
+    CompanySessionEmptyRequest:
+      type: object
+      additionalProperties: false
+      description: Empty JSON object; authentication uses only the dedicated cookie and CSRF header.
+      example: {}
+    CompanySessionLoginResult:
+      type: object
+      additionalProperties: false
+      required: [account_id, csrf_token, authenticated_at, expires_at]
+      description: Current account identity and company CSRF value; the cookie is returned only through Set-Cookie.
+      properties:
+        account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        csrf_token:
+          type: string
+          pattern: '^abv_company_csrf_[0-9a-f]{64}$'
+          description: Separate company anti-CSRF value for subsequent POST headers.
+          example: abv_company_csrf_0000000000000000000000000000000000000000000000000000000000000000
+        authenticated_at:
+          type: string
+          format: date-time
+          description: Server-derived account proof time; cookie activity never refreshes it.
+          example: '2026-11-11T12:00:00Z'
+        expires_at:
+          type: string
+          format: date-time
+          description: Absolute expiry, at most eight hours and never beyond the account family.
+          example: '2026-11-11T20:00:00Z'
+    CompanySessionView:
+      type: object
+      additionalProperties: false
+      required: [account_id, authenticated_at, fresh_until, expires_at]
+      description: Company account session metadata; no selected organization or role is inferred.
+      properties:
+        account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        authenticated_at:
+          type: string
+          format: date-time
+          description: Immutable source authentication time.
+          example: '2026-11-11T12:00:00Z'
+        fresh_until:
+          type: string
+          format: date-time
+          description: Exclusive fifteen-minute fresh-auth deadline; activity does not extend it.
+          example: '2026-11-11T12:15:00Z'
+        expires_at:
+          type: string
+          format: date-time
+          description: Exclusive company-session absolute expiry.
+          example: '2026-11-11T20:00:00Z'
+    CompanySessionLogoutResult:
+      type: object
+      additionalProperties: false
+      required: [logged_out]
+      description: The company cookie alone was revoked and cleared.
+      properties:
+        logged_out:
+          type: boolean
+          enum: [true]
+          description: Company logout completed.
+          example: true
     EnterpriseUUID:
       description: Canonical non-nil identifier used for organization API references.
       type: string

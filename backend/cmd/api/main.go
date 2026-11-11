@@ -512,6 +512,11 @@ func run() error {
 	// leaves this closure.
 	payments.Billing.Proof = accountOwnerProof{validate: accountService.ValidateAccess}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
+	if company, err := newCompanyHandler(cfg, pool.Underlying(), accountService); err != nil {
+		return err
+	} else if company != nil {
+		company.RegisterRoutes(router)
+	}
 	// Station/fuel feedback (P14-T03). Same closure rule: session
 	// ownership, account liveness and station existence arrive as
 	// narrow functions; only active accounts write, reads stay

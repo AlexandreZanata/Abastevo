@@ -8,13 +8,14 @@ ADR-019 source batch. [ADR-025](../adr/025-private-abastevo-empresas-organizatio
 governs private organization data. Real-data, station, provider and release
 gates remain recorded in [the decision register](16-decisions.md).
 
-F1 is **IN_PROGRESS**. EMP-PLAT-001 through EMP-PLAT-006 are
+F1 is **IN_PROGRESS**. EMP-PLAT-001 through EMP-PLAT-007 are
 LOCAL_DONE / INTEGRATION_PENDING with organization ID/scope values,
 repository conventions, scoped database transactions, the PostGIS isolation
-harness, atomic organization audit storage, shared API conventions and
-[audited capability switches](evidence/f1-plat005-capability-flags.md) and
-[private original transfers](evidence/f1-plat006-private-document-storage.md).
-EMP-PLAT-007 is next.
+harness, atomic organization audit storage, shared API conventions,
+[audited capability switches](evidence/f1-plat005-capability-flags.md),
+[private original transfers](evidence/f1-plat006-private-document-storage.md),
+and [isolated company web sessions](evidence/f1-plat007-company-web-session.md).
+EMP-PLAT-008 is next.
 [Kernel evidence](evidence/f1-plat001-tenancy-kernel.md) and
 [database evidence](evidence/f1-plat002-database-isolation.md), with
 [audit evidence](evidence/f1-plat003-organization-audit.md) and

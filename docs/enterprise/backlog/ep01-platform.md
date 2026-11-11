@@ -118,7 +118,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local private original, access and failure evidence](../evidence/f1-plat006-private-document-storage.md).
 
 ### EMP-PLAT-007 — Account web session for the business web: cookie, CSRF, origin check and fresh authentication
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Issue and revoke the company panel account session independently of admin.
 - **Rules and use cases:** EDR-006, EDR-019, BR-TEN-003, BR-PRIV-003
 - **Depends on:** EMP-GOV-003, EMP-PLAT-004
@@ -132,6 +132,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-API, V-AUTHZ, V-ISO, V-PRIV · migration: additive session storage with old API compatibility · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** The host-wide cookie path requires route and middleware separation. Keep the admin network fence.
 - **Done when:** Company and admin session isolation and mutation checks pass through their entry points.
+
+[Local company-session, isolation and migration evidence](../evidence/f1-plat007-company-web-session.md).
 
 ### EMP-PLAT-008 — Business web scaffold: build, routing, auth guard, organization switcher, design tokens, checks
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type WEB · size M · state TODO

@@ -1,4 +1,15 @@
 # Current execution state
+- Enterprise EMP-PLAT-007, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `277fd470`; delivery targets existing PR202 (`dev → main`).
+  [Company-session evidence](../enterprise/evidence/f1-plat007-company-web-session.md)
+  records dedicated account cookies, CSRF/exact origin, fixed freshness,
+  family-bound revocation, atomic rotation and additive migration `000167`.
+  Real PostGIS/race, admin isolation, admission, failure/retry/upgrade,
+  prior-binary compatibility and affected regressions passed. API composition,
+  OpenAPI drift, static/sqlc/build, formatting and secret review passed.
+  Company lifecycle routes default off. Organization AUTH, panel and live
+  rollout retain their tasks. F1/M1 remain open; EMP-PLAT-008 next.
+
 - Enterprise EMP-PLAT-006, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published `5b692fb5`; delivery targets existing PR202 (`dev → main`).
   [Private-storage evidence](../enterprise/evidence/f1-plat006-private-document-storage.md)

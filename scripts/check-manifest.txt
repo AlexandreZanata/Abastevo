@@ -24,6 +24,10 @@ backend/internal/modules/orgcapability/adapters
 backend/internal/modules/orgmedia/domain
 backend/internal/modules/orgmedia/application
 backend/internal/modules/orgmedia/adapters
+backend/internal/modules/companysession/domain
+backend/internal/modules/companysession/application
+backend/internal/modules/companysession/adapters
+backend/internal/modules/companysession/adapters/http
 backend/internal/modules/directory/domain
 backend/internal/modules/directory/adapters
 backend/internal/modules/official/adapters/anp

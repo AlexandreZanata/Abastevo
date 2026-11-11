@@ -24,6 +24,23 @@ Keep each organization's data visible only to that organization's authorized mem
 | Access log entry | Organization | Who opened which sensitive item and why | Part of the audit trail (BR-AUD-003). |
 | Local protected store | Device, per (account, origin, organization) | Cached reference data, pending operations, attachment files | Not included in device backups; unreadable by another account on the device. |
 
+### 3.1 Implemented company-session credential inventory
+
+EMP-PLAT-007 stores account/family UUIDs, a company lookup digest, separately
+salted cookie/CSRF verifiers, authentication/creation/activity/expiry times
+and optional revocation time in `company_web_sessions`. No raw account
+proof, cookie, CSRF, contributor GPS, receipt or organization content is
+retained there. Result/proof/record types redact default and structured
+logging. Account/family deletion cascades to these credentials.
+
+Read-time limits are 30-minute idle, at most eight-hour absolute and current
+active account/live source family; fresh actions use a fixed 15-minute
+window. The existing daily privacy job removes invalid rows in bounded
+batches, even with the company surface off. This technical credential
+lifecycle does not resolve real-receipt retention or legal-review gates.
+[Operational cleanup](../operator/retention.md#per-category-behavior) and
+[local security evidence](evidence/f1-plat007-company-web-session.md).
+
 ## 4. Business rules
 
 Isolation:

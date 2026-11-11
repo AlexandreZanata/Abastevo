@@ -92,8 +92,11 @@ type Gateway struct {
 	Sessions     func(context.Context, string, string) (string, error)
 	SignedOwner  func(*http.Request, string) (string, string, error)
 	WebSession   func(*http.Request) (string, error)
-	Resolve      func(context.Context, Actor, kernel.OrgScope, Rule) (Membership, error)
-	Now          func() time.Time
+	// WebSession peeks without renewing idle time. Confirm rechecks credentials
+	// and declared freshness after current organization authority succeeds.
+	WebSessionConfirm func(*http.Request, bool) (string, error)
+	Resolve           func(context.Context, Actor, kernel.OrgScope, Rule) (Membership, error)
+	Now               func() time.Time
 }
 
 func validID(raw string) bool {
@@ -137,6 +140,9 @@ func Register[T Request](router chi.Router, path string, gateway Gateway, rule R
 		(gateway.Sessions == nil && gateway.WebSession == nil) ||
 		(gateway.Sessions != nil && gateway.SignedOwner == nil) {
 		return fmt.Errorf("orgapi: incomplete organization route registration")
+	}
+	if gateway.WebSession != nil && gateway.WebSessionConfirm == nil {
+		return fmt.Errorf("orgapi: missing company session confirmation")
 	}
 	router.Method(http.MethodPost, path, endpoint[T]{gateway: gateway, rule: normalized, serve: serve})
 	return nil
@@ -285,6 +291,18 @@ func (gateway Gateway) resolve(r *http.Request, session Session, rule Rule) (Pri
 	}
 	if !validID(membership.ID) || membership.AccountID != actor.AccountID || membership.OrgID != id {
 		return Principal{}, NotFound
+	}
+	if actor.Channel == "web" {
+		account, err := gateway.WebSessionConfirm(r, rule.Fresh)
+		if errors.Is(err, FreshAuthRequired) {
+			return Principal{}, FreshAuthRequired
+		}
+		if err != nil {
+			return Principal{}, authenticationError(err)
+		}
+		if account != actor.AccountID {
+			return Principal{}, Unauthenticated
+		}
 	}
 	return Principal{Actor: actor, Scope: scope, MembershipID: membership.ID}, nil
 }

@@ -148,6 +148,30 @@ boundaries.
   filename. Original bytes are preserved; failed transfers claim no ready
   document state. Document persistence and lifecycle remain in EMP-DOC-002.
 
+- **B-BR-EMP-17 — Independent company web session.** Fresh live account
+  access proof issues a new account-owned company session, not an admin or
+  organization privilege. The host-only `__Host-empresas-session` cookie is
+  Secure, HttpOnly, SameSite=Strict and Path=/. Company tokens, verifier
+  namespace, table and middleware are separate from admin. Every company
+  POST checks one exact configured Origin/Host; authenticated requests also
+  require the dedicated CSRF header. Browser identifiers never select an
+  account or authorize an organization.
+
+- **B-BR-EMP-18 — Current, bounded company authority.** Company sessions use
+  the existing 30-minute idle and eight-hour absolute session precedent,
+  bounded by their account family's lifetime. Issuance and sensitive actions
+  require account proof issued less than 15 minutes ago. Cookie activity does
+  not refresh authentication or extend absolute expiry. Only token lookup
+  digests and separately salted token/CSRF verifiers persist. Live family and
+  active-account checks apply at issuance and on every cookie request.
+  Refresh/revocation races cannot turn stale account proof into a new session.
+  Invalid CSRF/freshness does not touch idle time. Re-login replaces the
+  presented same-account company session atomically; logout revokes only that session.
+  Existing ten-session account admission precedent bounds this separate
+  plane; expired/revoked rows have bounded cleanup. Admin and personal account
+  logout stay independent, while account-wide revocation invalidates company
+  access. Private responses are no-store without ETags.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -212,6 +236,15 @@ boundaries.
   Foreign member/organization, expired or changed access, unsafe/unsupported
   bytes, unavailable storage or audit failure returns no content. Retries
   cannot overwrite a stored original or turn a partial upload into ready.
+
+- **BUC-EMP-10 — Use the company web session.** Given fresh current account
+  proof and the exact company origin, the server mints a new company cookie
+  and CSRF value without storing either plaintext. The panel reads session
+  state with that cookie and header. Organization routes separately resolve
+  current membership/permission; sensitive operations additionally check the
+  fixed authentication time. Wrong/ambiguous origin, cookie, CSRF, expired
+  timing, account suspension or family revocation fails closed. Company
+  logout/expiry does not affect an admin or personal account session.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

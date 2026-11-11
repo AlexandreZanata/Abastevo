@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value, database, audit, HTTP, capability and private-storage foundations in EMP-PLAT-001 through EMP-PLAT-006 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
+Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value, database, audit, HTTP, capability, private-storage and company-session foundations in EMP-PLAT-001 through EMP-PLAT-007 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
 
 ## 1. Principles
 
@@ -19,6 +19,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `organization` (proposed) | ORG | Organization, legal entities, units, teams, cost centres, groups, settings | `account` (existing) |
 | `membership` (proposed) | IDN | Employees, memberships, invitations, activation codes, device enrolment | `account`, `identity`, `cloudsync` device references (existing) |
 | `orgaccess` (proposed) | AUTH | Role catalog, role assignments, the authorization service | `membership`, `organization`, `orgbilling` |
+| `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
 | `orgcapability` (LOCAL_DONE) | PLAT | Registered organization capability state and audited activation | `orgaudit` application port, `kernel`, scoped transaction helper; AUTH authority port |
 | `orgmedia` (LOCAL_DONE) | PLAT | Bounded private originals and member-bound access | Existing S3/HMAC/JPEG primitives; `orgaudit` application port; AUTH/DOC authority and metadata ports |
@@ -146,6 +147,54 @@ flowchart LR
 
 The steps and their errors are the table in [07-permissions](07-permissions.md) §10. The resolved context (`organization`, `membership`, `device`, effective assignments) is passed explicitly to the use case; no use case reads identity from global state.
 
+### 3.1 Implemented company account session
+
+EMP-PLAT-007 adds the `companysession` module and the three production POSTs
+`/v1/org-access/session/login`, `/read` and `/logout`. They mount only when
+`ANPFUEL_ENTERPRISE_ENABLED=true`, against the configured canonical HTTPS
+origin. Login exchanges existing fresh `family_id` / `access_token` proof;
+read/logout use an empty JSON object, the dedicated cookie and `X-CSRF`.
+The session identifies an account. AUTH still owns organization membership,
+permissions and role resolution; EMP-PLAT-008 owns the `/empresas/` shell.
+
+The host-only `__Host-empresas-session` cookie is Secure, HttpOnly,
+SameSite=Strict and Path=/ with no Domain. Each request requires one exact
+Origin and Host. Ambiguous cookies/headers, cross-site fetch metadata,
+signed/bearer channel mixing, query parameters and noncanonical JSON fail
+closed. The body is capped at 16 KiB; HTTP reads have a 15-second deadline
+and service operations have a ten-second context. Private responses use
+no-store without ETags. No admin middleware or CIDR policy is relaxed.
+
+Only the company lookup digest and separately salted cookie/CSRF verifiers
+persist in additive migration `000167`; raw account proof is not retained.
+The composite account/family foreign key prevents reassignment to another
+account. Issuance locks the active account and current family hash/expiry
+snapshot, so account refresh or revocation cannot authorize stale proof.
+Company access rechecks active account and live family every time, but does
+not depend on the source access token remaining valid after issuance.
+
+Idle expiry is exactly 30 minutes and absolute expiry at most eight hours,
+also bounded by the source family's lifetime. Freshness is less than 15
+minutes from the account access proof's issuance time. Activity extends
+only idle time. Re-login requires fresh current proof and atomically
+rotates the presented same-account cookie/CSRF; failure preserves the old
+session. Company logout revokes only its company session. Account-wide
+revocation invalidates company access, while admin logout stays independent.
+
+Organization handlers wire both `WebSession` (verify without renewal) and
+`WebSessionConfirm` (recheck cookie, CSRF and declared freshness after current
+scope/permission resolution). Missing confirmation refuses registration.
+Denied scope/freshness never renews idle time. The independent middleware
+has its own context key and refuses non-organization route namespaces.
+
+Account locking enforces the existing ten-session admission precedent on
+this separate plane, pruning invalid rows before counting. The existing
+privacy-retention worker removes expired/revoked sessions in bounded
+batches even while the enterprise surface is off. Account/family deletion
+cascades to company credentials. The compatibility floor remains `000132`;
+rollback uses the previous binary with the additive table preserved.
+[Local evidence](evidence/f1-plat007-company-web-session.md).
+
 ## 4. API conventions
 
 - **Paths:** `/v1/orgs/{org_id}/<module>/…`. Routes that are not inside an organization (create an organization, list my memberships, accept an invitation, activate managed access) live under `/v1/org-access/…`. Station portal routes are organization routes scoped by station: `/v1/orgs/{org_id}/stations/{station_id}/…`.
@@ -191,8 +240,8 @@ over 64 KiB. Commands require `schema_version: 1`, a canonical non-nil
 
 The gateway restores the exact validated body bytes before invoking the
 existing account session and owner-bound signed-device adapters. Company
-web uses a separate session port with an exact Origin check. That port
-owns its dedicated cookie and CSRF verification in EMP-PLAT-007. Partial
+web uses the implemented EMP-PLAT-007 session ports with exact Origin/Host,
+dedicated cookie/CSRF verification and post-scope freshness confirmation. Partial
 credentials and signature headers cannot fall back to the web channel.
 
 The resolver port rechecks current membership, organization state,

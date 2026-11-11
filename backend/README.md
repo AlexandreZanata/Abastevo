@@ -147,6 +147,39 @@ See the [transaction and composition contract](../docs/enterprise/09-architectur
 Use an ordinary non-owner, non-BYPASSRLS runtime login; backup/restore retains
 the separately reviewed authority needed for forced-RLS tables.
 
+### Company account web sessions (EMP-PLAT-007)
+
+With `ANPFUEL_ENTERPRISE_ENABLED=true`, the API mounts three POSTs under
+`/v1/org-access/session/`: `login`, `read`, `logout`. The canonical origin is
+`https://` plus `ANPFUEL_CANONICAL_HOST`. No Caddy/panel activation is part of
+this task. Apply additive migration `000167` before the new API/worker.
+
+Login accepts only `{"family_id":"...","access_token":"..."}` with current
+account proof issued less than 15 minutes ago. It returns account metadata,
+a CSRF value and the separate `__Host-empresas-session` cookie. The cookie
+is host-only, Secure, HttpOnly, SameSite=Strict, Path=/; its plaintext never
+appears in JSON or storage. Read/logout accept `{}` and require that cookie,
+`X-CSRF`, and exactly the configured Origin and Host. Use JSON, no query
+parameters and no signed/bearer headers on this channel. Bodies are capped
+at 16 KiB. Responses, including failures, are no-store without ETags.
+
+Idle expiry is 30 minutes; absolute expiry is at most eight hours, bounded
+by the source family. Activity never refreshes the 15-minute authentication
+time. Re-login rotates the presented same-account cookie/CSRF atomically.
+Logout affects only the company cookie; account-wide revocation also
+invalidates company access. Admin credentials and network fencing remain
+independent. Sessions identify accounts, with organization permission owned
+by AUTH. Organization gateway composition must supply both `WebSession`
+and `WebSessionConfirm`; the latter checks declared freshness only after
+current scope/permission succeeds and then renews idle time.
+
+The existing privacy-retention worker purges company credentials in bounded
+batches while the surface is off as well. No migration or dependency is
+removed on rollback; the prior API remains schema-compatible. Test with
+`go test -race -tags=integration ./internal/modules/companysession/...` and
+an explicit disposable `ANPFUEL_TEST_DATABASE_URL`.
+[Architecture and evidence](../docs/enterprise/09-architecture.md#31-implemented-company-account-session).
+
 ### Private original transfers (EMP-PLAT-006)
 
 `orgmedia` supplies bounded organization storage and audited member-bound

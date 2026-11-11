@@ -11,6 +11,8 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 
+	companyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
+	companyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 )
@@ -67,10 +69,16 @@ func conventionRoute(t *testing.T) (*openapi3.T, chi.Router) {
 	}
 	document.Paths.Set(path, &openapi3.PathItem{Post: operation})
 	router := chi.NewRouter()
-	err := orgapi.Register(router, path, orgapi.Gateway{
+	company, err := companyhttp.New(&companyapp.Service{Enabled: true}, "https://api.example.invalid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	company.RegisterRoutes(router)
+	err = orgapi.Register(router, path, orgapi.Gateway{
 		Enabled: true,
 		Origin:  "https://api.example.invalid", CursorSecret: make([]byte, 32),
-		WebSession: func(*http.Request) (string, error) { return "", orgapi.Unauthenticated },
+		WebSession:        func(*http.Request) (string, error) { return "", orgapi.Unauthenticated },
+		WebSessionConfirm: func(*http.Request, bool) (string, error) { return "", orgapi.Unauthenticated },
 		Resolve: func(context.Context, orgapi.Actor, kernel.OrgScope, orgapi.Rule) (orgapi.Membership, error) {
 			return orgapi.Membership{}, orgapi.NotFound
 		},
@@ -124,8 +132,10 @@ func TestOrganizationRouteGateRejectsBothKindsOfDrift(t *testing.T) {
 			}
 		})
 	}
-	// No feature operations are published in this foundation task.
-	if err := ValidateOrganizationRoutes(chi.NewRouter(), loadSpec(t)); err != nil {
+	// The company lifecycle is now implemented; no organization business
+	// operation is published. All three real lifecycle registrations are checked.
+	canonical, actual := companyRoutes(t)
+	if err := ValidateOrganizationRoutes(actual, canonical); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -8,6 +8,18 @@
 version: "2"
 sql:
   - engine: postgresql
+    queries: db/queries/companysession
+    schema:
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000167_company_web_sessions.sql
+    gen:
+      go:
+        package: companysession
+        out: db/queries/companysession
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/platform
     schema:
       - db/migrations/000001_enable_postgis.sql
