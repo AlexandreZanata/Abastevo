@@ -89,10 +89,30 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+      # Disposable private S3 for real-storage suites (orgmedia originals and the
+      # API's evidence path); same reviewed image as compose.validation.yml.
+      storage:
+        image: bitnamilegacy/minio@sha256:451fe6858cb770cc9d0e77ba811ce287420f781c7c1b806a386f6896471a349c
+        env:
+          MINIO_ROOT_USER: localvalidation
+          MINIO_ROOT_PASSWORD: local-validation-only-20260930
+          MINIO_DEFAULT_BUCKETS: validation-private
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/minio/health/live"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     env:
       # Runner steps reach services via localhost:mapped-port; the `postgres`
       # hostname resolves only between service containers.
       ANPFUEL_TEST_DATABASE_URL: postgres://anpfuel:anpfuel@127.0.0.1:5432/anpfuel?sslmode=disable
+      ANPFUEL_TEST_STORAGE_ENDPOINT: http://127.0.0.1:9000
+      ANPFUEL_TEST_STORAGE_BUCKET: validation-private
+      ANPFUEL_TEST_STORAGE_REGION: us-east-1
+      ANPFUEL_TEST_STORAGE_ACCESS_KEY_ID: localvalidation
+      ANPFUEL_TEST_STORAGE_SECRET_ACCESS_KEY: local-validation-only-20260930
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

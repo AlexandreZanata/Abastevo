@@ -2,7 +2,8 @@
 - Enterprise PR202 review, 2026-11-11: reviewed EMP-PLAT-005..008
   (`5b692fb5`..`b739b2c6`) with their earlier base; fixes follow as new
   commits on dev. [Review record](../enterprise/evidence/f1-pr202-review.md):
-  - Fixed: key reaching the URL by native form submission; sign-in creating
+  - Fixed: the failed CI integration job (no S3 service for the orgmedia
+    suites); key reaching the URL by native form submission; sign-in creating
     unrevokable account session families while the company plane is off;
     keyboard arrow switching; cancellable logout; missing `AbortSignal.any`
     fallback; integrity failures reported as outages; unfenced server PUT

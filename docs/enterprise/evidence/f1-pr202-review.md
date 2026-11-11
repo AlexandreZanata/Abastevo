@@ -42,6 +42,14 @@ High:
 
 Medium:
 
+- **Required integration check failed on the delivered head.** The backend
+  `integration` job (real PostGIS, race) for `b739b2c6` failed. The orgmedia
+  S3 tests in `backend/internal/modules/orgmedia/adapters/storage_integration_test.go`
+  require `ANPFUEL_TEST_STORAGE_*`, which the job did not provide. Fixed
+  without skipping them: `.github/workflows/backend.yml` adds the reviewed
+  MinIO image from `compose.validation.yml` as a service, with its default
+  bucket. The same image and entrypoint were run locally: orgmedia, and
+  `cmd/api` on its real-S3 path, passed against it.
 3. **Keyboard switching changed context.** `business-web/src/app.ts`
    (selector `change`). Arrow keys on a closed select fire `change`, so each
    step opened another company (WCAG 3.2.2). Fixed: an explicit
