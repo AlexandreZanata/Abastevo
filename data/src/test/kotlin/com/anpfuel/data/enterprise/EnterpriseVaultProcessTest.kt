@@ -29,10 +29,10 @@ class EnterpriseVaultProcessTest {
             VaultProcessProbe::class.java.name, directory.toString(), key.toString(), action, id,
         ).redirectErrorStream(true).redirectOutput(root.resolve(action + "-" + id + ".log").toFile()).start()
     }
-    private fun complete(process: Process) {
+    private fun complete(process: Process, exit: Int = 0) {
         try {
             assertTrue(process.waitFor(30, TimeUnit.SECONDS), "Child timed out")
-            assertEquals(0, process.exitValue(), "Child failed; inspect temporary probe output")
+            assertEquals(exit, process.exitValue(), "Child ended elsewhere; inspect temporary probe output")
         } finally { if (process.isAlive) process.destroyForcibly() }
     }
     private fun id(n: Int) = "7b0e2a54-0000-4000-8000-" + n.toString().padStart(12, '0')
@@ -49,9 +49,9 @@ class EnterpriseVaultProcessTest {
         val writers = (41..44).map { child(directory, key, "write", id(it)) }
         writers.forEach(::complete)
         assertEquals(4, f.store.pending(p, 50).size)
-        complete(child(directory, key, "crash-before", id(45)))
+        complete(child(directory, key, "crash-before", id(45)), VaultProcessProbe.DIED_BEFORE_REPLACE)
         assertTrue(f.store.enqueue(EnterprisePendingOperation(p, id(45), A, byteArrayOf(9))))
-        complete(child(directory, key, "crash-after", id(46)))
+        complete(child(directory, key, "crash-after", id(46)), VaultProcessProbe.DIED_AFTER_REPLACE)
         assertFalse(f.store.enqueue(EnterprisePendingOperation(p, id(46), A, byteArrayOf(9))))
         assertEquals(6, f.store.pending(p, 50).size)
         assertArrayEquals(byteArrayOf(7), f.store.record(p, A)!!.envelope)

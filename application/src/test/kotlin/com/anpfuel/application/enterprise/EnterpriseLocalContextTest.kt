@@ -165,4 +165,17 @@ class EnterpriseLocalContextTest {
         val outage = EnterpriseLocalContext({throw IllegalStateException("PRIVATE-SESSION")},{origin},db)
         assertThrows(EnterpriseLocalDenied::class.java) { kotlinx.coroutines.runBlocking { outage.select(partition()) } }
     }
+
+    @Test
+    fun `unlock and unrecoverable outcomes stay distinct from a storage outage`(): Unit = runTest {
+        var failure: Exception = EnterpriseUnlockRequired()
+        val db = object : Memory() {
+            override suspend fun pending(partition: EnterprisePartition, limit: Int): List<EnterprisePendingOperation> = throw failure
+        }
+        val store = EnterpriseLocalContext({a},{origin},db).select(partition())
+        assertThrows(EnterpriseUnlockRequired::class.java) { kotlinx.coroutines.runBlocking { store.pending() } }
+        failure = EnterpriseVaultUnrecoverable()
+        assertThrows(EnterpriseVaultUnrecoverable::class.java) { kotlinx.coroutines.runBlocking { store.pending() } }
+        assertFalse(EnterpriseUnlockRequired().toString().contains(a))
+    }
 }

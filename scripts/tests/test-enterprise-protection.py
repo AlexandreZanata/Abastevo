@@ -15,6 +15,7 @@ class EnterpriseBackupBoundary(unittest.TestCase):
         for rules in (old, modern.find("cloud-backup"), modern.find("device-transfer")):
             self.assertIsNotNone(rules)
             exclusions = {(e.get("domain"), e.get("path")) for e in rules.findall("exclude")}
+            self.assertIn(("root", "no_backup/enterprise-sealed-v1/"), exclusions)
             for domain in ("root", "file", "external"):
                 self.assertIn((domain, "enterprise-sealed-v1/"), exclusions)
             self.assertIn(("sharedpref", "."), exclusions)
@@ -38,7 +39,14 @@ class EnterpriseBackupBoundary(unittest.TestCase):
         self.assertIn("EnterpriseRevokingAccountApi(AccountHttpApi", auth)
         activity = (ROOT / "app/src/main/kotlin/com/anpfuel/app/MainActivity.kt").read_text()
         self.assertIn("override fun onStop()", activity)
-        self.assertIn("enterpriseFence.markBackground()", activity)
+        self.assertIn("enterpriseFence.isInitialized && !isChangingConfigurations) enterpriseFence.markBackground()", activity)
+        module = (DATA / "di/EnterpriseModule.kt").read_text()
+        self.assertNotIn("fence: EnterpriseSessionFence = EnterpriseSessionFence()", module)
+
+    def test_keystore_use_failures_are_classified(self):
+        keys = (DATA / "enterprise/AndroidEnterpriseVaultKeys.kt").read_text()
+        self.assertIn("is UserNotAuthenticatedException -> EnterpriseKeyUse.UNLOCK_REQUIRED", keys)
+        self.assertIn("is KeyPermanentlyInvalidatedException -> EnterpriseKeyUse.INVALIDATED", keys)
 
 
 if __name__ == "__main__":

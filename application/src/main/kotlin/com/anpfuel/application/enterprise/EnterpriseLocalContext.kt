@@ -18,6 +18,10 @@ interface EnterprisePersistence {
 class EnterpriseLocalDenied : IllegalStateException("Enterprise local context unavailable")
 class EnterprisePersistenceUnavailable : IllegalStateException("Enterprise protected storage unavailable")
 class EnterpriseOperationReused : IllegalStateException("Enterprise operation reused")
+/** The managed device unlock must happen before this partition can be read or written. */
+class EnterpriseUnlockRequired : IllegalStateException("Enterprise device unlock required")
+/** Stored work can never be opened again; only acknowledged erasure plus fresh contact recovers the partition. */
+class EnterpriseVaultUnrecoverable : IllegalStateException("Enterprise protected storage unrecoverable")
 
 /** Production binding stays closed until EMP-PRIV-003 supplies protected persistence. */
 object UnavailableEnterprisePersistence : EnterprisePersistence {
@@ -76,6 +80,10 @@ class EnterpriseLocalContext(
             throw denied
         } catch (reused: EnterpriseOperationReused) {
             throw reused
+        } catch (unlock: EnterpriseUnlockRequired) {
+            throw unlock
+        } catch (lost: EnterpriseVaultUnrecoverable) {
+            throw lost
         } catch (_: IllegalArgumentException) {
             throw IllegalArgumentException("Invalid enterprise local request")
         } catch (_: Exception) {

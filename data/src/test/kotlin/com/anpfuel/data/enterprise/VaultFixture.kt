@@ -3,7 +3,20 @@ package com.anpfuel.data.enterprise
 import com.anpfuel.application.enterprise.EnterpriseSessionFence
 import com.anpfuel.domain.enterprise.*
 import java.nio.file.Path
+import java.security.InvalidKeyException
 import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+
+/** Stand-ins for UserNotAuthenticatedException/KeyPermanentlyInvalidatedException. */
+internal class TestUnlockRequired : InvalidKeyException("private unlock diagnostic")
+internal class TestKeyInvalidated : InvalidKeyException("private invalidation diagnostic")
+
+/** Like AndroidKeyStore, the alias still resolves; the cipher refuses the key only at use. */
+private class RefusedKey(private val failure: () -> Exception) : SecretKey {
+    override fun getAlgorithm() = "AES"
+    override fun getFormat() = "RAW"
+    override fun getEncoded(): ByteArray = throw failure()
+}
 
 internal class TestVaultKeys : EnterpriseVaultKeys {
     val values = linkedMapOf<String, EnterpriseVaultKey>()
@@ -11,9 +24,21 @@ internal class TestVaultKeys : EnterpriseVaultKeys {
     var failDelete = false
     var failAliases = emptySet<String>()
     var locked = false
+    var invalidated = false
+    var unavailable = false
     @Synchronized override fun existing(alias: String): EnterpriseVaultKey? {
-        if (locked) error("private key-provider diagnostic")
-        return values[alias]
+        if (unavailable) error("private key-provider diagnostic")
+        val key = values[alias] ?: return null
+        return when {
+            locked -> key.copy(secret = RefusedKey { TestUnlockRequired() })
+            invalidated -> key.copy(secret = RefusedKey { TestKeyInvalidated() })
+            else -> key
+        }
+    }
+    override fun classify(failure: Exception) = when (failure) {
+        is TestUnlockRequired -> EnterpriseKeyUse.UNLOCK_REQUIRED
+        is TestKeyInvalidated -> EnterpriseKeyUse.INVALIDATED
+        else -> EnterpriseKeyUse.OTHER
     }
     @Synchronized override fun create(alias: String, managedUnlockSeconds: Int?): EnterpriseVaultKey {
         creates++

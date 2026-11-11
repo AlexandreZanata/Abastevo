@@ -6,7 +6,9 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyInfo
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
+import android.security.keystore.UserNotAuthenticatedException
 import com.anpfuel.domain.enterprise.EnterpriseDeviceClock
 import java.security.KeyStore
 import javax.crypto.KeyGenerator
@@ -60,6 +62,13 @@ class AndroidEnterpriseVaultKeys : EnterpriseVaultKeys {
         val store = store()
         store.deleteEntry(alias)
         check(!store.containsAlias(alias))
+    }
+
+    // Raised by Cipher.init, not by alias lookup: the alias still resolves when locked or invalidated.
+    override fun classify(failure: Exception): EnterpriseKeyUse = when (failure) {
+        is UserNotAuthenticatedException -> EnterpriseKeyUse.UNLOCK_REQUIRED
+        is KeyPermanentlyInvalidatedException -> EnterpriseKeyUse.INVALIDATED
+        else -> EnterpriseKeyUse.OTHER
     }
 
     override fun aliases(prefix: String): List<String> {

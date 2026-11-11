@@ -23,6 +23,8 @@ class ProtectedEnterprisePersistenceTest {
     private val payload = ("PRIVATE-SYNTHETIC-ENTERPRISE-INTENT-" + A).toByteArray()
     private fun denied(work: suspend () -> Unit) =
         assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { work() } }
+    private fun unrecoverable(work: suspend () -> Unit) =
+        assertThrows(EnterpriseVaultUnrecoverable::class.java) { runBlocking { work() } }
 
     @Test
     fun allPrivateSurfacesStaySealedAcrossRecreationAndPersonalFilesAreUnchanged(): Unit = runBlocking {
@@ -115,11 +117,11 @@ class ProtectedEnterprisePersistenceTest {
             val changed = original.copyOf()
             changed[index] = (changed[index].toInt() xor 1).toByte()
             Files.write(f.file(directory), changed)
-            val error = assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.store.record(p, A) } }
+            val error = assertThrows(EnterpriseVaultUnrecoverable::class.java) { runBlocking { f.store.record(p, A) } }
             // Coroutine stack recovery may add another copy of this same safe exception.
             generateSequence<Throwable>(error) { it.cause }.forEach {
-                assertTrue(it is EnterprisePersistenceUnavailable)
-                assertEquals("Enterprise protected storage unavailable", it.message)
+                assertTrue(it is EnterpriseVaultUnrecoverable)
+                assertEquals("Enterprise protected storage unrecoverable", it.message)
             }
             assertFalse(error.toString().contains(directory.toString()))
         }
@@ -127,11 +129,53 @@ class ProtectedEnterprisePersistenceTest {
         val foreign = partition(org = B)
         f.store.confirm(foreign)
         Files.write(f.file(directory, foreign), original)
-        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.store.record(foreign, A) } }
+        unrecoverable { f.store.record(foreign, A) }
         val alias = EnterpriseVaultCodec.alias(EnterpriseVaultCodec.token(p))
         f.keys.values.remove(alias)
         f.keys.create(alias, null)
-        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.store.record(p, A) } }
+        unrecoverable { f.store.record(p, A) }
+        // A different key under the alias can never reopen the work: only an
+        // explicitly acknowledged fresh start, after fresh contact, recovers.
+        f.server++
+        unrecoverable { f.store.confirm(p) }
+        assertTrue(Files.exists(f.file(directory)))
+        val creates = f.keys.creates
+        f.store.confirm(p, acknowledgeErasedWork = true)
+        assertNull(f.store.record(p, A))
+        assertTrue(f.store.pending(p, 50).isEmpty())
+        assertEquals(creates + 1, f.keys.creates)
+        assertFalse(f.erasure.cleanupRequired)
+    }
+
+    @Test
+    fun invalidatedKeyIsUnrecoverableUntilAcknowledgedFreshStart(): Unit = runBlocking {
+        val directory = root.resolve("vault")
+        val f = VaultFixture(directory)
+        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        f.keys.invalidated = true // e.g. the device lock screen was removed.
+        unrecoverable { f.store.record(p, A) }
+        f.server++
+        unrecoverable { f.store.confirm(p) }
+        f.keys.invalidated = false
+        assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
+        f.keys.invalidated = true
+        f.store.confirm(p, acknowledgeErasedWork = true)
+        f.keys.invalidated = false
+        assertNull(f.store.record(p, A))
+        assertEquals(2, f.keys.creates)
+    }
+
+    @Test
+    fun corruptedOrTruncatedCiphertextIsUnrecoverableUntilAcknowledgedFreshStart(): Unit = runBlocking {
+        val directory = root.resolve("vault")
+        val f = VaultFixture(directory)
+        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        Files.write(f.file(directory), ByteArray(31))
+        unrecoverable { f.store.record(p, A) }
+        f.server++
+        unrecoverable { f.store.confirm(p) }
+        f.store.confirm(p, acknowledgeErasedWork = true)
+        assertNull(f.store.record(p, A))
     }
 
     @Test
@@ -163,12 +207,15 @@ class ProtectedEnterprisePersistenceTest {
         val f = VaultFixture(root.resolve("vault"))
         f.unlock = 60
         f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
-        f.keys.locked = true // Simulate the platform requiring device credential/strong biometric.
-        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.store.record(p, A) } }
+        f.keys.locked = true // The platform requires device credential/strong biometric at key use.
+        assertThrows(EnterpriseUnlockRequired::class.java) { runBlocking { f.store.record(p, A) } }
+        // Unlock-required is never a reason to erase, even when loss is acknowledged.
+        assertThrows(EnterpriseUnlockRequired::class.java) { runBlocking { f.store.confirm(p, acknowledgeErasedWork = true) } }
         f.keys.locked = false
         assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
         f.unlock = null
-        denied { f.store.confirm(p) }
+        unrecoverable { f.store.confirm(p) }
+        assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
         f.unlock = 60
         f.server--
         denied { f.store.confirm(p) }
@@ -176,6 +223,52 @@ class ProtectedEnterprisePersistenceTest {
         f.server = 10000 + EnterpriseOfflineLease.DEFAULT_VALIDITY_MILLIS
         denied { f.store.confirm(p) }
         assertTrue(f.keys.values.isEmpty())
+    }
+
+    @Test
+    fun changedManagedUnlockPolicyStartsFreshOnlyAfterAcknowledgedLoss(): Unit = runBlocking {
+        val f = VaultFixture(root.resolve("vault"))
+        f.unlock = 60
+        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        f.unlock = 300
+        f.server++
+        unrecoverable { f.store.confirm(p) }
+        assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
+        f.store.confirm(p, acknowledgeErasedWork = true)
+        assertNull(f.store.record(p, A))
+        assertEquals(300, f.keys.values.values.single().managedUnlockSeconds)
+    }
+
+    @Test
+    fun rebootPastWallValidityShredsTheKeyWithoutServerContact(): Unit = runBlocking {
+        val directory = root.resolve("vault")
+        val f = VaultFixture(directory)
+        f.store.confirm(p); f.store.enqueue(EnterprisePendingOperation(p, A, B, payload))
+        f.now = EnterpriseDeviceClock("boot-8", 0, f.now.wallMillis + EnterpriseOfflineLease.DEFAULT_VALIDITY_MILLIS - 1)
+        denied { f.store.pending(p, 1) }
+        assertEquals(1, f.keys.values.size)
+        f.now = f.now.copy(wallMillis = f.now.wallMillis + 1)
+        val contacts = f.contacts
+        denied { f.store.pending(p, 1) }
+        assertEquals(contacts, f.contacts)
+        assertTrue(f.keys.values.isEmpty())
+        assertFalse(Files.exists(f.file(directory)))
+    }
+
+    @Test
+    fun allocationFailureIsAnOutageAndLeavesHeldWorkReadable(): Unit = runBlocking {
+        var exhaust = false
+        val f = VaultFixture(root.resolve("vault"), transform = { delegate -> object : EnterpriseVaultFiles by delegate {
+            override fun read(token: String): ByteArray? {
+                if (exhaust) throw OutOfMemoryError("private allocation diagnostic")
+                return delegate.read(token)
+            }
+        } })
+        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        exhaust = true
+        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.store.record(p, A) } }
+        exhaust = false
+        assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
     }
 
     @Test
@@ -243,7 +336,7 @@ class ProtectedEnterprisePersistenceTest {
         assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
         val original = Files.readAllBytes(f.file(directory))
         java.io.RandomAccessFile(f.file(directory).toFile(), "rw").use { it.setLength(EnterpriseVaultCodec.MAX_SEALED.toLong() + 1) }
-        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.store.record(p, A) } }
+        unrecoverable { f.store.record(p, A) }
         Files.delete(f.file(directory))
         val outside = root.resolve("outside")
         Files.write(outside, original)

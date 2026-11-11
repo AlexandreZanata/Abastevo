@@ -12,8 +12,12 @@ import java.nio.file.attribute.PosixFilePermissions
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
+/** A stored vault file outside the sealed-size bounds: corrupted or truncated, never transient. */
+class EnterpriseVaultCorrupted : IllegalStateException("Enterprise vault ciphertext malformed")
+
 interface EnterpriseVaultFiles {
     fun <T> locked(accountTag: String, work: () -> T): T
+    /** Throws [EnterpriseVaultCorrupted] when the stored file can never be a sealed snapshot. */
     fun read(token: String): ByteArray?
     fun replace(token: String, ciphertext: ByteArray)
     fun denied(token: String): Boolean
@@ -21,6 +25,8 @@ interface EnterpriseVaultFiles {
     fun allowFresh(token: String)
     fun erase(token: String)
     fun tokens(accountTag: String): List<String>
+    /** Whether anything (including a lock file) was ever created for the account; creates nothing. */
+    fun present(accountTag: String): Boolean
 }
 
 /** Ciphertext-only files; production root must be the dedicated noBackupFilesDir child. */
@@ -50,7 +56,7 @@ class AtomicEnterpriseVaultFiles(directory: File) : EnterpriseVaultFiles {
         if (!Files.exists(file, NOFOLLOW_LINKS)) return null
         FileChannel.open(file, READ, NOFOLLOW_LINKS).use { channel ->
             val size = channel.size()
-            require(size in 32..EnterpriseVaultCodec.MAX_SEALED.toLong())
+            if (size !in 32..EnterpriseVaultCodec.MAX_SEALED.toLong()) throw EnterpriseVaultCorrupted()
             val bytes = ByteArray(size.toInt())
             val buffer = ByteBuffer.wrap(bytes)
             while (buffer.hasRemaining()) check(channel.read(buffer) > 0)
@@ -95,6 +101,15 @@ class AtomicEnterpriseVaultFiles(directory: File) : EnterpriseVaultFiles {
         return Files.newDirectoryStream(root).use { entries ->
             entries.map { it.fileName.toString().substringBefore('.') }
                 .filter { it.startsWith(accountTag + "-") && tokenPattern.matches(it) }.distinct().sorted()
+        }
+    }
+
+    override fun present(accountTag: String): Boolean {
+        require(accountTag.length == 64 && tokenPattern.matches(accountTag))
+        if (!Files.exists(root, NOFOLLOW_LINKS)) return false
+        require(!Files.isSymbolicLink(root) && Files.isDirectory(root, NOFOLLOW_LINKS))
+        return Files.newDirectoryStream(root).use { entries ->
+            entries.any { it.fileName.toString().startsWith(accountTag) }
         }
     }
 

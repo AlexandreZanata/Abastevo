@@ -80,16 +80,23 @@ class EnterpriseVaultLifecycleTest {
         val sessions = EnterpriseFencedSessionStore(raw, fence)
         val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
-        val clearing = CountDownLatch(1)
-        val executor = Executors.newFixedThreadPool(2)
+        val executor = Executors.newSingleThreadExecutor()
+        val logout = Thread { sessions.clear() }
         try {
             val reader = executor.submit { fence.access { entered.countDown(); assertTrue(release.await(5, TimeUnit.SECONDS)) } }
             assertTrue(entered.await(5, TimeUnit.SECONDS))
-            val logout = executor.submit { clearing.countDown(); sessions.clear() }
-            assertTrue(clearing.await(5, TimeUnit.SECONDS))
+            logout.start()
+            // Observe the clear actually parked on the fence before asserting it has not run.
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+            while (logout.state != Thread.State.WAITING) {
+                assertTrue(logout.isAlive && System.nanoTime() < deadline, "Logout never waited on the fence")
+                Thread.onSpinWait()
+            }
             assertNotNull(raw.value)
+            assertEquals(0L, fence.epoch)
             release.countDown()
-            reader.get(5, TimeUnit.SECONDS); logout.get(5, TimeUnit.SECONDS)
+            reader.get(5, TimeUnit.SECONDS); logout.join(5000)
+            assertFalse(logout.isAlive)
             assertNull(raw.value)
             assertTrue(fence.epoch > 0)
         } finally { release.countDown(); executor.shutdownNow() }
@@ -186,7 +193,44 @@ class EnterpriseVaultLifecycleTest {
         assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.store.pending(p, 1) } }
         fail = false
         assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { f.store.pending(p, 1) } }
-        assertFalse(f.erasure.accountRevoked(A, "http://127.0.0.1"))
+        // An origin that cannot form a partition never held a vault: nothing to erase.
+        assertTrue(f.erasure.accountRevoked(A, "http://127.0.0.1"))
+        assertTrue(f.erasure.cleanupRequired)
+    }
+
+    @Test
+    fun unscopedRevocationLeavesNoStickyFailureAndFailuresClearOnLaterSuccess(): Unit = runBlocking {
+        val f = VaultFixture(root.resolve("vault"))
+        assertTrue(f.erasure.accountRevoked(A, "http://127.0.0.1"))
+        assertTrue(f.erasure.accountRevoked("not-an-account", ORIGIN))
+        assertFalse(f.erasure.cleanupRequired)
+        f.store.confirm(p)
+        f.keys.failDelete = true
+        assertFalse(f.erasure.accountRevoked(A, ORIGIN))
+        assertTrue(f.erasure.cleanupRequired)
+        f.keys.failDelete = false
+        assertTrue(f.erasure.accountRevoked(A, ORIGIN))
+        assertFalse(f.erasure.cleanupRequired)
+        assertTrue(f.keys.values.isEmpty())
+    }
+
+    @Test
+    fun personalOnlyRevocationWritesNothingAndNeedsNoLossAcknowledgementLater(): Unit = runBlocking {
+        val directory = root.resolve("vault")
+        val f = VaultFixture(directory)
+        val raw = Sessions()
+        val api = mockk<AuthAccountApi>()
+        val wrapped = EnterpriseRevokingAccountApi(api, raw, ORIGIN, f.erasure)
+        for (verdict in listOf(PortableAuth.Verdict.SESSION_REVOKED, PortableAuth.Verdict.SESSION_REUSE)) {
+            every { api.refresh(A, "synthetic-refresh") } returns AuthApiResult.Err(verdict)
+            assertEquals(AuthApiResult.Err(verdict), wrapped.refresh(A, "synthetic-refresh"))
+        }
+        assertTrue(f.erasure.accountRevoked(A, ORIGIN))
+        assertFalse(java.nio.file.Files.exists(directory))
+        assertFalse(f.erasure.cleanupRequired)
+        f.store.confirm(p)
+        f.store.put(EnterpriseLocalRecord(p, A, byteArrayOf(3)))
+        assertArrayEquals(byteArrayOf(3), f.store.record(p, A)!!.envelope)
     }
 
     @Test

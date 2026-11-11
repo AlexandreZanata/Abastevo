@@ -2,6 +2,8 @@ package com.anpfuel.data.enterprise
 
 import com.anpfuel.application.enterprise.*
 import com.anpfuel.domain.enterprise.*
+import java.io.IOException
+import javax.crypto.AEADBadTagException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -49,15 +51,53 @@ class ProtectedEnterprisePersistence(
         return current?.takeIf { it.owns(p) } ?: throw EnterpriseLocalDenied()
     }
 
+    /** What one partition's stored ciphertext currently allows. */
+    private sealed interface Stored {
+        data object Absent : Stored
+        /** Ciphertext without its key: restored elsewhere or partially erased. */
+        data object Lost : Stored
+        /** Invalidated or different key, or corrupted/truncated ciphertext: never readable again. */
+        data object Unreadable : Stored
+        class Open(val snapshot: VaultSnapshot, val key: EnterpriseVaultKey) : Stored
+    }
+
+    private fun keyFailure(failure: Exception): Exception = when (keys.classify(failure)) {
+        EnterpriseKeyUse.UNLOCK_REQUIRED -> EnterpriseUnlockRequired()
+        EnterpriseKeyUse.INVALIDATED -> EnterpriseVaultUnrecoverable()
+        EnterpriseKeyUse.OTHER -> failure
+    }
+
+    private fun stored(p: EnterprisePartition, token: String): Stored {
+        val bytes = try { files.read(token) } catch (_: EnterpriseVaultCorrupted) { return Stored.Unreadable }
+            ?: return Stored.Absent
+        val key = keys.existing(EnterpriseVaultCodec.alias(token)) ?: return Stored.Lost
+        val value = try {
+            EnterpriseVaultCodec.open(bytes, p, key.secret)
+        } catch (failure: Exception) {
+            val mapped = keyFailure(failure)
+            // An authenticated decrypt that fails, or a malformed envelope, cannot succeed on retry.
+            if (mapped is EnterpriseVaultUnrecoverable || failure is AEADBadTagException ||
+                failure is IllegalArgumentException || failure is IOException
+            ) return Stored.Unreadable
+            throw mapped
+        }
+        // A recorded policy that differs from the key's means the key was replaced outside this adapter.
+        if (key.managedUnlockSeconds != value.lease.managedUnlockSeconds) return Stored.Unreadable
+        return Stored.Open(value, key)
+    }
+
     private fun snapshot(p: EnterprisePartition): Pair<VaultSnapshot, EnterpriseVaultKey> {
         val token = EnterpriseVaultCodec.token(p)
         if (erasure.deniedLocked(token)) throw EnterpriseLocalDenied()
-        val bytes = files.read(token) ?: throw EnterpriseLocalDenied()
-        val key = keys.existing(EnterpriseVaultCodec.alias(token)) ?: throw EnterpriseLocalDenied()
-        val value = EnterpriseVaultCodec.open(bytes, p, key.secret)
-        if (key.managedUnlockSeconds != value.lease.managedUnlockSeconds) throw EnterpriseLocalDenied()
-        return value to key
+        return when (val current = stored(p, token)) {
+            Stored.Absent, Stored.Lost -> throw EnterpriseLocalDenied()
+            Stored.Unreadable -> throw EnterpriseVaultUnrecoverable()
+            is Stored.Open -> current.snapshot to current.key
+        }
     }
+
+    private fun seal(value: VaultSnapshot, key: EnterpriseVaultKey): ByteArray =
+        try { EnterpriseVaultCodec.seal(value, key.secret) } catch (failure: Exception) { throw keyFailure(failure) }
 
     /** Call before selecting a context. Late contact cannot unlock a changed/logged-out session. */
     suspend fun confirm(p: EnterprisePartition, acknowledgeErasedWork: Boolean = false) {
@@ -73,16 +113,14 @@ class ProtectedEnterprisePersistence(
                 ) throw EnterpriseLocalDenied()
                 files.locked(EnterpriseVaultCodec.accountTag(p.ownerAccount, p.origin)) {
                     val token = EnterpriseVaultCodec.token(p)
+                    val alias = EnterpriseVaultCodec.alias(token)
                     val denied = erasure.deniedLocked(token)
-                    val missingKey = files.read(token) != null && keys.existing(EnterpriseVaultCodec.alias(token)) == null
-                    val fresh = denied || missingKey
-                    if (fresh && (!acknowledgeErasedWork || !erasure.prepareFreshLocked(token))) throw EnterpriseLocalDenied()
+                    // Unlock-required propagates here: it is never a reason to erase.
+                    val current = if (denied) null else stored(p, token)
                     val now = clock()
-                    val old = files.read(token)
-                    val pair = if (old != null) snapshot(p) else null
-                    val prior = pair?.first
+                    val prior = current as? Stored.Open
                     if (prior != null) {
-                        val lease = prior.lease
+                        val lease = prior.snapshot.lease
                         if (grant.serverMillis < lease.serverContactMillis) throw EnterpriseLocalDenied()
                         if (EnterpriseOfflineProtection.evaluate(lease, now) == EnterpriseLeaseDecision.ERASE ||
                             grant.serverMillis - lease.serverContactMillis >= lease.validityMillis
@@ -90,15 +128,23 @@ class ProtectedEnterprisePersistence(
                             erasure.eraseLocked(token)
                             throw EnterpriseLocalDenied()
                         }
-                        if (lease.managedUnlockSeconds != grant.managedUnlockSeconds) throw EnterpriseLocalDenied()
                     }
+                    // No re-keying migration exists: a changed managed-unlock policy, like an
+                    // unreadable vault, continues only from an acknowledged empty start.
+                    val unreadable = current == Stored.Unreadable ||
+                        (prior != null && prior.snapshot.lease.managedUnlockSeconds != grant.managedUnlockSeconds)
+                    val fresh = denied || current == Stored.Lost || unreadable
+                    if (fresh && !acknowledgeErasedWork) {
+                        throw if (unreadable) EnterpriseVaultUnrecoverable() else EnterpriseLocalDenied()
+                    }
+                    if (fresh && !erasure.prepareFreshLocked(token)) throw EnterpriseLocalDenied()
+                    val kept = prior.takeUnless { fresh }
                     val lease = EnterpriseOfflineLease(grant.family, grant.serverMillis, now, grant.validityMillis, grant.managedUnlockSeconds)
-                    val key = pair?.second ?: keys.existing(EnterpriseVaultCodec.alias(token))
-                        ?: keys.create(EnterpriseVaultCodec.alias(token), grant.managedUnlockSeconds)
+                    val key = kept?.key ?: keys.existing(alias) ?: keys.create(alias, grant.managedUnlockSeconds)
                     if (key.managedUnlockSeconds != grant.managedUnlockSeconds) throw EnterpriseLocalDenied()
-                    val value = prior ?: VaultSnapshot(p, lease)
+                    val value = kept?.snapshot ?: VaultSnapshot(p, lease)
                     value.lease = lease
-                    files.replace(token, EnterpriseVaultCodec.seal(value, key.secret))
+                    files.replace(token, seal(value, key))
                     if (before.first != owner(p) || before.third != fence.backgroundEpoch) throw EnterpriseLocalDenied()
                     if (fresh) erasure.permitFreshLocked(token)
                     fence.lock()
@@ -111,7 +157,12 @@ class ProtectedEnterprisePersistence(
         try { work() } catch (cancelled: CancellationException) { throw cancelled }
         catch (denied: EnterpriseLocalDenied) { throw denied }
         catch (reused: EnterpriseOperationReused) { throw reused }
+        catch (unlock: EnterpriseUnlockRequired) { throw unlock }
+        catch (lost: EnterpriseVaultUnrecoverable) { throw lost }
         catch (_: Exception) { throw EnterprisePersistenceUnavailable() }
+        // A failed bounded snapshot allocation leaves no partial state: writes are atomic
+        // replacements and every lock is released on the way out, so it is an outage.
+        catch (_: OutOfMemoryError) { throw EnterprisePersistenceUnavailable() }
     }
 
     private suspend fun <T> access(p: EnterprisePartition, write: Boolean, work: (VaultSnapshot) -> T): T {
@@ -132,7 +183,7 @@ class ProtectedEnterprisePersistence(
                         EnterpriseLeaseDecision.ALLOW -> Unit
                     }
                     val result = work(s)
-                    if (write) files.replace(EnterpriseVaultCodec.token(p), EnterpriseVaultCodec.seal(s, key.secret))
+                    if (write) files.replace(EnterpriseVaultCodec.token(p), seal(s, key))
                     if (before != owner(p) || epoch != fence.epoch) throw EnterpriseLocalDenied()
                     result
                 }

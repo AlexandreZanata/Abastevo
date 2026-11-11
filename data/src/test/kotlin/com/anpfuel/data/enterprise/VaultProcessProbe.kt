@@ -10,6 +10,10 @@ import kotlinx.coroutines.runBlocking
 
 /** Separate JVM and abrupt death at the real encrypted-file replacement boundary. Test keys only. */
 object VaultProcessProbe {
+    /** Distinct from a normal exit and from an uncaught failure, so the parent proves where it died. */
+    const val DIED_BEFORE_REPLACE = 71
+    const val DIED_AFTER_REPLACE = 72
+
     @JvmStatic fun main(args: Array<String>) = runBlocking {
         val directory = Path.of(args[0])
         val p = partition()
@@ -20,9 +24,9 @@ object VaultProcessProbe {
         val f = VaultFixture(directory, keys, transform = { delegate ->
             object : EnterpriseVaultFiles by delegate {
                 override fun replace(token: String, ciphertext: ByteArray) {
-                    if (action == "crash-before") Runtime.getRuntime().halt(0)
+                    if (action == "crash-before") Runtime.getRuntime().halt(DIED_BEFORE_REPLACE)
                     delegate.replace(token, ciphertext)
-                    if (action == "crash-after") Runtime.getRuntime().halt(0)
+                    if (action == "crash-after") Runtime.getRuntime().halt(DIED_AFTER_REPLACE)
                 }
             }
         })

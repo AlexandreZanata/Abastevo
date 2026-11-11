@@ -16,12 +16,17 @@ data class EnterpriseVaultKey(val secret: SecretKey, val managedUnlockSeconds: I
     override fun toString(): String = "EnterpriseVaultKey(redacted)"
 }
 
+/** How a provider failure while using a stored key must be handled; OTHER stays a transient outage. */
+enum class EnterpriseKeyUse { UNLOCK_REQUIRED, INVALIDATED, OTHER }
+
 /** Reads never create a key. Deletion must report failure, never quietly succeed. */
 interface EnterpriseVaultKeys {
     fun existing(alias: String): EnterpriseVaultKey?
     fun create(alias: String, managedUnlockSeconds: Int?): EnterpriseVaultKey
     fun delete(alias: String)
     fun aliases(prefix: String): List<String>
+    /** Classifies a failure raised while a cipher used one of this provider's keys. */
+    fun classify(failure: Exception): EnterpriseKeyUse = EnterpriseKeyUse.OTHER
 }
 
 internal enum class VaultKind { RECORD, OPERATION, ATTACHMENT, CACHE }
@@ -32,8 +37,17 @@ internal class VaultSnapshot(
     val entries: LinkedHashMap<String, VaultEntry> = linkedMapOf(),
 )
 
+/** Presized plaintext whose array is sealed in place and wiped, so no unwiped copy remains. */
+private class PlainBuffer(capacity: Int) : ByteArrayOutputStream(capacity) {
+    val bytes: ByteArray get() = buf
+    val length: Int get() = count
+    fun wipe() = buf.fill(0)
+}
+
 internal object EnterpriseVaultCodec {
     // Local allocation/decoding budgets, not a product quota. Never evict to fit.
+    // Sealing holds the entries, one presized plaintext and the ciphertext (about
+    // three budgets); callers report an allocation failure as an outage.
     const val MAX_PLAIN = 32 * 1024 * 1024
     const val MAX_ENTRIES = 10000
     const val MAX_SEALED = MAX_PLAIN + 32
@@ -62,10 +76,15 @@ internal object EnterpriseVaultCodec {
         try {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.ENCRYPT_MODE, key) // Provider IV; AndroidKeyStore forbids a caller IV.
-            check(cipher.iv.size == 12)
+            val iv = cipher.iv
+            check(iv.size == 12)
             cipher.updateAAD(aad(snapshot.partition))
-            return magic + cipher.iv + cipher.doFinal(plain)
-        } finally { plain.fill(0) }
+            val sealed = ByteArray(16 + cipher.getOutputSize(plain.length))
+            magic.copyInto(sealed)
+            iv.copyInto(sealed, 4)
+            val written = cipher.doFinal(plain.bytes, 0, plain.length, sealed, 16)
+            return if (written == sealed.size - 16) sealed else sealed.copyOf(16 + written)
+        } finally { plain.wipe() }
     }
 
     fun open(bytes: ByteArray, p: EnterprisePartition, key: SecretKey): VaultSnapshot {
@@ -77,11 +96,13 @@ internal object EnterpriseVaultCodec {
         try { return decode(plain, p) } finally { plain.fill(0) }
     }
 
-    private fun encode(s: VaultSnapshot): ByteArray {
+    private fun encode(s: VaultSnapshot): PlainBuffer {
         require(s.entries.size <= MAX_ENTRIES)
-        require(s.entries.values.sumOf { it.bytes.size.toLong() + 512 } + 2048 <= MAX_PLAIN)
-        return ByteArrayOutputStream().also { bytes ->
-            DataOutputStream(bytes).use { out ->
+        val bound = s.entries.values.sumOf { it.bytes.size.toLong() + 512 } + 2048
+        require(bound <= MAX_PLAIN)
+        val plain = PlainBuffer(bound.toInt())
+        try {
+            DataOutputStream(plain).use { out ->
                 out.writeInt(1)
                 out.writeUTF(s.partition.ownerAccount); out.writeUTF(s.partition.origin); out.writeUTF(s.partition.organizationId)
                 val l = s.lease
@@ -94,7 +115,12 @@ internal object EnterpriseVaultCodec {
                     out.writeInt(e.bytes.size); out.write(e.bytes)
                 }
             }
-        }.toByteArray().also { require(it.size <= MAX_PLAIN) }
+            require(plain.length <= MAX_PLAIN)
+            return plain
+        } catch (failure: Throwable) {
+            plain.wipe()
+            throw failure
+        }
     }
 
     private fun decode(bytes: ByteArray, p: EnterprisePartition): VaultSnapshot {

@@ -79,8 +79,17 @@ class EnterpriseVaultErasure(
 
     fun accountRevoked(owner: String, origin: String): Boolean = fence.access {
         fence.lock()
-        val tag = try { EnterpriseVaultCodec.accountTag(owner, origin) }
-        catch (_: Exception) { failed += "unavailable-scope"; return@access false }
+        // An owner/origin that cannot form a partition never held a vault: nothing to erase.
+        val tag = try { EnterpriseVaultCodec.accountTag(owner, origin) } catch (_: Exception) { return@access true }
+        // A personal-only account gets no marker and no file, so a later enterprise start
+        // never asks to acknowledge lost work that never existed. An unreadable check erases.
+        val held = tag in denied || try {
+            files.present(tag) || keys.aliases(EnterpriseVaultCodec.alias(tag + "-")).isNotEmpty()
+        } catch (_: Exception) { true }
+        if (!held) {
+            failed.removeAll { it == tag || it.startsWith("$tag-") }
+            return@access true
+        }
         denied += tag
         try { files.locked(tag) { eraseAccountLocked(tag) } }
         catch (_: Exception) {
