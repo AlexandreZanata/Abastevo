@@ -4,12 +4,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {build,root} from '../scripts/build.mjs';
-import {checkDist} from '../scripts/check.mjs';
+import {checkDist,caddyfile} from '../scripts/check.mjs';
 test('build is deterministic, self-contained under /empresas, content-hashed and rejects artifact drift',()=>{
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'empresas-artifact-'));
  try{
   const {outDir,assets}=build({outDir:path.join(tmp,'dist')});
-  assert.equal(checkDist(outDir),20);
+  assert.equal(checkDist(outDir),19);
+  assert.equal(fs.existsSync(path.join(outDir,'_headers')),false);
   const original=fs.readFileSync(path.join(outDir,'assets',assets['main.js']),'utf8');
   fs.writeFileSync(path.join(outDir,'stale.js'),'stale');
   const rebuilt=build({outDir});assert.deepEqual(rebuilt.assets,assets);assert.equal(fs.existsSync(path.join(outDir,'stale.js')),false);
@@ -25,6 +26,15 @@ test('build is deterministic, self-contained under /empresas, content-hashed and
   assert.throws(()=>checkDist(outDir),/Natively submittable credential/);
   build({outDir});fs.writeFileSync(page,fs.readFileSync(page,'utf8').replace('id="login-button" class="button-primary" type="submit" disabled>','id="login-button" class="button-primary" type="submit">'));
   assert.throws(()=>checkDist(outDir),/Natively submittable credential/);
+  // Caddy is the only served policy: a dead header file or a weakened Caddyfile fails.
+  build({outDir});fs.writeFileSync(path.join(outDir,'_headers'),'/empresas/*\n  Cache-Control: no-store\n');
+  assert.throws(()=>checkDist(outDir),/Unserved policy file/);
+  build({outDir});const served=fs.readFileSync(caddyfile,'utf8'),drifted=path.join(tmp,'Caddyfile');
+  for(const [from,to]of [["base-uri 'none'","base-uri 'self'"],['\t\t\t-Last-Modified\n',''],['Cache-Control no-store\n\t\t\t-ETag','Cache-Control no-cache\n\t\t\t-ETag'],['path_regexp companyAsset','path']]){
+   assert.ok(served.includes(from),from);fs.writeFileSync(drifted,served.replace(from,to));
+   assert.throws(()=>checkDist(outDir,drifted),/Served company policy/,from);
+  }
+  assert.equal(checkDist(outDir),19);
   assert.throws(()=>build({outDir:root}),/Unsafe output/);
  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });

@@ -126,14 +126,22 @@ Disallow: /
 	redir /empresas /empresas/ 308
 	handle /empresas/* {
 		root * /srv/landing/current
-		@companyAsset path /empresas/assets/*
+		# Only content-fingerprinted files are immutable; unhashed font
+		# licence texts revalidate like the landing's ordinary static files.
+		@companyAsset path_regexp companyAsset ^/empresas/assets/(?:fonts/)?[a-z0-9-]+\.[a-f0-9]{8}\.(?:js|css|svg|woff2)$
 		header @companyAsset Cache-Control "public, max-age=31536000, immutable"
+		@companyStatic {
+			path /empresas/assets/*
+			not path_regexp ^/empresas/assets/(?:fonts/)?[a-z0-9-]+\.[a-f0-9]{8}\.(?:js|css|svg|woff2)$
+		}
+		header @companyStatic Cache-Control "public, max-age=3600, must-revalidate"
 		@companyPage not path /empresas/assets/*
 		request_header @companyPage -If-None-Match
 		request_header @companyPage -If-Modified-Since
 		header @companyPage {
 			Cache-Control no-store
 			-ETag
+			-Last-Modified
 			defer
 		}
 		# Only canonical organization paths use the shell fallback. Unknown
@@ -172,6 +180,7 @@ Disallow: /
 				Cache-Control no-store
 				Referrer-Policy no-referrer
 				-ETag
+				-Last-Modified
 				defer
 			}
 			file_server

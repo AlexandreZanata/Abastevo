@@ -49,7 +49,8 @@ export function build({outDir=path.join(root,'dist')}={}){
    for(const [name,fingerprinted]of assets)html=html.replaceAll(`/empresas/assets/${name}`,`/empresas/assets/${fingerprinted}`);
    fs.mkdirSync(path.dirname(path.join(out,dest)),{recursive:true});fs.writeFileSync(path.join(out,dest),html);
   }
-  for(const name of ['_headers','robots.txt'])fs.copyFileSync(path.join(root,'static',name),path.join(out,name));
+  // Caddy serves the response policy; a static header file would be ignored and served.
+  fs.copyFileSync(path.join(root,'static','robots.txt'),path.join(out,'robots.txt'));
   return {outDir:out,assets:Object.fromEntries(assets)};
  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 }

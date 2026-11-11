@@ -19,11 +19,12 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def run():
-    config = ROOT / "infra/caddy/staging-web.Caddyfile"
+    config = Path(os.environ.get("ANPFUEL_TEST_CADDYFILE", ROOT / "infra/caddy/staging-web.Caddyfile"))
     mirror = yaml.safe_load((ROOT / "infra/k8s/staging/web-caddy-configmap.yaml").read_text())
     assert mirror["data"]["Caddyfile"] == config.read_text(), "Kubernetes Caddy mirror drift"
-    # Reuse the repository's local Caddy version, not an unpinned latest pull.
-    image = os.environ.get("ANPFUEL_TEST_CADDY_IMAGE", "caddy:2.10.2")
+    # The reviewed digest already pinned by the staging/production edge.
+    image = os.environ.get("ANPFUEL_TEST_CADDY_IMAGE",
+                           "caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d")
     name = "enterprise-plat008-caddy-" + str(os.getpid())
     with tempfile.TemporaryDirectory(prefix="empresas-caddy-") as directory:
         tree = Path(directory)
@@ -72,15 +73,25 @@ def run():
                     code, headers, raw = request(path, condition)
                     assert code == 200 and b'login-form' in raw, "Known company entry failed"
                     assert headers["Cache-Control"] == "no-store" and not headers.get("ETag"), "Private document cache policy failed"
+                    assert not headers.get("Last-Modified"), "No-store company document exposes Last-Modified"
                     assert headers["Referrer-Policy"] == "no-referrer"
                     assert "noindex" in headers["X-Robots-Tag"]
                     assert "base-uri 'none'" in headers["Content-Security-Policy"]
-            for path in ["/empresas/unknown/", "/empresas/assets/missing.js", "/empresas/organizacoes/foreign/"]:
+            for path in ["/empresas/unknown/", "/empresas/assets/missing.js", "/empresas/organizacoes/foreign/", "/empresas/_headers"]:
                 code, headers, raw = request(path)
                 assert code == 404 and b'gina n' in raw and headers["Cache-Control"] == "no-store" and not headers.get("ETag"), "Unknown company path became a cacheable success"
-            js = next((tree / "empresas/assets").glob("main.*.js")).name
-            code, headers, _ = request("/empresas/assets/" + js)
-            assert code == 200 and headers["Cache-Control"] == "public, max-age=31536000, immutable"
+                assert not headers.get("Last-Modified"), "No-store company 404 exposes Last-Modified"
+            assets = tree / "empresas/assets"
+            for asset in [next(assets.glob(pattern)) for pattern in ["main.*.js", "business.*.css", "favicon.*.svg", "fonts/*.woff2"]]:
+                code, headers, _ = request("/empresas/assets/" + asset.relative_to(assets).as_posix())
+                assert code == 200 and headers["Cache-Control"] == "public, max-age=31536000, immutable", "Fingerprinted asset lost immutable caching"
+            # Unhashed licence texts can change in place, so they revalidate.
+            licences = sorted((assets / "fonts").glob("*.txt"))
+            assert licences, "Font licence notices missing from the company build"
+            for licence in licences:
+                code, headers, raw = request("/empresas/assets/fonts/" + licence.name)
+                assert code == 200 and raw == licence.read_bytes(), "Font licence notice not served"
+                assert headers["Cache-Control"] == "public, max-age=3600, must-revalidate", "Unhashed licence cached as immutable"
             assert request("/")[2] == b"Synthetic landing sentinel"
             assert request("/admin/login/")[2] == b"Synthetic admin sentinel"
             for path in ["/", "/admin/login/"]:
@@ -89,7 +100,7 @@ def run():
                 assert "base-uri 'self'" in headers["Content-Security-Policy"]
                 assert "img-src 'self' data:" in headers["Content-Security-Policy"]
             assert request("/v1/org-access/session/read")[0] == 404, "Static tier started proxying the API"
-            print("PASS: Caddy company entry, canonical deep links, private cache/conditional rules, hashed assets, real 404s, public/admin separation")
+            print("PASS: Caddy company entry, canonical deep links, private cache/conditional rules without validators, fingerprinted-only immutable assets, revalidated licences, real 404s, public/admin separation")
         finally:
             subprocess.run(["docker", "rm", "-f", name], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
