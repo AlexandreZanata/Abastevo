@@ -71,7 +71,7 @@ object EnterpriseModule {
     @Singleton
     fun localContext(
         auth: AuthFlow, @Named("apiOrigin") environment: ApiEnvironment, persistence: EnterprisePersistence,
-        fence: EnterpriseSessionFence = EnterpriseSessionFence(),
+        fence: EnterpriseSessionFence,
     ): EnterpriseLocalContext =
         EnterpriseLocalContext(
             ownerAccount = {

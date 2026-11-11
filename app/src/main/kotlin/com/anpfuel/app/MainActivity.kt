@@ -49,7 +49,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var enterpriseFence: com.anpfuel.application.enterprise.EnterpriseSessionFence
 
     override fun onStop() {
-        if (::enterpriseFence.isInitialized) enterpriseFence.markBackground()
+        // A rotation recreates the activity without leaving the app; it keeps enterprise handles.
+        if (::enterpriseFence.isInitialized && !isChangingConfigurations) enterpriseFence.markBackground()
         super.onStop()
     }
 

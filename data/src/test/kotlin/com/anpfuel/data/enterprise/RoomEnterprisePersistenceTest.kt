@@ -88,8 +88,13 @@ class RoomEnterprisePersistenceTest {
         val auth = mockk<AuthFlow>()
         val session = PortableAuth.Session(a,a,"synthetic-access","synthetic-refresh",100,200)
         every { auth.rehydrate() } returns AuthFlow.AuthState.Active(session)
-        val context = EnterpriseModule.localContext(auth,ApiEnvironment.STAGING,EnterpriseModule.persistence())
+        val fence = EnterpriseModule.sessionFence()
+        val context = EnterpriseModule.localContext(auth,ApiEnvironment.STAGING,EnterpriseModule.persistence(),fence)
         val p = EnterprisePartition.of(a,ApiEnvironment.STAGING.origin,b)
+        // The graph's shared fence, not a private one, invalidates selected handles.
+        val backgrounded = context.select(p)
+        fence.markBackground()
+        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { backgrounded.pending() } }
         val bound = context.select(p)
         assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { bound.pending() } }
         every { auth.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session)
@@ -101,7 +106,7 @@ class RoomEnterprisePersistenceTest {
         every { auth.rehydrate() } returns AuthFlow.AuthState.Active(session)
         assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { context.select(partition()) } }
         // Debug loopback configuration must not crash the existing app graph.
-        val loopback = EnterpriseModule.localContext(auth,ApiEnvironment.LOCAL_PROOF,EnterpriseModule.persistence())
+        val loopback = EnterpriseModule.localContext(auth,ApiEnvironment.LOCAL_PROOF,EnterpriseModule.persistence(),fence)
         assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { loopback.select(p) } }
     }
 }
