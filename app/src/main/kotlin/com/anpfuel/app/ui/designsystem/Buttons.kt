@@ -19,7 +19,7 @@ import com.anpfuel.app.ui.theme.LocalAbastevoActionColors
 
 /**
  * Design-system buttons: the Material 3 buttons with the app defaults
- * (control radius, 48dp minimum height, ink fill, accent text links).
+ * (control radius, 48dp minimum height, black fill, accent text links).
  * Parameters match the Material components, so a caller can still override
  * any of them.
  */
@@ -27,7 +27,7 @@ object AbastevoButtonDefaults {
 
     val OutlinedBorderWidth = 1.5.dp
 
-    /** Ink fill on light screens, white fill on black ones. */
+    /** Black fill on light screens, off-white fill on dark ones. */
     @Composable
     fun filledColors(): ButtonColors {
         val action = LocalAbastevoActionColors.current

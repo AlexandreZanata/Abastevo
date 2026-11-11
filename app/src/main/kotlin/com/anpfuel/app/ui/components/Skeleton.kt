@@ -42,7 +42,7 @@ import com.anpfuel.app.ui.theme.AnpFuelTheme
  */
 @Composable
 fun skeletonShimmer(cornerRadius: Dp = 8.dp): Modifier {
-    val base = MaterialTheme.colorScheme.surfaceContainerHighest
+    val base = MaterialTheme.colorScheme.surfaceVariant
     val transition = rememberInfiniteTransition(label = "skeleton")
     val translate by transition.animateFloat(
         initialValue = 0f,

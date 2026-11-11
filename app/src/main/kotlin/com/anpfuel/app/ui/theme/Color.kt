@@ -1,6 +1,5 @@
 package com.anpfuel.app.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
@@ -22,18 +21,21 @@ val FuelPremiumBadge = Color(0xFFFFC107)
 
 /**
  * P19-T03 abastevo brand aliases over the approved blue/green palette.
- * The app chrome is monochrome ([EnergiaLightTokens], [EnergiaDarkTokens]) with
- * one green accent ([AbastevoAccent]); these blue aliases remain for fuel tints.
- * No new hex values: aliases reuse the audited contrast-checked palette above.
+ * The app chrome is black ([AbastevoChrome]) over near-neutral screens
+ * ([EnergiaLightTokens], [EnergiaDarkTokens]) with one green accent
+ * ([AbastevoAccent]); these blue aliases remain for fuel tints.
  */
 val AbastevoActionBlue = AnpBlue
 val AbastevoActionBlueDark = AnpBlueDark
 val AbastevoCommunityGreen = AnpGreen
 val AbastevoCommunityGreenDark = AnpGreenDark
 
-/** Ink and paper of the monochrome foundation: text, filled actions and screens. */
-internal val Ink = Color(0xFF0A0A0A)
+/** Black of the brand chrome, text and filled actions. */
+internal val Ink = Color(0xFF000000)
 internal val Paper = Color(0xFFFFFFFF)
+
+/** Warm off-white of light screens; white cards sit on it. */
+internal val Mist = Color(0xFFF3F3F0)
 
 internal object ColorTokens {
     val White = Color.White
@@ -55,10 +57,10 @@ data class AccentTones(
 )
 
 /**
- * The single brand color on top of the monochrome foundation. It marks the
- * selected tab, links, the location pin and community elements; it is never
- * the fill of a primary button and never the color of a price.
- * A darker tone serves white screens and a brighter one black screens.
+ * The single brand color on top of the black chrome. It marks links, the
+ * location pin and community elements; it is never the fill of a primary
+ * button and never the color of a price. A darker tone serves light screens
+ * and a brighter one dark screens and the chrome.
  */
 internal object AbastevoAccent {
     val Light = AccentTones(
@@ -77,33 +79,70 @@ internal object AbastevoAccent {
 }
 
 /**
- * Light "Energia" foundation: white screens and cards, ink text, gray tonal
- * containers and an amber notice accent. `primary` is ink, so filled actions,
- * switches and prices stay black; the brand color comes from [AbastevoAccent].
- * Every text pair meets WCAG AA (4.5:1); controls and indicators meet 3:1.
+ * Solid black of the header, top app bars, status bar band and bottom bar,
+ * in both themes. The dark hero card is a lifted graphite so it still sits
+ * apart from the near-black screens. Content on the chrome is white; the
+ * selected tab is a light pill with black content.
+ */
+internal object AbastevoChrome {
+    /** Round buttons and the city field on the black chrome. */
+    private val ChromeControl = Color(0xFF1F1F1F)
+
+    val Light = AbastevoChromeColors(
+        container = Ink,
+        content = Paper,
+        contentMuted = Color(0xFFB9BABC),
+        control = ChromeControl,
+        accent = AbastevoAccent.Dark.accent,
+        selected = Mist,
+        onSelected = Ink,
+        hero = Ink,
+    )
+
+    val Dark = AbastevoChromeColors(
+        container = Ink,
+        content = Paper,
+        contentMuted = Color(0xFFB9BABC),
+        control = ChromeControl,
+        accent = AbastevoAccent.Dark.accent,
+        selected = Mist,
+        onSelected = Ink,
+        hero = Color(0xFF232428),
+    )
+}
+
+/**
+ * Light "Energia" foundation, the default theme: warm off-white screens and
+ * white containers at every level (`surface` included, which Material uses
+ * for list items and outlined cards), so every card, list, panel, dialog and
+ * menu stands out from the screen; black text and an amber notice accent.
+ * `primary` is black, so filled actions, switches and prices match the
+ * chrome; the brand color comes from [AbastevoAccent]. `surfaceVariant`
+ * stays gray for placeholders and tracks. Every text pair meets WCAG AA
+ * (4.5:1); controls and indicators meet 3:1.
  */
 internal object EnergiaLightTokens {
-    val Background = Paper
+    val Background = Mist
     val OnBackground = Ink
     val Surface = Paper
     val OnSurface = Ink
-    val SurfaceVariant = Color(0xFFEEEEEE)
-    val OnSurfaceVariant = Color(0xFF5E5E5E)
-    val Outline = Color(0xFF8A8A8A)
-    val OutlineVariant = Color(0xFFD6D6D6)
+    val SurfaceVariant = Color(0xFFEDEDE9)
+    val OnSurfaceVariant = Color(0xFF5C5D5A)
+    val Outline = Color(0xFF858581)
+    val OutlineVariant = Color(0xFFDEDED8)
     val SurfaceContainerLowest = Paper
     val SurfaceContainerLow = Paper
-    val SurfaceContainer = Color(0xFFF6F6F6)
-    val SurfaceContainerHigh = Color(0xFFEEEEEE)
-    val SurfaceContainerHighest = Color(0xFFE2E2E2)
-    val SurfaceDim = Color(0xFFDDDDDD)
+    val SurfaceContainer = Paper
+    val SurfaceContainerHigh = Paper
+    val SurfaceContainerHighest = Paper
+    val SurfaceDim = Color(0xFFDADAD4)
     val SurfaceBright = Paper
     val InverseSurface = Ink
-    val InverseOnSurface = Paper
+    val InverseOnSurface = Mist
 
     val Primary = Ink
     val OnPrimary = Paper
-    val PrimaryContainer = Color(0xFFEEEEEE)
+    val PrimaryContainer = Paper
     val OnPrimaryContainer = Ink
     val Tertiary = Color(0xFF7A4B00)
     val OnTertiary = Color(0xFFFFFFFF)
@@ -115,42 +154,38 @@ internal object EnergiaLightTokens {
     val ErrorContainer = Color(0xFFF9DEDC)
     val OnErrorContainer = Color(0xFF410E0B)
 
-    val NavContainer = Paper
-    val NavSelected = Ink
-    val NavUnselected = Color(0xFF5E5E5E)
-
     val Action = Ink
     val OnAction = Paper
 }
 
 /**
- * Dark "Energia" foundation: true black screens, near-black cards, white text
- * and white filled actions. Same roles and contrast targets as
+ * Dark "Energia" foundation: near-black screens, graphite cards, off-white
+ * text and off-white filled actions. Same roles and contrast targets as
  * [EnergiaLightTokens].
  */
 internal object EnergiaDarkTokens {
-    val Background = Color(0xFF000000)
-    val OnBackground = Color(0xFFF5F5F5)
-    val Surface = Color(0xFF000000)
-    val OnSurface = Color(0xFFF5F5F5)
-    val SurfaceVariant = Color(0xFF2C2C2C)
-    val OnSurfaceVariant = Color(0xFFB0B0B0)
-    val Outline = Color(0xFF8A8A8A)
-    val OutlineVariant = Color(0xFF333333)
-    val SurfaceContainerLowest = Color(0xFF000000)
-    val SurfaceContainerLow = Color(0xFF141414)
-    val SurfaceContainer = Color(0xFF1A1A1A)
-    val SurfaceContainerHigh = Color(0xFF222222)
-    val SurfaceContainerHighest = Color(0xFF2C2C2C)
-    val SurfaceDim = Color(0xFF000000)
-    val SurfaceBright = Color(0xFF333333)
-    val InverseSurface = Color(0xFFF5F5F5)
-    val InverseOnSurface = Color(0xFF141414)
+    val Background = Color(0xFF0B0C0D)
+    val OnBackground = Mist
+    val Surface = Color(0xFF1A1B1E)
+    val OnSurface = Mist
+    val SurfaceVariant = Color(0xFF2F3033)
+    val OnSurfaceVariant = Color(0xFFB3B4B6)
+    val Outline = Color(0xFF8B8C8F)
+    val OutlineVariant = Color(0xFF34353A)
+    val SurfaceContainerLowest = Color(0xFF0B0C0D)
+    val SurfaceContainerLow = Color(0xFF1A1B1E)
+    val SurfaceContainer = Color(0xFF1F2023)
+    val SurfaceContainerHigh = Color(0xFF26272A)
+    val SurfaceContainerHighest = Color(0xFF2F3033)
+    val SurfaceDim = Color(0xFF0B0C0D)
+    val SurfaceBright = Color(0xFF36373A)
+    val InverseSurface = Mist
+    val InverseOnSurface = Color(0xFF1A1B1E)
 
-    val Primary = Color(0xFFF5F5F5)
+    val Primary = Mist
     val OnPrimary = Ink
-    val PrimaryContainer = Color(0xFF2C2C2C)
-    val OnPrimaryContainer = Color(0xFFF5F5F5)
+    val PrimaryContainer = Color(0xFF2F3033)
+    val OnPrimaryContainer = Mist
     val Tertiary = Color(0xFFF5C56B)
     val OnTertiary = Color(0xFF3F2A00)
     val TertiaryContainer = Color(0xFF3D2F0E)
@@ -161,11 +196,7 @@ internal object EnergiaDarkTokens {
     val ErrorContainer = Color(0xFF8C1D18)
     val OnErrorContainer = Color(0xFFF9DEDC)
 
-    val NavContainer = Color(0xFF000000)
-    val NavSelected = Color(0xFFF5F5F5)
-    val NavUnselected = Color(0xFF9E9E9E)
-
-    val Action = Paper
+    val Action = Mist
     val OnAction = Ink
 }
 
@@ -183,5 +214,5 @@ object FuelProductTint {
     }
 
     @Composable
-    fun colorFor(product: FuelProduct): Color = colorFor(product, isSystemInDarkTheme())
+    fun colorFor(product: FuelProduct): Color = colorFor(product, LocalAnpDarkTheme.current)
 }

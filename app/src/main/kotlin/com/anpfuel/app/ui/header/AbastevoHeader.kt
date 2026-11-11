@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -43,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
 import com.anpfuel.app.mapper.SurveyWeekFormatter
 import com.anpfuel.app.ui.theme.AbastevoSpacing
+import com.anpfuel.app.ui.theme.LocalAbastevoChromeColors
 import com.anpfuel.app.ui.weekpicker.SurveyWeekChipAction
 import com.anpfuel.domain.valueobject.SurveyWeek
 
@@ -51,10 +51,10 @@ private val WeekChipHeight = 40.dp
 private val LogoSize = 32.dp
 
 /**
- * Shared brand header, flat on the screen color: logo and name with
- * notification and profile buttons. When [locationLabel] is set, one pill
- * field shows the city on the left and, when [onWeekChanged] is set, the survey
- * week as a chip on the right.
+ * Shared brand header on the solid black chrome, under the status bar:
+ * logo and name with notification and profile buttons. When [locationLabel]
+ * is set, one pill field shows the city on the left and, when [onWeekChanged]
+ * is set, the survey week as a light chip on the right.
  */
 @Composable
 fun AbastevoHeader(
@@ -65,11 +65,11 @@ fun AbastevoHeader(
     onLocationClick: () -> Unit = {},
     onWeekChanged: (() -> Unit)? = null,
 ) {
-    val scheme = MaterialTheme.colorScheme
+    val chrome = LocalAbastevoChromeColors.current
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(scheme.background)
+            .background(chrome.container)
             .statusBarsPadding(),
     ) {
         Column(
@@ -95,7 +95,7 @@ fun AbastevoHeader(
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
-                    color = scheme.onBackground,
+                    color = chrome.content,
                     maxLines = 1,
                 )
                 HeaderIconButton(
@@ -116,7 +116,7 @@ fun AbastevoHeader(
                         .fillMaxWidth()
                         .height(FieldHeight)
                         .clip(CircleShape)
-                        .background(scheme.surfaceContainerHigh),
+                        .background(chrome.control),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(
@@ -131,7 +131,7 @@ fun AbastevoHeader(
                         Icon(
                             imageVector = Icons.Filled.LocationOn,
                             contentDescription = null,
-                            tint = scheme.secondary,
+                            tint = chrome.accent,
                             modifier = Modifier.size(20.dp),
                         )
                         Text(
@@ -139,14 +139,14 @@ fun AbastevoHeader(
                             modifier = Modifier.weight(1f, fill = false),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = scheme.onSurface,
+                            color = chrome.content,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Icon(
                             imageVector = Icons.Filled.KeyboardArrowDown,
                             contentDescription = null,
-                            tint = scheme.onSurfaceVariant,
+                            tint = chrome.contentMuted,
                             modifier = Modifier.size(20.dp),
                         )
                     }
@@ -154,7 +154,6 @@ fun AbastevoHeader(
                 }
             }
         }
-        HorizontalDivider(color = scheme.outlineVariant)
     }
 }
 
@@ -178,6 +177,7 @@ private fun HeaderWeekLabel(
     onClick: () -> Unit,
     modifier: Modifier,
 ) {
+    val chrome = LocalAbastevoChromeColors.current
     val locale = LocalConfiguration.current.locales[0]
     val label = SurveyWeekFormatter.formatRangeCompact(surveyWeek, locale)
     val description = stringResource(
@@ -200,7 +200,7 @@ private fun HeaderWeekLabel(
         Row(
             modifier = Modifier
                 .height(WeekChipHeight)
-                .background(MaterialTheme.colorScheme.surface, CircleShape)
+                .background(chrome.selected, CircleShape)
                 .padding(horizontal = AbastevoSpacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -208,13 +208,13 @@ private fun HeaderWeekLabel(
             Icon(
                 imageVector = Icons.Outlined.CalendarMonth,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
+                tint = chrome.onSelected,
                 modifier = Modifier.size(18.dp),
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = chrome.onSelected,
                 maxLines = 1,
             )
         }
@@ -223,11 +223,12 @@ private fun HeaderWeekLabel(
 
 @Composable
 private fun HeaderIconButton(icon: ImageVector, contentDescription: String, onClick: () -> Unit) {
+    val chrome = LocalAbastevoChromeColors.current
     IconButton(
         onClick = onClick,
         colors = IconButtonDefaults.iconButtonColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.onSurface,
+            containerColor = chrome.control,
+            contentColor = chrome.content,
         ),
     ) {
         Icon(

@@ -36,7 +36,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -412,9 +411,14 @@ private fun HomePriceFilterButton(
     onOpenFilters: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedCard(
+    // Same container as the fuel cards: white fill, shared shape and outline.
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    Card(
         onClick = onOpenFilters,
         modifier = modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
     ) {
         Row(
             modifier = Modifier

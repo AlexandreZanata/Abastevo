@@ -1,12 +1,14 @@
 # Android design system
 
-Scope: Compose UI in `app/src/main/kotlin/com/anpfuel/app`. The app chrome is
-monochrome, in the spirit of ride-hailing apps: ink on white in the light
-theme, white on true black in the dark theme, with a single accent color.
-Fuel icons, prices and the map are the only colorful content. Typography and
-radii are shared with the landing page (`landing/static/assets/styles.css`).
-Containers keep the rules in
-[UI_CONTAINER_GUIDELINES](UI_CONTAINER_GUIDELINES.md).
+Scope: Compose UI in `app/src/main/kotlin/com/anpfuel/app`. The identity is
+"black and green" (owner choice, 2026-11-11): the header, top app bars,
+status bar band and bottom bar are one solid black chrome in both themes,
+over warm off-white screens where every container is white (light) or
+near-black screens with graphite cards (dark), with a single green accent.
+The light theme is the default; Perfil switches to dark for the session. Fuel icons, prices
+and the map are the only colorful content. Typography is shared with the
+landing page (`landing/static/assets/styles.css`). Containers keep the rules
+in [UI_CONTAINER_GUIDELINES](UI_CONTAINER_GUIDELINES.md).
 
 ## Where the tokens live
 
@@ -14,8 +16,9 @@ Containers keep the rules in
 | --- | --- |
 | Foundation colors | `ui/theme/Color.kt` (`EnergiaLightTokens`, `EnergiaDarkTokens`) |
 | Accent | `ui/theme/Color.kt` (`AbastevoAccent`) |
+| Chrome (header, bars, hero) | `ui/theme/Color.kt` (`AbastevoChrome`), `ui/theme/AbastevoChromeColors.kt` |
 | Filled action colors | `ui/theme/AbastevoActionColors.kt` |
-| Bottom bar colors | `ui/theme/AbastevoNavColors.kt` |
+| Bottom bar colors | `ui/theme/AbastevoNavColors.kt` (derived from the chrome) |
 | Typography | `ui/theme/Type.kt` |
 | Shapes | `ui/theme/Shape.kt` |
 | Spacing | `ui/theme/Spacing.kt` |
@@ -23,34 +26,55 @@ Containers keep the rules in
 
 `AnpFuelTheme` wires all of them into `MaterialTheme`, so components read
 `MaterialTheme.colorScheme`, `MaterialTheme.typography` and
-`MaterialTheme.shapes` instead of literal values.
+`MaterialTheme.shapes` instead of literal values. Chrome colors are read from
+`LocalAbastevoChromeColors`.
 
 ## Color
 
-Foundation (every value is a neutral gray):
+Foundation (every value is a near-neutral gray, at most a few steps warm):
 
 | Role | Light | Dark |
 | --- | --- | --- |
-| `background`, `surface` | `#FFFFFF` | `#000000` |
-| cards (`surfaceContainerLow`) | `#FFFFFF` | `#141414` |
-| `surfaceContainer` / `High` / `Highest` | `#F6F6F6` / `#EEEEEE` / `#E2E2E2` | `#1A1A1A` / `#222222` / `#2C2C2C` |
-| `onSurface`, `primary` | `#0A0A0A` | `#F5F5F5` |
-| `onSurfaceVariant` | `#5E5E5E` | `#B0B0B0` |
-| `outline` / `outlineVariant` | `#8A8A8A` / `#D6D6D6` | `#8A8A8A` / `#333333` |
-| filled button fill / label | `#0A0A0A` / `#FFFFFF` | `#FFFFFF` / `#0A0A0A` |
+| `background` (screens) | `#F3F3F0` | `#0B0C0D` |
+| `surface`, cards (`surfaceContainerLow`) | `#FFFFFF` | `#1A1B1E` |
+| `surfaceContainer` / `High` / `Highest`, `primaryContainer` | `#FFFFFF` | `#1F2023` / `#26272A` / `#2F3033`, `#2F3033` |
+| `surfaceVariant` (placeholders, skeletons, tracks) | `#EDEDE9` | `#2F3033` |
+| `onSurface`, `primary` | `#000000` | `#F3F3F0` |
+| `onSurfaceVariant` | `#5C5D5A` | `#B3B4B6` |
+| `outline` / `outlineVariant` | `#858581` / `#DEDED8` | `#8B8C8F` / `#34353A` |
+| filled button fill / label | `#000000` / `#FFFFFF` | `#F3F3F0` / `#000000` |
 
-`primary` is ink, not a brand color. Filled buttons, selected chips, the
-selected segmented button, switches and large prices are therefore black on
-white screens and white on black ones.
+Every light container role is white, `surface` included (Material uses it
+for list items, outlined cards and segmented buttons), so cards, lists,
+panels, dialogs, menus and Material default cards all stand out from the
+off-white screen; screens paint `background`, never `surface`; a gray fill
+is never used for a container. Selection inside a list uses the accent
+container, not a darker gray. `primary` is black, the same color as the
+chrome: filled buttons, selected chips, the selected segmented button,
+switches and large prices are black on light screens and off-white on dark
+ones.
+
+Chrome (`AbastevoChrome`):
+
+| Role | Light | Dark |
+| --- | --- | --- |
+| `container` (header, top bars, status bar band, bottom bar) | `#000000` | `#000000` |
+| `content` / `contentMuted` | `#FFFFFF` / `#B9BABC` | `#FFFFFF` / `#B9BABC` |
+| `control` (round buttons, city field) | `#1F1F1F` | `#1F1F1F` |
+| `accent` (location pin) | `#4ADE80` | `#4ADE80` |
+| `selected` / `onSelected` (tab pill, week chip, action on hero) | `#F3F3F0` / `#000000` | `#F3F3F0` / `#000000` |
+| `hero` (brand hero card) | `#000000` | `#232428` |
+
+The dark hero is lifted above the dark cards so it does not melt into the
+near-black screen.
 
 Accent (`AbastevoAccent`, mapped to the Material `secondary` roles): green,
 `#0A7A46` on white screens and `#4ADE80` on black ones, with tonal containers
 `#DDF5E6` and `#12331F`.
 
-The accent marks the selected tab, text links (`TextButton`), the location
-pin and community elements, such as the highlighted "contribute a price"
-card. It is never the fill of a primary button and never the color of a
-price.
+The accent marks text links (`TextButton`), the location pin and community
+elements, such as the highlighted "contribute a price" card. It is never the
+fill of a primary button and never the color of a price.
 
 Other fixed meanings:
 
@@ -58,19 +82,27 @@ Other fixed meanings:
 - Fuel tints (`FuelProductTint`) and Premium colors (`PremiumColors`) are
   separate fixed palettes.
 
-`BrandPaletteContrastTest` holds the contrast targets for both themes: 4.5:1 for every text pair, 3:1 for control fills, outlines and
-indicators.
+`BrandPaletteContrastTest` holds the contrast targets for both themes,
+chrome and hero included: 4.5:1 for every text pair, 3:1 for control fills,
+outlines and indicators.
 
 ## Chrome
 
-- **Header** (`AbastevoHeader`): flat on the screen color with a hairline
-  below. Logo and name on the left, round gray notification and profile
-  buttons on the right. On Explorar and Comunidade one gray pill field holds
-  the city (accent pin) and, as a chip at its right end, the survey week.
-- **Top app bar** (`AnpTopAppBar`): flat on the screen color.
-- **Bottom bar** (`AbastevoBottomBar`): flat on the screen color with a
-  hairline above. The selected tab has an accent marker on the top edge, a
-  filled icon and a bold ink label; the others use outlined icons in gray.
+- **Status bar band** (`AbastevoStatusBarBand`): drawn once at the app root,
+  so every screen, the map included, has the solid chrome behind the status
+  bar and light status icons.
+- **Header** (`AbastevoHeader`): solid chrome under the status bar, no
+  hairline. Logo and white name on the left, round `control` notification and
+  profile buttons on the right. On Explorar and Comunidade one `control` pill
+  field holds the city (green pin) and, as a light chip at its right end, the
+  survey week.
+- **Top app bar** (`AnpTopAppBar`): solid chrome with white title and icons.
+- **Bottom bar** (`AbastevoBottomBar`): solid chrome extending under the
+  gesture area, no hairline. The selected tab sits in a light pill with a
+  filled icon and a bold graphite label; the others use outlined icons in
+  `contentMuted`.
+- **Hero card** (`TankFillCostCard` on Explorar): at most one per screen,
+  filled with `hero`, white text and a light `selected` action; no outline.
 - **Entry cards** (Comunidade): a small uppercase label says what the card
   is, then icon, title, one line of explanation and one action. The main entry
   (contribute a price) is accent-tinted with the filled button and always
@@ -99,10 +131,11 @@ arrows) fall back to the system font.
 
 | Token | Radius | Used by |
 | --- | --- | --- |
-| `extraSmall`, `small` | 8dp | buttons, text fields, menus |
-| `medium` | 12dp | cards and content containers (`AnpContainerDefaults.containerShape()`) |
-| `large` | 16dp | large panels |
-| `extraLarge` | 24dp | dialogs and bottom sheets |
+| `extraSmall` | 8dp | menus and small marks |
+| `small` | 12dp | buttons, text fields |
+| `medium` | 16dp | cards and content containers (`AnpContainerDefaults.containerShape()`) |
+| `large` | 20dp | large panels and the hero card |
+| `extraLarge` | 28dp | dialogs and bottom sheets |
 
 Pills (full radius) are for chips, segmented controls, the header field and
 the floating map controls; circles for icon buttons and avatars.
@@ -122,10 +155,10 @@ components and only change the defaults:
 
 | Component | Defaults |
 | --- | --- |
-| `Button` | 8dp radius, 48dp minimum height, ink fill (white fill in dark) |
-| `OutlinedButton` | 8dp radius, 48dp minimum height, 1.5dp ink border |
-| `TextButton` | 8dp radius, accent label |
-| `FilterChip` | pill; selected: solid ink with inverse label |
+| `Button` | 12dp radius, 48dp minimum height, black fill (off-white fill in dark) |
+| `OutlinedButton` | 12dp radius, 48dp minimum height, 1.5dp black border |
+| `TextButton` | 12dp radius, accent label |
+| `FilterChip` | pill; selected: solid black with inverse label |
 | `AssistChip` | pill |
 
 For a segmented control pass `AbastevoSelectionDefaults.segmentedButtonColors()`.

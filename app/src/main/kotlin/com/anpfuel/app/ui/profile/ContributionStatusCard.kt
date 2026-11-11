@@ -40,7 +40,7 @@ fun ContributionStatusCard(
     onCancel: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val containerColor = MaterialTheme.colorScheme.surfaceVariant
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
