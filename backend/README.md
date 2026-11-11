@@ -115,6 +115,21 @@ signature/cookie markers are absent from logs. It does not modify system trust
 or obtain public certificates. The test edge and its keys are removed on exit.
 Local test success is distinct from G09 certification and public deployment.
 
+### Signed app writes against a local API
+
+The debug app's local proof build (`-PmapApiLocalProof=true`, for example
+`./gradlew :app:assembleMapProbe -PmapApiLocalProof=true`, which installs as a
+separate `com.anpfuel.app.mapprobe` app) talks to `http://127.0.0.1:18080` through
+`adb reverse tcp:18080 tcp:18080` and signs `@authority` with that port. Only in
+development, `ANPFUEL_CANONICAL_HOST` therefore accepts a loopback `host:port`:
+
+```sh
+ANPFUEL_ENV=development ANPFUEL_HTTP_ADDR=127.0.0.1:18080 \
+ANPFUEL_CANONICAL_HOST=127.0.0.1:18080 ANPFUEL_FORUM_ENABLED=true go run ./cmd/api
+```
+
+Staging and production keep refusing anything but a bare public hostname.
+
 ### Photo-intake safety budget (RVA07)
 
 `ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS` defaults to **0 (closed)**. The API
