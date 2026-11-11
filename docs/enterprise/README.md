@@ -8,7 +8,7 @@ ADR-019 source batch. [ADR-025](../adr/025-private-abastevo-empresas-organizatio
 governs private organization data. Real-data, station, provider and release
 gates remain recorded in [the decision register](16-decisions.md).
 
-F1 is **IN_PROGRESS**. EMP-PLAT-001 through EMP-PLAT-011 and EMP-PLAT-013/014 are
+F1 is **IN_PROGRESS**. EMP-PLAT-001 through EMP-PLAT-011 and EMP-PLAT-013/014/015 are
 LOCAL_DONE / INTEGRATION_PENDING with organization ID/scope values,
 repository conventions, scoped database transactions, the PostGIS isolation
 harness, atomic organization audit storage, shared API conventions,
@@ -20,12 +20,14 @@ the [company web shell](evidence/f1-plat008-business-web-shell.md),
 [transactional enterprise events](evidence/f1-plat010-transactional-events.md),
 the [partitioned Android foundation](evidence/f1-plat011-android-foundation.md),
 [private enterprise telemetry](evidence/f1-plat013-private-telemetry.md),
-and [scoped write-rate admission](evidence/f1-plat014-scoped-rate-admission.md).
+[scoped write-rate admission](evidence/f1-plat014-scoped-rate-admission.md),
+and the [operation-time kernel](evidence/f1-plat015-operation-time.md).
 The shell keeps membership integration unavailable until AUTH/IDN supply
 current server authority. Android real-data persistence remains unavailable
 until EMP-PRIV-003 supplies and proves the protected store. EMP-PLAT-012
-awaits the EMP-GOV-014 channel decision; EMP-PLAT-015 is the next eligible
-platform task.
+awaits the EMP-GOV-014 channel decision. EMP-PRIV-003 is the next eligible
+F1 foundation task; EMP-PLAT-016 belongs to F3. Domain aggregate coverage,
+native protected-store proof and the existing activation gates remain owed.
 [Kernel evidence](evidence/f1-plat001-tenancy-kernel.md) and
 [database evidence](evidence/f1-plat002-database-isolation.md), with
 [audit evidence](evidence/f1-plat003-organization-audit.md) and

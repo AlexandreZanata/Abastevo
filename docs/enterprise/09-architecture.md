@@ -318,6 +318,37 @@ global product cap is added. Exhaustion uses RATE_LIMITED/429 and a positive
 rounded-up Retry-After; failures use the existing private unavailable error.
 See [local evidence](evidence/f1-plat014-scoped-rate-admission.md).
 
+### 3.4 Implemented operation-time kernel
+
+EMP-PLAT-015 supplies Go orgtime/domain and Kotlin EnterpriseTime in the
+existing domain module. The shared bounded RFC3339 parser normalizes UTC
+and rejects invalid dates, unknown offsets, leap seconds and precision/range
+overflow. Capture retains occurred_at, trusted received_at, entry IANA zone
+and declared device offset independently, including offset/zone mismatch.
+The operating context supplies organization and optional unit zones. A
+supplied invalid unit fails instead of falling back. The snapshot records
+reporting day, selected zone and unit/organization provenance; persistence
+owners must keep these together and never recalculate history after a zone
+change. Trip callers pass the start instant. Periods are half-open.
+
+AuthorityAt selects received_at, not occurred_at; the owning server obtains
+receipt time from its clock and still resolves current membership, plan and
+locks. Domain values alone prove no authority. Clock assessment uses a
+separate sync device sample and its server receipt sample, not an old
+operation timestamp. It retains signed seconds plus nonnegative nanoseconds,
+flags absolute skew strictly above the configured limit (default 300s), and
+rewrites no timestamp. This one-way estimate can include transit delay;
+owning offline tasks apply the flag/review to the batch.
+
+The same 93 synthetic vectors run in Go and Kotlin JVM. Standard-library
+IANA providers are used (Go includes a bundled fallback); no third-party
+dependency or replacement date model. Persisted day/zone snapshots preserve
+historical attribution across rule updates. This is scoped vector parity,
+not certification of every runtime tzdb version. No active route, sync,
+membership, trip, report or database migration is introduced. Android device
+tzdb and composed feature acceptance remain owed.
+[Local evidence](evidence/f1-plat015-operation-time.md).
+
 ## 4. API conventions
 
 - **Paths:** `/v1/orgs/{org_id}/<module>/…`. Routes that are not inside an organization (create an organization, list my memberships, accept an invitation, activate managed access) live under `/v1/org-access/…`. Station portal routes are organization routes scoped by station: `/v1/orgs/{org_id}/stations/{station_id}/…`.

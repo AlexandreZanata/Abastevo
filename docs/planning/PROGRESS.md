@@ -1,4 +1,17 @@
 # Current execution state
+- Enterprise EMP-PLAT-015, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published a709ad5c on isolated codex/enterprise-f0-f1; delivery
+  targets existing PR202 (dev → main), preserving the occupied local dev.
+  [Operation-time evidence](../enterprise/evidence/f1-plat015-operation-time.md)
+  records UTC instants, independent device/receipt metadata, unit/org
+  reporting snapshots, half-open periods and explicit clock-skew review.
+  Go/Kotlin share 93 boundary/invalid/DST vectors. Race/scoped static/build
+  checks passed; full domain 1,155 tests passed, no skips. New Go 100%;
+  Kotlin 99.66% instruction coverage. Existing aggregate coverage remains
+  below 90% (80.2475%); native/consumer/activation gates remain owed.
+  F1/M1 open; EMP-PRIV-003 next eligible F1 foundation, not F3 PLAT-016.
+  EMP-PLAT-012 still awaits EMP-GOV-014. No live route/sync is activated.
+
 - Enterprise EMP-PLAT-014, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published 97298631; delivery targets existing PR202 (dev → main).
   [Scoped-rate evidence](../enterprise/evidence/f1-plat014-scoped-rate-admission.md)

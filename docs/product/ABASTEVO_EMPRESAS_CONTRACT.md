@@ -300,6 +300,31 @@ boundaries.
   Exhaustion returns RATE_LIMITED with positive rounded-up Retry-After;
   raw subjects, IDs, keys and SQL errors stay out of responses/telemetry.
 
+- **B-BR-EMP-31 — Preserve operation time and reporting provenance.**
+  Keep the declared occurred instant, trusted server receipt instant, entry
+  IANA zone and declared device offset separately. Normalize instants to
+  UTC without changing their value. Snapshot the reporting day and zone
+  from the operating unit, or the organization when no unit is supplied;
+  an invalid supplied unit zone cannot fall back. Trips use their start
+  instant. Historical snapshots are not recomputed after zone changes.
+  Periods include their start and exclude their end. The shared parser
+  accepts years 0001–9999, seconds 00–59, up to nine fractional digits and
+  Z or numeric minute offsets through ±18:00; unknown -00:00 is refused.
+  Device offset metadata allows integral seconds through ±18 hours and
+  remains independent of entry/reporting zones, including a misconfigured
+  device. Invalid dates, zones and out-of-range normalized dates fail.
+
+- **B-BR-EMP-32 — Separate clock observations from authority.** The
+  authorization reference is the trusted server received_at, never
+  occurred_at or a device clock sample. At sync, compare the device clock
+  sample with its server receipt sample, retaining signed seconds and
+  nanoseconds. Flag CLOCK_SKEW only when the absolute difference exceeds
+  the organization's nonnegative seconds limit (default 300). An old
+  operation's occurred_at is not a clock sample. The estimate may include
+  transit delay; it neither grants authority nor silently rewrites times.
+  Owning sync flows apply the flag to the batch and arrange review; this
+  kernel does not accept batches or resolve membership/period locks.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -423,6 +448,15 @@ boundaries.
   Retry with fresh transport proof after the fixed window permits it;
   changing the device cannot reset organization/account usage. Foreign or
   revoked authority never consumes the target organization's budget.
+
+- **BUC-EMP-17 — Attribute a delayed operation without backdating access.**
+  Given a declared instant near midnight in a unit different from its
+  organization, receipt on a later day preserves both times and attributes
+  reporting to the unit's local day. A record without a unit uses the
+  organization. Receipt at an access period's end is outside that period,
+  even when the device declares an earlier time. A sync sample twelve
+  minutes ahead flags CLOCK_SKEW under the default limit, without changing
+  the operation. Invalid zone/offset input produces no time snapshot.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

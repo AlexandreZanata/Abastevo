@@ -1,4 +1,6 @@
-# Enterprise exact-value vectors v1
+# Enterprise domain vectors
+
+## Exact-value vectors v1
 
 EMP-PLAT-009 executes all 112 rows of exact-values-v1.psv in Go and Kotlin.
 Each consumer checks the header, row count, unique IDs, known operations and
@@ -53,3 +55,51 @@ Run from the repository root:
 
 These are pure domain vectors. They activate no route, payment, fueling,
 document persistence or client feature and require no database or provider.
+
+## Operation-time vectors v1
+
+EMP-PLAT-015 executes all 93 rows of time-v1.psv in Go orgtime/domain and
+Kotlin EnterpriseTimeTest, checking the same complete output maps, header,
+row count, unique IDs and known operations without language skips. The
+synthetic oracle was recorded before implementation from BR-TIME-001/002/
+003/004/006 and the clock case in VAL-23. The format is the same four-column
+PSV; question mark means absent unit or default skew limit, not zero.
+
+INSTANT accepts the shared bounded RFC3339 profile: years 0001–9999 both
+before and after UTC normalization, seconds 00–59, at most nine fractional
+digits, uppercase T/Z and Z or numeric minute offsets through ±18:00.
+Unknown -00:00, leap seconds, calendar rollover, whitespace and excess
+precision fail. Canonical output uses Z and trims trailing fractional zeros.
+
+RECORD keeps the declared instant, trusted receipt, entry zone and declared
+integral-second device offset (±18h) separately. Entry/reporting zones do
+not reinterpret the instant or silently correct a mismatched device offset.
+UTC and valid slash-separated IANA names/aliases are accepted; Local,
+abbreviations, raw offsets, path/posix/right names and unknown zones fail.
+The optional unit overrides organization reporting; a supplied invalid unit
+does not fall back. Both context zones must be valid. Persist the resulting
+day, zone and unit/organization source with the operation. The trip vector
+uses its start instant. Historical snapshots survive later context changes.
+
+PERIOD includes start and excludes end, rejecting empty/reversed ranges.
+Authority uses server receipt, even when the declared time is earlier.
+SKEW compares a sync device clock sample to its server receipt sample,
+not a historical operation. Signed difference is seconds + nonnegative
+nanos (−0.1s is −1s + 900000000ns). CLOCK_SKEW applies strictly above
+the nonnegative seconds limit, default 300; zero is a valid explicit limit.
+The estimate includes possible transit delay and changes neither time.
+Extreme-year cases guard against Go Duration saturation/nanosecond overflow.
+
+Run from the repository root (existing JDK17/Android SDK environment):
+
+```sh
+(cd backend && go test -race ./internal/modules/orgtime/domain -count=1)
+./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.EnterpriseTimeTest' --offline --no-daemon
+```
+
+Vectors cover Brazil/local-midnight boundaries, New York gaps and repeated
+hours, the Apia skipped day, historical Brazilian DST, quarter-hour zones,
+invalid contexts, nanosecond edges and offset/clock bounds. This certifies
+these vectors on the recorded Go/JVM providers, not every IANA database or
+native Android device. No sync route, receipt retention or live feature is
+activated; owners still provide trusted clock/context and review wiring.

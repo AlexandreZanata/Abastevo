@@ -256,6 +256,37 @@ with an explicit disposable ANPFUEL_TEST_DATABASE_URL. See
 [architecture](../docs/enterprise/09-architecture.md#71-implemented-transactional-event-foundation)
 and [evidence](../docs/enterprise/evidence/f1-plat010-transactional-events.md).
 
+### Organization operation time (EMP-PLAT-015)
+
+orgtime/domain preserves declared occurred_at and trusted server received_at
+as UTC instants, with entry IANA zone and declared device offset. Capture
+uses the resolved unit zone, or organization zone when no unit exists, to
+snapshot reporting day/zone/source. Invalid supplied unit zones fail.
+Trip callers supply the start instant. Persist all snapshot fields together;
+do not recalculate historical days when organization/unit zones change.
+
+AuthorityAt returns received_at. Owning server flows must set it from their
+clock, resolve current authority and supply context zones from scoped data;
+parsing a client timestamp grants no authority. InPeriod is half-open.
+AssessClockSkew takes a separate sync sample pair, not an old occurred_at,
+and returns signed seconds/nonnegative nanos plus CLOCK_SKEW strictly above
+the organization limit (default 300 seconds). It changes no timestamp and
+can include transit delay; sync review/batch propagation remains OFFL scope.
+
+The shared parser rejects leap seconds, unknown -00:00, invalid/overflowing
+dates and more than nanosecond precision; it accepts numeric offsets up to
+±18:00. Entry offset metadata is integral seconds within ±18h, independent
+of zone rules. Standard IANA data is used with a Go bundled fallback.
+No route, migration, external dependency or live feature is added.
+
+```sh
+go test -race ./internal/modules/orgtime/domain -count=1
+```
+
+See the [93 shared Go/Kotlin vectors](../contracts/testdata/enterprise/README.md#operation-time-vectors-v1)
+and [local evidence](../docs/enterprise/evidence/f1-plat015-operation-time.md).
+Native device time-zone parity and composed consumer acceptance remain owed.
+
 ### Exact organization values (EMP-PLAT-009)
 
 orgvalue/domain provides canonical integer parsing, paid-preserving

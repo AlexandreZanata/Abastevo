@@ -260,7 +260,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local scoped admission and rollback evidence](../evidence/f1-plat014-scoped-rate-admission.md).
 
 ### EMP-PLAT-015 — Time kernel: instants, organization and unit time zones, reporting-day attribution
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DOM · size S · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Preserve declared operation time and compute reporting days consistently.
 - **Rules and use cases:** BR-TIME-001, BR-TIME-002, BR-TIME-003, BR-TIME-004, BR-TIME-006
 - **Depends on:** EMP-GOV-001
@@ -274,6 +274,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-DOM · migration: none · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Time-zone provenance is retained for historical reporting.
 - **Done when:** Boundary and zone vectors pass with the same semantics in affected consumers.
+
+[Local UTC, reporting-day and clock-skew evidence](../evidence/f1-plat015-operation-time.md).
 
 ### EMP-PLAT-016 — Amendment kernel: append-only corrections for approved records
 - **Meta:** module PLAT · phase F3 · cut - · priority P1 · type DOM · size S · state TODO
