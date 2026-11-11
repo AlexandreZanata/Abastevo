@@ -1,5 +1,11 @@
 package com.anpfuel.app.ui.forum
 
+import com.anpfuel.app.ui.designsystem.OutlinedButton
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
@@ -138,8 +144,10 @@ internal fun ForumDetailContent(
     var selectedReportReason by remember { mutableStateOf(ForumReportReason.SPAM) }
     var reportDetailText by remember { mutableStateOf("") }
 
+    val share = rememberForumShare()
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             AnpTopAppBar(
                 title = { Text(stringResource(R.string.forum_detail_title)) },
@@ -336,28 +344,22 @@ internal fun ForumDetailContent(
                     val post = state.post
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Author header, like the opened post of a social feed.
+                            val author = forumPostAuthor(post.kind, post.publicAlias)
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                SuggestionChip(
-                                    onClick = {},
-                                    label = { Text(stringResource(forumKindLabel(post.kind))) },
-                                    colors = SuggestionChipDefaults.suggestionChipColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    ),
-                                    border = null,
-                                )
-                                Text(
-                                    text = formatForumDate(post.firstPublishedAt),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                if (post.updatedAt != post.firstPublishedAt) {
+                                ForumAvatar(author, size = 48.dp)
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    ForumAuthorLine(author = author, timeIso = post.firstPublishedAt)
                                     Text(
-                                        text = "· ${stringResource(R.string.forum_updated_label)}",
-                                        style = MaterialTheme.typography.labelSmall,
+                                        text = listOfNotNull(
+                                            stringResource(forumKindLabel(post.kind)),
+                                            stringResource(R.string.forum_updated_label)
+                                                .takeIf { post.updatedAt != post.firstPublishedAt },
+                                        ).joinToString(" · "),
+                                        style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
@@ -370,57 +372,19 @@ internal fun ForumDetailContent(
                             )
 
                             val source = post.source
-                            if (source != null) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    Text(
-                                        text = source.name,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                    val alias = post.publicAlias
-                                    if (alias != null) {
-                                        Text(
-                                            text = "· $alias",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
-
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
                             if (post.excerpt.isNotBlank()) {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = AnpContainerDefaults.containerShape(),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    ),
-                                ) {
-                                    Text(
-                                        text = post.excerpt,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontStyle = FontStyle.Italic,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.padding(16.dp),
-                                        lineHeight = 24.sp,
-                                    )
-                                }
+                                Text(
+                                    text = post.excerpt,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    lineHeight = 24.sp,
+                                )
                             }
 
                             val body = post.bodyText
                             if (!body.isNullOrBlank()) {
-                                Text(
-                                    text = body,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    lineHeight = 26.sp,
-                                )
+                                ForumBodyText(body = body)
                             }
 
                             val bulletin = post.bulletin
@@ -509,7 +473,7 @@ internal fun ForumDetailContent(
                                 } catch (_: Exception) {
                                     sourceUrl
                                 }
-                                Button(
+                                OutlinedButton(
                                     onClick = { onExternalLinkClick(sourceUrl) },
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
@@ -529,15 +493,31 @@ internal fun ForumDetailContent(
                                     color = MaterialTheme.colorScheme.error,
                                 )
                             }
+
+                            ForumDivider()
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceAround,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                ForumIconAction(
+                                    icon = Icons.Outlined.ChatBubbleOutline,
+                                    contentDescription = stringResource(R.string.forum_action_comment),
+                                    onClick = { if (state.isAuthenticated) Unit else onSignIn() },
+                                    count = state.comments.size,
+                                )
+                                ForumIconAction(
+                                    icon = Icons.Outlined.Share,
+                                    contentDescription = stringResource(R.string.forum_action_share),
+                                    onClick = { share(post.title, post.excerpt) },
+                                )
+                            }
+                            ForumDivider()
                         }
                     }
 
                     // Discussion Section
                     item {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        )
                         Text(
                             text = stringResource(R.string.forum_comments_title),
                             style = MaterialTheme.typography.titleMedium,
@@ -625,7 +605,7 @@ internal fun ForumDetailContent(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                             ) {
-                                                val authorName = state.replyingTo.publicAlias ?: "Motorista"
+                                                val authorName = forumCommentAuthor(state.replyingTo.publicAlias).name
                                                 Text(
                                                     text = stringResource(R.string.forum_replying_to, authorName),
                                                     style = MaterialTheme.typography.labelMedium,
@@ -712,6 +692,7 @@ internal fun ForumDetailContent(
                                     onEdit = { onStartEdit(comment) },
                                     onDelete = { onConfirmRemove(comment) },
                                 )
+                                ForumDivider(modifier = Modifier.padding(top = 8.dp))
                             }
                         }
                     }
@@ -880,6 +861,7 @@ internal fun ForumDetailContent(
     }
 }
 
+/** One comment as a social reply: avatar, author line, text and icon actions. */
 @Composable
 private fun CommentItemView(
     comment: ForumComment,
@@ -895,81 +877,63 @@ private fun CommentItemView(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    val author = forumCommentAuthor(comment.publicAlias)
+    Row(
         modifier = modifier.fillMaxWidth(),
-        shape = AnpContainerDefaults.containerShape(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = AnpContainerDefaults.borderStroke(MaterialTheme.colorScheme.surface),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        ForumAvatar(author, size = 40.dp)
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = comment.publicAlias ?: "Motorista",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = formatForumDate(comment.createdAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
+            ForumAuthorLine(author = author, timeIso = comment.createdAt)
             Text(
                 text = comment.bodyText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (comment.replyCount > 0) {
-                    TextButton(onClick = onToggleReplies) {
-                        Text(
-                            if (isExpanded) stringResource(R.string.forum_hide_replies)
-                            else stringResource(R.string.forum_replies_count, comment.replyCount)
-                        )
-                    }
-                }
-                TextButton(onClick = onReply) {
-                    Text(stringResource(R.string.forum_reply_button))
-                }
-                TextButton(onClick = onReport) {
-                    Text(stringResource(R.string.forum_report_button))
-                }
+                ForumIconAction(
+                    icon = Icons.Outlined.ChatBubbleOutline,
+                    contentDescription = stringResource(R.string.forum_reply_button),
+                    onClick = onReply,
+                    count = comment.replyCount,
+                )
+                ForumIconAction(
+                    icon = Icons.Outlined.Flag,
+                    contentDescription = stringResource(R.string.forum_report_button),
+                    onClick = onReport,
+                )
                 Spacer(modifier = Modifier.weight(1f))
                 if (isOwn) {
-                    TextButton(onClick = onEdit) {
-                        Text(stringResource(R.string.forum_edit_comment))
-                    }
-                    TextButton(onClick = onDelete) {
-                        Text(
-                            text = stringResource(R.string.forum_delete_comment),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
+                    ForumIconAction(
+                        icon = Icons.Outlined.Edit,
+                        contentDescription = stringResource(R.string.forum_edit_comment),
+                        onClick = onEdit,
+                    )
+                    ForumIconAction(
+                        icon = Icons.Outlined.DeleteOutline,
+                        contentDescription = stringResource(R.string.forum_delete_comment),
+                        onClick = onDelete,
+                    )
                 }
             }
-
+            if (comment.replyCount > 0) {
+                TextButton(onClick = onToggleReplies) {
+                    Text(
+                        if (isExpanded) stringResource(R.string.forum_hide_replies)
+                        else stringResource(R.string.forum_replies_count, comment.replyCount),
+                    )
+                }
+            }
             if (isExpanded) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, top = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (repliesLoading && replies.isEmpty()) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -987,58 +951,34 @@ private fun CommentItemView(
     }
 }
 
+/** Reply inside a thread: smaller avatar, same author line and actions. */
 @Composable
 private fun ReplyItemView(
     reply: ForumComment,
     onReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    val author = forumCommentAuthor(reply.publicAlias)
+    Row(
         modifier = modifier.fillMaxWidth(),
-        shape = AnpContainerDefaults.containerShape(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        ForumAvatar(author, size = 32.dp)
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = reply.publicAlias ?: "Motorista",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = formatForumDate(reply.createdAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
+            ForumAuthorLine(author = author, timeIso = reply.createdAt)
             Text(
                 text = reply.bodyText,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onReport) {
-                    Text(
-                        text = stringResource(R.string.forum_report_button),
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-            }
+            ForumIconAction(
+                icon = Icons.Outlined.Flag,
+                contentDescription = stringResource(R.string.forum_report_button),
+                onClick = onReport,
+            )
         }
     }
 }
