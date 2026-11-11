@@ -6,9 +6,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * Fill and label of filled buttons: ink with a white label on light screens,
- * white with an ink label on black ones. Kept apart from `primary` so the
- * button fill can stay pure white in the dark theme.
+ * Fill and label of filled buttons: black with a white label on light
+ * screens, off-white with a black label on dark ones. Kept apart from
+ * `primary` so the button fill can differ from it under dynamic colors.
  */
 @Immutable
 data class AbastevoActionColors(

@@ -199,6 +199,7 @@ SELECT
     p.region_uf, p.region_municipality_ibge,
     p.fuel_product, p.station_id,
     p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
+    p.like_count, p.dislike_count,
     s.name AS source_name,
     s.origin_url AS source_origin_url,
     s.attribution AS source_attribution
@@ -240,6 +241,8 @@ type GetPostByIDRow struct {
 	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
 	BulletinProvenance     []byte             `json:"bulletin_provenance"`
 	SupersedesPostID       pgtype.UUID        `json:"supersedes_post_id"`
+	LikeCount              int64              `json:"like_count"`
+	DislikeCount           int64              `json:"dislike_count"`
 	SourceName             pgtype.Text        `json:"source_name"`
 	SourceOriginUrl        pgtype.Text        `json:"source_origin_url"`
 	SourceAttribution      pgtype.Text        `json:"source_attribution"`
@@ -281,6 +284,8 @@ func (q *Queries) GetPostByID(ctx context.Context, id pgtype.UUID) (GetPostByIDR
 		&i.BulletinGroupKey,
 		&i.BulletinProvenance,
 		&i.SupersedesPostID,
+		&i.LikeCount,
+		&i.DislikeCount,
 		&i.SourceName,
 		&i.SourceOriginUrl,
 		&i.SourceAttribution,
@@ -394,6 +399,7 @@ SELECT
     p.region_uf, p.region_municipality_ibge,
     p.fuel_product, p.station_id,
     p.rights_snapshot, p.bulletin_key, p.bulletin_group_key, p.bulletin_provenance, p.supersedes_post_id,
+    p.like_count, p.dislike_count,
     s.name AS source_name,
     s.origin_url AS source_origin_url,
     s.attribution AS source_attribution
@@ -443,6 +449,8 @@ type GetPublicPostByIDRow struct {
 	BulletinGroupKey       pgtype.Text        `json:"bulletin_group_key"`
 	BulletinProvenance     []byte             `json:"bulletin_provenance"`
 	SupersedesPostID       pgtype.UUID        `json:"supersedes_post_id"`
+	LikeCount              int64              `json:"like_count"`
+	DislikeCount           int64              `json:"dislike_count"`
 	SourceName             pgtype.Text        `json:"source_name"`
 	SourceOriginUrl        pgtype.Text        `json:"source_origin_url"`
 	SourceAttribution      pgtype.Text        `json:"source_attribution"`
@@ -484,6 +492,8 @@ func (q *Queries) GetPublicPostByID(ctx context.Context, id pgtype.UUID) (GetPub
 		&i.BulletinGroupKey,
 		&i.BulletinProvenance,
 		&i.SupersedesPostID,
+		&i.LikeCount,
+		&i.DislikeCount,
 		&i.SourceName,
 		&i.SourceOriginUrl,
 		&i.SourceAttribution,

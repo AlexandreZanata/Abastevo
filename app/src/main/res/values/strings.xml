@@ -398,8 +398,6 @@
     <string name="action_next">Next</string>
     <string name="action_back">Back</string>
     <string name="action_cancel">Cancel</string>
-    <string name="action_switch_dark_theme">Switch to dark theme</string>
-    <string name="action_switch_light_theme">Switch to light theme</string>
 
     <!-- UC-002 Onboarding -->
     <string name="onboarding_title_welcome">Welcome</string>
@@ -1461,4 +1459,30 @@
     <string name="forum_topic_validation_body_too_long">Content exceeds 4,000 characters.</string>
     <string name="forum_topic_validation_category">Please select a category.</string>
     <string name="home_open_map">View on map</string>
+    <string name="profile_appearance_section">Appearance</string>
+    <string name="profile_dark_theme_title">Dark theme</string>
+    <string name="profile_dark_theme_on">On</string>
+    <string name="profile_dark_theme_off">Off</string>
+    <string name="settings_section_account_privacy">Account and privacy</string>
+    <string name="settings_section_search_data">Search and data</string>
+    <string name="settings_section_about">About the app</string>
+    <string name="week_picker_contents_title">Each week includes</string>
+    <string name="forum_author_driver">Driver</string>
+    <string name="forum_action_share">Share</string>
+    <string name="forum_official_account">Official Abastevo account</string>
+    <string name="forum_action_comment">Comment</string>
+    <string name="forum_sort_relevant">Most relevant</string>
+    <string name="forum_sort_recent">Most recent</string>
+    <string name="forum_sort_liked">Most liked</string>
+    <string name="forum_sort_label">Reply order</string>
+    <string name="forum_like">Like</string>
+    <string name="forum_dislike">Dislike</string>
+    <string name="forum_reaction_on">On</string>
+    <string name="forum_reaction_off">Off</string>
+    <string name="forum_show_more_replies">Show more replies</string>
+    <string name="forum_live">Live</string>
+    <plurals name="forum_new_replies">
+        <item quantity="one">%d new reply</item>
+        <item quantity="other">%d new replies</item>
+    </plurals>
 </resources>

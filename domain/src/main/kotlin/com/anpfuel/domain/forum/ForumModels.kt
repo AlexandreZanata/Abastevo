@@ -65,6 +65,7 @@ data class ForumPostDetail(
     val stationId: String? = null,
     val bulletin: ForumBulletinProvenance? = null,
     val supersedesPostId: String? = null,
+    val reactions: ForumReactionCounts = ForumReactionCounts(),
 )
 
 /**
@@ -127,6 +128,9 @@ data class ForumComment(
     val replyCount: Int = 0,
     val replies: List<ForumComment> = emptyList(),
     val revision: Long = 1L,
+    val reactions: ForumReactionCounts = ForumReactionCounts(),
+    /** Best answer preview loaded with ranked pages (B-BR-FOR-18). */
+    val topReply: ForumComment? = null,
 )
 
 /**

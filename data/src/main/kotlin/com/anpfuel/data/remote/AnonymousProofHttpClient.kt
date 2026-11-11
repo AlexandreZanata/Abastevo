@@ -124,6 +124,19 @@ class AnonymousProofHttpClient(
         return post("/v1/contributors/me/keys/rotate", payload)
     }
 
+    /** Account binding ceremony (P13-T04C): live session plus device-key proof. */
+    fun bind(familyId: String, accessToken: String, contributorId: String, proof: String): String {
+        require(familyId.isNotBlank() && accessToken.isNotBlank()) { "session is blank" }
+        require(contributorId.isNotBlank() && proof.isNotBlank()) { "binding is blank" }
+        val payload = JSONObject()
+            .put("family_id", familyId)
+            .put("access_token", accessToken)
+            .put("contributor_id", contributorId)
+            .put("proof", proof)
+            .toString()
+        return post("/v1/accounts/bindings/bind", payload)
+    }
+
     private fun post(path: String, payload: String): String {
         val bytes = payload.toByteArray(Charsets.UTF_8)
         require(bytes.size <= PortableAnonymousProof.MAX_BODY_BYTES) { "body exceeds 64 KiB" }

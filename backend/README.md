@@ -7,12 +7,12 @@ production infrastructure remain ahead. See [current state](../docs/planning/PRO
 and [prior task evidence](../docs/planning/history/P01_FOUNDATION_EVIDENCE.md);
 this documentation revision does not rerun those suites or verify remote CI.
 
-Tooling pins: Go toolchain `go1.27.3` (`go.mod`); `sqlc v1.31.1`
+Tooling pins: Go toolchain `go1.27.4` (`go.mod`); `sqlc v1.31.1`
 (`sqlc vet && sqlc generate` from `backend/`; generated packages committed).
 `chi v5.3.2`, `pgx v5.11.0` (both MIT, permissive transitives only).
 `staticcheck v0.8.1` (MIT), `govulncheck v1.8.0`, `vacuum v0.30.6` (MIT).
 Static binaries must be built with Go ≥1.27 or typechecking fails; install
-with `GOTOOLCHAIN=go1.27.3 go install <tool>@<version>`. The pinned
+with `GOTOOLCHAIN=go1.27.4 go install <tool>@<version>`. The pinned
 staticcheck predates the go1.27.2 export format, so the fast gate runs
 `staticcheck` itself under `GOTOOLCHAIN=go1.27.1` (see
 `scripts/check-backend-fast.sh`).
@@ -114,6 +114,21 @@ validates TLS 1.2/1.3, health and route isolation, and checks synthetic location
 signature/cookie markers are absent from logs. It does not modify system trust
 or obtain public certificates. The test edge and its keys are removed on exit.
 Local test success is distinct from G09 certification and public deployment.
+
+### Signed app writes against a local API
+
+The debug app's local proof build (`-PmapApiLocalProof=true`, for example
+`./gradlew :app:assembleMapProbe -PmapApiLocalProof=true`, which installs as a
+separate `com.anpfuel.app.mapprobe` app) talks to `http://127.0.0.1:18080` through
+`adb reverse tcp:18080 tcp:18080` and signs `@authority` with that port. Only in
+development, `ANPFUEL_CANONICAL_HOST` therefore accepts a loopback `host:port`:
+
+```sh
+ANPFUEL_ENV=development ANPFUEL_HTTP_ADDR=127.0.0.1:18080 \
+ANPFUEL_CANONICAL_HOST=127.0.0.1:18080 ANPFUEL_FORUM_ENABLED=true go run ./cmd/api
+```
+
+Staging and production keep refusing anything but a bare public hostname.
 
 ### Photo-intake safety budget (RVA07)
 

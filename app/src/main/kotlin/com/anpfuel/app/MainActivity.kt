@@ -5,15 +5,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import com.anpfuel.app.ui.components.LocalBottomSafePadding
 import androidx.lifecycle.Lifecycle
@@ -25,6 +27,7 @@ import com.anpfuel.app.locale.AppLocaleApplier
 import com.anpfuel.app.locale.AppLocaleHolder
 import com.anpfuel.app.navigation.AnpAppNavHost
 import com.anpfuel.app.ui.terms.TermsGate
+import com.anpfuel.app.ui.theme.AbastevoStatusBarBand
 import com.anpfuel.app.ui.theme.AnpFuelTheme
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.domain.repository.OutboxBudgets
@@ -80,9 +83,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
-            val systemDarkTheme = isSystemInDarkTheme()
-            var darkThemeOverride by rememberSaveable { mutableStateOf<Boolean?>(null) }
-            val darkTheme = darkThemeOverride ?: systemDarkTheme
+            // Light is the default theme; the Perfil toggle switches it for the session.
+            var darkTheme by rememberSaveable { mutableStateOf(false) }
             val navController = rememberNavController()
 
             AnpFuelTheme(
@@ -98,16 +100,18 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(
                     LocalBottomSafePadding provides bottomSafePadding,
                 ) {
-                    // B-BR-TA01: nothing of the app is composed before the
-                    // current terms were accepted on this device.
-                    TermsGate(onDecline = { finish() }) {
-                        AnpAppNavHost(
-                            navController = navController,
-                            darkTheme = darkTheme,
-                            onToggleTheme = {
-                                darkThemeOverride = !(darkThemeOverride ?: systemDarkTheme)
-                            },
-                        )
+                    Box(Modifier.fillMaxSize()) {
+                        // B-BR-TA01: nothing of the app is composed before the
+                        // current terms were accepted on this device.
+                        TermsGate(onDecline = { finish() }) {
+                            AnpAppNavHost(
+                                navController = navController,
+                                darkTheme = darkTheme,
+                                onToggleTheme = { darkTheme = !darkTheme },
+                            )
+                        }
+                        // Solid chrome behind the status bar on every screen.
+                        AbastevoStatusBarBand()
                     }
                 }
             }

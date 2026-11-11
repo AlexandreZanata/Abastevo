@@ -1,5 +1,26 @@
 package com.anpfuel.app.ui.forum
 
+import com.anpfuel.app.ui.components.skeletonShimmer
+import com.anpfuel.app.ui.components.SkeletonLine
+import com.anpfuel.app.ui.components.EmptyState
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.Tab
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,10 +31,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -27,8 +46,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
@@ -48,7 +65,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
-import com.anpfuel.app.ui.components.SkeletonCard
 import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.designsystem.FilterChip
 import com.anpfuel.app.ui.designsystem.OutlinedButton
@@ -114,33 +130,55 @@ internal fun ForumFeedContent(
             },
         )
     }
+    val share = rememberForumShare()
+    val categoryNames = state.categories.associate { it.rawCode to it.name }
     AnpScaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
-            AnpTopAppBar(
-                title = { Text(stringResource(R.string.forum_screen_title)) },
-                onNavigateUp = onBack,
-                actions = {
-                    IconButton(
-                        onClick = onRefresh,
-                        enabled = !state.loading && !state.refreshing,
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.forum_retry),
-                        )
-                    }
-                },
-            )
+            Column {
+                AnpTopAppBar(
+                    title = { Text(stringResource(R.string.forum_screen_title)) },
+                    onNavigateUp = onBack,
+                    actions = {
+                        IconButton(onClick = { showFilterDialog = true }) {
+                            BadgedBox(
+                                badge = {
+                                    if (state.hasActiveFilters) {
+                                        Badge(containerColor = MaterialTheme.colorScheme.secondary)
+                                    }
+                                },
+                            ) {
+                                Icon(Icons.Default.Tune, contentDescription = stringResource(R.string.forum_filters))
+                            }
+                        }
+                        IconButton(
+                            onClick = onRefresh,
+                            enabled = !state.loading && !state.refreshing,
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = stringResource(R.string.forum_retry),
+                            )
+                        }
+                    },
+                )
+                ForumCategoryTabs(
+                    state = state,
+                    onSelectCategory = onSelectCategory,
+                )
+            }
         },
         floatingActionButton = {
+            // Round compose button, like the post button of social feeds.
             FloatingActionButton(
                 onClick = onNewTopic,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                shape = CircleShape,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = Icons.Default.Edit,
                     contentDescription = stringResource(R.string.forum_new_topic),
                 )
             }
@@ -150,128 +188,105 @@ internal fun ForumFeedContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(16.dp, 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 96.dp),
         ) {
-            item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    item {
+            if (state.hasActiveFilters) {
+                item {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
                         FilterChip(
-                            selected = state.selectedCategory == null,
-                            onClick = { onSelectCategory(null) },
-                            label = { Text(stringResource(R.string.forum_category_all)) },
+                            selected = true,
+                            onClick = { showFilterDialog = true },
+                            label = { Text(stringResource(R.string.forum_filters)) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
                         )
-                    }
-                    items(state.categories, key = { it.rawCode }) { categoryItem ->
-                        FilterChip(
-                            selected = state.selectedCategory == categoryItem.code,
-                            onClick = { onSelectCategory(categoryItem.code) },
-                            label = { Text(categoryItem.name) },
-                        )
-                    }
-                }
-            }
-
-            item {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    FilterChip(
-                        selected = state.hasActiveFilters,
-                        onClick = { showFilterDialog = true },
-                        label = { Text(stringResource(R.string.forum_filters)) },
-                    )
-                    if (state.hasActiveFilters) {
                         TextButton(onClick = onClearFilters) {
                             Text(stringResource(R.string.forum_filter_clear))
                         }
                     }
+                    ForumDivider()
                 }
             }
 
             if (state.isOffline) {
                 item {
-                    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = AnpContainerDefaults.containerShape(),
-                        colors = CardDefaults.cardColors(containerColor = containerColor),
-                        border = AnpContainerDefaults.borderStroke(containerColor),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.forum_offline_notice),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(12.dp),
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.forum_offline_notice),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    )
+                    ForumDivider()
                 }
             }
 
             when {
                 state.loading && state.items.isEmpty() -> {
-                    item {
-                        SkeletonGroup(modifier = Modifier.fillMaxWidth()) {
-                            repeat(3) { SkeletonCard(height = 140.dp) }
-                        }
-                    }
+                    item { ForumFeedSkeleton() }
                 }
                 state.error != null && state.items.isEmpty() -> {
                     item {
-                        val title = when (state.error) {
-                            ForumUiError.DISABLED -> stringResource(R.string.forum_unavailable_title)
-                            ForumUiError.OFFLINE -> stringResource(R.string.forum_unavailable_title)
-                            ForumUiError.GENERIC -> stringResource(R.string.forum_unavailable_title)
-                        }
-                        val hint = when (state.error) {
-                            ForumUiError.DISABLED -> stringResource(R.string.forum_unavailable_hint)
-                            ForumUiError.OFFLINE -> stringResource(R.string.forum_unavailable_hint)
-                            ForumUiError.GENERIC -> stringResource(R.string.forum_unavailable_hint)
-                        }
-                        ForumMessageCard(
-                            title = title,
-                            description = hint,
+                        EmptyState(
+                            message = stringResource(R.string.forum_unavailable_title),
+                            hint = stringResource(R.string.forum_unavailable_hint),
+                            icon = Icons.Outlined.CloudOff,
                             actionLabel = stringResource(R.string.forum_retry),
                             onAction = onRefresh,
+                            modifier = Modifier.padding(16.dp),
                         )
                     }
                 }
                 !state.loading && state.items.isEmpty() -> {
                     item {
-                        ForumMessageCard(
-                            title = stringResource(R.string.forum_feed_empty_title),
-                            description = stringResource(
+                        EmptyState(
+                            message = stringResource(R.string.forum_feed_empty_title),
+                            hint = stringResource(
                                 if (state.hasActiveFilters) {
                                     R.string.forum_feed_empty_filtered_hint
                                 } else {
                                     R.string.forum_feed_empty_hint
                                 },
                             ),
+                            icon = Icons.Outlined.Forum,
+                            actionLabel = stringResource(R.string.forum_new_topic),
+                            onAction = onNewTopic,
+                            modifier = Modifier.padding(16.dp),
                         )
                     }
                 }
             }
 
             items(state.items, key = { it.id }) { post ->
-                ForumPostCard(post = post, onClick = { onOpenPost(post.id) })
+                ForumPostCard(
+                    post = post,
+                    categoryName = categoryNames[post.rawCategory],
+                    onClick = { onOpenPost(post.id) },
+                    onShare = { share(post.title, post.excerpt) },
+                )
+                ForumDivider()
             }
 
             if (state.nextCursor != null && !state.loading) {
                 item {
-                    OutlinedButton(
-                        onClick = onLoadMore,
-                        enabled = !state.loadingMore,
-                        modifier = Modifier.fillMaxWidth(),
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
                         if (state.loadingMore) {
-                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
                         } else {
-                            Text(stringResource(R.string.forum_load_more))
+                            OutlinedButton(onClick = onLoadMore) {
+                                Text(stringResource(R.string.forum_load_more))
+                            }
                         }
                     }
                 }
@@ -280,68 +295,166 @@ internal fun ForumFeedContent(
     }
 }
 
+/** "Todos" plus each category as underline tabs under the top bar. */
+@Composable
+private fun ForumCategoryTabs(
+    state: ForumFeedUiState,
+    onSelectCategory: (ForumCategory?) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val tabs = listOf<Pair<ForumCategory?, String>>(null to stringResource(R.string.forum_category_all)) +
+        state.categories.map { it.code to it.name }
+    val selectedIndex = tabs.indexOfFirst { it.first == state.selectedCategory }.coerceAtLeast(0)
+    Column {
+        ScrollableTabRow(
+            selectedTabIndex = selectedIndex,
+            edgePadding = 8.dp,
+            containerColor = scheme.surface,
+            contentColor = scheme.onSurface,
+            indicator = { positions ->
+                if (selectedIndex < positions.size) {
+                    TabRowDefaults.PrimaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(positions[selectedIndex]),
+                        width = 48.dp,
+                        height = 4.dp,
+                        color = scheme.onSurface,
+                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp),
+                    )
+                }
+            },
+            divider = {},
+        ) {
+            tabs.forEachIndexed { index, (category, name) ->
+                val selected = index == selectedIndex
+                Tab(
+                    selected = selected,
+                    onClick = { onSelectCategory(category) },
+                    selectedContentColor = scheme.onSurface,
+                    unselectedContentColor = scheme.onSurfaceVariant,
+                    text = {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1,
+                        )
+                    },
+                )
+            }
+        }
+        ForumDivider()
+    }
+}
+
+@Composable
+internal fun ForumDivider(modifier: Modifier = Modifier) {
+    HorizontalDivider(modifier = modifier, color = MaterialTheme.colorScheme.outlineVariant)
+}
+
+@Composable
+private fun ForumFeedSkeleton() {
+    SkeletonGroup(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        repeat(4) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(44.dp).then(skeletonShimmer(cornerRadius = 22.dp)))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    SkeletonLine(width = 160.dp, height = 14.dp)
+                    SkeletonLine(height = 18.dp)
+                    SkeletonLine(height = 14.dp)
+                    SkeletonLine(width = 200.dp, height = 14.dp)
+                }
+            }
+        }
+    }
+}
+
+/** One post of the feed: avatar, author line, kind and category, title, excerpt and actions. */
 @Composable
 internal fun ForumPostCard(
     post: ForumPostSummary,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    categoryName: String? = null,
+    onShare: () -> Unit = {},
 ) {
-    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = AnpContainerDefaults.containerShape(),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = AnpContainerDefaults.borderStroke(containerColor),
+    val scheme = MaterialTheme.colorScheme
+    val author = forumPostAuthor(post.kind, post.publicAlias)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        ForumAvatar(author)
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SuggestionChip(
-                    onClick = {},
-                    label = { Text(stringResource(forumKindLabel(post.kind))) },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ),
-                    border = null,
-                )
-                Text(
-                    text = formatForumDate(post.firstPublishedAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
+            ForumAuthorLine(author = author, timeIso = post.firstPublishedAt, modifier = Modifier.padding(end = 8.dp))
+            Text(
+                text = listOfNotNull(stringResource(forumKindLabel(post.kind)), categoryName).joinToString(" · "),
+                style = MaterialTheme.typography.labelMedium,
+                color = scheme.onSurfaceVariant,
+            )
             Text(
                 text = post.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
+                color = scheme.onSurface,
+                modifier = Modifier.padding(top = 2.dp, end = 8.dp),
             )
-
             if (post.excerpt.isNotBlank()) {
                 Text(
                     text = post.excerpt,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 3,
+                    color = scheme.onSurface,
+                    maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(end = 8.dp),
                 )
             }
-
-            val source = post.source
-            if (source != null) {
-                Text(
-                    text = source.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
+            post.source?.let { source ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        Icons.Default.Link,
+                        contentDescription = null,
+                        tint = scheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = source.name,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (post.commentsEnabled) {
+                    ForumIconAction(
+                        icon = Icons.Outlined.ChatBubbleOutline,
+                        contentDescription = stringResource(R.string.forum_action_comment),
+                        onClick = onClick,
+                    )
+                } else {
+                    Spacer(Modifier.size(40.dp))
+                }
+                ForumIconAction(
+                    icon = Icons.Outlined.Share,
+                    contentDescription = stringResource(R.string.forum_action_share),
+                    onClick = onShare,
                 )
             }
         }

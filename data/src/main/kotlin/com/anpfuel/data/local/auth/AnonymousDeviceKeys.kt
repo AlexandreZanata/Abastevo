@@ -64,6 +64,15 @@ class AndroidAnonymousDeviceKeys @Inject constructor(
 
     override fun signDigest(digestSha512: ByteArray): ByteArray? {
         if (digestSha512.size != 64) return null
+        return signRawDigest(digestSha512)
+    }
+
+    override fun signSha256Digest(digestSha256: ByteArray): ByteArray? {
+        if (digestSha256.size != 32) return null
+        return signRawDigest(digestSha256)
+    }
+
+    private fun signRawDigest(digest: ByteArray): ByteArray? {
         return try {
             val store = KeyStore.getInstance(ANDROID_KEYSTORE)
             store.load(null)
@@ -71,7 +80,7 @@ class AndroidAnonymousDeviceKeys @Inject constructor(
                 ?: return null
             val signature = Signature.getInstance("NONEwithECDSA")
             signature.initSign(entry.privateKey)
-            signature.update(digestSha512)
+            signature.update(digest)
             val der = signature.sign()
             AnonymousProofCrypto.derToRaw(der)
         } catch (_: Exception) {

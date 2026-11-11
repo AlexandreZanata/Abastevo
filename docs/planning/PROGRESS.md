@@ -1,4 +1,54 @@
 # Current execution state
+- Forum social conversation (B-BR-FOR-17/18, BUC-FOR-10/11), 2026-11-11:
+  LOCAL_DONE / INTEGRATION_PENDING on `dev` (owner request: X-like forum,
+  likes/dislikes, live updates). Backend: migration 000164 (reaction tables,
+  trigger-kept counters including account erasure, ranked partial indexes,
+  pg_notify of committed public changes), signed reaction and owner-read
+  routes, sorted replies with best-answer previews, SSE stream fed by one
+  LISTEN connection per process (bounded hub, resync, shutdown), privacy
+  export, OpenAPI. Android: X-style post page, optimistic reactions, live
+  stream with "new replies" pill; forum command signing and account key
+  binding from `forum-category-crash` integrated. Fixes found on the way:
+  wrapped post detail parsing, status recorders without Unwrap (no SSE
+  flush), development loopback canonical host for local signed writes,
+  mapProbe network config, session pickup after sign-in. Verified: forum,
+  migrate, account and identity integration suites with -race on PostGIS;
+  backend unit suite; domain 942, application 532, data 744, app 750; on the
+  owner's phone against a local API (separate mapProbe install): ranked
+  replies, thread lines, live counts, signed like/dislike switch, signed
+  comment, moderator approval arriving behind the pill, sort change. Not
+  verified: staging (deploys only after merge to main); comments still need
+  moderator approval by rule; instrumented tests not run on the phone.
+
+- Android black-chrome identity, 2026-11-11: LOCAL_DONE /
+  INTEGRATION_PENDING on `dev` from `d8bdc642` (owner design request;
+  spec `docs/mobile/DESIGN_SYSTEM.md`). Solid black header, top bars,
+  status band and bottom bar; white containers on off-white screens; light
+  theme by default; animated map action panel; grouped settings cards and
+  a Perfil theme switch. 741 app unit tests and `git diff --check` passed;
+  debug build checked on the owner's phone in light and dark. Next:
+  protected PR to main.
+
+- Android forum writes and account key binding, 2026-11-09: LOCAL_DONE on
+  branch `forum-category-crash` (from dev `b5edfee8`); integrated into `dev`
+  on 2026-11-11 with the forum social work. Opening
+  the forum crashed on a duplicate `UNKNOWN` LazyRow key because the app
+  category enum predated the contract taxonomy; the enum now follows
+  `ForumCategory` in the contract and the feed keeps one chip per known code.
+  Forum session commands now carry device-key request proofs over the exact
+  body. Signed account writes also need the P13-T04C account binding, which
+  the app never performed (staging had zero bindings): `PhotoProofTransport`
+  now binds the account device key after registration, signing SHA-256 of
+  the backend `anpfuel-bind.v1` statement, once per account, key and process,
+  refusing on owner change and never sending an unbound write. Verified:
+  domain 908, application 525 and targeted data suites (JVM P-256
+  SHA256withECDSA verification of the bind proof), forum app tests,
+  `:app:assembleDebug`; on the phone against staging the ceremony returned
+  bind 200 and `POST /v1/forum/topics` 201 (topic PENDING_REVIEW). Staging
+  forum was enabled live (`ANPFUEL_FORUM_ENABLED=true`, baseline commit
+  `6f6cbc5e` on local `forum-enable-staging`). Open: topic form shows raw
+  category codes; the landscape side navigation bar overlaps the forum FAB.
+
 - Landing 404, 2026-11-10: LOCAL_DONE / INTEGRATION_PENDING on `dev`
   from `cbfdec16` (P25 static landing, B-BR-L04 and BUC-L02).
   Shares the home header, footer, typography and action styles, with

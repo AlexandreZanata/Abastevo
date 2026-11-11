@@ -186,6 +186,36 @@ type CommentItemDTO struct {
 	BodyText    string  `json:"body_text"`
 	CreatedAt   string  `json:"created_at"`
 	ReplyCount  int     `json:"reply_count"`
+	// Public aggregates only; who reacted is never exposed (B-BR-FOR-17).
+	LikeCount    int64 `json:"like_count"`
+	DislikeCount int64 `json:"dislike_count"`
+	// TopReply is the best answer preview, sent with ranked pages (B-BR-FOR-18).
+	TopReply *CommentItemDTO `json:"top_reply,omitempty"`
+}
+
+// mapCommentItemDTO projects a public comment; the preview is never nested twice.
+func mapCommentItemDTO(c domain.Comment) CommentItemDTO {
+	item := CommentItemDTO{
+		ID:           c.ID,
+		PostID:       c.PostID,
+		ParentID:     c.ParentID,
+		Depth:        c.Depth,
+		Sequence:     c.Sequence,
+		Revision:     c.Revision,
+		PublicAlias:  c.PublicAlias,
+		BodyText:     c.BodyText,
+		CreatedAt:    c.CreatedAt.UTC().Format(time.RFC3339),
+		ReplyCount:   c.ReplyCount,
+		LikeCount:    c.LikeCount,
+		DislikeCount: c.DislikeCount,
+	}
+	if c.TopReply != nil {
+		preview := *c.TopReply
+		preview.TopReply = nil
+		previewItem := mapCommentItemDTO(preview)
+		item.TopReply = &previewItem
+	}
+	return item
 }
 
 // CommentsResponseDTO is the envelope for top-level post comments.
@@ -364,6 +394,7 @@ type DiscussionHandler struct {
 	Comments    application.CommentStore
 	Reports     application.ReportStore
 	Topics      application.TopicStore
+	Reactions   application.ReactionStore
 	Sessions    func(ctx context.Context, familyID, accessToken string) (accountID string, err error)
 	SignedOwner func(r *http.Request, accountID string) (contributorID string, keyID string, err error)
 	Guard       func(ctx context.Context, tx pgx.Tx, accountID, familyID, accessToken, contributorID, keyID string) error
@@ -404,6 +435,7 @@ func (h *DiscussionHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/v1/forum/topics", h.CreateTopic)
 	r.Post("/v1/forum/topics/{topic_id}/edit", h.EditTopic)
 	r.Post("/v1/forum/topics/{topic_id}/remove", h.RemoveTopic)
+	h.RegisterReactionRoutes(r)
 }
 
 func readJSONBody(r *http.Request, v any) error {
@@ -578,7 +610,8 @@ func (h *DiscussionHandler) writeError(w http.ResponseWriter, r *http.Request, e
 		errors.Is(err, domain.ErrInvalidRegion),
 		errors.Is(err, domain.ErrInvalidFuelProduct),
 		errors.Is(err, domain.ErrInvalidStationID),
-		errors.Is(err, domain.ErrTopicKindSpoof):
+		errors.Is(err, domain.ErrTopicKindSpoof),
+		errors.Is(err, domain.ErrInvalidReaction):
 		status = http.StatusBadRequest
 		code = "forum.bad-request"
 		msg = err.Error()
@@ -1104,20 +1137,29 @@ func (h *DiscussionHandler) ListComments(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	var cursorSeq *int64
-	if rawCursor := strings.TrimSpace(r.URL.Query().Get("cursor")); rawCursor != "" {
-		if n, err := strconv.ParseInt(rawCursor, 10, 64); err == nil && n > 0 {
-			cursorSeq = &n
-		} else {
-			h.writeBadRequest(w, r, "invalid cursor")
-			return
-		}
+	// B-BR-FOR-18: oldest first stays the default for older clients; a sort
+	// parameter opts into ranked pages that carry each reply's best answer.
+	rawSort := strings.TrimSpace(r.URL.Query().Get("sort"))
+	sort, err := domain.ParseReplySort(rawSort)
+	if err != nil {
+		h.writeBadRequest(w, r, "sort must be oldest, recent, liked or relevant")
+		return
 	}
 
 	query := application.ListPostCommentsQuery{
 		PostID:         postID,
 		Limit:          limit + 1,
-		CursorSequence: cursorSeq,
+		Sort:           sort,
+		WithTopReplies: rawSort != "",
+	}
+	if rawCursor := strings.TrimSpace(r.URL.Query().Get("cursor")); rawCursor != "" {
+		cursor, err := domain.ParseReplyCursor(sort, rawCursor)
+		if err != nil {
+			h.writeBadRequest(w, r, "invalid cursor")
+			return
+		}
+		query.CursorSequence = &cursor.Sequence
+		query.CursorScore = cursor.Score
 	}
 
 	comments, err := h.Comments.ListCommentsByPost(r.Context(), query)
@@ -1132,22 +1174,11 @@ func (h *DiscussionHandler) ListComments(w http.ResponseWriter, r *http.Request)
 		if i == limit {
 			break
 		}
-		items = append(items, CommentItemDTO{
-			ID:          c.ID,
-			PostID:      c.PostID,
-			ParentID:    c.ParentID,
-			Depth:       c.Depth,
-			Sequence:    c.Sequence,
-			Revision:    c.Revision,
-			PublicAlias: c.PublicAlias,
-			BodyText:    c.BodyText,
-			CreatedAt:   c.CreatedAt.UTC().Format(time.RFC3339),
-			ReplyCount:  c.ReplyCount,
-		})
+		items = append(items, mapCommentItemDTO(c))
 	}
 	if len(items) > 0 && len(comments) > limit {
-		lastSeq := strconv.FormatInt(items[len(items)-1].Sequence, 10)
-		nextCursor = &lastSeq
+		next := domain.FormatReplyCursor(sort, comments[limit-1])
+		nextCursor = &next
 	}
 
 	resp := CommentsResponseDTO{
@@ -1210,18 +1241,9 @@ func (h *DiscussionHandler) ListReplies(w http.ResponseWriter, r *http.Request) 
 		if i == limit {
 			break
 		}
-		items = append(items, CommentItemDTO{
-			ID:          c.ID,
-			PostID:      c.PostID,
-			ParentID:    c.ParentID,
-			Depth:       c.Depth,
-			Sequence:    c.Sequence,
-			Revision:    c.Revision,
-			PublicAlias: c.PublicAlias,
-			BodyText:    c.BodyText,
-			CreatedAt:   c.CreatedAt.UTC().Format(time.RFC3339),
-			ReplyCount:  0,
-		})
+		reply := mapCommentItemDTO(c)
+		reply.ReplyCount = 0
+		items = append(items, reply)
 	}
 	if len(items) > 0 && len(replies) > limit {
 		lastSeq := strconv.FormatInt(items[len(items)-1].Sequence, 10)

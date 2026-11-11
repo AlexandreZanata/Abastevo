@@ -3,13 +3,16 @@ package com.anpfuel.app.ui.forum
 import androidx.lifecycle.SavedStateHandle
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.usecase.forum.EditForumCommentUseCase
-import com.anpfuel.application.usecase.forum.GetForumCommentsUseCase
 import com.anpfuel.application.usecase.forum.GetForumPostDetailUseCase
 import com.anpfuel.application.usecase.forum.GetForumRepliesUseCase
 import com.anpfuel.application.usecase.forum.GetOwnForumCommentIdsUseCase
+import com.anpfuel.application.usecase.forum.GetOwnForumReactionsUseCase
 import com.anpfuel.application.usecase.forum.GetOwnerTopicUseCase
+import com.anpfuel.application.usecase.forum.GetRankedForumCommentsUseCase
+import com.anpfuel.application.usecase.forum.ObserveForumConversationUseCase
 import com.anpfuel.application.usecase.forum.RemoveForumCommentUseCase
 import com.anpfuel.application.usecase.forum.ReportForumTargetUseCase
+import com.anpfuel.application.usecase.forum.SetForumReactionUseCase
 import com.anpfuel.application.usecase.forum.SubmitForumCommentUseCase
 import com.anpfuel.application.usecase.forum.ValidateForumSafeLinkUseCase
 import com.anpfuel.domain.forum.ForumCategory
@@ -17,9 +20,16 @@ import com.anpfuel.domain.forum.ForumComment
 import com.anpfuel.domain.forum.ForumCommentReceipt
 import com.anpfuel.domain.forum.ForumCommentsPage
 import com.anpfuel.domain.forum.ForumException
+import com.anpfuel.domain.forum.ForumLiveEvent
+import com.anpfuel.domain.forum.ForumOwnReactions
 import com.anpfuel.domain.forum.ForumPostDetail
 import com.anpfuel.domain.forum.ForumPostKind
+import com.anpfuel.domain.forum.ForumReaction
+import com.anpfuel.domain.forum.ForumReactionCounts
+import com.anpfuel.domain.forum.ForumReactionResult
+import com.anpfuel.domain.forum.ForumReactionTarget
 import com.anpfuel.domain.forum.ForumRepliesPage
+import com.anpfuel.domain.forum.ForumReplySort
 import com.anpfuel.domain.forum.ForumReportReason
 import com.anpfuel.domain.forum.ForumReportReceipt
 import com.anpfuel.domain.forum.ForumSourceAttribution
@@ -27,6 +37,7 @@ import com.anpfuel.domain.forum.ForumTopicReceipt
 import com.anpfuel.domain.portable.PortableAuth
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -50,7 +61,10 @@ class ForumDetailViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val getForumPostDetail = mockk<GetForumPostDetailUseCase>()
     private val validateForumSafeLink = mockk<ValidateForumSafeLinkUseCase>()
-    private val getForumComments = mockk<GetForumCommentsUseCase>()
+    private val getRankedComments = mockk<GetRankedForumCommentsUseCase>()
+    private val setForumReaction = mockk<SetForumReactionUseCase>()
+    private val getOwnForumReactions = mockk<GetOwnForumReactionsUseCase>()
+    private val observeConversation = mockk<ObserveForumConversationUseCase>()
     private val getForumReplies = mockk<GetForumRepliesUseCase>()
     private val submitForumComment = mockk<SubmitForumCommentUseCase>()
     private val editForumComment = mockk<EditForumCommentUseCase>()
@@ -118,7 +132,6 @@ class ForumDetailViewModelTest {
         return ForumDetailViewModel(
             getForumPostDetail = getForumPostDetail,
             validateForumSafeLink = validateForumSafeLink,
-            getForumComments = getForumComments,
             getForumReplies = getForumReplies,
             submitForumComment = submitForumComment,
             editForumComment = editForumComment,
@@ -126,6 +139,10 @@ class ForumDetailViewModelTest {
             reportForumTarget = reportForumTarget,
             getOwnerTopic = getOwnerTopic,
             getOwnForumCommentIds = getOwnForumCommentIds,
+            getRankedComments = getRankedComments,
+            setForumReaction = setForumReaction,
+            getOwnForumReactions = getOwnForumReactions,
+            observeConversation = observeConversation,
             sessionStore = sessionStore,
             savedStateHandle = savedState,
         )
@@ -136,7 +153,8 @@ class ForumDetailViewModelTest {
         Dispatchers.setMain(dispatcher)
         coEvery { getForumPostDetail(postId) } returns sampleDetail
         coEvery { validateForumSafeLink(any()) } returns true
-        coEvery { getForumComments(postId) } returns ForumCommentsPage(items = listOf(sampleComment1), nextCursor = null)
+        coEvery { getRankedComments(postId, any(), any(), any()) } returns ForumCommentsPage(items = listOf(sampleComment1), nextCursor = null)
+        coEvery { getOwnForumReactions(any()) } returns ForumOwnReactions()
         coEvery { getForumReplies(sampleComment1.id) } returns ForumRepliesPage(items = listOf(sampleReply1), nextCursor = null)
         every { sessionStore.load() } returns null
         coEvery { getOwnerTopic(any()) } throws ForumException.NotFound("forum.not-found")
@@ -247,20 +265,18 @@ class ForumDetailViewModelTest {
     // --- FOR-19 Social Discussion Tests ---
 
     @Test
-    fun `social toggle loads comments when enabled`() = runTest(dispatcher) {
+    fun `the post loads first and then its replies ranked as relevant`() = runTest(dispatcher) {
         val vm = createViewModel()
         advanceUntilIdle()
 
-        assertFalse(vm.state.value.isSocialEnabled)
-        assertTrue(vm.state.value.comments.isEmpty())
-
-        vm.setSocialEnabled(true)
-        advanceUntilIdle()
-
+        // B-BR-FOR-18: once the post is on screen the conversation opens.
         assertTrue(vm.state.value.isSocialEnabled)
-        assertEquals(1, vm.state.value.comments.size)
-        assertEquals(sampleComment1, vm.state.value.comments.first())
-        coVerify(exactly = 1) { getForumComments(postId) }
+        assertEquals(listOf(sampleComment1), vm.state.value.comments)
+        assertEquals(ForumReplySort.RELEVANT, vm.state.value.replySort)
+        coVerifyOrder {
+            getForumPostDetail(postId)
+            getRankedComments(postId, ForumReplySort.RELEVANT, any(), any())
+        }
     }
 
     @Test
@@ -576,11 +592,8 @@ class ForumDetailViewModelTest {
 
         val vm = createViewModel(session = sampleSession)
         advanceUntilIdle()
+        // The conversation opens with the post (B-BR-FOR-18), so both claims load together.
         assertTrue(vm.state.value.isTopicOwner)
-        assertTrue(vm.state.value.ownCommentIds.isEmpty())
-
-        vm.setSocialEnabled(true)
-        advanceUntilIdle()
         assertEquals(setOf(sampleComment1.id), vm.state.value.ownCommentIds)
 
         // Switching account drops every ownership claim of the previous one.
@@ -643,5 +656,109 @@ class ForumDetailViewModelTest {
 
         assertTrue(vm.state.value.requireAuthPrompt)
         assertFalse(vm.state.value.isSubmittingReport)
+    }
+
+    // --- B-BR-FOR-17 reactions and B-BR-FOR-18 live conversation ---
+
+    @Test
+    fun `liking a reply shows at once and keeps the server counts`() = runTest(dispatcher) {
+        coEvery { setForumReaction(ForumReactionTarget.COMMENT, sampleComment1.id, ForumReaction.LIKE, any()) } returns
+            ForumReactionResult(sampleComment1.id, ForumReaction.LIKE, ForumReactionCounts(likes = 5, dislikes = 0))
+        val vm = createViewModel(session = sampleSession)
+        advanceUntilIdle()
+
+        vm.reactToComment(sampleComment1, ForumReaction.LIKE)
+        assertEquals(ForumReaction.LIKE, vm.state.value.commentReactions[sampleComment1.id])
+        assertEquals(1L, vm.state.value.comments.first().reactions.likes)
+
+        advanceUntilIdle()
+        assertEquals(5L, vm.state.value.comments.first().reactions.likes)
+    }
+
+    @Test
+    fun `a failed reaction puts the count and highlight back`() = runTest(dispatcher) {
+        coEvery { setForumReaction(any(), any(), any(), any()) } throws ForumException.Offline("forum.offline")
+        val vm = createViewModel(session = sampleSession)
+        advanceUntilIdle()
+
+        vm.reactToPost(ForumReaction.DISLIKE)
+        assertEquals(1L, vm.state.value.post!!.reactions.dislikes)
+        advanceUntilIdle()
+
+        assertEquals(0L, vm.state.value.post!!.reactions.dislikes)
+        assertEquals(ForumReaction.NONE, vm.state.value.postReaction)
+        assertEquals(ForumActionError.Offline, vm.state.value.actionError)
+    }
+
+    @Test
+    fun `reacting without an account asks to sign in and sends nothing`() = runTest(dispatcher) {
+        val vm = createViewModel(session = null)
+        advanceUntilIdle()
+
+        vm.reactToComment(sampleComment1, ForumReaction.LIKE)
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.requireAuthPrompt)
+        assertEquals(0L, vm.state.value.comments.first().reactions.likes)
+        coVerify(exactly = 0) { setForumReaction(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `live replies wait behind new replies and counts update in place`() = runTest(dispatcher) {
+        val vm = createViewModel()
+        advanceUntilIdle()
+        val fresh = sampleComment1.copy(id = "44444444-4444-4444-4444-444444444444", sequence = 9L, bodyText = "Nova")
+
+        vm.onLiveEvent(ForumLiveEvent.CommentPublished(fresh))
+        assertEquals(listOf(sampleComment1), vm.state.value.comments)
+        assertEquals(listOf(fresh), vm.state.value.pendingLiveComments)
+
+        vm.onLiveEvent(ForumLiveEvent.CommentPublished(sampleReply1))
+        assertEquals(3, vm.state.value.comments.first().replyCount)
+        assertEquals(sampleReply1.id, vm.state.value.comments.first().topReply?.id)
+
+        vm.onLiveEvent(ForumLiveEvent.CommentReactions(sampleReply1.id, sampleComment1.id, ForumReactionCounts(likes = 4)))
+        assertEquals(4L, vm.state.value.comments.first().topReply!!.reactions.likes)
+
+        vm.showNewReplies()
+        assertEquals(listOf(fresh.id, sampleComment1.id), vm.state.value.comments.map { it.id })
+        assertTrue(vm.state.value.pendingLiveComments.isEmpty())
+
+        vm.onLiveEvent(ForumLiveEvent.CommentGone(sampleReply1.id, sampleComment1.id))
+        val parent = vm.state.value.comments.first { it.id == sampleComment1.id }
+        assertEquals(2, parent.replyCount)
+        assertNull(parent.topReply)
+
+        vm.onLiveEvent(ForumLiveEvent.PostReactions(ForumReactionCounts(likes = 12, dislikes = 1)))
+        assertEquals(ForumReactionCounts(12, 1), vm.state.value.post!!.reactions)
+    }
+
+    @Test
+    fun `changing the order reloads the replies with it`() = runTest(dispatcher) {
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        vm.setReplySort(ForumReplySort.RECENT)
+        advanceUntilIdle()
+
+        assertEquals(ForumReplySort.RECENT, vm.state.value.replySort)
+        coVerify(exactly = 1) { getRankedComments(postId, ForumReplySort.RECENT, any(), any()) }
+    }
+
+    @Test
+    fun `coming back signed in enables participation and loads own votes`() = runTest(dispatcher) {
+        coEvery { getOwnForumReactions(postId) } returns
+            ForumOwnReactions(post = ForumReaction.LIKE, comments = mapOf(sampleComment1.id to ForumReaction.DISLIKE))
+        val vm = createViewModel(session = null)
+        advanceUntilIdle()
+        assertFalse(vm.state.value.isAuthenticated)
+
+        every { sessionStore.load() } returns sampleSession
+        vm.checkSessionConsistency()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.isAuthenticated)
+        assertEquals(ForumReaction.LIKE, vm.state.value.postReaction)
+        assertEquals(ForumReaction.DISLIKE, vm.state.value.commentReactions[sampleComment1.id])
     }
 }

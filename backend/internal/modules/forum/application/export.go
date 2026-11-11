@@ -57,6 +57,8 @@ type ForumAccountFootprint struct {
 	TotalTopics   int                  `json:"total_topics"`
 	Comments      []ForumCommentExport `json:"comments"`
 	TotalComments int                  `json:"total_comments"`
+	// Reactions held by the account (B-BR-FOR-17); omitted when there are none.
+	Reactions []OwnReactionRecord `json:"reactions,omitempty"`
 }
 
 // ForumExportEnvelope is the canonical export archive envelope.
@@ -69,6 +71,10 @@ type ForumExportEnvelope struct {
 
 type topicExporter interface {
 	ListTopicsByAccount(ctx context.Context, accountID string) ([]domain.Post, error)
+}
+
+type reactionExporter interface {
+	ListReactionsByAccount(ctx context.Context, accountID string) ([]OwnReactionRecord, error)
 }
 
 // ExportAccount assembles one author's forum footprint (LGPD right to access).
@@ -166,6 +172,14 @@ func ExportAccount(ctx context.Context, store CommentStore, accountID string, no
 		exportedTopics = []ForumTopicExport{}
 	}
 
+	var reactions []OwnReactionRecord
+	if re, ok := store.(reactionExporter); ok {
+		reactions, err = re.ListReactionsByAccount(ctx, accountID)
+		if err != nil {
+			return ForumExportEnvelope{}, err
+		}
+	}
+
 	return ForumExportEnvelope{
 		Format:      ForumExportFormat,
 		AccountID:   accountID,
@@ -176,6 +190,7 @@ func ExportAccount(ctx context.Context, store CommentStore, accountID string, no
 			TotalTopics:   len(exportedTopics),
 			Comments:      exported,
 			TotalComments: len(exported),
+			Reactions:     reactions,
 		},
 	}, nil
 }

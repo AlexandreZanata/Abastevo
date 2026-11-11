@@ -279,8 +279,6 @@
     <string name="action_next">Siguiente</string>
     <string name="action_back">Atrás</string>
     <string name="action_cancel">Cancelar</string>
-    <string name="action_switch_dark_theme">Cambiar al tema oscuro</string>
-    <string name="action_switch_light_theme">Cambiar al tema claro</string>
 
     <!-- UC-002 Onboarding -->
     <string name="onboarding_title_welcome">Bienvenido</string>
@@ -1440,4 +1438,31 @@
     <string name="forum_topic_validation_body_empty">El contenido no puede estar vacío.</string>
     <string name="forum_topic_validation_body_too_long">El contenido supera los 4.000 caracteres.</string>
     <string name="forum_topic_validation_category">Selecciona una categoría.</string>
+    <string name="profile_appearance_section">Apariencia</string>
+    <string name="profile_dark_theme_title">Tema oscuro</string>
+    <string name="profile_dark_theme_on">Activado</string>
+    <string name="profile_dark_theme_off">Desactivado</string>
+    <string name="settings_section_account_privacy">Cuenta y privacidad</string>
+    <string name="settings_section_search_data">Búsqueda y datos</string>
+    <string name="settings_section_about">Acerca de la app</string>
+    <string name="week_picker_contents_title">Cada semana incluye</string>
+    <string name="forum_author_driver">Conductor</string>
+    <string name="forum_action_share">Compartir</string>
+    <string name="forum_official_account">Cuenta oficial de Abastevo</string>
+    <string name="forum_action_comment">Comentar</string>
+    <string name="forum_sort_relevant">Más relevantes</string>
+    <string name="forum_sort_recent">Más recientes</string>
+    <string name="forum_sort_liked">Más gustados</string>
+    <string name="forum_sort_label">Orden de respuestas</string>
+    <string name="forum_like">Me gusta</string>
+    <string name="forum_dislike">No me gusta</string>
+    <string name="forum_reaction_on">Marcado</string>
+    <string name="forum_reaction_off">Sin marcar</string>
+    <string name="forum_show_more_replies">Mostrar más respuestas</string>
+    <string name="forum_live">En vivo</string>
+    <plurals name="forum_new_replies">
+        <item quantity="one">%d respuesta nueva</item>
+        <item quantity="many">%d respuestas nuevas</item>
+        <item quantity="other">%d respuestas nuevas</item>
+    </plurals>
 </resources>

@@ -543,7 +543,8 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 		}
 		host = "api.example.invalid"
 	}
-	if !validHostname(host) || (cfg.Env == EnvProduction && strings.HasSuffix(strings.ToLower(host), ".invalid")) {
+	devLoopback := cfg.Env == EnvDevelopment && loopbackHostPort(host)
+	if !devLoopback && (!validHostname(host) || (cfg.Env == EnvProduction && strings.HasSuffix(strings.ToLower(host), ".invalid"))) {
 		return Config{}, fmt.Errorf("%s must be a bare hostname", keyCanonicalHost)
 	}
 	cfg.CanonicalHost = strings.ToLower(host)
@@ -794,6 +795,18 @@ func validTermsDigest(digest string) bool {
 
 // validHostname rejects controls, URL syntax and invalid DNS labels before
 // the configured authority becomes part of a cryptographic signature base.
+// loopbackHostPort accepts 127.0.0.1:<port> or localhost:<port>: the app's
+// local proof origin signs "@authority" with its port, so development can
+// verify signed writes end to end. Never valid outside development.
+func loopbackHostPort(host string) bool {
+	name, port, ok := strings.Cut(host, ":")
+	if !ok || (name != "127.0.0.1" && name != "localhost") {
+		return false
+	}
+	n, err := strconv.Atoi(port)
+	return err == nil && n >= 1 && n <= 65535 && strconv.Itoa(n) == port
+}
+
 func validHostname(host string) bool {
 	if len(host) == 0 || len(host) > 253 {
 		return false

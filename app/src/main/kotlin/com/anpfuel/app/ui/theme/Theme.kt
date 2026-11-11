@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 
 val LocalAnpDarkTheme = staticCompositionLocalOf { false }
 
-/** A bottom bar brighter than this needs dark system navigation buttons. */
+/** Chrome brighter than this needs dark system bar icons. */
 private const val LIGHT_BAR_MIN_LUMINANCE = 0.5f
 
 internal val LightColorScheme = lightColorScheme(
@@ -105,11 +105,12 @@ fun AnpFuelTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
-    val navColors = when {
-        useDynamicColor -> AbastevoNavDefaults.fromScheme(colorScheme)
-        darkTheme -> AbastevoNavDefaults.Dark
-        else -> AbastevoNavDefaults.Light
+    val chromeColors = when {
+        useDynamicColor -> AbastevoChromeDefaults.fromScheme(colorScheme)
+        darkTheme -> AbastevoChromeDefaults.Dark
+        else -> AbastevoChromeDefaults.Light
     }
+    val navColors = AbastevoNavDefaults.fromChrome(chromeColors)
     val actionColors = when {
         useDynamicColor -> AbastevoActionDefaults.fromScheme(colorScheme)
         darkTheme -> AbastevoActionDefaults.Dark
@@ -123,11 +124,13 @@ fun AnpFuelTheme(
         content = {
             CompositionLocalProvider(
                 LocalAnpDarkTheme provides darkTheme,
+                LocalAbastevoChromeColors provides chromeColors,
                 LocalAbastevoNavColors provides navColors,
                 LocalAbastevoActionColors provides actionColors,
             ) {
+                val lightChrome = chromeColors.container.luminance() > LIGHT_BAR_MIN_LUMINANCE
                 AnpSystemBarsEffect(
-                    darkTheme = darkTheme,
+                    lightStatusBar = lightChrome,
                     lightNavigationBar = navColors.container.luminance() > LIGHT_BAR_MIN_LUMINANCE,
                 )
                 content()

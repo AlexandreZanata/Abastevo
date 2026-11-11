@@ -229,6 +229,12 @@ type ListPostCommentsQuery struct {
 	PostID         string
 	Limit          int
 	CursorSequence *int64
+	// Sort orders top-level replies (B-BR-FOR-18); empty keeps oldest first.
+	Sort domain.ReplySort
+	// CursorScore is the ranking key of the cursor under liked/relevant sorts.
+	CursorScore *int64
+	// WithTopReplies loads each reply's best answer preview into TopReply.
+	WithTopReplies bool
 }
 
 // ListCommentRepliesQuery represents pagination parameters for single-level replies.
@@ -236,6 +242,45 @@ type ListCommentRepliesQuery struct {
 	ParentID       string
 	Limit          int
 	CursorSequence *int64
+}
+
+// SetReactionCommand sets one account's reaction on a post or comment.
+type SetReactionCommand struct {
+	TargetType domain.ReactionTargetType
+	TargetID   string
+	AccountID  string
+	Reaction   domain.Reaction
+	Guard      func(context.Context, pgx.Tx) error
+}
+
+// ReactionResult is the account's reaction and the target's counts after a set.
+type ReactionResult struct {
+	TargetType domain.ReactionTargetType
+	TargetID   string
+	PostID     string
+	Reaction   domain.Reaction
+	Counts     domain.ReactionCounts
+}
+
+// OwnReactions are one account's reactions in one conversation (private owner read).
+type OwnReactions struct {
+	Post     domain.Reaction
+	Comments map[string]domain.Reaction
+}
+
+// OwnReactionRecord is one reaction in a privacy export.
+type OwnReactionRecord struct {
+	TargetType domain.ReactionTargetType `json:"target_type"`
+	TargetID   string                    `json:"target_id"`
+	Reaction   string                    `json:"reaction"`
+	UpdatedAt  time.Time                 `json:"updated_at"`
+}
+
+// ReactionStore persists reactions (B-BR-FOR-17). Counts are kept by the database.
+type ReactionStore interface {
+	SetReaction(ctx context.Context, cmd SetReactionCommand) (ReactionResult, error)
+	OwnReactions(ctx context.Context, accountID, postID string) (OwnReactions, error)
+	ListReactionsByAccount(ctx context.Context, accountID string) ([]OwnReactionRecord, error)
 }
 
 // CommentResult wraps a comment with idempotent replay metadata.
