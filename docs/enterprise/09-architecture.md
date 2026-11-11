@@ -276,6 +276,48 @@ Static asset caching stays independent from private API responses.
 [Integration contract](../../business-web/README.md) and
 [local evidence](evidence/f1-plat008-business-web-shell.md).
 
+### 3.3 Implemented scoped rate admission
+
+EMP-PLAT-014 makes WriteAdmission mandatory for a shared gateway write
+route. Registration validates a matching source policy. The gateway invokes
+it only after current authority and web freshness, before module work.
+Unresolved/foreign/revoked authority consumes no target quota. Reads keep
+their existing edge/admission policy; account session lifecycle precedes
+organization selection and retains its own admission.
+
+orgquota composes identity Limiter.CheckTx over the existing quota table's
+write operation. One ordinary-role WithOrgTx transaction consumes organization,
+account and device counters, in that order. Any quota denial or transaction
+failure rolls back the entire admission. A later business-rule refusal
+does not refund an admitted request; rate admission is not a business write
+transaction or plan/record quota. Cancellation prevents module dispatch,
+without promising refund after an already committed admission.
+
+Definitions are immutable copied source configuration: class, permissions,
+three explicit budgets and measured-limit rationale. No business routes
+are mounted yet, so this task selects no production classes or numeric
+default. Each owning feature must measure/register its class before rollout.
+Test policies are synthetic acceptance vectors. Missing configuration fails
+registration; missing/unavailable storage, invalid principal or unsafe
+runtime role fails closed.
+
+Private HMAC subjects include class/axis/organization, adding account/device
+only where applicable. Organization/account limits survive Android key
+rotation. Web has a stable per-account web bucket, not a claimed hardware ID.
+Different organizations/classes have disjoint subjects. No raw IDs, IP,
+cookie generation or private payload enters storage/response/telemetry.
+
+The inherited limiter has fixed, not sliding, windows. Configured windows
+are whole seconds and at most the existing 24-hour quota-window bound.
+The existing expired-window Cleanup API is reused and tested; no active caller
+was found, so verified cleanup scheduling is an activation prerequisite,
+not a current retention guarantee. Replicas require the same policies,
+clock discipline and stable privacy key. Class/window/key changes need a
+reviewed rollout across live windows. No migration, new limiter service or
+global product cap is added. Exhaustion uses RATE_LIMITED/429 and a positive
+rounded-up Retry-After; failures use the existing private unavailable error.
+See [local evidence](evidence/f1-plat014-scoped-rate-admission.md).
+
 ## 4. API conventions
 
 - **Paths:** `/v1/orgs/{org_id}/<module>/…`. Routes that are not inside an organization (create an organization, list my memberships, accept an invitation, activate managed access) live under `/v1/org-access/…`. Station portal routes are organization routes scoped by station: `/v1/orgs/{org_id}/stations/{station_id}/…`.

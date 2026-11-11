@@ -4,6 +4,8 @@ package orgapi
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 )
@@ -52,6 +54,14 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		}
 	}
 	recordCode(r, code)
+	var limited *RateLimitError
+	if code == RateLimited && errors.As(err, &limited) && limited != nil && limited.RetryAfter > 0 {
+		seconds := limited.RetryAfter / time.Second
+		if limited.RetryAfter%time.Second != 0 {
+			seconds++
+		}
+		w.Header().Set("Retry-After", strconv.FormatInt(int64(seconds), 10))
+	}
 	w.Header().Del("ETag")
 	httpapi.WriteError(w, r, statuses[code], string(code), "Organization request unavailable or refused", nil)
 }

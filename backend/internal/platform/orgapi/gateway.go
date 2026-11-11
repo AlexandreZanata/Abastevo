@@ -97,6 +97,7 @@ type Gateway struct {
 	WebSessionConfirm func(*http.Request, bool) (string, error)
 	Resolve           func(context.Context, Actor, kernel.OrgScope, Rule) (Membership, error)
 	Now               func() time.Time
+	WriteAdmission    WriteAdmission
 }
 
 func validID(raw string) bool {
@@ -143,6 +144,9 @@ func Register[T Request](router chi.Router, path string, gateway Gateway, rule R
 	}
 	if gateway.WebSession != nil && gateway.WebSessionConfirm == nil {
 		return fmt.Errorf("orgapi: missing company session confirmation")
+	}
+	if normalized.Write && (gateway.WriteAdmission == nil || gateway.WriteAdmission.Validate(normalized) != nil) {
+		return fmt.Errorf("orgapi: explicit write admission policy required")
 	}
 	router.Method(http.MethodPost, path, endpoint[T]{gateway: gateway, rule: normalized, serve: serve})
 	return nil
@@ -198,6 +202,18 @@ func (handler endpoint[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteError(w, r, err)
 		return
+	}
+	if handler.rule.Write {
+		err := handler.gateway.WriteAdmission.Check(r.Context(), principal, handler.rule)
+		if err != nil || r.Context().Err() != nil {
+			var limited *RateLimitError
+			if errors.As(err, &limited) && limited != nil && limited.RetryAfter > 0 && r.Context().Err() == nil {
+				WriteError(w, r, limited)
+			} else {
+				WriteError(w, r, Unavailable)
+			}
+			return
+		}
 	}
 	result, err := handler.serve(r.Context(), principal, input)
 	if err != nil {

@@ -14642,9 +14642,12 @@ components:
           $ref: '#/components/schemas/ForumTopicReceipt'
   responses:
     EnterprisePrivateError:
-      description: Safe registered organization error, with no existence hint for foreign resources.
+      description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.
       headers:
         Cache-Control: {$ref: '#/components/headers/EnterpriseNoStore'}
+        Retry-After:
+          description: Present for exhausted organization write admission; whole seconds rounded up until retry.
+          schema: {type: integer, minimum: 1}
       content:
         application/json:
           schema: {$ref: '#/components/schemas/EnterpriseError'}

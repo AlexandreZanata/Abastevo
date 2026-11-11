@@ -1,4 +1,17 @@
 # Current execution state
+- Enterprise EMP-PLAT-014, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published 97298631; delivery targets existing PR202 (dev → main).
+  [Scoped-rate evidence](../enterprise/evidence/f1-plat014-scoped-rate-admission.md)
+  records mandatory write-policy registration, atomic existing-limiter
+  organization/account/device admission, HMAC subjects and private 429/retry.
+  PostGIS/race isolation, 30 concurrent admissions, axis/commit rollback,
+  cancellation under observed lock and real signed-authority tests passed.
+  New guard coverage 100%; affected static/build/contract checks passed.
+  No production budgets/classes or business routes activated; measured
+  feature policies, consistent key/clock and verified cleanup scheduling
+  are activation prerequisites. Domain coverage/other activation gates owed.
+  F1/M1 open; EMP-PLAT-015 next; EMP-PLAT-012 awaits EMP-GOV-014.
+
 - Enterprise EMP-PLAT-013, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above localization fix da8ee090; delivery targets existing PR202 (dev → main).
   [Private telemetry evidence](../enterprise/evidence/f1-plat013-private-telemetry.md)

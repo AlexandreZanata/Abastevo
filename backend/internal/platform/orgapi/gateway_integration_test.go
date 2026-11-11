@@ -3,6 +3,7 @@
 package orgapi_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -20,6 +21,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 
 	accountpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	accountapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
@@ -29,6 +31,7 @@ import (
 	identitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgquota"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgtest"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics"
 )
@@ -132,9 +135,21 @@ func TestGatewayRealSessionKeyBindingProofAndCurrentAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	verifier := auth.Verifier{Pool: f.Admin, Authority: "api.example.invalid", Now: func() time.Time { return now }}
+	if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	budget := identitydomain.OperationQuota{Limit: 100, Window: time.Hour}
+	admission, err := orgquota.New(f.Runtime, bytes.Repeat([]byte{3}, 32), []orgquota.Definition{{
+		Class: "synthetic.command", Permissions: []string{"org.settings.manage"},
+		Organization: budget, Account: budget, Device: budget, Rationale: "Synthetic signed transport regression, not a production limit.",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	gateway := orgapi.Gateway{
-		Enabled: true,
-		Origin:  origin, CursorSecret: []byte(strings.Repeat("synthetic", 8)), Sessions: service.ValidateAccess,
+		WriteAdmission: admission,
+		Enabled:        true,
+		Origin:         origin, CursorSecret: []byte(strings.Repeat("synthetic", 8)), Sessions: service.ValidateAccess,
 		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
 			identity, err := verifier.Verify(r.Context(), r)
 			if err != nil {
@@ -265,6 +280,10 @@ func TestGatewayRealSessionKeyBindingProofAndCurrentAuthority(t *testing.T) {
 	checkError(t, dispatch(suspended), orgapi.Unauthenticated, 401)
 	if calls.Load() != 2 {
 		t.Fatal("revoked key or session reached module")
+	}
+	var spent int
+	if err := f.Admin.QueryRow(t.Context(), "SELECT COALESCE(sum(count),0)::integer FROM identity_rate_windows WHERE subject_digest LIKE 'orgquota:v1:%'").Scan(&spent); err != nil || spent != 6 {
+		t.Fatal("failed proof or revoked authority spent quota", spent, err)
 	}
 	exposition := telemetryRegistry.Expose()
 	for _, secret := range []string{orgA, orgB, accountID, familyID, "synthetic-access", "original", "modified"} {

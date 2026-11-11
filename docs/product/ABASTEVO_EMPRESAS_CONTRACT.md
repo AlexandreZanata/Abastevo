@@ -278,6 +278,28 @@ boundaries.
   content never enters telemetry. Authorization/audit evidence remains a
   separate append-only product record.
 
+- **B-BR-EMP-29 — Admit enterprise writes under scoped rate budgets.**
+  A source-owned operation class registers explicit organization, account
+  and device budgets with a recorded rationale. A write route cannot
+  register without a matching admission policy. After current authority
+  and freshness succeed, consume all three budgets atomically through the
+  existing limiter's write operation. Scope comes from the resolved
+  principal, never request identifiers. Quota denial or transaction failure
+  rolls back every counter and runs no module work. Admitted requests consume rate budget
+  even if later record rules refuse them; this is not billing or a record
+  quota. Reads and account-session lifecycle keep their existing policies.
+
+- **B-BR-EMP-30 — Keep rate subjects private and stable.** HMAC subjects
+  bind class, organization and axis, adding account and verified device
+  where applicable. Organization/account budgets survive device-key
+  rotation. Web uses a stable per-account web bucket, not a claimed browser
+  identifier or cookie generation. Different organizations/classes remain
+  isolated. Reuse fixed windows and expired-window cleanup; limits are
+  explicit source configuration, not new global defaults. Missing policy,
+  unsafe runtime role, unavailable storage or cancellation fails closed.
+  Exhaustion returns RATE_LIMITED with positive rounded-up Retry-After;
+  raw subjects, IDs, keys and SQL errors stay out of responses/telemetry.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -393,6 +415,14 @@ boundaries.
   Access/recovery logs correlate through a server-generated trace. Malformed,
   revoked, foreign and panicked requests contribute no private content;
   telemetry does not authorize a request or replace an audit event.
+
+- **BUC-EMP-16 — Retry a rate-limited organization write.** A currently
+  authorized client sends a scoped command. Admission checks the registered
+  organization/account/device budgets before module work. An exhausted
+  budget returns a private 429 and Retry-After without charging other axes.
+  Retry with fresh transport proof after the fixed window permits it;
+  changing the device cannot reset organization/account usage. Foreign or
+  revoked authority never consumes the target organization's budget.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

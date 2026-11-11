@@ -147,6 +147,52 @@ See the [transaction and composition contract](../docs/enterprise/09-architectur
 Use an ordinary non-owner, non-BYPASSRLS runtime login; backup/restore retains
 the separately reviewed authority needed for forced-RLS tables.
 
+### Organization write admission (EMP-PLAT-014)
+
+Every orgapi.Rule.Write route must provide Gateway.WriteAdmission with a
+matching source policy; registration fails without it. Compose orgquota.New
+with an ordinary non-owner/non-BYPASSRLS pool, the shared privacy key and
+reviewed Definition values. A class maps source permissions to explicit
+organization/account/device budgets and a recorded measured-limit rationale.
+Definitions/key are copied. No production class/default quota is selected
+while business routes/providers remain unmounted. Owning feature tasks must
+measure and record their limits before activation; synthetic test caps are
+not production configuration.
+
+After current membership/permission/capability and freshness succeed, the
+gateway calls admission before module work. orgquota consumes three existing
+identity Limiter.CheckTx counters in one WithOrgTx transaction, using the
+existing write operation and identity_rate_windows table. Common organization
+first, then account, then device gives one lock order. Quota denial or failed
+transaction rolls back all axes; an admitted request still consumes budget
+if later record rules fail. This is request admission, not billing/record
+quota or a replacement for business transactions. Cancellation after admission
+does not run module work or promise to refund an already committed admission.
+
+Subjects are HMAC-framed class/axis/org, adding account and verified device
+key as needed. All axes are organization-scoped. Android key rotation keeps
+organization/account usage; web has a stable account/web bucket because the
+cookie is not a physical-device proof. Cookie rotation cannot mint that
+bucket anew. No raw organization/account/device/IP or key is persisted or
+exposed. The existing limiter uses fixed windows; reads and pre-organization
+company sessions keep their existing policies. Windows use whole seconds,
+up to the existing 24-hour quota-window bound. The existing Cleanup API removes
+expired windows; its scheduling/cadence must be wired and verified before
+enterprise activation (no active cleanup caller was found in this source).
+
+Exhaustion yields private RATE_LIMITED/429 with positive ceil-second
+Retry-After; outages/unsafe roles/missing policies yield unavailable, with
+no raw SQL/provider error. OpenAPI documents the optional retry header.
+Use SELECT/INSERT/UPDATE grants on identity_rate_windows. Replicas must use
+the same class policies, synchronized clocks and stable privacy key across
+live windows. Changing class/window/key requires reviewed rollout; do not
+silently reset active counters. This guard does not replace read-transfer
+concurrency limits or approve any feature activation.
+
+Run race/unit and real-PostGIS integration tests for orgquota/orgapi;
+see [architecture](../docs/enterprise/09-architecture.md#33-implemented-scoped-rate-admission)
+and [evidence](../docs/enterprise/evidence/f1-plat014-scoped-rate-admission.md).
+
 ### Private organization telemetry (EMP-PLAT-013)
 
 The API composes orgapi.Observe on the existing httpserver.NewRouter and

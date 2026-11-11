@@ -242,7 +242,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local telemetry, redaction and real-process evidence](../evidence/f1-plat013-private-telemetry.md).
 
 ### EMP-PLAT-014 — Organization rate limits per account, device and organization on the existing limiter
-- **Meta:** module PLAT · phase F1 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module PLAT · phase F1 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Bound organization request usage through existing rate limiting.
 - **Rules and use cases:** BR-TEN-003, BR-PRIV-003, BR-PRIV-008
 - **Depends on:** EMP-PLAT-004
@@ -256,6 +256,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-API, V-ISO, V-PRIV · migration: none unless required by the reviewed limiter path · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Limits require a recorded rationale and fit the existing admission path.
 - **Done when:** Boundary, concurrent and negative quota cases pass.
+
+[Local scoped admission and rollback evidence](../evidence/f1-plat014-scoped-rate-admission.md).
 
 ### EMP-PLAT-015 — Time kernel: instants, organization and unit time zones, reporting-day attribution
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DOM · size S · state TODO
