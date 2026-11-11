@@ -56,5 +56,14 @@ jobs:
           GOTOOLCHAIN=go1.27.1 go install honnef.co/go/tools/cmd/staticcheck@${{ env.STATICCHECK_VERSION }}
           go install github.com/daveshanley/vacuum@${{ env.VACUUM_VERSION }}
           GOTOOLCHAIN=go1.27.1 go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
+      - name: Ensure distribution PyYAML for the company Caddy mirror check
+        # business-web/tests/caddy.py compares the Caddyfile with its ConfigMap
+        # mirror through PyYAML. Install the Ubuntu package only when absent.
+        run: |
+          python3 -c 'import yaml' 2>/dev/null || {
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --no-install-recommends python3-yaml
+          }
+          python3 -c 'import yaml; print("PyYAML", yaml.__version__)'
       - name: Bounded integration gate
         run: make quick-verify

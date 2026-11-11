@@ -23,8 +23,10 @@ checks font provenance, preserves OFL notices and fingerprints the complete
 ES-module graph after rewriting imports. Fonts and brand assets are read-only
 inputs from landing/static/assets. No runtime dependency, remote font,
 inline script, service worker, persisted account proof or client data cache
-is supplied. Dist contains only 20 allowlisted static files. Credentials,
-source maps, TypeScript and package metadata are excluded.
+is supplied. Dist contains only 19 allowlisted static files. Credentials,
+source maps, TypeScript and package metadata are excluded. No `_headers`
+file ships: Caddy ignored it and served it as a public file. The artifact
+check reads the served company policy from the staging web Caddyfile.
 
 TypeScript 7.0.2 is the existing admin build pin (Apache-2.0, development
 only). The package lock graph is identical after replacing package
@@ -59,8 +61,12 @@ JSON is bounded at 64 KiB and must carry no-store. Errors display fixed copy.
 
 The guard verifies current company session state before membership work,
 rejects changed accounts and clears private UI on expiry/reload/logout.
-Visibility return rechecks authority; local expiry timers do not send
-heartbeats or refresh authentication. A failed server logout clears local
+Visibility return rechecks authority without a loading state: the current
+view stays until the server answers, an unchanged answer keeps focus, the
+pending choice and the live region, and any refusal still clears it. Local
+expiry timers do not send heartbeats or refresh authentication.
+FRESH_AUTH_REQUIRED from the company plane asks for a new sign-in instead
+of reporting an invalid key. A failed server logout clears local
 state and reports that server confirmation failed. The logout request uses
 keepalive and no page signal, so navigation or pagehide cannot cancel it.
 Choosing a company in the selector changes nothing until "Abrir empresa" is
@@ -92,12 +98,15 @@ Future module requests still need server-side permission checks.
 The existing staging web Caddyfile serves the separate empresas/ directory
 in the signed landing bundle. The Kubernetes ConfigMap mirrors that exact
 file. Company HTML/errors are no-store without ETag, with strict CSP,
-no-referrer and noindex. Conditional HTML requests cannot return a stale
-304 shell. Only fingerprinted static assets are immutable. Public/admin
+no-referrer and noindex, and carry no Last-Modified validator. Conditional
+HTML requests cannot return a stale 304 shell. Only content-fingerprinted
+assets are immutable; the unhashed font licence texts revalidate hourly. Public/admin
 routes and the API's independent default-off switch retain their owners.
 
-Quick verification selects company typecheck/build/check/tests for both
-business-web and its landing asset inputs. The staging workflow packages
+Quick verification selects company typecheck/build/check/tests and the
+actual Caddy check (tests/caddy.py) for business-web, its landing asset
+inputs, the staging web Caddyfile and its ConfigMap. CI requires Docker for
+it; a local run without Docker prints that it was not run. The staging workflow packages
 the built shell, but this source task does not activate APIs or deploy.
 Rollback uses the preceding signed static bundle; account data and schema
 are preserved.
@@ -108,7 +117,7 @@ After building, from the repository root:
 
 ```sh
 # Requires an explicit disposable loopback ANPFUEL_TEST_DATABASE_URL,
-# Python Playwright/Chromium, Go, openssl and Docker with local Caddy 2.10.2.
+# Python Playwright/Chromium, Go and openssl; caddy.py needs Docker and PyYAML.
 GOCACHE=/tmp/enterprise-go-build python3 business-web/tests/browser.py
 python3 business-web/tests/caddy.py
 ```
@@ -122,7 +131,11 @@ cookie reuse refusal, reload/restored-page guards, real keyboard selection,
 scope isolation and desktop/mobile layouts. Organization-ready UI tests
 inject synthetic authority only in that local test browser.
 
-The Caddy test starts and removes only its uniquely named loopback
-container, verifies ConfigMap equality and exercises actual responses.
-Neither script targets staging, production or an existing user browser.
+The Caddy test uses the reviewed digest-pinned Caddy 2.10.2 image of the
+staging/production edge, starts and removes only its uniquely named
+loopback container, verifies ConfigMap equality (PyYAML) and exercises
+actual responses. The browser script stays local: it needs Python
+Playwright/Chromium, Go and a disposable PostGIS, which CI does not
+provision. Neither script targets staging, production or an existing user
+browser.
 [Executed evidence](../docs/enterprise/evidence/f1-plat008-business-web-shell.md).

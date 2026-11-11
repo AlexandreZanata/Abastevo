@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Execute the real quick gate classifier without running the aggregate gate."""
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -54,11 +55,43 @@ class QuickPathSelection(unittest.TestCase):
             result = subprocess.run(
                 ['bash', '-c',
                  'set -euo pipefail\nCHANGED_ALL=$1\nBUSINESS_WEB_CHANGED=0\n'
-                 'npm() { printf "%s\\n" "$*"; }\n' + block,
+                 'npm() { printf "%s\\n" "$*"; }\npython3() { :; }\ndocker() { :; }\n' + block,
                  'company-selection-fixture', changed], capture_output=True, text=True)
             self.assertEqual(0, result.returncode, result.stderr)
             for command in ['run typecheck', 'run build', 'run check', 'business-web test']:
                 self.assertEqual(expected, command in result.stdout)
+
+    def test_company_selection_runs_actual_caddy_policy_where_docker_exists(self):
+        block = SOURCE.split('    BUSINESS_WEB_CHANGED=0', 1)[1].split('    # Bounded Rust selection', 1)[0]
+
+        def run(changed, docker, ci):
+            script = ('set -euo pipefail\nCHANGED_ALL=$1\nBUSINESS_WEB_CHANGED=0\nnpm() { :; }\n'
+                      'python3() { printf "python3 %s\\n" "$*"; }\n'
+                      + ('docker() { :; }\n' if docker else 'docker() { return 1; }\n') + block)
+            env = {k: v for k, v in os.environ.items() if k != 'CI'}
+            if ci:
+                env['CI'] = 'true'
+            return subprocess.run(['bash', '-c', script, 'caddy-selection-fixture', changed],
+                                  capture_output=True, text=True, env=env)
+
+        for changed, expected in [
+            ('infra/caddy/staging-web.Caddyfile', True),
+            ('infra/k8s/staging/web-caddy-configmap.yaml', True),
+            ('business-web/static/assets/business.css', True),
+            ('infra/caddy/Caddyfile', False),
+            ('backend/cmd/api/main.go', False),
+        ]:
+            with self.subTest(changed=changed):
+                result = run(changed, True, True)
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(expected, 'python3 business-web/tests/caddy.py' in result.stdout)
+        refused = run('business-web/src/app.ts', False, True)
+        self.assertNotEqual(0, refused.returncode)
+        self.assertIn('needs Docker in CI', refused.stderr)
+        local = run('business-web/src/app.ts', False, False)
+        self.assertEqual(0, local.returncode, local.stderr)
+        self.assertNotIn('caddy.py', local.stdout)
+        self.assertIn('not run locally', local.stderr)
 
 
 if __name__ == '__main__':
