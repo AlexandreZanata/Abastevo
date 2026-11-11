@@ -1,4 +1,17 @@
 # Current execution state
+- Enterprise PR202 review, 2026-11-11: reviewed EMP-PLAT-005..008
+  (`5b692fb5`..`b739b2c6`) with their earlier base; fixes follow as new
+  commits on dev. [Review record](../enterprise/evidence/f1-pr202-review.md):
+  - Fixed: key reaching the URL by native form submission; sign-in creating
+    unrevokable account session families while the company plane is off;
+    keyboard arrow switching; cancellable logout; missing `AbortSignal.any`
+    fallback; integrity failures reported as outages; unfenced server PUT
+    namespace; refused-login focus.
+  - Activation blockers: single-family session revocation, AUTH providers,
+    non-bypass runtime login, per-member transfer limits, staging bucket
+    lifecycle vs private originals.
+  - LOCAL_DONE / INTEGRATION_PENDING; F1/M1 open; EMP-PLAT-009 next.
+
 - Enterprise EMP-PLAT-008, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published `56549a5e`; delivery targets existing PR202 (`dev → main`).
   [Web-shell evidence](../enterprise/evidence/f1-plat008-business-web-shell.md)

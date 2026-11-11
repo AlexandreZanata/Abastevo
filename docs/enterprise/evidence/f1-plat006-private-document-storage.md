@@ -134,3 +134,18 @@ legal review, app/panel and production release remain with their owning gates.
 There is no provider/staging mutation or live-readiness claim. Integration,
 remote checks, wiki publication and deployment retain their existing gates.
 Next bounded task: EMP-PLAT-007.
+
+## PR202 review corrections (2026-11-11)
+
+The [PR202 review](f1-pr202-review.md) corrected these statements:
+
+- No composition wires orgmedia yet, so it does not read
+  `ANPFUEL_ENTERPRISE_ENABLED`; its own `Enabled` flag stays false.
+- Individual revocation is the mandatory `Authority.CheckAccess` port. No
+  grant store exists; the tests' policy fixture supplies revocation.
+- "Synthetic" is the server-declared `Object.Synthetic` flag. The inspector
+  accepts any baseline JPEG that passes the existing strict policy.
+- The four-transfer limit is per process, shared by all organizations.
+- A stored object that fails its hash/size check is now reported as
+  `ErrIntegrity`, not `ErrUnavailable`, by both upload and read.
+  `PresignServerPUT` now signs only the `org/` namespace.

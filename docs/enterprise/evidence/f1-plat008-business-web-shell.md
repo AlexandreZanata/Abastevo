@@ -162,3 +162,24 @@ F1/M1 remain open. Next bounded task EMP-PLAT-009 upon authorization.
 Publication reuses PR202, preserving its earlier review and atomic commits.
 Required remote checks/review must validate the new head before protected
 integration. This evidence claims no merge, CI result or VPS deployment.
+
+## PR202 review corrections (2026-11-11)
+
+The [PR202 review](f1-pr202-review.md) found and fixed defects behind some
+statements above:
+
+- The form could submit natively with a named key field, so the key reached
+  the URL when the module was missing. It is now unnamed with a disabled
+  submit button until mount, and the artifact check refuses regressions.
+- Every sign-in leaves an account session family that is not revoked and
+  counts against the ten-family budget for 30 days. Sign-in now stops before
+  sending the key when the company plane is off. With the plane on, the
+  family remains; single-family revocation is an activation blocker.
+- Arrow keys on the closed selector switched companies. Switching now needs
+  "Abrir empresa".
+- Navigation or pagehide could cancel the server logout. Logout now uses
+  keepalive without a page signal.
+- `AbortSignal.any` broke sign-in on older browsers; a fallback combines the
+  signals.
+- A refused sign-in now returns focus to the key field, and the refusal is
+  announced once.
