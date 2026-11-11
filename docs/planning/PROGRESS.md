@@ -1,4 +1,15 @@
 # Current execution state
+- Enterprise F0/F1 integration, 2026-11-11: review of `39a2d725`..`6aeeafb4`
+  found one blocker. Main's forum migration and the audit migration both used
+  version 000164, and the migrator refuses duplicates. Main was merged
+  normally, and the audit migration was renumbered to `000165` with the same
+  content. [Audit evidence](../enterprise/evidence/f1-plat003-organization-audit.md)
+  records the reconciliation and the RLS backup-role requirement (staging
+  role checked read-only). Delivery goes through dev and a protected PR to
+  main, then the signed staging release. F1/M1 stays open: there are no
+  enterprise routes, AUTH/EMP-PLAT-007 providers, panel or Android features,
+  and no separate non-bypass runtime login for `WithOrgTx`.
+
 - Enterprise F0, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING in
   isolated `codex/enterprise-f0-f1` from synchronized main/dev `d8bdc642`.
   [Checkpoint](../enterprise/evidence/f0-local-checkpoint.md) records all

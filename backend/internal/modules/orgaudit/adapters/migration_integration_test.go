@@ -13,7 +13,7 @@ import (
 )
 
 func TestAuditMigrationUpgradeFailureRecoveryAndPreviousCompatibility(t *testing.T) {
-	const name = "000164_org_audit_events.sql"
+	const name = "000165_org_audit_events.sql"
 	previous := fstest.MapFS{}
 	entries, err := fs.ReadDir(dbmigrations.Files, ".")
 	if err != nil {
@@ -51,11 +51,11 @@ func TestAuditMigrationUpgradeFailureRecoveryAndPreviousCompatibility(t *testing
 	}
 	var clean bool
 	if err := f.Admin.QueryRow(ctx, `SELECT to_regclass('org_audit_events') IS NULL
-		AND NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version='000164')`).Scan(&clean); err != nil || !clean {
+		AND NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version='000165')`).Scan(&clean); err != nil || !clean {
 		t.Fatal("failed audit migration left schema or ledger state")
 	}
 	applied, err := migrate.Apply(ctx, f.AdminDSN, current)
-	if err != nil || len(applied) != 1 || applied[0] != "000164" {
+	if err != nil || len(applied) != 1 || applied[0] != "000165" {
 		t.Fatalf("audit migration retry failed: %v, %v", applied, err)
 	}
 	if err := migrate.Check(ctx, f.Admin, previous); err != nil {

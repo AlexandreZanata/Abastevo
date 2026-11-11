@@ -110,3 +110,21 @@ write-authority check. The authorizer port requires organization-wide
 membership/support policy, HTTP routes and private feature commands belongs
 to their AUTH, BACK and API tasks. Retention requires its separately reviewed
 lifecycle path. Next bounded task is EMP-PLAT-004.
+
+## Integration reconciliation (2026-11-11)
+
+Main gained `000164_forum_reactions_live_events.sql` through PR #201 while this
+branch was built, and the migrator refuses duplicate versions. The audit
+migration is therefore renamed to `000165_org_audit_events.sql` with identical
+content; it had been applied only to disposable test databases, so no ledger
+records the earlier number. The sqlc stanza, the upgrade rehearsal and the
+architecture link follow the new name. The upgrade rehearsal now starts from
+the chain through the forum migration, which is the staging schema at merge.
+The sections above keep the version numbers that were current when tested.
+
+Backups: the table forces row-level security, so `pg_dump` without
+`--enable-row-security` refuses it unless the dumping role is a superuser or
+has BYPASSRLS. On 2026-11-11 the staging deploy agent's backup role
+(`abastevo_temp`) was read-only checked and holds both. Production backup and
+restore roles need the same property, while the separate runtime login that
+`WithOrgTx` requires must hold neither.

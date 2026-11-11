@@ -279,7 +279,7 @@ commit/rollback to the runner. A matching replay skips the callback.
 Changed digest or metadata returns `ErrReused`. Business, audit and deferred
 commit failures roll back both the change and event.
 
-[Migration 000164](../../backend/db/migrations/000164_org_audit_events.sql)
+[Migration 000165](../../backend/db/migrations/000165_org_audit_events.sql)
 adds organization-scoped keys, forced RLS, a keyset index and statement
 triggers blocking UPDATE, DELETE and TRUNCATE. The runtime role receives
 SELECT and INSERT only. Root and membership schemas are introduced by their

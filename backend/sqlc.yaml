@@ -465,7 +465,7 @@ sql:
   - engine: postgresql
     queries: db/queries/orgaudit
     schema:
-      - db/migrations/000164_org_audit_events.sql
+      - db/migrations/000165_org_audit_events.sql
     gen:
       go:
         package: orgaudit
