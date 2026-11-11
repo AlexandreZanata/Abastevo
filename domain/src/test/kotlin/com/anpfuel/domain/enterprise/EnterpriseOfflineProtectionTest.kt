@@ -24,6 +24,20 @@ class EnterpriseOfflineProtectionTest {
     }
 
     @Test
+    fun wallTimePastValidityAfterRebootErasesButARolledBackClockOnlyReconfirms() {
+        val duration = EnterpriseOfflineLease.DEFAULT_VALIDITY_MILLIS
+        val rebooted = time.copy(boot = "boot-8", elapsedMillis = 0)
+        assertEquals(EnterpriseLeaseDecision.RECONFIRM, EnterpriseOfflineProtection.evaluate(lease, rebooted.copy(wallMillis = 10000 + duration - 1)))
+        assertEquals(EnterpriseLeaseDecision.ERASE, EnterpriseOfflineProtection.evaluate(lease, rebooted.copy(wallMillis = 10000 + duration)))
+        assertEquals(EnterpriseLeaseDecision.ERASE, EnterpriseOfflineProtection.evaluate(lease, rebooted.copy(wallMillis = Long.MAX_VALUE)))
+        // Setting the wall clock back can never extend validity; it only forces contact.
+        assertEquals(EnterpriseLeaseDecision.RECONFIRM, EnterpriseOfflineProtection.evaluate(lease, rebooted.copy(wallMillis = 0)))
+        val regressed = time.copy(elapsedMillis = 999)
+        assertEquals(EnterpriseLeaseDecision.ERASE, EnterpriseOfflineProtection.evaluate(lease, regressed.copy(wallMillis = 10000 + duration)))
+        assertEquals(EnterpriseLeaseDecision.RECONFIRM, EnterpriseOfflineProtection.evaluate(lease, regressed.copy(wallMillis = 10000 + duration - 1)))
+    }
+
+    @Test
     fun explicitValidityAndLargeMonotonicValuesDoNotOverflow() {
         val short = lease.copy(validityMillis = 1)
         assertEquals(EnterpriseLeaseDecision.ERASE, EnterpriseOfflineProtection.evaluate(short, time.copy(elapsedMillis = 1001)))

@@ -31,12 +31,16 @@ enum class EnterpriseLeaseDecision { ALLOW, RECONFIRM, ERASE }
 
 object EnterpriseOfflineProtection {
     fun evaluate(lease: EnterpriseOfflineLease, now: EnterpriseDeviceClock): EnterpriseLeaseDecision {
-        if (now.boot == lease.contactClock.boot && now.elapsedMillis >= lease.contactClock.elapsedMillis &&
-            now.elapsedMillis - lease.contactClock.elapsedMillis >= lease.validityMillis
-        ) return EnterpriseLeaseDecision.ERASE
-        if (now.boot != lease.contactClock.boot || now.elapsedMillis < lease.contactClock.elapsedMillis ||
-            now.wallMillis < lease.contactClock.wallMillis
-        ) return EnterpriseLeaseDecision.RECONFIRM
+        val sameBoot = now.boot == lease.contactClock.boot && now.elapsedMillis >= lease.contactClock.elapsedMillis
+        if (sameBoot && now.elapsedMillis - lease.contactClock.elapsedMillis >= lease.validityMillis) {
+            return EnterpriseLeaseDecision.ERASE
+        }
+        // Without a comparable monotonic clock, wall time can only shorten validity (BR-PRIV-018):
+        // a clock moved forward erases early, a clock set back still requires server contact.
+        if (!sameBoot && now.wallMillis - lease.contactClock.wallMillis >= lease.validityMillis) {
+            return EnterpriseLeaseDecision.ERASE
+        }
+        if (!sameBoot || now.wallMillis < lease.contactClock.wallMillis) return EnterpriseLeaseDecision.RECONFIRM
         return EnterpriseLeaseDecision.ALLOW
     }
 }
