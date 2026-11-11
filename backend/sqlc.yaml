@@ -8,6 +8,17 @@
 version: "2"
 sql:
   - engine: postgresql
+    queries: db/queries/organization
+    schema:
+      - db/migrations/000169_organization_roots.sql
+    gen:
+      go:
+        package: organization
+        out: db/queries/organization
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/orgevent
     schema:
       - db/migrations/000007_jobs.sql

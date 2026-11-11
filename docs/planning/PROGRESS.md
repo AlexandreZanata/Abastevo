@@ -1,4 +1,21 @@
 # Current execution state
+- Enterprise EMP-ORG-002, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above Claude's published review head `7af7d2e5`, on isolated
+  `codex/enterprise-f0-f1`, targeting existing PR202 (`dev` → `main`).
+  Occupied local dev and unrelated work remain preserved.
+  [Persistence evidence](../enterprise/evidence/f1-org002-organization-persistence.md)
+  records permanent roots, forced RLS, scoped sqlc/pgx CAS/replay,
+  deferred audit/flag/event FKs and identity-only legacy anchors.
+  Real PostGIS/race tests pass: ordinary migrator populated upgrade,
+  injected-failure recovery, old schema compatibility, isolation,
+  12-way create/CAS, audit rollback, failed commit and lock cancellation.
+  Adapter coverage 92.9%; affected regressions/static/build/sqlc pass.
+  Claude's code corrections are already on dev; the review reconciliation
+  preserves the remaining AUTH/IDN, runtime-grant, composed-route, vault,
+  staging, upload-audit, coverage and legal gates. No provider/route is
+  activated. F1/M1 remain open. ORG-003 still requires IDN-003/AUTH-002;
+  implement the remaining F1 identity/access foundations first.
+
 - Enterprise PR202 second review, 2026-11-11: reviewed head `1f99b018`
   (EMP-PLAT-009..015, EMP-PRIV-003, EMP-ORG-001) with the earlier batch;
   fixes follow as new commits on dev. [Review record](../enterprise/evidence/f1-pr202-review.md#second-review-head-1f99b018):

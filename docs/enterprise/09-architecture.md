@@ -16,7 +16,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 
 | Module | Code | Owns | Uses (through ports) |
 |---|---|---|---|
-| `organization` (LOCAL_DONE, domain only) | ORG | Pure scoped organization aggregate/lifecycle; persistence, legal entities, units, teams, groups and settings commands remain planned | `kernel`; standard server IANA data; no runtime route or authority provider |
+| `organization` (ORG-001/002 LOCAL_DONE) | ORG | Scoped aggregate/lifecycle and forced-RLS root persistence; onboarding, legal entities, units, teams, groups and settings commands remain planned | `kernel`, explicit application ports, sqlc/pgx; no runtime route or authority provider |
 | `membership` (proposed) | IDN | Employees, memberships, invitations, activation codes, device enrolment | `account`, `identity`, `cloudsync` device references (existing) |
 | `orgaccess` (proposed) | AUTH | Role catalog, role assignments, the authorization service | `membership`, `organization`, `orgbilling` |
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
@@ -243,8 +243,9 @@ server-known IANA zone, positive active-unit/owner counts and recorded terms.
 All 25 state pairs follow the documented graph, with CLOSED terminal and
 positive confirmed lifecycle conditions. Rehydrate is trusted-storage-only,
 not a client DTO entry. Current authority, cross-record facts, fresh IDs,
-atomic owner/unit creation, CAS persistence, audit, timers and lifecycle
-effects belong to their owning commands. No route or actual closure is
+atomic owner/unit creation, audited commands, timers and lifecycle
+effects belong to their owning commands. ORG-002 supplies scoped CAS storage
+as described below. No route or actual closure is
 activated. [Local evidence](evidence/f1-org001-organization-domain.md).
 
 ## 3. Request context and authentication
@@ -574,7 +575,8 @@ reference and its index, and ENABLE/FORCE RLS with both USING and WITH CHECK.
 Missing or empty scope matches no rows. Malformed settings fail UUID
 validation. Each owning task copies and renames the template in a new
 numbered migration and adds its FK to the organization root introduced by
-EMP-ORG-002. The template stays outside the applied migration chain.
+EMP-ORG-002. The template now includes that root FK and stays outside the
+applied migration chain.
 
 The integration-only [orgtest fixture](../../backend/internal/platform/orgtest/fixture.go)
 creates a fresh fully migrated PostGIS database and a separate ordinary
@@ -582,6 +584,34 @@ login. It loads the shared two-organization fixture and cleans up only its
 own database and role. Adapter tests grant that login access only to their
 owned tables. The harness requires an explicit disposable test DSN.
 [Isolation and migration evidence](evidence/f1-plat002-database-isolation.md)
+
+### 5.1.1 Organization root persistence
+
+EMP-ORG-002 adds migration `000169_organization_roots.sql` and the
+`organization/application` repository ports with a sqlc/pgx adapter.
+The nonzero ID is permanent; names are nonunique. Every operation takes
+resolved OrgScope, repeats an explicit org predicate and runs under forced
+RLS. Explicit-Tx operations also verify the installed scope and ordinary
+login, joining the later onboarding/audit transaction without committing it.
+
+Create accepts only PENDING_SETUP/revision one. Save compares the expected
+revision and advances exactly once; an exact retry converges, a changed
+intent conflicts. Storage maps snapshot fields explicitly because domain
+JSON/formatting is deliberately redacted. Invalid stored metadata fails
+closed. Root deletion, truncation, rekeying and reopening CLOSED fail.
+
+Existing audit/capability IDs receive identity-only anchors: nullable
+metadata is not a lifecycle state, owner, consent or activation. Get returns
+metadata-pending and normal create/save cannot adopt them. The atomic
+migrator backfill temporarily removes FORCE under exclusive table locks,
+then restores it before commit. Root FKs for audit, flags and events are
+validated and initially deferred so audit reservation can precede new-root
+creation in the same transaction. No runtime role/grants or flags are seeded.
+An ordinary table-owning migrator and ordinary runtime login are exercised
+on disposable PostGIS. Production grants/providers and audited factual
+legacy reconciliation remain explicit future work.
+
+[Persistence and recovery evidence](evidence/f1-org002-organization-persistence.md).
 
 ### 5.2 Organization audit runner
 
@@ -604,7 +634,7 @@ commit failures roll back both the change and event.
 adds organization-scoped keys, forced RLS, a keyset index and statement
 triggers blocking UPDATE, DELETE and TRUNCATE. The runtime role receives
 SELECT and INSERT only. Root and membership schemas are introduced by their
-own tasks. EMP-ORG-002 adds the root reference in a new migration.
+own tasks. EMP-ORG-002 adds the root reference in migration 000169.
 Actor references remain historical through offboarding.
 
 Reads enter through `application.Service.List`. An injected authorizer
@@ -828,8 +858,8 @@ Signals that justify the next infrastructure step (measured, sustained):
 EMP-PLAT-005 implements `orgcapability` and additive migration
 `000166_org_capabilities.sql` above the reviewed audit migration `000165`.
 The migration seeds no grants, flags or organization activation and retains
-the `000132` compatibility floor. Root organization references follow in
-EMP-ORG-002. The table has an organization/capability composite key, forced
+the `000132` compatibility floor. EMP-ORG-002 adds the root organization
+reference in migration 000169. The table has an organization/capability composite key, forced
 read/write RLS, default-false state, a positive revision and database time.
 
 `ANPFUEL_ENTERPRISE_ENABLED` is a startup boolean, default false, in the

@@ -1,6 +1,6 @@
 # EP02 — Organizations
 
-Status: **PLANNED**, 2026-11-10.
+Status: **IN_PROGRESS**, 2026-11-11.
 
 Task metadata follows the existing [generated index](INDEX.md). The task
 definitions were reconstructed from the [organization specification](../modules/organizations.md) and the approved
@@ -27,7 +27,7 @@ integration of the current ADR-019 construction batch. See the
 [Local aggregate and lifecycle evidence](../evidence/f1-org001-organization-domain.md).
 
 ### EMP-ORG-002 — Organization persistence as the tenant root
-- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type DB · size S · state TODO
+- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type DB · size S · state LOCAL_DONE
 - **Objective:** Persist the organization as the ownership root for private records.
 - **Rules and use cases:** BR-ORG-001, BR-ORG-002, BR-ORG-003, BR-TEN-005, BR-PRIV-001
 - **Depends on:** EMP-ORG-001, EMP-PLAT-002
@@ -41,6 +41,8 @@ integration of the current ADR-019 construction batch. See the
 - **Validation:** V-SQL, V-ISO, V-IDEM · migration: rehearse additive changes when persistence is affected · rollback: preserve the existing state, remove only the new entry point and follow the scoped recovery evidence.
 - **Risks and assumptions:** Verify additive upgrade and previous-image compatibility on populated fixtures.
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
+
+[Local persistence, isolation and populated-upgrade evidence](../evidence/f1-org002-organization-persistence.md).
 
 ### EMP-ORG-003 — Create-organization flow: the creator becomes owner and a default unit exists
 - **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type API · size M · state TODO

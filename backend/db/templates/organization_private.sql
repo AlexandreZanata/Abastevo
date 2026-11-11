@@ -1,6 +1,6 @@
 -- EMP-PLAT-002 executable migration template, exercised on disposable PostGIS.
 -- Copy and rename these example tables in the owning module's new migration.
--- Add its organization aggregate FK when EMP-ORG-002 defines that schema.
+-- Apply after EMP-ORG-002. Every private owner points to a permanent root.
 -- The migrator owns these tables. Runtime API/worker logins receive only
 -- schema USAGE and table SELECT/INSERT/UPDATE/DELETE, with no owner membership.
 CREATE TABLE org_example_parent (
@@ -8,6 +8,7 @@ CREATE TABLE org_example_parent (
     id UUID NOT NULL,
     number TEXT NOT NULL,
     PRIMARY KEY (org_id, id),
+    FOREIGN KEY (org_id) REFERENCES organizations(org_id),
     UNIQUE (org_id, number)
 );
 

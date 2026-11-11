@@ -149,8 +149,19 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 		t.Fatal("orgtest requires the version 1 two-organization fixture")
 	}
 	f.Organizations = data.Organizations
+	var roots bool
+	if err := f.Admin.QueryRow(ctx, `SELECT to_regclass('public.organizations') IS NOT NULL`).Scan(&roots); err != nil {
+		t.Fatal(err)
+	}
 	for _, org := range f.Organizations {
 		org.Scope(t)
+		if roots {
+			// Only an ownership identity for synthetic foundation fixtures, not
+			// invented organization metadata, memberships or activation.
+			if _, err := f.Admin.Exec(ctx, `INSERT INTO organizations(org_id) VALUES($1) ON CONFLICT DO NOTHING`, org.ID); err != nil {
+				t.Fatal(err)
+			}
+		}
 	}
 	return f
 }

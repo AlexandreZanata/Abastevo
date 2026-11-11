@@ -394,6 +394,28 @@ boundaries.
   enforce actors, fresh authentication, timers, audit and lifecycle effects;
   this domain performs no actual closure or persistence.
 
+- **B-BR-EMP-38 — Persist private ownership roots without inventing facts.**
+  Each private organization ID has one nonzero, permanent database root.
+  Root rows use forced RLS and explicit scoped queries; display names are
+  not unique and support no discovery API. An additive migration attaches
+  the existing audit, capability and event ownership references. Existing
+  IDs receive identity-only anchors, with no fabricated name, lifecycle,
+  owner, unit or consent. Reading such an anchor returns metadata-pending;
+  normal create/save cannot silently adopt it. Audited factual reconciliation
+  is required before activating any legacy context. Public/personal records
+  never create or enter these roots.
+
+- **B-BR-EMP-39 — Commit root snapshots under ordinary scoped transactions.**
+  Only a validated PENDING_SETUP/revision-one value can create a snapshot.
+  A matching create/save retry converges; changed intent or stale revision
+  conflicts. Updates require revision+1 and a documented lifecycle edge;
+  closed identities cannot be reused, deleted, truncated or reopened.
+  Explicit-transaction operations verify the installed scope and safe
+  runtime role, allowing later onboarding/audit work in the same transaction.
+  Rollback, failed commit and cancellation report no successful write.
+  Scoped storage is not membership authority; real providers, grants and
+  atomic root/unit/owner onboarding remain owning-task requirements.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -543,6 +565,14 @@ boundaries.
   on the documented edges. A closed aggregate never revives. A foreign
   scope, stale revision, invalid kind/zone or missing lifecycle evidence
   returns no changed value; a display name or kind never replaces proof.
+
+- **BUC-EMP-20 — Store and reload an organization root safely.** Under a
+  resolved scope and ordinary login, create/read/update only that root.
+  Another root with the same name remains invisible. Identical retries
+  converge, competing changed revisions have one winner, and a failed
+  composed transaction leaves no root or related write. An upgrade retains
+  prior private IDs/content and public data, keeping unknown legacy metadata
+  unavailable. No root entry point grants access from a name or identifier.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

@@ -290,6 +290,32 @@ go test -race ./internal/modules/organization/domain -count=1
 See [111 domain vectors](../contracts/testdata/enterprise/README.md#organization-lifecycle-v1)
 and [local acceptance](../docs/enterprise/evidence/f1-org001-organization-domain.md).
 
+### Organization persistence (EMP-ORG-002)
+
+`organization/application` declares scoped repository and explicit-Tx ports;
+`organization/adapters` stores canonical domain snapshots with sqlc/pgx.
+Migration 000169 adds permanent private roots, forced RLS and deferred root
+FKs for audit/capability/events. Existing private IDs retain identity-only
+anchors; missing metadata returns `ErrUninitialized` and cannot be adopted
+by normal create/save. There is no name lookup or global name uniqueness.
+
+Create requires pending setup/revision one; save uses CAS and exact replay.
+Explicit-Tx methods validate the installed scope and ordinary role for the
+owning audit/onboarding transaction. Root identity cannot be removed or
+reopened after closure. Storage maps fields explicitly, retaining domain
+redaction. No runtime providers/grants, onboarding route, owner/unit creation
+or activation is installed. ORG-003 also requires IDN-003 and AUTH-002.
+
+```sh
+go test -race ./internal/modules/organization/... ./internal/platform/database -count=1
+# Explicit disposable ANPFUEL_TEST_DATABASE_URL required:
+go test -race -tags=integration ./internal/modules/organization/... ./internal/modules/orgaudit/... ./internal/modules/orgcapability/... ./internal/modules/orgevent/... ./internal/platform/database ./internal/platform/migrate -count=1
+sqlc vet
+sqlc generate
+```
+
+[Local persistence and upgrade evidence](../docs/enterprise/evidence/f1-org002-organization-persistence.md).
+
 ### Organization operation time (EMP-PLAT-015)
 
 orgtime/domain preserves declared occurred_at and trusted server received_at

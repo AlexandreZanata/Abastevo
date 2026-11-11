@@ -226,3 +226,28 @@ contact, native device acceptance, upload audit/orphan cleanup
 backup/restore roles for forced RLS, EMP-PLAT-012 (EMP-GOV-014), aggregate
 Kotlin domain coverage below 90%, and the legal receipt gates. F1/M1 remain
 open; the state stays INTEGRATION_PENDING.
+
+## EMP-ORG-002 review reconciliation (head 7af7d2e5)
+
+2026-11-11. The owner requested implementation above Claude's second-review
+corrections and publication to the same PR202. Actual history contains the
+13 correction/documentation commits from a56b25ce through 7af7d2e5; these
+fixes are already published, not newly claimed by ORG-002. The supplied
+remaining-items list matches the open gates above. None is falsely closed
+by organization persistence.
+
+ORG-002 preserves the corrected shared zone profile, bounded names and
+redacted domain encodings, mapping storage fields explicitly. Its new root
+FKs are initially deferred so the existing audit reservation can precede
+root creation; a real ordinary-role audited transaction proves this order,
+replay and rollback. Audit, capability, event, kernel/time, database and
+migrator regressions pass against disposable PostGIS under race detection.
+See [task acceptance](f1-org002-organization-persistence.md).
+
+Still owed: AUTH/IDN's single-family decision/current providers, production
+non-bypass login/grants, the complete-router gate with the first business
+route, server partition inventory and scheduled vault sweep/device-revoked
+contact cleanup, deferred native acceptance, EMP-DOC-014 upload audit,
+staging lifecycle/backup-role proof, PLAT-012/GOV-014, aggregate Kotlin
+coverage and legal receipt acceptance. F1/M1 remain open and the cumulative
+PR remains INTEGRATION_PENDING. This task performs no deployment or merge.
