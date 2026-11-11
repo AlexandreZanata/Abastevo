@@ -149,3 +149,19 @@ The [PR202 review](f1-pr202-review.md) corrected these statements:
 - A stored object that fails its hash/size check is now reported as
   `ErrIntegrity`, not `ErrUnavailable`, by both upload and read.
   `PresignServerPUT` now signs only the `org/` namespace.
+
+## Second PR202 review corrections (2026-11-11)
+
+Two items the first review left to the route tasks are now enforced in the
+service, without a route. A process still admits four transfers, now at most
+two per organization and one per member, refusing at once beyond that, so a
+slow member or organization cannot occupy every slot
+(`TestPrivateTransferConcurrencyIsBoundedPerMemberAndOrganization`, which
+failed on the previous single pool). Full JPEG decodes run one at a time per
+process and a wait ends with the transfer context, so the progressive
+four-component worst case (about 240 MB) is paid once per process
+(`TestFullDecodesAreSerializedAndWaitHonoursCancellation`). Access tokens
+issued in the verifier's future stay refused: replicas need synchronized
+clocks, recorded in the architecture. Upload audit, orphan cleanup and the
+attempt-versus-delivery audit wording stay with EMP-DOC-014.
+[Review record](f1-pr202-review.md#second-review-head-1f99b018).

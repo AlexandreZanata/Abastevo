@@ -138,3 +138,13 @@ EMP-PLAT-015 is next eligible; EMP-PLAT-012 awaits EMP-GOV-014.
 F1/M1 remain open. Remote checks/review must validate the new head before
 protected integration. No CI polling, merge, deployment, wiki publication
 or release certification is performed.
+
+## Second PR202 review corrections (2026-11-11)
+
+Retry-After came from the first exhausted axis, so a retry after an
+organization minute could still meet an exhausted account hour. The denied
+transaction now reads the remaining axes before it rolls back and reports
+the longest wait (`TestRetryAfterWaitsForEveryExhaustedAxis`, which failed
+on the previous code with a 60-second answer). The source comment now says
+the limiter derives windows from the application clock.
+[Review record](f1-pr202-review.md#second-review-head-1f99b018).

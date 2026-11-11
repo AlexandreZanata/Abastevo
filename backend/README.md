@@ -181,7 +181,8 @@ expired windows; its scheduling/cadence must be wired and verified before
 enterprise activation (no active cleanup caller was found in this source).
 
 Exhaustion yields private RATE_LIMITED/429 with positive ceil-second
-Retry-After; outages/unsafe roles/missing policies yield unavailable, with
+Retry-After covering every exhausted axis (the denied transaction still reads
+the remaining axes before it rolls back); outages/unsafe roles/missing policies yield unavailable, with
 no raw SQL/provider error. OpenAPI documents the optional retry header.
 Use SELECT/INSERT/UPDATE grants on identity_rate_windows. Replicas must use
 the same class policies, synchronized clocks and stable privacy key across
@@ -234,6 +235,10 @@ the default-off Service.Record with the original audit operation/target,
 positive record revision and required consumers. Every source write uses
 the supplied transaction; audit, immutable intent and consumer jobs commit
 together. Replay binds the original command digest and canonical fan-out.
+A work callback's registered orgapi code (CONFLICT, VALIDATION_FAILED,
+PERIOD_LOCKED, ...) is returned bare, without its wrapping text, after the
+rollback; any other error is an opaque outage. Producers map their module
+refusals, such as capability guards, to registered codes inside the work.
 
 Construct NewHandler with a database-only effect for every catalog consumer
 and register it under org-event in the existing jobs.Dispatcher. It verifies
@@ -271,14 +276,18 @@ facts resolved by the server, not permission booleans supplied by a client.
 Owning commands must verify current actors/freshness, allocate a fresh ID
 and prevent reusing any persisted ID, persist root/unit/owner atomically,
 apply CAS/audit and perform the lifecycle effects. This task adds none of
-those adapters, routes, jobs or actual closure. Known server IANA names are
-accepted for the metadata; no cross-client timezone certification is implied.
+those adapters, routes, jobs or actual closure. Zones use the operation-time
+profile in kernel.LoadTimeZone, so host-only and abbreviated names fail. The
+display name is bounded free text (120 code points, no control or
+bidirectional override characters). Formatting, slog and JSON, including
+nested values, print only redactions. No cross-client timezone
+certification is implied.
 
 ```sh
 go test -race ./internal/modules/organization/domain -count=1
 ```
 
-See [102 domain vectors](../contracts/testdata/enterprise/README.md#organization-lifecycle-v1)
+See [111 domain vectors](../contracts/testdata/enterprise/README.md#organization-lifecycle-v1)
 and [local acceptance](../docs/enterprise/evidence/f1-org001-organization-domain.md).
 
 ### Organization operation time (EMP-PLAT-015)
@@ -301,14 +310,15 @@ can include transit delay; sync review/batch propagation remains OFFL scope.
 The shared parser rejects leap seconds, unknown -00:00, invalid/overflowing
 dates and more than nanosecond precision; it accepts numeric offsets up to
 ±18:00. Entry offset metadata is integral seconds within ±18h, independent
-of zone rules. Standard IANA data is used with a Go bundled fallback.
+of zone rules. Standard IANA data is used with a Go bundled fallback through
+kernel.LoadTimeZone, shared with organizations. A zero server receipt fails.
 No route, migration, external dependency or live feature is added.
 
 ```sh
 go test -race ./internal/modules/orgtime/domain -count=1
 ```
 
-See the [93 shared Go/Kotlin vectors](../contracts/testdata/enterprise/README.md#operation-time-vectors-v1)
+See the [99 shared Go/Kotlin vectors](../contracts/testdata/enterprise/README.md#operation-time-vectors-v1)
 and [local evidence](../docs/enterprise/evidence/f1-plat015-operation-time.md).
 Native device time-zone parity and composed consumer acceptance remain owed.
 
@@ -371,7 +381,10 @@ Conditional PUT plus a bounded verified GET refuses overwrite or substitution.
 Only the synthetic JPEG inspector is supplied; other format inspectors and
 durable ready/quarantine state stay with EMP-DOC-014/EMP-DOC-002.
 Member-bound API access expires within five minutes, rechecks revocation and
-authority, and never returns a storage URL. Controllers use authenticated POST
+authority, and never returns a storage URL. A process runs at most four
+transfers, two per organization and one per member, refusing at once beyond
+that, and one full JPEG decode at a time. Access tokens are refused when
+issued in the verifier's future, so API replicas need synchronized clocks. Controllers use authenticated POST
 body tokens, the shared private error envelope and the supplied content writer.
 HTTP intake must set the request read deadline as the existing upload gateway
 does; a Go context alone cannot interrupt an arbitrary Reader.

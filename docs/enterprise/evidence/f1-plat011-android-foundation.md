@@ -139,3 +139,13 @@ deployment, wiki publication or release certification is performed.
 F1/M1 stay open. EMP-PLAT-012 requires the EMP-GOV-014 channel decision;
 EMP-PLAT-013 is the next eligible platform task. EMP-PRIV-003 remains the
 required Android storage activation dependency.
+
+## Second PR202 review correction (2026-11-11)
+
+At `ec92ab38`, two of the three `RoomEnterprisePersistenceTest` methods,
+including the production-graph test, were expression-bodied with a non-Unit
+result, so JUnit Jupiter did not discover them. The 47 data tests above
+therefore ran one of those three. `ef8bfff9` declared them `: Unit`, and the
+current report runs all three. The production-graph test now passes the
+shared session fence explicitly instead of a private default.
+[Review record](f1-pr202-review.md#second-review-head-1f99b018).

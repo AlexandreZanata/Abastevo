@@ -161,3 +161,68 @@ and MinIO from `infra/compose.validation.yml`, tmpfs, loopback ports only.
 - The staging MinIO bucket's one-day lifecycle rule would delete private
   originals that share the bucket.
 - Backup/restore roles need BYPASSRLS or superuser for forced-RLS tables.
+
+## Second review (head 1f99b018)
+
+Date 2026-11-11, same PR202 (`dev → main`), head `1f99b018` over base
+`ef96cd13`. It covered the whole cumulative diff, with emphasis on the
+commits after `1034b410`: EMP-PLAT-009/010/011/013/014/015, EMP-PRIV-003,
+EMP-ORG-001 and the home map translations. Three independent read-only
+reviews (events/telemetry/quotas, Android vault/foundation, exact
+values/time/organization) were confirmed in the source before acceptance.
+The fixes follow as new commits; published history is unchanged.
+
+Findings and resolution:
+
+- **High, fixed.** The required Android `test` check failed on the head
+  (`SecurityConfigurationTest` read only the first backup exclusion; the
+  vault exclusions were inserted before it). The PRIV-003 record never ran
+  `:app:testDebugUnitTest`. The test now checks every exclusion in any order
+  and the actual `no_backup/enterprise-sealed-v1/` path.
+- **Medium, fixed.**
+  - `orgevent.SafeError` turned registered refusals (CONFLICT, ...) into a
+    retryable 503; registered codes now pass bare.
+  - Personal REVOKED/REUSE refreshes wrote a permanent enterprise denial
+    marker for accounts without any vault; now nothing is written.
+  - Organizations accepted zones operation time refused (GMT, EST, Japan,
+    Factory, host-only localtime/posixrules); both use `kernel.LoadTimeZone`.
+  - Unrecoverable vaults (invalidated or wrong key, corrupted file, policy
+    change) had no recovery and unlock-required was a generic outage; both
+    are typed, and an unrecoverable vault restarts after acknowledgement.
+  - After a reboot, offline expiry never discarded the key (BR-PRIV-018);
+    wall time past the validity now erases it.
+- **Low, fixed.** Retry-After from the first exhausted axis only; the quota
+  clock comment; ambiguous append-only TRUNCATE assertions; the zero Go
+  instant as a server receipt; organization redaction through `%d` and
+  nested JSON; Kotlin accepting SystemV/ zones; unbounded organization names;
+  rotation fencing handles; the default session fence; a sticky cleanup
+  flag; logout success shown after a failed durable clear; an allocation
+  failure crashing the vault; nondeterministic process/lifecycle tests; the
+  PLAT-011 record counting undiscovered tests.
+- **First-review items now fixed.** Per-member/organization transfer limits
+  and one full JPEG decode per process; tab-return focus; the mobile
+  overview link; the `FRESH_AUTH_REQUIRED` message; the dead `_headers` file
+  and its check; immutable licence texts; `Last-Modified` on no-store pages;
+  the Caddy check in Quick verification.
+- **Accepted and documented.** Snapshot rollback under the same key by
+  someone who can write app files (root or a debuggable build); access tokens
+  issued in the verifier's future stay refused, so replicas need synchronized
+  clocks; DST gap/overlap policy waits for the first local-boundary builder;
+  an unknown discount skips reconciliation, so EMP-FUEL must map "no
+  discount" to zero.
+
+Dependency audit: `npm audit` against registry.npmjs.org now passes TLS but
+receives HTTP 403 from a network filter page. The GitHub Advisory Database,
+which backs npm audit, reports zero advisories for each of the 21 locked
+packages (`typescript@7.0.2` and its 20 platform packages).
+
+Still open, with owners: single-family account session revocation for panel
+sign-in (AUTH/IDN: a company session requires its source family to stay
+live), real AUTH/IDN providers, a non-bypass runtime login with grants, the
+route gate on the composed router with the first business route, a
+scheduled vault expiry sweep and erasure on an authoritative device-revoked
+contact, native device acceptance, upload audit/orphan cleanup
+(EMP-DOC-014), staging bucket lifecycle versus private originals,
+backup/restore roles for forced RLS, EMP-PLAT-012 (EMP-GOV-014), aggregate
+Kotlin domain coverage below 90%, and the legal receipt gates. F1/M1 remain
+open; the state stays INTEGRATION_PENDING.

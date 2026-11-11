@@ -132,3 +132,13 @@ single-family revocation, ordinary runtime login, feature limits/cleanup,
 private storage lifecycle/backup authority, legal real-receipt policy and
 the other [review activation gates](f1-pr202-review.md) remain owed.
 This publication neither merges PR202 nor deploys/certifies production.
+
+## Second PR202 review corrections (2026-11-11)
+
+The shared oracle has 99 rows. A server receipt equal to the minimum
+instant (Go's unset time) is refused in RECORD and SKEW, and SystemV/ zones
+fail in Kotlin as they do in Go. Go zone validation moved to
+`kernel.LoadTimeZone`, shared with organizations. The vectors map instants
+to local days only; a future builder of local boundaries must define its
+gap/overlap policy with Go/JVM vectors first.
+[Review record](f1-pr202-review.md#second-review-head-1f99b018).

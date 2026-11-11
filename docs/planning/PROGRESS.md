@@ -1,4 +1,19 @@
 # Current execution state
+- Enterprise PR202 second review, 2026-11-11: reviewed head `1f99b018`
+  (EMP-PLAT-009..015, EMP-PRIV-003, EMP-ORG-001) with the earlier batch;
+  fixes follow as new commits on dev. [Review record](../enterprise/evidence/f1-pr202-review.md#second-review-head-1f99b018):
+  - Fixed: the failed required Android `test` check (order-bound backup
+    test); registered refusals flattened to 503 in orgevent; enterprise
+    denial markers written by personal revocations; organization/time zone
+    mismatch; unrecoverable vaults and untyped unlock; post-reboot offline
+    expiry; Retry-After axis; plus the low items and the first review's
+    transfer, decode and panel/Caddy items.
+  - Open gates: single-family session revocation, AUTH/IDN providers,
+    non-bypass runtime login, composed route gate, vault expiry sweep and
+    device-revoked erasure, native acceptance, PLAT-012/GOV-014, aggregate
+    Kotlin coverage, legal receipt gates.
+  - LOCAL_DONE / INTEGRATION_PENDING; F1/M1 open; EMP-ORG-002 next.
+
 - Enterprise EMP-ORG-001, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published ef8bfff9 on isolated codex/enterprise-f0-f1; targets
   existing PR202 (dev → main), preserving occupied local dev.

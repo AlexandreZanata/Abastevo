@@ -157,3 +157,15 @@ readiness is claimed.
 F1/M1 remain open. Next bounded task is EMP-PLAT-011 upon authorization.
 New remote checks/review must apply to the new PR head. No merge, deployment,
 wiki sync or release certification is performed or inferred.
+
+## Second PR202 review corrections (2026-11-11)
+
+`SafeError` turned every work-callback refusal into a retryable 503. It now
+returns a registered orgapi code (CONFLICT, VALIDATION_FAILED,
+PERIOD_LOCKED, ...) bare, after the rollback, and keeps every other error
+opaque. The append-only tests claimed more than they proved: the audit
+TRUNCATE accepted the event tables' 55000, and intent TRUNCATE failed on its
+receipt FK first. Each table's trigger is now proved alone, with the other
+triggers disabled and the exact message required. The statement above that
+no rejection assertion was weakened did not hold for the audit TRUNCATE.
+[Review record](f1-pr202-review.md#second-review-head-1f99b018).

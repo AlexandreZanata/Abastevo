@@ -118,3 +118,14 @@ ORG-002 owns root persistence, migration/upgrade isolation and real PostGIS
 proof; ORG-003 owns atomic onboarding. Current actor integration and actual
 lifecycle commands keep their planned ownership. No live readiness, merge,
 wiki publication, deployment or release certification is inferred.
+
+## Second PR202 review corrections (2026-11-11)
+
+The organization accepted zones that operation time refused (GMT, EST,
+Japan, Factory and host-only localtime/posixrules), and the oracle pinned GMT
+as valid. Both now use `kernel.LoadTimeZone`; the oracle has 111 rows. The
+display name is bounded free text (BR-PRIV-007): at most 120 code points,
+no control or bidirectional override characters, and spaces or invisible
+format characters alone count as no name. Every fmt verb, slog value and
+JSON encoding, including nested values, prints only redactions.
+[Review record](f1-pr202-review.md#second-review-head-1f99b018).

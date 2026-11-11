@@ -190,3 +190,23 @@ starts empty only after explicit acknowledgement.
 No production credential, receipt, photo, precise GPS or business record
 was used. Test subprocess keys are generated software keys under disposable
 test directories, never committed, logged or used by production adapters.
+
+## Second PR202 review corrections (2026-11-11)
+
+The required `test` check failed at `1f99b018`: `SecurityConfigurationTest`
+read only the first backup exclusion, and the verification above never ran
+`:app:testDebugUnitTest`. The test now checks every exclusion in any order,
+including the actual `no_backup/enterprise-sealed-v1/` path. Behaviour
+changes:
+- A personal session revocation writes no enterprise marker or file when the
+  account holds no vault or key.
+- Unlock-required and unrecoverable vaults are typed; an unrecoverable vault
+  restarts empty after an explicit loss acknowledgement.
+- After a reboot, wall time past the offline validity erases the key without
+  server contact; a clock set back still needs contact.
+- Rotation no longer fences handles, the session fence has no default, the
+  cleanup flag clears on a later success, logout reports a failed durable
+  clear, and an allocation failure is an outage instead of a crash.
+Native acceptance, a scheduled expiry sweep and erasure on an authoritative
+device-revoked contact stay activation gates.
+[Review record](f1-pr202-review.md#second-review-head-1f99b018).

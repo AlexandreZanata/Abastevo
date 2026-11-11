@@ -727,7 +727,9 @@ AUTH and EMP-DOC-002 own the concrete provider and document schema.
 
 The service defaults off and requires configured authority, storage, content
 inspection, token and audit ports. Composition supplies the existing enterprise
-switch and server UUID generator. A transfer has four concurrent slots and a
+switch and server UUID generator. A process admits four concurrent transfers,
+at most two per organization and one per member, and refuses at once beyond
+that, so no single member or organization can hold them all. A transfer has a
 20-second context; the future HTTP owner also sets its request read deadline,
 as the current community ingress does. The service reads at most declared
 bytes plus one, checks exact length/digest, requires detected type to match
@@ -737,7 +739,9 @@ distinct from unsupported content.
 
 Default budgets are image 5 MiB, PDF 10 MiB and XML 1 MiB. The configured
 synthetic C1 adapter reuses strict JPEG structure/dimension validation and
-full decode, without sanitizing or re-encoding the original. PNG, PDF and XML
+full decode, without sanitizing or re-encoding the original. Full decodes run
+one at a time per process: a progressive four-component image at the 12 MP cap
+needs about 240 MB while it decodes. PNG, PDF and XML
 are refused by that inspector. Their reviewed format/active-content inspectors
 and safety-job state remain in EMP-DOC-014; a declared MIME or READY flag
 alone never enables an unconfigured format.
@@ -755,7 +759,8 @@ The API capability reuses `httpapi.Seal/Open` with a separate binding domain.
 It binds canonical HTTPS origin, organization, account/member and exact
 document revision, digest, type and length. A signed inner deadline rejects
 at five minutes even though the shared cursor envelope lasts longer.
-Malformed, foreign, changed, revoked and expired grants fail closed.
+Malformed, foreign, changed, revoked and expired grants fail closed, as do
+grants issued in the verifier's future: API replicas need synchronized clocks.
 Current authority, grant revocation and expiry are checked again after
 storage/audit and before bytes leave the service; cancellation also refuses.
 

@@ -183,3 +183,20 @@ statements above:
   signals.
 - A refused sign-in now returns focus to the key field, and the refusal is
   announced once.
+
+## Second PR202 review corrections (2026-11-11)
+
+The open panel items of the first review are fixed:
+- Returning to the tab rechecks the scope without a loading state; an
+  unchanged answer keeps focus, the pending choice and the live region.
+- The overview link stays reachable at 850 px and below.
+- `FRESH_AUTH_REQUIRED` has its own sign-in message.
+- The dead `_headers` file is retired (Caddy served it publicly); the
+  artifact check reads the served Caddyfile policy and the build ships 19
+  files.
+- Unhashed licence texts revalidate hourly instead of being immutable, and
+  company pages and the company 404 drop `Last-Modified`.
+- Quick verification runs the Caddy check whenever the panel, the landing,
+  the staging Caddyfile or its ConfigMap changes; `browser.py` stays a local
+  check because it needs Playwright, Chromium, Go and PostGIS.
+[Review record](f1-pr202-review.md#second-review-head-1f99b018).
