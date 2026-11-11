@@ -241,6 +241,24 @@ boundaries.
   are held. Dead replay requires an explicit reason through the existing
   queue API; operator authorization/audit entry points retain BACK ownership.
 
+- **B-BR-EMP-25 — Bind Android local ownership explicitly.** Enterprise
+  records and pending operations carry a validated immutable account,
+  canonical HTTPS server origin and organization. Every persistence query
+  uses all three components. Enterprise Room storage is separate from
+  personal tables and schemas; it never imports personal records. An
+  operation identifier can converge only on identical target/payload in
+  its original partition. Reusing it with changed intent is refused.
+
+- **B-BR-EMP-26 — Refuse stale local context.** A bound store captures its
+  partition and context generation. Switching context or locking invalidates
+  old handles, including when the same partition is selected again. An
+  operation from another partition is refused, never retagged. Context
+  changes and in-flight local calls serialize. Process restart begins locked;
+  stored work is loaded only through an explicitly selected original scope.
+  Local selection is not membership or server authority. The production
+  persistence port remains unavailable until EMP-PRIV-003 composes and proves
+  protected storage, logout/revocation and backup behavior.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -341,6 +359,14 @@ boundaries.
   Rollback, foreign scope, changed intent, stale lease or unavailable
   storage returns no successful mutation; bounded retries eventually park
   failed work for explicit operator recovery.
+
+- **BUC-EMP-14 — Resume work in its original Android context.** Select a
+  verified account/server/organization context and bind a local store.
+  Persist a synthetic record or immutable pending operation in that scope.
+  After context change, old handles fail. After process restart, select
+  the original scope explicitly to load its work; another account, server
+  or organization sees none of it. The foundation dispatches no operation
+  and opens no real-data storage before protected-store integration.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

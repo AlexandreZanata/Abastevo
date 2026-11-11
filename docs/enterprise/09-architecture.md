@@ -125,6 +125,47 @@ configured API origin. Its session, build and middleware are separate
 from `admin-web/`. A future station portal remains subject to its
 separate gate. [Decision record](evidence/f0-m0-decisions.md#company-web-surface)
 
+### 2.1 Implemented Android partition foundation
+
+EMP-PLAT-011 adds EnterprisePartition in :domain, explicit persistence ports
+and EnterpriseLocalContext in :application, and a separate EnterpriseDatabase
+schema/Room adapter plus EnterpriseModule in :data. Existing modules and
+com.anpfuel are preserved; no enterprise screen or feature worker is mounted.
+
+The partition is immutable (canonical non-nil UUID account/organization and
+canonical HTTPS origin). Default port 443, host case and a root trailing slash
+converge; different server/port, account or organization stay separate. Private
+reference/value types redact their string forms and copy opaque envelope bytes.
+
+Every record/pending-row key and query includes account, origin and
+organization. EnterpriseDatabase v1 owns only its two new tables and is
+separate from AnpFuelDatabase v37. No personal migration, import or fallback
+is added. Pending insert/replay is a Room transaction: identical operation
+ID/target/envelope converges, changed target/envelope is refused and held
+work is not replaced. Full offline operation schemas, ordering, dependency
+resolution, acknowledgements and dispatch remain with SYNC.
+
+EnterpriseLocalContext starts locked after process creation. A bound handle
+captures its partition/generation. Context changes and local calls share one
+mutex; even selecting the same partition again invalidates old handles.
+Each call checks current account identity and the shared API origin before
+use and before returning data. Foreign inputs/results are refused. A queued
+operation retains its stored creation partition; handles cannot retag it to
+the currently selected organization. Storage errors are static and cancellation
+propagates. This is a local ownership boundary, not membership authorization.
+
+Hilt reuses AuthFlow and the named apiOrigin configuration; Active and
+NeedsRefresh are local owner hints, never network permission. The production
+persistence binding is UnavailableEnterprisePersistence. No DB builder is
+registered: the plain Room adapter is for synthetic foundation validation.
+EMP-PRIV-003 must select/prove encryption covering metadata, DB/journals,
+files/caches, keys, logout/revocation and backup before replacing that binding.
+Existing backup rules exclude databases; this is not device protection proof.
+
+See [adapter contract and commands](../../data/src/main/kotlin/com/anpfuel/data/enterprise/README.md)
+and [local evidence](evidence/f1-plat011-android-foundation.md). Host SQLite
+persistence/SQL evidence is separate from deferred native Room/Keystore tests.
+
 ## 3. Request context and authentication
 
 | Client | Authentication | Notes |

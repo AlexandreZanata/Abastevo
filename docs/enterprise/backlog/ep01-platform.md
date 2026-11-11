@@ -190,7 +190,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local transactional publication, lease fencing and recovery evidence](../evidence/f1-plat010-transactional-events.md).
 
 ### EMP-PLAT-011 — Android enterprise foundation: packages, local store partitioned by account, origin and organization, DI
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Establish the Android enterprise foundation and ownership of local work.
 - **Rules and use cases:** OQ-06, BR-TEN-004, BR-PRIV-016, BR-PRIV-017
 - **Depends on:** EMP-GOV-008
@@ -204,6 +204,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-APP, V-ISO, V-SYNC, V-PRIV · migration: test empty and existing personal stores · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Encryption and revocation behavior are completed and proven by the protected-store task.
 - **Done when:** Affected Android consumers compile and partition behavior passes targeted tests.
+
+[Local ownership, Room/SQLite persistence and DI evidence](../evidence/f1-plat011-android-foundation.md).
 
 ### EMP-PLAT-012 — Transactional e-mail port and adapter for enterprise notices
 - **Meta:** module PLAT · phase F1 · cut - · priority P1 · type INT · size S · state TODO

@@ -1,4 +1,18 @@
 # Current execution state
+- Enterprise EMP-PLAT-011, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `5927654c`; delivery targets existing PR202 (dev → main).
+  [Android foundation evidence](../enterprise/evidence/f1-plat011-android-foundation.md)
+  records immutable account/origin/org scope, generation-bound local handles,
+  separate Room v1 schema and default-unavailable production persistence.
+  Domain 1,060, application 538 and scoped data 47 tests passed. Real SQLite
+  process/reopen/isolation/concurrency and personal-store preservation passed.
+  Native tests compile; device execution stays OWED. Data lint and debug APK
+  build/Hilt passed. Aggregate app lint remains FAILED on the unchanged
+  home_open_map translation (reproduced at `5927654c`); aggregate domain
+  coverage remains below 90%. No gate weakened. Protected-store activation
+  belongs to EMP-PRIV-003; F1/M1 open. EMP-PLAT-012 awaits EMP-GOV-014;
+  next eligible platform task EMP-PLAT-013.
+
 - Enterprise EMP-PLAT-010, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published `3f7a25b8`; delivery targets existing PR202 (dev → main).
   [Transactional-event evidence](../enterprise/evidence/f1-plat010-transactional-events.md)
