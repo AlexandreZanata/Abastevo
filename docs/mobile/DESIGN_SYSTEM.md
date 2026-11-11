@@ -121,6 +121,14 @@ outlines and indicators.
   posts, initials for people), author line with relative time, kind and
   category, title, excerpt and icon actions (comment, share). The compose
   button is a round black FAB. Comments and replies follow the same layout.
+- **Conversation** (post page, B-BR-FOR-17/18): an action bar under the post
+  (replies, like, dislike, share); "Comentários" with a pink "Ao vivo" dot
+  while the stream is connected and a sort menu (Mais relevantes, Mais
+  recentes, Mais curtidas). Each reply links to its best answer with a 2dp
+  thread line under the avatars; "Respostas (N)" opens the rest under the
+  same line. Like is a heart that turns pink (`forumLikeColor`, 4.5:1 on
+  white); dislike is a thumb that turns black; counts roll up or down. Live
+  replies wait behind a black "N novas respostas" pill at the top.
 - **Map**: controls float over the map with a shadow instead of sitting in a
   card: a search pill, then city and price-source chips; details and status
   open in a panel below them. Round map buttons use the screen color with ink

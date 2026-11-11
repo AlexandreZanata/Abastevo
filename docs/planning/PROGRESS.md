@@ -1,4 +1,25 @@
 # Current execution state
+- Forum social conversation (B-BR-FOR-17/18, BUC-FOR-10/11), 2026-11-11:
+  LOCAL_DONE / INTEGRATION_PENDING on `dev` (owner request: X-like forum,
+  likes/dislikes, live updates). Backend: migration 000164 (reaction tables,
+  trigger-kept counters including account erasure, ranked partial indexes,
+  pg_notify of committed public changes), signed reaction and owner-read
+  routes, sorted replies with best-answer previews, SSE stream fed by one
+  LISTEN connection per process (bounded hub, resync, shutdown), privacy
+  export, OpenAPI. Android: X-style post page, optimistic reactions, live
+  stream with "new replies" pill; forum command signing and account key
+  binding from `forum-category-crash` integrated. Fixes found on the way:
+  wrapped post detail parsing, status recorders without Unwrap (no SSE
+  flush), development loopback canonical host for local signed writes,
+  mapProbe network config, session pickup after sign-in. Verified: forum,
+  migrate, account and identity integration suites with -race on PostGIS;
+  backend unit suite; domain 942, application 532, data 744, app 750; on the
+  owner's phone against a local API (separate mapProbe install): ranked
+  replies, thread lines, live counts, signed like/dislike switch, signed
+  comment, moderator approval arriving behind the pill, sort change. Not
+  verified: staging (deploys only after merge to main); comments still need
+  moderator approval by rule; instrumented tests not run on the phone.
+
 - Android black-chrome identity, 2026-11-11: LOCAL_DONE /
   INTEGRATION_PENDING on `dev` from `d8bdc642` (owner design request;
   spec `docs/mobile/DESIGN_SYSTEM.md`). Solid black header, top bars,
