@@ -158,13 +158,76 @@ Hilt reuses AuthFlow and the named apiOrigin configuration; Active and
 NeedsRefresh are local owner hints, never network permission. The production
 persistence binding is UnavailableEnterprisePersistence. No DB builder is
 registered: the plain Room adapter is for synthetic foundation validation.
-EMP-PRIV-003 must select/prove encryption covering metadata, DB/journals,
-files/caches, keys, logout/revocation and backup before replacing that binding.
-Existing backup rules exclude databases; this is not device protection proof.
+EMP-PRIV-003 adds the sealed adapter below. Native proof and current-server
+composition remain required before replacing that binding. Existing backup
+rules and host checks are not device protection proof.
 
 See [adapter contract and commands](../../data/src/main/kotlin/com/anpfuel/data/enterprise/README.md)
 and [local evidence](evidence/f1-plat011-android-foundation.md). Host SQLite
 persistence/SQL evidence is separate from deferred native Room/Keystore tests.
+
+### 2.2 Implemented protected-vault source; native acceptance pending
+
+EMP-PRIV-003 selects a separate AES-256-GCM encrypted snapshot per
+(account, origin, organization), using AndroidKeyStore non-exportable keys
+and provider-generated 96-bit IVs. Version and framed partition form AAD;
+the encrypted body also validates partition, schema and bounded entries.
+Records, pending intent, attachment/cache bytes and lease metadata share
+one snapshot. The adapter never opens plaintext Room, SQLite journals or
+temporary attachments. The prior Room v1 adapter remains synthetic and
+personal v37 storage is untouched. No new dependency is required.
+
+The bounded initial implementation allows 32 MiB and 10,000 entries per
+snapshot as allocation/decoding safety budgets, not commercial quotas.
+Capacity failure is explicit and evicts nothing. Owning feature tasks must
+measure size/write amplification before activation or extend the versioned
+storage model. This deliberately avoids selecting an unreviewed encrypted
+SQLite dependency before relational enterprise schemas exist.
+
+Only scope digests appear in filenames/key aliases; identifiers and payloads
+remain encrypted. Files are under noBackupFilesDir/enterprise-sealed-v1.
+AtomicEnterpriseVaultFiles writes ciphertext to the same directory, fsyncs,
+atomically renames and fsyncs the directory. Same-account OS file locking
+serializes independent processes; a JVM lock handles overlapping file locks.
+Host tests cover actual independent JVMs and abrupt death before/after
+replacement, not just reconstructed mocks. Cloud/transfer XML excludes
+future relocation paths; the actual noBackup root is excluded by Android.
+
+Fresh contact is an explicit trusted port: current partition, session family,
+server time, offline validity and managed unlock duration. It defaults to
+unavailable. Reads never create a key. Same-boot monotonic elapsed time
+enforces expiry (default 30 days); reboot, decreasing elapsed time or wall
+time below the contact anchor locks until fresh server contact without
+dropping held work. Trusted receipt can prove expiry across boots. Device
+wall-clock changes cannot extend validity. Managed keys require configured
+device credential/strong biometric authorization; no default inactivity
+duration is invented. The platform key timeout is stricter than a sliding
+idle window. Native prompt/idle acceptance remains owed.
+
+The session-store decorator fences logout, owner/family replacement and
+failed clear attempts. Token rotation within the same family preserves
+local context. MainActivity backgrounding fences handles. Context checks
+the shared epoch before and after I/O, preventing stale same-owner handles
+from reviving after logout/re-login. Definitive SESSION_REVOKED/SESSION_REUSE
+from refresh of the still-current family invokes account/origin erasure;
+ordinary outage/expiry, foreign proof and a late old-family reply do not.
+Future signed organization clients must invoke partitionRevoked only after
+their authoritative device-revocation verdict; no new sync client is implied.
+
+Revocation/expiry fences access, persists denial and discards keys, attempting
+independent cleanup steps and reporting cleanupRequired on failure. Marker
+or missing key prevents reopen. Starting empty after erasure requires
+explicit acknowledgement, fresh server proof and successful cleanup; old
+work is never resurrected or retagged. No claim of durable erasure is made
+when both durable marker and key disposal fail. Pending native failure
+acceptance is an activation gate, not an automatic retry success claim.
+
+The real persistence binding remains UnavailableEnterprisePersistence.
+The protected implementation and Android adapters compile, but acceptance
+is IN_PROGRESS until actual Keystore/device lock, backup/transfer, reboot,
+restore and cleanup-failure scenarios run in the owner's deferred native
+batch, and current AUTH/IDN providers are composed. See the
+[implementation/evidence record](evidence/f1-priv003-protected-device-store.md).
 
 ## 3. Request context and authentication
 

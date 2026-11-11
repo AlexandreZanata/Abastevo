@@ -38,7 +38,7 @@ class EnterpriseRoomIsolationDeviceTest {
         context.deleteDatabase(name)
     }
 
-    @Test fun scoped_ids_and_immutable_pending_work_survive_reopening() = runBlocking {
+    @Test fun scoped_ids_and_immutable_pending_work_survive_reopening(): Unit = runBlocking {
         var store = open()
         val partitions = listOf(
             EnterprisePartition.of(a,origin,a), EnterprisePartition.of(b,origin,a),
@@ -57,7 +57,7 @@ class EnterpriseRoomIsolationDeviceTest {
         assertTrue(store.pending(EnterprisePartition.of(b,origin,b),50).isEmpty())
     }
 
-    @Test fun concurrent_room_transactions_admit_one_operation() = runBlocking {
+    @Test fun concurrent_room_transactions_admit_one_operation(): Unit = runBlocking {
         val store = open()
         val p = EnterprisePartition.of(a,origin,a)
         val outcomes = List(12) {

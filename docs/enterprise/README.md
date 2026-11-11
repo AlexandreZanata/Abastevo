@@ -25,8 +25,12 @@ and the [operation-time kernel](evidence/f1-plat015-operation-time.md).
 The shell keeps membership integration unavailable until AUTH/IDN supply
 current server authority. Android real-data persistence remains unavailable
 until EMP-PRIV-003 supplies and proves the protected store. EMP-PLAT-012
-awaits the EMP-GOV-014 channel decision. EMP-PRIV-003 is the next eligible
-F1 foundation task; EMP-PLAT-016 belongs to F3. Domain aggregate coverage,
+awaits the EMP-GOV-014 channel decision. EMP-PRIV-003 has its F1 source
+implementation, with acceptance IN_PROGRESS:
+[protected device store](evidence/f1-priv003-protected-device-store.md).
+Native device/backup/unlock proof and current-server composition remain
+owed, so protected persistence stays unavailable in the application graph.
+EMP-PLAT-016 belongs to F3. Domain aggregate coverage,
 native protected-store proof and the existing activation gates remain owed.
 [Kernel evidence](evidence/f1-plat001-tenancy-kernel.md) and
 [database evidence](evidence/f1-plat002-database-isolation.md), with

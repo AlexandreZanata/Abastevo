@@ -36,7 +36,7 @@ class EnterpriseLocalContextTest {
     }
 
     @Test
-    fun `switching invalidates handles and work never follows the selected organization`() = runTest {
+    fun `switching invalidates handles and work never follows the selected organization`(): Unit = runTest {
         val db = Memory()
         val context = EnterpriseLocalContext({ a }, { origin }, db)
         val old = context.select(partition())
@@ -59,7 +59,7 @@ class EnterpriseLocalContextTest {
     }
 
     @Test
-    fun `wrong identity origin and logout refuse access and invalidate the old generation`() = runTest {
+    fun `wrong identity origin and logout refuse access and invalidate the old generation`(): Unit = runTest {
         var owner: String? = a
         var server = origin
         val context = EnterpriseLocalContext({ owner }, { server }, Memory())
@@ -85,7 +85,7 @@ class EnterpriseLocalContextTest {
     }
 
     @Test
-    fun `context changes serialize with an in flight call and stale replies are withheld`() = runTest {
+    fun `context changes serialize with an in flight call and stale replies are withheld`(): Unit = runTest {
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
         var owner = a
@@ -112,7 +112,7 @@ class EnterpriseLocalContextTest {
     }
 
     @Test
-    fun `foreign or oversized persistence results fail closed`() = runTest {
+    fun `foreign or oversized persistence results fail closed`(): Unit = runTest {
         for (mode in listOf("record partition","record id","pending partition","pending size")) {
             val db = object : Memory() {
                 override suspend fun record(partition: EnterprisePartition, id: String) =
@@ -129,7 +129,7 @@ class EnterpriseLocalContextTest {
     }
 
     @Test
-    fun `production storage stays unavailable and restart requires fresh selection`() = runTest {
+    fun `production storage stays unavailable and restart requires fresh selection`(): Unit = runTest {
         val closed = EnterpriseLocalContext({a},{origin},UnavailableEnterprisePersistence).select(partition())
         assertThrows(EnterprisePersistenceUnavailable::class.java) { kotlinx.coroutines.runBlocking { closed.record(a) } }
         assertThrows(EnterprisePersistenceUnavailable::class.java) { kotlinx.coroutines.runBlocking { closed.put(EnterpriseLocalRecord(partition(),a,byteArrayOf())) } }
@@ -148,7 +148,7 @@ class EnterpriseLocalContextTest {
     }
 
     @Test
-    fun `storage failure is redacted cancellation propagates and identity outages deny`() = runTest {
+    fun `storage failure is redacted cancellation propagates and identity outages deny`(): Unit = runTest {
         var failure: Exception = IllegalStateException("PRIVATE-SQL-ROW")
         val db = object : Memory() {
             override suspend fun pending(partition: EnterprisePartition, limit: Int): List<EnterprisePendingOperation> = throw failure

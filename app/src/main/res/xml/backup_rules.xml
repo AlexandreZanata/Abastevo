@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
+    <!-- Defense in depth for future relocation; the actual sealed vault is in noBackupFilesDir. -->
+    <exclude domain="root" path="enterprise-sealed-v1/" />
+    <exclude domain="file" path="enterprise-sealed-v1/" />
+    <exclude domain="external" path="enterprise-sealed-v1/" />
     <!-- Auth keys/tokens and device identity must never leave via OS backup. -->
     <exclude domain="sharedpref" path="." />
     <!-- SEC05-D: the Room database carries private draft/owner/evidence

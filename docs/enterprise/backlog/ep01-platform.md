@@ -326,7 +326,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Done when:** Routing, scoped evidence and negative access pass before activation.
 
 ### EMP-PRIV-003 — Device-side protection: encrypted store, logout cleanup and shared-device rules
-- **Meta:** module PRIV · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module PRIV · phase F1 · cut C1 · priority P0 · type APP · size M · state IN_PROGRESS
 - **Objective:** Protect Android organization data and handle session loss safely.
 - **Rules and use cases:** BR-PRIV-016, BR-PRIV-017, BR-PRIV-018, BR-PRIV-019, UC-PRIV-03
 - **Depends on:** EMP-PLAT-011
@@ -340,6 +340,10 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-APP, V-PRIV, V-ISO, V-SYNC · migration: preserve personal stores and test failed upgrade recovery · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Any new storage dependency needs a separate recorded review.
 - **Done when:** Device and persistence tests prove isolation and revocation behavior.
+
+[Protected-store source and pending native acceptance](../evidence/f1-priv003-protected-device-store.md).
+Host source checks are separate from actual Keystore, unlock, backup/transfer,
+reboot and restore evidence. Production persistence remains unavailable.
 
 ### EMP-PRIV-004 — Backup, restore and deletion-ledger replay for enterprise data
 - **Meta:** module PRIV · phase F6 · cut - · priority P1 · type OPS · size M · state TODO

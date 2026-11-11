@@ -1,4 +1,19 @@
 # Current execution state
+- Enterprise EMP-PRIV-003, 2026-11-11: SOURCE_IMPLEMENTED / INTEGRATION_PENDING;
+  task acceptance IN_PROGRESS pending the owner's deferred native batch.
+  Above published 5d1f2b4a on isolated codex/enterprise-f0-f1, targets PR202
+  (dev → main), preserving occupied local dev and unrelated changes.
+  [Protected-store evidence](../enterprise/evidence/f1-priv003-protected-device-store.md)
+  records complete partition AEAD snapshots, Keystore adapters, monotonic
+  leases, session/background fences and explicit revocation cleanup.
+  Full domain 1,159/application 542 and scoped data/auth 67 tests pass,
+  zero failures/skips. APK/Hilt/native-test compilation and data/app lint
+  pass; new domain coverage 98.04%, aggregate 80.3115% remains below 90%.
+  Plan/links/secret checks pass. Native Keystore/unlock/restore/transfer/
+  failure proof remains owed; production
+  persistence/contact remain unavailable. F1/M1 and aggregate coverage open.
+  No next-phase/production acceptance is inferred; PLAT-012 awaits GOV-014.
+
 - Enterprise EMP-PLAT-015, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published a709ad5c on isolated codex/enterprise-f0-f1; delivery
   targets existing PR202 (dev → main), preserving the occupied local dev.

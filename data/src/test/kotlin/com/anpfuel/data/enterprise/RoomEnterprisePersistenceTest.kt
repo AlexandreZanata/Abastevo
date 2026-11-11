@@ -44,7 +44,7 @@ class RoomEnterprisePersistenceTest {
     }
 
     @Test
-    fun `colliding ids across account origin and organization remain isolated`() = runBlocking {
+    fun `colliding ids across account origin and organization remain isolated`(): Unit = runBlocking {
         val dao = Dao()
         val store = RoomEnterprisePersistence(dao)
         val partitions = listOf(partition(),partition(owner=b),partition(server="https://other.example.invalid"),partition(org=b))
@@ -66,7 +66,7 @@ class RoomEnterprisePersistenceTest {
     }
 
     @Test
-    fun `duplicate operation converges but changed intent never overwrites held work`() = runBlocking {
+    fun `duplicate operation converges but changed intent never overwrites held work`(): Unit = runBlocking {
         val store = RoomEnterprisePersistence(Dao())
         val op = EnterprisePendingOperation(partition(),a,b,byteArrayOf(4))
         assertTrue(store.enqueue(op))
@@ -83,7 +83,7 @@ class RoomEnterprisePersistenceTest {
     }
 
     @Test
-    fun `production graph reuses account and configured origin with unavailable persistence`() = runBlocking {
+    fun `production graph reuses account and configured origin with unavailable persistence`(): Unit = runBlocking {
         assertSame(UnavailableEnterprisePersistence,EnterpriseModule.persistence())
         val auth = mockk<AuthFlow>()
         val session = PortableAuth.Session(a,a,"synthetic-access","synthetic-refresh",100,200)

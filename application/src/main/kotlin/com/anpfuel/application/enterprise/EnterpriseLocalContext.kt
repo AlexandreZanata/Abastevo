@@ -36,6 +36,7 @@ class EnterpriseLocalContext(
     private val ownerAccount: () -> String?,
     private val serverOrigin: () -> String,
     private val persistence: EnterprisePersistence,
+    private val accessEpoch: () -> Long = { 0L },
 ) {
     private val mutex = Mutex()
     private var current: EnterprisePartition? = null
@@ -47,7 +48,7 @@ class EnterpriseLocalContext(
         generation++
         if (!matchesIdentity(partition)) throw EnterpriseLocalDenied()
         current = partition
-        BoundStore(partition, generation)
+        BoundStore(partition, generation, accessEpoch())
     }
 
     suspend fun lock() = mutex.withLock {
@@ -60,9 +61,9 @@ class EnterpriseLocalContext(
             EnterprisePartition.canonicalOrigin(serverOrigin()) == partition.origin
     } catch (_: Exception) { false }
 
-    private suspend fun <T> scoped(partition: EnterprisePartition, token: Long, block: suspend () -> T): T = mutex.withLock {
-        if (current != partition || generation != token) throw EnterpriseLocalDenied()
-        if (!matchesIdentity(partition)) {
+    private suspend fun <T> scoped(partition: EnterprisePartition, token: Long, epoch: Long, block: suspend () -> T): T = mutex.withLock {
+        if (current != partition || generation != token || accessEpoch() != epoch) throw EnterpriseLocalDenied()
+        if (!matchesIdentity(partition) || accessEpoch() != epoch) {
             current = null
             generation++
             throw EnterpriseLocalDenied()
@@ -82,7 +83,7 @@ class EnterpriseLocalContext(
             throw EnterprisePersistenceUnavailable()
         }
         // Account/session changes may happen independently of this local selection.
-        if (!matchesIdentity(partition)) {
+        if (!matchesIdentity(partition) || accessEpoch() != epoch) {
             current = null
             generation++
             throw EnterpriseLocalDenied()
@@ -90,24 +91,24 @@ class EnterpriseLocalContext(
         result
     }
 
-    inner class BoundStore internal constructor(val partition: EnterprisePartition, private val token: Long) {
-        suspend fun record(id: String): EnterpriseLocalRecord? = scoped(partition, token) {
+    inner class BoundStore internal constructor(val partition: EnterprisePartition, private val token: Long, private val epoch: Long) {
+        suspend fun record(id: String): EnterpriseLocalRecord? = scoped(partition, token, epoch) {
             val row = persistence.record(partition, EnterprisePartition.requireId(id))
             if (row != null && (row.partition != partition || row.id != id)) throw EnterpriseLocalDenied()
             row
         }
 
-        suspend fun put(record: EnterpriseLocalRecord) = scoped(partition, token) {
+        suspend fun put(record: EnterpriseLocalRecord) = scoped(partition, token, epoch) {
             if (record.partition != partition) throw EnterpriseLocalDenied()
             persistence.put(record)
         }
 
-        suspend fun enqueue(operation: EnterprisePendingOperation): Boolean = scoped(partition, token) {
+        suspend fun enqueue(operation: EnterprisePendingOperation): Boolean = scoped(partition, token, epoch) {
             if (operation.partition != partition) throw EnterpriseLocalDenied()
             persistence.enqueue(operation)
         }
 
-        suspend fun pending(limit: Int = 50): List<EnterprisePendingOperation> = scoped(partition, token) {
+        suspend fun pending(limit: Int = 50): List<EnterprisePendingOperation> = scoped(partition, token, epoch) {
             // Existing bounded operation-batch precedent; no feature retry policy.
             require(limit in 1..50) { "Invalid enterprise page size" }
             persistence.pending(partition, limit).also { rows ->

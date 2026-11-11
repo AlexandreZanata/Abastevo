@@ -46,6 +46,12 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var contributionScheduler: com.anpfuel.data.worker.ContributionWorkScheduler
     @Inject lateinit var authFlow: AuthFlow
     @Inject lateinit var photoFlow: com.anpfuel.application.portable.PhotoFlow
+    @Inject lateinit var enterpriseFence: com.anpfuel.application.enterprise.EnterpriseSessionFence
+
+    override fun onStop() {
+        if (::enterpriseFence.isInitialized) enterpriseFence.markBackground()
+        super.onStop()
+    }
 
     override fun onDestroy() {
         if (!isChangingConfigurations) com.anpfuel.app.ui.auth.AccountKeyUnlockSession.grant.reset()

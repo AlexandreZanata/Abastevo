@@ -325,6 +325,49 @@ boundaries.
   Owning sync flows apply the flag to the batch and arrange review; this
   kernel does not accept batches or resolve membership/period locks.
 
+- **B-BR-EMP-33 — Seal the complete local partition.** The protected
+  adapter keeps records, pending intent, attachments, derived caches and
+  lease metadata in one authenticated encrypted snapshot per account,
+  origin and organization. AES-256-GCM uses provider-generated IVs and
+  binds version and partition as authenticated data. No plaintext Room
+  database, journal or temporary attachment is opened by this adapter.
+  Files live under noBackupFilesDir; filenames/key aliases contain only a
+  framed scope digest. Replacement is ciphertext-only, atomic and durable;
+  failed writes retain the previous snapshot or an idempotently readable
+  complete replacement. Local capacity refusal never drops held work.
+
+- **B-BR-EMP-34 — Bound offline access and key custody.** A fresh trusted
+  contact supplies the exact partition, session family, server time,
+  offline validity (default 30 days) and managed unlock policy. Ordinary
+  reads never create replacement keys. Access requires the same current
+  identity/session, authenticated ciphertext and an unexpired same-boot
+  monotonic lease. Reboot, decreasing monotonic time or wall-clock rollback
+  requires fresh contact, preserving encrypted pending work. Monotonic
+  expiry, or trusted contact proving expiry, discards the partition key.
+  Device time cannot extend validity. Managed keys require device
+  credential/strong biometric authorization for the explicitly configured
+  duration; local unlock is never a server credential. A changed key policy
+  requires an explicit migration rather than a silent downgrade.
+
+- **B-BR-EMP-35 — Fence logout and revocation.** Clearing or changing the
+  account/session family invalidates existing enterprise handles before
+  releasing the change; same-family token rotation preserves them. Secure
+  session/key removal reports failed durable commits, never memory-only
+  logout success. AuthFlow attempts both local clears and remote logout
+  and returns secure-storage-unavailable when durable cleanup fails.
+  Logout retains encrypted unsent work for the same
+  account's later trusted contact; another identity cannot open or send it.
+  Definitive revocation or expiry first fences access, then persists a
+  denial marker and deletes the key, attempting both even if one fails.
+  Cleanup failure is reported and never acknowledged as completed erasure.
+  A marker or missing key blocks reopening; unavailable authoritative
+  contact never authorizes a new lease. Starting an empty replacement after
+  erasure requires explicit acknowledgement of lost unsent work, a fresh
+  server grant and successful cleanup before lifting denial; it never
+  recovers the old key or authorizes another partition. Real persistence stays unavailable
+  in the application graph until native proof and current server adapters
+  are accepted. A disconnected device cannot receive immediate revocation.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -457,6 +500,15 @@ boundaries.
   even when the device declares an earlier time. A sync sample twelve
   minutes ahead flags CLOCK_SKEW under the default limit, without changing
   the operation. Invalid zone/offset input produces no time snapshot.
+
+- **BUC-EMP-18 — Keep unsent work protected after session loss.** Given
+  encrypted work in A, logout locks old handles without deleting that work.
+  B sees none of it. After the same account signs in again and the server
+  confirms A, the original work can reopen under its original scope. A
+  revoked device, expired lease, restored ciphertext without its Keystore
+  key, modified envelope or failed cleanup reveals no content. Managed
+  access requires local device unlock; the production binding remains
+  closed until device and server integration evidence exists.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

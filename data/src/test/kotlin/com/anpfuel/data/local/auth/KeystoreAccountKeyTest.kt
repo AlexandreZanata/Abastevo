@@ -91,6 +91,13 @@ private class KeyKeys : SessionKeyProvider {
 
 class KeystoreAccountKeyTest {
 
+    @Test
+    fun failedClearCannotClaimDurableKeyRemoval() {
+        val prefs = KeyPrefs().apply { commitSuccess = false }
+        val store = KeystoreAccountKey(prefs, KeyKeys())
+        assertThrows(IllegalStateException::class.java) { store.clearKey() }
+    }
+
     private fun backup() = AuthFlow.KeyBackup("ana123", "key-for-ana123")
 
     @Test

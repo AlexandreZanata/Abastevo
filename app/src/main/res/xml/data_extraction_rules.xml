@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
+        <exclude domain="root" path="enterprise-sealed-v1/" />
+        <exclude domain="file" path="enterprise-sealed-v1/" />
+        <exclude domain="external" path="enterprise-sealed-v1/" />
         <exclude domain="sharedpref" path="." />
         <!-- SEC05-D: private Room metadata never enters cloud backup;
             offline packs re-download after a restore. -->
         <exclude domain="database" path="." />
     </cloud-backup>
     <device-transfer>
+        <exclude domain="root" path="enterprise-sealed-v1/" />
+        <exclude domain="file" path="enterprise-sealed-v1/" />
+        <exclude domain="external" path="enterprise-sealed-v1/" />
         <exclude domain="sharedpref" path="." />
         <!-- SEC05-D: private Room metadata never transfers devices;
             offline packs re-download after a restore. -->

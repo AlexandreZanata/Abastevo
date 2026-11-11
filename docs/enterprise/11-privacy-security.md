@@ -77,6 +77,13 @@ Devices:
 - **BR-PRIV-018 — Lost devices.** Revoking a device or session takes effect on the server immediately. The local partition is erased the next time the app reaches the server, or when its offline validity (default 30 days without contact) expires and the key is discarded. The product never promises immediate remote erasure of a disconnected device (BR-OFFL-014).
 - **BR-PRIV-019 — App lock for corporate access.** A managed account requires a local unlock (device credential or biometric) after inactivity. This protects the device session; it is not a server credential.
 
+EMP-PRIV-003 implements a source-gated sealed snapshot adapter and the
+session/background epoch fence. Host crypto, persistence and process tests
+are recorded separately from the deferred Android Keystore, unlock,
+backup/transfer and restore acceptance. The production persistence and
+current-contact provider remain unavailable pending that proof and AUTH/IDN
+composition. [Source and acceptance record](evidence/f1-priv003-protected-device-store.md).
+
 Uploads and platform operators:
 
 - **BR-PRIV-020 — Uploads are bounded and inspected.** Type is decided by content, not by name. Limits (defaults): image 5 MiB, PDF 10 MiB, XML 1 MiB. PDF with active content or encryption, XML with external entities, archives and executables are refused. Originals are preserved unmodified once accepted.
