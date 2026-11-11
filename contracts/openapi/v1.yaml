@@ -4024,7 +4024,11 @@ paths:
         is revoked and address plus provider bindings drop. The account
         row stays as an audit record; later signups mint new accounts
         without reputation carryover. Suspended callers delete through
-        the operator path, not this route.
+        the operator path, not this route. Private enterprise memberships
+        are ended and their account links replaced with per-period tombstones.
+        LAST_OWNER refuses deletion before billing cancellation; unavailable
+        enterprise ownership policy fails closed. Employee and organization
+        records are retained under their own policy.
       requestBody:
         required: true
         description: Live family plus its current access token.
@@ -4061,6 +4065,14 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: LAST_OWNER; transfer organization ownership before deleting the account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /v1/accounts/bindings/bind:
     post:
       summary: Bind a device contributor to the caller's account.

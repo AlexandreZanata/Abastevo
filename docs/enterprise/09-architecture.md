@@ -17,7 +17,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | Module | Code | Owns | Uses (through ports) |
 |---|---|---|---|
 | `organization` (ORG-001/002 LOCAL_DONE) | ORG | Scoped aggregate/lifecycle and forced-RLS root persistence; onboarding, legal entities, units, teams, groups and settings commands remain planned | `kernel`, explicit application ports, sqlc/pgx; no runtime route or authority provider |
-| `membership` (IDN-001 LOCAL_DONE, domain only) | IDN | Scoped employee/membership lifecycle, account and credential references, optional driver association, device enrolment values; storage, invitations and managed activation remain planned | `kernel` scope/UUID parser, existing `identity` fingerprint parser; references existing account/device IDs without provisioning them |
+| `membership` (IDN-001/003 LOCAL_DONE) | IDN | Scoped identity/lifecycle values, forced-RLS employee identity and membership periods, account-erasure fencing; employee register, invitations and managed activation remain planned | `kernel`, explicit application/sqlc/pgx ports, existing account deletion and billing-exit transactions; actual role policy remains AUTH-002 |
 | `orgaccess` (proposed) | AUTH | Role catalog, role assignments, the authorization service | `membership`, `organization`, `orgbilling` |
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
 | `orgvalue` (LOCAL_DONE, domain only) | PLAT | Exact reconciliation and ordered allocation | Existing pure metrics/kernel bounds; shared Go/Kotlin vectors; no private repository or authority |
@@ -612,6 +612,46 @@ on disposable PostGIS. Production grants/providers and audited factual
 legacy reconciliation remain explicit future work.
 
 [Persistence and recovery evidence](evidence/f1-org002-organization-persistence.md).
+
+### 5.1.2 Membership period persistence
+
+EMP-IDN-003 adds migration 000170 and scoped membership repositories.
+org_employee_identities holds identity/state only, without register fields;
+org_memberships holds period identity/state, account reference, server
+timestamps and an optional per-period tombstone. Both have forced RLS,
+organization-first composite references and retained IDs/history. Partial
+unique indexes reserve each employee/account for at most one non-ENDED
+period per organization. CAS advances once; exact retries converge.
+Explicit-Tx ports validate the installed scope and ordinary runtime role.
+
+New rows start INVITED. Account liveness is locked with SHARE before root
+UPDATE locks; current-account reads admit only ACTIVE periods with a live
+account and no pending account-deletion reservation. These are candidates,
+never permission decisions. SQL activation/reduction policy returns
+UNAVAILABLE until AUTH-002 installs real assignments/owner protection.
+No request boolean, runtime grant, source role or activation is seeded.
+
+Existing account status deletion uses a narrow migrator-owned trigger:
+inventory only that account through an owner-only SELECT policy, lock all
+roots in UUID order, validate policy, then update each organization through
+ordinary org RLS. It ends/unlinks periods with independent random tombstones,
+preserves employee/organization rows and prior end reasons, and restores
+transaction-local settings. Ordinary roles cannot spoof the inventory path
+or invoke the internal helpers. Definer/table owner drift refuses closed.
+The ordinary non-bypass migrator is exercised on populated real PostGIS.
+
+The existing ACCOUNT_DELETION billing-exit intent checks this policy before
+provider calls and durably fences admission. Real owner policy must exclude
+reserved accounts from surviving-owner counts under the same root lock.
+The intent identity is immutable and deletion reservation is retained while
+the account is not deleted or still linked. Changed-reason replay conflicts.
+Personal OWNER_REQUEST billing cancellation remains a separate operation.
+
+Composing commands lock relevant accounts in UUID order before any root or
+employee writes, then roots in UUID order. They own current actor proof,
+audit and complete role/device/token effects; IDN-003 supplies no business
+route, real AUTH provider or full erasure UI/retention workflow.
+[Persistence and failure evidence](evidence/f1-idn003-membership-persistence.md).
 
 ### 5.2 Organization audit runner
 

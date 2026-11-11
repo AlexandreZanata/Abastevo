@@ -47,7 +47,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Done when:** The register works with and without login through the normal entry points.
 
 ### EMP-IDN-003 — Membership persistence and states
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type DB · size S · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type DB · size S · state LOCAL_DONE
 - **Objective:** Persist scoped membership periods and deny duplicate live memberships.
 - **Rules and use cases:** BR-IDN-004, BR-IDN-007, BR-IDN-030, BR-IDN-033, BR-IDN-042, BR-TEN-009
 - **Depends on:** EMP-IDN-001, EMP-ORG-002
@@ -61,6 +61,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-SQL, V-ISO, V-IDEM, V-PRIV · migration: additive with populated fixtures · rollback: previous image and history preservation
 - **Risks and assumptions:** A separate F6 task owns the complete personal account erasure workflow.
 - **Done when:** Membership state, races and the account lifecycle safeguard pass on real PostGIS.
+
+[Local persistence, erasure fencing and upgrade evidence](../evidence/f1-idn003-membership-persistence.md).
 
 ### EMP-IDN-004 — Invitations: issue, expire, resend, revoke
 - **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state TODO

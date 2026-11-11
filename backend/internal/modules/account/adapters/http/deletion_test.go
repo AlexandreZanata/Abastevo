@@ -127,6 +127,8 @@ func TestFailMapsStatusErrors(t *testing.T) {
 	}{
 		{domain.ErrAccountSuspended, 403, "account.account-suspended"},
 		{domain.ErrAccountDeleted, 410, "account.account-deleted"},
+		{domain.ErrEnterpriseLastOwner, 409, "LAST_OWNER"},
+		{domain.ErrEnterprisePolicyUnavailable, 503, "account.enterprise-policy-unavailable"},
 	} {
 		req := httptest.NewRequest("POST", "/v1/accounts/deletion", nil)
 		rec := httptest.NewRecorder()

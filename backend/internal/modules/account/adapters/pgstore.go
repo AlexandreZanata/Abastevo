@@ -933,6 +933,15 @@ func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix i
 		Status: domain.StatusDeleted,
 		ID:     id,
 	}); err != nil {
+		var refusal *pgconn.PgError
+		if errors.As(err, &refusal) {
+			switch refusal.Code {
+			case "P7501":
+				return nil, domain.ErrEnterpriseLastOwner
+			case "P7502":
+				return nil, domain.ErrEnterprisePolicyUnavailable
+			}
+		}
 		return nil, err
 	}
 	if err := q.RevokeAccountFamilies(ctx, account.RevokeAccountFamiliesParams{

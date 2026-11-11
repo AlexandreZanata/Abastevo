@@ -14,6 +14,7 @@ import (
 	"time"
 
 	qpay "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/payments"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
@@ -1778,6 +1779,9 @@ func (s *Store) CreateBillingExit(ctx context.Context, accountID, operationKey, 
 	if existing, err := q.GetPaymentBillingExitByOperation(ctx, qpay.GetPaymentBillingExitByOperationParams{
 		AccountID: uid, OperationKey: operationKey,
 	}); err == nil {
+		if existing.Reason != reason {
+			return app.BillingExit{}, nil, false, domain.ErrConflict
+		}
 		sources, err := q.ListPaymentBillingExitSources(ctx, existing.ID)
 		if err != nil {
 			return app.BillingExit{}, nil, false, dbError(err)
@@ -1804,6 +1808,9 @@ func (s *Store) CreateBillingExit(ctx context.Context, accountID, operationKey, 
 		})
 		if err != nil {
 			return app.BillingExit{}, nil, false, dbError(err)
+		}
+		if existing.Reason != reason {
+			return app.BillingExit{}, nil, false, domain.ErrConflict
 		}
 		sources, err := q.ListPaymentBillingExitSources(ctx, existing.ID)
 		if err != nil {
@@ -2412,6 +2419,10 @@ func dbError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
+		case "P7501":
+			return kernel.ErrLastOrgOwner
+		case "P7502":
+			return kernel.ErrOrgAccessPolicyUnavailable
 		case "23505":
 			return domain.ErrConflict
 		case "23503", "23514", "22P02":

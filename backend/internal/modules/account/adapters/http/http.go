@@ -145,6 +145,10 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusForbidden, "account.account-suspended", "account suspended"
 	case "account-deleted":
 		status, code, msg = http.StatusGone, "account.account-deleted", "account deleted"
+	case "enterprise-last-owner":
+		status, code, msg = http.StatusConflict, "LAST_OWNER", "transfer organization ownership before deleting the account"
+	case "enterprise-policy-unavailable":
+		status, code, msg = http.StatusServiceUnavailable, "account.enterprise-policy-unavailable", "organization access review temporarily unavailable"
 	case "binding-cross-account-refused":
 		status, code, msg = http.StatusForbidden, "account.binding-cross-account-refused", "contributor bound to another account"
 	case "binding-not-found":

@@ -1,4 +1,21 @@
 # Current execution state
+- Enterprise EMP-IDN-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `3e88a5e9`, on isolated `codex/enterprise-f0-f1`,
+  targeting existing PR202 (`dev` → `main`); occupied dev preserved.
+  [Membership persistence evidence](../enterprise/evidence/f1-idn003-membership-persistence.md)
+  records forced-RLS identity/period storage, live uniqueness, CAS/replay,
+  server times and account-deletion tombstones. Existing billing-exit
+  intents fence ownership before provider calls; real AUTH-002 policy
+  remains UNAVAILABLE by default. No role, route or provider activated.
+  Real PostGIS/race tests pass, including ordinary non-bypass definer
+  erasure across orgs, populated upgrade/recovery/previous compatibility,
+  two-owner races, raw SQL refusal, failed commit and lock cancellation.
+  Adapter coverage 93.6%; domain 99.6%. Affected account/payments/enterprise
+  regressions, build/static, OpenAPI, sqlc, plan/links and secret checks pass.
+  Next eligible identity/access foundation: AUTH-001, then AUTH-002.
+  F1/M1 and existing runtime/native/legal/coverage gates remain open;
+  PLAT-012 still awaits GOV-014. Full erasure UX/rights remains F6.
+
 - Enterprise EMP-IDN-001, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published `e087b944`, on isolated `codex/enterprise-f0-f1`,
   targeting existing PR202 (`dev` → `main`); occupied dev and unrelated

@@ -449,6 +449,32 @@ boundaries.
   identity values. No pure transition issues tokens, revokes personal
   sessions, erases a vault or changes another organization's history.
 
+- **B-BR-EMP-43 — Persist private membership periods without implied access.**
+  Organization-scoped employee identities and membership periods use forced
+  RLS, composite references, revision CAS and exact replay. Every non-ENDED
+  period reserves its employee and, when bound, account in that organization.
+  Period IDs/history are permanent; rehire creates a fresh period. The
+  employee identity table contains no descriptive register or login data.
+  Only ACTIVE periods can be candidates for authorization, never grants by
+  themselves. Account binding checks current account liveness under a lock;
+  admission/access-reducing changes consult a database policy hook under the
+  organization lock. The hook denies as unavailable until AUTH-002 installs
+  actual role/owner policy; request fields cannot enable it.
+
+- **B-BR-EMP-44 — Fence account erasure atomically at the database boundary.**
+  The existing account-deletion transaction cannot bypass private access
+  protection, even through a direct status update or missing organization
+  scope. A trigger owned by the migrator reads only that account's links,
+  locks affected organizations in deterministic order, checks every live
+  access-reducing policy and atomically ends/unlinks the periods. Each
+  link gets its own random tombstone, not a shared person identifier.
+  Employee/organization records and original ended-period reasons remain.
+  Last-owner refusal or unavailable policy rolls back personal deletion and
+  every private change. Ordinary runtime roles cannot use the owner-only
+  erasure RLS path or enable it by setting a GUC. Runtime account locks
+  precede organization locks to serialize admission with deletion.
+  Full erasure notice/rights/retention and role effects remain owning tasks.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -614,6 +640,20 @@ boundaries.
   Ending a period preserves the employee/account references, and rehire
   requires a new period. Foreign scope, missing facts, stale revisions,
   reopening ended/revoked values or inferring rights from a credential fail.
+
+- **BUC-EMP-22 — Persist access history and protect account deletion.**
+  Under resolved scope, store an employee identity and pending period;
+  bind, activate, suspend or end it only with current database policy.
+  Competing live reservations have one winner; an exact retry converges.
+  Deleting the existing account either ends/unlinks its allowed periods in
+  every organization with the personal transaction, or refuses everything
+  when ownership policy is unavailable or the last owner is protected.
+  Ending access never deletes the employee, organization or history.
+
+  The existing account-deletion billing-exit intent checks and reserves this
+  protection before provider cancellation. Pending deletion intents fence
+  new membership admission and are excluded from surviving-owner policy;
+  a replay with a changed billing-exit reason is a conflict, not admission.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

@@ -40,14 +40,15 @@ func validEnd(c EndReason) bool {
 
 type MembershipSnapshot struct {
 	privateValue
-	OrgID          kernel.OrgID
-	ID, EmployeeID string
-	Account        AccountRef
-	Model          AccessModel
-	State          MembershipState
-	Revision       int64
-	Suspension     SuspensionOrigin
-	EndReason      EndReason
+	OrgID            kernel.OrgID
+	ID, EmployeeID   string
+	Account          AccountRef
+	Model            AccessModel
+	State            MembershipState
+	Revision         int64
+	Suspension       SuspensionOrigin
+	EndReason        EndReason
+	AccountTombstone string
 }
 type Membership struct {
 	privateValue
@@ -120,6 +121,13 @@ func RehydrateMembership(scope kernel.OrgScope, snapshot MembershipSnapshot) (Me
 		if snapshot.Account.model != snapshot.Model {
 			return Membership{}, ErrInvalid
 		}
+	}
+	if snapshot.AccountTombstone != "" {
+		tombstone, err := canonicalID(snapshot.AccountTombstone)
+		if err != nil || snapshot.Account != (AccountRef{}) || snapshot.State != MembershipEnded {
+			return Membership{}, ErrInvalid
+		}
+		snapshot.AccountTombstone = tombstone
 	}
 	switch snapshot.State {
 	case MembershipInvited:

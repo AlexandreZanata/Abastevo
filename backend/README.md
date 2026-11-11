@@ -352,6 +352,48 @@ go test -race ./internal/modules/membership/domain ./internal/modules/identity/d
 See [29 lifecycle vectors](../contracts/testdata/enterprise/README.md#identity-lifecycle-v1)
 and [local acceptance](../docs/enterprise/evidence/f1-idn001-identity-domain.md).
 
+### Membership persistence and account deletion (EMP-IDN-003)
+
+`membership/application` declares ordinary scoped and explicit-Tx storage;
+`membership/adapters` maps fields with sqlc/pgx. Migration 000170 adds minimal
+employee identities and membership periods under forced RLS. Composite FKs,
+non-ENDED employee/account uniqueness, server period times, immutable IDs,
+terminal history and CAS/replay protect the boundary. Employee register
+attributes remain IDN-002; this migration invents no employee/account data.
+
+ActiveByAccount returns only an ACTIVE period for a live account without an
+account-deletion reservation; it never authorizes an action. SQL admission/
+reduction hooks return UNAVAILABLE until AUTH-002 installs real roles and
+last-owner policy. No real role, runtime table grant or route is installed.
+Managed pending references remain descriptive, not account provisioning.
+
+The existing personal deletion/billing-exit flow checks this protection at
+the database boundary before provider cancellation and again at account
+status deletion. An owner-only, trigger-only inventory sees just that
+account's links across organizations. Mutations use normal per-org RLS;
+account references become independent period tombstones while employee,
+organization and original ended history remain. Invited periods can end
+without a role; protected live periods refuse with LAST_OWNER or unavailable
+policy. Personal-account domain remains standard-library-only; application/
+adapters translate bounded refusals. HTTP documents 409/503 without private IDs.
+
+Account locks precede organization locks; composers prelock relevant account
+UUIDs before root/employee writes, then root UUIDs. Billing-exit deletion
+reservations cannot be rewritten or removed while the account remains live.
+Real AUTH-002 policy must exclude reserved accounts from surviving owners.
+No external call occurs while those locks are held.
+
+```sh
+# ANPFUEL_TEST_DATABASE_URL must point only to disposable PostGIS:
+go test -race -tags=integration ./internal/modules/membership/... -count=1
+go test -race -tags=integration -p 1 ./internal/modules/membership/... ./internal/modules/organization/... ./internal/modules/orgaudit/... ./internal/modules/orgcapability/... ./internal/modules/orgevent/... ./internal/modules/account/adapters ./internal/modules/payments/adapters ./internal/platform/database ./internal/platform/migrate -count=1 -timeout=240s
+go test -race ./internal/modules/account/... ./internal/modules/payments/... ./internal/modules/membership/... ./internal/modules/kernel -count=1
+sqlc vet
+sqlc generate
+```
+
+[Local persistence, ordinary-owner upgrade and failure evidence](../docs/enterprise/evidence/f1-idn003-membership-persistence.md).
+
 ### Organization operation time (EMP-PLAT-015)
 
 orgtime/domain preserves declared occurred_at and trusted server received_at
