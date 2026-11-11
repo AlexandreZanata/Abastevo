@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value, database and audit foundations in EMP-PLAT-001 through EMP-PLAT-003 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
+Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value, database, audit, HTTP and capability foundations in EMP-PLAT-001 through EMP-PLAT-005 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
 
 ## 1. Principles
 
@@ -20,6 +20,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `membership` (proposed) | IDN | Employees, memberships, invitations, activation codes, device enrolment | `account`, `identity`, `cloudsync` device references (existing) |
 | `orgaccess` (proposed) | AUTH | Role catalog, role assignments, the authorization service | `membership`, `organization`, `orgbilling` |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
+| `orgcapability` (LOCAL_DONE) | PLAT | Registered organization capability state and audited activation | `orgaudit` application port, `kernel`, scoped transaction helper; AUTH authority port |
 | `orgsync` (proposed) | OFFL | Operation intake, acknowledgements, review items, reference feed | `orgaccess`; handlers registered by each module |
 | `fleet` (proposed) | FLEET, METER | Assets, tanks, meters, readings, assignments, reservations, suppliers | `organization`, `membership` |
 | `trip` (proposed) | TRIP | Missions, trips, stops, logbook | `fleet`, `review` |
@@ -393,6 +394,59 @@ Signals that justify the next infrastructure step (measured, sustained):
 - **Rollout order:** flag on in a test environment → one internal organization → named pilot organizations → general.
 - **Rollback:** turn the flag off. Data is never deleted by a rollback. Because migrations are additive, the previous image can run against the newer schema.
 - **Recovery:** a restore replays the deletion ledger before serving (BR-PRIV-011); queued operations on devices are resent and answered from the acknowledgement table, so a server restore to an earlier point reprocesses them once.
+
+### 10.1 Implemented capability foundation
+
+EMP-PLAT-005 implements `orgcapability` and additive migration
+`000166_org_capabilities.sql` above the reviewed audit migration `000165`.
+The migration seeds no grants, flags or organization activation and retains
+the `000132` compatibility floor. Root organization references follow in
+EMP-ORG-002. The table has an organization/capability composite key, forced
+read/write RLS, default-false state, a positive revision and database time.
+
+`ANPFUEL_ENTERPRISE_ENABLED` is a startup boolean, default false, in the
+existing Config loader. Composition passes `Config.EnterpriseEnabled` to
+`orgapi.Gateway.Enabled` and `orgcapability.Service.Enabled`. An unset gateway
+switch returns the private NOT_FOUND envelope before authentication or
+dispatch. A configuration change requires the existing process rollout;
+per-organization state is read from PostgreSQL on each operation, without
+trusting a client's earlier state. No organization feature route is mounted
+by this foundation.
+
+The immutable source-owned capability catalog rejects unknown codes.
+`Service` checks its explicit current-authority port on every state read,
+operation and operator change. Missing authority denies; account tier and
+payment are not inputs. Read/export permission remains independent of a
+capability being enabled. AUTH owns the concrete membership/operator resolver.
+Operator provisioning (`Service.Set`) works while the product surface is
+globally off, under a separate current Manage decision; it adds no HTTP or
+operator CLI entry point.
+
+An operator change carries an operation ID and expected revision, zero for
+the absent state. Its server-generated canonical digest binds version,
+organization, operation, code, desired state and expected revision. The
+existing audit runner commits the state and one `capability.enabled` or
+`capability.disabled` event together, with actor/delegation references and
+the registered `operator.request` reason. Matching retries skip mutation;
+changed input/actor and stale revisions fail without another event.
+
+`Service.Run` holds a shared capability-row lock for the entire write
+transaction; absent/off rows stop before the callback. Read/export callbacks
+keep current-authority checks without a capability requirement. An audited
+feature command checks current authority before its existing audit runner
+(including replay), then calls `Service.GuardWrite` inside that runner's
+scoped transaction before its business SQL. GuardWrite rechecks current
+authority and holds the same row lock. Never nest transaction-opening
+runners. A disable waits for earlier accepted writes; a later write observes
+the committed off state. Failures roll back both audit and capability state.
+
+Module controllers map `ErrSurfaceDisabled` to NOT_FOUND,
+`ErrEntitlementRequired` to ENTITLEMENT_REQUIRED, `ErrConflict` to CONFLICT,
+`ErrReused` to OPERATION_ID_REUSED and unavailable storage to UNAVAILABLE.
+AUTH retains its ordered authority errors. Offline intake/review (BR-OFFL-006),
+app/panel refresh, billing changes and live activation retain their owning
+tasks. The gate performs no payload discard or deletion.
+[Implementation and PostGIS evidence](evidence/f1-plat005-capability-flags.md).
 
 ## 11. Observability
 

@@ -1,4 +1,15 @@
 # Current execution state
+- Enterprise EMP-PLAT-005, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING,
+  built from reviewed `68c1d1fa` in the isolated enterprise worktree.
+  [Capability evidence](../enterprise/evidence/f1-plat005-capability-flags.md)
+  records default-off global/scoped guards, audited revisioned enable/disable,
+  transaction-held write locks and migration `000166` after audit `000165`.
+  PostGIS/race isolation, replay, concurrent disable, failure/retry/upgrade,
+  affected regression, static/sqlc/build checks passed. Domain/application
+  coverage 100%, adapter 98.8%. Delivery targets existing PR202 (`dev → main`)
+  at the user's request; the occupied local dev checkout is preserved.
+  No live activation or feature handlers. F1/M1 remain open; EMP-PLAT-006 next.
+
 - Enterprise F0/F1 integration, 2026-11-11: review of `39a2d725`..`6aeeafb4`
   found one blocker. Main's forum migration and the audit migration both used
   version 000164, and the migrator refuses duplicates. Main was merged

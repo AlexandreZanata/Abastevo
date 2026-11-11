@@ -85,6 +85,8 @@ type Principal struct {
 // the dedicated cookie and CSRF. Resolve must recheck current membership,
 // organization state, covering permission, fresh-auth and capability in order.
 type Gateway struct {
+	// Enabled comes from Config.EnterpriseEnabled. Zero hides every route.
+	Enabled      bool
 	Origin       string
 	CursorSecret []byte
 	Sessions     func(context.Context, string, string) (string, error)
@@ -143,6 +145,10 @@ func Register[T Request](router chi.Router, path string, gateway Gateway, rule R
 func (handler endpoint[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Del("ETag")
+	if !handler.gateway.Enabled {
+		WriteError(w, r, NotFound)
+		return
+	}
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || len(r.Header.Values("Content-Type")) != 1 || mediaType != "application/json" || r.URL.RawQuery != "" {
 		WriteError(w, r, Malformed)

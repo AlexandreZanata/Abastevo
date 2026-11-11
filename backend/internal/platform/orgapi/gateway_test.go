@@ -51,7 +51,8 @@ func gatewayFixture(t *testing.T) (orgapi.Gateway, *state) {
 	t.Helper()
 	state := &state{}
 	return orgapi.Gateway{
-		Origin: origin, CursorSecret: []byte(strings.Repeat("synthetic", 8)),
+		Enabled: true,
+		Origin:  origin, CursorSecret: []byte(strings.Repeat("synthetic", 8)),
 		Now: func() time.Time { return time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC) },
 		Sessions: func(_ context.Context, family, token string) (string, error) {
 			state.auth++

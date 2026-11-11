@@ -82,7 +82,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local HTTP, contract and proof evidence](../evidence/f1-plat004-organization-api.md).
 
 ### EMP-PLAT-005 — Per-organization capability flags for activation and rollback
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size S · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size S · state LOCAL_DONE
 - **Objective:** Control organization capabilities without destroying existing records.
 - **Rules and use cases:** BR-AUTH-009, BR-TEN-003, EDR-003
 - **Depends on:** EMP-PLAT-002
@@ -96,6 +96,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM · migration: additive with flag off · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** An account tier or payment never grants membership. Keep existing release gates.
 - **Done when:** The isolation and disable/re-enable matrix passes on PostGIS.
+
+[Local capability, audit and rollback evidence](../evidence/f1-plat005-capability-flags.md).
 
 ### EMP-PLAT-006 — Private storage namespace for enterprise documents with short-lived access
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type INT · size M · state TODO

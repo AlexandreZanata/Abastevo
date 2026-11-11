@@ -68,7 +68,8 @@ func conventionRoute(t *testing.T) (*openapi3.T, chi.Router) {
 	document.Paths.Set(path, &openapi3.PathItem{Post: operation})
 	router := chi.NewRouter()
 	err := orgapi.Register(router, path, orgapi.Gateway{
-		Origin: "https://api.example.invalid", CursorSecret: make([]byte, 32),
+		Enabled: true,
+		Origin:  "https://api.example.invalid", CursorSecret: make([]byte, 32),
 		WebSession: func(*http.Request) (string, error) { return "", orgapi.Unauthenticated },
 		Resolve: func(context.Context, orgapi.Actor, kernel.OrgScope, orgapi.Rule) (orgapi.Membership, error) {
 			return orgapi.Membership{}, orgapi.NotFound

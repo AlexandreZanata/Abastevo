@@ -103,6 +103,27 @@ boundaries.
   expired cursors return the same safe malformed-request error. The current
   authority check precedes page access. Route and contract drift fails tests.
 
+- **B-BR-EMP-13 — Capability activation never grants authority.** The global
+  Empresas surface switch defaults off and hides organization routes. A
+  source-registered capability is off when its organization row is absent.
+  Current actor permission is required on every entry, independently of a
+  flag, account tier or payment. Per-organization disable refuses new online
+  writes with ENTITLEMENT_REQUIRED and preserves authorized reads and exports.
+  Delayed offline commands retain their data for the owning sync review path;
+  this gate neither accepts nor discards their payloads.
+
+- **B-BR-EMP-14 — Audited, serialized capability changes.** An authorized
+  operator enables or disables one registered organization capability with
+  an operation ID and expected revision (zero for an absent row). The server
+  hashes the complete canonical change and commits the state and bounded
+  audit event together. A matching replay does not repeat a change; changed
+  input under that operation and stale revisions fail. Accepted writes hold
+  a shared capability-row lock through their business transaction, so a
+  disable waits for earlier writes and blocks subsequent ones. A rollback
+  deletes no business record, capability row, membership or role. Operator
+  provisioning remains available while the product surface is globally off;
+  it has a separate current-authority check and exposes no new HTTP route.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -148,6 +169,15 @@ boundaries.
   It passes resolved scope and actor to the module callback. Invalid proof,
   foreign scope or malformed input stops before that callback. A paginated
   read opens a cursor only under the same resolved actor, route and filters.
+
+- **BUC-EMP-08 — Disable and restore one organization capability.** Given A
+  and B with the same capability enabled, an authorized operator disables A.
+  New and stale-client writes for A stop before their business callback.
+  Authorized reads and exports retain A's records, and B's writes continue.
+  Re-enabling A restores writes without changing roles or historical data.
+  A failed state/audit transaction changes neither, and a retry is safe.
+  Turning the global surface off hides routes; turning it on again restores
+  access subject to current authority and the persisted organization flags.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

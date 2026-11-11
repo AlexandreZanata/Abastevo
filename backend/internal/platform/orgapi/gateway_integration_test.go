@@ -132,7 +132,8 @@ func TestGatewayRealSessionKeyBindingProofAndCurrentAuthority(t *testing.T) {
 	}
 	verifier := auth.Verifier{Pool: f.Admin, Authority: "api.example.invalid", Now: func() time.Time { return now }}
 	gateway := orgapi.Gateway{
-		Origin: origin, CursorSecret: []byte(strings.Repeat("synthetic", 8)), Sessions: service.ValidateAccess,
+		Enabled: true,
+		Origin:  origin, CursorSecret: []byte(strings.Repeat("synthetic", 8)), Sessions: service.ValidateAccess,
 		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
 			identity, err := verifier.Verify(r.Context(), r)
 			if err != nil {

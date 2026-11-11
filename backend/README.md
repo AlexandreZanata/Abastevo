@@ -130,6 +130,23 @@ ANPFUEL_CANONICAL_HOST=127.0.0.1:18080 ANPFUEL_FORUM_ENABLED=true go run ./cmd/a
 
 Staging and production keep refusing anything but a bare public hostname.
 
+### Private Empresas activation (EMP-PLAT-005)
+
+`ANPFUEL_ENTERPRISE_ENABLED` defaults to false. Future organization-route
+composition passes `Config.EnterpriseEnabled` into `orgapi.Gateway.Enabled`
+and `orgcapability.Service.Enabled`. Changing this startup flag requires the
+normal rollout; it does not enable an organization capability or grant a role.
+There are no enterprise business routes or concrete AUTH providers in this
+foundation checkpoint.
+
+Per-organization switches are registered by source and persisted under forced
+RLS. Missing rows deny new writes. An authorized operator changes one switch
+through the audited service with an operation ID and expected revision;
+disabled capabilities preserve authorized reads/exports and all stored data.
+See the [transaction and composition contract](../docs/enterprise/09-architecture.md#101-implemented-capability-foundation).
+Use an ordinary non-owner, non-BYPASSRLS runtime login; backup/restore retains
+the separately reviewed authority needed for forced-RLS tables.
+
 ### Photo-intake safety budget (RVA07)
 
 `ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS` defaults to **0 (closed)**. The API
