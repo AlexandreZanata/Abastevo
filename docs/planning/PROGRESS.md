@@ -1,4 +1,16 @@
 # Current execution state
+- Enterprise EMP-PLAT-009, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above Claude-reviewed `1034b410`; delivery targets existing PR202 (dev → main).
+  [Exact-value evidence](../enterprise/evidence/f1-plat009-exact-values.md)
+  records preserved review fixes and 112 common Go/Kotlin vectors for
+  canonical integers, paid-preserving reconciliation and ordered allocation.
+  Scoped race/static/build checks passed; Go and Kotlin new logic coverage
+  is 100%. Full Kotlin domain: 1,057 tests passed. Its separate global
+  coverage gate remains FAILED: 80.01% vs 90%; baseline `1034b410` independently
+  reproduces the failure at 79.84% (942 tests passed). No threshold weakened.
+  No runtime route/schema/dependency/activation. Review activation blockers
+  remain owed. F1/M1 open; EMP-PLAT-010 next.
+
 - Enterprise PR202 review, 2026-11-11: reviewed EMP-PLAT-005..008
   (`5b692fb5`..`b739b2c6`) with their earlier base; fixes follow as new
   commits on dev. [Review record](../enterprise/evidence/f1-pr202-review.md):

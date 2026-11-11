@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization value, database, audit, HTTP, capability, private-storage and company-session and static-shell foundations in EMP-PLAT-001 through EMP-PLAT-008 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
+Status: **F1 IN_PROGRESS**, 2026-11-11. Written after the business rules, as the request requires. It reuses the architecture found in the repository ([01-diagnosis](01-diagnosis.md)) and adds only what the rules need. The organization scope, database, audit, HTTP, capability, private storage, company session, static shell and exact-value foundations in EMP-PLAT-001 through EMP-PLAT-009 are implemented locally. Remaining architecture and contract examples describe their owning planned tasks. Module code `PLAT` covers the platform foundations (tasks `EMP-PLAT-001…016` in [backlog/ep01-platform](backlog/ep01-platform.md)).
 
 ## 1. Principles
 
@@ -20,6 +20,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `membership` (proposed) | IDN | Employees, memberships, invitations, activation codes, device enrolment | `account`, `identity`, `cloudsync` device references (existing) |
 | `orgaccess` (proposed) | AUTH | Role catalog, role assignments, the authorization service | `membership`, `organization`, `orgbilling` |
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
+| `orgvalue` (LOCAL_DONE, domain only) | PLAT | Exact reconciliation and ordered allocation | Existing pure metrics/kernel bounds; shared Go/Kotlin vectors; no private repository or authority |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
 | `orgcapability` (LOCAL_DONE) | PLAT | Registered organization capability state and audited activation | `orgaudit` application port, `kernel`, scoped transaction helper; AUTH authority port |
 | `orgmedia` (LOCAL_DONE) | PLAT | Bounded private originals and member-bound access | Existing S3/HMAC/JPEG primitives; `orgaudit` application port; AUTH/DOC authority and metadata ports |
@@ -312,6 +313,41 @@ rejection. The foundation publishes conventions and schemas.
 Its business operation set is empty.
 [Local API evidence](evidence/f1-plat004-organization-api.md)
 
+### 4.2 Implemented exact-value foundation
+
+EMP-PLAT-009 adds pure orgvalue/domain helpers and Kotlin EnterpriseValues
+inside the existing domain module/package root. They retain financial-v1
+integer centavos, milli-litres/milli-cubic-metres, milli-BRL and canonical
+L/M3 units. Go reuses metrics/kernel bounds; Kotlin reuses PremiumBounds,
+PremiumUnit and PortableMoney price bounds. Existing personal/driver rules
+are unchanged. No new currency or floating-point representation is added.
+
+Canonical integer parsers refuse signs, padding, fraction/exponent notation,
+Unicode digits, overflow and out-of-bound values. Nullable facts remain
+unknown. Reconciliation computes half-up(quantity * price / 10000), compares
+paid plus discount with one-centavo tolerance and preserves paid even when
+it emits ARITHMETIC_MISMATCH. A missing recorded price returns an exact
+rational derived price, separately labelled from recorded authority.
+Original source-price text is returned unchanged; source extraction and
+normalization remain with DOC/FUEL, and are not silently implemented here.
+
+Allocation uses exact widened products and weight sums, floors each share
+and assigns residual centavos by largest remainder, then explicit lowest
+line order. Output is canonical by order, preserves the source total and
+never mutates inputs. Missing source/weight or zero basis is unknown;
+a known zero source with positive basis yields known zeros. The existing
+1,000-item budget bounds processing. This is distinct from the personal
+driver allocator's ID-based tie rule, which remains unchanged.
+
+All 112 rows in the shared enterprise exact-values-v1.psv oracle execute
+without language-specific skips. Deterministic invariants additionally
+cover large intermediates, reordered lines, input preservation, processing
+bounds and unknown-versus-zero. These scalar value operations carry no
+organization authority and perform no I/O; owning private use cases still
+resolve OrgScope and apply permission/revision/audit policies.
+[Oracle contract](../../contracts/testdata/enterprise/README.md) and
+[local evidence](evidence/f1-plat009-exact-values.md).
+
 ## 5. Persistence and transactions
 
 - **Schema rules:** [06-domain-model](06-domain-model.md) §5. UUID keys generated by the creator (device or server); `TEXT` + `CHECK` enumerations; `TIMESTAMPTZ`; integer money and quantities (BR-MONEY).
@@ -510,7 +546,7 @@ Inputs assumed per active vehicle: 22 working days a month; 6 hours of movement 
 | Track batches per second at peak, all vehicles moving, one batch per 60 s | — | 1.7 | 16.7 | 167 |
 | Receipts per month | 44 | 4 400 | 44 000 | 440 000 |
 | Document storage per month | 17.6 MB | 1.76 GB | 17.6 GB | 176 GB |
-| Document storage after 5 years of retention | 1.06 GB | 106 GB | 1.06 TB | 10.6 TB |
+| Document storage after 5 years of retention | 1.06 GB | 112 GB | 1.06 TB | 10.6 TB |
 | Document storage cost per month at steady state | USD 0.016 | USD 1.58 | USD 15.84 | USD 158 |
 | Operational rows (trips, events, readings, fuelings) per year | about 3 MB | 0.3 GB | 3 GB | 30 GB |
 

@@ -192,6 +192,32 @@ boundaries.
   authenticated states are explicit and usable by keyboard and assistive
   technology. Static shell availability does not activate business APIs.
 
+- **B-BR-EMP-21 — Exact organization value checks.** Organization helpers
+  reuse financial-v1 integer centavos, milli-litres/milli-cubic-metres and
+  milli-BRL, the existing bounds and canonical L/M3 units. Canonical
+  unsigned integer text refuses signs, spaces, exponent/fraction notation,
+  non-ASCII digits and overflow. Missing values remain unknown. For known
+  quantity/price, expected centavos use half-up on their product divided
+  by 10 000; paid plus discount differs by at most one centavo without a
+  warning. Larger differences yield ARITHMETIC_MISMATCH without replacing
+  or rejecting the paid fact. Missing price yields an explicitly derived
+  exact rational milli-BRL price from paid/quantity, not a recorded price.
+  Original source-price text is retained unchanged beside the supplied
+  milli-BRL value; this helper does not parse or quantize that source text.
+  Missing facts do not erase independently calculable expected/derived
+  values; difference/warning requires both gross and expected to be known.
+
+- **B-BR-EMP-22 — Allocation follows recorded line order.** Allocation uses
+  exact largest remainders: floor each weighted share, then award residual
+  centavos by descending remainder and ascending explicit line order.
+  Source and weights are nonnegative; line orders are unique nonnegative
+  integers. Missing source/weight or zero total weight stays unknown, not
+  a fabricated zero allocation. Known zero source with positive basis
+  allocates known zeros. Products and weight sums use exact widened
+  intermediates. The existing 1 000-item processing budget applies.
+  Output is canonical by line order, sums exactly to the source and does
+  not mutate inputs. Personal driver allocation keeps its own ID tie rule.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -274,6 +300,15 @@ boundaries.
   expired session, revoked membership or late previous response displays
   no private company content. A missing provider shows unavailability;
   an authoritative empty list offers an honest empty state.
+
+- **BUC-EMP-12 — Reconcile and allocate exact amounts.** Given a recorded
+  paid amount, quantity, optional unit price and discount, the helper
+  returns a consistency check or an explicit unknown reason and preserves
+  paid/source precision. A caller allocates the same recorded amount across
+  ordered weighted lines. Fractional ties follow line order. Go and Kotlin
+  execute the same synthetic vectors for rounding, discount, one-cent
+  tolerance, unknowns, invalid values, large intermediates and exact sums.
+  This foundation submits no fueling, document, payment or finance workflow.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

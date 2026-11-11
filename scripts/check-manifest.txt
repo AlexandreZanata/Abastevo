@@ -15,6 +15,7 @@ backend/internal/platform/database
 backend/internal/platform/migrate
 backend/internal/platform/anpfixture
 backend/internal/modules/kernel
+backend/internal/modules/orgvalue/domain
 backend/internal/modules/orgaudit/domain
 backend/internal/modules/orgaudit/application
 backend/internal/modules/orgaudit/adapters

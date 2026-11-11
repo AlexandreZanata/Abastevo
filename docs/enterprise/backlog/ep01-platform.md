@@ -154,7 +154,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local build, browser, isolation and Caddy evidence](../evidence/f1-plat008-business-web-shell.md).
 
 ### EMP-PLAT-009 — Exact-value kernel for organization records: reuse centavo, milli-unit and milli-BRL types, add reconciliation and allocation vectors
-- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DOM · size S · state TODO
+- **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Reuse the project exact-value conventions for organization finance and fuel.
 - **Rules and use cases:** BR-MONEY-001, BR-MONEY-003, BR-MONEY-004, BR-MONEY-005, BR-MONEY-007, BR-MONEY-011
 - **Depends on:** EMP-GOV-001
@@ -168,6 +168,8 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-DOM, V-MONEY · migration: none · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Original precision and the recorded amount remain authoritative.
 - **Done when:** Both languages pass the same money and unit vectors.
+
+[Local exact-value and shared Go/Kotlin evidence](../evidence/f1-plat009-exact-values.md).
 
 ### EMP-PLAT-010 — Transactional enterprise events on the existing job queue
 - **Meta:** module PLAT · phase F1 · cut C1 · priority P0 · type DB · size S · state TODO

@@ -147,6 +147,19 @@ See the [transaction and composition contract](../docs/enterprise/09-architectur
 Use an ordinary non-owner, non-BYPASSRLS runtime login; backup/restore retains
 the separately reviewed authority needed for forced-RLS tables.
 
+### Exact organization values (EMP-PLAT-009)
+
+orgvalue/domain provides canonical integer parsing, paid-preserving
+reconciliation and largest-remainder allocation by explicit line order.
+It reuses financial-v1 bounds and L/M3 units; it introduces no schema,
+route, activation or dependency. Kotlin EnterpriseValues executes the same
+112 synthetic vectors in the existing domain module. Unknown is distinct
+from zero, source-price text is retained and the personal driver allocator
+keeps its own tie rule. Run the Go domain package with race and Kotlin
+EnterpriseValuesTest for parity; see the
+[shared oracle](../contracts/testdata/enterprise/README.md) and
+[evidence](../docs/enterprise/evidence/f1-plat009-exact-values.md).
+
 ### Company account web sessions (EMP-PLAT-007)
 
 With `ANPFUEL_ENTERPRISE_ENABLED=true`, the API mounts three POSTs under
