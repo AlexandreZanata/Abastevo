@@ -1299,3 +1299,37 @@ proof and the transactionally enforced three-pending-organization account cap.
   existing guarded workflow. Exercise duplicate/distinct CAS, changed reason,
   foreign/merged/live-period target, revoked or expired proof after lock waits,
   disabled capability, late fault recovery and intact historical periods.
+
+- **B-BR-EMP-83 — Review duplicates and retain both historical identities.** A fresh
+  current organization-scoped idn.employee.manage holder chooses source and survivor
+  explicitly. Existing match warnings never authorize a merge. Preview both current
+  records and actual team links; confirmation requires their exact identity revisions,
+  a server review digest, explicit reviewed=true and a recorded reason. Neither
+  record may already be merged and both must belong to this organization. Keep the
+  live membership holder as survivor; a source with any INVITED/ACTIVE/SUSPENDED
+  period conflicts, including two live records. This preserves immutable membership
+  bindings without implicitly ending access; reverse the explicit selection when
+  only the source has access. Profiles are not automatically combined or overwritten.
+  Mark the source TERMINATED with an immutable pointer, keeping original IDs in all
+  prior records. Root-serialized, bounded pointer resolution finds the current
+  survivor and refuses corrupt cycles/missing targets/depth overflow without partial
+  output. A later merge may extend the chain, never rewrite earlier pointers.
+- **B-BR-EMP-84 — Transfer current team associations as new periods.** Before marking
+  the source merged, close each actual current source team link and create a survivor
+  link only when none already exists. Preserve original link IDs and employee IDs;
+  trace both periods through the actual merge audit/receipt. Current team/unit and
+  survivor admission rules still apply; an ineligible transfer conflicts atomically.
+  Bound one merge to 500 links and historical resolution to 64 hops; excessive work
+  is refused without truncation. Preserve profiles, ended periods, roles, accounts,
+  personal sessions, other organizations and business records. Immutable actor/intent
+  receipts return the original result after later changes; current authority remains
+  required. Audit, projection, pointer and receipt commit or roll back together.
+- **BUC-EMP-43 — Merge a reviewed duplicate and resolve history.** Read the source and
+  chosen survivor with current membership/team facts; confirm the digest, revisions
+  and reason. Recheck fresh source authority under account/proof/capability/root
+  locks. Transfer/deduplicate teams using real owning-module guards, then record the
+  source pointer and original acknowledgement. Historical lookup returns the original
+  record and the current survivor with a bounded chain. Exercise two live periods,
+  wrong orientation, foreign/self/merged/cyclic targets, changed profiles/teams,
+  simultaneous opposite merges, retries/CAS, proof waits, late failure and ordinary
+  migration recovery. No personal account is merged, transferred or revoked.

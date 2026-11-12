@@ -43,6 +43,7 @@ sql:
       - db/migrations/000177_organization_teams.sql
       - db/migrations/000191_membership_offboarding.sql
       - db/migrations/000192_employee_rehire_commands.sql
+      - db/migrations/000193_employee_merge.sql
     gen:
       go:
         package: membership

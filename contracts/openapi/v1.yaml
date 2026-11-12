@@ -55,6 +55,300 @@ tags:
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
+  /v1/orgs/{org_id}/employees/{employee_id}/merge/preview:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: employeeMergePreview
+      summary: Review employee duplicates or resolve historical identity
+      description: Fresh organization-scoped idn.employee.manage, cookie/origin/CSRF and request-bound AUTH. Explicit
+        survivor selection, exact identity/profile/team review digest and reviewed=true govern merge. The live membership
+        holder stays survivor; a live source conflicts. Preserve historical IDs, profiles, accounts and memberships.
+        Transfer/deduplicate current team periods with real audit correlation. Immutable original retries, cycle/depth
+        checks, atomic rollback and forced RLS preserve private history. No personal account merge, automatic profile
+        selection or access revocation.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.employee.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: employee_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmployeeMergePreviewRequest'
+            example:
+              survivor_id: 7b0e2a54-0000-4000-8000-000000001062
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEmployeeMergePreview'
+              example:
+                source:
+                  id: 7b0e2a54-0000-4000-8000-000000001061
+                  display_name: Synthetic employee
+                  registration_number: SYN-SOURCE
+                  work_email: team@example.invalid
+                  work_phone: '+5511999999999'
+                  job_title: Synthetic operator
+                  home_unit_id: ''
+                  state: ACTIVE
+                  identity_revision: 1
+                  profile_revision: 1
+                  profile_pending: false
+                  merged_into: ''
+                  data_mode: SYNTHETIC
+                survivor:
+                  id: 7b0e2a54-0000-4000-8000-000000001062
+                  display_name: Synthetic employee
+                  registration_number: SYN-SURVIVOR
+                  work_email: team@example.invalid
+                  work_phone: '+5511999999999'
+                  job_title: Synthetic operator
+                  home_unit_id: ''
+                  state: ACTIVE
+                  identity_revision: 1
+                  profile_revision: 1
+                  profile_pending: false
+                  merged_into: ''
+                  data_mode: SYNTHETIC
+                source_live_periods: 0
+                survivor_live_periods: 1
+                teams:
+                - team_id: 7b0e2a54-0000-4000-8000-000000001064
+                  source_link_id: 7b0e2a54-0000-4000-8000-000000001065
+                  existing_survivor_link_id: ''
+                  team_revision: 2
+                  name: Synthetic team
+                  admissible: true
+                review_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                data_mode: SYNTHETIC
+  /v1/orgs/{org_id}/employees/{employee_id}/merge/confirm:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: employeeMergeConfirm
+      summary: Review employee duplicates or resolve historical identity
+      description: Fresh organization-scoped idn.employee.manage, cookie/origin/CSRF and request-bound AUTH. Explicit
+        survivor selection, exact identity/profile/team review digest and reviewed=true govern merge. The live membership
+        holder stays survivor; a live source conflicts. Preserve historical IDs, profiles, accounts and memberships.
+        Transfer/deduplicate current team periods with real audit correlation. Immutable original retries, cycle/depth
+        checks, atomic rollback and forced RLS preserve private history. No personal account merge, automatic profile
+        selection or access revocation.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.employee.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: employee_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmployeeMergeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001063
+              revision: 1
+              survivor_id: 7b0e2a54-0000-4000-8000-000000001062
+              survivor_revision: 1
+              review_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+              reviewed: true
+              reason: Synthetic reviewed duplicate
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEmployeeMergeResult'
+              example:
+                source_id: 7b0e2a54-0000-4000-8000-000000001061
+                survivor_id: 7b0e2a54-0000-4000-8000-000000001062
+                source_revision: 2
+                survivor_revision: 1
+                source_state: TERMINATED
+                survivor_state: ACTIVE
+                operation_id: 7b0e2a54-0000-4000-8000-000000001063
+                reason: Synthetic reviewed duplicate
+                occurred_at: '2026-11-12T18:00:00Z'
+                replayed: false
+                team_effects:
+                - team_id: 7b0e2a54-0000-4000-8000-000000001064
+                  source_link_id: 7b0e2a54-0000-4000-8000-000000001065
+                  survivor_link_id: 7b0e2a54-0000-4000-8000-000000001066
+                  disposition: CREATED
+                data_mode: SYNTHETIC
+  /v1/orgs/{org_id}/employees/{employee_id}/resolution/read:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: employeeResolutionRead
+      summary: Review employee duplicates or resolve historical identity
+      description: Fresh organization-scoped idn.employee.manage, cookie/origin/CSRF and request-bound AUTH. Explicit
+        survivor selection, exact identity/profile/team review digest and reviewed=true govern merge. The live membership
+        holder stays survivor; a live source conflicts. Preserve historical IDs, profiles, accounts and memberships.
+        Transfer/deduplicate current team periods with real audit correlation. Immutable original retries, cycle/depth
+        checks, atomic rollback and forced RLS preserve private history. No personal account merge, automatic profile
+        selection or access revocation.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.employee.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: employee_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMembershipAccessReadRequest'
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEmployeeResolution'
+              example:
+                source:
+                  id: 7b0e2a54-0000-4000-8000-000000001061
+                  display_name: Synthetic employee
+                  registration_number: SYN-SOURCE
+                  work_email: team@example.invalid
+                  work_phone: '+5511999999999'
+                  job_title: Synthetic operator
+                  home_unit_id: ''
+                  state: TERMINATED
+                  identity_revision: 2
+                  profile_revision: 1
+                  profile_pending: false
+                  merged_into: 7b0e2a54-0000-4000-8000-000000001062
+                  data_mode: SYNTHETIC
+                canonical:
+                  id: 7b0e2a54-0000-4000-8000-000000001062
+                  display_name: Synthetic employee
+                  registration_number: SYN-SURVIVOR
+                  work_email: team@example.invalid
+                  work_phone: '+5511999999999'
+                  job_title: Synthetic operator
+                  home_unit_id: ''
+                  state: ACTIVE
+                  identity_revision: 1
+                  profile_revision: 1
+                  profile_pending: false
+                  merged_into: ''
+                  data_mode: SYNTHETIC
+                chain:
+                - 7b0e2a54-0000-4000-8000-000000001061
+                - 7b0e2a54-0000-4000-8000-000000001062
+                data_mode: SYNTHETIC
   /v1/orgs/{org_id}/employees/{employee_id}/rehire:
     post:
       tags:
@@ -13974,6 +14268,335 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseEmployeeMergePreviewRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - survivor_id
+      properties:
+        survivor_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      example:
+        survivor_id: 7b0e2a54-0000-4000-8000-000000001062
+    EnterpriseEmployeeMergeRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - survivor_id
+      - survivor_revision
+      - review_digest
+      - reviewed
+      - reason
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        survivor_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        survivor_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        review_digest:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        reviewed:
+          type: boolean
+          enum:
+          - true
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Private recorded reason. Blank, control and Unicode format characters are refused.
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001063
+        revision: 1
+        survivor_id: 7b0e2a54-0000-4000-8000-000000001062
+        survivor_revision: 1
+        review_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        reviewed: true
+        reason: Synthetic reviewed duplicate
+    EnterpriseEmployeeMergeTeamPlan:
+      type: object
+      additionalProperties: false
+      required:
+      - team_id
+      - source_link_id
+      - existing_survivor_link_id
+      - team_revision
+      - name
+      - admissible
+      properties:
+        team_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        source_link_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        existing_survivor_link_id:
+          type: string
+          pattern: ^$|^[a-f0-9-]{36}$
+        team_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        name:
+          type: string
+          maxLength: 120
+        admissible:
+          type: boolean
+      example:
+        team_id: 7b0e2a54-0000-4000-8000-000000001064
+        source_link_id: 7b0e2a54-0000-4000-8000-000000001065
+        existing_survivor_link_id: ''
+        team_revision: 2
+        name: Synthetic team
+        admissible: true
+    EnterpriseEmployeeMergeTeamEffect:
+      type: object
+      additionalProperties: false
+      required:
+      - team_id
+      - source_link_id
+      - survivor_link_id
+      - disposition
+      properties:
+        team_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        source_link_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        survivor_link_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        disposition:
+          type: string
+          enum:
+          - CREATED
+          - EXISTING
+      example:
+        team_id: 7b0e2a54-0000-4000-8000-000000001064
+        source_link_id: 7b0e2a54-0000-4000-8000-000000001065
+        survivor_link_id: 7b0e2a54-0000-4000-8000-000000001066
+        disposition: CREATED
+    EnterpriseEmployeeMergePreview:
+      type: object
+      additionalProperties: false
+      required:
+      - source
+      - survivor
+      - source_live_periods
+      - survivor_live_periods
+      - teams
+      - review_digest
+      - data_mode
+      properties:
+        source:
+          $ref: '#/components/schemas/EnterpriseEmployeeView'
+        survivor:
+          $ref: '#/components/schemas/EnterpriseEmployeeView'
+        source_live_periods:
+          type: integer
+          enum:
+          - 0
+        survivor_live_periods:
+          type: integer
+          minimum: 0
+          maximum: 1
+        teams:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/EnterpriseEmployeeMergeTeamPlan'
+        review_digest:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      example:
+        source:
+          id: 7b0e2a54-0000-4000-8000-000000001061
+          display_name: Synthetic employee
+          registration_number: SYN-SOURCE
+          work_email: team@example.invalid
+          work_phone: '+5511999999999'
+          job_title: Synthetic operator
+          home_unit_id: ''
+          state: ACTIVE
+          identity_revision: 1
+          profile_revision: 1
+          profile_pending: false
+          merged_into: ''
+          data_mode: SYNTHETIC
+        survivor:
+          id: 7b0e2a54-0000-4000-8000-000000001062
+          display_name: Synthetic employee
+          registration_number: SYN-SURVIVOR
+          work_email: team@example.invalid
+          work_phone: '+5511999999999'
+          job_title: Synthetic operator
+          home_unit_id: ''
+          state: ACTIVE
+          identity_revision: 1
+          profile_revision: 1
+          profile_pending: false
+          merged_into: ''
+          data_mode: SYNTHETIC
+        source_live_periods: 0
+        survivor_live_periods: 1
+        teams:
+        - team_id: 7b0e2a54-0000-4000-8000-000000001064
+          source_link_id: 7b0e2a54-0000-4000-8000-000000001065
+          existing_survivor_link_id: ''
+          team_revision: 2
+          name: Synthetic team
+          admissible: true
+        review_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        data_mode: SYNTHETIC
+    EnterpriseEmployeeMergeResult:
+      type: object
+      additionalProperties: false
+      required:
+      - source_id
+      - survivor_id
+      - source_revision
+      - survivor_revision
+      - source_state
+      - survivor_state
+      - operation_id
+      - reason
+      - occurred_at
+      - replayed
+      - team_effects
+      - data_mode
+      properties:
+        source_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        survivor_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        source_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        survivor_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        source_state:
+          type: string
+          enum:
+          - TERMINATED
+        survivor_state:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - TERMINATED
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Private recorded reason. Blank, control and Unicode format characters are refused.
+        occurred_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        team_effects:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/EnterpriseEmployeeMergeTeamEffect'
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      example:
+        source_id: 7b0e2a54-0000-4000-8000-000000001061
+        survivor_id: 7b0e2a54-0000-4000-8000-000000001062
+        source_revision: 2
+        survivor_revision: 1
+        source_state: TERMINATED
+        survivor_state: ACTIVE
+        operation_id: 7b0e2a54-0000-4000-8000-000000001063
+        reason: Synthetic reviewed duplicate
+        occurred_at: '2026-11-12T18:00:00Z'
+        replayed: false
+        team_effects:
+        - team_id: 7b0e2a54-0000-4000-8000-000000001064
+          source_link_id: 7b0e2a54-0000-4000-8000-000000001065
+          survivor_link_id: 7b0e2a54-0000-4000-8000-000000001066
+          disposition: CREATED
+        data_mode: SYNTHETIC
+    EnterpriseEmployeeResolution:
+      type: object
+      additionalProperties: false
+      required:
+      - source
+      - canonical
+      - chain
+      - data_mode
+      properties:
+        source:
+          $ref: '#/components/schemas/EnterpriseEmployeeView'
+        canonical:
+          $ref: '#/components/schemas/EnterpriseEmployeeView'
+        chain:
+          type: array
+          minItems: 1
+          maxItems: 65
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      example:
+        source:
+          id: 7b0e2a54-0000-4000-8000-000000001061
+          display_name: Synthetic employee
+          registration_number: SYN-SOURCE
+          work_email: team@example.invalid
+          work_phone: '+5511999999999'
+          job_title: Synthetic operator
+          home_unit_id: ''
+          state: TERMINATED
+          identity_revision: 2
+          profile_revision: 1
+          profile_pending: false
+          merged_into: 7b0e2a54-0000-4000-8000-000000001062
+          data_mode: SYNTHETIC
+        canonical:
+          id: 7b0e2a54-0000-4000-8000-000000001062
+          display_name: Synthetic employee
+          registration_number: SYN-SURVIVOR
+          work_email: team@example.invalid
+          work_phone: '+5511999999999'
+          job_title: Synthetic operator
+          home_unit_id: ''
+          state: ACTIVE
+          identity_revision: 1
+          profile_revision: 1
+          profile_pending: false
+          merged_into: ''
+          data_mode: SYNTHETIC
+        chain:
+        - 7b0e2a54-0000-4000-8000-000000001061
+        - 7b0e2a54-0000-4000-8000-000000001062
+        data_mode: SYNTHETIC
     EnterpriseEmployeeRehireRequest:
       type: object
       additionalProperties: false
@@ -17586,7 +18209,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false

@@ -202,7 +202,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task208](https://github.com/AlexandreZanata/Abastevo/issues/208), cumulative PR203. Fresh guarded rehire reopens only an unmerged terminated employee with no live period; current authority and immutable original receipts govern retries. Actual profile/ended-history preservation, distinct new invitation period, twelve-way retry/CAS, stale/foreign/merged/overlap/capability/proof-wait/fault cases and populated191→192 recovery/RLS/retention pass. Actual HTTP/router/contracts, affected PostGIS/race and full local Quick verification pass. [Evidence](../evidence/f1-idn011-employee-rehire.md). New access remains a separate invitation; managed provisioning and other owning gates remain open.
 
 ### EMP-IDN-012 — Multiple memberships and duplicate employee detection and merge
-- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size M · state LOCAL_DONE
 - **Objective:** Keep memberships independent and resolve same-organization employee duplicates explicitly.
 - **Rules and use cases:** BR-IDN-033, BR-IDN-034, BR-IDN-035, UC-IDN-12, UC-IDN-13
 - **Depends on:** EMP-IDN-005
@@ -216,6 +216,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive survivor links · rollback: preserve accepted merge history
 - **Risks and assumptions:** A likely match is evidence for review rather than authority to merge.
 - **Done when:** Scoped merge and two-organization independence pass under concurrent edits.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task209](https://github.com/AlexandreZanata/Abastevo/issues/209), cumulative PR203. Fresh guarded preview/confirm/resolution preserves both identities, profiles, ended membership/account/role bindings and original receipts. Explicit survivor selection keeps any live access holder; a live source or two live records conflict. Actual team links close as historical periods and are transferred/deduplicated through the owning module. Bounded chained resolution rejects cycles or missing history. Twelve-way retry/distinct-CAS, opposite merges, stale review/proof, foreign/disabled access, late failure/recovery, populated ordinary192→193 migration/RLS/retention, actual HTTP/OpenAPI/router and affected PostGIS/race regressions pass. Full local Quick passes; [evidence](../evidence/f1-idn012-employee-merge.md) records the disk-space compilation recovery. No personal account or unrelated access is merged or ended. Remaining F1/M1, managed/native/runtime/legal/staging gates stay open.
 
 ### EMP-IDN-013 — Contact change and invitation invalidation
 - **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size S · state TODO

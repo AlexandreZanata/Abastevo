@@ -70,6 +70,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, member.MembershipAccessAuditDefinitions()...)
 	definitions = append(definitions, member.OffboardingAuditDefinitions()...)
 	definitions = append(definitions, member.RehireAuditDefinitions()...)
+	definitions = append(definitions, member.EmployeeMergeAuditDefinitions()...)
 	definitions = append(definitions, accesspg.RoleAuditDefinitions()...)
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
@@ -168,6 +169,12 @@ func Register(router chi.Router, o Options) error {
 
 	rehire := &member.RehireStore{Pool: o.Pool, Employees: memberStore, Authority: &orgpg.RehireAuthority{MembershipAccessAuthority: orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}, Audit: auditStore}
 	if e := memberweb.RegisterRehire(router, memberapp.RehireService{Enabled: true, Repository: rehire}, cookies, gateway, membershipAccessAuthorization, roots); e != nil {
+		return e
+	}
+
+	employeeMerge := &member.EmployeeMergeStore{Pool: o.Pool, Authority: &orgpg.EmployeeMergeAuthority{MembershipAccessAuthority: orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}, Teams: orgpg.EmployeeMergeTeamProjector{NewID: jobs.NewUUIDv4}, Audit: auditStore}
+	mergeAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: memberweb.EmployeeMergeRecords{}, Now: time.Now}
+	if e := memberweb.RegisterEmployeeMerge(router, memberapp.EmployeeMergeService{Enabled: true, Repository: employeeMerge}, cookies, gateway, mergeAuthorization, roots); e != nil {
 		return e
 	}
 

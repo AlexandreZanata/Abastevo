@@ -1,6 +1,17 @@
 # Identity, employees and access
 
-Status: **EMP-IDN-001/002/003/004/005/009/010/011 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+Status: **EMP-IDN-001/002/003/004/005/009/010/011/012 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+
+EMP-IDN-012 adds fresh scoped employee merge preview/confirmation and historical
+resolution. Explicit reviewed survivor selection keeps any live membership
+holder; a live source fails without ending or rewriting access. Both identities
+and profiles remain, the source becomes TERMINATED with an immutable pointer,
+and actual team links transfer as new periods or deduplicate existing survivor
+links. Original private receipts and bounded chained lookups preserve history.
+[Merge evidence](../evidence/f1-idn012-employee-merge.md) records real PostGIS,
+HTTP, contention/fault checks and ordinary migration193 rollback/recovery.
+Duplicate warnings remain suggestions; personal accounts, membership/account
+bindings and other organizations are unchanged. No automatic merge occurs.
 
 EMP-IDN-011 adds the fresh guarded employee rehire command, retaining the same
 identity/profile while leaving all ended access untouched. Only an unmerged
