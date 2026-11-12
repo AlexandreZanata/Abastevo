@@ -195,6 +195,12 @@ func (d Decision) Subject() Subject {
 	}
 	return d.binding.subject
 }
+func (d Decision) Policy() Policy {
+	if d.binding == nil {
+		return Policy{}
+	}
+	return d.binding.policy
+}
 func (d Decision) TargetID() string {
 	if d.binding == nil {
 		return ""

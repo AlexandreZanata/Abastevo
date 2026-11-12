@@ -7,4 +7,6 @@ import "errors"
 var (
 	ErrLastOrgOwner               = errors.New("enterprise: last owner protected")
 	ErrOrgAccessPolicyUnavailable = errors.New("enterprise: access policy unavailable")
+	ErrPendingOrgLimit            = errors.New("enterprise: pending organization limit reached")
+	ErrOwnerRequiresPersonal      = errors.New("enterprise: owner requires personal account")
 )

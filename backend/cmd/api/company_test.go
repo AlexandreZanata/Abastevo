@@ -4,8 +4,10 @@ import (
 	"context"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/apicontract"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -22,7 +24,14 @@ func TestCompanyProductionCompositionIsOptInAndContractChecked(t *testing.T) {
 		t.Fatal(err)
 	}
 	router := chi.NewRouter()
-	handler.RegisterRoutes(router)
+	pool, err := pgxpool.New(t.Context(), "postgres://synthetic@127.0.0.1:1/synthetic?sslmode=disable")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: true, Origin: "https://company.example.invalid", CursorSecret: make([]byte, 32), Pool: pool}); err != nil {
+		t.Fatal(err)
+	}
 	loader := openapi3.NewLoader()
 	path, err := filepath.Abs("../../../contracts/openapi/v1.yaml")
 	if err != nil {

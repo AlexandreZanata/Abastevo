@@ -18,6 +18,13 @@ type Runner interface {
 	RecordChange(context.Context, kernel.OrgScope, domain.Event, func(context.Context, pgx.Tx) error) (bool, error)
 }
 
+// TransactionRunner joins a caller-owned ordinary scoped transaction. This
+// allows account/receipt preflight before atomic onboarding/audit composition.
+// It never commits and its result remains provisional until the caller commits.
+type TransactionRunner interface {
+	RecordChangeTx(context.Context, pgx.Tx, kernel.OrgScope, domain.Event, func(context.Context, pgx.Tx) error) (bool, error)
+}
+
 type Reader interface {
 	List(context.Context, kernel.OrgScope, domain.Filter) ([]domain.Record, error)
 }

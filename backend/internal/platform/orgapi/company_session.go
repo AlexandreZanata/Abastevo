@@ -12,3 +12,15 @@ type CompanySessionRule struct {
 	Success      int    `json:"success"`
 }
 type CompanySessionDescriptor interface{ CompanySessionRule() CompanySessionRule }
+
+// OrganizationCreationRule is confined to the one account-scoped creation
+// command, before an organization and its membership exist.
+type OrganizationCreationRule struct {
+	Cookie  bool `json:"cookie"`
+	CSRF    bool `json:"csrf"`
+	Fresh   bool `json:"fresh"`
+	Success int  `json:"success"`
+}
+type OrganizationCreationDescriptor interface {
+	OrganizationCreationRule() OrganizationCreationRule
+}

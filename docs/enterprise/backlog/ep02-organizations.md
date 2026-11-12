@@ -45,7 +45,7 @@ integration of the current ADR-019 construction batch. See the
 [Local persistence, isolation and populated-upgrade evidence](../evidence/f1-org002-organization-persistence.md).
 
 ### EMP-ORG-003 — Create-organization flow: the creator becomes owner and a default unit exists
-- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Create a pending organization with its first owner and operating unit atomically.
 - **Rules and use cases:** BR-ORG-006, BR-ORG-025, BR-ORG-026, BR-ORG-027, BR-ORG-028, UC-ORG-01, UC-ORG-02
 - **Depends on:** EMP-ORG-002, EMP-IDN-003, EMP-AUTH-002, EMP-PLAT-004, EMP-PLAT-003
@@ -59,6 +59,8 @@ integration of the current ADR-019 construction batch. See the
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive changes when persistence is affected · rollback: preserve the existing state, remove only the new entry point and follow the scoped recovery evidence.
 - **Risks and assumptions:** Synthetic validation uses synthetic terms evidence. Production terms depend on legal review.
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
+
+[Atomic onboarding, current-proof, isolation and upgrade evidence](../evidence/f1-org003-atomic-onboarding.md).
 
 ### EMP-ORG-004 — Legal entities with CNPJ and CPF validation, declared versus verified
 - **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size M · state TODO

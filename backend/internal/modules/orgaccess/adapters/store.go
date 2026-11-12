@@ -34,7 +34,7 @@ func safe(ctx context.Context, err error) error {
 	if errors.Is(err, kernel.ErrInvalidOrgScope) {
 		return d.ErrAssignmentScope
 	}
-	for _, known := range []error{d.ErrAssignmentScope, d.ErrAssignmentInvalid, d.ErrAssignmentConflict, d.ErrAssignmentEnded, d.ErrUnknownRole, app.ErrNotFound, kernel.ErrLastOrgOwner, kernel.ErrOrgAccessPolicyUnavailable} {
+	for _, known := range []error{d.ErrAssignmentScope, d.ErrAssignmentInvalid, d.ErrAssignmentConflict, d.ErrAssignmentEnded, d.ErrUnknownRole, app.ErrNotFound, kernel.ErrLastOrgOwner, kernel.ErrOrgAccessPolicyUnavailable, kernel.ErrPendingOrgLimit, kernel.ErrOwnerRequiresPersonal} {
 		if errors.Is(err, known) {
 			return known
 		}
@@ -49,6 +49,10 @@ func safe(ctx context.Context, err error) error {
 			return kernel.ErrLastOrgOwner
 		case "P7502":
 			return kernel.ErrOrgAccessPolicyUnavailable
+		case "P7503":
+			return kernel.ErrPendingOrgLimit
+		case "P7505":
+			return kernel.ErrOwnerRequiresPersonal
 		case "23505":
 			return d.ErrAssignmentConflict
 		case "23503":
@@ -109,7 +113,7 @@ func value(scope kernel.OrgScope, row q.GetAssignmentRow) (d.Assignment, error) 
 	}
 	return result, nil
 }
-func lock(ctx context.Context, tx pgx.Tx, s kernel.OrgScope, member string, requireBound bool) error {
+func lock(ctx context.Context, tx pgx.Tx, s kernel.OrgScope, member string, requireBound, exclusive bool) error {
 	queries := q.New(tx)
 	account, err := queries.AssignmentAccount(ctx, q.AssignmentAccountParams{OrgID: s.OrgID().String(), MembershipID: member})
 	if err != nil {
@@ -121,7 +125,13 @@ func lock(ctx context.Context, tx pgx.Tx, s kernel.OrgScope, member string, requ
 		return d.ErrAssignmentInvalid
 	}
 	if account != "" {
-		if err := queries.LockAssignmentAccount(ctx, account); err != nil {
+		var err error
+		if exclusive {
+			err = queries.LockOwnerAccount(ctx, account)
+		} else {
+			err = queries.LockAssignmentAccount(ctx, account)
+		}
+		if err != nil {
 			return safe(ctx, err)
 		}
 	}
@@ -176,7 +186,7 @@ func (s *Store) CreateTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, 
 	if found, err := s.creationReplay(ctx, tx, scope, v); found || err != nil {
 		return false, err
 	}
-	if err := lock(ctx, tx, scope, v.MembershipID, true); err != nil {
+	if err := lock(ctx, tx, scope, v.MembershipID, true, v.Role == d.Owner); err != nil {
 		return false, err
 	}
 	// Recheck after the root lock to converge concurrent first creates.
@@ -246,7 +256,7 @@ func (s *Store) EndTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, id 
 	if err != nil {
 		return d.Assignment{}, false, app.ErrUnavailable
 	}
-	if err := lock(ctx, tx, scope, v.MembershipID, false); err != nil {
+	if err := lock(ctx, tx, scope, v.MembershipID, false, false); err != nil {
 		return d.Assignment{}, false, err
 	}
 	// Re-read after the root lock; a concurrent end may have committed.

@@ -22,8 +22,9 @@ type Store struct {
 }
 
 var (
-	_ application.Runner = (*Store)(nil)
-	_ application.Reader = (*Store)(nil)
+	_ application.Runner            = (*Store)(nil)
+	_ application.Reader            = (*Store)(nil)
+	_ application.TransactionRunner = (*Store)(nil)
 )
 
 func NewStore(pool *pgxpool.Pool, catalog domain.Catalog) *Store {
@@ -43,30 +44,7 @@ func (store *Store) RecordChange(ctx context.Context, scope kernel.OrgScope, eve
 	var replayed bool
 	var workErr error
 	err := database.WithOrgTx(ctx, store.pool, scope, func(tx pgx.Tx) error {
-		queries := qorgaudit.New(tx)
-		_, err := queries.ReserveEvent(ctx, qorgaudit.ReserveEventParams{
-			OrgID: scope.OrgID().String(), OperationID: event.OperationID,
-			ActorID: event.ActorID, DelegationID: event.DelegationID,
-			Action: event.Action, TargetType: event.TargetType, TargetID: event.TargetID,
-			ReasonCode: event.ReasonCode, RequestHash: event.RequestHash,
-		})
-		if errors.Is(err, pgx.ErrNoRows) {
-			row, err := queries.GetEvent(ctx, qorgaudit.GetEventParams{
-				OrgID: scope.OrgID().String(), OperationID: event.OperationID,
-			})
-			if err != nil {
-				return domain.ErrUnavailable
-			}
-			if record(row).Event != event {
-				return domain.ErrReused
-			}
-			replayed = true
-			return nil
-		}
-		if err != nil {
-			return domain.ErrUnavailable
-		}
-		workErr = work(ctx, tx)
+		replayed, workErr = store.recordChangeTx(ctx, tx, scope, event, work)
 		return workErr
 	})
 	if err != nil {
@@ -79,6 +57,55 @@ func (store *Store) RecordChange(ctx context.Context, scope kernel.OrgScope, eve
 		return false, domain.ErrUnavailable
 	}
 	return replayed, nil
+}
+
+// RecordChangeTx borrows an ordinary, already scoped transaction. Success is
+// provisional; only the outer caller can report a committed mutation.
+func (store *Store) RecordChangeTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, event domain.Event, work func(context.Context, pgx.Tx) error) (bool, error) {
+	if store == nil {
+		return false, domain.ErrUnavailable
+	}
+	if err := scope.Validate(); err != nil {
+		return false, err
+	}
+	if err := store.catalog.Validate(event); err != nil {
+		return false, err
+	}
+	if work == nil {
+		return false, domain.ErrInvalid
+	}
+	if err := database.ValidateOrgTx(ctx, tx, scope); err != nil {
+		return false, domain.ErrDenied
+	}
+	return store.recordChangeTx(ctx, tx, scope, event, work)
+}
+func (store *Store) recordChangeTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, event domain.Event, work func(context.Context, pgx.Tx) error) (bool, error) {
+	queries := qorgaudit.New(tx)
+	_, err := queries.ReserveEvent(ctx, qorgaudit.ReserveEventParams{
+		OrgID: scope.OrgID().String(), OperationID: event.OperationID,
+		ActorID: event.ActorID, DelegationID: event.DelegationID,
+		Action: event.Action, TargetType: event.TargetType, TargetID: event.TargetID,
+		ReasonCode: event.ReasonCode, RequestHash: event.RequestHash,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		row, err := queries.GetEvent(ctx, qorgaudit.GetEventParams{
+			OrgID: scope.OrgID().String(), OperationID: event.OperationID,
+		})
+		if err != nil {
+			return false, domain.ErrUnavailable
+		}
+		if record(row).Event != event {
+			return false, domain.ErrReused
+		}
+		return true, nil
+	}
+	if err != nil {
+		return false, domain.ErrUnavailable
+	}
+	if err := work(ctx, tx); err != nil {
+		return false, err
+	}
+	return false, nil
 }
 
 // List is the storage port. Callers enter through application.Service.List,

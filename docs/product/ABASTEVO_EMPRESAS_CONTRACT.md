@@ -557,6 +557,29 @@ boundaries.
   still rechecks and locks the same capability inside its existing scoped
   business/audit transaction, so disabling cannot race past that boundary.
 
+- **B-BR-EMP-53 — Create one complete pending organization.**
+  A fresh, current personal company session supplies the creator; the body
+  supplies only the operation, valid organization profile, first-unit name
+  and acceptance of the configured terms version/digest. The server chooses
+  all aggregate identifiers. One transaction records the pending root, active
+  default unit, creator employee, active membership, ORG OWNER period,
+  terms/creation receipt and audit. A matching retry returns the original
+  acknowledgement; changed intent conflicts. Partial writes and failed
+  commits return no successful creation. No real-data/legal approval is
+  inferred from synthetic terms or ACTIVE business state.
+
+- **B-BR-EMP-54 — Fence pending ownership and setup at storage boundaries.**
+  Existing accounts remain personal unless created with an immutable explicit
+  organization-managed binding; no account is converted from membership
+  descriptors. Managed accounts cannot create/own an organization. Pending
+  OWNER reservations serialize under the account lock and cannot exceed three
+  organizations, including scheduled/invited/suspended periods that can become
+  effective. Organization locks follow account locks. Activation resolves
+  actual unit/owner/terms facts and current actor authority, requires the
+  scoped capability transaction guard and records its own idempotent audit
+  receipt. Missing terms, invalid zones, stale proof or forged counts cannot
+  activate. Last-unit and permanent history safeguards protect the new unit.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -767,6 +790,29 @@ boundaries.
   role are checked again. An enabled flag in B, a paid tier, old client
   state or a missing adapter never grants A's action or widens SELF scope.
 
+- **BUC-EMP-27 — Create and finish synthetic setup atomically.**
+  Accept the explicitly synthetic configured terms with a fresh personal
+  company session. Creation returns one pending root, default unit and owner
+  tuple. Repeat the operation: the same tuple returns. Complete setup under
+  current owner/configuration authority and the named pilot capability; the
+  server validates stored facts and returns ACTIVE without certifying real
+  data. Invalid/missing terms, managed access or a failed transaction changes
+  none of the related records.
+
+- **BUC-EMP-28 — Race the pending-organization limit.**
+  Concurrent fresh creation/OWNER-reservation commands for one account leave
+  at most three pending organizations. A fourth refuses and rolls back its
+  entire unit/member/role/audit/receipt group. A matching earlier retry still
+  returns its acknowledgement. Another account has its own independent limit.
+
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production
 gates. Tracking, Postos, billing and Data each have separate scope decisions.
+
+Synthetic onboarding source admission decision (EMP-ORG-003): activation uses
+its own `org.setup` org/account/web-or-device buckets with the existing identity
+v1 write allowance (200 admissions/hour on each axis), not payment limits.
+This bounds synthetic validation; it is not measured production capacity.
+Measure and review feature budgets and enable the existing quota cleanup before
+live enterprise activation. Pre-organization creation retains fresh-cookie
+proof and the transactionally enforced three-pending-organization account cap.

@@ -11,8 +11,6 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 
-	companyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
-	companyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 )
@@ -69,12 +67,8 @@ func conventionRoute(t *testing.T) (*openapi3.T, chi.Router) {
 	}
 	document.Paths.Set(path, &openapi3.PathItem{Post: operation})
 	router := chi.NewRouter()
-	company, err := companyhttp.New(&companyapp.Service{Enabled: true}, "https://api.example.invalid")
-	if err != nil {
-		t.Fatal(err)
-	}
-	company.RegisterRoutes(router)
-	err = orgapi.Register(router, path, orgapi.Gateway{
+	mountEnterprise(t, router)
+	err := orgapi.Register(router, path, orgapi.Gateway{
 		Enabled: true,
 		Origin:  "https://api.example.invalid", CursorSecret: make([]byte, 32),
 		WebSession:        func(*http.Request) (string, error) { return "", orgapi.Unauthenticated },

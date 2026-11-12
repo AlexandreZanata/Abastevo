@@ -22,6 +22,8 @@ info:
     name: MIT
     url: https://opensource.org/license/mit
 tags:
+  - name: enterprise-organizations
+    description: Private synthetic organization creation and setup completion.
   - name: company-session
     description: Separate account-owned company web sessions; disabled by default.
   - name: health
@@ -49,6 +51,103 @@ tags:
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
+  /v1/org-access/organizations/create:
+    post:
+      tags: [enterprise-organizations]
+      operationId: enterpriseOrganizationCreate
+      summary: Create a synthetic pending organization with its unit and owner
+      description: >-
+        PANEL-only dedicated company cookie, exact HTTPS Origin/Host and CSRF.
+        Requires current fresh personal account proof. The surface is off by default.
+        The server selects every new identifier and atomically records the pending root, active unit, employee, active owner, synthetic terms receipt and audit. Matching operation retries return the original identifiers; changed intent conflicts. Concurrent ownership is capped at three pending organizations per account.
+        Only the source-pinned synthetic terms fixture is accepted; no legal or real-data approval is implied.
+        Every response is private no-store without ETag.
+      security: [{CompanySessionCookie: []}]
+      x-abastevo-organization-creation: {cookie: true, csrf: true, fresh: true, success: 201}
+      parameters:
+        - $ref: '#/components/parameters/CompanySessionOrigin'
+        - $ref: '#/components/parameters/CompanySessionCSRF'
+      requestBody:
+        description: Idempotent synthetic bootstrap; no client account, organization or authority identifier.
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EnterpriseOrganizationCreationRequest'}
+            example: {"schema_version":1,"operation_id":"7b0e2a54-0000-4000-8000-000000001001","name":"Synthetic company","time_zone":"America/Cuiaba","kinds":["OTHER"],"unit_name":"Main synthetic unit","terms":{"version":"enterprise-synthetic-dpa-v1","digest":"590cc4cf31e1909ac9baacb76092897f3dba07b95719953b0f4588b51348f8b3","accepted":true}}
+      responses:
+        '201':
+          description: Original pending setup acknowledgement, including on replay.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/EnterpriseNoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EnterpriseOrganizationCreationResult'}
+              example: {"organization_id":"7b0e2a54-0000-4000-8000-000000000301","unit_id":"7b0e2a54-0000-4000-8000-000000000501","employee_id":"7b0e2a54-0000-4000-8000-000000000601","membership_id":"7b0e2a54-0000-4000-8000-000000000701","assignment_id":"7b0e2a54-0000-4000-8000-000000000801","state":"PENDING_SETUP","revision":1,"data_mode":"SYNTHETIC","replayed":false}
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/organization/activate:
+    post:
+      tags: [enterprise-organizations]
+      operationId: enterpriseOrganizationActivate
+      summary: Complete synthetic organization setup
+      description: >-
+        PANEL-only dedicated company cookie, exact HTTPS Origin/Host and CSRF.
+        Requires current fresh personal account proof. The surface is off by default.
+        Current org.settings.manage, organizations pilot capability and revision are required. The transaction rechecks current role/capability and actual active units, owners and source terms before activation.
+        Only the source-pinned synthetic terms fixture is accepted; no legal or real-data approval is implied.
+        Every response is private no-store without ETag.
+      security: [{CompanySessionCookie: []}]
+      x-abastevo-organization: {permission: org.settings.manage, write: true, fresh: true, require_revision: true, company_only: true, success: 200}
+      parameters:
+        - $ref: '#/components/parameters/CompanySessionOrigin'
+        - $ref: '#/components/parameters/CompanySessionCSRF'
+        - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Idempotent revision-bound synthetic setup completion.
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EnterpriseOrganizationActivationRequest'}
+            example: {"schema_version":1,"operation_id":"7b0e2a54-0000-4000-8000-000000001002","revision":1}
+      responses:
+        '200':
+          description: Original active setup acknowledgement, including on replay.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/EnterpriseNoStore'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EnterpriseOrganizationActivationResult'}
+              example: {"organization_id":"7b0e2a54-0000-4000-8000-000000000301","state":"ACTIVE","revision":2,"data_mode":"SYNTHETIC","replayed":false}
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/org-access/session/login:
     post:
       tags: [company-session]
@@ -8222,7 +8321,7 @@ x-abastevo-organization-api:
   etag: false
   pagination: {default_limit: 20, max_limit: 100, cursor_ttl_seconds: 900}
   cursor_binding: [origin, organization, account, membership, route, canonical_filters]
-  status: company_session_operations_implemented_business_operations_follow_their_own_tasks
+  status: company_sessions_and_synthetic_organization_onboarding_implemented
 components:
   securitySchemes:
     CompanySessionCookie:
@@ -8278,6 +8377,69 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseOrganizationCreationRequest:
+      example: {"schema_version":1,"operation_id":"7b0e2a54-0000-4000-8000-000000001001","name":"Synthetic company","time_zone":"America/Cuiaba","kinds":["OTHER"],"unit_name":"Main synthetic unit","terms":{"version":"enterprise-synthetic-dpa-v1","digest":"590cc4cf31e1909ac9baacb76092897f3dba07b95719953b0f4588b51348f8b3","accepted":true}}
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, name, time_zone, kinds, unit_name, terms]
+      description: Synthetic bootstrap only; names are trimmed, bounded and refuse control/bidi overrides. Kinds are canonicalized as a set. All five new identifiers are server-selected.
+      properties:
+        schema_version: {type: integer, enum: [1], example: 1}
+        operation_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        name: {type: string, minLength: 1, maxLength: 120, example: Synthetic company}
+        time_zone: {type: string, minLength: 1, maxLength: 128, example: America/Cuiaba}
+        kinds:
+          type: array
+          minItems: 1
+          example: [OTHER]
+          items: {type: string, enum: [DELIVERY, CARRIER, SERVICES, FARM, OTHER], example: OTHER}
+        unit_name: {type: string, minLength: 1, maxLength: 120, example: Main synthetic unit}
+        terms:
+          type: object
+          additionalProperties: false
+          required: [version, digest, accepted]
+          properties:
+            version: {type: string, enum: [enterprise-synthetic-dpa-v1], example: enterprise-synthetic-dpa-v1}
+            digest: {type: string, enum: ['590cc4cf31e1909ac9baacb76092897f3dba07b95719953b0f4588b51348f8b3'], example: '590cc4cf31e1909ac9baacb76092897f3dba07b95719953b0f4588b51348f8b3'}
+            accepted: {type: boolean, enum: [true], example: true}
+    EnterpriseOrganizationActivationRequest:
+      example: {"schema_version":1,"operation_id":"7b0e2a54-0000-4000-8000-000000001002","revision":1}
+      description: Fresh company-cookie setup completion at an expected organization revision.
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision]
+      properties:
+        schema_version: {type: integer, enum: [1], example: 1}
+        operation_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        revision: {type: integer, minimum: 1, maximum: 9223372036854775806, example: 1}
+    EnterpriseOrganizationCreationResult:
+      example: {"organization_id":"7b0e2a54-0000-4000-8000-000000000301","unit_id":"7b0e2a54-0000-4000-8000-000000000501","employee_id":"7b0e2a54-0000-4000-8000-000000000601","membership_id":"7b0e2a54-0000-4000-8000-000000000701","assignment_id":"7b0e2a54-0000-4000-8000-000000000801","state":"PENDING_SETUP","revision":1,"data_mode":"SYNTHETIC","replayed":false}
+      description: Stable server-selected bootstrap identifiers for the original pending setup.
+      type: object
+      additionalProperties: false
+      required: [organization_id, unit_id, employee_id, membership_id, assignment_id, state, revision, data_mode, replayed]
+      properties:
+        organization_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        unit_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        employee_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        membership_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        assignment_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        state: {type: string, enum: [PENDING_SETUP], example: PENDING_SETUP}
+        revision: {type: integer, enum: [1], example: 1}
+        data_mode: {type: string, enum: [SYNTHETIC], example: SYNTHETIC}
+        replayed: {type: boolean, example: false}
+    EnterpriseOrganizationActivationResult:
+      example: {"organization_id":"7b0e2a54-0000-4000-8000-000000000301","state":"ACTIVE","revision":2,"data_mode":"SYNTHETIC","replayed":false}
+      description: Stable acknowledgement of a committed synthetic setup activation.
+      type: object
+      additionalProperties: false
+      required: [organization_id, state, revision, data_mode, replayed]
+      properties:
+        organization_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        state: {type: string, enum: [ACTIVE], example: ACTIVE}
+        revision: {type: integer, minimum: 2, example: 2}
+        data_mode: {type: string, enum: [SYNTHETIC], example: SYNTHETIC}
+        replayed: {type: boolean, example: false}
     CompanySessionLoginRequest:
       type: object
       additionalProperties: false
@@ -8396,7 +8558,7 @@ components:
         operation_id: {$ref: '#/components/schemas/EnterpriseUUID'}
         revision: {type: integer, minimum: 1}
     EnterpriseError:
-      description: Registered organization failure with safe text and bounded field codes. A permission denial can identify only the registered missing key in details (field permission, code equal to the key); it contains no record metadata. Incomplete setup refuses operational commands with ORG_SETUP_INCOMPLETE (409).
+      description: Registered organization failure with safe text and bounded field codes. A permission denial can identify only the registered missing key in details (field permission, code equal to the key); it contains no record metadata. Incomplete setup refuses operational commands with ORG_SETUP_INCOMPLETE (409); checklist details carry only source keys name, time_zone, active_unit, active_owner or terms with code REQUIRED.
       example:
         error: {code: NOT_FOUND, message: Organization request unavailable or refused, trace_id: req-org-synthetic, details: []}
       allOf:
@@ -8409,7 +8571,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, OWNER_REQUIRES_PERSONAL_ACCOUNT, RATE_LIMITED, UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false

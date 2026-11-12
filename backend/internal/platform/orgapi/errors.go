@@ -13,26 +13,27 @@ import (
 type Code string
 
 const (
-	Malformed           Code = "MALFORMED"
-	Unauthenticated     Code = "UNAUTHENTICATED"
-	NotFound            Code = "NOT_FOUND"
-	Forbidden           Code = "FORBIDDEN"
-	MembershipSuspended Code = "MEMBERSHIP_SUSPENDED"
-	MembershipEnded     Code = "MEMBERSHIP_ENDED"
-	OrgSuspended        Code = "ORG_SUSPENDED"
-	OrgArchived         Code = "ORG_ARCHIVED"
-	OrgSetupIncomplete  Code = "ORG_SETUP_INCOMPLETE"
-	FreshAuthRequired   Code = "FRESH_AUTH_REQUIRED"
-	EntitlementRequired Code = "ENTITLEMENT_REQUIRED"
-	LimitReached        Code = "LIMIT_REACHED"
-	Conflict            Code = "CONFLICT"
-	OperationReused     Code = "OPERATION_ID_REUSED"
-	ValidationFailed    Code = "VALIDATION_FAILED"
-	SelfApproval        Code = "SELF_APPROVAL"
-	PeriodLocked        Code = "PERIOD_LOCKED"
-	LastOwner           Code = "LAST_OWNER"
-	RateLimited         Code = "RATE_LIMITED"
-	Unavailable         Code = "UNAVAILABLE"
+	Malformed             Code = "MALFORMED"
+	Unauthenticated       Code = "UNAUTHENTICATED"
+	NotFound              Code = "NOT_FOUND"
+	Forbidden             Code = "FORBIDDEN"
+	MembershipSuspended   Code = "MEMBERSHIP_SUSPENDED"
+	MembershipEnded       Code = "MEMBERSHIP_ENDED"
+	OrgSuspended          Code = "ORG_SUSPENDED"
+	OrgArchived           Code = "ORG_ARCHIVED"
+	OrgSetupIncomplete    Code = "ORG_SETUP_INCOMPLETE"
+	FreshAuthRequired     Code = "FRESH_AUTH_REQUIRED"
+	EntitlementRequired   Code = "ENTITLEMENT_REQUIRED"
+	LimitReached          Code = "LIMIT_REACHED"
+	Conflict              Code = "CONFLICT"
+	OperationReused       Code = "OPERATION_ID_REUSED"
+	ValidationFailed      Code = "VALIDATION_FAILED"
+	SelfApproval          Code = "SELF_APPROVAL"
+	PeriodLocked          Code = "PERIOD_LOCKED"
+	LastOwner             Code = "LAST_OWNER"
+	OwnerRequiresPersonal Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
+	RateLimited           Code = "RATE_LIMITED"
+	Unavailable           Code = "UNAVAILABLE"
 )
 
 func (code Code) Error() string { return string(code) }
@@ -43,10 +44,37 @@ var statuses = map[Code]int{
 	FreshAuthRequired: 401, EntitlementRequired: 403, LimitReached: 403,
 	Conflict: 409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409,
 	ValidationFailed: 422, RateLimited: 429, Unavailable: 503,
-	OrgSetupIncomplete: 409,
+	OrgSetupIncomplete:    409,
+	OwnerRequiresPersonal: 409,
 }
 
 type permissionFailure struct{ key string }
+
+type setupFailure struct{ fields []string }
+
+func (setupFailure) Error() string { return string(OrgSetupIncomplete) }
+func (setupFailure) Unwrap() error { return OrgSetupIncomplete }
+
+// IncompleteSetup accepts source checklist keys only, never free text or
+// resource identifiers. The caller cannot mutate a recorded error afterward.
+func IncompleteSetup(fields []string) error {
+	if len(fields) == 0 || len(fields) > 5 {
+		return Unavailable
+	}
+	seen := map[string]bool{}
+	for _, field := range fields {
+		switch field {
+		case "name", "time_zone", "active_unit", "active_owner", "terms":
+		default:
+			return Unavailable
+		}
+		if seen[field] {
+			return Unavailable
+		}
+		seen[field] = true
+	}
+	return setupFailure{append([]string(nil), fields...)}
+}
 
 func (e permissionFailure) Error() string { return string(Forbidden) }
 func (e permissionFailure) Unwrap() error { return Forbidden }
@@ -92,6 +120,12 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	var denied permissionFailure
 	if code == Forbidden && errors.As(err, &denied) {
 		details = []httpapi.Detail{{Field: "permission", Code: denied.key}}
+	}
+	var setup setupFailure
+	if code == OrgSetupIncomplete && errors.As(err, &setup) {
+		for _, field := range setup.fields {
+			details = append(details, httpapi.Detail{Field: field, Code: "REQUIRED"})
+		}
 	}
 	httpapi.WriteError(w, r, statuses[code], string(code), "Organization request unavailable or refused", details)
 }

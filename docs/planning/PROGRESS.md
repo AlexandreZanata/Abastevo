@@ -1,4 +1,22 @@
 # Current execution state
+- Enterprise EMP-ORG-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above AUTH-004 49048734 in the owned enterprise worktree, targeting PR202.
+  [Atomic onboarding evidence](../enterprise/evidence/f1-org003-atomic-onboarding.md)
+  records fresh PANEL-cookie creation/activation, synthetic terms and immutable
+  managed origin. Pending root/default unit/employee/active OWNER, receipt and
+  audit commit together; exact retries return the original acknowledgement.
+  Real PostGIS/race tests pass: 12-way creation/activation, three-pending cap,
+  future owner reservations, late/deferred rollback, current proof revocation,
+  managed refusal, isolation and populated ordinary-owner upgrade/recovery.
+  The fully composed production router now passes the OpenAPI private-route
+  gate and rejects an added unguarded entry. Account/payments and affected
+  enterprise/API/quota regressions pass; domain coverage 97.83%. Scoped
+  static/build/sqlc, plan/OpenAPI/format/links/secret checks pass. EDR-033..036
+  record the recommended decisions; no production grant/flag/legal acceptance.
+  Next C1 organization step: ORG-005 operating units. F1/M1 and actual IDN,
+  runtime/native/legal/vault/staging/coverage gates remain open; phase
+  publication and final current-head/base CI remain due.
+
 - Enterprise EMP-AUTH-004, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above AUTH-003 4e32bfae on the owned enterprise worktree, targeting PR202.
   [Pilot entitlement evidence](../enterprise/evidence/f1-auth004-pilot-entitlements.md)

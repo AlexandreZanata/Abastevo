@@ -213,3 +213,12 @@ func (q *Queries) LockAssignmentRoot(ctx context.Context, orgID string) (string,
 	err := row.Scan(&org_id)
 	return org_id, err
 }
+
+const lockOwnerAccount = `-- name: LockOwnerAccount :exec
+SELECT id FROM accounts WHERE id=CAST($1::text AS uuid) FOR UPDATE
+`
+
+func (q *Queries) LockOwnerAccount(ctx context.Context, accountID string) error {
+	_, err := q.db.Exec(ctx, lockOwnerAccount, accountID)
+	return err
+}

@@ -239,8 +239,14 @@ func (h Handler) WebSession(r *http.Request) (string, error) {
 	return row.AccountID, err
 }
 func (h Handler) WebSessionConfirm(r *http.Request, fresh bool) (string, error) {
-	row, err := h.request(r, fresh, true)
+	row, err := h.ConfirmSession(r, fresh)
 	return row.AccountID, err
+}
+
+// ConfirmSession returns current server metadata for a transaction owner to
+// recheck by ID. It never exposes the cookie/CSRF verifier or grants org access.
+func (h Handler) ConfirmSession(r *http.Request, fresh bool) (app.Row, error) {
+	return h.request(r, fresh, true)
 }
 
 type sessionKey struct{}
@@ -250,9 +256,18 @@ func SessionFromContext(ctx context.Context) (app.Row, bool) {
 	return row, ok
 }
 func (h Handler) RequireSession(next http.Handler) http.Handler {
+	return h.requireSession(next, false)
+}
+
+// RequireFreshSession is the account-scoped bootstrap entry. It confers no
+// organization authority; the owning command must enforce its own admission.
+func (h Handler) RequireFreshSession(next http.Handler) http.Handler {
+	return h.requireSession(next, true)
+}
+func (h Handler) requireSession(next http.Handler, fresh bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		secure(w)
-		row, err := h.request(r, false, true)
+		row, err := h.request(r, fresh, true)
 		if err != nil {
 			orgapi.WriteError(w, r, err)
 			return

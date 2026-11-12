@@ -48,6 +48,7 @@ type Rule struct {
 	Write           bool   `json:"write"`
 	Fresh           bool   `json:"fresh"`
 	RequireRevision bool   `json:"require_revision"`
+	CompanyOnly     bool   `json:"company_only,omitempty"`
 	Success         int    `json:"success"`
 }
 
@@ -151,6 +152,9 @@ func Register[T Request](router chi.Router, path string, gateway Gateway, rule R
 	}
 	if gateway.WebSession != nil && gateway.WebSessionConfirm == nil {
 		return fmt.Errorf("orgapi: missing company session confirmation")
+	}
+	if normalized.CompanyOnly && (gateway.Sessions != nil || gateway.WebSession == nil) {
+		return fmt.Errorf("orgapi: company-only route requires the dedicated cookie plane")
 	}
 	if normalized.Fresh && gateway.Sessions != nil && gateway.SessionConfirm == nil {
 		return fmt.Errorf("orgapi: missing Android session confirmation")

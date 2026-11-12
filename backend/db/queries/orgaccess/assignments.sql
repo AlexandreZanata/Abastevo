@@ -8,6 +8,9 @@ SELECT id FROM accounts WHERE id=CAST(@account_id::text AS uuid) FOR SHARE;
 -- name: LockAssignmentRoot :one
 SELECT org_id::text AS org_id FROM organizations WHERE org_id=CAST(@org_id::text AS uuid) FOR UPDATE;
 
+-- name: LockOwnerAccount :exec
+SELECT id FROM accounts WHERE id=CAST(@account_id::text AS uuid) FOR UPDATE;
+
 -- name: GetAssignment :one
 SELECT id::text AS id,membership_id::text AS membership_id,role,scope_type,scope_target::text AS scope_target,
  valid_from,valid_to,assigned_by::text AS assigned_by,reason,revision,ended_at
