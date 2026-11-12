@@ -57,11 +57,11 @@ func CanonicalUnitProfile(v UnitProfile, organizationZone string) (UnitProfile, 
 	if _, ok := kernel.LoadTimeZone(organizationZone); !ok {
 		return UnitProfile{}, ErrInvalid
 	}
-	name, err := legalName(v.Name, true)
+	name, err := structureText(v.Name)
 	if err != nil {
 		return UnitProfile{}, ErrInvalid
 	}
-	code, err := legalName(v.Code, true)
+	code, err := structureText(v.Code)
 	if err != nil {
 		return UnitProfile{}, ErrInvalid
 	}

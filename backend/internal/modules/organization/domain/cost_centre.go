@@ -40,18 +40,18 @@ type CostCentre struct {
 }
 
 func CanonicalCostCentreCode(raw string) (string, error) {
-	value, err := legalName(raw, true)
+	value, err := structureText(raw)
 	if err != nil {
 		return "", ErrInvalid
 	}
 	return value, nil
 }
 func CanonicalCostCentreProfile(v CostCentreProfile) (CostCentreProfile, error) {
-	name, err := legalName(v.Name, true)
+	name, err := structureText(v.Name)
 	if err != nil {
 		return CostCentreProfile{}, ErrInvalid
 	}
-	code, err := legalName(v.Code, true)
+	code, err := structureText(v.Code)
 	if err != nil {
 		return CostCentreProfile{}, ErrInvalid
 	}

@@ -40,7 +40,7 @@ type Team struct {
 }
 
 func CanonicalTeamProfile(v TeamProfile) (TeamProfile, error) {
-	name, err := legalName(v.Name, true)
+	name, err := structureText(v.Name)
 	if err != nil {
 		return TeamProfile{}, ErrInvalid
 	}

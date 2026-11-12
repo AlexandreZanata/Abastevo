@@ -49,7 +49,11 @@ func NewCreation(v CreationInput) (Creation, error) {
 	v.Profile.Name = strings.TrimSpace(v.Profile.Name)
 	v.UnitName = strings.TrimSpace(v.UnitName)
 	profile, err := canonical(v.Profile)
-	if err != nil || blankName(profile.Name) || profile.TimeZone == "" || len(profile.Kinds) == 0 || !validName(v.UnitName) || blankName(v.UnitName) {
+	if err != nil || blankName(profile.Name) || profile.TimeZone == "" || len(profile.Kinds) == 0 {
+		return Creation{}, ErrInvalid
+	}
+	// The first unit name follows the same unique structure-name rule as later units.
+	if _, err := structureText(v.UnitName); err != nil {
 		return Creation{}, ErrInvalid
 	}
 	if !v.Terms.Accepted || v.Terms.Version != SyntheticTermsVersion || v.Terms.Digest != SyntheticTermsDigest {
