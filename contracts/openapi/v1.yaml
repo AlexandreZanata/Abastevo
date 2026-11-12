@@ -1918,8 +1918,13 @@ paths:
       operationId: enterpriseEmployeeChange
       summary: Change employee register record
       description: Replace descriptive employee metadata at the expected profile revision. A newly selected home
-        unit must be active in the same organization. Profile edits do not transition identity state or alter
-        access. Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and current organization authority
+        unit must be active in the same organization. A canonical work-email or phone change, including clearing,
+        atomically revokes PENDING invitations and ends WAITING admissions with CONTACT_CHANGED and the actual
+        profile revision. Equivalent canonical contacts and unrelated metadata do not revoke admission. Existing
+        ACTIVE memberships, personal credentials and other organizations remain unchanged. Reissue is explicit;
+        an exact retry returns the original acknowledgement without revoking a later invitation. Fresh source
+        authority is rechecked after projection waits. Dedicated company PANEL cookie, exact HTTPS Origin/Host,
+        CSRF and current organization authority
         are mandatory. Fresh configuration writes require the organizations pilot flag and idn.employee admission.
         This is source-pinned synthetic setup. Responses are no-store without ETag. No account, membership, role,
         credential or driver eligibility is provisioned.
@@ -1944,8 +1949,9 @@ paths:
           $ref: '#/components/schemas/EnterpriseUUID'
       requestBody:
         description: Replace descriptive employee metadata at the expected profile revision. A newly selected
-          home unit must be active in the same organization. Profile edits do not transition identity state or
-          alter access.
+          home unit must be active in the same organization. Omitted optional fields clear their stored values.
+          A canonical contact change revokes PENDING invitations and ends WAITING admissions atomically; ACTIVE
+          memberships and personal credentials remain unchanged. Reissue requires a separate command.
         required: true
         content:
           application/json:
@@ -16377,8 +16383,11 @@ components:
         allow_possible_duplicate: false
     EnterpriseEmployeeChangeRequest:
       type: object
-      description: Change an employee descriptive profile at the expected profile revision. No lifecycle or access
-        mutation.
+      description: Replace the complete descriptive profile at the expected profile revision; omitted optional
+        fields clear their stored values. A canonical work-contact difference revokes PENDING invitations and
+        ends WAITING admissions atomically with the profile, audit and immutable acknowledgement. Equivalent
+        canonical contacts and unrelated metadata do not revoke admission. Existing ACTIVE memberships,
+        personal credentials and other organizations remain unchanged. Reissue is a separate command.
       additionalProperties: false
       properties:
         schema_version:

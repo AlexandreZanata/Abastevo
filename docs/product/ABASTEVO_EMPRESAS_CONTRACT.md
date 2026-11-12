@@ -1333,3 +1333,33 @@ proof and the transactionally enforced three-pending-organization account cap.
   wrong orientation, foreign/self/merged/cyclic targets, changed profiles/teams,
   simultaneous opposite merges, retries/CAS, proof waits, late failure and ordinary
   migration recovery. No personal account is merged, transferred or revoked.
+
+- **B-BR-EMP-85 — Contact replacement consumes outstanding admission atomically.**
+  A current fresh idn.employee.manage holder changes organization work contact
+  through the existing complete profile replacement and exact profile revision.
+  Persist canonical e-mail/phone; only a stored contact difference consumes PENDING
+  invitations and WAITING acceptances, retaining CONTACT_CHANGED and the actual
+  profile revision. Clearing a contact counts; canonical-equivalent spelling or
+  unrelated metadata does not. Invalidation, reserved-period ending, notices,
+  profile, actual audit and original acknowledgement commit together. A fresh
+  invitation is explicit; an old receipt never restores a revoked secret. Already
+  ACTIVE memberships, roles and personal/other-organization access stay unchanged.
+  Uninstalled managed activation producers must consume the same contact source
+  before activation under their owning implementation/GOV-013 gates.
+- **B-BR-EMP-86 — Contact writes retain fresh authority through source completion.**
+  Recheck current source-owned manager authority after profile/admission projection
+  waits and before recording the acknowledgement. Retain account/proof/capability/
+  root locks. Expired proof, a source failure or a deferred commit failure yields
+  no partial profile, revocation, audit, notice or receipt. Exact retries require
+  current authority and return the original profile acknowledgement, never repeat
+  reductions against a later reissue. Concurrent redemption, confirmation, reissue
+  and contact replacement serialize to one source-consistent result.
+- **BUC-EMP-44 — Replace work contact, then reissue separately.** Read the employee
+  profile; submit the full replacement and expected profile revision through the
+  existing guarded change route. Prove current manager authority, persist the
+  canonical profile and consume outstanding admissions through their owning SQL
+  guards. Revalidate fresh authority, record the original acknowledgement and
+  commit atomically. Reissue explicitly if access is still wanted. Test email,
+  phone, clearing/equivalent contacts, waiting/active/no admission, source races,
+  exact retries/CAS, stale proof after waits, foreign/merged/non-manager/disabled
+  refusals and late rollback/recovery without affecting personal access.

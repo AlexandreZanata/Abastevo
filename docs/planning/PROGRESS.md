@@ -1,4 +1,24 @@
 # Current execution state
+- Enterprise EMP-IDN-013, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn013 from published dev cce39312; publish to dev/PR203,
+  [task210](https://github.com/AlexandreZanata/Abastevo/issues/210).
+  [Contact evidence](../enterprise/evidence/f1-idn013-contact-change.md) records
+  existing exact-revision profile replacement and atomic PENDING/WAITING contact
+  reductions, fresh authority after projection/receipt waits, original retries
+  and unchanged ACTIVE/personal/other-org access. B-BR-EMP-85/86, BUC-EMP-44 and
+  EDR-055 precede behavior. Source RED/GREEN, twelve-way retry/CAS, concurrent
+  redeem/resend/confirm, proof waits, foreign/non-manager/disabled denials,
+  late faults/recovery, populated source migration retention and actual HTTP
+  pass. Affected regression completed with scoped audited-snapshot fixture
+  recovery; complete contact/source-upgrade recovery33.077s, API68.910s.
+  Full local Quick265s, no vulnerabilities, domain91.2%; vet/staticcheck/sqlc/
+  contract/compatibility/plan/format/secret checks pass. Tested backend tree
+  2613623f72e0db99cd161a2638053da8a63e2bfe; contract Git blob
+  380a1abc5de141693c35a7af1304102d54b9f3a7. Required remote check awaits the new
+  head. Next: protected review/integration; this request stops at this task.
+  Managed/GOV-013/native/runtime/legal/staging/production and F1/M1 remain open.
+  No merge/wiki/deployment; issue stays open until integration.
+
 - Enterprise EMP-IDN-012, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
   codex/enterprise-idn012 from published dev 054eacf0; publish to dev/PR203,
   [task209](https://github.com/AlexandreZanata/Abastevo/issues/209).

@@ -170,6 +170,9 @@ func (s *EmployeeStore) WriteEmployee(ctx context.Context, scope kernel.OrgScope
 			if state != d.EmployeeActive && state != d.EmployeeInactive && state != d.EmployeeTerminated {
 				return app.ErrRegisterUnavailable
 			}
+			if e := s.Authority.CheckEmployeeTx(ctx, tx, scope, a, member, target, app.EmployeeManage); e != nil {
+				return e
+			}
 			result = app.EmployeeResult{EmployeeID: prior.EmployeeID, State: state, ProfileRevision: prior.ResultProfileRevision, IdentityRevision: prior.ResultIdentityRevision}
 			replay = true
 			readyToCommit = true
@@ -268,6 +271,12 @@ func (s *EmployeeStore) WriteEmployee(ctx context.Context, scope kernel.OrgScope
 		}
 		if repeated {
 			return app.ErrRegisterUnavailable
+		}
+		// Profile/contact projection and receipt SQL may have waited after the
+		// entry proof check. Retain the source locks and reject expired authority
+		// before exposing any acknowledgement; the whole change then rolls back.
+		if e := s.Authority.CheckEmployeeTx(ctx, tx, scope, a, member, target, app.EmployeeManage); e != nil {
+			return e
 		}
 		readyToCommit = true
 		return nil

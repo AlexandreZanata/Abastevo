@@ -1,6 +1,19 @@
 # Identity, employees and access
 
-Status: **EMP-IDN-001/002/003/004/005/009/010/011/012 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+Status: **EMP-IDN-001/002/003/004/005/009/010/011/012/013 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+
+EMP-IDN-013 completes the existing guarded contact/profile replacement and
+invitation/admission source projection. Canonical contact changes atomically
+revoke PENDING invitations and end WAITING admissions with actual profile
+revisions. Final fresh manager authority is rechecked after projection and
+receipt waits. Exact retries preserve original acknowledgements and later
+reissued invitations; equivalent contacts and unrelated metadata do not revoke
+admission. ACTIVE memberships, personal sessions and other organizations remain
+unchanged. [Contact evidence](../evidence/f1-idn013-contact-change.md) records
+real HTTP/PostGIS, contention, proof waits, atomic faults and source recovery.
+Managed activation producers remain gated by GOV-013/IDN-006..008 and must
+integrate the contact source before activation; no managed-code inventory or
+external delivery is supplied here.
 
 EMP-IDN-012 adds fresh scoped employee merge preview/confirmation and historical
 resolution. Explicit reviewed survivor selection keeps any live membership

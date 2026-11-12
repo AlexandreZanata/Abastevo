@@ -219,7 +219,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task209](https://github.com/AlexandreZanata/Abastevo/issues/209), cumulative PR203. Fresh guarded preview/confirm/resolution preserves both identities, profiles, ended membership/account/role bindings and original receipts. Explicit survivor selection keeps any live access holder; a live source or two live records conflict. Actual team links close as historical periods and are transferred/deduplicated through the owning module. Bounded chained resolution rejects cycles or missing history. Twelve-way retry/distinct-CAS, opposite merges, stale review/proof, foreign/disabled access, late failure/recovery, populated ordinary192→193 migration/RLS/retention, actual HTTP/OpenAPI/router and affected PostGIS/race regressions pass. Full local Quick passes; [evidence](../evidence/f1-idn012-employee-merge.md) records the disk-space compilation recovery. No personal account or unrelated access is merged or ended. Remaining F1/M1, managed/native/runtime/legal/staging gates stay open.
 
 ### EMP-IDN-013 — Contact change and invitation invalidation
-- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size S · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size S · state LOCAL_DONE
 - **Objective:** Invalidate issued access tokens when an employee contact changes.
 - **Rules and use cases:** BR-IDN-013, BR-IDN-018, BR-IDN-025, UC-IDN-14
 - **Depends on:** EMP-IDN-004
@@ -233,6 +233,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: reuse existing token state · rollback: preserve revocations
 - **Risks and assumptions:** Existing active memberships are governed by their own state.
 - **Done when:** The update and redemption race leaves a single consistent outcome.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task210](https://github.com/AlexandreZanata/Abastevo/issues/210), cumulative PR203. Existing guarded exact-revision profile replacement atomically consumes PENDING invitations and WAITING admissions on a canonical contact difference, retaining actual source revisions. Final fresh manager authority now applies after projection and receipt waits. Equivalent contacts/unrelated metadata, ACTIVE/personal/other-organization access and original receipts remain independent; retries do not revoke a later reissue. Real PostGIS/HTTP, twelve-way retry/CAS, concurrent redemption/resend/confirmation, stale-proof waits, foreign/non-manager/disabled refusals and late rollback/recovery pass. Affected regression acceptance completed with scoped recovery of an audited-snapshot fixture; full local Quick265s passes. [Evidence](../evidence/f1-idn013-contact-change.md). No schema/route/dependency added. Managed activation producers retain GOV-013/IDN-006..008 and must integrate this source before activation; no code inventory, delivery, native or full F1/M1 acceptance is claimed.
 
 ### EMP-IDN-014 — Driver profile: licence category, expiry and eligibility
 - **Meta:** module IDN · phase F2 · cut - · priority P1 · type API · size S · state TODO
