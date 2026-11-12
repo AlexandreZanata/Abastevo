@@ -35,7 +35,12 @@ func TestInvalidDefinitionsNeverProduceAPartialCatalog(t *testing.T) {
 			v.groups[0].rows = strings.Replace(v.groups[0].rows, "idn.invitation.manage O", "idn.invitation.manage ALLOW", 1)
 		}},
 		{"duplicate grant", func(v *sourceDefinition) { v.groups = append(v.groups, v.groups[0]) }},
-		{"role without permissions", func(v *sourceDefinition) { v.groups[1].rows = strings.ReplaceAll(v.groups[1].rows, " O", " -") }},
+		{"role without permissions", func(v *sourceDefinition) {
+			for i := range v.groups {
+				v.groups[i].rows = strings.ReplaceAll(v.groups[i].rows, " O", " -")
+				v.groups[i].rows = strings.ReplaceAll(v.groups[i].rows, " S", " -")
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -36,6 +36,7 @@ func fixture(t *testing.T) (*orgtest.Fixture, kernel.OrgScope, kernel.OrgScope) 
 	f := orgtest.New(t)
 	f.GrantTeamReductions(t)
 	f.GrantSettingsLifecycle(t)
+	f.GrantOwnershipLifecycle(t)
 	r := pgx.Identifier{f.RuntimeRole}.Sanitize()
 	if _, err := f.Admin.Exec(t.Context(), "GRANT USAGE ON SCHEMA public TO "+r+"; GRANT SELECT,INSERT,UPDATE ON organizations,org_employee_identities,org_memberships,org_role_assignments TO "+r+"; GRANT SELECT,UPDATE ON accounts TO "+r+"; GRANT SELECT,INSERT ON payment_billing_exits TO "+r); err != nil {
 		t.Fatal(err)

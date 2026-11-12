@@ -317,3 +317,28 @@ func (s *Store) CandidatesTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 	}
 	return out, nil
 }
+
+// RemainingOwnershipAssignmentsTx is the ownership module's narrow history port.
+// OWNER and ADMIN future periods support consented step-down, never current proof.
+// Ordinary CandidatesTx deliberately retains its current-time-only semantics.
+func (s *Store) RemainingOwnershipAssignmentsTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string) ([]d.Assignment, error) {
+	if err := validateID(scope, member); err != nil {
+		return nil, err
+	}
+	if err := check(ctx, tx, scope); err != nil {
+		return nil, err
+	}
+	rows, err := q.New(tx).RemainingOwnershipAssignments(ctx, q.RemainingOwnershipAssignmentsParams{OrgID: scope.OrgID().String(), MembershipID: member})
+	if err != nil {
+		return nil, safe(ctx, err)
+	}
+	out := make([]d.Assignment, 0, len(rows))
+	for _, row := range rows {
+		a, err := value(scope, q.GetAssignmentRow(row))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}

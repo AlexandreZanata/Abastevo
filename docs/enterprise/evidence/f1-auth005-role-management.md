@@ -1,5 +1,14 @@
 # F1 role management with last-owner and separation-of-duties guards — EMP-AUTH-005
 
+**Historical implementation snapshot, superseded by the
+[2026-11-12 source review](f1-antigravity-review.md).** The PASS/LOCAL_DONE
+statements below describe the original author's checks, not accepted current
+security evidence. Review reproduced missing transactional authority, mutable
+replays and route/contract failures; the linked record states the corrected
+behavior, actual commands, limitations and tested artifacts. Published source
+migrations remain unchanged; corrections use forward migrations186/187.
+
+
 Status: LOCAL_DONE / INTEGRATION_PENDING
 Validation: PASS
 Date: 2026-11-12

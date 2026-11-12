@@ -30,6 +30,9 @@ func rootFixture(t *testing.T) (*orgtest.Fixture, *adapters.Store, kernel.OrgSco
 	if _, err := f.Admin.Exec(t.Context(), "GRANT USAGE ON SCHEMA public TO "+role+"; GRANT SELECT,INSERT,UPDATE ON organizations TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	// Root closure invokes the installed ownership safety reduction even when
+	// this historical fixture has never admitted an ownership proposal.
+	f.GrantOwnershipLifecycle(t)
 	return f, adapters.NewStore(f.Runtime), scopeFor(t, "7b0e2a54-0000-4000-8000-000000000101"), scopeFor(t, "7b0e2a54-0000-4000-8000-000000000102")
 }
 func assertNoScope(t *testing.T, f *orgtest.Fixture) {

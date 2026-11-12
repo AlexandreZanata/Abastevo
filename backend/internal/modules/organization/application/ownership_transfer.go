@@ -2,7 +2,8 @@ package application
 
 import (
 	"context"
-	"errors"
+	roles "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
+	"github.com/jackc/pgx/v5"
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
@@ -11,58 +12,52 @@ import (
 )
 
 func OwnershipTransferProposePolicy() access.Policy {
-	return access.Policy{
-		Permission: "org.ownership.transfer",
-		Capability: "organizations",
-		Effect:     access.ConfigurationWrite,
-		Fresh:      true,
-	}
+	return access.Policy{Permission: "org.ownership.transfer", Capability: "organizations", Effect: access.ConfigurationWrite, Fresh: true}
 }
-
 func OwnershipTransferReadPolicy() access.Policy {
-	return access.Policy{
-		Permission: "org.ownership.transfer",
-		Capability: "organizations",
-		Effect:     access.Read,
-		Fresh:      true,
-	}
+	return access.Policy{Permission: "org.ownership.respond", Capability: "organizations", Effect: access.Read, Fresh: true}
+}
+func OwnershipTransferAcceptPolicy() access.Policy {
+	return access.Policy{Permission: "org.ownership.respond", Capability: "organizations", Effect: access.ConfigurationWrite, Fresh: true}
+}
+func OwnershipTransferCancelPolicy() access.Policy {
+	return access.Policy{Permission: "org.ownership.respond", Capability: "organizations", Effect: access.ReduceAccess, Fresh: true}
 }
 
 type ProposeTransferInput struct {
-	OrgID             string
-	InitiatorMemberID string
-	TargetMemberID    string
-	StepDownToAdmin   bool
-	OperationID       string
+	privateOnboarding
+	OrgID, InitiatorMemberID, TargetMemberID string
+	StepDownToAdmin                          bool
+	OperationID                              string
 }
-
 type AcceptTransferInput struct {
-	OrgID          string
-	TransferID     string
-	TargetMemberID string
-	OperationID    string
+	privateOnboarding
+	OrgID, TransferID, TargetMemberID, OperationID string
 }
-
 type CancelTransferInput struct {
-	OrgID          string
-	TransferID     string
-	ActorMemberID  string
-	OperationID    string
-	IsInitiator    bool
+	privateOnboarding
+	OrgID, TransferID, ActorMemberID, OperationID string
+	IsInitiator                                   bool
 }
-
 type OwnershipTransferResult struct {
+	privateOnboarding
 	Transfer d.OwnershipTransfer
 	Replayed bool
 }
 
-type OwnershipTransferRepository interface {
-	Propose(ctx context.Context, scope kernel.OrgScope, t d.OwnershipTransfer) (d.OwnershipTransfer, bool, error)
-	Accept(ctx context.Context, scope kernel.OrgScope, transferID string, targetMemberID string, opID string) (d.OwnershipTransfer, bool, error)
-	Cancel(ctx context.Context, scope kernel.OrgScope, transferID string, actorMemberID string, opID string, isInitiator bool) (d.OwnershipTransfer, bool, error)
-	GetCurrent(ctx context.Context, scope kernel.OrgScope) (d.OwnershipTransfer, error)
+// OwnershipAssignments includes retained scheduled OWNER/ADMIN periods without
+// broadening the live-only assignment candidates used by authorization.
+type OwnershipAssignments interface {
+	access.TransactionRepository
+	RemainingOwnershipAssignmentsTx(context.Context, pgx.Tx, kernel.OrgScope, string) ([]roles.Assignment, error)
 }
 
+type OwnershipTransferRepository interface {
+	Propose(context.Context, kernel.OrgScope, CompanyActor, string, d.OwnershipTransfer) (d.OwnershipTransfer, bool, error)
+	Accept(context.Context, kernel.OrgScope, CompanyActor, string, string, string) (d.OwnershipTransfer, bool, error)
+	Cancel(context.Context, kernel.OrgScope, CompanyActor, string, string, string) (d.OwnershipTransfer, bool, error)
+	GetCurrent(context.Context, kernel.OrgScope, CompanyActor, string, string) (d.OwnershipTransfer, error)
+}
 type OwnershipTransferService struct {
 	Enabled    bool
 	Repository OwnershipTransferRepository
@@ -70,64 +65,81 @@ type OwnershipTransferService struct {
 	Now        func() time.Time
 }
 
-func (s OwnershipTransferService) Propose(ctx context.Context, scope kernel.OrgScope, in ProposeTransferInput) (OwnershipTransferResult, error) {
-	if !s.Enabled || s.Repository == nil {
-		return OwnershipTransferResult{}, errors.New("ownership transfer service disabled")
+func (s OwnershipTransferService) check(ctx context.Context, scope kernel.OrgScope, actor CompanyActor, decision access.Decision, policy access.Policy) error {
+	if !s.Enabled {
+		return ErrSurfaceDisabled
 	}
-	if in.InitiatorMemberID == in.TargetMemberID {
+	if scope.Validate() != nil {
+		return d.ErrScope
+	}
+	if actor.Validate() != nil || decision.Policy() != policy || decision.Check(ctx, scope, actor.AccountID, policy.Permission, scope.OrgID().String()) != nil {
+		return ErrUnauthenticated
+	}
+	if s.Repository == nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+func (s OwnershipTransferService) Propose(ctx context.Context, scope kernel.OrgScope, actor CompanyActor, decision access.Decision, in ProposeTransferInput) (OwnershipTransferResult, error) {
+	if e := s.check(ctx, scope, actor, decision, OwnershipTransferProposePolicy()); e != nil {
+		return OwnershipTransferResult{}, e
+	}
+	member := decision.Subject().MembershipID()
+	if in.OrgID != "" && in.OrgID != scope.OrgID().String() || in.InitiatorMemberID != "" && in.InitiatorMemberID != member || !canonicalID(in.TargetMemberID) || !canonicalID(in.OperationID) {
+		return OwnershipTransferResult{}, d.ErrInvalid
+	}
+	if member == in.TargetMemberID {
 		return OwnershipTransferResult{}, d.ErrSelfTransferForbidden
 	}
-	now := time.Now()
-	if s.Now != nil {
-		now = s.Now()
+	if s.NewID == nil {
+		return OwnershipTransferResult{}, ErrUnavailable
 	}
-	id, err := s.NewID()
-	if err != nil {
-		return OwnershipTransferResult{}, err
+	id, e := s.NewID()
+	if e != nil || !canonicalID(id) {
+		return OwnershipTransferResult{}, ErrUnavailable
 	}
-	transfer := d.OwnershipTransfer{
-		TransferID:            id,
-		OrgID:                 scope.OrgID().String(),
-		InitiatorMembershipID: in.InitiatorMemberID,
-		TargetMembershipID:    in.TargetMemberID,
-		StepDownToAdmin:       in.StepDownToAdmin,
-		State:                 d.OwnershipTransferPending,
-		ExpiresAt:             now.Add(d.OwnershipTransferValidity),
-		CreatedAt:             now,
-		OperationID:           in.OperationID,
+	t := d.OwnershipTransfer{OrgID: scope.OrgID().String(), TransferID: id, InitiatorMembershipID: member, TargetMembershipID: in.TargetMemberID, StepDownToAdmin: in.StepDownToAdmin, OperationID: in.OperationID}
+	saved, replay, e := s.Repository.Propose(ctx, scope, actor, member, t)
+	if e != nil {
+		return OwnershipTransferResult{}, e
 	}
-	saved, replayed, err := s.Repository.Propose(ctx, scope, transfer)
-	if err != nil {
-		return OwnershipTransferResult{}, err
-	}
-	return OwnershipTransferResult{Transfer: saved, Replayed: replayed}, nil
+	return OwnershipTransferResult{Transfer: saved, Replayed: replay}, nil
 }
-
-func (s OwnershipTransferService) Accept(ctx context.Context, scope kernel.OrgScope, in AcceptTransferInput) (OwnershipTransferResult, error) {
-	if !s.Enabled || s.Repository == nil {
-		return OwnershipTransferResult{}, errors.New("ownership transfer service disabled")
+func (s OwnershipTransferService) Accept(ctx context.Context, scope kernel.OrgScope, actor CompanyActor, decision access.Decision, in AcceptTransferInput) (OwnershipTransferResult, error) {
+	if e := s.check(ctx, scope, actor, decision, OwnershipTransferAcceptPolicy()); e != nil {
+		return OwnershipTransferResult{}, e
 	}
-	saved, replayed, err := s.Repository.Accept(ctx, scope, in.TransferID, in.TargetMemberID, in.OperationID)
-	if err != nil {
-		return OwnershipTransferResult{}, err
+	member := decision.Subject().MembershipID()
+	if in.OrgID != "" && in.OrgID != scope.OrgID().String() || in.TargetMemberID != "" && in.TargetMemberID != member || !canonicalID(in.TransferID) || !canonicalID(in.OperationID) {
+		return OwnershipTransferResult{}, d.ErrInvalid
 	}
-	return OwnershipTransferResult{Transfer: saved, Replayed: replayed}, nil
+	t, replay, e := s.Repository.Accept(ctx, scope, actor, member, in.TransferID, in.OperationID)
+	if e != nil {
+		return OwnershipTransferResult{}, e
+	}
+	return OwnershipTransferResult{Transfer: t, Replayed: replay}, nil
 }
-
-func (s OwnershipTransferService) Cancel(ctx context.Context, scope kernel.OrgScope, in CancelTransferInput) (OwnershipTransferResult, error) {
-	if !s.Enabled || s.Repository == nil {
-		return OwnershipTransferResult{}, errors.New("ownership transfer service disabled")
+func (s OwnershipTransferService) Cancel(ctx context.Context, scope kernel.OrgScope, actor CompanyActor, decision access.Decision, in CancelTransferInput) (OwnershipTransferResult, error) {
+	if e := s.check(ctx, scope, actor, decision, OwnershipTransferCancelPolicy()); e != nil {
+		return OwnershipTransferResult{}, e
 	}
-	saved, replayed, err := s.Repository.Cancel(ctx, scope, in.TransferID, in.ActorMemberID, in.OperationID, in.IsInitiator)
-	if err != nil {
-		return OwnershipTransferResult{}, err
+	member := decision.Subject().MembershipID()
+	if in.OrgID != "" && in.OrgID != scope.OrgID().String() || in.ActorMemberID != "" && in.ActorMemberID != member || !canonicalID(in.TransferID) || !canonicalID(in.OperationID) {
+		return OwnershipTransferResult{}, d.ErrInvalid
 	}
-	return OwnershipTransferResult{Transfer: saved, Replayed: replayed}, nil
+	// Caller input never decides whether this is cancellation or decline.
+	t, replay, e := s.Repository.Cancel(ctx, scope, actor, member, in.TransferID, in.OperationID)
+	if e != nil {
+		return OwnershipTransferResult{}, e
+	}
+	return OwnershipTransferResult{Transfer: t, Replayed: replay}, nil
 }
-
-func (s OwnershipTransferService) GetCurrent(ctx context.Context, scope kernel.OrgScope) (d.OwnershipTransfer, error) {
-	if !s.Enabled || s.Repository == nil {
-		return d.OwnershipTransfer{}, errors.New("ownership transfer service disabled")
+func (s OwnershipTransferService) GetCurrent(ctx context.Context, scope kernel.OrgScope, actor CompanyActor, decision access.Decision, id string) (d.OwnershipTransfer, error) {
+	if e := s.check(ctx, scope, actor, decision, OwnershipTransferReadPolicy()); e != nil {
+		return d.OwnershipTransfer{}, e
 	}
-	return s.Repository.GetCurrent(ctx, scope)
+	if id != "" && !canonicalID(id) {
+		return d.OwnershipTransfer{}, d.ErrInvalid
+	}
+	return s.Repository.GetCurrent(ctx, scope, actor, decision.Subject().MembershipID(), id)
 }

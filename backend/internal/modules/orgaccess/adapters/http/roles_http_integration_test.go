@@ -17,10 +17,10 @@ import (
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	orgdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
+	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
+	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
-	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
-	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
@@ -48,12 +48,13 @@ func TestRoles_ComposedHTTP_Lifecycle(t *testing.T) {
 	f := orgtest.New(t)
 	f.GrantTeamReductions(t)
 	f.GrantSettingsLifecycle(t)
+	f.GrantOwnershipLifecycle(t)
 
 	r := pgx.Identifier{f.RuntimeRole}.Sanitize()
 	grantSQL := "GRANT USAGE ON SCHEMA public TO " + r + ";" +
 		" GRANT SELECT,INSERT,UPDATE ON organizations,org_employee_identities,org_memberships,org_role_assignments,org_audit_events,org_units,org_onboarding_commands,org_cost_centres,org_legal_entities,org_establishments,org_capabilities,identity_rate_windows TO " + r + ";" +
 		" GRANT SELECT,UPDATE ON accounts,account_session_families TO " + r + ";" +
-		" GRANT SELECT,INSERT ON payment_billing_exits,org_settings_commands,org_unit_commands,org_cost_centre_commands,org_legal_commands,org_employee_commands TO " + r + ";" +
+		" GRANT SELECT,INSERT ON payment_billing_exits,org_role_commands,org_settings_commands,org_unit_commands,org_cost_centre_commands,org_legal_commands,org_employee_commands TO " + r + ";" +
 		" GRANT SELECT,INSERT,UPDATE,DELETE ON company_web_sessions TO " + r + ";"
 	if _, err := f.Admin.Exec(t.Context(), grantSQL); err != nil {
 		t.Fatal(err)
@@ -209,6 +210,16 @@ func TestRoles_ComposedHTTP_Lifecycle(t *testing.T) {
 
 	rolesBase := "/v1/orgs/" + orgID + "/roles"
 
+	// Activate the fixture target through a genuine current base assignment.
+	if err := database.WithOrgTx(t.Context(), f.Runtime, orgScope, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(t.Context(), `INSERT INTO org_role_assignments(org_id,id,membership_id,role,scope_type,scope_target,valid_from,assigned_by,reason) VALUES($1,$2,$3,'DRIVER','SELF',$3,clock_timestamp(),$3,'synthetic base role')`, orgID, randomUUID(t), memberID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(t.Context(), `UPDATE org_memberships SET state='ACTIVE',revision=revision+1 WHERE org_id=$1 AND id=$2`, orgID, memberID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
 	// 4. Test missing CSRF / bad Origin on POST /assign -> 401
 	assignOpID := randomUUID(t)
 	assignBody := map[string]any{
@@ -280,15 +291,15 @@ func TestRoles_ComposedHTTP_Lifecycle(t *testing.T) {
 		t.Fatalf("expected at least 2 active assignments, got %d", len(items))
 	}
 
-	// 11. Change role atomically: change member from ADMIN to FINANCE
+	// 11. FINANCE may be granted with SELF coverage by the source OWNER.
 	changeOpID := randomUUID(t)
 	changeBody := map[string]any{
 		"schema_version": 1,
 		"operation_id":   changeOpID,
 		"revision":       1,
 		"role":           "FINANCE",
-		"scope":          "ORG",
-		"target_id":      orgID,
+		"scope":          "SELF",
+		"target_id":      memberID,
 		"reason":         "Changing administrator to finance role",
 	}
 	changeRes := call(rolesBase+"/"+assignID+"/change", changeBody, 200, nil)

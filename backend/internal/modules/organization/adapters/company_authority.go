@@ -24,8 +24,8 @@ type companyAuthority struct {
 	Capabilities setupCapability
 }
 
-func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy) error {
-	if policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
+func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy, requestedRole ...permissions.Role) error {
+	if policy != access.RolePolicy(access.RoleAssignAction) && policy != access.RolePolicy(access.RoleEndAction) && policy != access.RolePolicy(access.RoleReadAction) && policy != app.OwnershipTransferProposePolicy() && policy != app.OwnershipTransferReadPolicy() && policy != app.OwnershipTransferAcceptPolicy() && policy != app.OwnershipTransferCancelPolicy() && policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
 		return app.ErrUnavailable
 	}
 	write := policy.Effect == access.ConfigurationWrite
@@ -33,7 +33,7 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 	// while writers still wait for them. A settings read can initialize the
 	// first version under the root (org_settings_bootstrap locks it FOR
 	// UPDATE); two readers holding FOR SHARE would then deadlock on upgrade.
-	exclusive := write || policy == app.SettingsPolicy(false)
+	exclusive := policy.Effect != access.Read || policy == app.SettingsPolicy(false) || policy == app.OwnershipTransferReadPolicy()
 	queries := q.New(tx)
 	var account q.LockLegalAccountRow
 	var err error
@@ -109,7 +109,17 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 	if !now.Valid || now.InfinityModifier != pgtype.Finite {
 		return app.ErrUnavailable
 	}
-	if _, err := permissions.CoveringRules(scope, member, assignments, policy.Permission, permissions.ResourceFacts{OrgID: scope.OrgID(), ID: target}, now.Time); err != nil {
+	facts := permissions.ResourceFacts{OrgID: scope.OrgID(), ID: target}
+	// Response permission admits a SELF-scoped member to attempt consent.
+	// The source store checks the concrete transfer participants under this
+	// retained root lock before any read, receipt or state change.
+	if policy.Permission == "org.ownership.respond" {
+		facts.AssignedTo = member
+	}
+	if len(requestedRole) == 1 {
+		facts.RequestedRole = requestedRole[0]
+	}
+	if _, err := permissions.CoveringRules(scope, member, assignments, policy.Permission, facts, now.Time); err != nil {
 		return err
 	}
 	// The root/capability locks could have waited: recheck freshness immediately
@@ -152,4 +162,34 @@ func (g *EmployeeAuthority) CheckEmployeeTx(ctx context.Context, tx pgx.Tx, scop
 		return members.ErrEmployeeNotFound
 	}
 	return err
+}
+
+// RoleAuthority supplies current company proof through the access module port.
+type RoleAuthority struct {
+	Memberships  members.TransactionRepository
+	Roles        access.TransactionRepository
+	Capabilities setupCapability
+}
+
+func (g *RoleAuthority) CheckRoleTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor access.CompanyActor, member, target string, action access.RoleAction, requested permissions.Role) ([]permissions.Assignment, error) {
+	if g == nil || g.Memberships == nil || g.Roles == nil || g.Capabilities == nil || actor.Validate() != nil || legalIdentity(scope, member) != nil || legalIdentity(scope, target) != nil {
+		return nil, access.ErrUnavailable
+	}
+	policy := access.RolePolicy(action)
+	if policy.Validate() != nil {
+		return nil, access.ErrUnavailable
+	}
+	err := (companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}).check(ctx, tx, scope, app.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, member, target, policy, requested)
+	if err != nil {
+		switch {
+		case errors.Is(err, app.ErrUnauthenticated):
+			return nil, access.ErrRoleUnauthenticated
+		case errors.Is(err, app.ErrNotFound):
+			return nil, access.ErrRoleTargetNotFound
+		case errors.Is(err, capability.ErrEntitlementRequired):
+			return nil, access.ErrEntitlementRequired
+		}
+		return nil, err
+	}
+	return g.Roles.CandidatesTx(ctx, tx, scope, member)
 }

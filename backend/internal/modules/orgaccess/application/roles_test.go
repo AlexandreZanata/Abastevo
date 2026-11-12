@@ -1,7 +1,6 @@
 package application_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -9,35 +8,6 @@ import (
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 )
-
-type mockRoleRepo struct {
-	assigned bool
-	ended    bool
-	changed  bool
-	read     bool
-	listed   bool
-}
-
-func (m *mockRoleRepo) AssignRole(_ context.Context, _ kernel.OrgScope, _ app.CompanyActor, _, _ string, _ app.RoleAssignInput) (app.RoleResult, error) {
-	m.assigned = true
-	return app.RoleResult{}, nil
-}
-func (m *mockRoleRepo) EndRole(_ context.Context, _ kernel.OrgScope, _ app.CompanyActor, _ string, _ app.RoleEndInput) (app.RoleResult, error) {
-	m.ended = true
-	return app.RoleResult{}, nil
-}
-func (m *mockRoleRepo) ChangeRole(_ context.Context, _ kernel.OrgScope, _ app.CompanyActor, _, _ string, _ app.RoleChangeInput) (app.RoleChangeResult, error) {
-	m.changed = true
-	return app.RoleChangeResult{}, nil
-}
-func (m *mockRoleRepo) ReadRole(_ context.Context, _ kernel.OrgScope, _ app.CompanyActor, _, _ string) (d.Assignment, error) {
-	m.read = true
-	return d.Assignment{}, nil
-}
-func (m *mockRoleRepo) ListRoles(_ context.Context, _ kernel.OrgScope, _ app.CompanyActor, _ string, _ app.RoleListFilter) (app.RolePage, error) {
-	m.listed = true
-	return app.RolePage{}, nil
-}
 
 func testScope(t *testing.T) kernel.OrgScope {
 	t.Helper()

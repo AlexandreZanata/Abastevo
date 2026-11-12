@@ -1,21 +1,24 @@
-// Package adapters implements scoped role persistence, queries, and audit integration.
+// Package adapters implements current-authority role management in scoped transactions.
 package adapters
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	q "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgaccess"
-	qorgaudit "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgaudit"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	auditing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,59 +26,37 @@ type RoleStore struct {
 	Pool        *pgxpool.Pool
 	Assignments *Store
 	Audit       auditing.TransactionRunner
+	Authority   app.RoleAuthority
 }
 
 var _ app.RoleManagementRepository = (*RoleStore)(nil)
 
-func NewRoleStore(pool *pgxpool.Pool, assignments *Store, auditRunner auditing.TransactionRunner) *RoleStore {
-	return &RoleStore{
-		Pool:        pool,
-		Assignments: assignments,
-		Audit:       auditRunner,
-	}
+func NewRoleStore(pool *pgxpool.Pool, assignments *Store, runner auditing.TransactionRunner, authority app.RoleAuthority) *RoleStore {
+	return &RoleStore{Pool: pool, Assignments: assignments, Audit: runner, Authority: authority}
 }
-
 func RoleAuditDefinitions() []audit.Definition {
-	return []audit.Definition{
-		{Action: "auth.assignment.created", TargetType: "assignment", Reasons: []string{"granted", "changed"}, RequireReason: true},
-		{Action: "auth.assignment.ended", TargetType: "assignment", Reasons: []string{"ended", "changed"}, RequireReason: true},
-	}
+	return []audit.Definition{{Action: "auth.assignment.created", TargetType: "assignment", Reasons: []string{"granted", "changed"}, RequireReason: true}, {Action: "auth.assignment.ended", TargetType: "assignment", Reasons: []string{"ended", "changed"}, RequireReason: true}}
 }
-
 func (s *RoleStore) ready() bool {
-	return s != nil && s.Pool != nil && s.Assignments != nil && s.Audit != nil
+	return s != nil && s.Pool != nil && s.Assignments != nil && s.Audit != nil && s.Authority != nil
 }
-
-func roleStoreError(ctx context.Context, err error) error {
-	if err == nil {
+func roleStoreError(ctx context.Context, e error) error {
+	if e == nil {
 		return nil
 	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	if errors.Is(err, kernel.ErrInvalidOrgScope) {
-		return d.ErrAssignmentScope
-	}
-	for _, known := range []error{
-		d.ErrAssignmentScope, d.ErrAssignmentInvalid, d.ErrAssignmentConflict, d.ErrAssignmentEnded,
-		d.ErrUnknownRole, d.ErrCannotAssignOwner, d.ErrSelfModificationForbidden, d.ErrSelfAssignmentForbidden,
-		app.ErrNotFound, app.ErrUnavailable, app.ErrRoleDisabled, app.ErrRoleInvalid,
-		app.ErrRoleTargetNotFound, app.ErrRoleTargetNotActive, app.ErrRoleOperationReused,
-		app.ErrOrgSuspended, app.ErrOrgArchived, app.ErrSetupIncomplete,
-		kernel.ErrLastOrgOwner, kernel.ErrOrgAccessPolicyUnavailable, kernel.ErrPendingOrgLimit, kernel.ErrOwnerRequiresPersonal,
-	} {
-		if errors.Is(err, known) {
-			return known
+	for _, known := range []error{d.ErrAssignmentScope, d.ErrAssignmentInvalid, d.ErrAssignmentConflict, d.ErrAssignmentEnded, d.ErrUnknownRole, d.ErrPermissionDenied, d.ErrCannotAssignOwner, d.ErrSelfModificationForbidden, d.ErrSelfAssignmentForbidden, app.ErrNotFound, app.ErrUnavailable, app.ErrRoleDisabled, app.ErrRoleInvalid, app.ErrRoleTargetNotFound, app.ErrRoleTargetNotActive, app.ErrRoleOperationReused, app.ErrRoleUnauthenticated, app.ErrNoMembership, app.ErrOrgSuspended, app.ErrOrgArchived, app.ErrSetupIncomplete, app.ErrEntitlementRequired, kernel.ErrLastOrgOwner, kernel.ErrOrgAccessPolicyUnavailable, kernel.ErrPendingOrgLimit, kernel.ErrOwnerRequiresPersonal} {
+		if errors.Is(e, known) {
+			return e
 		}
 	}
-	if errors.Is(err, pgx.ErrNoRows) {
-		return app.ErrNotFound
-	}
-	if errors.Is(err, audit.ErrReused) {
+	if errors.Is(e, audit.ErrReused) {
 		return app.ErrRoleOperationReused
 	}
 	var pe *pgconn.PgError
-	if errors.As(err, &pe) {
+	if errors.As(e, &pe) {
 		switch pe.Code {
 		case "P7501":
 			return kernel.ErrLastOrgOwner
@@ -87,533 +68,423 @@ func roleStoreError(ctx context.Context, err error) error {
 			return kernel.ErrOwnerRequiresPersonal
 		case "23505":
 			return d.ErrAssignmentConflict
-		case "23503":
-			return app.ErrRoleTargetNotFound
-		case "23514", "22P02", "22008":
-			return d.ErrAssignmentInvalid
-		case "42501":
-			return d.ErrAssignmentScope
-		case "55000":
-			return d.ErrAssignmentEnded
 		}
 	}
 	return app.ErrUnavailable
 }
-
-func (s *RoleStore) actorRolesTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actorMemberID string) ([]d.Role, error) {
-	candidates, err := s.Assignments.CandidatesTx(ctx, tx, scope, actorMemberID)
-	if err != nil {
-		return nil, err
+func roleCall(scope kernel.OrgScope, a app.CompanyActor, member string) error {
+	if scope.Validate() != nil {
+		return d.ErrAssignmentScope
 	}
-	roles := make([]d.Role, 0, len(candidates))
-	for _, c := range candidates {
-		snap, err := c.Snapshot(scope)
-		if err != nil {
-			return nil, err
-		}
-		roles = append(roles, snap.Role)
-	}
-	return roles, nil
-}
-
-func (s *RoleStore) checkOrgState(ctx context.Context, queries *q.Queries, orgID string, write bool) error {
-	orgRow, err := queries.GetOrganizationStateForUpdate(ctx, orgID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return app.ErrNotFound
-		}
-		return err
-	}
-	state := orgRow.State.String
-	if state == "ARCHIVED" {
-		return app.ErrOrgArchived
-	}
-	if write && state == "SUSPENDED" {
-		return app.ErrOrgSuspended
-	}
-	if !orgRow.HasSnapshot {
-		return app.ErrSetupIncomplete
+	if a.Validate() != nil || validateID(scope, member) != nil {
+		return app.ErrRoleUnauthenticated
 	}
 	return nil
 }
 
-func (s *RoleStore) checkTarget(ctx context.Context, queries *q.Queries, orgID, targetMemberID string, targetRole d.Role) error {
-	targetRow, err := queries.CheckTargetMembership(ctx, q.CheckTargetMembershipParams{
-		OrgID:        orgID,
-		MembershipID: targetMemberID,
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return app.ErrRoleTargetNotFound
+// Prelock every affected account in UUID order before the current actor's
+// capability/root guard. Role persistence reuses those locks; no root->account
+// inversion is introduced when assigning/changing/ending another member.
+func (s *RoleStore) lockAccounts(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, a app.CompanyActor, targetMember string, write bool) error {
+	ids := []string{a.AccountID}
+	if write && targetMember != "" {
+		id, e := q.New(tx).AssignmentAccount(ctx, q.AssignmentAccountParams{OrgID: scope.OrgID().String(), MembershipID: targetMember})
+		if e != nil && !errors.Is(e, pgx.ErrNoRows) {
+			return e
 		}
-		return err
+		if id != "" {
+			ids = append(ids, id)
+		}
 	}
-	if targetRow.MembershipState != "ACTIVE" && targetRow.MembershipState != "INVITED" {
+	slices.Sort(ids)
+	ids = slices.Compact(ids)
+	for _, id := range ids {
+		var e error
+		if write {
+			e = q.New(tx).LockOwnerAccount(ctx, id)
+		} else {
+			e = q.New(tx).LockAssignmentAccount(ctx, id)
+		}
+		if e != nil {
+			return e
+		}
+	}
+	return nil
+}
+func (s *RoleStore) target(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string, role d.Role) error {
+	row, e := q.New(tx).CheckTargetMembership(ctx, q.CheckTargetMembershipParams{OrgID: scope.OrgID().String(), MembershipID: member})
+	if errors.Is(e, pgx.ErrNoRows) {
+		return app.ErrRoleTargetNotFound
+	}
+	if e != nil {
+		return e
+	}
+	if row.MembershipState != "ACTIVE" || row.EmployeeState != "ACTIVE" || row.AccountStatus != "active" || row.DeletionPending {
 		return app.ErrRoleTargetNotActive
 	}
-	if targetRow.EmployeeState != "ACTIVE" {
-		return app.ErrRoleTargetNotActive
-	}
-	if targetRole == d.Owner && targetRow.AccessModel != "EXISTING_ACCOUNT" {
+	if role == d.Owner && row.AccessModel != "EXISTING_ACCOUNT" {
 		return kernel.ErrOwnerRequiresPersonal
 	}
 	return nil
 }
-
-func (s *RoleStore) AssignRole(ctx context.Context, scope kernel.OrgScope, actor app.CompanyActor, actorMemberID, newID string, input app.RoleAssignInput) (app.RoleResult, error) {
-	if !s.ready() {
-		return app.RoleResult{}, app.ErrUnavailable
+func currentRoleKeys(scope kernel.OrgScope, member string, assignments []d.Assignment, at time.Time) ([]d.Role, error) {
+	roles := []d.Role{}
+	for _, a := range assignments {
+		v, e := a.Snapshot(scope)
+		if e != nil {
+			return nil, e
+		}
+		valid, e := a.ValidAt(scope, at)
+		if e != nil {
+			return nil, e
+		}
+		if valid && v.MembershipID == member && v.Scope == d.OrgScope {
+			roles = append(roles, v.Role)
+		}
 	}
-	digest := input.Digest(scope)
-	var result app.RoleResult
+	return roles, nil
+}
 
-	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
+// Explicit stored receipt representation; domain JSON always redacts itself.
+type roleAssignmentWire struct {
+	ID, MembershipID, AssignedBy string
+	Role                         d.Role
+	Scope                        d.ScopeType
+	TargetID                     string
+	ValidFrom, ValidTo, EndedAt  time.Time
+	Reason                       string
+	Revision                     int64
+}
+type roleReceipt struct {
+	CommandReason string
+	Assignment    roleAssignmentWire
+	Ended         *roleAssignmentWire `json:",omitempty"`
+}
+
+func assignmentWire(scope kernel.OrgScope, a d.Assignment) (roleAssignmentWire, error) {
+	v, e := a.Snapshot(scope)
+	return roleAssignmentWire{v.ID, v.MembershipID, v.AssignedBy, v.Role, v.Scope, v.TargetID, v.ValidFrom, v.ValidTo, v.EndedAt, v.Reason, v.Revision}, e
+}
+func (w roleAssignmentWire) domain(scope kernel.OrgScope) (d.Assignment, error) {
+	return d.RehydrateAssignment(scope, d.AssignmentSnapshot{OrgID: scope.OrgID(), ID: w.ID, MembershipID: w.MembershipID, AssignedBy: w.AssignedBy, Role: w.Role, Scope: w.Scope, TargetID: w.TargetID, ValidFrom: w.ValidFrom, ValidTo: w.ValidTo, EndedAt: w.EndedAt, Reason: w.Reason, Revision: w.Revision})
+}
+func decodeRoleReceipt(scope kernel.OrgScope, raw []byte, change bool) (roleReceipt, error) {
+	var v roleReceipt
+	if httpapi.DecodeJSON(raw, &v) != nil || (v.Ended != nil) != change || app.ValidateRoleReason(v.CommandReason) != nil {
+		return roleReceipt{}, app.ErrUnavailable
+	}
+	if _, e := v.Assignment.domain(scope); e != nil {
+		return roleReceipt{}, app.ErrUnavailable
+	}
+	if v.Ended != nil {
+		if _, e := v.Ended.domain(scope); e != nil {
+			return roleReceipt{}, app.ErrUnavailable
+		}
+	}
+	return v, nil
+}
+
+type roleMutation struct {
+	kind                                   app.RoleAction
+	operation, assignmentID, newID, member string
+	expected                               int64
+	role                                   d.Role
+	scope                                  d.ScopeType
+	target                                 string
+	from, to                               time.Time
+	reason, digest                         string
+}
+
+func (s *RoleStore) mutateRole(ctx context.Context, scope kernel.OrgScope, a app.CompanyActor, member string, in roleMutation) (roleReceipt, bool, error) {
+	if e := roleCall(scope, a, member); e != nil {
+		return roleReceipt{}, false, e
+	}
+	if !s.ready() {
+		return roleReceipt{}, false, app.ErrUnavailable
+	}
+	var result roleReceipt
+	replayed := false
+	e := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
 		queries := q.New(tx)
-		auditQueries := qorgaudit.New(tx)
-
-		// Check prior execution for replay idempotency
-		prior, err := auditQueries.GetEvent(ctx, qorgaudit.GetEventParams{
-			OrgID:       scope.OrgID().String(),
-			OperationID: input.OperationID,
-		})
-		if err == nil {
-			if prior.ActorID != actor.AccountID || prior.RequestHash != digest {
+		var old d.Assignment
+		var before d.AssignmentSnapshot
+		var lookupErr error
+		targetMember := in.member
+		requested := in.role
+		permissionTarget := scope.OrgID().String()
+		if in.kind != app.RoleAssignAction {
+			old, lookupErr = s.Assignments.GetTx(ctx, tx, scope, in.assignmentID)
+			if lookupErr == nil {
+				before, lookupErr = old.Snapshot(scope)
+				targetMember = before.MembershipID
+			}
+			permissionTarget = in.assignmentID
+			if in.kind == app.RoleEndAction {
+				requested = before.Role
+			}
+		}
+		if requested == "" {
+			requested = d.Admin
+		}
+		if e := s.lockAccounts(ctx, tx, scope, a, targetMember, true); e != nil {
+			return e
+		}
+		candidates, e := s.Authority.CheckRoleTx(ctx, tx, scope, a, member, permissionTarget, in.kind, requested)
+		if e != nil {
+			return e
+		}
+		// Authority/root lock is held before reading an idempotent result. It never
+		// restores authority removed since an earlier accepted command.
+		prior, e := queries.GetRoleCommand(ctx, q.GetRoleCommandParams{OrgID: scope.OrgID().String(), OperationID: in.operation})
+		if e == nil {
+			if prior.ActorID != a.AccountID || prior.Kind != string(in.kind) || prior.RequestHash != in.digest {
 				return app.ErrRoleOperationReused
 			}
-			assignment, err := s.Assignments.GetTx(ctx, tx, scope, prior.TargetID)
-			if err != nil {
-				return err
+			result, e = decodeRoleReceipt(scope, prior.Result, in.kind == app.RoleChangeAction)
+			if e != nil {
+				return e
 			}
-			result = app.RoleResult{Assignment: assignment, Replayed: true}
+			replayed = true
 			return nil
 		}
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return err
+		if !errors.Is(e, pgx.ErrNoRows) {
+			return e
 		}
-
-		// Root organization state check
-		if err := s.checkOrgState(ctx, queries, scope.OrgID().String(), true); err != nil {
-			return err
+		if lookupErr != nil {
+			return lookupErr
 		}
-
-		// Actor active roles check
-		actorRoles, err := s.actorRolesTx(ctx, tx, scope, actorMemberID)
-		if err != nil {
-			return err
+		// Re-read target assignment after the root lock to check actual CAS state.
+		if in.kind != app.RoleAssignAction {
+			old, e = s.Assignments.GetTx(ctx, tx, scope, in.assignmentID)
+			if e != nil {
+				return e
+			}
+			before, e = old.Snapshot(scope)
+			if e != nil {
+				return e
+			}
 		}
-
-		// BR-AUTH-007: No escalation & self-modification rules
-		if !d.CanModifyAssignment(actorMemberID, input.MembershipID, actorRoles, false) {
+		now, e := queries.RoleManagementClock(ctx)
+		if e != nil || !now.Valid || now.InfinityModifier != pgtype.Finite {
+			return app.ErrUnavailable
+		}
+		roles, e := currentRoleKeys(scope, member, candidates, now.Time)
+		if e != nil {
+			return e
+		}
+		if in.kind != app.RoleAssignAction && before.Role == d.Owner && !slices.Contains(roles, d.Owner) {
+			return d.ErrCannotAssignOwner
+		}
+		if in.kind == app.RoleAssignAction && targetMember == member {
 			return d.ErrSelfAssignmentForbidden
 		}
-		if !d.CanAssignRole(d.SystemCatalog(), actorRoles, input.Role) {
-			return d.ErrCannotAssignOwner
-		}
-
-		// Target membership check
-		if err := s.checkTarget(ctx, queries, scope.OrgID().String(), input.MembershipID, input.Role); err != nil {
-			return err
-		}
-
-		validFrom := input.ValidFrom
-		if validFrom.IsZero() {
-			validFrom = time.Now().UTC()
-		}
-
-		assignmentSnapshot := d.AssignmentSnapshot{
-			OrgID:        scope.OrgID(),
-			ID:           newID,
-			MembershipID: input.MembershipID,
-			AssignedBy:   actorMemberID,
-			Role:         input.Role,
-			Scope:        input.Scope,
-			TargetID:     input.TargetID,
-			ValidFrom:    validFrom,
-			ValidTo:      input.ValidTo,
-			Reason:       input.Reason,
-			Revision:     1,
-		}
-		assignment, err := d.RehydrateAssignment(scope, assignmentSnapshot)
-		if err != nil {
-			return err
-		}
-
-		event := audit.Event{
-			OperationID: input.OperationID,
-			ActorID:     actor.AccountID,
-			Action:      "auth.assignment.created",
-			TargetType:  "assignment",
-			TargetID:    newID,
-			ReasonCode:  "granted",
-			RequestHash: digest,
-		}
-
-		replayed, err := s.Audit.RecordChangeTx(ctx, tx, scope, event, func(ctx context.Context, tx pgx.Tx) error {
-			changed, err := s.Assignments.CreateTx(ctx, tx, scope, assignment)
-			if err != nil {
-				return err
-			}
-			if !changed {
-				return d.ErrAssignmentConflict
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		loaded, err := s.Assignments.GetTx(ctx, tx, scope, newID)
-		if err != nil {
-			return err
-		}
-		result = app.RoleResult{Assignment: loaded, Replayed: replayed}
-		return nil
-	})
-
-	if err != nil {
-		return app.RoleResult{}, roleStoreError(ctx, err)
-	}
-	return result, nil
-}
-
-func (s *RoleStore) EndRole(ctx context.Context, scope kernel.OrgScope, actor app.CompanyActor, actorMemberID string, input app.RoleEndInput) (app.RoleResult, error) {
-	if !s.ready() {
-		return app.RoleResult{}, app.ErrUnavailable
-	}
-	digest := input.Digest(scope)
-	var result app.RoleResult
-
-	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
-		queries := q.New(tx)
-		auditQueries := qorgaudit.New(tx)
-
-		// Check prior execution for replay idempotency
-		prior, err := auditQueries.GetEvent(ctx, qorgaudit.GetEventParams{
-			OrgID:       scope.OrgID().String(),
-			OperationID: input.OperationID,
-		})
-		if err == nil {
-			if prior.ActorID != actor.AccountID || prior.RequestHash != digest {
-				return app.ErrRoleOperationReused
-			}
-			assignment, err := s.Assignments.GetTx(ctx, tx, scope, prior.TargetID)
-			if err != nil {
-				return err
-			}
-			result = app.RoleResult{Assignment: assignment, Replayed: true}
-			return nil
-		}
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return err
-		}
-
-		// Root organization state check (end is ReduceAccess: allowed even when suspended)
-		if err := s.checkOrgState(ctx, queries, scope.OrgID().String(), false); err != nil {
-			return err
-		}
-
-		// Fetch existing assignment to end
-		existing, err := s.Assignments.GetTx(ctx, tx, scope, input.AssignmentID)
-		if err != nil {
-			return err
-		}
-		existingSnap, err := existing.Snapshot(scope)
-		if err != nil {
-			return err
-		}
-
-		// Actor active roles check
-		actorRoles, err := s.actorRolesTx(ctx, tx, scope, actorMemberID)
-		if err != nil {
-			return err
-		}
-
-		// BR-AUTH-007: Only Owner can end their own role (self-reduction)
-		if !d.CanModifyAssignment(actorMemberID, existingSnap.MembershipID, actorRoles, true) {
+		if in.kind == app.RoleEndAction && !d.CanModifyAssignment(member, targetMember, roles, true) {
 			return d.ErrSelfModificationForbidden
 		}
-
-		event := audit.Event{
-			OperationID: input.OperationID,
-			ActorID:     actor.AccountID,
-			Action:      "auth.assignment.ended",
-			TargetType:  "assignment",
-			TargetID:    input.AssignmentID,
-			ReasonCode:  "ended",
-			RequestHash: digest,
+		if in.kind != app.RoleEndAction {
+			if !d.CanAssignScopedRole(d.SystemCatalog(), roles, in.role, in.scope) {
+				return d.ErrEscalation
+			}
+			if e := s.target(ctx, tx, scope, targetMember, in.role); e != nil {
+				return e
+			}
 		}
-
-		var endedAssignment d.Assignment
-		replayed, err := s.Audit.RecordChangeTx(ctx, tx, scope, event, func(ctx context.Context, tx pgx.Tx) error {
-			a, changed, err := s.Assignments.EndTx(ctx, tx, scope, input.AssignmentID, input.ExpectedRevision)
-			if err != nil {
-				return err
+		from := in.from
+		if from.IsZero() {
+			from = now.Time
+		}
+		if in.kind == app.RoleChangeAction && targetMember == member {
+			reducing := d.PermissionsWithin(d.SystemCatalog(), []d.Role{before.Role}, in.role, in.scope == d.SelfScope) && !(before.Scope == d.SelfScope && in.scope != d.SelfScope) && !from.Before(before.ValidFrom) && (before.ValidTo.IsZero() || !in.to.IsZero() && !in.to.After(before.ValidTo))
+			if !d.CanModifyAssignment(member, targetMember, roles, reducing) {
+				return d.ErrSelfModificationForbidden
 			}
-			if !changed {
-				return d.ErrAssignmentConflict
+		}
+		var proposed d.Assignment
+		if in.kind != app.RoleEndAction {
+			proposed, e = d.RehydrateAssignment(scope, d.AssignmentSnapshot{OrgID: scope.OrgID(), ID: in.newID, MembershipID: targetMember, AssignedBy: member, Role: in.role, Scope: in.scope, TargetID: in.target, ValidFrom: from, ValidTo: in.to, Reason: in.reason, Revision: 1})
+			if e != nil {
+				return e
 			}
-			endedAssignment = a
-			return nil
+		}
+		action, eventTarget, reason := "auth.assignment.created", in.newID, "granted"
+		if in.kind == app.RoleEndAction {
+			action, eventTarget, reason = "auth.assignment.ended", in.assignmentID, "ended"
+		}
+		if in.kind == app.RoleChangeAction {
+			reason = "changed"
+		}
+		result.CommandReason = in.reason
+		repeated, e := s.Audit.RecordChangeTx(ctx, tx, scope, audit.Event{OperationID: in.operation, ActorID: a.AccountID, Action: action, TargetType: "assignment", TargetID: eventTarget, ReasonCode: reason, RequestHash: in.digest}, func(ctx context.Context, tx pgx.Tx) error {
+			if in.kind != app.RoleAssignAction {
+				ended, changed, e := s.Assignments.EndTx(ctx, tx, scope, in.assignmentID, in.expected)
+				if e != nil {
+					return e
+				}
+				if !changed {
+					return d.ErrAssignmentConflict
+				}
+				wire, e := assignmentWire(scope, ended)
+				if e != nil {
+					return e
+				}
+				if in.kind == app.RoleEndAction {
+					result.Assignment = wire
+				} else {
+					result.Ended = &wire
+				}
+			}
+			if in.kind != app.RoleEndAction {
+				created, e := s.Assignments.CreateTx(ctx, tx, scope, proposed)
+				if e != nil {
+					return e
+				}
+				if !created {
+					return d.ErrAssignmentConflict
+				}
+				stored, e := s.Assignments.GetTx(ctx, tx, scope, in.newID)
+				if e != nil {
+					return e
+				}
+				wire, e := assignmentWire(scope, stored)
+				if e != nil {
+					return e
+				}
+				result.Assignment = wire
+			}
+			raw, e := json.Marshal(result)
+			if e != nil {
+				return app.ErrUnavailable
+			}
+			return queries.InsertRoleCommand(ctx, q.InsertRoleCommandParams{OrgID: scope.OrgID().String(), OperationID: in.operation, ActorID: a.AccountID, Kind: string(in.kind), RequestHash: in.digest, Result: raw})
 		})
-		if err != nil {
-			return err
+		if e != nil {
+			return e
 		}
-
-		if replayed {
-			endedAssignment, err = s.Assignments.GetTx(ctx, tx, scope, input.AssignmentID)
-			if err != nil {
-				return err
-			}
+		if repeated {
+			return app.ErrUnavailable
 		}
-		result = app.RoleResult{Assignment: endedAssignment, Replayed: replayed}
 		return nil
 	})
-
-	if err != nil {
-		return app.RoleResult{}, roleStoreError(ctx, err)
+	if e != nil {
+		return roleReceipt{}, false, roleStoreError(ctx, e)
 	}
-	return result, nil
+	return result, replayed, nil
 }
-
-func (s *RoleStore) ChangeRole(ctx context.Context, scope kernel.OrgScope, actor app.CompanyActor, actorMemberID, newID string, input app.RoleChangeInput) (app.RoleChangeResult, error) {
-	if !s.ready() {
+func (s *RoleStore) AssignRole(ctx context.Context, scope kernel.OrgScope, a app.CompanyActor, member, newID string, in app.RoleAssignInput) (app.RoleResult, error) {
+	if e := in.Validate(scope); e != nil {
+		return app.RoleResult{}, e
+	}
+	if validateID(scope, newID) != nil {
+		return app.RoleResult{}, app.ErrRoleInvalid
+	}
+	v, replay, e := s.mutateRole(ctx, scope, a, member, roleMutation{kind: app.RoleAssignAction, operation: in.OperationID, newID: newID, member: in.MembershipID, role: in.Role, scope: in.Scope, target: in.TargetID, from: in.ValidFrom, to: in.ValidTo, reason: in.Reason, digest: in.Digest(scope)})
+	if e != nil {
+		return app.RoleResult{}, e
+	}
+	assignment, e := v.Assignment.domain(scope)
+	return app.RoleResult{Assignment: assignment, Replayed: replay}, e
+}
+func (s *RoleStore) EndRole(ctx context.Context, scope kernel.OrgScope, a app.CompanyActor, member string, in app.RoleEndInput) (app.RoleResult, error) {
+	if e := in.Validate(); e != nil {
+		return app.RoleResult{}, e
+	}
+	v, replay, e := s.mutateRole(ctx, scope, a, member, roleMutation{kind: app.RoleEndAction, operation: in.OperationID, assignmentID: in.AssignmentID, expected: in.ExpectedRevision, reason: in.Reason, digest: in.Digest(scope)})
+	if e != nil {
+		return app.RoleResult{}, e
+	}
+	assignment, e := v.Assignment.domain(scope)
+	return app.RoleResult{Assignment: assignment, Replayed: replay}, e
+}
+func (s *RoleStore) ChangeRole(ctx context.Context, scope kernel.OrgScope, a app.CompanyActor, member, newID string, in app.RoleChangeInput) (app.RoleChangeResult, error) {
+	if e := in.Validate(scope); e != nil {
+		return app.RoleChangeResult{}, e
+	}
+	if validateID(scope, newID) != nil {
+		return app.RoleChangeResult{}, app.ErrRoleInvalid
+	}
+	v, replay, e := s.mutateRole(ctx, scope, a, member, roleMutation{kind: app.RoleChangeAction, operation: in.OperationID, assignmentID: in.AssignmentID, newID: newID, expected: in.ExpectedRevision, role: in.Role, scope: in.Scope, target: in.TargetID, from: in.ValidFrom, to: in.ValidTo, reason: in.Reason, digest: in.Digest(scope)})
+	if e != nil {
+		return app.RoleChangeResult{}, e
+	}
+	assignment, e := v.Assignment.domain(scope)
+	if e != nil || v.Ended == nil {
 		return app.RoleChangeResult{}, app.ErrUnavailable
 	}
-	digest := input.Digest(scope)
-	var result app.RoleChangeResult
-
-	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
-		queries := q.New(tx)
-		auditQueries := qorgaudit.New(tx)
-
-		// Check prior execution for replay idempotency
-		prior, err := auditQueries.GetEvent(ctx, qorgaudit.GetEventParams{
-			OrgID:       scope.OrgID().String(),
-			OperationID: input.OperationID,
-		})
-		if err == nil {
-			if prior.ActorID != actor.AccountID || prior.RequestHash != digest {
-				return app.ErrRoleOperationReused
-			}
-			newA, err := s.Assignments.GetTx(ctx, tx, scope, prior.TargetID)
-			if err != nil {
-				return err
-			}
-			endedA, err := s.Assignments.GetTx(ctx, tx, scope, input.AssignmentID)
-			if err != nil {
-				return err
-			}
-			result = app.RoleChangeResult{EndedAssignment: endedA, NewAssignment: newA, Replayed: true}
-			return nil
-		}
-		if !errors.Is(err, pgx.ErrNoRows) {
-			return err
-		}
-
-		// Root organization state check
-		if err := s.checkOrgState(ctx, queries, scope.OrgID().String(), true); err != nil {
-			return err
-		}
-
-		// Fetch existing assignment to end
-		existing, err := s.Assignments.GetTx(ctx, tx, scope, input.AssignmentID)
-		if err != nil {
-			return err
-		}
-		existingSnap, err := existing.Snapshot(scope)
-		if err != nil {
-			return err
-		}
-
-		// Actor active roles check
-		actorRoles, err := s.actorRolesTx(ctx, tx, scope, actorMemberID)
-		if err != nil {
-			return err
-		}
-
-		// BR-AUTH-007: Nobody modifies their own assignment
-		if !d.CanModifyAssignment(actorMemberID, existingSnap.MembershipID, actorRoles, false) {
-			return d.ErrSelfModificationForbidden
-		}
-		if !d.CanAssignRole(d.SystemCatalog(), actorRoles, input.Role) {
-			return d.ErrCannotAssignOwner
-		}
-
-		// Target membership check
-		if err := s.checkTarget(ctx, queries, scope.OrgID().String(), existingSnap.MembershipID, input.Role); err != nil {
-			return err
-		}
-
-		validFrom := input.ValidFrom
-		if validFrom.IsZero() {
-			validFrom = time.Now().UTC()
-		}
-
-		newSnapshot := d.AssignmentSnapshot{
-			OrgID:        scope.OrgID(),
-			ID:           newID,
-			MembershipID: existingSnap.MembershipID,
-			AssignedBy:   actorMemberID,
-			Role:         input.Role,
-			Scope:        input.Scope,
-			TargetID:     input.TargetID,
-			ValidFrom:    validFrom,
-			ValidTo:      input.ValidTo,
-			Reason:       input.Reason,
-			Revision:     1,
-		}
-		newAssignment, err := d.RehydrateAssignment(scope, newSnapshot)
-		if err != nil {
-			return err
-		}
-
-		event := audit.Event{
-			OperationID: input.OperationID,
-			ActorID:     actor.AccountID,
-			Action:      "auth.assignment.created",
-			TargetType:  "assignment",
-			TargetID:    newID,
-			ReasonCode:  "changed",
-			RequestHash: digest,
-		}
-
-		var endedAssignment d.Assignment
-		replayed, err := s.Audit.RecordChangeTx(ctx, tx, scope, event, func(ctx context.Context, tx pgx.Tx) error {
-			// 1. End existing assignment
-			ended, changed, err := s.Assignments.EndTx(ctx, tx, scope, input.AssignmentID, input.ExpectedRevision)
-			if err != nil {
-				return err
-			}
-			if !changed {
-				return d.ErrAssignmentConflict
-			}
-			endedAssignment = ended
-
-			// 2. Create new assignment
-			created, err := s.Assignments.CreateTx(ctx, tx, scope, newAssignment)
-			if err != nil {
-				return err
-			}
-			if !created {
-				return d.ErrAssignmentConflict
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		if replayed {
-			endedAssignment, err = s.Assignments.GetTx(ctx, tx, scope, input.AssignmentID)
-			if err != nil {
-				return err
-			}
-		}
-		loadedNew, err := s.Assignments.GetTx(ctx, tx, scope, newID)
-		if err != nil {
-			return err
-		}
-		result = app.RoleChangeResult{EndedAssignment: endedAssignment, NewAssignment: loadedNew, Replayed: replayed}
-		return nil
-	})
-
-	if err != nil {
-		return app.RoleChangeResult{}, roleStoreError(ctx, err)
-	}
-	return result, nil
+	ended, e := v.Ended.domain(scope)
+	return app.RoleChangeResult{EndedAssignment: ended, NewAssignment: assignment, Replayed: replay}, e
 }
-
-func (s *RoleStore) ReadRole(ctx context.Context, scope kernel.OrgScope, actor app.CompanyActor, actorMemberID, assignmentID string) (d.Assignment, error) {
+func (s *RoleStore) ReadRole(ctx context.Context, scope kernel.OrgScope, a app.CompanyActor, member, id string) (d.Assignment, error) {
+	if e := roleCall(scope, a, member); e != nil {
+		return d.Assignment{}, e
+	}
+	if validateID(scope, id) != nil {
+		return d.Assignment{}, app.ErrRoleInvalid
+	}
 	if !s.ready() {
 		return d.Assignment{}, app.ErrUnavailable
 	}
 	var result d.Assignment
-	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
-		queries := q.New(tx)
-		if err := s.checkOrgState(ctx, queries, scope.OrgID().String(), false); err != nil {
-			return err
+	e := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
+		if e := s.lockAccounts(ctx, tx, scope, a, "", false); e != nil {
+			return e
 		}
-		a, err := s.Assignments.GetTx(ctx, tx, scope, assignmentID)
-		if err != nil {
-			return err
+		if _, e := s.Authority.CheckRoleTx(ctx, tx, scope, a, member, id, app.RoleReadAction, d.Admin); e != nil {
+			return e
 		}
-		result = a
-		return nil
+		var e error
+		result, e = s.Assignments.GetTx(ctx, tx, scope, id)
+		return e
 	})
-	if err != nil {
-		return d.Assignment{}, roleStoreError(ctx, err)
+	if e != nil {
+		return d.Assignment{}, roleStoreError(ctx, e)
 	}
 	return result, nil
 }
-
-func (s *RoleStore) ListRoles(ctx context.Context, scope kernel.OrgScope, actor app.CompanyActor, actorMemberID string, filter app.RoleListFilter) (app.RolePage, error) {
+func (s *RoleStore) ListRoles(ctx context.Context, scope kernel.OrgScope, a app.CompanyActor, member string, f app.RoleListFilter) (app.RolePage, error) {
+	if e := roleCall(scope, a, member); e != nil {
+		return app.RolePage{}, e
+	}
+	if e := f.Validate(); e != nil {
+		return app.RolePage{}, e
+	}
 	if !s.ready() {
 		return app.RolePage{}, app.ErrUnavailable
 	}
-	var result app.RolePage
-	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
-		queries := q.New(tx)
-		if err := s.checkOrgState(ctx, queries, scope.OrgID().String(), false); err != nil {
-			return err
+	result := app.RolePage{Assignments: []d.Assignment{}}
+	state := f.State
+	if state == "" {
+		state = "ACTIVE"
+	}
+	e := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
+		if e := s.lockAccounts(ctx, tx, scope, a, "", false); e != nil {
+			return e
 		}
-
-		limit := int32(filter.Limit)
-		if limit <= 0 || limit > 100 {
-			limit = 20
+		if _, e := s.Authority.CheckRoleTx(ctx, tx, scope, a, member, scope.OrgID().String(), app.RoleListAction, d.Admin); e != nil {
+			return e
 		}
-
-		rows, err := queries.ListAssignments(ctx, q.ListAssignmentsParams{
-			OrgID:            scope.OrgID().String(),
-			MembershipFilter: filter.MembershipID,
-			RoleFilter:       string(filter.Role),
-			StateFilter:      filter.State,
-			AfterID:          filter.AfterID,
-			RowLimit:         limit,
-		})
-		if err != nil {
-			return err
+		rows, e := q.New(tx).ListAssignments(ctx, q.ListAssignmentsParams{OrgID: scope.OrgID().String(), MembershipFilter: f.MembershipID, RoleFilter: string(f.Role), StateFilter: state, AfterID: f.AfterID, RowLimit: int32(f.Limit + 1)})
+		if e != nil {
+			return e
 		}
-
-		items := make([]d.Assignment, 0, len(rows))
-		for _, row := range rows {
-			snap := d.AssignmentSnapshot{
-				OrgID:        scope.OrgID(),
-				ID:           row.ID,
-				MembershipID: row.MembershipID,
-				AssignedBy:   row.AssignedBy,
-				Role:         d.Role(row.Role),
-				Scope:        d.ScopeType(row.ScopeType),
-				TargetID:     row.ScopeTarget,
-				ValidFrom:    row.ValidFrom.Time,
-				Reason:       row.Reason,
-				Revision:     row.Revision,
+		for i, row := range rows {
+			if i == f.Limit {
+				last, e := result.Assignments[i-1].Snapshot(scope)
+				if e != nil {
+					return e
+				}
+				result.NextID = last.ID
+				break
 			}
-			if row.ValidTo.Valid {
-				snap.ValidTo = row.ValidTo.Time
+			v, e := value(scope, q.GetAssignmentRow(row))
+			if e != nil {
+				return e
 			}
-			if row.EndedAt.Valid {
-				snap.EndedAt = row.EndedAt.Time
-			}
-			a, err := d.RehydrateAssignment(scope, snap)
-			if err != nil {
-				return err
-			}
-			items = append(items, a)
-		}
-
-		var nextID string
-		if len(rows) == int(limit) {
-			nextID = rows[len(rows)-1].ID
-		}
-
-		result = app.RolePage{
-			Assignments: items,
-			NextID:      nextID,
+			result.Assignments = append(result.Assignments, v)
 		}
 		return nil
 	})
-	if err != nil {
-		return app.RolePage{}, roleStoreError(ctx, err)
+	if e != nil {
+		return app.RolePage{}, roleStoreError(ctx, e)
 	}
 	return result, nil
 }

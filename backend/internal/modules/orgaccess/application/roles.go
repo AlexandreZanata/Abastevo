@@ -16,6 +16,7 @@ import (
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -39,10 +40,10 @@ type CompanyActor struct {
 }
 
 func (a CompanyActor) Validate() error {
-	if _, err := kernel.ParseOrgID(a.AccountID); err != nil {
+	if id, err := kernel.ParseOrgID(a.AccountID); err != nil || id.String() != a.AccountID {
 		return d.ErrAssignmentInvalid
 	}
-	if _, err := kernel.ParseOrgID(a.SessionID); err != nil {
+	if id, err := kernel.ParseOrgID(a.SessionID); err != nil || id.String() != a.SessionID {
 		return d.ErrAssignmentInvalid
 	}
 	return nil
@@ -88,9 +89,12 @@ func (in RoleAssignInput) Validate(scope kernel.OrgScope) error {
 		return d.ErrAssignmentScope
 	}
 	for _, id := range []string{in.OperationID, in.MembershipID, in.TargetID} {
-		if _, err := kernel.ParseOrgID(id); err != nil {
+		if parsed, err := kernel.ParseOrgID(id); err != nil || parsed.String() != id {
 			return ErrRoleInvalid
 		}
+	}
+	if _, err := d.SystemCatalog().Rules(in.Role); err != nil {
+		return ErrRoleInvalid
 	}
 	if in.Scope != d.OrgScope && in.Scope != d.SelfScope {
 		return d.ErrAssignmentScope
@@ -107,18 +111,31 @@ func (in RoleAssignInput) Validate(scope kernel.OrgScope) error {
 	if in.Role == d.StationAdmin || in.Role == d.StationManager || in.Role == d.StationAttendant {
 		return d.ErrAssignmentScope
 	}
+	if !validRoleTime(in.ValidFrom) || !validRoleTime(in.ValidTo) {
+		return ErrRoleInvalid
+	}
 	if !in.ValidTo.IsZero() && !in.ValidFrom.IsZero() && !in.ValidFrom.Before(in.ValidTo) {
 		return ErrRoleInvalid
 	}
-	return validateReason(in.Reason)
+	return ValidateRoleReason(in.Reason)
 }
 
-func (in RoleAssignInput) Digest(scope kernel.OrgScope) string {
-	raw := fmt.Sprintf("assign:v1:%s:%s:%s:%s:%s:%d:%d:%s",
-		scope.OrgID().String(), in.OperationID, in.MembershipID, string(in.Role), string(in.Scope),
-		in.ValidFrom.UTC().UnixNano(), in.ValidTo.UTC().UnixNano(), in.Reason)
-	sum := sha256.Sum256([]byte(raw))
+func roleDigest(values ...any) string {
+	raw, _ := json.Marshal(values)
+	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
+}
+func roleIntentTime(at time.Time) string {
+	if at.IsZero() {
+		return ""
+	}
+	return at.UTC().Format(time.RFC3339Nano)
+}
+func validRoleTime(at time.Time) bool {
+	return at.IsZero() || at.UTC().Year() >= 1 && at.UTC().Year() <= 9999
+}
+func (in RoleAssignInput) Digest(scope kernel.OrgScope) string {
+	return roleDigest("assign.v2", scope.OrgID().String(), in.OperationID, in.MembershipID, string(in.Role), string(in.Scope), in.TargetID, roleIntentTime(in.ValidFrom), roleIntentTime(in.ValidTo), in.Reason)
 }
 
 type RoleEndInput struct {
@@ -131,21 +148,18 @@ type RoleEndInput struct {
 
 func (in RoleEndInput) Validate() error {
 	for _, id := range []string{in.OperationID, in.AssignmentID} {
-		if _, err := kernel.ParseOrgID(id); err != nil {
+		if parsed, err := kernel.ParseOrgID(id); err != nil || parsed.String() != id {
 			return ErrRoleInvalid
 		}
 	}
 	if in.ExpectedRevision < 1 || in.ExpectedRevision == math.MaxInt64 {
 		return ErrRoleInvalid
 	}
-	return validateReason(in.Reason)
+	return ValidateRoleReason(in.Reason)
 }
 
 func (in RoleEndInput) Digest(scope kernel.OrgScope) string {
-	raw := fmt.Sprintf("end:v1:%s:%s:%s:%d:%s",
-		scope.OrgID().String(), in.OperationID, in.AssignmentID, in.ExpectedRevision, in.Reason)
-	sum := sha256.Sum256([]byte(raw))
-	return hex.EncodeToString(sum[:])
+	return roleDigest("end.v2", scope.OrgID().String(), in.OperationID, in.AssignmentID, in.ExpectedRevision, in.Reason)
 }
 
 type RoleChangeInput struct {
@@ -166,11 +180,14 @@ func (in RoleChangeInput) Validate(scope kernel.OrgScope) error {
 		return d.ErrAssignmentScope
 	}
 	for _, id := range []string{in.OperationID, in.AssignmentID, in.TargetID} {
-		if _, err := kernel.ParseOrgID(id); err != nil {
+		if parsed, err := kernel.ParseOrgID(id); err != nil || parsed.String() != id {
 			return ErrRoleInvalid
 		}
 	}
 	if in.ExpectedRevision < 1 || in.ExpectedRevision == math.MaxInt64 {
+		return ErrRoleInvalid
+	}
+	if _, err := d.SystemCatalog().Rules(in.Role); err != nil {
 		return ErrRoleInvalid
 	}
 	if in.Scope != d.OrgScope && in.Scope != d.SelfScope {
@@ -185,19 +202,17 @@ func (in RoleChangeInput) Validate(scope kernel.OrgScope) error {
 	if in.Role == d.StationAdmin || in.Role == d.StationManager || in.Role == d.StationAttendant {
 		return d.ErrAssignmentScope
 	}
+	if !validRoleTime(in.ValidFrom) || !validRoleTime(in.ValidTo) {
+		return ErrRoleInvalid
+	}
 	if !in.ValidTo.IsZero() && !in.ValidFrom.IsZero() && !in.ValidFrom.Before(in.ValidTo) {
 		return ErrRoleInvalid
 	}
-	return validateReason(in.Reason)
+	return ValidateRoleReason(in.Reason)
 }
 
 func (in RoleChangeInput) Digest(scope kernel.OrgScope) string {
-	raw := fmt.Sprintf("change:v1:%s:%s:%s:%d:%s:%s:%s:%d:%d:%s",
-		scope.OrgID().String(), in.OperationID, in.AssignmentID, in.ExpectedRevision,
-		string(in.Role), string(in.Scope), in.TargetID,
-		in.ValidFrom.UTC().UnixNano(), in.ValidTo.UTC().UnixNano(), in.Reason)
-	sum := sha256.Sum256([]byte(raw))
-	return hex.EncodeToString(sum[:])
+	return roleDigest("change.v2", scope.OrgID().String(), in.OperationID, in.AssignmentID, in.ExpectedRevision, string(in.Role), string(in.Scope), in.TargetID, roleIntentTime(in.ValidFrom), roleIntentTime(in.ValidTo), in.Reason)
 }
 
 type RoleListFilter struct {
@@ -210,12 +225,17 @@ type RoleListFilter struct {
 
 func (f RoleListFilter) Validate() error {
 	if f.MembershipID != "" {
-		if _, err := kernel.ParseOrgID(f.MembershipID); err != nil {
+		if parsed, err := kernel.ParseOrgID(f.MembershipID); err != nil || parsed.String() != f.MembershipID {
 			return ErrRoleInvalid
 		}
 	}
 	if f.AfterID != "" {
-		if _, err := kernel.ParseOrgID(f.AfterID); err != nil {
+		if parsed, err := kernel.ParseOrgID(f.AfterID); err != nil || parsed.String() != f.AfterID {
+			return ErrRoleInvalid
+		}
+	}
+	if f.Role != "" {
+		if _, err := d.SystemCatalog().Rules(f.Role); err != nil {
 			return ErrRoleInvalid
 		}
 	}
@@ -245,6 +265,13 @@ type RolePage struct {
 	privateRoleDTO
 	Assignments []d.Assignment
 	NextID      string
+}
+
+// RoleAuthority verifies current account/proof, binding, root/plan and scoped
+// permission in the same mutation/read transaction. Returned candidates are
+// current server authority, never caller roles.
+type RoleAuthority interface {
+	CheckRoleTx(context.Context, pgx.Tx, kernel.OrgScope, CompanyActor, string, string, RoleAction, d.Role) ([]d.Assignment, error)
 }
 
 type RoleManagementRepository interface {
@@ -363,9 +390,11 @@ func (s RoleService) List(ctx context.Context, scope kernel.OrgScope, a CompanyA
 	return s.Repository.ListRoles(ctx, scope, a, decision.Subject().MembershipID(), filter)
 }
 
-func validateReason(reason string) error {
+// ValidateRoleReason applies the same bounded private reason contract to
+// incoming commands and their immutable persisted acknowledgements.
+func ValidateRoleReason(reason string) error {
 	trimmed := strings.TrimSpace(reason)
-	if !utf8.ValidString(reason) || trimmed == "" || utf8.RuneCountInString(trimmed) > 280 {
+	if !utf8.ValidString(reason) || trimmed == "" || utf8.RuneCountInString(reason) > 280 {
 		return ErrRoleInvalid
 	}
 	for _, r := range reason {

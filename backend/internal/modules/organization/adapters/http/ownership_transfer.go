@@ -2,12 +2,7 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"mime"
-	"net/http"
-	"time"
-
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	memberpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
@@ -16,9 +11,9 @@ import (
 	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
-	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/go-chi/chi/v5"
+	"time"
 )
 
 const OwnershipTransferPrefix = "/v1/orgs/{org_id}/ownership-transfer"
@@ -27,40 +22,73 @@ const OwnershipTransferAcceptPath = OwnershipTransferPrefix + "/accept"
 const OwnershipTransferCancelPath = OwnershipTransferPrefix + "/cancel"
 const OwnershipTransferReadPath = OwnershipTransferPrefix + "/read"
 
+func ownershipID(raw string) bool {
+	id, e := kernel.ParseOrgID(raw)
+	return e == nil && id.String() == raw
+}
+
 type ownershipTransferProposeRequest struct {
 	companyRequest
 	SchemaVersion      int    `json:"schema_version"`
 	TargetMembershipID string `json:"target_membership_id"`
-	StepDownToAdmin    bool   `json:"step_down_to_admin"`
+	StepDownToAdmin    *bool  `json:"step_down_to_admin"`
 	OperationID        string `json:"operation_id"`
 }
 
 func (v ownershipTransferProposeRequest) CommandFields() orgapi.Command {
 	return orgapi.Command{SchemaVersion: v.SchemaVersion, OperationID: v.OperationID}
 }
-
 func (v *ownershipTransferProposeRequest) UnmarshalJSON(raw []byte) error {
 	type plain ownershipTransferProposeRequest
 	var input plain
 	if e := decodeLegal(raw, &input); e != nil {
 		return e
 	}
+	if input.StepDownToAdmin == nil {
+		return orgapi.Malformed
+	}
 	*v = ownershipTransferProposeRequest(input)
 	return nil
 }
 
 type ownershipTransferAcceptRequest struct {
-	TransferID  string `json:"transfer_id"`
-	OperationID string `json:"operation_id"`
+	companyRequest
+	SchemaVersion int    `json:"schema_version"`
+	TransferID    string `json:"transfer_id"`
+	OperationID   string `json:"operation_id"`
 }
 
-type ownershipTransferCancelRequest struct {
-	TransferID  string `json:"transfer_id"`
-	OperationID string `json:"operation_id"`
+func (v ownershipTransferAcceptRequest) CommandFields() orgapi.Command {
+	return orgapi.Command{SchemaVersion: v.SchemaVersion, OperationID: v.OperationID}
+}
+func (v *ownershipTransferAcceptRequest) UnmarshalJSON(raw []byte) error {
+	type plain ownershipTransferAcceptRequest
+	var input plain
+	if e := decodeLegal(raw, &input); e != nil {
+		return e
+	}
+	*v = ownershipTransferAcceptRequest(input)
+	return nil
+}
+
+type ownershipTransferCancelRequest ownershipTransferAcceptRequest
+
+func (v ownershipTransferCancelRequest) CommandFields() orgapi.Command {
+	return orgapi.Command{SchemaVersion: v.SchemaVersion, OperationID: v.OperationID}
+}
+func (v *ownershipTransferCancelRequest) UnmarshalJSON(raw []byte) error {
+	type plain ownershipTransferCancelRequest
+	var input plain
+	if e := decodeLegal(raw, &input); e != nil {
+		return e
+	}
+	*v = ownershipTransferCancelRequest(input)
+	return nil
 }
 
 type ownershipTransferReadRequest struct {
 	companyRequest
+	TransferID *string `json:"transfer_id,omitempty"`
 }
 
 func (v *ownershipTransferReadRequest) UnmarshalJSON(raw []byte) error {
@@ -69,6 +97,9 @@ func (v *ownershipTransferReadRequest) UnmarshalJSON(raw []byte) error {
 	if e := decodeLegal(raw, &input); e != nil {
 		return e
 	}
+	if input.TransferID != nil && (*input.TransferID == "" || !ownershipID(*input.TransferID)) {
+		return orgapi.Malformed
+	}
 	*v = ownershipTransferReadRequest(input)
 	return nil
 }
@@ -76,23 +107,34 @@ func (v *ownershipTransferReadRequest) UnmarshalJSON(raw []byte) error {
 type OwnershipTransferRecords struct{}
 
 func (OwnershipTransferRecords) Check(_ context.Context, scope kernel.OrgScope, subject access.Subject, policy access.Policy, facts permissions.ResourceFacts, rules []permissions.Rule) error {
-	if scope.Validate() != nil || subject.Scope() != scope || facts.OrgID != scope.OrgID() || len(rules) == 0 {
+	if scope.Validate() != nil || subject.Scope() != scope || subject.MembershipID() == "" || facts.OrgID != scope.OrgID() || facts.ID != scope.OrgID().String() || len(rules) == 0 {
+		return access.ErrUnavailable
+	}
+	if policy != app.OwnershipTransferProposePolicy() && policy != app.OwnershipTransferReadPolicy() && policy != app.OwnershipTransferAcceptPolicy() && policy != app.OwnershipTransferCancelPolicy() {
+		return access.ErrUnavailable
+	}
+	if policy.Permission == "org.ownership.respond" && facts.AssignedTo != subject.MembershipID() {
 		return access.ErrUnavailable
 	}
 	return nil
 }
 
-func ownershipTransferRule(write bool) orgapi.Rule {
-	return orgapi.Rule{
-		Permission:      "org.ownership.transfer",
-		Write:           write,
-		Fresh:           true,
-		RequireRevision: false,
-		CompanyOnly:     true,
-		Success:         200,
-	}
-}
+// These facts permit a member to attempt consent using a SELF assignment.
+// They never attest participation: the transaction rechecks the actual source
+// participants before returning private state or applying a command.
+type ownershipResponseFacts struct{ RootFacts }
 
+func (f ownershipResponseFacts) Resolve(ctx context.Context, scope kernel.OrgScope, subject access.Subject) (permissions.ResourceFacts, error) {
+	v, e := f.RootFacts.Resolve(ctx, scope, subject)
+	if e != nil {
+		return permissions.ResourceFacts{}, e
+	}
+	v.AssignedTo = subject.MembershipID()
+	return v, nil
+}
+func ownershipTransferRule(policy access.Policy, write bool) orgapi.Rule {
+	return orgapi.Rule{Permission: string(policy.Permission), Write: write, Fresh: policy.Fresh, CompanyOnly: true, Success: 200}
+}
 func ownershipTransferMapped(err error) error {
 	if err == nil {
 		return nil
@@ -119,7 +161,7 @@ func ownershipTransferMapped(err error) error {
 		return orgapi.Conflict
 	}
 	if errors.Is(err, d.ErrNotTransferTarget) || errors.Is(err, d.ErrNotTransferParticipant) {
-		return orgapi.Forbidden
+		return orgapi.NotFound
 	}
 	if errors.Is(err, d.ErrTransferOperationReused) {
 		return orgapi.OperationReused
@@ -138,259 +180,100 @@ func ownershipTransferView(t d.OwnershipTransfer) map[string]any {
 		"target_membership_id":    t.TargetMembershipID,
 		"step_down_to_admin":      t.StepDownToAdmin,
 		"state":                   string(t.State),
-		"expires_at":              t.ExpiresAt.UTC().Format(time.RFC3339),
-		"created_at":              t.CreatedAt.UTC().Format(time.RFC3339),
+		"expires_at":              t.ExpiresAt.UTC().Format(time.RFC3339Nano),
+		"created_at":              t.CreatedAt.UTC().Format(time.RFC3339Nano),
 		"operation_id":            t.OperationID,
 		"data_mode":               "SYNTHETIC",
 	}
 	if t.AcceptedAt != nil {
-		view["accepted_at"] = t.AcceptedAt.UTC().Format(time.RFC3339)
+		view["accepted_at"] = t.AcceptedAt.UTC().Format(time.RFC3339Nano)
 	}
 	if t.CancelledAt != nil {
-		view["cancelled_at"] = t.CancelledAt.UTC().Format(time.RFC3339)
+		view["cancelled_at"] = t.CancelledAt.UTC().Format(time.RFC3339Nano)
 	}
 	if t.DeclinedAt != nil {
-		view["declined_at"] = t.DeclinedAt.UTC().Format(time.RFC3339)
+		view["declined_at"] = t.DeclinedAt.UTC().Format(time.RFC3339Nano)
 	}
 	return view
 }
 
-func RegisterOwnershipTransfer(
-	router chi.Router,
-	service app.OwnershipTransferService,
-	cookies company.Handler,
-	gateway orgapi.Gateway,
-	authorization access.Authorization,
-	roots app.Repository,
-	memberships *memberpg.Store,
-) error {
+func RegisterOwnershipTransfer(router chi.Router, service app.OwnershipTransferService, cookies company.Handler, gateway orgapi.Gateway, authorization access.Authorization, roots app.Repository, memberships *memberpg.Store) error {
 	if !service.Enabled {
 		return nil
 	}
-	if service.Repository == nil || roots == nil || memberships == nil {
+	if service.Repository == nil || service.NewID == nil || roots == nil || memberships == nil {
 		return app.ErrUnavailable
 	}
-	owned, gateway, err := companyEntry(router, cookies, gateway)
-	if err != nil {
-		return err
+	owned, gateway, e := companyEntry(router, cookies, gateway)
+	if e != nil {
+		return e
 	}
-
-	// 1. Propose transfer (guarded by org.ownership.transfer, fresh)
-	if err := guarded.Register(
-		owned,
-		OwnershipTransferProposePath,
-		gateway,
-		ownershipTransferRule(true),
-		authorization,
-		app.OwnershipTransferProposePolicy(),
-		RootFacts{roots},
-		func(ctx context.Context, p orgapi.Principal, decision access.Decision, input ownershipTransferProposeRequest) (any, error) {
-			if input.SchemaVersion != 1 || !canonical(input.OperationID) || !canonical(input.TargetMembershipID) {
-				return nil, orgapi.Malformed
-			}
-			initiatorMemberID := decision.Subject().MembershipID()
-			result, err := service.Propose(ctx, p.Scope, app.ProposeTransferInput{
-				OrgID:             p.Scope.OrgID().String(),
-				InitiatorMemberID: initiatorMemberID,
-				TargetMemberID:    input.TargetMembershipID,
-				StepDownToAdmin:   input.StepDownToAdmin,
-				OperationID:       input.OperationID,
-			})
-			if err != nil {
-				return nil, ownershipTransferMapped(err)
-			}
-			return map[string]any{
-				"transfer": ownershipTransferView(result.Transfer),
-				"replayed": result.Replayed,
-			}, nil
-		},
-	); err != nil {
-		return err
+	propose, read, accept, cancel := app.OwnershipTransferProposePolicy(), app.OwnershipTransferReadPolicy(), app.OwnershipTransferAcceptPolicy(), app.OwnershipTransferCancelPolicy()
+	ack := func(result app.OwnershipTransferResult) any {
+		return map[string]any{"transfer": ownershipTransferView(result.Transfer), "replayed": result.Replayed}
 	}
-
-	// 2. Read transfer (guarded by org.ownership.transfer)
-	if err := guarded.Register(
-		owned,
-		OwnershipTransferReadPath,
-		gateway,
-		ownershipTransferRule(false),
-		authorization,
-		app.OwnershipTransferReadPolicy(),
-		RootFacts{roots},
-		func(ctx context.Context, p orgapi.Principal, decision access.Decision, _ ownershipTransferReadRequest) (any, error) {
-			tr, err := service.GetCurrent(ctx, p.Scope)
-			if err != nil {
-				return nil, ownershipTransferMapped(err)
-			}
-			return ownershipTransferView(tr), nil
-		},
-	); err != nil {
-		return err
+	if e := guarded.Register(owned, OwnershipTransferProposePath, gateway, ownershipTransferRule(propose, true), authorization, propose, RootFacts{roots}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input ownershipTransferProposeRequest) (any, error) {
+		if !ownershipID(input.TargetMembershipID) || input.StepDownToAdmin == nil {
+			return nil, orgapi.Malformed
+		}
+		actor, e := companyActor(ctx)
+		if e != nil {
+			return nil, e
+		}
+		result, e := service.Propose(ctx, p.Scope, actor, decision, app.ProposeTransferInput{OrgID: p.Scope.OrgID().String(), TargetMemberID: input.TargetMembershipID, StepDownToAdmin: *input.StepDownToAdmin, OperationID: input.OperationID})
+		if e != nil {
+			return nil, ownershipTransferMapped(e)
+		}
+		return ack(result), nil
+	}); e != nil {
+		return e
 	}
-
-	// 3. Accept transfer (by target member with fresh session)
-	owned.Method(http.MethodPost, OwnershipTransferAcceptPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Del("ETag")
-
-		media, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-		if err != nil || media != "application/json" || len(r.Header.Values("Content-Type")) != 1 || r.URL.RawQuery != "" || r.URL.ForceQuery {
-			orgapi.WriteError(w, r, orgapi.Malformed)
-			return
+	facts := ownershipResponseFacts{RootFacts{roots}}
+	if e := guarded.Register(owned, OwnershipTransferReadPath, gateway, ownershipTransferRule(read, false), authorization, read, facts, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input ownershipTransferReadRequest) (any, error) {
+		actor, e := companyActor(ctx)
+		if e != nil {
+			return nil, e
 		}
-
-		sessionRow, err := cookies.ConfirmSession(r, true)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.Unauthenticated)
-			return
+		id := ""
+		if input.TransferID != nil {
+			id = *input.TransferID
 		}
-
-		orgIDStr := chi.URLParam(r, "org_id")
-		oid, err := kernel.ParseOrgID(orgIDStr)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.NotFound)
-			return
+		result, e := service.GetCurrent(ctx, p.Scope, actor, decision, id)
+		if e != nil {
+			return nil, ownershipTransferMapped(e)
 		}
-		scope, err := kernel.NewOrgScope(oid)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.NotFound)
-			return
+		return ownershipTransferView(result), nil
+	}); e != nil {
+		return e
+	}
+	if e := guarded.Register(owned, OwnershipTransferAcceptPath, gateway, ownershipTransferRule(accept, true), authorization, accept, facts, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input ownershipTransferAcceptRequest) (any, error) {
+		if !ownershipID(input.TransferID) {
+			return nil, orgapi.Malformed
 		}
-
-		raw, err := httpapi.ReadBody(r, company.MaxBodyBytes)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.Malformed)
-			return
+		actor, e := companyActor(ctx)
+		if e != nil {
+			return nil, e
 		}
-		var input ownershipTransferAcceptRequest
-		if httpapi.DecodeJSON(raw, &input) != nil || !canonical(input.TransferID) || !canonical(input.OperationID) {
-			orgapi.WriteError(w, r, orgapi.Malformed)
-			return
+		result, e := service.Accept(ctx, p.Scope, actor, decision, app.AcceptTransferInput{TransferID: input.TransferID, OperationID: input.OperationID})
+		if e != nil {
+			return nil, ownershipTransferMapped(e)
 		}
-
-		mem, err := memberships.ActiveByAccount(r.Context(), scope, sessionRow.AccountID)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.Forbidden)
-			return
+		return ack(result), nil
+	}); e != nil {
+		return e
+	}
+	return guarded.Register(owned, OwnershipTransferCancelPath, gateway, ownershipTransferRule(cancel, true), authorization, cancel, facts, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input ownershipTransferCancelRequest) (any, error) {
+		if !ownershipID(input.TransferID) {
+			return nil, orgapi.Malformed
 		}
-		snap, err := mem.Snapshot(scope)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.Forbidden)
-			return
+		actor, e := companyActor(ctx)
+		if e != nil {
+			return nil, e
 		}
-		memberID := snap.ID
-
-		result, err := service.Accept(r.Context(), scope, app.AcceptTransferInput{
-			OrgID:          scope.OrgID().String(),
-			TransferID:     input.TransferID,
-			TargetMemberID: memberID,
-			OperationID:    input.OperationID,
-		})
-		if err != nil {
-			orgapi.WriteError(w, r, ownershipTransferMapped(err))
-			return
+		result, e := service.Cancel(ctx, p.Scope, actor, decision, app.CancelTransferInput{TransferID: input.TransferID, OperationID: input.OperationID})
+		if e != nil {
+			return nil, ownershipTransferMapped(e)
 		}
-
-		body := map[string]any{
-			"transfer": ownershipTransferView(result.Transfer),
-			"replayed": result.Replayed,
-		}
-		rawResp, _ := json.Marshal(body)
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(rawResp)
-	}))
-
-	// 4. Cancel / Decline transfer (by initiator or target member with fresh session)
-	owned.Method(http.MethodPost, OwnershipTransferCancelPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Del("ETag")
-
-		media, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-		if err != nil || media != "application/json" || len(r.Header.Values("Content-Type")) != 1 || r.URL.RawQuery != "" || r.URL.ForceQuery {
-			orgapi.WriteError(w, r, orgapi.Malformed)
-			return
-		}
-
-		sessionRow, err := cookies.ConfirmSession(r, true)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.Unauthenticated)
-			return
-		}
-
-		orgIDStr := chi.URLParam(r, "org_id")
-		oid, err := kernel.ParseOrgID(orgIDStr)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.NotFound)
-			return
-		}
-		scope, err := kernel.NewOrgScope(oid)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.NotFound)
-			return
-		}
-
-		raw, err := httpapi.ReadBody(r, company.MaxBodyBytes)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.Malformed)
-			return
-		}
-		var input ownershipTransferCancelRequest
-		if httpapi.DecodeJSON(raw, &input) != nil || !canonical(input.TransferID) || !canonical(input.OperationID) {
-			orgapi.WriteError(w, r, orgapi.Malformed)
-			return
-		}
-
-		mem, err := memberships.ActiveByAccount(r.Context(), scope, sessionRow.AccountID)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.Forbidden)
-			return
-		}
-		snap, err := mem.Snapshot(scope)
-		if err != nil {
-			orgapi.WriteError(w, r, orgapi.Forbidden)
-			return
-		}
-		memberID := snap.ID
-
-		// Look up current transfer to determine whether caller is initiator or target
-		currentTr, err := service.GetCurrent(r.Context(), scope)
-		if err != nil {
-			orgapi.WriteError(w, r, ownershipTransferMapped(err))
-			return
-		}
-
-		var isInitiator bool
-		if memberID == currentTr.InitiatorMembershipID {
-			isInitiator = true
-		} else if memberID == currentTr.TargetMembershipID {
-			isInitiator = false
-		} else {
-			orgapi.WriteError(w, r, orgapi.Forbidden)
-			return
-		}
-
-		result, err := service.Cancel(r.Context(), scope, app.CancelTransferInput{
-			OrgID:         scope.OrgID().String(),
-			TransferID:    input.TransferID,
-			ActorMemberID: memberID,
-			OperationID:   input.OperationID,
-			IsInitiator:   isInitiator,
-		})
-		if err != nil {
-			orgapi.WriteError(w, r, ownershipTransferMapped(err))
-			return
-		}
-
-		body := map[string]any{
-			"transfer": ownershipTransferView(result.Transfer),
-			"replayed": result.Replayed,
-		}
-		rawResp, _ := json.Marshal(body)
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(rawResp)
-	}))
-
-	return nil
+		return ack(result), nil
+	})
 }

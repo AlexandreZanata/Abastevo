@@ -51,6 +51,7 @@ func TestReviewCorrectionsUpgradePopulatedChainAndRecover(t *testing.T) {
 	grantTeamTables(t, fx)
 	f.GrantTeamReductions(t)
 	f.GrantSettingsLifecycle(t)
+	f.GrantOwnershipLifecycle(t)
 	if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
 		t.Fatal(e)
 	}

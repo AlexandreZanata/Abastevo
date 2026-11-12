@@ -777,6 +777,45 @@ boundaries.
   outcomes are not promoted automatically. Future sync/business owners persist
   facts and apply current proof/revocation/permission/window rules independently.
 
+- **B-BR-EMP-71 — Role commands retain current authority and original receipts.**
+  AUTH-005 admits only documented ORG/SELF templates, ACTIVE same-organization
+  members and active employees. Each read, command and retry binds the real
+  company session to the current account/member and rechecks current roles,
+  source proof and organization state under retained transaction locks. New
+  grants must fit the actor's literal permission union, including coverage and
+  restrictions; OWNER is not an implicit permission wildcard. ADMIN cannot
+  grant, change or end OWNER. Self-promotion is refused; OWNER self-reduction
+  must be a subset and preserve another actual owner. Authorized reads and
+  reductions continue on suspended/archived roots and without a capability;
+  additions require the capability. State, one account-attributed audit event
+  and immutable operation acknowledgement commit or roll back together. The
+  private command receipt retains its human explanation; ending a role does
+  not overwrite the immutable reason for the original grant.
+
+- **B-BR-EMP-72 — Ownership consent is participant-scoped and current.**
+  A current personal OWNER proposes to an ACTIVE personal member with an active
+  employee. The explicit step-down choice is required. The server fixes validity
+  at 168 hours, permits one pending proposal and rechecks both participants at
+  acceptance. The existing OWNER must still be current. A new OWNER is created
+  before optional step-down; an existing live ORG ADMIN assignment is reused.
+  Remaining future OWNER periods are ended too. If only a future ADMIN period
+  exists, bridge from now until its first start while preserving that plan.
+  `org.ownership.respond` permits an attempt by a live fixed-role assignment,
+  including SELF; only the actual initiator/recipient may inspect the proposal,
+  only the recipient may accept, and cancellation/decline is derived from the
+  current participant identity. No roleless implicit grant is invented. Session
+  revocation and current authority apply to original commands and exact retries.
+  Audit uses the account actor; immutable receipts preserve original outcomes.
+
+- **B-BR-EMP-73 — Ownership reductions and notices preserve source truth.**
+  Suspension/end of either participant or organization archive/closure cancels
+  a pending proposal atomically, retaining the actual source cause/revision.
+  Expiry is materialized at actual server observation and never trusts a client
+  clock. Participant notices remain PENDING_NOTIFICATION_CORE until the owning
+  notification workflow delivers them. Upgrading existing rows does not invent
+  historical authors, receipts, notices or source facts. An audit, notice or
+  receipt failure returns no provisional state and rolls back the handover.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -1074,6 +1113,25 @@ boundaries.
   Resolve the same cause, leaving held facts in review. Concurrent replay/CAS,
   revoked/stale operator proof and late audit/storage failures expose no partial
   state or acknowledgement. The same controls retain causes on ARCHIVED roots.
+
+- **BUC-EMP-36 — Manage access with current authority.** A fresh manager grants,
+  changes or ends an assignment under the literal permission subset. Refuse
+  forged member/session pairs, foreign targets, stale or revoked proof, ADMIN
+  modification of OWNER, expanded coverage and last-owner removal. After a
+  successful change, an exact retry returns the original acknowledgement;
+  altered operation reuse fails. Reads and authorized reductions survive archive
+  or capability removal. Concurrent retries/CAS and late commit failure retain
+  one audit/receipt or no partial result.
+
+- **BUC-EMP-37 — Propose and accept a private ownership handover.** A current
+  OWNER selects an eligible personal recipient and explicitly chooses step-down.
+  A nominated DRIVER with a SELF assignment can read and consent with fresh
+  proof; another member receives no private transfer state. Recheck initiator
+  ownership, target eligibility, session and capability before acceptance. A
+  source reduction cancels rather than resurrects a proposal. Concurrent accept,
+  decline, replay and owner removal serialize; deferred storage failures roll
+  back roles/state/audit/notices/receipts and allow an honest retry. Normal
+  transfer does not implement exceptional unreachable-owner recovery.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

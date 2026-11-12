@@ -84,6 +84,7 @@ func TestCurrentAuthorizationThroughRealAndroidAndCompanyProof(t *testing.T) {
 	f := orgtest.New(t)
 	f.GrantTeamReductions(t)
 	f.GrantSettingsLifecycle(t)
+	f.GrantOwnershipLifecycle(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	role := pgx.Identifier{f.RuntimeRole}.Sanitize()
 	if _, err := f.Admin.Exec(t.Context(), "GRANT USAGE ON SCHEMA public TO "+role+"; GRANT SELECT,INSERT,UPDATE ON organizations,org_employee_identities,org_memberships,org_role_assignments TO "+role+"; GRANT SELECT,UPDATE ON accounts,account_session_families TO "+role+"; GRANT SELECT ON payment_billing_exits TO "+role+"; GRANT SELECT,INSERT,UPDATE,DELETE ON company_web_sessions TO "+role); err != nil {

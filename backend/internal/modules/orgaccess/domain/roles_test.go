@@ -9,8 +9,8 @@ import (
 func TestCanAssignRoleEscalation(t *testing.T) {
 	catalog := d.SystemCatalog()
 
-	// Owner can assign any valid role in F1
-	for _, role := range []d.Role{d.Owner, d.Admin, d.FleetManager, d.Supervisor, d.Approver, d.Driver, d.OperationsStaff, d.Auditor, d.DataManager, d.Finance} {
+	// Organization grants must fit the frozen matrix, including OWNER gaps.
+	for _, role := range []d.Role{d.Owner, d.Admin, d.Approver, d.Driver, d.OperationsStaff, d.Auditor, d.DataManager} {
 		if !d.CanAssignRole(catalog, []d.Role{d.Owner}, role) {
 			t.Errorf("expected Owner to be able to assign %s", role)
 		}
@@ -21,8 +21,8 @@ func TestCanAssignRoleEscalation(t *testing.T) {
 		t.Error("expected Admin NOT to be able to assign Owner")
 	}
 
-	// Admin CAN assign other system roles
-	for _, role := range []d.Role{d.Admin, d.FleetManager, d.Supervisor, d.Finance, d.Approver, d.Driver, d.OperationsStaff, d.Auditor, d.DataManager} {
+	// Admin can grant only non-owner roles within its actual permission set.
+	for _, role := range []d.Role{d.Admin, d.Approver, d.Driver, d.OperationsStaff, d.Auditor, d.DataManager} {
 		if !d.CanAssignRole(catalog, []d.Role{d.Admin}, role) {
 			t.Errorf("expected Admin to be able to assign %s", role)
 		}

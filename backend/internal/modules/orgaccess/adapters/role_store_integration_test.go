@@ -4,8 +4,15 @@ package adapters_test
 
 import (
 	"errors"
+	"fmt"
+	memberpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
+	orgapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
+	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
+	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	qorgaudit "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgaudit"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
@@ -21,48 +28,91 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// Proof rows are synthetic fixture data; all admission is performed by the real
+// company authority and ordinary runtime role against current source tables.
+func roleProof(t *testing.T, f *orgtest.Fixture, member int) {
+	t.Helper()
+	if _, err := f.Admin.Exec(t.Context(), `INSERT INTO account_session_families(id,account_id,refresh_salt,refresh_hash,access_salt,access_hash,access_expires,issued_at) VALUES($1,$2,'synthetic','synthetic','synthetic','synthetic',clock_timestamp()+interval '1 hour',clock_timestamp())`, key(member+1900), key(member+100)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Admin.Exec(t.Context(), `INSERT INTO company_web_sessions(id,account_id,family_id,token_lookup,token_salt,token_hash,csrf_salt,csrf_hash,authenticated_at,created_at,last_seen_at,expires_at) VALUES($1,$2,$3,$4,$5,$4,$5,$4,clock_timestamp(),clock_timestamp(),clock_timestamp(),clock_timestamp()+interval '1 hour')`, key(member+900), key(member+100), key(member+1900), fmt.Sprintf("%064x", member), strings.Repeat("a", 32)); err != nil {
+		t.Fatal(err)
+	}
+}
+func roleActivate(t *testing.T, f *orgtest.Fixture, s kernel.OrgScope, member, id int, role string) {
+	t.Helper()
+	if member == 10 {
+		return
+	}
+	seed(t, f, s, member)
+	if err := database.WithOrgTx(t.Context(), f.Runtime, s, func(tx pgx.Tx) error {
+		kind, target := "SELF", key(member)
+		if role == "OWNER" || role == "ADMIN" || role == "FINANCE" {
+			kind, target = "ORG", s.OrgID().String()
+		}
+		if err := insert(t, tx, s, id, member, role, kind, target, time.Now().UTC().Add(-time.Minute), nil); err != nil {
+			return err
+		}
+		_, err := tx.Exec(t.Context(), `UPDATE org_memberships SET state='ACTIVE',revision=revision+1 WHERE org_id=$1 AND id=$2`, s.OrgID().String(), key(member))
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	roleProof(t, f, member)
+}
 func roleStoreFixture(t *testing.T) (*orgtest.Fixture, kernel.OrgScope, *accessadapters.RoleStore, *accessadapters.Store) {
 	t.Helper()
 	f := orgtest.New(t)
+	f.Runtime = f.RuntimePool(t, 16)
 	f.GrantTeamReductions(t)
 	f.GrantSettingsLifecycle(t)
-
+	f.GrantOwnershipLifecycle(t)
 	r := pgx.Identifier{f.RuntimeRole}.Sanitize()
-	grantSQL := "GRANT USAGE ON SCHEMA public TO " + r + ";" +
-		" GRANT SELECT,INSERT,UPDATE ON organizations,org_employee_identities,org_memberships,org_role_assignments,org_audit_events TO " + r + ";" +
-		" GRANT SELECT,UPDATE ON accounts TO " + r + ";" +
-		" GRANT SELECT,INSERT ON payment_billing_exits TO " + r + ";"
-	if _, err := f.Admin.Exec(t.Context(), grantSQL); err != nil {
+	if _, err := f.Admin.Exec(t.Context(), "GRANT USAGE ON SCHEMA public TO "+r+"; GRANT SELECT,INSERT,UPDATE ON organizations,org_units,org_employee_identities,org_memberships,org_role_assignments,org_capabilities TO "+r+"; GRANT SELECT,INSERT ON org_onboarding_commands,org_audit_events,org_role_commands TO "+r+"; GRANT SELECT,UPDATE ON accounts,account_session_families,company_web_sessions TO "+r+"; GRANT SELECT,INSERT ON payment_billing_exits TO "+r); err != nil {
 		t.Fatal(err)
 	}
-
+	if _, err := f.Admin.Exec(t.Context(), `INSERT INTO accounts(id,alias,status) VALUES($1,'synthetic-role-owner','active')`, key(110)); err != nil {
+		t.Fatal(err)
+	}
+	roleProof(t, f, 10)
 	scopeOrg := scope(t, 801)
-	v, err := org.NewPending(scopeOrg, org.Profile{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := orgpg.NewStore(f.Runtime).Create(t.Context(), scopeOrg, v); err != nil {
-		t.Fatal(err)
-	}
-
-	assignmentsStore := accessadapters.NewStore(f.Runtime)
-	catalog, err := audit.NewCatalog(accessadapters.RoleAuditDefinitions())
+	assignments := accessadapters.NewStore(f.Runtime)
+	members := memberpg.NewStore(f.Runtime)
+	defs := append(orgpg.OnboardingAuditDefinitions(), accessadapters.RoleAuditDefinitions()...)
+	defs = append(defs, cappg.AuditDefinitions()...)
+	catalog, err := audit.NewCatalog(defs)
 	if err != nil {
 		t.Fatal(err)
 	}
 	auditStore := auditpg.NewStore(f.Runtime, catalog)
-	roleStore := accessadapters.NewRoleStore(f.Runtime, assignmentsStore, auditStore)
-
-	return f, scopeOrg, roleStore, assignmentsStore
+	cc, err := cap.NewCatalog([]string{"organizations"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	flags := cappg.NewStore(f.Runtime, cc, auditStore)
+	onboarding := &orgpg.OnboardingStore{Pool: f.Runtime, Roots: orgpg.NewStore(f.Runtime), Memberships: members, Roles: assignments, Audit: auditStore, Capabilities: flags}
+	command, err := org.NewCreation(org.CreationInput{OperationID: key(8800), Profile: org.Profile{Name: "Synthetic role organization", TimeZone: "America/Cuiaba", Kinds: []org.Kind{org.Other}}, UnitName: "Main synthetic unit", Terms: org.TermsAcceptance{Version: org.SyntheticTermsVersion, Digest: org.SyntheticTermsDigest, Accepted: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = onboarding.CreateOrganization(t.Context(), orgapp.CreationActor{AccountID: key(110), SessionID: key(910)}, orgapp.Genesis{Scope: scopeOrg, UnitID: key(810), EmployeeID: key(210), MembershipID: key(10), AssignmentID: key(20)}, command)
+	if err != nil {
+		t.Fatal("real onboarding failed", err)
+	}
+	if _, err := flags.Set(t.Context(), scopeOrg, cap.Actor{AccountID: key(110)}, cap.Change{OperationID: key(8801), Capability: "organizations", Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	authority := &orgpg.RoleAuthority{Memberships: members, Roles: assignments, Capabilities: flags}
+	return f, scopeOrg, accessadapters.NewRoleStore(f.Runtime, assignments, auditStore, authority), assignments
 }
 
 func TestRoleStore_AssignRole_PositiveAndReplay(t *testing.T) {
 	f, s, roleStore, _ := roleStoreFixture(t)
 
 	// Owner: member 10, assignment 20
-	activate(t, f, s, 10, 20, "OWNER")
-	// Target member: member 11 (in INVITED state, ready to receive role)
-	seed(t, f, s, 11)
+	roleActivate(t, f, s, 10, 20, "OWNER")
+	// A currently ACTIVE member can receive another role.
+	roleActivate(t, f, s, 11, 21, "DRIVER")
 
 	ownerActor := app.CompanyActor{AccountID: key(110), SessionID: key(910)}
 	opID := key(1001)
@@ -139,9 +189,9 @@ func TestRoleStore_AssignRole_NegativeGuards(t *testing.T) {
 	f, s, roleStore, _ := roleStoreFixture(t)
 
 	// Owner: member 10, assignment 20
-	activate(t, f, s, 10, 20, "OWNER")
+	roleActivate(t, f, s, 10, 20, "OWNER")
 	// Admin: member 11, assignment 21
-	activate(t, f, s, 11, 21, "ADMIN")
+	roleActivate(t, f, s, 11, 21, "ADMIN")
 	// Normal member: member 12 (in INVITED state)
 	seed(t, f, s, 12)
 
@@ -156,7 +206,7 @@ func TestRoleStore_AssignRole_NegativeGuards(t *testing.T) {
 		TargetID:     s.OrgID().String(),
 		Reason:       "Admin escalating to owner",
 	})
-	if !errors.Is(err, d.ErrCannotAssignOwner) {
+	if !errors.Is(err, d.ErrPermissionDenied) {
 		t.Fatalf("expected ErrCannotAssignOwner, got %v", err)
 	}
 
@@ -185,7 +235,7 @@ func TestRoleStore_AssignRole_NegativeGuards(t *testing.T) {
 	_, err = roleStore.AssignRole(t.Context(), s, ownerActor, key(10), key(2007), app.RoleAssignInput{
 		OperationID:  key(1007),
 		MembershipID: key(13),
-		Role:         d.Finance,
+		Role:         d.Admin,
 		Scope:        d.OrgScope,
 		TargetID:     s.OrgID().String(),
 		Reason:       "Assigning ended member",
@@ -199,7 +249,7 @@ func TestRoleStore_AssignRole_NegativeGuards(t *testing.T) {
 	if _, err := f.Admin.Exec(t.Context(), `ALTER TABLE organizations DISABLE TRIGGER org_setup_activation`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.Admin.Exec(t.Context(), `UPDATE organizations SET display_name='Synthetic Org',time_zone='America/Sao_Paulo',state='ACTIVE',revision=revision+1 WHERE org_id=$1`, s.OrgID().String()); err != nil {
+	if _, err := f.Admin.Exec(t.Context(), `UPDATE organizations SET state='ACTIVE',revision=revision+1 WHERE org_id=$1`, s.OrgID().String()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.Admin.Exec(t.Context(), `UPDATE organizations SET state='SUSPENDED',suspension_reason='BILLING',revision=revision+1 WHERE org_id=$1`, s.OrgID().String()); err != nil {
@@ -225,11 +275,11 @@ func TestRoleStore_EndRole_PositiveAndLastOwner(t *testing.T) {
 	f, s, roleStore, _ := roleStoreFixture(t)
 
 	// Owner A: member 10, assignment 20
-	activate(t, f, s, 10, 20, "OWNER")
+	roleActivate(t, f, s, 10, 20, "OWNER")
 	// Admin: member 11, assignment 21
-	activate(t, f, s, 11, 21, "ADMIN")
+	roleActivate(t, f, s, 11, 21, "ADMIN")
 	// Driver: member 12, assignment 22
-	activate(t, f, s, 12, 22, "DRIVER")
+	roleActivate(t, f, s, 12, 22, "DRIVER")
 
 	adminActor := app.CompanyActor{AccountID: key(111), SessionID: key(911)}
 	ownerAActor := app.CompanyActor{AccountID: key(110), SessionID: key(910)}
@@ -275,7 +325,7 @@ func TestRoleStore_EndRole_PositiveAndLastOwner(t *testing.T) {
 	}
 
 	// 4. Activate Owner B: member 14, assignment 24
-	activate(t, f, s, 14, 24, "OWNER")
+	roleActivate(t, f, s, 14, 24, "OWNER")
 
 	// Now Owner A tries to end own role: since Owner B exists, it must SUCCEED!
 	ownerEndRes, err := roleStore.EndRole(t.Context(), s, ownerAActor, key(10), app.RoleEndInput{
@@ -312,9 +362,9 @@ func TestRoleStore_ConcurrentLastOwnerContention(t *testing.T) {
 	f, s, roleStore, _ := roleStoreFixture(t)
 
 	// Owner A: member 10, assignment 20
-	activate(t, f, s, 10, 20, "OWNER")
+	roleActivate(t, f, s, 10, 20, "OWNER")
 	// Owner B: member 11, assignment 21
-	activate(t, f, s, 11, 21, "OWNER")
+	roleActivate(t, f, s, 11, 21, "OWNER")
 
 	ownerAActor := app.CompanyActor{AccountID: key(110), SessionID: key(910)}
 	ownerBActor := app.CompanyActor{AccountID: key(111), SessionID: key(911)}
@@ -385,22 +435,22 @@ func TestRoleStore_ChangeRole_Atomicity(t *testing.T) {
 	f, s, roleStore, _ := roleStoreFixture(t)
 
 	// Owner: member 10, assignment 20
-	activate(t, f, s, 10, 20, "OWNER")
+	roleActivate(t, f, s, 10, 20, "OWNER")
 	// Member 11: assignment 21 as DRIVER
-	activate(t, f, s, 11, 21, "DRIVER")
+	roleActivate(t, f, s, 11, 21, "DRIVER")
 
 	ownerActor := app.CompanyActor{AccountID: key(110), SessionID: key(910)}
 	newAssignID := key(2030)
 	opID := key(1060)
 
-	// Owner changes member 11 from DRIVER to FINANCE
+	// OWNER may grant FINANCE only with SELF coverage, per the frozen matrix.
 	changeRes, err := roleStore.ChangeRole(t.Context(), s, ownerActor, key(10), newAssignID, app.RoleChangeInput{
 		OperationID:      opID,
 		AssignmentID:     key(21),
 		ExpectedRevision: 1,
 		Role:             d.Finance,
-		Scope:            d.OrgScope,
-		TargetID:         s.OrgID().String(),
+		Scope:            d.SelfScope,
+		TargetID:         key(11),
 		Reason:           "Promoting driver to finance manager",
 	})
 	if err != nil {
@@ -429,8 +479,8 @@ func TestRoleStore_ChangeRole_Atomicity(t *testing.T) {
 		AssignmentID:     key(21),
 		ExpectedRevision: 1,
 		Role:             d.Finance,
-		Scope:            d.OrgScope,
-		TargetID:         s.OrgID().String(),
+		Scope:            d.SelfScope,
+		TargetID:         key(11),
 		Reason:           "Promoting driver to finance manager",
 	})
 	if err != nil {
@@ -445,11 +495,11 @@ func TestRoleStore_ReadAndListRoles(t *testing.T) {
 	f, s, roleStore, _ := roleStoreFixture(t)
 
 	// Owner: member 10, assignment 20
-	activate(t, f, s, 10, 20, "OWNER")
+	roleActivate(t, f, s, 10, 20, "OWNER")
 	// Admin: member 11, assignment 21
-	activate(t, f, s, 11, 21, "ADMIN")
+	roleActivate(t, f, s, 11, 21, "ADMIN")
 	// Driver: member 12, assignment 22
-	activate(t, f, s, 12, 22, "DRIVER")
+	roleActivate(t, f, s, 12, 22, "DRIVER")
 
 	ownerActor := app.CompanyActor{AccountID: key(110), SessionID: key(910)}
 

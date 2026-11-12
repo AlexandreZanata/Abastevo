@@ -104,6 +104,7 @@ Every permission used by any module is listed here. A module that needs a new ke
 | `org.structure.manage` | Create and archive units, cost centres, teams |
 | `org.legal_entity.manage` | Declare legal entities and request verification |
 | `org.ownership.transfer` | Start an ownership transfer |
+| `org.ownership.respond` | Attempt a private ownership proposal read, acceptance or cancellation; actual participant check is mandatory |
 | `org.lifecycle.manage` | Request archive or closure |
 | `org.group.manage` | Propose and accept consolidation grants |
 | `idn.employee.read` / `idn.employee.manage` | Read / create and edit employee records |
@@ -190,6 +191,7 @@ Cell values: `O` allowed in the whole assigned scope; `S` allowed on own records
 | Manage structure (`org.structure.manage`) | O | O | — | — | — | — | — | — | — |
 | Declare legal entities (`org.legal_entity.manage`) | O | O | — | — | — | — | — | — | — |
 | Transfer ownership (`org.ownership.transfer`) | O | — | — | — | — | — | — | — | — |
+| Respond to ownership proposal (`org.ownership.respond`) | O | O | O | O | O | O | O | O | O |
 | Manage assets (`fleet.asset.manage`) | O | O | O | — | — | — | — | — | — |
 | Read assets (`fleet.asset.read`) | O | O | O | O | O | O | S | S | O |
 | Assign vehicle (`fleet.asset.assign`) | O | O | O | O | — | — | — | — | — |
@@ -363,3 +365,25 @@ Phase: F1 for the core; F2 scopes; F3 delegation and auditor; F6 custom roles. M
 Settings-read amendment (EMP-ORG-008, EDR-043): org-permissions-v3 adopts only
 its proposed read row above. All other cells retain v2, including the explicit
 legal-management row. Roles without a published grant remain denied.
+
+Ownership-response amendment (PR #203 review, EDR-048):
+`org-permissions-v4` adds only `org.ownership.respond` with ORG descriptor
+coverage for all thirteen fixed roles, including the four station/data roles.
+Every v3 cell is preserved. This is permission to attempt a fresh, scoped
+response, not to inspect any proposal in the organization. Server-owned attempt
+facts bind SELF coverage to the current member; the source transaction checks
+actual participant identities under the retained root lock before returning
+private state/receipts or changing anything. Station authority requirements are
+unchanged. An ACTIVE membership with no live role remains denied until an
+ordinary authorized role grant restores coverage. Finer UNIT/COST_CENTRE/TEAM/
+ASSET grant management belongs to AUTH-006 (F2).
+
+AUTH-005 review clarification: permission containment is literal, including
+coverage and requirements. Neither OWNER nor ADMIN receives a wildcard. Some
+ORG templates exceed a single OWNER/ADMIN template; the actor's current union
+must actually cover every descriptor. A SELF-narrowed grant is compared at
+SELF coverage. OWNER may reduce its own assignment only within its existing
+permissions and while another valid owner remains. `auth.role.assign` owns the
+five POST management/read routes; there are no `auth.role.end`, `auth.role.read`
+or `auth.role.list` aliases. Archived reads and access reductions remain allowed
+under current proof; new grants/changes do not.

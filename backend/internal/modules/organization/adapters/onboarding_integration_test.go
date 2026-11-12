@@ -65,6 +65,7 @@ func onboardingOnFixture(t *testing.T, f *orgtest.Fixture) (*orgtest.Fixture, *a
 
 	f.GrantTeamReductions(t)
 	f.GrantSettingsLifecycle(t)
+	f.GrantOwnershipLifecycle(t)
 
 	now := time.Now().UTC().Truncate(time.Second)
 	accounts := &account.Service{Clock: onboardingClock{now}, Store: accountpg.NewPGStore(f.Admin), Hasher: accountdomain.SHA256Hasher{}, IDGen: jobs.NewUUIDv4, TokenGen: accountdomain.GenerateToken, KeyGen: accountdomain.GenerateAccountKey}

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -15,51 +17,59 @@ import (
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
+	"github.com/getkin/kin-openapi/openapi3"
 )
 
 func TestOwnershipTransferDTOsRejectAmbiguousAuthorityAndNulls(t *testing.T) {
-	for _, raw := range []string{
-		`{"account_id":"synthetic"}`,
-		`{"target_membership_id":null}`,
-		`{"Target_membership_id":"7b0e2a54-0000-4000-8000-000000000001"}`,
-		`{"schema_version":1,"target_membership_id":"7b0e2a54-0000-4000-8000-000000000001","unknown":"field"}`,
-	} {
+	valid := `{"schema_version":1,"operation_id":"7b0e2a54-0000-4000-8000-000000001001","target_membership_id":"7b0e2a54-0000-4000-8000-000000000602","step_down_to_admin":false}`
+	for _, raw := range []string{`null`, `[]`, `{}`, `{"account_id":"synthetic"}`, `{"step_down_to_admin":false,"target_membership_id":null}`, `{"step_down_to_admin":false,"Target_membership_id":"7b0e2a54-0000-4000-8000-000000000602"}`, strings.Replace(valid, `"step_down_to_admin":false`, `"step_down_to_admin":null`, 1), strings.Replace(valid, `,"step_down_to_admin":false`, "", 1), strings.Replace(valid, `"schema_version":1`, `"schema_version":1,"schema_version":1`, 1), strings.Replace(valid, `"schema_version":1`, `"schema_version":1,"SCHEMA_VERSION":1`, 1), strings.TrimSuffix(valid, "}") + `,"unknown":true}`} {
 		var input ownershipTransferProposeRequest
 		if json.Unmarshal([]byte(raw), &input) == nil {
-			t.Fatalf("ambiguous or non-canonical transfer propose decoded: %s", raw)
+			t.Fatal("ambiguous transfer proposal decoded", raw)
 		}
 	}
-
 	var input ownershipTransferProposeRequest
-	valid := `{"schema_version":1,"operation_id":"7b0e2a54-0000-4000-8000-000000001001","target_membership_id":"7b0e2a54-0000-4000-8000-000000000002","step_down_to_admin":true}`
-	if err := json.Unmarshal([]byte(valid), &input); err != nil {
-		t.Fatalf("canonical transfer propose refused: %v", err)
+	if e := json.Unmarshal([]byte(valid), &input); e != nil || input.StepDownToAdmin == nil || *input.StepDownToAdmin || input.TargetMembershipID != "7b0e2a54-0000-4000-8000-000000000602" {
+		t.Fatal("explicit co-ownership intent lost", e)
 	}
-	if input.TargetMembershipID != "7b0e2a54-0000-4000-8000-000000000002" || !input.StepDownToAdmin || input.OperationID != "7b0e2a54-0000-4000-8000-000000001001" {
-		t.Fatalf("fields lost in canonical decoding: %+v", input)
-	}
-
 	for _, verb := range []string{"%v", "%+v", "%#v", "%d"} {
-		if strings.Contains(fmt.Sprintf(verb, input), "private-secret") {
-			t.Fatal("DTO formatting leaked secret")
+		formatted := fmt.Sprintf(verb, input)
+		if strings.Contains(formatted, input.OperationID) || strings.Contains(formatted, input.TargetMembershipID) {
+			t.Fatal("proposal formatting leaked private identifiers")
+		}
+	}
+	encoded, e := json.Marshal(input)
+	if e != nil || strings.Contains(string(encoded), input.OperationID) || strings.Contains(string(encoded), input.TargetMembershipID) {
+		t.Fatal("proposal JSON bypassed redaction", e)
+	}
+}
+
+func TestOwnershipTransferParticipantDTOsRejectAliasesDuplicatesAndNulls(t *testing.T) {
+	valid := `{"schema_version":1,"operation_id":"7b0e2a54-0000-4000-8000-000000001001","transfer_id":"7b0e2a54-0000-4000-8000-000000000901"}`
+	for _, fresh := range []func() any{func() any { return &ownershipTransferAcceptRequest{} }, func() any { return &ownershipTransferCancelRequest{} }} {
+		if e := json.Unmarshal([]byte(valid), fresh()); e != nil {
+			t.Fatal("canonical participant command refused", e)
+		}
+		for _, raw := range []string{`null`, `[]`, strings.Replace(valid, `"transfer_id":`, `"TRANSFER_ID":`, 1), strings.Replace(valid, `"schema_version":1`, `"schema_version":null`, 1), strings.Replace(valid, `"operation_id":"7b0e2a54-0000-4000-8000-000000001001"`, `"operation_id":null`, 1), strings.Replace(valid, `"transfer_id":"7b0e2a54-0000-4000-8000-000000000901"`, `"transfer_id":null`, 1), strings.Replace(valid, `"schema_version":1`, `"schema_version":1,"schema_version":1`, 1), strings.TrimSuffix(valid, "}") + `,"is_initiator":true}`, strings.TrimSuffix(valid, "}") + `,"actor_membership_id":"7b0e2a54-0000-4000-8000-000000000601"}`} {
+			if json.Unmarshal([]byte(raw), fresh()) == nil {
+				t.Fatal("ambiguous participant command decoded", raw)
+			}
 		}
 	}
 }
 
 func TestOwnershipTransferReadDTO(t *testing.T) {
-	for _, raw := range []string{
-		`{"schema_version":1,"extra":"field"}`,
-		`{"schema_version":null}`,
-		`{"invalid":true}`,
-	} {
+	for _, raw := range []string{`null`, `[]`, `{"schema_version":1}`, `{"transfer_id":null}`, `{"transfer_id":""}`, `{"transfer_id":"not-an-id"}`, `{"TRANSFER_ID":"7b0e2a54-0000-4000-8000-000000000901"}`, `{"transfer_id":"7b0e2a54-0000-4000-8000-000000000901","transfer_id":"7b0e2a54-0000-4000-8000-000000000901"}`} {
 		var input ownershipTransferReadRequest
 		if json.Unmarshal([]byte(raw), &input) == nil {
-			t.Fatalf("ambiguous read request accepted: %s", raw)
+			t.Fatal("ambiguous read selector accepted", raw)
 		}
 	}
-	var input ownershipTransferReadRequest
-	if err := json.Unmarshal([]byte(`{}`), &input); err != nil {
-		t.Fatalf("canonical read request refused: %v", err)
+	for _, raw := range []string{`{}`, `{"transfer_id":"7b0e2a54-0000-4000-8000-000000000901"}`} {
+		var input ownershipTransferReadRequest
+		if e := json.Unmarshal([]byte(raw), &input); e != nil {
+			t.Fatal("canonical read selector refused", e)
+		}
 	}
 }
 
@@ -68,82 +78,98 @@ func TestOwnershipTransferMappedErrors(t *testing.T) {
 		err  error
 		want orgapi.Code
 	}{
-		{d.ErrOwnerRequiresPersonalAccount, orgapi.OwnerRequiresPersonal},
-		{d.ErrTransferPending, orgapi.TransferPending},
-		{d.ErrSelfTransferForbidden, orgapi.Conflict},
-		{d.ErrTargetAlreadyOwner, orgapi.Conflict},
-		{d.ErrTargetNotActive, orgapi.Conflict},
-		{d.ErrTargetEmployeeNotActive, orgapi.Conflict},
-		{d.ErrTransferNotFound, orgapi.NotFound},
-		{d.ErrTransferNotPending, orgapi.Conflict},
-		{d.ErrTransferExpired, orgapi.Conflict},
-		{d.ErrNotTransferTarget, orgapi.Forbidden},
-		{d.ErrNotTransferParticipant, orgapi.Forbidden},
-		{d.ErrTransferOperationReused, orgapi.OperationReused},
-		{d.ErrOrganizationNotActive, orgapi.OrgSuspended},
-		{app.ErrUnavailable, orgapi.Unavailable},
-		{errors.New("arbitrary SQL error"), orgapi.Unavailable},
+		{d.ErrOwnerRequiresPersonalAccount, orgapi.OwnerRequiresPersonal}, {d.ErrTransferPending, orgapi.TransferPending},
+		{d.ErrSelfTransferForbidden, orgapi.Conflict}, {d.ErrTargetAlreadyOwner, orgapi.Conflict}, {d.ErrTargetNotActive, orgapi.Conflict}, {d.ErrTargetEmployeeNotActive, orgapi.Conflict},
+		{d.ErrTransferNotFound, orgapi.NotFound}, {d.ErrTransferNotPending, orgapi.Conflict}, {d.ErrTransferExpired, orgapi.Conflict},
+		{d.ErrNotTransferTarget, orgapi.NotFound}, {d.ErrNotTransferParticipant, orgapi.NotFound},
+		{d.ErrTransferOperationReused, orgapi.OperationReused}, {d.ErrOrganizationNotActive, orgapi.OrgSuspended},
+		{app.ErrUnavailable, orgapi.Unavailable}, {errors.New("private SQL details and synthetic identifiers"), orgapi.Unavailable},
 	}
-
-	for _, tt := range tests {
-		got := ownershipTransferMapped(tt.err)
+	for _, test := range tests {
+		got := ownershipTransferMapped(test.err)
 		code, ok := orgapi.Registered(got)
-		if !ok || code != tt.want {
-			t.Fatalf("error %v mapped to %v (code %v, ok %v), want code %v", tt.err, got, code, ok, tt.want)
+		if !ok || code != test.want {
+			t.Fatal("unsafe ownership error mapping", test.err, got)
 		}
 	}
-
 	if ownershipTransferMapped(nil) != nil {
-		t.Fatal("nil error did not map to nil")
+		t.Fatal("nil error mapped as a failure")
 	}
 }
 
-func TestOwnershipTransferRule(t *testing.T) {
-	writeRule := ownershipTransferRule(true)
-	if !writeRule.Write || !writeRule.Fresh || writeRule.RequireRevision || !writeRule.CompanyOnly || writeRule.Success != 200 {
-		t.Fatalf("unexpected write rule: %+v", writeRule)
-	}
-	if writeRule.Permission != "org.ownership.transfer" {
-		t.Fatalf("unexpected permission in write rule: %s", writeRule.Permission)
-	}
-
-	readRule := ownershipTransferRule(false)
-	if readRule.Write || !readRule.Fresh || readRule.RequireRevision || !readRule.CompanyOnly || readRule.Success != 200 {
-		t.Fatalf("unexpected read rule: %+v", readRule)
+func TestOwnershipTransferRulesRetainCurrentParticipantAuthority(t *testing.T) {
+	for _, test := range []struct {
+		policy access.Policy
+		write  bool
+	}{
+		{app.OwnershipTransferProposePolicy(), true}, {app.OwnershipTransferReadPolicy(), false}, {app.OwnershipTransferAcceptPolicy(), true}, {app.OwnershipTransferCancelPolicy(), true},
+	} {
+		rule := ownershipTransferRule(test.policy, test.write)
+		if rule.Permission != string(test.policy.Permission) || rule.Write != test.write || !rule.Fresh || rule.RequireRevision || !rule.CompanyOnly || rule.Success != 200 {
+			t.Fatal("ownership guard drift", rule)
+		}
 	}
 }
 
-func TestOwnershipTransferRecordsCheck(t *testing.T) {
+func TestOwnershipTransferRecordsRejectForgedSubjects(t *testing.T) {
+	org, e := kernel.ParseOrgID("7b0e2a54-0000-4000-8000-000000000301")
+	if e != nil {
+		t.Fatal(e)
+	}
+	scope, e := kernel.NewOrgScope(org)
+	if e != nil {
+		t.Fatal(e)
+	}
 	records := OwnershipTransferRecords{}
-	oid, _ := kernel.ParseOrgID("7b0e2a54-0000-4000-8000-000000000001")
-	scope, _ := kernel.NewOrgScope(oid)
-
-	// Zero / unauthenticated subject must fail
-	if err := records.Check(context.Background(), scope, access.Subject{}, access.Policy{}, permissions.ResourceFacts{OrgID: scope.OrgID()}, []permissions.Rule{}); err == nil {
-		t.Fatal("expected error on unauthenticated subject")
+	for _, policy := range []access.Policy{{}, app.OwnershipTransferProposePolicy(), app.OwnershipTransferAcceptPolicy(), app.OwnershipTransferReadPolicy(), app.OwnershipTransferCancelPolicy()} {
+		if e := records.Check(context.Background(), scope, access.Subject{}, policy, permissions.ResourceFacts{OrgID: org, ID: org.String()}, nil); e == nil {
+			t.Fatal("empty authority accepted as transfer participation")
+		}
 	}
-
-	// Invalid scope must fail
-	if err := records.Check(context.Background(), kernel.OrgScope{}, access.Subject{}, access.Policy{}, permissions.ResourceFacts{}, nil); err == nil {
-		t.Fatal("expected error on invalid scope")
+	if e := records.Check(context.Background(), kernel.OrgScope{}, access.Subject{}, access.Policy{}, permissions.ResourceFacts{}, nil); e == nil {
+		t.Fatal("invalid transfer scope accepted")
 	}
 }
 
-func TestOwnershipTransferView(t *testing.T) {
-	now := time.Now().UTC().Truncate(time.Second)
-	tr := d.OwnershipTransfer{
-		TransferID:            "transfer-123",
-		OrgID:                 "org-1",
-		InitiatorMembershipID: "mem-1",
-		TargetMembershipID:    "mem-2",
-		StepDownToAdmin:       true,
-		State:                 d.OwnershipTransferPending,
-		ExpiresAt:             now.Add(7 * 24 * time.Hour),
-		CreatedAt:             now,
-		OperationID:           "op-1",
+func TestOwnershipTransferActualWireViewMatchesOpenAPI(t *testing.T) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("test source unavailable")
 	}
-	view := ownershipTransferView(tr)
-	if view["transfer_id"] != "transfer-123" || view["state"] != "PENDING" || view["step_down_to_admin"] != true {
-		t.Fatalf("unexpected view: %+v", view)
+	path := filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "..", "..", "contracts", "openapi", "v1.yaml")
+	doc, e := openapi3.NewLoader().LoadFromFile(path)
+	if e != nil {
+		t.Fatal(e)
+	}
+	now := time.Date(2026, 11, 12, 12, 0, 0, 123456000, time.UTC)
+	base := d.OwnershipTransfer{TransferID: "7b0e2a54-0000-4000-8000-000000000901", OrgID: "7b0e2a54-0000-4000-8000-000000000301", InitiatorMembershipID: "7b0e2a54-0000-4000-8000-000000000601", TargetMembershipID: "7b0e2a54-0000-4000-8000-000000000602", StepDownToAdmin: true, ExpiresAt: now.Add(d.OwnershipTransferValidity), CreatedAt: now, OperationID: "7b0e2a54-0000-4000-8000-000000001001"}
+	for _, state := range []d.OwnershipTransferState{d.OwnershipTransferPending, d.OwnershipTransferAccepted, d.OwnershipTransferCancelled, d.OwnershipTransferDeclined, d.OwnershipTransferExpired} {
+		transfer := base
+		transfer.State = state
+		completed := ""
+		switch state {
+		case d.OwnershipTransferAccepted:
+			transfer.AcceptedAt = &now
+			completed = "accepted_at"
+		case d.OwnershipTransferCancelled:
+			transfer.CancelledAt = &now
+			completed = "cancelled_at"
+		case d.OwnershipTransferDeclined:
+			transfer.DeclinedAt = &now
+			completed = "declined_at"
+		}
+		wire := ownershipTransferView(transfer)
+		if e := doc.Components.Schemas["EnterpriseOwnershipTransferView"].Value.VisitJSON(wire); e != nil {
+			t.Fatal("actual transfer wire violates schema", state, e)
+		}
+		if wire["created_at"] != now.Format(time.RFC3339Nano) || wire["data_mode"] != "SYNTHETIC" {
+			t.Fatal("private transfer precision or source marker lost")
+		}
+		if completed != "" && wire[completed] != now.Format(time.RFC3339Nano) {
+			t.Fatal("terminal timestamp precision lost", state)
+		}
+		if _, exists := wire["completed_at"]; exists {
+			t.Fatal("unimplemented completion field leaked")
+		}
 	}
 }

@@ -7,16 +7,21 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	accountpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	account "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
-	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
+	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 )
@@ -53,6 +58,22 @@ func TestOwnershipTransferThroughComposedCompanyHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	targetAuth, err := accounts.LoginWithKey(t.Context(), targetKey.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherKey, err := accounts.CreateKeyAccount(t.Context(), "synthtransferother")
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherAuth, err := accounts.LoginWithKey(t.Context(), otherKey.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, source, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("test source unavailable")
+	}
+	document, err := openapi3.NewLoader().LoadFromFile(filepath.Join(filepath.Dir(source), "..", "..", "..", "..", "..", "contracts", "openapi", "v1.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,9 +114,25 @@ func TestOwnershipTransferThroughComposedCompanyHTTP(t *testing.T) {
 		if response.Code != want || response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("ETag") != "" {
 			t.Fatalf("HTTP mismatch at %s: got %d want %d, body: %s", path, response.Code, want, response.Body.String())
 		}
+		if want == http.StatusTooManyRequests {
+			if retry, err := strconv.Atoi(response.Header().Get("Retry-After")); err != nil || retry < 1 {
+				t.Fatal("ownership admission lacks positive retry delay")
+			}
+		}
 		var result map[string]any
 		if json.Unmarshal(response.Body.Bytes(), &result) != nil {
 			t.Fatal("invalid response JSON")
+		}
+		contractPath := path
+		if strings.HasPrefix(path, "/v1/orgs/") {
+			parts := strings.Split(path, "/")
+			parts[3] = "{org_id}"
+			contractPath = strings.Join(parts, "/")
+		}
+		operation := document.Paths.Value(contractPath).Post
+		responseContract := operation.Responses.Value(strconv.Itoa(want)).Value.Content.Get("application/json")
+		if err := responseContract.Schema.Value.VisitJSON(result); err != nil {
+			t.Fatal("actual ownership HTTP response violates OpenAPI", contractPath, want, err)
 		}
 		return result
 	}
@@ -133,6 +170,20 @@ func TestOwnershipTransferThroughComposedCompanyHTTP(t *testing.T) {
 	_ = json.Unmarshal(loginTargetRec.Body.Bytes(), &targetLoginBody)
 	targetCookie := loginTargetRec.Result().Cookies()[0]
 	targetCSRF := targetLoginBody["csrf_token"].(string)
+	otherLogin := httptest.NewRequest(http.MethodPost, origin+"/v1/org-access/session/login", bytes.NewReader(mustJSON(t, map[string]any{"family_id": otherAuth.Session.FamilyID, "access_token": otherAuth.Session.AccessToken})))
+	otherLogin.Header.Set("Content-Type", "application/json")
+	otherLogin.Header.Set("Origin", origin)
+	otherResponse := httptest.NewRecorder()
+	router.ServeHTTP(otherResponse, otherLogin)
+	if otherResponse.Code != 200 {
+		t.Fatal("nonparticipant company login failed", otherResponse.Code)
+	}
+	var otherLoginBody map[string]any
+	if err := json.Unmarshal(otherResponse.Body.Bytes(), &otherLoginBody); err != nil {
+		t.Fatal(err)
+	}
+	otherCookie := otherResponse.Result().Cookies()[0]
+	otherCSRF := otherLoginBody["csrf_token"].(string)
 
 	// Use owner credentials
 	activeCookie = ownerCookie
@@ -187,10 +238,23 @@ func TestOwnershipTransferThroughComposedCompanyHTTP(t *testing.T) {
 	if err := unitSchemaExec(t, fx, "INSERT INTO org_memberships(org_id, id, employee_id, account_id, access_model, state) VALUES ($1, $2, $3, $4, 'EXISTING_ACCOUNT', 'INVITED')", orgID, targetMemberID, targetEmployeeID, targetAuth.Account.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := unitSchemaExec(t, fx, "INSERT INTO org_role_assignments(org_id, id, membership_id, role, scope_type, scope_target, valid_from, assigned_by, reason, revision) VALUES ($1, $2, $3, 'ADMIN', 'ORG', $1, NOW(), $4, 'Seed admin', 1)", orgID, onboardingID(t), targetMemberID, ownerMemberID); err != nil {
+	if err := unitSchemaExec(t, fx, "INSERT INTO org_role_assignments(org_id, id, membership_id, role, scope_type, scope_target, valid_from, assigned_by, reason, revision) VALUES ($1, $2, $3, 'DRIVER', 'SELF', $3, NOW(), $4, 'Seed driver', 1)", orgID, onboardingID(t), targetMemberID, ownerMemberID); err != nil {
 		t.Fatal(err)
 	}
 	if err := unitSchemaExec(t, fx, "UPDATE org_memberships SET state = 'ACTIVE', revision = revision + 1 WHERE org_id = $1 AND id = $2", orgID, targetMemberID); err != nil {
+		t.Fatal(err)
+	}
+	otherEmployeeID, otherMemberID := onboardingID(t), onboardingID(t)
+	if err := unitSchemaExec(t, fx, "INSERT INTO org_employee_identities(org_id,id,state) VALUES($1,$2,'ACTIVE')", orgID, otherEmployeeID); err != nil {
+		t.Fatal(err)
+	}
+	if err := unitSchemaExec(t, fx, "INSERT INTO org_memberships(org_id,id,employee_id,account_id,access_model,state) VALUES($1,$2,$3,$4,'EXISTING_ACCOUNT','INVITED')", orgID, otherMemberID, otherEmployeeID, otherAuth.Account.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := unitSchemaExec(t, fx, "INSERT INTO org_role_assignments(org_id,id,membership_id,role,scope_type,scope_target,valid_from,assigned_by,reason,revision) VALUES($1,$2,$3,'DRIVER','SELF',$3,NOW(),$4,'Synthetic unrelated driver',1)", orgID, onboardingID(t), otherMemberID, ownerMemberID); err != nil {
+		t.Fatal(err)
+	}
+	if err := unitSchemaExec(t, fx, "UPDATE org_memberships SET state='ACTIVE',revision=revision+1 WHERE org_id=$1 AND id=$2", orgID, otherMemberID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -290,17 +354,50 @@ func TestOwnershipTransferThroughComposedCompanyHTTP(t *testing.T) {
 	if readResp["transfer_id"] != transferID || readResp["state"] != "PENDING" {
 		t.Fatalf("unexpected read response: %+v", readResp)
 	}
+	// A live SELF role permits attempting consent, never another participant's data.
+	activeCookie, activeCSRF = otherCookie, otherCSRF
+	for _, route := range []string{"read", "accept", "cancel"} {
+		body := map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "transfer_id": transferID}
+		if route == "read" {
+			body = map[string]any{"transfer_id": transferID}
+		}
+		call(base+"/"+route, body, 404, nil)
+	}
+	call(base+"/read", map[string]any{}, 404, nil)
+	activeCookie, activeCSRF = ownerCookie, ownerCSRF
 
 	// 7. Accept Transfer
 	acceptOpID := onboardingID(t)
 	acceptBody := map[string]any{
-		"transfer_id":  transferID,
-		"operation_id": acceptOpID,
+		"schema_version": 1,
+		"transfer_id":    transferID,
+		"operation_id":   acceptOpID,
 	}
 
-	// Non-target tries to accept (owner calls accept -> 403 Forbidden)
-	call(base+"/accept", acceptBody, 403, nil)
+	// A non-recipient cannot accept, without an existence hint.
+	call(base+"/accept", acceptBody, 404, nil)
 
+	// The SELF-scoped target can inspect the proposal before consenting.
+	activeCookie = targetCookie
+	activeCSRF = targetCSRF
+	targetRead := call(base+"/read", map[string]any{"transfer_id": transferID}, 200, nil)
+	if targetRead["transfer_id"] != transferID {
+		t.Fatal("target proposal hidden")
+	}
+	for _, route := range []string{"accept", "cancel"} {
+		valid := string(mustJSON(t, acceptBody))
+		for _, raw := range []string{
+			strings.Replace(valid, `"schema_version":1`, `"schema_version":null`, 1),
+			strings.Replace(valid, `"transfer_id":`, `"TRANSFER_ID":`, 1),
+			strings.Replace(valid, `"transfer_id":"`+transferID+`"`, `"transfer_id":null`, 1),
+			strings.Replace(valid, `"operation_id":"`+acceptOpID+`"`, `"operation_id":"`+acceptOpID+`","operation_id":"`+acceptOpID+`"`, 1),
+			strings.TrimSuffix(valid, "}") + `,"is_initiator":true}`,
+		} {
+			call(base+"/"+route, json.RawMessage(raw), 400, nil)
+		}
+	}
+	call(base+"/read", map[string]any{"transfer_id": ""}, 400, nil)
+	call(base+"/read", map[string]any{"transfer_id": nil}, 400, nil)
 	// Target member calls accept
 	activeCookie = targetCookie
 	activeCSRF = targetCSRF
@@ -348,13 +445,48 @@ func TestOwnershipTransferThroughComposedCompanyHTTP(t *testing.T) {
 	secondTransferID := secondTransferResp["transfer"].(map[string]any)["transfer_id"].(string)
 
 	// Target cancels the transfer
-	cancelResp := call(base+"/cancel", map[string]any{
-		"transfer_id":  secondTransferID,
-		"operation_id": onboardingID(t),
-	}, 200, nil)
+	cancelBody := map[string]any{
+		"schema_version": 1,
+		"transfer_id":    secondTransferID,
+		"operation_id":   onboardingID(t),
+	}
+	cancelResp := call(base+"/cancel", cancelBody, 200, nil)
 	if cancelResp["transfer"].(map[string]any)["state"] != "CANCELLED" {
 		t.Fatalf("expected cancelled state: %+v", cancelResp)
 	}
+	call(base+"/read", map[string]any{"transfer_id": secondTransferID}, 200, nil)
+	if replay := call(base+"/cancel", cancelBody, 200, nil); replay["replayed"] != true {
+		t.Fatal("terminal cancellation receipt was not replayed")
+	}
+	call(base+"/cancel", map[string]any{"schema_version": 1, "transfer_id": secondTransferID, "operation_id": onboardingID(t)}, 409, nil)
+
+	// Failure at COMMIT exposes no acknowledgement and leaves no partial command.
+	if _, err := fx.f.Admin.Exec(t.Context(), `CREATE FUNCTION synthetic_transfer_http_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION USING ERRCODE='23503',MESSAGE='synthetic-private-ownership-receipt-outage';END $$; CREATE CONSTRAINT TRIGGER synthetic_transfer_http_failure AFTER INSERT ON org_ownership_commands DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION synthetic_transfer_http_failure()`); err != nil {
+		t.Fatal(err)
+	}
+	failedOperation := onboardingID(t)
+	failedBody := map[string]any{"schema_version": 1, "operation_id": failedOperation, "target_membership_id": ownerMemberID, "step_down_to_admin": false}
+	failed := call(base+"/propose", failedBody, 503, nil)
+	if bytes.Contains(mustJSON(t, failed), []byte("synthetic-private-ownership")) {
+		t.Fatal("private database failure leaked")
+	}
+	var partial int
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM org_ownership_transfers WHERE org_id=$1 AND operation_id=$2)+(SELECT count(*) FROM org_ownership_commands WHERE org_id=$1 AND operation_id=$2)+(SELECT count(*) FROM org_audit_events WHERE org_id=$1 AND operation_id=$2)`, orgID, failedOperation).Scan(&partial); err != nil || partial != 0 {
+		t.Fatal("failed HTTP commit left ownership facts", partial, err)
+	}
+	if _, err := fx.f.Admin.Exec(t.Context(), `DROP TRIGGER synthetic_transfer_http_failure ON org_ownership_commands`); err != nil {
+		t.Fatal(err)
+	}
+	call(base+"/read", map[string]any{}, 404, nil)
+
+	// All consent writes share the organization budget; participant reads remain usable.
+	if _, err := fx.f.Admin.Exec(t.Context(), `UPDATE identity_rate_windows SET count=200 WHERE subject_digest LIKE 'orgquota:v1:%'`); err != nil {
+		t.Fatal(err)
+	}
+	call(base+"/propose", failedBody, 429, nil)
+	call(base+"/accept", acceptBody, 429, nil)
+	call(base+"/cancel", cancelBody, 429, nil)
+	call(base+"/read", map[string]any{"transfer_id": secondTransferID}, 200, nil)
 }
 
 func mustJSON(t *testing.T, v any) []byte {

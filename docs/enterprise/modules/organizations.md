@@ -204,7 +204,8 @@ Keys are those of [07-permissions](../07-permissions.md) §7.2. All `org.*` perm
 | `org.settings.manage` | UC-ORG-02, UC-ORG-06, UC-ORG-07 | `OWNER`, `ADMIN` (§7.3) |
 | `org.structure.manage` | UC-ORG-03 | `OWNER`, `ADMIN` (§7.3) |
 | `org.legal_entity.manage` | UC-ORG-04, UC-ORG-05 | `OWNER`, `ADMIN` (§7.3, org-permissions-v2; EDR-037) |
-| `org.ownership.transfer` | UC-ORG-09 | `OWNER` (§7.3) |
+| `org.ownership.transfer` | UC-ORG-09 proposal | `OWNER` (§7.3) |
+| `org.ownership.respond` | UC-ORG-09 participant read, consent and cancellation | A live fixed-role assignment plus actual source participant check; v4/EDR-048 |
 | `org.lifecycle.manage` | UC-ORG-11, UC-ORG-12 | `OWNER` (proposed; no row in §7.3) |
 | `org.group.manage` | UC-ORG-10 | `OWNER` (proposed; no row in §7.3) |
 
@@ -334,3 +335,12 @@ Dependencies: EMP-GOV-001 (tenancy decision, CX-01); [09-architecture](../09-arc
 Risks: treating a CNPJ as identity and leaking the existence of another organization (BR-ORG-017 and criterion 4); managers reading "declared" as "verified" (fixed wording, BR-ORG-016); an organization left without a reachable owner (BR-ORG-026, BR-ORG-035); suspension surprising drivers in the field (banner, grace period, review instead of discard); verification workload exceeding reviewer capacity (verification gates only F7 features; AS-11); closure deleting data a customer still needs (closure period, export reminders, cancellation, legal hold); consolidation used as a back door to another company's records (field list, read-only, two consents).
 
 Phase: F1 for creation, activation, units, settings, declared legal entities, cost centres, teams, suspension and ownership transfer; F6 for groups; F7 for verification; F8 for archive and closure. The later phases are justified in §2. Microtasks: EMP-ORG-001 to EMP-ORG-015.
+
+PR #203 ownership review clarification (EDR-048): UC-ORG-09 is the normal
+consensual handover, not BR-ORG-035 exceptional recovery. All four company
+routes use the AUTH request lease; write attempts use the ownership admission
+class. Responses are restricted to the initiator/recipient and require fresh
+proof even on reads/retries. Either participant's suspension/end cancels the
+proposal, with real source metadata. Notices are retained for NOTIF-001; no
+provider delivery is claimed. A recipient still needs an effective role to use
+`org.ownership.respond`; a roleless membership receives no implied permission.

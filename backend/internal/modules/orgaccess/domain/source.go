@@ -195,13 +195,14 @@ func systemDefinition() sourceDefinition {
 	}
 	return sourceDefinition{roles: roles, permissions: permissions, groups: []sourceGroup{
 		{roles: append([]Role(nil), roles[:9]...), rows: mainMatrix},
+		{roles: append([]Role(nil), roles...), rows: "org.ownership.respond O O O O O O O O O O O O O"},
 		{roles: []Role{StationAdmin, StationManager, StationAttendant, DataManager, Owner, Admin}, rows: stationDataMatrix},
 	}}
 }
 
 const permissionKeys = `
 org.settings.read org.settings.manage org.structure.manage org.legal_entity.manage
-org.ownership.transfer org.lifecycle.manage org.group.manage
+org.ownership.transfer org.ownership.respond org.lifecycle.manage org.group.manage
 idn.employee.read idn.employee.manage idn.invitation.manage idn.credential.manage idn.membership.manage
 auth.role.read auth.role.assign auth.delegation.manage
 fleet.asset.read fleet.asset.manage fleet.asset.assign fleet.reservation.manage fleet.supplier.manage

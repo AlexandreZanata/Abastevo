@@ -15,6 +15,8 @@ sql:
       - db/migrations/000169_organization_roots.sql
       - db/migrations/000170_membership_periods.sql
       - db/migrations/000171_role_assignments.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000186_role_command_receipts.sql
     gen:
       go:
         package: orgaccess
@@ -60,6 +62,7 @@ sql:
       - db/migrations/000178_organization_settings.sql
       - "db/migrations/000184_organization_suspensions.sql"
       - "db/migrations/000185_ownership_transfers.sql"
+      - db/migrations/000187_ownership_transfer_hardening.sql
     gen:
       go:
         package: organization

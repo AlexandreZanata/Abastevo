@@ -219,3 +219,30 @@ func (f *Fixture) GrantSettingsLifecycle(t *testing.T) {
 		}
 	}
 }
+
+// GrantOwnershipLifecycle enables only this disposable runtime's ownership
+// receipts and reduction projections when their additive tables exist. Prior-chain upgrade
+// fixtures keep their original grants; this is not runtime provisioning.
+func (f *Fixture) GrantOwnershipLifecycle(t *testing.T) {
+	t.Helper()
+	var transfers, notices, commands bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_ownership_transfers') IS NOT NULL,to_regclass('public.org_ownership_notices') IS NOT NULL,to_regclass('public.org_ownership_commands') IS NOT NULL`).Scan(&transfers, &notices, &commands); e != nil {
+		t.Fatal(e)
+	}
+	role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+	if transfers {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,UPDATE ON org_ownership_transfers TO "+role); e != nil {
+			t.Fatal(e)
+		}
+	}
+	if notices {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_ownership_notices TO "+role); e != nil {
+			t.Fatal(e)
+		}
+	}
+	if commands {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_ownership_commands TO "+role); e != nil {
+			t.Fatal(e)
+		}
+	}
+}

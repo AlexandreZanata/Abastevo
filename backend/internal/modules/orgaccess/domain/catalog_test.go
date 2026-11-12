@@ -63,7 +63,7 @@ func TestUnknownKeysAndZeroCatalogFailClosed(t *testing.T) {
 	if (d.Rule{}).Coverage() != d.Denied {
 		t.Fatal("zero rule grants")
 	}
-	if r, p := catalog.Versions(); r != "org-roles-v1" || p != "org-permissions-v3" {
+	if r, p := catalog.Versions(); r != "org-roles-v1" || p != "org-permissions-v4" {
 		t.Fatal("unversioned catalog")
 	}
 }

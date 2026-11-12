@@ -23,7 +23,7 @@ func TestLegalManagementV2GrantsOnlyTheRecordedRoles(t *testing.T) {
 		}
 	}
 	_, version := d.SystemCatalog().Versions()
-	if version != "org-permissions-v3" {
+	if version != "org-permissions-v4" {
 		t.Fatal("matrix amendment did not change its version")
 	}
 }

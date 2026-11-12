@@ -140,7 +140,7 @@ func (r assignmentResource) Resolve(ctx context.Context, scope kernel.OrgScope, 
 	if _, err = v.Snapshot(scope); err != nil {
 		return d.ResourceFacts{}, app.ErrUnavailable
 	}
-	return d.ResourceFacts{OrgID: scope.OrgID(), ID: raw}, nil
+	return d.ResourceFacts{OrgID: scope.OrgID(), ID: raw, RequestedRole: d.Admin}, nil
 }
 
 type RootResolver interface {
@@ -163,7 +163,9 @@ func (p RootFacts) Resolve(ctx context.Context, scope kernel.OrgScope, _ app.Sub
 			return d.ResourceFacts{}, app.ErrUnavailable
 		}
 	}
-	return d.ResourceFacts{OrgID: scope.OrgID(), ID: scope.OrgID().String()}, nil
+	// Preflight admits management only; the transaction checks the actual requested
+	// role, actor union and target before any mutation.
+	return d.ResourceFacts{OrgID: scope.OrgID(), ID: scope.OrgID().String(), RequestedRole: d.Admin}, nil
 }
 
 type companyProofKey struct{}
