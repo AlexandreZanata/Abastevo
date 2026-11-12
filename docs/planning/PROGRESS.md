@@ -1,4 +1,17 @@
 # Current execution state
+- Enterprise autonomous batch, 2026-11-11: ACTIVE, F1/M1 open.
+  Full F0–F8 source scope, recommended decisions recorded per task,
+  emulator authorized, phase publication to existing PR202 and final
+  current-head/base CI validation authorized by the maintainer.
+  [Decision/cadence record](../enterprise/16-decisions.md#autonomous-construction-authorization-2026-11-11).
+  Owned worktree/branch preserved; other checkouts untouched. Source head
+  0474dac5, PR dev → main, base ef96cd13, no unresolved review threads.
+  Required Quick failed on absent application-port tests; added real-adapter
+  failure contracts and all six organization/membership race suites pass.
+  [CI correction](../enterprise/evidence/f1-ci-repository-ports.md).
+  Remote CI is not yet revalidated. AUTH-002 remains the next bounded task;
+  phase publication and final CI follow completed functional checkpoints.
+
 - Enterprise EMP-AUTH-001, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published `b05da1a2`, on isolated `codex/enterprise-f0-f1`,
   targeting existing PR202 (`dev` → `main`); occupied dev preserved.

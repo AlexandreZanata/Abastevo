@@ -41,6 +41,29 @@ Status: **M0 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-11. [ADR-025](../adr/02
 
 ## 2. Conflicts with existing rules
 
+### Autonomous construction authorization, 2026-11-11
+
+The maintainer authorized completion of the whole F0–F8 enterprise plan,
+with atomic task commits and publication to the existing cumulative PR202
+after each completed phase. Final validation includes current-head/base CI
+and review triage. The occupied local dev checkout stays preserved; the
+owned execution worktree continues to publish its commits to remote dev.
+No PR merge, production deployment or public release is implied.
+
+Recommended engineering and product decisions are adopted and recorded
+with their owning task, rationale and alternatives for later review,
+without pausing for routine choices. This authorization does not fabricate
+legal review, source rights, provider credentials or external acceptance.
+Where those are unavailable, construction uses the existing synthetic or
+disabled path and records the remaining evidence accurately.
+
+The Android emulator is now authorized whenever functional/native testing
+requires it, superseding the earlier emulator deferral for this enterprise
+batch. Emulator results do not establish physical-device, manufacturer or
+production behavior. The cumulative PR body is shortened by linking to its
+verbatim history archive and canonical task evidence, preserving prior
+review history while staying below GitHub's description limit.
+
 The resolution column records accepted amendments or proposals. For a
 proposal, the existing rule governs the dependent tasks until acceptance.
 
