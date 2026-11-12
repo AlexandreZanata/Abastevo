@@ -20,11 +20,14 @@ var ErrInvalidOrgTx = errors.New("database: missing organization transaction")
 // limited to that transaction. The caller resolves current authority first.
 // Runtime logins must own no RLS tables and have no privileged role memberships.
 // The callback uses tx for all database work and propagates failures to roll back.
+// The level is pinned to READ COMMITTED whatever the session default: the
+// last-owner and overlap guards serialize on the root lock and re-read current
+// rows, which a REPEATABLE READ snapshot would not see (write skew).
 func WithOrgTx(ctx context.Context, pool *pgxpool.Pool, scope kernel.OrgScope, work func(pgx.Tx) error) error {
 	if err := scope.Validate(); err != nil {
 		return err
 	}
-	return pgx.BeginTxFunc(ctx, pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	return pgx.BeginTxFunc(ctx, pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
 		if err := requireSafeOrgRole(ctx, tx); err != nil {
 			return err
 		}
@@ -47,9 +50,12 @@ func ValidateOrgTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope) error 
 	if err := requireSafeOrgRole(ctx, tx); err != nil {
 		return err
 	}
-	var installed string
-	if err := tx.QueryRow(ctx, `SELECT COALESCE(current_setting('anpfuel.org_id',true),'')`).Scan(&installed); err != nil {
+	var installed, level string
+	if err := tx.QueryRow(ctx, `SELECT COALESCE(current_setting('anpfuel.org_id',true),''),current_setting('transaction_isolation')`).Scan(&installed, &level); err != nil {
 		return fmt.Errorf("database: check installed organization scope: %w", err)
+	}
+	if level != "read committed" {
+		return ErrInvalidOrgTx
 	}
 	if installed != scope.OrgID().String() {
 		return kernel.ErrInvalidOrgScope
