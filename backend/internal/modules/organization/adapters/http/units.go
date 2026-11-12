@@ -123,9 +123,12 @@ func (v *unitListRequest) UnmarshalJSON(raw []byte) error {
 	return nil
 }
 
-type UnitRecords struct{}
+type StructureRecords struct{}
 
-func (UnitRecords) Check(_ context.Context, scope kernel.OrgScope, subject access.Subject, policy access.Policy, facts permissions.ResourceFacts, rules []permissions.Rule) error {
+// UnitRecords retains the completed unit route contract.
+type UnitRecords = StructureRecords
+
+func (StructureRecords) Check(_ context.Context, scope kernel.OrgScope, subject access.Subject, policy access.Policy, facts permissions.ResourceFacts, rules []permissions.Rule) error {
 	if scope.Validate() != nil || subject.Scope() != scope || facts.Validate(scope) != nil || facts.OrgID != scope.OrgID() || len(rules) == 0 || policy != app.UnitPolicy(false) && policy != app.UnitPolicy(true) {
 		return access.ErrUnavailable
 	}

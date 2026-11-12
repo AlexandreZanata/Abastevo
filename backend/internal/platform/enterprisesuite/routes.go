@@ -50,6 +50,7 @@ func Register(router chi.Router, o Options) error {
 	definitions := append(orgpg.OnboardingAuditDefinitions(), cappg.AuditDefinitions()...)
 	definitions = append(definitions, orgpg.LegalAuditDefinitions()...)
 	definitions = append(definitions, orgpg.UnitAuditDefinitions()...)
+	definitions = append(definitions, orgpg.CostCentreAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -88,6 +89,11 @@ func Register(router chi.Router, o Options) error {
 	units := &orgpg.UnitStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
 	unitAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: orgweb.UnitRecords{}, Now: time.Now}
 	if err := orgweb.RegisterUnits(router, org.UnitService{Enabled: true, Repository: units, NewID: jobs.NewUUIDv4}, cookies, gateway, unitAuthorization, roots, units); err != nil {
+		return err
+	}
+	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
+	centreAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: orgweb.StructureRecords{}, Now: time.Now}
+	if err := orgweb.RegisterCostCentres(router, org.CostCentreService{Enabled: true, Repository: centres, NewID: jobs.NewUUIDv4}, cookies, gateway, centreAuthorization, roots, centres); err != nil {
 		return err
 	}
 	cookies.RegisterRoutes(router)

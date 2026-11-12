@@ -647,6 +647,28 @@ boundaries.
   acknowledgements and scoped establishment links; matching retries return the
   original result, changed intent and stale revisions mutate nothing.
 
+- **B-BR-EMP-61 — Keep cost-centre code identity permanent.**
+  An optional cost centre belongs to one organization and has a stable ID,
+  private trimmed name/code, ACTIVE or ARCHIVED state and revision. Code
+  comparison is trimmed and case-insensitive, unique across every current
+  and historical centre in that organization. A code correction keeps the
+  old code permanently reserved to the same centre; historical code lookup
+  resolves that ID and never maps it to another centre. Archived centres and
+  their aliases are retained, not deleted. Foreign organizations can use their
+  own identical codes independently. Names are descriptive, not unique.
+
+- **B-BR-EMP-62 — Serialize audited cost-centre configuration.**
+  Under current org.structure.manage, fresh company proof and organizations
+  capability, create/change/archive/restore and acknowledge the original
+  operation atomically with audit and permanent code reservations. Stale
+  revisions, changed replay intent and racing duplicate code reservations
+  leave no partial state. Archive requires zero current assets/employees,
+  open budgets or in-progress operations, derived by source-owned scoped
+  transactional guards. Unknown/malformed sources fail closed. Root-locked
+  admission refuses new assignments to archived centres; historical records
+  and export snapshots remain unchanged. Refusals expose only safe code
+  field details or category counts, never names or source records.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -892,6 +914,15 @@ boundaries.
   duplicate active name/code, stale revision, last-unit race or current usage;
   return counts without personal/operational content. Exact retry and failed
   commit leave their original acknowledgement or no change, respectively.
+
+- **BUC-EMP-31 — Correct a cost centre while retaining historical meaning.**
+  Create a synthetic centre, rename or correct its current code, then resolve
+  the previous code to the same ID. Archive/restore without reusing its current
+  or historical codes for another centre. Another organization may independently
+  use the same code. Refuse foreign references, active usage, racing duplicate
+  reservations, stale changes and altered retries. A failed commit leaves no
+  centre, alias, audit or acknowledgement; past allocations/exports keep their
+  captured identity and code.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

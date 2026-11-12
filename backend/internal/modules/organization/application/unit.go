@@ -30,20 +30,10 @@ func DuplicateUnit(field string) error {
 	return UnitDuplicateError{field: field}
 }
 
-type UnitUsageError struct {
-	privateOnboarding
-	usage d.UnitUsage
-}
+// Compatibility names retain the completed unit API for shared structure counts.
+type UnitUsageError = StructureUsageError
 
-func (UnitUsageError) Error() string        { return d.ErrStructureInUse.Error() }
-func (UnitUsageError) Unwrap() error        { return d.ErrStructureInUse }
-func (e UnitUsageError) Usage() d.UnitUsage { return e.usage }
-func UnitInUse(usage d.UnitUsage) error {
-	if usage.Validate() != nil || !usage.InUse() {
-		return ErrUnavailable
-	}
-	return UnitUsageError{usage: usage}
-}
+func UnitInUse(usage d.UnitUsage) error { return StructureInUse(usage) }
 
 type UnitWriteKind string
 
@@ -152,22 +142,7 @@ type UnitService struct {
 	NewID      func() (string, error)
 }
 
-func UnitPolicy(write bool) access.Policy {
-	effect := access.Read
-	if write {
-		effect = access.ConfigurationWrite
-	}
-	return access.Policy{Permission: "org.structure.manage", Capability: "organizations", Effect: effect, Fresh: write}
-}
-func unitDecision(ctx context.Context, scope kernel.OrgScope, actor CompanyActor, decision access.Decision, target string, write bool) error {
-	if scope.Validate() != nil {
-		return d.ErrScope
-	}
-	if actor.Validate() != nil || decision.Policy() != UnitPolicy(write) || decision.Check(ctx, scope, actor.AccountID, "org.structure.manage", target) != nil {
-		return ErrUnauthenticated
-	}
-	return nil
-}
+func UnitPolicy(write bool) access.Policy { return StructurePolicy(write) }
 func (s UnitService) Write(ctx context.Context, scope kernel.OrgScope, actor CompanyActor, decision access.Decision, command UnitWrite) (UnitResult, bool, error) {
 	if !s.Enabled {
 		return UnitResult{}, false, ErrSurfaceDisabled
@@ -180,7 +155,7 @@ func (s UnitService) Write(ctx context.Context, scope kernel.OrgScope, actor Com
 	if v.Kind == CreateUnit {
 		target = scope.OrgID().String()
 	}
-	if err := unitDecision(ctx, scope, actor, decision, target, true); err != nil {
+	if err := structureDecision(ctx, scope, actor, decision, target, true); err != nil {
 		return UnitResult{}, false, err
 	}
 	if s.Repository == nil {
@@ -205,7 +180,7 @@ func (s UnitService) Read(ctx context.Context, scope kernel.OrgScope, actor Comp
 	if !canonicalID(id) {
 		return d.Unit{}, d.ErrInvalid
 	}
-	if err := unitDecision(ctx, scope, actor, decision, id, false); err != nil {
+	if err := structureDecision(ctx, scope, actor, decision, id, false); err != nil {
 		return d.Unit{}, err
 	}
 	if s.Repository == nil {
@@ -220,7 +195,7 @@ func (s UnitService) List(ctx context.Context, scope kernel.OrgScope, actor Comp
 	if err := filter.Validate(); err != nil {
 		return UnitPage{}, err
 	}
-	if err := unitDecision(ctx, scope, actor, decision, scope.OrgID().String(), false); err != nil {
+	if err := structureDecision(ctx, scope, actor, decision, scope.OrgID().String(), false); err != nil {
 		return UnitPage{}, err
 	}
 	if s.Repository == nil {

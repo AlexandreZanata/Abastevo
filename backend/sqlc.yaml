@@ -49,6 +49,7 @@ sql:
       - db/migrations/000172_organization_onboarding.sql
       - db/migrations/000173_legal_declarations.sql
       - db/migrations/000174_operating_units.sql
+      - db/migrations/000175_cost_centres.sql
     gen:
       go:
         package: organization

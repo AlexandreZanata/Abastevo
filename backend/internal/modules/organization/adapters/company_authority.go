@@ -15,7 +15,7 @@ import (
 )
 
 // Reuse the same account/proof -> capability -> root -> current authority
-// lock order for the two concrete configuration producers. This accepts only
+// lock order for the concrete legal and structure producers. This accepts only
 // source-owned policies, never an arbitrary caller-selected permission.
 type companyAuthority struct {
 	Memberships  members.TransactionRepository
@@ -24,7 +24,7 @@ type companyAuthority struct {
 }
 
 func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy) error {
-	if policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.UnitPolicy(false) && policy != app.UnitPolicy(true) {
+	if policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) {
 		return app.ErrUnavailable
 	}
 	write := policy.Effect == access.ConfigurationWrite

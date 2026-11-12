@@ -1,4 +1,20 @@
 # Current execution state
+- Enterprise EMP-ORG-006, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above ORG-005 dfb6fd78 in the owned enterprise worktree, targeting PR202.
+  [Cost-centre evidence](../enterprise/evidence/f1-org006-cost-centres.md)
+  records seven company-cookie routes, permanent scoped code reservations,
+  historical-code lookup and atomic audited/revisioned lifecycle commands.
+  EDR-040 preserves code corrections and immutable historical meaning together.
+  Real PostGIS/race suites pass: twelve-way reservation/replay, competing
+  corrections, archive/admission/current counts, foreign isolation, actual
+  proof/flag/DRIVER gates and ordinary-owner populated upgrade/recovery.
+  A reproduced deferred ownership-FK 404 is corrected to unavailable with no
+  provisional data. Shared structure helpers keep unit/legal behavior green.
+  Full router/OpenAPI, scoped static/build/sqlc, plan/format/links/secret checks
+  pass. Composed domain coverage 94.14%; application 77.71%, adapters 77.61%,
+  HTTP 79.19%. Next: ORG-007 teams. F1/M1, phase publication/final CI and
+  actual provider/runtime/native/vault/staging/legal/Kotlin gates remain open.
+
 - Enterprise EMP-ORG-005, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
   above ORG-004 0d91c7f7 in the owned enterprise worktree, targeting PR202.
   [Unit evidence](../enterprise/evidence/f1-org005-operating-units.md) records

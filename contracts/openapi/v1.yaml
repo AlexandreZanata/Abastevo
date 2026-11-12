@@ -23,7 +23,7 @@ info:
     url: https://opensource.org/license/mit
 tags:
   - name: enterprise-organizations
-    description: Private synthetic organization creation and setup completion.
+    description: Private synthetic organization setup, structure and legal declarations.
   - name: company-session
     description: Separate account-owned company web sessions; disabled by default.
   - name: health
@@ -51,6 +51,531 @@ tags:
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
+  /v1/orgs/{org_id}/cost-centres/create:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseCostCentreCreate
+      summary: Create a cost centre
+      description: Create an optional synthetic cost centre and permanently reserve its normalized code.
+        The server selects identity and ACTIVE state. Dedicated company PANEL cookie, exact HTTPS Origin/Host,
+        CSRF and current org.structure.manage membership are mandatory. Writes need fresh proof, the current
+        organizations pilot flag and existing org.structure admission. Only source-pinned synthetic setup
+        is enabled. Duplicate historical/current codes return VALIDATION_FAILED with safe code/DUPLICATE
+        details; STRUCTURE_IN_USE returns only current category counts. Responses are no-store without ETag.
+        No budgets or prior exports are rewritten.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Create an optional synthetic cost centre and permanently reserve its normalized code.
+          The server selects identity and ACTIVE state.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseCostCentreCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001006
+              name: Synthetic field
+              code: FARM-01
+      responses:
+        '201':
+          description: Private committed cost-centre acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseCostCentreAcknowledgement'
+              example:
+                cost_centre_id: 7b0e2a54-0000-4000-8000-000000000901
+                state: ACTIVE
+                revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/cost-centres/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseCostCentreList
+      summary: List cost centres
+      description: Private UUID keyset page of current cost centres, including archived centres unless filtered.
+        Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage membership
+        are mandatory. Writes need fresh proof, the current organizations pilot flag and existing org.structure
+        admission. Only source-pinned synthetic setup is enabled. Duplicate historical/current codes return
+        VALIDATION_FAILED with safe code/DUPLICATE details; STRUCTURE_IN_USE returns only current category
+        counts. Responses are no-store without ETag. No budgets or prior exports are rewritten.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Private UUID keyset page of current cost centres, including archived centres unless
+          filtered.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseCostCentreListRequest'
+            example:
+              limit: 20
+              state: ACTIVE
+      responses:
+        '200':
+          description: Private current authorized cost-centre read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseCostCentrePage'
+              example:
+                items:
+                - id: 7b0e2a54-0000-4000-8000-000000000901
+                  name: Synthetic field
+                  code: FARM-01
+                  display_name: Synthetic field
+                  state: ACTIVE
+                  revision: 1
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/cost-centres/code/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseCostCentreCodeRead
+      summary: Resolve a historical cost-centre code
+      description: Resolve a current or historical scoped code to its stable centre, returning current metadata.
+        The same code in another organization is independent; no foreign hint is returned. Dedicated company
+        PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage membership are mandatory.
+        Writes need fresh proof, the current organizations pilot flag and existing org.structure admission.
+        Only source-pinned synthetic setup is enabled. Duplicate historical/current codes return VALIDATION_FAILED
+        with safe code/DUPLICATE details; STRUCTURE_IN_USE returns only current category counts. Responses
+        are no-store without ETag. No budgets or prior exports are rewritten.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Resolve a current or historical scoped code to its stable centre, returning current
+          metadata. The same code in another organization is independent; no foreign hint is returned.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseCostCentreCodeRequest'
+            example:
+              code: FARM-01
+      responses:
+        '200':
+          description: Private current authorized cost-centre read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseCostCentreView'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000000901
+                name: Synthetic field
+                code: FARM-01
+                display_name: Synthetic field
+                state: ACTIVE
+                revision: 1
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/cost-centres/{cost_centre_id}/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseCostCentreRead
+      summary: Read a cost centre
+      description: Authorized current cost-centre read without client-supplied authority. Dedicated company
+        PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage membership are mandatory.
+        Writes need fresh proof, the current organizations pilot flag and existing org.structure admission.
+        Only source-pinned synthetic setup is enabled. Duplicate historical/current codes return VALIDATION_FAILED
+        with safe code/DUPLICATE details; STRUCTURE_IN_USE returns only current category counts. Responses
+        are no-store without ETag. No budgets or prior exports are rewritten.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: cost_centre_id
+        in: path
+        required: true
+        description: Exact organization-owned stable cost-centre ID; foreign and unknown identities share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000901
+      requestBody:
+        description: Authorized current cost-centre read without client-supplied authority.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseCostCentreReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current authorized cost-centre read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseCostCentreView'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000000901
+                name: Synthetic field
+                code: FARM-01
+                display_name: Synthetic field
+                state: ACTIVE
+                revision: 1
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/cost-centres/{cost_centre_id}/change:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseCostCentreChange
+      summary: Correct cost-centre metadata
+      description: Replace current name/code at the expected revision. A correction retains every prior
+        code reservation for this stable ID, including archived centres; no past allocation or export is
+        remapped. Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage
+        membership are mandatory. Writes need fresh proof, the current organizations pilot flag and existing
+        org.structure admission. Only source-pinned synthetic setup is enabled. Duplicate historical/current
+        codes return VALIDATION_FAILED with safe code/DUPLICATE details; STRUCTURE_IN_USE returns only current
+        category counts. Responses are no-store without ETag. No budgets or prior exports are rewritten.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: cost_centre_id
+        in: path
+        required: true
+        description: Exact organization-owned stable cost-centre ID; foreign and unknown identities share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000901
+      requestBody:
+        description: Replace current name/code at the expected revision. A correction retains every prior
+          code reservation for this stable ID, including archived centres; no past allocation or export
+          is remapped.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseCostCentreChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001006
+              revision: 1
+              name: Synthetic field
+              code: FARM-01
+      responses:
+        '200':
+          description: Private committed cost-centre acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseCostCentreAcknowledgement'
+              example:
+                cost_centre_id: 7b0e2a54-0000-4000-8000-000000000901
+                state: ACTIVE
+                revision: 2
+                data_mode: SYNTHETIC
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/cost-centres/{cost_centre_id}/archive:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseCostCentreArchive
+      summary: Archive an empty cost centre
+      description: Revision-bound archive/restore. Archive needs zero actual current usage; archived codes
+        remain reserved forever. No client-supplied counts or state are accepted. Dedicated company PANEL
+        cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage membership are mandatory.
+        Writes need fresh proof, the current organizations pilot flag and existing org.structure admission.
+        Only source-pinned synthetic setup is enabled. Duplicate historical/current codes return VALIDATION_FAILED
+        with safe code/DUPLICATE details; STRUCTURE_IN_USE returns only current category counts. Responses
+        are no-store without ETag. No budgets or prior exports are rewritten.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: cost_centre_id
+        in: path
+        required: true
+        description: Exact organization-owned stable cost-centre ID; foreign and unknown identities share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000901
+      requestBody:
+        description: Revision-bound archive/restore. Archive needs zero actual current usage; archived codes
+          remain reserved forever. No client-supplied counts or state are accepted.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseCostCentreTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001006
+              revision: 1
+      responses:
+        '200':
+          description: Private committed cost-centre acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseCostCentreAcknowledgement'
+              example:
+                cost_centre_id: 7b0e2a54-0000-4000-8000-000000000901
+                state: ARCHIVED
+                revision: 2
+                data_mode: SYNTHETIC
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/cost-centres/{cost_centre_id}/restore:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseCostCentreRestore
+      summary: Restore an archived cost centre
+      description: Revision-bound archive/restore. Archive needs zero actual current usage; archived codes
+        remain reserved forever. No client-supplied counts or state are accepted. Dedicated company PANEL
+        cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage membership are mandatory.
+        Writes need fresh proof, the current organizations pilot flag and existing org.structure admission.
+        Only source-pinned synthetic setup is enabled. Duplicate historical/current codes return VALIDATION_FAILED
+        with safe code/DUPLICATE details; STRUCTURE_IN_USE returns only current category counts. Responses
+        are no-store without ETag. No budgets or prior exports are rewritten.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: cost_centre_id
+        in: path
+        required: true
+        description: Exact organization-owned stable cost-centre ID; foreign and unknown identities share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000901
+      requestBody:
+        description: Revision-bound archive/restore. Archive needs zero actual current usage; archived codes
+          remain reserved forever. No client-supplied counts or state are accepted.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseCostCentreTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001006
+              revision: 1
+      responses:
+        '200':
+          description: Private committed cost-centre acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseCostCentreAcknowledgement'
+              example:
+                cost_centre_id: 7b0e2a54-0000-4000-8000-000000000901
+                state: ACTIVE
+                revision: 2
+                data_mode: SYNTHETIC
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/units/create:
     post:
       tags:
@@ -9412,7 +9937,7 @@ x-abastevo-organization-api:
   etag: false
   pagination: {default_limit: 20, max_limit: 100, cursor_ttl_seconds: 900}
   cursor_binding: [origin, organization, account, membership, route, canonical_filters]
-  status: company_sessions_synthetic_onboarding_legal_and_operating_units_implemented
+  status: company_sessions_synthetic_onboarding_legal_units_and_cost_centres_implemented
 components:
   securitySchemes:
     CompanySessionCookie:
@@ -9468,6 +9993,300 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseCostCentreCreateRequest:
+      type: object
+      description: Create an optional synthetic cost centre and permanently reserve its normalized code. The
+        server selects identity and ACTIVE state.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        name:
+          type: string
+          description: Private trimmed descriptive name; different centres may share a name.
+          example: Synthetic field
+          minLength: 1
+          maxLength: 120
+        code:
+          type: string
+          description: Private trimmed code, unique case-insensitively across all current/historical centres
+            of this organization. Every previous code remains reserved to the same centre.
+          example: FARM-01
+          minLength: 1
+          maxLength: 120
+      required:
+      - schema_version
+      - operation_id
+      - name
+      - code
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001006
+        name: Synthetic field
+        code: FARM-01
+    EnterpriseCostCentreChangeRequest:
+      type: object
+      description: Replace current name/code at the expected revision. A correction retains every prior code
+        reservation for this stable ID, including archived centres; no past allocation or export is remapped.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: Expected current cost-centre revision; exact retry returns the original committed acknowledgement.
+          example: 1
+        name:
+          type: string
+          description: Private trimmed descriptive name; different centres may share a name.
+          example: Synthetic field
+          minLength: 1
+          maxLength: 120
+        code:
+          type: string
+          description: Private trimmed code, unique case-insensitively across all current/historical centres
+            of this organization. Every previous code remains reserved to the same centre.
+          example: FARM-01
+          minLength: 1
+          maxLength: 120
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - name
+      - code
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001006
+        revision: 1
+        name: Synthetic field
+        code: FARM-01
+    EnterpriseCostCentreTransitionRequest:
+      type: object
+      description: Revision-bound archive/restore. Archive needs zero actual current usage; archived codes
+        remain reserved forever. No client-supplied counts or state are accepted.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: Expected current cost-centre revision; exact retry returns the original committed acknowledgement.
+          example: 1
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001006
+        revision: 1
+    EnterpriseCostCentreReadRequest:
+      type: object
+      description: Authorized current cost-centre read without client-supplied authority.
+      additionalProperties: false
+      properties: {}
+      required: []
+      example: {}
+    EnterpriseCostCentreCodeRequest:
+      type: object
+      description: Resolve a current or historical scoped code to its stable centre, returning current metadata.
+        The same code in another organization is independent; no foreign hint is returned.
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          description: Private trimmed code, unique case-insensitively across all current/historical centres
+            of this organization. Every previous code remains reserved to the same centre.
+          example: FARM-01
+          minLength: 1
+          maxLength: 120
+      required:
+      - code
+      example:
+        code: FARM-01
+    EnterpriseCostCentreListRequest:
+      type: object
+      description: Private UUID keyset page of current cost centres, including archived centres unless filtered.
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Default page size 20, maximum 100.
+          example: 20
+        cursor:
+          type: string
+          description: Opaque 15-minute keyset cursor bound to account, organization, membership, route and
+            canonical state/limit filters.
+          example: ''
+          maxLength: 2048
+        state:
+          type: string
+          description: Optional current cost-centre-state filter.
+          example: ACTIVE
+          enum:
+          - ACTIVE
+          - ARCHIVED
+      required: []
+      example:
+        limit: 20
+        state: ACTIVE
+    EnterpriseCostCentreAcknowledgement:
+      type: object
+      description: Original committed cost-centre acknowledgement, retained on exact retry after subsequent
+        corrections.
+      additionalProperties: false
+      properties:
+        state:
+          type: string
+          description: Original committed state.
+          example: ACTIVE
+          enum:
+          - ACTIVE
+          - ARCHIVED
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775807
+          description: Original committed cost-centre revision.
+          example: 1
+        replayed:
+          type: boolean
+          description: Original committed result returned for the same normalized operation.
+          example: false
+        data_mode:
+          type: string
+          description: Source-pinned synthetic setup.
+          example: SYNTHETIC
+          enum:
+          - SYNTHETIC
+        cost_centre_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - cost_centre_id
+      - state
+      - revision
+      - replayed
+      - data_mode
+      example:
+        cost_centre_id: 7b0e2a54-0000-4000-8000-000000000901
+        state: ACTIVE
+        revision: 1
+        data_mode: SYNTHETIC
+        replayed: false
+    EnterpriseCostCentreView:
+      type: object
+      description: Private current projection. Historical code lookup preserves this identity; archived display
+        names append (arquivada).
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        name:
+          type: string
+          description: Private trimmed descriptive name; different centres may share a name.
+          example: Synthetic field
+          minLength: 1
+          maxLength: 120
+        code:
+          type: string
+          description: Private trimmed code, unique case-insensitively across all current/historical centres
+            of this organization. Every previous code remains reserved to the same centre.
+          example: FARM-01
+          minLength: 1
+          maxLength: 120
+        display_name:
+          type: string
+          description: Current name with the archive suffix when applicable.
+          example: Synthetic field
+        state:
+          type: string
+          description: Current cost-centre state.
+          example: ACTIVE
+          enum:
+          - ACTIVE
+          - ARCHIVED
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775807
+          description: Current committed cost-centre revision.
+          example: 1
+        data_mode:
+          type: string
+          description: Source-pinned synthetic context.
+          example: SYNTHETIC
+          enum:
+          - SYNTHETIC
+      required:
+      - id
+      - name
+      - code
+      - display_name
+      - state
+      - revision
+      - data_mode
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000000901
+        name: Synthetic field
+        code: FARM-01
+        display_name: Synthetic field
+        state: ACTIVE
+        revision: 1
+        data_mode: SYNTHETIC
+    EnterpriseCostCentrePage:
+      type: object
+      description: Private cost-centre UUID keyset page; empty cursor marks the final page.
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          description: Authorized centres in stable identity order.
+          items:
+            $ref: '#/components/schemas/EnterpriseCostCentreView'
+        next_cursor:
+          type: string
+          description: Opaque next-page cursor or empty.
+          example: ''
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - id: 7b0e2a54-0000-4000-8000-000000000901
+          name: Synthetic field
+          code: FARM-01
+          display_name: Synthetic field
+          state: ACTIVE
+          revision: 1
+          data_mode: SYNTHETIC
+        next_cursor: ''
     EnterpriseUnitCreateRequest:
       type: object
       description: Create a synthetic operating unit. State, actor and identity are selected by the server;

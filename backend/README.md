@@ -422,6 +422,40 @@ go test -race ./internal/modules/orgaccess/domain ./internal/modules/membership/
 See [1,092 descriptor cells](../contracts/testdata/enterprise/README.md#authorization-catalog-v1)
 and [catalog acceptance](../docs/enterprise/evidence/f1-auth001-role-permission-catalog.md).
 
+### Cost-centre management (EMP-ORG-006)
+
+Apply additive migration `000175` before the new API/worker. The enterprise
+factory mounts seven private company-cookie POST operations under
+`/v1/orgs/{org_id}/cost-centres`: create/list, code/read and
+`{cost_centre_id}/read`, change, archive, restore. Current OWNER/ADMIN
+org.structure.manage, exact Origin/Host, CSRF and current membership apply.
+Writes require fresh proof, the organizations pilot flag and the existing
+org.structure synthetic budget. No grants, flag or production budget is seeded.
+
+Names are descriptive and can repeat. Codes are trimmed and compared
+case-insensitively within the organization, permanently reserved across
+current and archived centres. A code correction keeps every old code linked
+to the same stable ID; code/read resolves both old and current labels to
+current authorized metadata. Existing allocations/export snapshots are not
+remapped. An archived code never becomes available to another centre.
+
+The three new tables use forced RLS. The ordinary migration owner needs schema
+creation and REFERENCES on organizations/accounts/audit. Review runtime
+SELECT/INSERT/UPDATE on org_cost_centres and SELECT/INSERT on immutable
+org_cost_centre_codes/commands alongside existing proof/authority/audit/quota
+ports. Code reservations and their current owner have deferred composite FKs;
+centre, alias, audit and receipt commit together. Commit failures return no
+provisional result, with unavailable classification even for a deferred FK
+failure. Keep additive schema/history and disable admission on recovery;
+previous schema-version checks pass, with no destructive down migration.
+
+Cost-centre usage/admission uses the root-locking structure contract. Unknown
+FK consumers of either a centre or its reserved aliases block archive until
+their owning migration supplies actual scoped counts. Immutable aliases and
+command receipts are historical references. The disposable test consumer does
+not implement future budgeting/asset/employee/operation modules. See
+[local cost-centre evidence](../docs/enterprise/evidence/f1-org006-cost-centres.md).
+
 ### Operating unit management (EMP-ORG-005)
 
 Apply additive migration `000174` before the new API/worker. The actual

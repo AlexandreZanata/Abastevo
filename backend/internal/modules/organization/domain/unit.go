@@ -43,19 +43,8 @@ type Unit struct {
 	value UnitSnapshot
 }
 
-// Counts are resolved from source-owned, current transactional guards. A pure
-// value cannot prove that an adapter observed actual usage or held its locks.
-type UnitUsage struct{ Assets, Employees, Budgets, Operations int64 }
-
-func (u UnitUsage) Validate() error {
-	if u.Assets < 0 || u.Employees < 0 || u.Budgets < 0 || u.Operations < 0 {
-		return ErrConditions
-	}
-	return nil
-}
-func (u UnitUsage) InUse() bool {
-	return u.Assets > 0 || u.Employees > 0 || u.Budgets > 0 || u.Operations > 0
-}
+// UnitUsage retains the unit API for the shared structure category totals.
+type UnitUsage = StructureUsage
 
 type UnitArchiveFacts struct {
 	ActiveUnits int64
