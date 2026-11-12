@@ -1,6 +1,15 @@
 # Identity, employees and access
 
-Status: **EMP-IDN-001/002/003/004/005/009/010 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+Status: **EMP-IDN-001/002/003/004/005/009/010/011 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+
+EMP-IDN-011 adds the fresh guarded employee rehire command, retaining the same
+identity/profile while leaving all ended access untouched. Only an unmerged
+TERMINATED employee with no live membership is eligible. Original private
+receipts remain immutable after later employee transitions; current manager
+authority and capability still apply to replay. [Rehire evidence](../evidence/f1-idn011-employee-rehire.md)
+records real PostGIS/HTTP, migration192 recovery and a separate new invitation
+with a distinct access period. No account recovery, implicit role restoration
+or managed provisioning is supplied by rehire.
 
 EMP-IDN-010 supplies current existing-account ORG_F1 manager offboarding and
 personal self-leave, including suspended/no-role members and authenticated

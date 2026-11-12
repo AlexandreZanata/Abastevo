@@ -1,4 +1,23 @@
 # Current execution state
+- Enterprise EMP-IDN-011, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn011 from published dev b721691a; publish to dev/PR203,
+  [task208](https://github.com/AlexandreZanata/Abastevo/issues/208).
+  [Rehire evidence](../enterprise/evidence/f1-idn011-employee-rehire.md) records
+  fresh current manager authority, exact employee revision, no live period,
+  unmerged termination and immutable original acknowledgements. Profile and
+  ended access remain unchanged; a separate new invitation creates a distinct
+  period. B-BR-EMP-82, BUC-EMP-42 and EDR-053 precede behavior. Actual HTTP,
+  populated migration192 recovery/RLS/retention, twelve-way retry/CAS, foreign/
+  merged/overlap, proof-wait/capability and late-failure checks pass. Affected
+  PostGIS/race, build/vet/static/generation/contracts/compatibility/plan/secret
+  checks and full local Quick pass; Quick159s, no vulnerabilities, domain91.8%.
+  Tested backend tree6407d5836ddd646b8f128528a1e2031dbd41d530;
+  contract Git blob64ecca76b6afb67b7a0b5ffcc28209de7899536d.
+  Required remote check awaits publication. Next: protected review/integration;
+  this request stops here. F1/M1, managed/GOV-013, native/device/operational/
+  late-intake/legal/runtime/staging/production remain open. No merge, wiki or
+  deployment; issue stays open until integration.
+
 - Enterprise EMP-IDN-010, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
   codex/enterprise-idn010 from published dev63b9365a; publish to dev/PR203,
   [task207](https://github.com/AlexandreZanata/Abastevo/issues/207).

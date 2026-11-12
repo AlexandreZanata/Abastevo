@@ -55,6 +55,84 @@ tags:
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
+  /v1/orgs/{org_id}/employees/{employee_id}/rehire:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: rehirePrivateEmployee
+      summary: Reopen a terminated employee without restoring access
+      description: Fresh current idn.membership.manage with cookie/origin/CSRF, AUTH lease and retained account/proof/capability/root
+        locks. Reopen only the same unmerged TERMINATED employee at its exact identity revision with no live membership.
+        Preserve profile, all ended periods, roles, tombstones and source reductions. Original authenticated retries
+        retain the first outcome after later changes. New access needs a separate new invitation; no personal account
+        recovery, managed provisioning or role restoration occurs.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.membership.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: employee_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmployeeRehireRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001021
+              revision: 2
+              reason: Synthetic new employment
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEmployeeRehireResult'
+              example:
+                employee_id: 7b0e2a54-0000-4000-8000-000000001043
+                state: ACTIVE
+                identity_revision: 3
+                operation_id: 7b0e2a54-0000-4000-8000-000000001021
+                reason: Synthetic new employment
+                occurred_at: '2026-11-12T18:00:00Z'
+                replayed: false
+                access_provisioning: SEPARATE_INVITATION_REQUIRED
+                data_mode: SYNTHETIC
   /v1/orgs/{org_id}/memberships/{membership_id}/offboarding/read:
     post:
       tags:
@@ -13896,6 +13974,89 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseEmployeeRehireRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Private recorded reason. Blank, control and Unicode format characters are refused.
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001021
+        revision: 2
+        reason: Synthetic new employment
+    EnterpriseEmployeeRehireResult:
+      type: object
+      additionalProperties: false
+      required:
+      - employee_id
+      - state
+      - identity_revision
+      - operation_id
+      - reason
+      - occurred_at
+      - replayed
+      - access_provisioning
+      - data_mode
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          enum:
+          - ACTIVE
+        identity_revision:
+          type: integer
+          format: int64
+          minimum: 2
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Private recorded reason. Blank, control and Unicode format characters are refused.
+        occurred_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        access_provisioning:
+          type: string
+          enum:
+          - SEPARATE_INVITATION_REQUIRED
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      example:
+        employee_id: 7b0e2a54-0000-4000-8000-000000001043
+        state: ACTIVE
+        identity_revision: 3
+        operation_id: 7b0e2a54-0000-4000-8000-000000001021
+        reason: Synthetic new employment
+        occurred_at: '2026-11-12T18:00:00Z'
+        replayed: false
+        access_provisioning: SEPARATE_INVITATION_REQUIRED
+        data_mode: SYNTHETIC
     EnterpriseHandoverItem:
       type: object
       additionalProperties: false

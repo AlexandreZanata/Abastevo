@@ -185,7 +185,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task207](https://github.com/AlexandreZanata/Abastevo/issues/207), cumulative PR203. The actual existing-account ORG_F1 runtime has manager review/complete and fresh account-bound self review/leave, employee retain/terminate choice, exact reviewed source flags, actual reductions and immutable receipts. PostGIS/race, last-owner/retry/CAS/proof-wait/fault, ordinary190→191 recovery/RLS/retention and actual HTTP/router/contracts pass. [Evidence](../evidence/f1-idn010-offboarding.md). Managed provisioning, device/delegation/operational producers and late intake remain explicit pending sources and must integrate before activation; no live enrollment revocation or native acceptance is claimed.
 
 ### EMP-IDN-011 — Rehire: a new membership period on the same employee record
-- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size S · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size S · state LOCAL_DONE
 - **Objective:** Rehire on the existing employee record while opening a distinct access period.
 - **Rules and use cases:** BR-IDN-002, BR-IDN-032, BR-IDN-033, UC-IDN-11
 - **Depends on:** EMP-IDN-010
@@ -199,6 +199,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: reuse historical identifiers · rollback: preserve existing periods
 - **Risks and assumptions:** Rehire does not recover a personal account.
 - **Done when:** Rehire, duplicate requests and intact history pass on synthetic data.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task208](https://github.com/AlexandreZanata/Abastevo/issues/208), cumulative PR203. Fresh guarded rehire reopens only an unmerged terminated employee with no live period; current authority and immutable original receipts govern retries. Actual profile/ended-history preservation, distinct new invitation period, twelve-way retry/CAS, stale/foreign/merged/overlap/capability/proof-wait/fault cases and populated191→192 recovery/RLS/retention pass. Actual HTTP/router/contracts, affected PostGIS/race and full local Quick verification pass. [Evidence](../evidence/f1-idn011-employee-rehire.md). New access remains a separate invitation; managed provisioning and other owning gates remain open.
 
 ### EMP-IDN-012 — Multiple memberships and duplicate employee detection and merge
 - **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size M · state TODO

@@ -69,6 +69,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, member.RedemptionAuditDefinitions()...)
 	definitions = append(definitions, member.MembershipAccessAuditDefinitions()...)
 	definitions = append(definitions, member.OffboardingAuditDefinitions()...)
+	definitions = append(definitions, member.RehireAuditDefinitions()...)
 	definitions = append(definitions, accesspg.RoleAuditDefinitions()...)
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
@@ -162,6 +163,11 @@ func Register(router chi.Router, o Options) error {
 
 	offboarding := &member.OffboardingStore{Pool: o.Pool, Authority: &orgpg.OffboardingAuthority{MembershipAccessAuthority: orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}, Memberships: memberStore, Audit: auditStore}
 	if e := memberweb.RegisterOffboarding(router, memberapp.OffboardingService{Enabled: true, Repository: offboarding}, cookies, gateway, membershipAccessAuthorization, roots); e != nil {
+		return e
+	}
+
+	rehire := &member.RehireStore{Pool: o.Pool, Employees: memberStore, Authority: &orgpg.RehireAuthority{MembershipAccessAuthority: orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}, Audit: auditStore}
+	if e := memberweb.RegisterRehire(router, memberapp.RehireService{Enabled: true, Repository: rehire}, cookies, gateway, membershipAccessAuthorization, roots); e != nil {
 		return e
 	}
 

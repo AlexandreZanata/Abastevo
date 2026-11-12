@@ -1276,3 +1276,26 @@ proof and the transactionally enforced three-pending-organization account cap.
   boundary without needing a current organization role. Exercise changed review,
   stale/revoked proof after waits, wrong caller, missing/foreign source, last owner,
   retries/CAS, source reductions, upgrade recovery and actual next-request denial.
+
+- **B-BR-EMP-82 — Rehire preserves identity and requires fresh access provisioning.**
+  A fresh current OWNER/ADMIN with idn.membership.manage may reopen only a
+  TERMINATED employee of this organization that was not merged away and has no
+  INVITED, ACTIVE or SUSPENDED membership. Require its exact identity revision,
+  canonical operation UUID and exact recorded reason. Only employee state/revision
+  changes to ACTIVE; profile, ended memberships/assignments, tombstones, source
+  reductions and private personal data remain unchanged. Account/proof,
+  capability and root locks retain current authority after waits and before
+  acknowledgement. Immutable actor/intent-bound receipts return the original
+  outcome after later changes. A separate fresh invitation creates a distinct
+  access period; no role, credential, device, token or former membership is
+  restored, and no personal account is recovered. Managed provisioning retains
+  GOV-013 and its owning implementation gates.
+- **BUC-EMP-42 — Reopen a terminated employee, then invite separately.** Read the
+  existing employee at its current revision; submit rehire with a reason. Prove
+  current manager authority, same-organization identity, unmerged termination and
+  absence of a live period under the retained root lock. Atomically reopen and
+  record actual audit and immutable acknowledgement. Return no provisional result
+  on SQL/commit failure. If access is needed, issue a new invitation through the
+  existing guarded workflow. Exercise duplicate/distinct CAS, changed reason,
+  foreign/merged/live-period target, revoked or expired proof after lock waits,
+  disabled capability, late fault recovery and intact historical periods.
