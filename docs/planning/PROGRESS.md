@@ -1,4 +1,21 @@
 # Current execution state
+- Enterprise EMP-ORG-009, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
+  integrated main/dev 6a19bcc7 (PR202, including Claude fixes through 69d02109).
+  Owned branch codex/enterprise-org009 publishes to maintained dev while its
+  other checkout remains occupied. [Suspension evidence](../enterprise/evidence/f1-org009-suspension.md)
+  records two actual admin-cookie routes, transactional fresh proof/replay,
+  retained periods, archived causes, pending owner notices and historical intake.
+  B-BR-EMP-69/70, BUC-EMP-35 and EDR-045 precede behavior. Real PostGIS/race
+  CAS/retry/intake, revoked/stale proof, late rollback/recovery, company read/write
+  gates and ordinary populated upgrade pass. Full affected suites/OpenAPI,
+  actual production router, scoped static/build/sqlc pass; org domain 91.84%.
+  Tested backend tree 487c9d9003ea055b7ec8b622d319dad8715f01ad;
+  contract blob e69bc7b7f4a25a4277c5c9e444e7399cb4ec048c.
+  Final strict-transport regression is fixed and verified. Plan/format/links/
+  secret review accompany publication. Next: review this dev/main checkpoint;
+  no next task, merge or deployment is authorized by this request. F1/M1,
+  current-head/base CI and the recorded external activation gates stay open.
+
 - Enterprise PR202 final review, 2026-11-12: reviewed head `45230e28`
   (remote checks green) with emphasis on ORG-002..008, IDN-001..003 and
   AUTH-001..004; no critical/high finding. Fixes follow as new commits on dev

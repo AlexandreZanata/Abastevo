@@ -11465,6 +11465,290 @@ paths:
                 effective_at: '2026-11-12T12:00:00Z'
                 data_mode: SYNTHETIC
                 replayed: false
+  /v1/admin/organizations/{org_id}/suspend:
+    post:
+      tags:
+      - admin
+      operationId: adminOrganizationSuspend
+      summary: Suspend one organization
+      description: ADR-023 platform operator only; dedicated __Host-abv_admin cookie, exact configured administrative
+        Origin, X-Admin-CSRF and Idempotency-Key. Fresh proof within 15 minutes is rechecked transactionally on new
+        commands and stored retries. Company roles and staff badges confer no authority. Root revision, retained period,
+        pending owner notice, admin audit and original result commit together. Archived roots keep ARCHIVED while
+        their cause changes. Reactivation resolves the matching category and never promotes held field facts. Both
+        the enterprise flag and configured admin credential plane must be enabled. Subscription integration and notification
+        delivery remain separate owning workflows.
+      security:
+      - AdminSessionCookie: []
+      x-abastevo-organization-operator:
+        action: admin.organization.suspend
+        cookie: true
+        csrf: true
+        fresh: true
+        require_revision: true
+        require_reason: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uri
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminOrganizationSuspensionRequest'
+            example:
+              schema_version: 1
+              revision: 2
+              reason_category: SECURITY
+              reason: Synthetic operator investigation
+      responses:
+        '400':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '200':
+          description: Original committed result; exact retries preserve it after later lifecycle changes.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOrganizationSuspensionAcknowledgement'
+              example:
+                organization_id: 7b0e2a54-0000-4000-8000-000000000301
+                state: SUSPENDED
+                revision: 3
+                suspension_reason: SECURITY
+                period_id: 7b0e2a54-0000-4000-8000-000000000901
+                effective_at: '2026-11-12T15:00:00Z'
+                notice_state: PENDING_NOTIFICATION_CORE
+  /v1/admin/organizations/{org_id}/reactivate:
+    post:
+      tags:
+      - admin
+      operationId: adminOrganizationReactivate
+      summary: Reactivate one organization
+      description: ADR-023 platform operator only; dedicated __Host-abv_admin cookie, exact configured administrative
+        Origin, X-Admin-CSRF and Idempotency-Key. Fresh proof within 15 minutes is rechecked transactionally on new
+        commands and stored retries. Company roles and staff badges confer no authority. Root revision, retained period,
+        pending owner notice, admin audit and original result commit together. Archived roots keep ARCHIVED while
+        their cause changes. Reactivation resolves the matching category and never promotes held field facts. Both
+        the enterprise flag and configured admin credential plane must be enabled. Subscription integration and notification
+        delivery remain separate owning workflows.
+      security:
+      - AdminSessionCookie: []
+      x-abastevo-organization-operator:
+        action: admin.organization.reactivate
+        cookie: true
+        csrf: true
+        fresh: true
+        require_revision: true
+        require_reason: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: Origin
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uri
+      - name: X-Admin-CSRF
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminOrganizationSuspensionRequest'
+            example:
+              schema_version: 1
+              revision: 2
+              reason_category: SECURITY
+              reason: Synthetic operator investigation
+      responses:
+        '400':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Private operator refusal.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '200':
+          description: Original committed result; exact retries preserve it after later lifecycle changes.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOrganizationSuspensionAcknowledgement'
+              example:
+                organization_id: 7b0e2a54-0000-4000-8000-000000000301
+                state: ACTIVE
+                revision: 4
+                suspension_reason: ''
+                period_id: 7b0e2a54-0000-4000-8000-000000000901
+                effective_at: '2026-11-12T15:00:00Z'
+                notice_state: PENDING_NOTIFICATION_CORE
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -11480,6 +11764,12 @@ x-abastevo-organization-api:
   status: company_sessions_synthetic_onboarding_legal_units_and_cost_centres_implemented
 components:
   securitySchemes:
+    AdminSessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-abv_admin
+      description: Dedicated ADR-023 administrative credential; unrelated to company sessions
+        and staff badges.
     CompanySessionCookie:
       type: apiKey
       in: cookie
@@ -20691,6 +20981,89 @@ components:
           ownership_transfer_validity_days: 7
           data_mode: SYNTHETIC
         next_cursor: ''
+    AdminOrganizationSuspensionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        reason_category:
+          type: string
+          enum:
+          - BILLING
+          - TERMS
+          - SECURITY
+          - LEGAL
+          - OWNER_REQUEST
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+      required:
+      - schema_version
+      - revision
+      - reason_category
+      - reason
+      example:
+        schema_version: 1
+        revision: 2
+        reason_category: SECURITY
+        reason: Synthetic operator investigation
+    AdminOrganizationSuspensionAcknowledgement:
+      type: object
+      additionalProperties: false
+      properties:
+        organization_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - ARCHIVED
+        revision:
+          type: integer
+          minimum: 2
+        suspension_reason:
+          type: string
+          enum:
+          - ''
+          - BILLING
+          - TERMS
+          - SECURITY
+          - LEGAL
+          - OWNER_REQUEST
+        period_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        effective_at:
+          type: string
+          format: date-time
+        notice_state:
+          type: string
+          enum:
+          - PENDING_NOTIFICATION_CORE
+      required:
+      - organization_id
+      - state
+      - revision
+      - suspension_reason
+      - period_id
+      - effective_at
+      - notice_state
+      example:
+        organization_id: 7b0e2a54-0000-4000-8000-000000000301
+        state: SUSPENDED
+        revision: 3
+        suspension_reason: SECURITY
+        period_id: 7b0e2a54-0000-4000-8000-000000000901
+        effective_at: '2026-11-12T15:00:00Z'
+        notice_state: PENDING_NOTIFICATION_CORE
   responses:
     EnterprisePrivateError:
       description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.

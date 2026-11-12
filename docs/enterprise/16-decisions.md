@@ -52,6 +52,8 @@ Status: **M0 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-11. [ADR-025](../adr/02
 | EDR-042 | Model team membership as retained link periods with at most one current employee/team link, independent of account access. Consume employee inactivation/termination and membership suspension/end atomically, retaining causal source facts and never restoring links on reactivation. Count distinct active employees across home-unit and team-unit assignments. Retain an empty team's archived unit reference, but require an active unit for new links or restoration; archived metadata may be corrected. | BR-ORG-008/009/011/012 and the consumed IDN events require history, immediate reductions and no implicit grants. Empty structural labels are not active employees. Existing pending employee profiles are honest references, not fabricated names. | Delete links; dynamically hide links then resurrect them; infer team roles; count empty teams as employees; double count one employee across teams; attribute a synthetic manager audit to an unknown actor. | EMP-ORG-007; B-BR-EMP-65/66; BUC-EMP-33; autonomous construction authorization |
 | EDR-043 | Adopt the proposed org.settings.read row for OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR, FINANCE, APPROVER and AUDITOR as explicit ORG coverage in org-permissions-v3. Preserve every other matrix cell, including the recorded legal-management amendment. | ORG-008 must provide the readable settings contract to the roles named by the module; the prior catalog deliberately denied unassigned keys. | Infer read inheritance from management; grant DRIVER/OPS access to the private settings document; leave the required read endpoint always denied. | EMP-ORG-008; B-BR-EMP-67/68; autonomous construction authorization |
 | EDR-044 | Capture immutable typed settings at serialized server intake under the root lock. Initialize older authentic roots lazily at the actual system bootstrap time, without an unscoped migration inventory. Keep initialization/cleanup sources honest, preserve unaffected substitute slots and store pending notification facts until NOTIF-001 consumes them. Settings owns the root default zone; captured unit zones stay explicit. Store only frozen source policy parameters, with real-retention admission left to its owner. | This implements prospective revisions, safe defaults and routing without inventing past authoring, a delivery provider or authority from designation. | Device-selected policy revision; mutate old settings/records; silently update every unit; fabricate a manager for cleanup or delivered notices; accept arbitrary policy JSON. | EMP-ORG-008; B-BR-EMP-67/68; BUC-EMP-34; autonomous construction authorization |
+| EDR-045 | Implement ORG-009 through the existing ADR-023 admin cookie/key plane with fresh transactional proof on new commands and replays, separate from company roles and public staff badges. Retain actual suspension periods and pending owner notices, including archived causes. Use seven-day inclusive server-received grace and an explicit owning-transaction assessment port; keep field facts under review after reactivation. | BR-ORG-029..032 and UC-ORG-08 require actual operator authority and historical intake without inventing subscription/device/notification providers. | Give OWNER/ADMIN self-suspension power; fabricate an account for an operator audit; trust device time or silently promote held work; activate billing or delivery without its owning workflow. | EMP-ORG-009; B-BR-EMP-69/70; BUC-EMP-35; resumed task authorization 2026-11-12 |
+
 
 
 
@@ -72,6 +74,15 @@ existing error details omit the optional count field. A source refusal without
 validated category counts is unavailable rather than an invented empty result.
 
 ## 2. Conflicts with existing rules
+
+### Next-task resumption, 2026-11-12
+
+After Claude's corrections and merge of PR202 as main/dev `6a19bcc7`, the
+maintainer authorized the next bounded enterprise task and GitHub publication.
+Resume EMP-ORG-009 only from that integrated baseline; preserve review fixes,
+other occupied worktrees and disabled runtime gates. No new merge/deployment
+or completion of all phases is implied. This supersedes the earlier stop only
+for the newly requested task.
 
 ### Construction stop and review handoff, 2026-11-12
 

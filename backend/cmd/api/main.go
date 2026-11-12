@@ -927,6 +927,10 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	// no route is mounted and every /v1/admin/* path stays 404.
 	if adminSurface, ok := newAdminHandler(cfg, pool.Underlying(), trustedProxies); ok {
 		adminSurface.RegisterRoutes(router)
+		if err := enterprisesuite.RegisterAdmin(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Pool: pool.Underlying()}, adminSurface); err != nil {
+			return err
+		}
+
 		// Contributor admin mutations (approve/reject/link/hide) commit
 		// through the shared admin audit/idempotency helper.
 		contributorService.Runner = adminSurface.Service.Store

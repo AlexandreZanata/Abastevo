@@ -408,15 +408,44 @@ func likePrefix(query string) string {
 // mutate reserves one idempotency key, runs fn, writes the append-only audit
 // rows and stores the safe outcome in the same transaction.
 func (s *Store) mutate(ctx context.Context, m app.Mutation, fn func(context.Context, pgx.Tx) (app.MutationResult, []app.AuditEvent, error)) (app.MutationResult, error) {
+	return s.mutateWithProof(ctx, m, false, fn)
+}
+
+// MutateFresh revalidates current DB proof on new commands AND stored retries.
+// Consumers still authenticate the configured admin key and CSRF at HTTP entry.
+func (s *Store) MutateFresh(ctx context.Context, m app.Mutation, fn func(context.Context, pgx.Tx) (app.MutationResult, []app.AuditEvent, error)) (app.MutationResult, error) {
+	return s.mutateWithProof(ctx, m, true, fn)
+}
+func (s *Store) ConfirmFreshTx(ctx context.Context, tx pgx.Tx, sessionID string) error {
+	if tx == nil || !domain.ValidUUID(sessionID) {
+		return domain.ErrUnauthorized
+	}
+	_, e := qadmin.New(tx).LockFreshOperatorSession(ctx, uid(sessionID))
+	if errors.Is(e, pgx.ErrNoRows) {
+		return domain.ErrUnauthorized
+	}
+	if e != nil {
+		return domain.ErrUnavailable
+	}
+	return nil
+}
+
+func (s *Store) mutateWithProof(ctx context.Context, m app.Mutation, fresh bool, fn func(context.Context, pgx.Tx) (app.MutationResult, []app.AuditEvent, error)) (app.MutationResult, error) {
 	if s == nil || s.Pool == nil || !domain.ValidUUID(m.SessionID) || !domain.ValidUUID(m.Key) || !domain.ValidHash(m.RequestHash) {
 		return app.MutationResult{}, domain.ErrInvalid
 	}
 	sessionID := uid(m.SessionID)
 	key := uid(m.Key)
 	for {
-		tx, err := s.Pool.Begin(ctx)
+		tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 		if err != nil {
 			return app.MutationResult{}, domain.ErrUnavailable
+		}
+		if fresh {
+			if e := s.ConfirmFreshTx(ctx, tx, m.SessionID); e != nil {
+				rollback(tx)
+				return app.MutationResult{}, e
+			}
 		}
 		q := qadmin.New(tx)
 		_, err = q.ReserveMutation(ctx, qadmin.ReserveMutationParams{
@@ -458,9 +487,15 @@ func (s *Store) mutate(ctx context.Context, m app.Mutation, fn func(context.Cont
 			return app.MutationResult{}, domain.ErrUnavailable
 		}
 
-		lockTx, err := s.Pool.Begin(ctx)
+		lockTx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 		if err != nil {
 			return app.MutationResult{}, domain.ErrUnavailable
+		}
+		if fresh {
+			if e := s.ConfirmFreshTx(ctx, lockTx, m.SessionID); e != nil {
+				rollback(lockTx)
+				return app.MutationResult{}, e
+			}
 		}
 		stored, err := qadmin.New(lockTx).LockMutation(ctx, qadmin.LockMutationParams{SessionID: sessionID, Key: key})
 		if err != nil {

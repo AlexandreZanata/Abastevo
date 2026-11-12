@@ -153,7 +153,7 @@ integration of the current ADR-019 construction batch. See the
 [Local versioned settings, effective intake and reduction evidence](../evidence/f1-org008-versioned-settings.md).
 
 ### EMP-ORG-009 — Suspension and reactivation with write-block semantics
-- **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Apply scoped suspension and reactivation while preserving allowed recovery and reads.
 - **Rules and use cases:** BR-ORG-029, BR-ORG-030, BR-ORG-031, BR-ORG-032, UC-ORG-08
 - **Depends on:** EMP-ORG-003
@@ -167,6 +167,8 @@ integration of the current ADR-019 construction batch. See the
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-SYNC · migration: rehearse additive changes when persistence is affected · rollback: preserve the existing state, remove only the new entry point and follow the scoped recovery evidence.
 - **Risks and assumptions:** Reactivation sends held facts to review under their existing rules.
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
+
+[Local operator suspension, historical intake and upgrade evidence](../evidence/f1-org009-suspension.md).
 
 ### EMP-ORG-010 — Ownership transfer and the last-owner invariant
 - **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size S · state TODO

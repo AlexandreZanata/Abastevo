@@ -756,6 +756,27 @@ boundaries.
   reporting zones remain captured; new/edited omitted-zone units use the new
   default, and historical reporting snapshots are untouched.
 
+- **B-BR-EMP-69 — Platform suspension is scoped and audited.** Only the
+  existing ADR-023 administrative credential plane may suspend/reactivate in
+  this task, with fresh current proof, a bounded reason, expected root revision
+  and one of BILLING/TERMS/SECURITY/LEGAL/OWNER_REQUEST. Company roles and staff
+  badges grant no operator power. Root, retained suspension period, owner notice,
+  admin audit and original acknowledgement commit together. Archived roots keep
+  their state while a cause is opened/resolved. Pending and closed roots cannot
+  be suspended; existing unknown historical causes fail closed. Reactivation
+  resolves the matching cause without reviving roles, devices or held facts.
+
+- **B-BR-EMP-70 — Preserve field facts without reopening write authority.**
+  Suspension blocks new configuration/operational work while current authorized
+  reads, exports, plan recovery and access reductions retain their source rules.
+  An owning command captures server time/history under the root lock. Finishing
+  a server-recorded entity opened before suspension, or a fact declared strictly
+  before it and received within seven days (inclusive), requires review. Device
+  time never proves permission. Outside grace, a new fact is refused. Historical
+  suspension intervals still force review after reactivation; persisted review
+  outcomes are not promoted automatically. Future sync/business owners persist
+  facts and apply current proof/revocation/permission/window rules independently.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -1044,6 +1065,15 @@ boundaries.
   causal history and pending notice; later activation restores none. Concurrent
   settings/receipt and reduction races serialize. Audit, head, root default,
   revision and receipt commit together or leave no provisional result.
+
+- **BUC-EMP-35 — Suspend and recover without losing field history.**
+  A fresh operator suspends an ACTIVE organization with reason and CAS. Current
+  company writes stop; authorized reading and access reduction continue. A
+  concurrent pre-existing completion or pre-suspension fact is classified for
+  review using actual server time; malformed, foreign and late facts are refused.
+  Resolve the same cause, leaving held facts in review. Concurrent replay/CAS,
+  revoked/stale operator proof and late audit/storage failures expose no partial
+  state or acknowledgement. The same controls retain causes on ARCHIVED roots.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production
