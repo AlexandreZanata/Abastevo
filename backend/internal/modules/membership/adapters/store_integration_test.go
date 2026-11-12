@@ -45,6 +45,7 @@ func scope(t *testing.T, n int) kernel.OrgScope {
 func fixture(t *testing.T) (*orgtest.Fixture, *adapters.Store, kernel.OrgScope, kernel.OrgScope) {
 	t.Helper()
 	f := orgtest.New(t)
+	f.GrantTeamReductions(t)
 	role := pgx.Identifier{f.RuntimeRole}.Sanitize()
 	_, err := f.Admin.Exec(t.Context(), "GRANT USAGE ON SCHEMA public TO "+role+"; GRANT SELECT,INSERT,UPDATE ON organizations,org_employee_identities,org_memberships TO "+role+"; GRANT SELECT,UPDATE ON accounts,org_role_assignments TO "+role+"; GRANT SELECT ON payment_billing_exits TO "+role)
 	if err != nil {

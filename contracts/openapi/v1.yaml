@@ -10407,6 +10407,674 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /v1/orgs/{org_id}/teams/create:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTeamCreate
+      summary: Create team structure
+      description: Create a team with optional scoped unit and a unique active name. Duplicate names return VALIDATION_FAILED
+        with name/DUPLICATE. Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage
+        are mandatory. Fresh configuration writes require organizations capability and existing org.structure
+        admission. Responses are no-store without ETag. No role, account, permission or delegation is inferred
+        from team membership.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Create a team with optional scoped unit and a unique active name. Duplicate names return
+          VALIDATION_FAILED with name/DUPLICATE.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTeamCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001007
+              name: Synthetic Crew
+              unit_id: ''
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '201':
+          description: Private original committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTeamAcknowledgement'
+              example:
+                team_id: 7b0e2a54-0000-4000-8000-000000000b01
+                state: ACTIVE
+                revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+  /v1/orgs/{org_id}/teams/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTeamList
+      summary: List team structure
+      description: List authorized team metadata with a bounded opaque cursor and optional state filter. Dedicated
+        company PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage are mandatory. Fresh
+        configuration writes require organizations capability and existing org.structure admission. Responses
+        are no-store without ETag. No role, account, permission or delegation is inferred from team membership.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: List authorized team metadata with a bounded opaque cursor and optional state filter.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTeamListRequest'
+            example:
+              limit: 2
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized team view or page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTeamPage'
+              example:
+                items:
+                - id: 7b0e2a54-0000-4000-8000-000000000b01
+                  name: Synthetic Crew
+                  display_name: Synthetic Crew
+                  unit_id: ''
+                  state: ACTIVE
+                  revision: 1
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+  /v1/orgs/{org_id}/teams/{team_id}/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTeamRead
+      summary: Read team structure
+      description: Read current team metadata without changing retained records. Dedicated company PANEL cookie,
+        exact HTTPS Origin/Host, CSRF and current org.structure.manage are mandatory. Fresh configuration writes
+        require organizations capability and existing org.structure admission. Responses are no-store without
+        ETag. No role, account, permission or delegation is inferred from team membership.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: team_id
+        in: path
+        required: true
+        description: Scoped private identity; foreign and unknown references have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Read current team metadata without changing retained records.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTeamReadRequest'
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized team view or page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTeamView'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000000b01
+                name: Synthetic Crew
+                display_name: Synthetic Crew
+                unit_id: ''
+                state: ACTIVE
+                revision: 1
+                data_mode: SYNTHETIC
+  /v1/orgs/{org_id}/teams/{team_id}/change:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTeamChange
+      summary: Change team structure
+      description: Correct team name or unit at the expected revision; no past record is rewritten. Dedicated
+        company PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage are mandatory. Fresh
+        configuration writes require organizations capability and existing org.structure admission. Responses
+        are no-store without ETag. No role, account, permission or delegation is inferred from team membership.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: team_id
+        in: path
+        required: true
+        description: Scoped private identity; foreign and unknown references have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Correct team name or unit at the expected revision; no past record is rewritten.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTeamChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001007
+              name: Synthetic Crew
+              unit_id: ''
+              revision: 1
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private original committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTeamAcknowledgement'
+              example:
+                team_id: 7b0e2a54-0000-4000-8000-000000000b01
+                state: ACTIVE
+                revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+  /v1/orgs/{org_id}/teams/{team_id}/archive:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTeamArchive
+      summary: Archive team structure
+      description: Archive only with no current active employees/assets, open budgets or in-progress operations.
+        STRUCTURE_IN_USE contains category counts only; unknown source consumers fail closed. Dedicated company
+        PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage are mandatory. Fresh configuration
+        writes require organizations capability and existing org.structure admission. Responses are no-store
+        without ETag. No role, account, permission or delegation is inferred from team membership.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: team_id
+        in: path
+        required: true
+        description: Scoped private identity; foreign and unknown references have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Archive only with no current active employees/assets, open budgets or in-progress operations.
+          STRUCTURE_IN_USE contains category counts only; unknown source consumers fail closed.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTeamTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001007
+              revision: 1
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private original committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTeamAcknowledgement'
+              example:
+                team_id: 7b0e2a54-0000-4000-8000-000000000b01
+                state: ARCHIVED
+                revision: 2
+                data_mode: SYNTHETIC
+                replayed: false
+  /v1/orgs/{org_id}/teams/{team_id}/restore:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTeamRestore
+      summary: Restore team structure
+      description: Restore when the active name is free and the retained optional unit is active. Correct archived
+        metadata first to resolve collisions. Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and
+        current org.structure.manage are mandatory. Fresh configuration writes require organizations capability
+        and existing org.structure admission. Responses are no-store without ETag. No role, account, permission
+        or delegation is inferred from team membership.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: team_id
+        in: path
+        required: true
+        description: Scoped private identity; foreign and unknown references have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Restore when the active name is free and the retained optional unit is active. Correct archived
+          metadata first to resolve collisions.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTeamTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001007
+              revision: 1
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private original committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTeamAcknowledgement'
+              example:
+                team_id: 7b0e2a54-0000-4000-8000-000000000b01
+                state: ACTIVE
+                revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+  /v1/orgs/{org_id}/teams/{team_id}/members/{employee_id}/add:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTeamMemberAdd
+      summary: MemberAdd team structure
+      description: Add an ACTIVE same-organization employee, with or without login. At most one current period
+        exists; archived teams or linked units refuse new assignments. Dedicated company PANEL cookie, exact
+        HTTPS Origin/Host, CSRF and current org.structure.manage are mandatory. Fresh configuration writes require
+        organizations capability and existing org.structure admission. Responses are no-store without ETag. No
+        role, account, permission or delegation is inferred from team membership.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: team_id
+        in: path
+        required: true
+        description: Scoped private identity; foreign and unknown references have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      - name: employee_id
+        in: path
+        required: true
+        description: Scoped private identity; foreign and unknown references have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Add an ACTIVE same-organization employee, with or without login. At most one current period
+          exists; archived teams or linked units refuse new assignments.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTeamMemberWriteRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001007
+              revision: 1
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private original committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTeamAcknowledgement'
+              example:
+                team_id: 7b0e2a54-0000-4000-8000-000000000b01
+                state: ACTIVE
+                revision: 2
+                data_mode: SYNTHETIC
+                replayed: false
+                link_id: 7b0e2a54-0000-4000-8000-000000000c01
+  /v1/orgs/{org_id}/teams/{team_id}/members/{employee_id}/remove:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTeamMemberRemove
+      summary: MemberRemove team structure
+      description: End the current employee link while retaining its identity and history. A later explicit addition
+        creates a new period. Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage
+        are mandatory. Fresh configuration writes require organizations capability and existing org.structure
+        admission. Responses are no-store without ETag. No role, account, permission or delegation is inferred
+        from team membership.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: team_id
+        in: path
+        required: true
+        description: Scoped private identity; foreign and unknown references have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      - name: employee_id
+        in: path
+        required: true
+        description: Scoped private identity; foreign and unknown references have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: End the current employee link while retaining its identity and history. A later explicit
+          addition creates a new period.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTeamMemberWriteRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001007
+              revision: 1
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private original committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTeamAcknowledgement'
+              example:
+                team_id: 7b0e2a54-0000-4000-8000-000000000b01
+                state: ACTIVE
+                revision: 2
+                data_mode: SYNTHETIC
+                replayed: false
+                link_id: 7b0e2a54-0000-4000-8000-000000000c01
+  /v1/orgs/{org_id}/teams/{team_id}/members/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTeamMemberList
+      summary: MemberList team structure
+      description: List current and ended link periods. Employee inactivation/termination and membership suspension/end
+        close current links atomically and advance team revision; later reactivation does not restore them. Dedicated
+        company PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.structure.manage are mandatory. Fresh
+        configuration writes require organizations capability and existing org.structure admission. Responses
+        are no-store without ETag. No role, account, permission or delegation is inferred from team membership.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: team_id
+        in: path
+        required: true
+        description: Scoped private identity; foreign and unknown references have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: List current and ended link periods. Employee inactivation/termination and membership suspension/end
+          close current links atomically and advance team revision; later reactivation does not restore them.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTeamMemberListRequest'
+            example:
+              limit: 2
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized team view or page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTeamLinkPage'
+              example:
+                items:
+                - id: 7b0e2a54-0000-4000-8000-000000000c01
+                  team_id: 7b0e2a54-0000-4000-8000-000000000b01
+                  employee_id: 7b0e2a54-0000-4000-8000-000000000501
+                  state: ACTIVE
+                  started_at: '2026-11-12T12:00:00Z'
+                  ended_at: ''
+                  end_reason: ''
+                next_cursor: ''
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -18628,6 +19296,420 @@ components:
       properties:
         topic:
           $ref: '#/components/schemas/ForumTopicReceipt'
+    EnterpriseTeamCreateRequest:
+      type: object
+      description: Create an optional structural team; no access or role is granted.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Private trimmed team name; case-insensitive uniqueness among ACTIVE teams in this organization.
+          example: Synthetic Crew
+        unit_id:
+          description: Optional scoped unit. New selection and restoration require an active unit; empty clears
+            the association. A retained archived unit prevents new links.
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          example: ''
+      required:
+      - schema_version
+      - operation_id
+      - name
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001007
+        name: Synthetic Crew
+        unit_id: ''
+    EnterpriseTeamChangeRequest:
+      type: object
+      description: Correct metadata, including while archived, without rewriting past records. Newly selected units
+        must be active and scoped.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: Expected current team revision. Link changes and automatic reductions advance it; exact
+            retries retain the original acknowledgement.
+          example: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Private trimmed team name; case-insensitive uniqueness among ACTIVE teams in this organization.
+          example: Synthetic Crew
+        unit_id:
+          description: Optional scoped unit. New selection and restoration require an active unit; empty clears
+            the association. A retained archived unit prevents new links.
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          example: ''
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - name
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001007
+        name: Synthetic Crew
+        unit_id: ''
+        revision: 1
+    EnterpriseTeamTransitionRequest:
+      type: object
+      description: Archive only with zero current use, or restore when active name and unit are available. Retain
+        identity and history.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: Expected current team revision. Link changes and automatic reductions advance it; exact
+            retries retain the original acknowledgement.
+          example: 1
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001007
+        revision: 1
+    EnterpriseTeamMemberWriteRequest:
+      type: object
+      description: Add a new scoped employee-link period or end the current period; employee ID is in the path.
+        No role or login is provisioned.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: Expected current team revision. Link changes and automatic reductions advance it; exact
+            retries retain the original acknowledgement.
+          example: 1
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001007
+        revision: 1
+    EnterpriseTeamReadRequest:
+      type: object
+      description: Read a team by scoped path identity; no credentials or authority in the body.
+      additionalProperties: false
+      properties: {}
+      required: []
+      example: {}
+    EnterpriseTeamListRequest:
+      type: object
+      description: List current structural metadata, optionally including archived teams.
+      additionalProperties: false
+      properties:
+        cursor:
+          type: string
+          maxLength: 4096
+          description: Opaque scope, actor, membership, route and filter-bound UUID cursor.
+          example: ''
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+          description: Maximum items on this page.
+          example: 2
+        state:
+          type: string
+          enum:
+          - ''
+          - ACTIVE
+          - ARCHIVED
+          description: Optional exact structure state; empty includes history.
+          example: ''
+      required: []
+      example:
+        limit: 2
+    EnterpriseTeamMemberListRequest:
+      type: object
+      description: List retained employee-link periods. Cursor filters also bind this exact team identity.
+      additionalProperties: false
+      properties:
+        cursor:
+          type: string
+          maxLength: 4096
+          description: Opaque scope, actor, membership, route and filter-bound UUID cursor.
+          example: ''
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+          description: Maximum items on this page.
+          example: 2
+        state:
+          type: string
+          enum:
+          - ''
+          - ACTIVE
+          - ENDED
+          description: Optional exact link state; empty includes ended periods.
+          example: ''
+      required: []
+      example:
+        limit: 2
+    EnterpriseTeamAcknowledgement:
+      type: object
+      description: Original durable acknowledgement, retained after later metadata or access reductions. Link ID
+        is present only for add/remove commands.
+      additionalProperties: false
+      properties:
+        team_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        link_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+          description: Original committed team state.
+        revision:
+          type: integer
+          minimum: 1
+          description: Original committed team revision.
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+          description: Source-pinned synthetic configuration; real-data gates remain separate.
+        replayed:
+          type: boolean
+          description: Exact committed operation replay.
+      required:
+      - team_id
+      - state
+      - revision
+      - data_mode
+      - replayed
+      example:
+        team_id: 7b0e2a54-0000-4000-8000-000000000b01
+        state: ACTIVE
+        revision: 1
+        data_mode: SYNTHETIC
+        replayed: false
+    EnterpriseTeamView:
+      type: object
+      description: Private current structural metadata; team membership alone grants no authority.
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Private trimmed team name; case-insensitive uniqueness among ACTIVE teams in this organization.
+          example: Synthetic Crew
+        display_name:
+          type: string
+          description: Current display name, with archived label when applicable.
+          example: Synthetic Crew
+        unit_id:
+          description: Optional scoped unit. New selection and restoration require an active unit; empty clears
+            the association. A retained archived unit prevents new links.
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          example: ''
+        state:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+          description: Original committed team state.
+        revision:
+          type: integer
+          minimum: 1
+          description: Original committed team revision.
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+          description: Source-pinned synthetic configuration; real-data gates remain separate.
+      required:
+      - id
+      - name
+      - display_name
+      - unit_id
+      - state
+      - revision
+      - data_mode
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000000b01
+        name: Synthetic Crew
+        display_name: Synthetic Crew
+        unit_id: ''
+        state: ACTIVE
+        revision: 1
+        data_mode: SYNTHETIC
+    EnterpriseTeamPage:
+      type: object
+      description: Bounded UUID keyset page of authorized teams.
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseTeamView'
+          description: Current scoped teams.
+        next_cursor:
+          type: string
+          description: Opaque continuation; empty at end.
+          example: ''
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - id: 7b0e2a54-0000-4000-8000-000000000b01
+          name: Synthetic Crew
+          display_name: Synthetic Crew
+          unit_id: ''
+          state: ACTIVE
+          revision: 1
+          data_mode: SYNTHETIC
+        next_cursor: ''
+    EnterpriseTeamLinkView:
+      type: object
+      description: Retained employee/team link, independent of account membership. Reactivation never restores
+        an ended period.
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        team_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          enum:
+          - ACTIVE
+          - ENDED
+          description: Current state of this retained link period.
+        started_at:
+          type: string
+          format: date-time
+          description: Server-selected period start instant.
+        ended_at:
+          description: Server-selected end instant, or empty while current.
+          anyOf:
+          - type: string
+            format: date-time
+          - type: string
+            enum:
+            - ''
+        end_reason:
+          type: string
+          enum:
+          - ''
+          - REMOVED
+          - EMPLOYEE_INACTIVE
+          - EMPLOYEE_TERMINATED
+          - MEMBERSHIP_SUSPENDED
+          - MEMBERSHIP_ENDED
+          description: Static source cause; no actor name, contact or account credential.
+      required:
+      - id
+      - team_id
+      - employee_id
+      - state
+      - started_at
+      - ended_at
+      - end_reason
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000000c01
+        team_id: 7b0e2a54-0000-4000-8000-000000000b01
+        employee_id: 7b0e2a54-0000-4000-8000-000000000501
+        state: ACTIVE
+        started_at: '2026-11-12T12:00:00Z'
+        ended_at: ''
+        end_reason: ''
+    EnterpriseTeamLinkPage:
+      type: object
+      description: Bounded scoped link history, without personal descriptive fields.
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseTeamLinkView'
+          description: Employee reference periods.
+        next_cursor:
+          type: string
+          description: Opaque team-bound continuation; empty at end.
+          example: ''
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - id: 7b0e2a54-0000-4000-8000-000000000c01
+          team_id: 7b0e2a54-0000-4000-8000-000000000b01
+          employee_id: 7b0e2a54-0000-4000-8000-000000000501
+          state: ACTIVE
+          started_at: '2026-11-12T12:00:00Z'
+          ended_at: ''
+          end_reason: ''
+        next_cursor: ''
   responses:
     EnterprisePrivateError:
       description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.

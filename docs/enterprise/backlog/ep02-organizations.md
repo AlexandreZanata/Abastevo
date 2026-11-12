@@ -117,7 +117,7 @@ integration of the current ADR-019 construction batch. See the
 [Permanent code identity, private HTTP and concurrency/upgrade evidence](../evidence/f1-org006-cost-centres.md).
 
 ### EMP-ORG-007 — Teams
-- **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Manage teams as an organizational structure with explicit authorization scope.
 - **Rules and use cases:** BR-ORG-007, BR-ORG-008, BR-ORG-009, BR-ORG-011, BR-ORG-012, UC-ORG-03
 - **Depends on:** EMP-ORG-003, EMP-IDN-002
@@ -131,6 +131,8 @@ integration of the current ADR-019 construction batch. See the
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive changes when persistence is affected · rollback: preserve the existing state, remove only the new entry point and follow the scoped recovery evidence.
 - **Risks and assumptions:** Keep team changes separate from role assignment and delegation.
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
+
+[Local team, period history, reduction and upgrade evidence](../evidence/f1-org007-teams.md).
 
 ### EMP-ORG-008 — Organization settings and policy holder: time zone, units, approval defaults
 - **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type API · size S · state TODO

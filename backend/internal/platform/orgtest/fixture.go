@@ -187,3 +187,19 @@ func randomHex(t *testing.T, size int) string {
 	}
 	return hex.EncodeToString(data)
 }
+
+// GrantTeamReductions provisions only this disposable runtime role's current
+// employee/membership reduction projection. Previous-chain rehearsals keep
+// their original grants when the owning migration has not been installed.
+func (f *Fixture) GrantTeamReductions(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_team_links') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,UPDATE ON org_teams,org_team_links TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

@@ -53,6 +53,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.LegalAuditDefinitions()...)
 	definitions = append(definitions, orgpg.UnitAuditDefinitions()...)
 	definitions = append(definitions, orgpg.CostCentreAuditDefinitions()...)
+	definitions = append(definitions, orgpg.TeamAuditDefinitions()...)
 	definitions = append(definitions, member.EmployeeAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
@@ -100,6 +101,11 @@ func Register(router chi.Router, o Options) error {
 	if err := orgweb.RegisterCostCentres(router, org.CostCentreService{Enabled: true, Repository: centres, NewID: jobs.NewUUIDv4}, cookies, gateway, centreAuthorization, roots, centres); err != nil {
 		return err
 	}
+	teams := &orgpg.TeamStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
+	if err := orgweb.RegisterTeams(router, org.TeamService{Enabled: true, Repository: teams, NewID: jobs.NewUUIDv4}, cookies, gateway, centreAuthorization, roots, teams); err != nil {
+		return err
+	}
+
 	employees := &member.EmployeeStore{Pool: o.Pool, Authority: &orgpg.EmployeeAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}, Audit: auditStore}
 	employeeAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: memberweb.EmployeeRecords{}, Now: time.Now}
 	if err := memberweb.RegisterEmployees(router, memberapp.EmployeeService{Enabled: true, Repository: employees, NewID: jobs.NewUUIDv4}, cookies, gateway, employeeAuthorization, roots, employees); err != nil {

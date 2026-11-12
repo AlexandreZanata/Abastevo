@@ -1,4 +1,23 @@
 # Current execution state
+- Enterprise EMP-ORG-007, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above IDN-002 09639f41 in the owned enterprise worktree, targeting PR202.
+  [Team evidence](../enterprise/evidence/f1-org007-teams.md) records nine guarded
+  company-cookie routes, retained employee-link periods and actual distinct
+  home/team unit usage. B-BR-EMP-65/66, BUC-EMP-33 and EDR-042 precede behavior.
+  Employee/membership reductions and ordinary two-org account erasure close
+  current periods without restoring them on reactivation or inferring roles.
+  PostGIS/race suites pass: 12-way name/link/replay/CAS, team/unit archive
+  admission, current proof/flag/DRIVER/privacy gates, rollback/recovery and
+  populated ordinary-owner upgrade. Safety reduction rollback/recovery also
+  passes on a SECURITY-suspended root. Full affected suites, OpenAPI and actual
+  production-router, scoped static/build/sqlc, plan/format/links/secret checks
+  pass. Composed org domain coverage 90.92%; application 76.18%, adapters 76.78%,
+  HTTP 78.43%. Next: ORG-008 versioned settings (dependencies locally complete).
+  Tested backend tree e6b4f6089981372089ed96299ed734d26cd07082;
+  contract blob 5400c1262323e26084257a1e8e2f4d1466751a07.
+  F1/M1, phase publication/final CI and actual provider/runtime/native/vault/
+  staging/legal/Kotlin gates remain open.
+
 - Enterprise EMP-IDN-002, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
   above ORG-006 067a934d in the owned enterprise worktree, targeting PR202.
   [Employee register evidence](../enterprise/evidence/f1-idn002-employee-register.md)

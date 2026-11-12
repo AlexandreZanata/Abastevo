@@ -695,6 +695,34 @@ boundaries.
   audit/receipt and increments profile revision; restoration never recreates
   those links. Historical command acknowledgements remain unchanged.
 
+- **B-BR-EMP-65 — Keep teams structural and scoped.**
+  A team has a stable scoped identity, bounded trimmed private name, optional
+  same-organization unit, ACTIVE/ARCHIVED state and revision. Only ACTIVE names
+  are unique, trimmed and case-insensitive. Metadata correction while archived
+  may resolve a restoration collision; no history is deleted or rewritten.
+  A newly selected unit and a restored team's retained unit must be active.
+  An empty active team may retain its historical reference when its unit is
+  archived, but receives no new employee links until the unit is changed,
+  cleared or restored. Team membership grants no account, role, permission,
+  delegation or membership access. All configuration uses current fresh
+  org.structure.manage, organizations capability and atomic audit/receipt.
+
+- **B-BR-EMP-66 — Retain team-link periods and consume access reductions.**
+  Adding an ACTIVE same-organization employee creates a new immutable-identity
+  link period; at most one current link exists per employee/team. Pending
+  descriptive profiles are explicit, never invented; no login is required.
+  Removing ends the current period. Inactivation/termination and membership
+  suspension/end close current links atomically with source-cause metadata;
+  later reactivation never restores them. Changing current team links increments
+  the team revision, so stale commands and altered retries cannot overwrite
+  reductions. Current active linked employees block team archive. Unit usage
+  counts the distinct union of active home-unit employees and active employees
+  in current team links; an empty team or historical link does not count.
+  Root locks serialize assignment, structure changes, reductions and archive.
+  Unknown source consumers fail closed; counts and errors reveal no names or
+  contacts. Account erasure consumes the same reduction through its existing
+  protected definer, preserving history and isolation.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -960,6 +988,18 @@ boundaries.
   archive/admission serialize; failed audit/deferred commit leaves no identity,
   profile or acknowledgement. Verify that unit restoration does not restore a
   home link cleared by its earlier audited archive.
+
+- **BUC-EMP-33 — Maintain a team without granting access.**
+  Create a synthetic team, assign an existing employee without login, remove
+  and explicitly add a new period, then archive/restore after current use ends.
+  Refuse foreign employee/unit, duplicate ACTIVE name, stale revision, archived
+  team/unit admission and racing duplicate links. A real member gains no role
+  or new permission by joining. Employee/access reductions close current links
+  once, retain their source facts, and invalidate stale team commands; account
+  erasure behaves the same with an ordinary protected definer. Actual current
+  usage and assignment/archive races protect teams and units without double
+  counting. Audit, link, revision and acknowledgement commit or roll back
+  together; exact retry returns its original result after later changes.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production
