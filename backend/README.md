@@ -411,9 +411,9 @@ stock.reconcile (the literal two-segment compatibility key). Manage does not
 imply read and paid tiers imply no role. A new grant needs an explicit
 canonical matrix and catalog version change.
 
-This package contains no private data, assignment persistence, current actor
-proof, request authorization or SQL policy activation. AUTH-002 supplies separate scoped assignment storage and membership/owner
-SQL policy; AUTH-003 still owns request-time authority.
+The catalog itself contains no private data or current actor proof. AUTH-002
+supplies separate scoped assignment storage and membership/owner SQL policy;
+AUTH-003 implements the current request authority and bound HTTP entry below.
 
 ```sh
 go test -race ./internal/modules/orgaccess/domain ./internal/modules/membership/domain ./internal/modules/staff/domain ./internal/modules/stationprofile/domain ./internal/modules/kernel -count=1
@@ -458,6 +458,31 @@ go vet ./internal/modules/orgaccess/... ./internal/modules/membership/... ./inte
 sqlc vet
 sqlc generate
 ```
+
+### Current request authorization (EMP-AUTH-003)
+
+Use orgaccess/adapters/http.Register with a source-owned application Policy,
+scoped resource resolver and mandatory capability/record gates. It binds the
+current authorization service to orgapi's strict normal proof entry; use
+AccountSessions.Validate/Confirm for Android and the existing company cookie
+Peek/Confirm pair for web. Fresh Android routes require explicit confirmation.
+Verified account, contributor and device-key attribution remains explicit.
+
+The one-statement LoadAuthority snapshot uses ordinary forced RLS and never
+caches roles or accepts a client-selected context as proof. Prepare validates
+current membership/org/role/resource scope; completion confirms proof/freshness,
+then capabilities/limits and record policy. A finished request or a second
+completion cannot reuse a decision. Handler commands still own fresh record
+validation, transaction/audit composition and use of the decision's scoped
+target. No production business route or runtime grant is installed here.
+
+```sh
+go test -race ./internal/modules/orgaccess/... ./internal/platform/orgapi ./internal/platform/apicontract
+# Explicit disposable PostGIS only:
+go test -race -tags=integration ./internal/platform/orgapi ./internal/modules/orgaccess/... ./internal/modules/membership/... ./internal/modules/companysession/... -count=1
+```
+
+See [current authority and real proof acceptance](../docs/enterprise/evidence/f1-auth003-current-authorization.md).
 
 ### Organization operation time (EMP-PLAT-015)
 

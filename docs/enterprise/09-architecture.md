@@ -18,7 +18,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 |---|---|---|---|
 | `organization` (ORG-001/002 LOCAL_DONE) | ORG | Scoped aggregate/lifecycle and forced-RLS root persistence; onboarding, legal entities, units, teams, groups and settings commands remain planned | `kernel`, explicit application ports, sqlc/pgx; no runtime route or authority provider |
 | `membership` (IDN-001/003 LOCAL_DONE) | IDN | Scoped identity/lifecycle values, forced-RLS employee identity and membership periods, account-erasure fencing; employee register, invitations and managed activation remain planned | `kernel`, explicit application/sqlc/pgx ports, existing account deletion and billing-exit transactions; actual role policy remains AUTH-002 |
-| `orgaccess` (AUTH-001 LOCAL_DONE, catalog only) | AUTH | Code-frozen role/permission descriptors; role assignments and current authorization service remain planned | Standard library for catalog; future scoped membership/organization/billing ports for actual authority |
+| `orgaccess` (AUTH-001/002/003 LOCAL_DONE) | AUTH | Code-frozen descriptors; forced-RLS ORG/SELF periods, current candidates and locked membership/owner policy; current request authorization and proof-bound context; production route composition remains owning-task work | `kernel`, owned sqlc/pgx ports, scoped membership/organization/account/billing references |
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
 | `orgvalue` (LOCAL_DONE, domain only) | PLAT | Exact reconciliation and ordered allocation | Existing pure metrics/kernel bounds; shared Go/Kotlin vectors; no private repository or authority |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
@@ -266,8 +266,11 @@ representation aliases are metadata only, not organization role keys.
 
 Definitions are validated at construction, lists/rules are copied and sorted,
 and zero/unknown/duplicate inputs fail closed. No custom/runtime registration,
-SQL, route, assignment or current provider is added. The membership database
-policy remains UNAVAILABLE until AUTH-002. This static platform source holds
+SQL, route, assignment or current provider is added by the catalog itself.
+AUTH-002 adds separate forced-RLS role periods and actual membership/owner
+SQL policy, including continuous future owner coverage and account-exit
+reservations. [Assignment evidence](evidence/f1-auth002-role-assignment-persistence.md).
+This static platform source holds
 no private organization selection; actual scoped authorization stays in
 the owning request pipeline. [Catalog evidence](evidence/f1-auth001-role-permission-catalog.md).
 
@@ -455,6 +458,23 @@ tzdb and composed feature acceptance remain owed.
 [Local evidence](evidence/f1-plat015-operation-time.md).
 
 ## 4. API conventions
+
+EMP-AUTH-003 implements the shared current authorization pipeline through
+orgaccess/application and orgaccess/adapters/http.Register. A single scoped
+SQL statement resolves live account/membership, organization and periods.
+Preparation checks current role/resource scope; normal gateway confirmation
+then rechecks cookie or Android freshness, and completion applies independent
+capability/limit and record gates before admission/dispatch. Missing providers
+deny. The source-owned effect preserves existing setup/suspension/archive
+rules. No catalog inheritance or new grant is introduced.
+
+Request leases bind decisions to the resolved account, organization,
+permission and target; retained contexts cannot extend authority. Verified
+contributor/device-key attribution remains explicit. Resource facts come from
+the owning scoped server repository. Business modules still own their record
+rules, transactions and audit; AUTH-004 supplies the concrete pilot capability
+adapter. The first business route must use this binding and prove the composed
+production-router gate. [Acceptance](evidence/f1-auth003-current-authorization.md).
 
 - **Paths:** `/v1/orgs/{org_id}/<module>/…`. Routes that are not inside an organization (create an organization, list my memberships, accept an invitation, activate managed access) live under `/v1/org-access/…`. Station portal routes are organization routes scoped by station: `/v1/orgs/{org_id}/stations/{station_id}/…`.
 - **Methods:** following the existing convention, commands and private reads are `POST` with a JSON body, because the app's session travels in the body. Responses are `no-store`.

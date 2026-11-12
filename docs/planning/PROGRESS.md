@@ -1,4 +1,21 @@
 # Current execution state
+- Enterprise EMP-AUTH-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above local AUTH-002 10edd3c4, on owned codex/enterprise-f0-f1 targeting
+  PR202 (dev → main). [Current authorization evidence](../enterprise/evidence/f1-auth003-current-authorization.md)
+  records a one-statement current authority snapshot, request-bound/single-use
+  decision and normal proof → current role/target → freshness → capability/
+  record gates. Verified device/contributor attribution stays explicit.
+  Real PostGIS/ECDSA/account-family/company-cookie tests pass: next-request
+  role/offboarding denial, ORG/SELF, identical foreign/unknown 404, missing
+  capability, record refusal, stale freshness and retained-context rejection.
+  Twelve competing completions run the independent gates once. Existing
+  membership/company/gateway regressions, scoped static/build/sqlc, OpenAPI,
+  plan/links/format/secret checks pass. Domain coverage 92.96%; integration
+  aggregate 88.2%. No catalog grants, production routes or runtime grants added.
+  Next: AUTH-004 concrete disabled-by-default pilot entitlement adapter.
+  F1/M1, first composed business-router gate, actual IDN/device integration,
+  native/legal/staging/Kotlin coverage and final current-head/base CI remain open.
+
 - Enterprise EMP-AUTH-002, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above published 1c7fd66b on the isolated enterprise execution branch,
   targeting PR202 (dev → main). [Assignment evidence](../enterprise/evidence/f1-auth002-role-assignment-persistence.md)

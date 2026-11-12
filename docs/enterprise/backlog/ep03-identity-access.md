@@ -357,7 +357,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Local scoped assignment and owner-policy evidence](../evidence/f1-auth002-role-assignment-persistence.md).
 
 ### EMP-AUTH-003 — Authorization service and organization-context middleware
-- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Resolve each organization request against current server authority.
 - **Rules and use cases:** BR-AUTH-001, BR-AUTH-002, BR-AUTH-013, BR-AUTH-014, BR-TEN-003, BR-TEN-006, UC-AUTH-05
 - **Depends on:** EMP-AUTH-002, EMP-PLAT-004
@@ -371,6 +371,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-AUTHZ, V-SQL, V-ISO, V-PRIV · migration: reuse scoped storage · rollback: keep protected routes closed when the guard is unavailable
 - **Risks and assumptions:** Client context affects display only. Organization scope is resolved again for each authorized request.
 - **Done when:** The allowed, denied and post-revocation matrix passes through real middleware and storage.
+
+[Current authorization and real-proof acceptance](../evidence/f1-auth003-current-authorization.md).
 
 ### EMP-AUTH-004 — Entitlement gate port with a pilot adapter
 - **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type DOM · size S · state TODO

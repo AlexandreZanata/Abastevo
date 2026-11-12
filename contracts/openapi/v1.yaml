@@ -8396,7 +8396,7 @@ components:
         operation_id: {$ref: '#/components/schemas/EnterpriseUUID'}
         revision: {type: integer, minimum: 1}
     EnterpriseError:
-      description: Registered organization failure with safe text and bounded field codes.
+      description: Registered organization failure with safe text and bounded field codes. A permission denial can identify only the registered missing key in details (field permission, code equal to the key); it contains no record metadata. Incomplete setup refuses operational commands with ORG_SETUP_INCOMPLETE (409).
       example:
         error: {code: NOT_FOUND, message: Organization request unavailable or refused, trace_id: req-org-synthetic, details: []}
       allOf:
@@ -8409,7 +8409,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, RATE_LIMITED, UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false

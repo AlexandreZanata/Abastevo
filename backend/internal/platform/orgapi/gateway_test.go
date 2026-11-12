@@ -51,6 +51,7 @@ func gatewayFixture(t *testing.T) (orgapi.Gateway, *state) {
 	t.Helper()
 	state := &state{}
 	return orgapi.Gateway{
+		SessionConfirm:    func(context.Context, string, string, bool) (string, error) { return accountID, nil },
 		WriteAdmission:    &admissionStub{},
 		WebSessionConfirm: func(*http.Request, bool) (string, error) { return accountID, nil },
 		Enabled:           true,

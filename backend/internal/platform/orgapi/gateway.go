@@ -90,14 +90,21 @@ type Gateway struct {
 	Origin       string
 	CursorSecret []byte
 	Sessions     func(context.Context, string, string) (string, error)
-	SignedOwner  func(*http.Request, string) (string, string, error)
-	WebSession   func(*http.Request) (string, error)
+	// SessionConfirm rechecks Android proof/freshness after current scope and
+	// permission. Fresh Android routes cannot register without it.
+	SessionConfirm func(context.Context, string, string, bool) (string, error)
+	SignedOwner    func(*http.Request, string) (string, string, error)
+	WebSession     func(*http.Request) (string, error)
 	// WebSession peeks without renewing idle time. Confirm rechecks credentials
 	// and declared freshness after current organization authority succeeds.
 	WebSessionConfirm func(*http.Request, bool) (string, error)
 	Resolve           func(context.Context, Actor, kernel.OrgScope, Rule) (Membership, error)
-	Now               func() time.Time
-	WriteAdmission    WriteAdmission
+	// ConfirmAuthority completes independent capability/record gates after
+	// proof confirmation, before admission or handler dispatch. AUTH binds it
+	// to the current request's prepared authority.
+	ConfirmAuthority func(context.Context, Principal, Rule) error
+	Now              func() time.Time
+	WriteAdmission   WriteAdmission
 }
 
 func validID(raw string) bool {
@@ -144,6 +151,9 @@ func Register[T Request](router chi.Router, path string, gateway Gateway, rule R
 	}
 	if gateway.WebSession != nil && gateway.WebSessionConfirm == nil {
 		return fmt.Errorf("orgapi: missing company session confirmation")
+	}
+	if normalized.Fresh && gateway.Sessions != nil && gateway.SessionConfirm == nil {
+		return fmt.Errorf("orgapi: missing Android session confirmation")
 	}
 	if normalized.Write && (gateway.WriteAdmission == nil || gateway.WriteAdmission.Validate(normalized) != nil) {
 		return fmt.Errorf("orgapi: explicit write admission policy required")
@@ -319,8 +329,25 @@ func (gateway Gateway) resolve(r *http.Request, session Session, rule Rule) (Pri
 		if account != actor.AccountID {
 			return Principal{}, Unauthenticated
 		}
+	} else if gateway.SessionConfirm != nil {
+		account, err := gateway.SessionConfirm(r.Context(), session.FamilyID, session.AccessToken, rule.Fresh)
+		if errors.Is(err, FreshAuthRequired) {
+			return Principal{}, FreshAuthRequired
+		}
+		if err != nil {
+			return Principal{}, authenticationError(err)
+		}
+		if account != actor.AccountID {
+			return Principal{}, Unauthenticated
+		}
 	}
-	return Principal{Actor: actor, Scope: scope, MembershipID: membership.ID}, nil
+	principal := Principal{Actor: actor, Scope: scope, MembershipID: membership.ID}
+	if gateway.ConfirmAuthority != nil {
+		if err := gateway.ConfirmAuthority(r.Context(), principal, rule); err != nil {
+			return Principal{}, err
+		}
+	}
+	return principal, nil
 }
 
 func authenticationError(err error) error {

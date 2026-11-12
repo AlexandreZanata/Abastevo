@@ -516,6 +516,28 @@ boundaries.
   Storage does not replace current actor permission, fresh authentication,
   entitlement, audit or record-policy checks in their owning commands.
 
+- **B-BR-EMP-49 — Resolve authority again for each private request.**
+  Verified account/device or company-cookie proof precedes path scope.
+  The server loads current organization, membership/account availability and
+  effective fixed-role periods without trusting selected client context or
+  cached decisions. No matching membership or a foreign resource reveals
+  data or existence. A member lacking a registered permission receives only
+  FORBIDDEN and its permission key. Unknown policy, missing provider or
+  malformed persisted authority fails closed. An ended/revoked assignment
+  or membership takes effect on the next request.
+
+- **B-BR-EMP-50 — Bind permission, freshness, capability and record checks.**
+  Source-declared route effects distinguish configuration, operational work,
+  reads, access reductions, plan regularization and restoration. Pending
+  setup refuses operational commands; suspension/archive preserve permitted
+  reads and explicitly allowed access-reducing actions; closure denies access.
+  ORG/SELF and every catalog restriction apply to server-resolved resource
+  facts. Fresh proof, capability/limit and record policy remain independent
+  gates, in that order after permission. OWNER bypasses none of them. A
+  resolved request context belongs to this request, account, organization,
+  permission and target; retaining or supplying an old context cannot extend
+  authority. Missing or failed gates never dispatch a business handler.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -710,6 +732,14 @@ boundaries.
   not-yet-started, ended and expired periods or unavailable memberships.
   Concurrent reductions leave continuous owner coverage; refusing the last
   owner rolls back the entire membership, account or assignment transaction.
+
+- **BUC-EMP-25 — Recheck a guarded private request after revocation.**
+  Authenticate normal proof, resolve the path organization and current role
+  scope, confirm declared freshness, then require capability and record
+  policy before dispatch. Repeat the request after ending the role or
+  membership: it is refused, including with an old cookie, cached client
+  context or retained server decision. A foreign record and an unknown one
+  produce the same scoped not-found response and no foreign content.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

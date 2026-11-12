@@ -21,6 +21,7 @@ const (
 	MembershipEnded     Code = "MEMBERSHIP_ENDED"
 	OrgSuspended        Code = "ORG_SUSPENDED"
 	OrgArchived         Code = "ORG_ARCHIVED"
+	OrgSetupIncomplete  Code = "ORG_SETUP_INCOMPLETE"
 	FreshAuthRequired   Code = "FRESH_AUTH_REQUIRED"
 	EntitlementRequired Code = "ENTITLEMENT_REQUIRED"
 	LimitReached        Code = "LIMIT_REACHED"
@@ -42,6 +43,21 @@ var statuses = map[Code]int{
 	FreshAuthRequired: 401, EntitlementRequired: 403, LimitReached: 403,
 	Conflict: 409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409,
 	ValidationFailed: 422, RateLimited: 429, Unavailable: 503,
+	OrgSetupIncomplete: 409,
+}
+
+type permissionFailure struct{ key string }
+
+func (e permissionFailure) Error() string { return string(Forbidden) }
+func (e permissionFailure) Unwrap() error { return Forbidden }
+
+// MissingPermission accepts a canonical source key, never request data. AUTH
+// supplies only the registered key carried by a bounded permission denial.
+func MissingPermission(key string) error {
+	if len(key) > 128 || !permissionPattern.MatchString(key) {
+		return Unavailable
+	}
+	return permissionFailure{key: key}
 }
 
 // Registered returns the bare registered code carried by err, without any
@@ -72,5 +88,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		w.Header().Set("Retry-After", strconv.FormatInt(int64(seconds), 10))
 	}
 	w.Header().Del("ETag")
-	httpapi.WriteError(w, r, statuses[code], string(code), "Organization request unavailable or refused", nil)
+	var details []httpapi.Detail
+	var denied permissionFailure
+	if code == Forbidden && errors.As(err, &denied) {
+		details = []httpapi.Detail{{Field: "permission", Code: denied.key}}
+	}
+	httpapi.WriteError(w, r, statuses[code], string(code), "Organization request unavailable or refused", details)
 }
