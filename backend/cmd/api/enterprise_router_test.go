@@ -46,10 +46,12 @@ func TestFullProductionRouterEnterpriseContractAndDefaultOff(t *testing.T) {
 						t.Fatal("unguarded production route accepted")
 					}
 				} else {
-					w := httptest.NewRecorder()
-					router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "https://company.example.invalid/v1/org-access/organizations/create", nil))
-					if w.Code != 404 {
-						t.Fatal("default production surface exposed", w.Code)
+					for _, path := range []string{"/v1/org-access/organizations/create", "/v1/orgs/7b0e2a54-0000-4000-8000-000000000301/units/create", "/v1/orgs/7b0e2a54-0000-4000-8000-000000000301/units/7b0e2a54-0000-4000-8000-000000000801/read"} {
+						w := httptest.NewRecorder()
+						router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "https://company.example.invalid"+path, nil))
+						if w.Code != 404 {
+							t.Fatal("default production surface exposed", w.Code)
+						}
 					}
 				}
 				return stopped

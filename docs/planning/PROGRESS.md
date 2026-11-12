@@ -1,4 +1,20 @@
 # Current execution state
+- Enterprise EMP-ORG-005, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above ORG-004 0d91c7f7 in the owned enterprise worktree, targeting PR202.
+  [Unit evidence](../enterprise/evidence/f1-org005-operating-units.md) records
+  six guarded company-cookie routes, atomic audited/CAS/replay commands,
+  prospective IANA/reporting snapshots and retained scoped establishment links.
+  Last-unit, actual source counts/unknown-source refusal, archive/admission,
+  twelve-way name/code/replay and revision races pass on real PostGIS/race.
+  Populated ordinary-owner migration/recovery, deferred rollback, valid-cookie
+  DRIVER denial, current proof/flag gates, private counts/cursors and full
+  production-router/default-off/OpenAPI regressions pass. Shared authority
+  keeps legal flows green. Scoped static/build/sqlc, plan/format/links/secret
+  checks pass. Composed organization domain coverage 95.01%; application
+  79.47%, adapters 77.37%, HTTP 79.35%. EDR-039 records recommended choices.
+  Next: ORG-006 cost centres. F1/M1, completed-phase publication/final CI and
+  actual provider/runtime/native/vault/staging/legal/Kotlin gates remain open.
+
 - Enterprise EMP-ORG-004, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
   above ORG-003 8a95c07f in the owned enterprise worktree, targeting PR202.
   [Declaration evidence](../enterprise/evidence/f1-org004-legal-declarations.md)

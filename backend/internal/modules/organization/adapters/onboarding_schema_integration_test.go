@@ -105,7 +105,7 @@ func TestOnboardingReceiptAndUnitIsolationAndTermsConstraints(t *testing.T) {
 		})
 		schemaCode(t, err, "23514")
 	}
-	if _, err := f.Admin.Exec(t.Context(), "GRANT ALL ON org_onboarding_commands,org_units TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+	if _, err := f.Admin.Exec(t.Context(), "GRANT ALL ON org_onboarding_commands,org_units TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()+"; GRANT TRUNCATE ON org_unit_commands TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
 	for _, statement := range []string{`UPDATE org_onboarding_commands SET result_revision=result_revision+1`, `DELETE FROM org_onboarding_commands`, `TRUNCATE org_units CASCADE`} {

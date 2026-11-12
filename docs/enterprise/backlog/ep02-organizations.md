@@ -81,7 +81,7 @@ integration of the current ADR-019 construction batch. See the
 [Declared legal parties, private HTTP and upgrade evidence](../evidence/f1-org004-legal-declarations.md).
 
 ### EMP-ORG-005 — Operating units
-- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type API · size S · state TODO
+- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type API · size S · state LOCAL_DONE
 - **Objective:** Manage operating units while preserving the active-unit and time-zone rules.
 - **Rules and use cases:** BR-ORG-006, BR-ORG-007, BR-ORG-008, BR-ORG-009, BR-ORG-010, BR-ORG-012, UC-ORG-03
 - **Depends on:** EMP-ORG-003, EMP-PLAT-015
@@ -95,6 +95,8 @@ integration of the current ADR-019 construction batch. See the
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive changes when persistence is affected · rollback: preserve the existing state, remove only the new entry point and follow the scoped recovery evidence.
 - **Risks and assumptions:** Archiving retains historical identity. Disable admission without deleting records if rollback is required.
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
+
+[Operating units, scoped HTTP and concurrency/upgrade evidence](../evidence/f1-org005-operating-units.md).
 
 ### EMP-ORG-006 — Cost centres
 - **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size S · state TODO

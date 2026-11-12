@@ -623,6 +623,30 @@ boundaries.
   Declarations remain synthetic/default-off until the independent
   legal/runtime/pilot gates are satisfied.
 
+- **B-BR-EMP-59 — Maintain scoped operating units.**
+  Current org.structure.manage and the organizations capability permit
+  online revisioned unit create, metadata change, archive and restore.
+  Persist an explicit IANA time zone, defaulted from the current organization
+  when omitted; later organization/unit zone changes never rewrite records
+  whose reporting zone/day was already captured. Names and codes are trimmed,
+  bounded private text, unique case-insensitively among active units only.
+  Archived units retain identity/history and may be renamed before restoration
+  to resolve a current uniqueness conflict. They accept no new operations.
+  Optional establishment references resolve inside the organization; a newly
+  selected link must name an existing declared COMPANY establishment. An
+  existing retained link is not rewritten when its declaration is withdrawn.
+
+- **B-BR-EMP-60 — Protect the last and currently used unit.**
+  Archive requires another active unit and no active assets/employees, open
+  budgets or operations in progress. Return LAST_UNIT or STRUCTURE_IN_USE
+  with bounded category counts only, never source records. Root serialization
+  covers archive, restore and assignment admission so competing changes cannot
+  evade the rule. Counts come from actual source-owned transactional guards;
+  an absent/unknown usage source fails closed. No historical reference alone
+  prevents archival. SQL and command receipts preserve unit identity, original
+  acknowledgements and scoped establishment links; matching retries return the
+  original result, changed intent and stale revisions mutate nothing.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -859,6 +883,15 @@ boundaries.
   references, malformed identifiers, changed retries or a failed transaction
   expose no foreign information and leave no partial rows. Withdraw an
   unreferenced declaration or retain a revoked referenced declaration.
+
+- **BUC-EMP-30 — Maintain a unit without changing its past.**
+  Create a synthetic unit, edit its metadata/time zone and link a scoped
+  establishment. Capture reporting days before and after the zone revision;
+  the old record stays unchanged. Archive an empty non-last unit and restore
+  it after resolving any active name/code conflict. Refuse a foreign link,
+  duplicate active name/code, stale revision, last-unit race or current usage;
+  return counts without personal/operational content. Exact retry and failed
+  commit leave their original acknowledgement or no change, respectively.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

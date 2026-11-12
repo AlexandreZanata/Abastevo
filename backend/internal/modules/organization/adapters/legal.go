@@ -10,7 +10,6 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	members "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/application"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
-	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
 	auditing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
@@ -18,7 +17,6 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -137,81 +135,10 @@ func (s *LegalStore) FindEstablishment(ctx context.Context, scope kernel.OrgScop
 	return value, nil
 }
 
-// All current proof/account locks precede the shared capability lock and root.
-// No personal-only restriction is inferred for a properly scoped managed ADMIN.
 func (s *LegalStore) authorize(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, write, fresh bool) error {
-	queries := q.New(tx)
-	account, err := queries.LockLegalAccount(ctx, actor.AccountID)
-	if err != nil {
-		return err
-	}
-	if account.Status != "active" || account.DeletionPending || (account.ManagedOrg != "" && account.ManagedOrg != scope.OrgID().String()) {
-		return app.ErrUnauthenticated
-	}
-	proof := q.LockLegalProofParams{AccountID: actor.AccountID, SessionID: actor.SessionID, RequireFresh: fresh}
-	if _, err := queries.LockLegalProof(ctx, proof); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return app.ErrUnauthenticated
-		}
-		return err
-	}
-	if write {
-		if err := s.Capabilities.GuardWrite(ctx, tx, scope, "organizations"); err != nil {
-			return err
-		}
-	}
-	root, err := queries.LockLegalOrganization(ctx, q.LockLegalOrganizationParams{OrgID: scope.OrgID().String(), TermsVersion: d.SyntheticTermsVersion, TermsDigest: d.SyntheticTermsDigest})
-	if err != nil {
-		return err
-	}
-	if !root.HasSnapshot || !root.State.Valid || !root.SyntheticSetup {
-		return app.ErrUnavailable
-	}
-	switch d.State(root.State.String) {
-	case d.PendingSetup, d.Active:
-	case d.Suspended:
-		if write {
-			return access.ErrOrgSuspended
-		}
-	case d.Archived:
-		if write {
-			return access.ErrOrgArchived
-		}
-	default:
-		return app.ErrNotFound
-	}
-	current, err := s.Memberships.ActiveByAccountTx(ctx, tx, scope, actor.AccountID)
-	if err != nil {
-		return access.ErrNoMembership
-	}
-	membership, err := current.Snapshot(scope)
-	if err != nil || membership.ID != member {
-		return access.ErrNoMembership
-	}
-	assignments, err := s.Roles.CandidatesTx(ctx, tx, scope, member)
-	if err != nil {
-		return err
-	}
-	now, err := queries.CurrentOnboardingTime(ctx)
-	if err != nil {
-		return err
-	}
-	if !now.Valid || now.InfinityModifier != pgtype.Finite {
-		return app.ErrUnavailable
-	}
-	if _, err := permissions.CoveringRules(scope, member, assignments, "org.legal_entity.manage", permissions.ResourceFacts{OrgID: scope.OrgID(), ID: target}, now.Time); err != nil {
-		return err
-	}
-	// The root/capability locks could have waited: recheck freshness immediately
-	// before current reads/mutations, while the original proof rows stay locked.
-	if _, err := queries.LockLegalProof(ctx, proof); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return app.ErrUnauthenticated
-		}
-		return err
-	}
-	return nil
+	return (companyAuthority{Memberships: s.Memberships, Roles: s.Roles, Capabilities: s.Capabilities}).check(ctx, tx, scope, actor, member, target, app.LegalPolicy(write, fresh))
 }
+
 func legalCall(scope kernel.OrgScope, actor app.CompanyActor, member string) error {
 	if scope.Validate() != nil {
 		return d.ErrScope

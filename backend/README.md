@@ -422,6 +422,43 @@ go test -race ./internal/modules/orgaccess/domain ./internal/modules/membership/
 See [1,092 descriptor cells](../contracts/testdata/enterprise/README.md#authorization-catalog-v1)
 and [catalog acceptance](../docs/enterprise/evidence/f1-auth001-role-permission-catalog.md).
 
+### Operating unit management (EMP-ORG-005)
+
+Apply additive migration `000174` before the new API/worker. The actual
+enterprise factory mounts six company-cookie POST operations under
+`/v1/orgs/{org_id}/units`: create/list and `{unit_id}/read`, change, archive,
+restore. Canonical OpenAPI specifies strict fields and required revisions.
+Current org.structure.manage (OWNER/ADMIN), normal Origin/Host/CSRF and
+membership checks apply. All mutations require fresh company proof,
+organizations pilot capability and the org.structure admission class, bounded
+by the existing identity v1 200/hour on each org/account/web-or-device axis.
+These are synthetic limits; measured production budgets and cleanup remain due.
+
+Unit names/codes are trimmed and unique among active units. Archived units
+retain identity and can be renamed before restoration. Time-zone defaults
+are captured from the current organization on the first command execution;
+later changes never rewrite reporting snapshots. New optional establishment
+links require a scoped declared company; retained existing links survive legal
+withdrawal. Default-off/source synthetic terms admission stays unchanged.
+
+The ordinary schema owner must own org_units and org_unit_guard() for the
+migration, with REFERENCES on organizations/accounts/establishments/audit.
+Review runtime SELECT/INSERT/UPDATE on units and SELECT/INSERT on the new
+forced-RLS immutable org_unit_commands, alongside existing authority/audit/
+quota ports. No production grants or flags are provisioned by this change.
+Keep schema/history and disable the entry on recovery; prior schema checks
+pass and old columns remain. No destructive down migration is supplied.
+
+Current usage is resolved by org_unit_current_usage inside the locked scoped
+transaction. Only actual immutable receipts are known historical consumers.
+An unknown FK blocks archive until its owning module installs its real scoped
+counts and root-serialized admission through org_unit_admit. The test-only
+consumer demonstrates the four categories and concurrency contract; it does
+not implement future fleet/budget/operation modules. LAST_UNIT and
+STRUCTURE_IN_USE return 409; use details expose category names and exact
+decimal-string counts without records. Unknown/malformed counts return 503.
+See [local unit evidence](../docs/enterprise/evidence/f1-org005-operating-units.md).
+
 ### Private declared legal parties (EMP-ORG-004)
 
 Apply additive migration `000173` before the new API/worker. With the

@@ -51,6 +51,469 @@ tags:
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
+  /v1/orgs/{org_id}/units/create:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseUnitCreate
+      summary: Create a synthetic operating unit
+      description: Create a synthetic operating unit. State, actor and identity are selected by the server;
+        no permission or verified status is inferred. Dedicated PANEL company cookie, exact HTTPS Origin/Host
+        and CSRF are mandatory. Current org.structure.manage and organization membership apply. Writes require
+        fresh proof, the current organizations pilot flag and bounded org.structure admission. Source-pinned
+        synthetic setup only; no production grants or legal approval are inferred. All responses are no-store
+        without ETag. LAST_UNIT and STRUCTURE_IN_USE are bounded 409 refusals; usage details carry only
+        category counts as exact decimal strings.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Create a synthetic operating unit. State, actor and identity are selected by the server;
+          no permission or verified status is inferred.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseUnitCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001005
+              name: Synthetic North
+              code: N01
+              time_zone: America/Cuiaba
+              municipality_code: '5103403'
+      responses:
+        '201':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseUnitAcknowledgement'
+              example:
+                unit_id: 7b0e2a54-0000-4000-8000-000000000801
+                state: ACTIVE
+                revision: 1
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/units/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseUnitList
+      summary: List operating units
+      description: Private UUID keyset page, with active and archived units unless filtered. Dedicated PANEL
+        company cookie, exact HTTPS Origin/Host and CSRF are mandatory. Current org.structure.manage and
+        organization membership apply. Writes require fresh proof, the current organizations pilot flag
+        and bounded org.structure admission. Source-pinned synthetic setup only; no production grants or
+        legal approval are inferred. All responses are no-store without ETag. LAST_UNIT and STRUCTURE_IN_USE
+        are bounded 409 refusals; usage details carry only category counts as exact decimal strings.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Private UUID keyset page, with active and archived units unless filtered.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseUnitListRequest'
+            example:
+              limit: 20
+              state: ACTIVE
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseUnitPage'
+              example:
+                items:
+                - id: 7b0e2a54-0000-4000-8000-000000000801
+                  name: Synthetic North
+                  display_name: Synthetic North
+                  code: N01
+                  time_zone: America/Cuiaba
+                  municipality_code: '5103403'
+                  state: ACTIVE
+                  revision: 1
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/units/{unit_id}/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseUnitRead
+      summary: Read one operating unit
+      description: Read one authorized current unit, including its archived identity when retained. Dedicated
+        PANEL company cookie, exact HTTPS Origin/Host and CSRF are mandatory. Current org.structure.manage
+        and organization membership apply. Writes require fresh proof, the current organizations pilot flag
+        and bounded org.structure admission. Source-pinned synthetic setup only; no production grants or
+        legal approval are inferred. All responses are no-store without ETag. LAST_UNIT and STRUCTURE_IN_USE
+        are bounded 409 refusals; usage details carry only category counts as exact decimal strings.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: unit_id
+        in: path
+        required: true
+        description: Exact organization-owned operating unit; foreign and unknown identities share a bounded
+          404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000801
+      requestBody:
+        description: Read one authorized current unit, including its archived identity when retained.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseUnitReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseUnitView'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000000801
+                name: Synthetic North
+                display_name: Synthetic North
+                code: N01
+                time_zone: America/Cuiaba
+                municipality_code: '5103403'
+                state: ACTIVE
+                revision: 1
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/units/{unit_id}/change:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseUnitChange
+      summary: Change operating unit metadata
+      description: Replace mutable unit metadata at its expected revision, retaining identity and state.
+        Archived metadata may be corrected before restoration. Optional omitted references clear; an omitted
+        zone captures the current organization default. Dedicated PANEL company cookie, exact HTTPS Origin/Host
+        and CSRF are mandatory. Current org.structure.manage and organization membership apply. Writes require
+        fresh proof, the current organizations pilot flag and bounded org.structure admission. Source-pinned
+        synthetic setup only; no production grants or legal approval are inferred. All responses are no-store
+        without ETag. LAST_UNIT and STRUCTURE_IN_USE are bounded 409 refusals; usage details carry only
+        category counts as exact decimal strings.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: unit_id
+        in: path
+        required: true
+        description: Exact organization-owned operating unit; foreign and unknown identities share a bounded
+          404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000801
+      requestBody:
+        description: Replace mutable unit metadata at its expected revision, retaining identity and state.
+          Archived metadata may be corrected before restoration. Optional omitted references clear; an omitted
+          zone captures the current organization default.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseUnitChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001005
+              revision: 1
+              name: Synthetic North
+              code: N01
+              time_zone: America/Cuiaba
+              municipality_code: '5103403'
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseUnitAcknowledgement'
+              example:
+                unit_id: 7b0e2a54-0000-4000-8000-000000000801
+                state: ACTIVE
+                revision: 1
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/units/{unit_id}/archive:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseUnitArchive
+      summary: Archive an empty non-last unit
+      description: Revision-bound archive/restore command. Archive requires another active unit and no current
+        usage; restore enforces active name/code uniqueness. No client-supplied counts are accepted. Dedicated
+        PANEL company cookie, exact HTTPS Origin/Host and CSRF are mandatory. Current org.structure.manage
+        and organization membership apply. Writes require fresh proof, the current organizations pilot flag
+        and bounded org.structure admission. Source-pinned synthetic setup only; no production grants or
+        legal approval are inferred. All responses are no-store without ETag. LAST_UNIT and STRUCTURE_IN_USE
+        are bounded 409 refusals; usage details carry only category counts as exact decimal strings.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: unit_id
+        in: path
+        required: true
+        description: Exact organization-owned operating unit; foreign and unknown identities share a bounded
+          404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000801
+      requestBody:
+        description: Revision-bound archive/restore command. Archive requires another active unit and no
+          current usage; restore enforces active name/code uniqueness. No client-supplied counts are accepted.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseUnitTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001005
+              revision: 1
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseUnitAcknowledgement'
+              example:
+                unit_id: 7b0e2a54-0000-4000-8000-000000000801
+                state: ACTIVE
+                revision: 1
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/units/{unit_id}/restore:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseUnitRestore
+      summary: Restore an archived unit
+      description: Revision-bound archive/restore command. Archive requires another active unit and no current
+        usage; restore enforces active name/code uniqueness. No client-supplied counts are accepted. Dedicated
+        PANEL company cookie, exact HTTPS Origin/Host and CSRF are mandatory. Current org.structure.manage
+        and organization membership apply. Writes require fresh proof, the current organizations pilot flag
+        and bounded org.structure admission. Source-pinned synthetic setup only; no production grants or
+        legal approval are inferred. All responses are no-store without ETag. LAST_UNIT and STRUCTURE_IN_USE
+        are bounded 409 refusals; usage details carry only category counts as exact decimal strings.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.structure.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: unit_id
+        in: path
+        required: true
+        description: Exact organization-owned operating unit; foreign and unknown identities share a bounded
+          404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000801
+      requestBody:
+        description: Revision-bound archive/restore command. Archive requires another active unit and no
+          current usage; restore enforces active name/code uniqueness. No client-supplied counts are accepted.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseUnitTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001005
+              revision: 1
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseUnitAcknowledgement'
+              example:
+                unit_id: 7b0e2a54-0000-4000-8000-000000000801
+                state: ACTIVE
+                revision: 1
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/legal-entities/create:
     post:
       tags:
@@ -8949,7 +9412,7 @@ x-abastevo-organization-api:
   etag: false
   pagination: {default_limit: 20, max_limit: 100, cursor_ttl_seconds: 900}
   cursor_binding: [origin, organization, account, membership, route, canonical_filters]
-  status: company_sessions_synthetic_onboarding_and_legal_declarations_implemented
+  status: company_sessions_synthetic_onboarding_legal_and_operating_units_implemented
 components:
   securitySchemes:
     CompanySessionCookie:
@@ -9005,6 +9468,350 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseUnitCreateRequest:
+      type: object
+      description: Create a synthetic operating unit. State, actor and identity are selected by the server;
+        no permission or verified status is inferred.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        name:
+          type: string
+          description: Private unit name, trimmed and unique case-insensitively among active units in this
+            organization.
+          example: Synthetic North
+          minLength: 1
+          maxLength: 120
+        code:
+          type: string
+          description: Private unit code, trimmed and unique case-insensitively among active units in this
+            organization.
+          example: N01
+          minLength: 1
+          maxLength: 120
+        time_zone:
+          type: string
+          description: Explicit IANA zone or UTC. Omitted/empty captures the current organization zone at
+            this command revision; history is unchanged.
+          example: America/Cuiaba
+          maxLength: 128
+        establishment_id:
+          type: string
+          description: Optional scoped declared COMPANY establishment; omit or empty to clear. Existing retained
+            links survive later withdrawal.
+          example: ''
+          pattern: ^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$
+          maxLength: 36
+        municipality_code:
+          type: string
+          description: Optional declared seven-digit IBGE reference; no external address verification.
+          example: '5103403'
+          pattern: ^([1-9][0-9]{6})?$
+          maxLength: 7
+      required:
+      - schema_version
+      - operation_id
+      - name
+      - code
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001005
+        name: Synthetic North
+        code: N01
+        time_zone: America/Cuiaba
+        municipality_code: '5103403'
+    EnterpriseUnitChangeRequest:
+      type: object
+      description: Replace mutable unit metadata at its expected revision, retaining identity and state. Archived
+        metadata may be corrected before restoration. Optional omitted references clear; an omitted zone captures
+        the current organization default.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: Expected unit revision; matching operation retry returns the original committed acknowledgement.
+          example: 1
+        name:
+          type: string
+          description: Private unit name, trimmed and unique case-insensitively among active units in this
+            organization.
+          example: Synthetic North
+          minLength: 1
+          maxLength: 120
+        code:
+          type: string
+          description: Private unit code, trimmed and unique case-insensitively among active units in this
+            organization.
+          example: N01
+          minLength: 1
+          maxLength: 120
+        time_zone:
+          type: string
+          description: Explicit IANA zone or UTC. Omitted/empty captures the current organization zone at
+            this command revision; history is unchanged.
+          example: America/Cuiaba
+          maxLength: 128
+        establishment_id:
+          type: string
+          description: Optional scoped declared COMPANY establishment; omit or empty to clear. Existing retained
+            links survive later withdrawal.
+          example: ''
+          pattern: ^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$
+          maxLength: 36
+        municipality_code:
+          type: string
+          description: Optional declared seven-digit IBGE reference; no external address verification.
+          example: '5103403'
+          pattern: ^([1-9][0-9]{6})?$
+          maxLength: 7
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - name
+      - code
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001005
+        revision: 1
+        name: Synthetic North
+        code: N01
+        time_zone: America/Cuiaba
+        municipality_code: '5103403'
+    EnterpriseUnitTransitionRequest:
+      type: object
+      description: Revision-bound archive/restore command. Archive requires another active unit and no current
+        usage; restore enforces active name/code uniqueness. No client-supplied counts are accepted.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: Expected unit revision; matching operation retry returns the original committed acknowledgement.
+          example: 1
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001005
+        revision: 1
+    EnterpriseUnitReadRequest:
+      type: object
+      description: Read one authorized current unit, including its archived identity when retained.
+      additionalProperties: false
+      properties: {}
+      required: []
+      example: {}
+    EnterpriseUnitListRequest:
+      type: object
+      description: Private UUID keyset page, with active and archived units unless filtered.
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Default page size 20, maximum 100.
+          example: 20
+        cursor:
+          type: string
+          description: Opaque 15-minute keyset cursor bound to account, organization, membership, route and
+            canonical state/limit filters.
+          example: ''
+          maxLength: 2048
+        state:
+          type: string
+          description: Optional current unit-state filter.
+          example: ACTIVE
+          enum:
+          - ACTIVE
+          - ARCHIVED
+      required: []
+      example:
+        limit: 20
+        state: ACTIVE
+    EnterpriseUnitAcknowledgement:
+      type: object
+      description: Committed stable acknowledgement, including the original outcome on retry after later unit
+        changes.
+      additionalProperties: false
+      properties:
+        unit_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          description: Original committed state.
+          example: ACTIVE
+          enum:
+          - ACTIVE
+          - ARCHIVED
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775807
+          description: Expected unit revision; matching operation retry returns the original committed acknowledgement.
+          example: 1
+        replayed:
+          type: boolean
+          description: Original committed result returned for the same normalized operation.
+          example: false
+        data_mode:
+          type: string
+          description: Source-pinned synthetic setup.
+          example: SYNTHETIC
+          enum:
+          - SYNTHETIC
+      required:
+      - unit_id
+      - state
+      - revision
+      - replayed
+      - data_mode
+      example:
+        unit_id: 7b0e2a54-0000-4000-8000-000000000801
+        state: ACTIVE
+        revision: 1
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseUnitView:
+      type: object
+      description: Private unit projection, without source assignment records or legal identifiers.
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          description: Private unit name, trimmed and unique case-insensitively among active units in this
+            organization.
+          example: Synthetic North
+          minLength: 1
+          maxLength: 120
+        code:
+          type: string
+          description: Private unit code, trimmed and unique case-insensitively among active units in this
+            organization.
+          example: N01
+          minLength: 1
+          maxLength: 120
+        time_zone:
+          type: string
+          minLength: 1
+          description: Persisted valid IANA zone or UTC at the current unit revision; historical
+            record zones remain unchanged.
+          example: America/Cuiaba
+          maxLength: 128
+        establishment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        municipality_code:
+          type: string
+          description: Optional declared seven-digit IBGE reference; no external address verification.
+          example: '5103403'
+          pattern: ^([1-9][0-9]{6})?$
+          maxLength: 7
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        display_name:
+          type: string
+          description: Current name with (arquivada) appended for archived units; historical record identities
+            remain unchanged.
+          example: Synthetic North
+        state:
+          type: string
+          description: Current unit lifecycle state.
+          example: ACTIVE
+          enum:
+          - ACTIVE
+          - ARCHIVED
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775807
+          description: Expected unit revision; matching operation retry returns the original committed acknowledgement.
+          example: 1
+        data_mode:
+          type: string
+          description: Synthetic organization context.
+          example: SYNTHETIC
+          enum:
+          - SYNTHETIC
+      required:
+      - id
+      - name
+      - display_name
+      - code
+      - time_zone
+      - municipality_code
+      - state
+      - revision
+      - data_mode
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000000801
+        name: Synthetic North
+        display_name: Synthetic North
+        code: N01
+        time_zone: America/Cuiaba
+        municipality_code: '5103403'
+        state: ACTIVE
+        revision: 1
+        data_mode: SYNTHETIC
+    EnterpriseUnitPage:
+      type: object
+      description: Stable private keyset page; an empty cursor marks the final page.
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          description: Authorized units in stable identity order.
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseUnitView'
+        next_cursor:
+          type: string
+          description: Opaque next-page cursor or empty.
+          example: ''
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - id: 7b0e2a54-0000-4000-8000-000000000801
+          name: Synthetic North
+          display_name: Synthetic North
+          code: N01
+          time_zone: America/Cuiaba
+          municipality_code: '5103403'
+          state: ACTIVE
+          revision: 1
+          data_mode: SYNTHETIC
+        next_cursor: ''
     EnterpriseEstablishmentInput:
       type: object
       description: Optional first establishment metadata. Its full CNPJ defaults to the COMPANY declaration
@@ -9327,7 +10134,7 @@ components:
           type: integer
           description: Expected current revision; the original operation replays its committed acknowledgement.
           minimum: 1
-          maximum: 9223372036854775806
+          maximum: 9223372036854775807
           example: 1
         data_mode:
           type: string
@@ -9406,7 +10213,7 @@ components:
           type: integer
           description: Expected current revision; the original operation replays its committed acknowledgement.
           minimum: 1
-          maximum: 9223372036854775806
+          maximum: 9223372036854775807
           example: 1
         data_mode:
           type: string
@@ -9512,7 +10319,7 @@ components:
           type: integer
           description: Expected current revision; the original operation replays its committed acknowledgement.
           minimum: 1
-          maximum: 9223372036854775806
+          maximum: 9223372036854775807
           example: 1
       example:
         id: 7b0e2a54-0000-4000-8000-000000000402
@@ -13209,6 +14016,12 @@ components:
                     type: string
                   code:
                     type: string
+                  count:
+                    type: string
+                    description: Optional exact nonnegative int64 category count; structure refusals only, never source records.
+                    pattern: '^(0|[1-9][0-9]{0,18})$'
+                    maxLength: 19
+                    example: '2'
     HealthStatus:
       description: Minimal liveness/readiness envelope.
       type: object

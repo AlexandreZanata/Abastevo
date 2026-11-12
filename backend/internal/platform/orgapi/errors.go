@@ -31,6 +31,8 @@ const (
 	SelfApproval          Code = "SELF_APPROVAL"
 	PeriodLocked          Code = "PERIOD_LOCKED"
 	LastOwner             Code = "LAST_OWNER"
+	LastUnit              Code = "LAST_UNIT"
+	StructureInUse        Code = "STRUCTURE_IN_USE"
 	OwnerRequiresPersonal Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
 	RateLimited           Code = "RATE_LIMITED"
 	Unavailable           Code = "UNAVAILABLE"
@@ -44,6 +46,7 @@ var statuses = map[Code]int{
 	FreshAuthRequired: 401, EntitlementRequired: 403, LimitReached: 403,
 	Conflict: 409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409,
 	ValidationFailed: 422, RateLimited: 429, Unavailable: 503,
+	LastUnit: 409, StructureInUse: 409,
 	OrgSetupIncomplete:    409,
 	OwnerRequiresPersonal: 409,
 }
@@ -56,6 +59,27 @@ type fieldFailure struct{ field, reason string }
 
 func (fieldFailure) Error() string { return string(ValidationFailed) }
 func (fieldFailure) Unwrap() error { return ValidationFailed }
+
+// UnitDuplicate accepts only the source-owned active uniqueness fields.
+func UnitDuplicate(field string) error {
+	if field != "name" && field != "code" {
+		return Unavailable
+	}
+	return fieldFailure{field, "DUPLICATE"}
+}
+
+// StructureCounts contains category totals, never source records or identities.
+type StructureCounts struct{ Assets, Employees, Budgets, Operations int64 }
+type structureFailure struct{ counts StructureCounts }
+
+func (structureFailure) Error() string { return string(StructureInUse) }
+func (structureFailure) Unwrap() error { return StructureInUse }
+func StructureInUseCounts(v StructureCounts) error {
+	if v.Assets < 0 || v.Employees < 0 || v.Budgets < 0 || v.Operations < 0 || v == (StructureCounts{}) {
+		return Unavailable
+	}
+	return structureFailure{v}
+}
 
 // IdentifierValidation exposes only registered source fields and reason codes.
 // Raw identifiers and provider/SQL text are never accepted as details.
@@ -149,6 +173,16 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	var field fieldFailure
 	if code == ValidationFailed && errors.As(err, &field) {
 		details = []httpapi.Detail{{Field: field.field, Code: field.reason}}
+	}
+	var structure structureFailure
+	if code == StructureInUse && errors.As(err, &structure) {
+		counts := structure.counts
+		for _, category := range []struct {
+			field string
+			count int64
+		}{{"active_assets", counts.Assets}, {"active_employees", counts.Employees}, {"open_budgets", counts.Budgets}, {"open_operations", counts.Operations}} {
+			details = append(details, httpapi.Detail{Field: category.field, Code: "IN_USE", Count: strconv.FormatInt(category.count, 10)})
+		}
 	}
 	httpapi.WriteError(w, r, statuses[code], string(code), "Organization request unavailable or refused", details)
 }

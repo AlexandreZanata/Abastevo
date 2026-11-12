@@ -1,0 +1,102 @@
+package adapters
+
+import (
+	"context"
+	"errors"
+	q "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/organization"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	members "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/application"
+	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
+	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
+	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
+	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+// Reuse the same account/proof -> capability -> root -> current authority
+// lock order for the two concrete configuration producers. This accepts only
+// source-owned policies, never an arbitrary caller-selected permission.
+type companyAuthority struct {
+	Memberships  members.TransactionRepository
+	Roles        access.TransactionRepository
+	Capabilities setupCapability
+}
+
+func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy) error {
+	if policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.UnitPolicy(false) && policy != app.UnitPolicy(true) {
+		return app.ErrUnavailable
+	}
+	write := policy.Effect == access.ConfigurationWrite
+	queries := q.New(tx)
+	account, err := queries.LockLegalAccount(ctx, actor.AccountID)
+	if err != nil {
+		return err
+	}
+	if account.Status != "active" || account.DeletionPending || (account.ManagedOrg != "" && account.ManagedOrg != scope.OrgID().String()) {
+		return app.ErrUnauthenticated
+	}
+	proof := q.LockLegalProofParams{AccountID: actor.AccountID, SessionID: actor.SessionID, RequireFresh: policy.Fresh}
+	if _, err := queries.LockLegalProof(ctx, proof); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return app.ErrUnauthenticated
+		}
+		return err
+	}
+	if write {
+		if err := guard.Capabilities.GuardWrite(ctx, tx, scope, "organizations"); err != nil {
+			return err
+		}
+	}
+	root, err := queries.LockLegalOrganization(ctx, q.LockLegalOrganizationParams{OrgID: scope.OrgID().String(), TermsVersion: d.SyntheticTermsVersion, TermsDigest: d.SyntheticTermsDigest})
+	if err != nil {
+		return err
+	}
+	if !root.HasSnapshot || !root.State.Valid || !root.SyntheticSetup {
+		return app.ErrUnavailable
+	}
+	switch d.State(root.State.String) {
+	case d.PendingSetup, d.Active:
+	case d.Suspended:
+		if write {
+			return access.ErrOrgSuspended
+		}
+	case d.Archived:
+		if write {
+			return access.ErrOrgArchived
+		}
+	default:
+		return app.ErrNotFound
+	}
+	current, err := guard.Memberships.ActiveByAccountTx(ctx, tx, scope, actor.AccountID)
+	if err != nil {
+		return access.ErrNoMembership
+	}
+	membership, err := current.Snapshot(scope)
+	if err != nil || membership.ID != member {
+		return access.ErrNoMembership
+	}
+	assignments, err := guard.Roles.CandidatesTx(ctx, tx, scope, member)
+	if err != nil {
+		return err
+	}
+	now, err := queries.CurrentOnboardingTime(ctx)
+	if err != nil {
+		return err
+	}
+	if !now.Valid || now.InfinityModifier != pgtype.Finite {
+		return app.ErrUnavailable
+	}
+	if _, err := permissions.CoveringRules(scope, member, assignments, policy.Permission, permissions.ResourceFacts{OrgID: scope.OrgID(), ID: target}, now.Time); err != nil {
+		return err
+	}
+	// The root/capability locks could have waited: recheck freshness immediately
+	// before current reads/mutations, while the original proof rows stay locked.
+	if _, err := queries.LockLegalProof(ctx, proof); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return app.ErrUnauthenticated
+		}
+		return err
+	}
+	return nil
+}

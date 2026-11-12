@@ -46,6 +46,7 @@ Status: **M0 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-11. [ADR-025](../adr/02
 | EDR-036 | Synthetic org.setup admission explicitly inherits identity v1's 200/hour on each organization/account/web-or-device axis. Live use still requires measured source budgets and quota-cleanup activation. | Bounds the first synthetic configuration command using an existing versioned allowance without claiming production capacity. | Unbounded activation; invent a measured production default. | EMP-ORG-003, same authorization; source decision only |
 | EDR-037 | Adopt only the proposed OWNER/ADMIN `org.legal_entity.manage` row as explicit ORG-scoped coverage in org-permissions-v2. All other matrix cells, roles, scopes and restrictions retain their previous values. | The declaration task needs a real guarded entry; the v1 catalog deliberately denied this unassigned key. This is the module's recommended row, adopted under the unattended decision authorization. | Implicit OWNER inheritance; ship an unusable always-denied declaration route; grant verification or station powers. | EMP-ORG-004; B-BR-EMP-55..58; autonomous construction authorization |
 | EDR-038 | Permit lower-case snake_case segments in the bounded, source-registered audit/event vocabulary so specified names such as org.legal_entity.declared are representable. Keep exact source registration, immutable events and all scope/proof checks. Retained revoked declarations may coexist with a new explicit current declaration of the same identifier, as §6 requires. | The first legal producer exposed an existing grammar mismatch; historical references need stable identities while correction can create a new record. | Invent an action alias; silently weaken registration; forbid the specified correction flow. | EMP-ORG-004; B-BR-EMP-58; autonomous construction authorization |
+| EDR-039 | Unit metadata may be edited while archived to resolve restoration collisions; only active names/codes are unique. An omitted zone captures the current organization zone at the new revision. New establishment links require a current declared parent; retained historical links survive withdrawal. Archive uses a scoped source-owned SQL usage guard under the root lock; unknown referencing consumers fail closed until their owning migration installs actual counts/admission guards. | Supports the specified restoration and prospective reporting rules without inventing current operational records or silently assuming an unknown source is empty. Current consumers are immutable onboarding/command receipts, not active work. | Delete archived units; dynamically inherit zones; count all historical references as active; install a speculative usage ledger or ignore future consumers. | EMP-ORG-005; B-BR-EMP-59/60; autonomous construction authorization |
 
 ORG-004 is executed before ORG-005 to supply actual scoped establishment
 references for the optional unit link. This changes construction order only;
@@ -54,6 +55,13 @@ checks format, never tax status, representation or legal consent. The default
 legal list masks CPF even for managers; explicit fresh management reveal is
 separately access-audited. Synthetic-only construction does not satisfy the
 legal-purpose gate for actual CPF collection.
+
+EMP-ORG-005 uses the independent org.structure admission class, inheriting
+identity v1's synthetic 200/hour on each organization/account/web-or-device
+axis. Actual production measurement and quota cleanup remain required.
+Structure usage errors expose four category counts as exact decimal strings;
+existing error details omit the optional count field. A source refusal without
+validated category counts is unavailable rather than an invented empty result.
 
 ## 2. Conflicts with existing rules
 

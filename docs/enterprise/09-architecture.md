@@ -745,10 +745,16 @@ Shared codes; modules add their own in section 10 of their file.
 | `VALIDATION_FAILED` | 422 | Field errors in `details` |
 | `CONFLICT` | 409 | Stale revision or concurrent change |
 | `OPERATION_ID_REUSED` | 409 | Same operation identifier with a different payload |
-| `SELF_APPROVAL`, `PERIOD_LOCKED`, `LAST_OWNER` | 409 | Record rules |
+| `SELF_APPROVAL`, `PERIOD_LOCKED`, `LAST_OWNER`, `LAST_UNIT`, `STRUCTURE_IN_USE` | 409 | Record rules; structure usage exposes category counts only |
 | `MALFORMED` | 400 | Unknown schema or unparsable body |
 | `RATE_LIMITED` | 429 | Limiter refused |
 | `UNAVAILABLE` | 503 | Dependency down; retry later |
+
+Structure usage details contain only the four source-owned category keys
+active_assets, active_employees, open_budgets and open_operations, code IN_USE
+and an exact nonnegative decimal-string count. No record identity, name or
+source table is exposed. The optional ApiError detail count field preserves
+int64 values across JavaScript clients; existing details omit it.
 
 Sync-only codes are in [10-offline-sync](10-offline-sync.md) §10.2.
 
