@@ -92,13 +92,28 @@ func TestCandidatesExcludeExpiredScheduledSuspendedAndEndedPeriods(t *testing.T)
 	activate(t, f, a, 602, 702, "DRIVER")
 	s := adapters.NewStore(f.Runtime)
 	now := time.Now().UTC()
+	// Storage refuses retroactive or already-over periods (000183), so the
+	// expired candidate is a real short period that then elapses.
+	expires := now.Add(1500 * time.Millisecond)
 	if err := database.WithOrgTx(t.Context(), f.Runtime, a, func(tx pgx.Tx) error {
-		if err := insert(t, tx, a, 703, 602, "ADMIN", "ORG", a.OrgID().String(), now.Add(-2*time.Hour), now.Add(-time.Hour)); err != nil {
+		if err := insert(t, tx, a, 703, 602, "ADMIN", "ORG", a.OrgID().String(), now.Add(-time.Minute), expires); err != nil {
 			return err
 		}
 		return insert(t, tx, a, 704, 602, "ADMIN", "ORG", a.OrgID().String(), now.Add(time.Hour), nil)
 	}); err != nil {
 		t.Fatal(err)
+	}
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(50 * time.Millisecond) {
+		var elapsed bool
+		if err := f.Admin.QueryRow(t.Context(), `SELECT clock_timestamp()>$1`, expires).Scan(&elapsed); err != nil {
+			t.Fatal(err)
+		}
+		if elapsed {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("synthetic period did not elapse on the database clock")
+		}
 	}
 	if rows, err := s.Candidates(t.Context(), a, key(602)); err != nil || len(rows) != 1 {
 		t.Fatal("expired or scheduled assignment became a candidate", len(rows), err)

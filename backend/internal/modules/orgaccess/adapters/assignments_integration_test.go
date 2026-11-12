@@ -80,7 +80,8 @@ func activate(t *testing.T, f *orgtest.Fixture, s kernel.OrgScope, member, id in
 		if role == "OWNER" {
 			kind, target = "ORG", s.OrgID().String()
 		}
-		if err := insert(t, tx, s, id, member, role, kind, target, time.Now().UTC().Add(-time.Hour), nil); err != nil {
+		// A current period: 000183 refuses storage starts beyond the bounded skew.
+		if err := insert(t, tx, s, id, member, role, kind, target, time.Now().UTC().Add(-time.Minute), nil); err != nil {
 			return err
 		}
 		_, err := tx.Exec(t.Context(), `UPDATE org_memberships SET state='ACTIVE',revision=revision+1 WHERE org_id=$1 AND id=$2`, s.OrgID().String(), key(member))

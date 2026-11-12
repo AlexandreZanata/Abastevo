@@ -144,7 +144,7 @@ func TestCurrentAuthorizationThroughRealAndroidAndCompanyProof(t *testing.T) {
 			if _, err := tx.Exec(t.Context(), `INSERT INTO org_memberships(org_id,id,employee_id,account_id,access_model,state) VALUES($1,$2,$3,$4,'EXISTING_ACCOUNT','INVITED')`, a.OrgID().String(), member, employee, account); err != nil {
 				return err
 			}
-			if _, err := tx.Exec(t.Context(), `INSERT INTO org_role_assignments(org_id,id,membership_id,role,scope_type,scope_target,valid_from,assigned_by,reason) VALUES($1,$2,$3,'OWNER','ORG',$1,$4,$3,'synthetic authority')`, a.OrgID().String(), assignment, member, now.Add(-time.Hour)); err != nil {
+			if _, err := tx.Exec(t.Context(), `INSERT INTO org_role_assignments(org_id,id,membership_id,role,scope_type,scope_target,valid_from,assigned_by,reason) VALUES($1,$2,$3,'OWNER','ORG',$1,$4,$3,'synthetic authority')`, a.OrgID().String(), assignment, member, now.Add(-time.Minute)); err != nil {
 				return err
 			}
 			_, err := tx.Exec(t.Context(), `UPDATE org_memberships SET state='ACTIVE',revision=revision+1 WHERE org_id=$1 AND id=$2`, a.OrgID().String(), member)

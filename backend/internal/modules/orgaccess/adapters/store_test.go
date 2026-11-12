@@ -14,7 +14,10 @@ import (
 
 func assignment(t *testing.T, s kernel.OrgScope, id, member string) d.Assignment {
 	t.Helper()
-	a, err := d.RehydrateAssignment(s, d.AssignmentSnapshot{OrgID: s.OrgID(), ID: id, MembershipID: member, AssignedBy: member, Role: d.OperationsStaff, Scope: d.SelfScope, TargetID: member, ValidFrom: time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC), Reason: "synthetic role", Revision: 1})
+	// A current period (whole seconds keep replay comparison exact); storage
+	// refuses starts beyond the bounded skew since 000183.
+	from := time.Now().UTC().Truncate(time.Second).Add(-time.Minute)
+	a, err := d.RehydrateAssignment(s, d.AssignmentSnapshot{OrgID: s.OrgID(), ID: id, MembershipID: member, AssignedBy: member, Role: d.OperationsStaff, Scope: d.SelfScope, TargetID: member, ValidFrom: from, Reason: "synthetic role", Revision: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
