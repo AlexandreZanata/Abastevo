@@ -29,8 +29,21 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 		return app.ErrUnavailable
 	}
 	write := policy.Effect == access.ConfigurationWrite
+	// Plain reads share the account and root rows, so they run concurrently
+	// while writers still wait for them. A settings read can initialize the
+	// first version under the root (org_settings_bootstrap locks it FOR
+	// UPDATE); two readers holding FOR SHARE would then deadlock on upgrade.
+	exclusive := write || policy == app.SettingsPolicy(false)
 	queries := q.New(tx)
-	account, err := queries.LockLegalAccount(ctx, actor.AccountID)
+	var account q.LockLegalAccountRow
+	var err error
+	if exclusive {
+		account, err = queries.LockLegalAccount(ctx, actor.AccountID)
+	} else {
+		var shared q.ShareLegalAccountRow
+		shared, err = queries.ShareLegalAccount(ctx, actor.AccountID)
+		account = q.LockLegalAccountRow(shared)
+	}
 	if err != nil {
 		return err
 	}
@@ -49,7 +62,15 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 			return err
 		}
 	}
-	root, err := queries.LockLegalOrganization(ctx, q.LockLegalOrganizationParams{OrgID: scope.OrgID().String(), TermsVersion: d.SyntheticTermsVersion, TermsDigest: d.SyntheticTermsDigest})
+	rootParams := q.LockLegalOrganizationParams{OrgID: scope.OrgID().String(), TermsVersion: d.SyntheticTermsVersion, TermsDigest: d.SyntheticTermsDigest}
+	var root q.LockLegalOrganizationRow
+	if exclusive {
+		root, err = queries.LockLegalOrganization(ctx, rootParams)
+	} else {
+		var shared q.ShareLegalOrganizationRow
+		shared, err = queries.ShareLegalOrganization(ctx, q.ShareLegalOrganizationParams(rootParams))
+		root = q.LockLegalOrganizationRow(shared)
+	}
 	if err != nil {
 		return err
 	}

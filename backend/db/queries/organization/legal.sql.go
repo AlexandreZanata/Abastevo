@@ -480,3 +480,48 @@ func (q *Queries) RevokeLegalDeclaration(ctx context.Context, arg RevokeLegalDec
 	}
 	return result.RowsAffected(), nil
 }
+
+const shareLegalAccount = `-- name: ShareLegalAccount :one
+SELECT status,COALESCE(enterprise_managed_org_id::text,'')::text AS managed_org,
+ EXISTS(SELECT 1 FROM payment_billing_exits WHERE account_id=accounts.id AND reason='ACCOUNT_DELETION') AS deletion_pending
+FROM accounts WHERE id=CAST($1::text AS uuid) FOR SHARE
+`
+
+type ShareLegalAccountRow struct {
+	Status          string `json:"status"`
+	ManagedOrg      string `json:"managed_org"`
+	DeletionPending bool   `json:"deletion_pending"`
+}
+
+// Reads share the account row: concurrent reads proceed, writers still wait.
+func (q *Queries) ShareLegalAccount(ctx context.Context, accountID string) (ShareLegalAccountRow, error) {
+	row := q.db.QueryRow(ctx, shareLegalAccount, accountID)
+	var i ShareLegalAccountRow
+	err := row.Scan(&i.Status, &i.ManagedOrg, &i.DeletionPending)
+	return i, err
+}
+
+const shareLegalOrganization = `-- name: ShareLegalOrganization :one
+SELECT state,has_snapshot,EXISTS(SELECT 1 FROM org_onboarding_commands c WHERE c.org_id=organizations.org_id
+ AND c.kind='CREATED' AND c.terms_kind='SYNTHETIC' AND c.terms_version= $1::text AND c.terms_digest= $2::text) AS synthetic_setup
+FROM organizations WHERE org_id=CAST($3::text AS uuid) FOR SHARE
+`
+
+type ShareLegalOrganizationParams struct {
+	TermsVersion string `json:"terms_version"`
+	TermsDigest  string `json:"terms_digest"`
+	OrgID        string `json:"org_id"`
+}
+
+type ShareLegalOrganizationRow struct {
+	State          pgtype.Text `json:"state"`
+	HasSnapshot    bool        `json:"has_snapshot"`
+	SyntheticSetup bool        `json:"synthetic_setup"`
+}
+
+func (q *Queries) ShareLegalOrganization(ctx context.Context, arg ShareLegalOrganizationParams) (ShareLegalOrganizationRow, error) {
+	row := q.db.QueryRow(ctx, shareLegalOrganization, arg.TermsVersion, arg.TermsDigest, arg.OrgID)
+	var i ShareLegalOrganizationRow
+	err := row.Scan(&i.State, &i.HasSnapshot, &i.SyntheticSetup)
+	return i, err
+}

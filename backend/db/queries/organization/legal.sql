@@ -3,6 +3,12 @@ SELECT status,COALESCE(enterprise_managed_org_id::text,'')::text AS managed_org,
  EXISTS(SELECT 1 FROM payment_billing_exits WHERE account_id=accounts.id AND reason='ACCOUNT_DELETION') AS deletion_pending
 FROM accounts WHERE id=CAST(@account_id::text AS uuid) FOR UPDATE;
 
+-- name: ShareLegalAccount :one
+-- Reads share the account row: concurrent reads proceed, writers still wait.
+SELECT status,COALESCE(enterprise_managed_org_id::text,'')::text AS managed_org,
+ EXISTS(SELECT 1 FROM payment_billing_exits WHERE account_id=accounts.id AND reason='ACCOUNT_DELETION') AS deletion_pending
+FROM accounts WHERE id=CAST(@account_id::text AS uuid) FOR SHARE;
+
 -- name: LockLegalProof :one
 SELECT c.id::text AS id FROM company_web_sessions c
 JOIN account_session_families f ON (f.account_id,f.id)=(c.account_id,c.family_id)
@@ -18,6 +24,11 @@ FOR SHARE OF c,f;
 SELECT state,has_snapshot,EXISTS(SELECT 1 FROM org_onboarding_commands c WHERE c.org_id=organizations.org_id
  AND c.kind='CREATED' AND c.terms_kind='SYNTHETIC' AND c.terms_version= @terms_version::text AND c.terms_digest= @terms_digest::text) AS synthetic_setup
 FROM organizations WHERE org_id=CAST(@org_id::text AS uuid) FOR UPDATE;
+
+-- name: ShareLegalOrganization :one
+SELECT state,has_snapshot,EXISTS(SELECT 1 FROM org_onboarding_commands c WHERE c.org_id=organizations.org_id
+ AND c.kind='CREATED' AND c.terms_kind='SYNTHETIC' AND c.terms_version= @terms_version::text AND c.terms_digest= @terms_digest::text) AS synthetic_setup
+FROM organizations WHERE org_id=CAST(@org_id::text AS uuid) FOR SHARE;
 
 -- name: GetLegalEntity :one
 SELECT id::text AS id,kind,legal_name,identifier,purpose,state,revision,verification_history
