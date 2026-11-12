@@ -55,6 +55,382 @@ tags:
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
+  /v1/orgs/{org_id}/memberships/{membership_id}/offboarding/read:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: membershipOffboardingRead
+      summary: Review or end current organization membership
+      description: Fresh manager offboarding or account-bound personal self-leave, including suspended/no-role memberships.
+        Actual settings/team responsibilities require exact digest and explicit pending flags. CAS and real last-owner
+        policy preserve history; source reductions, original receipts, flags and pending notices commit together.
+        Personal families and other organizations are untouched. ORG_F1 scope identifies uninstalled managed/device/delegation/operational/late-intake
+        producers explicitly; no successful empty inventory is fabricated.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.membership.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMembershipAccessReadRequest'
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOffboardingView'
+              example:
+                membership_id: 7b0e2a54-0000-4000-8000-000000001022
+                employee_id: 7b0e2a54-0000-4000-8000-000000001023
+                access_model: EXISTING_ACCOUNT
+                state: ACTIVE
+                revision: 3
+                suspension_origin: ''
+                end_reason: ''
+                data_mode: SYNTHETIC
+                employee_state: ACTIVE
+                employee_revision: 1
+                handover_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                items:
+                - key: SETTING:billing:primary
+                  source_revision: 2
+                handover_state: REVIEW_REQUIRED
+                scope_version: ORG_F1
+                pending_sources:
+                - MANAGED_ACCESS
+                - DEVICE_ENROLMENTS
+                - DELEGATIONS
+                - OPERATIONAL_WORK
+                - LATE_INTAKE
+  /v1/orgs/{org_id}/memberships/{membership_id}/offboarding/complete:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: membershipOffboardingComplete
+      summary: Review or end current organization membership
+      description: Fresh manager offboarding or account-bound personal self-leave, including suspended/no-role memberships.
+        Actual settings/team responsibilities require exact digest and explicit pending flags. CAS and real last-owner
+        policy preserve history; source reductions, original receipts, flags and pending notices commit together.
+        Personal families and other organizations are untouched. ORG_F1 scope identifies uninstalled managed/device/delegation/operational/late-intake
+        producers explicitly; no successful empty inventory is fabricated.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.membership.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseOffboardingRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001021
+              revision: 2
+              reason: Synthetic organization departure
+              employee_revision: 1
+              handover_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+              flags:
+              - SETTING:billing:primary
+              terminate_employee: false
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOffboardingResult'
+              example:
+                membership_id: 7b0e2a54-0000-4000-8000-000000001022
+                employee_id: 7b0e2a54-0000-4000-8000-000000001023
+                access_model: EXISTING_ACCOUNT
+                state: ENDED
+                revision: 4
+                suspension_origin: ''
+                end_reason: OFFBOARDED
+                data_mode: SYNTHETIC
+                employee_state: ACTIVE
+                employee_revision: 1
+                handover_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                items:
+                - key: SETTING:billing:primary
+                  source_revision: 2
+                scope_version: ORG_F1
+                pending_sources:
+                - MANAGED_ACCESS
+                - DEVICE_ENROLMENTS
+                - DELEGATIONS
+                - OPERATIONAL_WORK
+                - LATE_INTAKE
+                operation_id: 7b0e2a54-0000-4000-8000-000000001031
+                reason: Synthetic organization departure
+                occurred_at: '2026-11-12T18:00:00Z'
+                replayed: false
+                notice_state: PENDING_NOTIFICATION_CORE
+                handover_state: PENDING_MANAGER
+  /v1/orgs/{org_id}/memberships/{membership_id}/leave/read:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: membershipLeaveRead
+      summary: Review or end current organization membership
+      description: Fresh manager offboarding or account-bound personal self-leave, including suspended/no-role memberships.
+        Actual settings/team responsibilities require exact digest and explicit pending flags. CAS and real last-owner
+        policy preserve history; source reductions, original receipts, flags and pending notices commit together.
+        Personal families and other organizations are untouched. ORG_F1 scope identifies uninstalled managed/device/delegation/operational/late-intake
+        producers explicitly; no successful empty inventory is fabricated.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMembershipAccessReadRequest'
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOffboardingView'
+              example:
+                membership_id: 7b0e2a54-0000-4000-8000-000000001022
+                employee_id: 7b0e2a54-0000-4000-8000-000000001023
+                access_model: EXISTING_ACCOUNT
+                state: ACTIVE
+                revision: 3
+                suspension_origin: ''
+                end_reason: ''
+                data_mode: SYNTHETIC
+                employee_state: ACTIVE
+                employee_revision: 1
+                handover_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                items:
+                - key: SETTING:billing:primary
+                  source_revision: 2
+                handover_state: REVIEW_REQUIRED
+                scope_version: ORG_F1
+                pending_sources:
+                - MANAGED_ACCESS
+                - DEVICE_ENROLMENTS
+                - DELEGATIONS
+                - OPERATIONAL_WORK
+                - LATE_INTAKE
+      x-abastevo-self-membership:
+        action: read
+        cookie: true
+        csrf: true
+        fresh: true
+        binding: true
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/leave:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: membershipLeave
+      summary: Review or end current organization membership
+      description: Fresh manager offboarding or account-bound personal self-leave, including suspended/no-role memberships.
+        Actual settings/team responsibilities require exact digest and explicit pending flags. CAS and real last-owner
+        policy preserve history; source reductions, original receipts, flags and pending notices commit together.
+        Personal families and other organizations are untouched. ORG_F1 scope identifies uninstalled managed/device/delegation/operational/late-intake
+        producers explicitly; no successful empty inventory is fabricated.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseSelfLeaveRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001021
+              revision: 2
+              reason: Synthetic organization departure
+              employee_revision: 1
+              handover_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+              flags:
+              - SETTING:billing:primary
+              terminate_employee: false
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOffboardingResult'
+              example:
+                membership_id: 7b0e2a54-0000-4000-8000-000000001022
+                employee_id: 7b0e2a54-0000-4000-8000-000000001023
+                access_model: EXISTING_ACCOUNT
+                state: ENDED
+                revision: 4
+                suspension_origin: ''
+                end_reason: OFFBOARDED
+                data_mode: SYNTHETIC
+                employee_state: ACTIVE
+                employee_revision: 1
+                handover_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                items:
+                - key: SETTING:billing:primary
+                  source_revision: 2
+                scope_version: ORG_F1
+                pending_sources:
+                - MANAGED_ACCESS
+                - DEVICE_ENROLMENTS
+                - DELEGATIONS
+                - OPERATIONAL_WORK
+                - LATE_INTAKE
+                operation_id: 7b0e2a54-0000-4000-8000-000000001031
+                reason: Synthetic organization departure
+                occurred_at: '2026-11-12T18:00:00Z'
+                replayed: false
+                notice_state: PENDING_NOTIFICATION_CORE
+                handover_state: PENDING_MANAGER
+      x-abastevo-self-membership:
+        action: leave
+        cookie: true
+        csrf: true
+        fresh: true
+        binding: true
+        success: 200
   /v1/orgs/{org_id}/memberships/{membership_id}/read:
     post:
       tags:
@@ -13520,6 +13896,393 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseHandoverItem:
+      type: object
+      additionalProperties: false
+      required:
+      - key
+      - source_revision
+      properties:
+        key:
+          type: string
+          maxLength: 100
+          pattern: ^(SETTING:(review_fallback|platform_notices|data_protection|billing):(primary|substitute)|TEAM_LINK:[a-f0-9-]{36})$
+        source_revision:
+          type: integer
+          format: int64
+          minimum: 1
+      example:
+        key: SETTING:billing:primary
+        source_revision: 2
+    EnterpriseOffboardingRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      - employee_revision
+      - handover_digest
+      - flags
+      - terminate_employee
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Private recorded reason. Blank, control and Unicode format characters are refused.
+        employee_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        handover_digest:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        flags:
+          type: array
+          maxItems: 500
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 100
+        terminate_employee:
+          type: boolean
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001021
+        revision: 2
+        reason: Synthetic organization departure
+        employee_revision: 1
+        handover_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        flags:
+        - SETTING:billing:primary
+        terminate_employee: false
+    EnterpriseSelfLeaveRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      - employee_revision
+      - handover_digest
+      - flags
+      - terminate_employee
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Private recorded reason. Blank, control and Unicode format characters are refused.
+        employee_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        handover_digest:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        flags:
+          type: array
+          maxItems: 500
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 100
+        terminate_employee:
+          type: boolean
+          enum:
+          - false
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001021
+        revision: 2
+        reason: Synthetic organization departure
+        employee_revision: 1
+        handover_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        flags:
+        - SETTING:billing:primary
+        terminate_employee: false
+    EnterpriseOffboardingView:
+      type: object
+      additionalProperties: false
+      required:
+      - membership_id
+      - employee_id
+      - access_model
+      - state
+      - revision
+      - suspension_origin
+      - end_reason
+      - data_mode
+      - employee_state
+      - employee_revision
+      - handover_digest
+      - items
+      - scope_version
+      - pending_sources
+      - handover_state
+      properties:
+        handover_state:
+          type: string
+          enum: [NONE, REVIEW_REQUIRED, PENDING_MANAGER]
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_model:
+          type: string
+          enum:
+          - EXISTING_ACCOUNT
+        state:
+          type: string
+          enum:
+          - INVITED
+          - ACTIVE
+          - SUSPENDED
+          - ENDED
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        suspension_origin:
+          type: string
+          enum:
+          - ''
+          - MANAGER
+          - EMPLOYEE_INACTIVE
+        end_reason:
+          type: string
+          enum:
+          - ''
+          - OFFBOARDED
+          - LEFT
+          - ACCOUNT_DELETED
+          - ORGANIZATION_CLOSED
+          - ADMISSION_ENDED
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+        employee_state:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - TERMINATED
+        employee_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        handover_digest:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        items:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/EnterpriseHandoverItem'
+        scope_version:
+          type: string
+          enum:
+          - ORG_F1
+        pending_sources:
+          type: array
+          minItems: 5
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - MANAGED_ACCESS
+            - DEVICE_ENROLMENTS
+            - DELEGATIONS
+            - OPERATIONAL_WORK
+            - LATE_INTAKE
+      example:
+        handover_state: REVIEW_REQUIRED
+        membership_id: 7b0e2a54-0000-4000-8000-000000001022
+        employee_id: 7b0e2a54-0000-4000-8000-000000001023
+        access_model: EXISTING_ACCOUNT
+        state: ACTIVE
+        revision: 3
+        suspension_origin: ''
+        end_reason: ''
+        data_mode: SYNTHETIC
+        employee_state: ACTIVE
+        employee_revision: 1
+        handover_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        items:
+        - key: SETTING:billing:primary
+          source_revision: 2
+        scope_version: ORG_F1
+        pending_sources:
+        - MANAGED_ACCESS
+        - DEVICE_ENROLMENTS
+        - DELEGATIONS
+        - OPERATIONAL_WORK
+        - LATE_INTAKE
+    EnterpriseOffboardingResult:
+      type: object
+      additionalProperties: false
+      required:
+      - membership_id
+      - employee_id
+      - access_model
+      - state
+      - revision
+      - suspension_origin
+      - end_reason
+      - data_mode
+      - employee_state
+      - employee_revision
+      - handover_digest
+      - items
+      - scope_version
+      - pending_sources
+      - operation_id
+      - reason
+      - occurred_at
+      - replayed
+      - notice_state
+      - handover_state
+      properties:
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_model:
+          type: string
+          enum:
+          - EXISTING_ACCOUNT
+        state:
+          type: string
+          enum:
+          - ENDED
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        suspension_origin:
+          type: string
+          enum:
+          - ''
+          - MANAGER
+          - EMPLOYEE_INACTIVE
+        end_reason:
+          type: string
+          enum:
+          - OFFBOARDED
+          - LEFT
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+        employee_state:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - TERMINATED
+        employee_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        handover_digest:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        items:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/EnterpriseHandoverItem'
+        scope_version:
+          type: string
+          enum:
+          - ORG_F1
+        pending_sources:
+          type: array
+          minItems: 5
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - MANAGED_ACCESS
+            - DEVICE_ENROLMENTS
+            - DELEGATIONS
+            - OPERATIONAL_WORK
+            - LATE_INTAKE
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Private recorded reason. Blank, control and Unicode format characters are refused.
+        occurred_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        notice_state:
+          type: string
+          enum:
+          - PENDING_NOTIFICATION_CORE
+        handover_state:
+          type: string
+          enum:
+          - NONE
+          - PENDING_MANAGER
+      example:
+        membership_id: 7b0e2a54-0000-4000-8000-000000001022
+        employee_id: 7b0e2a54-0000-4000-8000-000000001023
+        access_model: EXISTING_ACCOUNT
+        state: ENDED
+        revision: 4
+        suspension_origin: ''
+        end_reason: OFFBOARDED
+        data_mode: SYNTHETIC
+        employee_state: ACTIVE
+        employee_revision: 1
+        handover_digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        items:
+        - key: SETTING:billing:primary
+          source_revision: 2
+        scope_version: ORG_F1
+        pending_sources:
+        - MANAGED_ACCESS
+        - DEVICE_ENROLMENTS
+        - DELEGATIONS
+        - OPERATIONAL_WORK
+        - LATE_INTAKE
+        operation_id: 7b0e2a54-0000-4000-8000-000000001031
+        reason: Synthetic organization departure
+        occurred_at: '2026-11-12T18:00:00Z'
+        replayed: false
+        notice_state: PENDING_NOTIFICATION_CORE
+        handover_state: PENDING_MANAGER
     EnterpriseMembershipAccessReadRequest:
       type: object
       additionalProperties: false
@@ -16662,7 +17425,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, LAST_UNIT, STRUCTURE_IN_USE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false

@@ -1,6 +1,16 @@
 # Identity, employees and access
 
-Status: **EMP-IDN-001/002/003/004/005/009 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+Status: **EMP-IDN-001/002/003/004/005/009/010 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+
+EMP-IDN-010 supplies current existing-account ORG_F1 manager offboarding and
+personal self-leave, including suspended/no-role members and authenticated
+ended retries. Reviewed actual settings/team flags remain available after source
+reductions. Employee retention/termination, actual role endings, last-owner
+protection and immutable audit/acknowledgements are atomic. [Offboarding evidence](../evidence/f1-idn010-offboarding.md)
+records source coverage and uninstalled managed/device/delegation/operational
+and late-intake producers; they must integrate before activation. Personal
+sessions and other organizations remain independent. Native/device revocation
+and managed-account disabling are not certified by this checkpoint.
 
 EMP-IDN-009 supplies fresh manager read/suspend/reactivate routes with original
 role periods and suspension causes, immediate organization denial, actual
@@ -9,8 +19,8 @@ last-owner protection, immutable CAS outcomes and pending source notices.
 ordinary migration190 recovery, adversarial PostGIS/race and actual HTTP/router
 checks. Reactivation does not restore consumed invitations, teams, settings
 designations or ownership proposals. Personal sessions and other organizations
-remain independent; native locking, device revocation and offboarding remain
-planned. Managed006..008 still require GOV-013.
+remain independent; native locking and device revocation remain planned.
+IDN-010 supplies current offboarding as described above. Managed006..008 still require GOV-013.
 
 EMP-IDN-001 confirms `membership/domain` as the private identity/lifecycle
 core, separate from existing contributor proof in `identity/domain`.

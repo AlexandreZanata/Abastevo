@@ -68,6 +68,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, member.InvitationAuditDefinitions()...)
 	definitions = append(definitions, member.RedemptionAuditDefinitions()...)
 	definitions = append(definitions, member.MembershipAccessAuditDefinitions()...)
+	definitions = append(definitions, member.OffboardingAuditDefinitions()...)
 	definitions = append(definitions, accesspg.RoleAuditDefinitions()...)
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
@@ -156,6 +157,11 @@ func Register(router chi.Router, o Options) error {
 	membershipAccess := &member.MembershipAccessStore{Pool: o.Pool, Authority: &orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Memberships: memberStore, Periods: roles, Audit: auditStore}
 	membershipAccessAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: memberweb.MembershipAccessRecords{}, Now: time.Now}
 	if e := memberweb.RegisterMembershipAccess(router, memberapp.MembershipAccessService{Enabled: true, Repository: membershipAccess}, cookies, gateway, membershipAccessAuthorization, roots); e != nil {
+		return e
+	}
+
+	offboarding := &member.OffboardingStore{Pool: o.Pool, Authority: &orgpg.OffboardingAuthority{MembershipAccessAuthority: orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}, Memberships: memberStore, Audit: auditStore}
+	if e := memberweb.RegisterOffboarding(router, memberapp.OffboardingService{Enabled: true, Repository: offboarding}, cookies, gateway, membershipAccessAuthorization, roots); e != nil {
 		return e
 	}
 

@@ -35,3 +35,15 @@ type PersonalInvitationRule struct {
 	Success int    `json:"success"`
 }
 type PersonalInvitationDescriptor interface{ PersonalInvitationRule() PersonalInvitationRule }
+
+// SelfMembershipRule permits only source-bound personal review/leave. It is
+// neither an organization permission nor a general exception to the AUTH gate.
+type SelfMembershipRule struct {
+	Action  string `json:"action"`
+	Cookie  bool   `json:"cookie"`
+	CSRF    bool   `json:"csrf"`
+	Fresh   bool   `json:"fresh"`
+	Binding bool   `json:"binding"`
+	Success int    `json:"success"`
+}
+type SelfMembershipDescriptor interface{ SelfMembershipRule() SelfMembershipRule }

@@ -289,3 +289,17 @@ func (f *Fixture) GrantMembershipAccessCommands(t *testing.T) {
 		}
 	}
 }
+
+// GrantOffboardingCommands is disposable test provisioning, never runtime grants.
+func (f *Fixture) GrantOffboardingCommands(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_offboarding_commands') IS NOT NULL`).Scan(&installed); e != nil {
+		t.Fatal(e)
+	}
+	if installed {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_offboarding_commands,org_offboarding_notices TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
+			t.Fatal(e)
+		}
+	}
+}

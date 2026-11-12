@@ -1240,3 +1240,39 @@ This bounds synthetic validation; it is not measured production capacity.
 Measure and review feature budgets and enable the existing quota cleanup before
 live enterprise activation. Pre-organization creation retains fresh-cookie
 proof and the transactionally enforced three-pending-organization account cap.
+
+- **B-BR-EMP-80 — End current organization access with a reviewed handover.**
+  Fresh current OWNER/ADMIN authority may end an ACTIVE or SUSPENDED existing-account
+  membership, preserving its recorded cause and ending original role periods through
+  the installed source policy. Last-owner protection is mandatory. A manager may
+  retain the employee or terminate it at its exact reviewed revision. The server's
+  bounded current handover inventory covers actual team links and settings
+  designations; a digest binds that inventory and employee/membership revisions.
+  Every present item must be explicitly retained as a pending manager flag; the
+  current optional designations require no invented successor. Concurrent source
+  changes invalidate review. Flags retain original source identifiers/revisions;
+  no work is closed, reassigned or deleted by this command. Existing invitation,
+  admission, proposal, team and settings reducers remain atomic.
+- **B-BR-EMP-81 — Leaving is a personal action, not a role grant.** A fresh personal
+  cookie and current locked source proof may end only that account's selected
+  existing-account membership, including a suspended membership or one with no
+  current role. The same last-owner and reviewed-responsibility rules apply.
+  Self-leave cannot terminate the employee. An exact caller/intent-bound receipt
+  can be read on retry after ending, while current account/proof and original
+  binding still hold. Managers cannot use this entry to act for another account.
+  Personal sessions, keys, private data and other memberships are untouched.
+  Future managed provisioning/device/delegation/operational producers must extend
+  this source boundary before activation; absent producers are identified as
+  unavailable, never reported as successful revocations or empty live inventories.
+  Managed provenance is refused until its full owning workflow exists. Late facts
+  retain their dedicated intake/review contract; this task does not accept them.
+- **BUC-EMP-41 — Review and end one organization membership.** Read the actual
+  handover and revisions; explicitly acknowledge its pending flags, choose employee
+  retention/termination (manager only), and submit a reason and operation UUID.
+  Lock accounts in UUID order, current proof and root; recheck review, authority,
+  owner coverage and source provenance. End access, persist source-backed flags,
+  audit, immutable original acknowledgement and pending notice together. Return no
+  provisional result on failure. Personal self-leave follows the same source
+  boundary without needing a current organization role. Exercise changed review,
+  stale/revoked proof after waits, wrong caller, missing/foreign source, last owner,
+  retries/CAS, source reductions, upgrade recovery and actual next-request denial.

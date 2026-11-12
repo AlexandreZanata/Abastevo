@@ -40,6 +40,8 @@ sql:
       - db/migrations/000188_employee_invitations.sql
       - db/migrations/000189_invitation_redemption.sql
       - db/migrations/000190_membership_access_commands.sql
+      - db/migrations/000177_organization_teams.sql
+      - db/migrations/000191_membership_offboarding.sql
     gen:
       go:
         package: membership

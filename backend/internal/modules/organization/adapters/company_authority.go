@@ -288,3 +288,79 @@ func (g *MembershipAccessAuthority) CheckMembershipAccessTx(ctx context.Context,
 	}
 	return now.Time.UTC(), nil
 }
+
+// OffboardingAuthority treats self-leave as an account-bound personal action,
+// including suspended/no-role membership. It cannot grant organization access.
+type OffboardingAuthority struct{ MembershipAccessAuthority }
+
+func (g *OffboardingAuthority) CheckOffboardingTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor members.EmployeeActor, member string, self, write bool) error {
+	if g == nil || scope.Validate() != nil || actor.Validate() != nil {
+		return members.ErrEmployeeUnauthenticated
+	}
+	if !self {
+		action := members.MembershipAccessRead
+		if write {
+			action = members.MembershipSuspend
+		}
+		_, e := g.CheckMembershipAccessTx(ctx, tx, scope, actor, member, action)
+		return e
+	}
+	queries := q.New(tx)
+	account, e := queries.ShareLegalAccount(ctx, actor.AccountID)
+	if e != nil {
+		return e
+	}
+	if account.Status != "active" || account.DeletionPending {
+		return members.ErrEmployeeUnauthenticated
+	}
+	if account.ManagedOrg != "" {
+		return members.ErrManagedRestricted
+	}
+	proof := q.LockLegalProofParams{AccountID: actor.AccountID, SessionID: actor.SessionID, RequireFresh: true}
+	if _, e = queries.LockLegalProof(ctx, proof); e != nil {
+		return members.ErrEmployeeUnauthenticated
+	}
+	// Prove the selected account binding before exposing any private root facts.
+	if g.Memberships == nil {
+		return members.ErrRegisterUnavailable
+	}
+	own, e := g.Memberships.GetTx(ctx, tx, scope, member)
+	if errors.Is(e, members.ErrNotFound) {
+		return members.ErrEmployeeNotFound
+	}
+	if e != nil {
+		return e
+	}
+	v, e := own.Snapshot(scope)
+	if e != nil {
+		return e
+	}
+	bound, model, e := v.Account.Reference(scope)
+	if e != nil || bound != actor.AccountID || model != "EXISTING_ACCOUNT" {
+		return members.ErrEmployeeNotFound
+	}
+
+	params := q.LockLegalOrganizationParams{OrgID: scope.OrgID().String(), TermsVersion: d.SyntheticTermsVersion, TermsDigest: d.SyntheticTermsDigest}
+	var root q.LockLegalOrganizationRow
+	if write {
+		root, e = queries.LockLegalOrganization(ctx, params)
+	} else {
+		v, err := queries.ShareLegalOrganization(ctx, q.ShareLegalOrganizationParams(params))
+		root = q.LockLegalOrganizationRow(v)
+		e = err
+	}
+	if errors.Is(e, pgx.ErrNoRows) {
+		return members.ErrEmployeeNotFound
+	}
+	if e != nil {
+		return e
+	}
+	if !root.HasSnapshot || !root.State.Valid || !root.SyntheticSetup {
+		return members.ErrRegisterUnavailable
+	}
+	// A wait on root must not prolong fresh proof.
+	if _, e = queries.LockLegalProof(ctx, proof); e != nil {
+		return members.ErrEmployeeUnauthenticated
+	}
+	return nil
+}

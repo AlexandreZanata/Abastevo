@@ -168,7 +168,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task206](https://github.com/AlexandreZanata/Abastevo/issues/206), cumulative PR203. Fresh guarded read/suspend/reactivate, real last-owner/CAS/proof-wait races, original role periods/causes, immutable retries and actual pending notices pass. Populated189→190 recovery/RLS/retention, actual HTTP/router/contracts, affected PostGIS/race/static/generation and full local Quick verification pass. [Evidence](../evidence/f1-idn009-membership-access.md). Offboarding, native/device, offline review and managed activation remain separate.
 
 ### EMP-IDN-010 — Offboarding: end membership, revoke sessions, hand over responsibilities
-- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** End organization access atomically and leave a clear handover record.
 - **Rules and use cases:** BR-IDN-025, BR-IDN-027, BR-IDN-028, BR-IDN-029, BR-IDN-030, BR-IDN-031, UC-IDN-09, UC-IDN-10
 - **Depends on:** EMP-IDN-009
@@ -182,6 +182,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive where handover needs state · rollback: preserve completed access revocations
 - **Risks and assumptions:** Late offline facts follow review rules. Offboarding is not an automatic work closure.
 - **Done when:** PostGIS proves consistent handover and access denial, including rollback and replay.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task207](https://github.com/AlexandreZanata/Abastevo/issues/207), cumulative PR203. The actual existing-account ORG_F1 runtime has manager review/complete and fresh account-bound self review/leave, employee retain/terminate choice, exact reviewed source flags, actual reductions and immutable receipts. PostGIS/race, last-owner/retry/CAS/proof-wait/fault, ordinary190→191 recovery/RLS/retention and actual HTTP/router/contracts pass. [Evidence](../evidence/f1-idn010-offboarding.md). Managed provisioning, device/delegation/operational producers and late intake remain explicit pending sources and must integrate before activation; no live enrollment revocation or native acceptance is claimed.
 
 ### EMP-IDN-011 — Rehire: a new membership period on the same employee record
 - **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size S · state TODO

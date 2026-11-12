@@ -28,19 +28,42 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		company, companyGuarded := handler.(orgapi.CompanySessionDescriptor)
 		creation, creationGuarded := handler.(orgapi.OrganizationCreationDescriptor)
 		personal, personalGuarded := handler.(orgapi.PersonalInvitationDescriptor)
+		self, selfGuarded := handler.(orgapi.SelfMembershipDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
 		if operation == nil {
 			return fmt.Errorf("missing organization operation %s %s", method, path)
 		}
+		if !selfGuarded && operation.Extensions["x-abastevo-self-membership"] != nil {
+			return fmt.Errorf("unexpected self membership metadata for %s", path)
+		}
 		if !personalGuarded && operation.Extensions["x-abastevo-personal-invitation"] != nil {
 			return fmt.Errorf("unexpected personal invitation metadata for %s", path)
 		}
 		var declared orgapi.Rule
-		if personalGuarded {
+		if selfGuarded {
+			rule := self.SelfMembershipRule()
+			expected := orgapi.SelfMembershipRule{Action: rule.Action, Cookie: true, CSRF: true, Fresh: true, Binding: true, Success: 200}
+			expectedPath := "/v1/orgs/{org_id}/memberships/{membership_id}/leave"
+			if rule.Action == "read" {
+				expectedPath += "/read"
+			}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || (rule.Action != "read" && rule.Action != "leave") || path != expectedPath || rule != expected || operation.Extensions["x-abastevo-organization"] != nil || operation.Extensions["x-abastevo-company-session"] != nil || operation.Extensions["x-abastevo-personal-invitation"] != nil || operation.Extensions["x-abastevo-organization-creation"] != nil {
+				return fmt.Errorf("invalid self membership guard for %s", path)
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-self-membership"])
+			var recorded orgapi.SelfMembershipRule
+			if e != nil || json.Unmarshal(raw, &recorded) != nil || recorded != expected {
+				return fmt.Errorf("self membership metadata differs for %s", path)
+			}
+			if e := validateCompanySecurity(document, operation, path, orgapi.CompanySessionRule{Cookie: true, CSRF: true, Fresh: true, Success: 200}); e != nil {
+				return e
+			}
+			declared.Success = 200
+		} else if personalGuarded {
 			rule := personal.PersonalInvitationRule()
 			expected := orgapi.PersonalInvitationRule{Action: rule.Action, Cookie: true, CSRF: true, Fresh: true, Success: 200}
 			if guarded || companyGuarded || creationGuarded || (rule.Action != "preview" && rule.Action != "accept" && rule.Action != "decline") || path != "/v1/org-access/invitations/"+rule.Action || rule != expected || operation.Extensions["x-abastevo-organization"] != nil || operation.Extensions["x-abastevo-company-session"] != nil || operation.Extensions["x-abastevo-organization-creation"] != nil {

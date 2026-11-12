@@ -1,4 +1,24 @@
 # Current execution state
+- Enterprise EMP-IDN-010, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn010 from published dev63b9365a; publish to dev/PR203,
+  [task207](https://github.com/AlexandreZanata/Abastevo/issues/207).
+  [Offboarding evidence](../enterprise/evidence/f1-idn010-offboarding.md) records
+  fresh manager offboarding and account-bound personal self-leave, reviewed
+  actual settings/team flags, employee retain/terminate choice, original
+  acknowledgements, actual role/source reductions and personal independence.
+  B-BR-EMP-80/81, BUC-EMP-41 and EDR-052 precede behavior. Last-owner, twelve-way
+  retry/CAS, observed proof-wait, late failure/recovery, populated migration191
+  recovery/RLS/retention and actual HTTP/router/contracts pass. Affected real
+  PostGIS/race, static/generation/compatibility/plan/secret checks and local Quick
+  pass; Quick166s, no vulnerabilities, membership domain91.8%. Final binding
+  before private-root reads passes scoped source/unit/static verification.
+  Tested backend tree312293cf96e1729328ea6d9e6379548f1b6f526a;
+  contract Git blob3aadb41b3a0bf9fcf7c873cc1db3320dc05fa0ea.
+  Required remote check awaits publication. Next: protected review/integration;
+  this request stops here. Managed/device/delegation/operational/late-intake
+  producers must integrate before activation. F1/M1, legal/runtime/staging/native/
+  production remain open. No merge/wiki/deployment; issue stays open until merge.
+
 - Enterprise EMP-IDN-009, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
   codex/enterprise-idn009 from published dev621b6767; publish to dev/PR203,
   [task206](https://github.com/AlexandreZanata/Abastevo/issues/206).
