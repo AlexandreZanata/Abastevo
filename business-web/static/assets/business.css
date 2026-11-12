@@ -1,0 +1,85 @@
+/* Existing landing tokens and self-hosted fonts; company-only composition. */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--surface); color: var(--ink); font-family: var(--font-sans); min-height: 100vh; display: flex; flex-direction: column; }
+.company-header { min-height: 88px; padding: 20px clamp(24px, 5vw, 80px); background: var(--page); display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); }
+.brand-lockup { display: flex; align-items: center; gap: 12px; font: 700 24px var(--font-display); letter-spacing: -1px; }
+.brand-lockup > span { display: flex; align-items: center; gap: 13px; }
+.brand-lockup strong { font-size: 17px; font-weight: 500; letter-spacing: -.3px; }
+.brand-divider { color: var(--line-interactive); font-weight: 400; }
+.shell-layout { width: 100%; flex: 1; display: flex; }
+main { min-width: 0; width: 100%; }
+.login-layout { max-width: 1180px; margin: auto; display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(40px, 7vw, 110px); padding: clamp(55px, 8vh, 100px) 40px; align-items: center; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .14em; color: var(--link); margin-bottom: 22px; }
+.welcome-copy { position: relative; padding-bottom: 60px; }
+.welcome-copy h1 { font: 650 clamp(38px, 4.7vw, 62px)/1.1 var(--font-display); letter-spacing: -.055em; margin-bottom: 28px; }
+.welcome-description { font-size: 20px; line-height: 1.55; max-width: 380px; color: var(--text-muted); }
+.welcome-detail { display: flex; gap: 18px; align-items: center; margin-top: 44px; font-size: 15px; line-height: 1.65; color: var(--text-muted); }
+.welcome-detail strong { font-weight: 600; }
+.detail-line { width: 34px; height: 2px; background: var(--brand-blue); }
+.welcome-number { position: absolute; right: 8px; bottom: -38px; font: 150px/1 var(--font-display); color: var(--line); opacity: .55; }
+.login-card { background: var(--card); border-radius: 24px; padding: 38px; box-shadow: 0 18px 60px #0b18490a; position: relative; }
+.small-mark { width: 42px; height: 42px; display: grid; place-items: center; background: var(--tint-blue); color: var(--link); border-radius: 12px; font-size: 28px; margin-bottom: 24px; }
+.login-card h2 { font: 650 27px/1.25 var(--font-display); letter-spacing: -.035em; margin-bottom: 10px; }
+.login-card > p { color: var(--text-muted); }
+form { margin-top: 28px; }
+label { display: block; font-size: 14px; font-weight: 650; margin-bottom: 9px; }
+input, select { font: inherit; width: 100%; min-height: 48px; color: var(--ink); background: var(--page); border: 1px solid var(--line-interactive); border-radius: var(--radius-sm); padding: 10px 12px; }
+input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible, [tabindex="-1"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+.field-help { color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-top: 9px; }
+.form-error { min-height: 24px; color: #9d2038; font-size: 14px; line-height: 1.5; margin: 12px 0; }
+.button-primary, .button-quiet { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 12px 20px; font: 650 15px var(--font-sans); border-radius: var(--radius-sm); text-decoration: none; cursor: pointer; border: 0; }
+.button-primary { background: var(--button-bg); color: var(--on-button); }
+.button-primary:hover { background: var(--button-hover); color: var(--on-button); }
+.button-quiet { background: var(--tint-blue); color: var(--ink); }
+button:disabled, select:disabled, input:disabled { cursor: default; opacity: .6; }
+form .button-primary { width: 100%; }
+.login-note { font-size: 13px; line-height: 1.6; margin-top: 25px; padding-top: 22px; border-top: 1px solid var(--line); }
+.workspace-nav { width: 280px; flex: 0 0 280px; padding: 38px 24px; background: var(--page); }
+.workspace-nav .eyebrow { font-size: 10px; margin-bottom: 25px; }
+.workspace-nav select { font-size: 14px; }
+.organization-form .button-quiet { width: 100%; margin-top: 10px; }
+.nav-item { display: flex; gap: 13px; align-items: center; border-radius: var(--radius-sm); padding: 13px 16px; margin-top: 35px; background: var(--tint-blue); font-weight: 650; text-decoration: none; color: var(--link); }
+.nav-item span { font-size: 22px; }
+.nav-note { color: var(--text-muted); font-size: 13px; line-height: 1.65; margin-top: 36px; }
+.workspace { padding: clamp(24px, 5vw, 65px); max-width: 1100px; }
+.workspace .eyebrow { margin-bottom: 16px; }
+.company-name { font: 650 clamp(26px, 3vw, 38px)/1.2 var(--font-display); letter-spacing: -.035em; margin-bottom: 30px; overflow-wrap: anywhere; }
+.state-card { padding: clamp(26px, 4vw, 48px); background: var(--card); border-radius: 20px; max-width: 760px; }
+.state-marker { color: var(--green-text); font-size: 12px; font-weight: 650; background: var(--tint-green); padding: 6px 10px; border-radius: var(--radius-pill); }
+.state-icon { margin-top: 28px; font-size: 45px; color: var(--link); }
+.state-card h1 { font: 650 29px/1.25 var(--font-display); letter-spacing: -.035em; margin: 15px 0; }
+.state-card p { color: var(--text-muted); line-height: 1.65; max-width: 470px; }
+.state-card .scope-note { margin-top: 20px; font-size: 14px; }
+.state-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.company-footer { display: flex; justify-content: space-between; gap: 15px; flex-wrap: wrap; padding: 25px clamp(24px, 5vw, 80px); color: var(--text-muted); font-size: 12px; }
+.skip-link { position: absolute; top: -100px; left: 20px; padding: 12px; background: var(--page); z-index: 10; }
+.skip-link:focus { top: 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.not-found { max-width: 700px; padding: 80px 24px; margin: auto; }
+.not-found p { margin: 24px 0; }
+@media (max-width: 850px) {
+  .login-layout { gap: 35px; grid-template-columns: 1fr; padding: 38px 24px; max-width: 570px; }
+  .welcome-copy { padding-bottom: 0; }
+  .welcome-copy h1 { font-size: 39px; }
+  .welcome-detail, .welcome-number { display: none; }
+  .welcome-description { font-size: 17px; }
+  .login-card { padding: 28px; }
+  .shell-layout { flex-direction: column; }
+  .workspace-nav { width: 100%; flex-basis: auto; padding: 24px; }
+  .nav-note { display: none; }
+  .nav-item { margin-top: 16px; }
+  .company-header { min-height: 76px; padding: 17px 24px; }
+  .brand-lockup { font-size: 21px; gap: 8px; }
+  .brand-lockup img { width: 32px; height: 32px; }
+  .brand-lockup > span { gap: 8px; }
+  .brand-lockup strong { font-size: 14px; }
+}
+@media (max-width: 420px) {
+  .company-header { padding: 16px; flex-wrap: wrap; }
+  .login-layout { padding: 30px 16px; }
+  .welcome-copy h1 { font-size: 35px; }
+  .login-card { padding: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }

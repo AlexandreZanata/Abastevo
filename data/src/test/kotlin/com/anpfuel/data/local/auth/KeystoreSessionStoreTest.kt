@@ -91,6 +91,15 @@ private class FakeKeys : SessionKeyProvider {
 
 class KeystoreSessionStoreTest {
 
+    @Test
+    fun failedClearCannotClaimDurableLogout() {
+        val prefs = FakePrefs()
+        val store = KeystoreSessionStore(prefs, FakeKeys())
+        store.save(session())
+        prefs.commitSuccess = false
+        assertThrows(IllegalStateException::class.java) { store.clear() }
+    }
+
     private fun session() = PortableAuth.Session(
         familyId = "family-1", accountId = "account-1",
         accessToken = "access-1", refreshToken = "refresh-1",

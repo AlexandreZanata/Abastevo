@@ -28,6 +28,7 @@ import (
 	communityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/adapters/jobs"
 	communityapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/application"
 	communitydomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/community/domain"
+	companysession "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters"
 	directoryadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters"
 	directoryjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/jobs"
 	directoryregistry "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/registry"
@@ -416,6 +417,10 @@ func run() error {
 	// cascade design lands. Rate windows self-clean on check and
 	// evidence media purges on its hourly sweeper.
 	retentionPurges := []privacyapp.NamedPurge{
+		{Name: "company-web-sessions", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
+			count, oldest, err := (&companysession.Store{Pool: raw}).PurgeExpired(ctx, time.Now(), privacyapp.RetentionBatch)
+			return privacyapp.CategoryReport{Purged: count, OldestOverdue: oldest}, err
+		}},
 		{Name: "community-photo-captures", Purge: func(ctx context.Context) (privacyapp.CategoryReport, error) {
 			count, err := communityStore.PurgeExpiredPhotoCaptures(ctx, time.Now(), privacyapp.RetentionBatch)
 			return privacyapp.CategoryReport{Purged: count}, err

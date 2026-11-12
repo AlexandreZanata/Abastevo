@@ -16,6 +16,15 @@ Tests have three levels: immediate targeted task/risk checks; specialized phase 
 
 ## Phase order
 
+**Abastevo enterprise suite (2026-11-10):**
+[F0 governance](docs/enterprise/14-roadmap.md#3-entry-exit-and-activation-per-milestone)
+is in progress. [ADR-025](docs/adr/025-private-abastevo-empresas-organization-boundary.md)
+records the approved organization boundary for private Abastevo Empresas
+data. The maintainer confirmed that local F1 starts only after M0 closes
+and the current ADR-019 construction batch is integrated through protected
+`main`. [Decision record](docs/enterprise/evidence/f0-m0-decisions.md#roadmap-sequencing)
+Existing Stage D, G09 and pilot gates apply.
+
 **Forum planning overlay (2026-11-05):**
 [FOR-00–FOR-29](#forum-abastevo) defines editorial reading, authorized news,
 reviewed discussion, user topics and deterministic data bulletins. This request

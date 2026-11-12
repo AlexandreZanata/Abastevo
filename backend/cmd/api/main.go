@@ -110,11 +110,13 @@ import (
 	subscriptiondomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/health"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpserver"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry/metrics"
 	"github.com/go-chi/chi/v5"
@@ -182,7 +184,11 @@ func main() {
 	}
 }
 
-func run() error {
+func run() error { return runWithRouterCheck(nil) }
+
+// The optional check observes the fully composed production router before any
+// listener opens. Tests use this seam to detect private entry/contract drift.
+func runWithRouterCheck(check func(chi.Router) error) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -206,6 +212,11 @@ func run() error {
 		return err
 	}
 	router.Use(metrics.Observe(metricsReg, httpRequests, httpSeconds))
+	organizationTelemetry, err := orgapi.Observe(metricsReg)
+	if err != nil {
+		return err
+	}
+	router.Use(organizationTelemetry)
 	// Lazy pool: the process boots (live, not ready) while PostgreSQL is
 	// down. Closed after the server drains, at shutdown.
 	pool, err := database.Open(context.Background(), cfg.DatabaseURL, database.DefaultOptions())
@@ -512,6 +523,9 @@ func run() error {
 	// leaves this closure.
 	payments.Billing.Proof = accountOwnerProof{validate: accountService.ValidateAccess}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
+	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Origin: "https://" + cfg.CanonicalHost, CursorSecret: cfg.CursorSecret, Pool: pool.Underlying(), Accounts: accountService}); err != nil {
+		return err
+	}
 	// Station/fuel feedback (P14-T03). Same closure rule: session
 	// ownership, account liveness and station existence arrive as
 	// narrow functions; only active accounts write, reads stay
@@ -1542,6 +1556,11 @@ func run() error {
 			proxy = httpapi.DevelopmentStorageServiceProxy(cfg.R2.Bucket)
 		}
 		router.Handle("/abastevo-dev-photos/*", proxy)
+	}
+	if check != nil {
+		if err := check(router); err != nil {
+			return err
+		}
 	}
 	server, err := httpserver.New(httpserver.Options{
 		Addr:               cfg.HTTPAddr,

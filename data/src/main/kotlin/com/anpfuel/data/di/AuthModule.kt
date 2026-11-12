@@ -9,6 +9,10 @@ import com.anpfuel.application.portable.AuthPorts
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.application.portable.AuthWallClock
 import com.anpfuel.application.portable.PortableNonceSource
+import com.anpfuel.application.enterprise.EnterpriseSessionFence
+import com.anpfuel.data.enterprise.EnterpriseFencedSessionStore
+import com.anpfuel.data.enterprise.EnterpriseRevokingAccountApi
+import com.anpfuel.data.enterprise.EnterpriseVaultErasure
 import com.anpfuel.data.local.auth.AccountHttpApi
 import com.anpfuel.data.local.auth.AndroidKeystoreKeys
 import com.anpfuel.data.local.auth.KeystoreAccountKey
@@ -71,7 +75,8 @@ object AuthModule {
     fun provideSessionStore(
         @Named("auth") prefs: SharedPreferences,
         keys: SessionKeyProvider,
-    ): AuthSessionStore = KeystoreSessionStore(prefs, keys)
+        fence: EnterpriseSessionFence,
+    ): AuthSessionStore = EnterpriseFencedSessionStore(KeystoreSessionStore(prefs, keys), fence)
 
     @Provides
     @Singleton
@@ -84,12 +89,14 @@ object AuthModule {
     @Singleton
     fun provideAccountApi(
         @Named("apiOrigin") environment: ApiEnvironment,
+        sessions: AuthSessionStore,
+        erasure: EnterpriseVaultErasure,
     ): AuthAccountApi {
         val client = OkHttpClient.Builder()
             .connectTimeout(10L, TimeUnit.SECONDS)
             .readTimeout(10L, TimeUnit.SECONDS)
             .build()
-        return AccountHttpApi(client, environment.origin)
+        return EnterpriseRevokingAccountApi(AccountHttpApi(client, environment.origin), sessions, environment.origin, erasure)
     }
 
     @Provides

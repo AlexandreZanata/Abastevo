@@ -10,13 +10,18 @@ data:
     \ Runs as the worker uid, so the private 0600 release files\n# stay private on\
     \ the host.\n#\n# Staging is never indexable: noindex everywhere, robots disallow,\
     \ no sitemap.\n{\n\tadmin off\n\tpersist_config off\n\tauto_https off\n}\n\n(security_headers)\
-    \ {\n\theader {\n\t\tStrict-Transport-Security \"max-age=31536000\"\n\t\tX-Content-Type-Options\
-    \ nosniff\n\t\tX-Frame-Options DENY\n\t\tReferrer-Policy strict-origin-when-cross-origin\n\
-    \t\tPermissions-Policy \"camera=(), microphone=(), geolocation=()\"\n\t\tContent-Security-Policy\
-    \ \"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;\
-    \ connect-src 'self'; font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors\
-    \ 'none'; object-src 'none'\"\n\t\tX-Robots-Tag \"noindex, nofollow\"\n\t\t-Server\n\
-    \t}\n}\n\n:8080 {\n\t# gzip only: zstd encoders hold large windows per concurrent\
+    \ {\n\theader @companySecurity {\n\t\tReferrer-Policy no-referrer\n\t\tContent-Security-Policy\
+    \ \"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src\
+    \ 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors\
+    \ 'none'; object-src 'none'\"\n\t}\n\theader @ordinarySecurity {\n\t\tReferrer-Policy\
+    \ strict-origin-when-cross-origin\n\t\tContent-Security-Policy \"default-src 'self';\
+    \ script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self';\
+    \ font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';\
+    \ object-src 'none'\"\n\t}\n\theader {\n\t\tStrict-Transport-Security \"max-age=31536000\"\
+    \n\t\tX-Content-Type-Options nosniff\n\t\tX-Frame-Options DENY\n\t\tPermissions-Policy\
+    \ \"camera=(), microphone=(), geolocation=()\"\n\t\tX-Robots-Tag \"noindex, nofollow\"\
+    \n\t\t-Server\n\t}\n}\n\n:8080 {\n\t@companySecurity path /empresas/*\n\t@ordinarySecurity\
+    \ not path /empresas/*\n\t# gzip only: zstd encoders hold large windows per concurrent\
     \ response and\n\t# OOM-killed a 128 MiB tier under load; the edge caches compressed\
     \ bodies.\n\tencode gzip\n\n\timport security_headers\n\n\thandle /robots.txt\
     \ {\n\t\trespond \"User-agent: *\nDisallow: /\n\" 200\n\t}\n\thandle /sitemap.xml\
@@ -52,18 +57,40 @@ data:
     \t\t}\n\t\t@retainedAsset file {\n\t\t\troot /srv/portal/retained\n\t\t}\n\t\t\
     handle @retainedAsset {\n\t\t\troot * /srv/portal/retained\n\t\t\tfile_server\n\
     \t\t}\n\t\thandle {\n\t\t\troot * /srv/portal/current\n\t\t\tfile_server\n\t\t\
-    }\n\t}\n\n\t# Admin web panel (ADR-023 B3): static, shipped inside the signed\
-    \ landing\n\t# bundle under admin/; data comes only from the same-origin /v1/admin\
-    \ API,\n\t# which stays 404 until an admin key hash and CIDR fence are configured.\n\
-    \t# Global CSP/noindex apply; pages are never cached.\n\thandle /admin/* {\n\t\
-    \troot * /srv/landing/current\n\t\t@adminAsset path /admin/assets/*\n\t\theader\
+    }\n\t}\n\n\t# EMP-PLAT-008: a separate static company build in the signed landing\n\
+    \t# bundle. This serves the shell only; API session/organization authority\n\t\
+    # remains on /v1 and keeps its independent default-off switch.\n\tredir /empresas\
+    \ /empresas/ 308\n\thandle /empresas/* {\n\t\troot * /srv/landing/current\n\t\t\
+    # Only content-fingerprinted files are immutable; unhashed font\n\t\t# licence\
+    \ texts revalidate like the landing's ordinary static files.\n\t\t@companyAsset\
+    \ path_regexp companyAsset ^/empresas/assets/(?:fonts/)?[a-z0-9-]+\\.[a-f0-9]{8}\\\
+    .(?:js|css|svg|woff2)$\n\t\theader @companyAsset Cache-Control \"public, max-age=31536000,\
+    \ immutable\"\n\t\t@companyStatic {\n\t\t\tpath /empresas/assets/*\n\t\t\tnot\
+    \ path_regexp ^/empresas/assets/(?:fonts/)?[a-z0-9-]+\\.[a-f0-9]{8}\\.(?:js|css|svg|woff2)$\n\
+    \t\t}\n\t\theader @companyStatic Cache-Control \"public, max-age=3600, must-revalidate\"\
+    \n\t\t@companyPage not path /empresas/assets/*\n\t\trequest_header @companyPage\
+    \ -If-None-Match\n\t\trequest_header @companyPage -If-Modified-Since\n\t\theader\
+    \ @companyPage {\n\t\t\tCache-Control no-store\n\t\t\t-ETag\n\t\t\t-Last-Modified\n\
+    \t\t\tdefer\n\t\t}\n\t\t# Only canonical organization paths use the shell fallback.\
+    \ Unknown\n\t\t# routes/assets retain a genuine 404, never a blanket SPA response.\n\
+    \t\t@companyOrganization path_regexp companyOrganization ^/empresas/organizacoes/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/$\n\
+    \t\trewrite @companyOrganization /empresas/index.html\n\t\tfile_server\n\t}\n\n\
+    \t# Admin web panel (ADR-023 B3): static, shipped inside the signed landing\n\t\
+    # bundle under admin/; data comes only from the same-origin /v1/admin API,\n\t\
+    # which stays 404 until an admin key hash and CIDR fence are configured.\n\t#\
+    \ Global CSP/noindex apply; pages are never cached.\n\thandle /admin/* {\n\t\t\
+    root * /srv/landing/current\n\t\t@adminAsset path /admin/assets/*\n\t\theader\
     \ @adminAsset Cache-Control \"public, max-age=31536000, immutable\"\n\t\t@adminPage\
     \ not path /admin/assets/*\n\t\theader @adminPage Cache-Control \"no-store\"\n\
     \t\tfile_server\n\t}\n\n\thandle {\n\t\troot * /srv/landing/current\n\t\theader\
     \ Cache-Control \"public, max-age=3600, must-revalidate\"\n\t\tfile_server\n\t\
-    }\n\n\thandle_errors 404 {\n\t\timport security_headers\n\t\troot * /srv/landing/current\n\
-    \t\trewrite * /404.html\n\t\theader Cache-Control \"no-cache\"\n\t\tfile_server\n\
-    \t}\n}\n"
+    }\n\n\thandle_errors 404 {\n\t\timport security_headers\n\t\t@companyError path\
+    \ /empresas/*\n\t\thandle @companyError {\n\t\t\troot * /srv/landing/current\n\
+    \t\t\trewrite * /empresas/404.html\n\t\t\theader {\n\t\t\t\tCache-Control no-store\n\
+    \t\t\t\tReferrer-Policy no-referrer\n\t\t\t\t-ETag\n\t\t\t\t-Last-Modified\n\t\
+    \t\t\tdefer\n\t\t\t}\n\t\t\tfile_server\n\t\t}\n\t\thandle {\n\t\t\troot * /srv/landing/current\n\
+    \t\t\trewrite * /404.html\n\t\t\theader Cache-Control \"no-cache\"\n\t\t\tfile_server\n\
+    \t\t}\n\t}\n}\n"
 kind: ConfigMap
 metadata:
   name: abastevo-temp-web-caddyfile

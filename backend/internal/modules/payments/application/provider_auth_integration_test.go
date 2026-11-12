@@ -67,12 +67,6 @@ func pay22InboxState(t *testing.T, store *payadapters.Store, provider paydomain.
 	return record.State
 }
 
-type pay22DisputeRefused struct{ err error }
-
-func (f *pay22DisputeRefused) VerifyDispute(context.Context, app.InboxRecord) (app.DisputeFact, error) {
-	return app.DisputeFact{}, f.err
-}
-
 type pay22LifecycleFact struct{ fact app.LifecycleFact }
 
 func (f *pay22LifecycleFact) VerifyLifecycle(context.Context, app.InboxRecord) (app.LifecycleFact, error) {

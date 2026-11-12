@@ -870,7 +870,7 @@ func (s *PGStore) SuspendAccount(ctx context.Context, accountID string, nowUnix 
 		Status: domain.StatusSuspended,
 		ID:     id,
 	}); err != nil {
-		return err
+		return enterpriseRefusal(err)
 	}
 	if err := q.RevokeAccountFamilies(ctx, account.RevokeAccountFamiliesParams{
 		Now:       stamp(nowUnix),
@@ -878,7 +878,22 @@ func (s *PGStore) SuspendAccount(ctx context.Context, accountID string, nowUnix 
 	}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	return enterpriseRefusal(tx.Commit(ctx))
+}
+
+// enterpriseRefusal reports the organization owner fence, raised immediately
+// or by its deferred coverage check at commit, as registered account refusals.
+func enterpriseRefusal(err error) error {
+	var refusal *pgconn.PgError
+	if errors.As(err, &refusal) {
+		switch refusal.Code {
+		case "P7501":
+			return domain.ErrEnterpriseLastOwner
+		case "P7502":
+			return domain.ErrEnterprisePolicyUnavailable
+		}
+	}
+	return err
 }
 
 // ReactivateAccount returns a suspended account to active. Revoked
@@ -933,7 +948,7 @@ func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix i
 		Status: domain.StatusDeleted,
 		ID:     id,
 	}); err != nil {
-		return nil, err
+		return nil, enterpriseRefusal(err)
 	}
 	if err := q.RevokeAccountFamilies(ctx, account.RevokeAccountFamiliesParams{
 		Now:       stamp(nowUnix),
@@ -974,7 +989,7 @@ func (s *PGStore) DeleteAccount(ctx context.Context, accountID string, nowUnix i
 		return nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return nil, err
+		return nil, enterpriseRefusal(err)
 	}
 	return contributors, nil
 }

@@ -106,11 +106,12 @@ const (
 	// Contributor surface (ADR-023). The GitHub repository is owner/repo;
 	// the token is optional and read-only. Public web origins are the only
 	// origins allowed to read GET /v1/contributors with CORS.
-	keyGitHubRepo       = "ANPFUEL_GITHUB_REPO"
-	keyGitHubToken      = "ANPFUEL_GITHUB_TOKEN"
-	keyPublicWebOrigins = "ANPFUEL_PUBLIC_WEB_ORIGINS"
-	keyDriverEnabled    = "ANPFUEL_DRIVER_ENABLED"
-	keyForumEnabled     = "ANPFUEL_FORUM_ENABLED"
+	keyGitHubRepo        = "ANPFUEL_GITHUB_REPO"
+	keyGitHubToken       = "ANPFUEL_GITHUB_TOKEN"
+	keyPublicWebOrigins  = "ANPFUEL_PUBLIC_WEB_ORIGINS"
+	keyDriverEnabled     = "ANPFUEL_DRIVER_ENABLED"
+	keyForumEnabled      = "ANPFUEL_FORUM_ENABLED"
+	keyEnterpriseEnabled = "ANPFUEL_ENTERPRISE_ENABLED"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -164,6 +165,8 @@ type Config struct {
 	DriverEnabled bool
 	// ForumEnabled gates forum read endpoints, news collection and admin surface.
 	ForumEnabled bool
+	// EnterpriseEnabled gates private organization surfaces; default off.
+	EnterpriseEnabled bool
 	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
 	QualityReadsEnabled        bool
 	QualityCompanyReadsEnabled bool
@@ -251,6 +254,7 @@ func (c Config) LogValue() slog.Value {
 		slog.Bool("db_configured", c.DatabaseURL != ""),
 		slog.Bool("admin_configured", len(c.AdminKeyHashes) > 0),
 		slog.Bool("forum_enabled", c.ForumEnabled),
+		slog.Bool("enterprise_enabled", c.EnterpriseEnabled),
 		slog.String("github_repo", c.GitHubRepo),
 		slog.Bool("github_token_configured", c.GitHubToken != ""),
 		slog.Int("public_web_origins", len(c.PublicWebOrigins)),
@@ -413,6 +417,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_FORUM_ENABLED must be boolean")
 		}
 		cfg.ForumEnabled = enabled
+	}
+
+	if raw, present := getenv(keyEnterpriseEnabled); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_ENABLED must be boolean")
+		}
+		cfg.EnterpriseEnabled = enabled
 	}
 
 	cfg.PriceRankingEnabled = true

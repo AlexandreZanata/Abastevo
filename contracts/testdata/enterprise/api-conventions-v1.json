@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "vectors": [
+    {"name":"android read","kind":"read","schema":"EnterpriseReadRequest","valid":true,"status":200,"value":{"family_id":"7b0e2a54-0000-4000-8000-000000000013","access_token":"synthetic-access","limit":20}},
+    {"name":"company read","kind":"read","schema":"EnterpriseReadRequest","valid":true,"status":200,"value":{}},
+    {"name":"partial session","kind":"read","schema":"EnterpriseReadRequest","valid":false,"status":401,"value":{"family_id":"7b0e2a54-0000-4000-8000-000000000013"}},
+    {"name":"null session","kind":"read","schema":"EnterpriseReadRequest","valid":false,"status":400,"value":{"family_id":null,"access_token":null}},
+    {"name":"zero limit","kind":"read","schema":"EnterpriseReadRequest","valid":false,"status":400,"value":{"limit":0}},
+    {"name":"large limit","kind":"read","schema":"EnterpriseReadRequest","valid":false,"status":400,"value":{"limit":101}},
+    {"name":"unknown property","kind":"read","schema":"EnterpriseReadRequest","valid":false,"status":400,"value":{"other":"synthetic"}},
+    {"name":"command","kind":"command","schema":"EnterpriseCommandRequest","valid":true,"status":200,"value":{"schema_version":1,"operation_id":"7b0e2a54-0000-4000-8000-000000000012","revision":1}},
+    {"name":"unknown version","kind":"command","schema":"EnterpriseCommandRequest","valid":false,"status":400,"value":{"schema_version":2,"operation_id":"7b0e2a54-0000-4000-8000-000000000012"}},
+    {"name":"missing operation","kind":"command","schema":"EnterpriseCommandRequest","valid":false,"status":400,"value":{"schema_version":1}},
+    {"name":"nil operation","kind":"command","schema":"EnterpriseCommandRequest","valid":false,"status":400,"value":{"schema_version":1,"operation_id":"00000000-0000-0000-0000-000000000000"}},
+    {"name":"stale revision shape","kind":"command","schema":"EnterpriseCommandRequest","valid":false,"status":400,"value":{"schema_version":1,"operation_id":"7b0e2a54-0000-4000-8000-000000000012","revision":0}}
+  ]
+}

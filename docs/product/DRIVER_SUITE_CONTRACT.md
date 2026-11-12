@@ -11,6 +11,9 @@ Extend Abastevo for an individual app driver: Uber, 99, inDrive and user-defined
 
 This selected planning amendment supersedes only the earlier exclusion of individual work earnings/operating results and voluntary work-session distance recording in PREMIUM_PRODUCT_CONTRACT and MOBILE_EXPANSION_CONTRACT for future DRV implementation. It does not alter financial-v1, EV measurement semantics or present runtime. Existing exclusions of fleets/employees, tenants, tax/payroll/invoicing, bank access, automatic movement detection and unauthorized third-party collection remain. No passenger identity or pickup/dropoff address is needed.
 
+Private organization operations fall under the separate
+[Abastevo Empresas contract](ABASTEVO_EMPRESAS_CONTRACT.md).
+
 The driver suite is not an Uber-client replacement, ride marketplace, pricing instruction, tax product or profit guarantee. No app scraping, accessibility-based capture, notification/SMS reading, credentials to another platform, automatic ride acceptance or overlay over another app. Any official integration is a separate admitted adapter with approval/security/data-rights proof. Manual input and a bounded user-controlled import must independently complete the suite.
 
 ## Business rules

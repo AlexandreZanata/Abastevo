@@ -1,0 +1,466 @@
+## Summary
+
+Integrates the enterprise F0/M0 specification and F1 platform tasks EMP-PLAT-001 through EMP-PLAT-011 plus EMP-PLAT-013/014/015, EMP-ORG-001/002, EMP-IDN-001/003, EMP-AUTH-001, and the EMP-PRIV-003 source implementation (native acceptance pending) from `codex/enterprise-f0-f1` (original base `d8bdc642`, current head `0474dac5`), reconciled with current main.
+
+| Commit | Task |
+| --- | --- |
+| `39a2d725` | F0/M0 specification and owner decisions. The verifier counts 348 tasks, 545 rules, 167 use cases, 145 screens, 0 problems. These are specification counts, not features. |
+| `4c4d6e3b` | EMP-PLAT-001: `OrgID` / `OrgScope` kernel values. |
+| `da669216` | EMP-PLAT-002: `WithOrgTx` transaction-local scope plus runtime-role guard. The RLS template lives outside the migration chain. Includes the shared disposable PostGIS fixture. |
+| `090207ad` | EMP-PLAT-003: `orgaudit` atomic audit runner and gated reads. The migration is append-only and uses forced RLS. |
+| `6aeeafb4` | EMP-PLAT-004: strict typed organization POST entry, with separate Android-proof and web-session ports. Also bound cursors, the chi-vs-OpenAPI route gate, and the cursor expiry boundary fix. |
+| `2ad1abaf` | Normal merge of main (`ef96cd13`, PR #201). |
+| `68c1d1fa` | **Fix from review:** renumbers the audit migration to `000165`. |
+
+The published commits are preserved. No enterprise business routes are published.
+
+## Review
+
+Reviewed areas:
+- Isolation and RLS: forced policies, scope applied per transaction, role guard.
+- Permissions: authority is resolved through an explicit port, re-checked on each request, and non-members get 404.
+- Audit atomicity: the event is reserved before the callback, and both commit or roll back together.
+- Idempotency: a replay with the same digest skips the callback; a different digest or actor is refused.
+- Migration and signed proof: exact body bytes are restored before verification.
+- Privacy: only references and registered codes are stored.
+- Cursors: bound to origin, org, account, membership, route and filters.
+- Route/contract: both directions are checked.
+
+Findings:
+1. **Blocker, fixed.** Both main's forum migration and this branch used version `000164`. The migrator refuses duplicates (`migrate: duplicate version 000164`), so after the merge every migrate run, API schema check and integration fixture failed. This was reproduced before the fix. The audit migration keeps its content as `000165`. It had only been applied to disposable databases. sqlc, the upgrade rehearsal and the docs follow the new number. The rehearsal now upgrades from the chain through the forum migration.
+2. **Operational requirement, recorded.** The forced row-level security on `org_audit_events` makes `pg_dump` fail unless the dumping role is a superuser or has BYPASSRLS. A read-only check showed the staging backup role `abastevo_temp` has both. Production backup and restore roles need the same.
+3. **Open, owned by later tasks.**
+   - `WithOrgTx` refuses superuser and owner logins. Staging runs as a superuser, so a separate non-bypass runtime login must exist before any organization feature is turned on.
+   - The route gate is not yet run against the composed `cmd/api` router. That happens when the first feature route lands.
+
+## Tests (head `68c1d1fa`)
+
+- Disposable PostGIS 18/3.6 (tmpfs, loopback), `-race -tags=integration`. Packages: orgaudit (domain, application, adapters), database, migrate, kernel, orgapi, forum, httpserver, httpapi, apicontract, seeds.
+- sqlc `diff`/`vet`/`generate`: no drift. `go vet` (integration tag) and toolchain gofmt are clean. api/worker/ops build.
+- `make quick-verify`, which includes staticcheck, vacuum OpenAPI lint and govulncheck.
+- Enterprise verifier: 348/545/167/145, 0 problems; regression tests OK. Gitleaks over the enterprise commits: no leaks.
+
+## Not included / still open
+
+- F1/M1 stays open. Not implemented: concrete organization AUTH providers, company business screens, Android enterprise features, and organization business routes. The static company shell is added below.
+- This is not a production certification. Staging deployment follows the signed release after merge.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+
+## EMP-PLAT-005 — added after the review above
+
+Commit `5b692fb5` adds audited per-organization capability switches. The prior review and its tests refer to `68c1d1fa`; this commit is a new change for review.
+
+- `ANPFUEL_ENTERPRISE_ENABLED` and the organization gateway default off. Missing organization capability rows deny writes; current authority remains required independently of flags and payment.
+- Operator changes use expected revisions, server-computed canonical digests and the existing atomic audit runner. Shared row locks serialize business writes with disable. Authorized reads/exports and stored data survive disable/re-enable.
+- Additive migration `000166` follows reviewed audit migration `000165`; no activation is seeded and the compatibility floor remains `000132`.
+- PostGIS/race tests cover isolation, concurrent replay/revision conflict, current-authority denial, an observed disable/write lock wait, state/audit/commit failure, cancellation and upgrade/retry. Coverage: domain/application 100%, adapter 98.8%.
+- Scoped regression suites passed for orgaudit, database, migrate, kernel, orgapi, config, httpapi, httpserver and apicontract. Vet, pinned staticcheck, sqlc generation/vet/diff, builds, formatting and secret checks passed. Enterprise verifier: 348/545/167/145, zero problems.
+- The actual previous API (`68c1d1fa`) returned ready against schema `000166` and stopped cleanly in the disposable PostGIS rehearsal.
+
+Evidence: `docs/enterprise/evidence/f1-plat005-capability-flags.md`.
+No business route, concrete AUTH provider, operator CLI, panel, Android feature or live activation is added. F1/M1 and protected integration remain open. Required remote checks/reviews must validate the new PR head before merge.
+
+
+## EMP-PLAT-006 — private original storage and access
+
+Commit `277fd470` adds the `orgmedia` foundation above `5b692fb5`. This is a new change for review; earlier review/check evidence remains tied to its named heads.
+
+- Derives organization/document/digest keys from current server-owned synthetic declarations. Uploads are bounded and content-inspected, with inspection also required before delivery. Conditional private PUT plus verified GET preserves originals and refuses substitution/overwrite.
+- Reuses the existing S3 signer/transport and HMAC envelope. Member-bound API access has a strict five-minute deadline and binds origin, organization, account/member and exact document revision/digest/type/length. Current authority and individual grant revocation are rechecked before delivery.
+- Issuance and each redemption commit an audit event first. Missing/unavailable audit, expired/revoked/foreign access, cancellation and unsupported content release no bytes. Private result/configuration types redact default and structured logging.
+- The supplied synthetic inspector accepts strict JPEG, preserving original bytes. PNG/PDF/XML inspectors and safety-job state remain in EMP-DOC-014. Their size budgets do not enable those formats. AUTH/DOC metadata providers, durable sessions and routes remain in their owning tasks.
+- Real disposable PostGIS/S3 race tests passed: anonymous object denial, isolated keys, repeated read audits, revocation/expiry, audit failure, substitution, eight concurrent conditional PUTs (one create/seven precondition failures), and exact 5 MiB original intake/retrieval.
+- Coverage: domain 100%, application 93.0%, adapters 94.4% (total 94.2%). Existing S3 protocol, organization audit/API and community evidence application/HTTP/media regressions passed. Vet, pinned staticcheck, builds, formatting, plan/checker regressions and secret review passed; enterprise verifier reports 348/545/167/145 with zero problems.
+
+Evidence: `docs/enterprise/evidence/f1-plat006-private-document-storage.md`.
+No new migration/dependency, business route, real-receipt intake or live provider activation. F1/M1 and protected integration remain open; required remote checks/review must validate this new head before merge.
+
+
+## EMP-PLAT-007 — isolated company account web sessions
+
+Commit `56549a5e` adds the `companysession` module above `277fd470`. This is a new change for review; the earlier Claude review and checks remain tied to their named revisions.
+
+- Adds three opt-in production POSTs under `/v1/org-access/session/`: login, read and logout. The dedicated host-only `__Host-empresas-session` cookie is Secure, HttpOnly, SameSite=Strict and Path=/. Exact canonical HTTPS Origin/Host, CSRF, strict JSON, body/read deadlines and no-store/noETag protect the independent company channel. Admin cookie/table/middleware and network fencing remain unchanged.
+- Reuses existing account proof, hashing and token generation. Only lookup digests and separately salted cookie/CSRF verifiers persist. Current active account/live family authority is rechecked; issuance locks the exact proof snapshot to refuse refresh/revocation races.
+- Enforces 30-minute idle, at most eight-hour absolute and fixed less-than-15-minute fresh authentication. Activity cannot freshen authentication. Re-login atomically rotates the presented same-account cookie/CSRF; failed commit preserves the old session. Company/admin/personal logout isolation is tested; account-wide revocation invalidates company access.
+- Adds mandatory post-scope company confirmation to orgapi: membership/permission denial precedes freshness, and failed scope/CSRF/freshness never renews idle time. Organization AUTH remains separately owned; a session grants account identity only.
+- Additive migration `000167` adds dedicated storage with composite account/family ownership and cascade cleanup. The compatibility floor remains `000132`. The existing privacy worker purges invalid sessions in bounded batches even with the enterprise surface off. No new dependency/service or seeded activation.
+- Real disposable PostGIS/TLS tests with `-race` passed for expiry/revocation, cookie/CSRF/origin isolation, middleware namespaces, twelve concurrent logins (ten admitted), proof-refresh race, commit failure/retry, cleanup convergence and rollback-clock recovery. Migration tests proved failure rollback, upgrade/retry, idempotence, foreign-family denial and old DELETE compatibility.
+- The actual previous API (`277fd470`) returned HTTP 200 ready against schema `000167` and stopped cleanly. Affected account/admin/privacy SQL and HTTP regressions, orgapi/apicontract/migrate, API/worker tests, vet, pinned staticcheck, sqlc generation/vet/diff, builds, formatting and secret checks passed.
+- The production company-session factory/registration is now compared with canonical OpenAPI. Bidirectional drift tests cover cookie/CSRF/security/freshness/cache declarations and missing/unguarded routes. Vacuum passed with 785 warnings/179 informs, below the prior 786/179 baseline. Shared module coverage: 85.4% total, domain 100%, application 89.3%, HTTP 89.7%, persistence/account adapters 73.7%.
+- Enterprise verifier and regression suite passed: 348 tasks, 545 rules, 167 use cases, 145 screens, zero structural problems. These remain specification counts.
+
+Evidence: `docs/enterprise/evidence/f1-plat007-company-web-session.md`.
+Status: LOCAL_DONE / INTEGRATION_PENDING. F1/M1 remain open. The company lifecycle defaults off; organization business routes, concrete membership AUTH, the EMP-PLAT-008 panel, live rollout and legal/real-data gates remain in their owning tasks. This update does not merge or deploy. Required remote checks/review must validate this new head before protected integration.
+
+
+## EMP-PLAT-008 — guarded company web shell
+
+Commit `b739b2c6` adds the separate `business-web/` build above `56549a5e`. This is a new change for review; earlier review/check evidence remains tied to its named revisions.
+
+- Implements the approved `/empresas/` shell, login entry and canonical organization deep links with existing account-key login and the dedicated EMP-PLAT-007 cookie session. Company CSRF/account/expiry remain in private memory; reload/restored pages, expiry, changed-account/session refusal and logout clear private state. Failed server logout is reported honestly.
+- Private transport uses fixed same-origin POSTs, credentials, no-store, redirect refusal, bounded JSON and ten-second cancellation. No admin API, client persistence, private cache, service worker or runtime dependency is added.
+- Adds an explicit current-membership/current-authority port. A selected organization must match the authenticated account's fresh list and a current account/organization/member authorization result. Switching clears prior scope immediately and cancels old work; generation guards reject late responses. Native keyboard selection and loading/empty/denied/unavailable states are implemented.
+- Production composition remains unavailable for membership listing until AUTH/IDN supplies its server-backed adapter. No guessed endpoint, organization data or demo mode is shipped. Actual account/company login works; organization-ready UI is validated only through explicit synthetic test ports.
+- Reuses landing design tokens, self-hosted OFL fonts and brand assets with provenance/license checks. The deterministic 20-file artifact fingerprints rewritten transitive ES-module imports and rejects source leaks, unmounted resources, missing imports, hash drift and oversized assets.
+- Adds static Caddy routing and its exact decoded Kubernetes ConfigMap mirror. HTML/errors are no-store/noETag, strict CSP, no-referrer and noindex; conditional HTML cannot produce stale 304 shells. Unknown routes/assets are real 404s; hashed assets cache independently. Public/admin policies and API routing ownership remain unchanged.
+- Quick verification selects company typecheck/build/check/tests for company and landing-input changes. The existing signed staging-bundle workflow packages `empresas/`; no deployment or enterprise API flag was activated.
+- All ten Node tests, strict typecheck, deterministic build/check, quick-selection/CI-cadence/Kubernetes regressions, YAML/shell syntax, enterprise checker/regressions, whitespace/link and secret review passed. The enterprise verifier remains 348/545/167/145 with zero structural problems.
+- Actual Chromium over local TLS with the real API and disposable PostGIS passed key login, cookie attributes, logout/reuse denial, reload/restored-page protection, native keyboard A-to-B selection, foreign-authority denial, focus/headings and 1440x1000 / 390x844 layouts. The existing companysession PostGIS suites also passed with `-race`.
+- Actual local Caddy 2.10.2 passed route, conditional-cache, 404, company security and unchanged public/admin policy checks. Browser/proxy tests found and fixed the standalone border-box layout omission and deferred global-header precedence.
+- Dependency review reuses exactly the existing admin TypeScript 7.0.2 development-only lock graph (Apache-2.0), with no version/edge change or runtime package. Online npm advisory audit is **UNAVAILABLE**: the configured mirror has no advisory endpoint and the official endpoint is blocked by the workstation network. No clean vulnerability-audit result is claimed; this external check remains owed before final release acceptance.
+
+Evidence: `docs/enterprise/evidence/f1-plat008-business-web-shell.md`; integration contract: `business-web/README.md`.
+Status: LOCAL_DONE / INTEGRATION_PENDING. F1/M1 remain open. AUTH/IDN membership integration, business workflows, real-data/legal and runtime-role gates remain owned by their tasks. Next bounded task is EMP-PLAT-009 upon authorization. This update does not merge or deploy; required remote checks/review must validate this new head before protected integration.
+
+
+## Review of EMP-PLAT-005 to 008 (head `1034b410`)
+
+Reviewed `5b692fb5`..`b739b2c6` and how they interact with the earlier reviewed range. Every finding was confirmed in source, and every fix has a regression test that failed before it. Full record: `docs/enterprise/evidence/f1-pr202-review.md`.
+
+**Fixed**
+
+| Severity | Finding | Fix |
+| --- | --- | --- |
+| Medium | The required backend `integration` check failed on `b739b2c6`: the orgmedia real-S3 suites need `ANPFUEL_TEST_STORAGE_*`, and the job had no S3. | The CI job now runs the same reviewed MinIO image as `compose.validation.yml` (default bucket). It was validated locally with that image: orgmedia and cmd/api's real-S3 path pass. Nothing is skipped (`1034b410`). |
+| High | The login form had no method and a named key field, so a native submit (module blocked or not yet loaded, JS off) put the account key in the URL. | Field unnamed, form posts, submit disabled until mount, artifact check refuses regressions (`ce0800c4`). |
+| High | Each panel sign-in creates an account session family that is never revoked and counts toward the 10-family/30-day budget; once it is full, Android login gets 429. This happened even with the company plane off. | Sign-in first sends a credential-free read and continues only on 401/403, so a disabled plane never receives the key or creates a family (`ce0800c4`). With the plane on this remains an **activation blocker** (single-family revocation, AUTH/IDN). |
+| Medium | Arrow keys on the closed selector switched companies at every step (WCAG 3.2.2). | Explicit "Abrir empresa" button (`ce0800c4`). |
+| Medium | Navigation or pagehide could cancel the server logout. | No page signal, `keepalive` (`ce0800c4`). |
+| Medium | Sign-in failed on browsers without `AbortSignal.any` (Safari < 17.4). | Fallback that combines the signals (`ce0800c4`). |
+| Medium | A substituted or corrupt original came back as `ErrUnavailable`, which retrying can never fix. | `ErrIntegrity` on upload and read (`b91326d9`). |
+| Low | `PresignServerPUT` signed any namespace. | Only `org/` (`b91326d9`). |
+| Low | The unit fixture used one constant ID, so grant/read audit linkage was untested. | Distinct IDs, linkage asserted (`b91326d9`). |
+| Low | A refused sign-in lost focus and was announced twice. | Fixed (`ce0800c4`). |
+
+**Confirmed without change:**
+- Capability locks/RLS/replay.
+- Company session: exact Origin/Host, CSRF, `__Host-` cookie, snapshot-bound issuance, rotation, admission, admin separation. Freshness follows BR-AUTH-010.
+- Migrations 000166/000167 are additive with floor `000132`.
+- Caddy precedence and no-store/no-ETag/no-304.
+- ConfigMap is identical to the Caddyfile.
+- No migration-number collisions.
+
+**Tests run now** (disposable PostGIS + MinIO, loopback):
+- `-race -tags=integration` on `b739b2c6` passed for orgcapability, orgmedia, companysession, orgaudit, database, migrate, kernel, orgapi, apicontract, httpserver, httpapi, config, account, admin, privacy, evidence storage and cmd/api.
+- `cmd/worker`: 5 integration tests need Rust CLIs not installed here; its unit tests passed.
+- After the fixes:
+  - orgmedia/storage integration on MinIO.
+  - 13 Node tests, typecheck, build/check.
+  - Chromium against the real API and PostGIS.
+  - Caddy 2.10.2.
+  - `make quick-verify` (full selection, govulncheck clean) on `3422c8e1` and `1034b410`.
+  - Enterprise verifier 348/545/167/145/0; gitleaks clean.
+- npm audit is still unavailable: the mirror has no endpoint, and the official registry fails TLS verification from this network. Not bypassed.
+
+**Still open before activation or VPS use:**
+- Single-family session revocation.
+- AUTH providers.
+- Non-bypass runtime login for `WithOrgTx`.
+- Per-member transfer limits; the 4 transfer slots are shared per process.
+- The staging MinIO bucket's 1-day lifecycle would delete private originals that share it.
+- Backup roles with BYPASSRLS.
+- Route gate on the composed `cmd/api` router.
+
+Remaining low items are listed in the record.
+
+Status stays LOCAL_DONE / INTEGRATION_PENDING. F1/M1 open. No merge or deployment in this update.
+
+
+## EMP-PLAT-009 — exact reconciliation and ordered allocation
+
+Commit `3f7a25b8` starts from Claude-reviewed `1034b410` and preserves all review fixes. This task adds pure value helpers and their common oracle; it does not activate the pending runtime surfaces.
+
+- Read the Claude review record, PR description and correction commits; the corrected panel's typecheck/build/check and all 13 Node tests passed in this execution. Existing session, AUTH, runtime-role, transfer-limit, bucket-lifecycle and backup activation blockers remain open.
+- Adds Go `orgvalue/domain` and Kotlin `EnterpriseValues` inside the existing domain module. Reuses financial-v1 integer centavos/milli-units/milli-BRL, existing bounds and L/M3 vocabulary. No floats, new dependency, schema, route or payment/fueling workflow.
+- Canonical integer parsers refuse signs, padding/leading zeros, fraction/exponent notation, Unicode digits and overflow. Missing facts remain unknown. Reconciliation uses half-up, paid-plus-discount and one-cent tolerance; ARITHMETIC_MISMATCH preserves the paid fact. Independently calculable expected/derived values survive another missing fact. Source-price text is retained unchanged; DOC/FUEL still owns extraction/normalization.
+- Allocation floors exact weighted shares and assigns residual cents by largest remainder, with ties by explicit lowest line order. Widened products and sums handle values above int64; output preserves the exact source, is canonical by order and never mutates input. Missing basis is distinct from a known zero allocation. The personal driver allocator's ID tie rule is unchanged.
+- All 112 fixed synthetic oracle rows execute in both languages without skips. Additional invariants cover reordered inputs, maximum weights, the 1,000-line processing budget and paid snapshot isolation. Further RED/GREEN cases caught independently known values being erased by missing paid/discount facts.
+- Go race tests passed for the new domain plus kernel, metrics, ledger domain and driver domain. New Go statement coverage is 100%. The full Kotlin domain suite passed 1,057 tests with zero failure/error/skip; the new test class contains 115 cases. New Kotlin logic has 100% instruction/branch/line coverage (enterprise package including generated models: 93.12% instructions, 100% branches, 97.67% lines).
+- Scoped vet/pinned staticcheck, API/worker/ops builds, mobile static guards, gofmt, enterprise checker/regressions, links/whitespace and secret review passed. The new Go behavioral package is in the quick manifest. Plan counts remain 348/545/167/145 with zero structural problems.
+- **Existing global coverage gate still fails.** The full Kotlin test/coverage command exits nonzero on aggregate coverage, not a test failure. An independent archive of `1034b410` reproduced it: 942 tests passed, configured coverage 54,864/68,714 = 79.8440%, below 90%. With this task: 1,057 tests passed, 55,690/69,601 = 80.0132%, still below 90%. Thresholds/exclusions/tests were not weakened. This is recorded as FAILED/PENDING, not a green global gate or merge-readiness claim.
+
+Evidence: `docs/enterprise/evidence/f1-plat009-exact-values.md`; oracle contract: `contracts/testdata/enterprise/README.md`.
+Status: scoped LOCAL_DONE / INTEGRATION_PENDING. F1/M1, the aggregate coverage obligation and Claude's activation blockers remain open. Next bounded task is EMP-PLAT-010 upon authorization. No merge or deployment; required remote checks/review must apply to this new head.
+
+
+## EMP-PLAT-010 — transactional organization events
+
+Commit `5927654c` adds the scoped event foundation above `3f7a25b8`, preserving the prior Claude corrections. Earlier checks/reviews remain tied to their named revisions.
+
+- Reuses the existing organization audit runner, WithOrgTx, PostgreSQL job queue and Dispatcher. Source modules register event/target/consumer codes; the default-off producer atomically commits the source change, audit, immutable event intent and all required consumer jobs. Canonical command digests bind organization, event metadata and sorted fan-out. Identical replay skips work; changed intent or unknown pre-existing queue provenance is refused.
+- Typed version-1 payloads contain only bounded registered codes, IDs and positive revision. Strict decoding rejects unknown/duplicate/aliased/missing/null fields, extra content and private payload fields. Event/log surfaces redact references; persisted handler errors are static.
+- Consumer handlers validate the exact live job/token/worker/payload/dedupe and immutable intent under the original organization. The existing queue row remains locked through the database-only effect and append-only receipt transaction. Lost acknowledgement and concurrent redelivery cannot repeat a committed effect. Lease loss/expiry, cancellation, callback failure and failed commit roll back effect/receipt. The five-claim budget also covers abandoned leases; normal failures reuse the fixed-minute retry and reason-required dead replay.
+- Additive migration `000168` creates forced-RLS intent/receipt tables with composite audit/intent foreign keys. No job/activation is seeded and floor `000132` is unchanged. The audit truncate regression now uses CASCADE plus explicit related grants to keep requiring the exact 55000 trigger rejection, instead of accepting the new FK denial.
+- Real disposable PostGIS `-race` suites passed: atomic rollback/fan-out, twelve concurrent producer calls and deliveries, ack loss, stale token/ack, actual lease expiry while a barrier holds the row lock, foreign/tampered stored payload, receipt/deferred-commit failures, five failures/dead replay and abandoned-lease exhaustion. Migration tests prove failure rollback, upgrade/retry/idempotence and preserved previous data/jobs.
+- The actual previous API (`3f7a25b8`) returned HTTP 200 ready against schema `000168` and stopped with exit 0. Queue/database/migrate/kernel regressions and the corrected complete audit suites passed. New coverage: domain 98.1%, application 92.6%, adapters 93.0%.
+- Affected vet/pinned staticcheck, sqlc generation/vet/diff, API/worker/ops/migrator builds, unit tests, formatting, gate-selection regressions (25/0), enterprise checker/regressions, whitespace and tracked/staged secret review passed. Specification counts remain 348/545/167/145 with zero structural problems. The disposable environment was removed.
+
+Evidence: `docs/enterprise/evidence/f1-plat010-transactional-events.md`. Composition: `backend/README.md` and architecture section 7.1.
+
+Status: scoped LOCAL_DONE / INTEGRATION_PENDING. No concrete business producer/effect, production worker registration or live activation is added; each owning module composes its authority checks and registered consumers. Operator UI/audit, external delivery and retention keep their owners. Receipts must survive every supported replay window. F1/M1, Claude's activation blockers, the unavailable npm audit and the pre-existing aggregate Kotlin coverage failure remain open. Next bounded task is EMP-PLAT-011 upon authorization. No merge, deployment, wiki sync or release certification. Required remote checks/review must validate this new head.
+
+
+## EMP-PLAT-011 — partitioned Android local foundation
+
+Commit `ec92ab38` adds the Android foundation above `5927654c`. Earlier review/check evidence remains tied to its named heads.
+
+- Adds immutable EnterprisePartition account/canonical HTTPS origin/organization values in the existing domain module, explicit persistence/context ports in application, and separate Room schema/adapter plus Hilt wiring in data. Existing modules/com.anpfuel are preserved. No enterprise screen, endpoint, worker, dependency or personal schema change.
+- Every record and pending-operation key/query carries all three scope components. EnterpriseDatabase v1 is separate from personal AnpFuelDatabase v37. Opaque envelopes snapshot bytes and redact string forms. Pending insert/replay uses a Room transaction: identical operation ID/target/envelope converges; changed intent never replaces held work.
+- Bound handles capture partition/generation. Context changes, refused switches and explicit lock invalidate old handles, including reselection of the same partition. A mutex serializes local calls with switches/lock. Current account/shared origin are checked before use and before releasing results; foreign inputs/results and stale handles are refused. Pending work keeps its creation scope across restart and context change. Storage errors are static and cancellation propagates.
+- Hilt reuses AuthFlow and the named apiOrigin. Active/NeedsRefresh identify a local owner only, never membership/network permission. **Production persistence remains unavailable.** No plain DB builder is registered. EMP-PRIV-003 must select/prove encryption of DB metadata/journals, files/caches, Keystore, logout/revocation and backup/transfer before any real organization persistence. The Room adapter is for explicit synthetic foundation tests.
+- Full domain: 1,060 tests passed. Full application: 538 passed. Scoped data enterprise/local-auth/origin regressions: 47 passed. Zero failures/errors/skips in these test suites. The three new domain tests cover origin/ID boundaries and value snapshots; context tests cover stale generations, wrong account/server/org, immutable retry, blocked in-flight reads and error/cancellation behavior.
+- Five real file-backed SQLite cases passed using exported schema and KSP-generated production SQL: separate-process reopen, colliding scoped IDs, twelve concurrent admissions with one row, unchanged duplicate intent, rollback, scoped update and byte-identical populated personal v37 store.
+- Room/KSP generation, data lint (0 errors/18 existing warnings), mobile static guards and final debug APK/Hilt build passed. Two native Room tests compile; their device execution remains OWED in the owner's deferred batch. Host SQLite does not substitute for native Room/Keystore/device certification.
+- **Aggregate app lint remains FAILED/PENDING.** The combined test/lint invocation exits nonzero on the unchanged home_open_map MissingTranslation at values/strings.xml:1461. An independent `git archive 5927654c` baseline reproduced exactly the same one error and 347 warnings. No translation, lint suppression/baseline or threshold was altered; unrelated resource work in the primary checkout is preserved.
+- The existing aggregate domain coverage obligation remains below 90%: the current report with configured exclusions observes 56,029/69,964 instructions = 80.0826%. New classes: 339/363 instructions = 93.39%, 100% source lines. The known failing coverage-verification task was not rerun solely for bookkeeping, and no threshold/exclusion was weakened.
+- Enterprise checker/generator regressions, new relative links, whitespace and tracked/staged secret review passed. Counts remain 348/545/167/145/0. A broader historical PROGRESS link scan also confirmed ten existing MAP link failures at the parent; preserved history was not rewritten.
+
+Evidence: `docs/enterprise/evidence/f1-plat011-android-foundation.md`. Composition/commands: `data/src/main/kotlin/com/anpfuel/data/enterprise/README.md`; architecture section 2.1.
+
+Status: scoped LOCAL_DONE / INTEGRATION_PENDING. F1/M1, protected-store/device acceptance, Claude's activation blockers, aggregate app lint/coverage and other retained obligations stay open. EMP-PLAT-012 awaits EMP-GOV-014's channel decision; EMP-PLAT-013 is the next eligible platform task. No merge, deployment, wiki sync, real-data activation or release certification. Required remote checks/review must validate this new head before protected integration.
+
+
+## Home map localization — aggregate app lint resolved
+
+Commit `da8ee090` adds the missing German, Spanish, French, Japanese, Russian and Simplified Chinese translations for home_open_map. Existing English/Brazilian Portuguese values are preserved. Complete `:app:lintDebug --offline --no-daemon` now passes: **zero errors, 347 existing warnings**. XML/key uniqueness passed in all eight locale files. No suppression, lint baseline or threshold was changed. This supersedes the current-readiness implication of the historical EMP-PLAT-011 lint failure; its earlier evidence remains preserved.
+
+Evidence: `docs/mobile/home-open-map-localization.md`.
+
+## EMP-PLAT-013 — private enterprise request telemetry
+
+Commit `97298631` adds the next eligible platform task above `da8ee090`. EMP-PLAT-012 remains conditional on the EMP-GOV-014 external-channel decision.
+
+- Reuses the existing metrics.Registry/private listener and HTTP/slog factory. Organization request totals and cumulative seconds carry only matched source route/unmatched, fixed success/refused/unavailable result and allowlisted organization codes or OK/REFUSED. No body/response parsing, raw error, identifier or credential supplies a label. Existing series cap/drop accounting remains authoritative; no public metrics route, collector, dependency, migration or feature activation.
+- Private transport assigns fresh server correlation. Generic logging under the private request context discards arbitrary messages/attributes and inherited client/job/bound-route metadata. Only fixed event codes and server trace survive. Transport-owned access records keep bounded method, source template, actual status and elapsed time. Client correlation accepted on a public request is never promoted to trusted private metadata.
+- Shared credential/command/actor/membership/principal/page/gateway values redact fmt/slog; embedding credentials propagates the default to module DTOs. JSON wire behavior is preserved. Audit authorization/storage remains separate.
+- Panic observations are recorded once and repanicked for existing private recovery, without logging the panic value. Private unmatched/method errors emit one access record. Wrappers preserve committed/implicit status, flush and ResponseController access; later attempted headers cannot rewrite the measured status. Public regression behavior is preserved.
+- Seeded adversarial tests passed with -race for client trace, method, credentials, cookie/CSRF/signature, organization IDs, coordinates, document body, cursor, bound metadata, provider errors and panic. One hundred concurrent requests across two organizations produce exactly fifty OK and fifty FORBIDDEN observations without private references.
+- Real PostGIS signed-account/key/session regressions passed for nonce races, changed body, wrong owner, foreign/ended membership, key/family revocation and suspension. Company-session and database integration suites passed. The real signed gateway now also proves safe telemetry result exposition.
+- The final actual API/migrator composition passed in a fresh disposable PostGIS database: ready 200; private refusal 404 with regenerated/logged server trace; public trace retained; one safe private metric; public /metrics 404; no injected private markers in logs/exposition; clean shutdown. No staging/VPS/provider or production data was used. The disposable project was removed.
+- Focused unit/race, contract, vet, pinned staticcheck, API/worker/ops builds, enterprise checker/regressions, new links, explicit gofmt, whitespace and tracked/staged secret checks passed. New private logging/access/redactor files: 100% statement coverage; observer: 93.0% using cross-package integration coverage. Specification counts remain 348/545/167/145/0.
+
+Evidence: `docs/enterprise/evidence/f1-plat013-private-telemetry.md`. Composition: `backend/README.md` and architecture section 11.1.
+
+Status: scoped LOCAL_DONE / INTEGRATION_PENDING. **The app lint error is fixed.** The separate aggregate Kotlin domain coverage failure and protected Android store/device/server activation obligations remain open; no threshold was weakened. F1/M1 stay open. EMP-PLAT-014 is next eligible; EMP-PLAT-012 retains its EMP-GOV-014 dependency. No merge, deployment, wiki sync or release certification. Required remote checks/review must apply to this new head before protected integration.
+
+
+## EMP-PLAT-014 — scoped organization write admission
+
+Commit `a709ad5c` adds the next eligible platform task above `97298631`. Earlier evidence remains tied to its named revisions.
+
+- Write routes registered through orgapi now require an explicit WriteAdmission policy matching the source permission. Current session/proof, membership/permission/capability and freshness precede quota admission; denied/foreign authority and malformed commands cannot consume a target budget. Reads and account-session lifecycle retain their existing policy.
+- New orgquota composes the existing identity Limiter.CheckTx and write operation in one ordinary-role WithOrgTx. Organization, account and device are charged in a common lock order. Quota denial or transaction failure rolls back all axes before module work. Admitted requests still spend rate budget when later business rules refuse them; this is not billing or a record quota.
+- Private HMAC subjects bind class/axis/org and the applicable account/verified device. Account/org budgets survive Android key rotation. Web uses a stable account/web bucket instead of a fabricated physical-device identifier or rotating cookie subject. Different organizations/classes remain isolated; no raw identifiers/IP/key enters stored subjects, errors or telemetry.
+- Source classes require explicit budgets and a measured-limit rationale; policy/key inputs are copied. **No production defaults/classes are selected or activated.** There are no mounted business routes to measure here; each owning feature must register reviewed measured limits before rollout. Test caps are synthetic acceptance vectors. Missing policy blocks registration; missing storage/unsafe runtime role/cancellation fail closed.
+- Exhaustion returns the existing no-store RATE_LIMITED/429 with positive rounded-up Retry-After. Raw SQL/provider errors map to unavailable. Shared OpenAPI documents the optional retry header. No migration, new quota table, service or dependency.
+- Real PostGIS/race tests passed: independent axis boundaries, device/account rotation, foreign organization/class isolation, stable web bucket, thirty concurrent requests admitting exactly three, failed second/third counter, missing grant, deferred commit failure, unsafe role, observed counter-lock cancellation and retry.
+- Fixed-window rollover and the existing Cleanup API preserve live counters and remove expired windows. **Source audit found no active cleanup caller.** Verified cleanup scheduling/cadence is therefore an activation prerequisite, not a current retention guarantee. Replicas also need consistent policies, synchronized clocks and stable privacy key across live windows; class/window/key changes require reviewed rollout.
+- The real signed-account/key gateway now uses the actual guard with an ordinary pool. Only two successful authority admissions spend six units; nonce races, changed body, wrong owner, foreign/ended membership, revocation and suspension spend nothing additional. HTTP/DB tests prove success/conflict admissions, private 429/retry and membership denial precedence.
+- Unit/race and real PostGIS suites passed for the new guard/orgapi, identity/domain/adapters, database and company sessions. New guard statement coverage: 100%. API/HTTP/telemetry/contract regressions, affected vet/pinned staticcheck, API/worker/ops builds and OpenAPI lint passed (existing 785 warnings/179 informs).
+- Quick manifest includes the new behavioral package. Enterprise checker/generator regressions, new links, explicit gofmt, whitespace and tracked/staged secret review passed. Plan counts remain 348/545/167/145/0. The disposable database project was removed.
+
+Evidence: `docs/enterprise/evidence/f1-plat014-scoped-rate-admission.md`. Composition: `backend/README.md` and architecture section 3.3.
+
+Status: scoped LOCAL_DONE / INTEGRATION_PENDING. Production policy/cleanup/runtime-role prerequisites remain unaccepted. This request limiter does not resolve the separate per-member transfer/concurrency gate. Protected Android/device evidence, aggregate Kotlin domain coverage and other review activation obligations remain open. F1/M1 open; EMP-PLAT-015 is next eligible, while EMP-PLAT-012 awaits EMP-GOV-014. No merge, deployment, wiki sync or release certification. Required remote checks/review must validate this new head before protected integration.
+
+
+## EMP-PLAT-015 — operation-time and reporting kernel
+
+Commit `5d1f2b4a930dd414727b2921291041cc5e642b22` adds Go `orgtime/domain` and Kotlin `EnterpriseTime` in the existing domain module. The prior review and scoped task evidence above remain historical; this addition requires review at the new head.
+
+- Preserves declared occurred_at, trusted server received_at, entry IANA zone and device UTC offset separately. The bounded RFC3339 parser normalizes UTC with nanosecond precision, rejecting invalid/overflow dates, leap seconds, unknown -00:00 and invalid offsets.
+- Snapshots reporting day/zone/provenance from the operating unit, otherwise the organization. Invalid supplied unit zones fail rather than falling back. Trip callers supply the start instant; stored historical attribution is never recomputed after context changes.
+- AuthorityAt selects the server receipt. Half-open periods include start and exclude end. Device backdating cannot extend the receipt period. Owning flows still obtain the trusted receipt and resolve current membership, plan and locks.
+- Clock assessment uses a separate sync device sample and server receipt sample, not an old operation timestamp. It returns signed seconds/nonnegative nanos and CLOCK_SKEW strictly above the organization limit (default 300s), without rewriting times. The one-way estimate can include transit delay; batch flag/review wiring remains OFFL scope.
+- Both languages execute all **93 shared synthetic vectors** with complete identical expected maps. Cases include Brazil midnight/DST, New York gap/fold, Apia skipped day, quarter-hour zones, aliases, invalid contexts, nanosecond limits and full supported-year skew without duration overflow. Each consumer adds two historical-snapshot/authority/native-input invariants.
+- Go race suites for orgtime, orgvalue and kernel passed; new time package statement coverage **100%**. Affected vet/pinned staticcheck and API/worker/ops builds passed. Full Kotlin domain suite: **1,155 tests, zero failures/errors/skips**; new time classes **592/594 instructions (99.66%), all source lines**.
+- The quick behavioral manifest includes orgtime/domain. Enterprise generator/checker and three checker regressions pass: **348 tasks / 545 rules / 167 use cases / 145 screens / 0 problems** (specification counts). Added relative links, fail-on-output gofmt, whitespace, tracked secret scan and staged Gitleaks passed.
+
+Evidence: `docs/enterprise/evidence/f1-plat015-operation-time.md`. Composition contract: architecture section 3.4 and backend README. The same atomic commit contains product B-BR-EMP-31/32, BUC-EMP-17, fixtures, implementation, tests, backlog and progress.
+
+Status: scoped **LOCAL_DONE / INTEGRATION_PENDING**. The existing aggregate Kotlin domain coverage gate remains below 90% (**56,621/70,558 instructions = 80.2475%**, unchanged exclusions/threshold); this is not an aggregate PASS or merge-readiness claim. Standard Go/JVM IANA providers are covered by these vectors, not every native/runtime tzdb. No migration, third-party dependency, active sync/auth/trip/report route or live data is introduced. Native device, protected-store, legal retention and prior review activation obligations remain open.
+
+F1/M1 remain open. **EMP-PRIV-003** is the next eligible F1 foundation; EMP-PLAT-016 belongs to F3, and EMP-PLAT-012 still awaits EMP-GOV-014. This update does not merge, deploy, publish the wiki or certify release. Required remote checks and review must validate this new head before protected integration.
+
+
+## EMP-PRIV-003 — protected local store source; native acceptance pending
+
+Commit `ef8bfff9703bd3df1dfaf85eb86b4a5d4cb8ed38` adds the protected Android storage implementation above EMP-PLAT-015. **Source implemented / INTEGRATION_PENDING; task acceptance remains IN_PROGRESS.** Earlier reviews and evidence above remain historical and require review of this new head.
+
+- AES-256-GCM snapshots bind account/canonical HTTPS origin/organization and format as AAD. Record/operation identifiers, targets/order, envelopes, attachments, caches and lease metadata are encrypted together. AndroidKeyStore supplies separate non-exportable keys and provider IVs; reads never create replacement keys.
+- Ciphertext files live under noBackupFilesDir. Same-account OS file locks, JVM overlap serialization, fsync/atomic replacement and directory fsync preserve complete snapshots across independent processes and abrupt death. No plaintext Room/database/journal/temporary-attachment fallback or personal v37 migration/import is introduced. Initial allocation budgets are 32 MiB/10,000 entries, with explicit failure and no eviction; these are not commercial quotas and require feature capacity measurements before activation.
+- Fresh contact supplies the exact current partition/family, server receipt, validity (default 30 days) and explicit managed unlock policy. Same-boot elapsed time bounds access; reboot/decreasing elapsed/wall time below the contact anchor requires recontact, retaining ciphertext. Trusted receipt proves expiry across boots. Managed keys enforce the configured credential/strong-biometric window; no timeout default or new server credential is invented.
+- Session clear/account-family replacement invalidates stale handles; same-family token rotation preserves them. Background invalidation does not block on disk and withholds in-flight replies. Durable preference-clear failures are now checked; AuthFlow attempts both local clears and applicable remote logout, returning secure-storage-unavailable rather than an exception or false success. Refresh/deletion denial paths also report failed local cleanup. Server auth/wire protocols remain unchanged.
+- Definitive SESSION_REVOKED/SESSION_REUSE for the still-current refresh family erases only its account/origin. Outage/normal expiry, foreign proof and late replies do not erase. Denial marker, key disposal and ciphertext cleanup are independent attempts with cleanupRequired on failure; a lock outage plus one failed key deletion still attempts all other scoped keys. Starting empty after erasure requires explicit lost-work acknowledgement, fresh verified authority and successful cleanup. Old work/key is not resurrected.
+- No dependency is added. Product rules B-BR-EMP-33/34/35 and BUC-EMP-18, architecture, privacy contract, backlog and current progress are updated. The old synthetic Room adapter is retained, and relevant Kotlin test returns are explicitly void so JUnit actually discovers all scenarios.
+
+Validation:
+
+- Full domain: **1,159 tests**, zero failures/errors/skips; new offline classes **250/255 instructions (98.04%)**, decision method 100%.
+- Full application: **542 tests**, zero failures/errors/skips, including the durable-clear RED → GREEN regressions.
+- Scoped enterprise/auth data: **67 tests**, zero failures/errors/skips. Actual crypto/files, 24 concurrent writers across adapters, four independent JVM writers, independent-process reopen and abrupt death before/after replacement pass. Tests cover corruption, wrong scope/key, restore without keys, size/link bounds, immutable pending intent, late contact, family/clock/expiry, managed-key refusal, fresh empty recovery and independent cleanup outages.
+- Native tests compile; javap confirms void methods for both new vault and prior Room tests. This is **not execution evidence**.
+- Final data/app lint and APK/Hilt build pass: app **0 errors / 347 warnings / 3 informs**; data **0 errors / 16 warnings**. Existing toolchain/pins and lint gates are retained.
+- Backup/lifecycle graph guard **3 passed**; real host-SQLite foundation **5 passed**; enterprise checker regressions **3 passed**, specification counts **348/545/167/145/0**. Added links, whitespace, tracked secret scan and staged Gitleaks pass. Final 32-file behavior/test/backup input manifest is pinned in the evidence.
+
+Evidence: `docs/enterprise/evidence/f1-priv003-protected-device-store.md`; adapter contract: `data/src/main/kotlin/com/anpfuel/data/enterprise/README.md`; architecture section 2.2.
+
+**Remaining acceptance:** the owner's deferred device batch must prove actual Keystore/IV/key-loss behavior, managed credential/biometric inactivity, reboot/clock handling, backup/transfer/restored-device behavior and native cleanup failures. Combined denial-persistence plus key-disposal failure cannot certify durable erasure; cleanup remains reported and unaccepted. Current AUTH/IDN contact/freshness/replay adapters and signed device-revocation intake must also be composed. The real graph still binds **UnavailableEnterprisePersistence** and **UnavailableEnterpriseContact**; no enterprise feature/sync/capture screen is activated.
+
+The pre-existing aggregate domain coverage gate remains below 90% (**56,871/70,813 instructions = 80.3115%**); no exclusion/threshold is weakened and no aggregate PASS is claimed. F1/M1 remain open. EMP-PLAT-012 still awaits EMP-GOV-014, and the prior legal/runtime/review activation gates remain owed. This update neither closes EMP-PRIV-003 nor merges, deploys or certifies release. Required checks/review must validate this exact new head before protected integration.
+
+
+## EMP-ORG-001 — organization aggregate and lifecycle
+
+Commit `1f99b018bf1d5275d190bbd514be25b5112dabe2` implements the pure Go organization/domain package. Status: **LOCAL_DONE / INTEGRATION_PENDING**. This F1 task depends on PLAT-001 and can proceed independently of PRIV-003's deferred native acceptance; that gate remains open.
+
+- NewPending starts PENDING_SETUP at revision 1 under validated explicit OrgScope. Snapshot/configuration/transitions check that original scope. Mutations check expected revision and reject overflow; inputs/results are immutable with copied kind/checklist slices.
+- Kind tags are a canonical descriptive set with no invented default, permission, price, plan or relationship inferred from them. Equal display names/CNPJ-shaped text never merge identities or create an owner/unit.
+- Activation requires nonblank name, server-known IANA zone, positive active-unit/owner counts and recorded terms. Every missing item uses a bounded code; invalid kind/zone/hydrated state fails. Pending domain configuration is distinct from the future stricter onboarding transaction.
+- Only documented lifecycle edges are available, guarded by positive confirmed conditions for absence of operational records, suspension reason/cause resolution, archive blockers and restore/closure schedule state. Unknown/default evidence denies. CLOSED has no outgoing edge, including self-transition or reconfiguration.
+- Rehydrate is trusted-storage-only, never a client DTO decoder. Owning commands must verify current actors/freshness, allocate fresh IDs/refuse persisted IDs, resolve cross-record truth, persist CAS/audit and perform lifecycle effects. No repository/root table, migration, route, scheduler, owner/unit creation or actual closure is implemented by this value model. Aggregate/profile/snapshot fmt/slog output is redacted.
+
+Validation:
+
+- **102 fixed lifecycle vectors** pass with exact full expected maps, header/count/unique IDs and known operation checks: all 25 state pairs, all 32 activation combinations, reasons/kinds/zones, descriptive metadata, revision boundaries and closure conditions.
+- Six additional invariant tests pass, including foreign/zero scope, invalid hydration, copied values/errors, stale/exhausted revisions, default-evidence refusal, terminal closure and private formatting. Thirty-two concurrent value decisions pass under race detection; this is not DB/CAS concurrency evidence.
+- `go test -race` on organization/domain and kernel passed: **new package 100% statement coverage**, existing kernel 94.4%. Scoped vet/pinned staticcheck, API/worker/ops build and fail-on-output gofmt passed. New package is in the quick behavioral manifest.
+- Enterprise verifier/generator and three checker regressions pass: **348/545/167/145/0** specification counts. Twelve added relative links, whitespace, tracked secret scan and staged Gitleaks pass. No assertion, gate or exclusion was weakened.
+- No SQL, migration or Android input changed, so PostGIS and Gradle aggregate suites were not repeated. Prior native and Kotlin aggregate-coverage obligations are preserved.
+
+Evidence: `docs/enterprise/evidence/f1-org001-organization-domain.md`; architecture section 2.3; organization specification/backlog, backend README, shared fixtures and product B-BR-EMP-36/37/BUC-EMP-19 are updated in the same atomic commit.
+
+F1/M1 remain open. **EMP-ORG-002** is next for root persistence and real-PostGIS migration/isolation/CAS proof; ORG-003 owns atomic onboarding. PRIV-003 stays IN_PROGRESS with unavailable production persistence/contact; the unchanged Android coverage gate is still below 90% (80.3115%). PLAT-012 still awaits GOV-014. Prior runtime/legal/review activation gates remain owed. This publication does not merge, deploy, publish the wiki or certify production; required checks and review must validate this new head before protected integration.
+
+## Second review of the cumulative batch (head `7af7d2e5`)
+
+Reviewed head `1f99b018` over base `ef96cd13` (EMP-PLAT-009 to 015, EMP-PRIV-003, EMP-ORG-001 and the earlier batch). The fixes are 13 new commits `a56b25ce`..`7af7d2e5`; published history is unchanged. [Review record](docs/enterprise/evidence/f1-pr202-review.md#second-review-head-1f99b018).
+
+Fixed:
+- **High:** the required Android `test` check failed on `1f99b018`. `SecurityConfigurationTest` read only the first backup exclusion. It now checks every exclusion and the actual `no_backup/enterprise-sealed-v1/` path.
+- **Medium:**
+  - orgevent turned registered refusals into retryable 503s; they now pass bare.
+  - Personal session revocation wrote enterprise denial markers for accounts with no vault.
+  - Organizations and operation time accepted different zones; both now use `kernel.LoadTimeZone`.
+  - Unrecoverable vaults had no recovery path, and unlock-required was untyped.
+  - Offline expiry was not enforced after a reboot.
+- **Low:**
+  - Retry-After came from one axis only.
+  - Append-only test assertions were ambiguous.
+  - A zero server receipt was accepted.
+  - Organization redaction could be bypassed; names were unbounded.
+  - Kotlin accepted SystemV zones.
+  - Handles were fenced on rotation; the session fence had a default.
+  - A cleanup flag stuck.
+  - Logout showed success after a failed clear.
+  - An allocation failure crashed the vault; tests were nondeterministic.
+- **From the first review:**
+  - Per-member and per-organization transfer limits, and one full JPEG decode per process.
+  - Panel: tab-return focus, the mobile overview link, the `FRESH_AUTH_REQUIRED` message, the retired `_headers`, the licence cache, `Last-Modified`.
+  - The Caddy check now runs in Quick verification, with PyYAML ensured on the runner.
+
+Validation (local, disposable PostGIS 18/3.6 + MinIO, loopback):
+- `go test -race -tags=integration ./...`: 186 packages ok, including the Rust-native suites.
+  - An earlier run under concurrent Gradle load timed out two S3 tests. They passed alone, and the full rerun passed.
+- `./gradlew test` on every module:
+
+  | Module | Tests |
+  | --- | --- |
+  | domain | 1,166 |
+  | application | 543 |
+  | data | 778 (4 existing environment skips) |
+  | app | 753 |
+  | maps | 48 |
+
+  Zero failures.
+- App and data lint: 0 errors. `assembleDebug` and the androidTest build pass.
+- Panel:
+  - `tsc`, build (19 files), check and 16/16 Node tests pass.
+  - `caddy.py` passes.
+  - `browser.py` passes against the actual API.
+- `make quick-verify` passes, including govulncheck (no vulnerabilities) and the Caddy check. Gitleaks: no leaks.
+- `npm audit` gets HTTP 403 from a network filter. The GitHub Advisory Database reports 0 advisories for all 21 locked packages.
+
+Still open (activation gates, not certified):
+- Single-family account session revocation (AUTH/IDN).
+- Real AUTH/IDN providers.
+- A non-bypass runtime login.
+- The route gate on the composed router.
+- A vault expiry sweep and erasure on a device-revoked contact.
+- Native device acceptance.
+- EMP-DOC-014 upload audit.
+- The staging bucket lifecycle.
+- Backup roles.
+- EMP-PLAT-012/GOV-014.
+- Aggregate Kotlin coverage below 90%.
+- Legal receipt gates.
+
+F1/M1 stay open; INTEGRATION_PENDING.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+## EMP-ORG-002 — permanent scoped organization persistence
+
+Published commit: `e087b9449252c1748b84bab04b41701d6e73db84`, above Claude's reviewed/corrected `7af7d2e5`. All earlier review notes and gates above remain preserved.
+
+- Add migration 000169: permanent nonzero private roots, forced read/write RLS, nonunique names and validated initially deferred root FKs for audit, capabilities and event records.
+- Preserve existing private IDs as identity-only anchors, with no fabricated lifecycle/name/owner/terms. Get reports metadata-pending; normal create/save cannot adopt legacy anchors.
+- Add scoped sqlc/pgx repository and explicit-Tx composition ports. Create requires pending/revision one; CAS save and identical replay converge. Role/scope verification, SQL guards and bounded errors protect identity, terminal closure and failed commits.
+- Prove the actual audit reservation-before-root order and rollback using the ordinary runtime login. No provider, runtime role/grants, onboarding route or activation is seeded.
+
+Validation on the committed inputs:
+- Race-enabled real PostGIS 18/3.6 tests pass for organization, audit, capabilities, events, kernel/time, database and migrations.
+- Nine adapter test entry points cover populated upgrade by a non-bypass table-owning migrator, injected failure/recovery, previous schema compatibility, private/public payload preservation, isolation, 12-way create/CAS races, audit replay/rollback, deferred commit failure, lock cancellation and SQL shape/identity guards.
+- Organization adapter coverage 92.9%; unchanged domain 100%.
+- Affected vet/staticcheck, API/worker/ops build, sqlc vet/stable generation, formatting, document links, diff and Gitleaks checks pass.
+- Plan verifier: 348 tasks, 545 rules, 167 use cases, 145 screens, zero problems; all three verifier regression tests pass.
+
+Evidence: [organization persistence](docs/enterprise/evidence/f1-org002-organization-persistence.md), [review reconciliation](docs/enterprise/evidence/f1-pr202-review.md#emp-org-002-review-reconciliation-head-7af7d2e5).
+
+State: **LOCAL_DONE / INTEGRATION_PENDING**. F1/M1 remain open. ORG-003 still requires IDN-003/AUTH-002. The AUTH/IDN single-family/provider decisions, real runtime grants, complete-router gate, vault inventory/sweep/revoked-device cleanup and native acceptance, EMP-DOC-014, staging lifecycle/backup roles, PLAT-012/GOV-014, aggregate Kotlin coverage and legal receipt gates remain owed. No merge, VPS deployment or production certification is claimed.
+
+## EMP-IDN-001 — scoped private identity and lifecycle domain
+
+Published/tested commit: `3e88a5e960b94b0e82b2fec8a707ce2c28b05cdf`, above ORG-002 `e087b944`. Earlier review notes, task evidence and activation gates are retained.
+
+- Add the pure `membership/domain` core: employee identities/lifecycle, independent membership periods, personal/organization-bound managed account references, credential source descriptors, optional driver associations and device enrolment/revocation values.
+- An employee exists without access. Binding an account leaves a period INVITED. Confirmed admission, active matching employee and assignment facts are required for activation. Rehire never reopens ENDED periods; automatic employee return cannot lift a managerial suspension.
+- Validate duplicate live employee/account links within a supplied scoped set; PostgreSQL concurrency/uniqueness remains IDN-003.
+- Require original scope/revision, preserve immutable snapshots and terminal revocation classes; validate proof/limit facts and managed single-device limits. Credential descriptors contain no secrets or grants. Formatting, nested JSON and slog redact private identifiers.
+- No platform-wide Person record, storage, licence data, session issuance, runtime AUTH/IDN provider or route is added.
+
+Validation: all 29 source-derived employee/membership/device state-pair vectors and nine invariant suites pass under race detection; new domain coverage **99.6%**. Affected account/identity/kernel/organization regressions, vet/staticcheck, API/worker/ops build, format/links, diff and Gitleaks checks pass. Plan verifier: 348 tasks, 545 rules, 167 use cases, 145 screens, zero problems; all three verifier regressions pass.
+
+Evidence: [identity-domain acceptance](docs/enterprise/evidence/f1-idn001-identity-domain.md), [vectors](contracts/testdata/enterprise/identity-lifecycle-v1.psv).
+
+State: **LOCAL_DONE / INTEGRATION_PENDING**; F1/M1 remain open. IDN-003 is now eligible; AUTH-001 is still needed before AUTH-002/ORG-003. All previously recorded runtime, vault/native, staging, legal, PLAT-012/GOV-014 and aggregate coverage gates remain owed.
+
+## EMP-IDN-003 — membership persistence and account-erasure protection
+
+Published/tested commit: `b05da1a2b4296b7dec6e0be2b1f1e03924f94752`, above IDN-001 `3e88a5e9`. Earlier review history and gates remain retained.
+
+- Add migration 000170, forced-RLS employee identity/period tables, composite references, live employee/account uniqueness, scoped sqlc/pgx CAS/replay and server period times. No descriptive employee register or account data is seeded.
+- Existing account deletion checks every organization's access protection and replaces links with independent period tombstones, retaining employee/root/history. Internal inventory is owner-only SELECT; updates use normal per-org RLS. Ordinary roles cannot spoof it.
+- Guard the existing ACCOUNT_DELETION billing-exit intent before provider cancellation, fence new admission, preserve the reservation, and reject changed-reason replay. Last-owner refusal and unavailable policy propagate as bounded account 409/503 errors; account domain remains stdlib-only.
+- Actual SQL role/owner policy remains **UNAVAILABLE by default until AUTH-002**. Disposable test role facts are not a production catalog. No runtime role/grant, provider, business route or activation is installed.
+
+Validation: all 16 adapter test entry points (15 real PostGIS) pass under race detection, including ordinary non-bypass migrator/definer erasure across organizations, populated upgrade/failure recovery/previous-chain compatibility, 12-way reservations/CAS, two-owner end/deletion races, raw SQL/GUC denial, audit rollback, failed commit and observed-lock cancellation. Adapter coverage **93.6%**, domain **99.6%**. Affected account/payment/enterprise regressions, build, vet/staticcheck, sqlc stable generation, OpenAPI (0 lint errors), plan/links, diff and Gitleaks checks pass. Plan: 348 tasks, 545 rules, 167 use cases, 145 screens, zero problems.
+
+Evidence: [membership persistence and erasure fence](docs/enterprise/evidence/f1-idn003-membership-persistence.md).
+
+**LOCAL_DONE / INTEGRATION_PENDING**; F1/M1 remain open. Next: AUTH-001, then AUTH-002. IDN-002 still needs AUTH-003; ORG-003 still needs AUTH-002. Existing runtime/native/vault/staging/legal/coverage gates remain owed; complete erasure UX/rights/retention remains F6.
+
+## EMP-AUTH-001 — Fixed role/permission catalog
+
+Published/tested: `0474dac5da9a7bb19154ac3442b3c4c9098a5c81`.
+
+13 roles, 84 literal keys, 1,092 descriptor cells. Immutable sorted views retain all footnotes, station authority, separate agreement sides and mandatory server conditions. The 23 keys without matrix grants remain denied, including stock.reconcile; no wildcard, paid-tier or manage/read inheritance.
+
+Race/negative/concurrency suites pass; new domain coverage 100%. Membership/staff/station/kernel regressions, build/static, plan/links, diff and Gitleaks pass; plan: zero problems.
+
+[Catalog evidence](https://github.com/AlexandreZanata/Abastevo/blob/0474dac5da9a7bb19154ac3442b3c4c9098a5c81/docs/enterprise/evidence/f1-auth001-role-permission-catalog.md).
+
+LOCAL_DONE / INTEGRATION_PENDING. No SQL, route, grant or provider activated. AUTH-002 is next; membership policy stays UNAVAILABLE. F1/M1 and prior gates remain open.

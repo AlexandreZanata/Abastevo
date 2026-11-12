@@ -10,6 +10,9 @@ Core official/community lookup, anonymous price contribution, free email-code/Go
 
 A future API/fleet/merchant offering needs validation of demand, data licensing, privacy, cost and abuse constraints. Design provider-neutral boundaries now; do not build multi-tenancy, fleet services or merchant dashboards before those use cases exist.
 
+The [Abastevo Empresas contract](ABASTEVO_EMPRESAS_CONTRACT.md) defines the
+approved private fleet boundary and its remaining delivery gates.
+
 ## License and contributions
 
 The actual [MIT license](../../LICENSE) is authoritative; preserve its copyright and permission notices. A repository hyperlink alone does not replace those notices. The [OSI MIT text](https://opensource.org/license/mit) supports commercial reuse under its terms. Past MIT distributions retain those granted rights; a new licensing decision cannot erase them.

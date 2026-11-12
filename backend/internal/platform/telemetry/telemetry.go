@@ -37,6 +37,8 @@ const (
 	ctxRequestID ctxKey = iota
 	ctxJobType
 	ctxJobID
+	ctxPrivateRequest
+	ctxServerRequestID
 )
 
 // ContextWithRequest carries the request ID for subsequent log records.
@@ -53,6 +55,7 @@ func ContextWithJob(ctx context.Context, jobType, jobID string) context.Context 
 // Logger is a JSON slog logger with the process role pre-attached.
 type Logger struct {
 	base *slog.Logger
+	root *slog.Logger
 }
 
 // New builds a Logger writing JSON records to w. The sink is injected so
@@ -88,12 +91,13 @@ func New(w io.Writer, level string, role Role) (*Logger, error) {
 			return a
 		},
 	})
-	return &Logger{base: slog.New(handler).With("service_role", string(role))}, nil
+	base := slog.New(handler).With("service_role", string(role))
+	return &Logger{base: base, root: base}, nil
 }
 
 // WithRoute returns a Logger with a route template attached. Templates only.
 func (l *Logger) WithRoute(template string) *Logger {
-	return &Logger{base: l.base.With("route", template)}
+	return &Logger{base: l.base.With("route", template), root: l.root}
 }
 
 // Info emits a stable-coded informational record.
@@ -112,6 +116,13 @@ func (l *Logger) Error(ctx context.Context, code, msg string, args ...any) {
 }
 
 func (l *Logger) log(ctx context.Context, level slog.Level, code, msg string, args ...any) {
+	if privateRequest(ctx) {
+		if code != "http.panic" && code != "http.request" {
+			code = "private.event"
+		}
+		l.root.Log(ctx, level, "private enterprise event", l.privateAttrs(ctx, code)...)
+		return
+	}
 	if code == "" {
 		code = "unspecified"
 	}

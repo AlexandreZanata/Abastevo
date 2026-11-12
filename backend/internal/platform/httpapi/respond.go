@@ -20,6 +20,8 @@ const (
 type Detail struct {
 	Field string `json:"field"`
 	Code  string `json:"code"`
+	// Count is an optional exact decimal category count from a source-owned error.
+	Count string `json:"count,omitempty"`
 }
 
 // WriteError renders the ApiError envelope with a safe display message.

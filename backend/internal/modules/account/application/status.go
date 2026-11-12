@@ -2,9 +2,11 @@ package application
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 )
 
 // accountUsable maps a stored account status onto its auth verdict.
@@ -66,6 +68,12 @@ func (s *Service) DeleteAccount(ctx context.Context, accountID string) (Deletion
 		return DeletionReceipt{}, domain.ErrBillingExitWiringMissing
 	}
 	if err := s.RequestBillingExit(ctx, accountID); err != nil {
+		if errors.Is(err, kernel.ErrLastOrgOwner) {
+			return DeletionReceipt{}, domain.ErrEnterpriseLastOwner
+		}
+		if errors.Is(err, kernel.ErrOrgAccessPolicyUnavailable) {
+			return DeletionReceipt{}, domain.ErrEnterprisePolicyUnavailable
+		}
 		return DeletionReceipt{}, err
 	}
 	contributors, err := s.Store.DeleteAccount(ctx, accountID, s.Clock.NowUnix())

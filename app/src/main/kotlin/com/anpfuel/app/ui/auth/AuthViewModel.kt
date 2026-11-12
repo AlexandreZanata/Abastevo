@@ -365,8 +365,24 @@ class AuthViewModel @Inject constructor(
             // before identity keys clear (scope resolution needs them).
             // Local storage always clears on logout, even offline.
             onIo { ownerErasure.purgeCurrentOwner() }
-            onIo { authFlow.logout() }
+            val result = onIo { authFlow.logout() }
             pendingAttempt = null
+            if (result is AuthApiResult.Err && result.verdict == AuthFlow.SECURE_STORAGE_UNAVAILABLE) {
+                // The durable clear failed: never present it as a completed logout.
+                val retained = onIo { authFlow.rehydrate() }
+                _uiState.value = AuthUiState(
+                    step = when (retained) {
+                        is AuthFlow.AuthState.Active -> AuthStep.AUTHENTICATED
+                        is AuthFlow.AuthState.NeedsRefresh -> AuthStep.OFFLINE_ACCOUNT
+                        else -> AuthStep.USERNAME_ENTRY
+                    },
+                    keyBackup = if (retained is AuthFlow.AuthState.Active || retained is AuthFlow.AuthState.NeedsRefresh) {
+                        authFlow.currentKey()
+                    } else null,
+                    error = AuthUiError.SecureStorage,
+                )
+                return@launch
+            }
             _uiState.update {
                 AuthUiState(step = AuthStep.USERNAME_ENTRY)
             }

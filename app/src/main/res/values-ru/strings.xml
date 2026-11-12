@@ -1466,4 +1466,5 @@
         <item quantity="many">%d новых ответов</item>
         <item quantity="other">%d новых ответов</item>
     </plurals>
+    <string name="home_open_map">Посмотреть на карте</string>
 </resources>

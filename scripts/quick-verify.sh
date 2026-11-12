@@ -101,7 +101,7 @@ else
         case "$f" in
             *.md|*.mdc|docs/*|.cursor/*|README*|ROADMAP*|TRADEMARKS*|LICENSE*|.gitignore)
                 ;;
-            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|admin-web/*|tools/*|release/*)
+            .dockerignore|backend/*|contracts/*|infra/*|maps/*|scripts/*|.github/*|Makefile|domain/*|application/*|data/*|app/*|gradle/*|shared/*|iosApp/*|settings.gradle.kts|build.gradle.kts|gradle.properties|landing/*|admin-web/*|business-web/*|tools/*|release/*)
                 DOCS_ONLY=0
                 ;;
             *)
@@ -229,6 +229,38 @@ else
         npm --prefix admin-web run build
         npm --prefix admin-web run check
         npm --prefix admin-web test
+    fi
+    # Bounded company web selection (EMP-PLAT-008). Landing owns its
+    # tokens/fonts, so changes there also validate the dependent build; the
+    # served staging web Caddyfile and its ConfigMap mirror select it too.
+    BUSINESS_WEB_CHANGED=0
+    while IFS= read -r f || [[ -n "$f" ]]; do
+        case "$f" in
+            business-web/*|landing/*|infra/caddy/staging-web.Caddyfile|infra/k8s/staging/web-caddy-configmap.yaml)
+                BUSINESS_WEB_CHANGED=1
+                break
+                ;;
+        esac
+    done <<< "$CHANGED_ALL"
+    if [[ "$BUSINESS_WEB_CHANGED" == "1" ]]; then
+        echo "== company web static & ts selection =="
+        if [[ ! -d "business-web/node_modules" ]]; then
+            npm --prefix business-web ci
+        fi
+        npm --prefix business-web run typecheck
+        npm --prefix business-web run build
+        npm --prefix business-web run check
+        npm --prefix business-web test
+        # Actual Caddy responses from the reviewed pinned image. CI always runs
+        # it; a local run without Docker says so rather than passing silently.
+        if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+            python3 business-web/tests/caddy.py
+        elif [[ "${CI:-}" == "true" ]]; then
+            echo "ERROR: the company Caddy check needs Docker in CI" >&2
+            exit 1
+        else
+            echo "WARNING: company Caddy check not run locally: Docker unavailable" >&2
+        fi
     fi
     # Bounded Rust selection (RST-04): tools-area changes run the frozen
     # Rust gate (fmt, clippy, locked tests). Quick verification itself is

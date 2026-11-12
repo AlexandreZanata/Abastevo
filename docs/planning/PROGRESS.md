@@ -1,4 +1,524 @@
 # Current execution state
+- Enterprise PR202 final review, 2026-11-12: reviewed head `45230e28`
+  (remote checks green) with emphasis on ORG-002..008, IDN-001..003 and
+  AUTH-001..004; no critical/high finding. Fixes follow as new commits on dev
+  with additive migrations 000179–000183.
+  [Review record](../enterprise/evidence/f1-pr202-review.md#final-review-head-45230e28).
+  - Fixed: exclusive read locks; unavailable designee blocking settings;
+    invitation end closing team periods; all-zero CNPJ; invisible/decomposed
+    structure duplicates; bind at INVITED transition; retroactive role
+    periods; isolation level; creation auth order/admission; fresh keys;
+    route gate; personal deletion 401→503; owner-fence mapping.
+  - Activation blockers: creator lock-in until transfer/BR-ORG-028 closure,
+    runtime grant inventory, early pending ceiling, keyed digests, plus the
+    earlier AUTH/IDN, vault, DOC-014, staging, PLAT-012, coverage and legal
+    gates. The enterprise plane stays off; F1/M1 open.
+  - Enterprise vault/Room instrumented tests: 4/4 on an API 35 emulator
+    (software keystore); native acceptance remains open.
+
+- Enterprise EMP-ORG-008, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above ORG-007 3dff15d7 in the owned worktree, targeting PR202.
+  [Settings evidence](../enterprise/evidence/f1-org008-versioned-settings.md)
+  records four guarded company-cookie routes, immutable typed revisions,
+  current read catalog v3, effective server intake and scoped routing cleanup.
+  B-BR-EMP-67/68, BUC-EMP-34 and EDR-043/044 precede behavior. Real PostGIS/race
+  CAS/retry/intake/offboarding, ordinary populated upgrade, two-org erasure,
+  deferred rollback/recovery and actual role/proof/flag/privacy gates pass.
+  Deferred erasure scope and late bootstrap read/list false-404 regressions
+  are reproduced and fixed. Full affected suites/OpenAPI/production router,
+  scoped static/build/sqlc pass. Composed org domain coverage 90.76%.
+  Tested backend tree f3261807d723330748ae6ce33276da533c39971d;
+  contract blob ec266c823882afe89e743e08f5e48e8f776226a7.
+  The maintainer ended autonomous progression: finish this task and publish
+  the cumulative review checkpoint; do not begin ORG-009 or later work.
+  [Review handoff](../enterprise/evidence/f1-review-handoff-through-org008.md)
+  summarizes the cumulative scope and retained gates. F1/M1 and final
+  current-head/base CI remain open; no merge/deploy/release is authorized.
+
+- Enterprise EMP-ORG-007, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above IDN-002 09639f41 in the owned enterprise worktree, targeting PR202.
+  [Team evidence](../enterprise/evidence/f1-org007-teams.md) records nine guarded
+  company-cookie routes, retained employee-link periods and actual distinct
+  home/team unit usage. B-BR-EMP-65/66, BUC-EMP-33 and EDR-042 precede behavior.
+  Employee/membership reductions and ordinary two-org account erasure close
+  current periods without restoring them on reactivation or inferring roles.
+  PostGIS/race suites pass: 12-way name/link/replay/CAS, team/unit archive
+  admission, current proof/flag/DRIVER/privacy gates, rollback/recovery and
+  populated ordinary-owner upgrade. Safety reduction rollback/recovery also
+  passes on a SECURITY-suspended root. Full affected suites, OpenAPI and actual
+  production-router, scoped static/build/sqlc, plan/format/links/secret checks
+  pass. Composed org domain coverage 90.92%; application 76.18%, adapters 76.78%,
+  HTTP 78.43%. Next: ORG-008 versioned settings (dependencies locally complete).
+  Tested backend tree e6b4f6089981372089ed96299ed734d26cd07082;
+  contract blob 5400c1262323e26084257a1e8e2f4d1466751a07.
+  F1/M1, phase publication/final CI and actual provider/runtime/native/vault/
+  staging/legal/Kotlin gates remain open.
+
+- Enterprise EMP-IDN-002, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above ORG-006 067a934d in the owned enterprise worktree, targeting PR202.
+  [Employee register evidence](../enterprise/evidence/f1-idn002-employee-register.md)
+  records six company-cookie routes, independent descriptive profile revisions,
+  explicit duplicate review and no account/membership/role provisioning.
+  B-BR-EMP-63/64, BUC-EMP-32 and EDR-041 precede behavior. Actual active employee
+  usage protects units; audited archive clears retained home links permanently.
+  Real PostGIS/race suites pass: 12-way duplicate/replay/CAS and archive/admission,
+  current role/proof/flag/privacy gates, deferred rollback/recovery and populated
+  ordinary-owner upgrade. The reproduced late unit-commit 404 is corrected to
+  unavailable. New-FK fixture regressions are repaired without weakening guards;
+  complete organization/audit adapter reruns pass. Other affected suites, full
+  OpenAPI/production-router, scoped static/build/sqlc, plan/format/links/secret
+  checks pass. Composed membership domain coverage 96.40%; application 68.09%,
+  adapters 83.26%, HTTP 75.76%. Next: ORG-007 teams, now with IDN-002 prerequisite.
+  Tested backend tree e4a6ea6eaa7db6aee238ff28c56d4c465d5454a2;
+  Contract blob afc3463604433e15c8192d0f8ad0f26c136e1200.
+  F1/M1, phase publication/final CI and actual provider/runtime/native/vault/
+  staging/legal/Kotlin gates remain open.
+
+- Enterprise EMP-ORG-006, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above ORG-005 dfb6fd78 in the owned enterprise worktree, targeting PR202.
+  [Cost-centre evidence](../enterprise/evidence/f1-org006-cost-centres.md)
+  records seven company-cookie routes, permanent scoped code reservations,
+  historical-code lookup and atomic audited/revisioned lifecycle commands.
+  EDR-040 preserves code corrections and immutable historical meaning together.
+  Real PostGIS/race suites pass: twelve-way reservation/replay, competing
+  corrections, archive/admission/current counts, foreign isolation, actual
+  proof/flag/DRIVER gates and ordinary-owner populated upgrade/recovery.
+  A reproduced deferred ownership-FK 404 is corrected to unavailable with no
+  provisional data. Shared structure helpers keep unit/legal behavior green.
+  Full router/OpenAPI, scoped static/build/sqlc, plan/format/links/secret checks
+  pass. Composed domain coverage 94.14%; application 77.71%, adapters 77.61%,
+  HTTP 79.19%. Next: ORG-007 teams. F1/M1, phase publication/final CI and
+  actual provider/runtime/native/vault/staging/legal/Kotlin gates remain open.
+
+- Enterprise EMP-ORG-005, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above ORG-004 0d91c7f7 in the owned enterprise worktree, targeting PR202.
+  [Unit evidence](../enterprise/evidence/f1-org005-operating-units.md) records
+  six guarded company-cookie routes, atomic audited/CAS/replay commands,
+  prospective IANA/reporting snapshots and retained scoped establishment links.
+  Last-unit, actual source counts/unknown-source refusal, archive/admission,
+  twelve-way name/code/replay and revision races pass on real PostGIS/race.
+  Populated ordinary-owner migration/recovery, deferred rollback, valid-cookie
+  DRIVER denial, current proof/flag gates, private counts/cursors and full
+  production-router/default-off/OpenAPI regressions pass. Shared authority
+  keeps legal flows green. Scoped static/build/sqlc, plan/format/links/secret
+  checks pass. Composed organization domain coverage 95.01%; application
+  79.47%, adapters 77.37%, HTTP 79.35%. EDR-039 records recommended choices.
+  Next: ORG-006 cost centres. F1/M1, completed-phase publication/final CI and
+  actual provider/runtime/native/vault/staging/legal/Kotlin gates remain open.
+
+- Enterprise EMP-ORG-004, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above ORG-003 8a95c07f in the owned enterprise worktree, targeting PR202.
+  [Declaration evidence](../enterprise/evidence/f1-org004-legal-declarations.md)
+  records eight company-cookie routes, current legal-management authority,
+  CPF masking/fresh audited reveal, declared CNPJ establishments and immutable
+  identities. Explicit permissions v2 changes only OWNER/ADMIN legal.manage;
+  EDR-037/038 record the choices and bounded audit/event vocabulary correction.
+  Real PostGIS/race suites pass: duplicate/retry concurrency, foreign isolation,
+  current proof/flag refusal, CAS/keyset pages, deferred commit rollback,
+  actual-FK removal/revocation and HTTP retry after physical removal. Populated
+  ordinary-owner upgrade/recovery, full router/OpenAPI drift, affected modules,
+  static/build/sqlc, plan/format/added-link/secret checks pass. Domain coverage
+  95.17%; application 80.92%, adapter 76.36%, HTTP 78.39% in composed coverage.
+  The reproduced empty establishment on NATURAL_PERSON now returns 422.
+  Next: ORG-005 operating units, using actual scoped establishment declarations.
+  F1/M1, completed-phase publication/final CI and actual provider/runtime/
+  native/vault/staging/legal/Kotlin coverage gates remain open.
+
+- Enterprise EMP-ORG-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above AUTH-004 49048734 in the owned enterprise worktree, targeting PR202.
+  [Atomic onboarding evidence](../enterprise/evidence/f1-org003-atomic-onboarding.md)
+  records fresh PANEL-cookie creation/activation, synthetic terms and immutable
+  managed origin. Pending root/default unit/employee/active OWNER, receipt and
+  audit commit together; exact retries return the original acknowledgement.
+  Real PostGIS/race tests pass: 12-way creation/activation, three-pending cap,
+  future owner reservations, late/deferred rollback, current proof revocation,
+  managed refusal, isolation and populated ordinary-owner upgrade/recovery.
+  The fully composed production router now passes the OpenAPI private-route
+  gate and rejects an added unguarded entry. Account/payments and affected
+  enterprise/API/quota regressions pass; domain coverage 97.83%. Scoped
+  static/build/sqlc, plan/OpenAPI/format/links/secret checks pass. EDR-033..036
+  record the recommended decisions; no production grant/flag/legal acceptance.
+  Next C1 organization step: ORG-005 operating units. F1/M1 and actual IDN,
+  runtime/native/legal/vault/staging/coverage gates remain open; phase
+  publication and final current-head/base CI remain due.
+
+- Enterprise EMP-AUTH-004, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above AUTH-003 4e32bfae on the owned enterprise worktree, targeting PR202.
+  [Pilot entitlement evidence](../enterprise/evidence/f1-auth004-pilot-entitlements.md)
+  records the default-off current scoped flag adapter, independent of roles,
+  account tiers and payment. Missing/off flags block new work; authorized
+  existing reads and source-declared safety paths retain their existing rules.
+  Real audited flags/PostGIS tests pass: A/B isolation, next-action disable/
+  re-enable, no role/history mutation and transaction guard after disable.
+  Missing/unknown/corrupt/typed-nil providers fail closed; the nil store guard
+  has a reproduced regression and correction. Scoped race/static/build,
+  prior flag/HTTP integration and plan/format/links/secret checks pass.
+  Pilot Check coverage 95%, orgaccess aggregate 89.3%, domain 92.96%.
+  ORG-003 atomic creation/default unit/creator OWNER is next. F1/M1 and
+  actual IDN/device/operator/runtime/native/legal/staging/Kotlin gates remain
+  open. Phase publication and final current-head/base CI remain due.
+
+- Enterprise EMP-AUTH-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above local AUTH-002 10edd3c4, on owned codex/enterprise-f0-f1 targeting
+  PR202 (dev → main). [Current authorization evidence](../enterprise/evidence/f1-auth003-current-authorization.md)
+  records a one-statement current authority snapshot, request-bound/single-use
+  decision and normal proof → current role/target → freshness → capability/
+  record gates. Verified device/contributor attribution stays explicit.
+  Real PostGIS/ECDSA/account-family/company-cookie tests pass: next-request
+  role/offboarding denial, ORG/SELF, identical foreign/unknown 404, missing
+  capability, record refusal, stale freshness and retained-context rejection.
+  Twelve competing completions run the independent gates once. Existing
+  membership/company/gateway regressions, scoped static/build/sqlc, OpenAPI,
+  plan/links/format/secret checks pass. Domain coverage 92.96%; integration
+  aggregate 88.2%. No catalog grants, production routes or runtime grants added.
+  Next: AUTH-004 concrete disabled-by-default pilot entitlement adapter.
+  F1/M1, first composed business-router gate, actual IDN/device integration,
+  native/legal/staging/Kotlin coverage and final current-head/base CI remain open.
+
+- Enterprise EMP-AUTH-002, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published 1c7fd66b on the isolated enterprise execution branch,
+  targeting PR202 (dev → main). [Assignment evidence](../enterprise/evidence/f1-auth002-role-assignment-persistence.md)
+  records forced-RLS role periods, ORG/SELF targets, exact retry/CAS/end,
+  current candidates and actual membership/owner SQL policy. Surviving-owner
+  periods cover future time continuously; deletion reservations do not count.
+  Membership end terminates assignments; account reductions use the fence.
+  Real PostGIS/race suites pass, including 12-way repeats, owner/deletion
+  races, changed deferred scope, rollback, cancel, expiry and ordinary-migrator
+  populated upgrade/failure/recovery/old compatibility. Account/payments and
+  membership/organization regressions pass. New domain coverage 99.5%, adapter
+  85.0%. Final review's unbound-before-root and post-erasure replay regressions
+  pass. Scoped static/build/sqlc and plan/format/links/secret checks pass.
+  AUTH-003 current request authorization is next; no business route/provider
+  or production runtime grant is activated. Catalog grants remain unchanged.
+  F1/M1 and prior legal/native/Kotlin coverage/external gates remain open.
+  Phase publication and final current-head/base CI remain due.
+
+- Enterprise autonomous batch, 2026-11-11: ACTIVE, F1/M1 open.
+  Full F0–F8 source scope, recommended decisions recorded per task,
+  emulator authorized, phase publication to existing PR202 and final
+  current-head/base CI validation authorized by the maintainer.
+  [Decision/cadence record](../enterprise/16-decisions.md#autonomous-construction-authorization-2026-11-11).
+  Owned worktree/branch preserved; other checkouts untouched. Source head
+  0474dac5, PR dev → main, base ef96cd13, no unresolved review threads.
+  Required Quick failed on absent application-port tests; added real-adapter
+  failure contracts and all six organization/membership race suites pass.
+  [CI correction](../enterprise/evidence/f1-ci-repository-ports.md).
+  Remote CI is not yet revalidated. AUTH-002 is locally accepted above;
+  phase publication and final CI follow completed functional checkpoints.
+
+- Enterprise EMP-AUTH-001, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `b05da1a2`, on isolated `codex/enterprise-f0-f1`,
+  targeting existing PR202 (`dev` → `main`); occupied dev preserved.
+  [Catalog evidence](../enterprise/evidence/f1-auth001-role-permission-catalog.md)
+  records org-roles-v1/org-permissions-v1: 13 roles, 84 literal keys,
+  1,092 tested descriptor cells, four footnotes and separate party sides.
+  All 23 keys without matrix grants remain denied; the literal stock.reconcile
+  exception is preserved. No inheritance, runtime role or authority inferred.
+  Race/immutability/negative suites pass; new domain coverage 100%.
+  Existing membership/staff/station/kernel regressions, build/static,
+  format, plan/links and secret checks pass. No SQL or route changes.
+  AUTH-002 is next, with actual assignments and locked owner policy;
+  membership SQL policy remains UNAVAILABLE. New grants for unassigned
+  keys need explicit matrix/version changes. F1/M1 and prior runtime,
+  native, legal, coverage and PLAT-012/GOV-014 gates remain open.
+
+- Enterprise EMP-IDN-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `3e88a5e9`, on isolated `codex/enterprise-f0-f1`,
+  targeting existing PR202 (`dev` → `main`); occupied dev preserved.
+  [Membership persistence evidence](../enterprise/evidence/f1-idn003-membership-persistence.md)
+  records forced-RLS identity/period storage, live uniqueness, CAS/replay,
+  server times and account-deletion tombstones. Existing billing-exit
+  intents fence ownership before provider calls; real AUTH-002 policy
+  remains UNAVAILABLE by default. No role, route or provider activated.
+  Real PostGIS/race tests pass, including ordinary non-bypass definer
+  erasure across orgs, populated upgrade/recovery/previous compatibility,
+  two-owner races, raw SQL refusal, failed commit and lock cancellation.
+  Adapter coverage 93.6%; domain 99.6%. Affected account/payments/enterprise
+  regressions, build/static, OpenAPI, sqlc, plan/links and secret checks pass.
+  Next eligible identity/access foundation: AUTH-001, then AUTH-002.
+  F1/M1 and existing runtime/native/legal/coverage gates remain open;
+  PLAT-012 still awaits GOV-014. Full erasure UX/rights remains F6.
+
+- Enterprise EMP-IDN-001, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `e087b944`, on isolated `codex/enterprise-f0-f1`,
+  targeting existing PR202 (`dev` → `main`); occupied dev and unrelated
+  primary-checkout work preserved.
+  [Identity domain evidence](../enterprise/evidence/f1-idn001-identity-domain.md)
+  records scoped employee/membership identities, independent personal and
+  managed references, optional driver association, credential descriptors
+  and device enrolment/revocation. All 29 lifecycle vectors and nine
+  invariant suites pass under race detection; new domain coverage 99.6%.
+  Affected account/identity/kernel/organization regressions, static/build,
+  format, plan/links and secret checks pass. No SQL, route or provider added.
+  IDN-003 is now the next eligible membership-persistence task; AUTH-001
+  also remains needed before AUTH-002/ORG-003. F1/M1 open; prior runtime,
+  native, legal and coverage gates remain owed. PLAT-012 awaits GOV-014.
+
+- Enterprise EMP-ORG-002, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above Claude's published review head `7af7d2e5`, on isolated
+  `codex/enterprise-f0-f1`, targeting existing PR202 (`dev` → `main`).
+  Occupied local dev and unrelated work remain preserved.
+  [Persistence evidence](../enterprise/evidence/f1-org002-organization-persistence.md)
+  records permanent roots, forced RLS, scoped sqlc/pgx CAS/replay,
+  deferred audit/flag/event FKs and identity-only legacy anchors.
+  Real PostGIS/race tests pass: ordinary migrator populated upgrade,
+  injected-failure recovery, old schema compatibility, isolation,
+  12-way create/CAS, audit rollback, failed commit and lock cancellation.
+  Adapter coverage 92.9%; affected regressions/static/build/sqlc pass.
+  Claude's code corrections are already on dev; the review reconciliation
+  preserves the remaining AUTH/IDN, runtime-grant, composed-route, vault,
+  staging, upload-audit, coverage and legal gates. No provider/route is
+  activated. F1/M1 remain open. ORG-003 still requires IDN-003/AUTH-002;
+  implement the remaining F1 identity/access foundations first.
+
+- Enterprise PR202 second review, 2026-11-11: reviewed head `1f99b018`
+  (EMP-PLAT-009..015, EMP-PRIV-003, EMP-ORG-001) with the earlier batch;
+  fixes follow as new commits on dev. [Review record](../enterprise/evidence/f1-pr202-review.md#second-review-head-1f99b018):
+  - Fixed: the failed required Android `test` check (order-bound backup
+    test); registered refusals flattened to 503 in orgevent; enterprise
+    denial markers written by personal revocations; organization/time zone
+    mismatch; unrecoverable vaults and untyped unlock; post-reboot offline
+    expiry; Retry-After axis; plus the low items and the first review's
+    transfer, decode and panel/Caddy items.
+  - Open gates: single-family session revocation, AUTH/IDN providers,
+    non-bypass runtime login, composed route gate, vault expiry sweep and
+    device-revoked erasure, native acceptance, PLAT-012/GOV-014, aggregate
+    Kotlin coverage, legal receipt gates.
+  - LOCAL_DONE / INTEGRATION_PENDING; F1/M1 open; EMP-ORG-002 next.
+
+- Enterprise EMP-ORG-001, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published ef8bfff9 on isolated codex/enterprise-f0-f1; targets
+  existing PR202 (dev → main), preserving occupied local dev.
+  [Organization domain evidence](../enterprise/evidence/f1-org001-organization-domain.md)
+  records immutable scoped aggregate, complete activation checklist,
+  explicit lifecycle conditions, terminal CLOSED and revision guards.
+  All 102 vectors and six invariant tests pass under race detection;
+  new package 100% statement coverage. Scoped vet/staticcheck, API/worker/
+  ops build, format, plan/links and secret checks pass. No SQL/route added.
+  ORG-002 next. PRIV-003 native acceptance/current providers and aggregate
+  coverage remain pending; F1/M1 open. PLAT-012 still awaits GOV-014.
+
+- Enterprise EMP-PRIV-003, 2026-11-11: SOURCE_IMPLEMENTED / INTEGRATION_PENDING;
+  task acceptance IN_PROGRESS pending the owner's deferred native batch.
+  Above published 5d1f2b4a on isolated codex/enterprise-f0-f1, targets PR202
+  (dev → main), preserving occupied local dev and unrelated changes.
+  [Protected-store evidence](../enterprise/evidence/f1-priv003-protected-device-store.md)
+  records complete partition AEAD snapshots, Keystore adapters, monotonic
+  leases, session/background fences and explicit revocation cleanup.
+  Full domain 1,159/application 542 and scoped data/auth 67 tests pass,
+  zero failures/skips. APK/Hilt/native-test compilation and data/app lint
+  pass; new domain coverage 98.04%, aggregate 80.3115% remains below 90%.
+  Plan/links/secret checks pass. Native Keystore/unlock/restore/transfer/
+  failure proof remains owed; production
+  persistence/contact remain unavailable. F1/M1 and aggregate coverage open.
+  No next-phase/production acceptance is inferred; PLAT-012 awaits GOV-014.
+
+- Enterprise EMP-PLAT-015, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published a709ad5c on isolated codex/enterprise-f0-f1; delivery
+  targets existing PR202 (dev → main), preserving the occupied local dev.
+  [Operation-time evidence](../enterprise/evidence/f1-plat015-operation-time.md)
+  records UTC instants, independent device/receipt metadata, unit/org
+  reporting snapshots, half-open periods and explicit clock-skew review.
+  Go/Kotlin share 93 boundary/invalid/DST vectors. Race/scoped static/build
+  checks passed; full domain 1,155 tests passed, no skips. New Go 100%;
+  Kotlin 99.66% instruction coverage. Existing aggregate coverage remains
+  below 90% (80.2475%); native/consumer/activation gates remain owed.
+  F1/M1 open; EMP-PRIV-003 next eligible F1 foundation, not F3 PLAT-016.
+  EMP-PLAT-012 still awaits EMP-GOV-014. No live route/sync is activated.
+
+- Enterprise EMP-PLAT-014, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published 97298631; delivery targets existing PR202 (dev → main).
+  [Scoped-rate evidence](../enterprise/evidence/f1-plat014-scoped-rate-admission.md)
+  records mandatory write-policy registration, atomic existing-limiter
+  organization/account/device admission, HMAC subjects and private 429/retry.
+  PostGIS/race isolation, 30 concurrent admissions, axis/commit rollback,
+  cancellation under observed lock and real signed-authority tests passed.
+  New guard coverage 100%; affected static/build/contract checks passed.
+  No production budgets/classes or business routes activated; measured
+  feature policies, consistent key/clock and verified cleanup scheduling
+  are activation prerequisites. Domain coverage/other activation gates owed.
+  F1/M1 open; EMP-PLAT-015 next; EMP-PLAT-012 awaits EMP-GOV-014.
+
+- Enterprise EMP-PLAT-013, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above localization fix da8ee090; delivery targets existing PR202 (dev → main).
+  [Private telemetry evidence](../enterprise/evidence/f1-plat013-private-telemetry.md)
+  records existing-registry route/result/code totals and seconds, server
+  correlation, private-context log restrictions and shared DTO redaction.
+  Race/seeded privacy, 100 concurrent requests, actual-status/flush, real
+  signed-session/PostGIS and actual API/private-metrics tests passed.
+  Affected vet/staticcheck/build/contract checks passed. Full app lint now
+  passes (0 errors/347 existing warnings); prior failures below are historical.
+  Domain coverage and server/Android activation obligations remain owed.
+  F1/M1 open. EMP-PLAT-014 next; EMP-PLAT-012 awaits EMP-GOV-014.
+
+- Home map localization, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING.
+  [Evidence](../mobile/home-open-map-localization.md): six missing
+  home_open_map translations added above ec92ab38; full app lint now passes
+  (0 errors, 347 existing warnings). No suppression or gate weakened.
+  The prior lint failure below is historical; domain coverage and enterprise
+  activation obligations remain open. Delivery targets existing PR202.
+
+- Enterprise EMP-PLAT-011, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `5927654c`; delivery targets existing PR202 (dev → main).
+  [Android foundation evidence](../enterprise/evidence/f1-plat011-android-foundation.md)
+  records immutable account/origin/org scope, generation-bound local handles,
+  separate Room v1 schema and default-unavailable production persistence.
+  Domain 1,060, application 538 and scoped data 47 tests passed. Real SQLite
+  process/reopen/isolation/concurrency and personal-store preservation passed.
+  Native tests compile; device execution stays OWED. Data lint and debug APK
+  build/Hilt passed. Aggregate app lint remains FAILED on the unchanged
+  home_open_map translation (reproduced at `5927654c`); aggregate domain
+  coverage remains below 90%. No gate weakened. Protected-store activation
+  belongs to EMP-PRIV-003; F1/M1 open. EMP-PLAT-012 awaits EMP-GOV-014;
+  next eligible platform task EMP-PLAT-013.
+
+- Enterprise EMP-PLAT-010, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `3f7a25b8`; delivery targets existing PR202 (dev → main).
+  [Transactional-event evidence](../enterprise/evidence/f1-plat010-transactional-events.md)
+  records atomic source/audit/intent/jobs, source-owned registration,
+  live-lease fencing and scoped effect receipts in the existing queue.
+  PostGIS/race rollback, concurrent publication/delivery, ack loss, tampering,
+  expired-claim budget and dead replay passed. Additive migration 000168
+  passed failure/retry/upgrade and actual prior-API readiness. Affected
+  regressions/static/sqlc/build checks passed; domain/application/adapters
+  coverage 98.1%/92.6%/93.0%. No business producer/worker activation.
+  Claude's activation gates and prior aggregate Kotlin coverage failure
+  remain owed. F1/M1 open; EMP-PLAT-011 next.
+
+- Enterprise EMP-PLAT-009, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above Claude-reviewed `1034b410`; delivery targets existing PR202 (dev → main).
+  [Exact-value evidence](../enterprise/evidence/f1-plat009-exact-values.md)
+  records preserved review fixes and 112 common Go/Kotlin vectors for
+  canonical integers, paid-preserving reconciliation and ordered allocation.
+  Scoped race/static/build checks passed; Go and Kotlin new logic coverage
+  is 100%. Full Kotlin domain: 1,057 tests passed. Its separate global
+  coverage gate remains FAILED: 80.01% vs 90%; baseline `1034b410` independently
+  reproduces the failure at 79.84% (942 tests passed). No threshold weakened.
+  No runtime route/schema/dependency/activation. Review activation blockers
+  remain owed. F1/M1 open; EMP-PLAT-010 next.
+
+- Enterprise PR202 review, 2026-11-11: reviewed EMP-PLAT-005..008
+  (`5b692fb5`..`b739b2c6`) with their earlier base; fixes follow as new
+  commits on dev. [Review record](../enterprise/evidence/f1-pr202-review.md):
+  - Fixed: the failed CI integration job (no S3 service for the orgmedia
+    suites); key reaching the URL by native form submission; sign-in creating
+    unrevokable account session families while the company plane is off;
+    keyboard arrow switching; cancellable logout; missing `AbortSignal.any`
+    fallback; integrity failures reported as outages; unfenced server PUT
+    namespace; refused-login focus.
+  - Activation blockers: single-family session revocation, AUTH providers,
+    non-bypass runtime login, per-member transfer limits, staging bucket
+    lifecycle vs private originals.
+  - LOCAL_DONE / INTEGRATION_PENDING; F1/M1 open; EMP-PLAT-009 next.
+
+- Enterprise EMP-PLAT-008, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `56549a5e`; delivery targets existing PR202 (`dev → main`).
+  [Web-shell evidence](../enterprise/evidence/f1-plat008-business-web-shell.md)
+  records the separate /empresas/ build, real account/company login, in-memory
+  session guard and account-bound current-authority picker port. Missing AUTH
+  integration stays unavailable. Unit/race regressions, actual Chromium with
+  TLS/PostGIS, keyboard/mobile/restored-page checks and real Caddy cache/404
+  checks passed. The signed-bundle workflow and quick selection include the
+  shell; no API flag or deployment was activated. Existing TypeScript lock
+  reused; online audit unavailable due network restrictions, recorded in
+  evidence. F1/M1 remain open; EMP-PLAT-009 next.
+
+- Enterprise EMP-PLAT-007, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `277fd470`; delivery targets existing PR202 (`dev → main`).
+  [Company-session evidence](../enterprise/evidence/f1-plat007-company-web-session.md)
+  records dedicated account cookies, CSRF/exact origin, fixed freshness,
+  family-bound revocation, atomic rotation and additive migration `000167`.
+  Real PostGIS/race, admin isolation, admission, failure/retry/upgrade,
+  prior-binary compatibility and affected regressions passed. API composition,
+  OpenAPI drift, static/sqlc/build, formatting and secret review passed.
+  Company lifecycle routes default off. Organization AUTH, panel and live
+  rollout retain their tasks. F1/M1 remain open; EMP-PLAT-008 next.
+
+- Enterprise EMP-PLAT-006, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published `5b692fb5`; delivery targets existing PR202 (`dev → main`).
+  [Private-storage evidence](../enterprise/evidence/f1-plat006-private-document-storage.md)
+  records derived organization keys, bounded original inspection, conditional
+  private PUT/verified GET, five-minute member-bound access and fail-closed
+  per-access audit/revocation. PostGIS/S3 race, foreign/expired/revoked access,
+  eight concurrent PUTs, substitution, audit failure and 5 MiB boundary passed.
+  Scoped regressions, static/build and privacy formatting checks passed.
+  No schema/dependency or live-intake activation. AUTH/DOC providers, document
+  persistence, business routes and further format inspectors retain their
+  tasks. F1/M1 remain open; EMP-PLAT-007 next.
+
+- Enterprise EMP-PLAT-005, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING,
+  built from reviewed `68c1d1fa` in the isolated enterprise worktree.
+  [Capability evidence](../enterprise/evidence/f1-plat005-capability-flags.md)
+  records default-off global/scoped guards, audited revisioned enable/disable,
+  transaction-held write locks and migration `000166` after audit `000165`.
+  PostGIS/race isolation, replay, concurrent disable, failure/retry/upgrade,
+  affected regression, static/sqlc/build checks passed. Domain/application
+  coverage 100%, adapter 98.8%. Delivery targets existing PR202 (`dev → main`)
+  at the user's request; the occupied local dev checkout is preserved.
+  No live activation or feature handlers. F1/M1 remain open; EMP-PLAT-006 next.
+
+- Enterprise F0/F1 integration, 2026-11-11: review of `39a2d725`..`6aeeafb4`
+  found one blocker. Main's forum migration and the audit migration both used
+  version 000164, and the migrator refuses duplicates. Main was merged
+  normally, and the audit migration was renumbered to `000165` with the same
+  content. [Audit evidence](../enterprise/evidence/f1-plat003-organization-audit.md)
+  records the reconciliation and the RLS backup-role requirement (staging
+  role checked read-only). Delivery goes through dev and a protected PR to
+  main, then the signed staging release. F1/M1 stays open: there are no
+  enterprise routes, AUTH/EMP-PLAT-007 providers, panel or Android features,
+  and no separate non-bypass runtime login for `WithOrgTx`.
+
+- Enterprise F0, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING in
+  isolated `codex/enterprise-f0-f1` from synchronized main/dev `d8bdc642`.
+  [Checkpoint](../enterprise/evidence/f0-local-checkpoint.md) records all
+  21 backlogs, 348 tasks, ten recovered designs and owner decisions.
+  Full checker, original metadata comparison, generator regression and
+  repeatability, links, whitespace and secret review passed. PR177 and
+  ADR-019 source ancestry verified with successful checks and strict
+  main protection. Existing device/legal/real-data gates remain owed.
+  F0 checkpoint `39a2d725`. Cumulative delivery uses
+  `codex/enterprise-f0-f1`, with protected dev-to-main integration pending.
+
+- Enterprise F1, 2026-11-11: IN_PROGRESS on `codex/enterprise-f0-f1`.
+  EMP-PLAT-001 LOCAL_DONE / INTEGRATION_PENDING, above the F0 checkpoint.
+  [Evidence](../enterprise/evidence/f1-plat001-tenancy-kernel.md) records
+  OrgID/OrgScope, explicit private repository scope and module checklist.
+  RED/GREEN, kernel race tests (94.4% coverage, new functions 100%), vet,
+  pinned staticcheck, API/worker/ops build and scoped reviews passed.
+  EMP-PLAT-001 checkpoint `4c4d6e3b`. F1/M1 acceptance remains open.
+
+- Enterprise EMP-PLAT-002, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  on `codex/enterprise-f0-f1`. [Database evidence](../enterprise/evidence/f1-plat002-database-isolation.md)
+  records transaction-local scope, role guards, composite-key/forced-RLS
+  template and shared synthetic PostGIS fixture. RED/GREEN, 18 isolation
+  scenarios, migration failure/retry/compatibility, race tests, static
+  checks and affected build passed. Published checkpoint `da669216`.
+  ISSUE_PENDING after automatic approval rejected optional issue creation.
+  Protected integration and F1/M1 remain open.
+
+- Enterprise EMP-PLAT-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  on `codex/enterprise-f0-f1` above `da669216`.
+  [Audit evidence](../enterprise/evidence/f1-plat003-organization-audit.md)
+  records atomic audit/change commits, registered metadata, delegated actor
+  attribution, gated reads, append-only/RLS storage and replay-safe concurrency.
+  PostGIS/race, failure/retry/upgrade, sqlc, static and affected build checks
+  passed. Domain/application coverage 100%, adapter 95.8%. Previous API
+  `da669216` returned ready against schema `000164` and stopped cleanly.
+  Main `d8bdc642`, remote dev `231e63b7`, protected integration pending.
+  Published checkpoint `090207ad`. Protected integration pending.
+
+- Enterprise EMP-PLAT-004, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  on `codex/enterprise-f0-f1` above `090207ad`.
+  [API evidence](../enterprise/evidence/f1-plat004-organization-api.md)
+  records strict typed HTTP entry, separate authentication ports, current
+  scope resolution, safe errors/no-store, bound cursors, shared OpenAPI
+  vectors and the actual-chi route/contract validator. PostGIS proof/session/
+  key/nonce and revocation checks, affected HTTP regressions, static checks
+  and build passed. Coverage 93.4%. The shared cursor deadline is now strict.
+  OpenAPI lint passed below its existing warning baseline. Functional module
+  routes and concrete membership/company-session providers retain their tasks.
+  GitHub publication requested. Next bounded task EMP-PLAT-005.
+
 - Forum social conversation (B-BR-FOR-17/18, BUC-FOR-10/11), 2026-11-11:
   LOCAL_DONE / INTEGRATION_PENDING on `dev` (owner request: X-like forum,
   likes/dislikes, live updates). Backend: migration 000164 (reaction tables,

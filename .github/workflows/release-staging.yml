@@ -177,6 +177,19 @@ jobs:
           mkdir landing/dist/admin
           cp -R admin-web/dist/. landing/dist/admin/
           test -f landing/dist/admin/login/index.html
+      - name: Build company web shell into the landing bundle
+        run: |
+          set -euo pipefail
+          npm --prefix business-web ci
+          npm --prefix business-web run typecheck
+          npm --prefix business-web run build
+          npm --prefix business-web run check
+          npm --prefix business-web test
+          test ! -e landing/dist/empresas
+          mkdir landing/dist/empresas
+          cp -R business-web/dist/. landing/dist/empresas/
+          test -f landing/dist/empresas/index.html
+          test -f landing/dist/empresas/entrar/index.html
       - name: Package landing bundle
         id: package
         run: |

@@ -163,8 +163,8 @@ class AuthFlow(private val ports: AuthPorts) {
         }
         val backup = ports.keys.loadKey()
         if (!PortableAuth.isRefreshLive(session, now) && backup == null) {
-            clearLocalAuth()
-            return@withLock AuthApiResult.Ok(null)
+            return@withLock if (clearLocalAuth()) AuthApiResult.Ok(null)
+            else AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
         }
         return@withLock when (val res = ports.api.refresh(session.familyId, session.refreshToken)) {
             is AuthApiResult.Err -> {
@@ -173,13 +173,11 @@ class AuthFlow(private val ports: AuthPorts) {
                     // never silently regain authority through the saved key.
                     when (val login = ports.api.loginWithKey(backup.accountKey)) {
                         is AuthApiResult.Err -> {
-                            if (isAuthDenial(login.verdict)) clearLocalAuth()
-                            login
+                            if (isAuthDenial(login.verdict)) clearAndDeny(login.verdict) else login
                         }
                         is AuthApiResult.Ok -> {
                             if (login.value.session.accountId != session.accountId) {
-                                clearLocalAuth()
-                                AuthApiResult.Err(CLIENT_INVALID)
+                                clearAndDeny(CLIENT_INVALID)
                             } else {
                                 if (persistSession(login.value.session)) AuthApiResult.Ok(login.value.session)
                                 else AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
@@ -187,14 +185,12 @@ class AuthFlow(private val ports: AuthPorts) {
                         }
                     }
                 } else {
-                    if (isAuthDenial(res.verdict)) clearLocalAuth()
-                    res
+                    if (isAuthDenial(res.verdict)) clearAndDeny(res.verdict) else res
                 }
             }
             is AuthApiResult.Ok -> {
                 if (res.value.accountId != session.accountId) {
-                    clearLocalAuth()
-                    AuthApiResult.Err(CLIENT_INVALID)
+                    clearAndDeny(CLIENT_INVALID)
                 } else {
                     if (persistSession(res.value)) AuthApiResult.Ok(res.value)
                     else AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
@@ -220,24 +216,29 @@ class AuthFlow(private val ports: AuthPorts) {
         "key-invalid", "account-not-found", CLIENT_INVALID,
     )
 
-    private fun clearLocalAuth() {
-        ports.store.clear()
-        ports.keys.clearKey()
+    private fun clearLocalAuth(): Boolean {
+        var success = true
+        try { ports.store.clear() } catch (_: Exception) { success = false }
+        try { ports.keys.clearKey() } catch (_: Exception) { success = false }
+        return success
     }
 
+    private fun clearAndDeny(verdict: String): AuthApiResult.Err =
+        AuthApiResult.Err(if (clearLocalAuth()) verdict else SECURE_STORAGE_UNAVAILABLE)
+
     /**
-     * Logs out everywhere. Local storage always clears — even when the
-     * revoke call fails offline — so the device never stays stuck; the
-     * server family expires on its own. The API outcome still reports.
+     * Attempts both durable local clears and remote revocation. A local
+     * failure reports secure-storage-unavailable, never false logout success;
+     * an offline remote failure still leaves successfully cleared local auth.
      * The stored key backup clears too: after logout only the
      * contributor-held copy can log back in.
      */
     fun logout(): AuthApiResult<Unit> = ports.lock.withLock {
         val session = ports.store.load()
-        ports.store.clear()
-        ports.keys.clearKey()
-        if (session == null) return@withLock AuthApiResult.Ok(Unit)
-        return@withLock ports.api.revokeAll(session.familyId, session.accessToken)
+        val cleared = clearLocalAuth()
+        val result = if (session == null) AuthApiResult.Ok(Unit)
+        else ports.api.revokeAll(session.familyId, session.accessToken)
+        return@withLock if (cleared) result else AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
     }
 
     /**
@@ -323,7 +324,7 @@ class AuthFlow(private val ports: AuthPorts) {
         }
         val result = ports.api.deleteAccount(session)
         if (result is AuthApiResult.Ok || (result is AuthApiResult.Err && isAuthDenial(result.verdict))) {
-            clearLocalAuth()
+            if (!clearLocalAuth()) return@withLock AuthApiResult.Err(SECURE_STORAGE_UNAVAILABLE)
         }
         return@withLock result
     }

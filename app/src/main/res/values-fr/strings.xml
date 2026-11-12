@@ -1465,4 +1465,5 @@
         <item quantity="many">%d nouvelles réponses</item>
         <item quantity="other">%d nouvelles réponses</item>
     </plurals>
+    <string name="home_open_map">Voir sur la carte</string>
 </resources>

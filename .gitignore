@@ -90,6 +90,10 @@ landing/node_modules/
 admin-web/dist/
 admin-web/node_modules/
 
+# Business-web build artifacts & dependencies
+business-web/dist/
+business-web/node_modules/
+
 # Local real-station photo reference set (geolocated, Sorriso MT) — never commit
 /combustiveis/
 combustiveis.zip

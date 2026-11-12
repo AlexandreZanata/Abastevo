@@ -47,6 +47,15 @@ retention sweep generated_at=... challenges/purged=12 challenges/oldest_overdue=
 - Challenges/idempotency: strictly-expired rows only (`expires_at`
   equality stays); 500-row batches, oldest first; totals plus oldest
   reported.
+- Company web sessions (`company-web-sessions`): the existing daily job
+  removes revoked, idle-expired (30 min), absolute-expired (at most 8 h),
+  inactive-account and revoked/expired-family credentials in 500-row batches
+  using `SKIP LOCKED`. Reads deny them immediately, including equality at
+  expiry. Metrics report the oldest overdue instant before deletion. Cleanup
+  runs even when `ANPFUEL_ENTERPRISE_ENABLED=false`; a temporary backward
+  clock jump denies use without deleting otherwise unexpired credentials.
+  Account/family deletion also cascades. Login prunes that account's invalid
+  rows before enforcing its separate ten-company-session limit.
 - Moderation closed cases: only `RESOLVED`/`REJECTED` older than 12
   months; audit rows delete before their cases each batch; open and
   triaged cases are never touched.

@@ -38,7 +38,7 @@ class KeystoreAccountKey(
     }
 
     override fun clearKey() {
-        prefs.edit().remove(prefKey).commit()
+        check(prefs.edit().remove(prefKey).commit()) { "Secure storage clear failed" }
     }
 
     companion object {

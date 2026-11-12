@@ -145,6 +145,10 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusForbidden, "account.account-suspended", "account suspended"
 	case "account-deleted":
 		status, code, msg = http.StatusGone, "account.account-deleted", "account deleted"
+	case "enterprise-last-owner":
+		status, code, msg = http.StatusConflict, "LAST_OWNER", "transfer organization ownership before deleting the account"
+	case "enterprise-policy-unavailable":
+		status, code, msg = http.StatusServiceUnavailable, "account.enterprise-policy-unavailable", "organization access review temporarily unavailable"
 	case "binding-cross-account-refused":
 		status, code, msg = http.StatusForbidden, "account.binding-cross-account-refused", "contributor bound to another account"
 	case "binding-not-found":
@@ -163,7 +167,7 @@ func fail(w http.ResponseWriter, r *http.Request, err error) {
 		status, code, msg = http.StatusUnauthorized, "account.key-invalid", "valid account key required"
 	case "key-collision":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
-	case "erasure-wiring-missing":
+	case "erasure-wiring-missing", "billing-exit-wiring-missing":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
 	case "ok":
 		status, code, msg = http.StatusServiceUnavailable, "account.unavailable", "account service unavailable"
@@ -512,6 +516,12 @@ func (h Handler) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	receipt, err := h.Service.DeleteAccount(r.Context(), accountID)
 	if err != nil {
+		// The proof was valid: an unregistered failure (trigger, commit,
+		// billing provider) is an outage, never a reason to sign out.
+		if domain.VerdictCode(err) == "invalid-value" {
+			httpapi.WriteError(w, r, http.StatusServiceUnavailable, "account.unavailable", "account service unavailable", nil)
+			return
+		}
 		fail(w, r, err)
 		return
 	}

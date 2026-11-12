@@ -46,6 +46,13 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var contributionScheduler: com.anpfuel.data.worker.ContributionWorkScheduler
     @Inject lateinit var authFlow: AuthFlow
     @Inject lateinit var photoFlow: com.anpfuel.application.portable.PhotoFlow
+    @Inject lateinit var enterpriseFence: com.anpfuel.application.enterprise.EnterpriseSessionFence
+
+    override fun onStop() {
+        // A rotation recreates the activity without leaving the app; it keeps enterprise handles.
+        if (::enterpriseFence.isInitialized && !isChangingConfigurations) enterpriseFence.markBackground()
+        super.onStop()
+    }
 
     override fun onDestroy() {
         if (!isChangingConfigurations) com.anpfuel.app.ui.auth.AccountKeyUnlockSession.grant.reset()
