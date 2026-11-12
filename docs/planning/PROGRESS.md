@@ -1,4 +1,26 @@
 # Current execution state
+- Enterprise EMP-IDN-005, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn005 from dev ed603f34; publish to cumulative dev/PR203.
+  [Acceptance evidence](../enterprise/evidence/f1-idn005-invitation-acceptance.md)
+  and [issue205](https://github.com/AlexandreZanata/Abastevo/issues/205) record
+  three fresh personal-cookie preview/accept/decline routes and three guarded
+  manager acceptance/read/confirm/reject routes. Account-bound consent, current
+  issuer/grant checks, one-use immutable outcomes, five-failure lockout and
+  keyed unknown-locator limits pass. Privileged/optional-policy acceptances
+  wait without roles; confirmation, source reductions and exact seven-day
+  expiry retain history. Migration189 is append-only, scoped and recoverable.
+  B-BR-EMP-76/77, BUC-EMP-39 and EDR-050 precede behavior. Full affected real
+  PostGIS/race, populated upgrade/recovery, twelve-way contention, late faults,
+  actual HTTP/OpenAPI/production router and scoped final checks pass. Initial
+  local aggregate timeouts were completed with explicit 20m package limits;
+  no assertion/check was removed. Membership domain95.1%; build/vet/staticcheck/
+  sqlc/compatibility/plan/format/secret checks pass.
+  Tested backend tree c88e5a6d4902d5fff80280d6d1d96e371a9d3938; contract Git
+  blob aa1978be1945e88ce2714eefa9d23d46c5ede75d. Required remote check awaits
+  the publication head. Issue stays open until integration; this request stops
+  at this task. F1/M1, native/device, providers/runtime, legal, staging and
+  production gates remain open. No merge or deployment is claimed.
+
 - Enterprise EMP-IDN-004, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
   reviewed dev587fb6eb on owned codex/enterprise-idn004; publish to dev/PR203.
   [Invitation evidence](../enterprise/evidence/f1-idn004-invitation-lifecycle.md)

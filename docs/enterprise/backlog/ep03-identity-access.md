@@ -85,7 +85,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Invitation lifecycle evidence](../evidence/f1-idn004-invitation-lifecycle.md); [task #204](https://github.com/AlexandreZanata/Abastevo/issues/204).
 
 ### EMP-IDN-005 — Invitation acceptance by an existing Abastevo account
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Allow an existing personal account to accept or decline an authorized invitation.
 - **Rules and use cases:** BR-IDN-009, BR-IDN-011, BR-IDN-012, BR-IDN-015, BR-IDN-016, BR-IDN-017, BR-IDN-033, UC-IDN-03, UC-IDN-04
 - **Depends on:** EMP-IDN-004
@@ -99,6 +99,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: preserve invitation and membership history · rollback: disable redemption and retain recorded outcomes
 - **Risks and assumptions:** The same invalid result covers the invalid states specified by the identity contract.
 - **Done when:** Acceptance, confirmation, time boundaries and transaction races pass on real PostGIS.
+
+[Personal acceptance evidence](../evidence/f1-idn005-invitation-acceptance.md); [task #205](https://github.com/AlexandreZanata/Abastevo/issues/205).
 
 ### EMP-IDN-006 — Managed corporate credential: activation code issuance
 - **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size M · state TODO

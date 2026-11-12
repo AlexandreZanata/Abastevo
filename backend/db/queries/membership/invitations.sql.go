@@ -152,7 +152,7 @@ func (q *Queries) InvitationLiveMembership(ctx context.Context, arg InvitationLi
 }
 
 const listInvitations = `-- name: ListInvitations :many
-SELECT id::text AS id,employee_id::text AS employee_id,membership_id::text AS membership_id,issuer_membership_id::text AS issuer_membership_id,operation_id::text AS operation_id,
+SELECT COALESCE((to_jsonb(org_invitations)->>'failed_attempts')::integer,0)::integer AS failed_attempts,id::text AS id,employee_id::text AS employee_id,membership_id::text AS membership_id,issuer_membership_id::text AS issuer_membership_id,operation_id::text AS operation_id,
  state,revision,settings_revision,validity_days,created_at,expires_at,changed_at,grants,cause,source_type,COALESCE(source_id::text,'')::text AS source_id,COALESCE(source_revision,0)::bigint AS source_revision
 FROM org_invitations WHERE org_id=CAST($1::text AS uuid)
  AND($2::text='' OR id=NULLIF($2::text,'')::uuid)
@@ -172,6 +172,7 @@ type ListInvitationsParams struct {
 }
 
 type ListInvitationsRow struct {
+	FailedAttempts     int32              `json:"failed_attempts"`
 	ID                 string             `json:"id"`
 	EmployeeID         string             `json:"employee_id"`
 	MembershipID       string             `json:"membership_id"`
@@ -208,6 +209,7 @@ func (q *Queries) ListInvitations(ctx context.Context, arg ListInvitationsParams
 	for rows.Next() {
 		var i ListInvitationsRow
 		if err := rows.Scan(
+			&i.FailedAttempts,
 			&i.ID,
 			&i.EmployeeID,
 			&i.MembershipID,

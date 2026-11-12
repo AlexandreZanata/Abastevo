@@ -83,3 +83,18 @@ func requireSafeOrgRole(ctx context.Context, tx pgx.Tx) error {
 	}
 	return nil
 }
+
+// WithOrgBootstrapTx admits a source-owned opaque-locator bootstrap before its
+// organization is known. It installs no private scope. The resolver must set
+// and validate the actual scope before invoking any private repository.
+func WithOrgBootstrapTx(ctx context.Context, pool *pgxpool.Pool, work func(pgx.Tx) error) error {
+	return pgx.BeginTxFunc(ctx, pool, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}, func(tx pgx.Tx) error {
+		if e := requireSafeOrgRole(ctx, tx); e != nil {
+			return e
+		}
+		if _, e := tx.Exec(ctx, `SELECT set_config('anpfuel.org_id','',true),set_config('anpfuel.invitation_locator','',true)`); e != nil {
+			return e
+		}
+		return work(tx)
+	})
+}

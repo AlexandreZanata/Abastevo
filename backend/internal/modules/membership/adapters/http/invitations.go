@@ -144,7 +144,7 @@ func invitationView(scope kernel.OrgScope, value d.Invitation) (map[string]any, 
 	for _, g := range v.Grants {
 		grants = append(grants, map[string]string{"role": g.Role, "scope": g.Scope})
 	}
-	view := map[string]any{"id": v.ID, "employee_id": v.EmployeeID, "membership_id": v.MembershipID, "issuer_membership_id": v.IssuerMembershipID, "operation_id": v.OperationID, "state": v.State, "revision": v.Revision, "settings_revision": v.SettingsRevision, "validity_days": v.ValidityDays, "created_at": v.CreatedAt.UTC().Format(time.RFC3339Nano), "expires_at": v.ExpiresAt.UTC().Format(time.RFC3339Nano), "changed_at": v.ChangedAt.UTC().Format(time.RFC3339Nano), "grants": grants, "cause": v.Cause, "notice_state": "PENDING_NOTIFICATION_CORE", "data_mode": "SYNTHETIC"}
+	view := map[string]any{"id": v.ID, "employee_id": v.EmployeeID, "membership_id": v.MembershipID, "issuer_membership_id": v.IssuerMembershipID, "operation_id": v.OperationID, "state": v.State, "revision": v.Revision, "settings_revision": v.SettingsRevision, "validity_days": v.ValidityDays, "failed_attempts": v.FailedAttempts, "created_at": v.CreatedAt.UTC().Format(time.RFC3339Nano), "expires_at": v.ExpiresAt.UTC().Format(time.RFC3339Nano), "changed_at": v.ChangedAt.UTC().Format(time.RFC3339Nano), "grants": grants, "cause": v.Cause, "notice_state": "PENDING_NOTIFICATION_CORE", "data_mode": "SYNTHETIC"}
 	if v.SourceID != "" {
 		view["source"] = map[string]any{"type": v.SourceType, "id": v.SourceID, "revision": v.SourceRevision}
 	}

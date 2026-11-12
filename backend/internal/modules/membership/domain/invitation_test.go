@@ -56,6 +56,12 @@ func TestInvitationRetainedHistoryRejectsInvalidSources(t *testing.T) {
 		v.Revision = 2
 		v.ChangedAt = v.ExpiresAt
 		v.Cause = string(state)
+		if state == InvitationAccepted {
+			v.Cause = "PERSON_ACCEPTED"
+		}
+		if state == InvitationDeclined {
+			v.Cause = "PERSON_DECLINED"
+		}
 		if state == InvitationSuperseded {
 			v.Cause = "REPLACED"
 		}

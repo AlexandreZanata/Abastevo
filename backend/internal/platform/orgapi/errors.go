@@ -13,32 +13,35 @@ import (
 type Code string
 
 const (
-	Malformed               Code = "MALFORMED"
-	Unauthenticated         Code = "UNAUTHENTICATED"
-	NotFound                Code = "NOT_FOUND"
-	Forbidden               Code = "FORBIDDEN"
-	MembershipSuspended     Code = "MEMBERSHIP_SUSPENDED"
-	MembershipEnded         Code = "MEMBERSHIP_ENDED"
-	OrgSuspended            Code = "ORG_SUSPENDED"
-	OrgArchived             Code = "ORG_ARCHIVED"
-	OrgSetupIncomplete      Code = "ORG_SETUP_INCOMPLETE"
-	FreshAuthRequired       Code = "FRESH_AUTH_REQUIRED"
-	EntitlementRequired     Code = "ENTITLEMENT_REQUIRED"
-	LimitReached            Code = "LIMIT_REACHED"
-	Conflict                Code = "CONFLICT"
-	OperationReused         Code = "OPERATION_ID_REUSED"
-	ValidationFailed        Code = "VALIDATION_FAILED"
-	SelfApproval            Code = "SELF_APPROVAL"
-	PeriodLocked            Code = "PERIOD_LOCKED"
-	LastOwner               Code = "LAST_OWNER"
-	LastUnit                Code = "LAST_UNIT"
-	StructureInUse          Code = "STRUCTURE_IN_USE"
-	DuplicateReviewRequired Code = "DUPLICATE_REVIEW_REQUIRED"
-	OwnerRequiresPersonal   Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
-	TransferPending         Code = "TRANSFER_PENDING"
-	EmployeeHasAccess       Code = "EMPLOYEE_HAS_ACCESS"
-	RateLimited             Code = "RATE_LIMITED"
-	Unavailable             Code = "UNAVAILABLE"
+	Malformed                Code = "MALFORMED"
+	Unauthenticated          Code = "UNAUTHENTICATED"
+	NotFound                 Code = "NOT_FOUND"
+	Forbidden                Code = "FORBIDDEN"
+	MembershipSuspended      Code = "MEMBERSHIP_SUSPENDED"
+	MembershipEnded          Code = "MEMBERSHIP_ENDED"
+	OrgSuspended             Code = "ORG_SUSPENDED"
+	OrgArchived              Code = "ORG_ARCHIVED"
+	OrgSetupIncomplete       Code = "ORG_SETUP_INCOMPLETE"
+	FreshAuthRequired        Code = "FRESH_AUTH_REQUIRED"
+	EntitlementRequired      Code = "ENTITLEMENT_REQUIRED"
+	LimitReached             Code = "LIMIT_REACHED"
+	Conflict                 Code = "CONFLICT"
+	OperationReused          Code = "OPERATION_ID_REUSED"
+	ValidationFailed         Code = "VALIDATION_FAILED"
+	SelfApproval             Code = "SELF_APPROVAL"
+	PeriodLocked             Code = "PERIOD_LOCKED"
+	LastOwner                Code = "LAST_OWNER"
+	LastUnit                 Code = "LAST_UNIT"
+	StructureInUse           Code = "STRUCTURE_IN_USE"
+	DuplicateReviewRequired  Code = "DUPLICATE_REVIEW_REQUIRED"
+	OwnerRequiresPersonal    Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
+	TransferPending          Code = "TRANSFER_PENDING"
+	EmployeeHasAccess        Code = "EMPLOYEE_HAS_ACCESS"
+	TokenInvalid             Code = "TOKEN_INVALID"
+	AlreadyMember            Code = "ALREADY_MEMBER"
+	ManagedAccountRestricted Code = "MANAGED_ACCOUNT_RESTRICTED"
+	RateLimited              Code = "RATE_LIMITED"
+	Unavailable              Code = "UNAVAILABLE"
 )
 
 func (code Code) Error() string { return string(code) }
@@ -54,6 +57,7 @@ var statuses = map[Code]int{
 	OwnerRequiresPersonal: 409,
 	TransferPending:       409,
 	EmployeeHasAccess:     409,
+	TokenInvalid:          404, AlreadyMember: 409, ManagedAccountRestricted: 403,
 }
 
 type permissionFailure struct{ key string }

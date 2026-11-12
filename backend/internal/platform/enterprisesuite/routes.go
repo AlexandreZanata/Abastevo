@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"net"
 	"time"
 
 	account "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
@@ -65,6 +66,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.SettingsAuditDefinitions()...)
 	definitions = append(definitions, member.EmployeeAuditDefinitions()...)
 	definitions = append(definitions, member.InvitationAuditDefinitions()...)
+	definitions = append(definitions, member.RedemptionAuditDefinitions()...)
 	definitions = append(definitions, accesspg.RoleAuditDefinitions()...)
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
@@ -144,6 +146,11 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 
+	redemption := &member.RedemptionStore{Pool: o.Pool, Authority: &orgpg.RedemptionAuthority{Roles: roles, Capabilities: flags, Settings: settings}, Managers: invitations.Authority, Memberships: memberStore, Roles: roles, Audit: auditStore, Secret: append([]byte(nil), o.CursorSecret...), NewID: jobs.NewUUIDv4}
+	if e := memberweb.RegisterRedemption(router, true, redemption, cookies, gateway, invitationAuthorization, roots, unknownInvitationAdmission(o)); e != nil {
+		return e
+	}
+
 	roleStore := accesspg.NewRoleStore(o.Pool, roles, auditStore, &orgpg.RoleAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags})
 	roleAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: accessweb.RoleRecords{}, Now: time.Now}
 	if err := accessweb.RegisterRoles(router, access.RoleService{Enabled: true, Repository: roleStore, NewID: jobs.NewUUIDv4}, cookies, gateway, roleAuthorization, orgRootResolver{roots}, roles); err != nil {
@@ -183,6 +190,45 @@ func creationAdmission(o Options) orgweb.CreationAdmission {
 		}
 		if err != nil {
 			return orgapi.Unavailable
+		}
+		return nil
+	}
+}
+
+// Invalid opaque locators spend the existing identity v1 registration allowance
+// (10/hour) in distinct keyed account, browser-session and socket-IP subjects.
+// Each consumption commits independently of a refused business transaction.
+func unknownInvitationAdmission(o Options) memberweb.UnknownInvitationAdmission {
+	limiter := identitypg.NewLimiter(o.Pool, identity.DefaultQuotaPolicy())
+	key := append([]byte(nil), o.CursorSecret...)
+	return func(ctx context.Context, a memberapp.EmployeeActor, address string) error {
+		host, _, e := net.SplitHostPort(address)
+		if e != nil {
+			return orgapi.Unavailable
+		}
+		ip, e := identity.HashIPSubject("invitation.v1", key, host)
+		if e != nil {
+			return orgapi.Unavailable
+		}
+		subjects := []string{ip}
+		for i, value := range []string{a.AccountID, a.SessionID} {
+			mac := hmac.New(sha256.New, key)
+			if i == 0 {
+				mac.Write([]byte("invitation.unknown.account.v1:"))
+			} else {
+				mac.Write([]byte("invitation.unknown.browser.v1:"))
+			}
+			mac.Write([]byte(value))
+			subjects = append(subjects, "invitation:unknown:v1:"+hex.EncodeToString(mac.Sum(nil)))
+		}
+		for _, subject := range subjects {
+			retry, e := limiter.Check(ctx, subject, identity.OperationRegister)
+			if errors.Is(e, identity.ErrQuotaExceeded) {
+				return &orgapi.RateLimitError{RetryAfter: retry}
+			}
+			if e != nil {
+				return orgapi.Unavailable
+			}
 		}
 		return nil
 	}

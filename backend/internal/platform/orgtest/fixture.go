@@ -262,4 +262,15 @@ func (f *Fixture) GrantInvitationLifecycle(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
+	var redemption bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_invitation_acceptances') IS NOT NULL`).Scan(&redemption); e != nil {
+		t.Fatal(e)
+	}
+	if redemption {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_invitation_locators,org_invitation_person_commands,org_invitation_acceptance_notices TO "+role+";GRANT SELECT,INSERT,UPDATE ON org_invitation_acceptances TO "+role); e != nil {
+			t.Fatal(e)
+		}
+	}
+
 }

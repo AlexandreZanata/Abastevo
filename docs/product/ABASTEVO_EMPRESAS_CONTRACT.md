@@ -1162,6 +1162,41 @@ boundaries.
   grants, stale proof and storage failures disclose no token or private state.
   Redemption and privileged confirmation remain a separate task.
 
+- **B-BR-EMP-76 — Redeem invitations with personal consent and current source
+authority.** An authenticated personal account must review the current organization
+name, legal verification, literal grants and versioned privacy notice before acceptance.
+The consent digest binds that preview; no account identifiers or credentials come from
+the business DTO. Check the secret in constant time, expiry, organization
+capability/state, issuer rights and employee again in the committing transaction.
+Decline grants nothing. Existing live membership refuses with ALREADY_MEMBER without
+consuming the invitation. Unknown/expired/replaced/revoked/used/context-invalid tokens
+share TOKEN_INVALID. Five wrong secrets revoke a pending invitation and retain a notice;
+unknown locators have durable keyed account, browser-session and direct network budgets
+of ten/hour. No raw token or network address enters persistence or logs.
+
+- **B-BR-EMP-77 — Confirm privileged admission before granting access.** Any grant other
+than DRIVER or OPERATIONS_STAFF, or the organization's optional
+require_invitation_confirmation policy, binds the accepting account but leaves the
+membership INVITED with no roles. A fresh authorized manager must explicitly confirm the
+displayed account alias and revalidate the issuer and grants before activation. Reject,
+actual source reduction or the exact seven-day deadline ends the reservation; no roles
+are granted implicitly. Personal operation receipts are immutable and
+caller/intent-bound; every retry rechecks proof and returns the original outcome without
+restoring access. Ordinary account/root locking serializes acceptance, confirmation,
+erasure and reductions. Native device enrolment and screens retain their separately
+owned tasks; this source checkpoint exposes the existing company-cookie account
+bootstrap.
+
+- **BUC-EMP-39 — Review, accept and confirm a private invitation.** A signed-in personal
+account previews a valid code, accepts the returned notice/digest or explicitly
+declines. DRIVER SELF activates immediately unless confirmation is required; privileged
+acceptance remains INVITED until a fresh manager confirms the account alias. The same
+personal operation returns its original result; other callers/operations cannot reuse
+the token. Exercise wrong-secret lockout, unknown-locator budgets, stale issuer/proof,
+source reduction, confirmation equality deadline, simultaneous acceptance/confirmation
+and deferred failure with real PostGIS. A failure exposes no organization details and
+commits no provisional access.
+
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production
 gates. Tracking, Postos, billing and Data each have separate scope decisions.

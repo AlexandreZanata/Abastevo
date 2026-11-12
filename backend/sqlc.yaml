@@ -38,6 +38,7 @@ sql:
       - db/migrations/000176_employee_profiles.sql
       - db/migrations/000178_organization_settings.sql
       - db/migrations/000188_employee_invitations.sql
+      - db/migrations/000189_invitation_redemption.sql
     gen:
       go:
         package: membership
@@ -65,6 +66,7 @@ sql:
       - "db/migrations/000184_organization_suspensions.sql"
       - "db/migrations/000185_ownership_transfers.sql"
       - db/migrations/000187_ownership_transfer_hardening.sql
+      - db/migrations/000188_employee_invitations.sql
     gen:
       go:
         package: organization

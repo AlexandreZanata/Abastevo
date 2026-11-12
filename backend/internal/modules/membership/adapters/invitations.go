@@ -82,6 +82,7 @@ type invitationReceipt struct {
 	Revision           int64               `json:"revision"`
 	SettingsRevision   int64               `json:"settings_revision"`
 	ValidityDays       int                 `json:"validity_days"`
+	FailedAttempts     int                 `json:"failed_attempts,omitempty"`
 	CreatedAt          time.Time           `json:"created_at"`
 	ExpiresAt          time.Time           `json:"expires_at"`
 	ChangedAt          time.Time           `json:"changed_at"`
@@ -94,10 +95,10 @@ type invitationReceipt struct {
 
 func invitationWire(scope kernel.OrgScope, v d.Invitation) (invitationReceipt, error) {
 	s, e := v.Snapshot(scope)
-	return invitationReceipt{ID: s.ID, EmployeeID: s.EmployeeID, MembershipID: s.MembershipID, IssuerMembershipID: s.IssuerMembershipID, OperationID: s.OperationID, State: s.State, Revision: s.Revision, SettingsRevision: s.SettingsRevision, ValidityDays: s.ValidityDays, CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt, ChangedAt: s.ChangedAt, Grants: s.Grants, Cause: s.Cause, SourceType: s.SourceType, SourceID: s.SourceID, SourceRevision: s.SourceRevision}, e
+	return invitationReceipt{ID: s.ID, EmployeeID: s.EmployeeID, MembershipID: s.MembershipID, IssuerMembershipID: s.IssuerMembershipID, OperationID: s.OperationID, State: s.State, Revision: s.Revision, SettingsRevision: s.SettingsRevision, ValidityDays: s.ValidityDays, FailedAttempts: s.FailedAttempts, CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt, ChangedAt: s.ChangedAt, Grants: s.Grants, Cause: s.Cause, SourceType: s.SourceType, SourceID: s.SourceID, SourceRevision: s.SourceRevision}, e
 }
 func (v invitationReceipt) domain(scope kernel.OrgScope) (d.Invitation, error) {
-	return d.RehydrateInvitation(scope, d.InvitationSnapshot{OrgID: scope.OrgID(), ID: v.ID, EmployeeID: v.EmployeeID, MembershipID: v.MembershipID, IssuerMembershipID: v.IssuerMembershipID, OperationID: v.OperationID, State: v.State, Revision: v.Revision, SettingsRevision: v.SettingsRevision, ValidityDays: v.ValidityDays, CreatedAt: v.CreatedAt, ExpiresAt: v.ExpiresAt, ChangedAt: v.ChangedAt, Grants: v.Grants, Cause: v.Cause, SourceType: v.SourceType, SourceID: v.SourceID, SourceRevision: v.SourceRevision})
+	return d.RehydrateInvitation(scope, d.InvitationSnapshot{OrgID: scope.OrgID(), ID: v.ID, EmployeeID: v.EmployeeID, MembershipID: v.MembershipID, IssuerMembershipID: v.IssuerMembershipID, OperationID: v.OperationID, State: v.State, Revision: v.Revision, SettingsRevision: v.SettingsRevision, ValidityDays: v.ValidityDays, FailedAttempts: v.FailedAttempts, CreatedAt: v.CreatedAt, ExpiresAt: v.ExpiresAt, ChangedAt: v.ChangedAt, Grants: v.Grants, Cause: v.Cause, SourceType: v.SourceType, SourceID: v.SourceID, SourceRevision: v.SourceRevision})
 }
 func invitationRow(scope kernel.OrgScope, v q.ListInvitationsRow) (d.Invitation, error) {
 	for _, at := range []pgtype.Timestamptz{v.CreatedAt, v.ExpiresAt, v.ChangedAt} {
@@ -109,7 +110,7 @@ func invitationRow(scope kernel.OrgScope, v q.ListInvitationsRow) (d.Invitation,
 	if json.Unmarshal(v.Grants, &grants) != nil {
 		return d.Invitation{}, app.ErrRegisterUnavailable
 	}
-	result, e := (invitationReceipt{ID: v.ID, EmployeeID: v.EmployeeID, MembershipID: v.MembershipID, IssuerMembershipID: v.IssuerMembershipID, OperationID: v.OperationID, State: d.InvitationState(v.State), Revision: v.Revision, SettingsRevision: v.SettingsRevision, ValidityDays: int(v.ValidityDays), CreatedAt: v.CreatedAt.Time.UTC(), ExpiresAt: v.ExpiresAt.Time.UTC(), ChangedAt: v.ChangedAt.Time.UTC(), Grants: grants, Cause: v.Cause, SourceType: v.SourceType, SourceID: v.SourceID, SourceRevision: v.SourceRevision}).domain(scope)
+	result, e := (invitationReceipt{ID: v.ID, EmployeeID: v.EmployeeID, MembershipID: v.MembershipID, IssuerMembershipID: v.IssuerMembershipID, OperationID: v.OperationID, State: d.InvitationState(v.State), Revision: v.Revision, SettingsRevision: v.SettingsRevision, ValidityDays: int(v.ValidityDays), FailedAttempts: int(v.FailedAttempts), CreatedAt: v.CreatedAt.Time.UTC(), ExpiresAt: v.ExpiresAt.Time.UTC(), ChangedAt: v.ChangedAt.Time.UTC(), Grants: grants, Cause: v.Cause, SourceType: v.SourceType, SourceID: v.SourceID, SourceRevision: v.SourceRevision}).domain(scope)
 	if e != nil {
 		return d.Invitation{}, app.ErrRegisterUnavailable
 	}

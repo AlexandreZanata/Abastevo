@@ -27,16 +27,35 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		descriptor, guarded := handler.(orgapi.Descriptor)
 		company, companyGuarded := handler.(orgapi.CompanySessionDescriptor)
 		creation, creationGuarded := handler.(orgapi.OrganizationCreationDescriptor)
+		personal, personalGuarded := handler.(orgapi.PersonalInvitationDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
 		if operation == nil {
 			return fmt.Errorf("missing organization operation %s %s", method, path)
 		}
+		if !personalGuarded && operation.Extensions["x-abastevo-personal-invitation"] != nil {
+			return fmt.Errorf("unexpected personal invitation metadata for %s", path)
+		}
 		var declared orgapi.Rule
-		if companyGuarded || creationGuarded {
+		if personalGuarded {
+			rule := personal.PersonalInvitationRule()
+			expected := orgapi.PersonalInvitationRule{Action: rule.Action, Cookie: true, CSRF: true, Fresh: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || (rule.Action != "preview" && rule.Action != "accept" && rule.Action != "decline") || path != "/v1/org-access/invitations/"+rule.Action || rule != expected || operation.Extensions["x-abastevo-organization"] != nil || operation.Extensions["x-abastevo-company-session"] != nil || operation.Extensions["x-abastevo-organization-creation"] != nil {
+				return fmt.Errorf("invalid personal invitation guard for %s", path)
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-personal-invitation"])
+			var recorded orgapi.PersonalInvitationRule
+			if e != nil || json.Unmarshal(raw, &recorded) != nil || recorded != expected {
+				return fmt.Errorf("personal invitation metadata differs for %s", path)
+			}
+			if e := validateCompanySecurity(document, operation, path, orgapi.CompanySessionRule{Cookie: true, CSRF: true, Fresh: true, Success: 200}); e != nil {
+				return e
+			}
+			declared.Success = 200
+		} else if companyGuarded || creationGuarded {
 			var rule orgapi.CompanySessionRule
 			if creationGuarded {
 				expected := orgapi.OrganizationCreationRule{Cookie: true, CSRF: true, Fresh: true, Success: 201}

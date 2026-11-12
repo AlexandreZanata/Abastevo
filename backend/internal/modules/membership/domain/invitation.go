@@ -65,6 +65,7 @@ type InvitationSnapshot struct {
 	State                                                         InvitationState
 	Revision, SettingsRevision                                    int64
 	ValidityDays                                                  int
+	FailedAttempts                                                int
 	CreatedAt, ExpiresAt, ChangedAt                               time.Time
 	Grants                                                        []InvitationGrant
 	Cause, SourceType, SourceID                                   string
@@ -99,6 +100,9 @@ func RehydrateInvitation(scope kernel.OrgScope, v InvitationSnapshot) (Invitatio
 	if e != nil {
 		return Invitation{}, e
 	}
+	if v.FailedAttempts < 0 || v.FailedAttempts > 5 {
+		return Invitation{}, ErrInvalid
+	}
 	if !ValidInvitationState(v.State) || v.Revision < 1 || v.SettingsRevision < 1 || v.ValidityDays < 1 || v.ValidityDays > 30 || !invitationInstant(v.CreatedAt) || !invitationInstant(v.ExpiresAt) || !invitationInstant(v.ChangedAt) || v.ChangedAt.Before(v.CreatedAt) || !v.ExpiresAt.Equal(v.CreatedAt.Add(time.Duration(v.ValidityDays)*24*time.Hour)) {
 		return Invitation{}, ErrInvalid
 	}
@@ -130,7 +134,7 @@ func RehydrateInvitation(scope kernel.OrgScope, v InvitationSnapshot) (Invitatio
 	}
 	if v.State == InvitationRevoked {
 		switch v.Cause {
-		case "MANAGER_REVOKED":
+		case "MANAGER_REVOKED", "TOO_MANY_ATTEMPTS":
 			if v.SourceID != "" {
 				return Invitation{}, ErrInvalid
 			}
@@ -157,6 +161,12 @@ func RehydrateInvitation(scope kernel.OrgScope, v InvitationSnapshot) (Invitatio
 		default:
 			return Invitation{}, ErrInvalid
 		}
+	}
+	if v.State == InvitationAccepted && (v.Cause != "PERSON_ACCEPTED" || v.SourceID != "") {
+		return Invitation{}, ErrInvalid
+	}
+	if v.State == InvitationDeclined && (v.Cause != "PERSON_DECLINED" || v.SourceID != "") {
+		return Invitation{}, ErrInvalid
 	}
 	v.Grants = grants
 	return Invitation{value: v}, nil

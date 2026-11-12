@@ -24,3 +24,14 @@ type OrganizationCreationRule struct {
 type OrganizationCreationDescriptor interface {
 	OrganizationCreationRule() OrganizationCreationRule
 }
+
+// PersonalInvitationRule is confined to authenticated personal invitation
+// bootstrap paths; it grants no organization permission or public discovery.
+type PersonalInvitationRule struct {
+	Action  string `json:"action"`
+	Cookie  bool   `json:"cookie"`
+	CSRF    bool   `json:"csrf"`
+	Fresh   bool   `json:"fresh"`
+	Success int    `json:"success"`
+}
+type PersonalInvitationDescriptor interface{ PersonalInvitationRule() PersonalInvitationRule }

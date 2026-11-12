@@ -1,5 +1,5 @@
 -- name: ListInvitations :many
-SELECT id::text AS id,employee_id::text AS employee_id,membership_id::text AS membership_id,issuer_membership_id::text AS issuer_membership_id,operation_id::text AS operation_id,
+SELECT COALESCE((to_jsonb(org_invitations)->>'failed_attempts')::integer,0)::integer AS failed_attempts,id::text AS id,employee_id::text AS employee_id,membership_id::text AS membership_id,issuer_membership_id::text AS issuer_membership_id,operation_id::text AS operation_id,
  state,revision,settings_revision,validity_days,created_at,expires_at,changed_at,grants,cause,source_type,COALESCE(source_id::text,'')::text AS source_id,COALESCE(source_revision,0)::bigint AS source_revision
 FROM org_invitations WHERE org_id=CAST(@org_id::text AS uuid)
  AND(@id_filter::text='' OR id=NULLIF(@id_filter::text,'')::uuid)
