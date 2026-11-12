@@ -122,9 +122,15 @@ func legalName(raw string, required bool) (string, error) {
 	}
 	return value, nil
 }
+
+// zeroCNPJ passes the check-digit arithmetic but identifies no company; the
+// importer kernel keeps its registry rules, declarations refuse it. The root
+// 00000000 alone stays valid (a real registration, e.g. 00.000.000/0001-91).
+const zeroCNPJ = "00000000000000"
+
 func canonicalEstablishment(v EstablishmentInput) (EstablishmentInput, error) {
 	parsed, err := kernel.ParseCNPJ(v.CNPJ)
-	if err != nil {
+	if err != nil || parsed.Normalized() == zeroCNPJ {
 		return EstablishmentInput{}, ErrInvalidCNPJ
 	}
 	v.CNPJ = parsed.Normalized()
@@ -167,7 +173,7 @@ func NewLegalDeclaration(operation string, v LegalDeclarationInput) (LegalDeclar
 			return LegalDeclaration{}, ErrInvalid
 		}
 		identifier, err := kernel.ParseCNPJ(v.Identifier)
-		if err != nil {
+		if err != nil || identifier.Normalized() == zeroCNPJ {
 			return LegalDeclaration{}, ErrInvalidCNPJ
 		}
 		v.Identifier = identifier.Normalized()
