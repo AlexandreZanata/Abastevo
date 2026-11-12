@@ -25,7 +25,7 @@ type companyAuthority struct {
 }
 
 func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy) error {
-	if policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
+	if policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
 		return app.ErrUnavailable
 	}
 	write := policy.Effect == access.ConfigurationWrite

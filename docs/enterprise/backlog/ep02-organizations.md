@@ -135,7 +135,7 @@ integration of the current ADR-019 construction batch. See the
 [Local team, period history, reduction and upgrade evidence](../evidence/f1-org007-teams.md).
 
 ### EMP-ORG-008 — Organization settings and policy holder: time zone, units, approval defaults
-- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type API · size S · state TODO
+- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type API · size S · state LOCAL_DONE
 - **Objective:** Apply versioned organization settings from the correct effective revision.
 - **Rules and use cases:** BR-ORG-010, BR-ORG-038, BR-ORG-039, BR-ORG-040, BR-ORG-041, UC-ORG-06, UC-ORG-07
 - **Depends on:** EMP-ORG-003, EMP-PLAT-015
@@ -149,6 +149,8 @@ integration of the current ADR-019 construction batch. See the
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive changes when persistence is affected · rollback: preserve the existing state, remove only the new entry point and follow the scoped recovery evidence.
 - **Risks and assumptions:** Owning workflows define which policy keys they consume.
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
+
+[Local versioned settings, effective intake and reduction evidence](../evidence/f1-org008-versioned-settings.md).
 
 ### EMP-ORG-009 — Suspension and reactivation with write-block semantics
 - **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size M · state TODO

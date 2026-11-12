@@ -203,3 +203,19 @@ func (f *Fixture) GrantTeamReductions(t *testing.T) {
 		}
 	}
 }
+
+// GrantSettingsLifecycle enables only this fixture's atomic onboarding and
+// designation-reduction projections; previous migration chains stay unchanged.
+func (f *Fixture) GrantSettingsLifecycle(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_settings_versions') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		r := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_versions,org_settings_designations,org_settings_notices TO "+r+"; GRANT SELECT,INSERT,UPDATE ON org_settings_heads TO "+r); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

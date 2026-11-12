@@ -185,6 +185,7 @@ Cell values: `O` allowed in the whole assigned scope; `S` allowed on own records
 | Offboard (`idn.membership.manage`) | O | O | — | — | — | — | — | — | — |
 | Assign roles (`auth.role.assign`) | O | O¹ | — | — | — | — | — | — | — |
 | Delegate own role (`auth.delegation.manage`) | O | O | O | O | O | O | — | — | — |
+| Read settings (`org.settings.read`) | O | O | O | O | O | O | — | — | O |
 | Change settings (`org.settings.manage`) | O | O | — | — | — | — | — | — | — |
 | Manage structure (`org.structure.manage`) | O | O | — | — | — | — | — | — | — |
 | Declare legal entities (`org.legal_entity.manage`) | O | O | — | — | — | — | — | — | — |
@@ -358,3 +359,7 @@ Dependencies: [modules/identity](modules/identity.md) (memberships), [modules/or
 Risks: role sprawl (kept in check by the fixed catalog); scope confusion when assets move (BR-AUTH-005 and example 3); interface hiding mistaken for authorization (BR-AUTH-002 and the conformance suite).
 
 Phase: F1 for the core; F2 scopes; F3 delegation and auditor; F6 custom roles. Microtasks: EMP-AUTH-001 to EMP-AUTH-011.
+
+Settings-read amendment (EMP-ORG-008, EDR-043): org-permissions-v3 adopts only
+its proposed read row above. All other cells retain v2, including the explicit
+legal-management row. Roles without a published grant remain denied.

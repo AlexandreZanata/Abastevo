@@ -723,6 +723,39 @@ boundaries.
   contacts. Account erasure consumes the same reduction through its existing
   protected definer, preserving history and isolation.
 
+- **B-BR-EMP-67 — Capture immutable effective settings.**
+  Each organization settings revision records its typed values, server effective
+  instant, source, author when known and bounded private reason. Changes use CAS
+  on the settings head, current fresh org.settings.manage, organizations capability
+  and atomic audit/receipt. Earlier revisions remain readable with current
+  org.settings.read. Defaults require review for trips/fuelings/expenses, one
+  approval level, KM_PER_L, administrator/owner review fallback, creator contacts,
+  fixed seven-day ownership transfer and thirty-day closure. Known source-owned
+  intake/skew, delegation and invitation/activation parameters use their frozen
+  source defaults/ranges; retention admission remains the privacy owner's legal
+  gate. There is no arbitrary unvalidated policy bag or retrospective rewrite.
+  Intake captures the settings revision and server receipt together under the
+  root lock; declared device time never selects policy. A regressed clock fails
+  closed. Changing display units preserves stored base integers and arithmetic.
+
+- **B-BR-EMP-68 — Route responsibilities without granting authority.**
+  Four scoped primary/substitute pairs cover review fallback, platform notices,
+  data protection and billing; references must be distinct, currently available
+  ACTIVE members, never raw names, emails or account credentials. Designation
+  grants no role or delegation. The consuming workflow still checks the current
+  permission on the actual record. Unassigned responsibilities fall back to
+  current administrators/owners; naming a substitute alone never proves review
+  authority. Membership suspension/end clears only the affected slots in a new
+  immutable system revision, retaining the other designee and causal source
+  facts; reactivation restores nothing. Account erasure consumes the same guarded
+  path. A durable designation-cleared notice remains pending for the owning
+  notification core, never falsely marked delivered. Initial settings are atomic
+  with authentic onboarding; legacy roots lacking that receipt stay uninitialized.
+  Legacy bootstrap uses actual initialization time/system source rather than invented historical authoring.
+  Settings time zone is the versioned writer for the root default. Existing unit
+  reporting zones remain captured; new/edited omitted-zone units use the new
+  default, and historical reporting snapshots are untouched.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -1000,6 +1033,17 @@ boundaries.
   usage and assignment/archive races protect teams and units without double
   counting. Audit, link, revision and acknowledgement commit or roll back
   together; exact retry returns its original result after later changes.
+
+- **BUC-EMP-34 — Change settings and route a substitute prospectively.**
+  Read defaults, capture an intake with revision and base integers, then change
+  zone, display and review defaults with a reason. A later server intake captures
+  the new revision even for an earlier device declaration; the old record keeps
+  its original revision, zone and integers. Refuse stale/altered retries, invalid
+  bounds/zone and foreign or unavailable designees. A nominated DRIVER gains no
+  review permission. Suspension/end/erasure clears only that member's slots with
+  causal history and pending notice; later activation restores none. Concurrent
+  settings/receipt and reduction races serialize. Audit, head, root default,
+  revision and receipt commit together or leave no provisional result.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

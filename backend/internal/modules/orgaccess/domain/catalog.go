@@ -10,7 +10,7 @@ import (
 )
 
 const RolesVersion = "org-roles-v1"
-const PermissionsVersion = "org-permissions-v2"
+const PermissionsVersion = "org-permissions-v3"
 
 var (
 	ErrUnknownRole       = errors.New("orgaccess: unknown system role")

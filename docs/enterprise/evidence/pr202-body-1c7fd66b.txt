@@ -1,0 +1,22 @@
+Build the private Abastevo Empresas foundations on maintained `dev`, delivered through this cumulative `dev → main` PR. Public and personal account boundaries remain governed by their existing contracts.
+
+## Included construction
+
+- F0/M0 specification and dependency recovery, with the accepted organization boundary in ADR-025.
+- F1 platform foundations: PLAT-001..011 and 013..015; protected-device source implementation PRIV-003; organization lifecycle/root storage ORG-001/002; identity core and membership persistence IDN-001/003; fixed authorization catalog AUTH-001.
+- Claude's two review batches and corrections are preserved in the [review evidence](docs/enterprise/evidence/f1-pr202-review.md).
+- Repository-port failure contracts fix Quick verification's missing behavioral-suite refusal without changing the manifest or gates. [Evidence](docs/enterprise/evidence/f1-ci-repository-ports.md).
+
+The exact previous description's content, including detailed review history and validation commands, is [archived here](docs/enterprise/evidence/pr202-body-0474dac5.txt) (only the final blank line is normalized). Canonical [current progress](docs/planning/PROGRESS.md), [enterprise roadmap](docs/enterprise/14-roadmap.md), [decisions](docs/enterprise/16-decisions.md), and per-task evidence remain the source of truth.
+
+## Current scope and validation
+
+The maintainer authorized autonomous completion of F0–F8, recommended decisions recorded for review, emulator testing as needed, publication after completed phases, and final current-head/base CI validation. Atomic task commits continue on the isolated execution worktree; the occupied local dev checkout is preserved. AUTH-002 is in progress locally; it is not part of this published checkpoint yet.
+
+Targeted race, invariant, negative, real-PostGIS migration/isolation/concurrency, format/static/build and secret checks are recorded per task. The port-contract correction passed all six organization/membership race suites. This description does not claim completed remote CI; final readiness requires fresh successful checks on this PR's actual head and base.
+
+## Open acceptance gates
+
+F1/M1 remains open. Request-time authorization/providers/runtime grants, first composed business-route gate, vault expiry/device-revoked cleanup, PLAT-012/GOV-014, aggregate Kotlin coverage, remaining native/device evidence and legal receipt gates remain tracked. Later enterprise phases are still construction work, not accepted runtime capabilities. Synthetic data and disabled-by-default capabilities remain the implementation path until applicable external evidence exists.
+
+No merge, production deployment, public pilot, real-receipt legal approval, source redistribution right or release certification is asserted by this PR.

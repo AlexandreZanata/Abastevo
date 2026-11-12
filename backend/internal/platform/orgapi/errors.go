@@ -61,6 +61,39 @@ type fieldFailure struct{ field, reason string }
 func (fieldFailure) Error() string { return string(ValidationFailed) }
 func (fieldFailure) Unwrap() error { return ValidationFailed }
 
+// SettingsValidation returns frozen field/range codes, never submitted values.
+// The panel translates these codes to the precise allowed range.
+func SettingsValidation(field string) error {
+	code := ""
+	switch field {
+	case "time_zone":
+		code = "IANA_TIME_ZONE_REQUIRED"
+	case "consumption_display":
+		code = "KM_PER_L_OR_L_PER_100KM"
+	case "approval_levels_default":
+		code = "RANGE_1_3"
+	case "closure_period_days":
+		code = "RANGE_7_90"
+	case "policies.intake_window_days":
+		code = "RANGE_0_60"
+	case "policies.clock_skew_limit_seconds":
+		code = "RANGE_0_9223372036854775807"
+	case "policies.delegation_maximum_days":
+		code = "RANGE_1_180"
+	case "policies.invitation_validity_days":
+		code = "RANGE_1_30"
+	case "policies.activation_validity_hours":
+		code = "RANGE_1_168"
+	case "reason":
+		code = "LENGTH_1_120"
+	case "responsibilities.review_fallback.primary", "responsibilities.review_fallback.substitute", "responsibilities.platform_notices.primary", "responsibilities.platform_notices.substitute", "responsibilities.data_protection.primary", "responsibilities.data_protection.substitute", "responsibilities.billing.primary", "responsibilities.billing.substitute":
+		code = "DISTINCT_SCOPED_MEMBER_OR_EMPTY"
+	default:
+		return Unavailable
+	}
+	return fieldFailure{field, code}
+}
+
 // UnitDuplicate accepts only the source-owned active uniqueness fields.
 func UnitDuplicate(field string) error {
 	if field != "name" && field != "code" {

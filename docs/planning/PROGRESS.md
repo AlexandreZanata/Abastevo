@@ -1,4 +1,23 @@
 # Current execution state
+- Enterprise EMP-ORG-008, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above ORG-007 3dff15d7 in the owned worktree, targeting PR202.
+  [Settings evidence](../enterprise/evidence/f1-org008-versioned-settings.md)
+  records four guarded company-cookie routes, immutable typed revisions,
+  current read catalog v3, effective server intake and scoped routing cleanup.
+  B-BR-EMP-67/68, BUC-EMP-34 and EDR-043/044 precede behavior. Real PostGIS/race
+  CAS/retry/intake/offboarding, ordinary populated upgrade, two-org erasure,
+  deferred rollback/recovery and actual role/proof/flag/privacy gates pass.
+  Deferred erasure scope and late bootstrap read/list false-404 regressions
+  are reproduced and fixed. Full affected suites/OpenAPI/production router,
+  scoped static/build/sqlc pass. Composed org domain coverage 90.76%.
+  Tested backend tree f3261807d723330748ae6ce33276da533c39971d;
+  contract blob ec266c823882afe89e743e08f5e48e8f776226a7.
+  The maintainer ended autonomous progression: finish this task and publish
+  the cumulative review checkpoint; do not begin ORG-009 or later work.
+  [Review handoff](../enterprise/evidence/f1-review-handoff-through-org008.md)
+  summarizes the cumulative scope and retained gates. F1/M1 and final
+  current-head/base CI remain open; no merge/deploy/release is authorized.
+
 - Enterprise EMP-ORG-007, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
   above IDN-002 09639f41 in the owned enterprise worktree, targeting PR202.
   [Team evidence](../enterprise/evidence/f1-org007-teams.md) records nine guarded

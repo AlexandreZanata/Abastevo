@@ -228,6 +228,7 @@ idn.credential.manage O O - - - - - - -
 idn.membership.manage O O - - - - - - -
 auth.role.assign O O1 - - - - - - -
 auth.delegation.manage O O O O O O - - -
+org.settings.read O O O O O O - - O
 org.settings.manage O O - - - - - - -
 org.structure.manage O O - - - - - - -
 org.legal_entity.manage O O - - - - - - -

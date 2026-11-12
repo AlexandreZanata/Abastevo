@@ -57,6 +57,7 @@ sql:
       - db/migrations/000175_cost_centres.sql
       - db/migrations/000176_employee_profiles.sql
       - db/migrations/000177_organization_teams.sql
+      - db/migrations/000178_organization_settings.sql
     gen:
       go:
         package: organization

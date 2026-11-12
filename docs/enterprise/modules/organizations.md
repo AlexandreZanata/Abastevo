@@ -1,6 +1,6 @@
 # Organizations
 
-Status: **EMP-ORG-001–007 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `ORG`. Tasks: `EMP-ORG-001…015` in [backlog/ep02-organizations](../backlog/ep02-organizations.md).
+Status: **EMP-ORG-001–008 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `ORG`. Tasks: `EMP-ORG-001…015` in [backlog/ep02-organizations](../backlog/ep02-organizations.md).
 
 Evidence. EMP-ORG-001 implements the pure scoped aggregate and lifecycle under `backend/internal/modules/organization/domain/`; see [domain evidence](../evidence/f1-org001-organization-domain.md). EMP-ORG-002 adds the permanent forced-RLS root, scoped repository/CAS and additive populated-upgrade recovery; see [persistence evidence](../evidence/f1-org002-organization-persistence.md). Existing private IDs remain metadata-pending anchors without fabricated lifecycle, ownership or consent. EMP-ORG-003 supplies local atomic onboarding/activation ([evidence](../evidence/f1-org003-atomic-onboarding.md)); ORG-004 supplies declared legal parties ([evidence](../evidence/f1-org004-legal-declarations.md)); ORG-005/006 supply units and cost centres ([unit evidence](../evidence/f1-org005-operating-units.md), [cost-centre evidence](../evidence/f1-org006-cost-centres.md)). Full closure remains F8. The F0 [diagnosis](../01-diagnosis.md) is a historical pre-implementation snapshot. Three existing pieces are reused. The validated value type `kernel.CNPJ` in `backend/internal/modules/kernel/cnpj.go` already accepts the alphanumeric format and computes both check digits, and `backend/internal/modules/kernel/kernel_test.go` contains the official test value: `IMPLEMENTED`. The station catalog keeps one CNPJ per station (`backend/internal/modules/directory/`): `IMPLEMENTED`; this module only references it. The signed-declaration proof of the station profile (`backend/internal/modules/stationprofile/domain/proof.go`) is `PARTIAL` (intake disabled) and is the pattern proposed for verification evidence. Private declared CPF validation, masking and fresh audited reveal are locally implemented by ORG-004; no external registry verification or real-data legal approval is inferred. EMP-GOV-001 and [ADR-025](../../adr/025-private-abastevo-empresas-organization-boundary.md) resolve the historical CX-01 conflict for private Empresas data only.
 
@@ -9,6 +9,12 @@ actual distinct home/team unit usage and atomic employee/access reductions:
 `LOCAL_DONE / INTEGRATION_PENDING`; see [team evidence](../evidence/f1-org007-teams.md).
 Membership grants no authority; TEAM role scopes remain AUTH-005. Actual
 provider/grant/native and real-data gates remain separate from local evidence.
+
+EMP-ORG-008 adds immutable typed settings, effective server intake, scoped
+responsibility pairs and atomic reduction cleanup, with explicit permissions v3:
+`LOCAL_DONE / INTEGRATION_PENDING`; see [settings evidence](../evidence/f1-org008-versioned-settings.md).
+Source policy holders do not imply completed consuming workflows or legal
+retention approval; pending notice facts do not claim notification delivery.
 
 ## 1. Purpose
 
@@ -186,7 +192,7 @@ Keys are those of [07-permissions](../07-permissions.md) §7.2. All `org.*` perm
 
 | Permission | Used for | Roles |
 |---|---|---|
-| `org.settings.read` | Read settings, policies and the structure lists in the panel | `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR`, `FINANCE`, `APPROVER`, `AUDITOR` (proposed; no row in §7.3) |
+| `org.settings.read` | Read settings, policies and the structure lists in the panel | `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR`, `FINANCE`, `APPROVER`, `AUDITOR` (§7.3, org-permissions-v3; EDR-043) |
 | `org.settings.manage` | UC-ORG-02, UC-ORG-06, UC-ORG-07 | `OWNER`, `ADMIN` (§7.3) |
 | `org.structure.manage` | UC-ORG-03 | `OWNER`, `ADMIN` (§7.3) |
 | `org.legal_entity.manage` | UC-ORG-04, UC-ORG-05 | `OWNER`, `ADMIN` (§7.3, org-permissions-v2; EDR-037) |

@@ -11075,6 +11075,396 @@ paths:
                   ended_at: ''
                   end_reason: ''
                 next_cursor: ''
+  /v1/orgs/{org_id}/settings/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseSettingsRead
+      summary: Read current organization settings
+      description: Dedicated PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.settings.read. Immutable
+        typed revisions and server-received intake; no past records or normalized units are rewritten. Designations
+        route without granting authority. Read remains available when the write capability is disabled. Responses
+        are no-store without ETag. Legal and notification delivery gates remain separate.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.settings.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Read current organization settings
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseSettingsReadRequest'
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized settings acknowledgement, version or bounded history.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseSettingsView'
+              example:
+                revision: 2
+                effective_at: '2026-11-12T12:00:00Z'
+                values:
+                  time_zone: America/Cuiaba
+                  consumption_display: KM_PER_L
+                  review_required:
+                    trips: true
+                    fuelings: true
+                    expenses: true
+                  approval_levels_default: 1
+                  closure_period_days: 30
+                  policies:
+                    intake_window_days: 15
+                    clock_skew_limit_seconds: '300'
+                    delegation_maximum_days: 90
+                    invitation_validity_days: 7
+                    activation_validity_hours: 48
+                  responsibilities:
+                    review_fallback:
+                      primary: ''
+                      substitute: ''
+                    platform_notices:
+                      primary: 7b0e2a54-0000-4000-8000-000000000601
+                      substitute: ''
+                    data_protection:
+                      primary: 7b0e2a54-0000-4000-8000-000000000601
+                      substitute: ''
+                    billing:
+                      primary: 7b0e2a54-0000-4000-8000-000000000601
+                      substitute: ''
+                source: COMMAND
+                author:
+                  account_id: 7b0e2a54-0000-4000-8000-000000000201
+                  membership_id: 7b0e2a54-0000-4000-8000-000000000601
+                reason: Synthetic configuration update
+                operation_id: 7b0e2a54-0000-4000-8000-000000000901
+                ownership_transfer_validity_days: 7
+                data_mode: SYNTHETIC
+                root_revision: 2
+  /v1/orgs/{org_id}/settings/revision/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseSettingsRevisionRead
+      summary: Read retained organization settings revision
+      description: Dedicated PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.settings.read. Immutable
+        typed revisions and server-received intake; no past records or normalized units are rewritten. Designations
+        route without granting authority. Read remains available when the write capability is disabled. Responses
+        are no-store without ETag. Legal and notification delivery gates remain separate.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.settings.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Read retained organization settings revision
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseSettingsRevisionRequest'
+            example:
+              revision: 1
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized settings acknowledgement, version or bounded history.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseSettingsView'
+              example:
+                revision: 2
+                effective_at: '2026-11-12T12:00:00Z'
+                values:
+                  time_zone: America/Cuiaba
+                  consumption_display: KM_PER_L
+                  review_required:
+                    trips: true
+                    fuelings: true
+                    expenses: true
+                  approval_levels_default: 1
+                  closure_period_days: 30
+                  policies:
+                    intake_window_days: 15
+                    clock_skew_limit_seconds: '300'
+                    delegation_maximum_days: 90
+                    invitation_validity_days: 7
+                    activation_validity_hours: 48
+                  responsibilities:
+                    review_fallback:
+                      primary: ''
+                      substitute: ''
+                    platform_notices:
+                      primary: 7b0e2a54-0000-4000-8000-000000000601
+                      substitute: ''
+                    data_protection:
+                      primary: 7b0e2a54-0000-4000-8000-000000000601
+                      substitute: ''
+                    billing:
+                      primary: 7b0e2a54-0000-4000-8000-000000000601
+                      substitute: ''
+                source: COMMAND
+                author:
+                  account_id: 7b0e2a54-0000-4000-8000-000000000201
+                  membership_id: 7b0e2a54-0000-4000-8000-000000000601
+                reason: Synthetic configuration update
+                operation_id: 7b0e2a54-0000-4000-8000-000000000901
+                ownership_transfer_validity_days: 7
+                data_mode: SYNTHETIC
+                root_revision: 2
+  /v1/orgs/{org_id}/settings/history:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseSettingsHistory
+      summary: List retained organization settings revisions
+      description: Dedicated PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.settings.read. Immutable
+        typed revisions and server-received intake; no past records or normalized units are rewritten. Designations
+        route without granting authority. Read remains available when the write capability is disabled. Responses
+        are no-store without ETag. Legal and notification delivery gates remain separate.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.settings.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: List retained organization settings revisions
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseSettingsHistoryRequest'
+            example:
+              limit: 1
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized settings acknowledgement, version or bounded history.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseSettingsPage'
+              example:
+                items:
+                - revision: 2
+                  effective_at: '2026-11-12T12:00:00Z'
+                  values:
+                    time_zone: America/Cuiaba
+                    consumption_display: KM_PER_L
+                    review_required:
+                      trips: true
+                      fuelings: true
+                      expenses: true
+                    approval_levels_default: 1
+                    closure_period_days: 30
+                    policies:
+                      intake_window_days: 15
+                      clock_skew_limit_seconds: '300'
+                      delegation_maximum_days: 90
+                      invitation_validity_days: 7
+                      activation_validity_hours: 48
+                    responsibilities:
+                      review_fallback:
+                        primary: ''
+                        substitute: ''
+                      platform_notices:
+                        primary: 7b0e2a54-0000-4000-8000-000000000601
+                        substitute: ''
+                      data_protection:
+                        primary: 7b0e2a54-0000-4000-8000-000000000601
+                        substitute: ''
+                      billing:
+                        primary: 7b0e2a54-0000-4000-8000-000000000601
+                        substitute: ''
+                  source: COMMAND
+                  author:
+                    account_id: 7b0e2a54-0000-4000-8000-000000000201
+                    membership_id: 7b0e2a54-0000-4000-8000-000000000601
+                  reason: Synthetic configuration update
+                  operation_id: 7b0e2a54-0000-4000-8000-000000000901
+                  ownership_transfer_validity_days: 7
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+  /v1/orgs/{org_id}/settings/change:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseSettingsChange
+      summary: Change organization settings atomically
+      description: Dedicated PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.settings.manage. Immutable
+        typed revisions and server-received intake; no past records or normalized units are rewritten. Designations
+        route without granting authority. Fresh write requires organizations capability and shares the synthetic org.setup
+        200/hour admission on every axis. Responses are no-store without ETag. Legal and notification delivery gates
+        remain separate.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.settings.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Change organization settings atomically
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseSettingsChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000000901
+              revision: 1
+              values:
+                time_zone: America/Cuiaba
+                consumption_display: KM_PER_L
+                review_required:
+                  trips: true
+                  fuelings: true
+                  expenses: true
+                approval_levels_default: 1
+                closure_period_days: 30
+                policies:
+                  intake_window_days: 15
+                  clock_skew_limit_seconds: '300'
+                  delegation_maximum_days: 90
+                  invitation_validity_days: 7
+                  activation_validity_hours: 48
+                responsibilities:
+                  review_fallback:
+                    primary: ''
+                    substitute: ''
+                  platform_notices:
+                    primary: 7b0e2a54-0000-4000-8000-000000000601
+                    substitute: ''
+                  data_protection:
+                    primary: 7b0e2a54-0000-4000-8000-000000000601
+                    substitute: ''
+                  billing:
+                    primary: 7b0e2a54-0000-4000-8000-000000000601
+                    substitute: ''
+              reason: Synthetic configuration update
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized settings acknowledgement, version or bounded history.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseSettingsAcknowledgement'
+              example:
+                revision: 2
+                root_revision: 2
+                effective_at: '2026-11-12T12:00:00Z'
+                data_mode: SYNTHETIC
+                replayed: false
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -19709,6 +20099,597 @@ components:
           started_at: '2026-11-12T12:00:00Z'
           ended_at: ''
           end_reason: ''
+        next_cursor: ''
+    EnterpriseSettingsResponsibilityPair:
+      type: object
+      additionalProperties: false
+      properties:
+        primary:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+        substitute:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+      required:
+      - primary
+      - substitute
+      example:
+        primary: 7b0e2a54-0000-4000-8000-000000000601
+        substitute: ''
+      description: Active scoped members used for routing only. Empty means unassigned; distinct slots. No role, grant
+        or delegation is inferred. Unavailable members clear only their affected slots through a retained system revision.
+    EnterpriseSettingsPolicies:
+      type: object
+      additionalProperties: false
+      properties:
+        intake_window_days:
+          type: integer
+          minimum: 0
+          maximum: 60
+        clock_skew_limit_seconds:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+          maxLength: 19
+          description: Exact nonnegative int64 decimal string, at most 9223372036854775807; never a JSON floating point
+            value.
+        delegation_maximum_days:
+          type: integer
+          minimum: 1
+          maximum: 180
+        invitation_validity_days:
+          type: integer
+          minimum: 1
+          maximum: 30
+        activation_validity_hours:
+          type: integer
+          minimum: 1
+          maximum: 168
+      required:
+      - intake_window_days
+      - clock_skew_limit_seconds
+      - delegation_maximum_days
+      - invitation_validity_days
+      - activation_validity_hours
+      example:
+        intake_window_days: 15
+        clock_skew_limit_seconds: '300'
+        delegation_maximum_days: 90
+        invitation_validity_days: 7
+        activation_validity_hours: 48
+      description: Typed holders for OFFL/AUTH/IDN source policies. Their owners enforce these values when their workflows
+        are implemented. No receipt retention or legal approval is activated here.
+    EnterpriseSettingsValues:
+      type: object
+      additionalProperties: false
+      properties:
+        time_zone:
+          type: string
+          maxLength: 128
+          description: UTC or a validated IANA Area/Location name. Prospectively changes the root default; existing
+            unit snapshots remain explicit.
+        consumption_display:
+          type: string
+          enum:
+          - KM_PER_L
+          - L_PER_100KM
+        review_required:
+          type: object
+          additionalProperties: false
+          properties:
+            trips:
+              type: boolean
+            fuelings:
+              type: boolean
+            expenses:
+              type: boolean
+          required:
+          - trips
+          - fuelings
+          - expenses
+          example:
+            trips: true
+            fuelings: true
+            expenses: true
+        approval_levels_default:
+          type: integer
+          minimum: 1
+          maximum: 3
+        closure_period_days:
+          type: integer
+          minimum: 7
+          maximum: 90
+        policies:
+          $ref: '#/components/schemas/EnterpriseSettingsPolicies'
+        responsibilities:
+          type: object
+          additionalProperties: false
+          properties:
+            review_fallback:
+              $ref: '#/components/schemas/EnterpriseSettingsResponsibilityPair'
+            platform_notices:
+              $ref: '#/components/schemas/EnterpriseSettingsResponsibilityPair'
+            data_protection:
+              $ref: '#/components/schemas/EnterpriseSettingsResponsibilityPair'
+            billing:
+              $ref: '#/components/schemas/EnterpriseSettingsResponsibilityPair'
+          required:
+          - review_fallback
+          - platform_notices
+          - data_protection
+          - billing
+          example:
+            review_fallback:
+              primary: ''
+              substitute: ''
+            platform_notices:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+            data_protection:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+            billing:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+      required:
+      - time_zone
+      - consumption_display
+      - review_required
+      - approval_levels_default
+      - closure_period_days
+      - policies
+      - responsibilities
+      example:
+        time_zone: America/Cuiaba
+        consumption_display: KM_PER_L
+        review_required:
+          trips: true
+          fuelings: true
+          expenses: true
+        approval_levels_default: 1
+        closure_period_days: 30
+        policies:
+          intake_window_days: 15
+          clock_skew_limit_seconds: '300'
+          delegation_maximum_days: 90
+          invitation_validity_days: 7
+          activation_validity_hours: 48
+        responsibilities:
+          review_fallback:
+            primary: ''
+            substitute: ''
+          platform_notices:
+            primary: 7b0e2a54-0000-4000-8000-000000000601
+            substitute: ''
+          data_protection:
+            primary: 7b0e2a54-0000-4000-8000-000000000601
+            substitute: ''
+          billing:
+            primary: 7b0e2a54-0000-4000-8000-000000000601
+            substitute: ''
+      description: 'Complete replacement: every field and nested slot is required, including explicit false, zero or
+        empty values. Display preference does not rewrite normalized measures or historical records.'
+    EnterpriseSettingsReadRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseSettingsRevisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+      required:
+      - revision
+      example:
+        revision: 1
+    EnterpriseSettingsHistoryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          maxLength: 4096
+      example:
+        limit: 1
+      description: Descending revision keyset; opaque cursor bound to account, member, organization, route and limit.
+    EnterpriseSettingsChangeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        values:
+          $ref: '#/components/schemas/EnterpriseSettingsValues'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 120
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - values
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000000901
+        revision: 1
+        values:
+          time_zone: America/Cuiaba
+          consumption_display: KM_PER_L
+          review_required:
+            trips: true
+            fuelings: true
+            expenses: true
+          approval_levels_default: 1
+          closure_period_days: 30
+          policies:
+            intake_window_days: 15
+            clock_skew_limit_seconds: '300'
+            delegation_maximum_days: 90
+            invitation_validity_days: 7
+            activation_validity_hours: 48
+          responsibilities:
+            review_fallback:
+              primary: ''
+              substitute: ''
+            platform_notices:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+            data_protection:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+            billing:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+        reason: Synthetic configuration update
+      description: Fresh current org.settings.manage; invalid values return source-controlled error details with the field and allowed range (RANGE_min_max), zone, enum or length code. Full typed replacement with CAS. Replays require the same current
+        authority and identical original intent, returning the original root/revision/server time.
+    EnterpriseSettingsVersion:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        effective_at:
+          type: string
+          format: date-time
+          description: Server time under the organization root lock; owning commands capture this revision and received_at
+            in their own transaction.
+        values:
+          $ref: '#/components/schemas/EnterpriseSettingsValues'
+        source:
+          type: string
+          enum:
+          - ONBOARDING
+          - BOOTSTRAP
+          - COMMAND
+          - MEMBERSHIP_REDUCTION
+        author:
+          type: object
+          additionalProperties: false
+          properties:
+            account_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            membership_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+          required:
+          - account_id
+          - membership_id
+          example:
+            account_id: 7b0e2a54-0000-4000-8000-000000000201
+            membership_id: 7b0e2a54-0000-4000-8000-000000000601
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 120
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        source_membership:
+          type: object
+          additionalProperties: false
+          properties:
+            membership_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            revision:
+              type: integer
+              minimum: 2
+          required:
+          - membership_id
+          - revision
+          example:
+            membership_id: 7b0e2a54-0000-4000-8000-000000000601
+            revision: 3
+        notice_state:
+          type: string
+          enum:
+          - PENDING_NOTIFICATION_CORE
+        ownership_transfer_validity_days:
+          type: integer
+          enum:
+          - 7
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - revision
+      - effective_at
+      - values
+      - source
+      - reason
+      - ownership_transfer_validity_days
+      - data_mode
+      example:
+        revision: 2
+        effective_at: '2026-11-12T12:00:00Z'
+        values:
+          time_zone: America/Cuiaba
+          consumption_display: KM_PER_L
+          review_required:
+            trips: true
+            fuelings: true
+            expenses: true
+          approval_levels_default: 1
+          closure_period_days: 30
+          policies:
+            intake_window_days: 15
+            clock_skew_limit_seconds: '300'
+            delegation_maximum_days: 90
+            invitation_validity_days: 7
+            activation_validity_hours: 48
+          responsibilities:
+            review_fallback:
+              primary: ''
+              substitute: ''
+            platform_notices:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+            data_protection:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+            billing:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+        source: COMMAND
+        author:
+          account_id: 7b0e2a54-0000-4000-8000-000000000201
+          membership_id: 7b0e2a54-0000-4000-8000-000000000601
+        reason: Synthetic configuration update
+        operation_id: 7b0e2a54-0000-4000-8000-000000000901
+        ownership_transfer_validity_days: 7
+        data_mode: SYNTHETIC
+      description: Immutable version. ONBOARDING/COMMAND include actual author and operation. BOOTSTRAP uses actual
+        initialization time without a fabricated historical author. MEMBERSHIP_REDUCTION includes the actual source
+        member revision and pending notice; delivery is not claimed.
+    EnterpriseSettingsView:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        effective_at:
+          type: string
+          format: date-time
+          description: Server time under the organization root lock; owning commands capture this revision and received_at
+            in their own transaction.
+        values:
+          $ref: '#/components/schemas/EnterpriseSettingsValues'
+        source:
+          type: string
+          enum:
+          - ONBOARDING
+          - BOOTSTRAP
+          - COMMAND
+          - MEMBERSHIP_REDUCTION
+        author:
+          type: object
+          additionalProperties: false
+          properties:
+            account_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            membership_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+          required:
+          - account_id
+          - membership_id
+          example:
+            account_id: 7b0e2a54-0000-4000-8000-000000000201
+            membership_id: 7b0e2a54-0000-4000-8000-000000000601
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 120
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        source_membership:
+          type: object
+          additionalProperties: false
+          properties:
+            membership_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            revision:
+              type: integer
+              minimum: 2
+          required:
+          - membership_id
+          - revision
+          example:
+            membership_id: 7b0e2a54-0000-4000-8000-000000000601
+            revision: 3
+        notice_state:
+          type: string
+          enum:
+          - PENDING_NOTIFICATION_CORE
+        ownership_transfer_validity_days:
+          type: integer
+          enum:
+          - 7
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+        root_revision:
+          type: integer
+          minimum: 1
+      required:
+      - revision
+      - effective_at
+      - values
+      - source
+      - reason
+      - ownership_transfer_validity_days
+      - data_mode
+      - root_revision
+      example:
+        revision: 2
+        effective_at: '2026-11-12T12:00:00Z'
+        values:
+          time_zone: America/Cuiaba
+          consumption_display: KM_PER_L
+          review_required:
+            trips: true
+            fuelings: true
+            expenses: true
+          approval_levels_default: 1
+          closure_period_days: 30
+          policies:
+            intake_window_days: 15
+            clock_skew_limit_seconds: '300'
+            delegation_maximum_days: 90
+            invitation_validity_days: 7
+            activation_validity_hours: 48
+          responsibilities:
+            review_fallback:
+              primary: ''
+              substitute: ''
+            platform_notices:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+            data_protection:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+            billing:
+              primary: 7b0e2a54-0000-4000-8000-000000000601
+              substitute: ''
+        source: COMMAND
+        author:
+          account_id: 7b0e2a54-0000-4000-8000-000000000201
+          membership_id: 7b0e2a54-0000-4000-8000-000000000601
+        reason: Synthetic configuration update
+        operation_id: 7b0e2a54-0000-4000-8000-000000000901
+        ownership_transfer_validity_days: 7
+        data_mode: SYNTHETIC
+        root_revision: 2
+      description: Authorized version plus current organization revision for subsequent root commands; settings CAS
+        uses revision instead.
+    EnterpriseSettingsAcknowledgement:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 2
+        root_revision:
+          type: integer
+          minimum: 1
+        effective_at:
+          type: string
+          format: date-time
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+        replayed:
+          type: boolean
+      required:
+      - revision
+      - root_revision
+      - effective_at
+      - data_mode
+      - replayed
+      example:
+        revision: 2
+        root_revision: 2
+        effective_at: '2026-11-12T12:00:00Z'
+        data_mode: SYNTHETIC
+        replayed: false
+    EnterpriseSettingsPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseSettingsVersion'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - revision: 2
+          effective_at: '2026-11-12T12:00:00Z'
+          values:
+            time_zone: America/Cuiaba
+            consumption_display: KM_PER_L
+            review_required:
+              trips: true
+              fuelings: true
+              expenses: true
+            approval_levels_default: 1
+            closure_period_days: 30
+            policies:
+              intake_window_days: 15
+              clock_skew_limit_seconds: '300'
+              delegation_maximum_days: 90
+              invitation_validity_days: 7
+              activation_validity_hours: 48
+            responsibilities:
+              review_fallback:
+                primary: ''
+                substitute: ''
+              platform_notices:
+                primary: 7b0e2a54-0000-4000-8000-000000000601
+                substitute: ''
+              data_protection:
+                primary: 7b0e2a54-0000-4000-8000-000000000601
+                substitute: ''
+              billing:
+                primary: 7b0e2a54-0000-4000-8000-000000000601
+                substitute: ''
+          source: COMMAND
+          author:
+            account_id: 7b0e2a54-0000-4000-8000-000000000201
+            membership_id: 7b0e2a54-0000-4000-8000-000000000601
+          reason: Synthetic configuration update
+          operation_id: 7b0e2a54-0000-4000-8000-000000000901
+          ownership_transfer_validity_days: 7
+          data_mode: SYNTHETIC
         next_cursor: ''
   responses:
     EnterprisePrivateError:

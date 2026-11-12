@@ -34,6 +34,10 @@ func teamDriver(t *testing.T, fx legalFixtureState, accountID string) (string, s
 func TestTeamReductionsAndOrdinaryDefinerErasurePreservePeriodsAcrossOrganizations(t *testing.T) {
 	fx := teamSchemaFixture(t)
 	s := teamStore(t, fx)
+	if _, e := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); e != nil {
+		t.Fatal(e)
+	}
+	settings := settingsStore(t, fx)
 	accountID := onboardingID(t)
 	if _, e := fx.f.Admin.Exec(t.Context(), `INSERT INTO accounts(id,alias,status) VALUES($1,'synthetic-team-driver','active')`, accountID); e != nil {
 		t.Fatal(e)
@@ -69,12 +73,17 @@ func TestTeamReductionsAndOrdinaryDefinerErasurePreservePeriodsAcrossOrganizatio
 		if _, _, e := teamWrite(t, source, s, teamCommand(t, app.TeamWriteInput{Kind: app.AddTeamEmployee, TeamID: team.TeamID, EmployeeID: employeeID, ExpectedRevision: 3})); e != nil {
 			t.Fatal("explicit new period", e)
 		}
+		configured := settingsRead(t, source, settings, 0).Values
+		configured.Responsibilities.ReviewFallback = d.ResponsibilityPair{PrimaryID: memberID, SubstituteID: source.member}
+		if _, _, e := settings.ChangeSettings(t.Context(), source.scope, source.actor, source.member, settingsCommand(t, 1, configured, "")); e != nil {
+			t.Fatal(e)
+		}
 		links = append(links, linked{source, team.TeamID, employeeID, memberID})
 	}
 	// Rehearse the existing erasure definer under an ordinary, non-login owner.
 	eraser := fx.f.RuntimeRole + "_team_eraser"
 	role := pgx.Identifier{eraser}.Sanitize()
-	if _, e := fx.f.Admin.Exec(t.Context(), "CREATE ROLE "+role+" NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE; GRANT USAGE ON SCHEMA public TO "+role+"; GRANT SELECT,UPDATE ON organizations,accounts,org_role_assignments,org_teams,org_team_links TO "+role+"; GRANT SELECT ON org_employee_identities,payment_billing_exits TO "+role+"; ALTER TABLE org_memberships OWNER TO "+role+"; ALTER FUNCTION org_membership_account_erasure() OWNER TO "+role+"; ALTER FUNCTION org_membership_check_account_exit(uuid) OWNER TO "+role); e != nil {
+	if _, e := fx.f.Admin.Exec(t.Context(), "CREATE ROLE "+role+" NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE; GRANT USAGE ON SCHEMA public TO "+role+"; GRANT SELECT,UPDATE ON organizations,accounts,org_role_assignments,org_teams,org_team_links TO "+role+"; GRANT SELECT ON org_employee_identities,payment_billing_exits TO "+role+"; GRANT SELECT,INSERT ON org_settings_versions,org_settings_designations,org_settings_notices TO "+role+"; GRANT SELECT,INSERT,UPDATE ON org_settings_heads TO "+role+"; ALTER TABLE org_memberships OWNER TO "+role+"; ALTER FUNCTION org_membership_account_erasure() OWNER TO "+role+"; ALTER FUNCTION org_membership_check_account_exit(uuid) OWNER TO "+role); e != nil {
 		t.Fatal(e)
 	}
 	t.Cleanup(func() {
@@ -98,6 +107,10 @@ func TestTeamReductionsAndOrdinaryDefinerErasurePreservePeriodsAcrossOrganizatio
 		var active, ended, revision int
 		if e := fx.f.Admin.QueryRow(t.Context(), `SELECT(SELECT count(*) FROM org_team_links WHERE org_id=$1 AND team_id=$2 AND ended_at IS NULL),(SELECT count(*) FROM org_team_links WHERE org_id=$1 AND team_id=$2 AND ended_at IS NOT NULL),(SELECT revision FROM org_teams WHERE org_id=$1 AND id=$2)`, l.fx.scope.OrgID().String(), l.teamID).Scan(&active, &ended, &revision); e != nil || active != 0 || ended != 2 || revision != 5 {
 			t.Fatal("erasure silently missed scoped links", active, ended, revision, e)
+		}
+		cleared := settingsRead(t, l.fx, settings, 0)
+		if cleared.Revision != 3 || cleared.Source != d.SettingsMembershipReduction || cleared.SourceMembershipID != l.memberID || cleared.Values.Responsibilities.ReviewFallback.PrimaryID != "" || cleared.Values.Responsibilities.ReviewFallback.SubstituteID != l.fx.member {
+			t.Fatal("ordinary definer did not clear only scoped designation")
 		}
 		var valid bool
 		if e := fx.f.Admin.QueryRow(t.Context(), `SELECT EXISTS(SELECT 1 FROM org_team_links l JOIN org_memberships m ON(m.org_id,m.id)=(l.org_id,l.source_membership_id) WHERE l.org_id=$1 AND l.team_id=$2 AND l.end_reason='MEMBERSHIP_ENDED' AND l.source_membership_revision=m.revision AND m.account_id IS NULL AND m.account_tombstone IS NOT NULL AND m.state='ENDED')`, l.fx.scope.OrgID().String(), l.teamID).Scan(&valid); e != nil || !valid {

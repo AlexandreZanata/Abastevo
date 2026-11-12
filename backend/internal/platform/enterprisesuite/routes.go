@@ -54,6 +54,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.UnitAuditDefinitions()...)
 	definitions = append(definitions, orgpg.CostCentreAuditDefinitions()...)
 	definitions = append(definitions, orgpg.TeamAuditDefinitions()...)
+	definitions = append(definitions, orgpg.SettingsAuditDefinitions()...)
 	definitions = append(definitions, member.EmployeeAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
@@ -73,7 +74,7 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	admission, err := orgquota.New(o.Pool, o.CursorSecret, []orgquota.Definition{
-		{Class: "org.setup", Permissions: []string{"org.settings.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic setup only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "org.setup", Permissions: []string{"org.settings.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic setup/settings only: share identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "idn.employee", Permissions: []string{"idn.employee.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic employee register only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -103,6 +104,12 @@ func Register(router chi.Router, o Options) error {
 	}
 	teams := &orgpg.TeamStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
 	if err := orgweb.RegisterTeams(router, org.TeamService{Enabled: true, Repository: teams, NewID: jobs.NewUUIDv4}, cookies, gateway, centreAuthorization, roots, teams); err != nil {
+		return err
+	}
+
+	settings := &orgpg.SettingsStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
+	settingsAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: orgweb.SettingsRecords{}, Now: time.Now}
+	if err := orgweb.RegisterSettings(router, org.SettingsService{Enabled: true, Repository: settings}, cookies, gateway, settingsAuthorization, roots); err != nil {
 		return err
 	}
 

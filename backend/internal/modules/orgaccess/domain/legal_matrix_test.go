@@ -23,12 +23,12 @@ func TestLegalManagementV2GrantsOnlyTheRecordedRoles(t *testing.T) {
 		}
 	}
 	_, version := d.SystemCatalog().Versions()
-	if version != "org-permissions-v2" {
+	if version != "org-permissions-v3" {
 		t.Fatal("matrix amendment did not change its version")
 	}
 }
 
-func TestCatalogV2RetainsEveryOtherV1Cell(t *testing.T) {
+func TestCatalogV3RetainsEveryOtherV1Cell(t *testing.T) {
 	raw, err := os.ReadFile("../../../../../contracts/testdata/enterprise/authorization-catalog-v1.psv")
 	if err != nil {
 		t.Fatal(err)
@@ -47,6 +47,11 @@ func TestCatalogV2RetainsEveryOtherV1Cell(t *testing.T) {
 				expected = "O"
 				changes++
 			}
+			if row[0] == "org.settings.read" && (name == "OWNER" || name == "ADMIN" || name == "FLEET_MANAGER" || name == "SUPERVISOR" || name == "FINANCE" || name == "APPROVER" || name == "AUDITOR") {
+				expected = "O"
+				changes++
+			}
+
 			rule, err := d.SystemCatalog().Lookup(d.Role(name), d.Permission(row[0]))
 			if err != nil {
 				t.Fatal(err)
@@ -63,7 +68,7 @@ func TestCatalogV2RetainsEveryOtherV1Cell(t *testing.T) {
 			}
 		}
 	}
-	if changes != 2 {
-		t.Fatal("expected exactly two explicit amendments")
+	if changes != 9 {
+		t.Fatal("expected exactly nine explicit amendments")
 	}
 }

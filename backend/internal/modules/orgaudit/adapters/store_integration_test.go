@@ -258,7 +258,7 @@ func TestAuditReadIsolationAndImmutability(t *testing.T) {
 	}
 	// Even an accidental broad DML grant cannot mutate or truncate the trail.
 	if _, err := f.Admin.Exec(t.Context(), "GRANT ALL ON org_audit_events TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()+
-		"; GRANT TRUNCATE ON org_event_intents,org_event_receipts,org_onboarding_commands,org_legal_commands,org_unit_commands,org_cost_centre_commands,org_employee_commands,org_employee_unit_clearings,org_team_links,org_team_commands TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+		"; GRANT TRUNCATE ON org_event_intents,org_event_receipts,org_onboarding_commands,org_legal_commands,org_unit_commands,org_cost_centre_commands,org_employee_commands,org_employee_unit_clearings,org_team_links,org_team_commands,org_settings_versions,org_settings_heads,org_settings_designations,org_settings_commands,org_settings_notices TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
 	// CASCADE reaches the append-only trigger despite the event-intent FK. The
@@ -273,7 +273,12 @@ func TestAuditReadIsolationAndImmutability(t *testing.T) {
  ALTER TABLE org_employee_commands DISABLE TRIGGER org_employee_command_history;
  ALTER TABLE org_employee_unit_clearings DISABLE TRIGGER org_employee_clearing_history;
  ALTER TABLE org_team_links DISABLE TRIGGER org_team_link_history;
- ALTER TABLE org_team_commands DISABLE TRIGGER org_team_command_history`); err != nil {
+ ALTER TABLE org_team_commands DISABLE TRIGGER org_team_command_history;
+ ALTER TABLE org_settings_versions DISABLE TRIGGER org_settings_version_history;
+ ALTER TABLE org_settings_heads DISABLE TRIGGER org_settings_head_history;
+ ALTER TABLE org_settings_designations DISABLE TRIGGER org_settings_designation_history;
+ ALTER TABLE org_settings_commands DISABLE TRIGGER org_settings_command_history;
+ ALTER TABLE org_settings_notices DISABLE TRIGGER org_settings_notice_history`); err != nil {
 		t.Fatal(err)
 	}
 	for _, query := range []string{`UPDATE org_audit_events SET reason_code='correction'`, `DELETE FROM org_audit_events`, `TRUNCATE org_audit_events CASCADE`} {
