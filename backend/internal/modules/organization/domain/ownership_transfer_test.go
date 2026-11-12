@@ -15,7 +15,7 @@ func TestValidateTransferProposal(t *testing.T) {
 		initiatorID          string
 		targetID             string
 		targetHasOwner       bool
-		targetIsManaged       bool
+		targetIsManaged      bool
 		targetActive         bool
 		targetEmployeeActive bool
 		wantErr              error
@@ -25,7 +25,7 @@ func TestValidateTransferProposal(t *testing.T) {
 			initiatorID:          "m-initiator",
 			targetID:             "m-target",
 			targetHasOwner:       false,
-			targetIsManaged:       false,
+			targetIsManaged:      false,
 			targetActive:         true,
 			targetEmployeeActive: true,
 			wantErr:              nil,
@@ -35,7 +35,7 @@ func TestValidateTransferProposal(t *testing.T) {
 			initiatorID:          "m-same",
 			targetID:             "m-same",
 			targetHasOwner:       false,
-			targetIsManaged:       false,
+			targetIsManaged:      false,
 			targetActive:         true,
 			targetEmployeeActive: true,
 			wantErr:              d.ErrSelfTransferForbidden,
@@ -45,7 +45,7 @@ func TestValidateTransferProposal(t *testing.T) {
 			initiatorID:          "m-initiator",
 			targetID:             "m-target",
 			targetHasOwner:       false,
-			targetIsManaged:       false,
+			targetIsManaged:      false,
 			targetActive:         false,
 			targetEmployeeActive: true,
 			wantErr:              d.ErrTargetNotActive,
@@ -55,7 +55,7 @@ func TestValidateTransferProposal(t *testing.T) {
 			initiatorID:          "m-initiator",
 			targetID:             "m-target",
 			targetHasOwner:       false,
-			targetIsManaged:       false,
+			targetIsManaged:      false,
 			targetActive:         true,
 			targetEmployeeActive: false,
 			wantErr:              d.ErrTargetEmployeeNotActive,
@@ -65,7 +65,7 @@ func TestValidateTransferProposal(t *testing.T) {
 			initiatorID:          "m-initiator",
 			targetID:             "m-target",
 			targetHasOwner:       false,
-			targetIsManaged:       true,
+			targetIsManaged:      true,
 			targetActive:         true,
 			targetEmployeeActive: true,
 			wantErr:              d.ErrOwnerRequiresPersonalAccount,
@@ -75,7 +75,7 @@ func TestValidateTransferProposal(t *testing.T) {
 			initiatorID:          "m-initiator",
 			targetID:             "m-target",
 			targetHasOwner:       true,
-			targetIsManaged:       false,
+			targetIsManaged:      false,
 			targetActive:         true,
 			targetEmployeeActive: true,
 			wantErr:              d.ErrTargetAlreadyOwner,

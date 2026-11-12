@@ -1,6 +1,6 @@
 # EP03 — Identity, employee accounts and authorization
 
-Status: **IN_PROGRESS**, 2026-11-11.
+Status: **IN_PROGRESS**, 2026-11-12.
 
 Task IDs, titles, phase, cut, type, effort, priority and dependencies
 follow the existing [generated index](INDEX.md). Task descriptions
@@ -151,7 +151,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Done when:** Recovery and old-device denial pass through the normal entry points.
 
 ### EMP-IDN-009 — Membership suspension and reactivation
-- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Suspend and reactivate membership without rewriting historical assignments.
 - **Rules and use cases:** BR-IDN-026, BR-IDN-030, BR-IDN-036, BR-AUTH-014, UC-IDN-08
 - **Depends on:** EMP-IDN-003, EMP-AUTH-003
@@ -162,9 +162,10 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Deliverable:** Audited membership suspension and reactivation commands.
 - **Acceptance:** The next request honors suspension. Reactivation restores only assignments still valid under their original terms.
 - **Negative cases:** Self-suspension, concurrent last-owner removal, foreign membership or cache retaining access.
-- **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: reuse membership state · rollback: disable the new command and keep audit and state
+- **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: additive190 immutable commands/notices, existing membership state · rollback: disable the new command and keep audit and state
 - **Risks and assumptions:** Membership suspension and employee-state suspension must preserve their recorded cause.
 - **Done when:** State changes, role denial and concurrency tests pass on PostGIS.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task206](https://github.com/AlexandreZanata/Abastevo/issues/206), cumulative PR203. Fresh guarded read/suspend/reactivate, real last-owner/CAS/proof-wait races, original role periods/causes, immutable retries and actual pending notices pass. Populated189→190 recovery/RLS/retention, actual HTTP/router/contracts, affected PostGIS/race/static/generation and full local Quick verification pass. [Evidence](../evidence/f1-idn009-membership-access.md). Offboarding, native/device, offline review and managed activation remain separate.
 
 ### EMP-IDN-010 — Offboarding: end membership, revoke sessions, hand over responsibilities
 - **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size M · state TODO

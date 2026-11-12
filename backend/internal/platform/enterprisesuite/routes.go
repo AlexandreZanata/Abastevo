@@ -67,6 +67,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, member.EmployeeAuditDefinitions()...)
 	definitions = append(definitions, member.InvitationAuditDefinitions()...)
 	definitions = append(definitions, member.RedemptionAuditDefinitions()...)
+	definitions = append(definitions, member.MembershipAccessAuditDefinitions()...)
 	definitions = append(definitions, accesspg.RoleAuditDefinitions()...)
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
@@ -92,6 +93,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "idn.invitation", Permissions: []string{"idn.invitation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic invitation writes use the existing identity v1 write allowance on every axis; production measurement remains required."},
+		{Class: "idn.membership", Permissions: []string{"idn.membership.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic membership lifecycle uses identity v1 write200/hour on every axis; production measurement remains required."},
 		{Class: "idn.employee", Permissions: []string{"idn.employee.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic employee register only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -148,6 +150,12 @@ func Register(router chi.Router, o Options) error {
 
 	redemption := &member.RedemptionStore{Pool: o.Pool, Authority: &orgpg.RedemptionAuthority{Roles: roles, Capabilities: flags, Settings: settings}, Managers: invitations.Authority, Memberships: memberStore, Roles: roles, Audit: auditStore, Secret: append([]byte(nil), o.CursorSecret...), NewID: jobs.NewUUIDv4}
 	if e := memberweb.RegisterRedemption(router, true, redemption, cookies, gateway, invitationAuthorization, roots, unknownInvitationAdmission(o)); e != nil {
+		return e
+	}
+
+	membershipAccess := &member.MembershipAccessStore{Pool: o.Pool, Authority: &orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Memberships: memberStore, Periods: roles, Audit: auditStore}
+	membershipAccessAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: memberweb.MembershipAccessRecords{}, Now: time.Now}
+	if e := memberweb.RegisterMembershipAccess(router, memberapp.MembershipAccessService{Enabled: true, Repository: membershipAccess}, cookies, gateway, membershipAccessAuthorization, roots); e != nil {
 		return e
 	}
 

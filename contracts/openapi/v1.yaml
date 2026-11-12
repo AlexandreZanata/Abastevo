@@ -55,6 +55,246 @@ tags:
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
+  /v1/orgs/{org_id}/memberships/{membership_id}/read:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: membershipAccessRead
+      summary: Read a private organization membership
+      description: Current fresh idn.membership.manage with organization scope, cookie/origin/CSRF and request-bound
+        AUTH. Sorted account/proof/capability/root locking, server time and CAS protect commands. Self-suspension
+        and last-owner removal are refused. Reactivation retains original assignment periods and needs a currently
+        valid role and active employee/account. Original acknowledgements replay without changing later state. No
+        personal session revocation or native lock is claimed.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.membership.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMembershipAccessReadRequest'
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMembershipAccessView'
+              example:
+                membership_id: 7b0e2a54-0000-4000-8000-000000001022
+                employee_id: 7b0e2a54-0000-4000-8000-000000001023
+                access_model: EXISTING_ACCOUNT
+                state: SUSPENDED
+                revision: 3
+                suspension_origin: MANAGER
+                end_reason: ''
+                data_mode: SYNTHETIC
+                observed_at: '2026-11-12T12:00:00Z'
+  /v1/orgs/{org_id}/memberships/{membership_id}/suspend:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: membershipAccessSuspend
+      summary: Suspend a private organization membership
+      description: Current fresh idn.membership.manage with organization scope, cookie/origin/CSRF and request-bound
+        AUTH. Sorted account/proof/capability/root locking, server time and CAS protect commands. Self-suspension
+        and last-owner removal are refused. Reactivation retains original assignment periods and needs a currently
+        valid role and active employee/account. Original acknowledgements replay without changing later state. No
+        personal session revocation or native lock is claimed.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.membership.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMembershipAccessRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001021
+              revision: 2
+              reason: Synthetic membership pause
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMembershipAccessResult'
+              example:
+                membership_id: 7b0e2a54-0000-4000-8000-000000001022
+                employee_id: 7b0e2a54-0000-4000-8000-000000001023
+                access_model: EXISTING_ACCOUNT
+                state: SUSPENDED
+                revision: 3
+                suspension_origin: MANAGER
+                end_reason: ''
+                data_mode: SYNTHETIC
+                operation_id: 7b0e2a54-0000-4000-8000-000000001021
+                reason: Synthetic membership pause
+                previous_suspension_origin: ''
+                occurred_at: '2026-11-12T12:00:00Z'
+                replayed: false
+                notice_state: PENDING_NOTIFICATION_CORE
+  /v1/orgs/{org_id}/memberships/{membership_id}/reactivate:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: membershipAccessReactivate
+      summary: Reactivate a private organization membership
+      description: Current fresh idn.membership.manage with organization scope, cookie/origin/CSRF and request-bound
+        AUTH. Sorted account/proof/capability/root locking, server time and CAS protect commands. Self-suspension
+        and last-owner removal are refused. Reactivation retains original assignment periods and needs a currently
+        valid role and active employee/account. Original acknowledgements replay without changing later state. No
+        personal session revocation or native lock is claimed.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.membership.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Invitation selected inside this organization; identifiers are never proof.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Strict private invitation intent. Secrets cannot be recovered by retries.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMembershipAccessRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001021
+              revision: 2
+              reason: Synthetic membership pause
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Committed private result. Delivery appears only on first successful issue/resend.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMembershipAccessResult'
+              example:
+                membership_id: 7b0e2a54-0000-4000-8000-000000001022
+                employee_id: 7b0e2a54-0000-4000-8000-000000001023
+                access_model: EXISTING_ACCOUNT
+                state: SUSPENDED
+                revision: 3
+                suspension_origin: MANAGER
+                end_reason: ''
+                data_mode: SYNTHETIC
+                operation_id: 7b0e2a54-0000-4000-8000-000000001021
+                reason: Synthetic membership pause
+                previous_suspension_origin: ''
+                occurred_at: '2026-11-12T12:00:00Z'
+                replayed: false
+                notice_state: PENDING_NOTIFICATION_CORE
   /v1/org-access/invitations/preview:
     post:
       tags:
@@ -13280,6 +13520,224 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseMembershipAccessReadRequest:
+      type: object
+      additionalProperties: false
+      required: []
+      properties: {}
+      example: {}
+    EnterpriseMembershipAccessRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Private recorded reason. Blank, control and Unicode format characters are refused.
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001021
+        revision: 2
+        reason: Synthetic membership pause
+    EnterpriseMembershipAccessView:
+      type: object
+      additionalProperties: false
+      required:
+      - membership_id
+      - employee_id
+      - access_model
+      - state
+      - revision
+      - suspension_origin
+      - end_reason
+      - data_mode
+      - observed_at
+      properties:
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_model:
+          type: string
+          enum:
+          - EXISTING_ACCOUNT
+          - MANAGED
+        state:
+          type: string
+          enum:
+          - INVITED
+          - ACTIVE
+          - SUSPENDED
+          - ENDED
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        suspension_origin:
+          type: string
+          enum:
+          - ''
+          - MANAGER
+          - EMPLOYEE_INACTIVE
+        end_reason:
+          type: string
+          enum:
+          - ''
+          - OFFBOARDED
+          - LEFT
+          - ACCOUNT_DELETED
+          - ORGANIZATION_CLOSED
+          - ADMISSION_ENDED
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+        observed_at:
+          type: string
+          format: date-time
+      example:
+        membership_id: 7b0e2a54-0000-4000-8000-000000001022
+        employee_id: 7b0e2a54-0000-4000-8000-000000001023
+        access_model: EXISTING_ACCOUNT
+        state: SUSPENDED
+        revision: 3
+        suspension_origin: MANAGER
+        end_reason: ''
+        data_mode: SYNTHETIC
+        observed_at: '2026-11-12T12:00:00Z'
+    EnterpriseMembershipAccessResult:
+      type: object
+      additionalProperties: false
+      required:
+      - membership_id
+      - employee_id
+      - access_model
+      - state
+      - revision
+      - suspension_origin
+      - end_reason
+      - data_mode
+      - operation_id
+      - reason
+      - previous_suspension_origin
+      - occurred_at
+      - replayed
+      - notice_state
+      properties:
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_model:
+          type: string
+          enum:
+          - EXISTING_ACCOUNT
+          - MANAGED
+        state:
+          type: string
+          enum:
+          - INVITED
+          - ACTIVE
+          - SUSPENDED
+          - ENDED
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        suspension_origin:
+          type: string
+          enum:
+          - ''
+          - MANAGER
+          - EMPLOYEE_INACTIVE
+        end_reason:
+          type: string
+          enum:
+          - ''
+          - OFFBOARDED
+          - LEFT
+          - ACCOUNT_DELETED
+          - ORGANIZATION_CLOSED
+          - ADMISSION_ENDED
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Private recorded reason. Blank, control and Unicode format characters are refused.
+        previous_suspension_origin:
+          type: string
+          enum:
+          - ''
+          - MANAGER
+          - EMPLOYEE_INACTIVE
+        occurred_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        notice_state:
+          type: string
+          enum:
+          - PENDING_NOTIFICATION_CORE
+      example:
+        membership_id: 7b0e2a54-0000-4000-8000-000000001022
+        employee_id: 7b0e2a54-0000-4000-8000-000000001023
+        access_model: EXISTING_ACCOUNT
+        state: SUSPENDED
+        revision: 3
+        suspension_origin: MANAGER
+        end_reason: ''
+        data_mode: SYNTHETIC
+        operation_id: 7b0e2a54-0000-4000-8000-000000001021
+        reason: Synthetic membership pause
+        previous_suspension_origin: ''
+        occurred_at: '2026-11-12T12:00:00Z'
+        replayed: false
+        notice_state: PENDING_NOTIFICATION_CORE
+      oneOf:
+      - properties:
+          state:
+            enum:
+            - SUSPENDED
+          suspension_origin:
+            enum:
+            - MANAGER
+          previous_suspension_origin:
+            enum:
+            - ''
+      - properties:
+          state:
+            enum:
+            - ACTIVE
+          suspension_origin:
+            enum:
+            - ''
+          previous_suspension_origin:
+            enum:
+            - MANAGER
+            - EMPLOYEE_INACTIVE
     EnterpriseInvitationPreviewRequest:
       type: object
       additionalProperties: false

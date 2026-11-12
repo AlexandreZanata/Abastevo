@@ -1,4 +1,25 @@
 # Current execution state
+- Enterprise EMP-IDN-009, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn009 from published dev621b6767; publish to dev/PR203,
+  [task206](https://github.com/AlexandreZanata/Abastevo/issues/206).
+  [Membership access evidence](../enterprise/evidence/f1-idn009-membership-access.md)
+  records three fresh guarded manager routes, immediate scoped suspension,
+  reactivation under original valid periods, self/last-owner protection,
+  immutable CAS acknowledgements and actual pending notices. Source reductions
+  stay consumed; personal sessions/other organizations remain independent.
+  B-BR-EMP-78/79, BUC-EMP-40 and EDR-051 precede behavior. Ordinary populated
+  migration190 recovery/RLS/retention, actual HTTP/router/contracts, twelve-way
+  retry/CAS and last-owner/proof-wait/fault races pass. Complete membership and
+  orgaccess race suites, affected organization regression and static/generation/
+  compatibility/plan/secret checks pass; domain93.6%. Full local Quick passed
+  in270s, including the prior-head formatting repair and vulnerability scan.
+  Tested backend tree461a88dd458968b3da374e036b6b7bd9b085f1d6;
+  contract Git blob b8d6848fe0ac0c4249598b34d2c1c38a9ad9ec2b.
+  Required remote check awaits the publication head. Next: protected review/
+  integration; this request stops at this task. F1/M1, managed006..008/GOV-013,
+  native/device/offline, providers/runtime, legal/staging/production remain open.
+  No merge, wiki or deployment is claimed; issue stays open until integration.
+
 - Enterprise EMP-IDN-005, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
   codex/enterprise-idn005 from dev ed603f34; publish to cumulative dev/PR203.
   [Acceptance evidence](../enterprise/evidence/f1-idn005-invitation-acceptance.md)

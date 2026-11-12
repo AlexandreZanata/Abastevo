@@ -274,3 +274,18 @@ func (f *Fixture) GrantInvitationLifecycle(t *testing.T) {
 	}
 
 }
+
+// GrantMembershipAccessCommands enables only this disposable runtime's new
+// manual lifecycle receipts/notices, never production role provisioning.
+func (f *Fixture) GrantMembershipAccessCommands(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_membership_access_commands') IS NOT NULL`).Scan(&installed); e != nil {
+		t.Fatal(e)
+	}
+	if installed {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_membership_access_commands,org_membership_access_notices TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
+			t.Fatal(e)
+		}
+	}
+}

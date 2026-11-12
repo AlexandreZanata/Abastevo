@@ -342,3 +342,27 @@ func (s *Store) RemainingOwnershipAssignmentsTx(ctx context.Context, tx pgx.Tx, 
 	}
 	return out, nil
 }
+
+// ReactivationCandidatesTx returns valid recorded periods for an explicit
+// membership reactivation, never authorization. CandidatesTx is unchanged.
+func (s *Store) ReactivationCandidatesTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string) ([]d.Assignment, error) {
+	if e := validateID(scope, member); e != nil {
+		return nil, e
+	}
+	if e := check(ctx, tx, scope); e != nil {
+		return nil, e
+	}
+	rows, e := q.New(tx).ReactivationCandidateAssignments(ctx, q.ReactivationCandidateAssignmentsParams{OrgID: scope.OrgID().String(), MembershipID: member})
+	if e != nil {
+		return nil, safe(ctx, e)
+	}
+	out := make([]d.Assignment, 0, len(rows))
+	for _, row := range rows {
+		a, e := value(scope, q.GetAssignmentRow(row))
+		if e != nil {
+			return nil, e
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}

@@ -13,6 +13,7 @@ import (
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 // Reuse the same account/proof -> capability -> root -> current authority
@@ -25,7 +26,7 @@ type companyAuthority struct {
 }
 
 func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy, requestedRole ...permissions.Role) error {
-	if policy != members.InvitationPolicy(members.InvitationIssue) && policy != members.InvitationPolicy(members.InvitationRead) && policy != members.InvitationPolicy(members.InvitationRevoke) && policy != access.RolePolicy(access.RoleAssignAction) && policy != access.RolePolicy(access.RoleEndAction) && policy != access.RolePolicy(access.RoleReadAction) && policy != app.OwnershipTransferProposePolicy() && policy != app.OwnershipTransferReadPolicy() && policy != app.OwnershipTransferAcceptPolicy() && policy != app.OwnershipTransferCancelPolicy() && policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
+	if policy != members.MembershipAccessPolicy(members.MembershipAccessRead) && policy != members.MembershipAccessPolicy(members.MembershipSuspend) && policy != members.MembershipAccessPolicy(members.MembershipReactivate) && policy != members.InvitationPolicy(members.InvitationIssue) && policy != members.InvitationPolicy(members.InvitationRead) && policy != members.InvitationPolicy(members.InvitationRevoke) && policy != access.RolePolicy(access.RoleAssignAction) && policy != access.RolePolicy(access.RoleEndAction) && policy != access.RolePolicy(access.RoleReadAction) && policy != app.OwnershipTransferProposePolicy() && policy != app.OwnershipTransferReadPolicy() && policy != app.OwnershipTransferAcceptPolicy() && policy != app.OwnershipTransferCancelPolicy() && policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
 		return app.ErrUnavailable
 	}
 	write := policy.Effect == access.ConfigurationWrite
@@ -246,4 +247,44 @@ func (g *InvitationAuthority) CheckInvitationTx(ctx context.Context, tx pgx.Tx, 
 		return members.InvitationAuthorityFacts{}, e
 	}
 	return members.InvitationAuthorityFacts{Assignments: candidates, EmployeeID: m.EmployeeID, ValidityDays: settings.Values.Policies.InvitationValidityDays, SettingsRevision: settings.Revision, Now: capture.ReceivedAt}, nil
+}
+
+// MembershipAccessAuthority owns the fixed manager policies; it retains actual
+// company proof and current authority through the caller's scoped transaction.
+type MembershipAccessAuthority struct {
+	Memberships  members.TransactionRepository
+	Roles        access.TransactionRepository
+	Capabilities setupCapability
+}
+
+func (g *MembershipAccessAuthority) CheckMembershipAccessTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor members.EmployeeActor, member string, action members.MembershipAccessAction) (time.Time, error) {
+	if g == nil || g.Memberships == nil || g.Roles == nil || g.Capabilities == nil || actor.Validate() != nil || legalIdentity(scope, member) != nil {
+		return time.Time{}, members.ErrRegisterUnavailable
+	}
+	policy := members.MembershipAccessPolicy(action)
+	if policy.Validate() != nil {
+		return time.Time{}, members.ErrRegisterUnavailable
+	}
+	e := (companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}).check(ctx, tx, scope, app.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, member, scope.OrgID().String(), policy)
+	if e != nil {
+		switch {
+		case errors.Is(e, app.ErrUnauthenticated):
+			e = members.ErrEmployeeUnauthenticated
+		case errors.Is(e, app.ErrNotFound):
+			e = members.ErrEmployeeNotFound
+		case errors.Is(e, app.ErrUnavailable):
+			e = members.ErrRegisterUnavailable
+		case errors.Is(e, capability.ErrEntitlementRequired):
+			e = access.ErrEntitlementRequired
+		}
+		return time.Time{}, e
+	}
+	now, e := q.New(tx).CurrentOnboardingTime(ctx)
+	if e != nil {
+		return time.Time{}, e
+	}
+	if !now.Valid || now.InfinityModifier != pgtype.Finite {
+		return time.Time{}, members.ErrRegisterUnavailable
+	}
+	return now.Time.UTC(), nil
 }

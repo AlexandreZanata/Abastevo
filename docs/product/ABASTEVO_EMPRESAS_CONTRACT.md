@@ -1197,6 +1197,38 @@ source reduction, confirmation equality deadline, simultaneous acceptance/confir
 and deferred failure with real PostGIS. A failure exposes no organization details and
 commits no provisional access.
 
+- **B-BR-EMP-78 — Suspend organization access with current manager authority.** A fresh
+current member with idn.membership.manage may suspend another ACTIVE membership with a
+reason and observed revision. The server locks affected accounts in UUID order before
+proof/capability/root and rechecks current proof after waits. Self-suspension and
+removal of the last continuously covered owner are refused. Membership becomes SUSPENDED
+with MANAGER origin; original role periods remain unchanged. The next organization
+request is denied even with an otherwise valid personal session. Existing source
+projections revoke outstanding issuer invitations, cancel ownership proposals and clear
+team/designation links with actual history. Personal accounts, credentials, sessions and
+other organizations are unaffected.
+
+- **B-BR-EMP-79 — Reactivate only eligible recorded authority.** A fresh authorized
+manager may reactivate a SUSPENDED membership only while the employee and bound account
+are active and at least one original assignment is currently valid. Check assignment
+periods using server time, including after lock waits; never extend or recreate an
+expired/ended/future assignment. Employee-inactivity suspensions cannot be lifted while
+the employee is inactive. No ENDED period is reopened, and no consumed token, cleared
+team/designation or cancelled proposal is resurrected. Read/reduction remains available
+under existing suspended/archived or capability-disabled policies; reactivation is a
+configuration write. Every command has one immutable actor/intent-bound acknowledgement,
+audit and pending notice; retries recheck current authority and preserve the original
+result after later state changes.
+
+- **BUC-EMP-40 — Pause and restore one membership.** A manager reads the current
+revision, suspends another member with a reason and observes immediate denial on that
+member's next request. Reactivate with the new revision when an original role is still
+valid. Exercise self/foreign targets, no remaining role, inactive employee, managed
+account isolation, last-owner races, identical and conflicting retries, stale/revoked
+proof, source reductions and deferred storage failure/recovery. All accepted state,
+audit, command and notice facts commit together. Native locking, device registry,
+offboarding and offline review retain their owning tasks.
+
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production
 gates. Tracking, Postos, billing and Data each have separate scope decisions.
