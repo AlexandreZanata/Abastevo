@@ -3,6 +3,11 @@
 package enterprisesuite
 
 import (
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"time"
 
 	account "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
@@ -10,6 +15,7 @@ import (
 	companypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters"
 	companyweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/application"
+	identitypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	member "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
 	memberweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters/http"
@@ -84,7 +90,7 @@ func Register(router chi.Router, o Options) error {
 	}
 	gateway := orgapi.Gateway{Enabled: true, Origin: o.Origin, CursorSecret: o.CursorSecret, Now: time.Now, WriteAdmission: admission}
 	authorization := access.Authorization{Source: roles, Capabilities: accesspg.PilotEntitlements{Enabled: true, Catalog: capabilities, States: flags}, Records: orgweb.SetupRecords{}, Now: time.Now}
-	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots); err != nil {
+	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots, creationAdmission(o)); err != nil {
 		return err
 	}
 	legal := &orgpg.LegalStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
@@ -121,4 +127,24 @@ func Register(router chi.Router, o Options) error {
 
 	cookies.RegisterRoutes(router)
 	return nil
+}
+
+// creationAdmission spends the identity v1 write budget on a keyed account
+// subject before an organization is created. It commits on its own, so a
+// refused or rolled-back creation still counts; no raw account ID is stored.
+func creationAdmission(o Options) orgweb.CreationAdmission {
+	limiter := identitypg.NewLimiter(o.Pool, identity.DefaultQuotaPolicy())
+	key := append([]byte(nil), o.CursorSecret...)
+	return func(ctx context.Context, accountID string) error {
+		mac := hmac.New(sha256.New, key)
+		_, _ = mac.Write([]byte("orgcreate.v1:" + accountID))
+		retry, err := limiter.Check(ctx, "orgcreate:v1:"+hex.EncodeToString(mac.Sum(nil)), identity.OperationWrite)
+		if errors.Is(err, identity.ErrQuotaExceeded) && retry > 0 {
+			return &orgapi.RateLimitError{RetryAfter: retry}
+		}
+		if err != nil {
+			return orgapi.Unavailable
+		}
+		return nil
+	}
 }

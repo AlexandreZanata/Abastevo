@@ -70,9 +70,15 @@ func (v activationRequest) CommandFields() orgapi.Command {
 	return orgapi.Command{SchemaVersion: v.SchemaVersion, OperationID: v.OperationID, Revision: v.Revision}
 }
 
+// CreationAdmission spends the creating account's write budget in its own
+// committed admission, before the creation transaction, so refused and
+// rolled-back attempts still count. A refusal is a registered orgapi error.
+type CreationAdmission func(ctx context.Context, accountID string) error
+
 type creationEndpoint struct {
 	service app.Onboarding
 	company company.Handler
+	admit   CreationAdmission
 }
 
 func (creationEndpoint) OrganizationCreationRule() orgapi.OrganizationCreationRule {
@@ -149,15 +155,26 @@ func (e creationEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		orgapi.WriteError(w, r, orgapi.Malformed)
 		return
 	}
-	command, err := d.NewCreation(d.CreationInput{OperationID: input.OperationID, Profile: d.Profile{Name: input.Name, TimeZone: input.TimeZone, Kinds: input.Kinds}, UnitName: input.UnitName, Terms: d.TermsAcceptance{Version: input.Terms.Version, Digest: input.Terms.Digest, Accepted: input.Terms.Accepted}})
-	if err != nil {
-		orgapi.WriteError(w, r, mapped(err))
-		return
-	}
+	// Like the guarded gateway: transport syntax first, then the company
+	// proof, and only then the body's meaning, so an unauthenticated or
+	// cross-site caller never learns validation outcomes.
 	e.company.RequireFreshSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		row, ok := company.SessionFromContext(r.Context())
 		if !ok {
 			orgapi.WriteError(w, r, orgapi.Unauthenticated)
+			return
+		}
+		command, err := d.NewCreation(d.CreationInput{OperationID: input.OperationID, Profile: d.Profile{Name: input.Name, TimeZone: input.TimeZone, Kinds: input.Kinds}, UnitName: input.UnitName, Terms: d.TermsAcceptance{Version: input.Terms.Version, Digest: input.Terms.Digest, Accepted: input.Terms.Accepted}})
+		if err != nil {
+			orgapi.WriteError(w, r, mapped(err))
+			return
+		}
+		if e.admit == nil {
+			orgapi.WriteError(w, r, orgapi.Unavailable)
+			return
+		}
+		if err := e.admit(r.Context(), row.AccountID); err != nil {
+			orgapi.WriteError(w, r, err)
 			return
 		}
 		result, replay, err := e.service.Create(r.Context(), app.CreationActor{AccountID: row.AccountID, SessionID: row.ID}, command)
@@ -203,11 +220,11 @@ func ActivationPolicy() access.Policy {
 func ActivationRule() orgapi.Rule {
 	return orgapi.Rule{Permission: "org.settings.manage", Write: true, Fresh: true, RequireRevision: true, CompanyOnly: true, Success: 200}
 }
-func Register(router chi.Router, service app.Onboarding, cookies company.Handler, gateway orgapi.Gateway, authorization access.Authorization, roots app.Repository) error {
+func Register(router chi.Router, service app.Onboarding, cookies company.Handler, gateway orgapi.Gateway, authorization access.Authorization, roots app.Repository, admit CreationAdmission) error {
 	if !service.Enabled {
 		return nil
 	}
-	if service.Repository == nil || service.NewID == nil || cookies.Service == nil || !cookies.Service.Enabled || roots == nil {
+	if service.Repository == nil || service.NewID == nil || cookies.Service == nil || !cookies.Service.Enabled || roots == nil || admit == nil {
 		return app.ErrUnavailable
 	}
 	owned, gateway, err := companyEntry(router, cookies, gateway)
@@ -227,6 +244,6 @@ func Register(router chi.Router, service app.Onboarding, cookies company.Handler
 	}); err != nil {
 		return err
 	}
-	router.Method(http.MethodPost, CreationPath, creationEndpoint{service, cookies})
+	router.Method(http.MethodPost, CreationPath, creationEndpoint{service, cookies, admit})
 	return nil
 }
