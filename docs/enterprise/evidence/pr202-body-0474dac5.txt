@@ -464,4 +464,3 @@ Race/negative/concurrency suites pass; new domain coverage 100%. Membership/staf
 [Catalog evidence](https://github.com/AlexandreZanata/Abastevo/blob/0474dac5da9a7bb19154ac3442b3c4c9098a5c81/docs/enterprise/evidence/f1-auth001-role-permission-catalog.md).
 
 LOCAL_DONE / INTEGRATION_PENDING. No SQL, route, grant or provider activated. AUTH-002 is next; membership policy stays UNAVAILABLE. F1/M1 and prior gates remain open.
-

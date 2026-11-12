@@ -339,7 +339,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Local fixed-catalog and matrix evidence](../evidence/f1-auth001-role-permission-catalog.md).
 
 ### EMP-AUTH-002 — Role assignments with organization and self scopes
-- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type DB · size S · state TODO
+- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type DB · size S · state LOCAL_DONE
 - **Objective:** Persist auditable role assignments over organization and self scope.
 - **Rules and use cases:** BR-AUTH-001, BR-AUTH-004, BR-AUTH-005, BR-AUTH-006, UC-AUTH-01
 - **Depends on:** EMP-AUTH-001, EMP-IDN-003
@@ -353,6 +353,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-SQL, V-ISO, V-IDEM · migration: additive with upgrade and compatibility rehearsal · rollback: keep role history and disable new routes
 - **Risks and assumptions:** Storage is one layer. Request-time policy and changes are enforced by their own tasks.
 - **Done when:** Role storage boundaries and concurrency cases pass on PostGIS.
+
+[Local scoped assignment and owner-policy evidence](../evidence/f1-auth002-role-assignment-persistence.md).
 
 ### EMP-AUTH-003 — Authorization service and organization-context middleware
 - **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type API · size M · state TODO

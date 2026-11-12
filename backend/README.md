@@ -362,9 +362,9 @@ terminal history and CAS/replay protect the boundary. Employee register
 attributes remain IDN-002; this migration invents no employee/account data.
 
 ActiveByAccount returns only an ACTIVE period for a live account without an
-account-deletion reservation; it never authorizes an action. SQL admission/
-reduction hooks return UNAVAILABLE until AUTH-002 installs real roles and
-last-owner policy. No real role, runtime table grant or route is installed.
+account-deletion reservation; it never authorizes an action. AUTH-002 now supplies the SQL
+admission/reduction policy from actual role periods and continuous surviving
+owner coverage. No production runtime table grant or route is installed.
 Managed pending references remain descriptive, not account provisioning.
 
 The existing personal deletion/billing-exit flow checks this protection at
@@ -380,7 +380,7 @@ adapters translate bounded refusals. HTTP documents 409/503 without private IDs.
 Account locks precede organization locks; composers prelock relevant account
 UUIDs before root/employee writes, then root UUIDs. Billing-exit deletion
 reservations cannot be rewritten or removed while the account remains live.
-Real AUTH-002 policy must exclude reserved accounts from surviving owners.
+The AUTH-002 policy excludes reserved accounts from surviving owners.
 No external call occurs while those locks are held.
 
 ```sh
@@ -412,8 +412,8 @@ imply read and paid tiers imply no role. A new grant needs an explicit
 canonical matrix and catalog version change.
 
 This package contains no private data, assignment persistence, current actor
-proof, request authorization or SQL policy activation. AUTH-002/003 still
-own those boundaries; the membership policy remains UNAVAILABLE.
+proof, request authorization or SQL policy activation. AUTH-002 supplies separate scoped assignment storage and membership/owner
+SQL policy; AUTH-003 still owns request-time authority.
 
 ```sh
 go test -race ./internal/modules/orgaccess/domain ./internal/modules/membership/domain ./internal/modules/staff/domain ./internal/modules/stationprofile/domain ./internal/modules/kernel -count=1
@@ -421,6 +421,43 @@ go test -race ./internal/modules/orgaccess/domain ./internal/modules/membership/
 
 See [1,092 descriptor cells](../contracts/testdata/enterprise/README.md#authorization-catalog-v1)
 and [catalog acceptance](../docs/enterprise/evidence/f1-auth001-role-permission-catalog.md).
+
+### Scoped role-period persistence (EMP-AUTH-002)
+
+`orgaccess/application` and its sqlc/pgx adapter store fixed-role periods
+under migration 000171's forced RLS and composite membership/assigner FKs.
+Only ORG and SELF targets are supported; OWNER requires ORG and personal
+access. Station roles await STATION authority support. Candidates require
+a currently valid period, ACTIVE membership/employee and live account
+without an account-deletion reservation; they are not authorization.
+
+Creation compares exact intent at PostgreSQL microsecond precision; changed
+intent or overlapping membership/role/scope periods conflict. End is a
+terminal revision with server time, retaining original validity and history.
+Normal methods return zero results on transaction or deferred-commit failure;
+explicit-Tx methods leave final commit/rollback to the composing command.
+Prelock all affected accounts in UUID order before any roots/writes, then
+organization roots in UUID order, matching membership and erasure.
+
+Real assignment policy replaces the unavailable membership hook. Owner
+intervals must cover future time continuously, excluding deletion-reserved
+accounts; assignment changes and account/membership reductions share the
+root lock. Membership end also ends assignments atomically. Production
+ordinary logins need SELECT/INSERT/UPDATE on org_role_assignments and SELECT
+on the referenced membership/employee/account/billing tables; no grants are
+automatically applied to a production login. Ordinary migration ownership,
+forced RLS, previous compatibility and injected-failure recovery are tested.
+Actor authorization, fresh authentication, entitlement/audit and production
+composition remain owning-task work. Existing catalog grants are unchanged.
+
+```sh
+go test -race ./internal/modules/orgaccess/... -count=1
+# ANPFUEL_TEST_DATABASE_URL must select disposable PostGIS:
+go test -race -tags=integration ./internal/modules/orgaccess/... ./internal/modules/membership/... ./internal/modules/organization/... ./internal/modules/account/... ./internal/modules/payments/... -count=1
+go vet ./internal/modules/orgaccess/... ./internal/modules/membership/... ./internal/modules/organization/...
+sqlc vet
+sqlc generate
+```
 
 ### Organization operation time (EMP-PLAT-015)
 

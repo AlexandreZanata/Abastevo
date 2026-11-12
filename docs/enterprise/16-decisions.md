@@ -61,7 +61,7 @@ The Android emulator is now authorized whenever functional/native testing
 requires it, superseding the earlier emulator deferral for this enterprise
 batch. Emulator results do not establish physical-device, manufacturer or
 production behavior. The cumulative PR body is shortened by linking to its
-verbatim history archive and canonical task evidence, preserving prior
+history archive (final blank line normalized) and canonical task evidence, preserving prior
 review history while staying below GitHub's description limit.
 
 The resolution column records accepted amendments or proposals. For a

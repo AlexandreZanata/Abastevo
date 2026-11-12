@@ -494,6 +494,28 @@ boundaries.
   plan checks and record rules. Assigning OWNER requires a current OWNER.
   These are static descriptors, not session, grant or permission decisions.
 
+- **B-BR-EMP-47 — Preserve scoped role periods and their history.**
+  Fixed-role assignments reference the same organization's membership and
+  assigner, use ORG or SELF scope only in F1, and have half-open UTC validity.
+  ORG targets that organization; SELF targets that membership. Station roles
+  require the later STATION authority scope and cannot be widened to ORG.
+  Identical creation retries converge; changed intent and overlapping periods
+  for the same membership, role and scope conflict. Ending is revisioned,
+  terminal and server-timed; cancellation before start grants no interval.
+  History cannot be deleted, rekeyed or rewritten. Only current assignments
+  of active, available memberships/accounts are authorization candidates.
+
+- **B-BR-EMP-48 — Protect owners with current persisted facts.**
+  Assignment, membership and account access reductions serialize on the
+  organization root. The surviving active OWNER/ORG periods must cover the
+  remaining time without gaps, including scheduled expiry. Reserved account
+  deletions do not count as surviving owners. An admission transaction may
+  stage assignments on a bound invited period before activation; these rows
+  grant no access while invited. A managed account cannot own an organization.
+  Membership end also ends its assignment candidates without deleting history.
+  Storage does not replace current actor permission, fresh authentication,
+  entitlement, audit or record-policy checks in their owning commands.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -680,6 +702,14 @@ boundaries.
   without a matrix cell return denied coverage. Combining role views keeps
   each rule's role, scope and restrictions; no catalog lookup authorizes an
   account, grants a role or replaces current server policy.
+
+- **BUC-EMP-24 — Persist role periods and refuse ownership gaps.**
+  Store an ORG or SELF assignment within one resolved organization; retrying
+  the same creation returns the same period. Unsupported/foreign scopes,
+  duplicate overlapping periods and changed retries fail. Candidates exclude
+  not-yet-started, ended and expired periods or unavailable memberships.
+  Concurrent reductions leave continuous owner coverage; refusing the last
+  owner rolls back the entire membership, account or assignment transaction.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

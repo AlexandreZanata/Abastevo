@@ -1,8 +1,8 @@
 # Permissions, roles, scopes and active context
 
-Status: **EMP-AUTH-001 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-11; assignments, current authorization and remaining module features PLANNED. Module code `AUTH`. This file is both the module specification for authorization ([00-conventions](00-conventions.md) §4) and the single registry of roles and permission keys for every other module. Tasks: `EMP-AUTH-001…011` in [backlog/ep03-identity-access](backlog/ep03-identity-access.md).
+Status: **EMP-AUTH-001/002 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-11; current request authorization and remaining module features PLANNED. Module code `AUTH`. This file is both the module specification for authorization ([00-conventions](00-conventions.md) §4) and the single registry of roles and permission keys for every other module. Tasks: `EMP-AUTH-001…011` in [backlog/ep03-identity-access](backlog/ep03-identity-access.md).
 
-Evidence: EMP-AUTH-001 adds the code-frozen `orgaccess/domain` catalog and [matrix evidence](evidence/f1-auth001-role-permission-catalog.md), without assigning roles or authorizing requests. Station representation (`administrator`, `manager` with four scopes, `backend/internal/modules/stationprofile/domain/claim.go`) and the admin-suite staff catalog (ADR-023, `backend/internal/modules/staff`) remain separate. Runtime assignment, policy and route behavior below stays `PROPOSED` until its owning tasks are accepted.
+Evidence: EMP-AUTH-001 adds the code-frozen `orgaccess/domain` catalog and [matrix evidence](evidence/f1-auth001-role-permission-catalog.md), without assigning roles or authorizing requests. Station representation (`administrator`, `manager` with four scopes, `backend/internal/modules/stationprofile/domain/claim.go`) and the admin-suite staff catalog (ADR-023, `backend/internal/modules/staff`) remain separate. EMP-AUTH-002 adds [assignment persistence and locked membership/owner SQL policy](evidence/f1-auth002-role-assignment-persistence.md); request authorization and route behavior stay `PROPOSED` until their owning tasks are accepted.
 
 ## 1. Purpose
 
@@ -273,6 +273,25 @@ role, evaluate current scope/time, waive self-review rules or enable the
 membership database policy. Actual authority remains AUTH-002/003 work.
 
 ## 8. Offline, concurrency, idempotency and corrections
+
+EMP-AUTH-002 persistence interpretation (2026-11-11): F1 stores ORG with
+the organization's own ID and SELF with the assignment's membership ID.
+OWNER uses ORG; station roles stay unavailable until STATION/live-authority
+storage exists. A bound INVITED membership may hold staged periods for an
+atomic admission, without becoming a current authorization candidate.
+Managed memberships cannot receive OWNER. All intervals are half-open UTC;
+PostgreSQL persists microsecond precision. Ending records a server timestamp
+and revision, including cancellation before a scheduled start, without
+rewriting the original validity or deleting history.
+
+The shared organization lock protects assignment overlap and continuous
+surviving-owner coverage through future expiry. The union of the surviving
+active owners' periods must cover the remaining time without gaps; adjacent
+finite and future intervals are valid. Account-deletion reservations do not
+count. Membership end atomically ends every remaining assignment, and
+personal-account status reductions use the same owner fence. These storage
+guards do not establish an assigner's current permission or fresh session;
+AUTH-003/009 and onboarding own those application checks and audit.
 
 - **Offline:** the app caches the member's effective permissions per organization to shape the interface (hide what cannot be done). The cache never authorizes; the server decides when the operation arrives ([10-offline-sync](10-offline-sync.md)). The cached set carries the time it was confirmed and is shown as "not confirmed" after 24 hours offline.
 - **Concurrency:** two administrators changing the same member's assignments act on a version of the member's assignment set; the second write on a stale version fails with `CONFLICT`. Removing the last owner is checked inside the transaction with a row lock on the organization.

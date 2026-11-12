@@ -1,4 +1,22 @@
 # Current execution state
+- Enterprise EMP-AUTH-002, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above published 1c7fd66b on the isolated enterprise execution branch,
+  targeting PR202 (dev → main). [Assignment evidence](../enterprise/evidence/f1-auth002-role-assignment-persistence.md)
+  records forced-RLS role periods, ORG/SELF targets, exact retry/CAS/end,
+  current candidates and actual membership/owner SQL policy. Surviving-owner
+  periods cover future time continuously; deletion reservations do not count.
+  Membership end terminates assignments; account reductions use the fence.
+  Real PostGIS/race suites pass, including 12-way repeats, owner/deletion
+  races, changed deferred scope, rollback, cancel, expiry and ordinary-migrator
+  populated upgrade/failure/recovery/old compatibility. Account/payments and
+  membership/organization regressions pass. New domain coverage 99.5%, adapter
+  85.0%. Final review's unbound-before-root and post-erasure replay regressions
+  pass. Scoped static/build/sqlc and plan/format/links/secret checks pass.
+  AUTH-003 current request authorization is next; no business route/provider
+  or production runtime grant is activated. Catalog grants remain unchanged.
+  F1/M1 and prior legal/native/Kotlin coverage/external gates remain open.
+  Phase publication and final current-head/base CI remain due.
+
 - Enterprise autonomous batch, 2026-11-11: ACTIVE, F1/M1 open.
   Full F0–F8 source scope, recommended decisions recorded per task,
   emulator authorized, phase publication to existing PR202 and final
@@ -9,7 +27,7 @@
   Required Quick failed on absent application-port tests; added real-adapter
   failure contracts and all six organization/membership race suites pass.
   [CI correction](../enterprise/evidence/f1-ci-repository-ports.md).
-  Remote CI is not yet revalidated. AUTH-002 remains the next bounded task;
+  Remote CI is not yet revalidated. AUTH-002 is locally accepted above;
   phase publication and final CI follow completed functional checkpoints.
 
 - Enterprise EMP-AUTH-001, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING

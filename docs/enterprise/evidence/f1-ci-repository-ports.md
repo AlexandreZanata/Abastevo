@@ -22,6 +22,6 @@ passed all six package suites. Vet, strict format, diff and secret checks
 are recorded with the commit. This is scoped failure-contract evidence,
 not a full Quick verification or green remote CI claim.
 
-The prior cumulative PR description is preserved verbatim in
+The prior cumulative PR description is preserved (with the final blank line normalized) in
 [the archived body](pr202-body-0474dac5.txt); the live description can now
 link to canonical evidence without exceeding GitHub's body limit.
