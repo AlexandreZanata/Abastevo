@@ -36,6 +36,8 @@ sql:
       - db/migrations/000173_legal_declarations.sql
       - db/migrations/000174_operating_units.sql
       - db/migrations/000176_employee_profiles.sql
+      - db/migrations/000178_organization_settings.sql
+      - db/migrations/000188_employee_invitations.sql
     gen:
       go:
         package: membership

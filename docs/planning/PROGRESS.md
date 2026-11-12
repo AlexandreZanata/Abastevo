@@ -1,4 +1,24 @@
 # Current execution state
+- Enterprise EMP-IDN-004, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
+  reviewed dev587fb6eb on owned codex/enterprise-idn004; publish to dev/PR203.
+  [Invitation evidence](../enterprise/evidence/f1-idn004-invitation-lifecycle.md)
+  and [issue204](https://github.com/AlexandreZanata/Abastevo/issues/204) record
+  five guarded fresh company routes, literal ORG/SELF grants, unbound INVITED
+  reservations, CAS replacement, metadata-only retries and one-time code/link/QR
+  payload. Migration188 preserves history and captures settings validity,
+  actual contact creation/edit, employee/issuer/organization reductions,
+  observed expiry and pending notices. No account/role/device grant occurs.
+  B-BR-EMP-74/75, BUC-EMP-38 and EDR-049 precede behavior. Full affected real
+  PostGIS/race, 12-way retry/CAS, proof wait/revocation, tenant/secret/late-failure,
+  ordinary populated upgrade/recovery/RLS, actual HTTP/OpenAPI/router and scoped
+  regression checks pass. Membership domain95.6%; build/vet/staticcheck/sqlc/
+  compatibility/plan/format/secret verification accompany publication.
+  Backend tree e2bcc9a10bd5a251c688540b0da5c90a676b9319; contract Git blob
+  a857299a0c2b7cc8302e37c73c6cf6874e2cfccb. Remote required check is pending the
+  new publication head; issue stays open until integration. Next authorized
+  task may be IDN-005 (redemption/consent/attempts); this request stops here.
+  F1/M1 and providers/runtime/legal/staging/native/production gates remain open.
+
 - Antigravity review, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
   codex/enterprise-org010 from published dev ca9df3cd; publishing fixes to dev
   in PR #203 (dev -> main). Scope: AUTH-005/845d1d94 and ORG-010/ca9df3cd.

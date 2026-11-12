@@ -816,6 +816,25 @@ boundaries.
   historical authors, receipts, notices or source facts. An audit, notice or
   receipt failure returns no provisional state and rolls back the handover.
 
+- **B-BR-EMP-74 — Invitations reserve access without granting it.** A fresh
+  authorized manager issues for an ACTIVE employee with no live access, using
+  F1 ORG/SELF templates within the manager's actual permission union. Reserve an
+  unbound INVITED membership without assignments. Capture the settings revision
+  and its1..30-day validity at server intake. Explicit CAS resend supersedes the
+  prior pending invitation and preserves its reservation. When no pending token
+  or accepted account remains, end the reservation; later issue creates a new
+  period. An explicit resend avoids accidental concurrent replacement.
+
+- **B-BR-EMP-75 — Invitation secrets cannot be recovered or replayed.** Generate
+  256 random bits; retain only a domain-separated keyed hash and random locator.
+  Deliver code, fragment-only link and QR payload once after commit. Exact retry
+  returns original public metadata without the secret; after lost delivery the
+  manager explicitly reissues. No token/verifier appears in status, receipts,
+  notices, central audit or generic formatting. Context changes revoke pending
+  tokens with actual source evidence. Scoped management reads materialize server
+  expiry. Failed commits expose no provisional secret. Public redemption and
+  attempt limits remain IDN-005; no email, account or device provider is added.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -1132,6 +1151,16 @@ boundaries.
   decline, replay and owner removal serialize; deferred storage failures roll
   back roles/state/audit/notices/receipts and allow an honest retry. Normal
   transfer does not implement exceptional unreachable-owner recovery.
+
+- **BUC-EMP-38 — Hand over and replace an invitation privately.** Issue an
+  eligible DRIVER SELF invitation and receive its code/link once, with an
+  INVITED reservation and no access. Retry without code, read/list status, then
+  replace with the observed revision. Only one concurrent replacement succeeds;
+  the old code is unusable. Revoke/expire the final pending token and end its
+  reservation. Contact edits, employee reduction, issuer suspension/end and
+  organization archive revoke with source evidence. Foreign targets, expanded
+  grants, stale proof and storage failures disclose no token or private state.
+  Redemption and privileged confirmation remain a separate task.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

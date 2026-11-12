@@ -25,7 +25,7 @@ type companyAuthority struct {
 }
 
 func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy, requestedRole ...permissions.Role) error {
-	if policy != access.RolePolicy(access.RoleAssignAction) && policy != access.RolePolicy(access.RoleEndAction) && policy != access.RolePolicy(access.RoleReadAction) && policy != app.OwnershipTransferProposePolicy() && policy != app.OwnershipTransferReadPolicy() && policy != app.OwnershipTransferAcceptPolicy() && policy != app.OwnershipTransferCancelPolicy() && policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
+	if policy != members.InvitationPolicy(members.InvitationIssue) && policy != members.InvitationPolicy(members.InvitationRead) && policy != members.InvitationPolicy(members.InvitationRevoke) && policy != access.RolePolicy(access.RoleAssignAction) && policy != access.RolePolicy(access.RoleEndAction) && policy != access.RolePolicy(access.RoleReadAction) && policy != app.OwnershipTransferProposePolicy() && policy != app.OwnershipTransferReadPolicy() && policy != app.OwnershipTransferAcceptPolicy() && policy != app.OwnershipTransferCancelPolicy() && policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
 		return app.ErrUnavailable
 	}
 	write := policy.Effect == access.ConfigurationWrite
@@ -33,7 +33,7 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 	// while writers still wait for them. A settings read can initialize the
 	// first version under the root (org_settings_bootstrap locks it FOR
 	// UPDATE); two readers holding FOR SHARE would then deadlock on upgrade.
-	exclusive := policy.Effect != access.Read || policy == app.SettingsPolicy(false) || policy == app.OwnershipTransferReadPolicy()
+	exclusive := policy.Effect != access.Read || policy == app.SettingsPolicy(false) || policy == app.OwnershipTransferReadPolicy() || policy == members.InvitationPolicy(members.InvitationRead)
 	queries := q.New(tx)
 	var account q.LockLegalAccountRow
 	var err error
@@ -192,4 +192,58 @@ func (g *RoleAuthority) CheckRoleTx(ctx context.Context, tx pgx.Tx, scope kernel
 		return nil, err
 	}
 	return g.Roles.CandidatesTx(ctx, tx, scope, member)
+}
+
+// InvitationAuthority retains the normal company proof/root/roles and captures
+// actual settings in the same owning transaction. No public redemption occurs.
+type InvitationAuthority struct {
+	Memberships  members.TransactionRepository
+	Roles        access.TransactionRepository
+	Capabilities setupCapability
+	Settings     app.SettingsIntakeRepository
+}
+
+var _ members.InvitationAuthority = (*InvitationAuthority)(nil)
+
+func (g *InvitationAuthority) CheckInvitationTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor members.EmployeeActor, member string, action members.InvitationAction) (members.InvitationAuthorityFacts, error) {
+	if g == nil || g.Memberships == nil || g.Roles == nil || g.Capabilities == nil || g.Settings == nil || actor.Validate() != nil || legalIdentity(scope, member) != nil {
+		return members.InvitationAuthorityFacts{}, members.ErrRegisterUnavailable
+	}
+	policy := members.InvitationPolicy(action)
+	if policy.Validate() != nil {
+		return members.InvitationAuthorityFacts{}, members.ErrRegisterUnavailable
+	}
+	e := (companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}).check(ctx, tx, scope, app.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, member, scope.OrgID().String(), policy)
+	if e != nil {
+		switch {
+		case errors.Is(e, app.ErrUnauthenticated):
+			e = members.ErrEmployeeUnauthenticated
+		case errors.Is(e, app.ErrNotFound):
+			e = members.ErrEmployeeNotFound
+		case errors.Is(e, capability.ErrEntitlementRequired):
+			e = access.ErrEntitlementRequired
+		}
+		return members.InvitationAuthorityFacts{}, e
+	}
+	current, e := g.Memberships.ActiveByAccountTx(ctx, tx, scope, actor.AccountID)
+	if e != nil {
+		return members.InvitationAuthorityFacts{}, e
+	}
+	m, e := current.Snapshot(scope)
+	if e != nil {
+		return members.InvitationAuthorityFacts{}, e
+	}
+	capture, e := g.Settings.CaptureSettingsTx(ctx, tx, scope)
+	if e != nil {
+		return members.InvitationAuthorityFacts{}, e
+	}
+	settings, e := capture.Settings.Snapshot(scope)
+	if e != nil {
+		return members.InvitationAuthorityFacts{}, e
+	}
+	candidates, e := g.Roles.CandidatesTx(ctx, tx, scope, member)
+	if e != nil {
+		return members.InvitationAuthorityFacts{}, e
+	}
+	return members.InvitationAuthorityFacts{Assignments: candidates, EmployeeID: m.EmployeeID, ValidityDays: settings.Values.Policies.InvitationValidityDays, SettingsRevision: settings.Revision, Now: capture.ReceivedAt}, nil
 }

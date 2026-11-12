@@ -36,6 +36,7 @@ const (
 	DuplicateReviewRequired Code = "DUPLICATE_REVIEW_REQUIRED"
 	OwnerRequiresPersonal   Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
 	TransferPending         Code = "TRANSFER_PENDING"
+	EmployeeHasAccess       Code = "EMPLOYEE_HAS_ACCESS"
 	RateLimited             Code = "RATE_LIMITED"
 	Unavailable             Code = "UNAVAILABLE"
 )
@@ -52,6 +53,7 @@ var statuses = map[Code]int{
 	OrgSetupIncomplete:    409,
 	OwnerRequiresPersonal: 409,
 	TransferPending:       409,
+	EmployeeHasAccess:     409,
 }
 
 type permissionFailure struct{ key string }

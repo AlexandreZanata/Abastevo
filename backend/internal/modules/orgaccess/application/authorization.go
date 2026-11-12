@@ -111,7 +111,7 @@ func (p Policy) Validate() error {
 	// BR-AUTH-010 and organizations.md: role/ownership/credential/key changes,
 	// full exports, archive/closure and grant acceptance need fresh proof.
 	switch p.Permission {
-	case "auth.role.assign", "auth.delegation.manage", "org.ownership.transfer", "org.ownership.respond", "idn.credential.manage", "data.key.manage",
+	case "auth.role.assign", "auth.delegation.manage", "org.ownership.transfer", "org.ownership.respond", "idn.invitation.manage", "idn.credential.manage", "data.key.manage",
 		"rpt.export.run", "org.lifecycle.manage", "org.group.manage":
 		if !p.Fresh {
 			return ErrUnavailable

@@ -67,7 +67,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Local persistence, erasure fencing and upgrade evidence](../evidence/f1-idn003-membership-persistence.md).
 
 ### EMP-IDN-004 — Invitations: issue, expire, resend, revoke
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Issue, expire, replace and revoke invitations under organization authority.
 - **Rules and use cases:** BR-IDN-005, BR-IDN-008, BR-IDN-010, BR-IDN-012, BR-IDN-013, BR-IDN-014, BR-IDN-015, BR-IDN-018, UC-IDN-02, UC-IDN-04
 - **Depends on:** EMP-IDN-002, EMP-IDN-003
@@ -81,6 +81,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive invitation state · rollback: stop issuance and preserve audit history
 - **Risks and assumptions:** The public redemption result is uniform. Issuer status is available only in the authorized organization.
 - **Done when:** Issuer lifecycle, scope and secrecy checks pass with synthetic values.
+
+[Invitation lifecycle evidence](../evidence/f1-idn004-invitation-lifecycle.md); [task #204](https://github.com/AlexandreZanata/Abastevo/issues/204).
 
 ### EMP-IDN-005 — Invitation acceptance by an existing Abastevo account
 - **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state TODO

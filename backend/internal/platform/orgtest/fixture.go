@@ -225,6 +225,7 @@ func (f *Fixture) GrantSettingsLifecycle(t *testing.T) {
 // fixtures keep their original grants; this is not runtime provisioning.
 func (f *Fixture) GrantOwnershipLifecycle(t *testing.T) {
 	t.Helper()
+	f.GrantInvitationLifecycle(t)
 	var transfers, notices, commands bool
 	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_ownership_transfers') IS NOT NULL,to_regclass('public.org_ownership_notices') IS NOT NULL,to_regclass('public.org_ownership_commands') IS NOT NULL`).Scan(&transfers, &notices, &commands); e != nil {
 		t.Fatal(e)
@@ -242,6 +243,22 @@ func (f *Fixture) GrantOwnershipLifecycle(t *testing.T) {
 	}
 	if commands {
 		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_ownership_commands TO "+role); e != nil {
+			t.Fatal(e)
+		}
+	}
+}
+
+// GrantInvitationLifecycle is limited to this disposable fixture runtime. It
+// preserves previous-chain upgrade fixtures and is not production provisioning.
+func (f *Fixture) GrantInvitationLifecycle(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_invitations') IS NOT NULL`).Scan(&installed); e != nil {
+		t.Fatal(e)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON org_invitations TO "+role+";GRANT SELECT,INSERT ON org_invitation_commands,org_invitation_notices TO "+role); e != nil {
 			t.Fatal(e)
 		}
 	}

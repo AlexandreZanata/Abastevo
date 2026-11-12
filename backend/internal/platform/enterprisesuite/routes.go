@@ -64,6 +64,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.TeamAuditDefinitions()...)
 	definitions = append(definitions, orgpg.SettingsAuditDefinitions()...)
 	definitions = append(definitions, member.EmployeeAuditDefinitions()...)
+	definitions = append(definitions, member.InvitationAuditDefinitions()...)
 	definitions = append(definitions, accesspg.RoleAuditDefinitions()...)
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
@@ -88,6 +89,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "org.setup", Permissions: []string{"org.settings.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic setup/settings only: share identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "idn.invitation", Permissions: []string{"idn.invitation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic invitation writes use the existing identity v1 write allowance on every axis; production measurement remains required."},
 		{Class: "idn.employee", Permissions: []string{"idn.employee.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic employee register only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -129,6 +131,16 @@ func Register(router chi.Router, o Options) error {
 	employees := &member.EmployeeStore{Pool: o.Pool, Authority: &orgpg.EmployeeAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}, Audit: auditStore}
 	employeeAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: memberweb.EmployeeRecords{}, Now: time.Now}
 	if err := memberweb.RegisterEmployees(router, memberapp.EmployeeService{Enabled: true, Repository: employees, NewID: jobs.NewUUIDv4}, cookies, gateway, employeeAuthorization, roots, employees); err != nil {
+		return err
+	}
+
+	secretFactory, err := member.InvitationSecretFactory(o.CursorSecret)
+	if err != nil {
+		return err
+	}
+	invitations := &member.InvitationStore{Pool: o.Pool, Memberships: store.Memberships, Authority: &orgpg.InvitationAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags, Settings: settings}, Audit: auditStore}
+	invitationAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: memberweb.InvitationRecords{}, Now: time.Now}
+	if err := memberweb.RegisterInvitations(router, memberapp.InvitationService{Enabled: true, Repository: invitations, NewID: jobs.NewUUIDv4, NewSecret: secretFactory}, cookies, gateway, invitationAuthorization, roots); err != nil {
 		return err
 	}
 
