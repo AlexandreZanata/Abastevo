@@ -100,7 +100,28 @@ func TestTeamReductionsAndOrdinaryDefinerErasurePreservePeriodsAcrossOrganizatio
 		t.Fatal(e)
 	}
 
-	if _, e := fx.f.Runtime.Exec(t.Context(), `UPDATE accounts SET status='deleted' WHERE id=$1`, accountID); e != nil {
+	// Erase inside a caller transaction that already selected an unrelated scope:
+	// after the deferred checks run, that caller scope must be back in place.
+	callerScope := onboardingID(t)
+	if e := pgx.BeginFunc(t.Context(), fx.f.Runtime, func(tx pgx.Tx) error {
+		if _, e := tx.Exec(t.Context(), `SELECT set_config('anpfuel.org_id',$1,true)`, callerScope); e != nil {
+			return e
+		}
+		if _, e := tx.Exec(t.Context(), `UPDATE accounts SET status='deleted' WHERE id=$1`, accountID); e != nil {
+			return e
+		}
+		if _, e := tx.Exec(t.Context(), `SET CONSTRAINTS ALL IMMEDIATE`); e != nil {
+			return e
+		}
+		var restored string
+		if e := tx.QueryRow(t.Context(), `SELECT COALESCE(current_setting('anpfuel.org_id',true),'')`).Scan(&restored); e != nil {
+			return e
+		}
+		if restored != callerScope {
+			t.Error("erasure leaked organization scope inside the caller transaction")
+		}
+		return nil
+	}); e != nil {
 		t.Fatal("ordinary definer team erasure", e)
 	}
 	for _, l := range links {
