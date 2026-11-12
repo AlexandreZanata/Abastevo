@@ -375,7 +375,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Current authorization and real-proof acceptance](../evidence/f1-auth003-current-authorization.md).
 
 ### EMP-AUTH-004 — Entitlement gate port with a pilot adapter
-- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type DOM · size S · state TODO
+- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Apply capabilities independently of roles through a disabled-by-default pilot adapter.
 - **Rules and use cases:** BR-AUTH-001, BR-AUTH-009, BR-PRIV-003
 - **Depends on:** EMP-AUTH-003, EMP-PLAT-005
@@ -389,6 +389,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-DOM, V-AUTHZ, V-ISO · migration: reuse capability state · rollback: disable the pilot capability
 - **Risks and assumptions:** Plan expiry changes capabilities, not assignments or account ownership.
 - **Done when:** Capability and role decisions stay independent across the matrix.
+
+[Pilot entitlement and rollback acceptance](../evidence/f1-auth004-pilot-entitlements.md).
 
 ### EMP-AUTH-005 — Role management with last-owner and separation-of-duties guards
 - **Meta:** module AUTH · phase F1 · cut - · priority P1 · type API · size M · state TODO

@@ -38,6 +38,9 @@ func NewStore(pool *pgxpool.Pool, catalog domain.Catalog, runner auditapp.Runner
 }
 
 func (store *Store) validate(scope kernel.OrgScope, code string) error {
+	if store == nil {
+		return domain.ErrUnavailable
+	}
 	if err := scope.Validate(); err != nil {
 		return err
 	}

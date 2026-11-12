@@ -18,7 +18,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 |---|---|---|---|
 | `organization` (ORG-001/002 LOCAL_DONE) | ORG | Scoped aggregate/lifecycle and forced-RLS root persistence; onboarding, legal entities, units, teams, groups and settings commands remain planned | `kernel`, explicit application ports, sqlc/pgx; no runtime route or authority provider |
 | `membership` (IDN-001/003 LOCAL_DONE) | IDN | Scoped identity/lifecycle values, forced-RLS employee identity and membership periods, account-erasure fencing; employee register, invitations and managed activation remain planned | `kernel`, explicit application/sqlc/pgx ports, existing account deletion and billing-exit transactions; actual role policy remains AUTH-002 |
-| `orgaccess` (AUTH-001/002/003 LOCAL_DONE) | AUTH | Code-frozen descriptors; forced-RLS ORG/SELF periods, current candidates and locked membership/owner policy; current request authorization and proof-bound context; production route composition remains owning-task work | `kernel`, owned sqlc/pgx ports, scoped membership/organization/account/billing references |
+| `orgaccess` (AUTH-001/002/003/004 LOCAL_DONE) | AUTH | Code-frozen descriptors; forced-RLS ORG/SELF periods, current candidates and locked membership/owner policy; current request authorization and proof-bound context; production route composition remains owning-task work | `kernel`, owned sqlc/pgx ports, scoped membership/organization/account/billing references |
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
 | `orgvalue` (LOCAL_DONE, domain only) | PLAT | Exact reconciliation and ordered allocation | Existing pure metrics/kernel bounds; shared Go/Kotlin vectors; no private repository or authority |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
@@ -472,8 +472,8 @@ Request leases bind decisions to the resolved account, organization,
 permission and target; retained contexts cannot extend authority. Verified
 contributor/device-key attribution remains explicit. Resource facts come from
 the owning scoped server repository. Business modules still own their record
-rules, transactions and audit; AUTH-004 supplies the concrete pilot capability
-adapter. The first business route must use this binding and prove the composed
+rules, transactions and audit; AUTH-004 supplies the concrete default-off pilot capability
+adapter backed by the current scoped flag repository. The first business route must use this binding and prove the composed
 production-router gate. [Acceptance](evidence/f1-auth003-current-authorization.md).
 
 - **Paths:** `/v1/orgs/{org_id}/<module>/…`. Routes that are not inside an organization (create an organization, list my memberships, accept an invitation, activate managed access) live under `/v1/org-access/…`. Station portal routes are organization routes scoped by station: `/v1/orgs/{org_id}/stations/{station_id}/…`.
@@ -937,6 +937,15 @@ Signals that justify the next infrastructure step (measured, sustained):
 - **Recovery:** a restore replays the deletion ledger before serving (BR-PRIV-011); queued operations on devices are resent and answered from the acknowledgement table, so a server restore to an earlier point reprocesses them once.
 
 ### 10.1 Implemented capability foundation
+
+EMP-AUTH-004 supplies PilotEntitlements for the shared authorization service.
+It reads the registered capability through orgcapability's scoped repository,
+with default-off global activation and no recursive authority lookup. Off or
+missing state refuses new work; existing authorized reads/exports and explicit
+safety effects preserve the rules above. State/provider failure denies. The
+owning write transaction still uses GuardWrite/Run; entry acceptance is not
+its lock. No role, tier, payment or client flag is an input.
+[Pilot acceptance](evidence/f1-auth004-pilot-entitlements.md).
 
 EMP-PLAT-005 implements `orgcapability` and additive migration
 `000166_org_capabilities.sql` above the reviewed audit migration `000165`.

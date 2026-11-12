@@ -538,6 +538,25 @@ boundaries.
   permission and target; retaining or supplying an old context cannot extend
   authority. Missing or failed gates never dispatch a business handler.
 
+- **B-BR-EMP-51 — Pilot capabilities do not grant authority.**
+  After current proof, membership, permission and scope checks, the pilot
+  adapter reads the registered capability's current state only in that
+  organization. Global activation defaults off. Off or absent per-organization
+  state refuses new business/configuration writes. Existing authorized reads
+  and exports remain readable; source-declared access reductions, plan
+  regularization and restoration retain the existing safety paths. Every
+  path still requires an available provider, a known capability and the
+  independent record policy. Account tiers, payment and client flags are
+  not inputs and create no membership, assignment or covering scope.
+
+- **B-BR-EMP-52 — Capability rollback preserves data and access history.**
+  Disabling/re-enabling one organization's capability affects its next new
+  action without changing another organization, roles, records or account
+  ownership. Missing/unavailable state providers and corrupt state fail
+  closed. The entry check is not a transaction lock: an actual business write
+  still rechecks and locks the same capability inside its existing scoped
+  business/audit transaction, so disabling cannot race past that boundary.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -740,6 +759,13 @@ boundaries.
   membership: it is refused, including with an old cookie, cached client
   context or retained server decision. A foreign record and an unknown one
   produce the same scoped not-found response and no foreign content.
+
+- **BUC-EMP-26 — Disable and restore a pilot capability without granting access.**
+  With current scoped authority, enabled state admits the feature's next
+  action. Disable it: new work stops while permitted existing reads and
+  safety reductions remain available. Re-enable it: the same membership and
+  role are checked again. An enabled flag in B, a paid tier, old client
+  state or a missing adapter never grants A's action or widens SELF scope.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

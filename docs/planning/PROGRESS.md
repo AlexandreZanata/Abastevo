@@ -1,4 +1,20 @@
 # Current execution state
+- Enterprise EMP-AUTH-004, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
+  above AUTH-003 4e32bfae on the owned enterprise worktree, targeting PR202.
+  [Pilot entitlement evidence](../enterprise/evidence/f1-auth004-pilot-entitlements.md)
+  records the default-off current scoped flag adapter, independent of roles,
+  account tiers and payment. Missing/off flags block new work; authorized
+  existing reads and source-declared safety paths retain their existing rules.
+  Real audited flags/PostGIS tests pass: A/B isolation, next-action disable/
+  re-enable, no role/history mutation and transaction guard after disable.
+  Missing/unknown/corrupt/typed-nil providers fail closed; the nil store guard
+  has a reproduced regression and correction. Scoped race/static/build,
+  prior flag/HTTP integration and plan/format/links/secret checks pass.
+  Pilot Check coverage 95%, orgaccess aggregate 89.3%, domain 92.96%.
+  ORG-003 atomic creation/default unit/creator OWNER is next. F1/M1 and
+  actual IDN/device/operator/runtime/native/legal/staging/Kotlin gates remain
+  open. Phase publication and final current-head/base CI remain due.
+
 - Enterprise EMP-AUTH-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above local AUTH-002 10edd3c4, on owned codex/enterprise-f0-f1 targeting
   PR202 (dev → main). [Current authorization evidence](../enterprise/evidence/f1-auth003-current-authorization.md)

@@ -484,6 +484,15 @@ go test -race -tags=integration ./internal/platform/orgapi ./internal/modules/or
 
 See [current authority and real proof acceptance](../docs/enterprise/evidence/f1-auth003-current-authorization.md).
 
+EMP-AUTH-004's orgaccess/adapters.PilotEntitlements implements that capability
+gate using the same source catalog and orgcapability.Store.State. Pass the
+same default-off global activation as the gateway; never call the authorizing
+capability Service recursively. Current flag state cannot grant a role or
+widen SELF. Off/missing flags refuse new work, preserving authorized existing
+reads and explicit safety effects. Provider failure denies every effect.
+Business writes still require GuardWrite/Run in their existing transaction.
+See [pilot entitlement acceptance](../docs/enterprise/evidence/f1-auth004-pilot-entitlements.md).
+
 ### Organization operation time (EMP-PLAT-015)
 
 orgtime/domain preserves declared occurred_at and trusted server received_at
