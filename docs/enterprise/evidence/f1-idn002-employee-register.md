@@ -197,3 +197,10 @@ acceptance is not inferred. F1/M1, phase publication/final current-head/base CI,
 actual provider/ordinary production grants, measured quota/cleanup activation,
 vault/staging/native/Kotlin coverage and real-data/legal gates remain open.
 PLAT-012 still depends on GOV-014. No merge, release or deployment is certified.
+
+## Final PR202 review note (2026-11-12)
+
+Employee replay digests include contact fields as plain SHA-256 in the
+append-only command and audit rows; like the CPF digest in ORG-004, keyed
+fingerprints need a dedicated versioned key (privacy/retention work).
+Employee reads take shared locks. [Review record](f1-pr202-review.md#final-review-head-45230e28).

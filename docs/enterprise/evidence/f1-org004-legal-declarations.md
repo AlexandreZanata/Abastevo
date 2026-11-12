@@ -184,3 +184,17 @@ before that HTTP-only correction and their inputs did not change.
 No Android behavior changes, so no emulator acceptance is claimed. Actual
 IDN/device providers, ordinary production grants, vault/staging, GOV-014/
 PLAT-012, Kotlin coverage and real-data/legal gates remain independent.
+
+## Final PR202 review corrections (2026-11-12)
+
+The all-zero CNPJ computed valid check digits and was accepted. The legal
+domain and `org_legal_cnpj_valid` (migration 000181) now refuse the full
+`00000000000000`; the root `00000000` stays valid because it is a real
+registration root. Company reads (legal, units, cost centres, teams,
+employees) take shared account/root locks instead of exclusive ones, so they
+no longer serialize per organization and account; settings reads keep the
+exclusive root lock because they can bootstrap a version. Open privacy item:
+the DECLARE replay digest of a removed CPF is plain SHA-256 and stays
+dictionary-confirmable; a keyed fingerprint needs a dedicated versioned key
+with its key ID stored beside each digest, so rotation keeps replay working.
+[Review record](f1-pr202-review.md#final-review-head-45230e28).

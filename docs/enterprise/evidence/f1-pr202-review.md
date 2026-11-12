@@ -251,3 +251,71 @@ contact cleanup, deferred native acceptance, EMP-DOC-014 upload audit,
 staging lifecycle/backup-role proof, PLAT-012/GOV-014, aggregate Kotlin
 coverage and legal receipt acceptance. F1/M1 remain open and the cumulative
 PR remains INTEGRATION_PENDING. This task performs no deployment or merge.
+
+## Final review (head 45230e28)
+
+Date 2026-11-12, PR202 (`dev → main`) at head `45230e28` over base
+`ef96cd13`, after the remote checks for that head had passed (Quick
+verification, fast, test, integration). It covered the whole PR with
+emphasis on the batch after `1c7fd66b`: EMP-ORG-002..008, EMP-IDN-001..003
+and EMP-AUTH-001..004. Four independent reviews (identity/membership/
+erasure, authorization/composition, ORG-002..005, ORG-006..008) reproduced
+each finding with probe tests on disposable PostGIS before acceptance. No
+critical or high defect was found. Fixes are new commits; history is kept.
+
+ORG-008 focus: the deferred check after account erasure runs under each
+affected organization's own scope, and a mid-way failure rolls everything
+back; old-settings bootstrap is serialized, idempotent under 30 concurrent
+calls after a populated upgrade, and returns no provisional data on late
+commit failure.
+
+Fixed:
+- **Medium.**
+  - Company reads took exclusive account and root locks and serialized per
+    organization and account; legal, structure and employee reads now share
+    them (settings reads stay exclusive because they can bootstrap).
+  - One designee made unavailable later (suspended account, pending
+    deletion) blocked every unrelated settings change (000180).
+  - Ending a never-accepted invitation closed the employee's team periods
+    (000179).
+- **Low.**
+  - All-zero CNPJ accepted (domain and 000181; root `00000000` stays valid).
+  - Zero-width and decomposed variants bypassed unit, cost-centre and team
+    name/code uniqueness.
+  - Account binding allowed at an INVITED transition (000182).
+  - Retroactive and already-ended role periods accepted (000183).
+  - Last-owner/overlap guards safe only at READ COMMITTED; `WithOrgTx` now
+    pins it and `ValidateOrgTx` refuses other levels.
+  - Organization creation validated the body before authentication and had
+    no write admission.
+  - Fresh proof missing for exports, closure and grant acceptance keys.
+  - The route gate could not tell an AUTH-bound route from a raw one.
+  - Unexpected personal deletion failures returned 401; suspension and
+    deletion commit returned raw owner-fence errors.
+  - An erasure scope assertion that could not fail.
+
+Not fixed here, with owners:
+- **Activation blocker:** the organization creator is the sole OWNER and
+  cannot delete the personal account until ownership transfer or the
+  BR-ORG-028 abandoned-setup closure exists. Do not enable the plane for
+  real accounts before that.
+- The pending-setup ceiling is still enforced only at the OWNER insert; an
+  early check needs a runtime-callable definer.
+- Keyed fingerprints for CPF and employee contact replay digests need a
+  dedicated versioned key with stored key IDs (privacy/retention work).
+- Whether suspension or a pending deletion should clear settings
+  designations is an owner decision.
+- Runtime grant inventory for the ordinary role, including SELECT on
+  `org_settings_heads` for the account-deletion role and the same owner for
+  the definer-checked tables; future manager commands must keep the
+  account-before-root lock order.
+- The earlier gates remain: AUTH/IDN providers, single-family revocation,
+  vault expiry sweep and device-revoked erasure, DOC-014, staging bucket and
+  backup roles, PLAT-012/GOV-014, aggregate Kotlin coverage, legal receipt
+  gates.
+
+Native Android: the four enterprise instrumented tests (real AndroidKeyStore
+vault sealing, revocation, managed-unlock key and Room partition isolation)
+passed on an API 35 x86_64 emulator with a temporary device PIN. This is an
+emulator with a software keystore, not StrongBox or a physical device, so
+native acceptance stays open.

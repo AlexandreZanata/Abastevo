@@ -180,3 +180,18 @@ providers, ordinary production runtime grants, quota cleanup/measurement, vault
 expiry/device cleanup, native/emulator acceptance, real legal terms/receipts,
 staging/bucket/backup, Kotlin coverage and PLAT-012/GOV-014 obligations remain.
 Nothing here certifies M1, real-data activation, a deployment or a release.
+
+## Final PR202 review corrections (2026-11-12)
+
+Creation now authenticates the company cookie, Origin, CSRF and freshness
+before semantic body validation (401/403 before 400/422), and passes an
+account-axis write admission (the identity v1 write budget, HMAC subject,
+committed before the creation transaction so refused attempts also count;
+429 with Retry-After). The pending-setup ceiling is still enforced only by
+the OWNER role trigger: an early check right after the account lock needs a
+runtime-callable definer, because runtime roles see only their own receipts.
+Activation blocker: the creator is the sole OWNER and, until ownership
+transfer or BR-ORG-028 closure exists, cannot delete the personal account
+(LAST_OWNER). Do not enable the plane for real accounts before that. Names
+and codes of the first unit follow the structure text rule (no format
+characters, NFC). [Review record](f1-pr202-review.md#final-review-head-45230e28).

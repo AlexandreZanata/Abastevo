@@ -135,3 +135,11 @@ device enrollment/revocation, actual IDN providers, production runtime grants,
 vault/native/legal/staging and aggregate Kotlin gates remain named obligations.
 F1/M1 and final current-head/base CI are open. Rollback keeps the enterprise
 surface disabled; no merge, deployment, release or real-data acceptance occurs.
+
+## Final PR202 review corrections (2026-11-12)
+
+Fresh proof is now also required for `rpt.export.run`, `org.lifecycle.manage`
+and `org.group.manage` (BR-AUTH-010). The full-router gate requires every
+non-session organization route to complete AUTH authority, so a raw
+`orgapi.Register` route fails it, and the disabled-mode test proves through
+`chi.Walk` that no organization route is mounted. [Review record](f1-pr202-review.md#final-review-head-45230e28).

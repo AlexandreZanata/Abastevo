@@ -170,3 +170,19 @@ sweep/revoked-device cleanup, native acceptance, EMP-DOC-014, staging lifecycle/
 backup roles, PLAT-012/GOV-014, aggregate Kotlin coverage and legal receipt
 gates remain owed. F6 owns complete erasure notice/rights/retention and
 restore-ledger reconciliation. No VPS rollout, merge or certification occurs.
+
+## Final PR202 review corrections (2026-11-12)
+
+- Migration 000182: an account binds only while the membership stays
+  INVITED; binding during INVITED to ENDED/ACTIVE is refused (SQL and
+  `Store.Save`).
+- The personal deletion route answered unexpected failures with 401, which a
+  client treats as session loss; after a valid proof they now return 503
+  `account.unavailable`. Platform suspension and deletion commit map the
+  owner fence (P7501/P7502) instead of raw database errors.
+- The "transfer or close before deleting" message has no path yet: the
+  creator of a PENDING_SETUP organization cannot delete the personal account
+  until transfer or BR-ORG-028 closure exists (activation blocker).
+- The real AUTH-002 policy erasure, not only the stub, was proved by review
+  probes: co-owner deletion succeeds and concurrent owner deletions leave one
+  owner. [Review record](f1-pr202-review.md#final-review-head-45230e28).

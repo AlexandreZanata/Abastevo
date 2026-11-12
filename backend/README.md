@@ -147,6 +147,26 @@ See the [transaction and composition contract](../docs/enterprise/09-architectur
 Use an ordinary non-owner, non-BYPASSRLS runtime login; backup/restore retains
 the separately reviewed authority needed for forced-RLS tables.
 
+### Final PR202 review corrections (enterprise plane)
+
+Migrations 000179–000183 are additive corrections: team periods close only on
+access reductions, settings re-prove availability only for changed
+designations, the all-zero CNPJ is refused, accounts bind to memberships only
+while INVITED, and new role periods cannot start in the past or be already
+ended. Legal, structure and employee reads take shared account/root locks;
+writes and settings reads keep exclusive locks. `WithOrgTx` pins READ
+COMMITTED and `ValidateOrgTx` refuses other levels; account-module
+transactions rely on the server default, which must stay READ COMMITTED.
+Organization creation authenticates before body validation and passes an
+account-axis write admission.
+
+Before enabling `ANPFUEL_ENTERPRISE_ENABLED` for real accounts: ownership
+transfer or BR-ORG-028 closure must exist (the creator is otherwise the
+permanent sole OWNER and cannot delete the personal account), and the
+ordinary runtime role needs the full grant inventory, including SELECT on
+`org_settings_heads` for the role that deletes accounts. See the
+[review record](../docs/enterprise/evidence/f1-pr202-review.md#final-review-head-45230e28).
+
 ### Organization write admission (EMP-PLAT-014)
 
 Every orgapi.Rule.Write route must provide Gateway.WriteAdmission with a

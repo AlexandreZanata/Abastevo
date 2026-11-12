@@ -193,3 +193,12 @@ CI, actual provider/ordinary runtime grants, native/emulator consumer acceptance
 measured admission/cleanup, vault/staging/Kotlin coverage and real-data/legal
 gates remain open. PLAT-012 still depends on GOV-014. This does not certify
 TEAM role scopes, full IDN offboarding, integration, release or deployment.
+
+## Final PR202 review corrections (2026-11-12)
+
+Ending an invitation that never granted access closed the employee's team
+periods. Migration 000179 fires the membership consumption only for
+ACTIVE/SUSPENDED to SUSPENDED/ENDED. Team names follow the structure text
+rule. The erasure scope test now checks the scope inside the transaction,
+where it could fail; the previous check ran after commit and could not.
+[Review record](f1-pr202-review.md#final-review-head-45230e28).

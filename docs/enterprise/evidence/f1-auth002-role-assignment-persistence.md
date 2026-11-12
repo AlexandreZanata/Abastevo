@@ -139,3 +139,16 @@ aggregate Kotlin coverage and external legal/provider/runtime/staging gates
 remain open. Phase publication follows its completed functional checkpoint.
 Rollback disables new routes and retains role history; no destructive down
 migration, merge, release or production deployment is part of this task.
+
+## Final PR202 review corrections (2026-11-12)
+
+- Migration 000183 refuses new role periods that start more than five
+  minutes in the past or have already ended; history and updates are
+  unchanged.
+- The "root lock prevents write skew" statement held only at READ
+  COMMITTED: under REPEATABLE READ two owner reductions both committed.
+  `WithOrgTx` now pins READ COMMITTED and `ValidateOrgTx` refuses other
+  levels. Account-module transactions still rely on the server default,
+  which must stay READ COMMITTED.
+- The last-owner fence has no exit until transfer/closure exists
+  (activation blocker, see ORG-003/IDN-003). [Review record](f1-pr202-review.md#final-review-head-45230e28).

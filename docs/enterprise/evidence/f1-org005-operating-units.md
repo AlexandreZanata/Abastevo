@@ -192,3 +192,11 @@ Canonical OpenAPI has zero errors, the same 785 pre-existing warnings and
 those checks certifies actual providers, runtime grants, legal acceptance or
 external deployment. IDN/device, vault/staging, GOV-014/PLAT-012, real-data/legal,
 Kotlin coverage, F1/M1 and final current-head/base CI remain independent.
+
+## Final PR202 review corrections (2026-11-12)
+
+Unit names and codes refuse Unicode format characters and non-NFC text, so
+a zero-width or decomposed variant can no longer duplicate an active name or
+code. Unit reads take shared locks (see ORG-004). A change that omits
+`time_zone` still resets the unit to the organization zone, as the contract
+states; clients must round-trip it. [Review record](f1-pr202-review.md#final-review-head-45230e28).

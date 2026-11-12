@@ -208,3 +208,18 @@ GOV-014/PLAT-012 and actual receipt/purpose/legal approval remain separate.
 NOTIF-001 owns pending-fact consumption and real delivery. No Android UI or
 native behavior changes in this backend task; emulator use remains authorized
 when an owning Android task needs it. No merge, release or deployment occurs.
+
+## Final PR202 review corrections (2026-11-12)
+
+The two focus points held: the deferred check after account erasure runs
+under each affected organization's own scope (three-organization probe,
+mid-way failure fully rolled back) and old-settings bootstrap is serialized
+and returns no provisional data on late failure (30 concurrent calls after a
+populated upgrade, one bootstrap version per organization). Correction: a
+command re-proved availability for every designated slot, so one designee
+whose account was later suspended or had a pending deletion blocked every
+unrelated change with a field-less 422. Migration 000180 re-proves only
+changed slots. Whether suspension or a pending deletion should clear
+designations remains an owner decision. Runtime grant inventory: the role
+that deletes accounts needs SELECT on `org_settings_heads`, because the
+deferred publication trigger runs as the session role. [Review record](f1-pr202-review.md#final-review-head-45230e28).

@@ -185,3 +185,9 @@ warnings and 287 informational findings (31 additional duplicate descriptions).
 Android source is unchanged, so no emulator/native acceptance is claimed.
 Actual providers/runtime grants, vault/staging, GOV-014/PLAT-012, real-data/legal,
 Kotlin coverage, F1/M1 and final current-head/base CI remain independent.
+
+## Final PR202 review corrections (2026-11-12)
+
+Cost-centre names and codes refuse format characters and non-NFC text, so a
+visually identical code can no longer bypass "unique forever". Reads take
+shared locks. [Review record](f1-pr202-review.md#final-review-head-45230e28).
