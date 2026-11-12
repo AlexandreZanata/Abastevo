@@ -29,6 +29,11 @@ sql:
       - db/migrations/000128_payment_billing_exits.sql
       - db/migrations/000169_organization_roots.sql
       - db/migrations/000170_membership_periods.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000172_organization_onboarding.sql
+      - db/migrations/000173_legal_declarations.sql
+      - db/migrations/000174_operating_units.sql
+      - db/migrations/000176_employee_profiles.sql
     gen:
       go:
         package: membership

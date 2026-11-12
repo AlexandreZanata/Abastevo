@@ -143,6 +143,7 @@ func (s *UnitStore) WriteUnit(ctx context.Context, scope kernel.OrgScope, actor 
 	digest := command.Digest(scope)
 	var result app.UnitResult
 	replay := false
+	readyToCommit := false
 	err = database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
 		if err := s.authorize(ctx, tx, scope, actor, member, target, true); err != nil {
 			return err
@@ -158,6 +159,7 @@ func (s *UnitStore) WriteUnit(ctx context.Context, scope kernel.OrgScope, actor 
 			}
 			result = app.UnitResult{UnitID: prior.UnitID, State: d.UnitState(prior.ResultState), Revision: prior.ResultRevision}
 			replay = true
+			readyToCommit = true
 			return nil
 		}
 		if !errors.Is(err, pgx.ErrNoRows) {
@@ -248,9 +250,13 @@ func (s *UnitStore) WriteUnit(ctx context.Context, scope kernel.OrgScope, actor 
 		if repeated {
 			return app.ErrUnavailable
 		}
+		readyToCommit = true
 		return nil
 	})
 	if err != nil {
+		if readyToCommit && ctx.Err() == nil {
+			return app.UnitResult{}, false, app.ErrUnavailable
+		}
 		return app.UnitResult{}, false, unitError(ctx, err)
 	}
 	return result, replay, nil

@@ -42,6 +42,8 @@ tags:
     description: Anonymous challenge and contributor registration.
   - name: accounts
     description: FREE email-code signup/login plus session rotation.
+  - name: enterprise-identity
+    description: Private organization employee records, separate from login and membership.
   - name: feedback
     description: Authenticated station/fuel ratings and comments plus anonymous reads.
   - name: premium
@@ -51,6 +53,486 @@ tags:
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
+  /v1/orgs/{org_id}/employees/create:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseEmployeeCreate
+      summary: Create employee register record
+      description: Register an employee without login. Exact nonempty registration duplicates return VALIDATION_FAILED
+        with registration_number/DUPLICATE. Possible normalized name plus work-contact matches return DUPLICATE_REVIEW_REQUIRED
+        until explicit manager acknowledgement; never automatically merge. Dedicated company PANEL cookie, exact
+        HTTPS Origin/Host, CSRF and current organization authority are mandatory. Fresh configuration writes
+        require the organizations pilot flag and idn.employee admission. This is source-pinned synthetic setup.
+        Responses are no-store without ETag. No account, membership, role, credential or driver eligibility is
+        provisioned.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.employee.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Register an employee without login. Exact nonempty registration duplicates return VALIDATION_FAILED
+          with registration_number/DUPLICATE. Possible normalized name plus work-contact matches return DUPLICATE_REVIEW_REQUIRED
+          until explicit manager acknowledgement; never automatically merge.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmployeeCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001002
+              display_name: Synthetic employee
+              registration_number: SYN-01
+              work_email: team@example.invalid
+              work_phone: '+5511999999999'
+              job_title: Synthetic operator
+              home_unit_id: ''
+              allow_possible_duplicate: false
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '201':
+          description: Private committed employee acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEmployeeAcknowledgement'
+              example:
+                employee_id: 7b0e2a54-0000-4000-8000-000000000a01
+                state: ACTIVE
+                identity_revision: 1
+                profile_revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+  /v1/orgs/{org_id}/employees/{employee_id}/change:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseEmployeeChange
+      summary: Change employee register record
+      description: Replace descriptive employee metadata at the expected profile revision. A newly selected home
+        unit must be active in the same organization. Profile edits do not transition identity state or alter
+        access. Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and current organization authority
+        are mandatory. Fresh configuration writes require the organizations pilot flag and idn.employee admission.
+        This is source-pinned synthetic setup. Responses are no-store without ETag. No account, membership, role,
+        credential or driver eligibility is provisioned.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.employee.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: employee_id
+        in: path
+        required: true
+        description: Scoped employee identity; foreign and missing identifiers have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Replace descriptive employee metadata at the expected profile revision. A newly selected
+          home unit must be active in the same organization. Profile edits do not transition identity state or
+          alter access.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmployeeChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001002
+              display_name: Synthetic employee
+              registration_number: SYN-01
+              work_email: team@example.invalid
+              work_phone: '+5511999999999'
+              job_title: Synthetic operator
+              home_unit_id: ''
+              allow_possible_duplicate: false
+              revision: 1
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private committed employee acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEmployeeAcknowledgement'
+              example:
+                employee_id: 7b0e2a54-0000-4000-8000-000000000a01
+                state: ACTIVE
+                identity_revision: 1
+                profile_revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+  /v1/orgs/{org_id}/employees/{employee_id}/complete:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseEmployeeComplete
+      summary: Complete employee register record
+      description: Complete a pending profile at the expected identity revision. Existing identities receive
+        no invented name or account-derived contact. Identity lifecycle revision and membership remain unchanged.
+        Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and current organization authority are
+        mandatory. Fresh configuration writes require the organizations pilot flag and idn.employee admission.
+        This is source-pinned synthetic setup. Responses are no-store without ETag. No account, membership, role,
+        credential or driver eligibility is provisioned.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.employee.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: employee_id
+        in: path
+        required: true
+        description: Scoped employee identity; foreign and missing identifiers have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Complete a pending profile at the expected identity revision. Existing identities receive
+          no invented name or account-derived contact. Identity lifecycle revision and membership remain unchanged.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmployeeCompleteRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001002
+              display_name: Synthetic employee
+              registration_number: SYN-01
+              work_email: team@example.invalid
+              work_phone: '+5511999999999'
+              job_title: Synthetic operator
+              home_unit_id: ''
+              allow_possible_duplicate: false
+              revision: 1
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private committed employee acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEmployeeAcknowledgement'
+              example:
+                employee_id: 7b0e2a54-0000-4000-8000-000000000a01
+                state: ACTIVE
+                identity_revision: 1
+                profile_revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+  /v1/orgs/{org_id}/employees/{employee_id}/read:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseEmployeeRead
+      summary: Read employee register record
+      description: Read an authorized current employee view, including pending profiles and readonly identity
+        state. Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and current organization authority
+        are mandatory. Fresh configuration writes require the organizations pilot flag and idn.employee admission.
+        This is source-pinned synthetic setup. Responses are no-store without ETag. No account, membership, role,
+        credential or driver eligibility is provisioned.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.employee.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: employee_id
+        in: path
+        required: true
+        description: Scoped employee identity; foreign and missing identifiers have the same refusal.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Read an authorized current employee view, including pending profiles and readonly identity
+          state.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmployeeReadRequest'
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized employee view or page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEmployeeView'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000000a01
+                display_name: Synthetic employee
+                registration_number: SYN-01
+                work_email: team@example.invalid
+                work_phone: '+5511999999999'
+                job_title: Synthetic operator
+                home_unit_id: ''
+                state: ACTIVE
+                identity_revision: 1
+                profile_revision: 1
+                profile_pending: false
+                merged_into: ''
+                data_mode: SYNTHETIC
+  /v1/orgs/{org_id}/employees/list:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseEmployeeList
+      summary: List employee register record
+      description: List authorized current employees with an optional state filter and bounded opaque keyset
+        pagination. Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and current organization authority
+        are mandatory. Fresh configuration writes require the organizations pilot flag and idn.employee admission.
+        This is source-pinned synthetic setup. Responses are no-store without ETag. No account, membership, role,
+        credential or driver eligibility is provisioned.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.employee.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: List authorized current employees with an optional state filter and bounded opaque keyset
+          pagination.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmployeeListRequest'
+            example:
+              limit: 2
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized employee view or page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEmployeePage'
+              example:
+                items:
+                - id: 7b0e2a54-0000-4000-8000-000000000a01
+                  display_name: Synthetic employee
+                  registration_number: SYN-01
+                  work_email: team@example.invalid
+                  work_phone: '+5511999999999'
+                  job_title: Synthetic operator
+                  home_unit_id: ''
+                  state: ACTIVE
+                  identity_revision: 1
+                  profile_revision: 1
+                  profile_pending: false
+                  merged_into: ''
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+  /v1/orgs/{org_id}/employees/matches:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseEmployeeMatches
+      summary: Matches employee register record
+      description: Return scoped possible duplicate candidates under management permission. Matching requires
+        normalized display name and a matching nonempty work email or phone. Name alone, contact alone and global
+        person lookup are excluded. Dedicated company PANEL cookie, exact HTTPS Origin/Host, CSRF and current
+        organization authority are mandatory. Fresh configuration writes require the organizations pilot flag
+        and idn.employee admission. This is source-pinned synthetic setup. Responses are no-store without ETag.
+        No account, membership, role, credential or driver eligibility is provisioned.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: idn.employee.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Return scoped possible duplicate candidates under management permission. Matching requires
+          normalized display name and a matching nonempty work email or phone. Name alone, contact alone and
+          global person lookup are excluded.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmployeeMatchesRequest'
+            example:
+              display_name: Synthetic employee
+              work_email: team@example.invalid
+              limit: 2
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized employee view or page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEmployeePage'
+              example:
+                items:
+                - id: 7b0e2a54-0000-4000-8000-000000000a01
+                  display_name: Synthetic employee
+                  registration_number: SYN-01
+                  work_email: team@example.invalid
+                  work_phone: '+5511999999999'
+                  job_title: Synthetic operator
+                  home_unit_id: ''
+                  state: ACTIVE
+                  identity_revision: 1
+                  profile_revision: 1
+                  profile_pending: false
+                  merged_into: ''
+                  data_mode: SYNTHETIC
+                next_cursor: ''
   /v1/orgs/{org_id}/cost-centres/create:
     post:
       tags:
@@ -9993,6 +10475,501 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseEmployeeCreateRequest:
+      type: object
+      description: Create an ACTIVE employee identity and minimal profile without an account, membership, role,
+        credential or driving eligibility. Possible name plus work-contact matches require explicit review.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        display_name:
+          type: string
+          description: Private display name, required; at most 200 UTF-8 bytes after trimming.
+          maxLength: 200
+          example: Synthetic employee
+          minLength: 1
+        registration_number:
+          type: string
+          description: Optional private registration; trimmed case-insensitive uniqueness in this organization
+            across every employee state.
+          maxLength: 64
+          example: SYN-01
+        work_email:
+          type: string
+          description: Optional unverified ASCII work email, normalized to lower case; grants no account ownership
+            or login.
+          maxLength: 254
+          example: team@example.invalid
+        work_phone:
+          type: string
+          description: Optional unverified international work phone, plus and 8 to 15 digits; grants no access.
+          maxLength: 16
+          example: '+5511999999999'
+        job_title:
+          type: string
+          description: Optional private descriptive job title, at most 120 UTF-8 bytes.
+          maxLength: 120
+          example: Synthetic operator
+        home_unit_id:
+          description: Optional current scoped identity; an empty string clears the association.
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          example: ''
+        allow_possible_duplicate:
+          type: boolean
+          default: false
+          description: Explicit manager create-anyway acknowledgement after possible-duplicate review. Exact registration
+            duplicates remain prohibited.
+          example: false
+      required:
+      - schema_version
+      - operation_id
+      - display_name
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001002
+        display_name: Synthetic employee
+        registration_number: SYN-01
+        work_email: team@example.invalid
+        work_phone: '+5511999999999'
+        job_title: Synthetic operator
+        home_unit_id: ''
+        allow_possible_duplicate: false
+    EnterpriseEmployeeChangeRequest:
+      type: object
+      description: Change an employee descriptive profile at the expected profile revision. No lifecycle or access
+        mutation.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        display_name:
+          type: string
+          description: Private display name, required; at most 200 UTF-8 bytes after trimming.
+          maxLength: 200
+          example: Synthetic employee
+          minLength: 1
+        registration_number:
+          type: string
+          description: Optional private registration; trimmed case-insensitive uniqueness in this organization
+            across every employee state.
+          maxLength: 64
+          example: SYN-01
+        work_email:
+          type: string
+          description: Optional unverified ASCII work email, normalized to lower case; grants no account ownership
+            or login.
+          maxLength: 254
+          example: team@example.invalid
+        work_phone:
+          type: string
+          description: Optional unverified international work phone, plus and 8 to 15 digits; grants no access.
+          maxLength: 16
+          example: '+5511999999999'
+        job_title:
+          type: string
+          description: Optional private descriptive job title, at most 120 UTF-8 bytes.
+          maxLength: 120
+          example: Synthetic operator
+        home_unit_id:
+          description: Optional current scoped identity; an empty string clears the association.
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          example: ''
+        allow_possible_duplicate:
+          type: boolean
+          default: false
+          description: Explicit manager create-anyway acknowledgement after possible-duplicate review. Exact registration
+            duplicates remain prohibited.
+          example: false
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          example: 1
+          description: Expected current profile revision. Completion requires a pending profile; change requires
+            an existing profile. Lifecycle revision and access effects remain independently guarded.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - display_name
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001002
+        display_name: Synthetic employee
+        registration_number: SYN-01
+        work_email: team@example.invalid
+        work_phone: '+5511999999999'
+        job_title: Synthetic operator
+        home_unit_id: ''
+        allow_possible_duplicate: false
+        revision: 1
+    EnterpriseEmployeeCompleteRequest:
+      type: object
+      description: Complete an employee descriptive profile at the expected identity revision. No lifecycle or
+        access mutation.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        display_name:
+          type: string
+          description: Private display name, required; at most 200 UTF-8 bytes after trimming.
+          maxLength: 200
+          example: Synthetic employee
+          minLength: 1
+        registration_number:
+          type: string
+          description: Optional private registration; trimmed case-insensitive uniqueness in this organization
+            across every employee state.
+          maxLength: 64
+          example: SYN-01
+        work_email:
+          type: string
+          description: Optional unverified ASCII work email, normalized to lower case; grants no account ownership
+            or login.
+          maxLength: 254
+          example: team@example.invalid
+        work_phone:
+          type: string
+          description: Optional unverified international work phone, plus and 8 to 15 digits; grants no access.
+          maxLength: 16
+          example: '+5511999999999'
+        job_title:
+          type: string
+          description: Optional private descriptive job title, at most 120 UTF-8 bytes.
+          maxLength: 120
+          example: Synthetic operator
+        home_unit_id:
+          description: Optional current scoped identity; an empty string clears the association.
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          example: ''
+        allow_possible_duplicate:
+          type: boolean
+          default: false
+          description: Explicit manager create-anyway acknowledgement after possible-duplicate review. Exact registration
+            duplicates remain prohibited.
+          example: false
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          example: 1
+          description: Expected current identity revision. Completion requires a pending profile; change requires
+            an existing profile. Lifecycle revision and access effects remain independently guarded.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - display_name
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001002
+        display_name: Synthetic employee
+        registration_number: SYN-01
+        work_email: team@example.invalid
+        work_phone: '+5511999999999'
+        job_title: Synthetic operator
+        home_unit_id: ''
+        allow_possible_duplicate: false
+        revision: 1
+    EnterpriseEmployeeReadRequest:
+      type: object
+      description: Read one scoped employee; no credentials or authority are accepted in the body.
+      additionalProperties: false
+      properties: {}
+      required: []
+      example: {}
+    EnterpriseEmployeeListRequest:
+      type: object
+      description: List employee identities including explicit pending profiles and lifecycle state. Read access
+        uses idn.employee.read.
+      additionalProperties: false
+      properties:
+        cursor:
+          type: string
+          maxLength: 4096
+          description: Opaque request, actor, organization and filter-bound UUID keyset cursor.
+          example: ''
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+          description: Maximum items in this page.
+          example: 2
+        state:
+          type: string
+          enum:
+          - ''
+          - ACTIVE
+          - INACTIVE
+          - TERMINATED
+          description: Optional exact lifecycle filter; empty means all states.
+          example: ''
+      required: []
+      example:
+        limit: 2
+    EnterpriseEmployeeMatchesRequest:
+      type: object
+      description: Review likely duplicate employees under idn.employee.manage. Matching normalized name plus a
+        nonempty matching work contact never links accounts or merges records.
+      additionalProperties: false
+      properties:
+        cursor:
+          type: string
+          maxLength: 4096
+          description: Opaque request, actor, organization and filter-bound UUID keyset cursor.
+          example: ''
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+          description: Maximum items in this page.
+          example: 2
+        display_name:
+          type: string
+          description: Private display name, required; at most 200 UTF-8 bytes after trimming.
+          maxLength: 200
+          example: Synthetic employee
+          minLength: 1
+        work_email:
+          type: string
+          description: Optional unverified ASCII work email, normalized to lower case; grants no account ownership
+            or login.
+          maxLength: 254
+          example: team@example.invalid
+        work_phone:
+          type: string
+          description: Optional unverified international work phone, plus and 8 to 15 digits; grants no access.
+          maxLength: 16
+          example: '+5511999999999'
+        exclude_employee_id:
+          description: Optional current scoped identity; an empty string clears the association.
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          example: ''
+      required:
+      - display_name
+      example:
+        display_name: Synthetic employee
+        work_email: team@example.invalid
+        limit: 2
+    EnterpriseEmployeeAcknowledgement:
+      type: object
+      description: Original durable command acknowledgement; never replaced by current metadata on retry.
+      additionalProperties: false
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - TERMINATED
+          description: Original committed identity state.
+        identity_revision:
+          type: integer
+          minimum: 1
+          description: Original committed identity lifecycle revision.
+        profile_revision:
+          type: integer
+          minimum: 1
+          description: Original committed profile revision, independent of identity lifecycle.
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+          description: Real employee data remains separately gated.
+        replayed:
+          type: boolean
+          description: True only for exact committed operation replay.
+      required:
+      - employee_id
+      - state
+      - identity_revision
+      - profile_revision
+      - data_mode
+      - replayed
+      example:
+        employee_id: 7b0e2a54-0000-4000-8000-000000000a01
+        state: ACTIVE
+        identity_revision: 1
+        profile_revision: 1
+        data_mode: SYNTHETIC
+        replayed: false
+    EnterpriseEmployeeView:
+      type: object
+      description: Private employee descriptive view. A pending profile uses empty descriptive fields and revision
+        zero; no account identity or credential is included.
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        display_name:
+          type: string
+          description: Private display name, required; at most 200 UTF-8 bytes after trimming.
+          maxLength: 200
+          example: Synthetic employee
+        registration_number:
+          type: string
+          description: Optional private registration; trimmed case-insensitive uniqueness in this organization
+            across every employee state.
+          maxLength: 64
+          example: SYN-01
+        work_email:
+          type: string
+          description: Optional unverified ASCII work email, normalized to lower case; grants no account ownership
+            or login.
+          maxLength: 254
+          example: team@example.invalid
+        work_phone:
+          type: string
+          description: Optional unverified international work phone, plus and 8 to 15 digits; grants no access.
+          maxLength: 16
+          example: '+5511999999999'
+        job_title:
+          type: string
+          description: Optional private descriptive job title, at most 120 UTF-8 bytes.
+          maxLength: 120
+          example: Synthetic operator
+        home_unit_id:
+          description: Optional current scoped identity; an empty string clears the association.
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          example: ''
+        state:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - TERMINATED
+          description: Original committed identity state.
+        identity_revision:
+          type: integer
+          minimum: 1
+          description: Original committed identity lifecycle revision.
+        profile_revision:
+          type: integer
+          minimum: 0
+          description: Zero only for a pending profile; descriptive and lifecycle revisions remain separate.
+        profile_pending:
+          type: boolean
+          description: Existing identity has not yet received a manager-supplied descriptive profile.
+        merged_into:
+          description: Optional current scoped identity; an empty string clears the association.
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          example: ''
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+          description: Real employee data remains separately gated.
+      required:
+      - id
+      - display_name
+      - registration_number
+      - work_email
+      - work_phone
+      - job_title
+      - home_unit_id
+      - state
+      - identity_revision
+      - profile_revision
+      - profile_pending
+      - merged_into
+      - data_mode
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000000a01
+        display_name: Synthetic employee
+        registration_number: SYN-01
+        work_email: team@example.invalid
+        work_phone: '+5511999999999'
+        job_title: Synthetic operator
+        home_unit_id: ''
+        state: ACTIVE
+        identity_revision: 1
+        profile_revision: 1
+        profile_pending: false
+        merged_into: ''
+        data_mode: SYNTHETIC
+    EnterpriseEmployeePage:
+      type: object
+      description: Bounded scoped UUID keyset page of employee views. Match pages require management authority
+        and bind only a digest of private filters in their cursor.
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseEmployeeView'
+          description: Authorized scoped employees.
+        next_cursor:
+          type: string
+          description: Opaque continuation cursor; empty at end.
+          example: ''
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - id: 7b0e2a54-0000-4000-8000-000000000a01
+          display_name: Synthetic employee
+          registration_number: SYN-01
+          work_email: team@example.invalid
+          work_phone: '+5511999999999'
+          job_title: Synthetic operator
+          home_unit_id: ''
+          state: ACTIVE
+          identity_revision: 1
+          profile_revision: 1
+          profile_pending: false
+          merged_into: ''
+          data_mode: SYNTHETIC
+        next_cursor: ''
     EnterpriseCostCentreCreateRequest:
       type: object
       description: Create an optional synthetic cost centre and permanently reserve its normalized code. The
@@ -11402,7 +12379,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, OWNER_REQUIRES_PERSONAL_ACCOUNT, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, LAST_UNIT, STRUCTURE_IN_USE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, RATE_LIMITED, UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false

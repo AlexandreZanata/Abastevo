@@ -1,4 +1,24 @@
 # Current execution state
+- Enterprise EMP-IDN-002, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above ORG-006 067a934d in the owned enterprise worktree, targeting PR202.
+  [Employee register evidence](../enterprise/evidence/f1-idn002-employee-register.md)
+  records six company-cookie routes, independent descriptive profile revisions,
+  explicit duplicate review and no account/membership/role provisioning.
+  B-BR-EMP-63/64, BUC-EMP-32 and EDR-041 precede behavior. Actual active employee
+  usage protects units; audited archive clears retained home links permanently.
+  Real PostGIS/race suites pass: 12-way duplicate/replay/CAS and archive/admission,
+  current role/proof/flag/privacy gates, deferred rollback/recovery and populated
+  ordinary-owner upgrade. The reproduced late unit-commit 404 is corrected to
+  unavailable. New-FK fixture regressions are repaired without weakening guards;
+  complete organization/audit adapter reruns pass. Other affected suites, full
+  OpenAPI/production-router, scoped static/build/sqlc, plan/format/links/secret
+  checks pass. Composed membership domain coverage 96.40%; application 68.09%,
+  adapters 83.26%, HTTP 75.76%. Next: ORG-007 teams, now with IDN-002 prerequisite.
+  Tested backend tree e4a6ea6eaa7db6aee238ff28c56d4c465d5454a2;
+  Contract blob afc3463604433e15c8192d0f8ad0f26c136e1200.
+  F1/M1, phase publication/final CI and actual provider/runtime/native/vault/
+  staging/legal/Kotlin gates remain open.
+
 - Enterprise EMP-ORG-006, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
   above ORG-005 dfb6fd78 in the owned enterprise worktree, targeting PR202.
   [Cost-centre evidence](../enterprise/evidence/f1-org006-cost-centres.md)

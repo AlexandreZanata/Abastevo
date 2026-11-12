@@ -128,8 +128,9 @@ func installSyntheticUnitUsageSource(t *testing.T, fx legalFixtureState) {
  IF EXISTS(SELECT 1 FROM pg_constraint c WHERE c.contype='f' AND c.confrelid='public.org_units'::regclass
  AND NOT ((c.conrelid='public.org_onboarding_commands'::regclass AND c.conname='org_onboarding_commands_org_id_unit_id_fkey')
  OR (c.conrelid='public.org_unit_commands'::regclass AND c.conname='org_unit_commands_unit_fkey')
+ OR (c.conrelid='public.org_employee_profiles'::regclass AND c.conname='org_employee_profile_unit_fkey')
  OR c.conrelid='public.synthetic_unit_work'::regclass)) THEN RAISE EXCEPTION USING ERRCODE='P7704',MESSAGE='unit usage source unavailable';END IF;
- RETURN (SELECT jsonb_build_object('assets',count(*) FILTER(WHERE kind='ASSET'),'employees',count(*) FILTER(WHERE kind='EMPLOYEE'),
+ RETURN (SELECT jsonb_build_object('assets',count(*) FILTER(WHERE kind='ASSET'),'employees',count(*) FILTER(WHERE kind='EMPLOYEE')+(SELECT count(*) FROM public.org_employee_profiles p JOIN public.org_employee_identities e ON(e.org_id,e.id)=(p.org_id,p.employee_id) WHERE p.org_id=selected_org AND p.home_unit_id=selected_unit AND e.state='ACTIVE'),
  'budgets',count(*) FILTER(WHERE kind='BUDGET'),'operations',count(*) FILTER(WHERE kind='OPERATION')) FROM public.synthetic_unit_work WHERE org_id=selected_org AND unit_id=selected_unit AND state='ACTIVE');
  END $$;`); err != nil {
 		t.Fatal(err)

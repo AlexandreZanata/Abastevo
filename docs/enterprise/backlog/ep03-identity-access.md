@@ -31,7 +31,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Local identity/lifecycle evidence](../evidence/f1-idn001-identity-domain.md).
 
 ### EMP-IDN-002 — Employee records that exist without a login
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Let an authorized organization maintain employee records without creating logins.
 - **Rules and use cases:** BR-IDN-002, BR-IDN-003, BR-IDN-006, BR-IDN-034, BR-IDN-036, UC-IDN-01
 - **Depends on:** EMP-IDN-001, EMP-ORG-002, EMP-AUTH-003
@@ -45,6 +45,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive employee storage · rollback: disable admission and preserve employee history
 - **Risks and assumptions:** Lifecycle changes that affect access use the corresponding membership guard.
 - **Done when:** The register works with and without login through the normal entry points.
+
+[Local register, duplicate review, unit archival and upgrade evidence](../evidence/f1-idn002-employee-register.md).
 
 ### EMP-IDN-003 — Membership persistence and states
 - **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type DB · size S · state LOCAL_DONE

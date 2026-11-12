@@ -46,3 +46,10 @@ func companyActor(ctx context.Context) (app.CompanyActor, error) {
 	}
 	return proof.actor, nil
 }
+
+// CompanyEntry and CurrentCompanyActor expose only the verified company-cookie
+// request boundary for other private modules. AUTH decisions remain separate.
+func CompanyEntry(router chi.Router, cookies company.Handler, gateway orgapi.Gateway) (chi.Router, orgapi.Gateway, error) {
+	return companyEntry(router, cookies, gateway)
+}
+func CurrentCompanyActor(ctx context.Context) (app.CompanyActor, error) { return companyActor(ctx) }

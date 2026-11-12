@@ -53,6 +53,16 @@ func onboardingOnFixture(t *testing.T, f *orgtest.Fixture) (*orgtest.Fixture, *a
 	if _, err := f.Admin.Exec(t.Context(), "GRANT USAGE ON SCHEMA public TO "+r+"; GRANT SELECT,INSERT,UPDATE ON organizations,org_units,org_employee_identities,org_memberships,org_role_assignments,org_capabilities TO "+r+"; GRANT SELECT,INSERT ON org_onboarding_commands,org_audit_events TO "+r+"; GRANT SELECT,UPDATE ON accounts,account_session_families TO "+r+"; GRANT SELECT ON payment_billing_exits TO "+r+"; GRANT SELECT,INSERT,UPDATE,DELETE ON company_web_sessions TO "+r); err != nil {
 		t.Fatal(err)
 	}
+	var profilesInstalled bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_employee_profiles') IS NOT NULL`).Scan(&profilesInstalled); err != nil {
+		t.Fatal(err)
+	}
+	if profilesInstalled {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT ON org_employee_profiles TO "+r); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	now := time.Now().UTC().Truncate(time.Second)
 	accounts := &account.Service{Clock: onboardingClock{now}, Store: accountpg.NewPGStore(f.Admin), Hasher: accountdomain.SHA256Hasher{}, IDGen: jobs.NewUUIDv4, TokenGen: accountdomain.GenerateToken, KeyGen: accountdomain.GenerateAccountKey}
 	key, err := accounts.CreateKeyAccount(t.Context(), "syntheticcreator")

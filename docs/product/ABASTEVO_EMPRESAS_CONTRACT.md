@@ -669,6 +669,32 @@ boundaries.
   and export snapshots remain unchanged. Refusals expose only safe code
   field details or category counts, never names or source records.
 
+- **B-BR-EMP-63 — Maintain employees without granting access.**
+  A scoped employee profile requires only a bounded display name; optional
+  registration number, unverified work email/phone, job title and current home
+  unit serve the purposes in identity §3. Profile creation also creates an
+  ACTIVE identity, never an account, membership, role, credential or driver
+  eligibility. Existing identities may explicitly complete a pending profile.
+  Profile revisions are separate from authoritative lifecycle revisions;
+  existing last-owner, membership and offboarding guards remain mandatory.
+  Only current idn.employee.manage may create/change/complete or review possible
+  matches; idn.employee.read governs register reads. Configuration uses fresh
+  company proof, organizations capability and atomic private audit/receipt.
+
+- **B-BR-EMP-64 — Review duplicates and retain unit history.**
+  A nonempty trimmed case-insensitive registration number is unique in an
+  organization across all employee states. A matching normalized display name
+  and at least one matching nonempty normalized work contact requires explicit
+  review and create-anyway acknowledgement; neither comparison nor contact
+  ownership links or merges accounts/people. Authorized candidate discovery is
+  scoped and bounded; errors contain no personal data. Root serialization
+  covers matching, registration races and home-unit admission. A newly selected
+  unit must be active in the same organization. Active employees count as unit
+  usage without needing a login. Successful unit archival clears remaining
+  inactive/terminated current home links atomically, records the causal unit
+  audit/receipt and increments profile revision; restoration never recreates
+  those links. Historical command acknowledgements remain unchanged.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -923,6 +949,17 @@ boundaries.
   reservations, stale changes and altered retries. A failed commit leaves no
   centre, alias, audit or acknowledgement; past allocations/exports keep their
   captured identity and code.
+
+- **BUC-EMP-32 — Register and review an employee without login.**
+  An authorized manager creates a synthetic employee with only a display name,
+  reads and edits its profile, then explicitly completes the creator's pending
+  profile without changing membership/identity revisions. Reject a duplicate
+  registration, foreign unit/employee, stale revision, revoked proof or changed
+  retry. Show scoped likely-match candidates and require explicit create-anyway
+  acknowledgement without merging. Competing exact/likely duplicates and unit
+  archive/admission serialize; failed audit/deferred commit leaves no identity,
+  profile or acknowledgement. Verify that unit restoration does not restore a
+  home link cleared by its earlier audited archive.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

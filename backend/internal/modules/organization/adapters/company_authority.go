@@ -10,6 +10,7 @@ import (
 	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
+	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -24,7 +25,7 @@ type companyAuthority struct {
 }
 
 func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy) error {
-	if policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) {
+	if policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
 		return app.ErrUnavailable
 	}
 	write := policy.Effect == access.ConfigurationWrite
@@ -99,4 +100,35 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 		return err
 	}
 	return nil
+}
+
+// EmployeeAuthority implements the identity module's explicit transaction port
+// without sharing generated SQL or accepting arbitrary permissions.
+type EmployeeAuthority struct {
+	Memberships  members.TransactionRepository
+	Roles        access.TransactionRepository
+	Capabilities setupCapability
+}
+
+var _ members.EmployeeAuthority = (*EmployeeAuthority)(nil)
+
+func (g *EmployeeAuthority) CheckEmployeeTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor members.EmployeeActor, member, target string, action members.EmployeeAction) error {
+	if g == nil || g.Memberships == nil || g.Roles == nil || g.Capabilities == nil || actor.Validate() != nil || legalIdentity(scope, member) != nil || legalIdentity(scope, target) != nil {
+		return members.ErrRegisterUnavailable
+	}
+	if action != members.EmployeeRead && action != members.EmployeeReview && action != members.EmployeeManage {
+		return members.ErrRegisterUnavailable
+	}
+	err := (companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}).check(ctx, tx, scope, app.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, member, target, members.EmployeePolicy(action))
+	switch {
+	case errors.Is(err, capability.ErrEntitlementRequired):
+		return access.ErrEntitlementRequired
+	case errors.Is(err, app.ErrUnauthenticated):
+		return members.ErrEmployeeUnauthenticated
+	case errors.Is(err, app.ErrUnavailable):
+		return members.ErrRegisterUnavailable
+	case errors.Is(err, app.ErrNotFound):
+		return members.ErrEmployeeNotFound
+	}
+	return err
 }
