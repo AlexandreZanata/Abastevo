@@ -11855,6 +11855,266 @@ paths:
                 effective_at: '2026-11-12T12:00:00Z'
                 data_mode: SYNTHETIC
                 replayed: false
+  /v1/orgs/{org_id}/ownership-transfer/propose:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseOwnershipTransferPropose
+      summary: Propose organization ownership transfer
+      description: Dedicated PANEL cookie, exact HTTPS Origin/Host, CSRF and current org.ownership.transfer. Fresh configuration write requires the organizations capability and shares the synthetic org.ownership_transfer admission. Target membership must be active and bound to a personal account (BR-ORG-026). At most one pending transfer is permitted per organization. Responses are no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.ownership.transfer
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Ownership transfer proposal payload
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseOwnershipTransferProposeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              target_membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+              step_down_to_admin: true
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized ownership transfer proposal acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOwnershipTransferResult'
+              example:
+                transfer:
+                  transfer_id: 7b0e2a54-0000-4000-8000-000000003001
+                  org_id: 7b0e2a54-0000-4000-8000-000000000001
+                  initiator_membership_id: 7b0e2a54-0000-4000-8000-000000000a01
+                  target_membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+                  step_down_to_admin: true
+                  state: PENDING
+                  expires_at: '2026-11-19T12:00:00Z'
+                  created_at: '2026-11-12T12:00:00Z'
+                  completed_at: null
+                  operation_id: 7b0e2a54-0000-4000-8000-000000002001
+                replayed: false
+  /v1/orgs/{org_id}/ownership-transfer/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseOwnershipTransferRead
+      summary: Read current pending organization ownership transfer
+      description: Dedicated PANEL cookie, exact HTTPS Origin/Host, CSRF, and fresh org.ownership.transfer read authority (BR-AUTH-010). Returns the currently pending ownership transfer for the organization if any. Responses are no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.ownership.transfer
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Read pending ownership transfer payload
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseOwnershipTransferReadRequest'
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized current ownership transfer view.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOwnershipTransferView'
+              example:
+                transfer_id: 7b0e2a54-0000-4000-8000-000000003001
+                org_id: 7b0e2a54-0000-4000-8000-000000000001
+                initiator_membership_id: 7b0e2a54-0000-4000-8000-000000000a01
+                target_membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+                step_down_to_admin: true
+                state: PENDING
+                expires_at: '2026-11-19T12:00:00Z'
+                created_at: '2026-11-12T12:00:00Z'
+                completed_at: null
+                operation_id: 7b0e2a54-0000-4000-8000-000000002001
+  /v1/orgs/{org_id}/ownership-transfer/accept:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseOwnershipTransferAccept
+      summary: Accept pending organization ownership transfer
+      description: Dedicated PANEL cookie, exact HTTPS Origin/Host, CSRF, and fresh authentication from target active member (UC-ORG-09). The target member is assigned OWNER role atomically; if step_down_to_admin was requested, the initiator steps down to ADMIN, preserving the last-owner invariant (BR-AUTH-006). Responses are no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Ownership transfer acceptance command payload
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseOwnershipTransferAcceptRequest'
+            example:
+              transfer_id: 7b0e2a54-0000-4000-8000-000000003001
+              operation_id: 7b0e2a54-0000-4000-8000-000000002002
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized ownership transfer acceptance result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOwnershipTransferResult'
+              example:
+                transfer:
+                  transfer_id: 7b0e2a54-0000-4000-8000-000000003001
+                  org_id: 7b0e2a54-0000-4000-8000-000000000001
+                  initiator_membership_id: 7b0e2a54-0000-4000-8000-000000000a01
+                  target_membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+                  step_down_to_admin: true
+                  state: ACCEPTED
+                  expires_at: '2026-11-19T12:00:00Z'
+                  created_at: '2026-11-12T12:00:00Z'
+                  completed_at: '2026-11-12T12:30:00Z'
+                  operation_id: 7b0e2a54-0000-4000-8000-000000002001
+                replayed: false
+  /v1/orgs/{org_id}/ownership-transfer/cancel:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseOwnershipTransferCancel
+      summary: Cancel or decline pending organization ownership transfer
+      description: Dedicated PANEL cookie, exact HTTPS Origin/Host, CSRF, and fresh authentication from initiator (cancel) or target member (decline). State transitions to CANCELLED or DECLINED. Responses are no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Ownership transfer cancellation command payload
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseOwnershipTransferCancelRequest'
+            example:
+              transfer_id: 7b0e2a54-0000-4000-8000-000000003001
+              operation_id: 7b0e2a54-0000-4000-8000-000000002003
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized ownership transfer cancellation result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOwnershipTransferResult'
+              example:
+                transfer:
+                  transfer_id: 7b0e2a54-0000-4000-8000-000000003001
+                  org_id: 7b0e2a54-0000-4000-8000-000000000001
+                  initiator_membership_id: 7b0e2a54-0000-4000-8000-000000000a01
+                  target_membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+                  step_down_to_admin: true
+                  state: CANCELLED
+                  expires_at: '2026-11-19T12:00:00Z'
+                  created_at: '2026-11-12T12:00:00Z'
+                  completed_at: '2026-11-12T12:30:00Z'
+                  operation_id: 7b0e2a54-0000-4000-8000-000000002001
+                replayed: false
   /v1/admin/organizations/{org_id}/suspend:
     post:
       tags:
@@ -21731,6 +21991,145 @@ components:
         period_id: 7b0e2a54-0000-4000-8000-000000000901
         effective_at: '2026-11-12T15:00:00Z'
         notice_state: PENDING_NOTIFICATION_CORE
+    EnterpriseOwnershipTransferProposeRequest:
+      type: object
+      description: Request payload for proposing organization ownership transfer.
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        target_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        step_down_to_admin:
+          type: boolean
+      required:
+      - schema_version
+      - operation_id
+      - target_membership_id
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000002001
+        target_membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+        step_down_to_admin: true
+    EnterpriseOwnershipTransferAcceptRequest:
+      type: object
+      description: Request payload for accepting pending organization ownership transfer.
+      additionalProperties: false
+      properties:
+        transfer_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - transfer_id
+      - operation_id
+      example:
+        transfer_id: 7b0e2a54-0000-4000-8000-000000003001
+        operation_id: 7b0e2a54-0000-4000-8000-000000002002
+    EnterpriseOwnershipTransferCancelRequest:
+      type: object
+      description: Request payload for cancelling or declining pending organization ownership transfer.
+      additionalProperties: false
+      properties:
+        transfer_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - transfer_id
+      - operation_id
+      example:
+        transfer_id: 7b0e2a54-0000-4000-8000-000000003001
+        operation_id: 7b0e2a54-0000-4000-8000-000000002003
+    EnterpriseOwnershipTransferReadRequest:
+      type: object
+      description: Request payload for reading currently pending ownership transfer.
+      additionalProperties: false
+      example: {}
+    EnterpriseOwnershipTransferView:
+      type: object
+      description: View of an organization ownership transfer record.
+      additionalProperties: false
+      properties:
+        transfer_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        org_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        initiator_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        target_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        step_down_to_admin:
+          type: boolean
+        state:
+          type: string
+          enum:
+          - PENDING
+          - ACCEPTED
+          - CANCELLED
+          - DECLINED
+          - EXPIRED
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: [string, 'null']
+          format: date-time
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - transfer_id
+      - org_id
+      - initiator_membership_id
+      - target_membership_id
+      - step_down_to_admin
+      - state
+      - expires_at
+      - created_at
+      - operation_id
+      example:
+        transfer_id: 7b0e2a54-0000-4000-8000-000000003001
+        org_id: 7b0e2a54-0000-4000-8000-000000000001
+        initiator_membership_id: 7b0e2a54-0000-4000-8000-000000000a01
+        target_membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+        step_down_to_admin: true
+        state: PENDING
+        expires_at: '2026-11-19T12:00:00Z'
+        created_at: '2026-11-12T12:00:00Z'
+        completed_at: null
+        operation_id: 7b0e2a54-0000-4000-8000-000000002001
+    EnterpriseOwnershipTransferResult:
+      type: object
+      description: Result payload of an ownership transfer action.
+      additionalProperties: false
+      properties:
+        transfer:
+          $ref: '#/components/schemas/EnterpriseOwnershipTransferView'
+        replayed:
+          type: boolean
+      required:
+      - transfer
+      - replayed
+      example:
+        transfer:
+          transfer_id: 7b0e2a54-0000-4000-8000-000000003001
+          org_id: 7b0e2a54-0000-4000-8000-000000000001
+          initiator_membership_id: 7b0e2a54-0000-4000-8000-000000000a01
+          target_membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+          step_down_to_admin: true
+          state: PENDING
+          expires_at: '2026-11-19T12:00:00Z'
+          created_at: '2026-11-12T12:00:00Z'
+          completed_at: null
+          operation_id: 7b0e2a54-0000-4000-8000-000000002001
+        replayed: false
   responses:
     EnterprisePrivateError:
       description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.

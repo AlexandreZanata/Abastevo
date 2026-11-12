@@ -65,6 +65,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.SettingsAuditDefinitions()...)
 	definitions = append(definitions, member.EmployeeAuditDefinitions()...)
 	definitions = append(definitions, accesspg.RoleAuditDefinitions()...)
+	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -77,7 +78,8 @@ func Register(router chi.Router, o Options) error {
 	flags := cappg.NewStore(o.Pool, capabilities, auditStore)
 	roots := orgpg.NewStore(o.Pool)
 	roles := accesspg.NewStore(o.Pool)
-	store := &orgpg.OnboardingStore{Pool: o.Pool, Roots: roots, Memberships: member.NewStore(o.Pool), Roles: roles, Audit: auditStore, Capabilities: flags}
+	memberStore := member.NewStore(o.Pool)
+	store := &orgpg.OnboardingStore{Pool: o.Pool, Roots: roots, Memberships: memberStore, Roles: roles, Audit: auditStore, Capabilities: flags}
 	allowance, err := identity.DefaultQuotaPolicy().Lookup(identity.OperationWrite)
 	if err != nil {
 		return err
@@ -88,6 +90,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "idn.employee", Permissions: []string{"idn.employee.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic employee register only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 	})
 	if err != nil {
 		return err
@@ -132,6 +135,12 @@ func Register(router chi.Router, o Options) error {
 	roleStore := accesspg.NewRoleStore(o.Pool, roles, auditStore)
 	roleAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: accessweb.RoleRecords{}, Now: time.Now}
 	if err := accessweb.RegisterRoles(router, access.RoleService{Enabled: true, Repository: roleStore, NewID: jobs.NewUUIDv4}, cookies, gateway, roleAuthorization, orgRootResolver{roots}, roles); err != nil {
+		return err
+	}
+
+	transferStore := orgpg.NewOwnershipTransferStore(o.Pool, roles, auditStore)
+	transferAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: orgweb.OwnershipTransferRecords{}, Now: time.Now}
+	if err := orgweb.RegisterOwnershipTransfer(router, org.OwnershipTransferService{Enabled: true, Repository: transferStore, NewID: jobs.NewUUIDv4, Now: time.Now}, cookies, gateway, transferAuthorization, roots, memberStore); err != nil {
 		return err
 	}
 

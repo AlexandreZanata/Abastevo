@@ -59,6 +59,7 @@ sql:
       - db/migrations/000177_organization_teams.sql
       - db/migrations/000178_organization_settings.sql
       - "db/migrations/000184_organization_suspensions.sql"
+      - "db/migrations/000185_ownership_transfers.sql"
     gen:
       go:
         package: organization

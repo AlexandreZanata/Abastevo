@@ -171,7 +171,7 @@ integration of the current ADR-019 construction batch. See the
 [Local operator suspension, historical intake and upgrade evidence](../evidence/f1-org009-suspension.md).
 
 ### EMP-ORG-010 — Ownership transfer and the last-owner invariant
-- **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Transfer ownership without leaving the organization ownerless.
 - **Rules and use cases:** BR-ORG-026, BR-ORG-034, BR-ORG-035, BR-AUTH-006, UC-ORG-09
 - **Depends on:** EMP-ORG-003, EMP-AUTH-005

@@ -1,4 +1,18 @@
 # Current execution state
+- Enterprise EMP-ORG-010, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
+  dev 845d1d94 (PR #203, EMP-AUTH-005). Owned branch codex/enterprise-org010
+  publishes to maintained dev (updating PR #203). [Ownership transfer evidence](../enterprise/evidence/f1-org010-ownership-transfer.md)
+  records 4 audited company routes under /v1/orgs/{org_id}/ownership-transfer (propose, read, accept, cancel),
+  7-day proposal validity, 1-pending transfer invariant via partial unique index, personal account invariant
+  (managed accounts rejected per BR-ORG-026), atomic handover in accept preserving the database last-owner
+  trigger (BR-AUTH-006, UC-ORG-09), voluntary step-down to admin, and automated cancellation triggers when
+  target membership is suspended/ended or organization is archived/closed.
+  BR-ORG-026, BR-ORG-034, BR-ORG-035, BR-AUTH-006, UC-ORG-09 and EDR-047 precede behavior.
+  Real PostGIS integration tests (positive propose, negative guards, accept with step down, accept without
+  step down, cancel/decline, automatic membership end trigger) and composed HTTP lifecycle tests pass.
+  OpenAPI v1.yaml lint (vacuum) and check-compat.sh pass with 0 errors. Plan checker passes (0 problems).
+  Next: PR #203 review and dev integration checkpoint; unblocks next open dependent task. Merge and deployment remain separate.
+
 - Enterprise EMP-AUTH-005, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
   dev 8a48c0a3 (PR #203, EMP-ORG-009). Owned branch codex/enterprise-auth005
   publishes to maintained dev (updating PR #203). [Role management evidence](../enterprise/evidence/f1-auth005-role-management.md)

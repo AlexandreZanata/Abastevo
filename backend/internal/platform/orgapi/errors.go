@@ -35,6 +35,7 @@ const (
 	StructureInUse          Code = "STRUCTURE_IN_USE"
 	DuplicateReviewRequired Code = "DUPLICATE_REVIEW_REQUIRED"
 	OwnerRequiresPersonal   Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
+	TransferPending         Code = "TRANSFER_PENDING"
 	RateLimited             Code = "RATE_LIMITED"
 	Unavailable             Code = "UNAVAILABLE"
 )
@@ -50,6 +51,7 @@ var statuses = map[Code]int{
 	LastUnit: 409, StructureInUse: 409, DuplicateReviewRequired: 409,
 	OrgSetupIncomplete:    409,
 	OwnerRequiresPersonal: 409,
+	TransferPending:       409,
 }
 
 type permissionFailure struct{ key string }
