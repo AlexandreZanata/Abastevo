@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/apicontract"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 )
@@ -46,6 +47,17 @@ func TestFullProductionRouterEnterpriseContractAndDefaultOff(t *testing.T) {
 						t.Fatal("unguarded production route accepted")
 					}
 				} else {
+					// Walk the complete router: no organization entry exists by default,
+					// not only the sampled paths below.
+					if mounted := organizationRoutes(t, router); len(mounted) != 0 {
+						t.Fatal("default production router mounts organization routes", mounted)
+					}
+					probe := chi.NewRouter()
+					probe.Mount("/", router)
+					probe.Post("/v1/org-access/synthetic", func(http.ResponseWriter, *http.Request) {})
+					if len(organizationRoutes(t, probe)) != 1 {
+						t.Fatal("organization route walk missed a mounted entry")
+					}
 					for _, path := range []string{"/v1/org-access/organizations/create", "/v1/orgs/7b0e2a54-0000-4000-8000-000000000301/units/create", "/v1/orgs/7b0e2a54-0000-4000-8000-000000000301/units/7b0e2a54-0000-4000-8000-000000000801/read", "/v1/orgs/7b0e2a54-0000-4000-8000-000000000301/cost-centres/create", "/v1/orgs/7b0e2a54-0000-4000-8000-000000000301/cost-centres/code/read"} {
 						w := httptest.NewRecorder()
 						router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "https://company.example.invalid"+path, nil))
@@ -61,4 +73,18 @@ func TestFullProductionRouterEnterpriseContractAndDefaultOff(t *testing.T) {
 			}
 		})
 	}
+}
+
+func organizationRoutes(t *testing.T, router chi.Routes) []string {
+	t.Helper()
+	var mounted []string
+	if err := chi.Walk(router, func(method, path string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		if orgapi.IsOrganizationPath(path) {
+			mounted = append(mounted, method+" "+path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return mounted
 }

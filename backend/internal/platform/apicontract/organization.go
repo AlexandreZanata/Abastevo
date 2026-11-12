@@ -67,6 +67,9 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 				return err
 			}
 		} else {
+			if completion, ok := handler.(orgapi.AuthorityCompletion); !ok || !completion.CompletesAuthority() {
+				return fmt.Errorf("organization route %s does not complete current authority", path)
+			}
 			raw, err := json.Marshal(operation.Extensions["x-abastevo-organization"])
 			if err != nil || json.Unmarshal(raw, &declared) != nil || declared != descriptor.OrganizationRule() || operation.Extensions["x-abastevo-company-session"] != nil || operation.Extensions["x-abastevo-organization-creation"] != nil {
 				return fmt.Errorf("organization authority metadata differs for %s", path)

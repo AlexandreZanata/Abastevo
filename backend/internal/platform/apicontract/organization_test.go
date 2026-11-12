@@ -50,6 +50,10 @@ func TestEnterpriseConventionSchemaVectors(t *testing.T) {
 
 func conventionRoute(t *testing.T) (*openapi3.T, chi.Router) {
 	t.Helper()
+	return conventionRouteWith(t, completingAuthority)
+}
+func conventionRouteWith(t *testing.T, confirm func(context.Context, orgapi.Principal, orgapi.Rule) error) (*openapi3.T, chi.Router) {
+	t.Helper()
 	document := loadSpec(t)
 	path := "/v1/orgs/{org_id}/example/read"
 	rule := orgapi.Rule{Permission: "org.settings.read", Success: 200}
@@ -76,6 +80,7 @@ func conventionRoute(t *testing.T) (*openapi3.T, chi.Router) {
 		Resolve: func(context.Context, orgapi.Actor, kernel.OrgScope, orgapi.Rule) (orgapi.Membership, error) {
 			return orgapi.Membership{}, orgapi.NotFound
 		},
+		ConfirmAuthority: confirm,
 	}, rule, func(context.Context, orgapi.Principal, orgapi.Session) (any, error) { return nil, nil })
 	if err != nil {
 		t.Fatal(err)

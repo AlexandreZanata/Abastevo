@@ -136,6 +136,12 @@ type endpoint[T Request] struct {
 
 func (handler endpoint[T]) OrganizationRule() Rule { return handler.rule }
 
+// AuthorityCompletion lets the route gate require the AUTH completion step:
+// a resolver alone never applies current capability and record gates.
+type AuthorityCompletion interface{ CompletesAuthority() bool }
+
+func (handler endpoint[T]) CompletesAuthority() bool { return handler.gateway.ConfirmAuthority != nil }
+
 func Register[T Request](router chi.Router, path string, gateway Gateway, rule Rule,
 	serve func(context.Context, Principal, T) (any, error)) error {
 	normalized, err := rule.normalized()
