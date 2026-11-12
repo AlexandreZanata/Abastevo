@@ -92,6 +92,40 @@ func (q *Queries) CandidateAssignments(ctx context.Context, arg CandidateAssignm
 	return items, nil
 }
 
+const checkTargetMembership = `-- name: CheckTargetMembership :one
+SELECT m.id::text AS id,m.account_id::text AS account_id,m.state AS membership_state,
+ e.state AS employee_state,m.access_model
+FROM org_memberships m
+JOIN org_employee_identities e ON (e.org_id,e.id)=(m.org_id,m.employee_id)
+WHERE m.org_id=CAST($1::text AS uuid) AND m.id=CAST($2::text AS uuid)
+`
+
+type CheckTargetMembershipParams struct {
+	OrgID        string `json:"org_id"`
+	MembershipID string `json:"membership_id"`
+}
+
+type CheckTargetMembershipRow struct {
+	ID              string `json:"id"`
+	AccountID       string `json:"account_id"`
+	MembershipState string `json:"membership_state"`
+	EmployeeState   string `json:"employee_state"`
+	AccessModel     string `json:"access_model"`
+}
+
+func (q *Queries) CheckTargetMembership(ctx context.Context, arg CheckTargetMembershipParams) (CheckTargetMembershipRow, error) {
+	row := q.db.QueryRow(ctx, checkTargetMembership, arg.OrgID, arg.MembershipID)
+	var i CheckTargetMembershipRow
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.MembershipState,
+		&i.EmployeeState,
+		&i.AccessModel,
+	)
+	return i, err
+}
+
 const endAssignment = `-- name: EndAssignment :execrows
 UPDATE org_role_assignments SET ended_at=clock_timestamp(),revision=revision+1
 WHERE org_id=CAST($1::text AS uuid) AND id=CAST($2::text AS uuid) AND revision = $3::bigint AND ended_at IS NULL
@@ -155,6 +189,38 @@ func (q *Queries) GetAssignment(ctx context.Context, arg GetAssignmentParams) (G
 	return i, err
 }
 
+const getOrganizationStateForShare = `-- name: GetOrganizationStateForShare :one
+SELECT state,has_snapshot FROM organizations WHERE org_id=CAST($1::text AS uuid) FOR SHARE
+`
+
+type GetOrganizationStateForShareRow struct {
+	State       pgtype.Text `json:"state"`
+	HasSnapshot bool        `json:"has_snapshot"`
+}
+
+func (q *Queries) GetOrganizationStateForShare(ctx context.Context, orgID string) (GetOrganizationStateForShareRow, error) {
+	row := q.db.QueryRow(ctx, getOrganizationStateForShare, orgID)
+	var i GetOrganizationStateForShareRow
+	err := row.Scan(&i.State, &i.HasSnapshot)
+	return i, err
+}
+
+const getOrganizationStateForUpdate = `-- name: GetOrganizationStateForUpdate :one
+SELECT state,has_snapshot FROM organizations WHERE org_id=CAST($1::text AS uuid) FOR UPDATE
+`
+
+type GetOrganizationStateForUpdateRow struct {
+	State       pgtype.Text `json:"state"`
+	HasSnapshot bool        `json:"has_snapshot"`
+}
+
+func (q *Queries) GetOrganizationStateForUpdate(ctx context.Context, orgID string) (GetOrganizationStateForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getOrganizationStateForUpdate, orgID)
+	var i GetOrganizationStateForUpdateRow
+	err := row.Scan(&i.State, &i.HasSnapshot)
+	return i, err
+}
+
 const insertAssignment = `-- name: InsertAssignment :execrows
 INSERT INTO org_role_assignments(org_id,id,membership_id,role,scope_type,scope_target,valid_from,valid_to,assigned_by,reason)
 VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),CAST($3::text AS uuid),$4::text,$5::text,
@@ -192,6 +258,84 @@ func (q *Queries) InsertAssignment(ctx context.Context, arg InsertAssignmentPara
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const listAssignments = `-- name: ListAssignments :many
+SELECT id::text AS id,membership_id::text AS membership_id,role,scope_type,scope_target::text AS scope_target,
+ valid_from,valid_to,assigned_by::text AS assigned_by,reason,revision,ended_at
+FROM org_role_assignments
+WHERE org_id = CAST($1::text AS uuid)
+ AND (NULLIF($2::text,'') IS NULL OR membership_id = CAST(NULLIF($2::text,'') AS uuid))
+ AND ($3::text = '' OR role = $3::text)
+ AND (
+   $4::text = 'ALL'
+   OR ($4::text = 'ACTIVE' AND ended_at IS NULL AND valid_from <= clock_timestamp() AND (valid_to IS NULL OR valid_to > clock_timestamp()))
+   OR ($4::text = 'ENDED' AND (ended_at IS NOT NULL OR (valid_to IS NOT NULL AND valid_to <= clock_timestamp())))
+ )
+ AND (NULLIF($5::text,'') IS NULL OR id > CAST(NULLIF($5::text,'') AS uuid))
+ORDER BY id LIMIT $6::int
+`
+
+type ListAssignmentsParams struct {
+	OrgID            string `json:"org_id"`
+	MembershipFilter string `json:"membership_filter"`
+	RoleFilter       string `json:"role_filter"`
+	StateFilter      string `json:"state_filter"`
+	AfterID          string `json:"after_id"`
+	RowLimit         int32  `json:"row_limit"`
+}
+
+type ListAssignmentsRow struct {
+	ID           string             `json:"id"`
+	MembershipID string             `json:"membership_id"`
+	Role         string             `json:"role"`
+	ScopeType    string             `json:"scope_type"`
+	ScopeTarget  string             `json:"scope_target"`
+	ValidFrom    pgtype.Timestamptz `json:"valid_from"`
+	ValidTo      pgtype.Timestamptz `json:"valid_to"`
+	AssignedBy   string             `json:"assigned_by"`
+	Reason       string             `json:"reason"`
+	Revision     int64              `json:"revision"`
+	EndedAt      pgtype.Timestamptz `json:"ended_at"`
+}
+
+func (q *Queries) ListAssignments(ctx context.Context, arg ListAssignmentsParams) ([]ListAssignmentsRow, error) {
+	rows, err := q.db.Query(ctx, listAssignments,
+		arg.OrgID,
+		arg.MembershipFilter,
+		arg.RoleFilter,
+		arg.StateFilter,
+		arg.AfterID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAssignmentsRow
+	for rows.Next() {
+		var i ListAssignmentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.MembershipID,
+			&i.Role,
+			&i.ScopeType,
+			&i.ScopeTarget,
+			&i.ValidFrom,
+			&i.ValidTo,
+			&i.AssignedBy,
+			&i.Reason,
+			&i.Revision,
+			&i.EndedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const lockAssignmentAccount = `-- name: LockAssignmentAccount :exec

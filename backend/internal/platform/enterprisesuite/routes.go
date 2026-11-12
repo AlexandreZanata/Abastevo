@@ -21,6 +21,7 @@ import (
 	memberweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters/http"
 	memberapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/application"
 	accesspg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/adapters"
+	accessweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/adapters/http"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	orgpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters"
 	orgweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters/http"
@@ -29,6 +30,7 @@ import (
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgquota"
@@ -62,6 +64,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.TeamAuditDefinitions()...)
 	definitions = append(definitions, orgpg.SettingsAuditDefinitions()...)
 	definitions = append(definitions, member.EmployeeAuditDefinitions()...)
+	definitions = append(definitions, accesspg.RoleAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -84,6 +87,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "idn.employee", Permissions: []string{"idn.employee.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic employee register only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 	})
 	if err != nil {
 		return err
@@ -125,8 +129,21 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 
+	roleStore := accesspg.NewRoleStore(o.Pool, roles, auditStore)
+	roleAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: accessweb.RoleRecords{}, Now: time.Now}
+	if err := accessweb.RegisterRoles(router, access.RoleService{Enabled: true, Repository: roleStore, NewID: jobs.NewUUIDv4}, cookies, gateway, roleAuthorization, orgRootResolver{roots}, roles); err != nil {
+		return err
+	}
+
 	cookies.RegisterRoutes(router)
 	return nil
+}
+
+type orgRootResolver struct{ roots org.Repository }
+
+func (r orgRootResolver) ResolveRoot(ctx context.Context, scope kernel.OrgScope) error {
+	_, err := r.roots.Get(ctx, scope)
+	return err
 }
 
 // creationAdmission spends the identity v1 write budget on a keyed account

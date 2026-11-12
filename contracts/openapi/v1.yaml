@@ -22,6 +22,8 @@ info:
     name: MIT
     url: https://opensource.org/license/mit
 tags:
+  - name: enterprise-access
+    description: Private organization role assignments and permissions management.
   - name: enterprise-organizations
     description: Private synthetic organization setup, structure and legal declarations.
   - name: company-session
@@ -531,6 +533,394 @@ paths:
                   profile_revision: 1
                   profile_pending: false
                   merged_into: ''
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+  /v1/orgs/{org_id}/roles/assign:
+    post:
+      tags:
+      - enterprise-access
+      operationId: enterpriseRoleAssign
+      summary: Assign a scoped role to an active member
+      description: Assign a scoped role to a member with an active membership. Non-owner actors cannot assign OWNER (BR-AUTH-007). Self-assignment is prohibited. Dedicated company session cookie, exact HTTPS Origin/Host, CSRF, and current auth.role.assign authority are mandatory. Fresh configuration writes require the organizations capability and auth.role admission. Responses are no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: auth.role.assign
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Role assignment command payload with actor intent reason.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseRoleAssignRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+              role: ADMIN
+              scope: ORG
+              target_id: 7b0e2a54-0000-4000-8000-000000000001
+              reason: Assigning administrator for regional operations
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '201':
+          description: Private committed role assignment acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseRoleResult'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000003001
+                membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+                role: ADMIN
+                scope_type: ORG
+                scope_target: 7b0e2a54-0000-4000-8000-000000000001
+                valid_from: '2026-11-12T00:00:00Z'
+                assigned_by: 7b0e2a54-0000-4000-8000-000000000a01
+                reason: Assigning administrator for regional operations
+                revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+  /v1/orgs/{org_id}/roles/{assignment_id}/end:
+    post:
+      tags:
+      - enterprise-access
+      operationId: enterpriseRoleEnd
+      summary: End an existing role assignment
+      description: End an active role assignment revision. Self-reduction is permitted only for an OWNER subject to last-owner invariant (BR-AUTH-006, BR-AUTH-007). Allowed even when organization is suspended as a reduction of access.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: auth.role.assign
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: assignment_id
+        in: path
+        required: true
+        description: Scoped role assignment identifier.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Role termination command payload.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseRoleEndRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002002
+              revision: 1
+              reason: Concluding assignment due to department transfer
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private committed role termination acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseRoleResult'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000003001
+                membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+                role: ADMIN
+                scope_type: ORG
+                scope_target: 7b0e2a54-0000-4000-8000-000000000001
+                valid_from: '2026-11-12T00:00:00Z'
+                ended_at: '2026-11-12T01:00:00Z'
+                assigned_by: 7b0e2a54-0000-4000-8000-000000000a01
+                reason: Concluding assignment due to department transfer
+                revision: 2
+                data_mode: SYNTHETIC
+                replayed: false
+  /v1/orgs/{org_id}/roles/{assignment_id}/change:
+    post:
+      tags:
+      - enterprise-access
+      operationId: enterpriseRoleChange
+      summary: Change an existing role assignment atomically
+      description: Atomically terminate the current assignment and create a new assignment with updated role or scope. Nobody can change their own role assignment (BR-AUTH-007). Non-owner actors cannot assign OWNER.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: auth.role.assign
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: assignment_id
+        in: path
+        required: true
+        description: Scoped role assignment identifier to change.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Role modification command payload.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseRoleChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002003
+              revision: 1
+              role: BILLING_MANAGER
+              scope: ORG
+              target_id: 7b0e2a54-0000-4000-8000-000000000001
+              reason: Transitioning member from admin to billing manager
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private committed role modification acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseRoleChangeResult'
+              example:
+                ended_assignment:
+                  id: 7b0e2a54-0000-4000-8000-000000003001
+                  membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+                  role: ADMIN
+                  scope_type: ORG
+                  scope_target: 7b0e2a54-0000-4000-8000-000000000001
+                  valid_from: '2026-11-12T00:00:00Z'
+                  ended_at: '2026-11-12T01:00:00Z'
+                  assigned_by: 7b0e2a54-0000-4000-8000-000000000a01
+                  reason: Transitioning member from admin to billing manager
+                  revision: 2
+                  data_mode: SYNTHETIC
+                new_assignment:
+                  id: 7b0e2a54-0000-4000-8000-000000003002
+                  membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+                  role: BILLING_MANAGER
+                  scope_type: ORG
+                  scope_target: 7b0e2a54-0000-4000-8000-000000000001
+                  valid_from: '2026-11-12T01:00:00Z'
+                  assigned_by: 7b0e2a54-0000-4000-8000-000000000a01
+                  reason: Transitioning member from admin to billing manager
+                  revision: 1
+                  data_mode: SYNTHETIC
+                replayed: false
+                data_mode: SYNTHETIC
+  /v1/orgs/{org_id}/roles/{assignment_id}/read:
+    post:
+      tags:
+      - enterprise-access
+      operationId: enterpriseRoleRead
+      summary: Read a specific role assignment
+      description: Retrieve details of a specific role assignment by identifier. Dedicated company session cookie, exact HTTPS Origin/Host, CSRF, and current auth.role.assign authority are mandatory.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: auth.role.assign
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: assignment_id
+        in: path
+        required: true
+        description: Scoped role assignment identifier.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        description: Empty role read request.
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized role assignment record.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseRoleAssignmentView'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000003001
+                membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+                role: ADMIN
+                scope_type: ORG
+                scope_target: 7b0e2a54-0000-4000-8000-000000000001
+                valid_from: '2026-11-12T00:00:00Z'
+                assigned_by: 7b0e2a54-0000-4000-8000-000000000a01
+                reason: Assigning administrator for regional operations
+                revision: 1
+                data_mode: SYNTHETIC
+  /v1/orgs/{org_id}/roles/list:
+    post:
+      tags:
+      - enterprise-access
+      operationId: enterpriseRoleList
+      summary: List role assignments with filters and pagination
+      description: List role assignments in this organization with optional filters by membership, role and state (ACTIVE, ENDED, ALL). Sealed cursor pagination. Dedicated company session cookie, exact HTTPS Origin/Host, CSRF, and current auth.role.assign authority are mandatory.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: auth.role.assign
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Role query filter and pagination payload.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseRoleListRequest'
+            example:
+              page:
+                limit: 20
+                cursor: ''
+              membership_id: ''
+              role: ''
+              state: ACTIVE
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized role assignment page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseRolePage'
+              example:
+                items:
+                - id: 7b0e2a54-0000-4000-8000-000000003001
+                  membership_id: 7b0e2a54-0000-4000-8000-000000000b01
+                  role: ADMIN
+                  scope_type: ORG
+                  scope_target: 7b0e2a54-0000-4000-8000-000000000001
+                  valid_from: '2026-11-12T00:00:00Z'
+                  assigned_by: 7b0e2a54-0000-4000-8000-000000000a01
+                  reason: Assigning administrator for regional operations
+                  revision: 1
                   data_mode: SYNTHETIC
                 next_cursor: ''
   /v1/orgs/{org_id}/cost-centres/create:
@@ -11823,6 +12213,283 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseRoleAssignRequest:
+      type: object
+      description: Assign a scoped role to a member with an active membership. Non-owner actors cannot assign OWNER.
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - membership_id
+      - role
+      - scope
+      - target_id
+      - reason
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        role:
+          type: string
+          enum: [OWNER, ADMIN, BILLING_MANAGER, FLEET_MANAGER, AUDITOR, DATA_MANAGER, DRIVER]
+          description: Role to assign to the target member.
+          example: ADMIN
+        scope:
+          type: string
+          enum: [ORG, SELF]
+          description: Scope level for the assignment.
+          example: ORG
+        target_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        valid_from:
+          type: string
+          format: date-time
+          description: Optional start timestamp; defaults to now if omitted.
+          example: '2026-11-12T00:00:00Z'
+        valid_to:
+          type: string
+          format: date-time
+          description: Optional end timestamp for time-bounded role grants.
+          example: '2027-11-12T00:00:00Z'
+        reason:
+          type: string
+          maxLength: 280
+          description: Intent explanation from assigner, at most 280 UTF-8 characters.
+          example: Assigning administrator for regional operations
+    EnterpriseRoleEndRequest:
+      type: object
+      description: Terminate an active role assignment revision.
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          description: Expected current assignment revision to terminate.
+          example: 1
+        reason:
+          type: string
+          maxLength: 280
+          description: Termination explanation, at most 280 UTF-8 characters.
+          example: Concluding assignment due to department transfer
+    EnterpriseRoleChangeRequest:
+      type: object
+      description: Atomically terminate an active role assignment and create a new assignment with updated role or scope.
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - role
+      - scope
+      - target_id
+      - reason
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+          description: Source command version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          description: Expected current assignment revision to terminate.
+          example: 1
+        role:
+          type: string
+          enum: [OWNER, ADMIN, BILLING_MANAGER, FLEET_MANAGER, AUDITOR, DATA_MANAGER, DRIVER]
+          description: New role to assign.
+          example: BILLING_MANAGER
+        scope:
+          type: string
+          enum: [ORG, SELF]
+          description: Scope level for the new assignment.
+          example: ORG
+        target_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        valid_from:
+          type: string
+          format: date-time
+          description: Optional start timestamp for the new assignment.
+          example: '2026-11-12T01:00:00Z'
+        valid_to:
+          type: string
+          format: date-time
+          description: Optional end timestamp for the new assignment.
+          example: '2027-11-12T00:00:00Z'
+        reason:
+          type: string
+          maxLength: 280
+          description: Change explanation, at most 280 UTF-8 characters.
+          example: Transitioning member from admin to billing manager
+    EnterpriseRoleAssignmentView:
+      type: object
+      description: Private authorized role assignment representation.
+      additionalProperties: false
+      required:
+      - id
+      - membership_id
+      - role
+      - scope_type
+      - scope_target
+      - valid_from
+      - assigned_by
+      - reason
+      - revision
+      - data_mode
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        role:
+          type: string
+          description: Assigned role identifier.
+          example: ADMIN
+        scope_type:
+          type: string
+          description: Scope level (ORG, SELF).
+          example: ORG
+        scope_target:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        valid_from:
+          type: string
+          format: date-time
+          description: Start of validity period.
+          example: '2026-11-12T00:00:00Z'
+        valid_to:
+          type: string
+          format: date-time
+          description: End of validity period, if bounded.
+          example: '2027-11-12T00:00:00Z'
+        ended_at:
+          type: string
+          format: date-time
+          description: Timestamp when the assignment was terminated.
+          example: '2026-11-12T01:00:00Z'
+        assigned_by:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          description: Business reason recorded for the assignment.
+          example: Assigning administrator for regional operations
+        revision:
+          type: integer
+          description: Optimistic concurrency revision.
+          example: 1
+        data_mode:
+          type: string
+          enum: [SYNTHETIC]
+          description: Synthetic isolation mode.
+          example: SYNTHETIC
+    EnterpriseRoleResult:
+      allOf:
+      - $ref: '#/components/schemas/EnterpriseRoleAssignmentView'
+      - type: object
+        required:
+        - replayed
+        properties:
+          replayed:
+            type: boolean
+            description: True if this acknowledgement was replayed from an identical prior operation.
+            example: false
+    EnterpriseRoleChangeResult:
+      type: object
+      description: Result of an atomic role change operation.
+      additionalProperties: false
+      required:
+      - ended_assignment
+      - new_assignment
+      - replayed
+      - data_mode
+      properties:
+        ended_assignment:
+          $ref: '#/components/schemas/EnterpriseRoleAssignmentView'
+        new_assignment:
+          $ref: '#/components/schemas/EnterpriseRoleAssignmentView'
+        replayed:
+          type: boolean
+          description: True if this acknowledgement was replayed from an identical prior operation.
+          example: false
+        data_mode:
+          type: string
+          enum: [SYNTHETIC]
+          description: Synthetic isolation mode.
+          example: SYNTHETIC
+    EnterpriseRolePageInput:
+      type: object
+      description: Bounded keyset pagination parameters.
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+          description: Maximum items on this page.
+          example: 20
+        cursor:
+          type: string
+          maxLength: 4096
+          description: Opaque pagination cursor.
+          example: ''
+    EnterpriseRoleListRequest:
+      type: object
+      description: Query filter and pagination parameters for role assignments list.
+      additionalProperties: false
+      required:
+      - page
+      properties:
+        page:
+          $ref: '#/components/schemas/EnterpriseRolePageInput'
+        membership_id:
+          type: string
+          description: Optional filter by target member ID.
+          example: ''
+        role:
+          type: string
+          description: Optional filter by role name.
+          example: ''
+        state:
+          type: string
+          enum: ['', ACTIVE, ENDED, ALL]
+          description: Optional filter by assignment state.
+          example: ACTIVE
+    EnterpriseRolePage:
+      type: object
+      description: Paginated list of role assignments.
+      additionalProperties: false
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseRoleAssignmentView'
+        next_cursor:
+          type: string
+          description: Sealed cursor for the next page, or empty if exhausted.
+          example: ''
     EnterpriseEmployeeCreateRequest:
       type: object
       description: Create an ACTIVE employee identity and minimal profile without an account, membership, role,

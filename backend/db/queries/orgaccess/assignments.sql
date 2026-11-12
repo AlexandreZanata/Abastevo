@@ -37,3 +37,31 @@ WHERE r.org_id=CAST(@org_id::text AS uuid) AND r.membership_id=CAST(@membership_
  AND (r.ended_at IS NULL OR r.ended_at>clock_timestamp())
  AND NOT EXISTS(SELECT 1 FROM payment_billing_exits x WHERE x.account_id=m.account_id AND x.reason='ACCOUNT_DELETION')
 ORDER BY r.id;
+
+-- name: ListAssignments :many
+SELECT id::text AS id,membership_id::text AS membership_id,role,scope_type,scope_target::text AS scope_target,
+ valid_from,valid_to,assigned_by::text AS assigned_by,reason,revision,ended_at
+FROM org_role_assignments
+WHERE org_id = CAST(@org_id::text AS uuid)
+ AND (NULLIF(@membership_filter::text,'') IS NULL OR membership_id = CAST(NULLIF(@membership_filter::text,'') AS uuid))
+ AND (@role_filter::text = '' OR role = @role_filter::text)
+ AND (
+   @state_filter::text = 'ALL'
+   OR (@state_filter::text = 'ACTIVE' AND ended_at IS NULL AND valid_from <= clock_timestamp() AND (valid_to IS NULL OR valid_to > clock_timestamp()))
+   OR (@state_filter::text = 'ENDED' AND (ended_at IS NOT NULL OR (valid_to IS NOT NULL AND valid_to <= clock_timestamp())))
+ )
+ AND (NULLIF(@after_id::text,'') IS NULL OR id > CAST(NULLIF(@after_id::text,'') AS uuid))
+ORDER BY id LIMIT @row_limit::int;
+
+-- name: CheckTargetMembership :one
+SELECT m.id::text AS id,m.account_id::text AS account_id,m.state AS membership_state,
+ e.state AS employee_state,m.access_model
+FROM org_memberships m
+JOIN org_employee_identities e ON (e.org_id,e.id)=(m.org_id,m.employee_id)
+WHERE m.org_id=CAST(@org_id::text AS uuid) AND m.id=CAST(@membership_id::text AS uuid);
+
+-- name: GetOrganizationStateForUpdate :one
+SELECT state,has_snapshot FROM organizations WHERE org_id=CAST(@org_id::text AS uuid) FOR UPDATE;
+
+-- name: GetOrganizationStateForShare :one
+SELECT state,has_snapshot FROM organizations WHERE org_id=CAST(@org_id::text AS uuid) FOR SHARE;

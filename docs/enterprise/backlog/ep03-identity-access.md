@@ -395,7 +395,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Pilot entitlement and rollback acceptance](../evidence/f1-auth004-pilot-entitlements.md).
 
 ### EMP-AUTH-005 — Role management with last-owner and separation-of-duties guards
-- **Meta:** module AUTH · phase F1 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module AUTH · phase F1 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Change scoped roles without escalation or removing the last owner.
 - **Rules and use cases:** BR-AUTH-003, BR-AUTH-006, BR-AUTH-007, BR-AUTH-010, BR-AUTH-014, UC-AUTH-01, UC-AUTH-02
 - **Depends on:** EMP-AUTH-003, EMP-PLAT-003
@@ -409,6 +409,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: preserve assignment history · rollback: disable commands without undoing accepted revocations
 - **Risks and assumptions:** Separation-of-duties and record-state rules still apply after a grant.
 - **Done when:** Permission, last-owner and audit atomicity tests pass on real PostGIS.
+
+[Audited role management and last-owner evidence](../evidence/f1-auth005-role-management.md).
 
 ### EMP-AUTH-006 — Unit, cost-centre, team and asset scopes with resource scope resolution
 - **Meta:** module AUTH · phase F2 · cut - · priority P1 · type DB · size M · state TODO

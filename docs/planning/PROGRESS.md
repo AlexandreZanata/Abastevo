@@ -1,4 +1,18 @@
 # Current execution state
+- Enterprise EMP-AUTH-005, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
+  dev 8a48c0a3 (PR #203, EMP-ORG-009). Owned branch codex/enterprise-auth005
+  publishes to maintained dev (updating PR #203). [Role management evidence](../enterprise/evidence/f1-auth005-role-management.md)
+  records 5 audited company routes under /v1/orgs/{org_id}/roles (assign, end, change, read, list),
+  fresh authentication proof, immediate effect, target membership checks, separation of duties
+  (ADMIN cannot assign OWNER; self-assignment and self-modification forbidden), and PostgreSQL P7501
+  last-owner invariant mapped to ErrLastOrgOwner. Single atomic audit event per command
+  (auth.assignment.created / auth.assignment.ended) with exact replay idempotency.
+  BR-AUTH-003, BR-AUTH-006, BR-AUTH-007, BR-AUTH-010, BR-AUTH-014, UC-AUTH-01/02 and EDR-046 precede behavior.
+  Real PostGIS integration tests (positive assign/end/change, concurrent last-owner race contention,
+  negative guards, replay idempotency, cursor list) and composed HTTP lifecycle tests pass.
+  OpenAPI v1.yaml lint (vacuum) and check-compat.sh pass with 0 errors. Plan checker passes (0 problems).
+  Next: PR #203 review and dev integration checkpoint; unblocks EMP-ORG-010. Merge and deployment remain separate.
+
 - Enterprise EMP-ORG-009, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
   integrated main/dev 6a19bcc7 (PR202, including Claude fixes through 69d02109).
   Owned branch codex/enterprise-org009 publishes to maintained dev while its
